@@ -69,6 +69,7 @@ jobs:
         with:
           fetch-depth: 0
           fetch-tags: true
+          ref: ${{ github.event.pull_request.head.sha }}
 
       - name: Basic quality checks
         uses: ./src/actions/basic-quality-checks
