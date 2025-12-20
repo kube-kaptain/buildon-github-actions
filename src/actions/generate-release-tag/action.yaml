@@ -1,0 +1,66 @@
+name: 'Generate Release Tag'
+description: 'Generates and pushes a release tag based on git history'
+author: 'kube-kaptain'
+
+inputs:
+  default-branch:
+    description: 'The default/release branch name'
+    required: false
+    default: 'main'
+  patch-branches:
+    description: 'Comma-separated list of additional release branch patterns'
+    required: false
+    default: ''
+  max-version-parts:
+    description: 'Maximum allowed version parts (fail if exceeded)'
+    required: false
+    default: '3'
+
+outputs:
+  version:
+    description: 'The generated version (e.g., 1.2.3)'
+    value: ${{ steps.generate.outputs.VERSION }}
+  version-major:
+    description: 'Major version number'
+    value: ${{ steps.generate.outputs.VERSION_MAJOR }}
+  version-minor:
+    description: 'Minor version number'
+    value: ${{ steps.generate.outputs.VERSION_MINOR }}
+  version-patch:
+    description: 'Patch version number'
+    value: ${{ steps.generate.outputs.VERSION_PATCH }}
+  version-2-part:
+    description: 'Version padded/truncated to 2 parts (e.g., 1.2)'
+    value: ${{ steps.generate.outputs.VERSION_2_PART }}
+  version-3-part:
+    description: 'Version padded/truncated to 3 parts (e.g., 1.2.3)'
+    value: ${{ steps.generate.outputs.VERSION_3_PART }}
+  version-4-part:
+    description: 'Version padded/truncated to 4 parts (e.g., 1.2.3.0)'
+    value: ${{ steps.generate.outputs.VERSION_4_PART }}
+  docker-tag:
+    description: 'Tag for Docker images (version or version-PRERELEASE)'
+    value: ${{ steps.generate.outputs.DOCKER_TAG }}
+  docker-image-name:
+    description: 'Docker image name (prefix/project-name)'
+    value: ${{ steps.generate.outputs.DOCKER_IMAGE_NAME }}
+  is-release:
+    description: 'Whether this is a release build (true/false)'
+    value: ${{ steps.generate.outputs.IS_RELEASE }}
+  project-name:
+    description: 'The repository/project name'
+    value: ${{ steps.generate.outputs.PROJECT_NAME }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Generate release tag
+      id: generate
+      shell: bash
+      env:
+        DEFAULT_BRANCH: ${{ inputs.default-branch }}
+        PATCH_BRANCHES: ${{ inputs.patch-branches }}
+        MAX_VERSION_PARTS: ${{ inputs.max-version-parts }}
+      run: |
+        chmod +x "${{ github.action_path }}/../../scripts/generate-release-tag"
+        "${{ github.action_path }}/../../scripts/generate-release-tag"

@@ -1,0 +1,111 @@
+name: Basic QC and Tag
+
+on:
+  workflow_call:
+    inputs:
+      default-branch:
+        description: 'The default/release branch name'
+        required: false
+        type: string
+        default: 'main'
+      patch-branches:
+        description: 'Comma-separated list of allowed target branches beyond default'
+        required: false
+        type: string
+        default: ''
+      block-slashes:
+        description: 'Block branch names containing slashes'
+        required: false
+        type: boolean
+        default: false
+      max-version-parts:
+        description: 'Maximum allowed version parts (fail if exceeded)'
+        required: false
+        type: number
+        default: 3
+    outputs:
+      version:
+        description: 'The generated version'
+        value: ${{ jobs.tag.outputs.version }}
+      version-major:
+        description: 'Major version number'
+        value: ${{ jobs.tag.outputs.version-major }}
+      version-minor:
+        description: 'Minor version number'
+        value: ${{ jobs.tag.outputs.version-minor }}
+      version-patch:
+        description: 'Patch version number'
+        value: ${{ jobs.tag.outputs.version-patch }}
+      version-2-part:
+        description: 'Version padded/truncated to 2 parts'
+        value: ${{ jobs.tag.outputs.version-2-part }}
+      version-3-part:
+        description: 'Version padded/truncated to 3 parts'
+        value: ${{ jobs.tag.outputs.version-3-part }}
+      version-4-part:
+        description: 'Version padded/truncated to 4 parts'
+        value: ${{ jobs.tag.outputs.version-4-part }}
+      docker-tag:
+        description: 'Tag for Docker images'
+        value: ${{ jobs.tag.outputs.docker-tag }}
+      docker-image-name:
+        description: 'Docker image name (prefix/project-name)'
+        value: ${{ jobs.tag.outputs.docker-image-name }}
+      is-release:
+        description: 'Whether this is a release build'
+        value: ${{ jobs.tag.outputs.is-release }}
+      project-name:
+        description: 'The repository/project name'
+        value: ${{ jobs.tag.outputs.project-name }}
+
+jobs:
+  quality:
+    name: Quality Check
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4.2.2
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Enforce quality standards
+        uses: ./src/actions/enforce-quality-commits-and-branch
+        with:
+          default-branch: ${{ inputs.default-branch }}
+          patch-branches: ${{ inputs.patch-branches }}
+          block-slashes: ${{ inputs.block-slashes }}
+
+  tag:
+    name: Release Tag
+    if: github.event_name == 'push'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    outputs:
+      version: ${{ steps.generate.outputs.version }}
+      version-major: ${{ steps.generate.outputs.version-major }}
+      version-minor: ${{ steps.generate.outputs.version-minor }}
+      version-patch: ${{ steps.generate.outputs.version-patch }}
+      version-2-part: ${{ steps.generate.outputs.version-2-part }}
+      version-3-part: ${{ steps.generate.outputs.version-3-part }}
+      version-4-part: ${{ steps.generate.outputs.version-4-part }}
+      docker-tag: ${{ steps.generate.outputs.docker-tag }}
+      docker-image-name: ${{ steps.generate.outputs.docker-image-name }}
+      is-release: ${{ steps.generate.outputs.is-release }}
+      project-name: ${{ steps.generate.outputs.project-name }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4.2.2
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Generate release tag
+        id: generate
+        uses: ./src/actions/generate-release-tag
+        with:
+          default-branch: ${{ inputs.default-branch }}
+          patch-branches: ${{ inputs.patch-branches }}
+          max-version-parts: ${{ inputs.max-version-parts }}

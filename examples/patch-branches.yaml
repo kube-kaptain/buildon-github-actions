@@ -1,0 +1,31 @@
+# Patch Branches
+#
+# Support hotfix workflows with 4-part versions (e.g., 1.2.3.1, 1.2.3.2).
+#
+# Workflow:
+# 1. Release 1.2.3 from main
+# 2. Create branch main-1.2.3 for hotfixes
+# 3. Hotfixes get tagged 1.2.3.1, 1.2.3.2, etc.
+#
+# Copy this to .github/workflows/ci.yaml in your repo.
+
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+      - 'main-*'    # Patch branches like main-1.2.3
+  pull_request:
+    branches:
+      - main
+      - 'main-*'
+
+jobs:
+  build:
+    uses: kube-kaptain/buildon-github-actions/.github/workflows/basic-qc-and-tag.yaml@v1
+    permissions:
+      contents: write
+    with:
+      patch-branches: 'main-*'
+      max-version-parts: 4

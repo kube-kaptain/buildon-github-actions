@@ -1,0 +1,273 @@
+#!/usr/bin/env bash
+#
+# enforce-quality-commits-and-branch - Enforces commit and branch quality standards
+#
+# Exit codes are bit flags (can be combined):
+#   1  = bad branch name
+#   2  = bad commit message
+#   4  = merge commit found
+#   8  = not rebased on target
+#   16 = bad PR target branch
+#
+set -uo pipefail
+
+# Configuration with defaults
+DEFAULT_BRANCH="${DEFAULT_BRANCH:-main}"
+PATCH_BRANCHES="${PATCH_BRANCHES:-}"
+BLOCK_SLASHES="${BLOCK_SLASHES:-false}"
+TARGET_BRANCH="${TARGET_BRANCH:-$DEFAULT_BRANCH}"
+PR_CREATOR="${PR_CREATOR:-}"
+
+# Bit flags for exit codes
+FLAG_BAD_BRANCH=1
+FLAG_BAD_COMMIT=2
+FLAG_MERGE_COMMIT=4
+FLAG_NOT_REBASED=8
+FLAG_BAD_TARGET=16
+
+# Accumulated error code
+ERROR_CODE=0
+
+# Get current branch
+get_current_branch() {
+  git rev-parse --abbrev-ref HEAD
+}
+
+# Check if this is a PR context
+is_pr_context() {
+  [[ -n "${PR_BRANCH:-}" ]]
+}
+
+# Get the PR branch name
+get_pr_branch() {
+  echo "${PR_BRANCH:-$(get_current_branch)}"
+}
+
+# Check for GitHub default branch naming pattern
+is_github_default_branch_name() {
+  local branch="$1"
+
+  # Only check if we know the PR creator
+  if [[ -z "$PR_CREATOR" ]]; then
+    return 1
+  fi
+
+  # Pattern: <pr-creator>-patch-<number>
+  if [[ "$branch" == "${PR_CREATOR}-patch-"* ]] && [[ "$branch" =~ -patch-[0-9]+$ ]]; then
+    return 0
+  fi
+
+  return 1
+}
+
+# Check if branch contains a slash
+has_slash() {
+  local branch="$1"
+  [[ "$branch" == *"/"* ]]
+}
+
+# Check if target branch is allowed
+is_valid_target() {
+  local target="$1"
+
+  if [[ "$target" == "$DEFAULT_BRANCH" ]]; then
+    return 0
+  fi
+
+  if [[ -n "$PATCH_BRANCHES" ]]; then
+    IFS=',' read -ra patterns <<< "$PATCH_BRANCHES"
+    for pattern in "${patterns[@]}"; do
+      # shellcheck disable=SC2053
+      if [[ "$target" == $pattern ]]; then
+        return 0
+      fi
+    done
+  fi
+
+  return 1
+}
+
+# Get commits unique to this branch (not in target)
+get_branch_commits() {
+  local target="$1"
+  git log --format="%H" "${target}..HEAD" 2>/dev/null
+}
+
+# Check if a commit is a merge commit
+is_merge_commit() {
+  local commit="$1"
+  local parent_count
+  parent_count=$(git rev-list --parents -n1 "$commit" | wc -w)
+  [[ $parent_count -gt 2 ]]
+}
+
+# Check if commit message matches GitHub UI default pattern
+# Matches "Update <filename>..." or "Create <filename>..." or "Delete <filename>..."
+# where <filename> is the actual single file changed in that commit
+is_github_ui_commit() {
+  local commit="$1"
+  local message
+  message=$(git log -1 --format="%s" "$commit")
+
+  # Get first two words
+  local first_word second_word
+  first_word=$(echo "$message" | awk '{print $1}')
+  second_word=$(echo "$message" | awk '{print $2}')
+
+  # Check if first word is Update/Create/Delete
+  if [[ "$first_word" != "Update" && "$first_word" != "Create" && "$first_word" != "Delete" ]]; then
+    return 1
+  fi
+
+  # Get the single file changed in this commit
+  local files_changed
+  files_changed=$(git diff-tree --no-commit-id --name-only -r "$commit")
+  local file_count
+  file_count=$(echo "$files_changed" | wc -l | tr -d ' ')
+
+  # Only flag if single file changed and it matches the second word
+  if [[ "$file_count" -eq 1 ]]; then
+    local changed_file
+    changed_file=$(echo "$files_changed" | head -1)
+    # Check if second word matches the filename (with or without path)
+    local basename_changed
+    basename_changed=$(basename "$changed_file")
+    if [[ "$second_word" == "$changed_file" || "$second_word" == "$basename_changed" ]]; then
+      return 0
+    fi
+  fi
+
+  return 1
+}
+
+# Check if branch is a fast-forward from target
+is_ff_from_target() {
+  local target="$1"
+  local target_ref
+
+  # In CI: fetch target branch, use origin/$target
+  # In local testing: no origin, use local $target
+  if git remote | grep -q origin; then
+    if git fetch origin "$target" --quiet 2>/dev/null; then
+      target_ref="origin/$target"
+    elif git rev-parse "$target" &>/dev/null; then
+      # Fetch failed but local branch exists (e.g., newly created branch in tests)
+      target_ref="$target"
+    else
+      echo "::error::Target branch '$target' not found on origin or locally" >&2
+      exit 42
+    fi
+  else
+    target_ref="$target"
+  fi
+
+  if ! git rev-parse "$target_ref" &>/dev/null; then
+    echo "::error::Target ref '$target_ref' not found" >&2
+    exit 42
+  fi
+
+  git merge-base --is-ancestor "$target_ref" HEAD
+}
+
+# Report error (accumulates, doesn't exit)
+error() {
+  local flag="$1"
+  local message="$2"
+  echo "::error::$message" >&2
+  echo "✗ $message" >&2
+  ERROR_CODE=$((ERROR_CODE | flag))
+}
+
+# Report success
+pass() {
+  local message="$1"
+  echo "✓ $message" >&2
+}
+
+main() {
+  local branch
+  branch=$(get_pr_branch)
+
+  echo "Checking quality for branch: $branch" >&2
+  echo "Target branch: $TARGET_BRANCH" >&2
+
+  # Skip checks for the default branch itself (post-merge)
+  if [[ "$branch" == "$DEFAULT_BRANCH" ]]; then
+    echo "Skipping checks for default branch (post-merge context)" >&2
+    exit 0
+  fi
+
+  # Check 1: Block GitHub default branch names
+  if is_github_default_branch_name "$branch"; then
+    error $FLAG_BAD_BRANCH "Branch name '$branch' matches GitHub's default naming pattern. Please use a descriptive branch name."
+  else
+    pass "Branch name is not a GitHub default"
+  fi
+
+  # Check 2: Optionally block slashes in branch names
+  if [[ "$BLOCK_SLASHES" == "true" ]]; then
+    if has_slash "$branch"; then
+      error $FLAG_BAD_BRANCH "Branch name '$branch' contains a slash. Please use hyphens instead."
+    else
+      pass "Branch name contains no slashes"
+    fi
+  fi
+
+  # Check 3: Validate PR target branch
+  if is_pr_context; then
+    if ! is_valid_target "$TARGET_BRANCH"; then
+      error $FLAG_BAD_TARGET "PR targets '$TARGET_BRANCH' which is not an allowed target branch."
+    else
+      pass "PR targets an allowed branch"
+    fi
+  fi
+
+  # Get commits to check
+  local commits
+  commits=$(get_branch_commits "$TARGET_BRANCH")
+
+  if [[ -z "$commits" ]]; then
+    echo "No commits to check (branch may already be merged)" >&2
+  else
+    # Check 4: No merge commits
+    local merge_found=false
+    for commit in $commits; do
+      if is_merge_commit "$commit"; then
+        error $FLAG_MERGE_COMMIT "Commit $commit is a merge commit. Please rebase your branch instead of merging."
+        merge_found=true
+      fi
+    done
+    if [[ "$merge_found" == "false" ]]; then
+      pass "No merge commits found"
+    fi
+
+    # Check 5: No GitHub UI default commit messages
+    local bad_msg_found=false
+    for commit in $commits; do
+      if is_github_ui_commit "$commit"; then
+        local msg
+        msg=$(git log -1 --format="%s" "$commit")
+        error $FLAG_BAD_COMMIT "Commit $commit appears to have a GitHub UI default message: '$msg'. Please use descriptive commit messages. All commits update something - never include Update in your message."
+        bad_msg_found=true
+      fi
+    done
+    if [[ "$bad_msg_found" == "false" ]]; then
+      pass "No commit messages appear to be GitHub generated"
+    fi
+  fi
+
+  # Check 6: Branch is fast-forward from target
+  if ! is_ff_from_target "$TARGET_BRANCH"; then
+    error $FLAG_NOT_REBASED "Branch is not up to date with '$TARGET_BRANCH'. Please rebase your branch."
+  else
+    pass "Branch is fast-forward from target"
+  fi
+
+  if [[ $ERROR_CODE -eq 0 ]]; then
+    echo "All quality checks passed!" >&2
+  fi
+
+  exit $ERROR_CODE
+}
+
+main "$@"

@@ -1,0 +1,131 @@
+# Build On GitHub Actions
+
+Reusable GitHub Actions for CI/CD pipelines with quality enforcement and automatic versioning.
+
+## Features
+
+- **Quality enforcement** - Block GitHub UI branch names, default commit messages, merge commits, unrebased branches
+- **Automatic versioning** - Semantic version tags based on git history, supports any number of version parts
+- **Patch branch support** - Configure additional release branches for hotfix workflows
+
+## Quick Start
+
+Reference the reusable workflow from your repo:
+
+```yaml
+name: CI
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    uses: kube-kaptain/buildon-github-actions/.github/workflows/basic-qc-and-tag.yaml@v1
+    permissions:
+      contents: write
+```
+
+See [`examples/`](examples/) for more usage patterns.
+
+## Examples
+
+| Example | Description |
+|---------|-------------|
+| [`basic-quality-and-tag.yaml`](examples/basic-quality-and-tag.yaml) | Standard setup: PR quality checks + push tagging |
+| [`quality-only.yaml`](examples/quality-only.yaml) | Quality enforcement without tagging |
+| [`patch-branches.yaml`](examples/patch-branches.yaml) | Hotfix workflow with 4-part versions |
+
+## Components
+
+### Workflows
+
+| Workflow | Description |
+|----------|-------------|
+| `basic-qc-and-tag.yaml` | Quality checks on PR, version tagging on push |
+
+### Actions
+
+| Action | Description |
+|--------|-------------|
+| `enforce-quality-commits-and-branch` | Validates branch names, commit messages, rebase status |
+| `generate-release-tag` | Generates and pushes version tags |
+
+## Configuration
+
+| Input | Default | Description |
+|-------|---------|-------------|
+| `default-branch` | `main` | The release branch name |
+| `patch-branches` | `""` | Comma-separated patterns for additional release branches |
+| `block-slashes` | `false` | Block `/` in branch names |
+| `max-version-parts` | `3` | Maximum version depth (set to 4 for patch branches) |
+
+## Versioning
+
+Tags are generated based on the closest annotated tag in git history:
+
+- **No tags**: Starts at `1.0.0`
+- **Single-part**: (`42`): Increments to `43`
+- **Two-part** (`1.2`): Increments to `1.3`
+- **Three-part** (`1.2.3`): Increments to `1.2.4`
+- **Four-part** (`1.2.3.4`): Increments to `1.2.3.5` (requires `max-version-parts: 4`)
+
+Non-release branches get `-PRERELEASE` suffix on Docker tags.
+
+### Tag Selection
+
+The algorithm finds the right tag to increment:
+
+1. **Find closest tag**: Walk commit history from HEAD, find the nearest annotated tag by commit distance
+2. **Break ties by date**: If multiple tags are equidistant (e.g., after a merge), use the newest by creation date
+3. **Scan entire repo**: Look up the highest version in that series across all branches (handles isolated/orphan branches)
+4. **Increment**: Bump the last component of the highest version found
+
+This means:
+- A backfilled tag on an older commit won't hijack your series
+- After merging branches with different tags, the newest tag wins
+- Hotfix branches can't accidentally collide with main's newer versions
+
+### Outputs
+
+**Version formats:**
+
+| Output | Example | Use case |
+|--------|---------|----------|
+| `version` | `1.2.3` | Primary version |
+| `version-major` | `1` | Major component |
+| `version-minor` | `2` | Minor component |
+| `version-patch` | `3` | Patch component |
+| `version-2-part` | `1.2` | Two-part format |
+| `version-3-part` | `1.2.3` | Semver format |
+| `version-4-part` | `1.2.3.0` | Four-part format |
+
+**Build metadata:**
+
+| Output | Example | Description |
+|--------|---------|-------------|
+| `docker-tag` | `1.2.3` or `1.2.3-PRERELEASE` | Ready-to-use image tag |
+| `docker-image-name` | `some/some-repo` | Image name from repo prefix |
+| `is-release` | `true` or `false` | Whether this is a release branch build |
+| `project-name` | `some-repo` | Contains repo name, to be used for all artifact names |
+
+## Quality Checks
+
+The quality action blocks:
+
+- GitHub default branch names (`user-patch-1`)
+- GitHub UI commit messages (`Update filename`, `Create filename`, `Delete filename`)
+- Merge commits (require rebase workflow)
+- Branches not rebased on target
+- PRs targeting non-allowed branches
+
+## Development
+
+```bash
+./src/test/run-tests.sh
+```
+
+## License
+
+See repository license.

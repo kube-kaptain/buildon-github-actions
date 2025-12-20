@@ -1,0 +1,21 @@
+# Basic Quality and Tag
+#
+# Standard CI setup:
+# - PRs: Enforce quality standards (branch names, commit messages, rebase)
+# - Push to main: Generate and push version tag
+#
+# Copy this to .github/workflows/ci.yaml in your repo.
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    uses: kube-kaptain/buildon-github-actions/.github/workflows/basic-qc-and-tag.yaml@v1
+    permissions:
+      contents: write

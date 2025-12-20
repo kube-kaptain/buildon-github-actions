@@ -1,0 +1,17 @@
+# Quality Only
+#
+# Enforce quality standards on PRs without automatic tagging.
+# Use this when you want manual version control or a separate release process.
+#
+# Copy this to .github/workflows/quality.yaml in your repo.
+
+name: Quality
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  quality:
+    uses: kube-kaptain/buildon-github-actions/.github/workflows/basic-qc-and-tag.yaml@v1
+    # No push trigger = no tagging, quality checks only run on PRs
