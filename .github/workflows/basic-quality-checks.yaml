@@ -1,0 +1,38 @@
+name: Basic Quality Checks
+
+on:
+  workflow_call:
+    inputs:
+      default-branch:
+        description: 'The default/release branch name'
+        required: false
+        type: string
+        default: 'main'
+      patch-branches:
+        description: 'Comma-separated list of allowed target branches beyond default'
+        required: false
+        type: string
+        default: ''
+      block-slashes:
+        description: 'Block branch names containing slashes'
+        required: false
+        type: boolean
+        default: false
+
+jobs:
+  basic-quality-checks:
+    name: Basic Quality Checks
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4.2.2
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Basic quality checks
+        uses: ./src/actions/basic-quality-checks
+        with:
+          default-branch: ${{ inputs.default-branch }}
+          patch-branches: ${{ inputs.patch-branches }}
+          block-slashes: ${{ inputs.block-slashes }}

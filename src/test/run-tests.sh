@@ -51,8 +51,8 @@ run_docker() {
 run_shellcheck() {
   log_info "Running shellcheck on scripts"
   local scripts=(
-    "$PROJECT_ROOT/src/scripts/generate-release-tag"
-    "$PROJECT_ROOT/src/scripts/enforce-quality-commits-and-branch"
+    "$PROJECT_ROOT/src/scripts/versions-and-naming"
+    "$PROJECT_ROOT/src/scripts/basic-quality-checks"
   )
 
   if command -v shellcheck &>/dev/null; then

@@ -7,15 +7,17 @@ Reusable GitHub Actions library for CI/CD pipelines with quality enforcement and
 ```
 .github/
   workflows/                            # Reusable workflow templates (callable by consumers)
-    basic-qc-and-tag.yaml
+    basic-quality-and-versioning.yaml   # Combined: quality + versioning
+    basic-quality-checks.yaml           # Quality checks only
+    versions-and-naming.yaml            # Versioning only
     build.yaml                          # Dogfooding - this repo's own CI
 src/
   actions/                              # Composite actions (wrap scripts for GitHub)
-    enforce-quality-commits-and-branch/
-    generate-release-tag/
+    basic-quality-checks/
+    versions-and-naming/
   scripts/                              # Shell scripts (CI-agnostic logic)
-    enforce-quality-commits-and-branch
-    generate-release-tag
+    basic-quality-checks
+    versions-and-naming
   test/                                 # BATS tests with fixture repos
     fixtures/                           # Git bundles for test scenarios
     repo-gen/                           # Scripts to generate fixtures

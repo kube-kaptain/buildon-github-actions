@@ -1,4 +1,4 @@
-# Basic Quality and Tag
+# Basic Quality and Versioning
 #
 # Standard CI setup:
 # - PRs: Enforce quality standards (branch names, commit messages, rebase)
@@ -16,6 +16,6 @@ on:
 
 jobs:
   build:
-    uses: kube-kaptain/buildon-github-actions/.github/workflows/basic-qc-and-tag.yaml@v1
+    uses: kube-kaptain/buildon-github-actions/.github/workflows/basic-quality-and-versioning.yaml@v1
     permissions:
       contents: write

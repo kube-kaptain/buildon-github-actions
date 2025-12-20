@@ -13,5 +13,5 @@ on:
 
 jobs:
   quality:
-    uses: kube-kaptain/buildon-github-actions/.github/workflows/basic-qc-and-tag.yaml@v1
+    uses: kube-kaptain/buildon-github-actions/.github/workflows/basic-quality-and-versioning.yaml@v1
     # No push trigger = no tagging, quality checks only run on PRs

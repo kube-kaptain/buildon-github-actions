@@ -22,7 +22,7 @@ on:
 
 jobs:
   build:
-    uses: kube-kaptain/buildon-github-actions/.github/workflows/basic-qc-and-tag.yaml@v1
+    uses: kube-kaptain/buildon-github-actions/.github/workflows/basic-quality-and-versioning.yaml@v1
     permissions:
       contents: write
 ```
@@ -33,7 +33,7 @@ See [`examples/`](examples/) for more usage patterns.
 
 | Example | Description |
 |---------|-------------|
-| [`basic-quality-and-tag.yaml`](examples/basic-quality-and-tag.yaml) | Standard setup: PR quality checks + push tagging |
+| [`basic-quality-and-versioning.yaml`](examples/basic-quality-and-versioning.yaml) | Standard setup: PR quality checks + push versioning |
 | [`quality-only.yaml`](examples/quality-only.yaml) | Quality enforcement without tagging |
 | [`patch-branches.yaml`](examples/patch-branches.yaml) | Hotfix workflow with 4-part versions |
 
@@ -43,14 +43,16 @@ See [`examples/`](examples/) for more usage patterns.
 
 | Workflow | Description |
 |----------|-------------|
-| `basic-qc-and-tag.yaml` | Quality checks on PR, version tagging on push |
+| `basic-quality-and-versioning.yaml` | Combined: quality checks + versioning |
+| `basic-quality-checks.yaml` | Quality checks only |
+| `versions-and-naming.yaml` | Versioning only |
 
 ### Actions
 
 | Action | Description |
 |--------|-------------|
-| `enforce-quality-commits-and-branch` | Validates branch names, commit messages, rebase status |
-| `generate-release-tag` | Generates and pushes version tags |
+| `basic-quality-checks` | Validates branch names, commit messages, rebase status |
+| `versions-and-naming` | Generates version numbers, tags, and naming |
 
 ## Configuration
 

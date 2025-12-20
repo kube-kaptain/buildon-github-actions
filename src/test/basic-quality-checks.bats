@@ -16,7 +16,7 @@ teardown() {
   cd "$TEST_REPO"
 
   export PR_BRANCH=fix-something
-  run "$SCRIPTS_DIR/enforce-quality-commits-and-branch"
+  run "$SCRIPTS_DIR/basic-quality-checks"
   [ "$status" -eq 0 ]
   assert_output_contains "All quality checks passed"
 }
@@ -27,7 +27,7 @@ teardown() {
   git checkout main --quiet
 
   export PR_BRANCH=main
-  run "$SCRIPTS_DIR/enforce-quality-commits-and-branch"
+  run "$SCRIPTS_DIR/basic-quality-checks"
   [ "$status" -eq 0 ]
   assert_output_contains "Skipping checks for default branch"
 }
@@ -38,7 +38,7 @@ teardown() {
 
   export PR_BRANCH=testuser-patch-1
   export PR_CREATOR=testuser
-  run "$SCRIPTS_DIR/enforce-quality-commits-and-branch"
+  run "$SCRIPTS_DIR/basic-quality-checks"
   [ "$status" -eq 1 ]
   assert_output_contains "GitHub's default naming pattern"
 }
@@ -48,7 +48,7 @@ teardown() {
   cd "$TEST_REPO"
 
   export PR_BRANCH=feature/something
-  run "$SCRIPTS_DIR/enforce-quality-commits-and-branch"
+  run "$SCRIPTS_DIR/basic-quality-checks"
   [ "$status" -eq 0 ]
 }
 
@@ -58,7 +58,7 @@ teardown() {
 
   export PR_BRANCH=feature/something
   export BLOCK_SLASHES=true
-  run "$SCRIPTS_DIR/enforce-quality-commits-and-branch"
+  run "$SCRIPTS_DIR/basic-quality-checks"
   [ "$status" -eq 1 ]
   assert_output_contains "contains a slash"
 }
@@ -68,7 +68,7 @@ teardown() {
   cd "$TEST_REPO"
 
   export PR_BRANCH=fix-docs
-  run "$SCRIPTS_DIR/enforce-quality-commits-and-branch"
+  run "$SCRIPTS_DIR/basic-quality-checks"
   [ "$status" -eq 2 ]
   assert_output_contains "GitHub UI default message"
 }
@@ -78,7 +78,7 @@ teardown() {
   cd "$TEST_REPO"
 
   export PR_BRANCH=add-file
-  run "$SCRIPTS_DIR/enforce-quality-commits-and-branch"
+  run "$SCRIPTS_DIR/basic-quality-checks"
   [ "$status" -eq 2 ]
   assert_output_contains "GitHub UI default message"
 }
@@ -88,7 +88,7 @@ teardown() {
   cd "$TEST_REPO"
 
   export PR_BRANCH=remove-file
-  run "$SCRIPTS_DIR/enforce-quality-commits-and-branch"
+  run "$SCRIPTS_DIR/basic-quality-checks"
   [ "$status" -eq 2 ]
   assert_output_contains "GitHub UI default message"
 }
@@ -98,7 +98,7 @@ teardown() {
   cd "$TEST_REPO"
 
   export PR_BRANCH=feature-with-merge
-  run "$SCRIPTS_DIR/enforce-quality-commits-and-branch"
+  run "$SCRIPTS_DIR/basic-quality-checks"
   [ "$status" -eq 4 ]
   assert_output_contains "merge commit"
 }
@@ -108,7 +108,7 @@ teardown() {
   cd "$TEST_REPO"
 
   export PR_BRANCH=old-feature
-  run "$SCRIPTS_DIR/enforce-quality-commits-and-branch"
+  run "$SCRIPTS_DIR/basic-quality-checks"
   [ "$status" -eq 8 ]
   assert_output_contains "not up to date"
 }
@@ -118,7 +118,7 @@ teardown() {
   cd "$TEST_REPO"
 
   export PR_BRANCH=fix-readme
-  run "$SCRIPTS_DIR/enforce-quality-commits-and-branch"
+  run "$SCRIPTS_DIR/basic-quality-checks"
   [ "$status" -eq 2 ]
   assert_output_contains "GitHub UI default message"
 }
@@ -129,7 +129,7 @@ teardown() {
 
   export PR_BRANCH=testuser-patch-1
   export PR_CREATOR=testuser
-  run "$SCRIPTS_DIR/enforce-quality-commits-and-branch"
+  run "$SCRIPTS_DIR/basic-quality-checks"
   # Should have both FLAG_BAD_BRANCH (1) and FLAG_BAD_COMMIT (2) = 3
   [ "$status" -eq 3 ]
 }
@@ -141,7 +141,7 @@ teardown() {
   export PR_BRANCH=fix-something
   export TARGET_BRANCH=develop
   export GITHUB_HEAD_REF=fix-something
-  run "$SCRIPTS_DIR/enforce-quality-commits-and-branch"
+  run "$SCRIPTS_DIR/basic-quality-checks"
   # FLAG_BAD_TARGET = 16, but also FLAG_NOT_REBASED = 8 since develop doesn't exist
   # Actually the script checks if target is allowed first
   [ "$status" -ne 0 ]
@@ -159,6 +159,6 @@ teardown() {
   export TARGET_BRANCH=release-1.0.x
   export PATCH_BRANCHES="release-*"
   export GITHUB_HEAD_REF=fix-something
-  run "$SCRIPTS_DIR/enforce-quality-commits-and-branch"
+  run "$SCRIPTS_DIR/basic-quality-checks"
   [ "$status" -eq 0 ]
 }

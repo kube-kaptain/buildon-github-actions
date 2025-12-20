@@ -16,7 +16,7 @@ teardown() {
   TEST_REPO=$(clone_fixture "tag-none")
   cd "$TEST_REPO"
 
-  run "$SCRIPTS_DIR/generate-release-tag"
+  run "$SCRIPTS_DIR/versions-and-naming"
   [ "$status" -eq 0 ]
   assert_var_equals "VERSION" "1.0.0"
   assert_var_equals "VERSION_MAJOR" "1"
@@ -31,7 +31,7 @@ teardown() {
   TEST_REPO=$(clone_fixture "tag-semver3")
   cd "$TEST_REPO"
 
-  run "$SCRIPTS_DIR/generate-release-tag"
+  run "$SCRIPTS_DIR/versions-and-naming"
   [ "$status" -eq 0 ]
   assert_var_equals "VERSION" "1.0.1"
 }
@@ -40,7 +40,7 @@ teardown() {
   TEST_REPO=$(clone_fixture "tag-semver2")
   cd "$TEST_REPO"
 
-  run "$SCRIPTS_DIR/generate-release-tag"
+  run "$SCRIPTS_DIR/versions-and-naming"
   [ "$status" -eq 0 ]
   assert_var_equals "VERSION" "1.3"
   assert_var_equals "VERSION_2_PART" "1.3"
@@ -52,7 +52,7 @@ teardown() {
   cd "$TEST_REPO"
   export MAX_VERSION_PARTS=4
 
-  run "$SCRIPTS_DIR/generate-release-tag"
+  run "$SCRIPTS_DIR/versions-and-naming"
   [ "$status" -eq 0 ]
   assert_var_equals "VERSION" "1.2.3.5"
   assert_var_equals "VERSION_3_PART" "1.2.3"
@@ -63,7 +63,7 @@ teardown() {
   TEST_REPO=$(clone_fixture "tag-vprefixed")
   cd "$TEST_REPO"
 
-  run "$SCRIPTS_DIR/generate-release-tag"
+  run "$SCRIPTS_DIR/versions-and-naming"
   [ "$status" -eq 0 ]
   assert_var_equals "VERSION" "1.0.1"
 }
@@ -72,7 +72,7 @@ teardown() {
   TEST_REPO=$(clone_fixture "tag-multiple")
   cd "$TEST_REPO"
 
-  run "$SCRIPTS_DIR/generate-release-tag"
+  run "$SCRIPTS_DIR/versions-and-naming"
   [ "$status" -eq 0 ]
   assert_var_equals "VERSION" "1.0.3"
 }
@@ -81,7 +81,7 @@ teardown() {
   TEST_REPO=$(clone_fixture "tag-none")
   cd "$TEST_REPO"
 
-  run "$SCRIPTS_DIR/generate-release-tag"
+  run "$SCRIPTS_DIR/versions-and-naming"
   [ "$status" -eq 0 ]
   assert_var_equals "IS_RELEASE" "true"
 }
@@ -90,7 +90,7 @@ teardown() {
   TEST_REPO=$(clone_fixture "tag-feature-branch")
   cd "$TEST_REPO"
 
-  run "$SCRIPTS_DIR/generate-release-tag"
+  run "$SCRIPTS_DIR/versions-and-naming"
   [ "$status" -eq 0 ]
   assert_var_equals "IS_RELEASE" "false"
 }
@@ -99,7 +99,7 @@ teardown() {
   TEST_REPO=$(clone_fixture "tag-feature-branch")
   cd "$TEST_REPO"
 
-  run "$SCRIPTS_DIR/generate-release-tag"
+  run "$SCRIPTS_DIR/versions-and-naming"
   [ "$status" -eq 0 ]
   assert_var_equals "DOCKER_TAG" "1.0.1-PRERELEASE"
 }
@@ -108,7 +108,7 @@ teardown() {
   TEST_REPO=$(clone_fixture "tag-semver3")
   cd "$TEST_REPO"
 
-  run "$SCRIPTS_DIR/generate-release-tag"
+  run "$SCRIPTS_DIR/versions-and-naming"
   [ "$status" -eq 0 ]
   assert_var_equals "DOCKER_TAG" "1.0.1"
 }
@@ -117,7 +117,7 @@ teardown() {
   TEST_REPO=$(clone_fixture "tag-none")
   cd "$TEST_REPO"
 
-  run "$SCRIPTS_DIR/generate-release-tag"
+  run "$SCRIPTS_DIR/versions-and-naming"
   [ "$status" -eq 0 ]
   assert_output_contains "PROJECT_NAME="
 }
@@ -127,7 +127,7 @@ teardown() {
   cd "$TEST_REPO"
   export PATCH_BRANCHES="feature-*"
 
-  run "$SCRIPTS_DIR/generate-release-tag"
+  run "$SCRIPTS_DIR/versions-and-naming"
   [ "$status" -eq 0 ]
   assert_var_equals "IS_RELEASE" "true"
 }
@@ -140,7 +140,7 @@ teardown() {
 
   # main has 2.0, but isolated branch has 2.30-2.32
   # Should get 2.33, not 2.1
-  run "$SCRIPTS_DIR/generate-release-tag"
+  run "$SCRIPTS_DIR/versions-and-naming"
   [ "$status" -eq 0 ]
   assert_var_equals "VERSION" "2.33"
   assert_var_equals "VERSION_2_PART" "2.33"
@@ -154,7 +154,7 @@ teardown() {
   export MAX_VERSION_PARTS=4
 
   # Branch has 1.2.4.0-1.2.4.3, should get 1.2.4.4
-  run "$SCRIPTS_DIR/generate-release-tag"
+  run "$SCRIPTS_DIR/versions-and-naming"
   [ "$status" -eq 0 ]
   assert_var_equals "VERSION" "1.2.4.4"
 }
@@ -167,7 +167,7 @@ teardown() {
 
   # main has 1.3.0, but patch branch is in 1.2.4.X series
   # Should get 1.2.4.1, not be affected by 1.3.0
-  run "$SCRIPTS_DIR/generate-release-tag"
+  run "$SCRIPTS_DIR/versions-and-naming"
   [ "$status" -eq 0 ]
   assert_var_equals "VERSION" "1.2.4.1"
 }
@@ -177,7 +177,7 @@ teardown() {
   cd "$TEST_REPO"
 
   # Has 1.4, 1.5, 1.40, 1.41 - should get 1.42 not 1.6
-  run "$SCRIPTS_DIR/generate-release-tag"
+  run "$SCRIPTS_DIR/versions-and-naming"
   [ "$status" -eq 0 ]
   assert_var_equals "VERSION" "1.42"
 }
@@ -187,7 +187,7 @@ teardown() {
   cd "$TEST_REPO"
 
   # Has 1.2.3, 1.2.4-rc1, 1.2.4-beta - should get 1.2.4 (ignoring suffixed tags)
-  run "$SCRIPTS_DIR/generate-release-tag"
+  run "$SCRIPTS_DIR/versions-and-naming"
   [ "$status" -eq 0 ]
   assert_var_equals "VERSION" "1.2.4"
 }
@@ -198,7 +198,7 @@ teardown() {
   export MAX_VERSION_PARTS=3
 
   # Has 1.2.3.4, would generate 1.2.3.5 which is 4 parts > max 3
-  run "$SCRIPTS_DIR/generate-release-tag"
+  run "$SCRIPTS_DIR/versions-and-naming"
   [ "$status" -eq 1 ]
   assert_output_contains "exceeds MAX_VERSION_PARTS"
 }
@@ -212,7 +212,7 @@ teardown() {
   # Same commit has 2.3.4 (older) and 1.2.3 (newer)
   # Should pick 1.2.3 because it's newer by tag creation date
   # Then generate 1.2.4
-  run "$SCRIPTS_DIR/generate-release-tag"
+  run "$SCRIPTS_DIR/versions-and-naming"
   [ "$status" -eq 0 ]
   assert_var_equals "VERSION" "1.2.4"
 }
@@ -224,7 +224,7 @@ teardown() {
   # After merge, both 2.3.4 (older) and 1.2.3 (newer) are same distance from HEAD
   # 1.2.3 is newer by tag creation date, should be picked
   # Would generate 1.2.4
-  run "$SCRIPTS_DIR/generate-release-tag"
+  run "$SCRIPTS_DIR/versions-and-naming"
   [ "$status" -eq 0 ]
   assert_var_equals "VERSION" "1.2.4"
 }
@@ -236,7 +236,7 @@ teardown() {
   # Linear: A (tag 2.0.0, created 2nd) → B (tag 1.0.0, created 1st) → C (HEAD)
   # 1.0.0 is distance 1, 2.0.0 is distance 2
   # Should pick 1.0.0 (closer) despite 2.0.0 having newer creation date
-  run "$SCRIPTS_DIR/generate-release-tag"
+  run "$SCRIPTS_DIR/versions-and-naming"
   [ "$status" -eq 0 ]
   assert_var_equals "VERSION" "1.0.1"
 }
@@ -250,7 +250,7 @@ teardown() {
   TEST_REPO="$new_name"
   cd "$TEST_REPO"
 
-  run "$SCRIPTS_DIR/generate-release-tag"
+  run "$SCRIPTS_DIR/versions-and-naming"
   [ "$status" -eq 0 ]
   assert_var_equals "DOCKER_IMAGE_NAME" "group/group-project-specialisation"
 }

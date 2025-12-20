@@ -1,4 +1,4 @@
-name: Basic QC and Tag
+name: Versions & Naming
 
 on:
   workflow_call:
@@ -9,15 +9,10 @@ on:
         type: string
         default: 'main'
       patch-branches:
-        description: 'Comma-separated list of allowed target branches beyond default'
+        description: 'Comma-separated list of additional release branch patterns'
         required: false
         type: string
         default: ''
-      block-slashes:
-        description: 'Block branch names containing slashes'
-        required: false
-        type: boolean
-        default: false
       max-version-parts:
         description: 'Maximum allowed version parts (fail if exceeded)'
         required: false
@@ -59,24 +54,6 @@ on:
         value: ${{ jobs.versions-and-naming.outputs.project-name }}
 
 jobs:
-  basic-quality-checks:
-    name: Basic Quality Checks
-    if: github.event_name == 'pull_request'
-    runs-on: ubuntu-24.04
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4.2.2
-        with:
-          fetch-depth: 0
-          fetch-tags: true
-
-      - name: Enforce quality standards
-        uses: ./src/actions/enforce-quality-commits-and-branch
-        with:
-          default-branch: ${{ inputs.default-branch }}
-          patch-branches: ${{ inputs.patch-branches }}
-          block-slashes: ${{ inputs.block-slashes }}
-
   versions-and-naming:
     name: Versions & Naming
     runs-on: ubuntu-24.04
@@ -101,9 +78,9 @@ jobs:
           fetch-depth: 0
           fetch-tags: true
 
-      - name: Generate release tag
+      - name: Generate versions and naming
         id: generate
-        uses: ./src/actions/generate-release-tag
+        uses: ./src/actions/versions-and-naming
         with:
           default-branch: ${{ inputs.default-branch }}
           patch-branches: ${{ inputs.patch-branches }}

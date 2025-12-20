@@ -8,7 +8,7 @@ on:
 
 jobs:
   build:
-    uses: ./.github/workflows/basic-qc-and-tag.yaml
+    uses: ./.github/workflows/basic-quality-and-versioning.yaml
     with:
       block-slashes: true
     permissions:

@@ -1,5 +1,5 @@
-name: 'Enforce Quality'
-description: 'Enforces commit and branch quality standards for PRs'
+name: 'Basic Quality Checks'
+description: 'Basic quality checks for commits and branches'
 author: 'kube-kaptain'
 
 inputs:
@@ -34,5 +34,5 @@ runs:
         PR_BRANCH: ${{ github.head_ref }}
         PR_CREATOR: ${{ github.event.pull_request.user.login }}
       run: |
-        chmod +x "${{ github.action_path }}/../../scripts/enforce-quality-commits-and-branch"
-        "${{ github.action_path }}/../../scripts/enforce-quality-commits-and-branch"
+        chmod +x "${{ github.action_path }}/../../scripts/basic-quality-checks"
+        "${{ github.action_path }}/../../scripts/basic-quality-checks"
