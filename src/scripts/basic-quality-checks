@@ -234,6 +234,9 @@ main() {
   if [[ -z "$commits" ]]; then
     echo "No commits to check (branch may already be merged)" >&2
   else
+    local commit_count
+    commit_count=$(echo "$commits" | wc -l | tr -d ' ')
+
     # Check 4: No merge commits
     local merge_found=false
     for commit in $commits; do
@@ -243,7 +246,7 @@ main() {
       fi
     done
     if [[ "$merge_found" == "false" ]]; then
-      pass "No merge commits found"
+      pass "No merge commits found from $commit_count commits checked"
     fi
 
     # Check 5: No GitHub UI default commit messages
@@ -257,7 +260,7 @@ main() {
       fi
     done
     if [[ "$bad_msg_found" == "false" ]]; then
-      pass "No commit messages appear to be GitHub generated"
+      pass "No GitHub generated commit messages from $commit_count commits checked"
     fi
   fi
 
