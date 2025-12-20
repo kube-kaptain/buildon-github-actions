@@ -87,10 +87,30 @@ is_valid_target() {
   return 1
 }
 
+# Resolve target branch to the correct ref (origin/$target in CI, $target locally)
+resolve_target_ref() {
+  local target="$1"
+
+  if git remote | grep -q origin; then
+    if git fetch origin "$target" --quiet 2>/dev/null; then
+      echo "origin/$target"
+    elif git rev-parse "$target" &>/dev/null; then
+      echo "$target"
+    else
+      echo "::error::Target branch '$target' not found on origin or locally" >&2
+      exit 42
+    fi
+  else
+    echo "$target"
+  fi
+}
+
 # Get commits unique to this branch (not in target)
 get_branch_commits() {
   local target="$1"
-  git log --format="%H" "${target}..HEAD" 2>/dev/null
+  local target_ref
+  target_ref=$(resolve_target_ref "$target")
+  git log --format="%H" "${target_ref}..HEAD" 2>/dev/null
 }
 
 # Check if a commit is a merge commit
@@ -144,22 +164,7 @@ is_github_ui_commit() {
 is_ff_from_target() {
   local target="$1"
   local target_ref
-
-  # In CI: fetch target branch, use origin/$target
-  # In local testing: no origin, use local $target
-  if git remote | grep -q origin; then
-    if git fetch origin "$target" --quiet 2>/dev/null; then
-      target_ref="origin/$target"
-    elif git rev-parse "$target" &>/dev/null; then
-      # Fetch failed but local branch exists (e.g., newly created branch in tests)
-      target_ref="$target"
-    else
-      echo "::error::Target branch '$target' not found on origin or locally" >&2
-      exit 42
-    fi
-  else
-    target_ref="$target"
-  fi
+  target_ref=$(resolve_target_ref "$target")
 
   if ! git rev-parse "$target_ref" &>/dev/null; then
     echo "::error::Target ref '$target_ref' not found" >&2
