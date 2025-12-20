@@ -26,41 +26,41 @@ on:
     outputs:
       version:
         description: 'The generated version'
-        value: ${{ jobs.tag.outputs.version }}
+        value: ${{ jobs.versions-and-naming.outputs.version }}
       version-major:
         description: 'Major version number'
-        value: ${{ jobs.tag.outputs.version-major }}
+        value: ${{ jobs.versions-and-naming.outputs.version-major }}
       version-minor:
         description: 'Minor version number'
-        value: ${{ jobs.tag.outputs.version-minor }}
+        value: ${{ jobs.versions-and-naming.outputs.version-minor }}
       version-patch:
         description: 'Patch version number'
-        value: ${{ jobs.tag.outputs.version-patch }}
+        value: ${{ jobs.versions-and-naming.outputs.version-patch }}
       version-2-part:
         description: 'Version padded/truncated to 2 parts'
-        value: ${{ jobs.tag.outputs.version-2-part }}
+        value: ${{ jobs.versions-and-naming.outputs.version-2-part }}
       version-3-part:
         description: 'Version padded/truncated to 3 parts'
-        value: ${{ jobs.tag.outputs.version-3-part }}
+        value: ${{ jobs.versions-and-naming.outputs.version-3-part }}
       version-4-part:
         description: 'Version padded/truncated to 4 parts'
-        value: ${{ jobs.tag.outputs.version-4-part }}
+        value: ${{ jobs.versions-and-naming.outputs.version-4-part }}
       docker-tag:
         description: 'Tag for Docker images'
-        value: ${{ jobs.tag.outputs.docker-tag }}
+        value: ${{ jobs.versions-and-naming.outputs.docker-tag }}
       docker-image-name:
         description: 'Docker image name (prefix/project-name)'
-        value: ${{ jobs.tag.outputs.docker-image-name }}
+        value: ${{ jobs.versions-and-naming.outputs.docker-image-name }}
       is-release:
         description: 'Whether this is a release build'
-        value: ${{ jobs.tag.outputs.is-release }}
+        value: ${{ jobs.versions-and-naming.outputs.is-release }}
       project-name:
         description: 'The repository/project name'
-        value: ${{ jobs.tag.outputs.project-name }}
+        value: ${{ jobs.versions-and-naming.outputs.project-name }}
 
 jobs:
-  quality:
-    name: Quality Check
+  basic-quality-checks:
+    name: Basic Quality Checks
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-24.04
     steps:
@@ -77,9 +77,8 @@ jobs:
           patch-branches: ${{ inputs.patch-branches }}
           block-slashes: ${{ inputs.block-slashes }}
 
-  tag:
-    name: Release Tag
-    if: github.event_name == 'push'
+  versions-and-naming:
+    name: Versions & Naming
     runs-on: ubuntu-24.04
     permissions:
       contents: write
