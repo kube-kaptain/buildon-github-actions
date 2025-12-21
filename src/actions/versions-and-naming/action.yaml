@@ -64,6 +64,4 @@ runs:
         DEFAULT_BRANCH: ${{ inputs.default-branch }}
         PATCH_BRANCHES: ${{ inputs.patch-branches }}
         MAX_VERSION_PARTS: ${{ inputs.max-version-parts }}
-      run: |
-        chmod +x "${{ github.action_path }}/../../scripts/versions-and-naming"
-        "${{ github.action_path }}/../../scripts/versions-and-naming"
+      run: "${{ github.action_path }}/../../scripts/versions-and-naming"

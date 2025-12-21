@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2025 Kaptain contributors (Fred Cooke)
 #
-# run-tests.sh - Run all tests for buildon-github-actions
+# run-tests.bash - Run all tests for buildon-github-actions
 #
 # Uses BATS (Bash Automated Testing System) either locally or via Docker
 #
@@ -49,6 +49,45 @@ run_docker() {
     --tap *.bats
 }
 
+# Check all scripts are executable
+check_executables() {
+  log_info "Checking scripts are executable"
+  local scripts=()
+  local globs=(
+    "$PROJECT_ROOT/src/scripts/*"
+    "$PROJECT_ROOT/src/test/*.bash"
+    "$PROJECT_ROOT/src/test/repo-gen/*.bash"
+  )
+
+  for glob in "${globs[@]}"; do
+    for file in $glob; do
+      [[ -f "$file" ]] && scripts+=("$file")
+    done
+  done
+
+  local failed=()
+  local scanned=0
+
+  for script in "${scripts[@]}"; do
+    ((scanned++))
+    if [[ ! -x "$script" ]]; then
+      failed+=("$script")
+    fi
+  done
+
+  log_info "Scanned $scanned scripts"
+
+  if [[ ${#failed[@]} -gt 0 ]]; then
+    log_error "${#failed[@]} script(s) missing executable permission:"
+    for f in "${failed[@]}"; do
+      log_error "  - ${f#$PROJECT_ROOT/}"
+    done
+    exit 1
+  fi
+
+  log_info "All scripts executable"
+}
+
 # Run shellcheck on all scripts
 run_shellcheck() {
   log_info "Running shellcheck on scripts"
@@ -76,7 +115,10 @@ main() {
   log_info "Starting test suite"
   log_info "Project root: $PROJECT_ROOT"
 
-  # Run shellcheck first
+  # Check scripts are executable
+  check_executables
+
+  # Run shellcheck
   run_shellcheck
 
   # Run BATS tests
