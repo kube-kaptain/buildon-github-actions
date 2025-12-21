@@ -38,7 +38,7 @@ jobs:
         uses: actions/checkout@v4.2.2
         with:
           repository: kube-kaptain/buildon-github-actions
-          ref: ${{ github.job_workflow_sha }}
+          ref: ${{ github.workflow_sha }}
           path: .github/buildon-github-actions
 
       - name: Basic quality checks
