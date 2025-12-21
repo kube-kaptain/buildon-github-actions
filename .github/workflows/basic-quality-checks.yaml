@@ -34,8 +34,15 @@ jobs:
           fetch-tags: true
           ref: ${{ github.event.pull_request.head.sha || github.ref }}
 
+      - name: Checkout actions
+        uses: actions/checkout@v4.2.2
+        with:
+          repository: kube-kaptain/buildon-github-actions
+          ref: ${{ github.job_workflow_sha }}
+          path: .github/buildon-github-actions
+
       - name: Basic quality checks
-        uses: ./src/actions/basic-quality-checks
+        uses: ./.github/buildon-github-actions/src/actions/basic-quality-checks
         with:
           default-branch: ${{ inputs.default-branch }}
           patch-branches: ${{ inputs.patch-branches }}

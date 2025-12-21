@@ -81,9 +81,16 @@ jobs:
           fetch-depth: 0
           fetch-tags: true
 
+      - name: Checkout actions
+        uses: actions/checkout@v4.2.2
+        with:
+          repository: kube-kaptain/buildon-github-actions
+          ref: ${{ github.job_workflow_sha }}
+          path: .github/buildon-github-actions
+
       - name: Generate versions and naming
         id: generate
-        uses: ./src/actions/versions-and-naming
+        uses: ./.github/buildon-github-actions/src/actions/versions-and-naming
         with:
           default-branch: ${{ inputs.default-branch }}
           patch-branches: ${{ inputs.patch-branches }}
