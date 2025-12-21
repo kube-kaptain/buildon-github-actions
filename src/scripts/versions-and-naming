@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# generate-release-tag - Generates and pushes release tags
+# versions-and-naming - Generates versions, tags, and naming
 #
 # Outputs:
 #   RELEASE_TAG   - Numeric version (e.g., 1.2.3)

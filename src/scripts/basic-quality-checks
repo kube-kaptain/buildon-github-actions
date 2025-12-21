@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# enforce-quality-commits-and-branch - Enforces commit and branch quality standards
+# basic-quality-checks - Enforces commit and branch quality standards
 #
 # Exit codes are bit flags (can be combined):
 #   1  = bad branch name
