@@ -218,6 +218,8 @@ increment_version() {
 # Push tag to remote
 push_tag() {
   local tag="$1"
+  git config user.email "noreply@kaptain.org"
+  git config user.name "Kube Kaptain"
   git tag -m "Automatic release tag by Kaptain build script." "$tag" HEAD
   git push origin "$tag"
 }
