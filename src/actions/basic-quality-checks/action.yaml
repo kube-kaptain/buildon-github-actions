@@ -1,0 +1,39 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025 Kaptain contributors (Fred Cooke)
+
+name: 'Basic Quality Checks'
+description: 'Basic quality checks for commits and branches'
+author: 'kube-kaptain'
+
+inputs:
+  default-branch:
+    description: 'The default/release branch name'
+    required: false
+    default: 'main'
+  patch-branches:
+    description: 'Comma-separated list of allowed target branches beyond default'
+    required: false
+    default: ''
+  block-slashes:
+    description: 'Block branch names containing slashes'
+    required: false
+    default: 'false'
+  target-branch:
+    description: 'The target branch for PR checks (usually auto-detected)'
+    required: false
+    default: ''
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Enforce quality standards
+      id: check
+      shell: bash
+      env:
+        DEFAULT_BRANCH: ${{ inputs.default-branch }}
+        PATCH_BRANCHES: ${{ inputs.patch-branches }}
+        BLOCK_SLASHES: ${{ inputs.block-slashes }}
+        TARGET_BRANCH: ${{ inputs.target-branch || github.base_ref || inputs.default-branch }}
+        PR_BRANCH: ${{ github.head_ref }}
+        PR_CREATOR: ${{ github.event.pull_request.user.login }}
+      run: "${{ github.action_path }}/../../scripts/basic-quality-checks"
