@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025 Kaptain contributors (Fred Cooke)
+
 name: 'Versions & Naming'
 description: 'Generates version numbers, tags, and naming for releases'
 author: 'kube-kaptain'

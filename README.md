@@ -128,6 +128,21 @@ The quality action blocks:
 ./src/test/run-tests.sh
 ```
 
-## License
+## Project Licensing
 
-See repository license.
+This project uses multiple licenses:
+
+| Component | License | Terms |
+|-----------|---------|-------|
+| Source code and scripts | MIT | Free to use, modify, distribute with attribution |
+| Examples (`examples/`) | CC0-1.0 | Public domain, use freely without attribution |
+| Documentation (`*.md`) | CC-BY-SA-4.0 | Attribute to Kaptain contributors, share modifications under same license |
+
+Forks must preserve license headers and attribution. See [LICENSE.txt](LICENSE.txt) for full details.
+
+## SPDX License Header
+
+```
+SPDX-License-Identifier: MIT
+Copyright (c) 2025 Kaptain contributors (Fred Cooke)
+```

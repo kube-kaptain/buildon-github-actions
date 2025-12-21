@@ -75,3 +75,10 @@ Runs shellcheck + BATS tests against fixture repos.
 2. Create action wrapper in `src/actions/<name>/action.yaml`
 3. Map GitHub context to generic env vars in the action
 4. Add tests in `src/test/`
+
+## SPDX License Header
+
+```
+SPDX-License-Identifier: CC-BY-SA-4.0
+Copyright (c) 2025 Kaptain contributors (Fred Cooke)
+```
