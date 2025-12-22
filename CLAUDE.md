@@ -76,6 +76,11 @@ Runs shellcheck + BATS tests against fixture repos.
 3. Map GitHub context to generic env vars in the action
 4. Add tests in `src/test/`
 
+## Git Workflow
+
+- Never touch the git index - don't stage files, don't run `git add`. The user manages what gets committed.
+- Always re-read files before editing them to avoid overwriting manual changes. Don't rely on cached content.
+
 ## SPDX License Header
 
 ```
