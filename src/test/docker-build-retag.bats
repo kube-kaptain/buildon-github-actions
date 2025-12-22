@@ -1,0 +1,161 @@
+#!/usr/bin/env bats
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025 Kaptain contributors (Fred Cooke)
+
+load helpers
+
+setup() {
+  setup_mock_docker
+  export GITHUB_OUTPUT=$(mktemp)
+}
+
+teardown() {
+  cleanup_mock_docker
+  rm -f "$GITHUB_OUTPUT"
+}
+
+# Required env vars for most tests
+set_required_env() {
+  export SOURCE_REGISTRY="docker.io"
+  export SOURCE_IMAGE_NAME="library/alpine"
+  export SOURCE_TAG="3.21"
+  export TARGET_REGISTRY="ghcr.io"
+  export TARGET_IMAGE_NAME="test/my-repo"
+  export DOCKER_TAG="1.0.0"
+}
+
+@test "assembles source URI correctly" {
+  set_required_env
+  export IS_RELEASE="false"
+
+  run "$SCRIPTS_DIR/docker-build-retag"
+  [ "$status" -eq 0 ]
+  assert_var_equals "SOURCE_IMAGE_FULL_URI" "docker.io/library/alpine:3.21"
+}
+
+@test "assembles target URI without base path" {
+  set_required_env
+  export IS_RELEASE="false"
+
+  run "$SCRIPTS_DIR/docker-build-retag"
+  [ "$status" -eq 0 ]
+  assert_var_equals "TARGET_IMAGE_FULL_URI" "ghcr.io/test/my-repo:1.0.0"
+}
+
+@test "assembles target URI with base path" {
+  set_required_env
+  export IS_RELEASE="false"
+  export TARGET_BASE_PATH="kube-kaptain"
+
+  run "$SCRIPTS_DIR/docker-build-retag"
+  [ "$status" -eq 0 ]
+  assert_var_equals "TARGET_IMAGE_FULL_URI" "ghcr.io/kube-kaptain/test/my-repo:1.0.0"
+}
+
+@test "calls docker pull with source image" {
+  set_required_env
+  export IS_RELEASE="false"
+
+  run "$SCRIPTS_DIR/docker-build-retag"
+  [ "$status" -eq 0 ]
+  assert_docker_called "pull docker.io/library/alpine:3.21"
+}
+
+@test "calls docker tag with source and target" {
+  set_required_env
+  export IS_RELEASE="false"
+
+  run "$SCRIPTS_DIR/docker-build-retag"
+  [ "$status" -eq 0 ]
+  assert_docker_called "tag docker.io/library/alpine:3.21 ghcr.io/test/my-repo:1.0.0"
+}
+
+@test "does not push when IS_RELEASE=false" {
+  set_required_env
+  export IS_RELEASE="false"
+
+  run "$SCRIPTS_DIR/docker-build-retag"
+  [ "$status" -eq 0 ]
+  assert_docker_not_called "push"
+  assert_var_equals "IMAGE_PUSHED" "false"
+}
+
+@test "pushes when IS_RELEASE=true" {
+  set_required_env
+  export IS_RELEASE="true"
+  export VERIFY_TARGET="false"
+
+  run "$SCRIPTS_DIR/docker-build-retag"
+  [ "$status" -eq 0 ]
+  assert_docker_called "push ghcr.io/test/my-repo:1.0.0"
+  assert_var_equals "IMAGE_PUSHED" "true"
+}
+
+@test "fails when SOURCE_REGISTRY missing" {
+  export SOURCE_IMAGE_NAME="library/alpine"
+  export SOURCE_TAG="3.21"
+  export TARGET_REGISTRY="ghcr.io"
+  export TARGET_IMAGE_NAME="test/my-repo"
+  export DOCKER_TAG="1.0.0"
+
+  run "$SCRIPTS_DIR/docker-build-retag"
+  [ "$status" -ne 0 ]
+  assert_output_contains "SOURCE_REGISTRY"
+}
+
+@test "fails when TARGET_IMAGE_NAME missing" {
+  export SOURCE_REGISTRY="docker.io"
+  export SOURCE_IMAGE_NAME="library/alpine"
+  export SOURCE_TAG="3.21"
+  export TARGET_REGISTRY="ghcr.io"
+  export DOCKER_TAG="1.0.0"
+
+  run "$SCRIPTS_DIR/docker-build-retag"
+  [ "$status" -ne 0 ]
+  assert_output_contains "TARGET_IMAGE_NAME"
+}
+
+@test "defaults IS_RELEASE to false" {
+  set_required_env
+  unset IS_RELEASE
+
+  run "$SCRIPTS_DIR/docker-build-retag"
+  [ "$status" -eq 0 ]
+  assert_docker_not_called "push"
+  assert_var_equals "IMAGE_PUSHED" "false"
+}
+
+@test "defaults VERIFY_TARGET to true" {
+  set_required_env
+  export IS_RELEASE="true"
+  # Don't set VERIFY_TARGET - should default to true
+  # Mock docker manifest inspect to return success (image exists)
+  export MOCK_DOCKER_MANIFEST_EXISTS="true"
+
+  run "$SCRIPTS_DIR/docker-build-retag"
+  [ "$status" -ne 0 ]
+  assert_output_contains "already exists"
+}
+
+@test "skips verify when VERIFY_TARGET=false" {
+  set_required_env
+  export IS_RELEASE="true"
+  export VERIFY_TARGET="false"
+
+  run "$SCRIPTS_DIR/docker-build-retag"
+  [ "$status" -eq 0 ]
+  assert_var_equals "IMAGE_PUSHED" "true"
+}
+
+@test "works with custom registry and base path" {
+  set_required_env
+  export TARGET_REGISTRY="artifactory.example.com"
+  export TARGET_BASE_PATH="docker-local"
+  export IS_RELEASE="true"
+  export VERIFY_TARGET="false"
+
+  run "$SCRIPTS_DIR/docker-build-retag"
+  [ "$status" -eq 0 ]
+  assert_var_equals "TARGET_IMAGE_FULL_URI" "artifactory.example.com/docker-local/test/my-repo:1.0.0"
+  assert_docker_called "push artifactory.example.com/docker-local/test/my-repo:1.0.0"
+}
