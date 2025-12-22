@@ -83,7 +83,7 @@ set_required_env() {
 @test "pushes when IS_RELEASE=true" {
   set_required_env
   export IS_RELEASE="true"
-  export VERIFY_TARGET="false"
+  export CONFIRM_IMAGE_DOESNT_EXIST="false"
 
   run "$SCRIPTS_DIR/docker-build-retag"
   [ "$status" -eq 0 ]
@@ -125,10 +125,10 @@ set_required_env() {
   assert_var_equals "IMAGE_PUSHED" "false"
 }
 
-@test "defaults VERIFY_TARGET to true" {
+@test "defaults CONFIRM_IMAGE_DOESNT_EXIST to true" {
   set_required_env
   export IS_RELEASE="true"
-  # Don't set VERIFY_TARGET - should default to true
+  # Don't set CONFIRM_IMAGE_DOESNT_EXIST - should default to true
   # Mock docker manifest inspect to return success (image exists)
   export MOCK_DOCKER_MANIFEST_EXISTS="true"
 
@@ -137,10 +137,10 @@ set_required_env() {
   assert_output_contains "already exists"
 }
 
-@test "skips verify when VERIFY_TARGET=false" {
+@test "skips confirm when CONFIRM_IMAGE_DOESNT_EXIST=false" {
   set_required_env
   export IS_RELEASE="true"
-  export VERIFY_TARGET="false"
+  export CONFIRM_IMAGE_DOESNT_EXIST="false"
 
   run "$SCRIPTS_DIR/docker-build-retag"
   [ "$status" -eq 0 ]
@@ -149,13 +149,13 @@ set_required_env() {
 
 @test "works with custom registry and base path" {
   set_required_env
-  export TARGET_REGISTRY="artifactory.example.com"
+  export TARGET_REGISTRY="myregistry.example.com"
   export TARGET_BASE_PATH="docker-local"
   export IS_RELEASE="true"
-  export VERIFY_TARGET="false"
+  export CONFIRM_IMAGE_DOESNT_EXIST="false"
 
   run "$SCRIPTS_DIR/docker-build-retag"
   [ "$status" -eq 0 ]
-  assert_var_equals "TARGET_IMAGE_FULL_URI" "artifactory.example.com/docker-local/test/my-repo:1.0.0"
-  assert_docker_called "push artifactory.example.com/docker-local/test/my-repo:1.0.0"
+  assert_var_equals "TARGET_IMAGE_FULL_URI" "myregistry.example.com/docker-local/test/my-repo:1.0.0"
+  assert_docker_called "push myregistry.example.com/docker-local/test/my-repo:1.0.0"
 }

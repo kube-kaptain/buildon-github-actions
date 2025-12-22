@@ -12,8 +12,8 @@
 #   TARGET_BASE_PATH    - Path between registry and image name (optional)
 #   TARGET_IMAGE_NAME   - Target image name (from version generator)
 #   DOCKER_TAG          - Target tag (from version generator)
-#   IS_RELEASE          - "true" to push, "false" for tag-only
-#   VERIFY_TARGET       - "true" to fail if target already exists (default: true)
+#   IS_RELEASE                  - "true" to push, "false" for tag-only
+#   CONFIRM_IMAGE_DOESNT_EXIST  - "true" to fail if target already exists (default: true)
 #
 # Outputs (GITHUB_OUTPUT):
 #   SOURCE_IMAGE_FULL_URI - Full source image reference
@@ -33,7 +33,7 @@ DOCKER_TAG="${DOCKER_TAG:?DOCKER_TAG is required}"
 # Optional inputs with defaults
 TARGET_BASE_PATH="${TARGET_BASE_PATH:-}"
 IS_RELEASE="${IS_RELEASE:-false}"
-VERIFY_TARGET="${VERIFY_TARGET:-true}"
+CONFIRM_IMAGE_DOESNT_EXIST="${CONFIRM_IMAGE_DOESNT_EXIST:-true}"
 
 # Assemble full image URIs
 SOURCE_IMAGE_FULL_URI="${SOURCE_REGISTRY}/${SOURCE_IMAGE_NAME}:${SOURCE_TAG}"
@@ -43,15 +43,17 @@ else
   TARGET_IMAGE_FULL_URI="${TARGET_REGISTRY}/${TARGET_IMAGE_NAME}:${DOCKER_TAG}"
 fi
 
-image_exists_locally() {
+confirm_image_doesnt_exist() {
   local image="$1"
 
-  # Try to pull the manifest without downloading layers
+  # Check registry for existing image via manifest inspect (no layer download)
   if docker manifest inspect "$image" &>/dev/null; then
-    return 0
+    echo "::error::Target image already exists in registry: $image" >&2
+    return 1
   fi
 
-  return 1
+  echo "Confirmed image does not exist in registry (safe to push)" >&2
+  return 0
 }
 
 # Output variable for GitHub Actions
@@ -76,13 +78,9 @@ main() {
   echo "Pulling source image: $SOURCE_IMAGE_FULL_URI" >&2
   docker pull "$SOURCE_IMAGE_FULL_URI"
 
-  # Verify target doesn't exist (if configured)
-  if [[ "$VERIFY_TARGET" == "true" ]]; then
-    if image_exists_locally "$TARGET_IMAGE_FULL_URI"; then
-      echo "::error::Target image already exists: $TARGET_IMAGE_FULL_URI" >&2
-      exit 1
-    fi
-    echo "Target image does not exist (safe to tag and if needed push)" >&2
+  # Confirm target doesn't exist (if configured)
+  if [[ "$CONFIRM_IMAGE_DOESNT_EXIST" == "true" ]]; then
+    confirm_image_doesnt_exist "$TARGET_IMAGE_FULL_URI" || exit 1
   fi
 
   echo "Tagging: $SOURCE_IMAGE_FULL_URI -> $TARGET_IMAGE_FULL_URI" >&2

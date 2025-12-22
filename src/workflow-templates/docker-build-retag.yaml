@@ -30,8 +30,8 @@ on:
         required: false
         type: string
         default: ''
-      verify-target:
-        description: 'Fail if target image already exists'
+      confirm-image-doesnt-exist:
+        description: 'Fail if target image already exists in registry'
         required: false
         type: boolean
         default: true
@@ -146,4 +146,4 @@ jobs:
           target-image-name: ${{ needs.versions-and-naming.outputs.docker-image-name }}
           docker-tag: ${{ needs.versions-and-naming.outputs.docker-tag }}
           is-release: ${{ needs.versions-and-naming.outputs.is-release }}
-          verify-target: ${{ inputs.verify-target }}
+          confirm-image-doesnt-exist: ${{ inputs.confirm-image-doesnt-exist }}
