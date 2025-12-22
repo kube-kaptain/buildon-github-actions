@@ -1,0 +1,28 @@
+# SPDX-License-Identifier: CC0-1.0
+# This example is released to the public domain. Use freely without attribution.
+#
+# Docker Build Dockerfile - Without Squash
+#
+# Build a Docker image without --squash, preserving layer history.
+# Use this if you need layer caching or don't want experimental mode.
+#
+# Place your Dockerfile at src/docker/Dockerfile (the default path).
+#
+# Copy this to .github/workflows/build.yaml in your repo.
+
+name: Docker Build Dockerfile
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    uses: kube-kaptain/buildon-github-actions/.github/workflows/docker-build-dockerfile.yaml@1.0.2
+    permissions:
+      contents: write
+      packages: write
+    with:
+      squash: false

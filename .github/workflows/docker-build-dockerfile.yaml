@@ -1,0 +1,346 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025 Kaptain contributors (Fred Cooke)
+
+name: Docker Build Dockerfile
+
+on:
+  workflow_call:
+    inputs:
+      # Dockerfile configuration
+      dockerfile-path:
+        description: 'Directory containing Dockerfile (also used as build context)'
+        required: false
+        type: string
+        default: 'src/docker'
+      squash:
+        description: 'Enable --squash (requires experimental mode)'
+        required: false
+        type: boolean
+        default: true
+      no-cache:
+        description: 'Disable layer caching for reproducible builds'
+        required: false
+        type: boolean
+        default: true
+      # Target configuration
+      target-registry:
+        description: 'Target container registry'
+        required: false
+        type: string
+        default: 'ghcr.io'
+      target-base-path:
+        description: 'Path between registry and image name (auto-set for GHCR)'
+        required: false
+        type: string
+        default: ''
+      confirm-image-doesnt-exist:
+        description: 'Fail if target image already exists in registry'
+        required: false
+        type: boolean
+        default: true
+      # Version generator inputs (pass-through)
+      default-branch:
+        description: 'The default/release branch name'
+        required: false
+        type: string
+        default: 'main'
+      patch-branches:
+        description: 'Comma-separated list of additional release branch patterns'
+        required: false
+        type: string
+        default: ''
+      block-slashes:
+        description: 'Block branch names containing slashes'
+        required: false
+        type: boolean
+        default: false
+      max-version-parts:
+        description: 'Maximum allowed version parts (fail if exceeded)'
+        required: false
+        type: number
+        default: 3
+    secrets:
+      target-username:
+        description: 'Username for target registry (defaults to github.actor for GHCR)'
+        required: false
+      target-password:
+        description: 'Password/token for target registry (defaults to GITHUB_TOKEN for GHCR)'
+        required: false
+    outputs:
+      # Version outputs (pass-through from versioning job)
+      version:
+        description: 'The generated version'
+        value: ${{ jobs.versions-and-naming.outputs.version }}
+      docker-tag:
+        description: 'Tag for Docker images'
+        value: ${{ jobs.versions-and-naming.outputs.docker-tag }}
+      docker-image-name:
+        description: 'Docker image name'
+        value: ${{ jobs.versions-and-naming.outputs.docker-image-name }}
+      is-release:
+        description: 'Whether this is a release build'
+        value: ${{ jobs.versions-and-naming.outputs.is-release }}
+      # Build outputs
+      target-image-full-uri:
+        description: 'Full target image reference'
+        value: ${{ jobs.docker-build-dockerfile.outputs.target-image-full-uri }}
+      image-pushed:
+        description: 'Whether image was pushed'
+        value: ${{ jobs.docker-build-dockerfile.outputs.image-pushed }}
+
+jobs:
+  basic-quality-checks:
+    name: Basic Quality Checks
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4.2.2
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Parse workflow ref
+        id: parse
+        run: |
+          # Extract caller's workflow file path from github.workflow_ref
+          # Format: owner/repo/.github/workflows/file.yaml@ref
+          workflow_path="${GITHUB_WORKFLOW_REF%%@*}"
+          workflow_file=".github/workflows/${workflow_path##*/}"
+
+          echo "Resolving ref for reusable workflow: docker-build-dockerfile.yaml"
+          echo "Caller workflow: $workflow_file"
+
+          # Check for local call (dogfooding) - uses: ./.github/workflows/...
+          if grep -q 'uses:[[:space:]]*\./.github/workflows/docker-build-dockerfile\.yaml[[:space:]]*$' "$workflow_file" || \
+             grep -q 'uses:[[:space:]]*\./.github/workflows/docker-build-dockerfile\.yaml[[:space:]]*#' "$workflow_file"; then
+            echo "Local workflow call detected (dogfooding)"
+            echo "ref=LOCAL" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          # Find all uses lines that call this workflow and extract refs
+          refs=$(grep -o 'buildon-github-actions/.github/workflows/docker-build-dockerfile\.yaml@[^[:space:]"'"'"']*' "$workflow_file" | sed 's/.*@//')
+
+          if [ -z "$refs" ]; then
+            echo "::error::Could not find buildon-github-actions ref in $workflow_file"
+            exit 1
+          fi
+
+          # Check all refs are identical
+          unique_refs=$(echo "$refs" | sort -u)
+          ref_count=$(echo "$unique_refs" | wc -l | tr -d ' ')
+          echo "Found $ref_count unique ref(s): $(echo "$unique_refs" | tr '\n' ' ')"
+
+          if [ "$ref_count" -gt 1 ]; then
+            echo "::error::Multiple different refs found in $workflow_file: $(echo "$unique_refs" | tr '\n' ' ')"
+            exit 1
+          fi
+
+          echo "Resolved ref: $unique_refs"
+          echo "ref=$unique_refs" >> "$GITHUB_OUTPUT"
+        env:
+          GITHUB_WORKFLOW_REF: ${{ github.workflow_ref }}
+
+      - name: Checkout actions
+        if: steps.parse.outputs.ref != 'LOCAL'
+        uses: actions/checkout@v4.2.2
+        with:
+          repository: kube-kaptain/buildon-github-actions
+          ref: ${{ steps.parse.outputs.ref }}
+          path: .github/buildon-github-actions
+
+      - name: Link local actions
+        if: steps.parse.outputs.ref == 'LOCAL'
+        run: |
+          echo "Linking local actions for dogfooding"
+          ln -s "$(pwd)" .github/buildon-github-actions
+
+      - name: Basic quality checks
+        uses: ./.github/buildon-github-actions/src/actions/basic-quality-checks
+        with:
+          default-branch: ${{ inputs.default-branch }}
+          patch-branches: ${{ inputs.patch-branches }}
+          block-slashes: ${{ inputs.block-slashes }}
+
+  versions-and-naming:
+    name: Versions & Naming
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    outputs:
+      version: ${{ steps.generate.outputs.version }}
+      docker-tag: ${{ steps.generate.outputs.docker-tag }}
+      docker-image-name: ${{ steps.generate.outputs.docker-image-name }}
+      is-release: ${{ steps.generate.outputs.is-release }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4.2.2
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Parse workflow ref
+        id: parse
+        run: |
+          # Extract caller's workflow file path from github.workflow_ref
+          # Format: owner/repo/.github/workflows/file.yaml@ref
+          workflow_path="${GITHUB_WORKFLOW_REF%%@*}"
+          workflow_file=".github/workflows/${workflow_path##*/}"
+
+          echo "Resolving ref for reusable workflow: docker-build-dockerfile.yaml"
+          echo "Caller workflow: $workflow_file"
+
+          # Check for local call (dogfooding) - uses: ./.github/workflows/...
+          if grep -q 'uses:[[:space:]]*\./.github/workflows/docker-build-dockerfile\.yaml[[:space:]]*$' "$workflow_file" || \
+             grep -q 'uses:[[:space:]]*\./.github/workflows/docker-build-dockerfile\.yaml[[:space:]]*#' "$workflow_file"; then
+            echo "Local workflow call detected (dogfooding)"
+            echo "ref=LOCAL" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          # Find all uses lines that call this workflow and extract refs
+          refs=$(grep -o 'buildon-github-actions/.github/workflows/docker-build-dockerfile\.yaml@[^[:space:]"'"'"']*' "$workflow_file" | sed 's/.*@//')
+
+          if [ -z "$refs" ]; then
+            echo "::error::Could not find buildon-github-actions ref in $workflow_file"
+            exit 1
+          fi
+
+          # Check all refs are identical
+          unique_refs=$(echo "$refs" | sort -u)
+          ref_count=$(echo "$unique_refs" | wc -l | tr -d ' ')
+          echo "Found $ref_count unique ref(s): $(echo "$unique_refs" | tr '\n' ' ')"
+
+          if [ "$ref_count" -gt 1 ]; then
+            echo "::error::Multiple different refs found in $workflow_file: $(echo "$unique_refs" | tr '\n' ' ')"
+            exit 1
+          fi
+
+          echo "Resolved ref: $unique_refs"
+          echo "ref=$unique_refs" >> "$GITHUB_OUTPUT"
+        env:
+          GITHUB_WORKFLOW_REF: ${{ github.workflow_ref }}
+
+      - name: Checkout actions
+        if: steps.parse.outputs.ref != 'LOCAL'
+        uses: actions/checkout@v4.2.2
+        with:
+          repository: kube-kaptain/buildon-github-actions
+          ref: ${{ steps.parse.outputs.ref }}
+          path: .github/buildon-github-actions
+
+      - name: Link local actions
+        if: steps.parse.outputs.ref == 'LOCAL'
+        run: |
+          echo "Linking local actions for dogfooding"
+          ln -s "$(pwd)" .github/buildon-github-actions
+
+      - name: Generate versions and naming
+        id: generate
+        uses: ./.github/buildon-github-actions/src/actions/versions-and-naming
+        with:
+          default-branch: ${{ inputs.default-branch }}
+          patch-branches: ${{ inputs.patch-branches }}
+          max-version-parts: ${{ inputs.max-version-parts }}
+
+  docker-build-dockerfile:
+    name: Docker Build Dockerfile
+    needs: versions-and-naming
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      target-image-full-uri: ${{ steps.build.outputs.target-image-full-uri }}
+      image-pushed: ${{ steps.push.outputs.image-pushed }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4.2.2
+
+      - name: Parse workflow ref
+        id: parse
+        run: |
+          # Extract caller's workflow file path from github.workflow_ref
+          # Format: owner/repo/.github/workflows/file.yaml@ref
+          workflow_path="${GITHUB_WORKFLOW_REF%%@*}"
+          workflow_file=".github/workflows/${workflow_path##*/}"
+
+          echo "Resolving ref for reusable workflow: docker-build-dockerfile.yaml"
+          echo "Caller workflow: $workflow_file"
+
+          # Check for local call (dogfooding) - uses: ./.github/workflows/...
+          if grep -q 'uses:[[:space:]]*\./.github/workflows/docker-build-dockerfile\.yaml[[:space:]]*$' "$workflow_file" || \
+             grep -q 'uses:[[:space:]]*\./.github/workflows/docker-build-dockerfile\.yaml[[:space:]]*#' "$workflow_file"; then
+            echo "Local workflow call detected (dogfooding)"
+            echo "ref=LOCAL" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          # Find all uses lines that call this workflow and extract refs
+          refs=$(grep -o 'buildon-github-actions/.github/workflows/docker-build-dockerfile\.yaml@[^[:space:]"'"'"']*' "$workflow_file" | sed 's/.*@//')
+
+          if [ -z "$refs" ]; then
+            echo "::error::Could not find buildon-github-actions ref in $workflow_file"
+            exit 1
+          fi
+
+          # Check all refs are identical
+          unique_refs=$(echo "$refs" | sort -u)
+          ref_count=$(echo "$unique_refs" | wc -l | tr -d ' ')
+          echo "Found $ref_count unique ref(s): $(echo "$unique_refs" | tr '\n' ' ')"
+
+          if [ "$ref_count" -gt 1 ]; then
+            echo "::error::Multiple different refs found in $workflow_file: $(echo "$unique_refs" | tr '\n' ' ')"
+            exit 1
+          fi
+
+          echo "Resolved ref: $unique_refs"
+          echo "ref=$unique_refs" >> "$GITHUB_OUTPUT"
+        env:
+          GITHUB_WORKFLOW_REF: ${{ github.workflow_ref }}
+
+      - name: Checkout actions
+        if: steps.parse.outputs.ref != 'LOCAL'
+        uses: actions/checkout@v4.2.2
+        with:
+          repository: kube-kaptain/buildon-github-actions
+          ref: ${{ steps.parse.outputs.ref }}
+          path: .github/buildon-github-actions
+
+      - name: Link local actions
+        if: steps.parse.outputs.ref == 'LOCAL'
+        run: |
+          echo "Linking local actions for dogfooding"
+          ln -s "$(pwd)" .github/buildon-github-actions
+
+      - name: Login to target registry
+        uses: docker/login-action@v3.3.0
+        with:
+          registry: ${{ inputs.target-registry }}
+          username: ${{ secrets.target-username || github.actor }}
+          password: ${{ secrets.target-password || github.token }}
+
+      - name: Build image
+        id: build
+        uses: ./.github/buildon-github-actions/src/actions/docker-build-dockerfile
+        with:
+          target-registry: ${{ inputs.target-registry }}
+          target-base-path: ${{ inputs.target-base-path }}
+          target-image-name: ${{ needs.versions-and-naming.outputs.docker-image-name }}
+          docker-tag: ${{ needs.versions-and-naming.outputs.docker-tag }}
+          dockerfile-path: ${{ inputs.dockerfile-path }}
+          squash: ${{ inputs.squash }}
+          no-cache: ${{ inputs.no-cache }}
+          confirm-image-doesnt-exist: ${{ inputs.confirm-image-doesnt-exist }}
+
+      # Future: Insert test step here between build and push
+
+      - name: Push image
+        id: push
+        if: needs.versions-and-naming.outputs.is-release == 'true'
+        shell: bash
+        run: |
+          docker push "${{ steps.build.outputs.target-image-full-uri }}"
+          echo "image-pushed=true" >> "$GITHUB_OUTPUT"

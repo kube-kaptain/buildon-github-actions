@@ -1,0 +1,71 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025 Kaptain contributors (Fred Cooke)
+
+name: 'Docker Build Dockerfile'
+description: 'Builds a Docker image from a Dockerfile (build only, use docker-push to push)'
+author: 'kube-kaptain'
+
+inputs:
+  target-registry:
+    description: 'Target container registry'
+    required: false
+    default: 'ghcr.io'
+  target-base-path:
+    description: 'Path between registry and image name (leave empty for GHCR auto-detect)'
+    required: false
+    default: ''
+  target-image-name:
+    description: 'Target image name (from version generator docker-image-name)'
+    required: true
+  docker-tag:
+    description: 'Tag for target image (from version generator docker-tag)'
+    required: true
+  dockerfile-path:
+    description: 'Directory containing Dockerfile (also used as build context)'
+    required: false
+    default: 'src/docker'
+  squash:
+    description: 'Enable --squash (requires experimental mode)'
+    required: false
+    default: 'true'
+  no-cache:
+    description: 'Disable layer caching for reproducible builds (default: true)'
+    required: false
+    default: 'true'
+  confirm-image-doesnt-exist:
+    description: 'Fail if target image already exists in registry'
+    required: false
+    default: 'true'
+
+outputs:
+  target-image-full-uri:
+    description: 'Full target image reference (for passing to docker-push)'
+    value: ${{ steps.build.outputs.TARGET_IMAGE_FULL_URI }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Compute target base path
+      id: base-path
+      shell: bash
+      run: |
+        # Auto-set base path for GHCR if not explicitly provided
+        if [[ "${{ inputs.target-registry }}" == "ghcr.io" && -z "${{ inputs.target-base-path }}" ]]; then
+          echo "path=${{ github.repository_owner }}" >> "$GITHUB_OUTPUT"
+        else
+          echo "path=${{ inputs.target-base-path }}" >> "$GITHUB_OUTPUT"
+        fi
+
+    - name: Build image
+      id: build
+      shell: bash
+      env:
+        TARGET_REGISTRY: ${{ inputs.target-registry }}
+        TARGET_BASE_PATH: ${{ steps.base-path.outputs.path }}
+        TARGET_IMAGE_NAME: ${{ inputs.target-image-name }}
+        DOCKER_TAG: ${{ inputs.docker-tag }}
+        DOCKERFILE_PATH: ${{ inputs.dockerfile-path }}
+        SQUASH: ${{ inputs.squash }}
+        NO_CACHE: ${{ inputs.no-cache }}
+        CONFIRM_IMAGE_DOESNT_EXIST: ${{ inputs.confirm-image-doesnt-exist }}
+      run: "${{ github.action_path }}/../../scripts/docker-build-dockerfile"

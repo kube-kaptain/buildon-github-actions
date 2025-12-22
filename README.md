@@ -40,6 +40,8 @@ See [`examples/`](examples/) for more usage patterns.
 | [`docker-build-retag.yaml`](examples/docker-build-retag.yaml) | Vendor upstream images to your GHCR |
 | [`docker-build-retag-base-path.yaml`](examples/docker-build-retag-base-path.yaml) | Custom base path for image organization |
 | [`docker-build-retag-custom-registry.yaml`](examples/docker-build-retag-custom-registry.yaml) | Retag to Artifactory, ECR, or other registries |
+| [`docker-build-dockerfile.yaml`](examples/docker-build-dockerfile.yaml) | Build from Dockerfile with --squash (default) |
+| [`docker-build-dockerfile-no-squash.yaml`](examples/docker-build-dockerfile-no-squash.yaml) | Build from Dockerfile without --squash |
 
 ## Components
 
@@ -51,6 +53,7 @@ See [`examples/`](examples/) for more usage patterns.
 | `basic-quality-checks.yaml` | Quality checks only |
 | `versions-and-naming.yaml` | Versioning only |
 | `docker-build-retag.yaml` | Pull, retag, and push upstream images |
+| `docker-build-dockerfile.yaml` | Build from Dockerfile with --squash |
 
 ### Actions
 
@@ -59,6 +62,7 @@ See [`examples/`](examples/) for more usage patterns.
 | `basic-quality-checks` | Validates branch names, commit messages, rebase status |
 | `versions-and-naming` | Generates version numbers, tags, and naming |
 | `docker-build-retag` | Pulls, retags, and pushes Docker images |
+| `docker-build-dockerfile` | Builds Docker images from Dockerfile with --squash |
 
 ## Configuration
 

@@ -177,7 +177,8 @@ cleanup_mock_docker() {
 # Assert docker was called with specific args
 assert_docker_called() {
   local expected="$1"
-  if ! grep -q "$expected" "$MOCK_DOCKER_CALLS" 2>/dev/null; then
+  # Use -- to prevent patterns starting with - from being interpreted as grep options
+  if ! grep -q -- "$expected" "$MOCK_DOCKER_CALLS" 2>/dev/null; then
     echo "Expected docker to be called with: $expected"
     echo "Actual calls:"
     cat "$MOCK_DOCKER_CALLS" 2>/dev/null || echo "(none)"
