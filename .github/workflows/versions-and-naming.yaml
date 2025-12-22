@@ -89,6 +89,9 @@ jobs:
           workflow_path="${GITHUB_WORKFLOW_REF%%@*}"
           workflow_file=".github/workflows/${workflow_path##*/}"
 
+          echo "Resolving ref for reusable workflow: versions-and-naming.yaml"
+          echo "Caller workflow: $workflow_file"
+
           # Find all uses lines that call this workflow and extract refs
           refs=$(grep -o 'buildon-github-actions/.github/workflows/versions-and-naming\.yaml@[^[:space:]"'"'"']*' "$workflow_file" | sed 's/.*@//')
 
@@ -99,11 +102,15 @@ jobs:
 
           # Check all refs are identical
           unique_refs=$(echo "$refs" | sort -u)
-          if [ "$(echo "$unique_refs" | wc -l)" -gt 1 ]; then
+          ref_count=$(echo "$unique_refs" | wc -l | tr -d ' ')
+          echo "Found $ref_count unique ref(s): $(echo "$unique_refs" | tr '\n' ' ')"
+
+          if [ "$ref_count" -gt 1 ]; then
             echo "::error::Multiple different refs found in $workflow_file: $(echo "$unique_refs" | tr '\n' ' ')"
             exit 1
           fi
 
+          echo "Resolved ref: $unique_refs"
           echo "ref=$unique_refs" >> "$GITHUB_OUTPUT"
         env:
           GITHUB_WORKFLOW_REF: ${{ github.workflow_ref }}
