@@ -35,6 +35,7 @@ See [`examples/`](examples/) for more usage patterns.
 |---------|-------------|
 | [`basic-quality-and-versioning.yaml`](examples/basic-quality-and-versioning.yaml) | Standard setup: PR quality checks + push versioning |
 | [`quality-only.yaml`](examples/quality-only.yaml) | Quality enforcement without tagging |
+| [`versions-and-naming.yaml`](examples/versions-and-naming.yaml) | Version tagging without quality checks |
 | [`patch-branches.yaml`](examples/patch-branches.yaml) | Hotfix workflow with 4-part versions |
 | [`docker-build-retag.yaml`](examples/docker-build-retag.yaml) | Vendor upstream images to your GHCR |
 | [`docker-build-retag-base-path.yaml`](examples/docker-build-retag-base-path.yaml) | Custom base path for image organization |

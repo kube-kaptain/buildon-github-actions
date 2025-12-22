@@ -3,32 +3,37 @@
 #
 # Patch Branches
 #
-# Support hotfix workflows with 4-part versions (e.g., 1.2.3.1, 1.2.3.2).
+# Support hotfix workflows by building on branches other than the default and still getting releases published.
 #
 # Workflow:
-# 1. Release 1.2.3 from main
-# 2. Create branch main-1.2.3 for hotfixes
-# 3. Hotfixes get tagged 1.2.3.1, 1.2.3.2, etc.
+# 1. Release 1.2 from main
+# 2. Create branch main-1.2.X for hotfixes, or main-my-reason-for-hotfixes - whatever makes sense
+# 3. Create your commit AND tag it with 1.2.0 - it's the tag that controls the version generated, not the branch name
+# 4. Push your branch and tag at the same time
+# 5. Hotfixes get tagged 1.2.1, 1.2.2, etc
+# 6. Use PRs against the hotfix branch to further patch it
+# 7. Clean up the branch when no longer needed
 #
-# Copy this to .github/workflows/ci.yaml in your repo.
+# Generally only configure this and perform this process as needed. Most repos should get away with a pure workflow without this.
+#
+# Copy this to .github/workflows/build.yaml in your repo.
 
-name: CI
+name: Basic Quality Checks And Tag
 
 on:
   push:
     branches:
       - main
-      - 'main-*'    # Patch branches like main-1.2.3
+      - 'main-*' # Patch branches like main-1.2.X for a 1.2 original version superseded by 1.3 1.4 etc
   pull_request:
     branches:
       - main
-      - 'main-*'
+      - 'main-*' # Patch branches like main-1.2.X for a 1.2 original version superseded by 1.3 1.4 etc
 
 jobs:
   build:
-    uses: kube-kaptain/buildon-github-actions/.github/workflows/basic-quality-and-versioning.yaml@v1
+    uses: kube-kaptain/buildon-github-actions/.github/workflows/basic-quality-and-versioning.yaml@1.0.2
     permissions:
       contents: write
     with:
       patch-branches: 'main-*'
-      max-version-parts: 4
