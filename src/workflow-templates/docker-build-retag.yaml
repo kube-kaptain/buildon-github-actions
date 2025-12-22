@@ -116,6 +116,7 @@ jobs:
     needs: versions-and-naming
     runs-on: ubuntu-24.04
     permissions:
+      contents: read
       packages: write
     outputs:
       source-image-full-uri: ${{ steps.retag.outputs.source-image-full-uri }}
