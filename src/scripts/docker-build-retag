@@ -1,0 +1,105 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025 Kaptain contributors (Fred Cooke)
+#
+# docker-build-retag - Pulls, retags, and pushes Docker images
+#
+# Inputs (environment variables):
+#   SOURCE_REGISTRY     - Source registry (e.g., docker.io)
+#   SOURCE_IMAGE_NAME   - Source image name (e.g., library/nginx)
+#   SOURCE_TAG          - Source image tag (e.g., 1.25)
+#   TARGET_REGISTRY     - Target registry (e.g., ghcr.io)
+#   TARGET_BASE_PATH    - Path between registry and image name (optional)
+#   TARGET_IMAGE_NAME   - Target image name (from version generator)
+#   DOCKER_TAG          - Target tag (from version generator)
+#   IS_RELEASE                  - "true" to push, "false" for tag-only
+#   CONFIRM_IMAGE_DOESNT_EXIST  - "true" to fail if target already exists (default: true)
+#
+# Outputs (GITHUB_OUTPUT):
+#   SOURCE_IMAGE_FULL_URI - Full source image reference
+#   TARGET_IMAGE_FULL_URI - Full target image reference
+#   IMAGE_PUSHED          - Whether image was pushed (true/false)
+#
+set -euo pipefail
+
+# Required inputs
+SOURCE_REGISTRY="${SOURCE_REGISTRY:?SOURCE_REGISTRY is required}"
+SOURCE_IMAGE_NAME="${SOURCE_IMAGE_NAME:?SOURCE_IMAGE_NAME is required}"
+SOURCE_TAG="${SOURCE_TAG:?SOURCE_TAG is required}"
+TARGET_REGISTRY="${TARGET_REGISTRY:?TARGET_REGISTRY is required}"
+TARGET_IMAGE_NAME="${TARGET_IMAGE_NAME:?TARGET_IMAGE_NAME is required}"
+DOCKER_TAG="${DOCKER_TAG:?DOCKER_TAG is required}"
+
+# Optional inputs with defaults
+TARGET_BASE_PATH="${TARGET_BASE_PATH:-}"
+IS_RELEASE="${IS_RELEASE:-false}"
+CONFIRM_IMAGE_DOESNT_EXIST="${CONFIRM_IMAGE_DOESNT_EXIST:-true}"
+
+# Assemble full image URIs
+SOURCE_IMAGE_FULL_URI="${SOURCE_REGISTRY}/${SOURCE_IMAGE_NAME}:${SOURCE_TAG}"
+if [[ -n "$TARGET_BASE_PATH" ]]; then
+  TARGET_IMAGE_FULL_URI="${TARGET_REGISTRY}/${TARGET_BASE_PATH}/${TARGET_IMAGE_NAME}:${DOCKER_TAG}"
+else
+  TARGET_IMAGE_FULL_URI="${TARGET_REGISTRY}/${TARGET_IMAGE_NAME}:${DOCKER_TAG}"
+fi
+
+confirm_image_doesnt_exist() {
+  local image="$1"
+
+  # Check registry for existing image via manifest inspect (no layer download)
+  if docker manifest inspect "$image" &>/dev/null; then
+    echo "::error::Target image already exists in registry: $image" >&2
+    return 1
+  fi
+
+  echo "Confirmed image does not exist in registry (safe to push)" >&2
+  return 0
+}
+
+# Output variable for GitHub Actions
+output_var() {
+  local name="$1"
+  local value="$2"
+
+  echo "${name}=${value}"
+
+  if [[ -n "${GITHUB_OUTPUT:-}" ]]; then
+    echo "${name}=${value}" >> "$GITHUB_OUTPUT"
+  fi
+}
+
+main() {
+  echo "=== Docker Retag ===" >&2
+  echo "Source: $SOURCE_IMAGE_FULL_URI" >&2
+  echo "Target: $TARGET_IMAGE_FULL_URI" >&2
+  echo "Is Release: $IS_RELEASE" >&2
+  echo "====================" >&2
+
+  echo "Pulling source image: $SOURCE_IMAGE_FULL_URI" >&2
+  docker pull "$SOURCE_IMAGE_FULL_URI"
+
+  # Confirm target doesn't exist (if configured)
+  if [[ "$CONFIRM_IMAGE_DOESNT_EXIST" == "true" ]]; then
+    confirm_image_doesnt_exist "$TARGET_IMAGE_FULL_URI" || exit 1
+  fi
+
+  echo "Tagging: $SOURCE_IMAGE_FULL_URI -> $TARGET_IMAGE_FULL_URI" >&2
+  docker tag "$SOURCE_IMAGE_FULL_URI" "$TARGET_IMAGE_FULL_URI"
+
+  # Push if release
+  if [[ "$IS_RELEASE" == "true" ]]; then
+    echo "Pushing: $TARGET_IMAGE_FULL_URI" >&2
+    docker push "$TARGET_IMAGE_FULL_URI"
+    output_var "IMAGE_PUSHED" "true"
+  else
+    echo "Skipping push (IS_RELEASE=$IS_RELEASE)" >&2
+    output_var "IMAGE_PUSHED" "false"
+  fi
+
+  output_var "SOURCE_IMAGE_FULL_URI" "$SOURCE_IMAGE_FULL_URI"
+  output_var "TARGET_IMAGE_FULL_URI" "$TARGET_IMAGE_FULL_URI"
+
+  echo "Docker Build Retag complete" >&2
+}
+
+main "$@"

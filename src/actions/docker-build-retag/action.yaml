@@ -1,0 +1,78 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025 Kaptain contributors (Fred Cooke)
+
+name: 'Docker Build Retag'
+description: 'Pulls, retags, and pushes Docker images'
+author: 'kube-kaptain'
+
+inputs:
+  source-registry:
+    description: 'Upstream registry (e.g., docker.io)'
+    required: true
+  source-image-name:
+    description: 'Upstream image name (e.g., library/nginx)'
+    required: true
+  source-tag:
+    description: 'Upstream image tag (e.g., 1.25)'
+    required: true
+  target-registry:
+    description: 'Target container registry'
+    required: false
+    default: 'ghcr.io'
+  target-base-path:
+    description: 'Path between registry and image name (leave empty for GHCR auto-detect)'
+    required: false
+    default: ''
+  target-image-name:
+    description: 'Target image name (from version generator docker-image-name)'
+    required: true
+  docker-tag:
+    description: 'Tag for target image (from version generator docker-tag)'
+    required: true
+  is-release:
+    description: 'Whether to push (from version generator is-release)'
+    required: true
+  confirm-image-doesnt-exist:
+    description: 'Fail if target image already exists in registry'
+    required: false
+    default: 'true'
+
+outputs:
+  source-image-full-uri:
+    description: 'Full source image reference'
+    value: ${{ steps.retag.outputs.SOURCE_IMAGE_FULL_URI }}
+  target-image-full-uri:
+    description: 'Full target image reference'
+    value: ${{ steps.retag.outputs.TARGET_IMAGE_FULL_URI }}
+  image-pushed:
+    description: 'Whether image was pushed'
+    value: ${{ steps.retag.outputs.IMAGE_PUSHED }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Compute target base path
+      id: base-path
+      shell: bash
+      run: |
+        # Auto-set base path for GHCR if not explicitly provided
+        if [[ "${{ inputs.target-registry }}" == "ghcr.io" && -z "${{ inputs.target-base-path }}" ]]; then
+          echo "path=${{ github.repository_owner }}" >> "$GITHUB_OUTPUT"
+        else
+          echo "path=${{ inputs.target-base-path }}" >> "$GITHUB_OUTPUT"
+        fi
+
+    - name: Retag and push
+      id: retag
+      shell: bash
+      env:
+        SOURCE_REGISTRY: ${{ inputs.source-registry }}
+        SOURCE_IMAGE_NAME: ${{ inputs.source-image-name }}
+        SOURCE_TAG: ${{ inputs.source-tag }}
+        TARGET_REGISTRY: ${{ inputs.target-registry }}
+        TARGET_BASE_PATH: ${{ steps.base-path.outputs.path }}
+        TARGET_IMAGE_NAME: ${{ inputs.target-image-name }}
+        DOCKER_TAG: ${{ inputs.docker-tag }}
+        IS_RELEASE: ${{ inputs.is-release }}
+        CONFIRM_IMAGE_DOESNT_EXIST: ${{ inputs.confirm-image-doesnt-exist }}
+      run: "${{ github.action_path }}/../../scripts/docker-build-retag"

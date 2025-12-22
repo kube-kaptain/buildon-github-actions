@@ -1,0 +1,21 @@
+# SPDX-License-Identifier: CC0-1.0
+# This example is released to the public domain. Use freely without attribution.
+#
+# Versions and Naming Only
+#
+# Automatic version tagging without PR quality checks.
+# Use this when you have your own quality checks or don't need them.
+#
+# Copy this to .github/workflows/build.yaml in your repo.
+
+name: Version Tag
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  version:
+    uses: kube-kaptain/buildon-github-actions/.github/workflows/versions-and-naming.yaml@1.0.2
+    permissions:
+      contents: write

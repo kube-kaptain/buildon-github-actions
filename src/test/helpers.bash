@@ -147,3 +147,51 @@ assert_var_equals() {
     return 1
   fi
 }
+
+# Set up mock docker that logs calls
+setup_mock_docker() {
+  export MOCK_DOCKER_CALLS=$(mktemp)
+  mkdir -p "$MOCK_BIN_DIR"
+  cat > "$MOCK_BIN_DIR/docker" << 'MOCKDOCKER'
+#!/usr/bin/env bash
+echo "$*" >> "$MOCK_DOCKER_CALLS"
+if [[ "$1" == "manifest" && "$2" == "inspect" ]]; then
+  if [[ "${MOCK_DOCKER_MANIFEST_EXISTS:-false}" == "true" ]]; then
+    exit 0
+  else
+    exit 1
+  fi
+fi
+exit 0
+MOCKDOCKER
+  chmod +x "$MOCK_BIN_DIR/docker"
+  export PATH="$MOCK_BIN_DIR:$PATH"
+}
+
+# Clean up mock docker
+cleanup_mock_docker() {
+  rm -f "$MOCK_DOCKER_CALLS"
+  rm -f "$MOCK_BIN_DIR/docker"
+}
+
+# Assert docker was called with specific args
+assert_docker_called() {
+  local expected="$1"
+  if ! grep -q "$expected" "$MOCK_DOCKER_CALLS" 2>/dev/null; then
+    echo "Expected docker to be called with: $expected"
+    echo "Actual calls:"
+    cat "$MOCK_DOCKER_CALLS" 2>/dev/null || echo "(none)"
+    return 1
+  fi
+}
+
+# Assert docker was NOT called with specific command
+assert_docker_not_called() {
+  local unexpected="$1"
+  if grep -q "^$unexpected" "$MOCK_DOCKER_CALLS" 2>/dev/null; then
+    echo "Expected docker NOT to be called with: $unexpected"
+    echo "Actual calls:"
+    cat "$MOCK_DOCKER_CALLS"
+    return 1
+  fi
+}
