@@ -1,0 +1,92 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025 Kaptain contributors (Fred Cooke)
+
+name: Versions & Naming
+
+on:
+  workflow_call:
+    inputs:
+      default-branch:
+        description: 'The default/release branch name'
+        required: false
+        type: string
+        default: 'main'
+      patch-branches:
+        description: 'Comma-separated list of additional release branch patterns'
+        required: false
+        type: string
+        default: ''
+      max-version-parts:
+        description: 'Maximum allowed version parts (fail if exceeded)'
+        required: false
+        type: number
+        default: 3
+    outputs:
+      version:
+        description: 'The generated version'
+        value: ${{ jobs.versions-and-naming.outputs.version }}
+      version-major:
+        description: 'Major version number'
+        value: ${{ jobs.versions-and-naming.outputs.version-major }}
+      version-minor:
+        description: 'Minor version number'
+        value: ${{ jobs.versions-and-naming.outputs.version-minor }}
+      version-patch:
+        description: 'Patch version number'
+        value: ${{ jobs.versions-and-naming.outputs.version-patch }}
+      version-2-part:
+        description: 'Version padded/truncated to 2 parts'
+        value: ${{ jobs.versions-and-naming.outputs.version-2-part }}
+      version-3-part:
+        description: 'Version padded/truncated to 3 parts'
+        value: ${{ jobs.versions-and-naming.outputs.version-3-part }}
+      version-4-part:
+        description: 'Version padded/truncated to 4 parts'
+        value: ${{ jobs.versions-and-naming.outputs.version-4-part }}
+      docker-tag:
+        description: 'Tag for Docker images'
+        value: ${{ jobs.versions-and-naming.outputs.docker-tag }}
+      docker-image-name:
+        description: 'Docker image name (prefix/project-name)'
+        value: ${{ jobs.versions-and-naming.outputs.docker-image-name }}
+      is-release:
+        description: 'Whether this is a release build'
+        value: ${{ jobs.versions-and-naming.outputs.is-release }}
+      project-name:
+        description: 'The repository/project name'
+        value: ${{ jobs.versions-and-naming.outputs.project-name }}
+
+jobs:
+  versions-and-naming:
+    name: Versions & Naming
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    outputs:
+      version: ${{ steps.generate.outputs.version }}
+      version-major: ${{ steps.generate.outputs.version-major }}
+      version-minor: ${{ steps.generate.outputs.version-minor }}
+      version-patch: ${{ steps.generate.outputs.version-patch }}
+      version-2-part: ${{ steps.generate.outputs.version-2-part }}
+      version-3-part: ${{ steps.generate.outputs.version-3-part }}
+      version-4-part: ${{ steps.generate.outputs.version-4-part }}
+      docker-tag: ${{ steps.generate.outputs.docker-tag }}
+      docker-image-name: ${{ steps.generate.outputs.docker-image-name }}
+      is-release: ${{ steps.generate.outputs.is-release }}
+      project-name: ${{ steps.generate.outputs.project-name }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4.2.2
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      # INJECT: parse-workflow-ref
+
+      - name: Generate versions and naming
+        id: generate
+        uses: ./.github/buildon-github-actions/src/actions/versions-and-naming
+        with:
+          default-branch: ${{ inputs.default-branch }}
+          patch-branches: ${{ inputs.patch-branches }}
+          max-version-parts: ${{ inputs.max-version-parts }}
