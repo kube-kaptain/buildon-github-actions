@@ -1,0 +1,149 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025 Kaptain contributors (Fred Cooke)
+
+name: Docker Build Retag
+
+on:
+  workflow_call:
+    inputs:
+      # Source image (3 parts)
+      source-registry:
+        description: 'Upstream registry (e.g., docker.io)'
+        required: true
+        type: string
+      source-image-name:
+        description: 'Upstream image name (e.g., library/nginx)'
+        required: true
+        type: string
+      source-tag:
+        description: 'Upstream image tag (e.g., 1.25)'
+        required: true
+        type: string
+      # Target configuration
+      target-registry:
+        description: 'Target container registry'
+        required: false
+        type: string
+        default: 'ghcr.io'
+      target-base-path:
+        description: 'Path between registry and image name (auto-set for GHCR)'
+        required: false
+        type: string
+        default: ''
+      verify-target:
+        description: 'Fail if target image already exists'
+        required: false
+        type: boolean
+        default: true
+      # Version generator inputs (pass-through)
+      default-branch:
+        description: 'The default/release branch name'
+        required: false
+        type: string
+        default: 'main'
+      patch-branches:
+        description: 'Comma-separated list of additional release branch patterns'
+        required: false
+        type: string
+        default: ''
+      max-version-parts:
+        description: 'Maximum allowed version parts (fail if exceeded)'
+        required: false
+        type: number
+        default: 3
+    secrets:
+      target-username:
+        description: 'Username for target registry (defaults to github.actor for GHCR)'
+        required: false
+      target-password:
+        description: 'Password/token for target registry (defaults to GITHUB_TOKEN for GHCR)'
+        required: false
+    outputs:
+      # Version outputs (pass-through from versioning job)
+      version:
+        description: 'The generated version'
+        value: ${{ jobs.versions-and-naming.outputs.version }}
+      docker-tag:
+        description: 'Tag for Docker images'
+        value: ${{ jobs.versions-and-naming.outputs.docker-tag }}
+      docker-image-name:
+        description: 'Docker image name'
+        value: ${{ jobs.versions-and-naming.outputs.docker-image-name }}
+      is-release:
+        description: 'Whether this is a release build'
+        value: ${{ jobs.versions-and-naming.outputs.is-release }}
+      # Retag outputs
+      source-image-full-uri:
+        description: 'Full source image reference'
+        value: ${{ jobs.docker-build-retag.outputs.source-image-full-uri }}
+      target-image-full-uri:
+        description: 'Full target image reference'
+        value: ${{ jobs.docker-build-retag.outputs.target-image-full-uri }}
+      image-pushed:
+        description: 'Whether image was pushed'
+        value: ${{ jobs.docker-build-retag.outputs.image-pushed }}
+
+jobs:
+  versions-and-naming:
+    name: Versions & Naming
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    outputs:
+      version: ${{ steps.generate.outputs.version }}
+      docker-tag: ${{ steps.generate.outputs.docker-tag }}
+      docker-image-name: ${{ steps.generate.outputs.docker-image-name }}
+      is-release: ${{ steps.generate.outputs.is-release }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4.2.2
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      # INJECT: parse-workflow-ref
+
+      - name: Generate versions and naming
+        id: generate
+        uses: ./.github/buildon-github-actions/src/actions/versions-and-naming
+        with:
+          default-branch: ${{ inputs.default-branch }}
+          patch-branches: ${{ inputs.patch-branches }}
+          max-version-parts: ${{ inputs.max-version-parts }}
+
+  docker-build-retag:
+    name: Docker Build Retag
+    needs: versions-and-naming
+    runs-on: ubuntu-24.04
+    permissions:
+      packages: write
+    outputs:
+      source-image-full-uri: ${{ steps.retag.outputs.source-image-full-uri }}
+      target-image-full-uri: ${{ steps.retag.outputs.target-image-full-uri }}
+      image-pushed: ${{ steps.retag.outputs.image-pushed }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4.2.2
+
+      # INJECT: parse-workflow-ref
+
+      - name: Login to target registry
+        uses: docker/login-action@v3.3.0
+        with:
+          registry: ${{ inputs.target-registry }}
+          username: ${{ secrets.target-username || github.actor }}
+          password: ${{ secrets.target-password || github.token }}
+
+      - name: Retag and push
+        id: retag
+        uses: ./.github/buildon-github-actions/src/actions/docker-build-retag
+        with:
+          source-registry: ${{ inputs.source-registry }}
+          source-image-name: ${{ inputs.source-image-name }}
+          source-tag: ${{ inputs.source-tag }}
+          target-registry: ${{ inputs.target-registry }}
+          target-base-path: ${{ inputs.target-base-path }}
+          target-image-name: ${{ needs.versions-and-naming.outputs.docker-image-name }}
+          docker-tag: ${{ needs.versions-and-naming.outputs.docker-tag }}
+          is-release: ${{ needs.versions-and-naming.outputs.is-release }}
+          verify-target: ${{ inputs.verify-target }}

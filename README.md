@@ -36,6 +36,9 @@ See [`examples/`](examples/) for more usage patterns.
 | [`basic-quality-and-versioning.yaml`](examples/basic-quality-and-versioning.yaml) | Standard setup: PR quality checks + push versioning |
 | [`quality-only.yaml`](examples/quality-only.yaml) | Quality enforcement without tagging |
 | [`patch-branches.yaml`](examples/patch-branches.yaml) | Hotfix workflow with 4-part versions |
+| [`docker-build-retag.yaml`](examples/docker-build-retag.yaml) | Vendor upstream images to your GHCR |
+| [`docker-build-retag-base-path.yaml`](examples/docker-build-retag-base-path.yaml) | Custom base path for image organization |
+| [`docker-build-retag-custom-registry.yaml`](examples/docker-build-retag-custom-registry.yaml) | Retag to Artifactory, ECR, or other registries |
 
 ## Components
 
@@ -46,6 +49,7 @@ See [`examples/`](examples/) for more usage patterns.
 | `basic-quality-and-versioning.yaml` | Combined: quality checks + versioning |
 | `basic-quality-checks.yaml` | Quality checks only |
 | `versions-and-naming.yaml` | Versioning only |
+| `docker-build-retag.yaml` | Pull, retag, and push upstream images |
 
 ### Actions
 
@@ -53,6 +57,7 @@ See [`examples/`](examples/) for more usage patterns.
 |--------|-------------|
 | `basic-quality-checks` | Validates branch names, commit messages, rebase status |
 | `versions-and-naming` | Generates version numbers, tags, and naming |
+| `docker-build-retag` | Pulls, retags, and pushes Docker images |
 
 ## Configuration
 

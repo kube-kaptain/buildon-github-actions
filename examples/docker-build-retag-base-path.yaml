@@ -1,0 +1,31 @@
+# SPDX-License-Identifier: CC0-1.0
+# This example is released to the public domain. Use freely without attribution.
+#
+# Docker Build Retag - Base Path
+#
+# Many registries use base paths in addition to the normal image name for projects or teams.
+# Use target-base-path to add a prefix between the registry and image name.
+#
+# Result: <registry>/<base-path>/<docker-image-name>:<tag>
+#
+# Copy this to .github/workflows/build.yaml in your repo.
+
+name: Docker Build Retag
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  retag:
+    uses: kube-kaptain/buildon-github-actions/.github/workflows/docker-build-retag.yaml@1.0.2
+    permissions:
+      contents: write
+      packages: write
+    with:
+      source-registry: docker.io
+      source-image-name: library/redis
+      source-tag: '7.4'
+      target-base-path: my-team/vendored # This is what you set how you need it
