@@ -1,6 +1,27 @@
 - name: Parse workflow ref
   id: parse
-  run: echo "ref=${GITHUB_WORKFLOW_REF#*@}" >> "$GITHUB_OUTPUT"
+  run: |
+    # Extract caller's workflow file path from github.workflow_ref
+    # Format: owner/repo/.github/workflows/file.yaml@ref
+    workflow_path="${GITHUB_WORKFLOW_REF%%@*}"
+    workflow_file=".github/workflows/${workflow_path##*/}"
+
+    # Find all uses lines that call this workflow and extract refs
+    refs=$(grep -o 'buildon-github-actions/.github/workflows/${WORKFLOW_NAME}\.yaml@[^[:space:]"'"'"']*' "$workflow_file" | sed 's/.*@//')
+
+    if [ -z "$refs" ]; then
+      echo "::error::Could not find buildon-github-actions ref in $workflow_file"
+      exit 1
+    fi
+
+    # Check all refs are identical
+    unique_refs=$(echo "$refs" | sort -u)
+    if [ "$(echo "$unique_refs" | wc -l)" -gt 1 ]; then
+      echo "::error::Multiple different refs found in $workflow_file: $(echo "$unique_refs" | tr '\n' ' ')"
+      exit 1
+    fi
+
+    echo "ref=$unique_refs" >> "$GITHUB_OUTPUT"
   env:
     GITHUB_WORKFLOW_REF: ${{ github.workflow_ref }}
 
