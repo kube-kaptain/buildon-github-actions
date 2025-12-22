@@ -1,24 +1,27 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2025 Kaptain contributors (Fred Cooke)
 
-name: Docker Build Retag
+name: Docker Build Dockerfile
 
 on:
   workflow_call:
     inputs:
-      # Source image (3 parts)
-      source-registry:
-        description: 'Upstream registry (e.g., docker.io)'
-        required: true
+      # Dockerfile configuration
+      dockerfile-path:
+        description: 'Directory containing Dockerfile (also used as build context)'
+        required: false
         type: string
-      source-image-name:
-        description: 'Upstream image name (e.g., library/nginx)'
-        required: true
-        type: string
-      source-tag:
-        description: 'Upstream image tag (e.g., 1.25)'
-        required: true
-        type: string
+        default: 'src/docker'
+      squash:
+        description: 'Enable --squash (requires experimental mode)'
+        required: false
+        type: boolean
+        default: true
+      no-cache:
+        description: 'Disable layer caching for reproducible builds'
+        required: false
+        type: boolean
+        default: true
       # Target configuration
       target-registry:
         description: 'Target container registry'
@@ -77,16 +80,13 @@ on:
       is-release:
         description: 'Whether this is a release build'
         value: ${{ jobs.versions-and-naming.outputs.is-release }}
-      # Retag outputs
-      source-image-full-uri:
-        description: 'Full source image reference'
-        value: ${{ jobs.docker-build-retag.outputs.source-image-full-uri }}
+      # Build outputs
       target-image-full-uri:
         description: 'Full target image reference'
-        value: ${{ jobs.docker-build-retag.outputs.target-image-full-uri }}
+        value: ${{ jobs.docker-build-dockerfile.outputs.target-image-full-uri }}
       image-pushed:
         description: 'Whether image was pushed'
-        value: ${{ jobs.docker-build-retag.outputs.image-pushed }}
+        value: ${{ jobs.docker-build-dockerfile.outputs.image-pushed }}
 
 jobs:
   basic-quality-checks:
@@ -109,19 +109,19 @@ jobs:
           workflow_path="${GITHUB_WORKFLOW_REF%%@*}"
           workflow_file=".github/workflows/${workflow_path##*/}"
 
-          echo "Resolving ref for reusable workflow: docker-build-retag.yaml"
+          echo "Resolving ref for reusable workflow: docker-build-dockerfile.yaml"
           echo "Caller workflow: $workflow_file"
 
           # Check for local call (dogfooding) - uses: ./.github/workflows/...
-          if grep -q 'uses:[[:space:]]*\./.github/workflows/docker-build-retag\.yaml[[:space:]]*$' "$workflow_file" || \
-             grep -q 'uses:[[:space:]]*\./.github/workflows/docker-build-retag\.yaml[[:space:]]*#' "$workflow_file"; then
+          if grep -q 'uses:[[:space:]]*\./.github/workflows/docker-build-dockerfile\.yaml[[:space:]]*$' "$workflow_file" || \
+             grep -q 'uses:[[:space:]]*\./.github/workflows/docker-build-dockerfile\.yaml[[:space:]]*#' "$workflow_file"; then
             echo "Local workflow call detected (dogfooding)"
             echo "ref=LOCAL" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
           # Find all uses lines that call this workflow and extract refs
-          refs=$(grep -o 'buildon-github-actions/.github/workflows/docker-build-retag\.yaml@[^[:space:]"'"'"']*' "$workflow_file" | sed 's/.*@//')
+          refs=$(grep -o 'buildon-github-actions/.github/workflows/docker-build-dockerfile\.yaml@[^[:space:]"'"'"']*' "$workflow_file" | sed 's/.*@//')
 
           if [ -z "$refs" ]; then
             echo "::error::Could not find buildon-github-actions ref in $workflow_file"
@@ -189,19 +189,19 @@ jobs:
           workflow_path="${GITHUB_WORKFLOW_REF%%@*}"
           workflow_file=".github/workflows/${workflow_path##*/}"
 
-          echo "Resolving ref for reusable workflow: docker-build-retag.yaml"
+          echo "Resolving ref for reusable workflow: docker-build-dockerfile.yaml"
           echo "Caller workflow: $workflow_file"
 
           # Check for local call (dogfooding) - uses: ./.github/workflows/...
-          if grep -q 'uses:[[:space:]]*\./.github/workflows/docker-build-retag\.yaml[[:space:]]*$' "$workflow_file" || \
-             grep -q 'uses:[[:space:]]*\./.github/workflows/docker-build-retag\.yaml[[:space:]]*#' "$workflow_file"; then
+          if grep -q 'uses:[[:space:]]*\./.github/workflows/docker-build-dockerfile\.yaml[[:space:]]*$' "$workflow_file" || \
+             grep -q 'uses:[[:space:]]*\./.github/workflows/docker-build-dockerfile\.yaml[[:space:]]*#' "$workflow_file"; then
             echo "Local workflow call detected (dogfooding)"
             echo "ref=LOCAL" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
           # Find all uses lines that call this workflow and extract refs
-          refs=$(grep -o 'buildon-github-actions/.github/workflows/docker-build-retag\.yaml@[^[:space:]"'"'"']*' "$workflow_file" | sed 's/.*@//')
+          refs=$(grep -o 'buildon-github-actions/.github/workflows/docker-build-dockerfile\.yaml@[^[:space:]"'"'"']*' "$workflow_file" | sed 's/.*@//')
 
           if [ -z "$refs" ]; then
             echo "::error::Could not find buildon-github-actions ref in $workflow_file"
@@ -245,17 +245,16 @@ jobs:
           patch-branches: ${{ inputs.patch-branches }}
           max-version-parts: ${{ inputs.max-version-parts }}
 
-  docker-build-retag:
-    name: Docker Build Retag
+  docker-build-dockerfile:
+    name: Docker Build Dockerfile
     needs: versions-and-naming
     runs-on: ubuntu-24.04
     permissions:
       contents: read
       packages: write
     outputs:
-      source-image-full-uri: ${{ steps.retag.outputs.source-image-full-uri }}
-      target-image-full-uri: ${{ steps.retag.outputs.target-image-full-uri }}
-      image-pushed: ${{ steps.retag.outputs.image-pushed }}
+      target-image-full-uri: ${{ steps.build.outputs.target-image-full-uri }}
+      image-pushed: ${{ steps.push.outputs.image-pushed }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4.2.2
@@ -268,19 +267,19 @@ jobs:
           workflow_path="${GITHUB_WORKFLOW_REF%%@*}"
           workflow_file=".github/workflows/${workflow_path##*/}"
 
-          echo "Resolving ref for reusable workflow: docker-build-retag.yaml"
+          echo "Resolving ref for reusable workflow: docker-build-dockerfile.yaml"
           echo "Caller workflow: $workflow_file"
 
           # Check for local call (dogfooding) - uses: ./.github/workflows/...
-          if grep -q 'uses:[[:space:]]*\./.github/workflows/docker-build-retag\.yaml[[:space:]]*$' "$workflow_file" || \
-             grep -q 'uses:[[:space:]]*\./.github/workflows/docker-build-retag\.yaml[[:space:]]*#' "$workflow_file"; then
+          if grep -q 'uses:[[:space:]]*\./.github/workflows/docker-build-dockerfile\.yaml[[:space:]]*$' "$workflow_file" || \
+             grep -q 'uses:[[:space:]]*\./.github/workflows/docker-build-dockerfile\.yaml[[:space:]]*#' "$workflow_file"; then
             echo "Local workflow call detected (dogfooding)"
             echo "ref=LOCAL" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
           # Find all uses lines that call this workflow and extract refs
-          refs=$(grep -o 'buildon-github-actions/.github/workflows/docker-build-retag\.yaml@[^[:space:]"'"'"']*' "$workflow_file" | sed 's/.*@//')
+          refs=$(grep -o 'buildon-github-actions/.github/workflows/docker-build-dockerfile\.yaml@[^[:space:]"'"'"']*' "$workflow_file" | sed 's/.*@//')
 
           if [ -z "$refs" ]; then
             echo "::error::Could not find buildon-github-actions ref in $workflow_file"
@@ -323,16 +322,25 @@ jobs:
           username: ${{ secrets.target-username || github.actor }}
           password: ${{ secrets.target-password || github.token }}
 
-      - name: Retag and push
-        id: retag
-        uses: ./.github/buildon-github-actions/src/actions/docker-build-retag
+      - name: Build image
+        id: build
+        uses: ./.github/buildon-github-actions/src/actions/docker-build-dockerfile
         with:
-          source-registry: ${{ inputs.source-registry }}
-          source-image-name: ${{ inputs.source-image-name }}
-          source-tag: ${{ inputs.source-tag }}
           target-registry: ${{ inputs.target-registry }}
           target-base-path: ${{ inputs.target-base-path }}
           target-image-name: ${{ needs.versions-and-naming.outputs.docker-image-name }}
           docker-tag: ${{ needs.versions-and-naming.outputs.docker-tag }}
-          is-release: ${{ needs.versions-and-naming.outputs.is-release }}
+          dockerfile-path: ${{ inputs.dockerfile-path }}
+          squash: ${{ inputs.squash }}
+          no-cache: ${{ inputs.no-cache }}
           confirm-image-doesnt-exist: ${{ inputs.confirm-image-doesnt-exist }}
+
+      # Future: Insert test step here between build and push
+
+      - name: Push image
+        id: push
+        if: needs.versions-and-naming.outputs.is-release == 'true'
+        shell: bash
+        run: |
+          docker push "${{ steps.build.outputs.target-image-full-uri }}"
+          echo "image-pushed=true" >> "$GITHUB_OUTPUT"

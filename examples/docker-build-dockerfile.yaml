@@ -1,0 +1,30 @@
+# SPDX-License-Identifier: CC0-1.0
+# This example is released to the public domain. Use freely without attribution.
+#
+# Docker Build Dockerfile
+#
+# Build a Docker image from a Dockerfile with --squash (default) to flatten
+# layers into one, reducing image size, hiding intermediate layer history, and
+# ensuring Dockerfiles are clean by not having to clean up and use && all the time.
+#
+# Place your Dockerfile at src/docker/Dockerfile (the default path).
+#
+# - PRs: Build with version-PRERELEASE tag (not pushed)
+# - Push to main: Git tag, build, docker tag with clean version, push to GHCR
+#
+# Copy this to .github/workflows/build.yaml in your repo.
+
+name: Docker Build Dockerfile
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    uses: kube-kaptain/buildon-github-actions/.github/workflows/docker-build-dockerfile.yaml@1.0.2
+    permissions:
+      contents: write
+      packages: write

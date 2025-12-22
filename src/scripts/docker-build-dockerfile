@@ -1,0 +1,169 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025 Kaptain contributors (Fred Cooke)
+#
+# docker-build-dockerfile - Builds a Docker image from a Dockerfile
+#
+# Build only - does not push. Workflow handles push after optional test step.
+# This separation allows injecting test steps between build and push.
+#
+# Inputs (environment variables):
+#   TARGET_REGISTRY     - Container registry (e.g., ghcr.io)
+#   TARGET_BASE_PATH    - Path between registry and image name (optional)
+#   TARGET_IMAGE_NAME   - Image name (from version generator)
+#   DOCKER_TAG          - Tag for the image (from version generator)
+#   DOCKERFILE_PATH     - Directory containing Dockerfile (default: src/docker)
+#   SQUASH              - "false" to disable --squash (default: true, always squash for clean D files)
+#   NO_CACHE            - "false" to enable layer caching (default: true, always build fresh)
+#   CONFIRM_IMAGE_DOESNT_EXIST - "true" to fail if target exists (default: true)
+#
+# Outputs (GITHUB_OUTPUT):
+#   TARGET_IMAGE_FULL_URI - Full image reference (for use in push step)
+#
+set -euo pipefail
+
+# Required inputs
+TARGET_REGISTRY="${TARGET_REGISTRY:?TARGET_REGISTRY is required}"
+TARGET_IMAGE_NAME="${TARGET_IMAGE_NAME:?TARGET_IMAGE_NAME is required}"
+DOCKER_TAG="${DOCKER_TAG:?DOCKER_TAG is required}"
+
+# Optional inputs with defaults
+TARGET_BASE_PATH="${TARGET_BASE_PATH:-}"
+DOCKERFILE_PATH="${DOCKERFILE_PATH:-src/docker}"
+SQUASH="${SQUASH:-true}"
+NO_CACHE="${NO_CACHE:-true}"
+CONFIRM_IMAGE_DOESNT_EXIST="${CONFIRM_IMAGE_DOESNT_EXIST:-true}"
+
+# Dockerfile must always be named exactly "Dockerfile"
+DOCKERFILE="${DOCKERFILE_PATH}/Dockerfile"
+CONTEXT="${DOCKERFILE_PATH}"
+
+# Assemble full image URI
+if [[ -n "$TARGET_BASE_PATH" ]]; then
+  TARGET_IMAGE_FULL_URI="${TARGET_REGISTRY}/${TARGET_BASE_PATH}/${TARGET_IMAGE_NAME}:${DOCKER_TAG}"
+else
+  TARGET_IMAGE_FULL_URI="${TARGET_REGISTRY}/${TARGET_IMAGE_NAME}:${DOCKER_TAG}"
+fi
+
+confirm_image_doesnt_exist() {
+  local image="$1"
+
+  if docker manifest inspect "$image" &>/dev/null; then
+    echo "::error::Target image already exists in registry: $image" >&2
+    return 1
+  fi
+
+  echo "Confirmed image does not exist in registry (safe to build and push)" >&2
+  return 0
+}
+
+enable_experimental() {
+  # Enable Docker experimental features for --squash
+  echo "Enabling Docker experimental mode for --squash" >&2
+  sudo mkdir -p /etc/docker
+  echo '{"experimental": true}' | sudo tee /etc/docker/daemon.json > /dev/null
+  sudo systemctl restart docker
+  # Wait for Docker to be ready
+  local retries=10
+  while ! docker info &>/dev/null && [[ $retries -gt 0 ]]; do
+    sleep 1
+    ((retries--))
+  done
+  if ! docker info &>/dev/null; then
+    echo "::error::Docker failed to restart after enabling experimental mode" >&2
+    return 1
+  fi
+  echo "Docker experimental mode enabled" >&2
+}
+
+output_var() {
+  local name="$1"
+  local value="$2"
+
+  echo "${name}=${value}"
+
+  if [[ -n "${GITHUB_OUTPUT:-}" ]]; then
+    echo "${name}=${value}" >> "$GITHUB_OUTPUT"
+  fi
+}
+
+main() {
+  echo "=== Docker Build Dockerfile ===" >&2
+  echo "Target: $TARGET_IMAGE_FULL_URI" >&2
+  echo "Dockerfile path: $DOCKERFILE_PATH" >&2
+  echo "Squash: $SQUASH" >&2
+  echo "===============================" >&2
+
+  # Validate directory exists
+  if [[ ! -d "$DOCKERFILE_PATH" ]]; then
+    echo "::error::Dockerfile directory not found: $DOCKERFILE_PATH" >&2
+    exit 1
+  fi
+
+  # Validate Dockerfile exists with exact name (case-sensitive check)
+  # Loop through files to verify exact case (works on case-insensitive filesystems)
+  local exact_match=false
+  local wrong_case=""
+  for f in "$DOCKERFILE_PATH"/*; do
+    [[ -f "$f" ]] || continue
+    local name
+    name=$(basename "$f")
+    if [[ "$name" == "Dockerfile" ]]; then
+      exact_match=true
+      break
+    elif [[ "$(echo "$name" | tr '[:upper:]' '[:lower:]')" == "dockerfile" ]]; then
+      wrong_case="$name"
+    fi
+  done
+
+  if [[ "$exact_match" != "true" ]]; then
+    if [[ -n "$wrong_case" ]]; then
+      echo "::error::Dockerfile has wrong case: found '$wrong_case' but must be exactly 'Dockerfile'" >&2
+    else
+      echo "::error::Dockerfile not found in: $DOCKERFILE_PATH" >&2
+    fi
+    exit 1
+  fi
+
+  # Confirm target doesn't exist before building (fail fast)
+  if [[ "$CONFIRM_IMAGE_DOESNT_EXIST" == "true" ]]; then
+    confirm_image_doesnt_exist "$TARGET_IMAGE_FULL_URI" || exit 1
+  fi
+
+  # Enable experimental mode if squash requested
+  if [[ "$SQUASH" == "true" ]]; then
+    enable_experimental
+  fi
+
+  # Build command
+  local cmd=(docker build -f "$DOCKERFILE" -t "$TARGET_IMAGE_FULL_URI")
+
+  # Add standard labels (injected at build time, no Dockerfile changes needed)
+  local build_datetime
+  build_datetime=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+  cmd+=(--label "version=${DOCKER_TAG}")
+  cmd+=(--label "image.name=${TARGET_IMAGE_NAME}")
+  cmd+=(--label "build.datetime=${build_datetime}")
+
+  # Add squash if enabled
+  if [[ "$SQUASH" == "true" ]]; then
+    cmd+=(--squash)
+  fi
+
+  # Disable layer caching by default for reproducible builds
+  if [[ "$NO_CACHE" == "true" ]]; then
+    cmd+=(--no-cache)
+  fi
+
+  # Add context
+  cmd+=("$CONTEXT")
+
+  echo "Building: ${cmd[*]}" >&2
+  "${cmd[@]}"
+
+  output_var "TARGET_IMAGE_FULL_URI" "$TARGET_IMAGE_FULL_URI"
+
+  echo "Docker Build Dockerfile complete" >&2
+}
+
+main "$@"

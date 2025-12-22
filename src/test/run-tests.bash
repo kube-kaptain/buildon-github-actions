@@ -95,6 +95,7 @@ run_shellcheck() {
     "$PROJECT_ROOT/src/scripts/versions-and-naming"
     "$PROJECT_ROOT/src/scripts/basic-quality-checks"
     "$PROJECT_ROOT/src/scripts/docker-build-retag"
+    "$PROJECT_ROOT/src/scripts/docker-build-dockerfile"
   )
 
   if command -v shellcheck &>/dev/null; then
