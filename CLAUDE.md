@@ -62,10 +62,19 @@ Scripts use env vars for configuration:
 ## Testing
 
 ```bash
-./src/test/run-tests.sh
+.github/bin/run-tests.bash
 ```
 
 Runs shellcheck + BATS tests against fixture repos.
+
+## Bash Portability
+
+macOS ships bash 3.2, GitHub Actions ubuntu-24.04 has bash 5.x. Key differences:
+
+- **Arithmetic with `set -e`**: `((count++))` when count is 0 returns exit status 1 in bash 5.x (expression evaluates to 0), killing the script with `set -e`. Use `count=$((count + 1))` instead.
+- **Empty arrays with `set -u`**: `"${array[@]}"` on an empty array may fail as "unbound variable" in older bash. Use `"${array[@]+"${array[@]}"}"` if needed.
+
+Always test in CI, not just locally - "works on my machine" hits hard with bash version differences.
 
 ## Common Tasks
 
