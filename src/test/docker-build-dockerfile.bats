@@ -23,6 +23,8 @@ set_required_env() {
   export TARGET_REGISTRY="ghcr.io"
   export TARGET_IMAGE_NAME="test/my-repo"
   export DOCKER_TAG="1.0.0"
+  export VERSION="1.0.0"
+  export PROJECT_NAME="my-repo"
   export DOCKERFILE_PATH="$TEST_DIR"
   export SQUASH="false"
 }
@@ -98,6 +100,15 @@ set_required_env() {
   run "$SCRIPTS_DIR/docker-build-dockerfile"
   [ "$status" -ne 0 ]
   assert_output_contains "wrong case"
+}
+
+@test "adds standard build args" {
+  set_required_env
+
+  run "$SCRIPTS_DIR/docker-build-dockerfile"
+  [ "$status" -eq 0 ]
+  assert_docker_called "--build-arg VERSION=1.0.0"
+  assert_docker_called "--build-arg PROJECT_NAME=my-repo"
 }
 
 @test "adds standard labels automatically" {

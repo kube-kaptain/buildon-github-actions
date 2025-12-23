@@ -20,6 +20,12 @@ inputs:
   docker-tag:
     description: 'Tag for target image (from version generator docker-tag)'
     required: true
+  version:
+    description: 'Version number (from version generator, passed as build arg)'
+    required: true
+  project-name:
+    description: 'Project name (from version generator, passed as build arg)'
+    required: true
   dockerfile-path:
     description: 'Directory containing Dockerfile (also used as build context)'
     required: false
@@ -64,6 +70,8 @@ runs:
         TARGET_BASE_PATH: ${{ steps.base-path.outputs.path }}
         TARGET_IMAGE_NAME: ${{ inputs.target-image-name }}
         DOCKER_TAG: ${{ inputs.docker-tag }}
+        VERSION: ${{ inputs.version }}
+        PROJECT_NAME: ${{ inputs.project-name }}
         DOCKERFILE_PATH: ${{ inputs.dockerfile-path }}
         SQUASH: ${{ inputs.squash }}
         NO_CACHE: ${{ inputs.no-cache }}
