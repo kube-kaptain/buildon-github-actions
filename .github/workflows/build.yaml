@@ -14,5 +14,6 @@ jobs:
     uses: ./.github/workflows/basic-quality-and-versioning.yaml
     with:
       block-slashes: true
+      pre-tagging-tests-script-sub-path: bin/pre-tagging.bash
     permissions:
       contents: write

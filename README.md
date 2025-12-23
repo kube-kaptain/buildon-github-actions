@@ -135,7 +135,7 @@ The quality action blocks:
 ## Development
 
 ```bash
-./src/test/run-tests.bash
+.github/bin/run-tests.bash
 ```
 
 ## Project Licensing
