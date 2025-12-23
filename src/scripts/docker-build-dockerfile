@@ -12,6 +12,8 @@
 #   TARGET_BASE_PATH    - Path between registry and image name (optional)
 #   TARGET_IMAGE_NAME   - Image name (from version generator)
 #   DOCKER_TAG          - Tag for the image (from version generator)
+#   VERSION             - Version number (from version generator, passed as build arg)
+#   PROJECT_NAME        - Project name (from version generator, passed as build arg)
 #   DOCKERFILE_PATH     - Directory containing Dockerfile (default: src/docker)
 #   SQUASH              - "false" to disable --squash (default: true, always squash for clean D files)
 #   NO_CACHE            - "false" to enable layer caching (default: true, always build fresh)
@@ -26,6 +28,8 @@ set -euo pipefail
 TARGET_REGISTRY="${TARGET_REGISTRY:?TARGET_REGISTRY is required}"
 TARGET_IMAGE_NAME="${TARGET_IMAGE_NAME:?TARGET_IMAGE_NAME is required}"
 DOCKER_TAG="${DOCKER_TAG:?DOCKER_TAG is required}"
+VERSION="${VERSION:?VERSION is required}"
+PROJECT_NAME="${PROJECT_NAME:?PROJECT_NAME is required}"
 
 # Optional inputs with defaults
 TARGET_BASE_PATH="${TARGET_BASE_PATH:-}"
@@ -137,6 +141,10 @@ main() {
 
   # Build command
   local cmd=(docker build -f "$DOCKERFILE" -t "$TARGET_IMAGE_FULL_URI")
+
+  # Add standard build args (Dockerfile can use or ignore)
+  cmd+=(--build-arg "VERSION=${VERSION}")
+  cmd+=(--build-arg "PROJECT_NAME=${PROJECT_NAME}")
 
   # Add standard labels (injected at build time, no Dockerfile changes needed)
   local build_datetime

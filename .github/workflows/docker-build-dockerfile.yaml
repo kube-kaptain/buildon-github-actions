@@ -173,6 +173,7 @@ jobs:
       version: ${{ steps.generate.outputs.version }}
       docker-tag: ${{ steps.generate.outputs.docker-tag }}
       docker-image-name: ${{ steps.generate.outputs.docker-image-name }}
+      project-name: ${{ steps.generate.outputs.project-name }}
       is-release: ${{ steps.generate.outputs.is-release }}
     steps:
       - name: Checkout
@@ -330,6 +331,8 @@ jobs:
           target-base-path: ${{ inputs.target-base-path }}
           target-image-name: ${{ needs.versions-and-naming.outputs.docker-image-name }}
           docker-tag: ${{ needs.versions-and-naming.outputs.docker-tag }}
+          version: ${{ needs.versions-and-naming.outputs.version }}
+          project-name: ${{ needs.versions-and-naming.outputs.project-name }}
           dockerfile-path: ${{ inputs.dockerfile-path }}
           squash: ${{ inputs.squash }}
           no-cache: ${{ inputs.no-cache }}
