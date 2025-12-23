@@ -12,7 +12,7 @@
 #
 set -euo pipefail
 
-# Logging configuration (CI-agnostic, actions inject platform-specific values)
+# Logging configuration (CI-agnostic)
 LOG_ERROR_PREFIX="${LOG_ERROR_PREFIX:-}"
 LOG_ERROR_SUFFIX="${LOG_ERROR_SUFFIX:-}"
 
