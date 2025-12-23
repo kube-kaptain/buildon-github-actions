@@ -1,0 +1,40 @@
+# SPDX-License-Identifier: CC0-1.0
+# This example is released to the public domain. Use freely without attribution.
+#
+# Optional Test Script Injection
+#
+# Shows how to add custom test scripts to workflows that support them.
+#
+# Available inputs and workflows that support them:
+# - pre-tagging-tests-script-sub-path:  basic-quality-and-versioning, docker-build-dockerfile
+# - post-docker-tests-script-sub-path:  docker-build-dockerfile
+#
+# Scripts must be:
+# - Located under .github/ (the input is a sub-path from there)
+# - Executable (chmod +x)
+#
+# Post-docker tests receive environment variables:
+# - VERSION, VERSION_MAJOR, VERSION_MINOR, VERSION_PATCH
+# - VERSION_2_PART, VERSION_3_PART, VERSION_4_PART
+# - DOCKER_TAG, DOCKER_IMAGE_NAME, PROJECT_NAME, IS_RELEASE
+# - TARGET_IMAGE_FULL_URI (the locally-built image to test)
+#
+# Copy this to .github/workflows/build.yaml in your repo.
+
+name: Build with Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    uses: kube-kaptain/buildon-github-actions/.github/workflows/docker-build-dockerfile.yaml@1.0.2
+    permissions:
+      contents: write
+      packages: write
+    with:
+      pre-tagging-tests-script-sub-path: bin/run-tests.bash
+      post-docker-tests-script-sub-path: bin/test-container.bash

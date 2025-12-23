@@ -46,6 +46,11 @@ on:
         required: false
         type: number
         default: 3
+      pre-tagging-tests-script-sub-path:
+        description: 'Path to pre-tagging test script relative to .github/ (e.g., bin/pre-tagging.bash)'
+        required: false
+        type: string
+        default: ''
     outputs:
       version:
         description: 'The generated version'
@@ -107,8 +112,26 @@ jobs:
           require-conventional-commits: ${{ inputs.require-conventional-commits }}
           block-conventional-commits: ${{ inputs.block-conventional-commits }}
 
+  pre-tagging-tests:
+    name: Pre-tagging Tests
+    needs: basic-quality-checks
+    if: always() && inputs.pre-tagging-tests-script-sub-path != '' && (needs.basic-quality-checks.result == 'success' || needs.basic-quality-checks.result == 'skipped')
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4.2.2
+
+      # INJECT: parse-workflow-ref
+
+      - name: Run pre-tagging tests
+        uses: ./.github/buildon-github-actions/src/actions/run-test-script
+        with:
+          script-sub-path: ${{ inputs.pre-tagging-tests-script-sub-path }}
+
   versions-and-naming:
     name: Versions & Naming
+    needs: pre-tagging-tests
+    if: always() && (needs.pre-tagging-tests.result == 'success' || needs.pre-tagging-tests.result == 'skipped')
     runs-on: ubuntu-24.04
     permissions:
       contents: write

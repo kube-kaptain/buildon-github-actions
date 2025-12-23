@@ -79,6 +79,16 @@ on:
         required: false
         type: number
         default: 3
+      pre-tagging-tests-script-sub-path:
+        description: 'Path to pre-tagging test script relative to .github/ (e.g., bin/pre-tagging.bash)'
+        required: false
+        type: string
+        default: ''
+      post-docker-tests-script-sub-path:
+        description: 'Path to post-docker test script relative to .github/ (e.g., bin/post-docker.bash)'
+        required: false
+        type: string
+        default: ''
     secrets:
       target-username:
         description: 'Username for target registry (defaults to github.actor for GHCR)'
@@ -134,8 +144,26 @@ jobs:
           require-conventional-commits: ${{ inputs.require-conventional-commits }}
           block-conventional-commits: ${{ inputs.block-conventional-commits }}
 
+  pre-tagging-tests:
+    name: Pre-tagging Tests
+    needs: basic-quality-checks
+    if: always() && inputs.pre-tagging-tests-script-sub-path != '' && (needs.basic-quality-checks.result == 'success' || needs.basic-quality-checks.result == 'skipped')
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4.2.2
+
+      # INJECT: parse-workflow-ref
+
+      - name: Run pre-tagging tests
+        uses: ./.github/buildon-github-actions/src/actions/run-test-script
+        with:
+          script-sub-path: ${{ inputs.pre-tagging-tests-script-sub-path }}
+
   versions-and-naming:
     name: Versions & Naming
+    needs: pre-tagging-tests
+    if: always() && (needs.pre-tagging-tests.result == 'success' || needs.pre-tagging-tests.result == 'skipped')
     runs-on: ubuntu-24.04
     permissions:
       contents: write
@@ -200,7 +228,17 @@ jobs:
           no-cache: ${{ inputs.no-cache }}
           confirm-image-doesnt-exist: ${{ inputs.confirm-image-doesnt-exist }}
 
-      # Future: Insert test step here between build and push
+      - name: Run post-docker tests
+        if: inputs.post-docker-tests-script-sub-path != ''
+        uses: ./.github/buildon-github-actions/src/actions/run-test-script
+        with:
+          script-sub-path: ${{ inputs.post-docker-tests-script-sub-path }}
+          version: ${{ needs.versions-and-naming.outputs.version }}
+          docker-tag: ${{ needs.versions-and-naming.outputs.docker-tag }}
+          docker-image-name: ${{ needs.versions-and-naming.outputs.docker-image-name }}
+          project-name: ${{ needs.versions-and-naming.outputs.project-name }}
+          is-release: ${{ needs.versions-and-naming.outputs.is-release }}
+          target-image-full-uri: ${{ steps.build.outputs.target-image-full-uri }}
 
       - name: Push image
         id: push
