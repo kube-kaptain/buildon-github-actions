@@ -12,6 +12,10 @@
 #
 set -euo pipefail
 
+# Logging configuration (CI-agnostic, actions inject platform-specific values)
+LOG_ERROR_PREFIX="${LOG_ERROR_PREFIX:-}"
+LOG_ERROR_SUFFIX="${LOG_ERROR_SUFFIX:-}"
+
 # Configuration with defaults
 DEFAULT_BRANCH="${DEFAULT_BRANCH:-main}"
 PATCH_BRANCHES="${PATCH_BRANCHES:-}"  # Comma-separated list of patch branch patterns
@@ -263,7 +267,7 @@ main() {
   local part_count
   part_count=$(count_version_parts "$new_version")
   if [[ $part_count -gt $MAX_VERSION_PARTS ]]; then
-    echo "::error::Version '$new_version' has $part_count parts, exceeds MAX_VERSION_PARTS=$MAX_VERSION_PARTS" >&2
+    echo "${LOG_ERROR_PREFIX}Version '$new_version' has $part_count parts, exceeds MAX_VERSION_PARTS=$MAX_VERSION_PARTS${LOG_ERROR_SUFFIX}" >&2
     exit 1
   fi
 

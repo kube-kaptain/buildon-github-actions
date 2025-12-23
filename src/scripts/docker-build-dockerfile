@@ -24,6 +24,10 @@
 #
 set -euo pipefail
 
+# Logging configuration (CI-agnostic, actions inject platform-specific values)
+LOG_ERROR_PREFIX="${LOG_ERROR_PREFIX:-}"
+LOG_ERROR_SUFFIX="${LOG_ERROR_SUFFIX:-}"
+
 # Required inputs
 TARGET_REGISTRY="${TARGET_REGISTRY:?TARGET_REGISTRY is required}"
 TARGET_IMAGE_NAME="${TARGET_IMAGE_NAME:?TARGET_IMAGE_NAME is required}"
@@ -53,7 +57,7 @@ confirm_image_doesnt_exist() {
   local image="$1"
 
   if docker manifest inspect "$image" &>/dev/null; then
-    echo "::error::Target image already exists in registry: $image" >&2
+    echo "${LOG_ERROR_PREFIX}Target image already exists in registry: $image${LOG_ERROR_SUFFIX}" >&2
     return 1
   fi
 
@@ -74,7 +78,7 @@ enable_experimental() {
     ((retries--))
   done
   if ! docker info &>/dev/null; then
-    echo "::error::Docker failed to restart after enabling experimental mode" >&2
+    echo "${LOG_ERROR_PREFIX}Docker failed to restart after enabling experimental mode${LOG_ERROR_SUFFIX}" >&2
     return 1
   fi
   echo "Docker experimental mode enabled" >&2
@@ -100,7 +104,7 @@ main() {
 
   # Validate directory exists
   if [[ ! -d "$DOCKERFILE_PATH" ]]; then
-    echo "::error::Dockerfile directory not found: $DOCKERFILE_PATH" >&2
+    echo "${LOG_ERROR_PREFIX}Dockerfile directory not found: $DOCKERFILE_PATH${LOG_ERROR_SUFFIX}" >&2
     exit 1
   fi
 
@@ -122,9 +126,9 @@ main() {
 
   if [[ "$exact_match" != "true" ]]; then
     if [[ -n "$wrong_case" ]]; then
-      echo "::error::Dockerfile has wrong case: found '$wrong_case' but must be exactly 'Dockerfile'" >&2
+      echo "${LOG_ERROR_PREFIX}Dockerfile has wrong case: found '$wrong_case' but must be exactly 'Dockerfile'${LOG_ERROR_SUFFIX}" >&2
     else
-      echo "::error::Dockerfile not found in: $DOCKERFILE_PATH" >&2
+      echo "${LOG_ERROR_PREFIX}Dockerfile not found in: $DOCKERFILE_PATH${LOG_ERROR_SUFFIX}" >&2
     fi
     exit 1
   fi

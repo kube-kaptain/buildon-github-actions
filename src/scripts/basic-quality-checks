@@ -13,6 +13,10 @@
 #
 set -uo pipefail
 
+# Logging configuration (CI-agnostic, actions inject platform-specific values)
+LOG_ERROR_PREFIX="${LOG_ERROR_PREFIX:-}"
+LOG_ERROR_SUFFIX="${LOG_ERROR_SUFFIX:-}"
+
 # Configuration with defaults
 DEFAULT_BRANCH="${DEFAULT_BRANCH:-main}"
 PATCH_BRANCHES="${PATCH_BRANCHES:-}"
@@ -126,7 +130,7 @@ resolve_target_ref() {
     elif git rev-parse "$target" &>/dev/null; then
       echo "$target"
     else
-      echo "::error::Target branch '$target' not found on origin or locally" >&2
+      echo "${LOG_ERROR_PREFIX}Target branch '$target' not found on origin or locally${LOG_ERROR_SUFFIX}" >&2
       exit 42
     fi
   else
@@ -196,7 +200,7 @@ is_ff_from_target() {
   target_ref=$(resolve_target_ref "$target")
 
   if ! git rev-parse "$target_ref" &>/dev/null; then
-    echo "::error::Target ref '$target_ref' not found" >&2
+    echo "${LOG_ERROR_PREFIX}Target ref '$target_ref' not found${LOG_ERROR_SUFFIX}" >&2
     exit 42
   fi
 
@@ -207,7 +211,7 @@ is_ff_from_target() {
 error() {
   local flag="$1"
   local message="$2"
-  echo "::error::$message" >&2
+  echo "${LOG_ERROR_PREFIX}${message}${LOG_ERROR_SUFFIX}" >&2
   echo "✗ $message" >&2
   ERROR_CODE=$((ERROR_CODE | flag))
 }

@@ -66,6 +66,7 @@ runs:
       id: retag
       shell: bash
       env:
+        LOG_ERROR_PREFIX: '::error::'
         SOURCE_REGISTRY: ${{ inputs.source-registry }}
         SOURCE_IMAGE_NAME: ${{ inputs.source-image-name }}
         SOURCE_TAG: ${{ inputs.source-tag }}
