@@ -106,5 +106,13 @@ git add README.md
 git commit --quiet -m "Update README.md"
 bundle_repo "qc-multiple-issues" "$SCRIPT_DIR/../fixtures"
 
+# Scenario: Conventional commit format
+log "Creating: qc-conventional-commit (feat: style commit)"
+init_repo "$OUTPUT_DIR/qc-conventional-commit"
+commit_file "README.md" "# Test repo" "Initial commit"
+git checkout -b add-feature --quiet
+commit_file "feature.txt" "feature" "feat: add new feature"
+bundle_repo "qc-conventional-commit" "$SCRIPT_DIR/../fixtures"
+
 log "Done. Repos created in $OUTPUT_DIR"
 log "Bundles created in $SCRIPT_DIR/../fixtures"

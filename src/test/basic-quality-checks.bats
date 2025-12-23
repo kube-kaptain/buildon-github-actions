@@ -164,3 +164,67 @@ teardown() {
   run "$SCRIPTS_DIR/basic-quality-checks"
   [ "$status" -eq 0 ]
 }
+
+@test "blocks double hyphens by default" {
+  TEST_REPO=$(clone_fixture "qc-clean")
+  cd "$TEST_REPO"
+
+  export PR_BRANCH=fix--something
+  run "$SCRIPTS_DIR/basic-quality-checks"
+  [ "$status" -eq 1 ]
+  assert_output_contains "double hyphens"
+}
+
+@test "allows double hyphens when disabled" {
+  TEST_REPO=$(clone_fixture "qc-clean")
+  cd "$TEST_REPO"
+
+  export PR_BRANCH=fix--something
+  export BLOCK_DOUBLE_HYPHENS=false
+  run "$SCRIPTS_DIR/basic-quality-checks"
+  [ "$status" -eq 0 ]
+}
+
+@test "requires branch prefix when enabled" {
+  TEST_REPO=$(clone_fixture "qc-clean")
+  cd "$TEST_REPO"
+
+  export PR_BRANCH=my-branch
+  export REQUIRE_CONVENTIONAL_BRANCHES=true
+  run "$SCRIPTS_DIR/basic-quality-checks"
+  [ "$status" -eq 1 ]
+  assert_output_contains "must start with a prefix"
+}
+
+@test "allows branch with valid prefix" {
+  TEST_REPO=$(clone_fixture "qc-branch-with-slash")
+  cd "$TEST_REPO"
+
+  export PR_BRANCH=feature/my-feature
+  export REQUIRE_CONVENTIONAL_BRANCHES=true
+  run "$SCRIPTS_DIR/basic-quality-checks"
+  [ "$status" -eq 0 ]
+  assert_output_contains "has required prefix"
+}
+
+@test "requires conventional commits when enabled" {
+  TEST_REPO=$(clone_fixture "qc-clean")
+  cd "$TEST_REPO"
+
+  export PR_BRANCH=fix-something
+  export REQUIRE_CONVENTIONAL_COMMITS=true
+  run "$SCRIPTS_DIR/basic-quality-checks"
+  [ "$status" -eq 2 ]
+  assert_output_contains "does not use conventional commit format"
+}
+
+@test "blocks conventional commits when enabled" {
+  TEST_REPO=$(clone_fixture "qc-conventional-commit")
+  cd "$TEST_REPO"
+
+  export PR_BRANCH=add-feature
+  export BLOCK_CONVENTIONAL_COMMITS=true
+  run "$SCRIPTS_DIR/basic-quality-checks"
+  [ "$status" -eq 2 ]
+  assert_output_contains "conventional commit format which is not allowed"
+}

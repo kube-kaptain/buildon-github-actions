@@ -51,6 +51,26 @@ on:
         required: false
         type: boolean
         default: false
+      block-double-hyphens:
+        description: 'Block branch names containing double hyphens (typo detection)'
+        required: false
+        type: boolean
+        default: true
+      require-conventional-branches:
+        description: 'Require branch names start with feature/, fix/, etc.'
+        required: false
+        type: boolean
+        default: false
+      require-conventional-commits:
+        description: 'Require commits use conventional commit format (feat:, fix:, etc.)'
+        required: false
+        type: boolean
+        default: false
+      block-conventional-commits:
+        description: 'Block commits that use conventional commit format'
+        required: false
+        type: boolean
+        default: false
       max-version-parts:
         description: 'Maximum allowed version parts (fail if exceeded)'
         required: false
@@ -163,6 +183,10 @@ jobs:
           default-branch: ${{ inputs.default-branch }}
           patch-branches: ${{ inputs.patch-branches }}
           block-slashes: ${{ inputs.block-slashes }}
+          block-double-hyphens: ${{ inputs.block-double-hyphens }}
+          require-conventional-branches: ${{ inputs.require-conventional-branches }}
+          require-conventional-commits: ${{ inputs.require-conventional-commits }}
+          block-conventional-commits: ${{ inputs.block-conventional-commits }}
 
   versions-and-naming:
     name: Versions & Naming
