@@ -61,6 +61,7 @@ runs:
       id: generate
       shell: bash
       env:
+        LOG_ERROR_PREFIX: '::error::'
         DEFAULT_BRANCH: ${{ inputs.default-branch }}
         PATCH_BRANCHES: ${{ inputs.patch-branches }}
         MAX_VERSION_PARTS: ${{ inputs.max-version-parts }}

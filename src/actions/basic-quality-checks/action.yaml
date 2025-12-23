@@ -46,6 +46,7 @@ runs:
       id: check
       shell: bash
       env:
+        LOG_ERROR_PREFIX: '::error::'
         DEFAULT_BRANCH: ${{ inputs.default-branch }}
         PATCH_BRANCHES: ${{ inputs.patch-branches }}
         BLOCK_SLASHES: ${{ inputs.block-slashes }}

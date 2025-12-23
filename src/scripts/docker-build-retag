@@ -22,6 +22,10 @@
 #
 set -euo pipefail
 
+# Logging configuration (CI-agnostic, actions inject platform-specific values)
+LOG_ERROR_PREFIX="${LOG_ERROR_PREFIX:-}"
+LOG_ERROR_SUFFIX="${LOG_ERROR_SUFFIX:-}"
+
 # Required inputs
 SOURCE_REGISTRY="${SOURCE_REGISTRY:?SOURCE_REGISTRY is required}"
 SOURCE_IMAGE_NAME="${SOURCE_IMAGE_NAME:?SOURCE_IMAGE_NAME is required}"
@@ -48,7 +52,7 @@ confirm_image_doesnt_exist() {
 
   # Check registry for existing image via manifest inspect (no layer download)
   if docker manifest inspect "$image" &>/dev/null; then
-    echo "::error::Target image already exists in registry: $image" >&2
+    echo "${LOG_ERROR_PREFIX}Target image already exists in registry: $image${LOG_ERROR_SUFFIX}" >&2
     return 1
   fi
 
