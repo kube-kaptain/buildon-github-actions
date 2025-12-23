@@ -10,6 +10,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+TEST_DIR="$PROJECT_ROOT/src/test"
 
 # Colors for output
 RED='\033[0;31m'
@@ -34,7 +35,7 @@ has_docker() {
 # Run tests with local BATS
 run_local() {
   log_info "Running tests with local BATS"
-  cd "$SCRIPT_DIR"
+  cd "$TEST_DIR"
   bats --tap *.bats
 }
 
@@ -57,6 +58,7 @@ check_executables() {
     "$PROJECT_ROOT/src/scripts/*"
     "$PROJECT_ROOT/src/test/*.bash"
     "$PROJECT_ROOT/src/test/repo-gen/*.bash"
+    "$PROJECT_ROOT/.github/bin/*.bash"
   )
 
   for glob in "${globs[@]}"; do
