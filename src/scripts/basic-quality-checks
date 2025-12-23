@@ -17,8 +17,15 @@ set -uo pipefail
 DEFAULT_BRANCH="${DEFAULT_BRANCH:-main}"
 PATCH_BRANCHES="${PATCH_BRANCHES:-}"
 BLOCK_SLASHES="${BLOCK_SLASHES:-false}"
+BLOCK_DOUBLE_HYPHENS="${BLOCK_DOUBLE_HYPHENS:-true}"
+REQUIRE_CONVENTIONAL_BRANCHES="${REQUIRE_CONVENTIONAL_BRANCHES:-false}"
+REQUIRE_CONVENTIONAL_COMMITS="${REQUIRE_CONVENTIONAL_COMMITS:-false}"
+BLOCK_CONVENTIONAL_COMMITS="${BLOCK_CONVENTIONAL_COMMITS:-false}"
 TARGET_BRANCH="${TARGET_BRANCH:-$DEFAULT_BRANCH}"
 PR_CREATOR="${PR_CREATOR:-}"
+
+CONVENTIONAL_BRANCH_PREFIXES="feature/|feat/|bugfix/|fix/|hotfix/|release/|chore/"
+CONVENTIONAL_COMMIT_TYPES="build:|chore:|ci:|docs:|feat:|fix:|perf:|refactor:|revert:|style:|test:"
 
 # Bit flags for exit codes
 FLAG_BAD_BRANCH=1
@@ -66,6 +73,26 @@ is_github_default_branch_name() {
 has_slash() {
   local branch="$1"
   [[ "$branch" == *"/"* ]]
+}
+
+# Check if branch contains double hyphens
+has_double_hyphen() {
+  local branch="$1"
+  [[ "$branch" == *"--"* ]]
+}
+
+# Check if branch starts with an allowed prefix
+has_branch_prefix() {
+  local branch="$1"
+  echo "$branch" | grep -qE "^($CONVENTIONAL_BRANCH_PREFIXES)"
+}
+
+# Check if commit message starts with a conventional type
+is_conventional_commit() {
+  local commit="$1"
+  local message
+  message=$(git log -1 --format="%s" "$commit")
+  echo "$message" | grep -qE "^($CONVENTIONAL_COMMIT_TYPES)"
 }
 
 # Check if target branch is allowed
@@ -220,7 +247,25 @@ main() {
     fi
   fi
 
-  # Check 3: Validate PR target branch
+  # Check 3: Block double hyphens in branch names (default: on)
+  if [[ "$BLOCK_DOUBLE_HYPHENS" == "true" ]]; then
+    if has_double_hyphen "$branch"; then
+      error $FLAG_BAD_BRANCH "Branch name '$branch' contains double hyphens. This is likely a typo."
+    else
+      pass "Branch name contains no double hyphens"
+    fi
+  fi
+
+  # Check 4: Optionally require branch prefix (feature/, fix/, etc.)
+  if [[ "$REQUIRE_CONVENTIONAL_BRANCHES" == "true" ]]; then
+    if has_branch_prefix "$branch"; then
+      pass "Branch name has required prefix"
+    else
+      error $FLAG_BAD_BRANCH "Branch name '$branch' must start with a prefix: feature/, feat/, bugfix/, fix/, hotfix/, release/, or chore/"
+    fi
+  fi
+
+  # Check 5: Validate PR target branch
   if is_pr_context; then
     if ! is_valid_target "$TARGET_BRANCH"; then
       error $FLAG_BAD_TARGET "PR targets '$TARGET_BRANCH' which is not an allowed target branch."
@@ -239,7 +284,7 @@ main() {
     local commit_count
     commit_count=$(echo "$commits" | wc -l | tr -d ' ')
 
-    # Check 4: No merge commits
+    # Check 6: No merge commits
     local merge_found=false
     for commit in $commits; do
       if is_merge_commit "$commit"; then
@@ -251,7 +296,7 @@ main() {
       pass "No merge commits found from $commit_count commits checked"
     fi
 
-    # Check 5: No GitHub UI default commit messages
+    # Check 7: No GitHub UI default commit messages
     local bad_msg_found=false
     for commit in $commits; do
       if is_github_ui_commit "$commit"; then
@@ -264,9 +309,41 @@ main() {
     if [[ "$bad_msg_found" == "false" ]]; then
       pass "No GitHub generated commit messages from $commit_count commits checked"
     fi
+
+    # Check 8: Optionally require conventional commit format
+    if [[ "$REQUIRE_CONVENTIONAL_COMMITS" == "true" ]]; then
+      local non_conventional_found=false
+      for commit in $commits; do
+        if ! is_conventional_commit "$commit"; then
+          local msg
+          msg=$(git log -1 --format="%s" "$commit")
+          error $FLAG_BAD_COMMIT "Commit $commit does not use conventional commit format: '$msg'. Must start with: build:, chore:, ci:, docs:, feat:, fix:, perf:, refactor:, revert:, style:, or test:"
+          non_conventional_found=true
+        fi
+      done
+      if [[ "$non_conventional_found" == "false" ]]; then
+        pass "All commits use conventional commit format"
+      fi
+    fi
+
+    # Check 9: Optionally block conventional commit format
+    if [[ "$BLOCK_CONVENTIONAL_COMMITS" == "true" ]]; then
+      local conventional_found=false
+      for commit in $commits; do
+        if is_conventional_commit "$commit"; then
+          local msg
+          msg=$(git log -1 --format="%s" "$commit")
+          error $FLAG_BAD_COMMIT "Commit $commit uses conventional commit format which is not allowed: '$msg'"
+          conventional_found=true
+        fi
+      done
+      if [[ "$conventional_found" == "false" ]]; then
+        pass "No commits use conventional commit format"
+      fi
+    fi
   fi
 
-  # Check 6: Branch is fast-forward from target
+  # Check 10: Branch is fast-forward from target
   if ! is_ff_from_target "$TARGET_BRANCH"; then
     error $FLAG_NOT_REBASED "Branch is not up to date with '$TARGET_BRANCH'. Please rebase your branch."
   else
