@@ -79,6 +79,16 @@ on:
         required: false
         type: number
         default: 3
+      pre-tagging-tests-script-sub-path:
+        description: 'Path to pre-tagging test script relative to .github/ (e.g., bin/pre-tagging.bash)'
+        required: false
+        type: string
+        default: ''
+      post-docker-tests-script-sub-path:
+        description: 'Path to post-docker test script relative to .github/ (e.g., bin/post-docker.bash)'
+        required: false
+        type: string
+        default: ''
     secrets:
       target-username:
         description: 'Username for target registry (defaults to github.actor for GHCR)'
@@ -188,8 +198,80 @@ jobs:
           require-conventional-commits: ${{ inputs.require-conventional-commits }}
           block-conventional-commits: ${{ inputs.block-conventional-commits }}
 
+  pre-tagging-tests:
+    name: Pre-tagging Tests
+    needs: basic-quality-checks
+    if: always() && inputs.pre-tagging-tests-script-sub-path != '' && (needs.basic-quality-checks.result == 'success' || needs.basic-quality-checks.result == 'skipped')
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4.2.2
+
+      - name: Parse workflow ref
+        id: parse
+        run: |
+          # Extract caller's workflow file path from github.workflow_ref
+          # Format: owner/repo/.github/workflows/file.yaml@ref
+          workflow_path="${GITHUB_WORKFLOW_REF%%@*}"
+          workflow_file=".github/workflows/${workflow_path##*/}"
+
+          echo "Resolving ref for reusable workflow: docker-build-dockerfile.yaml"
+          echo "Caller workflow: $workflow_file"
+
+          # Check for local call (dogfooding) - uses: ./.github/workflows/...
+          if grep -q 'uses:[[:space:]]*\./.github/workflows/docker-build-dockerfile\.yaml[[:space:]]*$' "$workflow_file" || \
+             grep -q 'uses:[[:space:]]*\./.github/workflows/docker-build-dockerfile\.yaml[[:space:]]*#' "$workflow_file"; then
+            echo "Local workflow call detected (dogfooding)"
+            echo "ref=LOCAL" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          # Find all uses lines that call this workflow and extract refs
+          refs=$(grep -o 'buildon-github-actions/.github/workflows/docker-build-dockerfile\.yaml@[^[:space:]"'"'"']*' "$workflow_file" | sed 's/.*@//')
+
+          if [ -z "$refs" ]; then
+            echo "::error::Could not find buildon-github-actions ref in $workflow_file"
+            exit 1
+          fi
+
+          # Check all refs are identical
+          unique_refs=$(echo "$refs" | sort -u)
+          ref_count=$(echo "$unique_refs" | wc -l | tr -d ' ')
+          echo "Found $ref_count unique ref(s): $(echo "$unique_refs" | tr '\n' ' ')"
+
+          if [ "$ref_count" -gt 1 ]; then
+            echo "::error::Multiple different refs found in $workflow_file: $(echo "$unique_refs" | tr '\n' ' ')"
+            exit 1
+          fi
+
+          echo "Resolved ref: $unique_refs"
+          echo "ref=$unique_refs" >> "$GITHUB_OUTPUT"
+        env:
+          GITHUB_WORKFLOW_REF: ${{ github.workflow_ref }}
+
+      - name: Checkout actions
+        if: steps.parse.outputs.ref != 'LOCAL'
+        uses: actions/checkout@v4.2.2
+        with:
+          repository: kube-kaptain/buildon-github-actions
+          ref: ${{ steps.parse.outputs.ref }}
+          path: .github/buildon-github-actions
+
+      - name: Link local actions
+        if: steps.parse.outputs.ref == 'LOCAL'
+        run: |
+          echo "Linking local actions for dogfooding"
+          ln -s "$(pwd)" .github/buildon-github-actions
+
+      - name: Run pre-tagging tests
+        uses: ./.github/buildon-github-actions/src/actions/run-test-script
+        with:
+          script-sub-path: ${{ inputs.pre-tagging-tests-script-sub-path }}
+
   versions-and-naming:
     name: Versions & Naming
+    needs: pre-tagging-tests
+    if: always() && (needs.pre-tagging-tests.result == 'success' || needs.pre-tagging-tests.result == 'skipped')
     runs-on: ubuntu-24.04
     permissions:
       contents: write
@@ -362,7 +444,17 @@ jobs:
           no-cache: ${{ inputs.no-cache }}
           confirm-image-doesnt-exist: ${{ inputs.confirm-image-doesnt-exist }}
 
-      # Future: Insert test step here between build and push
+      - name: Run post-docker tests
+        if: inputs.post-docker-tests-script-sub-path != ''
+        uses: ./.github/buildon-github-actions/src/actions/run-test-script
+        with:
+          script-sub-path: ${{ inputs.post-docker-tests-script-sub-path }}
+          version: ${{ needs.versions-and-naming.outputs.version }}
+          docker-tag: ${{ needs.versions-and-naming.outputs.docker-tag }}
+          docker-image-name: ${{ needs.versions-and-naming.outputs.docker-image-name }}
+          project-name: ${{ needs.versions-and-naming.outputs.project-name }}
+          is-release: ${{ needs.versions-and-naming.outputs.is-release }}
+          target-image-full-uri: ${{ steps.build.outputs.target-image-full-uri }}
 
       - name: Push image
         id: push

@@ -1,0 +1,97 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025 Kaptain contributors (Fred Cooke)
+
+name: Run Test Script
+description: Runs a user-provided test script from the .github/ directory
+
+inputs:
+  script-sub-path:
+    description: 'Path to script relative to .github/ (e.g., bin/pre-tagging.bash)'
+    required: true
+  version:
+    description: 'Version string'
+    required: false
+    default: ''
+  version-major:
+    description: 'Major version number'
+    required: false
+    default: ''
+  version-minor:
+    description: 'Minor version number'
+    required: false
+    default: ''
+  version-patch:
+    description: 'Patch version number'
+    required: false
+    default: ''
+  version-2-part:
+    description: 'Version padded/truncated to 2 parts'
+    required: false
+    default: ''
+  version-3-part:
+    description: 'Version padded/truncated to 3 parts'
+    required: false
+    default: ''
+  version-4-part:
+    description: 'Version padded/truncated to 4 parts'
+    required: false
+    default: ''
+  docker-tag:
+    description: 'Docker tag'
+    required: false
+    default: ''
+  docker-image-name:
+    description: 'Docker image name'
+    required: false
+    default: ''
+  is-release:
+    description: 'Whether this is a release build'
+    required: false
+    default: ''
+  project-name:
+    description: 'Project name'
+    required: false
+    default: ''
+  target-image-full-uri:
+    description: 'Full target image URI'
+    required: false
+    default: ''
+
+runs:
+  using: composite
+  steps:
+    - name: Validate script exists
+      shell: bash
+      run: |
+        SCRIPT_PATH=".github/${{ inputs.script-sub-path }}"
+        if [[ ! -f "$SCRIPT_PATH" ]]; then
+          echo "::error::Test script not found: $SCRIPT_PATH"
+          echo "Configured script-sub-path '${{ inputs.script-sub-path }}' does not exist under .github/"
+          exit 1
+        fi
+        if [[ ! -x "$SCRIPT_PATH" ]]; then
+          echo "::error::Test script is not executable: $SCRIPT_PATH"
+          echo "Run: chmod +x $SCRIPT_PATH"
+          exit 1
+        fi
+        echo "Found executable script: $SCRIPT_PATH"
+
+    - name: Run test script
+      shell: bash
+      env:
+        VERSION: ${{ inputs.version }}
+        VERSION_MAJOR: ${{ inputs.version-major }}
+        VERSION_MINOR: ${{ inputs.version-minor }}
+        VERSION_PATCH: ${{ inputs.version-patch }}
+        VERSION_2_PART: ${{ inputs.version-2-part }}
+        VERSION_3_PART: ${{ inputs.version-3-part }}
+        VERSION_4_PART: ${{ inputs.version-4-part }}
+        DOCKER_TAG: ${{ inputs.docker-tag }}
+        DOCKER_IMAGE_NAME: ${{ inputs.docker-image-name }}
+        IS_RELEASE: ${{ inputs.is-release }}
+        PROJECT_NAME: ${{ inputs.project-name }}
+        TARGET_IMAGE_FULL_URI: ${{ inputs.target-image-full-uri }}
+      run: |
+        SCRIPT_PATH=".github/${{ inputs.script-sub-path }}"
+        echo "Running: $SCRIPT_PATH"
+        "$SCRIPT_PATH"
