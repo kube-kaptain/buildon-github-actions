@@ -71,7 +71,7 @@ check_executables() {
   local scanned=0
 
   for script in "${scripts[@]}"; do
-    ((scanned++))
+    scanned=$((scanned + 1))
     if [[ ! -x "$script" ]]; then
       failed+=("$script")
     fi
