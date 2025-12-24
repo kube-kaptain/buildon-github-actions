@@ -2,7 +2,6 @@
 # Copyright (c) 2025 Kaptain contributors (Fred Cooke)
 
 name: Docker Build Retag
-
 on:
   workflow_call:
     inputs:
@@ -41,8 +40,8 @@ on:
         required: false
         type: string
         default: 'main'
-      patch-branches:
-        description: 'Comma-separated list of additional release branch patterns'
+      additional-release-branches:
+        description: 'Comma-separated list of additional release branches'
         required: false
         type: string
         default: ''
@@ -107,7 +106,6 @@ on:
       image-pushed:
         description: 'Whether image was pushed'
         value: ${{ jobs.docker-build-retag.outputs.image-pushed }}
-
 jobs:
   basic-quality-checks:
     name: Basic Quality Checks
@@ -120,7 +118,6 @@ jobs:
           fetch-depth: 0
           fetch-tags: true
           ref: ${{ github.event.pull_request.head.sha }}
-
       - name: Parse workflow ref
         id: parse
         run: |
@@ -176,18 +173,16 @@ jobs:
         run: |
           echo "Linking local actions for dogfooding"
           ln -s "$(pwd)" .github/buildon-github-actions
-
       - name: Basic quality checks
         uses: ./.github/buildon-github-actions/src/actions/basic-quality-checks
         with:
           default-branch: ${{ inputs.default-branch }}
-          patch-branches: ${{ inputs.patch-branches }}
+          additional-release-branches: ${{ inputs.additional-release-branches }}
           block-slashes: ${{ inputs.block-slashes }}
           block-double-hyphens: ${{ inputs.block-double-hyphens }}
           require-conventional-branches: ${{ inputs.require-conventional-branches }}
           require-conventional-commits: ${{ inputs.require-conventional-commits }}
           block-conventional-commits: ${{ inputs.block-conventional-commits }}
-
   versions-and-naming:
     name: Versions & Naming
     runs-on: ubuntu-24.04
@@ -204,7 +199,6 @@ jobs:
         with:
           fetch-depth: 0
           fetch-tags: true
-
       - name: Parse workflow ref
         id: parse
         run: |
@@ -260,15 +254,13 @@ jobs:
         run: |
           echo "Linking local actions for dogfooding"
           ln -s "$(pwd)" .github/buildon-github-actions
-
       - name: Generate versions and naming
         id: generate
         uses: ./.github/buildon-github-actions/src/actions/versions-and-naming
         with:
           default-branch: ${{ inputs.default-branch }}
-          patch-branches: ${{ inputs.patch-branches }}
+          additional-release-branches: ${{ inputs.additional-release-branches }}
           max-version-parts: ${{ inputs.max-version-parts }}
-
   docker-build-retag:
     name: Docker Build Retag
     needs: versions-and-naming
@@ -283,7 +275,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4.2.2
-
       - name: Parse workflow ref
         id: parse
         run: |
@@ -339,14 +330,12 @@ jobs:
         run: |
           echo "Linking local actions for dogfooding"
           ln -s "$(pwd)" .github/buildon-github-actions
-
       - name: Login to target registry
         uses: docker/login-action@v3.3.0
         with:
           registry: ${{ inputs.target-registry }}
           username: ${{ secrets.target-username || github.actor }}
           password: ${{ secrets.target-password || github.token }}
-
       - name: Retag and push
         id: retag
         uses: ./.github/buildon-github-actions/src/actions/docker-build-retag

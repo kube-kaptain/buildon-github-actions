@@ -124,10 +124,10 @@ teardown() {
   assert_output_contains "PROJECT_NAME="
 }
 
-@test "respects PATCH_BRANCHES configuration" {
+@test "respects ADDITIONAL_RELEASE_BRANCHES configuration" {
   TEST_REPO=$(clone_fixture "tag-feature-branch")
   cd "$TEST_REPO"
-  export PATCH_BRANCHES="feature-*"
+  export ADDITIONAL_RELEASE_BRANCHES="feature-test"
 
   run "$SCRIPTS_DIR/versions-and-naming"
   [ "$status" -eq 0 ]
@@ -152,7 +152,7 @@ teardown() {
 @test "increments 4-part patch version correctly" {
   TEST_REPO=$(clone_fixture "tag-patch-branch")
   cd "$TEST_REPO"
-  export PATCH_BRANCHES="main-*"
+  export ADDITIONAL_RELEASE_BRANCHES="main-*"
   export MAX_VERSION_PARTS=4
 
   # Branch has 1.2.4.0-1.2.4.3, should get 1.2.4.4
@@ -164,7 +164,7 @@ teardown() {
 @test "patch branch ignores main's newer tags" {
   TEST_REPO=$(clone_fixture "tag-patch-ignores-main")
   cd "$TEST_REPO"
-  export PATCH_BRANCHES="main-*"
+  export ADDITIONAL_RELEASE_BRANCHES="main-*"
   export MAX_VERSION_PARTS=4
 
   # main has 1.3.0, but patch branch is in 1.2.4.X series

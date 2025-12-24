@@ -19,7 +19,7 @@ LOG_ERROR_SUFFIX="${LOG_ERROR_SUFFIX:-}"
 
 # Configuration with defaults
 DEFAULT_BRANCH="${DEFAULT_BRANCH:-main}"
-PATCH_BRANCHES="${PATCH_BRANCHES:-}"
+ADDITIONAL_RELEASE_BRANCHES="${ADDITIONAL_RELEASE_BRANCHES:-}"
 BLOCK_SLASHES="${BLOCK_SLASHES:-false}"
 BLOCK_DOUBLE_HYPHENS="${BLOCK_DOUBLE_HYPHENS:-true}"
 REQUIRE_CONVENTIONAL_BRANCHES="${REQUIRE_CONVENTIONAL_BRANCHES:-false}"
@@ -107,11 +107,10 @@ is_valid_target() {
     return 0
   fi
 
-  if [[ -n "$PATCH_BRANCHES" ]]; then
-    IFS=',' read -ra patterns <<< "$PATCH_BRANCHES"
-    for pattern in "${patterns[@]}"; do
-      # shellcheck disable=SC2053
-      if [[ "$target" == $pattern ]]; then
+  if [[ -n "$ADDITIONAL_RELEASE_BRANCHES" ]]; then
+    IFS=',' read -ra branches <<< "$ADDITIONAL_RELEASE_BRANCHES"
+    for branch in "${branches[@]}"; do
+      if [[ "$target" == "$branch" ]]; then
         return 0
       fi
     done

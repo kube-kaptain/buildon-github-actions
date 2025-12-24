@@ -2,7 +2,6 @@
 # Copyright (c) 2025 Kaptain contributors (Fred Cooke)
 
 name: Basic Quality Checks
-
 on:
   workflow_call:
     inputs:
@@ -11,8 +10,8 @@ on:
         required: false
         type: string
         default: 'main'
-      patch-branches:
-        description: 'Comma-separated list of allowed target branches beyond default'
+      additional-release-branches:
+        description: 'Comma-separated list of additional release branches'
         required: false
         type: string
         default: ''
@@ -41,7 +40,6 @@ on:
         required: false
         type: boolean
         default: false
-
 jobs:
   basic-quality-checks:
     name: Basic Quality Checks
@@ -53,14 +51,12 @@ jobs:
           fetch-depth: 0
           fetch-tags: true
           ref: ${{ github.event.pull_request.head.sha || github.ref }}
-
       # INJECT: parse-workflow-ref
-
       - name: Basic quality checks
         uses: ./.github/buildon-github-actions/src/actions/basic-quality-checks
         with:
           default-branch: ${{ inputs.default-branch }}
-          patch-branches: ${{ inputs.patch-branches }}
+          additional-release-branches: ${{ inputs.additional-release-branches }}
           block-slashes: ${{ inputs.block-slashes }}
           block-double-hyphens: ${{ inputs.block-double-hyphens }}
           require-conventional-branches: ${{ inputs.require-conventional-branches }}

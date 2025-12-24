@@ -159,7 +159,7 @@ teardown() {
 
   export PR_BRANCH=fix-something
   export TARGET_BRANCH=release-1.0.x
-  export PATCH_BRANCHES="release-*"
+  export ADDITIONAL_RELEASE_BRANCHES="release-1.0.x"
   export GITHUB_HEAD_REF=fix-something
   run "$SCRIPTS_DIR/basic-quality-checks"
   [ "$status" -eq 0 ]
