@@ -38,6 +38,7 @@ examples/                               # Usage examples for consumers
 - All text files have trailing newlines
 - Exit code 42 for infrastructure failures (missing target branch, etc.)
 - Bit flags for quality check failures (1=bad branch, 2=bad commit, 4=merge, 8=not rebased, 16=bad target)
+- Never use `latest` tags for Docker images - always pin to specific latest version for stability
 
 ## Environment Variables
 
@@ -46,7 +47,7 @@ Scripts use env vars for configuration:
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `DEFAULT_BRANCH` | `main` | The release branch name |
-| `PATCH_BRANCHES` | `""` | Comma-separated additional release branch patterns |
+| `ADDITIONAL_RELEASE_BRANCHES` | `""` | Comma-separated additional release branches |
 | `MAX_VERSION_PARTS` | `3` | Fail if version exceeds this depth |
 | `PR_BRANCH` | current branch | Source branch for PR checks |
 | `TARGET_BRANCH` | `DEFAULT_BRANCH` | Target branch for rebase checks |
@@ -84,6 +85,7 @@ Always test in CI, not just locally - "works on my machine" hits hard with bash 
 2. Create action wrapper in `src/actions/<name>/action.yaml`
 3. Map GitHub context to generic env vars in the action
 4. Add tests in `src/test/`
+5. Run `src/bin/assemble-workflows.bash` to regenerate docs
 
 ## Git Workflow
 

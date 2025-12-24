@@ -2,7 +2,6 @@
 # Copyright (c) 2025 Kaptain contributors (Fred Cooke)
 
 name: Versions & Naming
-
 on:
   workflow_call:
     inputs:
@@ -11,8 +10,8 @@ on:
         required: false
         type: string
         default: 'main'
-      patch-branches:
-        description: 'Comma-separated list of additional release branch patterns'
+      additional-release-branches:
+        description: 'Comma-separated list of additional release branches'
         required: false
         type: string
         default: ''
@@ -55,7 +54,6 @@ on:
       project-name:
         description: 'The repository/project name'
         value: ${{ jobs.versions-and-naming.outputs.project-name }}
-
 jobs:
   versions-and-naming:
     name: Versions & Naming
@@ -80,13 +78,11 @@ jobs:
         with:
           fetch-depth: 0
           fetch-tags: true
-
       # INJECT: parse-workflow-ref
-
       - name: Generate versions and naming
         id: generate
         uses: ./.github/buildon-github-actions/src/actions/versions-and-naming
         with:
           default-branch: ${{ inputs.default-branch }}
-          patch-branches: ${{ inputs.patch-branches }}
+          additional-release-branches: ${{ inputs.additional-release-branches }}
           max-version-parts: ${{ inputs.max-version-parts }}

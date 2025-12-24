@@ -10,7 +10,7 @@ inputs:
     description: 'The default/release branch name'
     required: false
     default: 'main'
-  patch-branches:
+  additional-release-branches:
     description: 'Comma-separated list of additional release branch patterns'
     required: false
     default: ''
@@ -63,6 +63,6 @@ runs:
       env:
         LOG_ERROR_PREFIX: '::error::'
         DEFAULT_BRANCH: ${{ inputs.default-branch }}
-        PATCH_BRANCHES: ${{ inputs.patch-branches }}
+        ADDITIONAL_RELEASE_BRANCHES: ${{ inputs.additional-release-branches }}
         MAX_VERSION_PARTS: ${{ inputs.max-version-parts }}
       run: "${{ github.action_path }}/../../scripts/versions-and-naming"

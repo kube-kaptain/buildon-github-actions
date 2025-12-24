@@ -2,7 +2,6 @@
 # Copyright (c) 2025 Kaptain contributors (Fred Cooke)
 
 name: Basic Quality and Versioning
-
 on:
   workflow_call:
     inputs:
@@ -11,8 +10,8 @@ on:
         required: false
         type: string
         default: 'main'
-      patch-branches:
-        description: 'Comma-separated list of allowed target branches beyond default'
+      additional-release-branches:
+        description: 'Comma-separated list of additional release branches'
         required: false
         type: string
         default: ''
@@ -85,7 +84,6 @@ on:
       project-name:
         description: 'The repository/project name'
         value: ${{ jobs.versions-and-naming.outputs.project-name }}
-
 jobs:
   basic-quality-checks:
     name: Basic Quality Checks
@@ -98,7 +96,6 @@ jobs:
           fetch-depth: 0
           fetch-tags: true
           ref: ${{ github.event.pull_request.head.sha }}
-
       - name: Parse workflow ref
         id: parse
         run: |
@@ -154,18 +151,16 @@ jobs:
         run: |
           echo "Linking local actions for dogfooding"
           ln -s "$(pwd)" .github/buildon-github-actions
-
       - name: Basic quality checks
         uses: ./.github/buildon-github-actions/src/actions/basic-quality-checks
         with:
           default-branch: ${{ inputs.default-branch }}
-          patch-branches: ${{ inputs.patch-branches }}
+          additional-release-branches: ${{ inputs.additional-release-branches }}
           block-slashes: ${{ inputs.block-slashes }}
           block-double-hyphens: ${{ inputs.block-double-hyphens }}
           require-conventional-branches: ${{ inputs.require-conventional-branches }}
           require-conventional-commits: ${{ inputs.require-conventional-commits }}
           block-conventional-commits: ${{ inputs.block-conventional-commits }}
-
   pre-tagging-tests:
     name: Pre-tagging Tests
     needs: basic-quality-checks
@@ -174,7 +169,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4.2.2
-
       - name: Parse workflow ref
         id: parse
         run: |
@@ -230,12 +224,10 @@ jobs:
         run: |
           echo "Linking local actions for dogfooding"
           ln -s "$(pwd)" .github/buildon-github-actions
-
       - name: Run pre-tagging tests
         uses: ./.github/buildon-github-actions/src/actions/run-test-script
         with:
           script-sub-path: ${{ inputs.pre-tagging-tests-script-sub-path }}
-
   versions-and-naming:
     name: Versions & Naming
     needs: pre-tagging-tests
@@ -261,7 +253,6 @@ jobs:
         with:
           fetch-depth: 0
           fetch-tags: true
-
       - name: Parse workflow ref
         id: parse
         run: |
@@ -317,11 +308,10 @@ jobs:
         run: |
           echo "Linking local actions for dogfooding"
           ln -s "$(pwd)" .github/buildon-github-actions
-
       - name: Generate versions and naming
         id: generate
         uses: ./.github/buildon-github-actions/src/actions/versions-and-naming
         with:
           default-branch: ${{ inputs.default-branch }}
-          patch-branches: ${{ inputs.patch-branches }}
+          additional-release-branches: ${{ inputs.additional-release-branches }}
           max-version-parts: ${{ inputs.max-version-parts }}

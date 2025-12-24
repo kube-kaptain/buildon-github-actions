@@ -2,7 +2,6 @@
 # Copyright (c) 2025 Kaptain contributors (Fred Cooke)
 
 name: Docker Build Dockerfile
-
 on:
   workflow_call:
     inputs:
@@ -44,8 +43,8 @@ on:
         required: false
         type: string
         default: 'main'
-      patch-branches:
-        description: 'Comma-separated list of additional release branch patterns'
+      additional-release-branches:
+        description: 'Comma-separated list of additional release branches'
         required: false
         type: string
         default: ''
@@ -117,7 +116,6 @@ on:
       image-pushed:
         description: 'Whether image was pushed'
         value: ${{ jobs.docker-build-dockerfile.outputs.image-pushed }}
-
 jobs:
   basic-quality-checks:
     name: Basic Quality Checks
@@ -130,7 +128,6 @@ jobs:
           fetch-depth: 0
           fetch-tags: true
           ref: ${{ github.event.pull_request.head.sha }}
-
       - name: Parse workflow ref
         id: parse
         run: |
@@ -186,18 +183,16 @@ jobs:
         run: |
           echo "Linking local actions for dogfooding"
           ln -s "$(pwd)" .github/buildon-github-actions
-
       - name: Basic quality checks
         uses: ./.github/buildon-github-actions/src/actions/basic-quality-checks
         with:
           default-branch: ${{ inputs.default-branch }}
-          patch-branches: ${{ inputs.patch-branches }}
+          additional-release-branches: ${{ inputs.additional-release-branches }}
           block-slashes: ${{ inputs.block-slashes }}
           block-double-hyphens: ${{ inputs.block-double-hyphens }}
           require-conventional-branches: ${{ inputs.require-conventional-branches }}
           require-conventional-commits: ${{ inputs.require-conventional-commits }}
           block-conventional-commits: ${{ inputs.block-conventional-commits }}
-
   pre-tagging-tests:
     name: Pre-tagging Tests
     needs: basic-quality-checks
@@ -206,7 +201,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4.2.2
-
       - name: Parse workflow ref
         id: parse
         run: |
@@ -262,12 +256,10 @@ jobs:
         run: |
           echo "Linking local actions for dogfooding"
           ln -s "$(pwd)" .github/buildon-github-actions
-
       - name: Run pre-tagging tests
         uses: ./.github/buildon-github-actions/src/actions/run-test-script
         with:
           script-sub-path: ${{ inputs.pre-tagging-tests-script-sub-path }}
-
   versions-and-naming:
     name: Versions & Naming
     needs: pre-tagging-tests
@@ -287,7 +279,6 @@ jobs:
         with:
           fetch-depth: 0
           fetch-tags: true
-
       - name: Parse workflow ref
         id: parse
         run: |
@@ -343,15 +334,13 @@ jobs:
         run: |
           echo "Linking local actions for dogfooding"
           ln -s "$(pwd)" .github/buildon-github-actions
-
       - name: Generate versions and naming
         id: generate
         uses: ./.github/buildon-github-actions/src/actions/versions-and-naming
         with:
           default-branch: ${{ inputs.default-branch }}
-          patch-branches: ${{ inputs.patch-branches }}
+          additional-release-branches: ${{ inputs.additional-release-branches }}
           max-version-parts: ${{ inputs.max-version-parts }}
-
   docker-build-dockerfile:
     name: Docker Build Dockerfile
     needs: versions-and-naming
@@ -365,7 +354,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4.2.2
-
       - name: Parse workflow ref
         id: parse
         run: |
@@ -421,14 +409,12 @@ jobs:
         run: |
           echo "Linking local actions for dogfooding"
           ln -s "$(pwd)" .github/buildon-github-actions
-
       - name: Login to target registry
         uses: docker/login-action@v3.3.0
         with:
           registry: ${{ inputs.target-registry }}
           username: ${{ secrets.target-username || github.actor }}
           password: ${{ secrets.target-password || github.token }}
-
       - name: Build image
         id: build
         uses: ./.github/buildon-github-actions/src/actions/docker-build-dockerfile
@@ -443,7 +429,6 @@ jobs:
           squash: ${{ inputs.squash }}
           no-cache: ${{ inputs.no-cache }}
           confirm-image-doesnt-exist: ${{ inputs.confirm-image-doesnt-exist }}
-
       - name: Run post-docker tests
         if: inputs.post-docker-tests-script-sub-path != ''
         uses: ./.github/buildon-github-actions/src/actions/run-test-script
@@ -455,7 +440,6 @@ jobs:
           project-name: ${{ needs.versions-and-naming.outputs.project-name }}
           is-release: ${{ needs.versions-and-naming.outputs.is-release }}
           target-image-full-uri: ${{ steps.build.outputs.target-image-full-uri }}
-
       - name: Push image
         id: push
         if: needs.versions-and-naming.outputs.is-release == 'true'

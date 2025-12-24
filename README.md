@@ -36,12 +36,13 @@ See [`examples/`](examples/) for more usage patterns.
 | [`basic-quality-and-versioning.yaml`](examples/basic-quality-and-versioning.yaml) | Standard setup: PR quality checks + push versioning |
 | [`quality-only.yaml`](examples/quality-only.yaml) | Quality enforcement without tagging |
 | [`versions-and-naming.yaml`](examples/versions-and-naming.yaml) | Version tagging without quality checks |
-| [`patch-branches.yaml`](examples/patch-branches.yaml) | Hotfix workflow with 4-part versions |
+| [`additional-release-branches.yaml`](examples/additional-release-branches.yaml) | Hotfix workflow with 4-part versions |
 | [`docker-build-retag.yaml`](examples/docker-build-retag.yaml) | Vendor upstream images to your GHCR |
 | [`docker-build-retag-base-path.yaml`](examples/docker-build-retag-base-path.yaml) | Custom base path for image organization |
 | [`docker-build-retag-custom-registry.yaml`](examples/docker-build-retag-custom-registry.yaml) | Retag to Artifactory, ECR, or other registries |
 | [`docker-build-dockerfile.yaml`](examples/docker-build-dockerfile.yaml) | Build from Dockerfile with --squash (default) |
 | [`docker-build-dockerfile-no-squash.yaml`](examples/docker-build-dockerfile-no-squash.yaml) | Build from Dockerfile without --squash |
+| [`optional-test-scripts.yaml`](examples/optional-test-scripts.yaml) | Inject pre-tagging and post-docker test scripts |
 
 ## Components
 
@@ -66,12 +67,52 @@ See [`examples/`](examples/) for more usage patterns.
 
 ## Configuration
 
-| Input | Default | Description |
-|-------|---------|-------------|
-| `default-branch` | `main` | The release branch name |
-| `patch-branches` | `""` | Comma-separated patterns for additional release branches |
-| `block-slashes` | `false` | Block `/` in branch names |
-| `max-version-parts` | `3` | Maximum version depth (set to 4 for patch branches) |
+### All Inputs
+
+<!-- INPUTS-START -->
+| Input | Type | Default | Description |
+|-------|------|---------|-------------|
+| `additional-release-branches` | string | `""` | Comma-separated list of additional release branches |
+| `block-conventional-commits` | boolean | `false` | Block commits that use conventional commit format |
+| `block-double-hyphens` | boolean | `true` | Block branch names containing double hyphens (typo detection) |
+| `block-slashes` | boolean | `false` | Block branch names containing slashes |
+| `confirm-image-doesnt-exist` | boolean | `true` | Fail if target image already exists in registry |
+| `default-branch` | string | `main` | The default/release branch name |
+| `dockerfile-path` | string | `src/docker` | Directory containing Dockerfile (also used as build context) |
+| `max-version-parts` | number | `3` | Maximum allowed version parts (fail if exceeded) |
+| `no-cache` | boolean | `true` | Disable layer caching for reproducible builds |
+| `post-docker-tests-script-sub-path` | string | `""` | Path to post-docker test script relative to .github/ (e.g., bin/post-docker.bash) |
+| `pre-tagging-tests-script-sub-path` | string | `""` | Path to pre-tagging test script relative to .github/ (e.g., bin/pre-tagging.bash) |
+| `require-conventional-branches` | boolean | `false` | Require branch names start with feature/, fix/, etc. |
+| `require-conventional-commits` | boolean | `false` | Require commits use conventional commit format (feat:, fix:, etc.) |
+| `source-image-name` | string | *required* | Upstream image name (e.g., library/nginx) |
+| `source-registry` | string | *required* | Upstream registry (e.g., docker.io) |
+| `source-tag` | string | *required* | Upstream image tag (e.g., 1.25) |
+| `squash` | boolean | `true` | Enable --squash (requires experimental mode) |
+| `target-base-path` | string | `""` | Path between registry and image name (auto-set for GHCR) |
+| `target-registry` | string | `ghcr.io` | Target container registry |
+<!-- INPUTS-END -->
+
+### Secrets
+
+<!-- SECRETS-START -->
+| Secret | Description |
+|--------|-------------|
+| `target-password` | Password/token for target registry (defaults to GITHUB_TOKEN for GHCR) |
+| `target-username` | Username for target registry (defaults to github.actor for GHCR) |
+<!-- SECRETS-END -->
+
+### Workflow Documentation
+
+<!-- WORKFLOW-DOCS-START -->
+| Workflow | Description | Documentation |
+|----------|-------------|---------------|
+| `basic-quality-and-versioning.yaml` | Basic Quality and Versioning | [docs/basic-quality-and-versioning.md](docs/basic-quality-and-versioning.md) |
+| `basic-quality-checks.yaml` | Basic Quality Checks | [docs/basic-quality-checks.md](docs/basic-quality-checks.md) |
+| `docker-build-dockerfile.yaml` | Docker Build Dockerfile | [docs/docker-build-dockerfile.md](docs/docker-build-dockerfile.md) |
+| `docker-build-retag.yaml` | Docker Build Retag | [docs/docker-build-retag.md](docs/docker-build-retag.md) |
+| `versions-and-naming.yaml` | Versions & Naming | [docs/versions-and-naming.md](docs/versions-and-naming.md) |
+<!-- WORKFLOW-DOCS-END -->
 
 ## Versioning
 
@@ -124,19 +165,45 @@ This means:
 
 ## Quality Checks
 
-The quality action blocks:
+### Always On (cannot be disabled)
 
-- GitHub default branch names (`user-patch-1`)
-- GitHub UI commit messages (`Update filename`, `Create filename`, `Delete filename`)
-- Merge commits (require rebase workflow)
-- Branches not rebased on target
-- PRs targeting non-allowed branches
+| Check | Blocks | Why |
+|-------|--------|-----|
+| GitHub default branch names | `user-patch-1` patterns | Forces descriptive branch names |
+| GitHub UI commit messages | `Update filename`, `Create filename`, `Delete filename` | Forces descriptive commit messages |
+| Merge commits | Any commit with 2+ parents | Enforces rebase workflow |
+| Branch up to date | Branch that are out of date and need to be rebased | Must be fast-forward to guarantee correct test results |
+| Invalid PR target | PRs targeting non-allowed branches | Enforces release branch discipline |
+
+### Default On (can be disabled)
+
+| Check | Input | Default | Blocks |
+|-------|-------|---------|--------|
+| Double hyphens | `block-double-hyphens` | `true` | `--` in branch names (typo detection) |
+
+### Default Off (opt-in)
+
+| Check | Input | Default | Requires/Blocks |
+|-------|-------|---------|-----------------|
+| Slashes | `block-slashes` | `false` | Blocks `/` in branch names |
+| Conventional branches | `require-conventional-branches` | `false` | Requires `feature/`, `feat/`, `bugfix/`, `fix/`, `hotfix/`, `release/`, `chore/` prefix |
+| Conventional commits | `require-conventional-commits` | `false` | Requires `build:`, `chore:`, `ci:`, `docs:`, `feat:`, `fix:`, `perf:`, `refactor:`, `revert:`, `style:`, `test:` prefix |
+| Block conventional | `block-conventional-commits` | `false` | Blocks conventional commit format |
 
 ## Development
 
 ```bash
-.github/bin/run-tests.bash
+src/bin/assemble-workflows.bash  # Regenerate workflows and docs only - no tests
+.github/bin/run-tests.bash       # Run shellcheck, executable checks, BATS tests, etc AND regenerate as above
 ```
+
+The assemble script:
+1. Lints workflow templates for input consistency
+2. Generates `.github/workflows/*.yaml` from `src/workflow-templates/`
+3. Generates `docs/*.md` for each workflow
+4. Updates README tables between markers
+
+Run after modifying templates. Commit the generated workflows, generated docs/ and updated README.md along with the associated source files you changed.
 
 ## Project Licensing
 

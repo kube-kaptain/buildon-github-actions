@@ -12,13 +12,13 @@
 #
 set -euo pipefail
 
-# Logging configuration (CI-agnostic, actions inject platform-specific values)
+# Logging configuration (CI-agnostic)
 LOG_ERROR_PREFIX="${LOG_ERROR_PREFIX:-}"
 LOG_ERROR_SUFFIX="${LOG_ERROR_SUFFIX:-}"
 
 # Configuration with defaults
 DEFAULT_BRANCH="${DEFAULT_BRANCH:-main}"
-PATCH_BRANCHES="${PATCH_BRANCHES:-}"  # Comma-separated list of patch branch patterns
+ADDITIONAL_RELEASE_BRANCHES="${ADDITIONAL_RELEASE_BRANCHES:-}"  # Comma-separated list of additional release branches
 MAX_VERSION_PARTS="${MAX_VERSION_PARTS:-3}"  # Fail if version exceeds this many parts
 
 # Get current branch
@@ -40,12 +40,11 @@ is_release_branch() {
     return 0
   fi
 
-  # Check if it matches any patch branch pattern
-  if [[ -n "$PATCH_BRANCHES" ]]; then
-    IFS=',' read -ra patterns <<< "$PATCH_BRANCHES"
-    for pattern in "${patterns[@]}"; do
-      # shellcheck disable=SC2053
-      if [[ "$current_branch" == $pattern ]]; then
+  # Check if it matches any additional release branch
+  if [[ -n "$ADDITIONAL_RELEASE_BRANCHES" ]]; then
+    IFS=',' read -ra branches <<< "$ADDITIONAL_RELEASE_BRANCHES"
+    for branch in "${branches[@]}"; do
+      if [[ "$current_branch" == "$branch" ]]; then
         return 0
       fi
     done
