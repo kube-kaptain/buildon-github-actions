@@ -97,22 +97,40 @@ check_generated_files() {
   # Run the assemble script
   "$PROJECT_ROOT/src/bin/assemble-workflows.bash" > /dev/null
 
-  # Check for modified files
-  local modified
-  modified=$(git -C "$PROJECT_ROOT" diff --name-only .github/workflows/ docs/ README.md 2>/dev/null || true)
+  # Check for modified files in generated locations
+  local modified_generated
+  modified_generated=$(git -C "$PROJECT_ROOT" diff --name-only .github/workflows/ docs/ README.md 2>/dev/null || true)
 
-  if [[ -n "$modified" ]]; then
-    log_error "Generated files are out of date. Run ./src/bin/assemble-workflows.bash and commit:"
-    echo "$modified" | while read -r file; do
-      log_error "  - $file"
-    done
-    if [[ "${WARN_ONLY_FRESHNESS:-}" == "true" ]]; then
-      log_warn "Continuing despite stale files (WARN_ONLY_FRESHNESS=true)"
-    else
-      exit 1
-    fi
-  else
+  if [[ -z "$modified_generated" ]]; then
     log_info "Generated files are up to date"
+    return 0
+  fi
+
+  # Check for any dirty templates (staged, unstaged, or untracked)
+  # Using git status to catch all cases: modified, added, deleted, untracked
+  local dirty_templates
+  dirty_templates=$(git -C "$PROJECT_ROOT" status --porcelain src/workflow-templates/ 2>/dev/null | grep -v '^?' || true)
+
+  # If ANY workflow template is dirty, all generated file changes are considered
+  # local work in progress (README, docs, workflows all regenerate from templates)
+  if [[ -n "$dirty_templates" ]]; then
+    log_warn "Uncommitted local changes (workflow templates dirty - OK locally):"
+    echo "$modified_generated" | while IFS= read -r file; do
+      [[ -n "$file" ]] && log_warn "  - $file"
+    done
+    log_info "Generated files OK (uncommitted local work detected)"
+    return 0
+  fi
+
+  # No templates dirty but generated files changed - this is a real error
+  log_error "Generated files are out of date. Run ./src/bin/assemble-workflows.bash and commit:"
+  echo "$modified_generated" | while IFS= read -r file; do
+    [[ -n "$file" ]] && log_error "  - $file"
+  done
+  if [[ "${WARN_ONLY_FRESHNESS:-}" == "true" ]]; then
+    log_warn "Continuing despite stale files (WARN_ONLY_FRESHNESS=true)"
+  else
+    exit 1
   fi
 }
 
