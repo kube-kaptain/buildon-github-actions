@@ -46,7 +46,7 @@ run_docker() {
     -v "$PROJECT_ROOT:/workspace" \
     -w /workspace/src/test \
     -e "PROJECT_ROOT=/workspace" \
-    bats/bats:latest \
+    "bats/bats:1.13.0" \
     --tap *.bats
 }
 
@@ -88,6 +88,32 @@ check_executables() {
   fi
 
   log_info "All scripts executable"
+}
+
+# Check generated files are up to date
+check_generated_files() {
+  log_info "Checking generated files are up to date"
+
+  # Run the assemble script
+  "$PROJECT_ROOT/src/bin/assemble-workflows.bash" > /dev/null
+
+  # Check for modified files
+  local modified
+  modified=$(git -C "$PROJECT_ROOT" diff --name-only .github/workflows/ docs/ README.md 2>/dev/null || true)
+
+  if [[ -n "$modified" ]]; then
+    log_error "Generated files are out of date. Run ./src/bin/assemble-workflows.bash and commit:"
+    echo "$modified" | while read -r file; do
+      log_error "  - $file"
+    done
+    if [[ "${WARN_ONLY_FRESHNESS:-}" == "true" ]]; then
+      log_warn "Continuing despite stale files (WARN_ONLY_FRESHNESS=true)"
+    else
+      exit 1
+    fi
+  else
+    log_info "Generated files are up to date"
+  fi
 }
 
 # Run shellcheck on all scripts
@@ -134,6 +160,9 @@ main() {
     log_error "Neither BATS nor Docker available. Cannot run tests."
     exit 1
   fi
+
+  # Check generated files are up to date (last, so real tests run first)
+  check_generated_files
 
   log_info "All tests passed!"
 }
