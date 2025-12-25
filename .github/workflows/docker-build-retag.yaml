@@ -264,6 +264,7 @@ jobs:
   docker-build-retag:
     name: Docker Build Retag
     needs: versions-and-naming
+    if: always() && needs.versions-and-naming.result == 'success'
     runs-on: ubuntu-24.04
     permissions:
       contents: read

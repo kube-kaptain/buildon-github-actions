@@ -381,6 +381,7 @@ jobs:
   docker-build-retag:
     name: Docker Retag
     needs: versions-and-naming
+    if: always() && needs.versions-and-naming.result == 'success'
     runs-on: ubuntu-24.04
     permissions:
       contents: read
@@ -469,6 +470,7 @@ jobs:
   kubernetes-manifest-package:
     name: Package Manifests
     needs: versions-and-naming
+    if: always() && needs.versions-and-naming.result == 'success'
     runs-on: ubuntu-24.04
     outputs:
       manifest-zip-path: ${{ steps.package.outputs.manifest-zip-path }}
@@ -551,7 +553,7 @@ jobs:
   post-package-tests:
     name: Post-package Tests
     needs: [versions-and-naming, kubernetes-manifest-package]
-    if: inputs.post-package-tests-script-sub-path != ''
+    if: always() && inputs.post-package-tests-script-sub-path != '' && needs.kubernetes-manifest-package.result == 'success'
     runs-on: ubuntu-24.04
     steps:
       - name: Checkout
