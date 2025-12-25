@@ -20,7 +20,7 @@ on:
 
 jobs:
   retag:
-    uses: kube-kaptain/buildon-github-actions/.github/workflows/docker-build-retag.yaml@1.0.2
+    uses: kube-kaptain/buildon-github-actions/.github/workflows/docker-build-retag.yaml@1.0.11
     permissions:
       contents: write
       packages: write
@@ -28,7 +28,58 @@ jobs:
       source-registry: docker.io
       source-image-name: library/nginx
       source-tag: '1.27'
-      target-registry: myregistory.example.com
+      target-registry: myregistry.example.com
     secrets:
       target-username: ${{ secrets.MYREGISTRY_USER }}
       target-password: ${{ secrets.MYREGISTRY_TOKEN }}
+
+# ┌───────────────────────────────────────────────────────────────────────────┐
+# │ All Available Options                                                     │
+# │ Uncomment and add to the job above as needed                              │
+# └───────────────────────────────────────────────────────────────────────────┘
+
+# ┌─────────────────────────────────────────────────────────────────────────┐
+# │ Source Image (REQUIRED)                                                 │
+# └─────────────────────────────────────────────────────────────────────────┘
+#     with:
+#       source-registry: docker.io
+#       source-image-name: library/alpine
+#       source-tag: '3.21'
+
+# ┌─────────────────────────────────────────────────────────────────────────┐
+# │ Target Registry                                                         │
+# └─────────────────────────────────────────────────────────────────────────┘
+#     with:
+#       target-registry: 'myregistry.example.com'  # ecr, gcr, harbor, nexus
+#       target-base-path: 'my-team/vendored'
+#       confirm-image-doesnt-exist: false  # true
+
+# ┌─────────────────────────────────────────────────────────────────────────┐
+# │ Branch Configuration                                                    │
+# └─────────────────────────────────────────────────────────────────────────┘
+#     with:
+#       default-branch: 'master'  # Default is main, use whatever you want
+#       additional-release-branches: 'main-1.x,main-2.x'
+
+# ┌─────────────────────────────────────────────────────────────────────────┐
+# │ Quality Checks                                                          │
+# └─────────────────────────────────────────────────────────────────────────┘
+#     with:
+#       block-slashes: true                  # Default is false
+#       block-double-hyphens: false          # Default is true
+#       require-conventional-branches: true  # Default is false
+#       require-conventional-commits: true   # Default is false
+#       block-conventional-commits: true     # Default is false
+
+# ┌─────────────────────────────────────────────────────────────────────────┐
+# │ Version Configuration                                                   │
+# └─────────────────────────────────────────────────────────────────────────┘
+#     with:
+#       max-version-parts: 2  # Default is 3, but any positive integer 1 or higher is valid
+
+# ┌─────────────────────────────────────────────────────────────────────────┐
+# │ Registry Credentials                                                    │
+# └─────────────────────────────────────────────────────────────────────────┘
+#     secrets:
+#       target-username: ${{ secrets.REGISTRY_USER }}
+#       target-password: ${{ secrets.REGISTRY_TOKEN }}

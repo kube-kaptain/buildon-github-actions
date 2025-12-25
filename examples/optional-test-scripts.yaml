@@ -5,19 +5,15 @@
 #
 # Shows how to add custom test scripts to workflows that support them.
 #
-# Available inputs and workflows that support them:
-# - pre-tagging-tests-script-sub-path:  basic-quality-and-versioning, docker-build-dockerfile
-# - post-docker-tests-script-sub-path:  docker-build-dockerfile
+# Available inputs to configure test hoooks and workflow support guidance:
+# - pre-tagging-tests-script-sub-path:  Runs before version tagging in almost all workflows
+# - post-docker-tests-script-sub-path:  Runs after docker build in any workflow that includes a docker build (not retag)
 #
 # Scripts must be:
 # - Located under .github/ (the input is a sub-path from there)
 # - Executable (chmod +x)
 #
-# Post-docker tests receive environment variables:
-# - VERSION, VERSION_MAJOR, VERSION_MINOR, VERSION_PATCH
-# - VERSION_2_PART, VERSION_3_PART, VERSION_4_PART
-# - DOCKER_TAG, DOCKER_IMAGE_NAME, PROJECT_NAME, IS_RELEASE
-# - TARGET_IMAGE_FULL_URI (the locally-built image to test)
+# Available variables depends on which workflow - please check the docs/ folder for the workflow you're using
 #
 # Copy this to .github/workflows/build.yaml in your repo.
 
@@ -31,10 +27,68 @@ on:
 
 jobs:
   build:
-    uses: kube-kaptain/buildon-github-actions/.github/workflows/docker-build-dockerfile.yaml@1.0.2
+    uses: kube-kaptain/buildon-github-actions/.github/workflows/docker-build-dockerfile.yaml@1.0.11
     permissions:
       contents: write
       packages: write
     with:
       pre-tagging-tests-script-sub-path: bin/run-tests.bash
       post-docker-tests-script-sub-path: bin/test-container.bash
+
+# ┌───────────────────────────────────────────────────────────────────────────┐
+# │ All Available Options                                                     │
+# │ Uncomment and add to the job above as needed                              │
+# └───────────────────────────────────────────────────────────────────────────┘
+
+# ┌─────────────────────────────────────────────────────────────────────────┐
+# │ Dockerfile Configuration                                                │
+# └─────────────────────────────────────────────────────────────────────────┘
+#     with:
+#       dockerfile-path: 'docker'  # 'build', '.'
+#       squash: false  # true
+#       no-cache: true  # false
+
+# ┌─────────────────────────────────────────────────────────────────────────┐
+# │ Target Registry                                                         │
+# └─────────────────────────────────────────────────────────────────────────┘
+#     with:
+#       target-registry: 'myregistry.example.com'  # ecr, gcr, harbor, nexus
+#       target-base-path: 'my-team/images'
+#       confirm-image-doesnt-exist: false  # true
+
+# ┌─────────────────────────────────────────────────────────────────────────┐
+# │ Branch Configuration                                                    │
+# └─────────────────────────────────────────────────────────────────────────┘
+#     with:
+#       default-branch: 'master'  # Default is main, use whatever you want
+#       additional-release-branches: 'main-1.x,main-2.x'
+
+# ┌─────────────────────────────────────────────────────────────────────────┐
+# │ Quality Checks                                                          │
+# └─────────────────────────────────────────────────────────────────────────┘
+#     with:
+#       block-slashes: true                  # Default is false
+#       block-double-hyphens: false          # Default is true
+#       require-conventional-branches: true  # Default is false
+#       require-conventional-commits: true   # Default is false
+#       block-conventional-commits: true     # Default is false
+
+# ┌─────────────────────────────────────────────────────────────────────────┐
+# │ Version Configuration                                                   │
+# └─────────────────────────────────────────────────────────────────────────┘
+#     with:
+#       max-version-parts: 2  # Default is 3, but any positive integer 1 or higher is valid
+
+# ┌─────────────────────────────────────────────────────────────────────────┐
+# │ Test Injection                                                          │
+# └─────────────────────────────────────────────────────────────────────────┘
+#     with:
+#       pre-tagging-tests-script-sub-path: 'bin/run-tests.bash'
+#       post-docker-tests-script-sub-path: 'bin/test-container.bash'
+
+# ┌─────────────────────────────────────────────────────────────────────────┐
+# │ Registry Credentials                                                    │
+# └─────────────────────────────────────────────────────────────────────────┘
+#     secrets:
+#       target-username: ${{ secrets.REGISTRY_USER }}
+#       target-password: ${{ secrets.REGISTRY_TOKEN }}
