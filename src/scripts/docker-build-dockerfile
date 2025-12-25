@@ -141,6 +141,8 @@ main() {
   # Enable experimental mode if squash requested
   if [[ "$SQUASH" == "true" ]]; then
     enable_experimental
+    # Disable BuildKit - it doesn't support --squash (just warns and builds fat images)
+    export DOCKER_BUILDKIT=0
   fi
 
   # Build command
