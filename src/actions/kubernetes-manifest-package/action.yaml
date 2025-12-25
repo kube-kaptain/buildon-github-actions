@@ -1,0 +1,64 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025 Kaptain contributors (Fred Cooke)
+
+name: 'Kubernetes Manifest Package'
+description: 'Packages Kubernetes manifests into a zip with variable substitution'
+author: 'kube-kaptain'
+
+inputs:
+  manifests-path:
+    description: 'Directory containing Kubernetes manifests'
+    required: false
+    default: 'src/kubernetes'
+  project-name:
+    description: 'Project name for variable substitution'
+    required: true
+  version:
+    description: 'Version for variable substitution and naming'
+    required: true
+  output-path:
+    description: 'Build output directory'
+    required: false
+    default: 'target'
+  docker-tag:
+    description: 'Docker tag for variable substitution (optional)'
+    required: false
+    default: ''
+  docker-image-name:
+    description: 'Docker image name for variable substitution (optional)'
+    required: false
+    default: ''
+  substitution-token-style:
+    description: 'Token delimiter syntax for variables (shell)'
+    required: false
+    default: 'shell'
+  substitution-output-style:
+    description: 'Case style for variable names in manifests (UPPER_SNAKE, lower_snake, kebab-case, camelCase, PascalCase)'
+    required: false
+    default: 'UPPER_SNAKE'
+
+outputs:
+  manifest-zip-path:
+    description: 'Full path to created zip file'
+    value: ${{ steps.package.outputs.MANIFEST_ZIP_PATH }}
+  manifest-zip-name:
+    description: 'Filename of the zip'
+    value: ${{ steps.package.outputs.MANIFEST_ZIP_NAME }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Package manifests
+      id: package
+      shell: bash
+      env:
+        LOG_ERROR_PREFIX: '::error::'
+        MANIFESTS_PATH: ${{ inputs.manifests-path }}
+        PROJECT_NAME: ${{ inputs.project-name }}
+        VERSION: ${{ inputs.version }}
+        OUTPUT_PATH: ${{ inputs.output-path }}
+        DOCKER_TAG: ${{ inputs.docker-tag }}
+        DOCKER_IMAGE_NAME: ${{ inputs.docker-image-name }}
+        SUBSTITUTION_TOKEN_STYLE: ${{ inputs.substitution-token-style }}
+        SUBSTITUTION_OUTPUT_STYLE: ${{ inputs.substitution-output-style }}
+      run: "${{ github.action_path }}/../../scripts/kubernetes-manifest-package"

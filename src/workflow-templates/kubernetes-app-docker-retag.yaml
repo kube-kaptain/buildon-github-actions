@@ -1,0 +1,342 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025 Kaptain contributors (Fred Cooke)
+
+name: Kubernetes App - Docker Retag
+on:
+  workflow_call:
+    inputs:
+      # Source image configuration
+      source-registry:
+        description: 'Upstream registry (e.g., docker.io)'
+        required: true
+        type: string
+      source-image-name:
+        description: 'Upstream image name (e.g., library/nginx)'
+        required: true
+        type: string
+      source-tag:
+        description: 'Upstream image tag (e.g., 1.25)'
+        required: true
+        type: string
+      # Manifest configuration
+      manifests-path:
+        description: 'Directory containing Kubernetes manifests'
+        required: false
+        type: string
+        default: 'src/kubernetes'
+      substitution-token-style:
+        description: 'Token delimiter syntax for variables (shell)'
+        required: false
+        type: string
+        default: 'shell'
+      substitution-output-style:
+        description: 'Case style for variable names in manifests (UPPER_SNAKE, lower_snake, kebab-case, camelCase, PascalCase)'
+        required: false
+        type: string
+        default: 'UPPER_SNAKE'
+      # Transport configuration (required - no default)
+      manifest-transport:
+        description: 'Transport type for manifest storage (docker, github-release). Required - consumer must choose.'
+        required: true
+        type: string
+      # Target configuration
+      target-registry:
+        description: 'Target container registry'
+        required: false
+        type: string
+        default: 'ghcr.io'
+      target-base-path:
+        description: 'Path between registry and image name (auto-set for GHCR)'
+        required: false
+        type: string
+        default: ''
+      confirm-image-doesnt-exist:
+        description: 'Fail if target image already exists in registry'
+        required: false
+        type: boolean
+        default: true
+      # Version generator inputs (pass-through)
+      default-branch:
+        description: 'The default/release branch name'
+        required: false
+        type: string
+        default: 'main'
+      additional-release-branches:
+        description: 'Comma-separated list of additional release branches'
+        required: false
+        type: string
+        default: ''
+      max-version-parts:
+        description: 'Maximum allowed version parts (fail if exceeded)'
+        required: false
+        type: number
+        default: 3
+      # Quality check inputs
+      block-slashes:
+        description: 'Block branch names containing slashes'
+        required: false
+        type: boolean
+        default: false
+      block-double-hyphens:
+        description: 'Block branch names containing double hyphens (typo detection)'
+        required: false
+        type: boolean
+        default: true
+      require-conventional-branches:
+        description: 'Require branch names start with feature/, fix/, etc.'
+        required: false
+        type: boolean
+        default: false
+      require-conventional-commits:
+        description: 'Require commits use conventional commit format (feat:, fix:, etc.)'
+        required: false
+        type: boolean
+        default: false
+      block-conventional-commits:
+        description: 'Block commits that use conventional commit format'
+        required: false
+        type: boolean
+        default: false
+      # Test injection points
+      pre-tagging-tests-script-sub-path:
+        description: 'Path to pre-tagging test script relative to .github/ (e.g., bin/pre-tagging.bash)'
+        required: false
+        type: string
+        default: ''
+      post-package-tests-script-sub-path:
+        description: 'Path to post-package test script relative to .github/ (e.g., bin/post-package.bash)'
+        required: false
+        type: string
+        default: ''
+    secrets:
+      target-username:
+        description: 'Username for target registry (defaults to github.actor for GHCR)'
+        required: false
+      target-password:
+        description: 'Password/token for target registry (defaults to GITHUB_TOKEN for GHCR)'
+        required: false
+    outputs:
+      # Version outputs
+      version:
+        description: 'The generated version'
+        value: ${{ jobs.versions-and-naming.outputs.version }}
+      docker-tag:
+        description: 'Tag for Docker images'
+        value: ${{ jobs.versions-and-naming.outputs.docker-tag }}
+      docker-image-name:
+        description: 'Docker image name'
+        value: ${{ jobs.versions-and-naming.outputs.docker-image-name }}
+      is-release:
+        description: 'Whether this is a release build'
+        value: ${{ jobs.versions-and-naming.outputs.is-release }}
+      # Docker retag outputs
+      source-image-full-uri:
+        description: 'Full source image reference'
+        value: ${{ jobs.docker-build-retag.outputs.source-image-full-uri }}
+      docker-image-full-uri:
+        description: 'Full target docker image reference'
+        value: ${{ jobs.docker-build-retag.outputs.target-image-full-uri }}
+      docker-image-pushed:
+        description: 'Whether docker image was pushed'
+        value: ${{ jobs.docker-build-retag.outputs.image-pushed }}
+      # Manifest package outputs
+      manifest-zip-path:
+        description: 'Path to manifest zip file'
+        value: ${{ jobs.kubernetes-manifest-package.outputs.manifest-zip-path }}
+      manifest-zip-name:
+        description: 'Name of manifest zip file'
+        value: ${{ jobs.kubernetes-manifest-package.outputs.manifest-zip-name }}
+      # Manifest transport outputs
+      manifest-uri:
+        description: 'Reference to published manifests (format depends on transport)'
+        value: ${{ jobs.kubernetes-manifest-transport.outputs.manifest-uri }}
+      manifest-published:
+        description: 'Whether manifests were published'
+        value: ${{ jobs.kubernetes-manifest-transport.outputs.manifest-published }}
+jobs:
+  basic-quality-checks:
+    name: Basic Quality Checks
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4.2.2
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+          ref: ${{ github.event.pull_request.head.sha }}
+      # INJECT: parse-workflow-ref
+      - name: Basic quality checks
+        uses: ./.github/buildon-github-actions/src/actions/basic-quality-checks
+        with:
+          default-branch: ${{ inputs.default-branch }}
+          additional-release-branches: ${{ inputs.additional-release-branches }}
+          block-slashes: ${{ inputs.block-slashes }}
+          block-double-hyphens: ${{ inputs.block-double-hyphens }}
+          require-conventional-branches: ${{ inputs.require-conventional-branches }}
+          require-conventional-commits: ${{ inputs.require-conventional-commits }}
+          block-conventional-commits: ${{ inputs.block-conventional-commits }}
+  pre-tagging-tests:
+    name: Pre-tagging Tests
+    needs: basic-quality-checks
+    if: always() && inputs.pre-tagging-tests-script-sub-path != '' && (needs.basic-quality-checks.result == 'success' || needs.basic-quality-checks.result == 'skipped')
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4.2.2
+      # INJECT: parse-workflow-ref
+      - name: Run pre-tagging tests
+        uses: ./.github/buildon-github-actions/src/actions/run-test-script
+        with:
+          script-sub-path: ${{ inputs.pre-tagging-tests-script-sub-path }}
+  versions-and-naming:
+    name: Versions & Naming
+    needs: pre-tagging-tests
+    if: always() && (needs.pre-tagging-tests.result == 'success' || needs.pre-tagging-tests.result == 'skipped')
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    outputs:
+      version: ${{ steps.generate.outputs.version }}
+      docker-tag: ${{ steps.generate.outputs.docker-tag }}
+      docker-image-name: ${{ steps.generate.outputs.docker-image-name }}
+      project-name: ${{ steps.generate.outputs.project-name }}
+      is-release: ${{ steps.generate.outputs.is-release }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4.2.2
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+      # INJECT: parse-workflow-ref
+      - name: Generate versions and naming
+        id: generate
+        uses: ./.github/buildon-github-actions/src/actions/versions-and-naming
+        with:
+          default-branch: ${{ inputs.default-branch }}
+          additional-release-branches: ${{ inputs.additional-release-branches }}
+          max-version-parts: ${{ inputs.max-version-parts }}
+  docker-build-retag:
+    name: Docker Retag
+    needs: versions-and-naming
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      source-image-full-uri: ${{ steps.retag.outputs.source-image-full-uri }}
+      target-image-full-uri: ${{ steps.retag.outputs.target-image-full-uri }}
+      image-pushed: ${{ steps.retag.outputs.image-pushed }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4.2.2
+      # INJECT: parse-workflow-ref
+      - name: Login to target registry
+        uses: docker/login-action@v3.3.0
+        with:
+          registry: ${{ inputs.target-registry }}
+          username: ${{ secrets.target-username || github.actor }}
+          password: ${{ secrets.target-password || github.token }}
+      - name: Retag and push
+        id: retag
+        uses: ./.github/buildon-github-actions/src/actions/docker-build-retag
+        with:
+          source-registry: ${{ inputs.source-registry }}
+          source-image-name: ${{ inputs.source-image-name }}
+          source-tag: ${{ inputs.source-tag }}
+          target-registry: ${{ inputs.target-registry }}
+          target-base-path: ${{ inputs.target-base-path }}
+          target-image-name: ${{ needs.versions-and-naming.outputs.docker-image-name }}
+          docker-tag: ${{ needs.versions-and-naming.outputs.docker-tag }}
+          is-release: ${{ needs.versions-and-naming.outputs.is-release }}
+          confirm-image-doesnt-exist: ${{ inputs.confirm-image-doesnt-exist }}
+  kubernetes-manifest-package:
+    name: Package Manifests
+    needs: versions-and-naming
+    runs-on: ubuntu-24.04
+    outputs:
+      manifest-zip-path: ${{ steps.package.outputs.manifest-zip-path }}
+      manifest-zip-name: ${{ steps.package.outputs.manifest-zip-name }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4.2.2
+      # INJECT: parse-workflow-ref
+      - name: Package manifests
+        id: package
+        uses: ./.github/buildon-github-actions/src/actions/kubernetes-manifest-package
+        with:
+          manifests-path: ${{ inputs.manifests-path }}
+          project-name: ${{ needs.versions-and-naming.outputs.project-name }}
+          version: ${{ needs.versions-and-naming.outputs.version }}
+          docker-tag: ${{ needs.versions-and-naming.outputs.docker-tag }}
+          docker-image-name: ${{ needs.versions-and-naming.outputs.docker-image-name }}
+          substitution-token-style: ${{ inputs.substitution-token-style }}
+          substitution-output-style: ${{ inputs.substitution-output-style }}
+      - name: Upload manifest zip artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: manifests
+          path: ${{ steps.package.outputs.manifest-zip-path }}
+          retention-days: 1
+  post-package-tests:
+    name: Post-package Tests
+    needs: [versions-and-naming, kubernetes-manifest-package]
+    if: inputs.post-package-tests-script-sub-path != ''
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4.2.2
+      # INJECT: parse-workflow-ref
+      - name: Download manifest zip artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: manifests
+      - name: Run post-package tests
+        uses: ./.github/buildon-github-actions/src/actions/run-test-script
+        with:
+          script-sub-path: ${{ inputs.post-package-tests-script-sub-path }}
+          version: ${{ needs.versions-and-naming.outputs.version }}
+          docker-tag: ${{ needs.versions-and-naming.outputs.docker-tag }}
+          docker-image-name: ${{ needs.versions-and-naming.outputs.docker-image-name }}
+          project-name: ${{ needs.versions-and-naming.outputs.project-name }}
+          is-release: ${{ needs.versions-and-naming.outputs.is-release }}
+  kubernetes-manifest-transport:
+    name: Publish Manifests
+    needs: [versions-and-naming, docker-build-retag, kubernetes-manifest-package, post-package-tests]
+    if: always() && needs.docker-build-retag.result == 'success' && needs.kubernetes-manifest-package.result == 'success' && (needs.post-package-tests.result == 'success' || needs.post-package-tests.result == 'skipped')
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+      packages: write
+    outputs:
+      manifest-uri: ${{ steps.transport.outputs.manifest-uri }}
+      manifest-published: ${{ steps.transport.outputs.manifest-published }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4.2.2
+      # INJECT: parse-workflow-ref
+      - name: Download manifest zip artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: manifests
+      - name: Login to target registry
+        if: inputs.manifest-transport == 'docker'
+        uses: docker/login-action@v3.3.0
+        with:
+          registry: ${{ inputs.target-registry }}
+          username: ${{ secrets.target-username || github.actor }}
+          password: ${{ secrets.target-password || github.token }}
+      - name: Publish via transport
+        id: transport
+        uses: ./.github/buildon-github-actions/src/actions/kubernetes-manifest-transport
+        with:
+          transport: ${{ inputs.manifest-transport }}
+          manifest-zip-path: ${{ needs.kubernetes-manifest-package.outputs.manifest-zip-name }}
+          manifest-zip-name: ${{ needs.kubernetes-manifest-package.outputs.manifest-zip-name }}
+          target-registry: ${{ inputs.target-registry }}
+          target-base-path: ${{ inputs.target-base-path }}
+          target-image-name: ${{ needs.versions-and-naming.outputs.docker-image-name }}
+          docker-tag: ${{ needs.versions-and-naming.outputs.docker-tag }}-manifests
+          confirm-image-doesnt-exist: ${{ inputs.confirm-image-doesnt-exist }}
+          version: ${{ needs.versions-and-naming.outputs.version }}
+          is-release: ${{ needs.versions-and-naming.outputs.is-release }}
