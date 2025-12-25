@@ -8,6 +8,7 @@
 # Available inputs to configure test hooks and workflow support guidance:
 # - pre-tagging-tests-script-sub-path:  Runs before version tagging in almost all workflows
 # - post-docker-tests-script-sub-path:  Runs after docker build in any workflow that includes a docker build (not retag)
+# - post-package-tests-script-sub-path: Runs after manifest packaging has occurred
 #
 # Scripts must be:
 # - Located under .github/ (the input is a sub-path from there)
@@ -27,13 +28,14 @@ on:
 
 jobs:
   build:
-    uses: kube-kaptain/buildon-github-actions/.github/workflows/docker-build-dockerfile.yaml@1.0.11
+    uses: kube-kaptain/buildon-github-actions/.github/workflows/kubernetes-app-docker-dockerfile.yaml@1.0.11
     permissions:
       contents: write
       packages: write
     with:
       pre-tagging-tests-script-sub-path: bin/run-tests.bash
       post-docker-tests-script-sub-path: bin/test-container.bash
+      post-package-tests-script-sub-path: bin/test-manifests.bash
 
 # ┌───────────────────────────────────────────────────────────────────────────┐
 # │ All Available Options                                                     │
