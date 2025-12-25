@@ -37,8 +37,8 @@ jobs:
 # └─────────────────────────────────────────────────────────────────────────┘
 #     with:
 #       dockerfile-path: 'docker'  # 'build', '.'
-#       squash: true  # false
-#       no-cache: false # true
+#       squash: false  # true
+#       no-cache: false  # true
 
 # ┌─────────────────────────────────────────────────────────────────────────┐
 # │ Target Registry                                                         │

@@ -5,7 +5,7 @@
 #
 # Shows how to add custom test scripts to workflows that support them.
 #
-# Available inputs to configure test hoooks and workflow support guidance:
+# Available inputs to configure test hooks and workflow support guidance:
 # - pre-tagging-tests-script-sub-path:  Runs before version tagging in almost all workflows
 # - post-docker-tests-script-sub-path:  Runs after docker build in any workflow that includes a docker build (not retag)
 #
