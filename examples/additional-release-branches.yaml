@@ -1,0 +1,78 @@
+# SPDX-License-Identifier: CC0-1.0
+# This example is released to the public domain. Use freely without attribution.
+#
+# Additional Release Branches
+#
+# Support hotfix workflows by building on branches other than the default and still getting releases published.
+#
+# Also useful for parallel work streams on different branches etc.
+#
+# Hotfix workflow:
+# 1. Release 1.2 is in production, but source has moved on to 1.3, and beyond.
+# 2. Create branch main-1.2.X from tag 1.2 for hotfixes, or main-my-reason-for-hotfixes - whatever makes sense
+# 3. Create your commit with the fix AND tag it with 1.2.0 - it's the tag that controls the version generated, not the branch name
+# 4. Push your branch and tag at the same time
+# 5. Hotfixes get tagged 1.2.1, 1.2.2, etc
+# 6. Use PRs against the hotfix branch to further patch it
+# 7. Clean up the branch when no longer needed
+#
+# Generally only configure this and perform this process as needed. Most repos should get away with a pure PR and merge workflow without this.
+#
+# Always develop forward.
+#
+# Copy this to .github/workflows/build.yaml in your repo.
+
+name: Basic Quality Checks And Tag
+
+on:
+  push:
+    branches:
+      - main
+      - 'main-1.2.X' # Use branches like main-1.2.X for a 1.2 original version superseded by 1.3 1.4 etc
+  pull_request:
+    branches:
+      - main
+      - 'main-1.2.X' # Use branches like main-1.2.X for a 1.2 original version superseded by 1.3 1.4 etc
+
+jobs:
+  build:
+    uses: kube-kaptain/buildon-github-actions/.github/workflows/basic-quality-and-versioning.yaml@1.0.11
+    uses: kube-kaptain/buildon-github-actions/.github/workflows/basic-quality-and-versioning.yaml@1.0.2
+    permissions:
+      contents: write
+    with:
+      additional-release-branches: 'main-1.2.X' # Use branches like main-1.2.X for a 1.2 original version superseded by 1.3 1.4 etc
+
+# ┌───────────────────────────────────────────────────────────────────────────┐
+# │ All Available Options                                                     │
+# │ Uncomment and add to the job above as needed                              │
+# └───────────────────────────────────────────────────────────────────────────┘
+
+# ┌─────────────────────────────────────────────────────────────────────────┐
+# │ Branch Configuration                                                    │
+# └─────────────────────────────────────────────────────────────────────────┘
+#     with:
+#       default-branch: 'master'  # Default is main, use whatever you want
+#       additional-release-branches: 'main-1.x,main-2.x'
+
+# ┌─────────────────────────────────────────────────────────────────────────┐
+# │ Quality Checks                                                          │
+# └─────────────────────────────────────────────────────────────────────────┘
+#     with:
+#       block-slashes: true                  # Default is false
+#       block-double-hyphens: false          # Default is true
+#       require-conventional-branches: true  # Default is false
+#       require-conventional-commits: true   # Default is false
+#       block-conventional-commits: true     # Default is false
+
+# ┌─────────────────────────────────────────────────────────────────────────┐
+# │ Version Configuration                                                   │
+# └─────────────────────────────────────────────────────────────────────────┘
+#     with:
+#       max-version-parts: 2  # Default is 3, but any positive integer 1 or higher is valid
+
+# ┌─────────────────────────────────────────────────────────────────────────┐
+# │ Test Injection                                                          │
+# └─────────────────────────────────────────────────────────────────────────┘
+#     with:
+#       pre-tagging-tests-script-sub-path: 'bin/run-tests.bash'
