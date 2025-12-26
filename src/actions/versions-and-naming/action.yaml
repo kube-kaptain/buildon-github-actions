@@ -19,9 +19,17 @@ inputs:
     required: false
     default: '3'
   tag-version-calculation-strategy:
-    description: 'Strategy for calculating version from git tags'
+    description: 'Strategy for calculating version (git-auto-closest-highest, dockerfile-env-version)'
     required: false
     default: 'git-auto-closest-highest'
+  dockerfile-path:
+    description: 'Path to directory containing Dockerfile (for dockerfile-env-version strategy)'
+    required: false
+    default: 'src/docker'
+  env-variable-name:
+    description: 'Name of ENV variable to extract version from (for dockerfile-env-version strategy)'
+    required: false
+    default: 'KUBECTL_VERSION'
 
 outputs:
   version:
@@ -70,4 +78,6 @@ runs:
         ADDITIONAL_RELEASE_BRANCHES: ${{ inputs.additional-release-branches }}
         MAX_VERSION_PARTS: ${{ inputs.max-version-parts }}
         TAG_VERSION_CALCULATION_STRATEGY: ${{ inputs.tag-version-calculation-strategy }}
+        DOCKERFILE_PATH: ${{ inputs.dockerfile-path }}
+        ENV_VARIABLE_NAME: ${{ inputs.env-variable-name }}
       run: "${{ github.action_path }}/../../scripts/main/versions-and-naming"

@@ -148,6 +148,33 @@ This means:
 - After merging branches with different tags, the newest tag wins
 - Hotfix branches can't accidentally collide with main's newer versions
 
+### Alternative: Dockerfile ENV Version
+
+For version-locked images (kubectl, helm, terraform), use `dockerfile-env-version` strategy:
+
+```yaml
+uses: kube-kaptain/buildon-github-actions/.github/workflows/docker-build-dockerfile.yaml@v1
+with:
+  tag-version-calculation-strategy: dockerfile-env-version
+  dockerfile-path: src/docker          # default
+  env-variable-name: KUBECTL_VERSION   # default
+```
+
+This extracts the version from your Dockerfile's `ENV` line:
+
+```dockerfile
+FROM alpine:3.19
+ENV KUBECTL_VERSION=1.28.0
+```
+
+The algorithm:
+1. Extract version from `ENV KUBECTL_VERSION=x.y.z`
+2. Use `x.y` as the series prefix
+3. Find highest existing `x.y.*` tag
+4. Increment patch: `1.28.0` → `1.28.1` → `1.28.2`, etc
+
+When you update `KUBECTL_VERSION=1.29.0`, versioning automatically switches to the `1.29.*` series.
+
 ### Docker Registry Logins
 
 Configure logins to container registries (Docker Hub, ECR, GCR, ACR, Quay, etc.) when your builds need to pull from or push to private registries.
