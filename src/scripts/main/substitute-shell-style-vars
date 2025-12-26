@@ -131,8 +131,10 @@ main() {
   count_lines_changed() {
     local file1="$1"
     local file2="$2"
-    local count
-    count=$(diff "$file1" "$file2" 2>/dev/null | grep -c '^[<>]') || count=0
+    local diff_output count
+    # diff exits 1 when files differ (not an error), so capture output separately
+    diff_output=$(diff "$file1" "$file2" 2>/dev/null) || true
+    count=$(echo "$diff_output" | grep -c '^[<>]') || count=0
     # Each change has a < and > line, so divide by 2 for actual lines changed
     echo $((count / 2))
   }
