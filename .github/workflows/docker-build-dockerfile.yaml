@@ -88,12 +88,20 @@ on:
         required: false
         type: string
         default: ''
+      additional-docker-logins:
+        description: 'YAML config for additional registry logins (registry URL as key)'
+        required: false
+        type: string
+        default: ''
     secrets:
       target-username:
         description: 'Username for target registry (defaults to github.actor for GHCR)'
         required: false
       target-password:
         description: 'Password/token for target registry (defaults to GITHUB_TOKEN for GHCR)'
+        required: false
+      additional-docker-logins-secrets:
+        description: 'JSON object of secrets for additional-docker-logins (e.g., {"DOCKER_USER": "x", "DOCKER_PASS": "y"})'
         required: false
     outputs:
       # Version outputs (pass-through from versioning job)
@@ -410,6 +418,13 @@ jobs:
         run: |
           echo "Linking local actions for dogfooding"
           ln -s "$(pwd)" .github/buildon-github-actions
+      - name: Additional registry logins
+        uses: ./.github/buildon-github-actions/src/actions/additional-docker-logins
+        with:
+          config: ${{ inputs.additional-docker-logins }}
+          secrets-json: ${{ secrets.additional-docker-logins-secrets || toJSON(secrets) }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          github-actor: ${{ github.actor }}
       - name: Login to target registry
         uses: docker/login-action@v3.3.0
         with:

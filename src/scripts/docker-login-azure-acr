@@ -1,0 +1,34 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025 Kaptain contributors (Fred Cooke)
+#
+# docker-login-azure-acr - Login to Azure Container Registry with service principal
+#
+# Usage: docker-login-azure-acr <secret-method> <registry> <client-id-secret> <client-secret-secret> <tenant-id-secret>
+#
+# Arguments:
+#   secret-method        - Secret retrieval method (github, env)
+#   registry             - ACR registry URL (e.g., myregistry.azurecr.io)
+#   client-id-secret     - Name of secret containing Azure client ID
+#   client-secret-secret - Name of secret containing Azure client secret
+#   tenant-id-secret     - Name of secret containing Azure tenant ID (validated but not used for docker login)
+#
+set -euo pipefail
+
+SCRIPT_DIR="$(dirname "$0")"
+
+secret_method="$1"
+registry="$2"
+client_id_secret="$3"
+client_secret_secret="$4"
+tenant_id_secret="$5"
+
+get_secret="$SCRIPT_DIR/get-secret-$secret_method"
+
+client_id=$("$get_secret" "$client_id_secret") || exit 1
+client_secret=$("$get_secret" "$client_secret_secret") || exit 1
+# tenant_id is validated but not used for docker login - ACR uses client_id/secret directly
+"$get_secret" "$tenant_id_secret" > /dev/null || exit 1
+
+echo "Logging in to Azure ACR $registry..." >&2
+echo "$client_secret" | docker login "$registry" -u "$client_id" --password-stdin

@@ -1,0 +1,49 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025 Kaptain contributors (Fred Cooke)
+#
+# docker-login-aws-ecr-oidc - Login to AWS ECR with GitHub OIDC
+#
+# Usage: docker-login-aws-ecr-oidc <secret-method> <registry> <role-arn> <region> [session-name]
+#
+# Arguments:
+#   secret-method - Secret retrieval method (github, env) - unused but accepted for consistency
+#   registry      - ECR registry URL (e.g., 123456789.dkr.ecr.us-east-1.amazonaws.com)
+#   role-arn      - AWS IAM role ARN to assume
+#   region        - AWS region (e.g., us-east-1)
+#   session-name  - Role session name (optional, defaults to github-actions)
+#
+# Environment (set by GitHub Actions):
+#   ACTIONS_ID_TOKEN_REQUEST_TOKEN - GitHub OIDC token
+#   ACTIONS_ID_TOKEN_REQUEST_URL   - GitHub OIDC URL
+#
+set -euo pipefail
+
+# secret_method=$1 - unused for OIDC
+registry="$2"
+role_arn="$3"
+region="$4"
+session_name="${5:-github-actions}"
+
+echo "Assuming AWS role $role_arn via OIDC..." >&2
+
+token=$(curl -s -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+  "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=sts.amazonaws.com" | yq -r '.value')
+
+creds=$(aws sts assume-role-with-web-identity \
+  --role-arn "$role_arn" \
+  --role-session-name "$session_name" \
+  --web-identity-token "$token" \
+  --duration-seconds 3600 \
+  --output json)
+
+export AWS_ACCESS_KEY_ID
+export AWS_SECRET_ACCESS_KEY
+export AWS_SESSION_TOKEN
+AWS_ACCESS_KEY_ID=$(echo "$creds" | yq -r '.Credentials.AccessKeyId')
+AWS_SECRET_ACCESS_KEY=$(echo "$creds" | yq -r '.Credentials.SecretAccessKey')
+AWS_SESSION_TOKEN=$(echo "$creds" | yq -r '.Credentials.SessionToken')
+export AWS_DEFAULT_REGION="$region"
+
+echo "Logging in to AWS ECR $registry..." >&2
+aws ecr get-login-password --region "$region" | docker login --username AWS --password-stdin "$registry"

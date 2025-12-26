@@ -1,0 +1,69 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025 Kaptain contributors (Fred Cooke)
+
+name: Additional Docker Logins
+description: Authenticate to multiple container registries beyond the target registry
+
+inputs:
+  secret-method:
+    description: 'Secret retrieval method (github, env)'
+    required: false
+    default: 'github'
+  config:
+    description: 'YAML config for registry logins (registry URL as key)'
+    required: false
+    default: ''
+  secrets-json:
+    description: 'JSON object containing secret values keyed by secret name'
+    required: false
+    default: '{}'
+
+runs:
+  using: composite
+  steps:
+    - name: Build config with GHCR default
+      id: config
+      shell: bash
+      env:
+        GH_TOKEN: ${{ github.token }}
+        GH_ACTOR: ${{ github.actor }}
+      run: |
+        USER_CONFIG='${{ inputs.config }}'
+
+        # GHCR default config block with token and actor injected
+        GHCR_DEFAULT="ghcr.io:
+          type: github-token
+          token: $GH_TOKEN
+          actor: $GH_ACTOR"
+
+        # Check if user provided config and if it includes ghcr.io
+        if [[ -z "$USER_CONFIG" ]]; then
+          # No user config - use GHCR default only
+          FINAL_CONFIG="$GHCR_DEFAULT"
+        elif echo "$USER_CONFIG" | yq -e 'has("ghcr.io")' > /dev/null 2>&1; then
+          # User config includes ghcr.io - use as-is
+          FINAL_CONFIG="$USER_CONFIG"
+        else
+          # User config without ghcr.io - prepend GHCR default
+          FINAL_CONFIG="$GHCR_DEFAULT
+        $USER_CONFIG"
+        fi
+
+        # Export for next step
+        {
+          echo 'FINAL_CONFIG<<EOF'
+          echo "$FINAL_CONFIG"
+          echo 'EOF'
+        } >> "$GITHUB_OUTPUT"
+
+    - name: Run additional-docker-logins
+      shell: bash
+      run: ${{ github.action_path }}/../../scripts/additional-docker-logins
+      env:
+        SECRET_METHOD: ${{ inputs.secret-method }}
+        CONFIG: ${{ steps.config.outputs.FINAL_CONFIG }}
+        SECRETS_JSON: ${{ inputs.secrets-json }}
+        LOG_ERROR_PREFIX: '::error::'
+        LOG_ERROR_SUFFIX: ''
+        LOG_GROUP_START: '::group::'
+        LOG_GROUP_END: ''

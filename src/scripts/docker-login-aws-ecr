@@ -1,0 +1,37 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025 Kaptain contributors (Fred Cooke)
+#
+# docker-login-aws-ecr - Login to AWS ECR with IAM access keys
+#
+# Usage: docker-login-aws-ecr <secret-method> <registry> <region> <access-key-id-secret> <secret-access-key-secret>
+#
+# Arguments:
+#   secret-method            - Secret retrieval method (github, env)
+#   registry                 - ECR registry URL (e.g., 123456789.dkr.ecr.us-east-1.amazonaws.com)
+#   region                   - AWS region (e.g., us-east-1)
+#   access-key-id-secret     - Name of secret containing AWS access key ID
+#   secret-access-key-secret - Name of secret containing AWS secret access key
+#
+set -euo pipefail
+
+SCRIPT_DIR="$(dirname "$0")"
+
+secret_method="$1"
+registry="$2"
+region="$3"
+access_key_id_secret="$4"
+secret_access_key_secret="$5"
+
+get_secret="$SCRIPT_DIR/get-secret-$secret_method"
+
+access_key_id=$("$get_secret" "$access_key_id_secret") || exit 1
+secret_access_key=$("$get_secret" "$secret_access_key_secret") || exit 1
+
+echo "Logging in to AWS ECR $registry..." >&2
+
+export AWS_ACCESS_KEY_ID="$access_key_id"
+export AWS_SECRET_ACCESS_KEY="$secret_access_key"
+export AWS_DEFAULT_REGION="$region"
+
+aws ecr get-login-password --region "$region" | docker login --username AWS --password-stdin "$registry"

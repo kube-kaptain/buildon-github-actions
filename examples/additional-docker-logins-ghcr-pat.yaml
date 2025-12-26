@@ -1,0 +1,42 @@
+# SPDX-License-Identifier: CC0-1.0
+#
+# Additional Docker Logins - GHCR with Personal Access Token
+#
+# Override the default GITHUB_TOKEN authentication when you need to:
+#   - Push to packages in a different repo or org (GITHUB_TOKEN is scoped to current repo)
+#   - Access private packages from other repositories
+#   - Use a machine account instead of the workflow's identity
+#
+# Creating the PAT:
+#   Classic token: Enable "write:packages" scope (includes read)
+#   Fine-grained token: Grant "Packages" permission (Read and Write) on the target repos
+
+name: Build with GHCR PAT
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build:
+    uses: kube-kaptain/buildon-github-actions/.github/workflows/docker-build-dockerfile.yaml@1
+    secrets: inherit
+    with:
+      additional-docker-logins: |
+        # Override GHCR with PAT for cross-repo/org access
+        ghcr.io:
+          type: username-password
+          username-secret: GHCR_USERNAME
+          password-secret: GHCR_PAT
+
+        # Can still add other registries alongside
+        docker.io:
+          type: username-password
+          username-secret: DOCKERHUB_USERNAME
+          password-secret: DOCKERHUB_PASSWORD
+
+# Required secrets in repository settings:
+#   GHCR_USERNAME - GitHub username or machine account username
+#   GHCR_PAT      - Personal access token with write:packages scope
+#   DOCKERHUB_USERNAME
+#   DOCKERHUB_PASSWORD

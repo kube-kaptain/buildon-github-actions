@@ -72,6 +72,7 @@ See [`examples/`](examples/) for more usage patterns.
 <!-- INPUTS-START -->
 | Input | Type | Default | Description |
 |-------|------|---------|-------------|
+| `additional-docker-logins` | string | `""` | YAML config for additional registry logins (registry URL as key) |
 | `additional-release-branches` | string | `""` | Comma-separated list of additional release branches |
 | `block-conventional-commits` | boolean | `false` | Block commits that use conventional commit format |
 | `block-double-hyphens` | boolean | `true` | Block branch names containing double hyphens (typo detection) |
@@ -103,6 +104,7 @@ See [`examples/`](examples/) for more usage patterns.
 <!-- SECRETS-START -->
 | Secret | Description |
 |--------|-------------|
+| `additional-docker-logins-secrets` | JSON object of secrets for additional-docker-logins (e.g., {"DOCKER_USER": "x", "DOCKER_PASS": "y"}) |
 | `target-password` | Password/token for target registry (defaults to GITHUB_TOKEN for GHCR) |
 | `target-username` | Username for target registry (defaults to github.actor for GHCR) |
 <!-- SECRETS-END -->
@@ -147,6 +149,58 @@ This means:
 - A backfilled tag on an older commit won't hijack your series
 - After merging branches with different tags, the newest tag wins
 - Hotfix branches can't accidentally collide with main's newer versions
+
+### Additional Docker Logins
+
+Configure logins to additional registries (Docker Hub, ECR, GCR, ACR, Quay, etc.) when your builds need to pull from private sources.
+
+#### GHCR Behavior
+
+- **If `ghcr.io` is NOT in config**: Auto-login with GITHUB_TOKEN (same-org access works automatically)
+- **If `ghcr.io` IS in config**: Use only the supplied credentials (required for cross-org access with a PAT)
+
+You only need to configure `ghcr.io` explicitly when accessing packages from other organizations.
+
+#### Option A: secrets: inherit (Recommended)
+
+Use [`examples/additional-docker-logins-inherit.yaml`](examples/additional-docker-logins-inherit.yaml)
+
+Simple and secure - all repository secrets are available to the reusable workflow. The workflow looks up secret values by the names you specify in the config.
+
+**Pros:**
+- Minimal boilerplate
+- No risk of JSON syntax errors
+- Easy to add new registries
+
+**Cons:**
+- All secrets are technically accessible (though only named ones are used)
+
+#### Option B: Explicit JSON
+
+Use [`examples/additional-docker-logins-explicit.yaml`](examples/additional-docker-logins-explicit.yaml)
+
+Verbose but explicit - you list exactly which secrets are passed to the workflow.
+
+**Pros:**
+- Shows exactly what secrets the workflow receives
+- Useful for security audits
+
+**Cons:**
+- More typing
+- JSON syntax errors are easy to make
+- Must update secret list when adding registries
+
+#### Supported Login Types
+
+| Type | Use Case |
+|------|----------|
+| `username-password` | Docker Hub, Quay, private registries |
+| `aws-ecr` | AWS ECR with IAM access keys |
+| `aws-ecr-oidc` | AWS ECR with GitHub OIDC (no long-lived keys) |
+| `gcp-gar` | Google Artifact Registry with service account key |
+| `gcp-gar-oidc` | Google Artifact Registry with Workload Identity Federation |
+| `azure-acr` | Azure Container Registry with service principal |
+| `azure-acr-oidc` | Azure ACR with OIDC/Federated credentials |
 
 ### Outputs
 

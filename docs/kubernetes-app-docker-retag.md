@@ -26,6 +26,7 @@ Kubernetes App - Docker Retag
 | `block-conventional-commits` | boolean | `false` | Block commits that use conventional commit format |
 | `pre-tagging-tests-script-sub-path` | string | `""` | Path to pre-tagging test script relative to .github/ (e.g., bin/pre-tagging.bash) |
 | `post-package-tests-script-sub-path` | string | `""` | Path to post-package test script relative to .github/ (e.g., bin/post-package.bash) |
+| `additional-docker-logins` | string | `""` | YAML config for additional registry logins (registry URL as key) |
 
 ## Secrets
 
@@ -33,6 +34,7 @@ Kubernetes App - Docker Retag
 |--------|-------------|
 | `target-username` | Username for target registry (defaults to github.actor for GHCR) |
 | `target-password` | Password/token for target registry (defaults to GITHUB_TOKEN for GHCR) |
+| `additional-docker-logins-secrets` | JSON object of secrets for additional-docker-logins (e.g., {"DOCKER_USER": "x", "DOCKER_PASS": "y"}) |
 
 ## Outputs
 
