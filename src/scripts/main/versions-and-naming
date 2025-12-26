@@ -5,10 +5,17 @@
 # versions-and-naming - Generates versions, tags, and naming
 #
 # Outputs:
-#   RELEASE_TAG   - Numeric version (e.g., 1.2.3)
-#   DOCKER_TAG    - Same as RELEASE_TAG on release branch, suffixed otherwise
-#   IS_RELEASE    - "true" if on release branch, "false" otherwise
-#   PROJECT_NAME  - Repository name
+#   VERSION           - Numeric version (e.g., 1.2.3)
+#   VERSION_MAJOR     - Major version number
+#   VERSION_MINOR     - Minor version number
+#   VERSION_PATCH     - Patch version number
+#   VERSION_2_PART    - Version padded/truncated to 2 parts (e.g., 1.2)
+#   VERSION_3_PART    - Version padded/truncated to 3 parts (e.g., 1.2.3)
+#   VERSION_4_PART    - Version padded/truncated to 4 parts (e.g., 1.2.3.0)
+#   DOCKER_TAG        - Same as VERSION on release branch, suffixed otherwise
+#   DOCKER_IMAGE_NAME - Docker image name (prefix/project-name)
+#   IS_RELEASE        - "true" if on release branch, "false" otherwise
+#   PROJECT_NAME      - Repository name
 #
 set -euo pipefail
 
