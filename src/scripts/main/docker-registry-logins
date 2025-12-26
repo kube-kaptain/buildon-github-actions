@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2025 Kaptain contributors (Fred Cooke)
 #
-# additional-docker-logins - Router for multi-registry authentication
+# docker-registry-logins - Router for multi-registry authentication
 #
 # Reads login configuration from CONFIG env var (inline YAML) and routes
 # to the appropriate login script for each configured registry.

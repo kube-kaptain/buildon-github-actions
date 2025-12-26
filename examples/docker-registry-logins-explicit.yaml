@@ -1,11 +1,11 @@
 # SPDX-License-Identifier: CC0-1.0
 #
-# Additional Docker Logins - Explicit JSON secrets
+# Docker Registry Logins - Explicit JSON secrets
 #
 # Verbose approach: explicitly list which secrets are passed.
 # More typing, but shows exactly what the workflow receives.
 
-name: Build with Additional Logins (Explicit)
+name: Build with Registry Logins (Explicit)
 on:
   push:
     branches: [main]
@@ -15,7 +15,7 @@ jobs:
   build:
     uses: kube-kaptain/buildon-github-actions/.github/workflows/docker-build-dockerfile.yaml@1
     with:
-      additional-docker-logins: |
+      docker-registry-logins: |
         # Docker Hub - private base images
         docker.io:
           type: username-password
@@ -29,7 +29,7 @@ jobs:
           secret-access-key-secret: ECR_SECRET_ACCESS_KEY
           region: us-east-1
     secrets:
-      additional-docker-logins-secrets: |
+      docker-registry-logins-secrets: |
         {
           "DOCKERHUB_USERNAME": "${{ secrets.DOCKERHUB_USERNAME }}",
           "DOCKERHUB_PASSWORD": "${{ secrets.DOCKERHUB_PASSWORD }}",

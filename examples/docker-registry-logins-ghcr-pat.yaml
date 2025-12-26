@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: CC0-1.0
 #
-# Additional Docker Logins - GHCR with Personal Access Token
+# Docker Registry Logins - GHCR with Personal Access Token
 #
 # Override the default GITHUB_TOKEN authentication when you need to:
 #   - Push to packages in a different repo or org (GITHUB_TOKEN is scoped to current repo)
@@ -22,7 +22,7 @@ jobs:
     uses: kube-kaptain/buildon-github-actions/.github/workflows/docker-build-dockerfile.yaml@1
     secrets: inherit
     with:
-      additional-docker-logins: |
+      docker-registry-logins: |
         # Override GHCR with PAT for cross-repo/org access
         ghcr.io:
           type: username-password

@@ -1,8 +1,8 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2025 Kaptain contributors (Fred Cooke)
 
-name: Additional Docker Logins
-description: Authenticate to multiple container registries beyond the target registry
+name: Docker Registry Logins
+description: Authenticate to container registries (GHCR by default, configure others as needed)
 
 inputs:
   secret-method:
@@ -56,9 +56,9 @@ runs:
           echo 'EOF'
         } >> "$GITHUB_OUTPUT"
 
-    - name: Run additional-docker-logins
+    - name: Run docker-registry-logins
       shell: bash
-      run: ${{ github.action_path }}/../../scripts/main/additional-docker-logins
+      run: ${{ github.action_path }}/../../scripts/main/docker-registry-logins
       env:
         SECRET_METHOD: ${{ inputs.secret-method }}
         CONFIG: ${{ steps.config.outputs.FINAL_CONFIG }}

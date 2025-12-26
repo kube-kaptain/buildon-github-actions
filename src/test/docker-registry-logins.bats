@@ -2,13 +2,13 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2025 Kaptain contributors (Fred Cooke)
 
-# Tests for additional-docker-logins script
+# Tests for docker-registry-logins script
 
 load helpers
 
 setup() {
   TEST_DIR="$(cd "$(dirname "$BATS_TEST_FILENAME")" && pwd)"
-  SCRIPT="$TEST_DIR/../scripts/main/additional-docker-logins"
+  SCRIPT="$TEST_DIR/../scripts/main/docker-registry-logins"
   setup_mock_docker
   export SECRET_METHOD="github"
 }
@@ -17,7 +17,7 @@ teardown() {
   cleanup_mock_docker
 }
 
-@test "additional-docker-logins: fails when CONFIG not provided" {
+@test "docker-registry-logins: fails when CONFIG not provided" {
   export CONFIG=""
   export SECRETS_JSON='{}'
 
@@ -27,7 +27,7 @@ teardown() {
   [[ "$output" =~ "CONFIG is required" ]]
 }
 
-@test "additional-docker-logins: github-token type uses token from config" {
+@test "docker-registry-logins: github-token type uses token from config" {
   read -r -d '' CONFIG <<'EOF' || true
 ghcr.io:
   type: github-token
@@ -44,7 +44,7 @@ EOF
   assert_docker_called "login ghcr.io -u test-user --password-stdin"
 }
 
-@test "additional-docker-logins: github-token fails without token in config" {
+@test "docker-registry-logins: github-token fails without token in config" {
   read -r -d '' CONFIG <<'EOF' || true
 ghcr.io:
   type: github-token
@@ -60,7 +60,7 @@ EOF
   [[ "$output" =~ "Token not provided" ]]
 }
 
-@test "additional-docker-logins: username-password type with ghcr.io" {
+@test "docker-registry-logins: username-password type with ghcr.io" {
   read -r -d '' CONFIG <<'EOF' || true
 ghcr.io:
   type: username-password
@@ -77,7 +77,7 @@ EOF
   assert_docker_called "login ghcr.io -u custom-user --password-stdin"
 }
 
-@test "additional-docker-logins: fails on unknown login type" {
+@test "docker-registry-logins: fails on unknown login type" {
   read -r -d '' CONFIG <<'EOF' || true
 example.com:
   type: unknown-type
@@ -91,7 +91,7 @@ EOF
   [[ "$output" =~ "Unknown login type: unknown-type" ]]
 }
 
-@test "additional-docker-logins: fails when required secret is missing" {
+@test "docker-registry-logins: fails when required secret is missing" {
   read -r -d '' CONFIG <<'EOF' || true
 docker.io:
   type: username-password
@@ -110,7 +110,7 @@ EOF
   [[ "$output" =~ "MISSING_PASS (docker.io)" ]]
 }
 
-@test "additional-docker-logins: reports both missing and available secrets" {
+@test "docker-registry-logins: reports both missing and available secrets" {
   read -r -d '' CONFIG <<'EOF' || true
 docker.io:
   type: username-password
@@ -137,7 +137,7 @@ EOF
   [[ "$output" =~ "DOCKER_PASS (docker.io)" ]]
 }
 
-@test "additional-docker-logins: processes multiple registries" {
+@test "docker-registry-logins: processes multiple registries" {
   read -r -d '' CONFIG <<'EOF' || true
 docker.io:
   type: username-password
@@ -161,7 +161,7 @@ EOF
   assert_docker_called "login quay.io -u user2 --password-stdin"
 }
 
-@test "additional-docker-logins: gcp-gar type reads service account key" {
+@test "docker-registry-logins: gcp-gar type reads service account key" {
   read -r -d '' CONFIG <<'EOF' || true
 us-docker.pkg.dev:
   type: gcp-gar
@@ -177,7 +177,7 @@ EOF
   assert_docker_called "login -u _json_key --password-stdin https://us-docker.pkg.dev"
 }
 
-@test "additional-docker-logins: azure-acr type uses service principal" {
+@test "docker-registry-logins: azure-acr type uses service principal" {
   read -r -d '' CONFIG <<'EOF' || true
 myregistry.azurecr.io:
   type: azure-acr
@@ -195,7 +195,7 @@ EOF
   assert_docker_called "login myregistry.azurecr.io -u app-id --password-stdin"
 }
 
-@test "additional-docker-logins: mixed github-token and username-password" {
+@test "docker-registry-logins: mixed github-token and username-password" {
   read -r -d '' CONFIG <<'EOF' || true
 ghcr.io:
   type: github-token

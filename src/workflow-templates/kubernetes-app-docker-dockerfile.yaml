@@ -116,14 +116,14 @@ on:
         required: false
         type: string
         default: ''
-      additional-docker-logins:
+      docker-registry-logins:
         description: 'YAML config for additional registry logins (registry URL as key)'
         required: false
         type: string
         default: ''
     secrets:
-      additional-docker-logins-secrets:
-        description: 'JSON object of secrets for additional-docker-logins (e.g., {"DOCKER_USER": "x", "DOCKER_PASS": "y"})'
+      docker-registry-logins-secrets:
+        description: 'JSON object of secrets for docker-registry-logins (e.g., {"DOCKER_USER": "x", "DOCKER_PASS": "y"})'
         required: false
     outputs:
       # Version outputs
@@ -239,10 +239,10 @@ jobs:
         uses: actions/checkout@v4.2.2
       # INJECT: parse-workflow-ref
       - name: Additional registry logins
-        uses: ./.github/buildon-github-actions/src/actions/additional-docker-logins
+        uses: ./.github/buildon-github-actions/src/actions/docker-registry-logins
         with:
-          config: ${{ inputs.additional-docker-logins }}
-          secrets-json: ${{ secrets.additional-docker-logins-secrets || toJSON(secrets) }}
+          config: ${{ inputs.docker-registry-logins }}
+          secrets-json: ${{ secrets.docker-registry-logins-secrets || toJSON(secrets) }}
       - name: Build image
         id: build
         uses: ./.github/buildon-github-actions/src/actions/docker-build-dockerfile
@@ -347,10 +347,10 @@ jobs:
           name: manifests
       - name: Registry logins
         if: inputs.manifest-transport == 'docker'
-        uses: ./.github/buildon-github-actions/src/actions/additional-docker-logins
+        uses: ./.github/buildon-github-actions/src/actions/docker-registry-logins
         with:
-          config: ${{ inputs.additional-docker-logins }}
-          secrets-json: ${{ secrets.additional-docker-logins-secrets || toJSON(secrets) }}
+          config: ${{ inputs.docker-registry-logins }}
+          secrets-json: ${{ secrets.docker-registry-logins-secrets || toJSON(secrets) }}
       - name: Publish via transport
         id: transport
         uses: ./.github/buildon-github-actions/src/actions/kubernetes-manifest-transport

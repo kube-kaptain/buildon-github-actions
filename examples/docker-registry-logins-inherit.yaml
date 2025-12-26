@@ -1,11 +1,11 @@
 # SPDX-License-Identifier: CC0-1.0
 #
-# Additional Docker Logins - secrets: inherit (recommended)
+# Docker Registry Logins - secrets: inherit (recommended)
 #
 # Simple approach: all repository secrets are available to the workflow.
 # Secret values are looked up by the names specified in the config.
 
-name: Build with Additional Logins
+name: Build with Registry Logins
 on:
   push:
     branches: [main]
@@ -16,7 +16,7 @@ jobs:
     uses: kube-kaptain/buildon-github-actions/.github/workflows/docker-build-dockerfile.yaml@1
     secrets: inherit
     with:
-      additional-docker-logins: |
+      docker-registry-logins: |
         # Docker Hub - private base images
         docker.io:
           type: username-password
