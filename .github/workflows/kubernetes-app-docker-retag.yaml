@@ -734,7 +734,7 @@ jobs:
         uses: ./.github/buildon-github-actions/src/actions/kubernetes-manifest-transport
         with:
           transport: ${{ inputs.manifest-transport }}
-          manifest-zip-path: ${{ needs.kubernetes-manifest-package.outputs.manifest-zip-name }}
+          manifest-zip-path: ${{ needs.kubernetes-manifest-package.outputs.manifest-zip-path }}
           manifest-zip-name: ${{ needs.kubernetes-manifest-package.outputs.manifest-zip-name }}
           target-registry: ${{ inputs.target-registry }}
           target-base-path: ${{ inputs.target-base-path }}
