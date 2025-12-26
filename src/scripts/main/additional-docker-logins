@@ -21,6 +21,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(dirname "$0")"
+PLUGINS_DIR="$SCRIPT_DIR/../plugins"
 
 # Logging configuration (CI-agnostic)
 LOG_ERROR_PREFIX="${LOG_ERROR_PREFIX:-}"
@@ -46,11 +47,11 @@ export SECRETS_JSON="${SECRETS_JSON:-{\}}"
 # Validate secret method exists
 validate_secret_method() {
   local method="$1"
-  local script="$SCRIPT_DIR/get-secret-$method"
+  local script="$PLUGINS_DIR/secret-value-providers/get-secret-$method"
   if [[ ! -x "$script" ]]; then
     echo "${LOG_ERROR_PREFIX}Unknown secret method: $method (no executable $script)${LOG_ERROR_SUFFIX}" >&2
     echo "Available methods:" >&2
-    for f in "$SCRIPT_DIR"/get-secret-*; do
+    for f in "$PLUGINS_DIR"/secret-value-providers/get-secret-*; do
       [[ -x "$f" ]] && echo "  - ${f##*get-secret-}" >&2
     done
     return 1
@@ -94,7 +95,7 @@ get_required_secrets() {
 
 # Validate all secrets exist before attempting any logins
 validate_all_secrets() {
-  local get_secret="$SCRIPT_DIR/get-secret-$SECRET_METHOD"
+  local get_secret="$PLUGINS_DIR/secret-value-providers/get-secret-$SECRET_METHOD"
   local found_secrets=()
   local missing_secrets=()
   local registries
@@ -149,7 +150,7 @@ route_login() {
   local login_type
   login_type=$(echo "$CONFIG" | yq -r ".[\"$registry\"].type")
 
-  local login_script="$SCRIPT_DIR/docker-login-$login_type"
+  local login_script="$PLUGINS_DIR/docker-login-providers/docker-login-$login_type"
   if [[ ! -x "$login_script" ]]; then
     echo "${LOG_ERROR_PREFIX}Unknown login type: $login_type (no executable $login_script)${LOG_ERROR_SUFFIX}" >&2
     return 1

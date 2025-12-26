@@ -55,7 +55,8 @@ check_executables() {
   log_info "Checking scripts are executable"
   local scripts=()
   local globs=(
-    "$PROJECT_ROOT/src/scripts/*"
+    "$PROJECT_ROOT/src/scripts/main/*"
+    "$PROJECT_ROOT/src/scripts/plugins/*/*"
     "$PROJECT_ROOT/src/test/*.bash"
     "$PROJECT_ROOT/src/test/repo-gen/*.bash"
     "$PROJECT_ROOT/.github/bin/*.bash"
@@ -138,10 +139,10 @@ check_generated_files() {
 run_shellcheck() {
   log_info "Running shellcheck on scripts"
   local scripts=(
-    "$PROJECT_ROOT/src/scripts/versions-and-naming"
-    "$PROJECT_ROOT/src/scripts/basic-quality-checks"
-    "$PROJECT_ROOT/src/scripts/docker-build-retag"
-    "$PROJECT_ROOT/src/scripts/docker-build-dockerfile"
+    "$PROJECT_ROOT/src/scripts/main/versions-and-naming"
+    "$PROJECT_ROOT/src/scripts/main/basic-quality-checks"
+    "$PROJECT_ROOT/src/scripts/main/docker-build-retag"
+    "$PROJECT_ROOT/src/scripts/main/docker-build-dockerfile"
   )
 
   if command -v shellcheck &>/dev/null; then

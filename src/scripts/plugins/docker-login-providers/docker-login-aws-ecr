@@ -16,6 +16,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(dirname "$0")"
+PLUGINS_DIR="$SCRIPT_DIR/.."
 
 secret_method="$1"
 registry="$2"
@@ -23,7 +24,7 @@ region="$3"
 access_key_id_secret="$4"
 secret_access_key_secret="$5"
 
-get_secret="$SCRIPT_DIR/get-secret-$secret_method"
+get_secret="$PLUGINS_DIR/secret-value-providers/get-secret-$secret_method"
 
 access_key_id=$("$get_secret" "$access_key_id_secret") || exit 1
 secret_access_key=$("$get_secret" "$secret_access_key_secret") || exit 1

@@ -5,7 +5,7 @@
 # kubernetes-manifest-transport - Selector script for manifest repo provider plugins
 #
 # Dispatches to the appropriate repo provider script based on TRANSPORT_TYPE.
-# Available repo providers are discovered from src/kubernetes-manifest-repo-providers/
+# Available repo providers are discovered from plugins/kube-manifest-repo-providers/
 #
 # Inputs (environment variables):
 #   TRANSPORT_TYPE - Type of transport to use (required, no default)
@@ -23,7 +23,8 @@ LOG_ERROR_SUFFIX="${LOG_ERROR_SUFFIX:-}"
 
 # Locate script directory (where this selector lives)
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_PROVIDERS_DIR="$SCRIPT_DIR/../kubernetes-manifest-repo-providers"
+PLUGINS_DIR="$SCRIPT_DIR/../plugins"
+REPO_PROVIDERS_DIR="$PLUGINS_DIR/kube-manifest-repo-providers"
 SCRIPT_PREFIX="kubernetes-manifest-repo-provider-"
 
 # List available repo providers (extract type from script name)

@@ -58,7 +58,7 @@ runs:
 
     - name: Run additional-docker-logins
       shell: bash
-      run: ${{ github.action_path }}/../../scripts/additional-docker-logins
+      run: ${{ github.action_path }}/../../scripts/main/additional-docker-logins
       env:
         SECRET_METHOD: ${{ inputs.secret-method }}
         CONFIG: ${{ steps.config.outputs.FINAL_CONFIG }}

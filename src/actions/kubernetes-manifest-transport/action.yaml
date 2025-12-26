@@ -90,4 +90,4 @@ runs:
         VERSION: ${{ inputs.version }}
         IS_RELEASE: ${{ inputs.is-release }}
         GITHUB_TOKEN: ${{ github.token }}
-      run: "${{ github.action_path }}/../../scripts/kubernetes-manifest-transport"
+      run: "${{ github.action_path }}/../../scripts/main/kubernetes-manifest-transport"

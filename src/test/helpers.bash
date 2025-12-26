@@ -7,8 +7,9 @@
 PROJECT_ROOT="${PROJECT_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
 
 # Path to scripts, repo providers, and fixtures
-SCRIPTS_DIR="$PROJECT_ROOT/src/scripts"
-REPO_PROVIDERS_DIR="$PROJECT_ROOT/src/kubernetes-manifest-repo-providers"
+SCRIPTS_DIR="$PROJECT_ROOT/src/scripts/main"
+PLUGINS_DIR="$PROJECT_ROOT/src/scripts/plugins"
+REPO_PROVIDERS_DIR="$PLUGINS_DIR/kube-manifest-repo-providers"
 FIXTURES_DIR="$PROJECT_ROOT/src/test/fixtures"
 MOCK_BIN_DIR="$PROJECT_ROOT/src/test/mock-bin"
 

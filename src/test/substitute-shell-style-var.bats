@@ -31,7 +31,7 @@ create_input_file() {
   export INPUT_PATH="$INPUT_DIR/test.yaml"
   export OUTPUT_PATH="$OUTPUT_DIR/test.yaml"
 
-  run "$SCRIPTS_DIR/substitute-shell-style-var"
+  run "$PLUGINS_DIR/variable-substitution-providers/substitute-shell-style-var"
   [ "$status" -eq 0 ]
 
   result=$(cat "$OUTPUT_DIR/test.yaml")
@@ -45,7 +45,7 @@ create_input_file() {
   export INPUT_PATH="$INPUT_DIR/test.yaml"
   export OUTPUT_PATH="$OUTPUT_DIR/test.yaml"
 
-  run "$SCRIPTS_DIR/substitute-shell-style-var"
+  run "$PLUGINS_DIR/variable-substitution-providers/substitute-shell-style-var"
   [ "$status" -eq 0 ]
 
   result=$(cat "$OUTPUT_DIR/test.yaml")
@@ -60,7 +60,7 @@ version: ${VERSION}'
   export INPUT_PATH="$INPUT_DIR/test.yaml"
   export OUTPUT_PATH="$OUTPUT_DIR/test.yaml"
 
-  run "$SCRIPTS_DIR/substitute-shell-style-var"
+  run "$PLUGINS_DIR/variable-substitution-providers/substitute-shell-style-var"
   [ "$status" -eq 0 ]
 
   grep -q "name: my-app" "$OUTPUT_DIR/test.yaml"
@@ -74,7 +74,7 @@ version: ${VERSION}'
   export INPUT_PATH="$INPUT_DIR/test.yaml"
   export OUTPUT_PATH="$OUTPUT_DIR/test.yaml"
 
-  run "$SCRIPTS_DIR/substitute-shell-style-var"
+  run "$PLUGINS_DIR/variable-substitution-providers/substitute-shell-style-var"
   [ "$status" -eq 0 ]
 
   result=$(cat "$OUTPUT_DIR/test.yaml")
@@ -89,7 +89,7 @@ version: ${VERSION}'
   export INPUT_PATH="$INPUT_DIR"
   export OUTPUT_PATH="$OUTPUT_DIR"
 
-  run "$SCRIPTS_DIR/substitute-shell-style-var"
+  run "$PLUGINS_DIR/variable-substitution-providers/substitute-shell-style-var"
   [ "$status" -eq 0 ]
 
   grep -q "name: my-app" "$OUTPUT_DIR/deployment.yaml"
@@ -104,7 +104,7 @@ b: ${PROJECT_NAME}'
   export INPUT_PATH="$INPUT_DIR/test.yaml"
   export OUTPUT_PATH="$OUTPUT_DIR/test.yaml"
 
-  run "$SCRIPTS_DIR/substitute-shell-style-var"
+  run "$PLUGINS_DIR/variable-substitution-providers/substitute-shell-style-var"
   [ "$status" -eq 0 ]
   [ "$output" = "2" ]
 }
@@ -116,7 +116,7 @@ b: ${PROJECT_NAME}'
   export OUTPUT_PATH="$OUTPUT_DIR/test.yaml"
   unset VAR_NAME
 
-  run "$SCRIPTS_DIR/substitute-shell-style-var"
+  run "$PLUGINS_DIR/variable-substitution-providers/substitute-shell-style-var"
   [ "$status" -ne 0 ]
   assert_output_contains "VAR_NAME"
 }
@@ -128,7 +128,7 @@ b: ${PROJECT_NAME}'
   export OUTPUT_PATH="$OUTPUT_DIR/test.yaml"
   unset VAR_VALUE
 
-  run "$SCRIPTS_DIR/substitute-shell-style-var"
+  run "$PLUGINS_DIR/variable-substitution-providers/substitute-shell-style-var"
   [ "$status" -ne 0 ]
   assert_output_contains "VAR_VALUE"
 }
@@ -139,7 +139,7 @@ b: ${PROJECT_NAME}'
   export INPUT_PATH="/nonexistent/path"
   export OUTPUT_PATH="$OUTPUT_DIR/test.yaml"
 
-  run "$SCRIPTS_DIR/substitute-shell-style-var"
+  run "$PLUGINS_DIR/variable-substitution-providers/substitute-shell-style-var"
   [ "$status" -ne 0 ]
   assert_output_contains "not found"
 }
@@ -151,7 +151,7 @@ b: ${PROJECT_NAME}'
   export INPUT_PATH="$INPUT_DIR/test.yaml"
   export OUTPUT_PATH="$INPUT_DIR/test.yaml"
 
-  run "$SCRIPTS_DIR/substitute-shell-style-var"
+  run "$PLUGINS_DIR/variable-substitution-providers/substitute-shell-style-var"
   [ "$status" -ne 0 ]
   assert_output_contains "must differ"
 }
@@ -163,7 +163,7 @@ b: ${PROJECT_NAME}'
   export INPUT_PATH="$INPUT_DIR/test.yaml"
   export OUTPUT_PATH="$OUTPUT_DIR/test.yaml"
 
-  run "$SCRIPTS_DIR/substitute-shell-style-var"
+  run "$PLUGINS_DIR/variable-substitution-providers/substitute-shell-style-var"
   [ "$status" -eq 0 ]
 
   # Should NOT be substituted - different variable name
@@ -180,7 +180,7 @@ label: ${version}'
   export INPUT_PATH="$INPUT_DIR/test.yaml"
   export OUTPUT_PATH="$OUTPUT_DIR/test.yaml"
 
-  run "$SCRIPTS_DIR/substitute-shell-style-var"
+  run "$PLUGINS_DIR/variable-substitution-providers/substitute-shell-style-var"
   [ "$status" -eq 0 ]
   [ "$output" = "3" ]
 

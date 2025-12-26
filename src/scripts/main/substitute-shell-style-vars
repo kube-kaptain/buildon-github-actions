@@ -25,6 +25,7 @@ set -euo pipefail
 
 # Locate script directory for calling sibling scripts
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PLUGINS_DIR="$SCRIPT_DIR/../plugins"
 
 # Logging configuration (CI-agnostic)
 LOG_ERROR_PREFIX="${LOG_ERROR_PREFIX:-}"
@@ -77,7 +78,7 @@ main() {
       OUTPUT_PATH="$OUTPUT_PATH" \
       LOG_ERROR_PREFIX="$LOG_ERROR_PREFIX" \
       LOG_ERROR_SUFFIX="$LOG_ERROR_SUFFIX" \
-      "$SCRIPT_DIR/substitute-shell-style-var" > /dev/null
+      "$PLUGINS_DIR/variable-substitution-providers/substitute-shell-style-var" > /dev/null
 
       first_var=false
     else
@@ -94,7 +95,7 @@ main() {
         OUTPUT_PATH="$temp_location" \
         LOG_ERROR_PREFIX="$LOG_ERROR_PREFIX" \
         LOG_ERROR_SUFFIX="$LOG_ERROR_SUFFIX" \
-        "$SCRIPT_DIR/substitute-shell-style-var" > /dev/null
+        "$PLUGINS_DIR/variable-substitution-providers/substitute-shell-style-var" > /dev/null
 
         # Move result back
         mv "$temp_location" "$OUTPUT_PATH"
@@ -108,7 +109,7 @@ main() {
         OUTPUT_PATH="$temp_location" \
         LOG_ERROR_PREFIX="$LOG_ERROR_PREFIX" \
         LOG_ERROR_SUFFIX="$LOG_ERROR_SUFFIX" \
-        "$SCRIPT_DIR/substitute-shell-style-var" > /dev/null
+        "$PLUGINS_DIR/variable-substitution-providers/substitute-shell-style-var" > /dev/null
 
         # Move results back to OUTPUT_PATH
         rm -rf "$OUTPUT_PATH"

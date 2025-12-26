@@ -65,4 +65,4 @@ runs:
         DEFAULT_BRANCH: ${{ inputs.default-branch }}
         ADDITIONAL_RELEASE_BRANCHES: ${{ inputs.additional-release-branches }}
         MAX_VERSION_PARTS: ${{ inputs.max-version-parts }}
-      run: "${{ github.action_path }}/../../scripts/versions-and-naming"
+      run: "${{ github.action_path }}/../../scripts/main/versions-and-naming"

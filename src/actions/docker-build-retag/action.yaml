@@ -76,4 +76,4 @@ runs:
         DOCKER_TAG: ${{ inputs.docker-tag }}
         IS_RELEASE: ${{ inputs.is-release }}
         CONFIRM_IMAGE_DOESNT_EXIST: ${{ inputs.confirm-image-doesnt-exist }}
-      run: "${{ github.action_path }}/../../scripts/docker-build-retag"
+      run: "${{ github.action_path }}/../../scripts/main/docker-build-retag"

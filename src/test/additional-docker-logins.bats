@@ -8,7 +8,7 @@ load helpers
 
 setup() {
   TEST_DIR="$(cd "$(dirname "$BATS_TEST_FILENAME")" && pwd)"
-  SCRIPT="$TEST_DIR/../scripts/additional-docker-logins"
+  SCRIPT="$TEST_DIR/../scripts/main/additional-docker-logins"
   setup_mock_docker
   export SECRET_METHOD="github"
 }

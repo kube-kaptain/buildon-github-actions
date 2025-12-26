@@ -77,4 +77,4 @@ runs:
         SQUASH: ${{ inputs.squash }}
         NO_CACHE: ${{ inputs.no-cache }}
         CONFIRM_IMAGE_DOESNT_EXIST: ${{ inputs.confirm-image-doesnt-exist }}
-      run: "${{ github.action_path }}/../../scripts/docker-build-dockerfile"
+      run: "${{ github.action_path }}/../../scripts/main/docker-build-dockerfile"

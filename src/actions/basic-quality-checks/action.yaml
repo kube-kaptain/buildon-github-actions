@@ -57,4 +57,4 @@ runs:
         TARGET_BRANCH: ${{ inputs.target-branch || github.base_ref || inputs.default-branch }}
         PR_BRANCH: ${{ github.head_ref }}
         PR_CREATOR: ${{ github.event.pull_request.user.login }}
-      run: "${{ github.action_path }}/../../scripts/basic-quality-checks"
+      run: "${{ github.action_path }}/../../scripts/main/basic-quality-checks"
