@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025 Kaptain contributors (Fred Cooke)
+#
+# docker-login-github-token - Login using GitHub token
+#
+# Usage: docker-login-github-token <secret-method> <registry> <token> <actor>
+#
+# Arguments:
+#   secret-method - Secret retrieval method (unused, accepted for consistency)
+#   registry      - Registry URL (typically ghcr.io)
+#   token         - GitHub token value
+#   actor         - GitHub actor/username
+#
+set -euo pipefail
+
+# secret_method=$1 - unused, values passed directly
+registry="$2"
+token="$3"
+actor="$4"
+
+if [[ -z "$token" ]]; then
+  echo "Token not provided" >&2
+  exit 1
+fi
+
+if [[ -z "$actor" ]]; then
+  echo "Actor not provided" >&2
+  exit 1
+fi
+
+echo "Logging in to $registry with GITHUB_TOKEN..." >&2
+echo "$token" | docker login "$registry" -u "$actor" --password-stdin

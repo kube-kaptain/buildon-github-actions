@@ -61,4 +61,4 @@ runs:
         DOCKER_IMAGE_NAME: ${{ inputs.docker-image-name }}
         SUBSTITUTION_TOKEN_STYLE: ${{ inputs.substitution-token-style }}
         SUBSTITUTION_OUTPUT_STYLE: ${{ inputs.substitution-output-style }}
-      run: "${{ github.action_path }}/../../scripts/kubernetes-manifest-package"
+      run: "${{ github.action_path }}/../../scripts/main/kubernetes-manifest-package"

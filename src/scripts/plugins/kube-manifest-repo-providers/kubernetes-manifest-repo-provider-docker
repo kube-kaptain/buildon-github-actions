@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2025 Kaptain contributors (Fred Cooke)
 #
-# docker - Transport plugin for publishing manifest zip as a Docker image
+# kubernetes-manifest-repo-provider-docker - Transport plugin for publishing manifest zip as a Docker image
 #
 # Uses registry.k8s.io/pause:3.10.1 as base, stores zip at /<original-filename>
 #

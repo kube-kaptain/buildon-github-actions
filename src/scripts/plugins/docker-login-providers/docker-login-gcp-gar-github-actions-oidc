@@ -1,0 +1,50 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025 Kaptain contributors (Fred Cooke)
+#
+# docker-login-gcp-gar-github-actions-oidc - Login to Google Artifact Registry via GitHub Actions OIDC
+#
+# Usage: docker-login-gcp-gar-github-actions-oidc <secret-method> <registry> <workload-identity-provider> <service-account>
+#
+# Arguments:
+#   secret-method              - Secret retrieval method (github, env) - unused but accepted for consistency
+#   registry                   - GAR registry URL (e.g., us-docker.pkg.dev)
+#   workload-identity-provider - GCP Workload Identity Provider resource name
+#   service-account            - GCP service account email
+#
+# Environment (set by GitHub Actions):
+#   ACTIONS_ID_TOKEN_REQUEST_TOKEN - GitHub OIDC token
+#   ACTIONS_ID_TOKEN_REQUEST_URL   - GitHub OIDC URL
+#
+set -euo pipefail
+
+# secret_method=$1 - unused for OIDC
+registry="$2"
+workload_identity_provider="$3"
+service_account="$4"
+
+echo "Authenticating to GCP via Workload Identity Federation..." >&2
+
+token=$(curl -s -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+  "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=$workload_identity_provider" | yq -r '.value')
+
+access_token=$(curl -s -X POST \
+  "https://sts.googleapis.com/v1/token" \
+  -H "Content-Type: application/json" \
+  -d "{
+    \"grant_type\": \"urn:ietf:params:oauth:grant-type:token-exchange\",
+    \"audience\": \"//iam.googleapis.com/$workload_identity_provider\",
+    \"scope\": \"https://www.googleapis.com/auth/cloud-platform\",
+    \"requested_token_type\": \"urn:ietf:params:oauth:token-type:access_token\",
+    \"subject_token_type\": \"urn:ietf:params:oauth:token-type:jwt\",
+    \"subject_token\": \"$token\"
+  }" | yq -r '.access_token')
+
+sa_token=$(curl -s -X POST \
+  "https://iamcredentials.googleapis.com/v1/projects/-/serviceAccounts/${service_account}:generateAccessToken" \
+  -H "Authorization: Bearer $access_token" \
+  -H "Content-Type: application/json" \
+  -d '{"scope": ["https://www.googleapis.com/auth/cloud-platform"]}' | yq -r '.accessToken')
+
+echo "Logging in to Google Artifact Registry $registry..." >&2
+echo "$sa_token" | docker login -u oauth2accesstoken --password-stdin "https://$registry"

@@ -78,6 +78,7 @@ See [`examples/`](examples/) for more usage patterns.
 | `block-slashes` | boolean | `false` | Block branch names containing slashes |
 | `confirm-image-doesnt-exist` | boolean | `true` | Fail if target image already exists in registry |
 | `default-branch` | string | `main` | The default/release branch name |
+| `docker-registry-logins` | string | `""` | YAML config for Docker registry logins (registry URL as key) |
 | `dockerfile-path` | string | `src/docker` | Directory containing Dockerfile (also used as build context) |
 | `manifest-transport` | string | *required* | Transport type for manifest storage (docker, github-release). Required - consumer must choose. |
 | `manifests-path` | string | `src/kubernetes` | Directory containing Kubernetes manifests |
@@ -103,8 +104,7 @@ See [`examples/`](examples/) for more usage patterns.
 <!-- SECRETS-START -->
 | Secret | Description |
 |--------|-------------|
-| `target-password` | Password/token for target registry (defaults to GITHUB_TOKEN for GHCR) |
-| `target-username` | Username for target registry (defaults to github.actor for GHCR) |
+| `docker-registry-logins-secrets` | JSON object of secrets for docker-registry-logins (e.g., {"DOCKER_USER": "x", "DOCKER_PASS": "y"}) |
 <!-- SECRETS-END -->
 
 ### Workflow Documentation
@@ -147,6 +147,85 @@ This means:
 - A backfilled tag on an older commit won't hijack your series
 - After merging branches with different tags, the newest tag wins
 - Hotfix branches can't accidentally collide with main's newer versions
+
+### Alternative: Dockerfile ENV Version
+
+For version-locked images (kubectl, helm, terraform), use `dockerfile-env-version` strategy:
+
+```yaml
+uses: kube-kaptain/buildon-github-actions/.github/workflows/docker-build-dockerfile.yaml@v1
+with:
+  tag-version-calculation-strategy: dockerfile-env-version
+  dockerfile-path: src/docker          # default
+  env-variable-name: KUBECTL_VERSION   # default
+```
+
+This extracts the version from your Dockerfile's `ENV` line:
+
+```dockerfile
+FROM alpine:3.19
+ENV KUBECTL_VERSION=1.28.0
+```
+
+The algorithm:
+1. Extract version from `ENV KUBECTL_VERSION=x.y.z`
+2. Use `x.y` as the series prefix
+3. Find highest existing `x.y.*` tag
+4. Increment patch: `1.28.0` → `1.28.1` → `1.28.2`, etc
+
+When you update `KUBECTL_VERSION=1.29.0`, versioning automatically switches to the `1.29.*` series.
+
+### Docker Registry Logins
+
+Configure logins to container registries (Docker Hub, ECR, GCR, ACR, Quay, etc.) when your builds need to pull from or push to private registries.
+
+#### GHCR Behavior
+
+- **If `ghcr.io` is NOT in config**: Auto-login with GITHUB_TOKEN (same-org access works automatically)
+- **If `ghcr.io` IS in config**: Use only the supplied credentials (required for cross-org access with a PAT)
+
+You only need to configure `ghcr.io` explicitly when accessing packages from other organizations.
+
+#### Option A: secrets: inherit (Recommended)
+
+Use [`examples/docker-registry-logins-inherit.yaml`](examples/docker-registry-logins-inherit.yaml)
+
+Simple and secure - all repository secrets are available to the reusable workflow. The workflow looks up secret values by the names you specify in the config.
+
+**Pros:**
+- Minimal boilerplate
+- No risk of JSON syntax errors
+- Easy to add new registries
+
+**Cons:**
+- All secrets are technically accessible (though only named ones are used)
+
+#### Option B: Explicit JSON
+
+Use [`examples/docker-registry-logins-explicit.yaml`](examples/docker-registry-logins-explicit.yaml)
+
+Verbose but explicit - you list exactly which secrets are passed to the workflow.
+
+**Pros:**
+- Shows exactly what secrets the workflow receives
+- Useful for security audits
+
+**Cons:**
+- More typing
+- JSON syntax errors are easy to make
+- Must update secret list when adding registries
+
+#### Supported Login Types
+
+| Type | Use Case |
+|------|----------|
+| `username-password` | Docker Hub, Quay, private registries |
+| `aws-ecr` | AWS ECR with IAM access keys |
+| `aws-ecr-github-actions-oidc` | AWS ECR via GitHub Actions OIDC (no long-lived keys) |
+| `gcp-gar` | Google Artifact Registry with service account key |
+| `gcp-gar-github-actions-oidc` | Google Artifact Registry via GitHub Actions OIDC |
+| `azure-acr` | Azure Container Registry with service principal |
+| `azure-acr-github-actions-oidc` | Azure ACR via GitHub Actions OIDC |
 
 ### Outputs
 

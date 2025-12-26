@@ -256,3 +256,109 @@ teardown() {
   [ "$status" -eq 0 ]
   assert_var_equals "DOCKER_IMAGE_NAME" "group/group-project-specialisation"
 }
+
+# dockerfile-env-version strategy tests
+
+@test "dockerfile-env-version extracts version from ENV and starts at x.y.1" {
+  TEST_REPO=$(clone_fixture "tag-none")
+  cd "$TEST_REPO"
+  mkdir -p src/docker
+  echo 'FROM alpine:3.19
+ENV KUBECTL_VERSION=1.28.0' > src/docker/Dockerfile
+
+  export TAG_VERSION_CALCULATION_STRATEGY=dockerfile-env-version
+
+  run "$SCRIPTS_DIR/versions-and-naming"
+  [ "$status" -eq 0 ]
+  assert_var_equals "VERSION" "1.28.1"
+}
+
+@test "dockerfile-env-version increments patch from existing tags" {
+  TEST_REPO=$(clone_fixture "tag-none")
+  cd "$TEST_REPO"
+  mkdir -p src/docker
+  echo 'FROM alpine:3.19
+ENV KUBECTL_VERSION=1.28.0' > src/docker/Dockerfile
+  git tag -m "test" 1.28.0
+  git tag -m "test" 1.28.1
+  git tag -m "test" 1.28.2
+
+  export TAG_VERSION_CALCULATION_STRATEGY=dockerfile-env-version
+
+  run "$SCRIPTS_DIR/versions-and-naming"
+  [ "$status" -eq 0 ]
+  assert_var_equals "VERSION" "1.28.3"
+}
+
+@test "dockerfile-env-version uses custom ENV variable name" {
+  TEST_REPO=$(clone_fixture "tag-none")
+  cd "$TEST_REPO"
+  mkdir -p src/docker
+  echo 'FROM alpine:3.19
+ENV HELM_VERSION=3.14.0' > src/docker/Dockerfile
+
+  export TAG_VERSION_CALCULATION_STRATEGY=dockerfile-env-version
+  export ENV_VARIABLE_NAME=HELM_VERSION
+
+  run "$SCRIPTS_DIR/versions-and-naming"
+  [ "$status" -eq 0 ]
+  assert_var_equals "VERSION" "3.14.1"
+}
+
+@test "dockerfile-env-version uses custom dockerfile path" {
+  TEST_REPO=$(clone_fixture "tag-none")
+  cd "$TEST_REPO"
+  mkdir -p custom/path
+  echo 'FROM alpine:3.19
+ENV KUBECTL_VERSION=1.29.0' > custom/path/Dockerfile
+
+  export TAG_VERSION_CALCULATION_STRATEGY=dockerfile-env-version
+  export DOCKERFILE_PATH=custom/path
+
+  run "$SCRIPTS_DIR/versions-and-naming"
+  [ "$status" -eq 0 ]
+  assert_var_equals "VERSION" "1.29.1"
+}
+
+@test "dockerfile-env-version fails if Dockerfile not found" {
+  TEST_REPO=$(clone_fixture "tag-none")
+  cd "$TEST_REPO"
+  # No Dockerfile created
+
+  export TAG_VERSION_CALCULATION_STRATEGY=dockerfile-env-version
+
+  run "$SCRIPTS_DIR/versions-and-naming"
+  [ "$status" -eq 1 ]
+  assert_output_contains "Dockerfile not found"
+}
+
+@test "dockerfile-env-version fails if ENV variable not found" {
+  TEST_REPO=$(clone_fixture "tag-none")
+  cd "$TEST_REPO"
+  mkdir -p src/docker
+  echo 'FROM alpine:3.19' > src/docker/Dockerfile
+
+  export TAG_VERSION_CALCULATION_STRATEGY=dockerfile-env-version
+
+  run "$SCRIPTS_DIR/versions-and-naming"
+  [ "$status" -eq 1 ]
+  assert_output_contains "Could not find ENV KUBECTL_VERSION"
+}
+
+@test "dockerfile-env-version ignores tags from different series" {
+  TEST_REPO=$(clone_fixture "tag-none")
+  cd "$TEST_REPO"
+  mkdir -p src/docker
+  echo 'FROM alpine:3.19
+ENV KUBECTL_VERSION=1.29.0' > src/docker/Dockerfile
+  # Tags from different series should be ignored
+  git tag -m "test" 1.28.0
+  git tag -m "test" 1.28.5
+  git tag -m "test" 1.30.0
+
+  export TAG_VERSION_CALCULATION_STRATEGY=dockerfile-env-version
+
+  run "$SCRIPTS_DIR/versions-and-naming"
+  [ "$status" -eq 0 ]
+  assert_var_equals "VERSION" "1.29.1"
+}

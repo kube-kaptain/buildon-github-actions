@@ -22,13 +22,13 @@ Docker Build Dockerfile
 | `max-version-parts` | number | `3` | Maximum allowed version parts (fail if exceeded) |
 | `pre-tagging-tests-script-sub-path` | string | `""` | Path to pre-tagging test script relative to .github/ (e.g., bin/pre-tagging.bash) |
 | `post-docker-tests-script-sub-path` | string | `""` | Path to post-docker test script relative to .github/ (e.g., bin/post-docker.bash) |
+| `docker-registry-logins` | string | `""` | YAML config for Docker registry logins (registry URL as key) |
 
 ## Secrets
 
 | Secret | Description |
 |--------|-------------|
-| `target-username` | Username for target registry (defaults to github.actor for GHCR) |
-| `target-password` | Password/token for target registry (defaults to GITHUB_TOKEN for GHCR) |
+| `docker-registry-logins-secrets` | JSON object of secrets for docker-registry-logins (e.g., {"DOCKER_USER": "x", "DOCKER_PASS": "y"}) |
 
 ## Outputs
 

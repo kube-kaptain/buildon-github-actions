@@ -2,13 +2,19 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2025 Kaptain contributors (Fred Cooke)
 #
-# versions-and-naming - Generates versions, tags, and naming
+# tag-version-calculation-git-auto-closest-highest - Git-based automatic versioning
 #
-# Outputs:
-#   RELEASE_TAG   - Numeric version (e.g., 1.2.3)
-#   DOCKER_TAG    - Same as RELEASE_TAG on release branch, suffixed otherwise
-#   IS_RELEASE    - "true" if on release branch, "false" otherwise
-#   PROJECT_NAME  - Repository name
+# Algorithm:
+#   1. Find closest annotated tag to HEAD (by commit distance)
+#   2. If multiple at same distance, use newest by creation date
+#   3. Look up highest version in that series across entire repo
+#   4. Increment the last component
+#
+# Inputs (environment variables):
+#   MAX_VERSION_PARTS - Fail if version exceeds this depth (required)
+#
+# Outputs (stdout):
+#   VERSION=x.y.z
 #
 set -euo pipefail
 
@@ -16,42 +22,11 @@ set -euo pipefail
 LOG_ERROR_PREFIX="${LOG_ERROR_PREFIX:-}"
 LOG_ERROR_SUFFIX="${LOG_ERROR_SUFFIX:-}"
 
-# Configuration with defaults
-DEFAULT_BRANCH="${DEFAULT_BRANCH:-main}"
-ADDITIONAL_RELEASE_BRANCHES="${ADDITIONAL_RELEASE_BRANCHES:-}"  # Comma-separated list of additional release branches
-MAX_VERSION_PARTS="${MAX_VERSION_PARTS:-3}"  # Fail if version exceeds this many parts
-
-# Get current branch
-get_current_branch() {
-  git rev-parse --abbrev-ref HEAD
-}
-
-# Get repository name
-get_project_name() {
-  basename "$(git rev-parse --show-toplevel)"
-}
-
-# Check if current branch is a release branch
-is_release_branch() {
-  local current_branch="$1"
-
-  # Check if it's the default branch
-  if [[ "$current_branch" == "$DEFAULT_BRANCH" ]]; then
-    return 0
-  fi
-
-  # Check if it matches any additional release branch
-  if [[ -n "$ADDITIONAL_RELEASE_BRANCHES" ]]; then
-    IFS=',' read -ra branches <<< "$ADDITIONAL_RELEASE_BRANCHES"
-    for branch in "${branches[@]}"; do
-      if [[ "$current_branch" == "$branch" ]]; then
-        return 0
-      fi
-    done
-  fi
-
-  return 1
-}
+# Required inputs
+if [[ -z "${MAX_VERSION_PARTS:-}" ]]; then
+  echo "${LOG_ERROR_PREFIX}MAX_VERSION_PARTS is required${LOG_ERROR_SUFFIX}" >&2
+  exit 1
+fi
 
 # Check if a tag is annotated (heavy) vs lightweight
 is_annotated_tag() {
@@ -155,14 +130,6 @@ find_highest_in_series() {
   fi
 }
 
-# Parse version into components
-parse_version() {
-  local version="$1"
-  # Remove any 'v' prefix
-  version="${version#v}"
-  echo "$version"
-}
-
 # Count parts in a version string
 count_version_parts() {
   local version="$1"
@@ -170,31 +137,6 @@ count_version_parts() {
   local dot_count
   dot_count=$(echo "$version" | tr -cd '.' | wc -c | tr -d ' ')
   echo $((dot_count + 1))
-}
-
-# Pad or truncate version to exactly N parts
-version_to_n_parts() {
-  local version="$1"
-  local n="$2"
-  version="${version#v}"
-
-  IFS='.' read -ra parts <<< "$version"
-  local current_parts=${#parts[@]}
-
-  # Build result with exactly n parts
-  local result=""
-  for ((i=0; i<n; i++)); do
-    if [[ $i -gt 0 ]]; then
-      result+="."
-    fi
-    if [[ $i -lt $current_parts ]]; then
-      result+="${parts[$i]}"
-    else
-      result+="0"
-    fi
-  done
-
-  echo "$result"
 }
 
 # Increment version - always increments last component
@@ -218,38 +160,7 @@ increment_version() {
   echo "${parts[*]}"
 }
 
-# Push tag to remote
-push_tag() {
-  local tag="$1"
-  git config user.email "noreply@kaptain.org"
-  git config user.name "Kube Kaptain"
-  git tag -m "Automatic release tag by Kaptain build script." "$tag" HEAD
-  git push origin "$tag"
-}
-
-# Output variable for GitHub Actions
-output_var() {
-  local name="$1"
-  local value="$2"
-
-  echo "${name}=${value}"
-
-  # If running in GitHub Actions, set output
-  if [[ -n "${GITHUB_OUTPUT:-}" ]]; then
-    echo "${name}=${value}" >> "$GITHUB_OUTPUT"
-  fi
-
-  # Also export for downstream scripts
-  export "${name}=${value}"
-}
-
 main() {
-  local current_branch
-  current_branch=$(get_current_branch)
-
-  local project_name
-  project_name=$(get_project_name)
-
   # Step 1: Find most recent tag to determine our series
   local recent_tag
   recent_tag=$(find_recent_tag)
@@ -270,50 +181,8 @@ main() {
     exit 1
   fi
 
-  local is_release="false"
-  local docker_tag
-
-  if is_release_branch "$current_branch"; then
-    is_release="true"
-    docker_tag="$new_version"
-
-    # Push the tag on release branches
-    echo "Tagging release: $new_version" >&2
-    push_tag "$new_version"
-  else
-    docker_tag="${new_version}-PRERELEASE"
-    echo "Pre-release build: $docker_tag (no tag push)" >&2
-  fi
-
-  # Generate padded/truncated versions for different ecosystems
-  local version_2_part version_3_part version_4_part
-  version_2_part=$(version_to_n_parts "$new_version" 2)
-  version_3_part=$(version_to_n_parts "$new_version" 3)
-  version_4_part=$(version_to_n_parts "$new_version" 4)
-
-  # Extract individual parts (major.minor.patch...)
-  local clean_version="${new_version#v}"
-  IFS='.' read -ra version_parts <<< "$clean_version"
-  local version_major="${version_parts[0]:-0}"
-  local version_minor="${version_parts[1]:-0}"
-  local version_patch="${version_parts[2]:-0}"
-
-  # Generate docker image name: prefix/full-name (e.g., my/my-project-sucks)
-  local docker_image_name
-  local prefix="${project_name%%-*}"
-  docker_image_name="${prefix}/${project_name}"
-
-  output_var "VERSION" "$new_version"
-  output_var "VERSION_MAJOR" "$version_major"
-  output_var "VERSION_MINOR" "$version_minor"
-  output_var "VERSION_PATCH" "$version_patch"
-  output_var "VERSION_2_PART" "$version_2_part"
-  output_var "VERSION_3_PART" "$version_3_part"
-  output_var "VERSION_4_PART" "$version_4_part"
-  output_var "DOCKER_TAG" "$docker_tag"
-  output_var "DOCKER_IMAGE_NAME" "$docker_image_name"
-  output_var "IS_RELEASE" "$is_release"
-  output_var "PROJECT_NAME" "$project_name"
+  # Output the version
+  echo "VERSION=$new_version"
 }
 
 main "$@"

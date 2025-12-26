@@ -1,0 +1,39 @@
+# SPDX-License-Identifier: CC0-1.0
+#
+# Docker Registry Logins - secrets: inherit (recommended)
+#
+# Simple approach: all repository secrets are available to the workflow.
+# Secret values are looked up by the names specified in the config.
+
+name: Build with Registry Logins
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build:
+    uses: kube-kaptain/buildon-github-actions/.github/workflows/docker-build-dockerfile.yaml@1
+    secrets: inherit
+    with:
+      docker-registry-logins: |
+        # Docker Hub - private base images
+        docker.io:
+          type: username-password
+          username-secret: DOCKERHUB_USERNAME
+          password-secret: DOCKERHUB_PASSWORD
+
+        # AWS ECR - shared libraries
+        111111111111.dkr.ecr.us-east-1.amazonaws.com:
+          type: aws-ecr
+          access-key-id-secret: ECR_ACCESS_KEY_ID
+          secret-access-key-secret: ECR_SECRET_ACCESS_KEY
+          region: us-east-1
+
+# Required secrets in repository settings:
+#   DOCKERHUB_USERNAME
+#   DOCKERHUB_PASSWORD
+#   ECR_ACCESS_KEY_ID
+#   ECR_SECRET_ACCESS_KEY
+
+# GHCR uses GITHUB_TOKEN automatically (ghcr.io not in config)

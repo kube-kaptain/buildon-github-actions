@@ -1,0 +1,42 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025 Kaptain contributors (Fred Cooke)
+#
+# docker-login-azure-acr-github-actions-oidc - Login to Azure ACR via GitHub Actions OIDC
+#
+# Usage: docker-login-azure-acr-github-actions-oidc <secret-method> <registry> <client-id> <tenant-id> <subscription-id>
+#
+# Arguments:
+#   secret-method   - Secret retrieval method (github, env) - unused but accepted for consistency
+#   registry        - ACR registry URL (e.g., myregistry.azurecr.io)
+#   client-id       - Azure client/application ID
+#   tenant-id       - Azure tenant ID
+#   subscription-id - Azure subscription ID
+#
+# Environment (set by GitHub Actions):
+#   ACTIONS_ID_TOKEN_REQUEST_TOKEN - GitHub OIDC token
+#   ACTIONS_ID_TOKEN_REQUEST_URL   - GitHub OIDC URL
+#
+set -euo pipefail
+
+# secret_method=$1 - unused for OIDC
+registry="$2"
+client_id="$3"
+tenant_id="$4"
+subscription_id="$5"
+
+echo "Authenticating to Azure via OIDC..." >&2
+
+token=$(curl -s -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+  "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=api://AzureADTokenExchange" | yq -r '.value')
+
+az login --service-principal \
+  -u "$client_id" \
+  -t "$tenant_id" \
+  --federated-token "$token" \
+  --output none
+
+az account set --subscription "$subscription_id"
+
+echo "Logging in to Azure ACR $registry..." >&2
+az acr login --name "${registry%.azurecr.io}"

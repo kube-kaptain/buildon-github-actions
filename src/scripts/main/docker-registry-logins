@@ -1,0 +1,253 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025 Kaptain contributors (Fred Cooke)
+#
+# docker-registry-logins - Router for multi-registry authentication
+#
+# Reads login configuration from CONFIG env var (inline YAML) and routes
+# to the appropriate login script for each configured registry.
+#
+# Registry URL is the key - prevents duplicates and makes config explicit:
+#   docker.io:
+#     type: username-password
+#     username-secret: DOCKERHUB_USER
+#     password-secret: DOCKERHUB_PASS
+#
+# Inputs (environment variables):
+#   CONFIG - YAML config with registry logins (registry URL as key) - required
+#   SECRET_METHOD - Secret retrieval method (github, env) - required
+#   SECRETS_JSON - JSON object containing secret values keyed by secret name
+#
+set -euo pipefail
+
+SCRIPT_DIR="$(dirname "$0")"
+PLUGINS_DIR="$SCRIPT_DIR/../plugins"
+
+# Logging configuration (CI-agnostic)
+LOG_ERROR_PREFIX="${LOG_ERROR_PREFIX:-}"
+LOG_ERROR_SUFFIX="${LOG_ERROR_SUFFIX:-}"
+LOG_GROUP_START="${LOG_GROUP_START:-}"
+LOG_GROUP_END="${LOG_GROUP_END:-}"
+
+# Config from inline YAML - required
+if [[ -z "${CONFIG:-}" ]]; then
+  echo "${LOG_ERROR_PREFIX}CONFIG is required${LOG_ERROR_SUFFIX}" >&2
+  exit 1
+fi
+
+# Secret retrieval method - required
+if [[ -z "${SECRET_METHOD:-}" ]]; then
+  echo "${LOG_ERROR_PREFIX}SECRET_METHOD is required (github, env)${LOG_ERROR_SUFFIX}" >&2
+  exit 1
+fi
+
+# Secrets passed as JSON (exported for get-secret-github)
+export SECRETS_JSON="${SECRETS_JSON:-{\}}"
+
+# Validate secret method exists
+validate_secret_method() {
+  local method="$1"
+  local script="$PLUGINS_DIR/secret-value-providers/get-secret-$method"
+  if [[ ! -x "$script" ]]; then
+    echo "${LOG_ERROR_PREFIX}Unknown secret method: $method (no executable $script)${LOG_ERROR_SUFFIX}" >&2
+    echo "Available methods:" >&2
+    for f in "$PLUGINS_DIR"/secret-value-providers/get-secret-*; do
+      [[ -x "$f" ]] && echo "  - ${f##*get-secret-}" >&2
+    done
+    return 1
+  fi
+}
+
+# Helper to extract config value with yq
+cfg() {
+  local registry="$1" key="$2"
+  echo "$CONFIG" | yq -r ".[\"$registry\"][\"$key\"]"
+}
+
+# Get required secret names for a registry based on its type
+get_required_secrets() {
+  local registry="$1"
+  local login_type
+  login_type=$(echo "$CONFIG" | yq -r ".[\"$registry\"].type")
+
+  case "$login_type" in
+    username-password)
+      cfg "$registry" "username-secret"
+      cfg "$registry" "password-secret"
+      ;;
+    aws-ecr)
+      cfg "$registry" "access-key-id-secret"
+      cfg "$registry" "secret-access-key-secret"
+      ;;
+    gcp-gar)
+      cfg "$registry" "service-account-key-secret"
+      ;;
+    azure-acr)
+      cfg "$registry" "client-id-secret"
+      cfg "$registry" "client-secret-secret"
+      cfg "$registry" "tenant-id-secret"
+      ;;
+    # Types that don't use secrets from the secret store
+    github-token|aws-ecr-github-actions-oidc|gcp-gar-github-actions-oidc|azure-acr-github-actions-oidc)
+      ;;
+  esac
+}
+
+# Validate all secrets exist before attempting any logins
+validate_all_secrets() {
+  local get_secret="$PLUGINS_DIR/secret-value-providers/get-secret-$SECRET_METHOD"
+  local found_secrets=()
+  local missing_secrets=()
+  local registries
+
+  registries=$(echo "$CONFIG" | yq -r 'keys | .[]')
+  [[ -z "$registries" ]] && return 0
+
+  # Collect all required secrets and check each one
+  while IFS= read -r registry; do
+    local secrets
+    secrets=$(get_required_secrets "$registry")
+    [[ -z "$secrets" ]] && continue
+
+    while IFS= read -r secret_name; do
+      [[ -z "$secret_name" ]] && continue
+      if "$get_secret" "$secret_name" > /dev/null 2>&1; then
+        found_secrets+=("$secret_name ($registry)")
+      else
+        missing_secrets+=("$secret_name ($registry)")
+      fi
+    done <<< "$secrets"
+  done <<< "$registries"
+
+  # Report results
+  if [[ ${#missing_secrets[@]} -gt 0 ]]; then
+    echo "${LOG_ERROR_PREFIX}Secret validation failed${LOG_ERROR_SUFFIX}" >&2
+    echo "" >&2
+    echo "Missing secrets:" >&2
+    for s in "${missing_secrets[@]}"; do
+      echo "  - $s" >&2
+    done
+    echo "" >&2
+    if [[ ${#found_secrets[@]} -gt 0 ]]; then
+      echo "Available secrets:" >&2
+      for s in "${found_secrets[@]}"; do
+        echo "  - $s" >&2
+      done
+      echo "" >&2
+    fi
+    return 1
+  fi
+
+  if [[ ${#found_secrets[@]} -gt 0 ]]; then
+    echo "All ${#found_secrets[@]} required secrets validated" >&2
+  fi
+  return 0
+}
+
+# Route to the appropriate login script
+route_login() {
+  local registry="$1"
+  local login_type
+  login_type=$(echo "$CONFIG" | yq -r ".[\"$registry\"].type")
+
+  local login_script="$PLUGINS_DIR/docker-login-providers/docker-login-$login_type"
+  if [[ ! -x "$login_script" ]]; then
+    echo "${LOG_ERROR_PREFIX}Unknown login type: $login_type (no executable $login_script)${LOG_ERROR_SUFFIX}" >&2
+    return 1
+  fi
+
+  echo "${LOG_GROUP_START}Login: $registry ($login_type)${LOG_GROUP_END}" >&2
+
+  case "$login_type" in
+    username-password)
+      "$login_script" "$SECRET_METHOD" "$registry" \
+        "$(cfg "$registry" "username-secret")" \
+        "$(cfg "$registry" "password-secret")"
+      ;;
+
+    github-token)
+      "$login_script" "$SECRET_METHOD" "$registry" \
+        "$(cfg "$registry" "token")" \
+        "$(cfg "$registry" "actor")"
+      ;;
+
+    aws-ecr)
+      "$login_script" "$SECRET_METHOD" "$registry" \
+        "$(cfg "$registry" "region")" \
+        "$(cfg "$registry" "access-key-id-secret")" \
+        "$(cfg "$registry" "secret-access-key-secret")"
+      ;;
+
+    aws-ecr-github-actions-oidc)
+      local session_name
+      session_name=$(echo "$CONFIG" | yq -r ".[\"$registry\"][\"session-name\"] // \"github-actions\"")
+      "$login_script" "$SECRET_METHOD" "$registry" \
+        "$(cfg "$registry" "role-arn")" \
+        "$(cfg "$registry" "region")" \
+        "$session_name"
+      ;;
+
+    gcp-gar)
+      "$login_script" "$SECRET_METHOD" "$registry" \
+        "$(cfg "$registry" "service-account-key-secret")"
+      ;;
+
+    gcp-gar-github-actions-oidc)
+      "$login_script" "$SECRET_METHOD" "$registry" \
+        "$(cfg "$registry" "workload-identity-provider")" \
+        "$(cfg "$registry" "service-account")"
+      ;;
+
+    azure-acr)
+      "$login_script" "$SECRET_METHOD" "$registry" \
+        "$(cfg "$registry" "client-id-secret")" \
+        "$(cfg "$registry" "client-secret-secret")" \
+        "$(cfg "$registry" "tenant-id-secret")"
+      ;;
+
+    azure-acr-github-actions-oidc)
+      "$login_script" "$SECRET_METHOD" "$registry" \
+        "$(cfg "$registry" "client-id")" \
+        "$(cfg "$registry" "tenant-id")" \
+        "$(cfg "$registry" "subscription-id")"
+      ;;
+
+    *)
+      # Should not reach here due to executable check above
+      echo "${LOG_ERROR_PREFIX}Unknown login type: $login_type${LOG_ERROR_SUFFIX}" >&2
+      return 1
+      ;;
+  esac
+
+  echo "Successfully authenticated to $registry" >&2
+}
+
+main() {
+  echo "=== Docker Logins ===" >&2
+
+  # Validate secret method first
+  validate_secret_method "$SECRET_METHOD" || exit 1
+
+  # Validate all secrets exist before attempting any logins
+  validate_all_secrets || exit 1
+
+  # Get list of registries
+  local registries
+  registries=$(echo "$CONFIG" | yq -r 'keys | .[]')
+
+  if [[ -z "$registries" ]]; then
+    echo "No registries configured" >&2
+    exit 0
+  fi
+
+  # Process each registry
+  local count=0
+  while IFS= read -r registry; do
+    route_login "$registry"
+    count=$((count + 1))
+  done <<< "$registries"
+
+  echo "Docker Logins complete - authenticated to $count registry/registries" >&2
+}
+
+main "$@"
