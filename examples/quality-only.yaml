@@ -16,5 +16,27 @@ on:
 
 jobs:
   quality:
-    uses: kube-kaptain/buildon-github-actions/.github/workflows/basic-quality-checks.yaml@1.0.2
+    uses: kube-kaptain/buildon-github-actions/.github/workflows/basic-quality-checks.yaml@1.0.11
     # No push trigger = no tagging, quality checks only run on PRs
+
+# ┌───────────────────────────────────────────────────────────────────────────┐
+# │ All Available Options                                                     │
+# │ Uncomment and add to the job above as needed                              │
+# └───────────────────────────────────────────────────────────────────────────┘
+
+# ┌─────────────────────────────────────────────────────────────────────────┐
+# │ Branch Configuration                                                    │
+# └─────────────────────────────────────────────────────────────────────────┘
+#     with:
+#       default-branch: 'master'  # Default is main, use whatever you want
+#       additional-release-branches: 'main-1.x,main-2.x'
+
+# ┌─────────────────────────────────────────────────────────────────────────┐
+# │ Quality Checks                                                          │
+# └─────────────────────────────────────────────────────────────────────────┘
+#     with:
+#       block-slashes: true                  # Default is false
+#       block-double-hyphens: false          # Default is true
+#       require-conventional-branches: true  # Default is false
+#       require-conventional-commits: true   # Default is false
+#       block-conventional-commits: true     # Default is false

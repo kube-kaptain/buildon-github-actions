@@ -79,9 +79,12 @@ See [`examples/`](examples/) for more usage patterns.
 | `confirm-image-doesnt-exist` | boolean | `true` | Fail if target image already exists in registry |
 | `default-branch` | string | `main` | The default/release branch name |
 | `dockerfile-path` | string | `src/docker` | Directory containing Dockerfile (also used as build context) |
+| `manifest-transport` | string | *required* | Transport type for manifest storage (docker, github-release). Required - consumer must choose. |
+| `manifests-path` | string | `src/kubernetes` | Directory containing Kubernetes manifests |
 | `max-version-parts` | number | `3` | Maximum allowed version parts (fail if exceeded) |
 | `no-cache` | boolean | `true` | Disable layer caching for reproducible builds |
 | `post-docker-tests-script-sub-path` | string | `""` | Path to post-docker test script relative to .github/ (e.g., bin/post-docker.bash) |
+| `post-package-tests-script-sub-path` | string | `""` | Path to post-package test script relative to .github/ (e.g., bin/post-package.bash) |
 | `pre-tagging-tests-script-sub-path` | string | `""` | Path to pre-tagging test script relative to .github/ (e.g., bin/pre-tagging.bash) |
 | `require-conventional-branches` | boolean | `false` | Require branch names start with feature/, fix/, etc. |
 | `require-conventional-commits` | boolean | `false` | Require commits use conventional commit format (feat:, fix:, etc.) |
@@ -89,6 +92,8 @@ See [`examples/`](examples/) for more usage patterns.
 | `source-registry` | string | *required* | Upstream registry (e.g., docker.io) |
 | `source-tag` | string | *required* | Upstream image tag (e.g., 1.25) |
 | `squash` | boolean | `true` | Enable --squash (requires experimental mode) |
+| `substitution-output-style` | string | `UPPER_SNAKE` | Case style for variable names in manifests (UPPER_SNAKE, lower_snake, kebab-case, camelCase, PascalCase) |
+| `substitution-token-style` | string | `shell` | Token delimiter syntax for variables (shell) |
 | `target-base-path` | string | `""` | Path between registry and image name (auto-set for GHCR) |
 | `target-registry` | string | `ghcr.io` | Target container registry |
 <!-- INPUTS-END -->
@@ -111,6 +116,9 @@ See [`examples/`](examples/) for more usage patterns.
 | `basic-quality-checks.yaml` | Basic Quality Checks | [docs/basic-quality-checks.md](docs/basic-quality-checks.md) |
 | `docker-build-dockerfile.yaml` | Docker Build Dockerfile | [docs/docker-build-dockerfile.md](docs/docker-build-dockerfile.md) |
 | `docker-build-retag.yaml` | Docker Build Retag | [docs/docker-build-retag.md](docs/docker-build-retag.md) |
+| `kubernetes-app-docker-dockerfile.yaml` | Kubernetes App - Docker Dockerfile | [docs/kubernetes-app-docker-dockerfile.md](docs/kubernetes-app-docker-dockerfile.md) |
+| `kubernetes-app-docker-retag.yaml` | Kubernetes App - Docker Retag | [docs/kubernetes-app-docker-retag.md](docs/kubernetes-app-docker-retag.md) |
+| `kubernetes-app-manifests-only.yaml` | Kubernetes App - Manifests Only | [docs/kubernetes-app-manifests-only.md](docs/kubernetes-app-manifests-only.md) |
 | `versions-and-naming.yaml` | Versions & Naming | [docs/versions-and-naming.md](docs/versions-and-naming.md) |
 <!-- WORKFLOW-DOCS-END -->
 

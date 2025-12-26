@@ -347,6 +347,12 @@ inject_between_markers() {
 generate_docs() {
   echo "Generating documentation..."
 
+  # Clean docs directory for predictable results
+  if [[ -d "$DOCS_DIR" ]]; then
+    rm "$DOCS_DIR"/*
+    echo "  Cleaned docs directory"
+  fi
+
   # Create docs directory
   mkdir -p "$DOCS_DIR"
 
@@ -385,6 +391,15 @@ main() {
   # Lint templates for input consistency before assembly
   lint_workflow_inputs
   echo
+
+  # Clean output directory for predictable results
+  if [[ -d "$OUTPUT_DIR" ]]; then
+    echo "Cleaning output directory..."
+    rm "$OUTPUT_DIR"/*
+    git checkout "$OUTPUT_DIR/build.yaml"
+    echo "  Removed existing files from $OUTPUT_DIR (restored build.yaml)"
+    echo
+  fi
 
   # Ensure output directory exists
   mkdir -p "$OUTPUT_DIR"

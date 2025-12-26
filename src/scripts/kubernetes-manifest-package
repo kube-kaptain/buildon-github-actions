@@ -1,0 +1,282 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025 Kaptain contributors (Fred Cooke)
+#
+# kubernetes-manifest-package - Packages Kubernetes manifests into a zip with variable substitution
+#
+# Inputs (environment variables):
+#   MANIFESTS_PATH  - Source directory (default: src/kubernetes)
+#   PROJECT_NAME    - For variable substitution (required)
+#   VERSION         - For variable substitution (required)
+#   OUTPUT_PATH     - Build output directory (default: target)
+#   DOCKER_TAG      - Docker tag for substitution (optional)
+#   DOCKER_IMAGE_NAME - Docker image name for substitution (optional)
+#   SUBSTITUTION_TOKEN_STYLE - Token delimiter syntax (default: shell)
+#                              Options: shell (${VAR})
+#   SUBSTITUTION_OUTPUT_STYLE - Case style for variable names (default: UPPER_SNAKE)
+#                               Options: UPPER_SNAKE, lower_snake, kebab-case, camelCase, PascalCase
+#
+# Outputs (GITHUB_OUTPUT):
+#   MANIFEST_ZIP_PATH - Full path to created zip file
+#   MANIFEST_ZIP_NAME - Filename of zip
+#
+set -euo pipefail
+
+# Locate script directory for calling sibling scripts
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Logging configuration (CI-agnostic)
+LOG_ERROR_PREFIX="${LOG_ERROR_PREFIX:-}"
+LOG_ERROR_SUFFIX="${LOG_ERROR_SUFFIX:-}"
+
+# Required inputs
+PROJECT_NAME="${PROJECT_NAME:?PROJECT_NAME is required}"
+VERSION="${VERSION:?VERSION is required}"
+
+# Optional inputs with defaults
+MANIFESTS_PATH="${MANIFESTS_PATH:-src/kubernetes}"
+OUTPUT_PATH="${OUTPUT_PATH:-target}"
+DOCKER_TAG="${DOCKER_TAG:-}"
+DOCKER_IMAGE_NAME="${DOCKER_IMAGE_NAME:-}"
+SUBSTITUTION_TOKEN_STYLE="${SUBSTITUTION_TOKEN_STYLE:-shell}"
+SUBSTITUTION_OUTPUT_STYLE="${SUBSTITUTION_OUTPUT_STYLE:-UPPER_SNAKE}"
+
+# Build output structure
+MANIFESTS_RAW_PATH="$OUTPUT_PATH/manifests/raw"
+MANIFESTS_SUBSTITUTED_PATH="$OUTPUT_PATH/manifests/substituted"
+MANIFESTS_ZIP_PATH="$OUTPUT_PATH/manifests/zip"
+
+# Output variable for GitHub Actions
+output_var() {
+  local name="$1"
+  local value="$2"
+
+  echo "${name}=${value}"
+
+  if [[ -n "${GITHUB_OUTPUT:-}" ]]; then
+    echo "${name}=${value}" >> "$GITHUB_OUTPUT"
+  fi
+}
+
+# Case conversion functions - translate UPPER_SNAKE to target style
+to_upper_snake() {
+  echo "$1"  # Already in UPPER_SNAKE
+}
+
+to_lower_snake() {
+  echo "$1" | tr '[:upper:]' '[:lower:]'
+}
+
+to_kebab_case() {
+  echo "$1" | tr '[:upper:]_' '[:lower:]-'
+}
+
+to_camel_case() {
+  local input="$1"
+  local result=""
+  local capitalize=false
+
+  # Convert to lowercase with underscores as separators
+  input=$(echo "$input" | tr '[:upper:]' '[:lower:]')
+
+  for (( i=0; i<${#input}; i++ )); do
+    local char="${input:$i:1}"
+    if [[ "$char" == "_" ]]; then
+      capitalize=true
+    elif [[ "$capitalize" == "true" ]]; then
+      result+=$(echo "$char" | tr '[:lower:]' '[:upper:]')
+      capitalize=false
+    else
+      result+="$char"
+    fi
+  done
+
+  echo "$result"
+}
+
+to_pascal_case() {
+  local camel
+  camel=$(to_camel_case "$1")
+  # Capitalize first letter
+  echo "$(echo "${camel:0:1}" | tr '[:lower:]' '[:upper:]')${camel:1}"
+}
+
+# Translate variable name from UPPER_SNAKE to configured style
+translate_var_name() {
+  local var_name="$1"
+
+  case "$SUBSTITUTION_OUTPUT_STYLE" in
+    UPPER_SNAKE)  to_upper_snake "$var_name" ;;
+    lower_snake)  to_lower_snake "$var_name" ;;
+    kebab-case)   to_kebab_case "$var_name" ;;
+    camelCase)    to_camel_case "$var_name" ;;
+    PascalCase)   to_pascal_case "$var_name" ;;
+    *)
+      echo "${LOG_ERROR_PREFIX}Unknown substitution output style: $SUBSTITUTION_OUTPUT_STYLE${LOG_ERROR_SUFFIX}" >&2
+      exit 1
+      ;;
+  esac
+}
+
+# Validate token style and get substitution script name
+get_substitution_script() {
+  local script_name="substitute-${SUBSTITUTION_TOKEN_STYLE}-style-vars"
+  local script_path="$SCRIPT_DIR/$script_name"
+
+  if [[ ! -x "$script_path" ]]; then
+    echo "${LOG_ERROR_PREFIX}Unknown substitution token style: $SUBSTITUTION_TOKEN_STYLE (script not found: $script_name)${LOG_ERROR_SUFFIX}" >&2
+    exit 1
+  fi
+
+  echo "$script_path"
+}
+
+# Build VARIABLES string with translated names for substitution
+build_variables_string() {
+  local project_name_key version_key
+  project_name_key=$(translate_var_name "PROJECT_NAME")
+  version_key=$(translate_var_name "VERSION")
+
+  local vars="${project_name_key}=${PROJECT_NAME},${version_key}=${VERSION}"
+
+  if [[ -n "$DOCKER_TAG" ]]; then
+    local docker_tag_key
+    docker_tag_key=$(translate_var_name "DOCKER_TAG")
+    vars="${vars},${docker_tag_key}=${DOCKER_TAG}"
+  fi
+
+  if [[ -n "$DOCKER_IMAGE_NAME" ]]; then
+    local docker_image_name_key
+    docker_image_name_key=$(translate_var_name "DOCKER_IMAGE_NAME")
+    vars="${vars},${docker_image_name_key}=${DOCKER_IMAGE_NAME}"
+  fi
+
+  echo "$vars"
+}
+
+main() {
+  echo "=== Kubernetes Manifest Package ===" >&2
+  echo "Source: $MANIFESTS_PATH" >&2
+  echo "Output: $OUTPUT_PATH" >&2
+  echo "Project: $PROJECT_NAME" >&2
+  echo "Version: $VERSION" >&2
+  [[ -n "$DOCKER_TAG" ]] && echo "Docker tag: $DOCKER_TAG" >&2
+  [[ -n "$DOCKER_IMAGE_NAME" ]] && echo "Docker image: $DOCKER_IMAGE_NAME" >&2
+  echo "Token style: $SUBSTITUTION_TOKEN_STYLE" >&2
+  echo "Output style: $SUBSTITUTION_OUTPUT_STYLE" >&2
+  echo "====================================" >&2
+
+  # Validate manifests directory exists
+  if [[ ! -d "$MANIFESTS_PATH" ]]; then
+    echo "${LOG_ERROR_PREFIX}Manifests directory not found: $MANIFESTS_PATH${LOG_ERROR_SUFFIX}" >&2
+    exit 1
+  fi
+
+  # Count files by type
+  local yaml_count=0
+  local other_count=0
+  local total_files=0
+
+  while IFS= read -r file; do
+    total_files=$((total_files + 1))
+    case "$file" in
+      *.yaml|*.yml) yaml_count=$((yaml_count + 1)) ;;
+      *) other_count=$((other_count + 1)) ;;
+    esac
+  done < <(find "$MANIFESTS_PATH" -type f)
+
+  if [[ "$total_files" -eq 0 ]]; then
+    echo "${LOG_ERROR_PREFIX}Manifests directory is empty: $MANIFESTS_PATH${LOG_ERROR_SUFFIX}" >&2
+    exit 1
+  fi
+
+  echo "" >&2
+  echo "Found $yaml_count manifest file(s) (.yaml/.yml)" >&2
+  if [[ $other_count -gt 0 ]]; then
+    echo "Found $other_count non-manifest file(s)" >&2
+  fi
+
+  # Create output directory structure
+  mkdir -p "$MANIFESTS_RAW_PATH"
+  mkdir -p "$MANIFESTS_ZIP_PATH"
+
+  # Copy to raw (preserving original)
+  cp -R "$MANIFESTS_PATH"/* "$MANIFESTS_RAW_PATH/"
+
+  # Perform variable substitution using standalone script
+  echo "" >&2
+  echo "Performing variable substitution..." >&2
+
+  local variables_string substitution_script
+  variables_string=$(build_variables_string)
+  substitution_script=$(get_substitution_script)
+
+  # Call substitution script (variables already translated to target style)
+  local sub_output
+  sub_output=$(
+    VARIABLES="$variables_string" \
+    INPUT_PATH="$MANIFESTS_PATH" \
+    OUTPUT_PATH="$MANIFESTS_SUBSTITUTED_PATH" \
+    LOG_ERROR_PREFIX="$LOG_ERROR_PREFIX" \
+    LOG_ERROR_SUFFIX="$LOG_ERROR_SUFFIX" \
+    "$substitution_script"
+  )
+
+  # Report substitution stats
+  if [[ -n "$sub_output" ]]; then
+    local total_subs=0
+    local total_lines=0
+    local files_with_subs=0
+    echo "" >&2
+    echo "Substitutions:" >&2
+    while IFS=: read -r filename vars_count lines_count; do
+      echo "  $filename: $vars_count vars, $lines_count lines" >&2
+      total_subs=$((total_subs + vars_count))
+      total_lines=$((total_lines + lines_count))
+      files_with_subs=$((files_with_subs + 1))
+    done <<< "$sub_output"
+    echo "" >&2
+    echo "Total: $total_subs substitutions, $total_lines lines across $files_with_subs file(s)" >&2
+  else
+    echo "No substitutions made" >&2
+  fi
+
+  # Generate zip filename
+  local zip_name="${PROJECT_NAME}-${VERSION}-manifests.zip"
+  local zip_path
+  # Convert to absolute path
+  zip_path="$(cd "$MANIFESTS_ZIP_PATH" && pwd)/${zip_name}"
+
+  # Create zip with project-name wrapper directory
+  echo "" >&2
+  echo "Creating zip: $zip_path" >&2
+
+  # Create staging directory
+  local staging_dir="$OUTPUT_PATH/manifests/zip-staging"
+  mkdir -p "$staging_dir/${PROJECT_NAME}"
+  cp -R "$MANIFESTS_SUBSTITUTED_PATH"/* "$staging_dir/${PROJECT_NAME}/"
+
+  # Create zip
+  (cd "$staging_dir" && zip -rq "$zip_path" "${PROJECT_NAME}")
+
+  # Clean up staging
+  rm -rf "$staging_dir"
+
+  # Verify zip was created
+  if [[ ! -f "$zip_path" ]]; then
+    echo "${LOG_ERROR_PREFIX}Failed to create zip file${LOG_ERROR_SUFFIX}" >&2
+    exit 1
+  fi
+
+  local zip_size
+  zip_size=$(wc -c < "$zip_path" | tr -d ' ')
+  echo "Created: $zip_name ($zip_size bytes)" >&2
+
+  output_var "MANIFEST_ZIP_PATH" "$zip_path"
+  output_var "MANIFEST_ZIP_NAME" "$zip_name"
+
+  echo "" >&2
+  echo "=== Package Complete ===" >&2
+}
+
+main "$@"

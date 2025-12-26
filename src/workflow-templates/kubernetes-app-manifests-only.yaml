@@ -1,27 +1,32 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2025 Kaptain contributors (Fred Cooke)
 
-name: Docker Build Dockerfile
+name: Kubernetes App - Manifests Only
 on:
   workflow_call:
     inputs:
-      # Dockerfile configuration
-      dockerfile-path:
-        description: 'Directory containing Dockerfile (also used as build context)'
+      # Manifest configuration
+      manifests-path:
+        description: 'Directory containing Kubernetes manifests'
         required: false
         type: string
-        default: 'src/docker'
-      squash:
-        description: 'Enable --squash (requires experimental mode)'
+        default: 'src/kubernetes'
+      substitution-token-style:
+        description: 'Token delimiter syntax for variables (shell)'
         required: false
-        type: boolean
-        default: true
-      no-cache:
-        description: 'Disable layer caching for reproducible builds'
+        type: string
+        default: 'shell'
+      substitution-output-style:
+        description: 'Case style for variable names in manifests (UPPER_SNAKE, lower_snake, kebab-case, camelCase, PascalCase)'
         required: false
-        type: boolean
-        default: true
-      # Target configuration
+        type: string
+        default: 'UPPER_SNAKE'
+      # Transport configuration (required - no default)
+      manifest-transport:
+        description: 'Transport type for manifest storage (docker, github-release). Required - consumer must choose.'
+        required: true
+        type: string
+      # Target configuration (for docker transport)
       target-registry:
         description: 'Target container registry'
         required: false
@@ -48,6 +53,12 @@ on:
         required: false
         type: string
         default: ''
+      max-version-parts:
+        description: 'Maximum allowed version parts (fail if exceeded)'
+        required: false
+        type: number
+        default: 3
+      # Quality check inputs
       block-slashes:
         description: 'Block branch names containing slashes'
         required: false
@@ -73,18 +84,14 @@ on:
         required: false
         type: boolean
         default: false
-      max-version-parts:
-        description: 'Maximum allowed version parts (fail if exceeded)'
-        required: false
-        type: number
-        default: 3
+      # Test injection points
       pre-tagging-tests-script-sub-path:
         description: 'Path to pre-tagging test script relative to .github/ (e.g., bin/pre-tagging.bash)'
         required: false
         type: string
         default: ''
-      post-docker-tests-script-sub-path:
-        description: 'Path to post-docker test script relative to .github/ (e.g., bin/post-docker.bash)'
+      post-package-tests-script-sub-path:
+        description: 'Path to post-package test script relative to .github/ (e.g., bin/post-package.bash)'
         required: false
         type: string
         default: ''
@@ -96,7 +103,7 @@ on:
         description: 'Password/token for target registry (defaults to GITHUB_TOKEN for GHCR)'
         required: false
     outputs:
-      # Version outputs (pass-through from versioning job)
+      # Version outputs
       version:
         description: 'The generated version'
         value: ${{ jobs.versions-and-naming.outputs.version }}
@@ -109,13 +116,20 @@ on:
       is-release:
         description: 'Whether this is a release build'
         value: ${{ jobs.versions-and-naming.outputs.is-release }}
-      # Build outputs
-      target-image-full-uri:
-        description: 'Full target image reference'
-        value: ${{ jobs.docker-build-dockerfile.outputs.target-image-full-uri }}
-      image-pushed:
-        description: 'Whether image was pushed'
-        value: ${{ jobs.docker-build-dockerfile.outputs.image-pushed }}
+      # Package outputs
+      manifest-zip-path:
+        description: 'Path to manifest zip file'
+        value: ${{ jobs.kubernetes-manifest-package.outputs.manifest-zip-path }}
+      manifest-zip-name:
+        description: 'Name of manifest zip file'
+        value: ${{ jobs.kubernetes-manifest-package.outputs.manifest-zip-name }}
+      # Transport outputs
+      manifest-uri:
+        description: 'Reference to published manifests (format depends on transport)'
+        value: ${{ jobs.kubernetes-manifest-transport.outputs.manifest-uri }}
+      manifest-published:
+        description: 'Whether manifests were published'
+        value: ${{ jobs.kubernetes-manifest-transport.outputs.manifest-published }}
 jobs:
   basic-quality-checks:
     name: Basic Quality Checks
@@ -179,56 +193,94 @@ jobs:
           default-branch: ${{ inputs.default-branch }}
           additional-release-branches: ${{ inputs.additional-release-branches }}
           max-version-parts: ${{ inputs.max-version-parts }}
-  docker-build-dockerfile:
-    name: Docker Build Dockerfile
+  kubernetes-manifest-package:
+    name: Package Manifests
     needs: versions-and-naming
     if: always() && needs.versions-and-naming.result == 'success'
     runs-on: ubuntu-24.04
-    permissions:
-      contents: read
-      packages: write
     outputs:
-      target-image-full-uri: ${{ steps.build.outputs.target-image-full-uri }}
-      image-pushed: ${{ steps.push.outputs.image-pushed }}
+      manifest-zip-path: ${{ steps.package.outputs.manifest-zip-path }}
+      manifest-zip-name: ${{ steps.package.outputs.manifest-zip-name }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4.2.2
       # INJECT: parse-workflow-ref
-      - name: Login to target registry
-        uses: docker/login-action@v3.3.0
+      - name: Package manifests
+        id: package
+        uses: ./.github/buildon-github-actions/src/actions/kubernetes-manifest-package
         with:
-          registry: ${{ inputs.target-registry }}
-          username: ${{ secrets.target-username || github.actor }}
-          password: ${{ secrets.target-password || github.token }}
-      - name: Build image
-        id: build
-        uses: ./.github/buildon-github-actions/src/actions/docker-build-dockerfile
-        with:
-          target-registry: ${{ inputs.target-registry }}
-          target-base-path: ${{ inputs.target-base-path }}
-          target-image-name: ${{ needs.versions-and-naming.outputs.docker-image-name }}
-          docker-tag: ${{ needs.versions-and-naming.outputs.docker-tag }}
-          version: ${{ needs.versions-and-naming.outputs.version }}
+          manifests-path: ${{ inputs.manifests-path }}
           project-name: ${{ needs.versions-and-naming.outputs.project-name }}
-          dockerfile-path: ${{ inputs.dockerfile-path }}
-          squash: ${{ inputs.squash }}
-          no-cache: ${{ inputs.no-cache }}
-          confirm-image-doesnt-exist: ${{ inputs.confirm-image-doesnt-exist }}
-      - name: Run post-docker tests
-        if: inputs.post-docker-tests-script-sub-path != ''
+          version: ${{ needs.versions-and-naming.outputs.version }}
+          docker-tag: ${{ needs.versions-and-naming.outputs.docker-tag }}
+          docker-image-name: ${{ needs.versions-and-naming.outputs.docker-image-name }}
+          substitution-token-style: ${{ inputs.substitution-token-style }}
+          substitution-output-style: ${{ inputs.substitution-output-style }}
+      - name: Upload manifest zip artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: manifests
+          path: ${{ steps.package.outputs.manifest-zip-path }}
+          retention-days: 1
+  post-package-tests:
+    name: Post-package Tests
+    needs: [versions-and-naming, kubernetes-manifest-package]
+    if: always() && inputs.post-package-tests-script-sub-path != '' && needs.kubernetes-manifest-package.result == 'success'
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4.2.2
+      # INJECT: parse-workflow-ref
+      - name: Download manifest zip artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: manifests
+      - name: Run post-package tests
         uses: ./.github/buildon-github-actions/src/actions/run-test-script
         with:
-          script-sub-path: ${{ inputs.post-docker-tests-script-sub-path }}
+          script-sub-path: ${{ inputs.post-package-tests-script-sub-path }}
           version: ${{ needs.versions-and-naming.outputs.version }}
           docker-tag: ${{ needs.versions-and-naming.outputs.docker-tag }}
           docker-image-name: ${{ needs.versions-and-naming.outputs.docker-image-name }}
           project-name: ${{ needs.versions-and-naming.outputs.project-name }}
           is-release: ${{ needs.versions-and-naming.outputs.is-release }}
-          target-image-full-uri: ${{ steps.build.outputs.target-image-full-uri }}
-      - name: Push image
-        id: push
-        if: needs.versions-and-naming.outputs.is-release == 'true'
-        shell: bash
-        run: |
-          docker push "${{ steps.build.outputs.target-image-full-uri }}"
-          echo "image-pushed=true" >> "$GITHUB_OUTPUT"
+  kubernetes-manifest-transport:
+    name: Publish Manifests
+    needs: [versions-and-naming, kubernetes-manifest-package, post-package-tests]
+    if: always() && needs.kubernetes-manifest-package.result == 'success' && (needs.post-package-tests.result == 'success' || needs.post-package-tests.result == 'skipped')
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+      packages: write
+    outputs:
+      manifest-uri: ${{ steps.transport.outputs.manifest-uri }}
+      manifest-published: ${{ steps.transport.outputs.manifest-published }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4.2.2
+      # INJECT: parse-workflow-ref
+      - name: Download manifest zip artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: manifests
+      - name: Login to target registry
+        if: inputs.manifest-transport == 'docker'
+        uses: docker/login-action@v3.3.0
+        with:
+          registry: ${{ inputs.target-registry }}
+          username: ${{ secrets.target-username || github.actor }}
+          password: ${{ secrets.target-password || github.token }}
+      - name: Publish via transport
+        id: transport
+        uses: ./.github/buildon-github-actions/src/actions/kubernetes-manifest-transport
+        with:
+          transport: ${{ inputs.manifest-transport }}
+          manifest-zip-path: ${{ needs.kubernetes-manifest-package.outputs.manifest-zip-name }}
+          manifest-zip-name: ${{ needs.kubernetes-manifest-package.outputs.manifest-zip-name }}
+          target-registry: ${{ inputs.target-registry }}
+          target-base-path: ${{ inputs.target-base-path }}
+          target-image-name: ${{ needs.versions-and-naming.outputs.docker-image-name }}
+          docker-tag: ${{ needs.versions-and-naming.outputs.docker-tag }}-manifests
+          confirm-image-doesnt-exist: ${{ inputs.confirm-image-doesnt-exist }}
+          version: ${{ needs.versions-and-naming.outputs.version }}
+          is-release: ${{ needs.versions-and-naming.outputs.is-release }}

@@ -1,14 +1,15 @@
-# kube-manifest-package
+# kubernetes-app-manifests-only
 
-Kube Manifest Package
+Kubernetes App - Manifests Only
 
 ## Inputs
 
 | Input | Type | Default | Description |
 |-------|------|---------|-------------|
 | `manifests-path` | string | `src/kubernetes` | Directory containing Kubernetes manifests |
-| `publish-docker` | boolean | `true` | Publish manifests as Docker image |
-| `publish-release` | boolean | `false` | Publish manifests as GitHub release asset |
+| `substitution-token-style` | string | `shell` | Token delimiter syntax for variables (shell) |
+| `substitution-output-style` | string | `UPPER_SNAKE` | Case style for variable names in manifests (UPPER_SNAKE, lower_snake, kebab-case, camelCase, PascalCase) |
+| `manifest-transport` | string | *required* | Transport type for manifest storage (docker, github-release). Required - consumer must choose. |
 | `target-registry` | string | `ghcr.io` | Target container registry |
 | `target-base-path` | string | `""` | Path between registry and image name (auto-set for GHCR) |
 | `confirm-image-doesnt-exist` | boolean | `true` | Fail if target image already exists in registry |
@@ -40,7 +41,5 @@ Kube Manifest Package
 | `is-release` | Whether this is a release build |
 | `manifest-zip-path` | Path to manifest zip file |
 | `manifest-zip-name` | Name of manifest zip file |
-| `manifest-image-full-uri` | Full manifest image reference |
-| `manifest-image-pushed` | Whether manifest image was pushed |
-| `release-url` | URL to GitHub release |
-| `asset-uploaded` | Whether asset was uploaded to release |
+| `manifest-uri` | Reference to published manifests (format depends on transport) |
+| `manifest-published` | Whether manifests were published |

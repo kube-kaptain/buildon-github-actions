@@ -24,7 +24,65 @@ on:
 
 jobs:
   build:
-    uses: kube-kaptain/buildon-github-actions/.github/workflows/docker-build-dockerfile.yaml@1.0.2
+    uses: kube-kaptain/buildon-github-actions/.github/workflows/docker-build-dockerfile.yaml@1.0.11
     permissions:
       contents: write
       packages: write
+
+# ┌───────────────────────────────────────────────────────────────────────────┐
+# │ All Available Options                                                     │
+# │ Uncomment and add to the job above as needed                              │
+# └───────────────────────────────────────────────────────────────────────────┘
+
+# ┌─────────────────────────────────────────────────────────────────────────┐
+# │ Dockerfile Configuration                                                │
+# └─────────────────────────────────────────────────────────────────────────┘
+#     with:
+#       dockerfile-path: 'docker'  # 'build', '.'
+#       squash: false  # true
+#       no-cache: false  # true
+
+# ┌─────────────────────────────────────────────────────────────────────────┐
+# │ Target Registry                                                         │
+# └─────────────────────────────────────────────────────────────────────────┘
+#     with:
+#       target-registry: 'myregistry.example.com'  # ecr, gcr, harbor, nexus
+#       target-base-path: 'my-team/images'
+#       confirm-image-doesnt-exist: false  # true
+
+# ┌─────────────────────────────────────────────────────────────────────────┐
+# │ Branch Configuration                                                    │
+# └─────────────────────────────────────────────────────────────────────────┘
+#     with:
+#       default-branch: 'master'  # Default is main, use whatever you want
+#       additional-release-branches: 'main-1.x,main-2.x'
+
+# ┌─────────────────────────────────────────────────────────────────────────┐
+# │ Quality Checks                                                          │
+# └─────────────────────────────────────────────────────────────────────────┘
+#     with:
+#       block-slashes: true                  # Default is false
+#       block-double-hyphens: false          # Default is true
+#       require-conventional-branches: true  # Default is false
+#       require-conventional-commits: true   # Default is false
+#       block-conventional-commits: true     # Default is false
+
+# ┌─────────────────────────────────────────────────────────────────────────┐
+# │ Version Configuration                                                   │
+# └─────────────────────────────────────────────────────────────────────────┘
+#     with:
+#       max-version-parts: 2  # Default is 3, but any positive integer 1 or higher is valid
+
+# ┌─────────────────────────────────────────────────────────────────────────┐
+# │ Test Injection                                                          │
+# └─────────────────────────────────────────────────────────────────────────┘
+#     with:
+#       pre-tagging-tests-script-sub-path: 'bin/run-tests.bash'
+#       post-docker-tests-script-sub-path: 'bin/test-container.bash'
+
+# ┌─────────────────────────────────────────────────────────────────────────┐
+# │ Registry Credentials                                                    │
+# └─────────────────────────────────────────────────────────────────────────┘
+#     secrets:
+#       target-username: ${{ secrets.REGISTRY_USER }}
+#       target-password: ${{ secrets.REGISTRY_TOKEN }}
