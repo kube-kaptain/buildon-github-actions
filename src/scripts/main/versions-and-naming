@@ -34,6 +34,8 @@ DEFAULT_BRANCH="${DEFAULT_BRANCH:-main}"
 ADDITIONAL_RELEASE_BRANCHES="${ADDITIONAL_RELEASE_BRANCHES:-}"  # Comma-separated list of additional release branches
 MAX_VERSION_PARTS="${MAX_VERSION_PARTS:-3}"  # Fail if version exceeds this many parts
 TAG_VERSION_CALCULATION_STRATEGY="${TAG_VERSION_CALCULATION_STRATEGY:-git-auto-closest-highest}"
+DOCKERFILE_PATH="${DOCKERFILE_PATH:-src/docker}"  # For dockerfile-env-version strategy
+ENV_VARIABLE_NAME="${ENV_VARIABLE_NAME:-KUBECTL_VERSION}"  # For dockerfile-env-version strategy
 
 # Get current branch
 get_current_branch() {
@@ -107,6 +109,15 @@ output_var() {
   export "${name}=${value}"
 }
 
+# Push tag to remote
+push_tag() {
+  local tag="$1"
+  git config user.email "noreply@kaptain.org"
+  git config user.name "Kube Kaptain"
+  git tag -m "Automatic release tag by Kaptain build script." "$tag" HEAD
+  git push origin "$tag"
+}
+
 main() {
   local current_branch
   current_branch=$(get_current_branch)
@@ -116,10 +127,8 @@ main() {
 
   # Determine if this is a release branch
   local is_release="false"
-  local push_tag="false"
   if is_release_branch "$current_branch"; then
     is_release="true"
-    push_tag="true"
   fi
 
   # Validate strategy plugin exists
@@ -142,7 +151,8 @@ main() {
   local plugin_output
   plugin_output=$(
     MAX_VERSION_PARTS="$MAX_VERSION_PARTS" \
-    PUSH_TAG="$push_tag" \
+    DOCKERFILE_PATH="$DOCKERFILE_PATH" \
+    ENV_VARIABLE_NAME="$ENV_VARIABLE_NAME" \
     LOG_ERROR_PREFIX="$LOG_ERROR_PREFIX" \
     LOG_ERROR_SUFFIX="$LOG_ERROR_SUFFIX" \
     "$strategy_script"
@@ -155,6 +165,14 @@ main() {
   if [[ -z "$new_version" ]]; then
     echo "${LOG_ERROR_PREFIX}Strategy plugin did not output VERSION${LOG_ERROR_SUFFIX}" >&2
     exit 1
+  fi
+
+  # Push tag if this is a release build
+  if [[ "$is_release" == "true" ]]; then
+    echo "Tagging release: $new_version" >&2
+    push_tag "$new_version"
+  else
+    echo "Pre-release build: $new_version (no tag push)" >&2
   fi
 
   # Generate DOCKER_TAG based on release status

@@ -9,11 +9,9 @@
 #   2. If multiple at same distance, use newest by creation date
 #   3. Look up highest version in that series across entire repo
 #   4. Increment the last component
-#   5. Optionally push the new tag
 #
 # Inputs (environment variables):
 #   MAX_VERSION_PARTS - Fail if version exceeds this depth (required)
-#   PUSH_TAG          - "true" to push the new tag (required)
 #
 # Outputs (stdout):
 #   VERSION=x.y.z
@@ -27,11 +25,6 @@ LOG_ERROR_SUFFIX="${LOG_ERROR_SUFFIX:-}"
 # Required inputs
 if [[ -z "${MAX_VERSION_PARTS:-}" ]]; then
   echo "${LOG_ERROR_PREFIX}MAX_VERSION_PARTS is required${LOG_ERROR_SUFFIX}" >&2
-  exit 1
-fi
-
-if [[ -z "${PUSH_TAG:-}" ]]; then
-  echo "${LOG_ERROR_PREFIX}PUSH_TAG is required (true/false)${LOG_ERROR_SUFFIX}" >&2
   exit 1
 fi
 
@@ -167,15 +160,6 @@ increment_version() {
   echo "${parts[*]}"
 }
 
-# Push tag to remote
-push_tag() {
-  local tag="$1"
-  git config user.email "noreply@kaptain.org"
-  git config user.name "Kube Kaptain"
-  git tag -m "Automatic release tag by Kaptain build script." "$tag" HEAD
-  git push origin "$tag"
-}
-
 main() {
   # Step 1: Find most recent tag to determine our series
   local recent_tag
@@ -195,14 +179,6 @@ main() {
   if [[ $part_count -gt $MAX_VERSION_PARTS ]]; then
     echo "${LOG_ERROR_PREFIX}Version '$new_version' has $part_count parts, exceeds MAX_VERSION_PARTS=$MAX_VERSION_PARTS${LOG_ERROR_SUFFIX}" >&2
     exit 1
-  fi
-
-  # Step 5: Push tag if requested
-  if [[ "$PUSH_TAG" == "true" ]]; then
-    echo "Tagging release: $new_version" >&2
-    push_tag "$new_version"
-  else
-    echo "Pre-release build: $new_version (no tag push)" >&2
   fi
 
   # Output the version
