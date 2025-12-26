@@ -271,6 +271,7 @@ jobs:
         with:
           config: ${{ inputs.docker-registry-logins }}
           secrets-json: ${{ secrets.docker-registry-logins-secrets || toJSON(secrets) }}
+          target-registry: ${{ inputs.target-registry }}
       - name: Publish via transport
         id: transport
         uses: ./.github/buildon-github-actions/src/actions/kubernetes-manifest-transport

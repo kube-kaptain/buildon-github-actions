@@ -17,6 +17,10 @@ inputs:
     description: 'JSON object containing secret values keyed by secret name'
     required: false
     default: '{}'
+  target-registry:
+    description: 'Target registry to validate is configured (optional, but recommended for push workflows)'
+    required: false
+    default: ''
 
 runs:
   using: composite
@@ -47,6 +51,16 @@ runs:
           # User config without ghcr.io - prepend GHCR default
           FINAL_CONFIG="$GHCR_DEFAULT
         $USER_CONFIG"
+        fi
+
+        # Validate target-registry is configured (if provided)
+        TARGET_REGISTRY='${{ inputs.target-registry }}'
+        if [[ -n "$TARGET_REGISTRY" ]]; then
+          if ! echo "$FINAL_CONFIG" | yq -e "has(\"$TARGET_REGISTRY\")" > /dev/null 2>&1; then
+            echo "::error::Target registry '$TARGET_REGISTRY' is not configured in docker-registry-logins."
+            echo "::error::Add '$TARGET_REGISTRY' to your docker-registry-logins config."
+            exit 1
+          fi
         fi
 
         # Export for next step
