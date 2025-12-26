@@ -92,7 +92,6 @@ version_to_n_parts() {
   echo "$result"
 }
 
-# Output variable for GitHub Actions
 output_var() {
   local name="$1"
   local value="$2"
