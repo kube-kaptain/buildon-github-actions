@@ -2,9 +2,9 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2025 Kaptain contributors (Fred Cooke)
 #
-# docker-login-azure-acr-oidc - Login to Azure Container Registry with OIDC/Federated credentials
+# docker-login-azure-acr-github-actions-oidc - Login to Azure ACR via GitHub Actions OIDC
 #
-# Usage: docker-login-azure-acr-oidc <secret-method> <registry> <client-id> <tenant-id> <subscription-id>
+# Usage: docker-login-azure-acr-github-actions-oidc <secret-method> <registry> <client-id> <tenant-id> <subscription-id>
 #
 # Arguments:
 #   secret-method   - Secret retrieval method (github, env) - unused but accepted for consistency

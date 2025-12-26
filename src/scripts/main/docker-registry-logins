@@ -88,7 +88,7 @@ get_required_secrets() {
       cfg "$registry" "tenant-id-secret"
       ;;
     # Types that don't use secrets from the secret store
-    github-token|aws-ecr-oidc|gcp-gar-oidc|azure-acr-oidc)
+    github-token|aws-ecr-github-actions-oidc|gcp-gar-github-actions-oidc|azure-acr-github-actions-oidc)
       ;;
   esac
 }
@@ -178,7 +178,7 @@ route_login() {
         "$(cfg "$registry" "secret-access-key-secret")"
       ;;
 
-    aws-ecr-oidc)
+    aws-ecr-github-actions-oidc)
       local session_name
       session_name=$(echo "$CONFIG" | yq -r ".[\"$registry\"][\"session-name\"] // \"github-actions\"")
       "$login_script" "$SECRET_METHOD" "$registry" \
@@ -192,7 +192,7 @@ route_login() {
         "$(cfg "$registry" "service-account-key-secret")"
       ;;
 
-    gcp-gar-oidc)
+    gcp-gar-github-actions-oidc)
       "$login_script" "$SECRET_METHOD" "$registry" \
         "$(cfg "$registry" "workload-identity-provider")" \
         "$(cfg "$registry" "service-account")"
@@ -205,7 +205,7 @@ route_login() {
         "$(cfg "$registry" "tenant-id-secret")"
       ;;
 
-    azure-acr-oidc)
+    azure-acr-github-actions-oidc)
       "$login_script" "$SECRET_METHOD" "$registry" \
         "$(cfg "$registry" "client-id")" \
         "$(cfg "$registry" "tenant-id")" \

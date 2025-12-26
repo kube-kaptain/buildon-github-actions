@@ -2,9 +2,9 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2025 Kaptain contributors (Fred Cooke)
 #
-# docker-login-gcp-gar-oidc - Login to Google Artifact Registry with Workload Identity Federation
+# docker-login-gcp-gar-github-actions-oidc - Login to Google Artifact Registry via GitHub Actions OIDC
 #
-# Usage: docker-login-gcp-gar-oidc <secret-method> <registry> <workload-identity-provider> <service-account>
+# Usage: docker-login-gcp-gar-github-actions-oidc <secret-method> <registry> <workload-identity-provider> <service-account>
 #
 # Arguments:
 #   secret-method              - Secret retrieval method (github, env) - unused but accepted for consistency

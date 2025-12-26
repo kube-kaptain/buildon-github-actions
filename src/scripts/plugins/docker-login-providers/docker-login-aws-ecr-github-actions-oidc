@@ -2,9 +2,9 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2025 Kaptain contributors (Fred Cooke)
 #
-# docker-login-aws-ecr-oidc - Login to AWS ECR with GitHub OIDC
+# docker-login-aws-ecr-github-actions-oidc - Login to AWS ECR via GitHub Actions OIDC
 #
-# Usage: docker-login-aws-ecr-oidc <secret-method> <registry> <role-arn> <region> [session-name]
+# Usage: docker-login-aws-ecr-github-actions-oidc <secret-method> <registry> <role-arn> <region> [session-name]
 #
 # Arguments:
 #   secret-method - Secret retrieval method (github, env) - unused but accepted for consistency

@@ -194,11 +194,11 @@ Verbose but explicit - you list exactly which secrets are passed to the workflow
 |------|----------|
 | `username-password` | Docker Hub, Quay, private registries |
 | `aws-ecr` | AWS ECR with IAM access keys |
-| `aws-ecr-oidc` | AWS ECR with GitHub OIDC (no long-lived keys) |
+| `aws-ecr-github-actions-oidc` | AWS ECR via GitHub Actions OIDC (no long-lived keys) |
 | `gcp-gar` | Google Artifact Registry with service account key |
-| `gcp-gar-oidc` | Google Artifact Registry with Workload Identity Federation |
+| `gcp-gar-github-actions-oidc` | Google Artifact Registry via GitHub Actions OIDC |
 | `azure-acr` | Azure Container Registry with service principal |
-| `azure-acr-oidc` | Azure ACR with OIDC/Federated credentials |
+| `azure-acr-github-actions-oidc` | Azure ACR via GitHub Actions OIDC |
 
 ### Outputs
 
