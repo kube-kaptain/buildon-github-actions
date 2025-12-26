@@ -1,0 +1,212 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025 Kaptain contributors (Fred Cooke)
+#
+# tag-version-calculation-git-auto-closest-highest - Git-based automatic versioning
+#
+# Algorithm:
+#   1. Find closest annotated tag to HEAD (by commit distance)
+#   2. If multiple at same distance, use newest by creation date
+#   3. Look up highest version in that series across entire repo
+#   4. Increment the last component
+#   5. Optionally push the new tag
+#
+# Inputs (environment variables):
+#   MAX_VERSION_PARTS - Fail if version exceeds this depth (required)
+#   PUSH_TAG          - "true" to push the new tag (required)
+#
+# Outputs (stdout):
+#   VERSION=x.y.z
+#
+set -euo pipefail
+
+# Logging configuration (CI-agnostic)
+LOG_ERROR_PREFIX="${LOG_ERROR_PREFIX:-}"
+LOG_ERROR_SUFFIX="${LOG_ERROR_SUFFIX:-}"
+
+# Required inputs
+if [[ -z "${MAX_VERSION_PARTS:-}" ]]; then
+  echo "${LOG_ERROR_PREFIX}MAX_VERSION_PARTS is required${LOG_ERROR_SUFFIX}" >&2
+  exit 1
+fi
+
+if [[ -z "${PUSH_TAG:-}" ]]; then
+  echo "${LOG_ERROR_PREFIX}PUSH_TAG is required (true/false)${LOG_ERROR_SUFFIX}" >&2
+  exit 1
+fi
+
+# Check if a tag is annotated (heavy) vs lightweight
+is_annotated_tag() {
+  local tag="$1"
+  local obj_type
+  obj_type=$(git cat-file -t "refs/tags/$tag" 2>/dev/null)
+  [[ "$obj_type" == "tag" ]]
+}
+
+# Find the most recent tag in history (determines our series)
+# Primary sort: distance from HEAD (closest wins)
+# Tiebreaker: creation date (newest wins)
+# Only considers annotated (heavy) tags
+find_recent_tag() {
+  local tag distance creatordate
+  local best_tag="" best_distance=999999 best_date=0
+
+  # Get all annotated tags reachable from HEAD
+  for tag in $(git tag --merged HEAD 2>/dev/null); do
+    if is_annotated_tag "$tag"; then
+      # Calculate distance from HEAD
+      distance=$(git rev-list --count "$tag"..HEAD)
+      # Get creation date as Unix timestamp
+      creatordate=$(git for-each-ref --format='%(creatordate:unix)' "refs/tags/$tag")
+
+      # Pick this tag if:
+      # - It's closer (smaller distance), OR
+      # - Same distance but newer creation date
+      if [[ $distance -lt $best_distance ]] || \
+         [[ $distance -eq $best_distance && $creatordate -gt $best_date ]]; then
+        best_tag="$tag"
+        best_distance=$distance
+        best_date=$creatordate
+      fi
+    fi
+  done
+
+  if [[ -n "$best_tag" ]]; then
+    echo "$best_tag"
+  fi
+}
+
+# Get version prefix (all but last component)
+get_version_prefix() {
+  local version="$1"
+  version="${version#v}"
+
+  # Remove last component to get prefix
+  if [[ "$version" == *.* ]]; then
+    echo "${version%.*}"
+  else
+    # Single component version, no prefix
+    echo ""
+  fi
+}
+
+# Check if a tag is a pure numeric version (no -rc1, -beta, etc)
+is_numeric_version() {
+  local tag="$1"
+  tag="${tag#v}"
+  # Must be only digits and dots, with at least one dot
+  [[ "$tag" =~ ^[0-9]+(\.[0-9]+)+$ ]]
+}
+
+# Find highest tag in a series across entire repo
+find_highest_in_series() {
+  local recent_tag="$1"
+
+  if [[ -z "$recent_tag" ]]; then
+    echo ""
+    return
+  fi
+
+  local prefix
+  prefix=$(get_version_prefix "$recent_tag")
+
+  if [[ -z "$prefix" ]]; then
+    # Single component version, just return the recent tag
+    echo "$recent_tag"
+    return
+  fi
+
+  # Get ALL tags in repo (not just reachable from HEAD)
+  # Filter to those matching our prefix with pure numeric versions only
+  # This excludes tags like 1.2.3-rc1, 1.2.3-beta, etc
+  local highest
+  highest=$(git tag --list | while read -r tag; do
+    # Strip v prefix for comparison
+    local clean="${tag#v}"
+    # Must start with our prefix, followed by dot and digits only
+    if [[ "$clean" =~ ^${prefix}\.[0-9]+$ ]] && is_numeric_version "$tag"; then
+      echo "$tag"
+    fi
+  done | sort -t. -k1,1n -k2,2n -k3,3n -k4,4n -k5,5n | tail -n1)
+
+  if [[ -z "$highest" ]]; then
+    # No matching tags found, use the recent tag
+    echo "$recent_tag"
+  else
+    echo "$highest"
+  fi
+}
+
+# Count parts in a version string
+count_version_parts() {
+  local version="$1"
+  version="${version#v}"
+  local dot_count
+  dot_count=$(echo "$version" | tr -cd '.' | wc -c | tr -d ' ')
+  echo $((dot_count + 1))
+}
+
+# Increment version - always increments last component
+increment_version() {
+  local current="$1"
+
+  if [[ -z "$current" ]]; then
+    # No existing tag, start at 1.0.0
+    echo "1.0.0"
+    return
+  fi
+
+  # Remove 'v' prefix if present
+  current="${current#v}"
+
+  # Split version into array and increment last part
+  IFS='.' read -ra parts <<< "$current"
+  local last_idx=$((${#parts[@]} - 1))
+  parts[last_idx]=$((parts[last_idx] + 1))
+  local IFS='.'
+  echo "${parts[*]}"
+}
+
+# Push tag to remote
+push_tag() {
+  local tag="$1"
+  git config user.email "noreply@kaptain.org"
+  git config user.name "Kube Kaptain"
+  git tag -m "Automatic release tag by Kaptain build script." "$tag" HEAD
+  git push origin "$tag"
+}
+
+main() {
+  # Step 1: Find most recent tag to determine our series
+  local recent_tag
+  recent_tag=$(find_recent_tag)
+
+  # Step 2: Find highest tag in that series across entire repo
+  local highest_tag
+  highest_tag=$(find_highest_in_series "$recent_tag")
+
+  # Step 3: Increment the highest
+  local new_version
+  new_version=$(increment_version "$highest_tag")
+
+  # Step 4: Validate against MAX_VERSION_PARTS
+  local part_count
+  part_count=$(count_version_parts "$new_version")
+  if [[ $part_count -gt $MAX_VERSION_PARTS ]]; then
+    echo "${LOG_ERROR_PREFIX}Version '$new_version' has $part_count parts, exceeds MAX_VERSION_PARTS=$MAX_VERSION_PARTS${LOG_ERROR_SUFFIX}" >&2
+    exit 1
+  fi
+
+  # Step 5: Push tag if requested
+  if [[ "$PUSH_TAG" == "true" ]]; then
+    echo "Tagging release: $new_version" >&2
+    push_tag "$new_version"
+  else
+    echo "Pre-release build: $new_version (no tag push)" >&2
+  fi
+
+  # Output the version
+  echo "VERSION=$new_version"
+}
+
+main "$@"

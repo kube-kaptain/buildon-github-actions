@@ -18,6 +18,10 @@ inputs:
     description: 'Maximum allowed version parts (fail if exceeded)'
     required: false
     default: '3'
+  tag-version-calculation-strategy:
+    description: 'Strategy for calculating version from git tags'
+    required: false
+    default: 'git-auto-closest-highest'
 
 outputs:
   version:
@@ -65,4 +69,5 @@ runs:
         DEFAULT_BRANCH: ${{ inputs.default-branch }}
         ADDITIONAL_RELEASE_BRANCHES: ${{ inputs.additional-release-branches }}
         MAX_VERSION_PARTS: ${{ inputs.max-version-parts }}
+        TAG_VERSION_CALCULATION_STRATEGY: ${{ inputs.tag-version-calculation-strategy }}
       run: "${{ github.action_path }}/../../scripts/main/versions-and-naming"
