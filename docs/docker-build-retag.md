@@ -20,7 +20,7 @@ Docker Build Retag
 | `require-conventional-commits` | boolean | `false` | Require commits use conventional commit format (feat:, fix:, etc.) |
 | `block-conventional-commits` | boolean | `false` | Block commits that use conventional commit format |
 | `max-version-parts` | number | `3` | Maximum allowed version parts (fail if exceeded) |
-| `docker-registry-logins` | string | `""` | YAML config for additional registry logins (registry URL as key) |
+| `docker-registry-logins` | string | `""` | YAML config for Docker registry logins (registry URL as key) |
 
 ## Secrets
 

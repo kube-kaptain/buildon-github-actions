@@ -78,7 +78,7 @@ See [`examples/`](examples/) for more usage patterns.
 | `block-slashes` | boolean | `false` | Block branch names containing slashes |
 | `confirm-image-doesnt-exist` | boolean | `true` | Fail if target image already exists in registry |
 | `default-branch` | string | `main` | The default/release branch name |
-| `docker-registry-logins` | string | `""` | YAML config for additional registry logins (registry URL as key) |
+| `docker-registry-logins` | string | `""` | YAML config for Docker registry logins (registry URL as key) |
 | `dockerfile-path` | string | `src/docker` | Directory containing Dockerfile (also used as build context) |
 | `manifest-transport` | string | *required* | Transport type for manifest storage (docker, github-release). Required - consumer must choose. |
 | `manifests-path` | string | `src/kubernetes` | Directory containing Kubernetes manifests |
@@ -148,9 +148,9 @@ This means:
 - After merging branches with different tags, the newest tag wins
 - Hotfix branches can't accidentally collide with main's newer versions
 
-### Additional Docker Logins
+### Docker Registry Logins
 
-Configure logins to additional registries (Docker Hub, ECR, GCR, ACR, Quay, etc.) when your builds need to pull from private sources.
+Configure logins to container registries (Docker Hub, ECR, GCR, ACR, Quay, etc.) when your builds need to pull from or push to private registries.
 
 #### GHCR Behavior
 
@@ -161,7 +161,7 @@ You only need to configure `ghcr.io` explicitly when accessing packages from oth
 
 #### Option A: secrets: inherit (Recommended)
 
-Use [`examples/additional-docker-logins-inherit.yaml`](examples/additional-docker-logins-inherit.yaml)
+Use [`examples/docker-registry-logins-inherit.yaml`](examples/docker-registry-logins-inherit.yaml)
 
 Simple and secure - all repository secrets are available to the reusable workflow. The workflow looks up secret values by the names you specify in the config.
 
@@ -175,7 +175,7 @@ Simple and secure - all repository secrets are available to the reusable workflo
 
 #### Option B: Explicit JSON
 
-Use [`examples/additional-docker-logins-explicit.yaml`](examples/additional-docker-logins-explicit.yaml)
+Use [`examples/docker-registry-logins-explicit.yaml`](examples/docker-registry-logins-explicit.yaml)
 
 Verbose but explicit - you list exactly which secrets are passed to the workflow.
 

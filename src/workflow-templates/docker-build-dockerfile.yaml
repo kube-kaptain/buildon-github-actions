@@ -89,7 +89,7 @@ on:
         type: string
         default: ''
       docker-registry-logins:
-        description: 'YAML config for additional registry logins (registry URL as key)'
+        description: 'YAML config for Docker registry logins (registry URL as key)'
         required: false
         type: string
         default: ''
@@ -196,7 +196,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4.2.2
       # INJECT: parse-workflow-ref
-      - name: Additional registry logins
+      - name: Docker registry logins
         uses: ./.github/buildon-github-actions/src/actions/docker-registry-logins
         with:
           config: ${{ inputs.docker-registry-logins }}

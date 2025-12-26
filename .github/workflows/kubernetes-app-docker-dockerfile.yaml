@@ -117,7 +117,7 @@ on:
         type: string
         default: ''
       docker-registry-logins:
-        description: 'YAML config for additional registry logins (registry URL as key)'
+        description: 'YAML config for Docker registry logins (registry URL as key)'
         required: false
         type: string
         default: ''
@@ -466,7 +466,7 @@ jobs:
         run: |
           echo "Linking local actions for dogfooding"
           ln -s "$(pwd)" .github/buildon-github-actions
-      - name: Additional registry logins
+      - name: Docker registry logins
         uses: ./.github/buildon-github-actions/src/actions/docker-registry-logins
         with:
           config: ${{ inputs.docker-registry-logins }}
@@ -745,7 +745,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: manifests
-      - name: Registry logins
+      - name: Docker registry logins
         if: inputs.manifest-transport == 'docker'
         uses: ./.github/buildon-github-actions/src/actions/docker-registry-logins
         with:
