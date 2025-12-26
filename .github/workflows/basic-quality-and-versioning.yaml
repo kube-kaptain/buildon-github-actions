@@ -96,6 +96,9 @@ jobs:
           fetch-depth: 0
           fetch-tags: true
           ref: ${{ github.event.pull_request.head.sha }}
+      # SPDX-License-Identifier: MIT
+      # Copyright (c) 2025 Kaptain contributors (Fred Cooke)
+
       - name: Parse workflow ref
         id: parse
         run: |
@@ -169,6 +172,9 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4.2.2
+      # SPDX-License-Identifier: MIT
+      # Copyright (c) 2025 Kaptain contributors (Fred Cooke)
+
       - name: Parse workflow ref
         id: parse
         run: |
@@ -253,6 +259,9 @@ jobs:
         with:
           fetch-depth: 0
           fetch-tags: true
+      # SPDX-License-Identifier: MIT
+      # Copyright (c) 2025 Kaptain contributors (Fred Cooke)
+
       - name: Parse workflow ref
         id: parse
         run: |

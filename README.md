@@ -72,13 +72,13 @@ See [`examples/`](examples/) for more usage patterns.
 <!-- INPUTS-START -->
 | Input | Type | Default | Description |
 |-------|------|---------|-------------|
-| `additional-docker-logins` | string | `""` | YAML config for additional registry logins (registry URL as key) |
 | `additional-release-branches` | string | `""` | Comma-separated list of additional release branches |
 | `block-conventional-commits` | boolean | `false` | Block commits that use conventional commit format |
 | `block-double-hyphens` | boolean | `true` | Block branch names containing double hyphens (typo detection) |
 | `block-slashes` | boolean | `false` | Block branch names containing slashes |
 | `confirm-image-doesnt-exist` | boolean | `true` | Fail if target image already exists in registry |
 | `default-branch` | string | `main` | The default/release branch name |
+| `docker-registry-logins` | string | `""` | YAML config for additional registry logins (registry URL as key) |
 | `dockerfile-path` | string | `src/docker` | Directory containing Dockerfile (also used as build context) |
 | `manifest-transport` | string | *required* | Transport type for manifest storage (docker, github-release). Required - consumer must choose. |
 | `manifests-path` | string | `src/kubernetes` | Directory containing Kubernetes manifests |
@@ -104,9 +104,7 @@ See [`examples/`](examples/) for more usage patterns.
 <!-- SECRETS-START -->
 | Secret | Description |
 |--------|-------------|
-| `additional-docker-logins-secrets` | JSON object of secrets for additional-docker-logins (e.g., {"DOCKER_USER": "x", "DOCKER_PASS": "y"}) |
-| `target-password` | Password/token for target registry (defaults to GITHUB_TOKEN for GHCR) |
-| `target-username` | Username for target registry (defaults to github.actor for GHCR) |
+| `docker-registry-logins-secrets` | JSON object of secrets for docker-registry-logins (e.g., {"DOCKER_USER": "x", "DOCKER_PASS": "y"}) |
 <!-- SECRETS-END -->
 
 ### Workflow Documentation

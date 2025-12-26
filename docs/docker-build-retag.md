@@ -20,15 +20,13 @@ Docker Build Retag
 | `require-conventional-commits` | boolean | `false` | Require commits use conventional commit format (feat:, fix:, etc.) |
 | `block-conventional-commits` | boolean | `false` | Block commits that use conventional commit format |
 | `max-version-parts` | number | `3` | Maximum allowed version parts (fail if exceeded) |
-| `additional-docker-logins` | string | `""` | YAML config for additional registry logins (registry URL as key) |
+| `docker-registry-logins` | string | `""` | YAML config for additional registry logins (registry URL as key) |
 
 ## Secrets
 
 | Secret | Description |
 |--------|-------------|
-| `target-username` | Username for target registry (defaults to github.actor for GHCR) |
-| `target-password` | Password/token for target registry (defaults to GITHUB_TOKEN for GHCR) |
-| `additional-docker-logins-secrets` | JSON object of secrets for additional-docker-logins (e.g., {"DOCKER_USER": "x", "DOCKER_PASS": "y"}) |
+| `docker-registry-logins-secrets` | JSON object of secrets for docker-registry-logins (e.g., {"DOCKER_USER": "x", "DOCKER_PASS": "y"}) |
 
 ## Outputs
 

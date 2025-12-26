@@ -78,6 +78,9 @@ jobs:
         with:
           fetch-depth: 0
           fetch-tags: true
+      # SPDX-License-Identifier: MIT
+      # Copyright (c) 2025 Kaptain contributors (Fred Cooke)
+
       - name: Parse workflow ref
         id: parse
         run: |
