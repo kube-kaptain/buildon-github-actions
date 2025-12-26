@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2025 Kaptain contributors (Fred Cooke)
 #
-# github-release - Transport plugin for publishing manifest zip as GitHub release asset
+# kubernetes-manifest-repo-provider-github-release - Transport plugin for publishing manifest zip as GitHub release asset
 #
 # Inputs (environment variables):
 #   MANIFEST_ZIP_PATH - Path to zip file (required)
