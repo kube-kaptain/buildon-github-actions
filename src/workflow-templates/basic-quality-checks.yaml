@@ -45,13 +45,7 @@ jobs:
     name: Basic Quality Checks
     runs-on: ubuntu-24.04
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4.2.2
-        with:
-          fetch-depth: 0
-          fetch-tags: true
-          ref: ${{ github.event.pull_request.head.sha || github.ref }}
-      # INJECT: parse-workflow-ref
+      # INJECT: parse-workflow-ref-and-checkout
       - name: Basic quality checks
         uses: ./.github/buildon-github-actions/src/actions/basic-quality-checks
         with:

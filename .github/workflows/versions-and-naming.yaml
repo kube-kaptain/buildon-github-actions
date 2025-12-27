@@ -73,13 +73,15 @@ jobs:
       is-release: ${{ steps.generate.outputs.is-release }}
       project-name: ${{ steps.generate.outputs.project-name }}
     steps:
+      # SPDX-License-Identifier: MIT
+      # Copyright (c) 2025 Kaptain contributors (Fred Cooke)
+
       - name: Checkout
         uses: actions/checkout@v4.2.2
         with:
           fetch-depth: 0
           fetch-tags: true
-      # SPDX-License-Identifier: MIT
-      # Copyright (c) 2025 Kaptain contributors (Fred Cooke)
+          ref: ${{ github.event.pull_request.head.sha }}
 
       - name: Parse workflow ref
         id: parse

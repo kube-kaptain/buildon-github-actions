@@ -45,14 +45,15 @@ jobs:
     name: Basic Quality Checks
     runs-on: ubuntu-24.04
     steps:
+      # SPDX-License-Identifier: MIT
+      # Copyright (c) 2025 Kaptain contributors (Fred Cooke)
+
       - name: Checkout
         uses: actions/checkout@v4.2.2
         with:
           fetch-depth: 0
           fetch-tags: true
-          ref: ${{ github.event.pull_request.head.sha || github.ref }}
-      # SPDX-License-Identifier: MIT
-      # Copyright (c) 2025 Kaptain contributors (Fred Cooke)
+          ref: ${{ github.event.pull_request.head.sha }}
 
       - name: Parse workflow ref
         id: parse

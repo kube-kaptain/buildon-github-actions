@@ -192,13 +192,7 @@ jobs:
     permissions:
       checks: write
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4.2.2
-        with:
-          fetch-depth: 0
-          fetch-tags: true
-          ref: ${{ github.event.pull_request.head.sha }}
-      # INJECT: parse-workflow-ref
+      # INJECT: parse-workflow-ref-and-checkout
       # INJECT: github-check-start(name="Quality Checks", id="check-quality")
       - name: Basic quality checks
         id: quality
@@ -240,12 +234,7 @@ jobs:
       manifests-uri: ${{ steps.manifest-publish.outputs.manifests-uri }}
       manifests-published: ${{ steps.manifest-publish.outputs.manifests-published }}
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4.2.2
-        with:
-          fetch-depth: 0
-          fetch-tags: true
-      # INJECT: parse-workflow-ref
+      # INJECT: parse-workflow-ref-and-checkout
 
       # === Docker Registry Logins ===
       - name: Docker registry logins

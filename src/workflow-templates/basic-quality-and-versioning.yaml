@@ -90,13 +90,7 @@ jobs:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-24.04
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4.2.2
-        with:
-          fetch-depth: 0
-          fetch-tags: true
-          ref: ${{ github.event.pull_request.head.sha }}
-      # INJECT: parse-workflow-ref
+      # INJECT: parse-workflow-ref-and-checkout
       - name: Basic quality checks
         uses: ./.github/buildon-github-actions/src/actions/basic-quality-checks
         with:
@@ -113,9 +107,7 @@ jobs:
     if: always() && inputs.pre-tagging-tests-script-sub-path != '' && (needs.basic-quality-checks.result == 'success' || needs.basic-quality-checks.result == 'skipped')
     runs-on: ubuntu-24.04
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4.2.2
-      # INJECT: parse-workflow-ref
+      # INJECT: parse-workflow-ref-and-checkout
       - name: Run pre-tagging tests
         uses: ./.github/buildon-github-actions/src/actions/run-test-script
         with:
@@ -140,12 +132,7 @@ jobs:
       is-release: ${{ steps.generate.outputs.is-release }}
       project-name: ${{ steps.generate.outputs.project-name }}
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4.2.2
-        with:
-          fetch-depth: 0
-          fetch-tags: true
-      # INJECT: parse-workflow-ref
+      # INJECT: parse-workflow-ref-and-checkout
       - name: Generate versions and naming
         id: generate
         uses: ./.github/buildon-github-actions/src/actions/versions-and-naming

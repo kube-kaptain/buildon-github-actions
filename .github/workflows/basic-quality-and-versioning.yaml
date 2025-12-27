@@ -90,14 +90,15 @@ jobs:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-24.04
     steps:
+      # SPDX-License-Identifier: MIT
+      # Copyright (c) 2025 Kaptain contributors (Fred Cooke)
+
       - name: Checkout
         uses: actions/checkout@v4.2.2
         with:
           fetch-depth: 0
           fetch-tags: true
           ref: ${{ github.event.pull_request.head.sha }}
-      # SPDX-License-Identifier: MIT
-      # Copyright (c) 2025 Kaptain contributors (Fred Cooke)
 
       - name: Parse workflow ref
         id: parse
@@ -170,10 +171,15 @@ jobs:
     if: always() && inputs.pre-tagging-tests-script-sub-path != '' && (needs.basic-quality-checks.result == 'success' || needs.basic-quality-checks.result == 'skipped')
     runs-on: ubuntu-24.04
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4.2.2
       # SPDX-License-Identifier: MIT
       # Copyright (c) 2025 Kaptain contributors (Fred Cooke)
+
+      - name: Checkout
+        uses: actions/checkout@v4.2.2
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+          ref: ${{ github.event.pull_request.head.sha }}
 
       - name: Parse workflow ref
         id: parse
@@ -254,13 +260,15 @@ jobs:
       is-release: ${{ steps.generate.outputs.is-release }}
       project-name: ${{ steps.generate.outputs.project-name }}
     steps:
+      # SPDX-License-Identifier: MIT
+      # Copyright (c) 2025 Kaptain contributors (Fred Cooke)
+
       - name: Checkout
         uses: actions/checkout@v4.2.2
         with:
           fetch-depth: 0
           fetch-tags: true
-      # SPDX-License-Identifier: MIT
-      # Copyright (c) 2025 Kaptain contributors (Fred Cooke)
+          ref: ${{ github.event.pull_request.head.sha }}
 
       - name: Parse workflow ref
         id: parse

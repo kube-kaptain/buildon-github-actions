@@ -140,13 +140,7 @@ jobs:
     permissions:
       checks: write
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4.2.2
-        with:
-          fetch-depth: 0
-          fetch-tags: true
-          ref: ${{ github.event.pull_request.head.sha }}
-      # INJECT: parse-workflow-ref
+      # INJECT: parse-workflow-ref-and-checkout
       - name: Start check - Basic Quality Checks
         id: check-quality
         uses: ./.github/buildon-github-actions/src/actions/github-check-run
@@ -201,12 +195,7 @@ jobs:
       target-image-full-uri: ${{ steps.docker-retag.outputs.target-image-full-uri }}
       docker-image-pushed: ${{ steps.docker-retag.outputs.image-pushed }}
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4.2.2
-        with:
-          fetch-depth: 0
-          fetch-tags: true
-      # INJECT: parse-workflow-ref
+      # INJECT: parse-workflow-ref-and-checkout
 
       # === Docker Registry Logins ===
       - name: Docker registry logins

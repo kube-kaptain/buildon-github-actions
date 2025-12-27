@@ -73,12 +73,7 @@ jobs:
       is-release: ${{ steps.generate.outputs.is-release }}
       project-name: ${{ steps.generate.outputs.project-name }}
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4.2.2
-        with:
-          fetch-depth: 0
-          fetch-tags: true
-      # INJECT: parse-workflow-ref
+      # INJECT: parse-workflow-ref-and-checkout
       - name: Generate versions and naming
         id: generate
         uses: ./.github/buildon-github-actions/src/actions/versions-and-naming

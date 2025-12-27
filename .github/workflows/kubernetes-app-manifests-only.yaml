@@ -161,14 +161,15 @@ jobs:
     permissions:
       checks: write
     steps:
+      # SPDX-License-Identifier: MIT
+      # Copyright (c) 2025 Kaptain contributors (Fred Cooke)
+
       - name: Checkout
         uses: actions/checkout@v4.2.2
         with:
           fetch-depth: 0
           fetch-tags: true
           ref: ${{ github.event.pull_request.head.sha }}
-      # SPDX-License-Identifier: MIT
-      # Copyright (c) 2025 Kaptain contributors (Fred Cooke)
 
       - name: Parse workflow ref
         id: parse
@@ -280,13 +281,15 @@ jobs:
       manifests-uri: ${{ steps.manifest-publish.outputs.manifests-uri }}
       manifests-published: ${{ steps.manifest-publish.outputs.manifests-published }}
     steps:
+      # SPDX-License-Identifier: MIT
+      # Copyright (c) 2025 Kaptain contributors (Fred Cooke)
+
       - name: Checkout
         uses: actions/checkout@v4.2.2
         with:
           fetch-depth: 0
           fetch-tags: true
-      # SPDX-License-Identifier: MIT
-      # Copyright (c) 2025 Kaptain contributors (Fred Cooke)
+          ref: ${{ github.event.pull_request.head.sha }}
 
       - name: Parse workflow ref
         id: parse
