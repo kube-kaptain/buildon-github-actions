@@ -40,7 +40,7 @@ runs:
         CHECK_SUMMARY: ${{ inputs.summary }}
         GITHUB_TOKEN: ${{ github.token }}
         GITHUB_REPOSITORY: ${{ github.repository }}
-        GITHUB_SHA: ${{ github.sha }}
+        GITHUB_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
       run: |
         set -euo pipefail
 
