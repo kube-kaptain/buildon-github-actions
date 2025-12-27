@@ -481,6 +481,86 @@ generate_workflow_links_table() {
   done
 }
 
+# Generate examples table for README
+# Extracts description from comment header in each example file
+# Format: line 1-2 SPDX, line 3 empty #, line 4 title, line 5 empty #, lines 6+ description
+generate_examples_table() {
+  local examples_dir="$REPO_ROOT/examples"
+
+  echo "| Example | Description |"
+  echo "|---------|-------------|"
+
+  for example in "$examples_dir"/*.yaml; do
+    [[ -f "$example" ]] || continue
+    local ex_basename description
+    ex_basename=$(basename "$example")
+
+    # Extract first description line (line 6 typically has description start)
+    description=""
+    local line_num=0
+    while IFS= read -r line; do
+      line_num=$((line_num + 1))
+      # Skip first 5 lines (SPDX header + blank + title + blank)
+      [[ $line_num -le 5 ]] && continue
+      # Stop at line 12 or when we hit non-comment or empty line
+      [[ $line_num -gt 12 ]] && break
+      # Skip empty comment lines (just "#" or "# ")
+      [[ "$line" == "#" ]] && continue
+      [[ "$line" == "# " ]] && continue
+      # Must be a comment line with content
+      [[ ! "$line" =~ ^#\  ]] && break
+      # Get the content and use first non-empty line
+      local content="${line#\# }"
+      if [[ -n "$content" && -z "$description" ]]; then
+        description="$content"
+        break
+      fi
+    done < "$example"
+
+    # Clean up description - take first sentence
+    description="${description%%.*}"
+    # Remove trailing colon if present
+    description="${description%:}"
+    [[ -z "$description" ]] && description="Example workflow"
+
+    echo "| [\`$ex_basename\`](examples/$ex_basename) | $description |"
+  done
+}
+
+# Generate workflows table for README (simple list, not docs links)
+generate_workflows_table() {
+  echo "| Workflow | Description |"
+  echo "|----------|-------------|"
+
+  for workflow in "$TEMPLATES_DIR"/*.yaml; do
+    [[ -f "$workflow" ]] || continue
+    local wf_basename description
+    wf_basename=$(basename "$workflow")
+    description=$(yq '.name // ""' "$workflow")
+    echo "| \`$wf_basename\` | $description |"
+  done
+}
+
+# Generate actions table for README
+generate_actions_table() {
+  local actions_dir="$REPO_ROOT/src/actions"
+
+  echo "| Action | Description |"
+  echo "|--------|-------------|"
+
+  for action_dir in "$actions_dir"/*/; do
+    [[ -d "$action_dir" ]] || continue
+    local action_file="$action_dir/action.yaml"
+    [[ -f "$action_file" ]] || continue
+
+    local action_name description
+    action_name=$(basename "$action_dir")
+    description=$(yq '.description // ""' "$action_file")
+
+    echo "| \`$action_name\` | $description |"
+  done
+}
+
 # Inject content between markers in a file
 inject_between_markers() {
   local file="$1"
@@ -534,6 +614,24 @@ generate_docs() {
     [[ -f "$workflow" ]] || continue
     generate_workflow_doc "$workflow"
   done
+
+  # Generate and inject examples table
+  local examples_table
+  examples_table=$(generate_examples_table)
+  inject_between_markers "$README" "<!-- EXAMPLES-START -->" "<!-- EXAMPLES-END -->" "$examples_table"
+  echo "  Injected: examples table"
+
+  # Generate and inject workflows table
+  local workflows_table
+  workflows_table=$(generate_workflows_table)
+  inject_between_markers "$README" "<!-- WORKFLOWS-START -->" "<!-- WORKFLOWS-END -->" "$workflows_table"
+  echo "  Injected: workflows table"
+
+  # Generate and inject actions table
+  local actions_table
+  actions_table=$(generate_actions_table)
+  inject_between_markers "$README" "<!-- ACTIONS-START -->" "<!-- ACTIONS-END -->" "$actions_table"
+  echo "  Injected: actions table"
 
   # Generate and inject inputs table
   local inputs_table

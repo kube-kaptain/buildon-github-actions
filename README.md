@@ -31,39 +31,57 @@ See [`examples/`](examples/) for more usage patterns.
 
 ## Examples
 
+<!-- EXAMPLES-START -->
 | Example | Description |
 |---------|-------------|
-| [`basic-quality-and-versioning.yaml`](examples/basic-quality-and-versioning.yaml) | Standard setup: PR quality checks + push versioning |
-| [`quality-only.yaml`](examples/quality-only.yaml) | Quality enforcement without tagging |
-| [`versions-and-naming.yaml`](examples/versions-and-naming.yaml) | Version tagging without quality checks |
-| [`additional-release-branches.yaml`](examples/additional-release-branches.yaml) | Hotfix workflow with 4-part versions |
-| [`docker-build-retag.yaml`](examples/docker-build-retag.yaml) | Vendor upstream images to your GHCR |
-| [`docker-build-retag-base-path.yaml`](examples/docker-build-retag-base-path.yaml) | Custom base path for image organization |
-| [`docker-build-retag-custom-registry.yaml`](examples/docker-build-retag-custom-registry.yaml) | Retag to Artifactory, ECR, or other registries |
-| [`docker-build-dockerfile.yaml`](examples/docker-build-dockerfile.yaml) | Build from Dockerfile with --squash (default) |
-| [`docker-build-dockerfile-no-squash.yaml`](examples/docker-build-dockerfile-no-squash.yaml) | Build from Dockerfile without --squash |
-| [`optional-test-scripts.yaml`](examples/optional-test-scripts.yaml) | Inject pre-tagging and post-docker test scripts |
+| [`additional-release-branches.yaml`](examples/additional-release-branches.yaml) | Support hotfix workflows by building on branches other than the default and still getting releases published |
+| [`basic-quality-and-versioning.yaml`](examples/basic-quality-and-versioning.yaml) | Standard build setup |
+| [`docker-build-dockerfile-no-squash.yaml`](examples/docker-build-dockerfile-no-squash.yaml) | Build a Docker image without --squash, preserving layer history |
+| [`docker-build-dockerfile.yaml`](examples/docker-build-dockerfile.yaml) | Build a Docker image from a Dockerfile with --squash (default) to flatten |
+| [`docker-build-retag-base-path.yaml`](examples/docker-build-retag-base-path.yaml) | Many registries use base paths in addition to the normal image name for projects or teams |
+| [`docker-build-retag-custom-registry.yaml`](examples/docker-build-retag-custom-registry.yaml) | Push to a registry other than GHCR (Nexus, ECR, GCR, Harbor, etc) |
+| [`docker-build-retag.yaml`](examples/docker-build-retag.yaml) | Pull an upstream image, retag with your name and new version, push to your registry |
+| [`docker-registry-logins-explicit.yaml`](examples/docker-registry-logins-explicit.yaml) | More typing, but shows exactly what the workflow receives |
+| [`docker-registry-logins-ghcr-pat.yaml`](examples/docker-registry-logins-ghcr-pat.yaml) |   - Push to packages in a different repo or org (GITHUB_TOKEN is scoped to current repo) |
+| [`docker-registry-logins-inherit.yaml`](examples/docker-registry-logins-inherit.yaml) | Secret values are looked up by the names specified in the config |
+| [`optional-test-scripts.yaml`](examples/optional-test-scripts.yaml) | Shows how to add custom test scripts to workflows that support them |
+| [`quality-only.yaml`](examples/quality-only.yaml) | Enforce quality standards on PRs without automatic tagging |
+| [`versions-and-naming.yaml`](examples/versions-and-naming.yaml) | Automatic version tagging without PR quality checks |
+<!-- EXAMPLES-END -->
 
 ## Components
 
 ### Workflows
 
+<!-- WORKFLOWS-START -->
 | Workflow | Description |
 |----------|-------------|
-| `basic-quality-and-versioning.yaml` | Combined: quality checks + versioning |
-| `basic-quality-checks.yaml` | Quality checks only |
-| `versions-and-naming.yaml` | Versioning only |
-| `docker-build-retag.yaml` | Pull, retag, and push upstream images |
-| `docker-build-dockerfile.yaml` | Build from Dockerfile with --squash |
+| `basic-quality-and-versioning.yaml` | Basic Quality and Versioning |
+| `basic-quality-checks.yaml` | Basic Quality Checks |
+| `docker-build-dockerfile.yaml` | Docker Build Dockerfile |
+| `docker-build-retag.yaml` | Docker Build Retag |
+| `kubernetes-app-docker-dockerfile.yaml` | Kubernetes App - Docker Dockerfile |
+| `kubernetes-app-docker-retag.yaml` | Kubernetes App - Docker Retag |
+| `kubernetes-app-manifests-only.yaml` | Kubernetes App - Manifests Only |
+| `versions-and-naming.yaml` | Versions & Naming |
+<!-- WORKFLOWS-END -->
 
 ### Actions
 
+<!-- ACTIONS-START -->
 | Action | Description |
 |--------|-------------|
-| `basic-quality-checks` | Validates branch names, commit messages, rebase status |
-| `versions-and-naming` | Generates version numbers, tags, and naming |
-| `docker-build-retag` | Pulls, retags, and pushes Docker images |
-| `docker-build-dockerfile` | Builds Docker images from Dockerfile with --squash |
+| `basic-quality-checks` | Basic quality checks for commits and branches |
+| `docker-build-dockerfile` | Builds a Docker image from a Dockerfile (build only, use docker-push to push) |
+| `docker-build-retag` | Pulls and retags Docker images (no push) |
+| `docker-push` | Pushes a Docker image to registry |
+| `docker-registry-logins` | Authenticate to container registries (GHCR by default, configure others as needed) |
+| `github-check-run` | Create or update GitHub Check Runs for granular PR status reporting |
+| `kubernetes-manifests-package` | Packages Kubernetes manifests into a zip with variable substitution |
+| `kubernetes-manifests-publish` | Publishes manifests zip via pluggable repo provider (docker, github-release) |
+| `run-test-script` | Runs a user-provided test script from the .github/ directory |
+| `versions-and-naming` | Generates version numbers, tags, and naming for releases |
+<!-- ACTIONS-END -->
 
 ## Configuration
 
