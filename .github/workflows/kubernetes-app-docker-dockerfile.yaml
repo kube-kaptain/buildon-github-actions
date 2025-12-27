@@ -257,12 +257,12 @@ jobs:
         run: |
           echo "Linking local actions for dogfooding"
           ln -s "$(pwd)" .github/buildon-github-actions
-      - name: Start check - Quality Checks
+      - name: Start check - Basic Quality Checks
         id: check-quality
         uses: ./.github/buildon-github-actions/src/actions/github-check-run
         with:
           action: start
-          check-name: 'Quality Checks'
+          check-name: 'Basic Quality Checks'
       - name: Basic quality checks
         id: quality
         uses: ./.github/buildon-github-actions/src/actions/basic-quality-checks
@@ -274,13 +274,13 @@ jobs:
           require-conventional-branches: ${{ inputs.require-conventional-branches }}
           require-conventional-commits: ${{ inputs.require-conventional-commits }}
           block-conventional-commits: ${{ inputs.block-conventional-commits }}
-      - name: Pass check - Quality Checks
+      - name: Pass check - Basic Quality Checks
         if: success()
         uses: ./.github/buildon-github-actions/src/actions/github-check-run
         with:
           action: pass
           check-run-id: ${{ steps.check-quality.outputs.check-run-id }}
-      - name: Fail check - Quality Checks
+      - name: Fail check - Basic Quality Checks
         if: failure()
         uses: ./.github/buildon-github-actions/src/actions/github-check-run
         with:

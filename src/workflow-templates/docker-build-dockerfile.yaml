@@ -151,12 +151,7 @@ jobs:
       checks: write
     steps:
       # INJECT: parse-workflow-ref-and-checkout
-      - name: Start check - Basic Quality Checks
-        id: check-quality
-        uses: ./.github/buildon-github-actions/src/actions/github-check-run
-        with:
-          action: start
-          check-name: 'Basic Quality Checks'
+      # INJECT: github-check-start(name="Basic Quality Checks", id="check-quality")
       - name: Basic quality checks
         id: quality
         uses: ./.github/buildon-github-actions/src/actions/basic-quality-checks
@@ -168,18 +163,7 @@ jobs:
           require-conventional-branches: ${{ inputs.require-conventional-branches }}
           require-conventional-commits: ${{ inputs.require-conventional-commits }}
           block-conventional-commits: ${{ inputs.block-conventional-commits }}
-      - name: Pass check - Basic Quality Checks
-        if: success()
-        uses: ./.github/buildon-github-actions/src/actions/github-check-run
-        with:
-          action: pass
-          check-run-id: ${{ steps.check-quality.outputs.check-run-id }}
-      - name: Fail check - Basic Quality Checks
-        if: failure()
-        uses: ./.github/buildon-github-actions/src/actions/github-check-run
-        with:
-          action: fail
-          check-run-id: ${{ steps.check-quality.outputs.check-run-id }}
+      # INJECT: github-check-end(name="Basic Quality Checks", id="check-quality")
   build:
     name: Build & Push
     needs: basic-quality-checks
@@ -215,39 +199,17 @@ jobs:
           target-registry: ${{ inputs.target-registry }}
 
       # === Pre-tagging Tests ===
-      - name: Start check - Pre-tagging Tests
-        if: inputs.pre-tagging-tests-script-sub-path != ''
-        id: check-pre-tagging
-        uses: ./.github/buildon-github-actions/src/actions/github-check-run
-        with:
-          action: start
-          check-name: 'Pre-tagging Tests'
+      # INJECT: github-check-start(name="Pre-tagging Tests", id="check-pre-tagging", if="inputs.pre-tagging-tests-script-sub-path != ''")
       - name: Run pre-tagging tests
         if: inputs.pre-tagging-tests-script-sub-path != ''
         id: pre-tagging-tests
         uses: ./.github/buildon-github-actions/src/actions/run-test-script
         with:
           script-sub-path: ${{ inputs.pre-tagging-tests-script-sub-path }}
-      - name: Pass check - Pre-tagging Tests
-        if: inputs.pre-tagging-tests-script-sub-path != '' && success()
-        uses: ./.github/buildon-github-actions/src/actions/github-check-run
-        with:
-          action: pass
-          check-run-id: ${{ steps.check-pre-tagging.outputs.check-run-id }}
-      - name: Fail check - Pre-tagging Tests
-        if: inputs.pre-tagging-tests-script-sub-path != '' && failure()
-        uses: ./.github/buildon-github-actions/src/actions/github-check-run
-        with:
-          action: fail
-          check-run-id: ${{ steps.check-pre-tagging.outputs.check-run-id }}
+      # INJECT: github-check-end(name="Pre-tagging Tests", id="check-pre-tagging", if="inputs.pre-tagging-tests-script-sub-path != ''")
 
       # === Versions & Naming ===
-      - name: Start check - Versions & Naming
-        id: check-versions
-        uses: ./.github/buildon-github-actions/src/actions/github-check-run
-        with:
-          action: start
-          check-name: 'Versions & Naming'
+      # INJECT: github-check-start(name="Versions & Naming", id="check-versions")
       - name: Generate versions and naming
         id: versions
         uses: ./.github/buildon-github-actions/src/actions/versions-and-naming
@@ -255,26 +217,10 @@ jobs:
           default-branch: ${{ inputs.default-branch }}
           additional-release-branches: ${{ inputs.additional-release-branches }}
           max-version-parts: ${{ inputs.max-version-parts }}
-      - name: Pass check - Versions & Naming
-        if: success()
-        uses: ./.github/buildon-github-actions/src/actions/github-check-run
-        with:
-          action: pass
-          check-run-id: ${{ steps.check-versions.outputs.check-run-id }}
-      - name: Fail check - Versions & Naming
-        if: failure()
-        uses: ./.github/buildon-github-actions/src/actions/github-check-run
-        with:
-          action: fail
-          check-run-id: ${{ steps.check-versions.outputs.check-run-id }}
+      # INJECT: github-check-end(name="Versions & Naming", id="check-versions")
 
       # === Docker Build ===
-      - name: Start check - Docker Build
-        id: check-docker-build
-        uses: ./.github/buildon-github-actions/src/actions/github-check-run
-        with:
-          action: start
-          check-name: 'Docker Build'
+      # INJECT: github-check-start(name="Docker Build", id="check-docker-build")
       - name: Build image
         id: docker-build
         uses: ./.github/buildon-github-actions/src/actions/docker-build-dockerfile
@@ -289,27 +235,10 @@ jobs:
           squash: ${{ inputs.squash }}
           no-cache: ${{ inputs.no-cache }}
           confirm-image-doesnt-exist: ${{ inputs.confirm-image-doesnt-exist }}
-      - name: Pass check - Docker Build
-        if: success()
-        uses: ./.github/buildon-github-actions/src/actions/github-check-run
-        with:
-          action: pass
-          check-run-id: ${{ steps.check-docker-build.outputs.check-run-id }}
-      - name: Fail check - Docker Build
-        if: failure()
-        uses: ./.github/buildon-github-actions/src/actions/github-check-run
-        with:
-          action: fail
-          check-run-id: ${{ steps.check-docker-build.outputs.check-run-id }}
+      # INJECT: github-check-end(name="Docker Build", id="check-docker-build")
 
       # === Post-docker Tests ===
-      - name: Start check - Post-docker Tests
-        if: inputs.post-docker-tests-script-sub-path != ''
-        id: check-post-docker
-        uses: ./.github/buildon-github-actions/src/actions/github-check-run
-        with:
-          action: start
-          check-name: 'Post-docker Tests'
+      # INJECT: github-check-start(name="Post-docker Tests", id="check-post-docker", if="inputs.post-docker-tests-script-sub-path != ''")
       - name: Run post-docker tests
         if: inputs.post-docker-tests-script-sub-path != ''
         id: post-docker-tests
@@ -322,27 +251,10 @@ jobs:
           project-name: ${{ steps.versions.outputs.project-name }}
           is-release: ${{ steps.versions.outputs.is-release }}
           target-image-full-uri: ${{ steps.docker-build.outputs.target-image-full-uri }}
-      - name: Pass check - Post-docker Tests
-        if: inputs.post-docker-tests-script-sub-path != '' && success()
-        uses: ./.github/buildon-github-actions/src/actions/github-check-run
-        with:
-          action: pass
-          check-run-id: ${{ steps.check-post-docker.outputs.check-run-id }}
-      - name: Fail check - Post-docker Tests
-        if: inputs.post-docker-tests-script-sub-path != '' && failure()
-        uses: ./.github/buildon-github-actions/src/actions/github-check-run
-        with:
-          action: fail
-          check-run-id: ${{ steps.check-post-docker.outputs.check-run-id }}
+      # INJECT: github-check-end(name="Post-docker Tests", id="check-post-docker", if="inputs.post-docker-tests-script-sub-path != ''")
 
       # === Docker Push ===
-      - name: Start check - Docker Push
-        if: steps.versions.outputs.is-release == 'true'
-        id: check-docker-push
-        uses: ./.github/buildon-github-actions/src/actions/github-check-run
-        with:
-          action: start
-          check-name: 'Docker Push'
+      # INJECT: github-check-start(name="Docker Push", id="check-docker-push", if="steps.versions.outputs.is-release == 'true'")
       - name: Push image
         id: docker-push
         if: steps.versions.outputs.is-release == 'true'
@@ -350,15 +262,4 @@ jobs:
         run: |
           docker push "${{ steps.docker-build.outputs.target-image-full-uri }}"
           echo "image-pushed=true" >> "$GITHUB_OUTPUT"
-      - name: Pass check - Docker Push
-        if: steps.versions.outputs.is-release == 'true' && success()
-        uses: ./.github/buildon-github-actions/src/actions/github-check-run
-        with:
-          action: pass
-          check-run-id: ${{ steps.check-docker-push.outputs.check-run-id }}
-      - name: Fail check - Docker Push
-        if: steps.versions.outputs.is-release == 'true' && failure()
-        uses: ./.github/buildon-github-actions/src/actions/github-check-run
-        with:
-          action: fail
-          check-run-id: ${{ steps.check-docker-push.outputs.check-run-id }}
+      # INJECT: github-check-end(name="Docker Push", id="check-docker-push", if="steps.versions.outputs.is-release == 'true'")

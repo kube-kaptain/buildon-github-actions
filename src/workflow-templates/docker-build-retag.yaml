@@ -141,12 +141,7 @@ jobs:
       checks: write
     steps:
       # INJECT: parse-workflow-ref-and-checkout
-      - name: Start check - Basic Quality Checks
-        id: check-quality
-        uses: ./.github/buildon-github-actions/src/actions/github-check-run
-        with:
-          action: start
-          check-name: 'Basic Quality Checks'
+      # INJECT: github-check-start(name="Basic Quality Checks", id="check-quality")
       - name: Basic quality checks
         id: quality
         uses: ./.github/buildon-github-actions/src/actions/basic-quality-checks
@@ -158,18 +153,7 @@ jobs:
           require-conventional-branches: ${{ inputs.require-conventional-branches }}
           require-conventional-commits: ${{ inputs.require-conventional-commits }}
           block-conventional-commits: ${{ inputs.block-conventional-commits }}
-      - name: Pass check - Basic Quality Checks
-        if: success()
-        uses: ./.github/buildon-github-actions/src/actions/github-check-run
-        with:
-          action: pass
-          check-run-id: ${{ steps.check-quality.outputs.check-run-id }}
-      - name: Fail check - Basic Quality Checks
-        if: failure()
-        uses: ./.github/buildon-github-actions/src/actions/github-check-run
-        with:
-          action: fail
-          check-run-id: ${{ steps.check-quality.outputs.check-run-id }}
+      # INJECT: github-check-end(name="Basic Quality Checks", id="check-quality")
   build:
     name: Build & Push
     needs: basic-quality-checks
@@ -206,12 +190,7 @@ jobs:
           target-registry: ${{ inputs.target-registry }}
 
       # === Versions & Naming ===
-      - name: Start check - Versions & Naming
-        id: check-versions
-        uses: ./.github/buildon-github-actions/src/actions/github-check-run
-        with:
-          action: start
-          check-name: 'Versions & Naming'
+      # INJECT: github-check-start(name="Versions & Naming", id="check-versions")
       - name: Generate versions and naming
         id: versions
         uses: ./.github/buildon-github-actions/src/actions/versions-and-naming
@@ -219,26 +198,10 @@ jobs:
           default-branch: ${{ inputs.default-branch }}
           additional-release-branches: ${{ inputs.additional-release-branches }}
           max-version-parts: ${{ inputs.max-version-parts }}
-      - name: Pass check - Versions & Naming
-        if: success()
-        uses: ./.github/buildon-github-actions/src/actions/github-check-run
-        with:
-          action: pass
-          check-run-id: ${{ steps.check-versions.outputs.check-run-id }}
-      - name: Fail check - Versions & Naming
-        if: failure()
-        uses: ./.github/buildon-github-actions/src/actions/github-check-run
-        with:
-          action: fail
-          check-run-id: ${{ steps.check-versions.outputs.check-run-id }}
+      # INJECT: github-check-end(name="Versions & Naming", id="check-versions")
 
       # === Docker Retag ===
-      - name: Start check - Docker Retag
-        id: check-docker-retag
-        uses: ./.github/buildon-github-actions/src/actions/github-check-run
-        with:
-          action: start
-          check-name: 'Docker Retag'
+      # INJECT: github-check-start(name="Docker Retag", id="check-docker-retag")
       - name: Retag and push
         id: docker-retag
         uses: ./.github/buildon-github-actions/src/actions/docker-build-retag
@@ -252,15 +215,4 @@ jobs:
           docker-tag: ${{ steps.versions.outputs.docker-tag }}
           is-release: ${{ steps.versions.outputs.is-release }}
           confirm-image-doesnt-exist: ${{ inputs.confirm-image-doesnt-exist }}
-      - name: Pass check - Docker Retag
-        if: success()
-        uses: ./.github/buildon-github-actions/src/actions/github-check-run
-        with:
-          action: pass
-          check-run-id: ${{ steps.check-docker-retag.outputs.check-run-id }}
-      - name: Fail check - Docker Retag
-        if: failure()
-        uses: ./.github/buildon-github-actions/src/actions/github-check-run
-        with:
-          action: fail
-          check-run-id: ${{ steps.check-docker-retag.outputs.check-run-id }}
+      # INJECT: github-check-end(name="Docker Retag", id="check-docker-retag")
