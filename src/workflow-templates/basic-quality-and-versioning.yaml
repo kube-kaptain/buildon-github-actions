@@ -99,6 +99,7 @@ jobs:
     runs-on: ubuntu-24.04
     permissions:
       contents: write
+      checks: write
     outputs:
       version: ${{ steps.versions.outputs.version }}
       version-major: ${{ steps.versions.outputs.version-major }}
@@ -113,5 +114,7 @@ jobs:
       project-name: ${{ steps.versions.outputs.project-name }}
     steps:
       # INJECT: parse-workflow-ref-and-checkout
+      # INJECT: github-check-start(name="Pre-tagging Tests", id="check-pre-tagging", if="inputs.pre-tagging-tests-script-sub-path != ''")
       # INJECT: pre-tagging-tests
+      # INJECT: github-check-end(name="Pre-tagging Tests", id="check-pre-tagging", if="inputs.pre-tagging-tests-script-sub-path != ''")
       # INJECT: versions-and-naming
