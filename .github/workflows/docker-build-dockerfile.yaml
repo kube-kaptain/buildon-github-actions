@@ -467,11 +467,10 @@ jobs:
           check-name: 'Docker Push'
       - name: Push image
         id: docker-push
-        if: steps.versions.outputs.is-release == 'true'
-        shell: bash
-        run: |
-          docker push "${{ steps.docker-build.outputs.target-image-full-uri }}"
-          echo "image-pushed=true" >> "$GITHUB_OUTPUT"
+        uses: ./.github/buildon-github-actions/src/actions/docker-push
+        with:
+          docker-image-full-uri: ${{ steps.docker-build.outputs.target-image-full-uri }}
+          is-release: ${{ steps.versions.outputs.is-release }}
       - name: Pass check - Docker Push
         if: steps.versions.outputs.is-release == 'true' && success()
         uses: ./.github/buildon-github-actions/src/actions/github-check-run
