@@ -62,7 +62,13 @@ parse_param() {
   echo "$value"
 }
 
+# Escape special sed replacement characters (& and \)
+escape_sed_replacement() {
+  printf '%s' "$1" | sed 's/[&\]/\\&/g'
+}
+
 # Generate github-check-start step from template
+# Uses sed for substitution (bash parameter expansion escaping differs between versions)
 generate_check_start() {
   local check_name="$1"
   local check_id="$2"
@@ -74,24 +80,28 @@ generate_check_start() {
     exit 1
   fi
 
+  # Escape values for sed replacement
+  local safe_name safe_id safe_if_line
+  safe_name=$(escape_sed_replacement "$check_name")
+  safe_id=$(escape_sed_replacement "$check_id")
+
   # Use marker for optional if line - delete the line if no condition
-  # (Avoids newline-in-substitution which differs between bash 3.2 and 5.x)
-  local if_line="__DELETE_THIS_LINE__"
   if [[ -n "$condition" ]]; then
-    if_line="  if: $condition"
+    safe_if_line="  if: $(escape_sed_replacement "$condition")"
+  else
+    safe_if_line="__DELETE_THIS_LINE__"
   fi
 
-  local chunk
-  chunk=$(cat "$template_file" | strip_spdx_header)
-  chunk="${chunk//\$\{CHECK_NAME\}/$check_name}"
-  chunk="${chunk//\$\{CHECK_ID\}/$check_id}"
-  chunk="${chunk//\$\{CHECK_IF_LINE\}/$if_line}"
-
-  # Remove marker lines
-  echo "$chunk" | grep -v "__DELETE_THIS_LINE__"
+  cat "$template_file" \
+    | strip_spdx_header \
+    | sed "s|\${CHECK_NAME}|$safe_name|g" \
+    | sed "s|\${CHECK_ID}|$safe_id|g" \
+    | sed "s|\${CHECK_IF_LINE}|$safe_if_line|g" \
+    | grep -v "__DELETE_THIS_LINE__"
 }
 
 # Generate github-check-end steps from template
+# Uses sed for substitution (bash parameter expansion escaping differs between versions)
 generate_check_end() {
   local check_name="$1"
   local check_id="$2"
@@ -103,21 +113,25 @@ generate_check_end() {
     exit 1
   fi
 
-  local pass_condition="success()"
-  local fail_condition="failure()"
+  # Escape values for sed replacement
+  local safe_name safe_id safe_pass safe_fail
+  safe_name=$(escape_sed_replacement "$check_name")
+  safe_id=$(escape_sed_replacement "$check_id")
+
   if [[ -n "$condition" ]]; then
-    pass_condition="$condition && success()"
-    fail_condition="$condition && failure()"
+    safe_pass="$(escape_sed_replacement "$condition") \&\& success()"
+    safe_fail="$(escape_sed_replacement "$condition") \&\& failure()"
+  else
+    safe_pass="success()"
+    safe_fail="failure()"
   fi
 
-  local chunk
-  chunk=$(cat "$template_file" | strip_spdx_header)
-  chunk="${chunk//\$\{CHECK_NAME\}/$check_name}"
-  chunk="${chunk//\$\{CHECK_ID\}/$check_id}"
-  chunk="${chunk//\$\{CHECK_PASS_CONDITION\}/$pass_condition}"
-  chunk="${chunk//\$\{CHECK_FAIL_CONDITION\}/$fail_condition}"
-
-  echo "$chunk"
+  cat "$template_file" \
+    | strip_spdx_header \
+    | sed "s|\${CHECK_NAME}|$safe_name|g" \
+    | sed "s|\${CHECK_ID}|$safe_id|g" \
+    | sed "s|\${CHECK_PASS_CONDITION}|$safe_pass|g" \
+    | sed "s|\${CHECK_FAIL_CONDITION}|$safe_fail|g"
 }
 
 # Process a single template file
