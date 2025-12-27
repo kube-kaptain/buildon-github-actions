@@ -212,8 +212,8 @@ jobs:
       docker-image-name: ${{ steps.versions.outputs.docker-image-name }}
       project-name: ${{ steps.versions.outputs.project-name }}
       is-release: ${{ steps.versions.outputs.is-release }}
-      source-image-full-uri: ${{ steps.docker-retag.outputs.source-image-full-uri }}
-      target-image-full-uri: ${{ steps.docker-retag.outputs.target-image-full-uri }}
+      source-image-full-uri: ${{ steps.docker-build.outputs.source-image-full-uri }}
+      target-image-full-uri: ${{ steps.docker-build.outputs.target-image-full-uri }}
       docker-image-pushed: ${{ steps.docker-push.outputs.image-pushed }}
       manifests-zip-path: ${{ steps.manifest-package.outputs.manifests-zip-path }}
       manifests-zip-name: ${{ steps.manifest-package.outputs.manifests-zip-name }}
@@ -243,7 +243,7 @@ jobs:
       # === Docker Retag ===
       # INJECT: github-check-start(name="Docker Retag", id="check-docker-retag")
       - name: Pull and retag
-        id: docker-retag
+        id: docker-build
         uses: ./.github/buildon-github-actions/src/actions/docker-build-retag
         with:
           source-registry: ${{ inputs.source-registry }}
@@ -292,7 +292,7 @@ jobs:
         id: docker-push
         uses: ./.github/buildon-github-actions/src/actions/docker-push
         with:
-          docker-image-full-uri: ${{ steps.docker-retag.outputs.target-image-full-uri }}
+          docker-image-full-uri: ${{ steps.docker-build.outputs.target-image-full-uri }}
           is-release: ${{ steps.versions.outputs.is-release }}
       # INJECT: github-check-end(name="Docker Push", id="check-docker-push", if="steps.versions.outputs.is-release == 'true'")
 

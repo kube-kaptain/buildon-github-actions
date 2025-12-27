@@ -257,9 +257,9 @@ jobs:
       docker-image-name: ${{ steps.versions.outputs.docker-image-name }}
       project-name: ${{ steps.versions.outputs.project-name }}
       is-release: ${{ steps.versions.outputs.is-release }}
-      source-image-full-uri: ${{ steps.docker-retag.outputs.source-image-full-uri }}
-      target-image-full-uri: ${{ steps.docker-retag.outputs.target-image-full-uri }}
-      docker-image-pushed: ${{ steps.docker-retag.outputs.image-pushed }}
+      source-image-full-uri: ${{ steps.docker-build.outputs.source-image-full-uri }}
+      target-image-full-uri: ${{ steps.docker-build.outputs.target-image-full-uri }}
+      docker-image-pushed: ${{ steps.docker-build.outputs.image-pushed }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4.2.2
@@ -394,7 +394,7 @@ jobs:
           action: start
           check-name: 'Docker Retag'
       - name: Pull and retag
-        id: docker-retag
+        id: docker-build
         uses: ./.github/buildon-github-actions/src/actions/docker-build-retag
         with:
           source-registry: ${{ inputs.source-registry }}
