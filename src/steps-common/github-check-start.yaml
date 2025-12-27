@@ -2,7 +2,8 @@
 # Copyright (c) 2025 Kaptain contributors (Fred Cooke)
 
 - name: Start check - ${CHECK_NAME}
-${CHECK_IF_LINE}  id: ${CHECK_ID}
+${CHECK_IF_LINE}
+  id: ${CHECK_ID}
   uses: ./.github/buildon-github-actions/src/actions/github-check-run
   with:
     action: start

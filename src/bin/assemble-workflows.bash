@@ -74,9 +74,11 @@ generate_check_start() {
     exit 1
   fi
 
-  local if_line=""
+  # Use marker for optional if line - delete the line if no condition
+  # (Avoids newline-in-substitution which differs between bash 3.2 and 5.x)
+  local if_line="__DELETE_THIS_LINE__"
   if [[ -n "$condition" ]]; then
-    if_line="  if: $condition"$'\n'
+    if_line="  if: $condition"
   fi
 
   local chunk
@@ -85,7 +87,8 @@ generate_check_start() {
   chunk="${chunk//\$\{CHECK_ID\}/$check_id}"
   chunk="${chunk//\$\{CHECK_IF_LINE\}/$if_line}"
 
-  echo "$chunk"
+  # Remove marker lines
+  echo "$chunk" | grep -v "__DELETE_THIS_LINE__"
 }
 
 # Generate github-check-end steps from template
