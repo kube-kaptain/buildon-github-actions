@@ -149,12 +149,9 @@ jobs:
     runs-on: ubuntu-24.04
     permissions:
       contents: read
-      checks: write
     steps:
       # INJECT: parse-workflow-ref-and-checkout
-      # INJECT: github-check-start(name="Basic Quality Checks", id="check-quality")
       # INJECT: basic-quality-checks
-      # INJECT: github-check-end(name="Basic Quality Checks", id="check-quality")
   build:
     name: Build & Push
     needs: basic-quality-checks
