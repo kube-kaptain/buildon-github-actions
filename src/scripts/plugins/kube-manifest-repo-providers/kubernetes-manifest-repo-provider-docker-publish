@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2025 Kaptain contributors (Fred Cooke)
 #
-# kubernetes-manifest-repo-provider-docker - Transport plugin for publishing manifest zip as a Docker image
+# kubernetes-manifest-repo-provider-docker-publish - Publishes manifest zip as a Docker image
 #
 # Uses registry.k8s.io/pause:3.10.1 as base, stores zip at /<original-filename>
 #
@@ -42,7 +42,7 @@ IS_RELEASE="${IS_RELEASE:-false}"
 CONFIRM_IMAGE_DOESNT_EXIST="${CONFIRM_IMAGE_DOESNT_EXIST:-true}"
 
 # Build output structure
-TRANSPORT_PATH="$OUTPUT_PATH/transport/docker"
+PUBLISH_PATH="$OUTPUT_PATH/publish/docker"
 
 # Assemble full image URI
 if [[ -n "$TARGET_BASE_PATH" ]]; then
@@ -75,7 +75,7 @@ output_var() {
 }
 
 main() {
-  echo "=== Kubernetes Manifest Transport: Docker ===" >&2
+  echo "=== Kubernetes Manifest Publish: Docker ===" >&2
   echo "Manifest zip: $MANIFEST_ZIP_PATH" >&2
   echo "Base image: $BASE_IMAGE" >&2
   echo "Target: $TARGET_IMAGE_FULL_URI" >&2
@@ -93,23 +93,23 @@ main() {
     confirm_image_doesnt_exist "$TARGET_IMAGE_FULL_URI" || exit 1
   fi
 
-  # Create transport build directory (instead of temp dir)
-  rm -rf "$TRANSPORT_PATH"
-  mkdir -p "$TRANSPORT_PATH"
+  # Create publish build directory (instead of temp dir)
+  rm -rf "$PUBLISH_PATH"
+  mkdir -p "$PUBLISH_PATH"
 
-  # Copy zip to transport dir (preserve original name)
+  # Copy zip to publish dir (preserve original name)
   local zip_filename
   zip_filename=$(basename "$MANIFEST_ZIP_PATH")
-  cp "$MANIFEST_ZIP_PATH" "$TRANSPORT_PATH/"
+  cp "$MANIFEST_ZIP_PATH" "$PUBLISH_PATH/"
 
   # Create Dockerfile
-  cat > "$TRANSPORT_PATH/Dockerfile" <<EOF
+  cat > "$PUBLISH_PATH/Dockerfile" <<EOF
 FROM ${BASE_IMAGE}
 COPY ${zip_filename} /${zip_filename}
 EOF
 
   echo "Building manifest image..." >&2
-  docker build -t "$TARGET_IMAGE_FULL_URI" "$TRANSPORT_PATH"
+  docker build -t "$TARGET_IMAGE_FULL_URI" "$PUBLISH_PATH"
 
   # Push if release
   if [[ "$IS_RELEASE" == "true" ]]; then
@@ -123,7 +123,7 @@ EOF
 
   output_var "MANIFEST_URI" "$TARGET_IMAGE_FULL_URI"
 
-  echo "Kubernetes Manifest Transport: Docker complete" >&2
+  echo "Kubernetes Manifest Publish: Docker complete" >&2
 }
 
 main "$@"

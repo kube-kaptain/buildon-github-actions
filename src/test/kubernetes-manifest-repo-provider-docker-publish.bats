@@ -32,7 +32,7 @@ set_required_env() {
 @test "assembles target URI without base path" {
   set_required_env
 
-  run "$REPO_PROVIDERS_DIR/kubernetes-manifest-repo-provider-docker"
+  run "$REPO_PROVIDERS_DIR/kubernetes-manifest-repo-provider-docker-publish"
   [ "$status" -eq 0 ]
   assert_var_equals "MANIFEST_URI" "ghcr.io/test/my-repo:1.0.0-manifests"
 }
@@ -41,7 +41,7 @@ set_required_env() {
   set_required_env
   export TARGET_BASE_PATH="kube-kaptain"
 
-  run "$REPO_PROVIDERS_DIR/kubernetes-manifest-repo-provider-docker"
+  run "$REPO_PROVIDERS_DIR/kubernetes-manifest-repo-provider-docker-publish"
   [ "$status" -eq 0 ]
   assert_var_equals "MANIFEST_URI" "ghcr.io/kube-kaptain/test/my-repo:1.0.0-manifests"
 }
@@ -49,30 +49,30 @@ set_required_env() {
 @test "calls docker build with correct args" {
   set_required_env
 
-  run "$REPO_PROVIDERS_DIR/kubernetes-manifest-repo-provider-docker"
+  run "$REPO_PROVIDERS_DIR/kubernetes-manifest-repo-provider-docker-publish"
   [ "$status" -eq 0 ]
   assert_docker_called "build -t ghcr.io/test/my-repo:1.0.0-manifests"
 }
 
-@test "creates transport directory instead of temp" {
+@test "creates publish directory instead of temp" {
   set_required_env
 
-  run "$REPO_PROVIDERS_DIR/kubernetes-manifest-repo-provider-docker"
+  run "$REPO_PROVIDERS_DIR/kubernetes-manifest-repo-provider-docker-publish"
   [ "$status" -eq 0 ]
-  # Verify transport directory was created
-  [ -d "$OUTPUT_PATH/transport/docker" ]
-  [ -f "$OUTPUT_PATH/transport/docker/Dockerfile" ]
+  # Verify publish directory was created
+  [ -d "$OUTPUT_PATH/publish/docker" ]
+  [ -f "$OUTPUT_PATH/publish/docker/Dockerfile" ]
   # Zip file should be copied with original name (basename of TEST_ZIP)
   local zip_name
   zip_name=$(basename "$TEST_ZIP")
-  [ -f "$OUTPUT_PATH/transport/docker/$zip_name" ]
+  [ -f "$OUTPUT_PATH/publish/docker/$zip_name" ]
 }
 
 @test "does not push when IS_RELEASE=false" {
   set_required_env
   export IS_RELEASE="false"
 
-  run "$REPO_PROVIDERS_DIR/kubernetes-manifest-repo-provider-docker"
+  run "$REPO_PROVIDERS_DIR/kubernetes-manifest-repo-provider-docker-publish"
   [ "$status" -eq 0 ]
   assert_docker_not_called "push"
   assert_var_equals "MANIFEST_PUBLISHED" "false"
@@ -82,7 +82,7 @@ set_required_env() {
   set_required_env
   export IS_RELEASE="true"
 
-  run "$REPO_PROVIDERS_DIR/kubernetes-manifest-repo-provider-docker"
+  run "$REPO_PROVIDERS_DIR/kubernetes-manifest-repo-provider-docker-publish"
   [ "$status" -eq 0 ]
   assert_docker_called "push ghcr.io/test/my-repo:1.0.0-manifests"
   assert_var_equals "MANIFEST_PUBLISHED" "true"
@@ -94,7 +94,7 @@ set_required_env() {
   export DOCKER_TAG="1.0.0-manifests"
   unset MANIFEST_ZIP_PATH
 
-  run "$REPO_PROVIDERS_DIR/kubernetes-manifest-repo-provider-docker"
+  run "$REPO_PROVIDERS_DIR/kubernetes-manifest-repo-provider-docker-publish"
   [ "$status" -ne 0 ]
   assert_output_contains "MANIFEST_ZIP_PATH"
 }
@@ -103,7 +103,7 @@ set_required_env() {
   set_required_env
   export MANIFEST_ZIP_PATH="/nonexistent/file.zip"
 
-  run "$REPO_PROVIDERS_DIR/kubernetes-manifest-repo-provider-docker"
+  run "$REPO_PROVIDERS_DIR/kubernetes-manifest-repo-provider-docker-publish"
   [ "$status" -ne 0 ]
   assert_output_contains "Manifest zip not found"
 }
@@ -113,7 +113,7 @@ set_required_env() {
   export TARGET_REGISTRY="ghcr.io"
   export DOCKER_TAG="1.0.0-manifests"
 
-  run "$REPO_PROVIDERS_DIR/kubernetes-manifest-repo-provider-docker"
+  run "$REPO_PROVIDERS_DIR/kubernetes-manifest-repo-provider-docker-publish"
   [ "$status" -ne 0 ]
   assert_output_contains "TARGET_IMAGE_NAME"
 }
@@ -122,7 +122,7 @@ set_required_env() {
   set_required_env
   unset IS_RELEASE
 
-  run "$REPO_PROVIDERS_DIR/kubernetes-manifest-repo-provider-docker"
+  run "$REPO_PROVIDERS_DIR/kubernetes-manifest-repo-provider-docker-publish"
   [ "$status" -eq 0 ]
   assert_docker_not_called "push"
   assert_var_equals "MANIFEST_PUBLISHED" "false"
@@ -134,7 +134,7 @@ set_required_env() {
   export DOCKER_TAG="1.0.0-manifests"
   unset TARGET_REGISTRY
 
-  run "$REPO_PROVIDERS_DIR/kubernetes-manifest-repo-provider-docker"
+  run "$REPO_PROVIDERS_DIR/kubernetes-manifest-repo-provider-docker-publish"
   [ "$status" -eq 0 ]
   assert_var_equals "MANIFEST_URI" "ghcr.io/test/my-repo:1.0.0-manifests"
 }
@@ -143,7 +143,7 @@ set_required_env() {
   set_required_env
   unset CONFIRM_IMAGE_DOESNT_EXIST
 
-  run "$REPO_PROVIDERS_DIR/kubernetes-manifest-repo-provider-docker"
+  run "$REPO_PROVIDERS_DIR/kubernetes-manifest-repo-provider-docker-publish"
   [ "$status" -eq 0 ]
   assert_docker_called "manifest inspect"
 }
@@ -152,7 +152,7 @@ set_required_env() {
   set_required_env
   export CONFIRM_IMAGE_DOESNT_EXIST="false"
 
-  run "$REPO_PROVIDERS_DIR/kubernetes-manifest-repo-provider-docker"
+  run "$REPO_PROVIDERS_DIR/kubernetes-manifest-repo-provider-docker-publish"
   [ "$status" -eq 0 ]
   assert_docker_not_called "manifest"
 }
@@ -169,7 +169,7 @@ echo "$*" >> "$MOCK_DOCKER_CALLS"
 exit 0' > "$MOCK_BIN_DIR/docker"
   chmod +x "$MOCK_BIN_DIR/docker"
 
-  run "$REPO_PROVIDERS_DIR/kubernetes-manifest-repo-provider-docker"
+  run "$REPO_PROVIDERS_DIR/kubernetes-manifest-repo-provider-docker-publish"
   [ "$status" -ne 0 ]
   assert_output_contains "already exists"
 }
@@ -177,7 +177,7 @@ exit 0' > "$MOCK_BIN_DIR/docker"
 @test "uses pause image as base" {
   set_required_env
 
-  run "$REPO_PROVIDERS_DIR/kubernetes-manifest-repo-provider-docker"
+  run "$REPO_PROVIDERS_DIR/kubernetes-manifest-repo-provider-docker-publish"
   [ "$status" -eq 0 ]
   # The script should output info about using pause as base
   assert_output_contains "registry.k8s.io/pause:3.10.1"

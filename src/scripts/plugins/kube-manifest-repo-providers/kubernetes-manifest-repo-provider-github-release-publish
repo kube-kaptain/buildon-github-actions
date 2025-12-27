@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2025 Kaptain contributors (Fred Cooke)
 #
-# kubernetes-manifest-repo-provider-github-release - Transport plugin for publishing manifest zip as GitHub release asset
+# kubernetes-manifest-repo-provider-github-release-publish - Publishes manifest zip as GitHub release asset
 #
 # Inputs (environment variables):
 #   MANIFEST_ZIP_PATH - Path to zip file (required)
@@ -41,7 +41,7 @@ output_var() {
 }
 
 main() {
-  echo "=== Kubernetes Manifest Transport: GitHub Release ===" >&2
+  echo "=== Kubernetes Manifest Publish: GitHub Release ===" >&2
   echo "Manifest zip: $MANIFEST_ZIP_PATH" >&2
   echo "Manifest zip name: $MANIFEST_ZIP_NAME" >&2
   echo "Version: $VERSION" >&2
@@ -58,7 +58,7 @@ main() {
     echo "Skipping upload (IS_RELEASE=$IS_RELEASE)" >&2
     output_var "MANIFEST_PUBLISHED" "false"
     output_var "MANIFEST_URI" ""
-    echo "Kubernetes Manifest Transport: GitHub Release complete (skipped)" >&2
+    echo "Kubernetes Manifest Publish: GitHub Release complete (skipped)" >&2
     return 0
   fi
 
@@ -88,7 +88,7 @@ main() {
   output_var "MANIFEST_URI" "$release_url"
   output_var "MANIFEST_PUBLISHED" "true"
 
-  echo "Kubernetes Manifest Transport: GitHub Release complete" >&2
+  echo "Kubernetes Manifest Publish: GitHub Release complete" >&2
 }
 
 main "$@"

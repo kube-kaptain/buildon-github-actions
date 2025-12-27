@@ -9,7 +9,7 @@ Kubernetes App - Manifests Only
 | `manifests-path` | string | `src/kubernetes` | Directory containing Kubernetes manifests |
 | `substitution-token-style` | string | `shell` | Token delimiter syntax for variables (shell) |
 | `substitution-output-style` | string | `UPPER_SNAKE` | Case style for variable names in manifests (UPPER_SNAKE, lower_snake, kebab-case, camelCase, PascalCase) |
-| `manifest-transport` | string | *required* | Transport type for manifest storage (docker, github-release). Required - consumer must choose. |
+| `manifest-repo-provider-type` | string | *required* | Repo provider type for manifest storage (docker, github-release). Required - consumer must choose. |
 | `target-registry` | string | `ghcr.io` | Target container registry |
 | `target-base-path` | string | `""` | Path between registry and image name (auto-set for GHCR) |
 | `confirm-image-doesnt-exist` | boolean | `true` | Fail if target image already exists in registry |
@@ -41,5 +41,5 @@ Kubernetes App - Manifests Only
 | `is-release` | Whether this is a release build |
 | `manifest-zip-path` | Path to manifest zip file |
 | `manifest-zip-name` | Name of manifest zip file |
-| `manifest-uri` | Reference to published manifests (format depends on transport) |
+| `manifest-uri` | Reference to published manifests (format depends on repo provider) |
 | `manifest-published` | Whether manifests were published |

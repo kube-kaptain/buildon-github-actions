@@ -37,9 +37,9 @@ on:
         required: false
         type: string
         default: 'UPPER_SNAKE'
-      # Transport configuration (required - no default)
-      manifest-transport:
-        description: 'Transport type for manifest storage (docker, github-release). Required - consumer must choose.'
+      # Repo provider configuration (required - no default)
+      manifest-repo-provider-type:
+        description: 'Repo provider type for manifest storage (docker, github-release). Required - consumer must choose.'
         required: true
         type: string
       # Target configuration
@@ -153,13 +153,13 @@ on:
       manifest-zip-name:
         description: 'Name of manifest zip file'
         value: ${{ jobs.kubernetes-manifest-package.outputs.manifest-zip-name }}
-      # Manifest transport outputs
+      # Manifest publish outputs
       manifest-uri:
-        description: 'Reference to published manifests (format depends on transport)'
-        value: ${{ jobs.kubernetes-manifest-transport.outputs.manifest-uri }}
+        description: 'Reference to published manifests (format depends on repo provider)'
+        value: ${{ jobs.kubernetes-manifest-publish.outputs.manifest-uri }}
       manifest-published:
         description: 'Whether manifests were published'
-        value: ${{ jobs.kubernetes-manifest-transport.outputs.manifest-published }}
+        value: ${{ jobs.kubernetes-manifest-publish.outputs.manifest-published }}
 jobs:
   basic-quality-checks:
     name: Basic Quality Checks
@@ -327,7 +327,7 @@ jobs:
           docker-image-name: ${{ needs.versions-and-naming.outputs.docker-image-name }}
           project-name: ${{ needs.versions-and-naming.outputs.project-name }}
           is-release: ${{ needs.versions-and-naming.outputs.is-release }}
-  kubernetes-manifest-transport:
+  kubernetes-manifest-publish:
     name: Publish Manifests
     needs: [versions-and-naming, docker-build-dockerfile, kubernetes-manifest-package, post-package-tests]
     if: always() && needs.docker-build-dockerfile.result == 'success' && needs.kubernetes-manifest-package.result == 'success' && (needs.post-package-tests.result == 'success' || needs.post-package-tests.result == 'skipped')
@@ -336,8 +336,8 @@ jobs:
       contents: write
       packages: write
     outputs:
-      manifest-uri: ${{ steps.transport.outputs.manifest-uri }}
-      manifest-published: ${{ steps.transport.outputs.manifest-published }}
+      manifest-uri: ${{ steps.publish.outputs.manifest-uri }}
+      manifest-published: ${{ steps.publish.outputs.manifest-published }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4.2.2
@@ -347,17 +347,17 @@ jobs:
         with:
           name: manifests
       - name: Docker registry logins
-        if: inputs.manifest-transport == 'docker'
+        if: inputs.manifest-repo-provider-type == 'docker'
         uses: ./.github/buildon-github-actions/src/actions/docker-registry-logins
         with:
           config: ${{ inputs.docker-registry-logins }}
           secrets-json: ${{ secrets.docker-registry-logins-secrets || toJSON(secrets) }}
           target-registry: ${{ inputs.target-registry }}
-      - name: Publish via transport
-        id: transport
-        uses: ./.github/buildon-github-actions/src/actions/kubernetes-manifest-transport
+      - name: Publish manifests
+        id: publish
+        uses: ./.github/buildon-github-actions/src/actions/kubernetes-manifest-publish
         with:
-          transport: ${{ inputs.manifest-transport }}
+          manifest-repo-provider-type: ${{ inputs.manifest-repo-provider-type }}
           manifest-zip-path: ${{ needs.kubernetes-manifest-package.outputs.manifest-zip-path }}
           manifest-zip-name: ${{ needs.kubernetes-manifest-package.outputs.manifest-zip-name }}
           target-registry: ${{ inputs.target-registry }}

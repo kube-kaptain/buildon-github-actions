@@ -2,18 +2,18 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2025 Kaptain contributors (Fred Cooke)
 #
-# kubernetes-manifest-transport - Selector script for manifest repo provider plugins
+# kubernetes-manifest-publish - Selector script for manifest repo provider plugins
 #
-# Dispatches to the appropriate repo provider script based on TRANSPORT_TYPE.
+# Dispatches to the appropriate repo provider publish script based on MANIFEST_REPO_PROVIDER_TYPE.
 # Available repo providers are discovered from plugins/kube-manifest-repo-providers/
 #
 # Inputs (environment variables):
-#   TRANSPORT_TYPE - Type of transport to use (required, no default)
-#                    Available: docker, github-release
-#   All other env vars are passed through to the transport script
+#   MANIFEST_REPO_PROVIDER_TYPE - Type of repo provider to use (required, no default)
+#                                  Available: docker, github-release
+#   All other env vars are passed through to the publish script
 #
 # Outputs:
-#   All outputs from the selected transport script
+#   All outputs from the selected publish script
 #
 set -euo pipefail
 
@@ -26,6 +26,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PLUGINS_DIR="$SCRIPT_DIR/../plugins"
 REPO_PROVIDERS_DIR="$PLUGINS_DIR/kube-manifest-repo-providers"
 SCRIPT_PREFIX="kubernetes-manifest-repo-provider-"
+SCRIPT_SUFFIX="-publish"
 
 # List available repo providers (extract type from script name)
 list_providers() {
@@ -35,29 +36,31 @@ list_providers() {
       if [[ -x "$provider" ]]; then
         local name
         name=$(basename "$provider")
-        # Strip prefix to get the transport type
-        providers+=("${name#$SCRIPT_PREFIX}")
+        # Strip prefix and suffix to get the provider type
+        name="${name#$SCRIPT_PREFIX}"
+        name="${name%$SCRIPT_SUFFIX}"
+        providers+=("$name")
       fi
-    done < <(find "$REPO_PROVIDERS_DIR" -maxdepth 1 -type f -name "${SCRIPT_PREFIX}*")
+    done < <(find "$REPO_PROVIDERS_DIR" -maxdepth 1 -type f -name "${SCRIPT_PREFIX}*${SCRIPT_SUFFIX}")
   fi
   echo "${providers[*]}"
 }
 
 main() {
-  # Require TRANSPORT_TYPE
-  if [[ -z "${TRANSPORT_TYPE:-}" ]]; then
+  # Require MANIFEST_REPO_PROVIDER_TYPE
+  if [[ -z "${MANIFEST_REPO_PROVIDER_TYPE:-}" ]]; then
     local available
     available=$(list_providers)
-    echo "${LOG_ERROR_PREFIX}TRANSPORT_TYPE is required. Available: $available${LOG_ERROR_SUFFIX}" >&2
+    echo "${LOG_ERROR_PREFIX}MANIFEST_REPO_PROVIDER_TYPE is required. Available: $available${LOG_ERROR_SUFFIX}" >&2
     exit 1
   fi
 
   # Check repo provider script exists
-  local provider_script="$REPO_PROVIDERS_DIR/${SCRIPT_PREFIX}${TRANSPORT_TYPE}"
+  local provider_script="$REPO_PROVIDERS_DIR/${SCRIPT_PREFIX}${MANIFEST_REPO_PROVIDER_TYPE}${SCRIPT_SUFFIX}"
   if [[ ! -f "$provider_script" ]]; then
     local available
     available=$(list_providers)
-    echo "${LOG_ERROR_PREFIX}Unknown transport type: $TRANSPORT_TYPE. Available: $available${LOG_ERROR_SUFFIX}" >&2
+    echo "${LOG_ERROR_PREFIX}Unknown repo provider type: $MANIFEST_REPO_PROVIDER_TYPE. Available: $available${LOG_ERROR_SUFFIX}" >&2
     exit 1
   fi
 
@@ -66,9 +69,9 @@ main() {
     exit 1
   fi
 
-  echo "=== Kubernetes Manifest Repo Provider ===" >&2
-  echo "Selected repo provider: $TRANSPORT_TYPE" >&2
-  echo "==========================================" >&2
+  echo "=== Kubernetes Manifest Publish ===" >&2
+  echo "Selected repo provider: $MANIFEST_REPO_PROVIDER_TYPE" >&2
+  echo "====================================" >&2
 
   # Execute repo provider script
   exec "$provider_script" "$@"

@@ -83,7 +83,7 @@ set_required_env() {
   set_required_env
   export IS_RELEASE="false"
 
-  run "$REPO_PROVIDERS_DIR/kubernetes-manifest-repo-provider-github-release"
+  run "$REPO_PROVIDERS_DIR/kubernetes-manifest-repo-provider-github-release-publish"
   [ "$status" -eq 0 ]
   assert_var_equals "MANIFEST_PUBLISHED" "false"
   assert_gh_not_called "upload"
@@ -94,7 +94,7 @@ set_required_env() {
   export IS_RELEASE="true"
   export MOCK_RELEASE_EXISTS="true"
 
-  run "$REPO_PROVIDERS_DIR/kubernetes-manifest-repo-provider-github-release"
+  run "$REPO_PROVIDERS_DIR/kubernetes-manifest-repo-provider-github-release-publish"
   [ "$status" -eq 0 ]
   assert_gh_called "release upload 1.0.0"
   assert_var_equals "MANIFEST_PUBLISHED" "true"
@@ -105,7 +105,7 @@ set_required_env() {
   export IS_RELEASE="true"
   export MOCK_RELEASE_EXISTS="false"
 
-  run "$REPO_PROVIDERS_DIR/kubernetes-manifest-repo-provider-github-release"
+  run "$REPO_PROVIDERS_DIR/kubernetes-manifest-repo-provider-github-release-publish"
   [ "$status" -eq 0 ]
   assert_gh_called "release create 1.0.0"
   assert_gh_called "release upload 1.0.0"
@@ -116,7 +116,7 @@ set_required_env() {
   export IS_RELEASE="true"
   export MOCK_RELEASE_EXISTS="true"
 
-  run "$REPO_PROVIDERS_DIR/kubernetes-manifest-repo-provider-github-release"
+  run "$REPO_PROVIDERS_DIR/kubernetes-manifest-repo-provider-github-release-publish"
   [ "$status" -eq 0 ]
   assert_gh_not_called "release create"
   assert_gh_called "release upload"
@@ -127,7 +127,7 @@ set_required_env() {
   export VERSION="1.0.0"
   unset MANIFEST_ZIP_PATH
 
-  run "$REPO_PROVIDERS_DIR/kubernetes-manifest-repo-provider-github-release"
+  run "$REPO_PROVIDERS_DIR/kubernetes-manifest-repo-provider-github-release-publish"
   [ "$status" -ne 0 ]
   assert_output_contains "MANIFEST_ZIP_PATH"
 }
@@ -137,7 +137,7 @@ set_required_env() {
   export IS_RELEASE="true"
   export MANIFEST_ZIP_PATH="/nonexistent/file.zip"
 
-  run "$REPO_PROVIDERS_DIR/kubernetes-manifest-repo-provider-github-release"
+  run "$REPO_PROVIDERS_DIR/kubernetes-manifest-repo-provider-github-release-publish"
   [ "$status" -ne 0 ]
   assert_output_contains "Manifest zip not found"
 }
@@ -149,7 +149,7 @@ set_required_env() {
   export IS_RELEASE="true"
   unset GITHUB_TOKEN
 
-  run "$REPO_PROVIDERS_DIR/kubernetes-manifest-repo-provider-github-release"
+  run "$REPO_PROVIDERS_DIR/kubernetes-manifest-repo-provider-github-release-publish"
   [ "$status" -ne 0 ]
   assert_output_contains "GITHUB_TOKEN"
 }
@@ -161,7 +161,7 @@ set_required_env() {
   export IS_RELEASE="false"
   unset GITHUB_TOKEN
 
-  run "$REPO_PROVIDERS_DIR/kubernetes-manifest-repo-provider-github-release"
+  run "$REPO_PROVIDERS_DIR/kubernetes-manifest-repo-provider-github-release-publish"
   [ "$status" -eq 0 ]
   assert_var_equals "MANIFEST_PUBLISHED" "false"
 }
@@ -170,7 +170,7 @@ set_required_env() {
   set_required_env
   unset IS_RELEASE
 
-  run "$REPO_PROVIDERS_DIR/kubernetes-manifest-repo-provider-github-release"
+  run "$REPO_PROVIDERS_DIR/kubernetes-manifest-repo-provider-github-release-publish"
   [ "$status" -eq 0 ]
   assert_var_equals "MANIFEST_PUBLISHED" "false"
 }
@@ -180,7 +180,7 @@ set_required_env() {
   export IS_RELEASE="true"
   export MOCK_RELEASE_EXISTS="true"
 
-  run "$REPO_PROVIDERS_DIR/kubernetes-manifest-repo-provider-github-release"
+  run "$REPO_PROVIDERS_DIR/kubernetes-manifest-repo-provider-github-release-publish"
   [ "$status" -eq 0 ]
   assert_gh_called "--clobber"
 }
