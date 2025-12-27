@@ -12,7 +12,7 @@ Kubernetes App - Docker Retag
 | `manifests-path` | string | `src/kubernetes` | Directory containing Kubernetes manifests |
 | `substitution-token-style` | string | `shell` | Token delimiter syntax for variables (shell) |
 | `substitution-output-style` | string | `UPPER_SNAKE` | Case style for variable names in manifests (UPPER_SNAKE, lower_snake, kebab-case, camelCase, PascalCase) |
-| `manifest-repo-provider-type` | string | *required* | Repo provider type for manifest storage (docker, github-release). Required - consumer must choose. |
+| `manifests-repo-provider-type` | string | *required* | Repo provider type for manifest storage (docker, github-release). Required - consumer must choose. |
 | `target-registry` | string | `ghcr.io` | Target container registry |
 | `target-base-path` | string | `""` | Path between registry and image name (auto-set for GHCR) |
 | `confirm-image-doesnt-exist` | boolean | `true` | Fail if target image already exists in registry |
@@ -53,7 +53,7 @@ Kubernetes App - Docker Retag
 | `target-image-full-uri` | Full target image reference (action output name) |
 | `docker-image-full-uri` | Full docker image reference (alias for target-image-full-uri) |
 | `docker-image-pushed` | Whether docker image was pushed |
-| `manifest-zip-path` | Path to manifest zip file |
-| `manifest-zip-name` | Name of manifest zip file |
-| `manifest-uri` | Reference to published manifests (format depends on repo provider) |
-| `manifest-published` | Whether manifests were published |
+| `manifests-zip-path` | Path to manifests zip file |
+| `manifests-zip-name` | Name of manifests zip file |
+| `manifests-uri` | Reference to published manifests (format depends on repo provider) |
+| `manifests-published` | Whether manifests were published |

@@ -1,19 +1,19 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2025 Kaptain contributors (Fred Cooke)
 
-name: 'Kubernetes Manifest Publish'
-description: 'Publishes manifest zip via pluggable repo provider (docker, github-release)'
+name: 'Kubernetes Manifests Publish'
+description: 'Publishes manifests zip via pluggable repo provider (docker, github-release)'
 author: 'kube-kaptain'
 
 inputs:
-  manifest-repo-provider-type:
-    description: 'Manifest repo provider type (required): docker, github-release'
+  manifests-repo-provider-type:
+    description: 'Manifests repo provider type (required): docker, github-release'
     required: true
-  manifest-zip-path:
-    description: 'Path to the manifest zip file'
+  manifests-zip-path:
+    description: 'Path to the manifests zip file'
     required: true
-  manifest-zip-name:
-    description: 'Filename for the manifest zip (required for github-release)'
+  manifests-zip-name:
+    description: 'Filename for the manifests zip (required for github-release)'
     required: false
     default: ''
   output-path:
@@ -52,12 +52,12 @@ inputs:
     required: true
 
 outputs:
-  manifest-uri:
+  manifests-uri:
     description: 'Reference to published manifests (format depends on repo provider)'
-    value: ${{ steps.publish.outputs.MANIFEST_URI }}
-  manifest-published:
+    value: ${{ steps.publish.outputs.MANIFESTS_URI }}
+  manifests-published:
     description: 'Whether manifests were published'
-    value: ${{ steps.publish.outputs.MANIFEST_PUBLISHED }}
+    value: ${{ steps.publish.outputs.MANIFESTS_PUBLISHED }}
 
 runs:
   using: 'composite'
@@ -78,9 +78,9 @@ runs:
       shell: bash
       env:
         LOG_ERROR_PREFIX: '::error::'
-        MANIFEST_REPO_PROVIDER_TYPE: ${{ inputs.manifest-repo-provider-type }}
-        MANIFEST_ZIP_PATH: ${{ inputs.manifest-zip-path }}
-        MANIFEST_ZIP_NAME: ${{ inputs.manifest-zip-name }}
+        MANIFESTS_REPO_PROVIDER_TYPE: ${{ inputs.manifests-repo-provider-type }}
+        MANIFESTS_ZIP_PATH: ${{ inputs.manifests-zip-path }}
+        MANIFESTS_ZIP_NAME: ${{ inputs.manifests-zip-name }}
         OUTPUT_PATH: ${{ inputs.output-path }}
         TARGET_REGISTRY: ${{ inputs.target-registry }}
         TARGET_BASE_PATH: ${{ steps.base-path.outputs.path }}
@@ -90,4 +90,4 @@ runs:
         VERSION: ${{ inputs.version }}
         IS_RELEASE: ${{ inputs.is-release }}
         GITHUB_TOKEN: ${{ github.token }}
-      run: "${{ github.action_path }}/../../scripts/main/kubernetes-manifest-publish"
+      run: "${{ github.action_path }}/../../scripts/main/kubernetes-manifests-publish"

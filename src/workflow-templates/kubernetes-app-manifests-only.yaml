@@ -22,7 +22,7 @@ on:
         type: string
         default: 'UPPER_SNAKE'
       # Repo provider configuration (required - no default)
-      manifest-repo-provider-type:
+      manifests-repo-provider-type:
         description: 'Repo provider type for manifest storage (docker, github-release). Required - consumer must choose.'
         required: true
         type: string
@@ -140,19 +140,19 @@ on:
         description: 'Whether this is a release build'
         value: ${{ jobs.build.outputs.is-release }}
       # Package outputs
-      manifest-zip-path:
-        description: 'Path to manifest zip file'
-        value: ${{ jobs.build.outputs.manifest-zip-path }}
-      manifest-zip-name:
-        description: 'Name of manifest zip file'
-        value: ${{ jobs.build.outputs.manifest-zip-name }}
+      manifests-zip-path:
+        description: 'Path to manifests zip file'
+        value: ${{ jobs.build.outputs.manifests-zip-path }}
+      manifests-zip-name:
+        description: 'Name of manifests zip file'
+        value: ${{ jobs.build.outputs.manifests-zip-name }}
       # Publish outputs
-      manifest-uri:
+      manifests-uri:
         description: 'Reference to published manifests (format depends on repo provider)'
-        value: ${{ jobs.build.outputs.manifest-uri }}
-      manifest-published:
+        value: ${{ jobs.build.outputs.manifests-uri }}
+      manifests-published:
         description: 'Whether manifests were published'
-        value: ${{ jobs.build.outputs.manifest-published }}
+        value: ${{ jobs.build.outputs.manifests-published }}
 jobs:
   basic-quality-checks:
     name: Basic Quality Checks
@@ -218,10 +218,10 @@ jobs:
       docker-image-name: ${{ steps.versions.outputs.docker-image-name }}
       project-name: ${{ steps.versions.outputs.project-name }}
       is-release: ${{ steps.versions.outputs.is-release }}
-      manifest-zip-path: ${{ steps.manifest-package.outputs.manifest-zip-path }}
-      manifest-zip-name: ${{ steps.manifest-package.outputs.manifest-zip-name }}
-      manifest-uri: ${{ steps.manifest-publish.outputs.manifest-uri }}
-      manifest-published: ${{ steps.manifest-publish.outputs.manifest-published }}
+      manifests-zip-path: ${{ steps.manifest-package.outputs.manifests-zip-path }}
+      manifests-zip-name: ${{ steps.manifest-package.outputs.manifests-zip-name }}
+      manifests-uri: ${{ steps.manifest-publish.outputs.manifests-uri }}
+      manifests-published: ${{ steps.manifest-publish.outputs.manifests-published }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4.2.2
@@ -293,7 +293,7 @@ jobs:
           check-name: 'Package Manifests'
       - name: Package manifests
         id: manifest-package
-        uses: ./.github/buildon-github-actions/src/actions/kubernetes-manifest-package
+        uses: ./.github/buildon-github-actions/src/actions/kubernetes-manifests-package
         with:
           manifests-path: ${{ inputs.manifests-path }}
           project-name: ${{ steps.versions.outputs.project-name }}
@@ -355,7 +355,7 @@ jobs:
           action: start
           check-name: 'Publish Manifests'
       - name: Docker registry logins
-        if: inputs.manifest-repo-provider-type == 'docker'
+        if: inputs.manifests-repo-provider-type == 'docker'
         uses: ./.github/buildon-github-actions/src/actions/docker-registry-logins
         with:
           config: ${{ inputs.docker-registry-logins }}
@@ -363,11 +363,11 @@ jobs:
           target-registry: ${{ inputs.target-registry }}
       - name: Publish manifests
         id: manifest-publish
-        uses: ./.github/buildon-github-actions/src/actions/kubernetes-manifest-publish
+        uses: ./.github/buildon-github-actions/src/actions/kubernetes-manifests-publish
         with:
-          manifest-repo-provider-type: ${{ inputs.manifest-repo-provider-type }}
-          manifest-zip-path: ${{ steps.manifest-package.outputs.manifest-zip-path }}
-          manifest-zip-name: ${{ steps.manifest-package.outputs.manifest-zip-name }}
+          manifests-repo-provider-type: ${{ inputs.manifests-repo-provider-type }}
+          manifests-zip-path: ${{ steps.manifest-package.outputs.manifests-zip-path }}
+          manifests-zip-name: ${{ steps.manifest-package.outputs.manifests-zip-name }}
           target-registry: ${{ inputs.target-registry }}
           target-base-path: ${{ inputs.target-base-path }}
           target-image-name: ${{ steps.versions.outputs.docker-image-name }}

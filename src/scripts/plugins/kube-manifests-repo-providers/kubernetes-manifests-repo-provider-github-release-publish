@@ -2,18 +2,18 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2025 Kaptain contributors (Fred Cooke)
 #
-# kubernetes-manifest-repo-provider-github-release-publish - Publishes manifest zip as GitHub release asset
+# kubernetes-manifests-repo-provider-github-release-publish - Publishes manifests zip as GitHub release asset
 #
 # Inputs (environment variables):
-#   MANIFEST_ZIP_PATH - Path to zip file (required)
-#   MANIFEST_ZIP_NAME - Filename for upload (required)
+#   MANIFESTS_ZIP_PATH - Path to zip file (required)
+#   MANIFESTS_ZIP_NAME - Filename for upload (required)
 #   VERSION           - Release tag (required)
 #   IS_RELEASE        - "true" to upload (default: false)
 #   GITHUB_TOKEN      - For gh CLI authentication (required if IS_RELEASE=true)
 #
 # Outputs (GITHUB_OUTPUT):
-#   MANIFEST_URI       - URL to the release
-#   MANIFEST_PUBLISHED - Whether manifests were published
+#   MANIFESTS_URI       - URL to the release
+#   MANIFESTS_PUBLISHED - Whether manifests were published
 #
 set -euo pipefail
 
@@ -22,8 +22,8 @@ LOG_ERROR_PREFIX="${LOG_ERROR_PREFIX:-}"
 LOG_ERROR_SUFFIX="${LOG_ERROR_SUFFIX:-}"
 
 # Required inputs
-MANIFEST_ZIP_PATH="${MANIFEST_ZIP_PATH:?MANIFEST_ZIP_PATH is required}"
-MANIFEST_ZIP_NAME="${MANIFEST_ZIP_NAME:?MANIFEST_ZIP_NAME is required}"
+MANIFESTS_ZIP_PATH="${MANIFESTS_ZIP_PATH:?MANIFESTS_ZIP_PATH is required}"
+MANIFESTS_ZIP_NAME="${MANIFESTS_ZIP_NAME:?MANIFESTS_ZIP_NAME is required}"
 VERSION="${VERSION:?VERSION is required}"
 
 # Optional inputs with defaults
@@ -41,24 +41,24 @@ output_var() {
 }
 
 main() {
-  echo "=== Kubernetes Manifest Publish: GitHub Release ===" >&2
-  echo "Manifest zip: $MANIFEST_ZIP_PATH" >&2
-  echo "Manifest zip name: $MANIFEST_ZIP_NAME" >&2
+  echo "=== Kubernetes Manifests Publish: GitHub Release ===" >&2
+  echo "Manifests zip: $MANIFESTS_ZIP_PATH" >&2
+  echo "Manifests zip name: $MANIFESTS_ZIP_NAME" >&2
   echo "Version: $VERSION" >&2
   echo "Is Release: $IS_RELEASE" >&2
   echo "======================================================" >&2
 
   # Validate zip exists
-  if [[ ! -f "$MANIFEST_ZIP_PATH" ]]; then
-    echo "${LOG_ERROR_PREFIX}Manifest zip not found: $MANIFEST_ZIP_PATH${LOG_ERROR_SUFFIX}" >&2
+  if [[ ! -f "$MANIFESTS_ZIP_PATH" ]]; then
+    echo "${LOG_ERROR_PREFIX}Manifests zip not found: $MANIFESTS_ZIP_PATH${LOG_ERROR_SUFFIX}" >&2
     exit 1
   fi
 
   if [[ "$IS_RELEASE" != "true" ]]; then
     echo "Skipping upload (IS_RELEASE=$IS_RELEASE)" >&2
-    output_var "MANIFEST_PUBLISHED" "false"
-    output_var "MANIFEST_URI" ""
-    echo "Kubernetes Manifest Publish: GitHub Release complete (skipped)" >&2
+    output_var "MANIFESTS_PUBLISHED" "false"
+    output_var "MANIFESTS_URI" ""
+    echo "Kubernetes Manifests Publish: GitHub Release complete (skipped)" >&2
     return 0
   fi
 
@@ -82,13 +82,13 @@ main() {
   fi
 
   # Upload asset
-  echo "Uploading: $MANIFEST_ZIP_NAME" >&2
-  gh release upload "$VERSION" "$MANIFEST_ZIP_PATH" --clobber
+  echo "Uploading: $MANIFESTS_ZIP_NAME" >&2
+  gh release upload "$VERSION" "$MANIFESTS_ZIP_PATH" --clobber
 
-  output_var "MANIFEST_URI" "$release_url"
-  output_var "MANIFEST_PUBLISHED" "true"
+  output_var "MANIFESTS_URI" "$release_url"
+  output_var "MANIFESTS_PUBLISHED" "true"
 
-  echo "Kubernetes Manifest Publish: GitHub Release complete" >&2
+  echo "Kubernetes Manifests Publish: GitHub Release complete" >&2
 }
 
 main "$@"

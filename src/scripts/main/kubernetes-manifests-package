@@ -17,8 +17,8 @@
 #                               Options: UPPER_SNAKE, lower_snake, kebab-case, camelCase, PascalCase
 #
 # Outputs (GITHUB_OUTPUT):
-#   MANIFEST_ZIP_PATH - Full path to created zip file
-#   MANIFEST_ZIP_NAME - Filename of zip
+#   MANIFESTS_ZIP_PATH - Full path to created zip file
+#   MANIFESTS_ZIP_NAME - Filename of zip
 #
 set -euo pipefail
 
@@ -272,8 +272,8 @@ main() {
   zip_size=$(wc -c < "$zip_path" | tr -d ' ')
   echo "Created: $zip_name ($zip_size bytes)" >&2
 
-  output_var "MANIFEST_ZIP_PATH" "$zip_path"
-  output_var "MANIFEST_ZIP_NAME" "$zip_name"
+  output_var "MANIFESTS_ZIP_PATH" "$zip_path"
+  output_var "MANIFESTS_ZIP_NAME" "$zip_name"
 
   echo "" >&2
   echo "=== Package Complete ===" >&2

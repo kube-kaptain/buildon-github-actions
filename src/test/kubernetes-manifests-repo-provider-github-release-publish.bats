@@ -73,8 +73,8 @@ assert_gh_not_called() {
 
 # Required env vars for most tests
 set_required_env() {
-  export MANIFEST_ZIP_PATH="$TEST_ZIP"
-  export MANIFEST_ZIP_NAME="my-project-1.0.0-manifests.zip"
+  export MANIFESTS_ZIP_PATH="$TEST_ZIP"
+  export MANIFESTS_ZIP_NAME="my-project-1.0.0-manifests.zip"
   export VERSION="1.0.0"
   export GITHUB_TOKEN="test-token"
 }
@@ -83,9 +83,9 @@ set_required_env() {
   set_required_env
   export IS_RELEASE="false"
 
-  run "$REPO_PROVIDERS_DIR/kubernetes-manifest-repo-provider-github-release-publish"
+  run "$REPO_PROVIDERS_DIR/kubernetes-manifests-repo-provider-github-release-publish"
   [ "$status" -eq 0 ]
-  assert_var_equals "MANIFEST_PUBLISHED" "false"
+  assert_var_equals "MANIFESTS_PUBLISHED" "false"
   assert_gh_not_called "upload"
 }
 
@@ -94,10 +94,10 @@ set_required_env() {
   export IS_RELEASE="true"
   export MOCK_RELEASE_EXISTS="true"
 
-  run "$REPO_PROVIDERS_DIR/kubernetes-manifest-repo-provider-github-release-publish"
+  run "$REPO_PROVIDERS_DIR/kubernetes-manifests-repo-provider-github-release-publish"
   [ "$status" -eq 0 ]
   assert_gh_called "release upload 1.0.0"
-  assert_var_equals "MANIFEST_PUBLISHED" "true"
+  assert_var_equals "MANIFESTS_PUBLISHED" "true"
 }
 
 @test "creates release if not exists" {
@@ -105,7 +105,7 @@ set_required_env() {
   export IS_RELEASE="true"
   export MOCK_RELEASE_EXISTS="false"
 
-  run "$REPO_PROVIDERS_DIR/kubernetes-manifest-repo-provider-github-release-publish"
+  run "$REPO_PROVIDERS_DIR/kubernetes-manifests-repo-provider-github-release-publish"
   [ "$status" -eq 0 ]
   assert_gh_called "release create 1.0.0"
   assert_gh_called "release upload 1.0.0"
@@ -116,63 +116,63 @@ set_required_env() {
   export IS_RELEASE="true"
   export MOCK_RELEASE_EXISTS="true"
 
-  run "$REPO_PROVIDERS_DIR/kubernetes-manifest-repo-provider-github-release-publish"
+  run "$REPO_PROVIDERS_DIR/kubernetes-manifests-repo-provider-github-release-publish"
   [ "$status" -eq 0 ]
   assert_gh_not_called "release create"
   assert_gh_called "release upload"
 }
 
-@test "fails when MANIFEST_ZIP_PATH missing" {
-  export MANIFEST_ZIP_NAME="my-project-1.0.0-manifests.zip"
+@test "fails when MANIFESTS_ZIP_PATH missing" {
+  export MANIFESTS_ZIP_NAME="my-project-1.0.0-manifests.zip"
   export VERSION="1.0.0"
-  unset MANIFEST_ZIP_PATH
+  unset MANIFESTS_ZIP_PATH
 
-  run "$REPO_PROVIDERS_DIR/kubernetes-manifest-repo-provider-github-release-publish"
+  run "$REPO_PROVIDERS_DIR/kubernetes-manifests-repo-provider-github-release-publish"
   [ "$status" -ne 0 ]
-  assert_output_contains "MANIFEST_ZIP_PATH"
+  assert_output_contains "MANIFESTS_ZIP_PATH"
 }
 
 @test "fails when zip file not found" {
   set_required_env
   export IS_RELEASE="true"
-  export MANIFEST_ZIP_PATH="/nonexistent/file.zip"
+  export MANIFESTS_ZIP_PATH="/nonexistent/file.zip"
 
-  run "$REPO_PROVIDERS_DIR/kubernetes-manifest-repo-provider-github-release-publish"
+  run "$REPO_PROVIDERS_DIR/kubernetes-manifests-repo-provider-github-release-publish"
   [ "$status" -ne 0 ]
-  assert_output_contains "Manifest zip not found"
+  assert_output_contains "Manifests zip not found"
 }
 
 @test "fails when GITHUB_TOKEN missing and IS_RELEASE=true" {
-  export MANIFEST_ZIP_PATH="$TEST_ZIP"
-  export MANIFEST_ZIP_NAME="my-project-1.0.0-manifests.zip"
+  export MANIFESTS_ZIP_PATH="$TEST_ZIP"
+  export MANIFESTS_ZIP_NAME="my-project-1.0.0-manifests.zip"
   export VERSION="1.0.0"
   export IS_RELEASE="true"
   unset GITHUB_TOKEN
 
-  run "$REPO_PROVIDERS_DIR/kubernetes-manifest-repo-provider-github-release-publish"
+  run "$REPO_PROVIDERS_DIR/kubernetes-manifests-repo-provider-github-release-publish"
   [ "$status" -ne 0 ]
   assert_output_contains "GITHUB_TOKEN"
 }
 
 @test "does not require GITHUB_TOKEN when IS_RELEASE=false" {
-  export MANIFEST_ZIP_PATH="$TEST_ZIP"
-  export MANIFEST_ZIP_NAME="my-project-1.0.0-manifests.zip"
+  export MANIFESTS_ZIP_PATH="$TEST_ZIP"
+  export MANIFESTS_ZIP_NAME="my-project-1.0.0-manifests.zip"
   export VERSION="1.0.0"
   export IS_RELEASE="false"
   unset GITHUB_TOKEN
 
-  run "$REPO_PROVIDERS_DIR/kubernetes-manifest-repo-provider-github-release-publish"
+  run "$REPO_PROVIDERS_DIR/kubernetes-manifests-repo-provider-github-release-publish"
   [ "$status" -eq 0 ]
-  assert_var_equals "MANIFEST_PUBLISHED" "false"
+  assert_var_equals "MANIFESTS_PUBLISHED" "false"
 }
 
 @test "defaults IS_RELEASE to false" {
   set_required_env
   unset IS_RELEASE
 
-  run "$REPO_PROVIDERS_DIR/kubernetes-manifest-repo-provider-github-release-publish"
+  run "$REPO_PROVIDERS_DIR/kubernetes-manifests-repo-provider-github-release-publish"
   [ "$status" -eq 0 ]
-  assert_var_equals "MANIFEST_PUBLISHED" "false"
+  assert_var_equals "MANIFESTS_PUBLISHED" "false"
 }
 
 @test "uses clobber flag on upload" {
@@ -180,7 +180,7 @@ set_required_env() {
   export IS_RELEASE="true"
   export MOCK_RELEASE_EXISTS="true"
 
-  run "$REPO_PROVIDERS_DIR/kubernetes-manifest-repo-provider-github-release-publish"
+  run "$REPO_PROVIDERS_DIR/kubernetes-manifests-repo-provider-github-release-publish"
   [ "$status" -eq 0 ]
   assert_gh_called "--clobber"
 }

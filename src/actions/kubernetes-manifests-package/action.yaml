@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2025 Kaptain contributors (Fred Cooke)
 
-name: 'Kubernetes Manifest Package'
+name: 'Kubernetes Manifests Package'
 description: 'Packages Kubernetes manifests into a zip with variable substitution'
 author: 'kube-kaptain'
 
@@ -38,12 +38,12 @@ inputs:
     default: 'UPPER_SNAKE'
 
 outputs:
-  manifest-zip-path:
+  manifests-zip-path:
     description: 'Full path to created zip file'
-    value: ${{ steps.package.outputs.MANIFEST_ZIP_PATH }}
-  manifest-zip-name:
+    value: ${{ steps.package.outputs.MANIFESTS_ZIP_PATH }}
+  manifests-zip-name:
     description: 'Filename of the zip'
-    value: ${{ steps.package.outputs.MANIFEST_ZIP_NAME }}
+    value: ${{ steps.package.outputs.MANIFESTS_ZIP_NAME }}
 
 runs:
   using: 'composite'
@@ -61,4 +61,4 @@ runs:
         DOCKER_IMAGE_NAME: ${{ inputs.docker-image-name }}
         SUBSTITUTION_TOKEN_STYLE: ${{ inputs.substitution-token-style }}
         SUBSTITUTION_OUTPUT_STYLE: ${{ inputs.substitution-output-style }}
-      run: "${{ github.action_path }}/../../scripts/main/kubernetes-manifest-package"
+      run: "${{ github.action_path }}/../../scripts/main/kubernetes-manifests-package"
