@@ -212,7 +212,7 @@ jobs:
         uses: ./.github/buildon-github-actions/src/actions/github-check-run
         with:
           action: start
-          check-name: 'Basic Quality Checks'
+          check-name: 'Basic Quality Checks → Basic Quality Checks'
       - name: Basic quality checks
         id: quality
         uses: ./.github/buildon-github-actions/src/actions/basic-quality-checks
@@ -339,7 +339,7 @@ jobs:
         uses: ./.github/buildon-github-actions/src/actions/github-check-run
         with:
           action: start
-          check-name: 'Pre-tagging Tests'
+          check-name: 'Build & Push → Pre-tagging Tests'
       - name: Run pre-tagging tests
         if: inputs.pre-tagging-tests-script-sub-path != ''
         id: pre-tagging-tests
@@ -365,7 +365,7 @@ jobs:
         uses: ./.github/buildon-github-actions/src/actions/github-check-run
         with:
           action: start
-          check-name: 'Versions & Naming'
+          check-name: 'Build & Push → Versions & Naming'
       - name: Generate versions and naming
         id: versions
         uses: ./.github/buildon-github-actions/src/actions/versions-and-naming
@@ -392,7 +392,7 @@ jobs:
         uses: ./.github/buildon-github-actions/src/actions/github-check-run
         with:
           action: start
-          check-name: 'Docker Retag'
+          check-name: 'Build & Push → Docker Retag'
       - name: Pull and retag
         id: docker-build
         uses: ./.github/buildon-github-actions/src/actions/docker-build-retag

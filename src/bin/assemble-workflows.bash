@@ -73,6 +73,7 @@ generate_check_start() {
   local check_name="$1"
   local check_id="$2"
   local condition="$3"
+  local job_name="$4"
   local template_file="$STEPS_DIR/github-check-start.yaml"
 
   if [[ ! -f "$template_file" ]]; then
@@ -80,9 +81,16 @@ generate_check_start() {
     exit 1
   fi
 
+  # Format check name with job prefix if available
+  local full_check_name="$check_name"
+  if [[ -n "$job_name" ]]; then
+    full_check_name="${job_name} → ${check_name}"
+  fi
+
   # Escape values for sed replacement
-  local safe_name safe_id safe_if_line
+  local safe_name safe_full_name safe_id safe_if_line
   safe_name=$(escape_sed_replacement "$check_name")
+  safe_full_name=$(escape_sed_replacement "$full_check_name")
   safe_id=$(escape_sed_replacement "$check_id")
 
   # Use marker for optional if line - delete the line if no condition
@@ -95,6 +103,7 @@ generate_check_start() {
   cat "$template_file" \
     | strip_spdx_header \
     | sed "s|\${CHECK_NAME}|$safe_name|g" \
+    | sed "s|\${CHECK_FULL_NAME}|$safe_full_name|g" \
     | sed "s|\${CHECK_ID}|$safe_id|g" \
     | sed "s|\${CHECK_IF_LINE}|$safe_if_line|g" \
     | grep -v "__DELETE_THIS_LINE__"
@@ -106,6 +115,7 @@ generate_check_end() {
   local check_name="$1"
   local check_id="$2"
   local condition="$3"
+  local job_name="$4"
   local template_file="$STEPS_DIR/github-check-end.yaml"
 
   if [[ ! -f "$template_file" ]]; then
@@ -113,9 +123,16 @@ generate_check_end() {
     exit 1
   fi
 
+  # Format check name with job prefix if available
+  local full_check_name="$check_name"
+  if [[ -n "$job_name" ]]; then
+    full_check_name="${job_name} → ${check_name}"
+  fi
+
   # Escape values for sed replacement
-  local safe_name safe_id safe_pass safe_fail
+  local safe_name safe_full_name safe_id safe_pass safe_fail
   safe_name=$(escape_sed_replacement "$check_name")
+  safe_full_name=$(escape_sed_replacement "$full_check_name")
   safe_id=$(escape_sed_replacement "$check_id")
 
   if [[ -n "$condition" ]]; then
@@ -129,6 +146,7 @@ generate_check_end() {
   cat "$template_file" \
     | strip_spdx_header \
     | sed "s|\${CHECK_NAME}|$safe_name|g" \
+    | sed "s|\${CHECK_FULL_NAME}|$safe_full_name|g" \
     | sed "s|\${CHECK_ID}|$safe_id|g" \
     | sed "s|\${CHECK_PASS_CONDITION}|$safe_pass|g" \
     | sed "s|\${CHECK_FAIL_CONDITION}|$safe_fail|g"
@@ -146,8 +164,35 @@ process_template() {
   local workflow_name="${basename%.yaml}"
   local result=""
 
+  # Track current job context for check naming
+  local in_jobs_section=false
+  local current_job_name=""
+  local pending_job_key=""
+
   # Process line by line to handle INJECT markers with proper indentation
   while IFS= read -r line || [[ -n "$line" ]]; do
+    # Track when we enter jobs: section
+    if [[ "$line" == "jobs:" ]]; then
+      in_jobs_section=true
+    fi
+
+    # Track job keys (lines like "  job-key:" at 2-space indent under jobs:)
+    if [[ "$in_jobs_section" == true && "$line" =~ ^[[:space:]][[:space:]][a-zA-Z0-9_-]+:[[:space:]]*$ ]]; then
+      pending_job_key="true"
+      current_job_name=""  # Reset until we find the name
+    fi
+
+    # Capture job name (lines like "    name: Job Name" at 4-space indent)
+    if [[ "$pending_job_key" == "true" && "$line" =~ ^[[:space:]][[:space:]][[:space:]][[:space:]]name:[[:space:]]*(.+)$ ]]; then
+      current_job_name="${BASH_REMATCH[1]}"
+      # Strip surrounding quotes if present
+      current_job_name="${current_job_name#\'}"
+      current_job_name="${current_job_name%\'}"
+      current_job_name="${current_job_name#\"}"
+      current_job_name="${current_job_name%\"}"
+      pending_job_key=""
+    fi
+
     # Parameterized injection: # INJECT: name(params)
     if [[ "$line" =~ ^([[:space:]]*)#\ INJECT:\ ([a-zA-Z0-9_-]+)\((.+)\)$ ]]; then
       local indent="${BASH_REMATCH[1]}"
@@ -161,14 +206,14 @@ process_template() {
           check_name=$(parse_param "$params" "name")
           check_id=$(parse_param "$params" "id")
           condition=$(parse_param "$params" "if")
-          chunk=$(generate_check_start "$check_name" "$check_id" "$condition")
+          chunk=$(generate_check_start "$check_name" "$check_id" "$condition" "$current_job_name")
           ;;
         github-check-end)
           local check_name check_id condition
           check_name=$(parse_param "$params" "name")
           check_id=$(parse_param "$params" "id")
           condition=$(parse_param "$params" "if")
-          chunk=$(generate_check_end "$check_name" "$check_id" "$condition")
+          chunk=$(generate_check_end "$check_name" "$check_id" "$condition" "$current_job_name")
           ;;
         *)
           echo "  ERROR: Unknown parameterized injection type: $injection_type" >&2

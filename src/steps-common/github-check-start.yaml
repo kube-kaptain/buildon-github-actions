@@ -7,4 +7,4 @@ ${CHECK_IF_LINE}
   uses: ./.github/buildon-github-actions/src/actions/github-check-run
   with:
     action: start
-    check-name: '${CHECK_NAME}'
+    check-name: '${CHECK_FULL_NAME}'

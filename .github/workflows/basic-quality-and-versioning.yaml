@@ -252,7 +252,7 @@ jobs:
         uses: ./.github/buildon-github-actions/src/actions/github-check-run
         with:
           action: start
-          check-name: 'Pre-tagging Tests'
+          check-name: 'Versions & Naming → Pre-tagging Tests'
       - name: Run pre-tagging tests
         if: inputs.pre-tagging-tests-script-sub-path != ''
         id: pre-tagging-tests
