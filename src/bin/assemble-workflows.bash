@@ -41,6 +41,77 @@ indent_chunk() {
   done
 }
 
+# Parse parameter value from params string: name="value" or name='value'
+parse_param() {
+  local params="$1"
+  local param_name="$2"
+  local value=""
+
+  # Match name="value" or name='value'
+  if [[ "$params" =~ ${param_name}=\"([^\"]+)\" ]]; then
+    value="${BASH_REMATCH[1]}"
+  elif [[ "$params" =~ ${param_name}=\'([^\']+)\' ]]; then
+    value="${BASH_REMATCH[1]}"
+  fi
+
+  echo "$value"
+}
+
+# Generate github-check-start step from template
+generate_check_start() {
+  local check_name="$1"
+  local check_id="$2"
+  local condition="$3"
+  local template_file="$STEPS_DIR/github-check-start.yaml"
+
+  if [[ ! -f "$template_file" ]]; then
+    echo "ERROR: Template not found: $template_file" >&2
+    exit 1
+  fi
+
+  local if_line=""
+  if [[ -n "$condition" ]]; then
+    if_line="  if: $condition"$'\n'
+  fi
+
+  local chunk
+  chunk=$(cat "$template_file")
+  chunk="${chunk//\$\{CHECK_NAME\}/$check_name}"
+  chunk="${chunk//\$\{CHECK_ID\}/$check_id}"
+  chunk="${chunk//\$\{CHECK_IF_LINE\}/$if_line}"
+
+  echo "$chunk"
+}
+
+# Generate github-check-end steps from template
+generate_check_end() {
+  local check_name="$1"
+  local check_id="$2"
+  local condition="$3"
+  local template_file="$STEPS_DIR/github-check-end.yaml"
+
+  if [[ ! -f "$template_file" ]]; then
+    echo "ERROR: Template not found: $template_file" >&2
+    exit 1
+  fi
+
+  local pass_condition="success()"
+  local fail_condition="failure()"
+  if [[ -n "$condition" ]]; then
+    pass_condition="$condition && success()"
+    fail_condition="$condition && failure()"
+  fi
+
+  local chunk
+  chunk=$(cat "$template_file")
+  chunk="${chunk//\$\{CHECK_NAME\}/$check_name}"
+  chunk="${chunk//\$\{CHECK_ID\}/$check_id}"
+  chunk="${chunk//\$\{CHECK_PASS_CONDITION\}/$pass_condition}"
+  chunk="${chunk//\$\{CHECK_FAIL_CONDITION\}/$fail_condition}"
+
+  echo "$chunk"
+}
+
 # Process a single template file
 process_template() {
   local template="$1"
@@ -55,7 +126,42 @@ process_template() {
 
   # Process line by line to handle INJECT markers with proper indentation
   while IFS= read -r line || [[ -n "$line" ]]; do
-    if [[ "$line" =~ ^([[:space:]]*)#\ INJECT:\ ([a-zA-Z0-9_-]+)$ ]]; then
+    # Parameterized injection: # INJECT: name(params)
+    if [[ "$line" =~ ^([[:space:]]*)#\ INJECT:\ ([a-zA-Z0-9_-]+)\((.+)\)$ ]]; then
+      local indent="${BASH_REMATCH[1]}"
+      local injection_type="${BASH_REMATCH[2]}"
+      local params="${BASH_REMATCH[3]}"
+
+      local chunk=""
+      case "$injection_type" in
+        github-check-start)
+          local check_name check_id condition
+          check_name=$(parse_param "$params" "name")
+          check_id=$(parse_param "$params" "id")
+          condition=$(parse_param "$params" "if")
+          chunk=$(generate_check_start "$check_name" "$check_id" "$condition")
+          ;;
+        github-check-end)
+          local check_name check_id condition
+          check_name=$(parse_param "$params" "name")
+          check_id=$(parse_param "$params" "id")
+          condition=$(parse_param "$params" "if")
+          chunk=$(generate_check_end "$check_name" "$check_id" "$condition")
+          ;;
+        *)
+          echo "  ERROR: Unknown parameterized injection type: $injection_type" >&2
+          exit 1
+          ;;
+      esac
+
+      # Apply indentation to generated chunk
+      local indented_chunk
+      indented_chunk=$(echo "$chunk" | indent_chunk "$indent")
+      result+="${indent}${indented_chunk}"
+      echo "  Injected: $injection_type (indent: ${#indent} spaces)"
+
+    # Simple injection: # INJECT: name
+    elif [[ "$line" =~ ^([[:space:]]*)#\ INJECT:\ ([a-zA-Z0-9_-]+)$ ]]; then
       local indent="${BASH_REMATCH[1]}"
       local chunk_name="${BASH_REMATCH[2]}"
       local chunk_file="$STEPS_DIR/${chunk_name}.yaml"

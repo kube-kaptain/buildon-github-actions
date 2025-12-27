@@ -256,7 +256,7 @@ jobs:
         run: |
           echo "Linking local actions for dogfooding"
           ln -s "$(pwd)" .github/buildon-github-actions
-      - name: Start check - Quality
+      - name: Start check - Quality Checks
         id: check-quality
         uses: ./.github/buildon-github-actions/src/actions/github-check-run
         with:
@@ -273,13 +273,13 @@ jobs:
           require-conventional-branches: ${{ inputs.require-conventional-branches }}
           require-conventional-commits: ${{ inputs.require-conventional-commits }}
           block-conventional-commits: ${{ inputs.block-conventional-commits }}
-      - name: Pass check - Quality
+      - name: Pass check - Quality Checks
         if: success()
         uses: ./.github/buildon-github-actions/src/actions/github-check-run
         with:
           action: pass
           check-run-id: ${{ steps.check-quality.outputs.check-run-id }}
-      - name: Fail check - Quality
+      - name: Fail check - Quality Checks
         if: failure()
         uses: ./.github/buildon-github-actions/src/actions/github-check-run
         with:
@@ -413,7 +413,7 @@ jobs:
           check-run-id: ${{ steps.check-pre-tagging.outputs.check-run-id }}
 
       # === Versions & Naming ===
-      - name: Start check - Versions
+      - name: Start check - Versions & Naming
         id: check-versions
         uses: ./.github/buildon-github-actions/src/actions/github-check-run
         with:
@@ -426,13 +426,13 @@ jobs:
           default-branch: ${{ inputs.default-branch }}
           additional-release-branches: ${{ inputs.additional-release-branches }}
           max-version-parts: ${{ inputs.max-version-parts }}
-      - name: Pass check - Versions
+      - name: Pass check - Versions & Naming
         if: success()
         uses: ./.github/buildon-github-actions/src/actions/github-check-run
         with:
           action: pass
           check-run-id: ${{ steps.check-versions.outputs.check-run-id }}
-      - name: Fail check - Versions
+      - name: Fail check - Versions & Naming
         if: failure()
         uses: ./.github/buildon-github-actions/src/actions/github-check-run
         with:
@@ -579,11 +579,10 @@ jobs:
           check-name: 'Docker Push'
       - name: Push image
         id: docker-push
-        if: steps.versions.outputs.is-release == 'true'
-        shell: bash
-        run: |
-          docker push "${{ steps.docker-build.outputs.target-image-full-uri }}"
-          echo "image-pushed=true" >> "$GITHUB_OUTPUT"
+        uses: ./.github/buildon-github-actions/src/actions/docker-push
+        with:
+          docker-image-full-uri: ${{ steps.docker-build.outputs.target-image-full-uri }}
+          is-release: ${{ steps.versions.outputs.is-release }}
       - name: Pass check - Docker Push
         if: steps.versions.outputs.is-release == 'true' && success()
         uses: ./.github/buildon-github-actions/src/actions/github-check-run

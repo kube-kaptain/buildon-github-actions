@@ -2,7 +2,7 @@
 # Copyright (c) 2025 Kaptain contributors (Fred Cooke)
 
 name: 'Docker Build Retag'
-description: 'Pulls, retags, and pushes Docker images'
+description: 'Pulls and retags Docker images (no push)'
 author: 'kube-kaptain'
 
 inputs:
@@ -29,9 +29,6 @@ inputs:
   docker-tag:
     description: 'Tag for target image (from version generator docker-tag)'
     required: true
-  is-release:
-    description: 'Whether to push (from version generator is-release)'
-    required: true
   confirm-image-doesnt-exist:
     description: 'Fail if target image already exists in registry'
     required: false
@@ -44,9 +41,6 @@ outputs:
   target-image-full-uri:
     description: 'Full target image reference'
     value: ${{ steps.retag.outputs.TARGET_IMAGE_FULL_URI }}
-  image-pushed:
-    description: 'Whether image was pushed'
-    value: ${{ steps.retag.outputs.IMAGE_PUSHED }}
 
 runs:
   using: 'composite'
@@ -62,7 +56,7 @@ runs:
           echo "path=${{ inputs.target-base-path }}" >> "$GITHUB_OUTPUT"
         fi
 
-    - name: Retag and push
+    - name: Pull and retag
       id: retag
       shell: bash
       env:
@@ -74,6 +68,5 @@ runs:
         TARGET_BASE_PATH: ${{ steps.base-path.outputs.path }}
         TARGET_IMAGE_NAME: ${{ inputs.target-image-name }}
         DOCKER_TAG: ${{ inputs.docker-tag }}
-        IS_RELEASE: ${{ inputs.is-release }}
         CONFIRM_IMAGE_DOESNT_EXIST: ${{ inputs.confirm-image-doesnt-exist }}
       run: "${{ github.action_path }}/../../scripts/main/docker-build-retag"

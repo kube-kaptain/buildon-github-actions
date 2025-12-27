@@ -1,0 +1,51 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025 Kaptain contributors (Fred Cooke)
+#
+# docker-push - Pushes a Docker image to registry
+#
+# Inputs (environment variables):
+#   DOCKER_IMAGE_FULL_URI - Full image reference to push (required)
+#   IS_RELEASE            - "true" to push, "false" to skip (default: false)
+#
+# Outputs (GITHUB_OUTPUT):
+#   IMAGE_PUSHED - Whether image was pushed (true/false)
+#
+set -euo pipefail
+
+# Required inputs
+DOCKER_IMAGE_FULL_URI="${DOCKER_IMAGE_FULL_URI:?DOCKER_IMAGE_FULL_URI is required}"
+
+# Optional inputs with defaults
+IS_RELEASE="${IS_RELEASE:-false}"
+
+# Output variable for GitHub Actions
+output_var() {
+  local name="$1"
+  local value="$2"
+
+  echo "${name}=${value}"
+
+  if [[ -n "${GITHUB_OUTPUT:-}" ]]; then
+    echo "${name}=${value}" >> "$GITHUB_OUTPUT"
+  fi
+}
+
+main() {
+  echo "=== Docker Push ===" >&2
+  echo "Image: $DOCKER_IMAGE_FULL_URI" >&2
+  echo "Is Release: $IS_RELEASE" >&2
+  echo "===================" >&2
+
+  if [[ "$IS_RELEASE" == "true" ]]; then
+    echo "Pushing: $DOCKER_IMAGE_FULL_URI" >&2
+    docker push "$DOCKER_IMAGE_FULL_URI"
+    output_var "IMAGE_PUSHED" "true"
+    echo "Docker Push complete" >&2
+  else
+    echo "Skipping push (IS_RELEASE=$IS_RELEASE)" >&2
+    output_var "IMAGE_PUSHED" "false"
+  fi
+}
+
+main "$@"

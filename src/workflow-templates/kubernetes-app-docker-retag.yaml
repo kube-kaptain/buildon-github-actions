@@ -246,7 +246,7 @@ jobs:
       is-release: ${{ steps.versions.outputs.is-release }}
       source-image-full-uri: ${{ steps.docker-retag.outputs.source-image-full-uri }}
       target-image-full-uri: ${{ steps.docker-retag.outputs.target-image-full-uri }}
-      docker-image-pushed: ${{ steps.docker-retag.outputs.image-pushed }}
+      docker-image-pushed: ${{ steps.docker-push.outputs.image-pushed }}
       manifests-zip-path: ${{ steps.manifest-package.outputs.manifests-zip-path }}
       manifests-zip-name: ${{ steps.manifest-package.outputs.manifests-zip-name }}
       manifests-uri: ${{ steps.manifest-publish.outputs.manifests-uri }}
@@ -328,7 +328,7 @@ jobs:
         with:
           action: start
           check-name: 'Docker Retag'
-      - name: Retag and push
+      - name: Pull and retag
         id: docker-retag
         uses: ./.github/buildon-github-actions/src/actions/docker-build-retag
         with:
@@ -339,7 +339,6 @@ jobs:
           target-base-path: ${{ inputs.target-base-path }}
           target-image-name: ${{ steps.versions.outputs.docker-image-name }}
           docker-tag: ${{ steps.versions.outputs.docker-tag }}
-          is-release: ${{ steps.versions.outputs.is-release }}
           confirm-image-doesnt-exist: ${{ inputs.confirm-image-doesnt-exist }}
       - name: Pass check - Docker Retag
         if: success()
@@ -416,6 +415,33 @@ jobs:
         with:
           action: fail
           check-run-id: ${{ steps.check-post-package.outputs.check-run-id }}
+
+      # === Docker Push ===
+      - name: Start check - Docker Push
+        if: steps.versions.outputs.is-release == 'true'
+        id: check-docker-push
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
+        with:
+          action: start
+          check-name: 'Docker Push'
+      - name: Push image
+        id: docker-push
+        uses: ./.github/buildon-github-actions/src/actions/docker-push
+        with:
+          docker-image-full-uri: ${{ steps.docker-retag.outputs.target-image-full-uri }}
+          is-release: ${{ steps.versions.outputs.is-release }}
+      - name: Pass check - Docker Push
+        if: steps.versions.outputs.is-release == 'true' && success()
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
+        with:
+          action: pass
+          check-run-id: ${{ steps.check-docker-push.outputs.check-run-id }}
+      - name: Fail check - Docker Push
+        if: steps.versions.outputs.is-release == 'true' && failure()
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
+        with:
+          action: fail
+          check-run-id: ${{ steps.check-docker-push.outputs.check-run-id }}
 
       # === Manifest Publish ===
       - name: Start check - Publish Manifests
