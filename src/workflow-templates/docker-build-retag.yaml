@@ -177,12 +177,7 @@ jobs:
       # INJECT: parse-workflow-ref-and-checkout
 
       # === Docker Registry Logins ===
-      - name: Docker registry logins
-        uses: ./.github/buildon-github-actions/src/actions/docker-registry-logins
-        with:
-          config: ${{ inputs.docker-registry-logins }}
-          secrets-json: ${{ secrets.docker-registry-logins-secrets || toJSON(secrets) }}
-          target-registry: ${{ inputs.target-registry }}
+      # INJECT: docker-registry-logins
 
       # === Pre-tagging Tests ===
       # INJECT: github-check-start(name="Pre-tagging Tests", id="check-pre-tagging", if="inputs.pre-tagging-tests-script-sub-path != ''")
@@ -196,16 +191,5 @@ jobs:
 
       # === Docker Retag ===
       # INJECT: github-check-start(name="Docker Retag", id="check-docker-retag")
-      - name: Pull and retag
-        id: docker-build
-        uses: ./.github/buildon-github-actions/src/actions/docker-build-retag
-        with:
-          source-registry: ${{ inputs.source-registry }}
-          source-image-name: ${{ inputs.source-image-name }}
-          source-tag: ${{ inputs.source-tag }}
-          target-registry: ${{ inputs.target-registry }}
-          target-base-path: ${{ inputs.target-base-path }}
-          target-image-name: ${{ steps.versions.outputs.docker-image-name }}
-          docker-tag: ${{ steps.versions.outputs.docker-tag }}
-          confirm-image-doesnt-exist: ${{ inputs.confirm-image-doesnt-exist }}
+      # INJECT: docker-build-retag
       # INJECT: github-check-end(name="Docker Retag", id="check-docker-retag")

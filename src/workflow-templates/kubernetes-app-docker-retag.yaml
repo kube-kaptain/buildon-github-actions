@@ -223,12 +223,7 @@ jobs:
       # INJECT: parse-workflow-ref-and-checkout
 
       # === Docker Registry Logins ===
-      - name: Docker registry logins
-        uses: ./.github/buildon-github-actions/src/actions/docker-registry-logins
-        with:
-          config: ${{ inputs.docker-registry-logins }}
-          secrets-json: ${{ secrets.docker-registry-logins-secrets || toJSON(secrets) }}
-          target-registry: ${{ inputs.target-registry }}
+      # INJECT: docker-registry-logins
 
       # === Pre-tagging Tests ===
       # INJECT: github-check-start(name="Pre-tagging Tests", id="check-pre-tagging", if="inputs.pre-tagging-tests-script-sub-path != ''")
@@ -242,74 +237,25 @@ jobs:
 
       # === Docker Retag ===
       # INJECT: github-check-start(name="Docker Retag", id="check-docker-retag")
-      - name: Pull and retag
-        id: docker-build
-        uses: ./.github/buildon-github-actions/src/actions/docker-build-retag
-        with:
-          source-registry: ${{ inputs.source-registry }}
-          source-image-name: ${{ inputs.source-image-name }}
-          source-tag: ${{ inputs.source-tag }}
-          target-registry: ${{ inputs.target-registry }}
-          target-base-path: ${{ inputs.target-base-path }}
-          target-image-name: ${{ steps.versions.outputs.docker-image-name }}
-          docker-tag: ${{ steps.versions.outputs.docker-tag }}
-          confirm-image-doesnt-exist: ${{ inputs.confirm-image-doesnt-exist }}
+      # INJECT: docker-build-retag
       # INJECT: github-check-end(name="Docker Retag", id="check-docker-retag")
 
       # === Manifest Package ===
       # INJECT: github-check-start(name="Package Manifests", id="check-manifest-package")
-      - name: Package manifests
-        id: manifest-package
-        uses: ./.github/buildon-github-actions/src/actions/kubernetes-manifests-package
-        with:
-          manifests-path: ${{ inputs.manifests-path }}
-          project-name: ${{ steps.versions.outputs.project-name }}
-          version: ${{ steps.versions.outputs.version }}
-          docker-tag: ${{ steps.versions.outputs.docker-tag }}
-          docker-image-name: ${{ steps.versions.outputs.docker-image-name }}
-          substitution-token-style: ${{ inputs.substitution-token-style }}
-          substitution-output-style: ${{ inputs.substitution-output-style }}
+      # INJECT: manifest-package
       # INJECT: github-check-end(name="Package Manifests", id="check-manifest-package")
 
       # === Post-package Tests ===
       # INJECT: github-check-start(name="Post-package Tests", id="check-post-package", if="inputs.post-package-tests-script-sub-path != ''")
-      - name: Run post-package tests
-        if: inputs.post-package-tests-script-sub-path != ''
-        id: post-package-tests
-        uses: ./.github/buildon-github-actions/src/actions/run-test-script
-        with:
-          script-sub-path: ${{ inputs.post-package-tests-script-sub-path }}
-          version: ${{ steps.versions.outputs.version }}
-          docker-tag: ${{ steps.versions.outputs.docker-tag }}
-          docker-image-name: ${{ steps.versions.outputs.docker-image-name }}
-          project-name: ${{ steps.versions.outputs.project-name }}
-          is-release: ${{ steps.versions.outputs.is-release }}
+      # INJECT: post-package-tests
       # INJECT: github-check-end(name="Post-package Tests", id="check-post-package", if="inputs.post-package-tests-script-sub-path != ''")
 
       # === Docker Push ===
       # INJECT: github-check-start(name="Docker Push", id="check-docker-push", if="steps.versions.outputs.is-release == 'true'")
-      - name: Push image
-        id: docker-push
-        uses: ./.github/buildon-github-actions/src/actions/docker-push
-        with:
-          docker-image-full-uri: ${{ steps.docker-build.outputs.target-image-full-uri }}
-          is-release: ${{ steps.versions.outputs.is-release }}
+      # INJECT: docker-push
       # INJECT: github-check-end(name="Docker Push", id="check-docker-push", if="steps.versions.outputs.is-release == 'true'")
 
       # === Manifest Publish ===
       # INJECT: github-check-start(name="Publish Manifests", id="check-manifest-publish")
-      - name: Publish manifests
-        id: manifest-publish
-        uses: ./.github/buildon-github-actions/src/actions/kubernetes-manifests-publish
-        with:
-          manifests-repo-provider-type: ${{ inputs.manifests-repo-provider-type }}
-          manifests-zip-path: ${{ steps.manifest-package.outputs.manifests-zip-path }}
-          manifests-zip-name: ${{ steps.manifest-package.outputs.manifests-zip-name }}
-          target-registry: ${{ inputs.target-registry }}
-          target-base-path: ${{ inputs.target-base-path }}
-          target-image-name: ${{ steps.versions.outputs.docker-image-name }}
-          docker-tag: ${{ steps.versions.outputs.docker-tag }}-manifests
-          confirm-image-doesnt-exist: ${{ inputs.confirm-image-doesnt-exist }}
-          version: ${{ steps.versions.outputs.version }}
-          is-release: ${{ steps.versions.outputs.is-release }}
+      # INJECT: manifest-publish
       # INJECT: github-check-end(name="Publish Manifests", id="check-manifest-publish")
