@@ -185,6 +185,7 @@ jobs:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-24.04
     permissions:
+      contents: read
       checks: write
     steps:
       # INJECT: parse-workflow-ref-and-checkout
