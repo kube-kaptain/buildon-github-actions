@@ -108,35 +108,58 @@ on:
       # Version outputs
       version:
         description: 'The generated version'
-        value: ${{ jobs.versions-and-naming.outputs.version }}
+        value: ${{ jobs.build.outputs.version }}
+      version-major:
+        description: 'Major version number'
+        value: ${{ jobs.build.outputs.version-major }}
+      version-minor:
+        description: 'Minor version number'
+        value: ${{ jobs.build.outputs.version-minor }}
+      version-patch:
+        description: 'Patch version number'
+        value: ${{ jobs.build.outputs.version-patch }}
+      version-2-part:
+        description: 'Version padded/truncated to 2 parts'
+        value: ${{ jobs.build.outputs.version-2-part }}
+      version-3-part:
+        description: 'Version padded/truncated to 3 parts'
+        value: ${{ jobs.build.outputs.version-3-part }}
+      version-4-part:
+        description: 'Version padded/truncated to 4 parts'
+        value: ${{ jobs.build.outputs.version-4-part }}
       docker-tag:
         description: 'Tag for Docker images'
-        value: ${{ jobs.versions-and-naming.outputs.docker-tag }}
+        value: ${{ jobs.build.outputs.docker-tag }}
       docker-image-name:
         description: 'Docker image name'
-        value: ${{ jobs.versions-and-naming.outputs.docker-image-name }}
+        value: ${{ jobs.build.outputs.docker-image-name }}
+      project-name:
+        description: 'The repository/project name'
+        value: ${{ jobs.build.outputs.project-name }}
       is-release:
         description: 'Whether this is a release build'
-        value: ${{ jobs.versions-and-naming.outputs.is-release }}
+        value: ${{ jobs.build.outputs.is-release }}
       # Package outputs
       manifest-zip-path:
         description: 'Path to manifest zip file'
-        value: ${{ jobs.kubernetes-manifest-package.outputs.manifest-zip-path }}
+        value: ${{ jobs.build.outputs.manifest-zip-path }}
       manifest-zip-name:
         description: 'Name of manifest zip file'
-        value: ${{ jobs.kubernetes-manifest-package.outputs.manifest-zip-name }}
+        value: ${{ jobs.build.outputs.manifest-zip-name }}
       # Publish outputs
       manifest-uri:
         description: 'Reference to published manifests (format depends on repo provider)'
-        value: ${{ jobs.kubernetes-manifest-publish.outputs.manifest-uri }}
+        value: ${{ jobs.build.outputs.manifest-uri }}
       manifest-published:
         description: 'Whether manifests were published'
-        value: ${{ jobs.kubernetes-manifest-publish.outputs.manifest-published }}
+        value: ${{ jobs.build.outputs.manifest-published }}
 jobs:
   basic-quality-checks:
     name: Basic Quality Checks
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-24.04
+    permissions:
+      checks: write
     steps:
       - name: Checkout
         uses: actions/checkout@v4.2.2
@@ -202,7 +225,14 @@ jobs:
         run: |
           echo "Linking local actions for dogfooding"
           ln -s "$(pwd)" .github/buildon-github-actions
+      - name: Start check - Quality
+        id: check-quality
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
+        with:
+          action: start
+          check-name: 'Quality Checks'
       - name: Basic quality checks
+        id: quality
         uses: ./.github/buildon-github-actions/src/actions/basic-quality-checks
         with:
           default-branch: ${{ inputs.default-branch }}
@@ -212,89 +242,43 @@ jobs:
           require-conventional-branches: ${{ inputs.require-conventional-branches }}
           require-conventional-commits: ${{ inputs.require-conventional-commits }}
           block-conventional-commits: ${{ inputs.block-conventional-commits }}
-  pre-tagging-tests:
-    name: Pre-tagging Tests
+      - name: Pass check - Quality
+        if: success()
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
+        with:
+          action: pass
+          check-run-id: ${{ steps.check-quality.outputs.check-run-id }}
+      - name: Fail check - Quality
+        if: failure()
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
+        with:
+          action: fail
+          check-run-id: ${{ steps.check-quality.outputs.check-run-id }}
+  build:
+    name: Build & Publish
     needs: basic-quality-checks
-    if: always() && inputs.pre-tagging-tests-script-sub-path != '' && (needs.basic-quality-checks.result == 'success' || needs.basic-quality-checks.result == 'skipped')
-    runs-on: ubuntu-24.04
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4.2.2
-      # SPDX-License-Identifier: MIT
-      # Copyright (c) 2025 Kaptain contributors (Fred Cooke)
-
-      - name: Parse workflow ref
-        id: parse
-        run: |
-          # Extract caller's workflow file path from github.workflow_ref
-          # Format: owner/repo/.github/workflows/file.yaml@ref
-          workflow_path="${GITHUB_WORKFLOW_REF%%@*}"
-          workflow_file=".github/workflows/${workflow_path##*/}"
-
-          echo "Resolving ref for reusable workflow: kubernetes-app-manifests-only.yaml"
-          echo "Caller workflow: $workflow_file"
-
-          # Check for local call (dogfooding) - uses: ./.github/workflows/...
-          if grep -q 'uses:[[:space:]]*\./.github/workflows/kubernetes-app-manifests-only\.yaml[[:space:]]*$' "$workflow_file" || \
-             grep -q 'uses:[[:space:]]*\./.github/workflows/kubernetes-app-manifests-only\.yaml[[:space:]]*#' "$workflow_file"; then
-            echo "Local workflow call detected (dogfooding)"
-            echo "ref=LOCAL" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-
-          # Find all uses lines that call this workflow and extract refs
-          refs=$(grep -o 'buildon-github-actions/.github/workflows/kubernetes-app-manifests-only\.yaml@[^[:space:]"'"'"']*' "$workflow_file" | sed 's/.*@//')
-
-          if [ -z "$refs" ]; then
-            echo "::error::Could not find buildon-github-actions ref in $workflow_file"
-            exit 1
-          fi
-
-          # Check all refs are identical
-          unique_refs=$(echo "$refs" | sort -u)
-          ref_count=$(echo "$unique_refs" | wc -l | tr -d ' ')
-          echo "Found $ref_count unique ref(s): $(echo "$unique_refs" | tr '\n' ' ')"
-
-          if [ "$ref_count" -gt 1 ]; then
-            echo "::error::Multiple different refs found in $workflow_file: $(echo "$unique_refs" | tr '\n' ' ')"
-            exit 1
-          fi
-
-          echo "Resolved ref: $unique_refs"
-          echo "ref=$unique_refs" >> "$GITHUB_OUTPUT"
-        env:
-          GITHUB_WORKFLOW_REF: ${{ github.workflow_ref }}
-
-      - name: Checkout actions
-        if: steps.parse.outputs.ref != 'LOCAL'
-        uses: actions/checkout@v4.2.2
-        with:
-          repository: kube-kaptain/buildon-github-actions
-          ref: ${{ steps.parse.outputs.ref }}
-          path: .github/buildon-github-actions
-
-      - name: Link local actions
-        if: steps.parse.outputs.ref == 'LOCAL'
-        run: |
-          echo "Linking local actions for dogfooding"
-          ln -s "$(pwd)" .github/buildon-github-actions
-      - name: Run pre-tagging tests
-        uses: ./.github/buildon-github-actions/src/actions/run-test-script
-        with:
-          script-sub-path: ${{ inputs.pre-tagging-tests-script-sub-path }}
-  versions-and-naming:
-    name: Versions & Naming
-    needs: pre-tagging-tests
-    if: always() && (needs.pre-tagging-tests.result == 'success' || needs.pre-tagging-tests.result == 'skipped')
+    if: always() && (needs.basic-quality-checks.result == 'success' || needs.basic-quality-checks.result == 'skipped')
     runs-on: ubuntu-24.04
     permissions:
       contents: write
+      packages: write
+      checks: write
     outputs:
-      version: ${{ steps.generate.outputs.version }}
-      docker-tag: ${{ steps.generate.outputs.docker-tag }}
-      docker-image-name: ${{ steps.generate.outputs.docker-image-name }}
-      project-name: ${{ steps.generate.outputs.project-name }}
-      is-release: ${{ steps.generate.outputs.is-release }}
+      version: ${{ steps.versions.outputs.version }}
+      version-major: ${{ steps.versions.outputs.version-major }}
+      version-minor: ${{ steps.versions.outputs.version-minor }}
+      version-patch: ${{ steps.versions.outputs.version-patch }}
+      version-2-part: ${{ steps.versions.outputs.version-2-part }}
+      version-3-part: ${{ steps.versions.outputs.version-3-part }}
+      version-4-part: ${{ steps.versions.outputs.version-4-part }}
+      docker-tag: ${{ steps.versions.outputs.docker-tag }}
+      docker-image-name: ${{ steps.versions.outputs.docker-image-name }}
+      project-name: ${{ steps.versions.outputs.project-name }}
+      is-release: ${{ steps.versions.outputs.is-release }}
+      manifest-zip-path: ${{ steps.manifest-package.outputs.manifest-zip-path }}
+      manifest-zip-name: ${{ steps.manifest-package.outputs.manifest-zip-name }}
+      manifest-uri: ${{ steps.manifest-publish.outputs.manifest-uri }}
+      manifest-published: ${{ steps.manifest-publish.outputs.manifest-published }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4.2.2
@@ -359,254 +343,131 @@ jobs:
         run: |
           echo "Linking local actions for dogfooding"
           ln -s "$(pwd)" .github/buildon-github-actions
+
+      # === Pre-tagging Tests ===
+      - name: Start check - Pre-tagging Tests
+        if: inputs.pre-tagging-tests-script-sub-path != ''
+        id: check-pre-tagging
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
+        with:
+          action: start
+          check-name: 'Pre-tagging Tests'
+      - name: Run pre-tagging tests
+        if: inputs.pre-tagging-tests-script-sub-path != ''
+        id: pre-tagging-tests
+        uses: ./.github/buildon-github-actions/src/actions/run-test-script
+        with:
+          script-sub-path: ${{ inputs.pre-tagging-tests-script-sub-path }}
+      - name: Pass check - Pre-tagging Tests
+        if: inputs.pre-tagging-tests-script-sub-path != '' && success()
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
+        with:
+          action: pass
+          check-run-id: ${{ steps.check-pre-tagging.outputs.check-run-id }}
+      - name: Fail check - Pre-tagging Tests
+        if: inputs.pre-tagging-tests-script-sub-path != '' && failure()
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
+        with:
+          action: fail
+          check-run-id: ${{ steps.check-pre-tagging.outputs.check-run-id }}
+
+      # === Versions & Naming ===
+      - name: Start check - Versions
+        id: check-versions
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
+        with:
+          action: start
+          check-name: 'Versions & Naming'
       - name: Generate versions and naming
-        id: generate
+        id: versions
         uses: ./.github/buildon-github-actions/src/actions/versions-and-naming
         with:
           default-branch: ${{ inputs.default-branch }}
           additional-release-branches: ${{ inputs.additional-release-branches }}
           max-version-parts: ${{ inputs.max-version-parts }}
-  kubernetes-manifest-package:
-    name: Package Manifests
-    needs: versions-and-naming
-    if: always() && needs.versions-and-naming.result == 'success'
-    runs-on: ubuntu-24.04
-    outputs:
-      manifest-zip-path: ${{ steps.package.outputs.manifest-zip-path }}
-      manifest-zip-name: ${{ steps.package.outputs.manifest-zip-name }}
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4.2.2
-      # SPDX-License-Identifier: MIT
-      # Copyright (c) 2025 Kaptain contributors (Fred Cooke)
-
-      - name: Parse workflow ref
-        id: parse
-        run: |
-          # Extract caller's workflow file path from github.workflow_ref
-          # Format: owner/repo/.github/workflows/file.yaml@ref
-          workflow_path="${GITHUB_WORKFLOW_REF%%@*}"
-          workflow_file=".github/workflows/${workflow_path##*/}"
-
-          echo "Resolving ref for reusable workflow: kubernetes-app-manifests-only.yaml"
-          echo "Caller workflow: $workflow_file"
-
-          # Check for local call (dogfooding) - uses: ./.github/workflows/...
-          if grep -q 'uses:[[:space:]]*\./.github/workflows/kubernetes-app-manifests-only\.yaml[[:space:]]*$' "$workflow_file" || \
-             grep -q 'uses:[[:space:]]*\./.github/workflows/kubernetes-app-manifests-only\.yaml[[:space:]]*#' "$workflow_file"; then
-            echo "Local workflow call detected (dogfooding)"
-            echo "ref=LOCAL" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-
-          # Find all uses lines that call this workflow and extract refs
-          refs=$(grep -o 'buildon-github-actions/.github/workflows/kubernetes-app-manifests-only\.yaml@[^[:space:]"'"'"']*' "$workflow_file" | sed 's/.*@//')
-
-          if [ -z "$refs" ]; then
-            echo "::error::Could not find buildon-github-actions ref in $workflow_file"
-            exit 1
-          fi
-
-          # Check all refs are identical
-          unique_refs=$(echo "$refs" | sort -u)
-          ref_count=$(echo "$unique_refs" | wc -l | tr -d ' ')
-          echo "Found $ref_count unique ref(s): $(echo "$unique_refs" | tr '\n' ' ')"
-
-          if [ "$ref_count" -gt 1 ]; then
-            echo "::error::Multiple different refs found in $workflow_file: $(echo "$unique_refs" | tr '\n' ' ')"
-            exit 1
-          fi
-
-          echo "Resolved ref: $unique_refs"
-          echo "ref=$unique_refs" >> "$GITHUB_OUTPUT"
-        env:
-          GITHUB_WORKFLOW_REF: ${{ github.workflow_ref }}
-
-      - name: Checkout actions
-        if: steps.parse.outputs.ref != 'LOCAL'
-        uses: actions/checkout@v4.2.2
+      - name: Pass check - Versions
+        if: success()
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
         with:
-          repository: kube-kaptain/buildon-github-actions
-          ref: ${{ steps.parse.outputs.ref }}
-          path: .github/buildon-github-actions
+          action: pass
+          check-run-id: ${{ steps.check-versions.outputs.check-run-id }}
+      - name: Fail check - Versions
+        if: failure()
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
+        with:
+          action: fail
+          check-run-id: ${{ steps.check-versions.outputs.check-run-id }}
 
-      - name: Link local actions
-        if: steps.parse.outputs.ref == 'LOCAL'
-        run: |
-          echo "Linking local actions for dogfooding"
-          ln -s "$(pwd)" .github/buildon-github-actions
+      # === Manifest Package ===
+      - name: Start check - Package Manifests
+        id: check-manifest-package
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
+        with:
+          action: start
+          check-name: 'Package Manifests'
       - name: Package manifests
-        id: package
+        id: manifest-package
         uses: ./.github/buildon-github-actions/src/actions/kubernetes-manifest-package
         with:
           manifests-path: ${{ inputs.manifests-path }}
-          project-name: ${{ needs.versions-and-naming.outputs.project-name }}
-          version: ${{ needs.versions-and-naming.outputs.version }}
-          docker-tag: ${{ needs.versions-and-naming.outputs.docker-tag }}
-          docker-image-name: ${{ needs.versions-and-naming.outputs.docker-image-name }}
+          project-name: ${{ steps.versions.outputs.project-name }}
+          version: ${{ steps.versions.outputs.version }}
+          docker-tag: ${{ steps.versions.outputs.docker-tag }}
+          docker-image-name: ${{ steps.versions.outputs.docker-image-name }}
           substitution-token-style: ${{ inputs.substitution-token-style }}
           substitution-output-style: ${{ inputs.substitution-output-style }}
-      - name: Upload manifest zip artifact
-        uses: actions/upload-artifact@v4
+      - name: Pass check - Package Manifests
+        if: success()
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
         with:
-          name: manifests
-          path: ${{ steps.package.outputs.manifest-zip-path }}
-          retention-days: 1
-  post-package-tests:
-    name: Post-package Tests
-    needs: [versions-and-naming, kubernetes-manifest-package]
-    if: always() && inputs.post-package-tests-script-sub-path != '' && needs.kubernetes-manifest-package.result == 'success'
-    runs-on: ubuntu-24.04
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4.2.2
-      # SPDX-License-Identifier: MIT
-      # Copyright (c) 2025 Kaptain contributors (Fred Cooke)
-
-      - name: Parse workflow ref
-        id: parse
-        run: |
-          # Extract caller's workflow file path from github.workflow_ref
-          # Format: owner/repo/.github/workflows/file.yaml@ref
-          workflow_path="${GITHUB_WORKFLOW_REF%%@*}"
-          workflow_file=".github/workflows/${workflow_path##*/}"
-
-          echo "Resolving ref for reusable workflow: kubernetes-app-manifests-only.yaml"
-          echo "Caller workflow: $workflow_file"
-
-          # Check for local call (dogfooding) - uses: ./.github/workflows/...
-          if grep -q 'uses:[[:space:]]*\./.github/workflows/kubernetes-app-manifests-only\.yaml[[:space:]]*$' "$workflow_file" || \
-             grep -q 'uses:[[:space:]]*\./.github/workflows/kubernetes-app-manifests-only\.yaml[[:space:]]*#' "$workflow_file"; then
-            echo "Local workflow call detected (dogfooding)"
-            echo "ref=LOCAL" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-
-          # Find all uses lines that call this workflow and extract refs
-          refs=$(grep -o 'buildon-github-actions/.github/workflows/kubernetes-app-manifests-only\.yaml@[^[:space:]"'"'"']*' "$workflow_file" | sed 's/.*@//')
-
-          if [ -z "$refs" ]; then
-            echo "::error::Could not find buildon-github-actions ref in $workflow_file"
-            exit 1
-          fi
-
-          # Check all refs are identical
-          unique_refs=$(echo "$refs" | sort -u)
-          ref_count=$(echo "$unique_refs" | wc -l | tr -d ' ')
-          echo "Found $ref_count unique ref(s): $(echo "$unique_refs" | tr '\n' ' ')"
-
-          if [ "$ref_count" -gt 1 ]; then
-            echo "::error::Multiple different refs found in $workflow_file: $(echo "$unique_refs" | tr '\n' ' ')"
-            exit 1
-          fi
-
-          echo "Resolved ref: $unique_refs"
-          echo "ref=$unique_refs" >> "$GITHUB_OUTPUT"
-        env:
-          GITHUB_WORKFLOW_REF: ${{ github.workflow_ref }}
-
-      - name: Checkout actions
-        if: steps.parse.outputs.ref != 'LOCAL'
-        uses: actions/checkout@v4.2.2
+          action: pass
+          check-run-id: ${{ steps.check-manifest-package.outputs.check-run-id }}
+      - name: Fail check - Package Manifests
+        if: failure()
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
         with:
-          repository: kube-kaptain/buildon-github-actions
-          ref: ${{ steps.parse.outputs.ref }}
-          path: .github/buildon-github-actions
+          action: fail
+          check-run-id: ${{ steps.check-manifest-package.outputs.check-run-id }}
 
-      - name: Link local actions
-        if: steps.parse.outputs.ref == 'LOCAL'
-        run: |
-          echo "Linking local actions for dogfooding"
-          ln -s "$(pwd)" .github/buildon-github-actions
-      - name: Download manifest zip artifact
-        uses: actions/download-artifact@v4
+      # === Post-package Tests ===
+      - name: Start check - Post-package Tests
+        if: inputs.post-package-tests-script-sub-path != ''
+        id: check-post-package
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
         with:
-          name: manifests
+          action: start
+          check-name: 'Post-package Tests'
       - name: Run post-package tests
+        if: inputs.post-package-tests-script-sub-path != ''
+        id: post-package-tests
         uses: ./.github/buildon-github-actions/src/actions/run-test-script
         with:
           script-sub-path: ${{ inputs.post-package-tests-script-sub-path }}
-          version: ${{ needs.versions-and-naming.outputs.version }}
-          docker-tag: ${{ needs.versions-and-naming.outputs.docker-tag }}
-          docker-image-name: ${{ needs.versions-and-naming.outputs.docker-image-name }}
-          project-name: ${{ needs.versions-and-naming.outputs.project-name }}
-          is-release: ${{ needs.versions-and-naming.outputs.is-release }}
-  kubernetes-manifest-publish:
-    name: Publish Manifests
-    needs: [versions-and-naming, kubernetes-manifest-package, post-package-tests]
-    if: always() && needs.kubernetes-manifest-package.result == 'success' && (needs.post-package-tests.result == 'success' || needs.post-package-tests.result == 'skipped')
-    runs-on: ubuntu-24.04
-    permissions:
-      contents: write
-      packages: write
-    outputs:
-      manifest-uri: ${{ steps.publish.outputs.manifest-uri }}
-      manifest-published: ${{ steps.publish.outputs.manifest-published }}
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4.2.2
-      # SPDX-License-Identifier: MIT
-      # Copyright (c) 2025 Kaptain contributors (Fred Cooke)
-
-      - name: Parse workflow ref
-        id: parse
-        run: |
-          # Extract caller's workflow file path from github.workflow_ref
-          # Format: owner/repo/.github/workflows/file.yaml@ref
-          workflow_path="${GITHUB_WORKFLOW_REF%%@*}"
-          workflow_file=".github/workflows/${workflow_path##*/}"
-
-          echo "Resolving ref for reusable workflow: kubernetes-app-manifests-only.yaml"
-          echo "Caller workflow: $workflow_file"
-
-          # Check for local call (dogfooding) - uses: ./.github/workflows/...
-          if grep -q 'uses:[[:space:]]*\./.github/workflows/kubernetes-app-manifests-only\.yaml[[:space:]]*$' "$workflow_file" || \
-             grep -q 'uses:[[:space:]]*\./.github/workflows/kubernetes-app-manifests-only\.yaml[[:space:]]*#' "$workflow_file"; then
-            echo "Local workflow call detected (dogfooding)"
-            echo "ref=LOCAL" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-
-          # Find all uses lines that call this workflow and extract refs
-          refs=$(grep -o 'buildon-github-actions/.github/workflows/kubernetes-app-manifests-only\.yaml@[^[:space:]"'"'"']*' "$workflow_file" | sed 's/.*@//')
-
-          if [ -z "$refs" ]; then
-            echo "::error::Could not find buildon-github-actions ref in $workflow_file"
-            exit 1
-          fi
-
-          # Check all refs are identical
-          unique_refs=$(echo "$refs" | sort -u)
-          ref_count=$(echo "$unique_refs" | wc -l | tr -d ' ')
-          echo "Found $ref_count unique ref(s): $(echo "$unique_refs" | tr '\n' ' ')"
-
-          if [ "$ref_count" -gt 1 ]; then
-            echo "::error::Multiple different refs found in $workflow_file: $(echo "$unique_refs" | tr '\n' ' ')"
-            exit 1
-          fi
-
-          echo "Resolved ref: $unique_refs"
-          echo "ref=$unique_refs" >> "$GITHUB_OUTPUT"
-        env:
-          GITHUB_WORKFLOW_REF: ${{ github.workflow_ref }}
-
-      - name: Checkout actions
-        if: steps.parse.outputs.ref != 'LOCAL'
-        uses: actions/checkout@v4.2.2
+          version: ${{ steps.versions.outputs.version }}
+          docker-tag: ${{ steps.versions.outputs.docker-tag }}
+          docker-image-name: ${{ steps.versions.outputs.docker-image-name }}
+          project-name: ${{ steps.versions.outputs.project-name }}
+          is-release: ${{ steps.versions.outputs.is-release }}
+      - name: Pass check - Post-package Tests
+        if: inputs.post-package-tests-script-sub-path != '' && success()
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
         with:
-          repository: kube-kaptain/buildon-github-actions
-          ref: ${{ steps.parse.outputs.ref }}
-          path: .github/buildon-github-actions
-
-      - name: Link local actions
-        if: steps.parse.outputs.ref == 'LOCAL'
-        run: |
-          echo "Linking local actions for dogfooding"
-          ln -s "$(pwd)" .github/buildon-github-actions
-      - name: Download manifest zip artifact
-        uses: actions/download-artifact@v4
+          action: pass
+          check-run-id: ${{ steps.check-post-package.outputs.check-run-id }}
+      - name: Fail check - Post-package Tests
+        if: inputs.post-package-tests-script-sub-path != '' && failure()
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
         with:
-          name: manifests
+          action: fail
+          check-run-id: ${{ steps.check-post-package.outputs.check-run-id }}
+
+      # === Manifest Publish ===
+      - name: Start check - Publish Manifests
+        id: check-manifest-publish
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
+        with:
+          action: start
+          check-name: 'Publish Manifests'
       - name: Docker registry logins
         if: inputs.manifest-repo-provider-type == 'docker'
         uses: ./.github/buildon-github-actions/src/actions/docker-registry-logins
@@ -615,16 +476,28 @@ jobs:
           secrets-json: ${{ secrets.docker-registry-logins-secrets || toJSON(secrets) }}
           target-registry: ${{ inputs.target-registry }}
       - name: Publish manifests
-        id: publish
+        id: manifest-publish
         uses: ./.github/buildon-github-actions/src/actions/kubernetes-manifest-publish
         with:
           manifest-repo-provider-type: ${{ inputs.manifest-repo-provider-type }}
-          manifest-zip-path: ${{ needs.kubernetes-manifest-package.outputs.manifest-zip-path }}
-          manifest-zip-name: ${{ needs.kubernetes-manifest-package.outputs.manifest-zip-name }}
+          manifest-zip-path: ${{ steps.manifest-package.outputs.manifest-zip-path }}
+          manifest-zip-name: ${{ steps.manifest-package.outputs.manifest-zip-name }}
           target-registry: ${{ inputs.target-registry }}
           target-base-path: ${{ inputs.target-base-path }}
-          target-image-name: ${{ needs.versions-and-naming.outputs.docker-image-name }}
-          docker-tag: ${{ needs.versions-and-naming.outputs.docker-tag }}-manifests
+          target-image-name: ${{ steps.versions.outputs.docker-image-name }}
+          docker-tag: ${{ steps.versions.outputs.docker-tag }}-manifests
           confirm-image-doesnt-exist: ${{ inputs.confirm-image-doesnt-exist }}
-          version: ${{ needs.versions-and-naming.outputs.version }}
-          is-release: ${{ needs.versions-and-naming.outputs.is-release }}
+          version: ${{ steps.versions.outputs.version }}
+          is-release: ${{ steps.versions.outputs.is-release }}
+      - name: Pass check - Publish Manifests
+        if: success()
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
+        with:
+          action: pass
+          check-run-id: ${{ steps.check-manifest-publish.outputs.check-run-id }}
+      - name: Fail check - Publish Manifests
+        if: failure()
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
+        with:
+          action: fail
+          check-run-id: ${{ steps.check-manifest-publish.outputs.check-run-id }}

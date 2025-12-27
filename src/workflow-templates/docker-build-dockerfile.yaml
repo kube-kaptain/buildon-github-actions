@@ -98,31 +98,57 @@ on:
         description: 'JSON object of secrets for docker-registry-logins (e.g., {"DOCKER_USER": "x", "DOCKER_PASS": "y"})'
         required: false
     outputs:
-      # Version outputs (pass-through from versioning job)
+      # Version outputs
       version:
         description: 'The generated version'
-        value: ${{ jobs.versions-and-naming.outputs.version }}
+        value: ${{ jobs.build.outputs.version }}
+      version-major:
+        description: 'Major version number'
+        value: ${{ jobs.build.outputs.version-major }}
+      version-minor:
+        description: 'Minor version number'
+        value: ${{ jobs.build.outputs.version-minor }}
+      version-patch:
+        description: 'Patch version number'
+        value: ${{ jobs.build.outputs.version-patch }}
+      version-2-part:
+        description: 'Version padded/truncated to 2 parts'
+        value: ${{ jobs.build.outputs.version-2-part }}
+      version-3-part:
+        description: 'Version padded/truncated to 3 parts'
+        value: ${{ jobs.build.outputs.version-3-part }}
+      version-4-part:
+        description: 'Version padded/truncated to 4 parts'
+        value: ${{ jobs.build.outputs.version-4-part }}
       docker-tag:
         description: 'Tag for Docker images'
-        value: ${{ jobs.versions-and-naming.outputs.docker-tag }}
+        value: ${{ jobs.build.outputs.docker-tag }}
       docker-image-name:
         description: 'Docker image name'
-        value: ${{ jobs.versions-and-naming.outputs.docker-image-name }}
+        value: ${{ jobs.build.outputs.docker-image-name }}
+      project-name:
+        description: 'The repository/project name'
+        value: ${{ jobs.build.outputs.project-name }}
       is-release:
         description: 'Whether this is a release build'
-        value: ${{ jobs.versions-and-naming.outputs.is-release }}
+        value: ${{ jobs.build.outputs.is-release }}
       # Build outputs
       target-image-full-uri:
-        description: 'Full target image reference'
-        value: ${{ jobs.docker-build-dockerfile.outputs.target-image-full-uri }}
-      image-pushed:
-        description: 'Whether image was pushed'
-        value: ${{ jobs.docker-build-dockerfile.outputs.image-pushed }}
+        description: 'Full target image reference (action output name)'
+        value: ${{ jobs.build.outputs.target-image-full-uri }}
+      docker-image-full-uri:
+        description: 'Full docker image reference (alias for target-image-full-uri)'
+        value: ${{ jobs.build.outputs.target-image-full-uri }}
+      docker-image-pushed:
+        description: 'Whether docker image was pushed'
+        value: ${{ jobs.build.outputs.docker-image-pushed }}
 jobs:
   basic-quality-checks:
     name: Basic Quality Checks
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-24.04
+    permissions:
+      checks: write
     steps:
       - name: Checkout
         uses: actions/checkout@v4.2.2
@@ -131,7 +157,14 @@ jobs:
           fetch-tags: true
           ref: ${{ github.event.pull_request.head.sha }}
       # INJECT: parse-workflow-ref
+      - name: Start check - Basic Quality Checks
+        id: check-quality
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
+        with:
+          action: start
+          check-name: 'Basic Quality Checks'
       - name: Basic quality checks
+        id: quality
         uses: ./.github/buildon-github-actions/src/actions/basic-quality-checks
         with:
           default-branch: ${{ inputs.default-branch }}
@@ -141,32 +174,41 @@ jobs:
           require-conventional-branches: ${{ inputs.require-conventional-branches }}
           require-conventional-commits: ${{ inputs.require-conventional-commits }}
           block-conventional-commits: ${{ inputs.block-conventional-commits }}
-  pre-tagging-tests:
-    name: Pre-tagging Tests
-    needs: basic-quality-checks
-    if: always() && inputs.pre-tagging-tests-script-sub-path != '' && (needs.basic-quality-checks.result == 'success' || needs.basic-quality-checks.result == 'skipped')
-    runs-on: ubuntu-24.04
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4.2.2
-      # INJECT: parse-workflow-ref
-      - name: Run pre-tagging tests
-        uses: ./.github/buildon-github-actions/src/actions/run-test-script
+      - name: Pass check - Basic Quality Checks
+        if: success()
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
         with:
-          script-sub-path: ${{ inputs.pre-tagging-tests-script-sub-path }}
-  versions-and-naming:
-    name: Versions & Naming
-    needs: pre-tagging-tests
-    if: always() && (needs.pre-tagging-tests.result == 'success' || needs.pre-tagging-tests.result == 'skipped')
+          action: pass
+          check-run-id: ${{ steps.check-quality.outputs.check-run-id }}
+      - name: Fail check - Basic Quality Checks
+        if: failure()
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
+        with:
+          action: fail
+          check-run-id: ${{ steps.check-quality.outputs.check-run-id }}
+  build:
+    name: Build & Push
+    needs: basic-quality-checks
+    if: always() && (needs.basic-quality-checks.result == 'success' || needs.basic-quality-checks.result == 'skipped')
     runs-on: ubuntu-24.04
     permissions:
       contents: write
+      packages: write
+      checks: write
     outputs:
-      version: ${{ steps.generate.outputs.version }}
-      docker-tag: ${{ steps.generate.outputs.docker-tag }}
-      docker-image-name: ${{ steps.generate.outputs.docker-image-name }}
-      project-name: ${{ steps.generate.outputs.project-name }}
-      is-release: ${{ steps.generate.outputs.is-release }}
+      version: ${{ steps.versions.outputs.version }}
+      version-major: ${{ steps.versions.outputs.version-major }}
+      version-minor: ${{ steps.versions.outputs.version-minor }}
+      version-patch: ${{ steps.versions.outputs.version-patch }}
+      version-2-part: ${{ steps.versions.outputs.version-2-part }}
+      version-3-part: ${{ steps.versions.outputs.version-3-part }}
+      version-4-part: ${{ steps.versions.outputs.version-4-part }}
+      docker-tag: ${{ steps.versions.outputs.docker-tag }}
+      docker-image-name: ${{ steps.versions.outputs.docker-image-name }}
+      project-name: ${{ steps.versions.outputs.project-name }}
+      is-release: ${{ steps.versions.outputs.is-release }}
+      target-image-full-uri: ${{ steps.docker-build.outputs.target-image-full-uri }}
+      docker-image-pushed: ${{ steps.docker-push.outputs.image-pushed }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4.2.2
@@ -174,63 +216,160 @@ jobs:
           fetch-depth: 0
           fetch-tags: true
       # INJECT: parse-workflow-ref
-      - name: Generate versions and naming
-        id: generate
-        uses: ./.github/buildon-github-actions/src/actions/versions-and-naming
-        with:
-          default-branch: ${{ inputs.default-branch }}
-          additional-release-branches: ${{ inputs.additional-release-branches }}
-          max-version-parts: ${{ inputs.max-version-parts }}
-  docker-build-dockerfile:
-    name: Docker Build Dockerfile
-    needs: versions-and-naming
-    if: always() && needs.versions-and-naming.result == 'success'
-    runs-on: ubuntu-24.04
-    permissions:
-      contents: read
-      packages: write
-    outputs:
-      target-image-full-uri: ${{ steps.build.outputs.target-image-full-uri }}
-      image-pushed: ${{ steps.push.outputs.image-pushed }}
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4.2.2
-      # INJECT: parse-workflow-ref
+
+      # === Docker Registry Logins ===
       - name: Docker registry logins
         uses: ./.github/buildon-github-actions/src/actions/docker-registry-logins
         with:
           config: ${{ inputs.docker-registry-logins }}
           secrets-json: ${{ secrets.docker-registry-logins-secrets || toJSON(secrets) }}
           target-registry: ${{ inputs.target-registry }}
+
+      # === Pre-tagging Tests ===
+      - name: Start check - Pre-tagging Tests
+        if: inputs.pre-tagging-tests-script-sub-path != ''
+        id: check-pre-tagging
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
+        with:
+          action: start
+          check-name: 'Pre-tagging Tests'
+      - name: Run pre-tagging tests
+        if: inputs.pre-tagging-tests-script-sub-path != ''
+        id: pre-tagging-tests
+        uses: ./.github/buildon-github-actions/src/actions/run-test-script
+        with:
+          script-sub-path: ${{ inputs.pre-tagging-tests-script-sub-path }}
+      - name: Pass check - Pre-tagging Tests
+        if: inputs.pre-tagging-tests-script-sub-path != '' && success()
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
+        with:
+          action: pass
+          check-run-id: ${{ steps.check-pre-tagging.outputs.check-run-id }}
+      - name: Fail check - Pre-tagging Tests
+        if: inputs.pre-tagging-tests-script-sub-path != '' && failure()
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
+        with:
+          action: fail
+          check-run-id: ${{ steps.check-pre-tagging.outputs.check-run-id }}
+
+      # === Versions & Naming ===
+      - name: Start check - Versions & Naming
+        id: check-versions
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
+        with:
+          action: start
+          check-name: 'Versions & Naming'
+      - name: Generate versions and naming
+        id: versions
+        uses: ./.github/buildon-github-actions/src/actions/versions-and-naming
+        with:
+          default-branch: ${{ inputs.default-branch }}
+          additional-release-branches: ${{ inputs.additional-release-branches }}
+          max-version-parts: ${{ inputs.max-version-parts }}
+      - name: Pass check - Versions & Naming
+        if: success()
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
+        with:
+          action: pass
+          check-run-id: ${{ steps.check-versions.outputs.check-run-id }}
+      - name: Fail check - Versions & Naming
+        if: failure()
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
+        with:
+          action: fail
+          check-run-id: ${{ steps.check-versions.outputs.check-run-id }}
+
+      # === Docker Build ===
+      - name: Start check - Docker Build
+        id: check-docker-build
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
+        with:
+          action: start
+          check-name: 'Docker Build'
       - name: Build image
-        id: build
+        id: docker-build
         uses: ./.github/buildon-github-actions/src/actions/docker-build-dockerfile
         with:
           target-registry: ${{ inputs.target-registry }}
           target-base-path: ${{ inputs.target-base-path }}
-          target-image-name: ${{ needs.versions-and-naming.outputs.docker-image-name }}
-          docker-tag: ${{ needs.versions-and-naming.outputs.docker-tag }}
-          version: ${{ needs.versions-and-naming.outputs.version }}
-          project-name: ${{ needs.versions-and-naming.outputs.project-name }}
+          target-image-name: ${{ steps.versions.outputs.docker-image-name }}
+          docker-tag: ${{ steps.versions.outputs.docker-tag }}
+          version: ${{ steps.versions.outputs.version }}
+          project-name: ${{ steps.versions.outputs.project-name }}
           dockerfile-path: ${{ inputs.dockerfile-path }}
           squash: ${{ inputs.squash }}
           no-cache: ${{ inputs.no-cache }}
           confirm-image-doesnt-exist: ${{ inputs.confirm-image-doesnt-exist }}
+      - name: Pass check - Docker Build
+        if: success()
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
+        with:
+          action: pass
+          check-run-id: ${{ steps.check-docker-build.outputs.check-run-id }}
+      - name: Fail check - Docker Build
+        if: failure()
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
+        with:
+          action: fail
+          check-run-id: ${{ steps.check-docker-build.outputs.check-run-id }}
+
+      # === Post-docker Tests ===
+      - name: Start check - Post-docker Tests
+        if: inputs.post-docker-tests-script-sub-path != ''
+        id: check-post-docker
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
+        with:
+          action: start
+          check-name: 'Post-docker Tests'
       - name: Run post-docker tests
         if: inputs.post-docker-tests-script-sub-path != ''
+        id: post-docker-tests
         uses: ./.github/buildon-github-actions/src/actions/run-test-script
         with:
           script-sub-path: ${{ inputs.post-docker-tests-script-sub-path }}
-          version: ${{ needs.versions-and-naming.outputs.version }}
-          docker-tag: ${{ needs.versions-and-naming.outputs.docker-tag }}
-          docker-image-name: ${{ needs.versions-and-naming.outputs.docker-image-name }}
-          project-name: ${{ needs.versions-and-naming.outputs.project-name }}
-          is-release: ${{ needs.versions-and-naming.outputs.is-release }}
-          target-image-full-uri: ${{ steps.build.outputs.target-image-full-uri }}
+          version: ${{ steps.versions.outputs.version }}
+          docker-tag: ${{ steps.versions.outputs.docker-tag }}
+          docker-image-name: ${{ steps.versions.outputs.docker-image-name }}
+          project-name: ${{ steps.versions.outputs.project-name }}
+          is-release: ${{ steps.versions.outputs.is-release }}
+          target-image-full-uri: ${{ steps.docker-build.outputs.target-image-full-uri }}
+      - name: Pass check - Post-docker Tests
+        if: inputs.post-docker-tests-script-sub-path != '' && success()
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
+        with:
+          action: pass
+          check-run-id: ${{ steps.check-post-docker.outputs.check-run-id }}
+      - name: Fail check - Post-docker Tests
+        if: inputs.post-docker-tests-script-sub-path != '' && failure()
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
+        with:
+          action: fail
+          check-run-id: ${{ steps.check-post-docker.outputs.check-run-id }}
+
+      # === Docker Push ===
+      - name: Start check - Docker Push
+        if: steps.versions.outputs.is-release == 'true'
+        id: check-docker-push
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
+        with:
+          action: start
+          check-name: 'Docker Push'
       - name: Push image
-        id: push
-        if: needs.versions-and-naming.outputs.is-release == 'true'
+        id: docker-push
+        if: steps.versions.outputs.is-release == 'true'
         shell: bash
         run: |
-          docker push "${{ steps.build.outputs.target-image-full-uri }}"
+          docker push "${{ steps.docker-build.outputs.target-image-full-uri }}"
           echo "image-pushed=true" >> "$GITHUB_OUTPUT"
+      - name: Pass check - Docker Push
+        if: steps.versions.outputs.is-release == 'true' && success()
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
+        with:
+          action: pass
+          check-run-id: ${{ steps.check-docker-push.outputs.check-run-id }}
+      - name: Fail check - Docker Push
+        if: steps.versions.outputs.is-release == 'true' && failure()
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
+        with:
+          action: fail
+          check-run-id: ${{ steps.check-docker-push.outputs.check-run-id }}
