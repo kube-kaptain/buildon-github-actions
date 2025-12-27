@@ -243,6 +243,11 @@ jobs:
       # INJECT: manifest-package
       # INJECT: github-check-end(name="Package Manifests", id="check-manifest-package")
 
+      # === Manifest Repo Provider Package ===
+      # INJECT: github-check-start(name="Package Manifests for Repo Provider", id="check-manifest-repo-provider-package")
+      # INJECT: manifest-repo-provider-package
+      # INJECT: github-check-end(name="Package Manifests for Repo Provider", id="check-manifest-repo-provider-package")
+
       # === Post-package Tests ===
       # INJECT: github-check-start(name="Post-package Tests", id="check-post-package", if="inputs.post-package-tests-script-sub-path != ''")
       # INJECT: post-package-tests
@@ -252,11 +257,6 @@ jobs:
       # INJECT: github-check-start(name="Docker Push", id="check-docker-push", if="steps.versions.outputs.is-release == 'true'")
       # INJECT: docker-push
       # INJECT: github-check-end(name="Docker Push", id="check-docker-push", if="steps.versions.outputs.is-release == 'true'")
-
-      # === Manifest Repo Provider Package ===
-      # INJECT: github-check-start(name="Package Manifests for Repo Provider", id="check-manifest-repo-provider-package")
-      # INJECT: manifest-repo-provider-package
-      # INJECT: github-check-end(name="Package Manifests for Repo Provider", id="check-manifest-repo-provider-package")
 
       # === Manifest Repo Provider Publish ===
       # INJECT: github-check-start(name="Publish Manifests via Repo Provider", id="check-manifest-repo-provider-publish", if="steps.versions.outputs.is-release == 'true'")

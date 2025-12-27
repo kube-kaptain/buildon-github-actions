@@ -408,38 +408,6 @@ jobs:
           action: fail
           check-run-id: ${{ steps.check-manifest-package.outputs.check-run-id }}
 
-      # === Post-package Tests ===
-      - name: Start check - Post-package Tests
-        if: inputs.post-package-tests-script-sub-path != ''
-        id: check-post-package
-        uses: ./.github/buildon-github-actions/src/actions/github-check-run
-        with:
-          action: start
-          check-name: 'Build & Publish → Post-package Tests'
-      - name: Run post-package tests
-        if: inputs.post-package-tests-script-sub-path != ''
-        id: post-package-tests
-        uses: ./.github/buildon-github-actions/src/actions/run-test-script
-        with:
-          script-sub-path: ${{ inputs.post-package-tests-script-sub-path }}
-          version: ${{ steps.versions.outputs.version }}
-          docker-tag: ${{ steps.versions.outputs.docker-tag }}
-          docker-image-name: ${{ steps.versions.outputs.docker-image-name }}
-          project-name: ${{ steps.versions.outputs.project-name }}
-          is-release: ${{ steps.versions.outputs.is-release }}
-      - name: Pass check - Post-package Tests
-        if: inputs.post-package-tests-script-sub-path != '' && success()
-        uses: ./.github/buildon-github-actions/src/actions/github-check-run
-        with:
-          action: pass
-          check-run-id: ${{ steps.check-post-package.outputs.check-run-id }}
-      - name: Fail check - Post-package Tests
-        if: inputs.post-package-tests-script-sub-path != '' && failure()
-        uses: ./.github/buildon-github-actions/src/actions/github-check-run
-        with:
-          action: fail
-          check-run-id: ${{ steps.check-post-package.outputs.check-run-id }}
-
       # === Manifest Repo Provider Package ===
       - name: Start check - Package Manifests for Repo Provider
         id: check-manifest-repo-provider-package
@@ -478,6 +446,38 @@ jobs:
         with:
           action: fail
           check-run-id: ${{ steps.check-manifest-repo-provider-package.outputs.check-run-id }}
+
+      # === Post-package Tests ===
+      - name: Start check - Post-package Tests
+        if: inputs.post-package-tests-script-sub-path != ''
+        id: check-post-package
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
+        with:
+          action: start
+          check-name: 'Build & Publish → Post-package Tests'
+      - name: Run post-package tests
+        if: inputs.post-package-tests-script-sub-path != ''
+        id: post-package-tests
+        uses: ./.github/buildon-github-actions/src/actions/run-test-script
+        with:
+          script-sub-path: ${{ inputs.post-package-tests-script-sub-path }}
+          version: ${{ steps.versions.outputs.version }}
+          docker-tag: ${{ steps.versions.outputs.docker-tag }}
+          docker-image-name: ${{ steps.versions.outputs.docker-image-name }}
+          project-name: ${{ steps.versions.outputs.project-name }}
+          is-release: ${{ steps.versions.outputs.is-release }}
+      - name: Pass check - Post-package Tests
+        if: inputs.post-package-tests-script-sub-path != '' && success()
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
+        with:
+          action: pass
+          check-run-id: ${{ steps.check-post-package.outputs.check-run-id }}
+      - name: Fail check - Post-package Tests
+        if: inputs.post-package-tests-script-sub-path != '' && failure()
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
+        with:
+          action: fail
+          check-run-id: ${{ steps.check-post-package.outputs.check-run-id }}
 
       # === Manifest Repo Provider Publish ===
       - name: Start check - Publish Manifests via Repo Provider
