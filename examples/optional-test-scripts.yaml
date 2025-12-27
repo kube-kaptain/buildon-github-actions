@@ -32,7 +32,9 @@ jobs:
     permissions:
       contents: write
       packages: write
+      checks: write
     with:
+      manifests-repo-provider-type: docker
       pre-tagging-tests-script-sub-path: bin/run-tests.bash
       post-docker-tests-script-sub-path: bin/test-container.bash
       post-package-tests-script-sub-path: bin/test-manifests.bash
@@ -91,6 +93,4 @@ jobs:
 # ┌─────────────────────────────────────────────────────────────────────────┐
 # │ Registry Credentials                                                    │
 # └─────────────────────────────────────────────────────────────────────────┘
-#     secrets:
-#       target-username: ${{ secrets.REGISTRY_USER }}
-#       target-password: ${{ secrets.REGISTRY_TOKEN }}
+# See docker-registry-logins-*.yaml examples for authentication options
