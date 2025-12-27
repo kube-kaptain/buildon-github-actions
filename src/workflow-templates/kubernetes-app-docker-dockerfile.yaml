@@ -194,17 +194,7 @@ jobs:
     steps:
       # INJECT: parse-workflow-ref-and-checkout
       # INJECT: github-check-start(name="Basic Quality Checks", id="check-quality")
-      - name: Basic quality checks
-        id: quality
-        uses: ./.github/buildon-github-actions/src/actions/basic-quality-checks
-        with:
-          default-branch: ${{ inputs.default-branch }}
-          additional-release-branches: ${{ inputs.additional-release-branches }}
-          block-slashes: ${{ inputs.block-slashes }}
-          block-double-hyphens: ${{ inputs.block-double-hyphens }}
-          require-conventional-branches: ${{ inputs.require-conventional-branches }}
-          require-conventional-commits: ${{ inputs.require-conventional-commits }}
-          block-conventional-commits: ${{ inputs.block-conventional-commits }}
+      # INJECT: basic-quality-checks
       # INJECT: github-check-end(name="Basic Quality Checks", id="check-quality")
   build:
     name: Build & Publish

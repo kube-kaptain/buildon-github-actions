@@ -258,6 +258,9 @@ jobs:
         with:
           action: start
           check-name: 'Basic Quality Checks'
+      # SPDX-License-Identifier: MIT
+      # Copyright (c) 2025 Kaptain contributors (Fred Cooke)
+
       - name: Basic quality checks
         id: quality
         uses: ./.github/buildon-github-actions/src/actions/basic-quality-checks

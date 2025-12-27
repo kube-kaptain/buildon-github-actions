@@ -91,16 +91,7 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       # INJECT: parse-workflow-ref-and-checkout
-      - name: Basic quality checks
-        uses: ./.github/buildon-github-actions/src/actions/basic-quality-checks
-        with:
-          default-branch: ${{ inputs.default-branch }}
-          additional-release-branches: ${{ inputs.additional-release-branches }}
-          block-slashes: ${{ inputs.block-slashes }}
-          block-double-hyphens: ${{ inputs.block-double-hyphens }}
-          require-conventional-branches: ${{ inputs.require-conventional-branches }}
-          require-conventional-commits: ${{ inputs.require-conventional-commits }}
-          block-conventional-commits: ${{ inputs.block-conventional-commits }}
+      # INJECT: basic-quality-checks
   pre-tagging-tests:
     name: Pre-tagging Tests
     needs: basic-quality-checks
