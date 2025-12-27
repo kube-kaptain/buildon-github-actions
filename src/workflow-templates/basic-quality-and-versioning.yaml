@@ -90,66 +90,31 @@ jobs:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-24.04
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4.2.2
-        with:
-          fetch-depth: 0
-          fetch-tags: true
-          ref: ${{ github.event.pull_request.head.sha }}
-      # INJECT: parse-workflow-ref
-      - name: Basic quality checks
-        uses: ./.github/buildon-github-actions/src/actions/basic-quality-checks
-        with:
-          default-branch: ${{ inputs.default-branch }}
-          additional-release-branches: ${{ inputs.additional-release-branches }}
-          block-slashes: ${{ inputs.block-slashes }}
-          block-double-hyphens: ${{ inputs.block-double-hyphens }}
-          require-conventional-branches: ${{ inputs.require-conventional-branches }}
-          require-conventional-commits: ${{ inputs.require-conventional-commits }}
-          block-conventional-commits: ${{ inputs.block-conventional-commits }}
-  pre-tagging-tests:
-    name: Pre-tagging Tests
-    needs: basic-quality-checks
-    if: always() && inputs.pre-tagging-tests-script-sub-path != '' && (needs.basic-quality-checks.result == 'success' || needs.basic-quality-checks.result == 'skipped')
-    runs-on: ubuntu-24.04
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4.2.2
-      # INJECT: parse-workflow-ref
-      - name: Run pre-tagging tests
-        uses: ./.github/buildon-github-actions/src/actions/run-test-script
-        with:
-          script-sub-path: ${{ inputs.pre-tagging-tests-script-sub-path }}
+      # INJECT: parse-workflow-ref-and-checkout
+      # INJECT: basic-quality-checks
   versions-and-naming:
     name: Versions & Naming
-    needs: pre-tagging-tests
-    if: always() && (needs.pre-tagging-tests.result == 'success' || needs.pre-tagging-tests.result == 'skipped')
+    needs: basic-quality-checks
+    if: always() && (needs.basic-quality-checks.result == 'success' || needs.basic-quality-checks.result == 'skipped')
     runs-on: ubuntu-24.04
     permissions:
       contents: write
+      checks: write
     outputs:
-      version: ${{ steps.generate.outputs.version }}
-      version-major: ${{ steps.generate.outputs.version-major }}
-      version-minor: ${{ steps.generate.outputs.version-minor }}
-      version-patch: ${{ steps.generate.outputs.version-patch }}
-      version-2-part: ${{ steps.generate.outputs.version-2-part }}
-      version-3-part: ${{ steps.generate.outputs.version-3-part }}
-      version-4-part: ${{ steps.generate.outputs.version-4-part }}
-      docker-tag: ${{ steps.generate.outputs.docker-tag }}
-      docker-image-name: ${{ steps.generate.outputs.docker-image-name }}
-      is-release: ${{ steps.generate.outputs.is-release }}
-      project-name: ${{ steps.generate.outputs.project-name }}
+      version: ${{ steps.versions.outputs.version }}
+      version-major: ${{ steps.versions.outputs.version-major }}
+      version-minor: ${{ steps.versions.outputs.version-minor }}
+      version-patch: ${{ steps.versions.outputs.version-patch }}
+      version-2-part: ${{ steps.versions.outputs.version-2-part }}
+      version-3-part: ${{ steps.versions.outputs.version-3-part }}
+      version-4-part: ${{ steps.versions.outputs.version-4-part }}
+      docker-tag: ${{ steps.versions.outputs.docker-tag }}
+      docker-image-name: ${{ steps.versions.outputs.docker-image-name }}
+      is-release: ${{ steps.versions.outputs.is-release }}
+      project-name: ${{ steps.versions.outputs.project-name }}
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4.2.2
-        with:
-          fetch-depth: 0
-          fetch-tags: true
-      # INJECT: parse-workflow-ref
-      - name: Generate versions and naming
-        id: generate
-        uses: ./.github/buildon-github-actions/src/actions/versions-and-naming
-        with:
-          default-branch: ${{ inputs.default-branch }}
-          additional-release-branches: ${{ inputs.additional-release-branches }}
-          max-version-parts: ${{ inputs.max-version-parts }}
+      # INJECT: parse-workflow-ref-and-checkout
+      # INJECT: github-check-start(name="Pre-tagging Tests", id="check-pre-tagging", if="inputs.pre-tagging-tests-script-sub-path != ''")
+      # INJECT: pre-tagging-tests
+      # INJECT: github-check-end(name="Pre-tagging Tests", id="check-pre-tagging", if="inputs.pre-tagging-tests-script-sub-path != ''")
+      # INJECT: versions-and-naming

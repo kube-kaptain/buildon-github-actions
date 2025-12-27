@@ -21,6 +21,11 @@ OUTPUT_DIR="$REPO_ROOT/.github/workflows"
 DOCS_DIR="$REPO_ROOT/docs"
 README="$REPO_ROOT/README.md"
 
+# Strip SPDX header (first 3 lines: SPDX, Copyright, blank) from chunk content
+strip_spdx_header() {
+  tail -n +4
+}
+
 # Indent all lines of input by given prefix
 indent_chunk() {
   local indent="$1"
@@ -41,6 +46,112 @@ indent_chunk() {
   done
 }
 
+# Parse parameter value from params string: name="value" or name='value'
+parse_param() {
+  local params="$1"
+  local param_name="$2"
+  local value=""
+
+  # Match name="value" or name='value'
+  if [[ "$params" =~ ${param_name}=\"([^\"]+)\" ]]; then
+    value="${BASH_REMATCH[1]}"
+  elif [[ "$params" =~ ${param_name}=\'([^\']+)\' ]]; then
+    value="${BASH_REMATCH[1]}"
+  fi
+
+  echo "$value"
+}
+
+# Escape special sed replacement characters (& and \)
+escape_sed_replacement() {
+  printf '%s' "$1" | sed 's/[&\]/\\&/g'
+}
+
+# Generate github-check-start step from template
+# Uses sed for substitution (bash parameter expansion escaping differs between versions)
+generate_check_start() {
+  local check_name="$1"
+  local check_id="$2"
+  local condition="$3"
+  local job_name="$4"
+  local template_file="$STEPS_DIR/github-check-start.yaml"
+
+  if [[ ! -f "$template_file" ]]; then
+    echo "ERROR: Template not found: $template_file" >&2
+    exit 1
+  fi
+
+  # Format check name with job prefix if available
+  local full_check_name="$check_name"
+  if [[ -n "$job_name" ]]; then
+    full_check_name="${job_name} → ${check_name}"
+  fi
+
+  # Escape values for sed replacement
+  local safe_name safe_full_name safe_id safe_if_line
+  safe_name=$(escape_sed_replacement "$check_name")
+  safe_full_name=$(escape_sed_replacement "$full_check_name")
+  safe_id=$(escape_sed_replacement "$check_id")
+
+  # Use marker for optional if line - delete the line if no condition
+  if [[ -n "$condition" ]]; then
+    safe_if_line="  if: $(escape_sed_replacement "$condition")"
+  else
+    safe_if_line="__DELETE_THIS_LINE__"
+  fi
+
+  cat "$template_file" \
+    | strip_spdx_header \
+    | sed "s|\${CHECK_NAME}|$safe_name|g" \
+    | sed "s|\${CHECK_FULL_NAME}|$safe_full_name|g" \
+    | sed "s|\${CHECK_ID}|$safe_id|g" \
+    | sed "s|\${CHECK_IF_LINE}|$safe_if_line|g" \
+    | grep -v "__DELETE_THIS_LINE__"
+}
+
+# Generate github-check-end steps from template
+# Uses sed for substitution (bash parameter expansion escaping differs between versions)
+generate_check_end() {
+  local check_name="$1"
+  local check_id="$2"
+  local condition="$3"
+  local job_name="$4"
+  local template_file="$STEPS_DIR/github-check-end.yaml"
+
+  if [[ ! -f "$template_file" ]]; then
+    echo "ERROR: Template not found: $template_file" >&2
+    exit 1
+  fi
+
+  # Format check name with job prefix if available
+  local full_check_name="$check_name"
+  if [[ -n "$job_name" ]]; then
+    full_check_name="${job_name} → ${check_name}"
+  fi
+
+  # Escape values for sed replacement
+  local safe_name safe_full_name safe_id safe_pass safe_fail
+  safe_name=$(escape_sed_replacement "$check_name")
+  safe_full_name=$(escape_sed_replacement "$full_check_name")
+  safe_id=$(escape_sed_replacement "$check_id")
+
+  if [[ -n "$condition" ]]; then
+    safe_pass="$(escape_sed_replacement "$condition") \&\& success()"
+    safe_fail="$(escape_sed_replacement "$condition") \&\& failure()"
+  else
+    safe_pass="success()"
+    safe_fail="failure()"
+  fi
+
+  cat "$template_file" \
+    | strip_spdx_header \
+    | sed "s|\${CHECK_NAME}|$safe_name|g" \
+    | sed "s|\${CHECK_FULL_NAME}|$safe_full_name|g" \
+    | sed "s|\${CHECK_ID}|$safe_id|g" \
+    | sed "s|\${CHECK_PASS_CONDITION}|$safe_pass|g" \
+    | sed "s|\${CHECK_FAIL_CONDITION}|$safe_fail|g"
+}
+
 # Process a single template file
 process_template() {
   local template="$1"
@@ -53,9 +164,71 @@ process_template() {
   local workflow_name="${basename%.yaml}"
   local result=""
 
+  # Track current job context for check naming
+  local in_jobs_section=false
+  local current_job_name=""
+  local pending_job_key=""
+
   # Process line by line to handle INJECT markers with proper indentation
   while IFS= read -r line || [[ -n "$line" ]]; do
-    if [[ "$line" =~ ^([[:space:]]*)#\ INJECT:\ ([a-zA-Z0-9_-]+)$ ]]; then
+    # Track when we enter jobs: section
+    if [[ "$line" == "jobs:" ]]; then
+      in_jobs_section=true
+    fi
+
+    # Track job keys (lines like "  job-key:" at 2-space indent under jobs:)
+    if [[ "$in_jobs_section" == true && "$line" =~ ^[[:space:]][[:space:]][a-zA-Z0-9_-]+:[[:space:]]*$ ]]; then
+      pending_job_key="true"
+      current_job_name=""  # Reset until we find the name
+    fi
+
+    # Capture job name (lines like "    name: Job Name" at 4-space indent)
+    if [[ "$pending_job_key" == "true" && "$line" =~ ^[[:space:]][[:space:]][[:space:]][[:space:]]name:[[:space:]]*(.+)$ ]]; then
+      current_job_name="${BASH_REMATCH[1]}"
+      # Strip surrounding quotes if present
+      current_job_name="${current_job_name#\'}"
+      current_job_name="${current_job_name%\'}"
+      current_job_name="${current_job_name#\"}"
+      current_job_name="${current_job_name%\"}"
+      pending_job_key=""
+    fi
+
+    # Parameterized injection: # INJECT: name(params)
+    if [[ "$line" =~ ^([[:space:]]*)#\ INJECT:\ ([a-zA-Z0-9_-]+)\((.+)\)$ ]]; then
+      local indent="${BASH_REMATCH[1]}"
+      local injection_type="${BASH_REMATCH[2]}"
+      local params="${BASH_REMATCH[3]}"
+
+      local chunk=""
+      case "$injection_type" in
+        github-check-start)
+          local check_name check_id condition
+          check_name=$(parse_param "$params" "name")
+          check_id=$(parse_param "$params" "id")
+          condition=$(parse_param "$params" "if")
+          chunk=$(generate_check_start "$check_name" "$check_id" "$condition" "$current_job_name")
+          ;;
+        github-check-end)
+          local check_name check_id condition
+          check_name=$(parse_param "$params" "name")
+          check_id=$(parse_param "$params" "id")
+          condition=$(parse_param "$params" "if")
+          chunk=$(generate_check_end "$check_name" "$check_id" "$condition" "$current_job_name")
+          ;;
+        *)
+          echo "  ERROR: Unknown parameterized injection type: $injection_type" >&2
+          exit 1
+          ;;
+      esac
+
+      # Apply indentation to generated chunk
+      local indented_chunk
+      indented_chunk=$(echo "$chunk" | indent_chunk "$indent")
+      result+="${indent}${indented_chunk}"
+      echo "  Injected: $injection_type (indent: ${#indent} spaces)"
+
+    # Simple injection: # INJECT: name
+    elif [[ "$line" =~ ^([[:space:]]*)#\ INJECT:\ ([a-zA-Z0-9_-]+)$ ]]; then
       local indent="${BASH_REMATCH[1]}"
       local chunk_name="${BASH_REMATCH[2]}"
       local chunk_file="$STEPS_DIR/${chunk_name}.yaml"
@@ -65,9 +238,9 @@ process_template() {
         exit 1
       fi
 
-      # Read chunk, replace placeholders, and apply indentation
+      # Read chunk, strip SPDX header, replace placeholders, and apply indentation
       local chunk
-      chunk=$(cat "$chunk_file")
+      chunk=$(cat "$chunk_file" | strip_spdx_header)
       chunk="${chunk//\$\{WORKFLOW_NAME\}/$workflow_name}"
 
       # Apply indentation to chunk (first line gets indent, others get indent prepended)
@@ -308,6 +481,86 @@ generate_workflow_links_table() {
   done
 }
 
+# Generate examples table for README
+# Extracts description from comment header in each example file
+# Format: line 1-2 SPDX, line 3 empty #, line 4 title, line 5 empty #, lines 6+ description
+generate_examples_table() {
+  local examples_dir="$REPO_ROOT/examples"
+
+  echo "| Example | Description |"
+  echo "|---------|-------------|"
+
+  for example in "$examples_dir"/*.yaml; do
+    [[ -f "$example" ]] || continue
+    local ex_basename description
+    ex_basename=$(basename "$example")
+
+    # Extract first description line (line 6 typically has description start)
+    description=""
+    local line_num=0
+    while IFS= read -r line; do
+      line_num=$((line_num + 1))
+      # Skip first 5 lines (SPDX header + blank + title + blank)
+      [[ $line_num -le 5 ]] && continue
+      # Stop at line 12 or when we hit non-comment or empty line
+      [[ $line_num -gt 12 ]] && break
+      # Skip empty comment lines (just "#" or "# ")
+      [[ "$line" == "#" ]] && continue
+      [[ "$line" == "# " ]] && continue
+      # Must be a comment line with content
+      [[ ! "$line" =~ ^#\  ]] && break
+      # Get the content and use first non-empty line
+      local content="${line#\# }"
+      if [[ -n "$content" && -z "$description" ]]; then
+        description="$content"
+        break
+      fi
+    done < "$example"
+
+    # Clean up description - take first sentence
+    description="${description%%.*}"
+    # Remove trailing colon if present
+    description="${description%:}"
+    [[ -z "$description" ]] && description="Example workflow"
+
+    echo "| [\`$ex_basename\`](examples/$ex_basename) | $description |"
+  done
+}
+
+# Generate workflows table for README (simple list, not docs links)
+generate_workflows_table() {
+  echo "| Workflow | Description |"
+  echo "|----------|-------------|"
+
+  for workflow in "$TEMPLATES_DIR"/*.yaml; do
+    [[ -f "$workflow" ]] || continue
+    local wf_basename description
+    wf_basename=$(basename "$workflow")
+    description=$(yq '.name // ""' "$workflow")
+    echo "| \`$wf_basename\` | $description |"
+  done
+}
+
+# Generate actions table for README
+generate_actions_table() {
+  local actions_dir="$REPO_ROOT/src/actions"
+
+  echo "| Action | Description |"
+  echo "|--------|-------------|"
+
+  for action_dir in "$actions_dir"/*/; do
+    [[ -d "$action_dir" ]] || continue
+    local action_file="$action_dir/action.yaml"
+    [[ -f "$action_file" ]] || continue
+
+    local action_name description
+    action_name=$(basename "$action_dir")
+    description=$(yq '.description // ""' "$action_file")
+
+    echo "| \`$action_name\` | $description |"
+  done
+}
+
 # Inject content between markers in a file
 inject_between_markers() {
   local file="$1"
@@ -361,6 +614,24 @@ generate_docs() {
     [[ -f "$workflow" ]] || continue
     generate_workflow_doc "$workflow"
   done
+
+  # Generate and inject examples table
+  local examples_table
+  examples_table=$(generate_examples_table)
+  inject_between_markers "$README" "<!-- EXAMPLES-START -->" "<!-- EXAMPLES-END -->" "$examples_table"
+  echo "  Injected: examples table"
+
+  # Generate and inject workflows table
+  local workflows_table
+  workflows_table=$(generate_workflows_table)
+  inject_between_markers "$README" "<!-- WORKFLOWS-START -->" "<!-- WORKFLOWS-END -->" "$workflows_table"
+  echo "  Injected: workflows table"
+
+  # Generate and inject actions table
+  local actions_table
+  actions_table=$(generate_actions_table)
+  inject_between_markers "$README" "<!-- ACTIONS-START -->" "<!-- ACTIONS-END -->" "$actions_table"
+  echo "  Injected: actions table"
 
   # Generate and inject inputs table
   local inputs_table

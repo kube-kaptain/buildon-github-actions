@@ -24,6 +24,7 @@ jobs:
     permissions:
       contents: write
       packages: write
+      checks: write
     with:
       squash: false
 
@@ -81,6 +82,4 @@ jobs:
 # ┌─────────────────────────────────────────────────────────────────────────┐
 # │ Registry Credentials                                                    │
 # └─────────────────────────────────────────────────────────────────────────┘
-#     secrets:
-#       target-username: ${{ secrets.REGISTRY_USER }}
-#       target-password: ${{ secrets.REGISTRY_TOKEN }}
+# See docker-registry-logins-*.yaml examples for authentication options

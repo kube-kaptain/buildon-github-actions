@@ -24,14 +24,18 @@ jobs:
     permissions:
       contents: write
       packages: write
+      checks: write
+    secrets: inherit
     with:
       source-registry: docker.io
       source-image-name: library/nginx
       source-tag: '1.27'
       target-registry: myregistry.example.com
-    secrets:
-      target-username: ${{ secrets.MYREGISTRY_USER }}
-      target-password: ${{ secrets.MYREGISTRY_TOKEN }}
+      docker-registry-logins: |
+        myregistry.example.com:
+          type: username-password
+          username-secret: MYREGISTRY_USER
+          password-secret: MYREGISTRY_TOKEN
 
 # ┌───────────────────────────────────────────────────────────────────────────┐
 # │ All Available Options                                                     │
@@ -80,6 +84,4 @@ jobs:
 # ┌─────────────────────────────────────────────────────────────────────────┐
 # │ Registry Credentials                                                    │
 # └─────────────────────────────────────────────────────────────────────────┘
-#     secrets:
-#       target-username: ${{ secrets.REGISTRY_USER }}
-#       target-password: ${{ secrets.REGISTRY_TOKEN }}
+# See docker-registry-logins-*.yaml examples for authentication options

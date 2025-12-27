@@ -128,6 +128,10 @@ check_generated_files() {
   echo "$modified_generated" | while IFS= read -r file; do
     [[ -n "$file" ]] && log_error "  - $file"
   done
+
+  # Show the actual diff so CI logs reveal what's different
+  log_error "Diff of generated files:"
+  git -C "$PROJECT_ROOT" diff .github/workflows/ docs/ README.md || true
   if [[ "${WARN_ONLY_FRESHNESS:-}" == "true" ]]; then
     log_warn "Continuing despite stale files (WARN_ONLY_FRESHNESS=true)"
   else

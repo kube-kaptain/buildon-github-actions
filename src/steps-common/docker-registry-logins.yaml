@@ -1,0 +1,9 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025 Kaptain contributors (Fred Cooke)
+
+- name: Docker registry logins
+  uses: ./.github/buildon-github-actions/src/actions/docker-registry-logins
+  with:
+    config: ${{ inputs.docker-registry-logins }}
+    secrets-json: ${{ secrets.docker-registry-logins-secrets || toJSON(secrets) }}
+    target-registry: ${{ inputs.target-registry }}

@@ -96,8 +96,6 @@ jobs:
           fetch-depth: 0
           fetch-tags: true
           ref: ${{ github.event.pull_request.head.sha }}
-      # SPDX-License-Identifier: MIT
-      # Copyright (c) 2025 Kaptain contributors (Fred Cooke)
 
       - name: Parse workflow ref
         id: parse
@@ -155,6 +153,7 @@ jobs:
           echo "Linking local actions for dogfooding"
           ln -s "$(pwd)" .github/buildon-github-actions
       - name: Basic quality checks
+        id: quality
         uses: ./.github/buildon-github-actions/src/actions/basic-quality-checks
         with:
           default-branch: ${{ inputs.default-branch }}
@@ -164,103 +163,33 @@ jobs:
           require-conventional-branches: ${{ inputs.require-conventional-branches }}
           require-conventional-commits: ${{ inputs.require-conventional-commits }}
           block-conventional-commits: ${{ inputs.block-conventional-commits }}
-  pre-tagging-tests:
-    name: Pre-tagging Tests
-    needs: basic-quality-checks
-    if: always() && inputs.pre-tagging-tests-script-sub-path != '' && (needs.basic-quality-checks.result == 'success' || needs.basic-quality-checks.result == 'skipped')
-    runs-on: ubuntu-24.04
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4.2.2
-      # SPDX-License-Identifier: MIT
-      # Copyright (c) 2025 Kaptain contributors (Fred Cooke)
-
-      - name: Parse workflow ref
-        id: parse
-        run: |
-          # Extract caller's workflow file path from github.workflow_ref
-          # Format: owner/repo/.github/workflows/file.yaml@ref
-          workflow_path="${GITHUB_WORKFLOW_REF%%@*}"
-          workflow_file=".github/workflows/${workflow_path##*/}"
-
-          echo "Resolving ref for reusable workflow: basic-quality-and-versioning.yaml"
-          echo "Caller workflow: $workflow_file"
-
-          # Check for local call (dogfooding) - uses: ./.github/workflows/...
-          if grep -q 'uses:[[:space:]]*\./.github/workflows/basic-quality-and-versioning\.yaml[[:space:]]*$' "$workflow_file" || \
-             grep -q 'uses:[[:space:]]*\./.github/workflows/basic-quality-and-versioning\.yaml[[:space:]]*#' "$workflow_file"; then
-            echo "Local workflow call detected (dogfooding)"
-            echo "ref=LOCAL" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-
-          # Find all uses lines that call this workflow and extract refs
-          refs=$(grep -o 'buildon-github-actions/.github/workflows/basic-quality-and-versioning\.yaml@[^[:space:]"'"'"']*' "$workflow_file" | sed 's/.*@//')
-
-          if [ -z "$refs" ]; then
-            echo "::error::Could not find buildon-github-actions ref in $workflow_file"
-            exit 1
-          fi
-
-          # Check all refs are identical
-          unique_refs=$(echo "$refs" | sort -u)
-          ref_count=$(echo "$unique_refs" | wc -l | tr -d ' ')
-          echo "Found $ref_count unique ref(s): $(echo "$unique_refs" | tr '\n' ' ')"
-
-          if [ "$ref_count" -gt 1 ]; then
-            echo "::error::Multiple different refs found in $workflow_file: $(echo "$unique_refs" | tr '\n' ' ')"
-            exit 1
-          fi
-
-          echo "Resolved ref: $unique_refs"
-          echo "ref=$unique_refs" >> "$GITHUB_OUTPUT"
-        env:
-          GITHUB_WORKFLOW_REF: ${{ github.workflow_ref }}
-
-      - name: Checkout actions
-        if: steps.parse.outputs.ref != 'LOCAL'
-        uses: actions/checkout@v4.2.2
-        with:
-          repository: kube-kaptain/buildon-github-actions
-          ref: ${{ steps.parse.outputs.ref }}
-          path: .github/buildon-github-actions
-
-      - name: Link local actions
-        if: steps.parse.outputs.ref == 'LOCAL'
-        run: |
-          echo "Linking local actions for dogfooding"
-          ln -s "$(pwd)" .github/buildon-github-actions
-      - name: Run pre-tagging tests
-        uses: ./.github/buildon-github-actions/src/actions/run-test-script
-        with:
-          script-sub-path: ${{ inputs.pre-tagging-tests-script-sub-path }}
   versions-and-naming:
     name: Versions & Naming
-    needs: pre-tagging-tests
-    if: always() && (needs.pre-tagging-tests.result == 'success' || needs.pre-tagging-tests.result == 'skipped')
+    needs: basic-quality-checks
+    if: always() && (needs.basic-quality-checks.result == 'success' || needs.basic-quality-checks.result == 'skipped')
     runs-on: ubuntu-24.04
     permissions:
       contents: write
+      checks: write
     outputs:
-      version: ${{ steps.generate.outputs.version }}
-      version-major: ${{ steps.generate.outputs.version-major }}
-      version-minor: ${{ steps.generate.outputs.version-minor }}
-      version-patch: ${{ steps.generate.outputs.version-patch }}
-      version-2-part: ${{ steps.generate.outputs.version-2-part }}
-      version-3-part: ${{ steps.generate.outputs.version-3-part }}
-      version-4-part: ${{ steps.generate.outputs.version-4-part }}
-      docker-tag: ${{ steps.generate.outputs.docker-tag }}
-      docker-image-name: ${{ steps.generate.outputs.docker-image-name }}
-      is-release: ${{ steps.generate.outputs.is-release }}
-      project-name: ${{ steps.generate.outputs.project-name }}
+      version: ${{ steps.versions.outputs.version }}
+      version-major: ${{ steps.versions.outputs.version-major }}
+      version-minor: ${{ steps.versions.outputs.version-minor }}
+      version-patch: ${{ steps.versions.outputs.version-patch }}
+      version-2-part: ${{ steps.versions.outputs.version-2-part }}
+      version-3-part: ${{ steps.versions.outputs.version-3-part }}
+      version-4-part: ${{ steps.versions.outputs.version-4-part }}
+      docker-tag: ${{ steps.versions.outputs.docker-tag }}
+      docker-image-name: ${{ steps.versions.outputs.docker-image-name }}
+      is-release: ${{ steps.versions.outputs.is-release }}
+      project-name: ${{ steps.versions.outputs.project-name }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4.2.2
         with:
           fetch-depth: 0
           fetch-tags: true
-      # SPDX-License-Identifier: MIT
-      # Copyright (c) 2025 Kaptain contributors (Fred Cooke)
+          ref: ${{ github.event.pull_request.head.sha }}
 
       - name: Parse workflow ref
         id: parse
@@ -317,8 +246,33 @@ jobs:
         run: |
           echo "Linking local actions for dogfooding"
           ln -s "$(pwd)" .github/buildon-github-actions
+      - name: Start check - Pre-tagging Tests
+        if: inputs.pre-tagging-tests-script-sub-path != ''
+        id: check-pre-tagging
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
+        with:
+          action: start
+          check-name: 'Versions & Naming → Pre-tagging Tests'
+      - name: Run pre-tagging tests
+        if: inputs.pre-tagging-tests-script-sub-path != ''
+        id: pre-tagging-tests
+        uses: ./.github/buildon-github-actions/src/actions/run-test-script
+        with:
+          script-sub-path: ${{ inputs.pre-tagging-tests-script-sub-path }}
+      - name: Pass check - Pre-tagging Tests
+        if: inputs.pre-tagging-tests-script-sub-path != '' && success()
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
+        with:
+          action: pass
+          check-run-id: ${{ steps.check-pre-tagging.outputs.check-run-id }}
+      - name: Fail check - Pre-tagging Tests
+        if: inputs.pre-tagging-tests-script-sub-path != '' && failure()
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
+        with:
+          action: fail
+          check-run-id: ${{ steps.check-pre-tagging.outputs.check-run-id }}
       - name: Generate versions and naming
-        id: generate
+        id: versions
         uses: ./.github/buildon-github-actions/src/actions/versions-and-naming
         with:
           default-branch: ${{ inputs.default-branch }}

@@ -1,0 +1,64 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025 Kaptain contributors (Fred Cooke)
+#
+# kubernetes-manifests-repo-provider-github-release-package - Prepares manifests for GitHub release
+#
+# Validates the manifests zip exists and is ready for upload.
+# For GitHub releases, there's no intermediate artifact to build - this just validates.
+# Pair with kubernetes-manifests-repo-provider-github-release-publish.
+#
+# Inputs (environment variables):
+#   MANIFESTS_ZIP_PATH - Path to zip file (required)
+#   MANIFESTS_ZIP_NAME - Filename for upload (required)
+#   VERSION           - Release tag (required)
+#
+# Outputs:
+#   MANIFESTS_ZIP_PATH - Path to zip file (pass through for publish step)
+#   MANIFESTS_ZIP_NAME - Filename for upload (pass through for publish step)
+#   VERSION            - Release tag (pass through for publish step)
+#
+set -euo pipefail
+
+# Logging configuration (CI-agnostic)
+LOG_ERROR_PREFIX="${LOG_ERROR_PREFIX:-}"
+LOG_ERROR_SUFFIX="${LOG_ERROR_SUFFIX:-}"
+
+# Required inputs
+MANIFESTS_ZIP_PATH="${MANIFESTS_ZIP_PATH:?MANIFESTS_ZIP_PATH is required}"
+MANIFESTS_ZIP_NAME="${MANIFESTS_ZIP_NAME:?MANIFESTS_ZIP_NAME is required}"
+VERSION="${VERSION:?VERSION is required}"
+
+output_var() {
+  local name="$1"
+  local value="$2"
+
+  echo "${name}=${value}"
+
+  if [[ -n "${GITHUB_OUTPUT:-}" ]]; then
+    echo "${name}=${value}" >> "$GITHUB_OUTPUT"
+  fi
+}
+
+main() {
+  echo "=== Kubernetes Manifests Repo Provider Package: GitHub Release ===" >&2
+  echo "Manifests zip: $MANIFESTS_ZIP_PATH" >&2
+  echo "Manifests zip name: $MANIFESTS_ZIP_NAME" >&2
+  echo "Version: $VERSION" >&2
+  echo "===================================================================" >&2
+
+  # Validate zip exists
+  if [[ ! -f "$MANIFESTS_ZIP_PATH" ]]; then
+    echo "${LOG_ERROR_PREFIX}Manifests zip not found: $MANIFESTS_ZIP_PATH${LOG_ERROR_SUFFIX}" >&2
+    exit 1
+  fi
+
+  # Pass through values for publish step
+  output_var "MANIFESTS_ZIP_PATH" "$MANIFESTS_ZIP_PATH"
+  output_var "MANIFESTS_ZIP_NAME" "$MANIFESTS_ZIP_NAME"
+  output_var "VERSION" "$VERSION"
+
+  echo "Kubernetes Manifests Repo Provider Package: GitHub Release complete" >&2
+}
+
+main "$@"

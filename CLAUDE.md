@@ -31,6 +31,16 @@ examples/                               # Usage examples for consumers
 3. **Workflows** (`.github/workflows/*.yaml`) compose actions into pipelines
 4. **Consumers** reference workflows by version tag
 
+### Kaptain Deployment Model
+
+This repo provides the CI/CD build side. The broader Kaptain system has three layers:
+
+- **Apps**: Individual applications with their own repos. Build pipelines publish manifests via repo providers (docker image, GitHub release, etc.)
+- **Products**: Aggregate N apps into a deployable unit. Defined in `kaptain-product.yaml`. Reference app manifest sources.
+- **Environments**: Deploy products (or individual apps) to clusters. Defined in `kaptain-environment.yaml`. Pull manifests from repo providers.
+
+The publish scripts here (`kubernetes-manifest-publish`, plugins in `kube-manifest-repo-providers/`) handle the build-time upload. Download is not a simple inverse - environments call the download N times, once for each product/app being aggregated.
+
 ## Key Design Decisions
 
 - Scripts use generic env vars (`PR_BRANCH`, `TARGET_BRANCH`), actions map from GitHub context

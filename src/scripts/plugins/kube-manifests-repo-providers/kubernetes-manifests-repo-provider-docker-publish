@@ -1,0 +1,68 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025 Kaptain contributors (Fred Cooke)
+#
+# kubernetes-manifests-repo-provider-docker-publish - Publishes previously packaged manifests Docker image
+#
+# Pushes a Docker image that was built by kubernetes-manifests-repo-provider-docker-package.
+# This script ONLY pushes - the image must already exist locally.
+#
+# Inputs (environment variables):
+#   MANIFESTS_URI       - Full image reference to push (required, from package step)
+#   IS_RELEASE          - "true" to actually push (default: false)
+#
+# Outputs::
+#   MANIFESTS_URI       - Full image reference (same as input)
+#   MANIFESTS_PUBLISHED - "true" if pushed, "false" if skipped
+#
+set -euo pipefail
+
+# Logging configuration (CI-agnostic)
+LOG_ERROR_PREFIX="${LOG_ERROR_PREFIX:-}"
+LOG_ERROR_SUFFIX="${LOG_ERROR_SUFFIX:-}"
+
+# Required inputs
+MANIFESTS_URI="${MANIFESTS_URI:?MANIFESTS_URI is required}"
+
+# Optional inputs with defaults
+IS_RELEASE="${IS_RELEASE:-false}"
+
+output_var() {
+  local name="$1"
+  local value="$2"
+
+  echo "${name}=${value}"
+
+  if [[ -n "${GITHUB_OUTPUT:-}" ]]; then
+    echo "${name}=${value}" >> "$GITHUB_OUTPUT"
+  fi
+}
+
+main() {
+  echo "=== Kubernetes Manifests Repo Provider Publish: Docker ===" >&2
+  echo "Image to push: $MANIFESTS_URI" >&2
+  echo "===========================================================" >&2
+
+  # Verify image exists locally
+  if ! docker image inspect "$MANIFESTS_URI" &>/dev/null; then
+    echo "${LOG_ERROR_PREFIX}Image not found locally: $MANIFESTS_URI${LOG_ERROR_SUFFIX}" >&2
+    echo "Did you run kubernetes-manifests-repo-provider-docker-package first?" >&2
+    exit 1
+  fi
+
+  # Push if release
+  if [[ "$IS_RELEASE" == "true" ]]; then
+    echo "Pushing: $MANIFESTS_URI" >&2
+    docker push "$MANIFESTS_URI"
+    output_var "MANIFESTS_PUBLISHED" "true"
+  else
+    echo "Skipping push (IS_RELEASE=$IS_RELEASE)" >&2
+    output_var "MANIFESTS_PUBLISHED" "false"
+  fi
+
+  output_var "MANIFESTS_URI" "$MANIFESTS_URI"
+
+  echo "Kubernetes Manifests Repo Provider Publish: Docker complete" >&2
+}
+
+main "$@"

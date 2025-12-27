@@ -9,6 +9,7 @@ Versions & Naming
 | `default-branch` | string | `main` | The default/release branch name |
 | `additional-release-branches` | string | `""` | Comma-separated list of additional release branches |
 | `max-version-parts` | number | `3` | Maximum allowed version parts (fail if exceeded) |
+| `pre-tagging-tests-script-sub-path` | string | `""` | Path to pre-tagging test script relative to .github/ (e.g., bin/pre-tagging.bash) |
 
 ## Outputs
 

@@ -1,0 +1,14 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025 Kaptain contributors (Fred Cooke)
+
+- name: Package manifests
+  id: manifest-package
+  uses: ./.github/buildon-github-actions/src/actions/kubernetes-manifests-package
+  with:
+    manifests-path: ${{ inputs.manifests-path }}
+    project-name: ${{ steps.versions.outputs.project-name }}
+    version: ${{ steps.versions.outputs.version }}
+    docker-tag: ${{ steps.versions.outputs.docker-tag }}
+    docker-image-name: ${{ steps.versions.outputs.docker-image-name }}
+    substitution-token-style: ${{ inputs.substitution-token-style }}
+    substitution-output-style: ${{ inputs.substitution-output-style }}
