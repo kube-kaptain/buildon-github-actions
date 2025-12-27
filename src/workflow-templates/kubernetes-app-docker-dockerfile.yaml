@@ -352,13 +352,6 @@ jobs:
 
       # === Manifest Publish ===
       # INJECT: github-check-start(name="Publish Manifests", id="check-manifest-publish")
-      - name: Docker registry logins (for manifest publish)
-        if: inputs.manifests-repo-provider-type == 'docker'
-        uses: ./.github/buildon-github-actions/src/actions/docker-registry-logins
-        with:
-          config: ${{ inputs.docker-registry-logins }}
-          secrets-json: ${{ secrets.docker-registry-logins-secrets || toJSON(secrets) }}
-          target-registry: ${{ inputs.target-registry }}
       - name: Publish manifests
         id: manifest-publish
         uses: ./.github/buildon-github-actions/src/actions/kubernetes-manifests-publish
