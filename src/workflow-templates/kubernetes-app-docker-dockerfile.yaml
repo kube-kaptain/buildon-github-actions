@@ -246,13 +246,7 @@ jobs:
 
       # === Versions & Naming ===
       # INJECT: github-check-start(name="Versions & Naming", id="check-versions")
-      - name: Generate versions and naming
-        id: versions
-        uses: ./.github/buildon-github-actions/src/actions/versions-and-naming
-        with:
-          default-branch: ${{ inputs.default-branch }}
-          additional-release-branches: ${{ inputs.additional-release-branches }}
-          max-version-parts: ${{ inputs.max-version-parts }}
+      # INJECT: versions-and-naming
       # INJECT: github-check-end(name="Versions & Naming", id="check-versions")
 
       # === Docker Build ===

@@ -75,6 +75,11 @@ on:
         required: false
         type: number
         default: 3
+      pre-tagging-tests-script-sub-path:
+        description: 'Path to pre-tagging test script relative to .github/ (e.g., bin/pre-tagging.bash)'
+        required: false
+        type: string
+        default: ''
       docker-registry-logins:
         description: 'YAML config for Docker registry logins (registry URL as key)'
         required: false
@@ -179,15 +184,19 @@ jobs:
           secrets-json: ${{ secrets.docker-registry-logins-secrets || toJSON(secrets) }}
           target-registry: ${{ inputs.target-registry }}
 
+      # === Pre-tagging Tests ===
+      # INJECT: github-check-start(name="Pre-tagging Tests", id="check-pre-tagging", if="inputs.pre-tagging-tests-script-sub-path != ''")
+      - name: Run pre-tagging tests
+        if: inputs.pre-tagging-tests-script-sub-path != ''
+        id: pre-tagging-tests
+        uses: ./.github/buildon-github-actions/src/actions/run-test-script
+        with:
+          script-sub-path: ${{ inputs.pre-tagging-tests-script-sub-path }}
+      # INJECT: github-check-end(name="Pre-tagging Tests", id="check-pre-tagging", if="inputs.pre-tagging-tests-script-sub-path != ''")
+
       # === Versions & Naming ===
       # INJECT: github-check-start(name="Versions & Naming", id="check-versions")
-      - name: Generate versions and naming
-        id: versions
-        uses: ./.github/buildon-github-actions/src/actions/versions-and-naming
-        with:
-          default-branch: ${{ inputs.default-branch }}
-          additional-release-branches: ${{ inputs.additional-release-branches }}
-          max-version-parts: ${{ inputs.max-version-parts }}
+      # INJECT: versions-and-naming
       # INJECT: github-check-end(name="Versions & Naming", id="check-versions")
 
       # === Docker Retag ===

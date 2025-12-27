@@ -75,6 +75,11 @@ on:
         required: false
         type: number
         default: 3
+      pre-tagging-tests-script-sub-path:
+        description: 'Path to pre-tagging test script relative to .github/ (e.g., bin/pre-tagging.bash)'
+        required: false
+        type: string
+        default: ''
       docker-registry-logins:
         description: 'YAML config for Docker registry logins (registry URL as key)'
         required: false
@@ -336,6 +341,33 @@ jobs:
           secrets-json: ${{ secrets.docker-registry-logins-secrets || toJSON(secrets) }}
           target-registry: ${{ inputs.target-registry }}
 
+      # === Pre-tagging Tests ===
+      - name: Start check - Pre-tagging Tests
+        if: inputs.pre-tagging-tests-script-sub-path != ''
+        id: check-pre-tagging
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
+        with:
+          action: start
+          check-name: 'Pre-tagging Tests'
+      - name: Run pre-tagging tests
+        if: inputs.pre-tagging-tests-script-sub-path != ''
+        id: pre-tagging-tests
+        uses: ./.github/buildon-github-actions/src/actions/run-test-script
+        with:
+          script-sub-path: ${{ inputs.pre-tagging-tests-script-sub-path }}
+      - name: Pass check - Pre-tagging Tests
+        if: inputs.pre-tagging-tests-script-sub-path != '' && success()
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
+        with:
+          action: pass
+          check-run-id: ${{ steps.check-pre-tagging.outputs.check-run-id }}
+      - name: Fail check - Pre-tagging Tests
+        if: inputs.pre-tagging-tests-script-sub-path != '' && failure()
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
+        with:
+          action: fail
+          check-run-id: ${{ steps.check-pre-tagging.outputs.check-run-id }}
+
       # === Versions & Naming ===
       - name: Start check - Versions & Naming
         id: check-versions
@@ -343,6 +375,9 @@ jobs:
         with:
           action: start
           check-name: 'Versions & Naming'
+      # SPDX-License-Identifier: MIT
+      # Copyright (c) 2025 Kaptain contributors (Fred Cooke)
+
       - name: Generate versions and naming
         id: versions
         uses: ./.github/buildon-github-actions/src/actions/versions-and-naming

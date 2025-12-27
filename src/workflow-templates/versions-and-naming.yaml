@@ -20,6 +20,11 @@ on:
         required: false
         type: number
         default: 3
+      pre-tagging-tests-script-sub-path:
+        description: 'Path to pre-tagging test script relative to .github/ (e.g., bin/pre-tagging.bash)'
+        required: false
+        type: string
+        default: ''
     outputs:
       version:
         description: 'The generated version'
@@ -61,23 +66,23 @@ jobs:
     permissions:
       contents: write
     outputs:
-      version: ${{ steps.generate.outputs.version }}
-      version-major: ${{ steps.generate.outputs.version-major }}
-      version-minor: ${{ steps.generate.outputs.version-minor }}
-      version-patch: ${{ steps.generate.outputs.version-patch }}
-      version-2-part: ${{ steps.generate.outputs.version-2-part }}
-      version-3-part: ${{ steps.generate.outputs.version-3-part }}
-      version-4-part: ${{ steps.generate.outputs.version-4-part }}
-      docker-tag: ${{ steps.generate.outputs.docker-tag }}
-      docker-image-name: ${{ steps.generate.outputs.docker-image-name }}
-      is-release: ${{ steps.generate.outputs.is-release }}
-      project-name: ${{ steps.generate.outputs.project-name }}
+      version: ${{ steps.versions.outputs.version }}
+      version-major: ${{ steps.versions.outputs.version-major }}
+      version-minor: ${{ steps.versions.outputs.version-minor }}
+      version-patch: ${{ steps.versions.outputs.version-patch }}
+      version-2-part: ${{ steps.versions.outputs.version-2-part }}
+      version-3-part: ${{ steps.versions.outputs.version-3-part }}
+      version-4-part: ${{ steps.versions.outputs.version-4-part }}
+      docker-tag: ${{ steps.versions.outputs.docker-tag }}
+      docker-image-name: ${{ steps.versions.outputs.docker-image-name }}
+      is-release: ${{ steps.versions.outputs.is-release }}
+      project-name: ${{ steps.versions.outputs.project-name }}
     steps:
       # INJECT: parse-workflow-ref-and-checkout
-      - name: Generate versions and naming
-        id: generate
-        uses: ./.github/buildon-github-actions/src/actions/versions-and-naming
+      - name: Run pre-tagging tests
+        if: inputs.pre-tagging-tests-script-sub-path != ''
+        id: pre-tagging-tests
+        uses: ./.github/buildon-github-actions/src/actions/run-test-script
         with:
-          default-branch: ${{ inputs.default-branch }}
-          additional-release-branches: ${{ inputs.additional-release-branches }}
-          max-version-parts: ${{ inputs.max-version-parts }}
+          script-sub-path: ${{ inputs.pre-tagging-tests-script-sub-path }}
+      # INJECT: versions-and-naming

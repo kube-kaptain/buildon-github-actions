@@ -252,17 +252,17 @@ jobs:
     permissions:
       contents: write
     outputs:
-      version: ${{ steps.generate.outputs.version }}
-      version-major: ${{ steps.generate.outputs.version-major }}
-      version-minor: ${{ steps.generate.outputs.version-minor }}
-      version-patch: ${{ steps.generate.outputs.version-patch }}
-      version-2-part: ${{ steps.generate.outputs.version-2-part }}
-      version-3-part: ${{ steps.generate.outputs.version-3-part }}
-      version-4-part: ${{ steps.generate.outputs.version-4-part }}
-      docker-tag: ${{ steps.generate.outputs.docker-tag }}
-      docker-image-name: ${{ steps.generate.outputs.docker-image-name }}
-      is-release: ${{ steps.generate.outputs.is-release }}
-      project-name: ${{ steps.generate.outputs.project-name }}
+      version: ${{ steps.versions.outputs.version }}
+      version-major: ${{ steps.versions.outputs.version-major }}
+      version-minor: ${{ steps.versions.outputs.version-minor }}
+      version-patch: ${{ steps.versions.outputs.version-patch }}
+      version-2-part: ${{ steps.versions.outputs.version-2-part }}
+      version-3-part: ${{ steps.versions.outputs.version-3-part }}
+      version-4-part: ${{ steps.versions.outputs.version-4-part }}
+      docker-tag: ${{ steps.versions.outputs.docker-tag }}
+      docker-image-name: ${{ steps.versions.outputs.docker-image-name }}
+      is-release: ${{ steps.versions.outputs.is-release }}
+      project-name: ${{ steps.versions.outputs.project-name }}
     steps:
       # SPDX-License-Identifier: MIT
       # Copyright (c) 2025 Kaptain contributors (Fred Cooke)
@@ -329,8 +329,11 @@ jobs:
         run: |
           echo "Linking local actions for dogfooding"
           ln -s "$(pwd)" .github/buildon-github-actions
+      # SPDX-License-Identifier: MIT
+      # Copyright (c) 2025 Kaptain contributors (Fred Cooke)
+
       - name: Generate versions and naming
-        id: generate
+        id: versions
         uses: ./.github/buildon-github-actions/src/actions/versions-and-naming
         with:
           default-branch: ${{ inputs.default-branch }}
