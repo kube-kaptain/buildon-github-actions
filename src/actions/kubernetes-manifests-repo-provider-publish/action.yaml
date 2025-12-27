@@ -1,0 +1,58 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025 Kaptain contributors (Fred Cooke)
+
+name: 'Kubernetes Manifests Repo Provider Publish'
+description: 'Publishes manifests via pluggable repo provider. Requires package step to run first.'
+author: 'kube-kaptain'
+
+inputs:
+  manifests-repo-provider-type:
+    description: 'Manifests repo provider type (required): docker, github-release'
+    required: true
+  # Manifests location (from package step)
+  manifests-uri:
+    description: 'Manifests location from package step (docker image URI, github release URL, etc.)'
+    required: false
+    default: ''
+  # GitHub release repo provider inputs (from package step)
+  manifests-zip-path:
+    description: 'Path to manifests zip (github-release repo provider, from package step)'
+    required: false
+    default: ''
+  manifests-zip-name:
+    description: 'Filename for manifests zip (github-release repo provider, from package step)'
+    required: false
+    default: ''
+  version:
+    description: 'Release tag/version (github-release repo provider, from package step)'
+    required: false
+    default: ''
+  # Common inputs
+  is-release:
+    description: 'Whether to push/upload (false skips actual publish)'
+    required: true
+
+outputs:
+  manifests-uri:
+    description: 'Reference to published manifests (format depends on repo provider)'
+    value: ${{ steps.publish.outputs.MANIFESTS_URI }}
+  manifests-published:
+    description: 'Whether manifests were published'
+    value: ${{ steps.publish.outputs.MANIFESTS_PUBLISHED }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Publish manifests via repo provider
+      id: publish
+      shell: bash
+      env:
+        LOG_ERROR_PREFIX: '::error::'
+        MANIFESTS_REPO_PROVIDER_TYPE: ${{ inputs.manifests-repo-provider-type }}
+        MANIFESTS_URI: ${{ inputs.manifests-uri }}
+        MANIFESTS_ZIP_PATH: ${{ inputs.manifests-zip-path }}
+        MANIFESTS_ZIP_NAME: ${{ inputs.manifests-zip-name }}
+        VERSION: ${{ inputs.version }}
+        IS_RELEASE: ${{ inputs.is-release }}
+        GITHUB_TOKEN: ${{ github.token }}
+      run: "${{ github.action_path }}/../../scripts/main/kubernetes-manifests-repo-provider-publish"

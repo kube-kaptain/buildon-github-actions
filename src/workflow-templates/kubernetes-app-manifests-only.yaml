@@ -146,7 +146,7 @@ on:
       manifests-zip-name:
         description: 'Name of manifests zip file'
         value: ${{ jobs.build.outputs.manifests-zip-name }}
-      # Publish outputs
+      # Manifest repo provider publish outputs
       manifests-uri:
         description: 'Reference to published manifests (format depends on repo provider)'
         value: ${{ jobs.build.outputs.manifests-uri }}
@@ -186,8 +186,8 @@ jobs:
       is-release: ${{ steps.versions.outputs.is-release }}
       manifests-zip-path: ${{ steps.manifest-package.outputs.manifests-zip-path }}
       manifests-zip-name: ${{ steps.manifest-package.outputs.manifests-zip-name }}
-      manifests-uri: ${{ steps.manifest-publish.outputs.manifests-uri }}
-      manifests-published: ${{ steps.manifest-publish.outputs.manifests-published }}
+      manifests-uri: ${{ steps.manifest-repo-provider-publish.outputs.manifests-uri }}
+      manifests-published: ${{ steps.manifest-repo-provider-publish.outputs.manifests-published }}
     steps:
       # INJECT: parse-workflow-ref-and-checkout
 
@@ -211,8 +211,13 @@ jobs:
       # INJECT: post-package-tests
       # INJECT: github-check-end(name="Post-package Tests", id="check-post-package", if="inputs.post-package-tests-script-sub-path != ''")
 
-      # === Manifest Publish ===
-      # INJECT: github-check-start(name="Publish Manifests", id="check-manifest-publish")
+      # === Manifest Repo Provider Package ===
+      # INJECT: github-check-start(name="Package Manifests for Repo Provider", id="check-manifest-repo-provider-package")
       # INJECT: docker-registry-logins
-      # INJECT: manifest-publish
-      # INJECT: github-check-end(name="Publish Manifests", id="check-manifest-publish")
+      # INJECT: manifest-repo-provider-package
+      # INJECT: github-check-end(name="Package Manifests for Repo Provider", id="check-manifest-repo-provider-package")
+
+      # === Manifest Repo Provider Publish ===
+      # INJECT: github-check-start(name="Publish Manifests via Repo Provider", id="check-manifest-repo-provider-publish", if="steps.versions.outputs.is-release == 'true'")
+      # INJECT: manifest-repo-provider-publish
+      # INJECT: github-check-end(name="Publish Manifests via Repo Provider", id="check-manifest-repo-provider-publish", if="steps.versions.outputs.is-release == 'true'")

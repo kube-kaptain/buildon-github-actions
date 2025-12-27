@@ -16,7 +16,7 @@
 #   SUBSTITUTION_OUTPUT_STYLE - Case style for variable names (default: UPPER_SNAKE)
 #                               Options: UPPER_SNAKE, lower_snake, kebab-case, camelCase, PascalCase
 #
-# Outputs (GITHUB_OUTPUT):
+# Outputs:
 #   MANIFESTS_ZIP_PATH - Full path to created zip file
 #   MANIFESTS_ZIP_NAME - Filename of zip
 #

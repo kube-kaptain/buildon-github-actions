@@ -78,7 +78,8 @@ See [`examples/`](examples/) for more usage patterns.
 | `docker-registry-logins` | Authenticate to container registries (GHCR by default, configure others as needed) |
 | `github-check-run` | Create or update GitHub Check Runs for granular PR status reporting |
 | `kubernetes-manifests-package` | Packages Kubernetes manifests into a zip with variable substitution |
-| `kubernetes-manifests-publish` | Publishes manifests zip via pluggable repo provider (docker, github-release) |
+| `kubernetes-manifests-repo-provider-package` | Packages manifests for repo provider (builds docker image, prepares release). Does NOT publish. |
+| `kubernetes-manifests-repo-provider-publish` | Publishes manifests via pluggable repo provider. Requires package step to run first. |
 | `run-test-script` | Runs a user-provided test script from the .github/ directory |
 | `versions-and-naming` | Generates version numbers, tags, and naming for releases |
 <!-- ACTIONS-END -->

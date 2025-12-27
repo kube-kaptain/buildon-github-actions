@@ -2,9 +2,10 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2025 Kaptain contributors (Fred Cooke)
 #
-# kubernetes-manifests-publish - Selector script for manifests repo provider plugins
+# kubernetes-manifests-repo-provider-publish - Selector script for manifests repo provider publish plugins
 #
 # Dispatches to the appropriate repo provider publish script based on MANIFESTS_REPO_PROVIDER_TYPE.
+# This publishes previously packaged manifests. Pair with kubernetes-manifests-repo-provider-package.
 # Available repo providers are discovered from plugins/kube-manifests-repo-providers/
 #
 # Inputs (environment variables):
@@ -69,9 +70,9 @@ main() {
     exit 1
   fi
 
-  echo "=== Kubernetes Manifests Publish ===" >&2
+  echo "=== Kubernetes Manifests Repo Provider Publish ===" >&2
   echo "Selected repo provider: $MANIFESTS_REPO_PROVIDER_TYPE" >&2
-  echo "=====================================" >&2
+  echo "===================================================" >&2
 
   # Execute repo provider script
   exec "$provider_script" "$@"

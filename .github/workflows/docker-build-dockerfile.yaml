@@ -449,6 +449,7 @@ jobs:
           check-name: 'Build & Push → Docker Push'
       - name: Push image
         id: docker-push
+        if: steps.versions.outputs.is-release == 'true'
         uses: ./.github/buildon-github-actions/src/actions/docker-push
         with:
           docker-image-full-uri: ${{ steps.docker-build.outputs.target-image-full-uri }}

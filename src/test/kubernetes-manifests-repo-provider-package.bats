@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2025 Kaptain contributors (Fred Cooke)
 #
-# Tests for the kubernetes-manifests-publish selector script
+# Tests for the kubernetes-manifests-repo-provider-package selector script
 
 load helpers
 
@@ -24,7 +24,7 @@ teardown() {
 @test "fails when MANIFESTS_REPO_PROVIDER_TYPE not set" {
   unset MANIFESTS_REPO_PROVIDER_TYPE
 
-  run "$SCRIPTS_DIR/kubernetes-manifests-publish"
+  run "$SCRIPTS_DIR/kubernetes-manifests-repo-provider-package"
   [ "$status" -ne 0 ]
   assert_output_contains "MANIFESTS_REPO_PROVIDER_TYPE is required"
   assert_output_contains "Available:"
@@ -33,7 +33,7 @@ teardown() {
 @test "fails when MANIFESTS_REPO_PROVIDER_TYPE is unknown" {
   export MANIFESTS_REPO_PROVIDER_TYPE="nonexistent"
 
-  run "$SCRIPTS_DIR/kubernetes-manifests-publish"
+  run "$SCRIPTS_DIR/kubernetes-manifests-repo-provider-package"
   [ "$status" -ne 0 ]
   assert_output_contains "Unknown repo provider type: nonexistent"
   assert_output_contains "Available:"
@@ -46,10 +46,10 @@ teardown() {
   export TARGET_IMAGE_NAME="test/my-repo"
   export DOCKER_TAG="1.0.0-manifests"
 
-  run "$SCRIPTS_DIR/kubernetes-manifests-publish"
+  run "$SCRIPTS_DIR/kubernetes-manifests-repo-provider-package"
   [ "$status" -eq 0 ]
   assert_output_contains "Selected repo provider: docker"
-  assert_output_contains "Kubernetes Manifests Publish: Docker"
+  assert_output_contains "Kubernetes Manifests Repo Provider Package: Docker"
 }
 
 @test "dispatches to github-release repo provider" {
@@ -57,18 +57,17 @@ teardown() {
   export MANIFESTS_ZIP_PATH="$TEST_ZIP"
   export MANIFESTS_ZIP_NAME="test-1.0.0-manifests.zip"
   export VERSION="1.0.0"
-  export IS_RELEASE="false"
 
-  run "$SCRIPTS_DIR/kubernetes-manifests-publish"
+  run "$SCRIPTS_DIR/kubernetes-manifests-repo-provider-package"
   [ "$status" -eq 0 ]
   assert_output_contains "Selected repo provider: github-release"
-  assert_output_contains "Kubernetes Manifests Publish: GitHub Release"
+  assert_output_contains "Kubernetes Manifests Repo Provider Package: GitHub Release"
 }
 
 @test "lists available repo providers on error" {
   unset MANIFESTS_REPO_PROVIDER_TYPE
 
-  run "$SCRIPTS_DIR/kubernetes-manifests-publish"
+  run "$SCRIPTS_DIR/kubernetes-manifests-repo-provider-package"
   [ "$status" -ne 0 ]
   # Should list the available repo providers
   assert_output_contains "docker"

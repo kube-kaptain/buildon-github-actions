@@ -4,16 +4,19 @@
 #
 # kubernetes-manifests-repo-provider-github-release-publish - Publishes manifests zip as GitHub release asset
 #
+# Uploads a zip file to a GitHub release. The zip must already exist.
+# Pair with kubernetes-manifests-repo-provider-github-release-package.
+#
 # Inputs (environment variables):
 #   MANIFESTS_ZIP_PATH - Path to zip file (required)
 #   MANIFESTS_ZIP_NAME - Filename for upload (required)
 #   VERSION           - Release tag (required)
-#   IS_RELEASE        - "true" to upload (default: false)
-#   GITHUB_TOKEN      - For gh CLI authentication (required if IS_RELEASE=true)
+#   GITHUB_TOKEN      - For gh CLI authentication (required)
+#   IS_RELEASE        - "true" to actually upload (default: false)
 #
-# Outputs (GITHUB_OUTPUT):
+# Outputs:
 #   MANIFESTS_URI       - URL to the release
-#   MANIFESTS_PUBLISHED - Whether manifests were published
+#   MANIFESTS_PUBLISHED - "true" if uploaded, "false" if skipped
 #
 set -euo pipefail
 
@@ -41,25 +44,16 @@ output_var() {
 }
 
 main() {
-  echo "=== Kubernetes Manifests Publish: GitHub Release ===" >&2
+  echo "=== Kubernetes Manifests Repo Provider Publish: GitHub Release ===" >&2
   echo "Manifests zip: $MANIFESTS_ZIP_PATH" >&2
   echo "Manifests zip name: $MANIFESTS_ZIP_NAME" >&2
   echo "Version: $VERSION" >&2
-  echo "Is Release: $IS_RELEASE" >&2
-  echo "======================================================" >&2
+  echo "===================================================================" >&2
 
   # Validate zip exists
   if [[ ! -f "$MANIFESTS_ZIP_PATH" ]]; then
     echo "${LOG_ERROR_PREFIX}Manifests zip not found: $MANIFESTS_ZIP_PATH${LOG_ERROR_SUFFIX}" >&2
     exit 1
-  fi
-
-  if [[ "$IS_RELEASE" != "true" ]]; then
-    echo "Skipping upload (IS_RELEASE=$IS_RELEASE)" >&2
-    output_var "MANIFESTS_PUBLISHED" "false"
-    output_var "MANIFESTS_URI" ""
-    echo "Kubernetes Manifests Publish: GitHub Release complete (skipped)" >&2
-    return 0
   fi
 
   # Check GITHUB_TOKEN is set
@@ -68,27 +62,34 @@ main() {
     exit 1
   fi
 
-  # Check if release exists
-  echo "Checking for existing release: $VERSION" >&2
-  local release_url
-  if gh release view "$VERSION" --json url -q '.url' &>/dev/null; then
-    release_url=$(gh release view "$VERSION" --json url -q '.url')
-    echo "Found existing release: $release_url" >&2
+  # Upload if release
+  if [[ "$IS_RELEASE" == "true" ]]; then
+    # Check if release exists
+    echo "Checking for existing release: $VERSION" >&2
+    local release_url
+    if gh release view "$VERSION" --json url -q '.url' &>/dev/null; then
+      release_url=$(gh release view "$VERSION" --json url -q '.url')
+      echo "Found existing release: $release_url" >&2
+    else
+      echo "Creating release: $VERSION" >&2
+      gh release create "$VERSION" --title "$VERSION" --notes "Release $VERSION"
+      release_url=$(gh release view "$VERSION" --json url -q '.url')
+      echo "Created release: $release_url" >&2
+    fi
+
+    # Upload asset
+    echo "Uploading: $MANIFESTS_ZIP_NAME" >&2
+    gh release upload "$VERSION" "$MANIFESTS_ZIP_PATH" --clobber
+
+    output_var "MANIFESTS_URI" "$release_url"
+    output_var "MANIFESTS_PUBLISHED" "true"
   else
-    echo "Creating release: $VERSION" >&2
-    gh release create "$VERSION" --title "$VERSION" --notes "Release $VERSION"
-    release_url=$(gh release view "$VERSION" --json url -q '.url')
-    echo "Created release: $release_url" >&2
+    echo "Skipping upload (IS_RELEASE=$IS_RELEASE)" >&2
+    output_var "MANIFESTS_URI" ""
+    output_var "MANIFESTS_PUBLISHED" "false"
   fi
 
-  # Upload asset
-  echo "Uploading: $MANIFESTS_ZIP_NAME" >&2
-  gh release upload "$VERSION" "$MANIFESTS_ZIP_PATH" --clobber
-
-  output_var "MANIFESTS_URI" "$release_url"
-  output_var "MANIFESTS_PUBLISHED" "true"
-
-  echo "Kubernetes Manifests Publish: GitHub Release complete" >&2
+  echo "Kubernetes Manifests Repo Provider Publish: GitHub Release complete" >&2
 }
 
 main "$@"

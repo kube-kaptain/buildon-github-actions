@@ -1,8 +1,8 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2025 Kaptain contributors (Fred Cooke)
 
-name: 'Kubernetes Manifests Publish'
-description: 'Publishes manifests zip via pluggable repo provider (docker, github-release)'
+name: 'Kubernetes Manifests Repo Provider Package'
+description: 'Packages manifests for repo provider (builds docker image, prepares release). Does NOT publish.'
 author: 'kube-kaptain'
 
 inputs:
@@ -46,18 +46,20 @@ inputs:
     description: 'Release tag/version (github-release repo provider)'
     required: false
     default: ''
-  # Common inputs
-  is-release:
-    description: 'Whether to push/upload'
-    required: true
 
 outputs:
   manifests-uri:
-    description: 'Reference to published manifests (format depends on repo provider)'
-    value: ${{ steps.publish.outputs.MANIFESTS_URI }}
-  manifests-published:
-    description: 'Whether manifests were published'
-    value: ${{ steps.publish.outputs.MANIFESTS_PUBLISHED }}
+    description: 'Manifests location (for publish step)'
+    value: ${{ steps.package.outputs.MANIFESTS_URI }}
+  manifests-zip-path:
+    description: 'Path to manifests zip (pass through for publish step)'
+    value: ${{ steps.package.outputs.MANIFESTS_ZIP_PATH }}
+  manifests-zip-name:
+    description: 'Filename for manifests zip (pass through for publish step)'
+    value: ${{ steps.package.outputs.MANIFESTS_ZIP_NAME }}
+  version:
+    description: 'Version/tag (pass through for publish step)'
+    value: ${{ steps.package.outputs.VERSION }}
 
 runs:
   using: 'composite'
@@ -73,8 +75,8 @@ runs:
           echo "path=${{ inputs.target-base-path }}" >> "$GITHUB_OUTPUT"
         fi
 
-    - name: Publish manifests
-      id: publish
+    - name: Package manifests for repo provider
+      id: package
       shell: bash
       env:
         LOG_ERROR_PREFIX: '::error::'
@@ -88,6 +90,4 @@ runs:
         DOCKER_TAG: ${{ inputs.docker-tag }}
         CONFIRM_IMAGE_DOESNT_EXIST: ${{ inputs.confirm-image-doesnt-exist }}
         VERSION: ${{ inputs.version }}
-        IS_RELEASE: ${{ inputs.is-release }}
-        GITHUB_TOKEN: ${{ github.token }}
-      run: "${{ github.action_path }}/../../scripts/main/kubernetes-manifests-publish"
+      run: "${{ github.action_path }}/../../scripts/main/kubernetes-manifests-repo-provider-package"

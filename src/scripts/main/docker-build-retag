@@ -14,7 +14,7 @@
 #   DOCKER_TAG          - Target tag (from version generator)
 #   CONFIRM_IMAGE_DOESNT_EXIST  - "true" to fail if target already exists (default: true)
 #
-# Outputs (GITHUB_OUTPUT):
+# Outputs:
 #   SOURCE_IMAGE_FULL_URI - Full source image reference
 #   TARGET_IMAGE_FULL_URI - Full target image reference
 #

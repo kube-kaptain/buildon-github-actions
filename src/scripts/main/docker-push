@@ -8,7 +8,7 @@
 #   DOCKER_IMAGE_FULL_URI - Full image reference to push (required)
 #   IS_RELEASE            - "true" to push, "false" to skip (default: false)
 #
-# Outputs (GITHUB_OUTPUT):
+# Outputs:
 #   IMAGE_PUSHED - Whether image was pushed (true/false)
 #
 set -euo pipefail

@@ -19,7 +19,7 @@
 #   NO_CACHE            - "false" to enable layer caching (default: true, always build fresh)
 #   CONFIRM_IMAGE_DOESNT_EXIST - "true" to fail if target exists (default: true)
 #
-# Outputs (GITHUB_OUTPUT):
+# Outputs:
 #   TARGET_IMAGE_FULL_URI - Full image reference (for use in push step)
 #
 set -euo pipefail
