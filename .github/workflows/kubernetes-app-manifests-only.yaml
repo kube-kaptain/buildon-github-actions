@@ -466,7 +466,6 @@ jobs:
           action: start
           check-name: 'Publish Manifests'
       - name: Docker registry logins
-        if: inputs.manifests-repo-provider-type == 'docker'
         uses: ./.github/buildon-github-actions/src/actions/docker-registry-logins
         with:
           config: ${{ inputs.docker-registry-logins }}
