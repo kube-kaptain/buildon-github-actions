@@ -45,9 +45,6 @@ jobs:
     name: Basic Quality Checks
     runs-on: ubuntu-24.04
     steps:
-      # SPDX-License-Identifier: MIT
-      # Copyright (c) 2025 Kaptain contributors (Fred Cooke)
-
       - name: Checkout
         uses: actions/checkout@v4.2.2
         with:
@@ -110,9 +107,6 @@ jobs:
         run: |
           echo "Linking local actions for dogfooding"
           ln -s "$(pwd)" .github/buildon-github-actions
-      # SPDX-License-Identifier: MIT
-      # Copyright (c) 2025 Kaptain contributors (Fred Cooke)
-
       - name: Basic quality checks
         id: quality
         uses: ./.github/buildon-github-actions/src/actions/basic-quality-checks

@@ -21,6 +21,11 @@ OUTPUT_DIR="$REPO_ROOT/.github/workflows"
 DOCS_DIR="$REPO_ROOT/docs"
 README="$REPO_ROOT/README.md"
 
+# Strip SPDX header (first 3 lines: SPDX, Copyright, blank) from chunk content
+strip_spdx_header() {
+  tail -n +4
+}
+
 # Indent all lines of input by given prefix
 indent_chunk() {
   local indent="$1"
@@ -75,7 +80,7 @@ generate_check_start() {
   fi
 
   local chunk
-  chunk=$(cat "$template_file")
+  chunk=$(cat "$template_file" | strip_spdx_header)
   chunk="${chunk//\$\{CHECK_NAME\}/$check_name}"
   chunk="${chunk//\$\{CHECK_ID\}/$check_id}"
   chunk="${chunk//\$\{CHECK_IF_LINE\}/$if_line}"
@@ -103,7 +108,7 @@ generate_check_end() {
   fi
 
   local chunk
-  chunk=$(cat "$template_file")
+  chunk=$(cat "$template_file" | strip_spdx_header)
   chunk="${chunk//\$\{CHECK_NAME\}/$check_name}"
   chunk="${chunk//\$\{CHECK_ID\}/$check_id}"
   chunk="${chunk//\$\{CHECK_PASS_CONDITION\}/$pass_condition}"
@@ -171,9 +176,9 @@ process_template() {
         exit 1
       fi
 
-      # Read chunk, replace placeholders, and apply indentation
+      # Read chunk, strip SPDX header, replace placeholders, and apply indentation
       local chunk
-      chunk=$(cat "$chunk_file")
+      chunk=$(cat "$chunk_file" | strip_spdx_header)
       chunk="${chunk//\$\{WORKFLOW_NAME\}/$workflow_name}"
 
       # Apply indentation to chunk (first line gets indent, others get indent prepended)

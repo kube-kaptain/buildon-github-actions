@@ -187,9 +187,6 @@ jobs:
     permissions:
       checks: write
     steps:
-      # SPDX-License-Identifier: MIT
-      # Copyright (c) 2025 Kaptain contributors (Fred Cooke)
-
       - name: Checkout
         uses: actions/checkout@v4.2.2
         with:
@@ -258,9 +255,6 @@ jobs:
         with:
           action: start
           check-name: 'Basic Quality Checks'
-      # SPDX-License-Identifier: MIT
-      # Copyright (c) 2025 Kaptain contributors (Fred Cooke)
-
       - name: Basic quality checks
         id: quality
         uses: ./.github/buildon-github-actions/src/actions/basic-quality-checks
@@ -313,9 +307,6 @@ jobs:
       manifests-uri: ${{ steps.manifest-publish.outputs.manifests-uri }}
       manifests-published: ${{ steps.manifest-publish.outputs.manifests-published }}
     steps:
-      # SPDX-License-Identifier: MIT
-      # Copyright (c) 2025 Kaptain contributors (Fred Cooke)
-
       - name: Checkout
         uses: actions/checkout@v4.2.2
         with:
@@ -421,9 +412,6 @@ jobs:
         with:
           action: start
           check-name: 'Versions & Naming'
-      # SPDX-License-Identifier: MIT
-      # Copyright (c) 2025 Kaptain contributors (Fred Cooke)
-
       - name: Generate versions and naming
         id: versions
         uses: ./.github/buildon-github-actions/src/actions/versions-and-naming
