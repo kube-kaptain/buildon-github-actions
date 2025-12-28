@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2025 Kaptain contributors (Fred Cooke)
 #
-# Tests for substitute-shell-style-vars (dumb multi-variable script)
+# Tests for substitute-shell-style-tokens (dumb multi-token script)
 
 load helpers
 
@@ -30,7 +30,7 @@ create_input_file() {
   export INPUT_PATH="$INPUT_DIR/test.yaml"
   export OUTPUT_PATH="$OUTPUT_DIR/test.yaml"
 
-  run "$SCRIPTS_DIR/substitute-shell-style-vars"
+  run "$PLUGINS_DIR/token-substitution-providers/substitute-shell-style-tokens"
   [ "$status" -eq 0 ]
 
   result=$(cat "$OUTPUT_DIR/test.yaml")
@@ -44,7 +44,7 @@ version: ${VERSION}'
   export INPUT_PATH="$INPUT_DIR/test.yaml"
   export OUTPUT_PATH="$OUTPUT_DIR/test.yaml"
 
-  run "$SCRIPTS_DIR/substitute-shell-style-vars"
+  run "$PLUGINS_DIR/token-substitution-providers/substitute-shell-style-tokens"
   [ "$status" -eq 0 ]
 
   grep -q "name: my-app" "$OUTPUT_DIR/test.yaml"
@@ -57,7 +57,7 @@ version: ${VERSION}'
   export INPUT_PATH="$INPUT_DIR/test.yaml"
   export OUTPUT_PATH="$OUTPUT_DIR/test.yaml"
 
-  run "$SCRIPTS_DIR/substitute-shell-style-vars"
+  run "$PLUGINS_DIR/token-substitution-providers/substitute-shell-style-tokens"
   [ "$status" -eq 0 ]
 
   result=$(cat "$OUTPUT_DIR/test.yaml")
@@ -70,7 +70,7 @@ version: ${VERSION}'
   export INPUT_PATH="$INPUT_DIR/test.yaml"
   export OUTPUT_PATH="$OUTPUT_DIR/test.yaml"
 
-  run "$SCRIPTS_DIR/substitute-shell-style-vars"
+  run "$PLUGINS_DIR/token-substitution-providers/substitute-shell-style-tokens"
   [ "$status" -eq 0 ]
 
   result=$(cat "$OUTPUT_DIR/test.yaml")
@@ -83,7 +83,7 @@ version: ${VERSION}'
   export INPUT_PATH="$INPUT_DIR/test.yaml"
   export OUTPUT_PATH="$OUTPUT_DIR/test.yaml"
 
-  run "$SCRIPTS_DIR/substitute-shell-style-vars"
+  run "$PLUGINS_DIR/token-substitution-providers/substitute-shell-style-tokens"
   [ "$status" -eq 0 ]
 
   result=$(cat "$OUTPUT_DIR/test.yaml")
@@ -96,7 +96,7 @@ version: ${VERSION}'
   export INPUT_PATH="$INPUT_DIR/test.yaml"
   export OUTPUT_PATH="$OUTPUT_DIR/test.yaml"
 
-  run "$SCRIPTS_DIR/substitute-shell-style-vars"
+  run "$PLUGINS_DIR/token-substitution-providers/substitute-shell-style-tokens"
   [ "$status" -eq 0 ]
 
   result=$(cat "$OUTPUT_DIR/test.yaml")
@@ -110,7 +110,7 @@ registry: ${DOCKER_REGISTRY}'
   export INPUT_PATH="$INPUT_DIR/test.yaml"
   export OUTPUT_PATH="$OUTPUT_DIR/test.yaml"
 
-  run "$SCRIPTS_DIR/substitute-shell-style-vars"
+  run "$PLUGINS_DIR/token-substitution-providers/substitute-shell-style-tokens"
   [ "$status" -eq 0 ]
 
   grep -q "name: my-app" "$OUTPUT_DIR/test.yaml"
@@ -123,7 +123,7 @@ registry: ${DOCKER_REGISTRY}'
   export INPUT_PATH="$INPUT_DIR/test.yaml"
   export OUTPUT_PATH="$OUTPUT_DIR/test.yaml"
 
-  run "$SCRIPTS_DIR/substitute-shell-style-vars"
+  run "$PLUGINS_DIR/token-substitution-providers/substitute-shell-style-tokens"
   [ "$status" -eq 0 ]
 
   result=$(cat "$OUTPUT_DIR/test.yaml")
@@ -137,7 +137,7 @@ registry: ${DOCKER_REGISTRY}'
   export INPUT_PATH="$INPUT_DIR"
   export OUTPUT_PATH="$OUTPUT_DIR"
 
-  run "$SCRIPTS_DIR/substitute-shell-style-vars"
+  run "$PLUGINS_DIR/token-substitution-providers/substitute-shell-style-tokens"
   [ "$status" -eq 0 ]
 
   grep -q "name: my-app" "$OUTPUT_DIR/deployment.yaml"
@@ -151,7 +151,7 @@ b: ${PROJECT_NAME}'
   export INPUT_PATH="$INPUT_DIR/test.yaml"
   export OUTPUT_PATH="$OUTPUT_DIR/test.yaml"
 
-  run "$SCRIPTS_DIR/substitute-shell-style-vars"
+  run "$PLUGINS_DIR/token-substitution-providers/substitute-shell-style-tokens"
   [ "$status" -eq 0 ]
   assert_output_contains "test.yaml:2"
 }
@@ -162,7 +162,7 @@ b: ${PROJECT_NAME}'
   export OUTPUT_PATH="$OUTPUT_DIR/test.yaml"
   unset VARIABLES
 
-  run "$SCRIPTS_DIR/substitute-shell-style-vars"
+  run "$PLUGINS_DIR/token-substitution-providers/substitute-shell-style-tokens"
   [ "$status" -ne 0 ]
   assert_output_contains "VARIABLES"
 }
@@ -172,7 +172,7 @@ b: ${PROJECT_NAME}'
   export INPUT_PATH="/nonexistent/path"
   export OUTPUT_PATH="$OUTPUT_DIR/test.yaml"
 
-  run "$SCRIPTS_DIR/substitute-shell-style-vars"
+  run "$PLUGINS_DIR/token-substitution-providers/substitute-shell-style-tokens"
   [ "$status" -ne 0 ]
   assert_output_contains "not found"
 }
@@ -183,7 +183,7 @@ b: ${PROJECT_NAME}'
   export INPUT_PATH="$INPUT_DIR/test.yaml"
   export OUTPUT_PATH="$INPUT_DIR/test.yaml"
 
-  run "$SCRIPTS_DIR/substitute-shell-style-vars"
+  run "$PLUGINS_DIR/token-substitution-providers/substitute-shell-style-tokens"
   [ "$status" -ne 0 ]
   assert_output_contains "must differ"
 }
@@ -194,7 +194,7 @@ b: ${PROJECT_NAME}'
   export INPUT_PATH="$INPUT_DIR/test.yaml"
   export OUTPUT_PATH="$OUTPUT_DIR/test.yaml"
 
-  run "$SCRIPTS_DIR/substitute-shell-style-vars"
+  run "$PLUGINS_DIR/token-substitution-providers/substitute-shell-style-tokens"
   [ "$status" -eq 0 ]
 
   # Should NOT be substituted - different variable name
@@ -210,7 +210,7 @@ label: ${version}'
   export INPUT_PATH="$INPUT_DIR/test.yaml"
   export OUTPUT_PATH="$OUTPUT_DIR/test.yaml"
 
-  run "$SCRIPTS_DIR/substitute-shell-style-vars"
+  run "$PLUGINS_DIR/token-substitution-providers/substitute-shell-style-tokens"
   [ "$status" -eq 0 ]
 
   grep -q "name: 1.2.3" "$OUTPUT_DIR/test.yaml"
@@ -224,7 +224,7 @@ label: ${version}'
   export INPUT_PATH="$INPUT_DIR/test.yaml"
   export OUTPUT_PATH="$OUTPUT_DIR/test.yaml"
 
-  run "$SCRIPTS_DIR/substitute-shell-style-vars"
+  run "$PLUGINS_DIR/token-substitution-providers/substitute-shell-style-tokens"
   [ "$status" -ne 0 ]
 }
 
@@ -235,7 +235,7 @@ kebab: ${project-name}'
   export INPUT_PATH="$INPUT_DIR/test.yaml"
   export OUTPUT_PATH="$OUTPUT_DIR/test.yaml"
 
-  run "$SCRIPTS_DIR/substitute-shell-style-vars"
+  run "$PLUGINS_DIR/token-substitution-providers/substitute-shell-style-tokens"
   [ "$status" -eq 0 ]
 
   grep -q "upper: app1" "$OUTPUT_DIR/test.yaml"

@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2025 Kaptain contributors (Fred Cooke)
 #
-# substitute-shell-style-var - Substitutes a single shell-style ${VAR} variable in files
+# substitute-shell-style-token - Substitutes a single shell-style ${TOKEN} in files
 #
 # This script is DUMB - it does literal find-replace of ${VAR_NAME} with value.
 # No case conversion, no intelligence. Caller is responsible for translating

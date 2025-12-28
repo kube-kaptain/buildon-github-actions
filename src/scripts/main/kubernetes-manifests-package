@@ -121,8 +121,8 @@ translate_var_name() {
 
 # Validate token style and get substitution script name
 get_substitution_script() {
-  local script_name="substitute-${SUBSTITUTION_TOKEN_STYLE}-style-vars"
-  local script_path="$SCRIPT_DIR/$script_name"
+  local script_name="substitute-${SUBSTITUTION_TOKEN_STYLE}-style-tokens"
+  local script_path="$SCRIPT_DIR/../plugins/token-substitution-providers/$script_name"
 
   if [[ ! -x "$script_path" ]]; then
     echo "${LOG_ERROR_PREFIX}Unknown substitution token style: $SUBSTITUTION_TOKEN_STYLE (script not found: $script_name)${LOG_ERROR_SUFFIX}" >&2
