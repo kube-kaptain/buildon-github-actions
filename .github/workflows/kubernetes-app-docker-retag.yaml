@@ -167,11 +167,14 @@ on:
         value: ${{ jobs.build.outputs.docker-image-pushed }}
       # Manifest package outputs
       manifests-zip-path:
-        description: 'Path to manifests zip file'
+        description: 'Directory containing manifests zip file'
         value: ${{ jobs.build.outputs.manifests-zip-path }}
       manifests-zip-name:
         description: 'Name of manifests zip file'
         value: ${{ jobs.build.outputs.manifests-zip-name }}
+      manifests-zip-full-path:
+        description: 'Full path to manifests zip file'
+        value: ${{ jobs.build.outputs.manifests-zip-full-path }}
       # Manifest repo provider publish outputs
       manifests-uri:
         description: 'Reference to published manifests (format depends on repo provider)'
@@ -286,6 +289,7 @@ jobs:
       docker-image-pushed: ${{ steps.docker-push.outputs.image-pushed }}
       manifests-zip-path: ${{ steps.manifest-package.outputs.manifests-zip-path }}
       manifests-zip-name: ${{ steps.manifest-package.outputs.manifests-zip-name }}
+      manifests-zip-full-path: ${{ steps.manifest-package.outputs.manifests-zip-full-path }}
       manifests-uri: ${{ steps.manifest-repo-provider-publish.outputs.manifests-uri }}
       manifests-published: ${{ steps.manifest-repo-provider-publish.outputs.manifests-published }}
     steps:
@@ -489,7 +493,7 @@ jobs:
         uses: ./.github/buildon-github-actions/src/actions/kubernetes-manifests-repo-provider-package
         with:
           manifests-repo-provider-type: ${{ inputs.manifests-repo-provider-type }}
-          manifests-zip-path: ${{ steps.manifest-package.outputs.manifests-zip-path }}
+          manifests-zip-full-path: ${{ steps.manifest-package.outputs.manifests-zip-full-path }}
           manifests-zip-name: ${{ steps.manifest-package.outputs.manifests-zip-name }}
           target-registry: ${{ inputs.target-registry }}
           target-base-path: ${{ inputs.target-base-path }}

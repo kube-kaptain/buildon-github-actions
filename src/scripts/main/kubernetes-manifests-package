@@ -17,8 +17,9 @@
 #                               Options: UPPER_SNAKE, lower_snake, kebab-case, camelCase, PascalCase
 #
 # Outputs:
-#   MANIFESTS_ZIP_PATH - Full path to created zip file
+#   MANIFESTS_ZIP_PATH - Directory containing the zip file
 #   MANIFESTS_ZIP_NAME - Filename of zip
+#   MANIFESTS_ZIP_FULL_PATH - Full path to zip file (directory + filename)
 #
 set -euo pipefail
 
@@ -241,15 +242,16 @@ main() {
     echo "No substitutions made" >&2
   fi
 
-  # Generate zip filename
+  # Generate zip filename and paths
   local zip_name="${PROJECT_NAME}-${VERSION}-manifests.zip"
-  local zip_path
+  local zip_dir zip_full_path
   # Convert to absolute path
-  zip_path="$(cd "$MANIFESTS_ZIP_PATH" && pwd)/${zip_name}"
+  zip_dir="$(cd "$MANIFESTS_ZIP_PATH" && pwd)"
+  zip_full_path="${zip_dir}/${zip_name}"
 
   # Create zip with project-name wrapper directory
   echo "" >&2
-  echo "Creating zip: $zip_path" >&2
+  echo "Creating zip: $zip_full_path" >&2
 
   # Create staging directory
   local staging_dir="$OUTPUT_PATH/manifests/zip-staging"
@@ -257,23 +259,24 @@ main() {
   cp -R "$MANIFESTS_SUBSTITUTED_PATH"/* "$staging_dir/${PROJECT_NAME}/"
 
   # Create zip
-  (cd "$staging_dir" && zip -rq "$zip_path" "${PROJECT_NAME}")
+  (cd "$staging_dir" && zip -rq "$zip_full_path" "${PROJECT_NAME}")
 
   # Clean up staging
   rm -rf "$staging_dir"
 
   # Verify zip was created
-  if [[ ! -f "$zip_path" ]]; then
+  if [[ ! -f "$zip_full_path" ]]; then
     echo "${LOG_ERROR_PREFIX}Failed to create zip file${LOG_ERROR_SUFFIX}" >&2
     exit 1
   fi
 
   local zip_size
-  zip_size=$(wc -c < "$zip_path" | tr -d ' ')
+  zip_size=$(wc -c < "$zip_full_path" | tr -d ' ')
   echo "Created: $zip_name ($zip_size bytes)" >&2
 
-  output_var "MANIFESTS_ZIP_PATH" "$zip_path"
+  output_var "MANIFESTS_ZIP_PATH" "$zip_dir"
   output_var "MANIFESTS_ZIP_NAME" "$zip_name"
+  output_var "MANIFESTS_ZIP_FULL_PATH" "$zip_full_path"
 
   echo "" >&2
   echo "=== Package Complete ===" >&2

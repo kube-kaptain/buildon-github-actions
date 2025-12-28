@@ -39,11 +39,14 @@ inputs:
 
 outputs:
   manifests-zip-path:
-    description: 'Full path to created zip file'
+    description: 'Directory containing the zip file'
     value: ${{ steps.package.outputs.MANIFESTS_ZIP_PATH }}
   manifests-zip-name:
     description: 'Filename of the zip'
     value: ${{ steps.package.outputs.MANIFESTS_ZIP_NAME }}
+  manifests-zip-full-path:
+    description: 'Full path to created zip file (directory + filename)'
+    value: ${{ steps.package.outputs.MANIFESTS_ZIP_FULL_PATH }}
 
 runs:
   using: 'composite'

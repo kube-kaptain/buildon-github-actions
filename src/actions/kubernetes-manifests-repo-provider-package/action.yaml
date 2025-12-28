@@ -9,8 +9,8 @@ inputs:
   manifests-repo-provider-type:
     description: 'Manifests repo provider type (required): docker, github-release'
     required: true
-  manifests-zip-path:
-    description: 'Path to the manifests zip file'
+  manifests-zip-full-path:
+    description: 'Full path to the manifests zip file (directory + filename)'
     required: true
   manifests-zip-name:
     description: 'Filename for the manifests zip (required for github-release)'
@@ -81,7 +81,7 @@ runs:
       env:
         LOG_ERROR_PREFIX: '::error::'
         MANIFESTS_REPO_PROVIDER_TYPE: ${{ inputs.manifests-repo-provider-type }}
-        MANIFESTS_ZIP_PATH: ${{ inputs.manifests-zip-path }}
+        MANIFESTS_ZIP_PATH: ${{ inputs.manifests-zip-full-path }}
         MANIFESTS_ZIP_NAME: ${{ inputs.manifests-zip-name }}
         OUTPUT_PATH: ${{ inputs.output-path }}
         TARGET_REGISTRY: ${{ inputs.target-registry }}

@@ -46,7 +46,8 @@ Kubernetes App - Manifests Only
 | `docker-image-name` | Docker image name |
 | `project-name` | The repository/project name |
 | `is-release` | Whether this is a release build |
-| `manifests-zip-path` | Path to manifests zip file |
+| `manifests-zip-path` | Directory containing manifests zip file |
 | `manifests-zip-name` | Name of manifests zip file |
+| `manifests-zip-full-path` | Full path to manifests zip file |
 | `manifests-uri` | Reference to published manifests (format depends on repo provider) |
 | `manifests-published` | Whether manifests were published |
