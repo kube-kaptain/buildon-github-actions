@@ -402,6 +402,14 @@ jobs:
           check-run-id: ${{ steps.check-versions.outputs.check-run-id }}
 
       # === Manifest Package ===
+      # Compute target registry and base path for manifests-only workflows (no docker build step)
+      # Uses same step id as docker-build so manifest-package can use consistent output reference
+      - name: Resolve target registry and base path
+        id: docker-build
+        uses: ./.github/buildon-github-actions/src/actions/resolve-target-registry-and-base-path
+        with:
+          target-registry: ${{ inputs.target-registry }}
+          target-base-path: ${{ inputs.target-base-path }}
       - name: Start check - Package Manifests
         id: check-manifest-package
         uses: ./.github/buildon-github-actions/src/actions/github-check-run
@@ -418,8 +426,8 @@ jobs:
           docker-tag: ${{ steps.versions.outputs.docker-tag }}
           docker-image-name: ${{ steps.versions.outputs.docker-image-name }}
           docker-image-full-uri: ${{ steps.docker-build.outputs.target-image-full-uri }}
-          target-registry: ${{ inputs.target-registry }}
-          target-base-path: ${{ inputs.target-base-path }}
+          target-registry: ${{ steps.docker-build.outputs.target-registry }}
+          target-base-path: ${{ steps.docker-build.outputs.target-base-path }}
           is-release: ${{ steps.versions.outputs.is-release }}
           substitution-token-style: ${{ inputs.substitution-token-style }}
           token-name-style: ${{ inputs.token-name-style }}
@@ -460,8 +468,8 @@ jobs:
           manifests-repo-provider-type: ${{ inputs.manifests-repo-provider-type }}
           manifests-zip-full-path: ${{ steps.manifest-package.outputs.manifests-zip-full-path }}
           manifests-zip-name: ${{ steps.manifest-package.outputs.manifests-zip-name }}
-          target-registry: ${{ inputs.target-registry }}
-          target-base-path: ${{ inputs.target-base-path }}
+          target-registry: ${{ steps.docker-build.outputs.target-registry }}
+          target-base-path: ${{ steps.docker-build.outputs.target-base-path }}
           target-image-name: ${{ steps.versions.outputs.docker-image-name }}
           docker-tag: ${{ steps.versions.outputs.docker-tag }}-manifests
           confirm-image-doesnt-exist: ${{ inputs.confirm-image-doesnt-exist }}

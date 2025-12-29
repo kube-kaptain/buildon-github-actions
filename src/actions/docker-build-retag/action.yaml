@@ -41,20 +41,22 @@ outputs:
   target-image-full-uri:
     description: 'Full target image reference'
     value: ${{ steps.retag.outputs.TARGET_IMAGE_FULL_URI }}
+  target-registry:
+    description: 'Resolved target registry (for passing to manifest-package)'
+    value: ${{ steps.resolve.outputs.target-registry }}
+  target-base-path:
+    description: 'Computed target base path (for passing to manifest-package)'
+    value: ${{ steps.resolve.outputs.target-base-path }}
 
 runs:
   using: 'composite'
   steps:
-    - name: Compute target base path
-      id: base-path
-      shell: bash
-      run: |
-        # Auto-set base path for GHCR if not explicitly provided
-        if [[ "${{ inputs.target-registry }}" == "ghcr.io" && -z "${{ inputs.target-base-path }}" ]]; then
-          echo "path=${{ github.repository_owner }}" >> "$GITHUB_OUTPUT"
-        else
-          echo "path=${{ inputs.target-base-path }}" >> "$GITHUB_OUTPUT"
-        fi
+    - name: Resolve target registry and base path
+      id: resolve
+      uses: ./.github/buildon-github-actions/src/actions/resolve-target-registry-and-base-path
+      with:
+        target-registry: ${{ inputs.target-registry }}
+        target-base-path: ${{ inputs.target-base-path }}
 
     - name: Pull and retag
       id: retag
@@ -64,8 +66,8 @@ runs:
         SOURCE_REGISTRY: ${{ inputs.source-registry }}
         SOURCE_IMAGE_NAME: ${{ inputs.source-image-name }}
         SOURCE_TAG: ${{ inputs.source-tag }}
-        TARGET_REGISTRY: ${{ inputs.target-registry }}
-        TARGET_BASE_PATH: ${{ steps.base-path.outputs.path }}
+        TARGET_REGISTRY: ${{ steps.resolve.outputs.target-registry }}
+        TARGET_BASE_PATH: ${{ steps.resolve.outputs.target-base-path }}
         TARGET_IMAGE_NAME: ${{ inputs.target-image-name }}
         DOCKER_TAG: ${{ inputs.docker-tag }}
         CONFIRM_IMAGE_DOESNT_EXIST: ${{ inputs.confirm-image-doesnt-exist }}

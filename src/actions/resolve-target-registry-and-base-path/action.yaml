@@ -1,0 +1,46 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025 Kaptain contributors (Fred Cooke)
+
+name: 'Resolve Target Registry and Base Path'
+description: 'Resolves target registry (defaults to ghcr.io) and computes base path (auto-detects org for GHCR)'
+author: 'kube-kaptain'
+
+inputs:
+  target-registry:
+    description: 'Target container registry (defaults to ghcr.io if empty)'
+    required: false
+    default: ''
+  target-base-path:
+    description: 'Path between registry and image name (auto-set to org for GHCR if empty)'
+    required: false
+    default: ''
+
+outputs:
+  target-registry:
+    description: 'Resolved target registry'
+    value: ${{ steps.resolve.outputs.target-registry }}
+  target-base-path:
+    description: 'Computed target base path'
+    value: ${{ steps.resolve.outputs.target-base-path }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Resolve target registry and base path
+      id: resolve
+      shell: bash
+      run: |
+        # Use provided registry or default to ghcr.io
+        if [[ -n "${{ inputs.target-registry }}" ]]; then
+          RESOLVED_REGISTRY="${{ inputs.target-registry }}"
+        else
+          RESOLVED_REGISTRY="ghcr.io"
+        fi
+        echo "target-registry=$RESOLVED_REGISTRY" >> "$GITHUB_OUTPUT"
+
+        # Auto-set base path for GHCR if not explicitly provided
+        if [[ "$RESOLVED_REGISTRY" == "ghcr.io" && -z "${{ inputs.target-base-path }}" ]]; then
+          echo "target-base-path=${{ github.repository_owner }}" >> "$GITHUB_OUTPUT"
+        else
+          echo "target-base-path=${{ inputs.target-base-path }}" >> "$GITHUB_OUTPUT"
+        fi

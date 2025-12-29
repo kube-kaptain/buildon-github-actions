@@ -226,6 +226,7 @@ jobs:
       # INJECT: github-check-end(name="Versions & Naming", id="check-versions")
 
       # === Manifest Package ===
+      # INJECT: compute-target-base-path
       # INJECT: github-check-start(name="Package Manifests", id="check-manifest-package")
       # INJECT: manifest-package
       # INJECT: github-check-end(name="Package Manifests", id="check-manifest-package")
