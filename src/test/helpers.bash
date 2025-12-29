@@ -198,3 +198,230 @@ assert_docker_not_called() {
     return 1
   fi
 }
+
+# Set up mock npm that logs calls
+setup_mock_npm() {
+  export MOCK_NPM_CALLS=$(mktemp)
+  mkdir -p "$MOCK_BIN_DIR"
+  cat > "$MOCK_BIN_DIR/npm" << 'MOCKNPM'
+#!/usr/bin/env bash
+echo "$*" >> "$MOCK_NPM_CALLS"
+if [[ "$1" == "pack" ]]; then
+  # Create a fake tarball and output its name
+  tarball_name="package-1.0.0.tgz"
+  touch "$tarball_name"
+  echo "$tarball_name"
+  exit 0
+fi
+if [[ "$1" == "publish" ]]; then
+  exit 0
+fi
+exit 0
+MOCKNPM
+  chmod +x "$MOCK_BIN_DIR/npm"
+  export PATH="$MOCK_BIN_DIR:$PATH"
+}
+
+# Clean up mock npm
+cleanup_mock_npm() {
+  rm -f "$MOCK_NPM_CALLS"
+  rm -f "$MOCK_BIN_DIR/npm"
+}
+
+# Assert npm was called with specific args
+assert_npm_called() {
+  local expected="$1"
+  if ! grep -q -- "$expected" "$MOCK_NPM_CALLS" 2>/dev/null; then
+    echo "Expected npm to be called with: $expected"
+    echo "Actual calls:"
+    cat "$MOCK_NPM_CALLS" 2>/dev/null || echo "(none)"
+    return 1
+  fi
+}
+
+# Assert npm was NOT called with specific args
+assert_npm_not_called() {
+  local unexpected="$1"
+  if grep -q "$unexpected" "$MOCK_NPM_CALLS" 2>/dev/null; then
+    echo "Expected npm NOT to be called with: $unexpected"
+    echo "Actual calls:"
+    cat "$MOCK_NPM_CALLS"
+    return 1
+  fi
+}
+
+# Set up mock gem that logs calls
+setup_mock_gem() {
+  export MOCK_GEM_CALLS=$(mktemp)
+  mkdir -p "$MOCK_BIN_DIR"
+  cat > "$MOCK_BIN_DIR/gem" << 'MOCKGEM'
+#!/usr/bin/env bash
+echo "$*" >> "$MOCK_GEM_CALLS"
+if [[ "$1" == "build" ]]; then
+  # Extract gem name from gemspec path
+  gemspec_path="$2"
+  gemspec_name=$(basename "$gemspec_path" .gemspec)
+  # Create a fake .gem file in current directory
+  gem_file="${gemspec_name}-1.0.0.gem"
+  touch "$gem_file"
+  echo "  Successfully built RubyGem"
+  echo "  Name: $gemspec_name"
+  echo "  Version: 1.0.0"
+  echo "  File: $gem_file"
+  exit 0
+fi
+if [[ "$1" == "push" ]]; then
+  exit 0
+fi
+exit 0
+MOCKGEM
+  chmod +x "$MOCK_BIN_DIR/gem"
+  export PATH="$MOCK_BIN_DIR:$PATH"
+}
+
+# Clean up mock gem
+cleanup_mock_gem() {
+  rm -f "$MOCK_GEM_CALLS"
+  rm -f "$MOCK_BIN_DIR/gem"
+}
+
+# Assert gem was called with specific args
+assert_gem_called() {
+  local expected="$1"
+  if ! grep -q -- "$expected" "$MOCK_GEM_CALLS" 2>/dev/null; then
+    echo "Expected gem to be called with: $expected"
+    echo "Actual calls:"
+    cat "$MOCK_GEM_CALLS" 2>/dev/null || echo "(none)"
+    return 1
+  fi
+}
+
+# Assert gem was NOT called with specific args
+assert_gem_not_called() {
+  local unexpected="$1"
+  if grep -q "$unexpected" "$MOCK_GEM_CALLS" 2>/dev/null; then
+    echo "Expected gem NOT to be called with: $unexpected"
+    echo "Actual calls:"
+    cat "$MOCK_GEM_CALLS"
+    return 1
+  fi
+}
+
+# Set up mock mvn that logs calls
+setup_mock_mvn() {
+  export MOCK_MVN_CALLS=$(mktemp)
+  mkdir -p "$MOCK_BIN_DIR"
+  cat > "$MOCK_BIN_DIR/mvn" << 'MOCKMVN'
+#!/usr/bin/env bash
+echo "$*" >> "$MOCK_MVN_CALLS"
+if [[ "$1" == "deploy:deploy-file" ]]; then
+  echo "[INFO] BUILD SUCCESS"
+  exit 0
+fi
+exit 0
+MOCKMVN
+  chmod +x "$MOCK_BIN_DIR/mvn"
+  export PATH="$MOCK_BIN_DIR:$PATH"
+}
+
+# Clean up mock mvn
+cleanup_mock_mvn() {
+  rm -f "$MOCK_MVN_CALLS"
+  rm -f "$MOCK_BIN_DIR/mvn"
+}
+
+# Assert mvn was called with specific args
+assert_mvn_called() {
+  local expected="$1"
+  if ! grep -q -- "$expected" "$MOCK_MVN_CALLS" 2>/dev/null; then
+    echo "Expected mvn to be called with: $expected"
+    echo "Actual calls:"
+    cat "$MOCK_MVN_CALLS" 2>/dev/null || echo "(none)"
+    return 1
+  fi
+}
+
+# Assert mvn was NOT called with specific args
+assert_mvn_not_called() {
+  local unexpected="$1"
+  if grep -q "$unexpected" "$MOCK_MVN_CALLS" 2>/dev/null; then
+    echo "Expected mvn NOT to be called with: $unexpected"
+    echo "Actual calls:"
+    cat "$MOCK_MVN_CALLS"
+    return 1
+  fi
+}
+
+# Set up mock nuget that logs calls
+setup_mock_nuget() {
+  export MOCK_NUGET_CALLS=$(mktemp)
+  mkdir -p "$MOCK_BIN_DIR"
+  # Mock nuget command
+  cat > "$MOCK_BIN_DIR/nuget" << 'MOCKNUGET'
+#!/usr/bin/env bash
+echo "nuget $*" >> "$MOCK_NUGET_CALLS"
+if [[ "$1" == "pack" ]]; then
+  # Extract package ID from nuspec path
+  nuspec_path="$2"
+  nuspec_name=$(basename "$nuspec_path" .nuspec)
+  # Create a fake .nupkg file in current directory
+  nupkg_file="${nuspec_name}.1.0.0.nupkg"
+  touch "$nupkg_file"
+  echo "Successfully created package '$nupkg_file'"
+  exit 0
+fi
+exit 0
+MOCKNUGET
+  chmod +x "$MOCK_BIN_DIR/nuget"
+  # Mock dotnet command
+  cat > "$MOCK_BIN_DIR/dotnet" << 'MOCKDOTNET'
+#!/usr/bin/env bash
+echo "dotnet $*" >> "$MOCK_NUGET_CALLS"
+if [[ "$1" == "nuget" && "$2" == "push" ]]; then
+  echo "Pushing package..."
+  exit 0
+fi
+if [[ "$1" == "pack" ]]; then
+  # Extract package ID from nuspec path
+  nuspec_path="$2"
+  nuspec_name=$(basename "$nuspec_path" .nuspec)
+  # Create a fake .nupkg file in output directory
+  nupkg_file="${nuspec_name}.1.0.0.nupkg"
+  touch "$nupkg_file"
+  echo "Successfully created package '$nupkg_file'"
+  exit 0
+fi
+exit 0
+MOCKDOTNET
+  chmod +x "$MOCK_BIN_DIR/dotnet"
+  export PATH="$MOCK_BIN_DIR:$PATH"
+}
+
+# Clean up mock nuget
+cleanup_mock_nuget() {
+  rm -f "$MOCK_NUGET_CALLS"
+  rm -f "$MOCK_BIN_DIR/nuget"
+  rm -f "$MOCK_BIN_DIR/dotnet"
+}
+
+# Assert nuget/dotnet was called with specific args
+assert_nuget_called() {
+  local expected="$1"
+  if ! grep -q -- "$expected" "$MOCK_NUGET_CALLS" 2>/dev/null; then
+    echo "Expected nuget/dotnet to be called with: $expected"
+    echo "Actual calls:"
+    cat "$MOCK_NUGET_CALLS" 2>/dev/null || echo "(none)"
+    return 1
+  fi
+}
+
+# Assert nuget/dotnet was NOT called with specific args
+assert_nuget_not_called() {
+  local unexpected="$1"
+  if grep -q "$unexpected" "$MOCK_NUGET_CALLS" 2>/dev/null; then
+    echo "Expected nuget/dotnet NOT to be called with: $unexpected"
+    echo "Actual calls:"
+    cat "$MOCK_NUGET_CALLS"
+    return 1
+  fi
+}

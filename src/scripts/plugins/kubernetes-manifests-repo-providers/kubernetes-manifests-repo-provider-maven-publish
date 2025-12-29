@@ -1,0 +1,139 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025 Kaptain contributors (Fred Cooke)
+#
+# kubernetes-manifests-repo-provider-maven-publish - Publishes manifests to Maven registry
+#
+# Deploys a zip file to a Maven registry using mvn deploy:deploy-file.
+# This script ONLY publishes - the artifact must already exist.
+# Pair with kubernetes-manifests-repo-provider-maven-package.
+#
+# Inputs (environment variables):
+#   MANIFESTS_ARTIFACT_PATH   - Path to artifact (required, from package step)
+#   MANIFESTS_URI             - Maven coordinates (required, from package step)
+#   MAVEN_GROUP_ID            - Maven groupId (required, from package step)
+#   MAVEN_ARTIFACT_ID         - Maven artifactId (required, from package step)
+#   VERSION                   - Artifact version (required)
+#   REGISTRY_REPO             - Repository path for registry URL (required, e.g., owner/repo)
+#   REGISTRY_URL              - Maven registry URL (required)
+#   AUTH_TOKEN                - For Maven registry authentication (optional, uses pre-configured auth if not set)
+#   AUTH_USERNAME             - Username for authentication (required if AUTH_TOKEN set)
+#   IS_RELEASE                - "true" to actually publish (default: false)
+#
+# Outputs:
+#   MANIFESTS_URI             - Maven coordinates (same as input)
+#   MANIFESTS_PUBLISHED       - "true" if published, "false" if skipped
+#
+set -euo pipefail
+
+# Logging configuration (CI-agnostic)
+LOG_ERROR_PREFIX="${LOG_ERROR_PREFIX:-}"
+LOG_ERROR_SUFFIX="${LOG_ERROR_SUFFIX:-}"
+
+# Required inputs
+MANIFESTS_ARTIFACT_PATH="${MANIFESTS_ARTIFACT_PATH:?MANIFESTS_ARTIFACT_PATH is required}"
+MANIFESTS_URI="${MANIFESTS_URI:?MANIFESTS_URI is required}"
+MAVEN_GROUP_ID="${MAVEN_GROUP_ID:?MAVEN_GROUP_ID is required}"
+MAVEN_ARTIFACT_ID="${MAVEN_ARTIFACT_ID:?MAVEN_ARTIFACT_ID is required}"
+VERSION="${VERSION:?VERSION is required}"
+REGISTRY_REPO="${REGISTRY_REPO:?REGISTRY_REPO is required}"
+
+# Required inputs
+REGISTRY_URL="${REGISTRY_URL:?REGISTRY_URL is required}"
+
+# Optional inputs with defaults
+IS_RELEASE="${IS_RELEASE:-false}"
+
+output_var() {
+  local name="$1"
+  local value="$2"
+
+  echo "${name}=${value}"
+
+  if [[ -n "${GITHUB_OUTPUT:-}" ]]; then
+    echo "${name}=${value}" >> "$GITHUB_OUTPUT"
+  fi
+}
+
+main() {
+  echo "=== Kubernetes Manifests Repo Provider Publish: Maven ===" >&2
+  echo "Artifact to publish: $MANIFESTS_ARTIFACT_PATH" >&2
+  echo "URI: $MANIFESTS_URI" >&2
+  echo "===========================================================" >&2
+
+  # Verify artifact exists
+  if [[ ! -f "$MANIFESTS_ARTIFACT_PATH" ]]; then
+    echo "${LOG_ERROR_PREFIX}Artifact not found: $MANIFESTS_ARTIFACT_PATH${LOG_ERROR_SUFFIX}" >&2
+    echo "Did you run kubernetes-manifests-repo-provider-maven-package first?" >&2
+    exit 1
+  fi
+
+  # Publish if release
+  if [[ "$IS_RELEASE" == "true" ]]; then
+    # Check mvn is available
+    if ! command -v mvn &>/dev/null; then
+      echo "${LOG_ERROR_PREFIX}mvn is required but not found in PATH${LOG_ERROR_SUFFIX}" >&2
+      exit 1
+    fi
+
+    echo "Publishing to: $REGISTRY_URL" >&2
+
+    # If AUTH_TOKEN provided, create settings.xml with explicit auth
+    # Otherwise, rely on pre-configured Maven settings (e.g., CI system's auth)
+    if [[ -n "${AUTH_TOKEN:-}" ]]; then
+      if [[ -z "${AUTH_USERNAME:-}" ]]; then
+        echo "${LOG_ERROR_PREFIX}AUTH_USERNAME is required when AUTH_TOKEN is set${LOG_ERROR_SUFFIX}" >&2
+        exit 1
+      fi
+
+      local temp_settings
+      temp_settings=$(mktemp)
+      cat > "$temp_settings" <<EOF
+<settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"
+          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+          xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0
+                              https://maven.apache.org/xsd/settings-1.0.0.xsd">
+  <servers>
+    <server>
+      <id>registry</id>
+      <username>${AUTH_USERNAME}</username>
+      <password>${AUTH_TOKEN}</password>
+    </server>
+  </servers>
+</settings>
+EOF
+
+      mvn deploy:deploy-file \
+        -s "$temp_settings" \
+        -DgroupId="$MAVEN_GROUP_ID" \
+        -DartifactId="$MAVEN_ARTIFACT_ID" \
+        -Dversion="$VERSION" \
+        -Dpackaging=zip \
+        -Dfile="$MANIFESTS_ARTIFACT_PATH" \
+        -DrepositoryId=registry \
+        -Durl="$REGISTRY_URL"
+
+      rm -f "$temp_settings"
+    else
+      # Use existing Maven settings (CI may have pre-configured auth)
+      mvn deploy:deploy-file \
+        -DgroupId="$MAVEN_GROUP_ID" \
+        -DartifactId="$MAVEN_ARTIFACT_ID" \
+        -Dversion="$VERSION" \
+        -Dpackaging=zip \
+        -Dfile="$MANIFESTS_ARTIFACT_PATH" \
+        -Durl="$REGISTRY_URL"
+    fi
+
+    output_var "MANIFESTS_PUBLISHED" "true"
+  else
+    echo "Skipping publish (IS_RELEASE=$IS_RELEASE)" >&2
+    output_var "MANIFESTS_PUBLISHED" "false"
+  fi
+
+  output_var "MANIFESTS_URI" "$MANIFESTS_URI"
+
+  echo "Kubernetes Manifests Repo Provider Publish: Maven complete" >&2
+}
+
+main "$@"

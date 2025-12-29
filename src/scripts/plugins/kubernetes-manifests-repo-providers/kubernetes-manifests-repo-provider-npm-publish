@@ -1,0 +1,111 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025 Kaptain contributors (Fred Cooke)
+#
+# kubernetes-manifests-repo-provider-npm-publish - Publishes previously packaged npm package
+#
+# Publishes an npm tarball to an npm registry that was created by
+# kubernetes-manifests-repo-provider-npm-package.
+# This script ONLY publishes - the tarball must already exist.
+#
+# Inputs (environment variables):
+#   MANIFESTS_ARTIFACT_PATH - Path to npm tarball (required, from package step)
+#   MANIFESTS_URI           - npm package reference (required, from package step)
+#   REGISTRY_OWNER          - Package scope/owner (required)
+#   REGISTRY_URL            - npm registry URL (required)
+#   AUTH_TOKEN              - For npm registry authentication (optional, uses pre-configured auth if not set)
+#   IS_RELEASE              - "true" to actually publish (default: false)
+#
+# Outputs:
+#   MANIFESTS_URI             - npm package reference (same as input)
+#   MANIFESTS_PUBLISHED       - "true" if published, "false" if skipped
+#
+set -euo pipefail
+
+# Logging configuration (CI-agnostic)
+LOG_ERROR_PREFIX="${LOG_ERROR_PREFIX:-}"
+LOG_ERROR_SUFFIX="${LOG_ERROR_SUFFIX:-}"
+
+# Required inputs
+MANIFESTS_ARTIFACT_PATH="${MANIFESTS_ARTIFACT_PATH:?MANIFESTS_ARTIFACT_PATH is required}"
+MANIFESTS_URI="${MANIFESTS_URI:?MANIFESTS_URI is required}"
+REGISTRY_OWNER="${REGISTRY_OWNER:?REGISTRY_OWNER is required}"
+
+# Required inputs
+REGISTRY_URL="${REGISTRY_URL:?REGISTRY_URL is required}"
+
+# Optional inputs with defaults
+IS_RELEASE="${IS_RELEASE:-false}"
+
+# Normalize owner to lowercase (npm requires lowercase scope)
+OWNER_LOWER=$(echo "$REGISTRY_OWNER" | tr '[:upper:]' '[:lower:]')
+
+output_var() {
+  local name="$1"
+  local value="$2"
+
+  echo "${name}=${value}"
+
+  if [[ -n "${GITHUB_OUTPUT:-}" ]]; then
+    echo "${name}=${value}" >> "$GITHUB_OUTPUT"
+  fi
+}
+
+main() {
+  echo "=== Kubernetes Manifests Repo Provider Publish: npm ===" >&2
+  echo "Package to publish: $MANIFESTS_ARTIFACT_PATH" >&2
+  echo "URI: $MANIFESTS_URI" >&2
+  echo "========================================================" >&2
+
+  # Check npm is available
+  if ! command -v npm &>/dev/null; then
+    echo "${LOG_ERROR_PREFIX}npm is required but not found in PATH${LOG_ERROR_SUFFIX}" >&2
+    exit 1
+  fi
+
+  # Verify tarball exists
+  if [[ ! -f "$MANIFESTS_ARTIFACT_PATH" ]]; then
+    echo "${LOG_ERROR_PREFIX}npm tarball not found: $MANIFESTS_ARTIFACT_PATH${LOG_ERROR_SUFFIX}" >&2
+    echo "Did you run kubernetes-manifests-repo-provider-npm-package first?" >&2
+    exit 1
+  fi
+
+  # Publish if release
+  if [[ "$IS_RELEASE" == "true" ]]; then
+    echo "Publishing: $MANIFESTS_URI" >&2
+
+    # If AUTH_TOKEN provided, configure explicit auth
+    # Otherwise, rely on pre-configured credentials (e.g., CI system's auth)
+    if [[ -n "${AUTH_TOKEN:-}" ]]; then
+      # Extract registry host for .npmrc config
+      local registry_host
+      registry_host="${REGISTRY_URL#https://}"
+
+      # Configure npm for registry
+      # Use NPM_CONFIG_USERCONFIG to avoid modifying user's actual .npmrc
+      local temp_npmrc
+      temp_npmrc=$(mktemp)
+      cat > "$temp_npmrc" <<EOF
+@${OWNER_LOWER}:registry=${REGISTRY_URL}
+//${registry_host}/:_authToken=${AUTH_TOKEN}
+EOF
+
+      NPM_CONFIG_USERCONFIG="$temp_npmrc" npm publish "$MANIFESTS_ARTIFACT_PATH"
+      rm -f "$temp_npmrc"
+    else
+      # Use existing npm config (CI may have pre-configured auth)
+      npm publish "$MANIFESTS_ARTIFACT_PATH"
+    fi
+
+    output_var "MANIFESTS_PUBLISHED" "true"
+  else
+    echo "Skipping publish (IS_RELEASE=$IS_RELEASE)" >&2
+    output_var "MANIFESTS_PUBLISHED" "false"
+  fi
+
+  output_var "MANIFESTS_URI" "$MANIFESTS_URI"
+
+  echo "Kubernetes Manifests Repo Provider Publish: npm complete" >&2
+}
+
+main "$@"

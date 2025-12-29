@@ -1,0 +1,94 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025 Kaptain contributors (Fred Cooke)
+#
+# kubernetes-manifests-repo-provider-maven-package - Prepares manifests zip for Maven deployment
+#
+# Prepares the manifests zip for deployment to GitHub Packages Maven registry.
+# Validates inputs and passes them through - actual deployment uses deploy:deploy-file.
+# Pair with kubernetes-manifests-repo-provider-maven-publish.
+#
+# Inputs (environment variables):
+#   MANIFESTS_ZIP_PATH        - Path to zip file (required)
+#   MANIFESTS_ZIP_NAME        - Filename of the zip (required)
+#   PROJECT_NAME              - artifactId (required)
+#   VERSION                   - Artifact version (required)
+#   MAVEN_GROUP_ID            - Maven groupId (required, e.g., io.github.owner)
+#   OUTPUT_PATH               - Build output directory (default: target)
+#
+# Outputs:
+#   MANIFESTS_ARTIFACT_PATH   - Path to the zip file
+#   MANIFESTS_URI             - Maven coordinates (mvn:groupId:artifactId:version:zip)
+#   MAVEN_ARTIFACT_ID         - The artifactId used
+#   MAVEN_GROUP_ID            - The groupId used (pass through)
+#
+set -euo pipefail
+
+# Logging configuration (CI-agnostic)
+LOG_ERROR_PREFIX="${LOG_ERROR_PREFIX:-}"
+LOG_ERROR_SUFFIX="${LOG_ERROR_SUFFIX:-}"
+
+# Required inputs
+MANIFESTS_ZIP_PATH="${MANIFESTS_ZIP_PATH:?MANIFESTS_ZIP_PATH is required}"
+MANIFESTS_ZIP_NAME="${MANIFESTS_ZIP_NAME:?MANIFESTS_ZIP_NAME is required}"
+PROJECT_NAME="${PROJECT_NAME:?PROJECT_NAME is required}"
+VERSION="${VERSION:?VERSION is required}"
+MAVEN_GROUP_ID="${MAVEN_GROUP_ID:?MAVEN_GROUP_ID is required}"
+
+# Optional inputs with defaults
+OUTPUT_PATH="${OUTPUT_PATH:-target}"
+
+# Build output structure
+PUBLISH_PATH="$OUTPUT_PATH/publish/maven"
+
+# Maven artifact ID: project-manifests
+MAVEN_ARTIFACT_ID="${PROJECT_NAME}-manifests"
+
+output_var() {
+  local name="$1"
+  local value="$2"
+
+  echo "${name}=${value}"
+
+  if [[ -n "${GITHUB_OUTPUT:-}" ]]; then
+    echo "${name}=${value}" >> "$GITHUB_OUTPUT"
+  fi
+}
+
+main() {
+  echo "=== Kubernetes Manifests Repo Provider Package: Maven ===" >&2
+  echo "Manifests zip: $MANIFESTS_ZIP_PATH" >&2
+  echo "GroupId: $MAVEN_GROUP_ID" >&2
+  echo "ArtifactId: $MAVEN_ARTIFACT_ID" >&2
+  echo "Version: $VERSION" >&2
+  echo "===========================================================" >&2
+
+  # Validate zip exists
+  if [[ ! -f "$MANIFESTS_ZIP_PATH" ]]; then
+    echo "${LOG_ERROR_PREFIX}Manifests zip not found: $MANIFESTS_ZIP_PATH${LOG_ERROR_SUFFIX}" >&2
+    exit 1
+  fi
+
+  # Create publish build directory
+  rm -rf "$PUBLISH_PATH"
+  mkdir -p "$PUBLISH_PATH"
+
+  # Copy zip to publish dir with standardized name
+  # Maven deploy:deploy-file expects a specific file to attach
+  cp "$MANIFESTS_ZIP_PATH" "$PUBLISH_PATH/$MANIFESTS_ZIP_NAME"
+
+  local artifact_path="$PUBLISH_PATH/$MANIFESTS_ZIP_NAME"
+  echo "Prepared: $MANIFESTS_ZIP_NAME" >&2
+
+  # Maven coordinates URI
+  local maven_uri="mvn:${MAVEN_GROUP_ID}:${MAVEN_ARTIFACT_ID}:${VERSION}:zip"
+
+  output_var "MANIFESTS_ARTIFACT_PATH" "$artifact_path"
+  output_var "MANIFESTS_URI" "$maven_uri"
+  output_var "MAVEN_ARTIFACT_ID" "$MAVEN_ARTIFACT_ID"
+  output_var "MAVEN_GROUP_ID" "$MAVEN_GROUP_ID"
+
+  echo "Kubernetes Manifests Repo Provider Package: Maven complete" >&2
+}
+
+main "$@"

@@ -1,0 +1,96 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025 Kaptain contributors (Fred Cooke)
+#
+# kubernetes-manifests-repo-provider-nuget-publish - Publishes previously packaged NuGet package
+#
+# Publishes a .nupkg file to a NuGet registry that was created by
+# kubernetes-manifests-repo-provider-nuget-package.
+# This script ONLY publishes - the .nupkg file must already exist.
+#
+# Inputs (environment variables):
+#   MANIFESTS_ARTIFACT_PATH   - Path to .nupkg file (required, from package step)
+#   MANIFESTS_URI             - NuGet package reference (required, from package step)
+#   REGISTRY_OWNER            - Package owner for registry URL (required)
+#   REGISTRY_URL              - NuGet registry URL (required)
+#   AUTH_TOKEN                - For NuGet registry authentication (optional, uses pre-configured auth if not set)
+#   IS_RELEASE                - "true" to actually publish (default: false)
+#
+# Outputs:
+#   MANIFESTS_URI             - NuGet package reference (same as input)
+#   MANIFESTS_PUBLISHED       - "true" if published, "false" if skipped
+#
+set -euo pipefail
+
+# Logging configuration (CI-agnostic)
+LOG_ERROR_PREFIX="${LOG_ERROR_PREFIX:-}"
+LOG_ERROR_SUFFIX="${LOG_ERROR_SUFFIX:-}"
+
+# Required inputs
+MANIFESTS_ARTIFACT_PATH="${MANIFESTS_ARTIFACT_PATH:?MANIFESTS_ARTIFACT_PATH is required}"
+MANIFESTS_URI="${MANIFESTS_URI:?MANIFESTS_URI is required}"
+REGISTRY_OWNER="${REGISTRY_OWNER:?REGISTRY_OWNER is required}"
+
+# Required inputs
+REGISTRY_URL="${REGISTRY_URL:?REGISTRY_URL is required}"
+
+# Optional inputs with defaults
+IS_RELEASE="${IS_RELEASE:-false}"
+
+output_var() {
+  local name="$1"
+  local value="$2"
+
+  echo "${name}=${value}"
+
+  if [[ -n "${GITHUB_OUTPUT:-}" ]]; then
+    echo "${name}=${value}" >> "$GITHUB_OUTPUT"
+  fi
+}
+
+main() {
+  echo "=== Kubernetes Manifests Repo Provider Publish: NuGet ===" >&2
+  echo "Package to publish: $MANIFESTS_ARTIFACT_PATH" >&2
+  echo "URI: $MANIFESTS_URI" >&2
+  echo "==========================================================" >&2
+
+  # Verify package exists
+  if [[ ! -f "$MANIFESTS_ARTIFACT_PATH" ]]; then
+    echo "${LOG_ERROR_PREFIX}NuGet package not found: $MANIFESTS_ARTIFACT_PATH${LOG_ERROR_SUFFIX}" >&2
+    echo "Did you run kubernetes-manifests-repo-provider-nuget-package first?" >&2
+    exit 1
+  fi
+
+  # Publish if release
+  if [[ "$IS_RELEASE" == "true" ]]; then
+    # Check dotnet is available
+    if ! command -v dotnet &>/dev/null; then
+      echo "${LOG_ERROR_PREFIX}dotnet is required but not found in PATH${LOG_ERROR_SUFFIX}" >&2
+      exit 1
+    fi
+
+    echo "Publishing to: $REGISTRY_URL" >&2
+
+    # If AUTH_TOKEN provided, use explicit api-key auth
+    # Otherwise, rely on pre-configured NuGet sources (e.g., CI system's auth)
+    if [[ -n "${AUTH_TOKEN:-}" ]]; then
+      dotnet nuget push "$MANIFESTS_ARTIFACT_PATH" \
+        --api-key "$AUTH_TOKEN" \
+        --source "$REGISTRY_URL"
+    else
+      dotnet nuget push "$MANIFESTS_ARTIFACT_PATH" \
+        --source "$REGISTRY_URL"
+    fi
+
+    output_var "MANIFESTS_PUBLISHED" "true"
+  else
+    echo "Skipping publish (IS_RELEASE=$IS_RELEASE)" >&2
+    output_var "MANIFESTS_PUBLISHED" "false"
+  fi
+
+  output_var "MANIFESTS_URI" "$MANIFESTS_URI"
+
+  echo "Kubernetes Manifests Repo Provider Publish: NuGet complete" >&2
+}
+
+main "$@"

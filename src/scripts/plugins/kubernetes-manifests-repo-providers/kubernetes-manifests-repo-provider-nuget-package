@@ -1,0 +1,156 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025 Kaptain contributors (Fred Cooke)
+#
+# kubernetes-manifests-repo-provider-nuget-package - Packages manifests zip as a NuGet package
+#
+# Creates a NuGet package (.nupkg) containing the manifests zip for publishing.
+# Generates a .nuspec and runs nuget pack to create the .nupkg file.
+# Pair with kubernetes-manifests-repo-provider-nuget-publish.
+#
+# Inputs (environment variables):
+#   MANIFESTS_ZIP_PATH        - Path to zip file (required)
+#   MANIFESTS_ZIP_NAME        - Filename of the zip (required)
+#   PROJECT_NAME              - Project name for package (required)
+#   VERSION                   - Package version (required)
+#   REGISTRY_OWNER            - Package owner for naming (required)
+#   HOMEPAGE_URL              - Repository URL for nuspec metadata (optional)
+#   OUTPUT_PATH               - Build output directory (default: target)
+#
+# Outputs:
+#   MANIFESTS_ARTIFACT_PATH   - Path to the .nupkg file
+#   MANIFESTS_URI             - NuGet package reference (nuget:owner.project.manifests:version)
+#
+set -euo pipefail
+
+# Logging configuration (CI-agnostic)
+LOG_ERROR_PREFIX="${LOG_ERROR_PREFIX:-}"
+LOG_ERROR_SUFFIX="${LOG_ERROR_SUFFIX:-}"
+
+# Required inputs
+MANIFESTS_ZIP_PATH="${MANIFESTS_ZIP_PATH:?MANIFESTS_ZIP_PATH is required}"
+MANIFESTS_ZIP_NAME="${MANIFESTS_ZIP_NAME:?MANIFESTS_ZIP_NAME is required}"
+PROJECT_NAME="${PROJECT_NAME:?PROJECT_NAME is required}"
+VERSION="${VERSION:?VERSION is required}"
+REGISTRY_OWNER="${REGISTRY_OWNER:?REGISTRY_OWNER is required}"
+
+# Optional inputs with defaults
+OUTPUT_PATH="${OUTPUT_PATH:-target}"
+HOMEPAGE_URL="${HOMEPAGE_URL:-}"
+
+# Build output structure
+PUBLISH_PATH="$OUTPUT_PATH/publish/nuget"
+
+# NuGet package ID: Owner.ProjectName.Manifests (PascalCase convention)
+# Convert project-name to ProjectName
+to_pascal_case() {
+  local input="$1"
+  local result=""
+  local capitalize=true
+
+  for (( i=0; i<${#input}; i++ )); do
+    local char="${input:$i:1}"
+    if [[ "$char" == "-" || "$char" == "_" ]]; then
+      capitalize=true
+    elif [[ "$capitalize" == "true" ]]; then
+      result+=$(echo "$char" | tr '[:lower:]' '[:upper:]')
+      capitalize=false
+    else
+      result+="$char"
+    fi
+  done
+
+  echo "$result"
+}
+
+OWNER_PASCAL=$(to_pascal_case "$REGISTRY_OWNER")
+PROJECT_PASCAL=$(to_pascal_case "$PROJECT_NAME")
+PACKAGE_ID="${OWNER_PASCAL}.${PROJECT_PASCAL}.Manifests"
+
+output_var() {
+  local name="$1"
+  local value="$2"
+
+  echo "${name}=${value}"
+
+  if [[ -n "${GITHUB_OUTPUT:-}" ]]; then
+    echo "${name}=${value}" >> "$GITHUB_OUTPUT"
+  fi
+}
+
+main() {
+  echo "=== Kubernetes Manifests Repo Provider Package: NuGet ===" >&2
+  echo "Manifests zip: $MANIFESTS_ZIP_PATH" >&2
+  echo "Package ID: $PACKAGE_ID" >&2
+  echo "Version: $VERSION" >&2
+  echo "==========================================================" >&2
+
+  # Check nuget or dotnet is available
+  if ! command -v nuget &>/dev/null && ! command -v dotnet &>/dev/null; then
+    echo "${LOG_ERROR_PREFIX}nuget or dotnet is required but not found in PATH${LOG_ERROR_SUFFIX}" >&2
+    exit 1
+  fi
+
+  # Validate zip exists
+  if [[ ! -f "$MANIFESTS_ZIP_PATH" ]]; then
+    echo "${LOG_ERROR_PREFIX}Manifests zip not found: $MANIFESTS_ZIP_PATH${LOG_ERROR_SUFFIX}" >&2
+    exit 1
+  fi
+
+  # Create publish build directory with content folder
+  rm -rf "$PUBLISH_PATH"
+  mkdir -p "$PUBLISH_PATH/content"
+
+  # Copy zip to content dir
+  cp "$MANIFESTS_ZIP_PATH" "$PUBLISH_PATH/content/$MANIFESTS_ZIP_NAME"
+
+  # Generate .nuspec
+  local repo_line=""
+  if [[ -n "$HOMEPAGE_URL" ]]; then
+    repo_line="    <repository type=\"git\" url=\"${HOMEPAGE_URL}\" />"
+  fi
+
+  cat > "$PUBLISH_PATH/${PACKAGE_ID}.nuspec" <<EOF
+<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2010/07/nuspec.xsd">
+  <metadata>
+    <id>${PACKAGE_ID}</id>
+    <version>${VERSION}</version>
+    <authors>${REGISTRY_OWNER}</authors>
+    <description>Kubernetes manifests for ${PROJECT_NAME}</description>
+${repo_line}
+  </metadata>
+  <files>
+    <file src="content/${MANIFESTS_ZIP_NAME}" target="content/${MANIFESTS_ZIP_NAME}" />
+  </files>
+</package>
+EOF
+
+  echo "Generated nuspec" >&2
+
+  # Run nuget pack to create .nupkg
+  echo "Creating NuGet package..." >&2
+  local nupkg_file="${PACKAGE_ID}.${VERSION}.nupkg"
+
+  if command -v nuget &>/dev/null; then
+    (cd "$PUBLISH_PATH" && nuget pack "${PACKAGE_ID}.nuspec" -OutputDirectory .)
+  else
+    # Use dotnet pack with nuspec
+    (cd "$PUBLISH_PATH" && dotnet pack "${PACKAGE_ID}.nuspec" -o .)
+  fi
+
+  local nupkg_path="$PUBLISH_PATH/$nupkg_file"
+  if [[ ! -f "$nupkg_path" ]]; then
+    echo "${LOG_ERROR_PREFIX}Failed to create NuGet package${LOG_ERROR_SUFFIX}" >&2
+    exit 1
+  fi
+
+  echo "Created: $nupkg_file" >&2
+
+  output_var "MANIFESTS_ARTIFACT_PATH" "$nupkg_path"
+  output_var "MANIFESTS_URI" "nuget:${PACKAGE_ID}:${VERSION}"
+
+  echo "Kubernetes Manifests Repo Provider Package: NuGet complete" >&2
+}
+
+main "$@"

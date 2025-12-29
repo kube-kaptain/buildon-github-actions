@@ -1,0 +1,93 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025 Kaptain contributors (Fred Cooke)
+#
+# kubernetes-manifests-repo-provider-rubygems-publish - Publishes previously packaged RubyGem
+#
+# Publishes a .gem file to a gem registry that was created by
+# kubernetes-manifests-repo-provider-rubygems-package.
+# This script ONLY publishes - the .gem file must already exist.
+#
+# Inputs (environment variables):
+#   MANIFESTS_ARTIFACT_PATH - Path to .gem file (required, from package step)
+#   MANIFESTS_URI           - gem package reference (required, from package step)
+#   REGISTRY_OWNER          - Package namespace/owner (required)
+#   REGISTRY_URL            - gem registry URL (required)
+#   AUTH_TOKEN              - For gem registry authentication (optional, uses pre-configured auth if not set)
+#   IS_RELEASE              - "true" to actually publish (default: false)
+#
+# Outputs:
+#   MANIFESTS_URI             - gem package reference (same as input)
+#   MANIFESTS_PUBLISHED       - "true" if published, "false" if skipped
+#
+set -euo pipefail
+
+# Logging configuration (CI-agnostic)
+LOG_ERROR_PREFIX="${LOG_ERROR_PREFIX:-}"
+LOG_ERROR_SUFFIX="${LOG_ERROR_SUFFIX:-}"
+
+# Required inputs
+MANIFESTS_ARTIFACT_PATH="${MANIFESTS_ARTIFACT_PATH:?MANIFESTS_ARTIFACT_PATH is required}"
+MANIFESTS_URI="${MANIFESTS_URI:?MANIFESTS_URI is required}"
+REGISTRY_OWNER="${REGISTRY_OWNER:?REGISTRY_OWNER is required}"
+
+# Required inputs
+REGISTRY_URL="${REGISTRY_URL:?REGISTRY_URL is required}"
+
+# Optional inputs with defaults
+IS_RELEASE="${IS_RELEASE:-false}"
+
+output_var() {
+  local name="$1"
+  local value="$2"
+
+  echo "${name}=${value}"
+
+  if [[ -n "${GITHUB_OUTPUT:-}" ]]; then
+    echo "${name}=${value}" >> "$GITHUB_OUTPUT"
+  fi
+}
+
+main() {
+  echo "=== Kubernetes Manifests Repo Provider Publish: RubyGems ===" >&2
+  echo "Gem to publish: $MANIFESTS_ARTIFACT_PATH" >&2
+  echo "URI: $MANIFESTS_URI" >&2
+  echo "=============================================================" >&2
+
+  # Check gem is available
+  if ! command -v gem &>/dev/null; then
+    echo "${LOG_ERROR_PREFIX}gem is required but not found in PATH${LOG_ERROR_SUFFIX}" >&2
+    exit 1
+  fi
+
+  # Verify gem file exists
+  if [[ ! -f "$MANIFESTS_ARTIFACT_PATH" ]]; then
+    echo "${LOG_ERROR_PREFIX}gem file not found: $MANIFESTS_ARTIFACT_PATH${LOG_ERROR_SUFFIX}" >&2
+    echo "Did you run kubernetes-manifests-repo-provider-rubygems-package first?" >&2
+    exit 1
+  fi
+
+  # Publish if release
+  if [[ "$IS_RELEASE" == "true" ]]; then
+    echo "Publishing to: $REGISTRY_URL" >&2
+
+    # If AUTH_TOKEN provided, use Bearer auth
+    # Otherwise, rely on pre-configured credentials
+    if [[ -n "${AUTH_TOKEN:-}" ]]; then
+      GEM_HOST_API_KEY="Bearer ${AUTH_TOKEN}" gem push "$MANIFESTS_ARTIFACT_PATH" --host "$REGISTRY_URL"
+    else
+      gem push "$MANIFESTS_ARTIFACT_PATH" --host "$REGISTRY_URL"
+    fi
+
+    output_var "MANIFESTS_PUBLISHED" "true"
+  else
+    echo "Skipping publish (IS_RELEASE=$IS_RELEASE)" >&2
+    output_var "MANIFESTS_PUBLISHED" "false"
+  fi
+
+  output_var "MANIFESTS_URI" "$MANIFESTS_URI"
+
+  echo "Kubernetes Manifests Repo Provider Publish: RubyGems complete" >&2
+}
+
+main "$@"
