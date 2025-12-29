@@ -11,6 +11,10 @@
 #   OUTPUT_PATH     - Build output directory (default: target)
 #   DOCKER_TAG      - Docker tag for substitution (optional)
 #   DOCKER_IMAGE_NAME - Docker image name for substitution (optional)
+#   DOCKER_IMAGE_FULL_URI - Full Docker image URI for substitution (optional)
+#   TARGET_REGISTRY - Target registry for substitution (optional)
+#   TARGET_BASE_PATH - Target base path for substitution (optional)
+#   IS_RELEASE      - Release flag for substitution (optional)
 #   SUBSTITUTION_TOKEN_STYLE - Token delimiter syntax (default: shell)
 #   TOKEN_NAME_STYLE - Case style for token names (default: PascalCase)
 #   TOKEN_NAME_VALIDATION - How to validate user token names (default: MATCH)
@@ -42,6 +46,10 @@ MANIFESTS_PATH="${MANIFESTS_PATH:-src/kubernetes}"
 OUTPUT_PATH="${OUTPUT_PATH:-target}"
 DOCKER_TAG="${DOCKER_TAG:-}"
 DOCKER_IMAGE_NAME="${DOCKER_IMAGE_NAME:-}"
+DOCKER_IMAGE_FULL_URI="${DOCKER_IMAGE_FULL_URI:-}"
+TARGET_REGISTRY="${TARGET_REGISTRY:-}"
+TARGET_BASE_PATH="${TARGET_BASE_PATH:-}"
+IS_RELEASE="${IS_RELEASE:-}"
 SUBSTITUTION_TOKEN_STYLE="${SUBSTITUTION_TOKEN_STYLE:-shell}"
 TOKEN_NAME_STYLE="${TOKEN_NAME_STYLE:-PascalCase}"
 TOKEN_NAME_VALIDATION="${TOKEN_NAME_VALIDATION:-MATCH}"
@@ -216,6 +224,19 @@ main() {
   if [[ -n "$DOCKER_IMAGE_NAME" ]]; then
     write_builtin_token "DOCKER_IMAGE_NAME" "$DOCKER_IMAGE_NAME"
   fi
+  if [[ -n "$DOCKER_IMAGE_FULL_URI" ]]; then
+    write_builtin_token "DOCKER_IMAGE_FULL_URI" "$DOCKER_IMAGE_FULL_URI"
+  fi
+  if [[ -n "$TARGET_REGISTRY" ]]; then
+    write_builtin_token "TARGET_REGISTRY" "$TARGET_REGISTRY"
+  fi
+  if [[ -n "$TARGET_BASE_PATH" ]]; then
+    write_builtin_token "TARGET_BASE_PATH" "$TARGET_BASE_PATH"
+  fi
+  write_builtin_token "IS_RELEASE" "$IS_RELEASE"
+  # Computed token - available before substitution
+  local zip_name="${PROJECT_NAME}-${VERSION}-manifests.zip"
+  write_builtin_token "MANIFESTS_ZIP_NAME" "$zip_name"
 
   # Step 2: Validate user config if it exists
   if [[ -d "$CONFIG_PATH" ]] && [[ -n "$(find "$CONFIG_PATH" -type f 2>/dev/null)" ]]; then
@@ -282,8 +303,7 @@ main() {
     "$MANIFESTS_CONFIG_PATH" \
     "$MANIFESTS_SUBSTITUTED_PATH/${PROJECT_NAME}"
 
-  # Generate zip filename and paths
-  local zip_name="${PROJECT_NAME}-${VERSION}-manifests.zip"
+  # Generate zip paths (zip_name computed earlier for token substitution)
   local zip_dir zip_full_path
   zip_dir="$(cd "$MANIFESTS_ZIP_PATH" && pwd)"
   zip_full_path="${zip_dir}/${zip_name}"
