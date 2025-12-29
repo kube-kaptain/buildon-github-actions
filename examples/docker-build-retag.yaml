@@ -25,6 +25,7 @@ jobs:
     permissions:
       contents: write
       packages: write
+      checks: write
     with:
       source-registry: docker.io
       source-image-name: library/alpine
@@ -77,6 +78,4 @@ jobs:
 # ┌─────────────────────────────────────────────────────────────────────────┐
 # │ Registry Credentials                                                    │
 # └─────────────────────────────────────────────────────────────────────────┘
-#     secrets:
-#       target-username: ${{ secrets.REGISTRY_USER }}
-#       target-password: ${{ secrets.REGISTRY_TOKEN }}
+# See docker-registry-logins-*.yaml examples for authentication options

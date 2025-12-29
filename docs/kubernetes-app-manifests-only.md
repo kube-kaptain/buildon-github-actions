@@ -7,9 +7,13 @@ Kubernetes App - Manifests Only
 | Input | Type | Default | Description |
 |-------|------|---------|-------------|
 | `manifests-path` | string | `src/kubernetes` | Directory containing Kubernetes manifests |
-| `substitution-token-style` | string | `shell` | Token delimiter syntax for variables (shell) |
-| `substitution-output-style` | string | `UPPER_SNAKE` | Case style for variable names in manifests (UPPER_SNAKE, lower_snake, kebab-case, camelCase, PascalCase) |
-| `manifest-transport` | string | *required* | Transport type for manifest storage (docker, github-release). Required - consumer must choose. |
+| `substitution-token-style` | string | `shell` | Token delimiter syntax for variables (shell, mustache, helm, erb, github-actions, blade, stringtemplate, ognl, t4, swift) |
+| `token-name-style` | string | `PascalCase` | Case style for token names in manifests (UPPER_SNAKE, lower_snake, kebab-case, camelCase, PascalCase, lower.dot, UPPER.DOT) |
+| `token-name-validation` | string | `MATCH` | How to validate user token names (MATCH = must match token-name-style, ALL = accept any valid name) |
+| `allow-builtin-token-override` | boolean | `false` | Allow user tokens to override built-in tokens (for template/reusable projects) |
+| `config-path` | string | `src/config` | Directory containing user-defined token files |
+| `config-value-trailing-newline` | string | `strip-for-single-line` | How to handle trailing newlines in config values (strip-for-single-line, preserve-all, always-strip-one-newline) |
+| `manifests-repo-provider-type` | string | *required* | Repo provider type for manifest storage (docker, github-release). Required - consumer must choose. |
 | `target-registry` | string | `ghcr.io` | Target container registry |
 | `target-base-path` | string | `""` | Path between registry and image name (auto-set for GHCR) |
 | `confirm-image-doesnt-exist` | boolean | `true` | Fail if target image already exists in registry |
@@ -36,10 +40,18 @@ Kubernetes App - Manifests Only
 | Output | Description |
 |--------|-------------|
 | `version` | The generated version |
+| `version-major` | Major version number |
+| `version-minor` | Minor version number |
+| `version-patch` | Patch version number |
+| `version-2-part` | Version padded/truncated to 2 parts |
+| `version-3-part` | Version padded/truncated to 3 parts |
+| `version-4-part` | Version padded/truncated to 4 parts |
 | `docker-tag` | Tag for Docker images |
 | `docker-image-name` | Docker image name |
+| `project-name` | The repository/project name |
 | `is-release` | Whether this is a release build |
-| `manifest-zip-path` | Path to manifest zip file |
-| `manifest-zip-name` | Name of manifest zip file |
-| `manifest-uri` | Reference to published manifests (format depends on transport) |
-| `manifest-published` | Whether manifests were published |
+| `manifests-zip-path` | Directory containing manifests zip file |
+| `manifests-zip-name` | Name of manifests zip file |
+| `manifests-zip-full-path` | Full path to manifests zip file |
+| `manifests-uri` | Reference to published manifests (format depends on repo provider) |
+| `manifests-published` | Whether manifests were published |

@@ -22,6 +22,7 @@ jobs:
     uses: kube-kaptain/buildon-github-actions/.github/workflows/basic-quality-and-versioning.yaml@1.0.11
     permissions:
       contents: write
+      checks: write
 
 # ┌───────────────────────────────────────────────────────────────────────────┐
 # │ All Available Options                                                     │

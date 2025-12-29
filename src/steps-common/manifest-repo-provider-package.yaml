@@ -1,0 +1,16 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025 Kaptain contributors (Fred Cooke)
+
+- name: Package manifests for repo provider
+  id: manifest-repo-provider-package
+  uses: ./.github/buildon-github-actions/src/actions/kubernetes-manifests-repo-provider-package
+  with:
+    manifests-repo-provider-type: ${{ inputs.manifests-repo-provider-type }}
+    manifests-zip-full-path: ${{ steps.manifest-package.outputs.manifests-zip-full-path }}
+    manifests-zip-name: ${{ steps.manifest-package.outputs.manifests-zip-name }}
+    target-registry: ${{ steps.docker-build.outputs.target-registry }}
+    target-base-path: ${{ steps.docker-build.outputs.target-base-path }}
+    target-image-name: ${{ steps.versions.outputs.docker-image-name }}
+    docker-tag: ${{ steps.versions.outputs.docker-tag }}-manifests
+    confirm-image-doesnt-exist: ${{ inputs.confirm-image-doesnt-exist }}
+    version: ${{ steps.versions.outputs.version }}

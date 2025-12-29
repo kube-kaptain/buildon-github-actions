@@ -17,3 +17,4 @@ jobs:
       pre-tagging-tests-script-sub-path: bin/pre-tagging.bash
     permissions:
       contents: write
+      checks: write

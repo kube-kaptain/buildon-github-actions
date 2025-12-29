@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2025 Kaptain contributors (Fred Cooke)
 #
-# docker-build-retag - Pulls, retags, and pushes Docker images
+# docker-build-retag - Pulls and retags Docker images (no push)
 #
 # Inputs (environment variables):
 #   SOURCE_REGISTRY     - Source registry (e.g., docker.io)
@@ -12,13 +12,11 @@
 #   TARGET_BASE_PATH    - Path between registry and image name (optional)
 #   TARGET_IMAGE_NAME   - Target image name (from version generator)
 #   DOCKER_TAG          - Target tag (from version generator)
-#   IS_RELEASE                  - "true" to push, "false" for tag-only
 #   CONFIRM_IMAGE_DOESNT_EXIST  - "true" to fail if target already exists (default: true)
 #
-# Outputs (GITHUB_OUTPUT):
+# Outputs:
 #   SOURCE_IMAGE_FULL_URI - Full source image reference
 #   TARGET_IMAGE_FULL_URI - Full target image reference
-#   IMAGE_PUSHED          - Whether image was pushed (true/false)
 #
 set -euo pipefail
 
@@ -36,7 +34,6 @@ DOCKER_TAG="${DOCKER_TAG:?DOCKER_TAG is required}"
 
 # Optional inputs with defaults
 TARGET_BASE_PATH="${TARGET_BASE_PATH:-}"
-IS_RELEASE="${IS_RELEASE:-false}"
 CONFIRM_IMAGE_DOESNT_EXIST="${CONFIRM_IMAGE_DOESNT_EXIST:-true}"
 
 # Assemble full image URIs
@@ -76,7 +73,6 @@ main() {
   echo "=== Docker Retag ===" >&2
   echo "Source: $SOURCE_IMAGE_FULL_URI" >&2
   echo "Target: $TARGET_IMAGE_FULL_URI" >&2
-  echo "Is Release: $IS_RELEASE" >&2
   echo "====================" >&2
 
   echo "Pulling source image: $SOURCE_IMAGE_FULL_URI" >&2
@@ -90,20 +86,10 @@ main() {
   echo "Tagging: $SOURCE_IMAGE_FULL_URI -> $TARGET_IMAGE_FULL_URI" >&2
   docker tag "$SOURCE_IMAGE_FULL_URI" "$TARGET_IMAGE_FULL_URI"
 
-  # Push if release
-  if [[ "$IS_RELEASE" == "true" ]]; then
-    echo "Pushing: $TARGET_IMAGE_FULL_URI" >&2
-    docker push "$TARGET_IMAGE_FULL_URI"
-    output_var "IMAGE_PUSHED" "true"
-  else
-    echo "Skipping push (IS_RELEASE=$IS_RELEASE)" >&2
-    output_var "IMAGE_PUSHED" "false"
-  fi
-
   output_var "SOURCE_IMAGE_FULL_URI" "$SOURCE_IMAGE_FULL_URI"
   output_var "TARGET_IMAGE_FULL_URI" "$TARGET_IMAGE_FULL_URI"
 
-  echo "Docker Build Retag complete" >&2
+  echo "Docker Retag complete" >&2
 }
 
 main "$@"

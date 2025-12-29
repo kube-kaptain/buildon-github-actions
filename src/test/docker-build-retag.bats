@@ -26,7 +26,6 @@ set_required_env() {
 
 @test "assembles source URI correctly" {
   set_required_env
-  export IS_RELEASE="false"
 
   run "$SCRIPTS_DIR/docker-build-retag"
   [ "$status" -eq 0 ]
@@ -35,7 +34,6 @@ set_required_env() {
 
 @test "assembles target URI without base path" {
   set_required_env
-  export IS_RELEASE="false"
 
   run "$SCRIPTS_DIR/docker-build-retag"
   [ "$status" -eq 0 ]
@@ -44,7 +42,6 @@ set_required_env() {
 
 @test "assembles target URI with base path" {
   set_required_env
-  export IS_RELEASE="false"
   export TARGET_BASE_PATH="kube-kaptain"
 
   run "$SCRIPTS_DIR/docker-build-retag"
@@ -54,7 +51,6 @@ set_required_env() {
 
 @test "calls docker pull with source image" {
   set_required_env
-  export IS_RELEASE="false"
 
   run "$SCRIPTS_DIR/docker-build-retag"
   [ "$status" -eq 0 ]
@@ -63,32 +59,18 @@ set_required_env() {
 
 @test "calls docker tag with source and target" {
   set_required_env
-  export IS_RELEASE="false"
 
   run "$SCRIPTS_DIR/docker-build-retag"
   [ "$status" -eq 0 ]
   assert_docker_called "tag docker.io/library/alpine:3.21 ghcr.io/test/my-repo:1.0.0"
 }
 
-@test "does not push when IS_RELEASE=false" {
+@test "does not push (build only)" {
   set_required_env
-  export IS_RELEASE="false"
 
   run "$SCRIPTS_DIR/docker-build-retag"
   [ "$status" -eq 0 ]
   assert_docker_not_called "push"
-  assert_var_equals "IMAGE_PUSHED" "false"
-}
-
-@test "pushes when IS_RELEASE=true" {
-  set_required_env
-  export IS_RELEASE="true"
-  export CONFIRM_IMAGE_DOESNT_EXIST="false"
-
-  run "$SCRIPTS_DIR/docker-build-retag"
-  [ "$status" -eq 0 ]
-  assert_docker_called "push ghcr.io/test/my-repo:1.0.0"
-  assert_var_equals "IMAGE_PUSHED" "true"
 }
 
 @test "fails when SOURCE_REGISTRY missing" {
@@ -115,19 +97,8 @@ set_required_env() {
   assert_output_contains "TARGET_IMAGE_NAME"
 }
 
-@test "defaults IS_RELEASE to false" {
-  set_required_env
-  unset IS_RELEASE
-
-  run "$SCRIPTS_DIR/docker-build-retag"
-  [ "$status" -eq 0 ]
-  assert_docker_not_called "push"
-  assert_var_equals "IMAGE_PUSHED" "false"
-}
-
 @test "defaults CONFIRM_IMAGE_DOESNT_EXIST to true" {
   set_required_env
-  export IS_RELEASE="true"
   # Don't set CONFIRM_IMAGE_DOESNT_EXIST - should default to true
   # Mock docker manifest inspect to return success (image exists)
   export MOCK_DOCKER_MANIFEST_EXISTS="true"
@@ -139,23 +110,19 @@ set_required_env() {
 
 @test "skips confirm when CONFIRM_IMAGE_DOESNT_EXIST=false" {
   set_required_env
-  export IS_RELEASE="true"
   export CONFIRM_IMAGE_DOESNT_EXIST="false"
 
   run "$SCRIPTS_DIR/docker-build-retag"
   [ "$status" -eq 0 ]
-  assert_var_equals "IMAGE_PUSHED" "true"
 }
 
 @test "works with custom registry and base path" {
   set_required_env
   export TARGET_REGISTRY="myregistry.example.com"
   export TARGET_BASE_PATH="docker-local"
-  export IS_RELEASE="true"
   export CONFIRM_IMAGE_DOESNT_EXIST="false"
 
   run "$SCRIPTS_DIR/docker-build-retag"
   [ "$status" -eq 0 ]
   assert_var_equals "TARGET_IMAGE_FULL_URI" "myregistry.example.com/docker-local/test/my-repo:1.0.0"
-  assert_docker_called "push myregistry.example.com/docker-local/test/my-repo:1.0.0"
 }

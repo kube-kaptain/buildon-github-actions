@@ -28,18 +28,38 @@ on:
         type: string
         default: 'src/kubernetes'
       substitution-token-style:
-        description: 'Token delimiter syntax for variables (shell)'
+        description: 'Token delimiter syntax for variables (shell, mustache, helm, erb, github-actions, blade, stringtemplate, ognl, t4, swift)'
         required: false
         type: string
         default: 'shell'
-      substitution-output-style:
-        description: 'Case style for variable names in manifests (UPPER_SNAKE, lower_snake, kebab-case, camelCase, PascalCase)'
+      token-name-style:
+        description: 'Case style for token names in manifests (UPPER_SNAKE, lower_snake, kebab-case, camelCase, PascalCase, lower.dot, UPPER.DOT)'
         required: false
         type: string
-        default: 'UPPER_SNAKE'
-      # Transport configuration (required - no default)
-      manifest-transport:
-        description: 'Transport type for manifest storage (docker, github-release). Required - consumer must choose.'
+        default: 'PascalCase'
+      token-name-validation:
+        description: 'How to validate user token names (MATCH = must match token-name-style, ALL = accept any valid name)'
+        required: false
+        type: string
+        default: 'MATCH'
+      allow-builtin-token-override:
+        description: 'Allow user tokens to override built-in tokens (for template/reusable projects)'
+        required: false
+        type: boolean
+        default: false
+      config-path:
+        description: 'Directory containing user-defined token files'
+        required: false
+        type: string
+        default: 'src/config'
+      config-value-trailing-newline:
+        description: 'How to handle trailing newlines in config values (strip-for-single-line, preserve-all, always-strip-one-newline)'
+        required: false
+        type: string
+        default: 'strip-for-single-line'
+      # Repo provider configuration (required - no default)
+      manifests-repo-provider-type:
+        description: 'Repo provider type for manifest storage (docker, github-release). Required - consumer must choose.'
         required: true
         type: string
       # Target configuration
@@ -129,241 +149,149 @@ on:
       # Version outputs
       version:
         description: 'The generated version'
-        value: ${{ jobs.versions-and-naming.outputs.version }}
+        value: ${{ jobs.build.outputs.version }}
+      version-major:
+        description: 'Major version number'
+        value: ${{ jobs.build.outputs.version-major }}
+      version-minor:
+        description: 'Minor version number'
+        value: ${{ jobs.build.outputs.version-minor }}
+      version-patch:
+        description: 'Patch version number'
+        value: ${{ jobs.build.outputs.version-patch }}
+      version-2-part:
+        description: 'Version padded/truncated to 2 parts'
+        value: ${{ jobs.build.outputs.version-2-part }}
+      version-3-part:
+        description: 'Version padded/truncated to 3 parts'
+        value: ${{ jobs.build.outputs.version-3-part }}
+      version-4-part:
+        description: 'Version padded/truncated to 4 parts'
+        value: ${{ jobs.build.outputs.version-4-part }}
       docker-tag:
         description: 'Tag for Docker images'
-        value: ${{ jobs.versions-and-naming.outputs.docker-tag }}
+        value: ${{ jobs.build.outputs.docker-tag }}
       docker-image-name:
         description: 'Docker image name'
-        value: ${{ jobs.versions-and-naming.outputs.docker-image-name }}
+        value: ${{ jobs.build.outputs.docker-image-name }}
+      project-name:
+        description: 'The repository/project name'
+        value: ${{ jobs.build.outputs.project-name }}
       is-release:
         description: 'Whether this is a release build'
-        value: ${{ jobs.versions-and-naming.outputs.is-release }}
+        value: ${{ jobs.build.outputs.is-release }}
       # Docker build outputs
+      target-image-full-uri:
+        description: 'Full target image reference (action output name)'
+        value: ${{ jobs.build.outputs.target-image-full-uri }}
       docker-image-full-uri:
-        description: 'Full docker image reference'
-        value: ${{ jobs.docker-build-dockerfile.outputs.target-image-full-uri }}
+        description: 'Full docker image reference (alias for target-image-full-uri)'
+        value: ${{ jobs.build.outputs.target-image-full-uri }}
       docker-image-pushed:
         description: 'Whether docker image was pushed'
-        value: ${{ jobs.docker-build-dockerfile.outputs.image-pushed }}
+        value: ${{ jobs.build.outputs.docker-image-pushed }}
       # Manifest package outputs
-      manifest-zip-path:
-        description: 'Path to manifest zip file'
-        value: ${{ jobs.kubernetes-manifest-package.outputs.manifest-zip-path }}
-      manifest-zip-name:
-        description: 'Name of manifest zip file'
-        value: ${{ jobs.kubernetes-manifest-package.outputs.manifest-zip-name }}
-      # Manifest transport outputs
-      manifest-uri:
-        description: 'Reference to published manifests (format depends on transport)'
-        value: ${{ jobs.kubernetes-manifest-transport.outputs.manifest-uri }}
-      manifest-published:
+      manifests-zip-path:
+        description: 'Directory containing manifests zip file'
+        value: ${{ jobs.build.outputs.manifests-zip-path }}
+      manifests-zip-name:
+        description: 'Name of manifests zip file'
+        value: ${{ jobs.build.outputs.manifests-zip-name }}
+      manifests-zip-full-path:
+        description: 'Full path to manifests zip file'
+        value: ${{ jobs.build.outputs.manifests-zip-full-path }}
+      # Manifest repo provider publish outputs
+      manifests-uri:
+        description: 'Reference to published manifests (format depends on repo provider)'
+        value: ${{ jobs.build.outputs.manifests-uri }}
+      manifests-published:
         description: 'Whether manifests were published'
-        value: ${{ jobs.kubernetes-manifest-transport.outputs.manifest-published }}
+        value: ${{ jobs.build.outputs.manifests-published }}
 jobs:
   basic-quality-checks:
     name: Basic Quality Checks
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-24.04
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4.2.2
-        with:
-          fetch-depth: 0
-          fetch-tags: true
-          ref: ${{ github.event.pull_request.head.sha }}
-      # INJECT: parse-workflow-ref
-      - name: Basic quality checks
-        uses: ./.github/buildon-github-actions/src/actions/basic-quality-checks
-        with:
-          default-branch: ${{ inputs.default-branch }}
-          additional-release-branches: ${{ inputs.additional-release-branches }}
-          block-slashes: ${{ inputs.block-slashes }}
-          block-double-hyphens: ${{ inputs.block-double-hyphens }}
-          require-conventional-branches: ${{ inputs.require-conventional-branches }}
-          require-conventional-commits: ${{ inputs.require-conventional-commits }}
-          block-conventional-commits: ${{ inputs.block-conventional-commits }}
-  pre-tagging-tests:
-    name: Pre-tagging Tests
-    needs: basic-quality-checks
-    if: always() && inputs.pre-tagging-tests-script-sub-path != '' && (needs.basic-quality-checks.result == 'success' || needs.basic-quality-checks.result == 'skipped')
-    runs-on: ubuntu-24.04
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4.2.2
-      # INJECT: parse-workflow-ref
-      - name: Run pre-tagging tests
-        uses: ./.github/buildon-github-actions/src/actions/run-test-script
-        with:
-          script-sub-path: ${{ inputs.pre-tagging-tests-script-sub-path }}
-  versions-and-naming:
-    name: Versions & Naming
-    needs: pre-tagging-tests
-    if: always() && (needs.pre-tagging-tests.result == 'success' || needs.pre-tagging-tests.result == 'skipped')
-    runs-on: ubuntu-24.04
-    permissions:
-      contents: write
-    outputs:
-      version: ${{ steps.generate.outputs.version }}
-      docker-tag: ${{ steps.generate.outputs.docker-tag }}
-      docker-image-name: ${{ steps.generate.outputs.docker-image-name }}
-      project-name: ${{ steps.generate.outputs.project-name }}
-      is-release: ${{ steps.generate.outputs.is-release }}
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4.2.2
-        with:
-          fetch-depth: 0
-          fetch-tags: true
-      # INJECT: parse-workflow-ref
-      - name: Generate versions and naming
-        id: generate
-        uses: ./.github/buildon-github-actions/src/actions/versions-and-naming
-        with:
-          default-branch: ${{ inputs.default-branch }}
-          additional-release-branches: ${{ inputs.additional-release-branches }}
-          max-version-parts: ${{ inputs.max-version-parts }}
-  docker-build-dockerfile:
-    name: Docker Build
-    needs: versions-and-naming
-    if: always() && needs.versions-and-naming.result == 'success'
-    runs-on: ubuntu-24.04
     permissions:
       contents: read
-      packages: write
-    outputs:
-      target-image-full-uri: ${{ steps.build.outputs.target-image-full-uri }}
-      image-pushed: ${{ steps.push.outputs.image-pushed }}
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4.2.2
-      # INJECT: parse-workflow-ref
-      - name: Docker registry logins
-        uses: ./.github/buildon-github-actions/src/actions/docker-registry-logins
-        with:
-          config: ${{ inputs.docker-registry-logins }}
-          secrets-json: ${{ secrets.docker-registry-logins-secrets || toJSON(secrets) }}
-          target-registry: ${{ inputs.target-registry }}
-      - name: Build image
-        id: build
-        uses: ./.github/buildon-github-actions/src/actions/docker-build-dockerfile
-        with:
-          target-registry: ${{ inputs.target-registry }}
-          target-base-path: ${{ inputs.target-base-path }}
-          target-image-name: ${{ needs.versions-and-naming.outputs.docker-image-name }}
-          docker-tag: ${{ needs.versions-and-naming.outputs.docker-tag }}
-          version: ${{ needs.versions-and-naming.outputs.version }}
-          project-name: ${{ needs.versions-and-naming.outputs.project-name }}
-          dockerfile-path: ${{ inputs.dockerfile-path }}
-          squash: ${{ inputs.squash }}
-          no-cache: ${{ inputs.no-cache }}
-          confirm-image-doesnt-exist: ${{ inputs.confirm-image-doesnt-exist }}
-      - name: Run post-docker tests
-        if: inputs.post-docker-tests-script-sub-path != ''
-        uses: ./.github/buildon-github-actions/src/actions/run-test-script
-        with:
-          script-sub-path: ${{ inputs.post-docker-tests-script-sub-path }}
-          version: ${{ needs.versions-and-naming.outputs.version }}
-          docker-tag: ${{ needs.versions-and-naming.outputs.docker-tag }}
-          docker-image-name: ${{ needs.versions-and-naming.outputs.docker-image-name }}
-          project-name: ${{ needs.versions-and-naming.outputs.project-name }}
-          is-release: ${{ needs.versions-and-naming.outputs.is-release }}
-          target-image-full-uri: ${{ steps.build.outputs.target-image-full-uri }}
-      - name: Push image
-        id: push
-        if: needs.versions-and-naming.outputs.is-release == 'true'
-        shell: bash
-        run: |
-          docker push "${{ steps.build.outputs.target-image-full-uri }}"
-          echo "image-pushed=true" >> "$GITHUB_OUTPUT"
-  kubernetes-manifest-package:
-    name: Package Manifests
-    needs: versions-and-naming
-    if: always() && needs.versions-and-naming.result == 'success'
-    runs-on: ubuntu-24.04
-    outputs:
-      manifest-zip-path: ${{ steps.package.outputs.manifest-zip-path }}
-      manifest-zip-name: ${{ steps.package.outputs.manifest-zip-name }}
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4.2.2
-      # INJECT: parse-workflow-ref
-      - name: Package manifests
-        id: package
-        uses: ./.github/buildon-github-actions/src/actions/kubernetes-manifest-package
-        with:
-          manifests-path: ${{ inputs.manifests-path }}
-          project-name: ${{ needs.versions-and-naming.outputs.project-name }}
-          version: ${{ needs.versions-and-naming.outputs.version }}
-          docker-tag: ${{ needs.versions-and-naming.outputs.docker-tag }}
-          docker-image-name: ${{ needs.versions-and-naming.outputs.docker-image-name }}
-          substitution-token-style: ${{ inputs.substitution-token-style }}
-          substitution-output-style: ${{ inputs.substitution-output-style }}
-      - name: Upload manifest zip artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: manifests
-          path: ${{ steps.package.outputs.manifest-zip-path }}
-          retention-days: 1
-  post-package-tests:
-    name: Post-package Tests
-    needs: [versions-and-naming, kubernetes-manifest-package]
-    if: always() && inputs.post-package-tests-script-sub-path != '' && needs.kubernetes-manifest-package.result == 'success'
-    runs-on: ubuntu-24.04
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4.2.2
-      # INJECT: parse-workflow-ref
-      - name: Download manifest zip artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: manifests
-      - name: Run post-package tests
-        uses: ./.github/buildon-github-actions/src/actions/run-test-script
-        with:
-          script-sub-path: ${{ inputs.post-package-tests-script-sub-path }}
-          version: ${{ needs.versions-and-naming.outputs.version }}
-          docker-tag: ${{ needs.versions-and-naming.outputs.docker-tag }}
-          docker-image-name: ${{ needs.versions-and-naming.outputs.docker-image-name }}
-          project-name: ${{ needs.versions-and-naming.outputs.project-name }}
-          is-release: ${{ needs.versions-and-naming.outputs.is-release }}
-  kubernetes-manifest-transport:
-    name: Publish Manifests
-    needs: [versions-and-naming, docker-build-dockerfile, kubernetes-manifest-package, post-package-tests]
-    if: always() && needs.docker-build-dockerfile.result == 'success' && needs.kubernetes-manifest-package.result == 'success' && (needs.post-package-tests.result == 'success' || needs.post-package-tests.result == 'skipped')
+      # INJECT: parse-workflow-ref-and-checkout
+      # INJECT: basic-quality-checks
+  build:
+    name: Build & Publish
+    needs: basic-quality-checks
+    if: always() && (needs.basic-quality-checks.result == 'success' || needs.basic-quality-checks.result == 'skipped')
     runs-on: ubuntu-24.04
     permissions:
       contents: write
       packages: write
+      checks: write
     outputs:
-      manifest-uri: ${{ steps.transport.outputs.manifest-uri }}
-      manifest-published: ${{ steps.transport.outputs.manifest-published }}
+      version: ${{ steps.versions.outputs.version }}
+      version-major: ${{ steps.versions.outputs.version-major }}
+      version-minor: ${{ steps.versions.outputs.version-minor }}
+      version-patch: ${{ steps.versions.outputs.version-patch }}
+      version-2-part: ${{ steps.versions.outputs.version-2-part }}
+      version-3-part: ${{ steps.versions.outputs.version-3-part }}
+      version-4-part: ${{ steps.versions.outputs.version-4-part }}
+      docker-tag: ${{ steps.versions.outputs.docker-tag }}
+      docker-image-name: ${{ steps.versions.outputs.docker-image-name }}
+      project-name: ${{ steps.versions.outputs.project-name }}
+      is-release: ${{ steps.versions.outputs.is-release }}
+      target-image-full-uri: ${{ steps.docker-build.outputs.target-image-full-uri }}
+      docker-image-pushed: ${{ steps.docker-push.outputs.image-pushed }}
+      manifests-zip-path: ${{ steps.manifest-package.outputs.manifests-zip-path }}
+      manifests-zip-name: ${{ steps.manifest-package.outputs.manifests-zip-name }}
+      manifests-zip-full-path: ${{ steps.manifest-package.outputs.manifests-zip-full-path }}
+      manifests-uri: ${{ steps.manifest-repo-provider-publish.outputs.manifests-uri }}
+      manifests-published: ${{ steps.manifest-repo-provider-publish.outputs.manifests-published }}
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4.2.2
-      # INJECT: parse-workflow-ref
-      - name: Download manifest zip artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: manifests
-      - name: Docker registry logins
-        if: inputs.manifest-transport == 'docker'
-        uses: ./.github/buildon-github-actions/src/actions/docker-registry-logins
-        with:
-          config: ${{ inputs.docker-registry-logins }}
-          secrets-json: ${{ secrets.docker-registry-logins-secrets || toJSON(secrets) }}
-          target-registry: ${{ inputs.target-registry }}
-      - name: Publish via transport
-        id: transport
-        uses: ./.github/buildon-github-actions/src/actions/kubernetes-manifest-transport
-        with:
-          transport: ${{ inputs.manifest-transport }}
-          manifest-zip-path: ${{ needs.kubernetes-manifest-package.outputs.manifest-zip-path }}
-          manifest-zip-name: ${{ needs.kubernetes-manifest-package.outputs.manifest-zip-name }}
-          target-registry: ${{ inputs.target-registry }}
-          target-base-path: ${{ inputs.target-base-path }}
-          target-image-name: ${{ needs.versions-and-naming.outputs.docker-image-name }}
-          docker-tag: ${{ needs.versions-and-naming.outputs.docker-tag }}-manifests
-          confirm-image-doesnt-exist: ${{ inputs.confirm-image-doesnt-exist }}
-          version: ${{ needs.versions-and-naming.outputs.version }}
-          is-release: ${{ needs.versions-and-naming.outputs.is-release }}
+      # INJECT: parse-workflow-ref-and-checkout
+
+      # === Docker Registry Logins ===
+      # INJECT: docker-registry-logins
+
+      # === Pre-tagging Tests ===
+      # INJECT: github-check-start(name="Pre-tagging Tests", id="check-pre-tagging", if="inputs.pre-tagging-tests-script-sub-path != ''")
+      # INJECT: pre-tagging-tests
+      # INJECT: github-check-end(name="Pre-tagging Tests", id="check-pre-tagging", if="inputs.pre-tagging-tests-script-sub-path != ''")
+
+      # === Versions & Naming ===
+      # INJECT: github-check-start(name="Versions & Naming", id="check-versions")
+      # INJECT: versions-and-naming
+      # INJECT: github-check-end(name="Versions & Naming", id="check-versions")
+
+      # === Docker Build ===
+      # INJECT: github-check-start(name="Docker Build", id="check-docker-build")
+      # INJECT: docker-build-dockerfile
+      # INJECT: github-check-end(name="Docker Build", id="check-docker-build")
+
+      # === Post-docker Tests ===
+      # INJECT: github-check-start(name="Post-docker Tests", id="check-post-docker", if="inputs.post-docker-tests-script-sub-path != ''")
+      # INJECT: post-docker-tests
+      # INJECT: github-check-end(name="Post-docker Tests", id="check-post-docker", if="inputs.post-docker-tests-script-sub-path != ''")
+
+      # === Manifest Package ===
+      # INJECT: github-check-start(name="Package Manifests", id="check-manifest-package")
+      # INJECT: manifest-package
+      # INJECT: github-check-end(name="Package Manifests", id="check-manifest-package")
+
+      # === Manifest Repo Provider Package ===
+      # INJECT: github-check-start(name="Package Manifests for Repo Provider", id="check-manifest-repo-provider-package")
+      # INJECT: manifest-repo-provider-package
+      # INJECT: github-check-end(name="Package Manifests for Repo Provider", id="check-manifest-repo-provider-package")
+
+      # === Post-package Tests ===
+      # INJECT: github-check-start(name="Post-package Tests", id="check-post-package", if="inputs.post-package-tests-script-sub-path != ''")
+      # INJECT: post-package-tests
+      # INJECT: github-check-end(name="Post-package Tests", id="check-post-package", if="inputs.post-package-tests-script-sub-path != ''")
+
+      # === Docker Push ===
+      # INJECT: github-check-start(name="Docker Push", id="check-docker-push", if="steps.versions.outputs.is-release == 'true'")
+      # INJECT: docker-push
+      # INJECT: github-check-end(name="Docker Push", id="check-docker-push", if="steps.versions.outputs.is-release == 'true'")
+
+      # === Manifest Repo Provider Publish ===
+      # INJECT: github-check-start(name="Publish Manifests via Repo Provider", id="check-manifest-repo-provider-publish", if="steps.versions.outputs.is-release == 'true'")
+      # INJECT: manifest-repo-provider-publish
+      # INJECT: github-check-end(name="Publish Manifests via Repo Provider", id="check-manifest-repo-provider-publish", if="steps.versions.outputs.is-release == 'true'")

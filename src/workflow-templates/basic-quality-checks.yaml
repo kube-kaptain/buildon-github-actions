@@ -45,20 +45,5 @@ jobs:
     name: Basic Quality Checks
     runs-on: ubuntu-24.04
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4.2.2
-        with:
-          fetch-depth: 0
-          fetch-tags: true
-          ref: ${{ github.event.pull_request.head.sha || github.ref }}
-      # INJECT: parse-workflow-ref
-      - name: Basic quality checks
-        uses: ./.github/buildon-github-actions/src/actions/basic-quality-checks
-        with:
-          default-branch: ${{ inputs.default-branch }}
-          additional-release-branches: ${{ inputs.additional-release-branches }}
-          block-slashes: ${{ inputs.block-slashes }}
-          block-double-hyphens: ${{ inputs.block-double-hyphens }}
-          require-conventional-branches: ${{ inputs.require-conventional-branches }}
-          require-conventional-commits: ${{ inputs.require-conventional-commits }}
-          block-conventional-commits: ${{ inputs.block-conventional-commits }}
+      # INJECT: parse-workflow-ref-and-checkout
+      # INJECT: basic-quality-checks

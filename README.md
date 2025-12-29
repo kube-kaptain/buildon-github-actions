@@ -31,39 +31,59 @@ See [`examples/`](examples/) for more usage patterns.
 
 ## Examples
 
+<!-- EXAMPLES-START -->
 | Example | Description |
 |---------|-------------|
-| [`basic-quality-and-versioning.yaml`](examples/basic-quality-and-versioning.yaml) | Standard setup: PR quality checks + push versioning |
-| [`quality-only.yaml`](examples/quality-only.yaml) | Quality enforcement without tagging |
-| [`versions-and-naming.yaml`](examples/versions-and-naming.yaml) | Version tagging without quality checks |
-| [`additional-release-branches.yaml`](examples/additional-release-branches.yaml) | Hotfix workflow with 4-part versions |
-| [`docker-build-retag.yaml`](examples/docker-build-retag.yaml) | Vendor upstream images to your GHCR |
-| [`docker-build-retag-base-path.yaml`](examples/docker-build-retag-base-path.yaml) | Custom base path for image organization |
-| [`docker-build-retag-custom-registry.yaml`](examples/docker-build-retag-custom-registry.yaml) | Retag to Artifactory, ECR, or other registries |
-| [`docker-build-dockerfile.yaml`](examples/docker-build-dockerfile.yaml) | Build from Dockerfile with --squash (default) |
-| [`docker-build-dockerfile-no-squash.yaml`](examples/docker-build-dockerfile-no-squash.yaml) | Build from Dockerfile without --squash |
-| [`optional-test-scripts.yaml`](examples/optional-test-scripts.yaml) | Inject pre-tagging and post-docker test scripts |
+| [`additional-release-branches.yaml`](examples/additional-release-branches.yaml) | Support hotfix workflows by building on branches other than the default and still getting releases published |
+| [`basic-quality-and-versioning.yaml`](examples/basic-quality-and-versioning.yaml) | Standard build setup |
+| [`docker-build-dockerfile-no-squash.yaml`](examples/docker-build-dockerfile-no-squash.yaml) | Build a Docker image without --squash, preserving layer history |
+| [`docker-build-dockerfile.yaml`](examples/docker-build-dockerfile.yaml) | Build a Docker image from a Dockerfile with --squash (default) to flatten |
+| [`docker-build-retag-base-path.yaml`](examples/docker-build-retag-base-path.yaml) | Many registries use base paths in addition to the normal image name for projects or teams |
+| [`docker-build-retag-custom-registry.yaml`](examples/docker-build-retag-custom-registry.yaml) | Push to a registry other than GHCR (Nexus, ECR, GCR, Harbor, etc) |
+| [`docker-build-retag.yaml`](examples/docker-build-retag.yaml) | Pull an upstream image, retag with your name and new version, push to your registry |
+| [`docker-registry-logins-explicit.yaml`](examples/docker-registry-logins-explicit.yaml) | More typing, but shows exactly what the workflow receives |
+| [`docker-registry-logins-ghcr-pat.yaml`](examples/docker-registry-logins-ghcr-pat.yaml) |   - Push to packages in a different repo or org (GITHUB_TOKEN is scoped to current repo) |
+| [`docker-registry-logins-inherit.yaml`](examples/docker-registry-logins-inherit.yaml) | Secret values are looked up by the names specified in the config |
+| [`optional-test-scripts.yaml`](examples/optional-test-scripts.yaml) | Shows how to add custom test scripts to workflows that support them |
+| [`quality-only.yaml`](examples/quality-only.yaml) | Enforce quality standards on PRs without automatic tagging |
+| [`versions-and-naming.yaml`](examples/versions-and-naming.yaml) | Automatic version tagging without PR quality checks |
+<!-- EXAMPLES-END -->
 
 ## Components
 
 ### Workflows
 
+<!-- WORKFLOWS-START -->
 | Workflow | Description |
 |----------|-------------|
-| `basic-quality-and-versioning.yaml` | Combined: quality checks + versioning |
-| `basic-quality-checks.yaml` | Quality checks only |
-| `versions-and-naming.yaml` | Versioning only |
-| `docker-build-retag.yaml` | Pull, retag, and push upstream images |
-| `docker-build-dockerfile.yaml` | Build from Dockerfile with --squash |
+| `basic-quality-and-versioning.yaml` | Basic Quality and Versioning |
+| `basic-quality-checks.yaml` | Basic Quality Checks |
+| `docker-build-dockerfile.yaml` | Docker Build Dockerfile |
+| `docker-build-retag.yaml` | Docker Build Retag |
+| `kubernetes-app-docker-dockerfile.yaml` | Kubernetes App - Docker Dockerfile |
+| `kubernetes-app-docker-retag.yaml` | Kubernetes App - Docker Retag |
+| `kubernetes-app-manifests-only.yaml` | Kubernetes App - Manifests Only |
+| `versions-and-naming.yaml` | Versions & Naming |
+<!-- WORKFLOWS-END -->
 
 ### Actions
 
+<!-- ACTIONS-START -->
 | Action | Description |
 |--------|-------------|
-| `basic-quality-checks` | Validates branch names, commit messages, rebase status |
-| `versions-and-naming` | Generates version numbers, tags, and naming |
-| `docker-build-retag` | Pulls, retags, and pushes Docker images |
-| `docker-build-dockerfile` | Builds Docker images from Dockerfile with --squash |
+| `basic-quality-checks` | Basic quality checks for commits and branches |
+| `docker-build-dockerfile` | Builds a Docker image from a Dockerfile (build only, use docker-push to push) |
+| `docker-build-retag` | Pulls and retags Docker images (no push) |
+| `docker-push` | Pushes a Docker image to registry |
+| `docker-registry-logins` | Authenticate to container registries (GHCR by default, configure others as needed) |
+| `github-check-run` | Create or update GitHub Check Runs for granular PR status reporting |
+| `kubernetes-manifests-package` | Packages Kubernetes manifests into a zip with variable substitution |
+| `kubernetes-manifests-repo-provider-package` | Packages manifests for repo provider (builds docker image, prepares release). Does NOT publish. |
+| `kubernetes-manifests-repo-provider-publish` | Publishes manifests via pluggable repo provider. Requires package step to run first. |
+| `resolve-target-registry-and-base-path` | Resolves target registry (defaults to ghcr.io) and computes base path (auto-detects org for GHCR) |
+| `run-test-script` | Runs a user-provided test script from the .github/ directory |
+| `versions-and-naming` | Generates version numbers, tags, and naming for releases |
+<!-- ACTIONS-END -->
 
 ## Configuration
 
@@ -73,15 +93,18 @@ See [`examples/`](examples/) for more usage patterns.
 | Input | Type | Default | Description |
 |-------|------|---------|-------------|
 | `additional-release-branches` | string | `""` | Comma-separated list of additional release branches |
+| `allow-builtin-token-override` | boolean | `false` | Allow user tokens to override built-in tokens (for template/reusable projects) |
 | `block-conventional-commits` | boolean | `false` | Block commits that use conventional commit format |
 | `block-double-hyphens` | boolean | `true` | Block branch names containing double hyphens (typo detection) |
 | `block-slashes` | boolean | `false` | Block branch names containing slashes |
+| `config-path` | string | `src/config` | Directory containing user-defined token files |
+| `config-value-trailing-newline` | string | `strip-for-single-line` | How to handle trailing newlines in config values (strip-for-single-line, preserve-all, always-strip-one-newline) |
 | `confirm-image-doesnt-exist` | boolean | `true` | Fail if target image already exists in registry |
 | `default-branch` | string | `main` | The default/release branch name |
 | `docker-registry-logins` | string | `""` | YAML config for Docker registry logins (registry URL as key) |
 | `dockerfile-path` | string | `src/docker` | Directory containing Dockerfile (also used as build context) |
-| `manifest-transport` | string | *required* | Transport type for manifest storage (docker, github-release). Required - consumer must choose. |
 | `manifests-path` | string | `src/kubernetes` | Directory containing Kubernetes manifests |
+| `manifests-repo-provider-type` | string | *required* | Repo provider type for manifest storage (docker, github-release). Required - consumer must choose. |
 | `max-version-parts` | number | `3` | Maximum allowed version parts (fail if exceeded) |
 | `no-cache` | boolean | `true` | Disable layer caching for reproducible builds |
 | `post-docker-tests-script-sub-path` | string | `""` | Path to post-docker test script relative to .github/ (e.g., bin/post-docker.bash) |
@@ -93,10 +116,11 @@ See [`examples/`](examples/) for more usage patterns.
 | `source-registry` | string | *required* | Upstream registry (e.g., docker.io) |
 | `source-tag` | string | *required* | Upstream image tag (e.g., 1.25) |
 | `squash` | boolean | `true` | Enable --squash (requires experimental mode) |
-| `substitution-output-style` | string | `UPPER_SNAKE` | Case style for variable names in manifests (UPPER_SNAKE, lower_snake, kebab-case, camelCase, PascalCase) |
-| `substitution-token-style` | string | `shell` | Token delimiter syntax for variables (shell) |
+| `substitution-token-style` | string | `shell` | Token delimiter syntax for variables (shell, mustache, helm, erb, github-actions, blade, stringtemplate, ognl, t4, swift) |
 | `target-base-path` | string | `""` | Path between registry and image name (auto-set for GHCR) |
 | `target-registry` | string | `ghcr.io` | Target container registry |
+| `token-name-style` | string | `PascalCase` | Case style for token names in manifests (UPPER_SNAKE, lower_snake, kebab-case, camelCase, PascalCase, lower.dot, UPPER.DOT) |
+| `token-name-validation` | string | `MATCH` | How to validate user token names (MATCH = must match token-name-style, ALL = accept any valid name) |
 <!-- INPUTS-END -->
 
 ### Secrets

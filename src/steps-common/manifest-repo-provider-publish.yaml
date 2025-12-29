@@ -1,0 +1,14 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025 Kaptain contributors (Fred Cooke)
+
+- name: Publish manifests via repo provider
+  id: manifest-repo-provider-publish
+  if: steps.versions.outputs.is-release == 'true'
+  uses: ./.github/buildon-github-actions/src/actions/kubernetes-manifests-repo-provider-publish
+  with:
+    manifests-repo-provider-type: ${{ inputs.manifests-repo-provider-type }}
+    manifests-uri: ${{ steps.manifest-repo-provider-package.outputs.manifests-uri }}
+    manifests-zip-path: ${{ steps.manifest-repo-provider-package.outputs.manifests-zip-path }}
+    manifests-zip-name: ${{ steps.manifest-repo-provider-package.outputs.manifests-zip-name }}
+    version: ${{ steps.manifest-repo-provider-package.outputs.version }}
+    is-release: ${{ steps.versions.outputs.is-release }}

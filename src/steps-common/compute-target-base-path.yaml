@@ -1,0 +1,11 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025 Kaptain contributors (Fred Cooke)
+
+# Compute target registry and base path for manifests-only workflows (no docker build step)
+# Uses same step id as docker-build so manifest-package can use consistent output reference
+- name: Resolve target registry and base path
+  id: docker-build
+  uses: ./.github/buildon-github-actions/src/actions/resolve-target-registry-and-base-path
+  with:
+    target-registry: ${{ inputs.target-registry }}
+    target-base-path: ${{ inputs.target-base-path }}

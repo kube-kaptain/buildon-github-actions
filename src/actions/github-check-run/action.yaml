@@ -1,0 +1,112 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025 Kaptain contributors (Fred Cooke)
+
+name: 'GitHub Check Run'
+description: 'Create or update GitHub Check Runs for granular PR status reporting'
+author: 'kube-kaptain'
+
+inputs:
+  action:
+    description: 'Action to perform: start, pass, fail, skip'
+    required: true
+  check-name:
+    description: 'Name of the check (required for start)'
+    required: false
+    default: ''
+  check-run-id:
+    description: 'ID of existing check run (required for pass/fail/skip)'
+    required: false
+    default: ''
+  summary:
+    description: 'Optional summary text'
+    required: false
+    default: ''
+
+outputs:
+  check-run-id:
+    description: 'ID of created/updated check run'
+    value: ${{ steps.run.outputs.check-run-id }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Run check operation
+      id: run
+      shell: bash
+      env:
+        ACTION: ${{ inputs.action }}
+        CHECK_NAME: ${{ inputs.check-name }}
+        CHECK_RUN_ID: ${{ inputs.check-run-id }}
+        CHECK_SUMMARY: ${{ inputs.summary }}
+        GITHUB_TOKEN: ${{ github.token }}
+        GITHUB_REPOSITORY: ${{ github.repository }}
+        GITHUB_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+      run: |
+        set -euo pipefail
+
+        output_var() {
+          local name="$1"
+          local value="$2"
+          if [[ -n "${GITHUB_OUTPUT:-}" ]]; then
+            echo "${name}=${value}" >> "$GITHUB_OUTPUT"
+          fi
+          echo "${name}=${value}"
+        }
+
+        start_check() {
+          local name="${CHECK_NAME:?CHECK_NAME is required for start}"
+          local summary="${CHECK_SUMMARY:-}"
+
+          local response
+          response=$(gh api \
+            --method POST \
+            -H "Accept: application/vnd.github+json" \
+            "/repos/${GITHUB_REPOSITORY}/check-runs" \
+            -f "name=${name}" \
+            -f "head_sha=${GITHUB_SHA}" \
+            -f "status=in_progress" \
+            -f "started_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)")
+
+          local check_run_id
+          check_run_id=$(echo "$response" | jq -r '.id')
+
+          output_var "check-run-id" "$check_run_id"
+          echo "Started check run: $name (ID: $check_run_id)" >&2
+        }
+
+        complete_check() {
+          local conclusion="$1"
+          local check_run_id="${CHECK_RUN_ID:?CHECK_RUN_ID is required for $conclusion}"
+          local summary="${CHECK_SUMMARY:-}"
+
+          gh api \
+            --method PATCH \
+            -H "Accept: application/vnd.github+json" \
+            "/repos/${GITHUB_REPOSITORY}/check-runs/${check_run_id}" \
+            -f "status=completed" \
+            -f "conclusion=${conclusion}" \
+            -f "completed_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            > /dev/null
+
+          output_var "check-run-id" "$check_run_id"
+          echo "Completed check run (ID: $check_run_id) with conclusion: $conclusion" >&2
+        }
+
+        case "$ACTION" in
+          start)
+            start_check
+            ;;
+          pass)
+            complete_check "success"
+            ;;
+          fail)
+            complete_check "failure"
+            ;;
+          skip)
+            complete_check "skipped"
+            ;;
+          *)
+            echo "Unknown action: $ACTION (expected: start, pass, fail, skip)" >&2
+            exit 1
+            ;;
+        esac
