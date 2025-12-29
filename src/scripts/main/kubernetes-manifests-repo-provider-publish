@@ -6,7 +6,7 @@
 #
 # Dispatches to the appropriate repo provider publish script based on MANIFESTS_REPO_PROVIDER_TYPE.
 # This publishes previously packaged manifests. Pair with kubernetes-manifests-repo-provider-package.
-# Available repo providers are discovered from plugins/kube-manifests-repo-providers/
+# Available repo providers are discovered from plugins/kubernetes-manifests-repo-providers/
 #
 # Inputs (environment variables):
 #   MANIFESTS_REPO_PROVIDER_TYPE - Type of repo provider to use (required, no default)
@@ -25,7 +25,7 @@ LOG_ERROR_SUFFIX="${LOG_ERROR_SUFFIX:-}"
 # Locate script directory (where this selector lives)
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PLUGINS_DIR="$SCRIPT_DIR/../plugins"
-REPO_PROVIDERS_DIR="$PLUGINS_DIR/kube-manifests-repo-providers"
+REPO_PROVIDERS_DIR="$PLUGINS_DIR/kubernetes-manifests-repo-providers"
 SCRIPT_PREFIX="kubernetes-manifests-repo-provider-"
 SCRIPT_SUFFIX="-publish"
 
