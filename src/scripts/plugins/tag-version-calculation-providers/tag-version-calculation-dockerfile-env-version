@@ -20,6 +20,8 @@
 #
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+
 # Logging configuration (CI-agnostic)
 LOG_ERROR_PREFIX="${LOG_ERROR_PREFIX:-}"
 LOG_ERROR_SUFFIX="${LOG_ERROR_SUFFIX:-}"
@@ -82,7 +84,7 @@ find_highest_in_series() {
     if [[ "$clean" =~ ^${prefix}\.[0-9]+$ ]] && is_numeric_version "$tag"; then
       echo "$tag"
     fi
-  done | sort -t. -k1,1n -k2,2n -k3,3n | tail -n1)
+  done | "$SCRIPT_DIR/../../main/version-sort" | tail -n1)
 
   echo "$highest"
 }

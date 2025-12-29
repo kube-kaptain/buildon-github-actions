@@ -1,0 +1,64 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: CC-BY-SA-4.0
+# Copyright (c) 2025 Kaptain contributors (Fred Cooke)
+#
+# version-sort: Sort version strings numerically by dot-separated parts
+#
+# Input: One version per line from stdin
+# Output: Versions sorted in ascending order
+#
+# Works for any number of version parts. Missing parts treated as 0.
+# Tie-breaker: fewer parts = older = comes first (1.2 < 1.2.0)
+
+set -euo pipefail
+
+awk '
+# Compare two versions: returns -1 (a<b), 0 (a==b), or 1 (a>b)
+function vercmp(a, b,    aParts, bParts, aLen, bLen, maxLen, i, aVal, bVal) {
+  aLen = split(a, aParts, ".")
+  bLen = split(b, bParts, ".")
+  maxLen = (aLen > bLen) ? aLen : bLen
+
+  # Compare numerically, missing parts = 0
+  for (i = 1; i <= maxLen; i++) {
+    aVal = (i <= aLen) ? aParts[i] + 0 : 0
+    bVal = (i <= bLen) ? bParts[i] + 0 : 0
+    if (aVal < bVal) return -1
+    if (aVal > bVal) return 1
+  }
+
+  # Tie-breaker: fewer parts = older = comes first
+  if (aLen < bLen) return -1
+  if (aLen > bLen) return 1
+
+  return 0
+}
+
+# Quicksort with custom comparator
+function qsort(arr, left, right,    i, j, pivot, tmp) {
+  if (left >= right) return
+  pivot = arr[int((left + right) / 2)]
+  i = left
+  j = right
+  while (i <= j) {
+    while (vercmp(arr[i], pivot) < 0) i++
+    while (vercmp(arr[j], pivot) > 0) j--
+    if (i <= j) {
+      tmp = arr[i]
+      arr[i] = arr[j]
+      arr[j] = tmp
+      i++
+      j--
+    }
+  }
+  qsort(arr, left, j)
+  qsort(arr, i, right)
+}
+
+{ versions[NR] = $0; count = NR }
+
+END {
+  qsort(versions, 1, count)
+  for (i = 1; i <= count; i++) print versions[i]
+}
+'
