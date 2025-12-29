@@ -64,6 +64,8 @@ check_executables() {
 
   for glob in "${globs[@]}"; do
     for file in $glob; do
+      # Skip markdown files - they're documentation, not scripts
+      [[ "$file" == *.md ]] && continue
       [[ -f "$file" ]] && scripts+=("$file")
     done
   done
