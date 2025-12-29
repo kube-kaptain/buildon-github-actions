@@ -144,12 +144,26 @@ check_generated_files() {
 # Run shellcheck on all scripts
 run_shellcheck() {
   log_info "Running shellcheck on scripts"
-  local scripts=(
-    "$PROJECT_ROOT/src/scripts/main/versions-and-naming"
-    "$PROJECT_ROOT/src/scripts/main/basic-quality-checks"
-    "$PROJECT_ROOT/src/scripts/main/docker-build-retag"
-    "$PROJECT_ROOT/src/scripts/main/docker-build-dockerfile"
+  local scripts=()
+  local globs=(
+    "$PROJECT_ROOT/src/scripts/main/*"
+    "$PROJECT_ROOT/src/scripts/plugins/*/*"
   )
+
+  for glob in "${globs[@]}"; do
+    for file in $glob; do
+      # Skip markdown files - they're documentation, not scripts
+      [[ "$file" == *.md ]] && continue
+      [[ -f "$file" ]] && scripts+=("$file")
+    done
+  done
+
+  if [[ ${#scripts[@]} -eq 0 ]]; then
+    log_warn "No scripts found to check"
+    return 0
+  fi
+
+  log_info "Checking ${#scripts[@]} scripts"
 
   if command -v shellcheck &>/dev/null; then
     shellcheck "${scripts[@]}"
