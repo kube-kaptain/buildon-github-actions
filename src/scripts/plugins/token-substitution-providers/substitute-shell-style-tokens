@@ -88,6 +88,7 @@ main() {
         # For files: create a temp file
         temp_location=$(mktemp)
 
+        # shellcheck disable=SC2097,SC2098 # Intentional: pass current OUTPUT_PATH value as INPUT_PATH to child
         VAR_NAME="$var_name" \
         VAR_VALUE="$var_value" \
         INPUT_PATH="$OUTPUT_PATH" \
@@ -102,6 +103,7 @@ main() {
         # For directories: create a temp directory
         temp_location=$(mktemp -d)
 
+        # shellcheck disable=SC2097,SC2098 # Intentional: pass current OUTPUT_PATH value as INPUT_PATH to child
         VAR_NAME="$var_name" \
         VAR_VALUE="$var_value" \
         INPUT_PATH="$OUTPUT_PATH" \
@@ -122,6 +124,7 @@ main() {
   count_tokens() {
     local file="$1"
     local count
+    # shellcheck disable=SC2016 # Intentional: literal '${' pattern, not variable expansion
     count=$(grep -c '\${' "$file" 2>/dev/null) || count=0
     echo "$count"
   }
@@ -159,7 +162,7 @@ main() {
     output_file_stats "$INPUT_PATH" "$OUTPUT_PATH" "$(basename "$OUTPUT_PATH")"
   elif [[ -d "$INPUT_PATH" ]]; then
     while IFS= read -r input_file; do
-      local rel_path="${input_file#$INPUT_PATH/}"
+      local rel_path="${input_file#"$INPUT_PATH"/}"
       local output_file="$OUTPUT_PATH/$rel_path"
 
       if [[ -f "$output_file" ]]; then

@@ -105,7 +105,7 @@ main() {
     mkdir -p "$OUTPUT_PATH"
 
     while IFS= read -r input_file; do
-      local rel_path="${input_file#$INPUT_PATH/}"
+      local rel_path="${input_file#"$INPUT_PATH"/}"
       local output_file="$OUTPUT_PATH/$rel_path"
 
       mkdir -p "$(dirname "$output_file")"
