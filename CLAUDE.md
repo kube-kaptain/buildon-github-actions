@@ -101,6 +101,7 @@ Always test in CI, not just locally - "works on my machine" hits hard with bash 
 
 - Never touch the git index - don't stage files, don't run `git add`. The user manages what gets committed.
 - Always re-read files before editing them to avoid overwriting manual changes. Don't rely on cached content.
+- Never use the superpowers:finishing-a-development-branch skill - the user handles branch completion themselves.
 
 ## SPDX License Header
 
