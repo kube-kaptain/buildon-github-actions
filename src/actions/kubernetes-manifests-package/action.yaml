@@ -29,13 +29,29 @@ inputs:
     required: false
     default: ''
   substitution-token-style:
-    description: 'Token delimiter syntax for variables (shell)'
+    description: 'Token delimiter syntax for variables (shell, mustache, helm, erb, github-actions, blade, stringtemplate, ognl, t4, swift)'
     required: false
     default: 'shell'
-  substitution-output-style:
-    description: 'Case style for variable names in manifests (UPPER_SNAKE, lower_snake, kebab-case, camelCase, PascalCase)'
+  token-name-style:
+    description: 'Case style for token names in manifests (UPPER_SNAKE, lower_snake, kebab-case, camelCase, PascalCase, lower.dot, UPPER.DOT)'
     required: false
-    default: 'UPPER_SNAKE'
+    default: 'PascalCase'
+  token-name-validation:
+    description: 'How to validate user token names (MATCH = must match token-name-style, ALL = accept any valid name)'
+    required: false
+    default: 'MATCH'
+  allow-builtin-token-override:
+    description: 'Allow user tokens to override built-in tokens (for template/reusable projects)'
+    required: false
+    default: 'false'
+  config-path:
+    description: 'Directory containing user-defined token files'
+    required: false
+    default: 'src/config'
+  config-value-trailing-newline:
+    description: 'How to handle trailing newlines in config values (strip-for-single-line, preserve-all, always-strip-one-newline)'
+    required: false
+    default: 'strip-for-single-line'
 
 outputs:
   manifests-zip-path:
@@ -63,5 +79,9 @@ runs:
         DOCKER_TAG: ${{ inputs.docker-tag }}
         DOCKER_IMAGE_NAME: ${{ inputs.docker-image-name }}
         SUBSTITUTION_TOKEN_STYLE: ${{ inputs.substitution-token-style }}
-        SUBSTITUTION_OUTPUT_STYLE: ${{ inputs.substitution-output-style }}
+        TOKEN_NAME_STYLE: ${{ inputs.token-name-style }}
+        TOKEN_NAME_VALIDATION: ${{ inputs.token-name-validation }}
+        ALLOW_BUILTIN_TOKEN_OVERRIDE: ${{ inputs.allow-builtin-token-override }}
+        CONFIG_PATH: ${{ inputs.config-path }}
+        CONFIG_VALUE_TRAILING_NEWLINE: ${{ inputs.config-value-trailing-newline }}
       run: "${{ github.action_path }}/../../scripts/main/kubernetes-manifests-package"

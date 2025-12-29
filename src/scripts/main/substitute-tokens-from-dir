@@ -1,0 +1,114 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025 Kaptain contributors (Fred Cooke)
+#
+# substitute-tokens-from-dir - Generic token substitution orchestrator
+#
+# Processes all token files in a directory and substitutes them into target files.
+# Token files: filename = token name, file content = token value.
+# Supports nested directories: path becomes part of token name (e.g., category/my-var).
+#
+# Usage:
+#   substitute-tokens-from-dir <token-style> <tokens-dir> <target-dir>
+#
+# Arguments:
+#   token-style  - Substitution syntax (shell, mustache, helm, erb, github-actions, etc.)
+#   tokens-dir   - Directory containing token files
+#   target-dir   - Directory containing files to substitute into (modified in-place)
+#
+# Environment:
+#   CONFIG_VALUE_TRAILING_NEWLINE - How to handle trailing newlines in token values
+#                                   (strip-for-single-line, preserve-all, always-strip-one-newline)
+#
+# Example:
+#   substitute-tokens-from-dir shell target/manifests/config target/manifests/substituted
+#
+set -euo pipefail
+
+# Locate script directory for finding plugins
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PLUGINS_DIR="$SCRIPT_DIR/../plugins"
+
+# Logging configuration (CI-agnostic)
+LOG_ERROR_PREFIX="${LOG_ERROR_PREFIX:-}"
+LOG_ERROR_SUFFIX="${LOG_ERROR_SUFFIX:-}"
+
+# Validate arguments
+if [[ $# -ne 3 ]]; then
+  echo "${LOG_ERROR_PREFIX}Usage: substitute-tokens-from-dir <token-style> <tokens-dir> <target-dir>${LOG_ERROR_SUFFIX}" >&2
+  exit 1
+fi
+
+TOKEN_STYLE="$1"
+TOKENS_DIR="$2"
+TARGET_DIR="$3"
+
+# Validate token style script exists
+PROVIDER_SCRIPT="$PLUGINS_DIR/token-substitution-providers/substitute-${TOKEN_STYLE}-style-token"
+if [[ ! -x "$PROVIDER_SCRIPT" ]]; then
+  echo "${LOG_ERROR_PREFIX}Unknown token style: $TOKEN_STYLE (script not found: substitute-${TOKEN_STYLE}-style-token)${LOG_ERROR_SUFFIX}" >&2
+  exit 1
+fi
+
+# Validate tokens directory exists
+if [[ ! -d "$TOKENS_DIR" ]]; then
+  echo "${LOG_ERROR_PREFIX}Tokens directory not found: $TOKENS_DIR${LOG_ERROR_SUFFIX}" >&2
+  exit 1
+fi
+
+# Validate target directory exists
+if [[ ! -d "$TARGET_DIR" ]]; then
+  echo "${LOG_ERROR_PREFIX}Target directory not found: $TARGET_DIR${LOG_ERROR_SUFFIX}" >&2
+  exit 1
+fi
+
+# Check for symlinks in tokens directory (security: prevent path traversal)
+symlinks_found=()
+while IFS= read -r -d '' symlink; do
+  symlinks_found+=("$symlink")
+done < <(find "$TOKENS_DIR" -type l -print0)
+
+if [[ ${#symlinks_found[@]} -gt 0 ]]; then
+  echo "${LOG_ERROR_PREFIX}Symlinks not allowed in tokens directory:${LOG_ERROR_SUFFIX}" >&2
+  for symlink in "${symlinks_found[@]}"; do
+    echo "  ${symlink#"$TOKENS_DIR"/}" >&2
+  done
+  exit 1
+fi
+
+# Check for binary files (null bytes) in tokens directory
+# Use portable detection: compare file with null-bytes-stripped version
+binary_files_found=()
+while IFS= read -r -d '' token_file; do
+  # shellcheck disable=SC2094 # False positive: we read the file to check, not write to it
+  if ! LC_ALL=C tr -d '\0' < "$token_file" | cmp -s - "$token_file"; then
+    binary_files_found+=("$token_file")
+  fi
+done < <(find "$TOKENS_DIR" -type f -print0)
+
+if [[ ${#binary_files_found[@]} -gt 0 ]]; then
+  echo "${LOG_ERROR_PREFIX}Binary files (containing null bytes) not allowed in tokens directory:${LOG_ERROR_SUFFIX}" >&2
+  for binary_file in "${binary_files_found[@]}"; do
+    echo "  ${binary_file#"$TOKENS_DIR"/}" >&2
+  done
+  exit 1
+fi
+
+# Convert target directory to absolute path for the provider script
+TARGET_DIR_ABS="$(cd "$TARGET_DIR" && pwd)"
+
+# Process tokens from tokens directory
+# cd to tokens-dir so token paths are relative (become token names)
+cd "$TOKENS_DIR"
+
+# Find all token files, sorted for predictable order
+# LC_ALL=C ensures consistent sorting across locales
+while IFS= read -r token_file; do
+  # Strip ./ prefix from find output
+  token_file="${token_file#./}"
+
+  # Call the style-specific substitution script
+  # Pass CONFIG_VALUE_TRAILING_NEWLINE to child
+  CONFIG_VALUE_TRAILING_NEWLINE="${CONFIG_VALUE_TRAILING_NEWLINE:-strip-for-single-line}" \
+  "$PROVIDER_SCRIPT" "$token_file" "$TARGET_DIR_ABS"
+done < <(find . -type f | LC_ALL=C sort)

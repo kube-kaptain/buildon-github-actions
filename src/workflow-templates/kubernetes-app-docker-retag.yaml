@@ -25,15 +25,35 @@ on:
         type: string
         default: 'src/kubernetes'
       substitution-token-style:
-        description: 'Token delimiter syntax for variables (shell)'
+        description: 'Token delimiter syntax for variables (shell, mustache, helm, erb, github-actions, blade, stringtemplate, ognl, t4, swift)'
         required: false
         type: string
         default: 'shell'
-      substitution-output-style:
-        description: 'Case style for variable names in manifests (UPPER_SNAKE, lower_snake, kebab-case, camelCase, PascalCase)'
+      token-name-style:
+        description: 'Case style for token names in manifests (UPPER_SNAKE, lower_snake, kebab-case, camelCase, PascalCase, lower.dot, UPPER.DOT)'
         required: false
         type: string
-        default: 'UPPER_SNAKE'
+        default: 'PascalCase'
+      token-name-validation:
+        description: 'How to validate user token names (MATCH = must match token-name-style, ALL = accept any valid name)'
+        required: false
+        type: string
+        default: 'MATCH'
+      allow-builtin-token-override:
+        description: 'Allow user tokens to override built-in tokens (for template/reusable projects)'
+        required: false
+        type: boolean
+        default: false
+      config-path:
+        description: 'Directory containing user-defined token files'
+        required: false
+        type: string
+        default: 'src/config'
+      config-value-trailing-newline:
+        description: 'How to handle trailing newlines in config values (strip-for-single-line, preserve-all, always-strip-one-newline)'
+        required: false
+        type: string
+        default: 'strip-for-single-line'
       # Repo provider configuration (required - no default)
       manifests-repo-provider-type:
         description: 'Repo provider type for manifest storage (docker, github-release). Required - consumer must choose.'

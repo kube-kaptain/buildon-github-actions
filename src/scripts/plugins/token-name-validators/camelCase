@@ -1,0 +1,71 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025 Kaptain contributors (Fred Cooke)
+#
+# camelCase - Validates token names follow camelCase convention
+#
+# Valid: myVar, myVar2, my2Var, 2MyVar, a, myCategory/mySubVar
+# Invalid: MY_VAR, my_var, my-var, MyVar, 2myVar
+#
+# Usage:
+#   camelCase <directory>
+#
+set -euo pipefail
+
+LOG_ERROR_PREFIX="${LOG_ERROR_PREFIX:-}"
+LOG_ERROR_SUFFIX="${LOG_ERROR_SUFFIX:-}"
+
+if [[ $# -ne 1 ]]; then
+  echo "${LOG_ERROR_PREFIX}Usage: camelCase <directory>${LOG_ERROR_SUFFIX}" >&2
+  exit 1
+fi
+
+DIR="$1"
+
+if [[ ! -d "$DIR" ]]; then
+  echo "${LOG_ERROR_PREFIX}Directory not found: $DIR${LOG_ERROR_SUFFIX}" >&2
+  exit 1
+fi
+
+is_valid_name() {
+  local name="$1"
+
+  local segment
+  while IFS= read -r segment; do
+    # camelCase: starts with lowercase letter, OR starts with digit(s) then uppercase
+    # Examples: myVar, my2Var, 2MyVar
+    if [[ ${#segment} -eq 1 ]]; then
+      # Single char: must be lowercase letter or digit
+      if [[ ! "$segment" =~ ^[a-z0-9]$ ]]; then
+        return 1
+      fi
+    else
+      # Multi-char: starts with lowercase, OR starts with digit(s) then uppercase letter
+      if [[ ! "$segment" =~ ^([a-z][a-zA-Z0-9]*|[0-9]+[A-Z][a-zA-Z0-9]*)$ ]]; then
+        return 1
+      fi
+    fi
+  done <<< "${name//\//$'\n'}"
+
+  return 0
+}
+
+invalid_names=()
+
+while IFS= read -r -d '' file; do
+  rel_path="${file#"$DIR"/}"
+
+  if ! is_valid_name "$rel_path"; then
+    invalid_names+=("$rel_path")
+  fi
+done < <(find "$DIR" -type f -print0)
+
+if [[ ${#invalid_names[@]} -gt 0 ]]; then
+  echo "${LOG_ERROR_PREFIX}Invalid camelCase token names:${LOG_ERROR_SUFFIX}" >&2
+  for name in "${invalid_names[@]}"; do
+    echo "  $name" >&2
+  done
+  exit 1
+fi
+
+exit 0

@@ -92,9 +92,12 @@ See [`examples/`](examples/) for more usage patterns.
 | Input | Type | Default | Description |
 |-------|------|---------|-------------|
 | `additional-release-branches` | string | `""` | Comma-separated list of additional release branches |
+| `allow-builtin-token-override` | boolean | `false` | Allow user tokens to override built-in tokens (for template/reusable projects) |
 | `block-conventional-commits` | boolean | `false` | Block commits that use conventional commit format |
 | `block-double-hyphens` | boolean | `true` | Block branch names containing double hyphens (typo detection) |
 | `block-slashes` | boolean | `false` | Block branch names containing slashes |
+| `config-path` | string | `src/config` | Directory containing user-defined token files |
+| `config-value-trailing-newline` | string | `strip-for-single-line` | How to handle trailing newlines in config values (strip-for-single-line, preserve-all, always-strip-one-newline) |
 | `confirm-image-doesnt-exist` | boolean | `true` | Fail if target image already exists in registry |
 | `default-branch` | string | `main` | The default/release branch name |
 | `docker-registry-logins` | string | `""` | YAML config for Docker registry logins (registry URL as key) |
@@ -112,10 +115,11 @@ See [`examples/`](examples/) for more usage patterns.
 | `source-registry` | string | *required* | Upstream registry (e.g., docker.io) |
 | `source-tag` | string | *required* | Upstream image tag (e.g., 1.25) |
 | `squash` | boolean | `true` | Enable --squash (requires experimental mode) |
-| `substitution-output-style` | string | `UPPER_SNAKE` | Case style for variable names in manifests (UPPER_SNAKE, lower_snake, kebab-case, camelCase, PascalCase) |
-| `substitution-token-style` | string | `shell` | Token delimiter syntax for variables (shell) |
+| `substitution-token-style` | string | `shell` | Token delimiter syntax for variables (shell, mustache, helm, erb, github-actions, blade, stringtemplate, ognl, t4, swift) |
 | `target-base-path` | string | `""` | Path between registry and image name (auto-set for GHCR) |
 | `target-registry` | string | `ghcr.io` | Target container registry |
+| `token-name-style` | string | `PascalCase` | Case style for token names in manifests (UPPER_SNAKE, lower_snake, kebab-case, camelCase, PascalCase, lower.dot, UPPER.DOT) |
+| `token-name-validation` | string | `MATCH` | How to validate user token names (MATCH = must match token-name-style, ALL = accept any valid name) |
 <!-- INPUTS-END -->
 
 ### Secrets

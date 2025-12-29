@@ -10,8 +10,12 @@ Kubernetes App - Docker Dockerfile
 | `squash` | boolean | `true` | Enable --squash (requires experimental mode) |
 | `no-cache` | boolean | `true` | Disable layer caching for reproducible builds |
 | `manifests-path` | string | `src/kubernetes` | Directory containing Kubernetes manifests |
-| `substitution-token-style` | string | `shell` | Token delimiter syntax for variables (shell) |
-| `substitution-output-style` | string | `UPPER_SNAKE` | Case style for variable names in manifests (UPPER_SNAKE, lower_snake, kebab-case, camelCase, PascalCase) |
+| `substitution-token-style` | string | `shell` | Token delimiter syntax for variables (shell, mustache, helm, erb, github-actions, blade, stringtemplate, ognl, t4, swift) |
+| `token-name-style` | string | `PascalCase` | Case style for token names in manifests (UPPER_SNAKE, lower_snake, kebab-case, camelCase, PascalCase, lower.dot, UPPER.DOT) |
+| `token-name-validation` | string | `MATCH` | How to validate user token names (MATCH = must match token-name-style, ALL = accept any valid name) |
+| `allow-builtin-token-override` | boolean | `false` | Allow user tokens to override built-in tokens (for template/reusable projects) |
+| `config-path` | string | `src/config` | Directory containing user-defined token files |
+| `config-value-trailing-newline` | string | `strip-for-single-line` | How to handle trailing newlines in config values (strip-for-single-line, preserve-all, always-strip-one-newline) |
 | `manifests-repo-provider-type` | string | *required* | Repo provider type for manifest storage (docker, github-release). Required - consumer must choose. |
 | `target-registry` | string | `ghcr.io` | Target container registry |
 | `target-base-path` | string | `""` | Path between registry and image name (auto-set for GHCR) |

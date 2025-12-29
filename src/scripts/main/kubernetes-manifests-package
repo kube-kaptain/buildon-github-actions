@@ -12,9 +12,11 @@
 #   DOCKER_TAG      - Docker tag for substitution (optional)
 #   DOCKER_IMAGE_NAME - Docker image name for substitution (optional)
 #   SUBSTITUTION_TOKEN_STYLE - Token delimiter syntax (default: shell)
-#                              Options: shell (${VAR})
-#   SUBSTITUTION_OUTPUT_STYLE - Case style for variable names (default: UPPER_SNAKE)
-#                               Options: UPPER_SNAKE, lower_snake, kebab-case, camelCase, PascalCase
+#   TOKEN_NAME_STYLE - Case style for token names (default: PascalCase)
+#   TOKEN_NAME_VALIDATION - How to validate user token names (default: MATCH)
+#   ALLOW_BUILTIN_TOKEN_OVERRIDE - Allow user tokens to override built-ins (default: false)
+#   CONFIG_PATH - Source directory for user-defined tokens (default: src/config)
+#   CONFIG_VALUE_TRAILING_NEWLINE - Trailing newline handling (default: strip-for-single-line)
 #
 # Outputs:
 #   MANIFESTS_ZIP_PATH - Directory containing the zip file
@@ -25,6 +27,7 @@ set -euo pipefail
 
 # Locate script directory for calling sibling scripts
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PLUGINS_DIR="$SCRIPT_DIR/../plugins"
 
 # Logging configuration (CI-agnostic)
 LOG_ERROR_PREFIX="${LOG_ERROR_PREFIX:-}"
@@ -40,10 +43,15 @@ OUTPUT_PATH="${OUTPUT_PATH:-target}"
 DOCKER_TAG="${DOCKER_TAG:-}"
 DOCKER_IMAGE_NAME="${DOCKER_IMAGE_NAME:-}"
 SUBSTITUTION_TOKEN_STYLE="${SUBSTITUTION_TOKEN_STYLE:-shell}"
-SUBSTITUTION_OUTPUT_STYLE="${SUBSTITUTION_OUTPUT_STYLE:-UPPER_SNAKE}"
+TOKEN_NAME_STYLE="${TOKEN_NAME_STYLE:-PascalCase}"
+TOKEN_NAME_VALIDATION="${TOKEN_NAME_VALIDATION:-MATCH}"
+ALLOW_BUILTIN_TOKEN_OVERRIDE="${ALLOW_BUILTIN_TOKEN_OVERRIDE:-false}"
+CONFIG_PATH="${CONFIG_PATH:-src/config}"
+CONFIG_VALUE_TRAILING_NEWLINE="${CONFIG_VALUE_TRAILING_NEWLINE:-strip-for-single-line}"
 
 # Build output structure
 MANIFESTS_RAW_PATH="$OUTPUT_PATH/manifests/raw"
+MANIFESTS_CONFIG_PATH="$OUTPUT_PATH/manifests/config"
 MANIFESTS_SUBSTITUTED_PATH="$OUTPUT_PATH/manifests/substituted"
 MANIFESTS_ZIP_PATH="$OUTPUT_PATH/manifests/zip"
 
@@ -77,7 +85,6 @@ to_camel_case() {
   local result=""
   local capitalize=false
 
-  # Convert to lowercase with underscores as separators
   input=$(echo "$input" | tr '[:upper:]' '[:lower:]')
 
   for (( i=0; i<${#input}; i++ )); do
@@ -98,73 +105,66 @@ to_camel_case() {
 to_pascal_case() {
   local camel
   camel=$(to_camel_case "$1")
-  # Capitalize first letter
   echo "$(echo "${camel:0:1}" | tr '[:lower:]' '[:upper:]')${camel:1}"
+}
+
+to_lower_dot() {
+  echo "$1" | tr '[:upper:]_' '[:lower:].'
+}
+
+to_upper_dot() {
+  echo "$1" | tr '_' '.'
 }
 
 # Translate variable name from UPPER_SNAKE to configured style
 translate_var_name() {
   local var_name="$1"
 
-  case "$SUBSTITUTION_OUTPUT_STYLE" in
+  case "$TOKEN_NAME_STYLE" in
     UPPER_SNAKE)  to_upper_snake "$var_name" ;;
     lower_snake)  to_lower_snake "$var_name" ;;
     kebab-case)   to_kebab_case "$var_name" ;;
     camelCase)    to_camel_case "$var_name" ;;
     PascalCase)   to_pascal_case "$var_name" ;;
+    lower.dot)    to_lower_dot "$var_name" ;;
+    UPPER.DOT)    to_upper_dot "$var_name" ;;
     *)
-      echo "${LOG_ERROR_PREFIX}Unknown substitution output style: $SUBSTITUTION_OUTPUT_STYLE${LOG_ERROR_SUFFIX}" >&2
+      echo "${LOG_ERROR_PREFIX}Unknown token name style: $TOKEN_NAME_STYLE${LOG_ERROR_SUFFIX}" >&2
       exit 1
       ;;
   esac
 }
 
-# Validate token style and get substitution script name
-get_substitution_script() {
-  local script_name="substitute-${SUBSTITUTION_TOKEN_STYLE}-style-tokens"
-  local script_path="$SCRIPT_DIR/../plugins/token-substitution-providers/$script_name"
+# Write a built-in token file
+write_builtin_token() {
+  local name="$1"
+  local value="$2"
+  local target_name
+  target_name=$(translate_var_name "$name")
 
-  if [[ ! -x "$script_path" ]]; then
-    echo "${LOG_ERROR_PREFIX}Unknown substitution token style: $SUBSTITUTION_TOKEN_STYLE (script not found: $script_name)${LOG_ERROR_SUFFIX}" >&2
-    exit 1
-  fi
-
-  echo "$script_path"
+  printf '%s' "$value" > "$MANIFESTS_CONFIG_PATH/$target_name"
 }
 
-# Build VARIABLES string with translated names for substitution
-build_variables_string() {
-  local project_name_key version_key
-  project_name_key=$(translate_var_name "PROJECT_NAME")
-  version_key=$(translate_var_name "VERSION")
-
-  local vars="${project_name_key}=${PROJECT_NAME},${version_key}=${VERSION}"
-
-  if [[ -n "$DOCKER_TAG" ]]; then
-    local docker_tag_key
-    docker_tag_key=$(translate_var_name "DOCKER_TAG")
-    vars="${vars},${docker_tag_key}=${DOCKER_TAG}"
-  fi
-
-  if [[ -n "$DOCKER_IMAGE_NAME" ]]; then
-    local docker_image_name_key
-    docker_image_name_key=$(translate_var_name "DOCKER_IMAGE_NAME")
-    vars="${vars},${docker_image_name_key}=${DOCKER_IMAGE_NAME}"
-  fi
-
-  echo "$vars"
+# Get validator script for a style
+get_validator_script() {
+  local style="$1"
+  echo "$PLUGINS_DIR/token-name-validators/$style"
 }
 
 main() {
   echo "=== Kubernetes Manifest Package ===" >&2
   echo "Source: $MANIFESTS_PATH" >&2
+  echo "Config: $CONFIG_PATH" >&2
   echo "Output: $OUTPUT_PATH" >&2
   echo "Project: $PROJECT_NAME" >&2
   echo "Version: $VERSION" >&2
   [[ -n "$DOCKER_TAG" ]] && echo "Docker tag: $DOCKER_TAG" >&2
   [[ -n "$DOCKER_IMAGE_NAME" ]] && echo "Docker image: $DOCKER_IMAGE_NAME" >&2
   echo "Token style: $SUBSTITUTION_TOKEN_STYLE" >&2
-  echo "Output style: $SUBSTITUTION_OUTPUT_STYLE" >&2
+  echo "Name style: $TOKEN_NAME_STYLE" >&2
+  echo "Name validation: $TOKEN_NAME_VALIDATION" >&2
+  echo "Allow override: $ALLOW_BUILTIN_TOKEN_OVERRIDE" >&2
+  echo "Trailing newline: $CONFIG_VALUE_TRAILING_NEWLINE" >&2
   echo "====================================" >&2
 
   # Validate manifests directory exists
@@ -199,70 +199,99 @@ main() {
 
   # Create output directory structure
   mkdir -p "$MANIFESTS_RAW_PATH"
+  mkdir -p "$MANIFESTS_CONFIG_PATH"
   mkdir -p "$MANIFESTS_ZIP_PATH"
 
   # Copy to raw (preserving original)
   cp -R "$MANIFESTS_PATH"/* "$MANIFESTS_RAW_PATH/"
 
-  # Perform variable substitution using standalone script
+  # Step 1: Write built-in tokens as files
   echo "" >&2
-  echo "Performing variable substitution..." >&2
-
-  local variables_string substitution_script
-  variables_string=$(build_variables_string)
-  substitution_script=$(get_substitution_script)
-
-  # Call substitution script (variables already translated to target style)
-  local sub_output
-  sub_output=$(
-    VARIABLES="$variables_string" \
-    INPUT_PATH="$MANIFESTS_PATH" \
-    OUTPUT_PATH="$MANIFESTS_SUBSTITUTED_PATH" \
-    LOG_ERROR_PREFIX="$LOG_ERROR_PREFIX" \
-    LOG_ERROR_SUFFIX="$LOG_ERROR_SUFFIX" \
-    "$substitution_script"
-  )
-
-  # Report substitution stats
-  if [[ -n "$sub_output" ]]; then
-    local total_subs=0
-    local total_lines=0
-    local files_with_subs=0
-    echo "" >&2
-    echo "Substitutions:" >&2
-    while IFS=: read -r filename vars_count lines_count; do
-      echo "  $filename: $vars_count vars, $lines_count lines" >&2
-      total_subs=$((total_subs + vars_count))
-      total_lines=$((total_lines + lines_count))
-      files_with_subs=$((files_with_subs + 1))
-    done <<< "$sub_output"
-    echo "" >&2
-    echo "Total: $total_subs substitutions, $total_lines lines across $files_with_subs file(s)" >&2
-  else
-    echo "No substitutions made" >&2
+  echo "Writing built-in tokens..." >&2
+  write_builtin_token "PROJECT_NAME" "$PROJECT_NAME"
+  write_builtin_token "VERSION" "$VERSION"
+  if [[ -n "$DOCKER_TAG" ]]; then
+    write_builtin_token "DOCKER_TAG" "$DOCKER_TAG"
   fi
+  if [[ -n "$DOCKER_IMAGE_NAME" ]]; then
+    write_builtin_token "DOCKER_IMAGE_NAME" "$DOCKER_IMAGE_NAME"
+  fi
+
+  # Step 2: Validate user config if it exists
+  if [[ -d "$CONFIG_PATH" ]] && [[ -n "$(find "$CONFIG_PATH" -type f 2>/dev/null)" ]]; then
+    echo "Validating user config tokens..." >&2
+
+    # Determine which validator to use
+    local validator_style
+    if [[ "$TOKEN_NAME_VALIDATION" == "MATCH" ]]; then
+      validator_style="$TOKEN_NAME_STYLE"
+    else
+      validator_style="ALL"
+    fi
+
+    local validator_script
+    validator_script=$(get_validator_script "$validator_style")
+
+    if [[ ! -x "$validator_script" ]]; then
+      echo "${LOG_ERROR_PREFIX}Validator not found: $validator_style${LOG_ERROR_SUFFIX}" >&2
+      exit 1
+    fi
+
+    # Run validator
+    if ! "$validator_script" "$CONFIG_PATH"; then
+      exit 1
+    fi
+
+    # Step 3: Check for conflicts with built-in tokens
+    if [[ "$ALLOW_BUILTIN_TOKEN_OVERRIDE" != "true" ]]; then
+      local conflicts=()
+
+      while IFS= read -r -d '' user_file; do
+        local user_token="${user_file#"$CONFIG_PATH"/}"
+        # Check if this token name matches any built-in
+        if [[ -f "$MANIFESTS_CONFIG_PATH/$user_token" ]]; then
+          conflicts+=("$user_token")
+        fi
+      done < <(find "$CONFIG_PATH" -type f -print0)
+
+      if [[ ${#conflicts[@]} -gt 0 ]]; then
+        echo "${LOG_ERROR_PREFIX}Found attempt to override built-in variable(s) - this is not allowed:${LOG_ERROR_SUFFIX}" >&2
+        for conflict in "${conflicts[@]}"; do
+          echo "  $conflict" >&2
+        done
+        exit 1
+      fi
+    fi
+
+    # Step 4: Copy user config to output (may override built-ins if allowed)
+    echo "Copying user config tokens..." >&2
+    cp -R "$CONFIG_PATH"/* "$MANIFESTS_CONFIG_PATH/"
+  fi
+
+  # Step 5: Copy manifests to substituted/<project-name>/
+  echo "" >&2
+  echo "Preparing manifests for substitution..." >&2
+  mkdir -p "$MANIFESTS_SUBSTITUTED_PATH/${PROJECT_NAME}"
+  cp -R "$MANIFESTS_PATH"/* "$MANIFESTS_SUBSTITUTED_PATH/${PROJECT_NAME}/"
+
+  # Step 6: Perform variable substitution
+  echo "Performing variable substitution..." >&2
+  CONFIG_VALUE_TRAILING_NEWLINE="$CONFIG_VALUE_TRAILING_NEWLINE" \
+  "$SCRIPT_DIR/substitute-tokens-from-dir" \
+    "$SUBSTITUTION_TOKEN_STYLE" \
+    "$MANIFESTS_CONFIG_PATH" \
+    "$MANIFESTS_SUBSTITUTED_PATH/${PROJECT_NAME}"
 
   # Generate zip filename and paths
   local zip_name="${PROJECT_NAME}-${VERSION}-manifests.zip"
   local zip_dir zip_full_path
-  # Convert to absolute path
   zip_dir="$(cd "$MANIFESTS_ZIP_PATH" && pwd)"
   zip_full_path="${zip_dir}/${zip_name}"
 
-  # Create zip with project-name wrapper directory
+  # Step 7: Create zip directly from substituted (project-name wrapper already in place)
   echo "" >&2
   echo "Creating zip: $zip_full_path" >&2
-
-  # Create staging directory
-  local staging_dir="$OUTPUT_PATH/manifests/zip-staging"
-  mkdir -p "$staging_dir/${PROJECT_NAME}"
-  cp -R "$MANIFESTS_SUBSTITUTED_PATH"/* "$staging_dir/${PROJECT_NAME}/"
-
-  # Create zip
-  (cd "$staging_dir" && zip -rq "$zip_full_path" "${PROJECT_NAME}")
-
-  # Clean up staging
-  rm -rf "$staging_dir"
+  (cd "$MANIFESTS_SUBSTITUTED_PATH" && zip -rq "$zip_full_path" "${PROJECT_NAME}")
 
   # Verify zip was created
   if [[ ! -f "$zip_full_path" ]]; then

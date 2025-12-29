@@ -11,4 +11,8 @@
     docker-tag: ${{ steps.versions.outputs.docker-tag }}
     docker-image-name: ${{ steps.versions.outputs.docker-image-name }}
     substitution-token-style: ${{ inputs.substitution-token-style }}
-    substitution-output-style: ${{ inputs.substitution-output-style }}
+    token-name-style: ${{ inputs.token-name-style }}
+    token-name-validation: ${{ inputs.token-name-validation }}
+    allow-builtin-token-override: ${{ inputs.allow-builtin-token-override }}
+    config-path: ${{ inputs.config-path }}
+    config-value-trailing-newline: ${{ inputs.config-value-trailing-newline }}
