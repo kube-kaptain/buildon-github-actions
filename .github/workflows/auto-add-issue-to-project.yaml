@@ -1,0 +1,51 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025 Kaptain contributors (Fred Cooke)
+
+name: Add ALL New Issues to GH Project
+
+on:
+  workflow_call:
+    inputs:
+      project-number:
+        description: 'GitHub Project number to add issues to'
+        required: false
+        type: number
+        default: 1
+
+jobs:
+  add-to-project:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Add issue to project
+        env:
+          GH_TOKEN: ${{ secrets.PROJECT_TOKEN }}
+          ISSUE_NODE_ID: ${{ github.event.issue.node_id }}
+          ORG: ${{ github.repository_owner }}
+          PROJECT_NUMBER: ${{ inputs.project-number }}
+        run: |
+          # Get project ID
+          PROJECT_ID=$(gh api graphql -f query='
+            query($org: String!, $number: Int!) {
+              organization(login: $org) {
+                projectV2(number: $number) {
+                  id
+                }
+              }
+            }
+          ' -f org="$ORG" -F number="$PROJECT_NUMBER" --jq '.data.organization.projectV2.id')
+
+          # Add issue to project
+          gh api graphql -f query='
+            mutation($projectId: ID!, $contentId: ID!) {
+              addProjectV2ItemById(input: {
+                projectId: $projectId
+                contentId: $contentId
+              }) {
+                item {
+                  id
+                }
+              }
+            }
+          ' -f projectId="$PROJECT_ID" -f contentId="$ISSUE_NODE_ID"
+
+          echo "Added issue to project"

@@ -664,11 +664,20 @@ main() {
   echo
 
   # Clean output directory for predictable results
+  # These files are not generated from templates - preserve them
+  local preserved_files=(
+    "build.yaml"
+    "auto-add-issue-to-project.yaml"
+    "auto-add-issue-to-project-1.yaml"
+  )
+
   if [[ -d "$OUTPUT_DIR" ]]; then
     echo "Cleaning output directory..."
     rm "$OUTPUT_DIR"/*
-    git checkout "$OUTPUT_DIR/build.yaml"
-    echo "  Removed existing files from $OUTPUT_DIR (restored build.yaml)"
+    for file in "${preserved_files[@]}"; do
+      git checkout "$OUTPUT_DIR/$file" 2>/dev/null || true
+    done
+    echo "  Removed existing files from $OUTPUT_DIR (restored: ${preserved_files[*]})"
     echo
   fi
 
