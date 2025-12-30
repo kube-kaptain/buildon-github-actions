@@ -460,6 +460,7 @@ jobs:
           docker-tag: ${{ steps.versions.outputs.docker-tag }}
           version: ${{ steps.versions.outputs.version }}
           project-name: ${{ steps.versions.outputs.project-name }}
+          is-release: ${{ steps.versions.outputs.is-release }}
           dockerfile-sub-path: ${{ inputs.dockerfile-sub-path }}
           output-sub-path: ${{ inputs.output-sub-path }}
           squash: ${{ inputs.squash }}

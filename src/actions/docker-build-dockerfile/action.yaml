@@ -26,6 +26,9 @@ inputs:
   project-name:
     description: 'Project name (from version generator, passed as build arg)'
     required: true
+  is-release:
+    description: 'Whether this is a release build (from version generator)'
+    required: true
   dockerfile-sub-path:
     description: 'Directory containing Dockerfile, relative (also used as build context)'
     required: false
@@ -100,6 +103,7 @@ runs:
         DOCKER_TAG: ${{ inputs.docker-tag }}
         VERSION: ${{ inputs.version }}
         PROJECT_NAME: ${{ inputs.project-name }}
+        IS_RELEASE: ${{ inputs.is-release }}
         DOCKERFILE_SUB_PATH: ${{ inputs.dockerfile-sub-path }}
         OUTPUT_SUB_PATH: ${{ inputs.output-sub-path }}
         SQUASH: ${{ inputs.squash }}
