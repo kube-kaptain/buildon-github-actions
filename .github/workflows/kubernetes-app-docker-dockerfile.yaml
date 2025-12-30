@@ -33,7 +33,7 @@ on:
         type: string
         default: 'shell'
       token-name-style:
-        description: 'Case style for token names in manifests (UPPER_SNAKE, lower_snake, kebab-case, camelCase, PascalCase, lower.dot, UPPER.DOT)'
+        description: 'Case style for token names (UPPER_SNAKE, lower_snake, kebab-case, camelCase, PascalCase, lower.dot, UPPER.DOT)'
         required: false
         type: string
         default: 'PascalCase'
@@ -456,8 +456,15 @@ jobs:
           version: ${{ steps.versions.outputs.version }}
           project-name: ${{ steps.versions.outputs.project-name }}
           dockerfile-sub-path: ${{ inputs.dockerfile-sub-path }}
+          output-sub-path: ${{ inputs.output-sub-path }}
           squash: ${{ inputs.squash }}
           no-cache: ${{ inputs.no-cache }}
+          substitution-token-style: ${{ inputs.substitution-token-style }}
+          token-name-style: ${{ inputs.token-name-style }}
+          token-name-validation: ${{ inputs.token-name-validation }}
+          config-sub-path: ${{ inputs.config-sub-path }}
+          allow-builtin-token-override: ${{ inputs.allow-builtin-token-override }}
+          config-value-trailing-newline: ${{ inputs.config-value-trailing-newline }}
       - name: Pass check - Docker Build
         if: success()
         uses: ./.github/buildon-github-actions/src/actions/github-check-run

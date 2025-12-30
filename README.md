@@ -72,7 +72,7 @@ See [`examples/`](examples/) for more usage patterns.
 | Action | Description |
 |--------|-------------|
 | `basic-quality-checks` | Basic quality checks for commits and branches |
-| `docker-build-dockerfile` | Builds a Docker image from a Dockerfile (build only, use docker-push to push) |
+| `docker-build-dockerfile` | Builds a Docker image from a Dockerfile with token substitution (build only, use docker-push to push) |
 | `docker-build-retag` | Pulls and retags Docker images (no push) |
 | `docker-push` | Pushes a Docker image to registry |
 | `docker-registry-logins` | Authenticate to container registries (GHCR by default, configure others as needed) |
@@ -119,7 +119,7 @@ See [`examples/`](examples/) for more usage patterns.
 | `substitution-token-style` | string | `shell` | Token delimiter syntax for variables (shell, mustache, helm, erb, github-actions, blade, stringtemplate, ognl, t4, swift) |
 | `target-base-path` | string | `""` | Path between registry and image name (auto-set for GHCR) |
 | `target-registry` | string | `ghcr.io` | Target container registry |
-| `token-name-style` | string | `PascalCase` | Case style for token names in manifests (UPPER_SNAKE, lower_snake, kebab-case, camelCase, PascalCase, lower.dot, UPPER.DOT) |
+| `token-name-style` | string | `PascalCase` | Case style for token names (UPPER_SNAKE, lower_snake, kebab-case, camelCase, PascalCase, lower.dot, UPPER.DOT) |
 | `token-name-validation` | string | `MATCH` | How to validate user token names (MATCH = must match token-name-style, ALL = accept any valid name) |
 <!-- INPUTS-END -->
 

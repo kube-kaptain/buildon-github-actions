@@ -40,6 +40,9 @@ create_config_token() {
 set_required_env() {
   export PROJECT_NAME="my-project"
   export VERSION="1.2.3"
+  export IS_RELEASE="true"
+  export DOCKER_TAG="1.2.3"
+  export DOCKER_IMAGE_NAME="my-project"
   export MANIFESTS_SUB_PATH="$TEST_MANIFESTS"
   export CONFIG_SUB_PATH="$CONFIG_DIR"
 }

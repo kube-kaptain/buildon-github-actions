@@ -4,6 +4,10 @@
 #
 # docker-build-dockerfile - Builds a Docker image from a Dockerfile
 #
+# Copies Dockerfile directory to build output, applies token substitution,
+# then builds from the substituted copy. This allows using variables like
+# ${TargetRegistry}/${TargetBasePath}/base-image:1.0.0 in Dockerfiles.
+#
 # Build only - does not push. Workflow handles push after optional test step.
 # This separation allows injecting test steps between build and push.
 #
@@ -15,13 +19,23 @@
 #   VERSION             - Version number (from version generator, passed as build arg)
 #   PROJECT_NAME        - Project name (from version generator, passed as build arg)
 #   DOCKERFILE_SUB_PATH - Directory containing Dockerfile, relative (default: src/docker)
+#   OUTPUT_SUB_PATH     - Build output directory, relative (default: target)
 #   SQUASH              - "false" to disable --squash (default: true, always squash for clean D files)
 #   NO_CACHE            - "false" to enable layer caching (default: true, always build fresh)
+#   SUBSTITUTION_TOKEN_STYLE - Token delimiter syntax (default: shell)
+#   TOKEN_NAME_STYLE    - Case style for token names (default: PascalCase)
+#   TOKEN_NAME_VALIDATION - How to validate user token names (default: MATCH)
+#   ALLOW_BUILTIN_TOKEN_OVERRIDE - Allow user tokens to override built-ins (default: false)
+#   CONFIG_SUB_PATH     - Source directory for user-defined tokens, relative (default: src/config)
+#   CONFIG_VALUE_TRAILING_NEWLINE - Trailing newline handling (default: strip-for-single-line)
 #
 # Outputs:
 #   TARGET_IMAGE_FULL_URI - Full image reference (for use in push step)
 #
 set -euo pipefail
+
+# Locate script directory for calling sibling scripts
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # Logging configuration (CI-agnostic)
 LOG_ERROR_PREFIX="${LOG_ERROR_PREFIX:-}"
@@ -37,12 +51,19 @@ PROJECT_NAME="${PROJECT_NAME:?PROJECT_NAME is required}"
 # Optional inputs with defaults
 TARGET_BASE_PATH="${TARGET_BASE_PATH:-}"
 DOCKERFILE_SUB_PATH="${DOCKERFILE_SUB_PATH:-src/docker}"
+OUTPUT_SUB_PATH="${OUTPUT_SUB_PATH:-target}"
 SQUASH="${SQUASH:-true}"
 NO_CACHE="${NO_CACHE:-true}"
+SUBSTITUTION_TOKEN_STYLE="${SUBSTITUTION_TOKEN_STYLE:-shell}"
+TOKEN_NAME_STYLE="${TOKEN_NAME_STYLE:-PascalCase}"
+TOKEN_NAME_VALIDATION="${TOKEN_NAME_VALIDATION:-MATCH}"
+ALLOW_BUILTIN_TOKEN_OVERRIDE="${ALLOW_BUILTIN_TOKEN_OVERRIDE:-false}"
+CONFIG_SUB_PATH="${CONFIG_SUB_PATH:-src/config}"
+CONFIG_VALUE_TRAILING_NEWLINE="${CONFIG_VALUE_TRAILING_NEWLINE:-strip-for-single-line}"
 
-# Dockerfile must always be named exactly "Dockerfile"
-DOCKERFILE="${DOCKERFILE_SUB_PATH}/Dockerfile"
-CONTEXT="${DOCKERFILE_SUB_PATH}"
+# Build output structure (sub-paths, relative to working directory)
+DOCKER_CONFIG_SUB_PATH="${OUTPUT_SUB_PATH}/docker/config"
+DOCKER_SUBSTITUTED_SUB_PATH="${OUTPUT_SUB_PATH}/docker/substituted"
 
 # Assemble full image URI
 if [[ -n "${TARGET_BASE_PATH}" ]]; then
@@ -97,10 +118,13 @@ main() {
   echo "=== Docker Build Dockerfile ===" >&2
   echo "Target: ${TARGET_IMAGE_FULL_URI}" >&2
   echo "Dockerfile sub-path: ${DOCKERFILE_SUB_PATH}" >&2
+  echo "Output sub-path: ${OUTPUT_SUB_PATH}" >&2
   echo "Squash: ${SQUASH}" >&2
+  echo "Token style: ${SUBSTITUTION_TOKEN_STYLE}" >&2
+  echo "Name style: ${TOKEN_NAME_STYLE}" >&2
   echo "===============================" >&2
 
-  # Validate directory exists
+  # Validate source directory exists
   if [[ ! -d "${DOCKERFILE_SUB_PATH}" ]]; then
     echo "${LOG_ERROR_PREFIX}Dockerfile directory not found: ${DOCKERFILE_SUB_PATH}${LOG_ERROR_SUFFIX}" >&2
     exit 1
@@ -134,6 +158,47 @@ main() {
   # Confirm target doesn't exist before building (fail fast)
   confirm_image_doesnt_exist "${TARGET_IMAGE_FULL_URI}" || exit 1
 
+  # Copy docker directory to build output for substitution
+  echo "" >&2
+  echo "Copying docker directory for substitution..." >&2
+  mkdir -p "${DOCKER_SUBSTITUTED_SUB_PATH}"
+  cp -R "${DOCKERFILE_SUB_PATH}"/* "${DOCKER_SUBSTITUTED_SUB_PATH}/"
+
+  # Count files copied
+  local file_count
+  file_count=$(find "${DOCKER_SUBSTITUTED_SUB_PATH}" -type f | wc -l | tr -d ' ')
+  echo "Copied ${file_count} file(s) to ${DOCKER_SUBSTITUTED_SUB_PATH}" >&2
+
+  # Prepare substitution tokens (built-ins + user config)
+  echo "" >&2
+  TOKENS_OUTPUT_SUB_PATH="${DOCKER_CONFIG_SUB_PATH}" \
+  CONFIG_SUB_PATH="${CONFIG_SUB_PATH}" \
+  TOKEN_NAME_STYLE="${TOKEN_NAME_STYLE}" \
+  TOKEN_NAME_VALIDATION="${TOKEN_NAME_VALIDATION}" \
+  ALLOW_BUILTIN_TOKEN_OVERRIDE="${ALLOW_BUILTIN_TOKEN_OVERRIDE}" \
+  CONFIG_VALUE_TRAILING_NEWLINE="${CONFIG_VALUE_TRAILING_NEWLINE}" \
+  PROJECT_NAME="${PROJECT_NAME}" \
+  VERSION="${VERSION}" \
+  DOCKER_TAG="${DOCKER_TAG}" \
+  DOCKER_IMAGE_NAME="${TARGET_IMAGE_NAME}" \
+  DOCKER_IMAGE_FULL_URI="${TARGET_IMAGE_FULL_URI}" \
+  TARGET_REGISTRY="${TARGET_REGISTRY}" \
+  TARGET_BASE_PATH="${TARGET_BASE_PATH}" \
+  "${SCRIPT_DIR}/prepare-substitution-tokens"
+
+  # Perform variable substitution on copied docker directory
+  echo "" >&2
+  echo "Performing variable substitution..." >&2
+  CONFIG_VALUE_TRAILING_NEWLINE="${CONFIG_VALUE_TRAILING_NEWLINE}" \
+  "${SCRIPT_DIR}/substitute-tokens-from-dir" \
+    "${SUBSTITUTION_TOKEN_STYLE}" \
+    "${DOCKER_CONFIG_SUB_PATH}" \
+    "${DOCKER_SUBSTITUTED_SUB_PATH}"
+
+  # Build from substituted directory
+  local dockerfile="${DOCKER_SUBSTITUTED_SUB_PATH}/Dockerfile"
+  local context="${DOCKER_SUBSTITUTED_SUB_PATH}"
+
   # Enable experimental mode if squash requested
   if [[ "${SQUASH}" == "true" ]]; then
     enable_experimental
@@ -142,7 +207,7 @@ main() {
   fi
 
   # Build command
-  local cmd=(docker build -f "${DOCKERFILE}" -t "${TARGET_IMAGE_FULL_URI}")
+  local cmd=(docker build -f "${dockerfile}" -t "${TARGET_IMAGE_FULL_URI}")
 
   # Add standard build args (Dockerfile can use or ignore)
   cmd+=(--build-arg "VERSION=${VERSION}")
@@ -166,13 +231,15 @@ main() {
   fi
 
   # Add context
-  cmd+=("${CONTEXT}")
+  cmd+=("${context}")
 
+  echo "" >&2
   echo "Building: ${cmd[*]}" >&2
   "${cmd[@]}"
 
   output_var "TARGET_IMAGE_FULL_URI" "${TARGET_IMAGE_FULL_URI}"
 
+  echo "" >&2
   echo "Docker Build Dockerfile complete" >&2
 }
 
