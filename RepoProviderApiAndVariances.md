@@ -133,9 +133,181 @@ Decision needed: Should `MAVEN_GROUP_ID` default to `io.github.${owner}` or rema
 
 Decision made: Yes, this is a reasonable GH Actions level default behaviour.
 
+## Fetch-and-Extract Scripts (Download Side)
+
+The reciprocal of package+publish. Single combined operation since manifests are useless until extracted.
+
+### Script Naming
+
+```
+src/scripts/plugins/kubernetes-manifests-repo-providers/
+  kubernetes-manifests-repo-provider-docker-fetch-and-extract
+  kubernetes-manifests-repo-provider-github-release-fetch-and-extract
+  kubernetes-manifests-repo-provider-npm-fetch-and-extract
+  kubernetes-manifests-repo-provider-rubygems-fetch-and-extract
+  kubernetes-manifests-repo-provider-maven-fetch-and-extract
+  kubernetes-manifests-repo-provider-nuget-fetch-and-extract
+```
+
+### Positional Argument APIs
+
+Unlike publish-side (env vars for CI integration), fetch uses positional args for direct invocation from config-driven dispatchers.
+
+| Provider | Args | Example |
+|----------|------|---------|
+| **docker** | `<image-uri> <output-dir>` | `ghcr.io/myorg/myapp-manifests:1.2.3 target/env/myapp` |
+| **github-release** | `<repo> <tag> <asset-name> <output-dir>` | `myorg/myapp v1.2.3 myapp-manifests-1.2.3.zip target/env/myapp` |
+| **npm** | `<package-spec> <output-dir>` | `@myorg/myapp-manifests@1.2.3 target/env/myapp` |
+| **rubygems** | `<gem-name> <version> <output-dir>` | `myapp-manifests 1.2.3 target/env/myapp` |
+| **maven** | `<gav-coordinates> <output-dir>` | `io.github.myorg:myapp-manifests:1.2.3:zip target/env/myapp` |
+| **nuget** | `<package-id> <version> <output-dir>` | `MyApp.Manifests 1.2.3 target/env/myapp` |
+
+### Fetch-and-Extract Flow by Provider
+
+| Provider | CLI | Download Command | Extract Method |
+|----------|-----|------------------|----------------|
+| **docker** | docker | `docker pull` + `docker create` + `docker cp` | `unzip` from copied file |
+| **github-release** | gh | `gh release download --repo <repo> --pattern <asset>` | `unzip` downloaded asset |
+| **npm** | npm | `npm pack <package>@<version>` | `tar xzf` then `unzip` inner zip |
+| **rubygems** | gem | `gem fetch <name> -v <version>` | `gem unpack` then `unzip` inner zip |
+| **maven** | mvn | `mvn dependency:copy -Dartifact=<gav>` | `unzip` downloaded artifact |
+| **nuget** | dotnet | `dotnet nuget ... ` or `nuget install` | Extract from .nupkg (zip format) |
+
+### Registry/Source Configuration
+
+For non-default registries, optional env vars can override:
+
+| Provider | Env Var | Default (GitHub Packages) |
+|----------|---------|---------------------------|
+| **docker** | (in URI) | `ghcr.io` |
+| **github-release** | (n/a) | `github.com` |
+| **npm** | `NPM_REGISTRY` | `https://npm.pkg.github.com` |
+| **rubygems** | `GEM_HOST` | `https://rubygems.pkg.github.com` |
+| **maven** | `MAVEN_REPO_URL` | `https://maven.pkg.github.com` |
+| **nuget** | `NUGET_SOURCE` | `https://nuget.pkg.github.com` |
+
+### Authentication Challenge
+
+**The Problem:**
+
+Docker is straightforward - CI does N `docker login` calls based on user config, and if users have multiple docker sources (their own + partner ecosystems), they add logins for each. All subsequent pulls just work.
+
+Other providers are trickier. Consider:
+
+```yaml
+components:
+  our-app:
+    provider: npm
+    registry: npm.pkg.github.com  # needs GITHUB_TOKEN
+
+  partner-lib:
+    provider: npm
+    registry: npm.partner.io      # needs PARTNER_NPM_TOKEN
+
+  public-thing:
+    provider: npm
+    registry: registry.npmjs.org  # maybe no auth, or different token
+```
+
+Three npm sources, three different auth configs. How do scripts (which must remain CI-agnostic) get the right auth for each?
+
+**Options Under Consideration:**
+
+| Option | Approach | Pros | Cons |
+|--------|----------|------|------|
+| **1. Pre-step auth** | Action.yaml configures all auth before script runs | Simple for script | Requires knowing all sources upfront in action |
+| **2. Auth block in config** | `auth:` section maps registries to secret names | Declarative | Who expands secret refs? Script can't see CI secrets |
+| **3. Generic env vars** | `NPM_AUTH_npm_pkg_github_com=token` | Explicit | Ugly naming, hard to document |
+| **4. Credential helper** | Script calls helper: `kaptain-cred-helper npm registry.io` | Clean separation | Helper still needs secret source |
+| **5. File-based handoff** | CI writes secrets to `.kaptain-auth/{registry}`, script reads | CI-agnostic contract | File management overhead |
+
+**Option 5 Detail:**
+
+```yaml
+# CI action populates files
+- run: |
+    mkdir -p .kaptain-auth
+    echo "${{ secrets.GITHUB_TOKEN }}" > .kaptain-auth/npm.pkg.github.com
+    echo "${{ secrets.PARTNER_TOKEN }}" > .kaptain-auth/npm.partner.io
+```
+
+```bash
+# Script reads (CI-agnostic)
+get_auth_token() {
+  local registry="$1"
+  cat ".kaptain-auth/${registry}" 2>/dev/null || echo ""
+}
+```
+
+**Docker Comparison:**
+
+Docker already has this solved via `docker login` which persists to `~/.docker/config.json`. The other CLIs have similar mechanisms:
+- npm: `~/.npmrc` with `//registry/:_authToken=...`
+- gem: `~/.gem/credentials`
+- maven: `~/.m2/settings.xml`
+- nuget: `nuget sources add` / `~/.nuget/NuGet.Config`
+
+Could we just require users to configure these in a pre-step, same as docker? The difference is docker login is commonly understood; the others are more obscure.
+
+**Current Status:** Needs further thought. May defer non-docker providers until auth pattern is resolved.
+
+### Version Range Resolution
+
+Another complexity: components may specify version ranges rather than exact versions.
+
+```yaml
+components:
+  stable-lib:
+    version: "^1.2.0"      # any 1.x >= 1.2.0
+
+  pinned-thing:
+    version: "2.3.4"       # exact
+
+  latest-patch:
+    version: "~3.1.0"      # 3.1.x only
+```
+
+**Provider Range Syntax:**
+
+| Provider | Range Syntax Examples | Resolution Mechanism |
+|----------|----------------------|---------------------|
+| **npm** | `^1.2.3`, `~1.2.3`, `>=1 <2` | `npm view pkg versions` |
+| **maven** | `[1.0,2.0)`, `[1.0,)`, `LATEST` | Metadata XML in repo |
+| **rubygems** | `~> 1.2`, `>= 1.0, < 2.0` | `gem search -ra` |
+| **nuget** | `1.*` (use prefix only!) | NuGet API query (⚠️ range syntax picks OLDEST, not newest) |
+| **docker** | (none native) | Query registry API, filter tags |
+| **github-release** | (none native) | `gh release list`, filter |
+
+**The Docker/GitHub Problem:**
+
+These don't have native range support. Options:
+1. **Query and filter**: List all tags/releases, apply semver filter
+2. **Require exact versions**: No ranges for these providers
+3. **Convention-based aliases**: `latest`, `stable` tags that repo maintains
+
+**Resolution Phase:**
+
+Fetch-and-extract scripts currently expect exact versions. Range resolution would need to happen before calling them:
+
+```bash
+# Pseudocode
+resolved_version=$(resolve_version "$provider" "$package" "$range")
+"kubernetes-manifests-repo-provider-${provider}-fetch-and-extract" \
+  "$package" "$resolved_version" "$output_dir"
+```
+
+Could be:
+- Separate `resolve-version` script per provider
+- Built into dispatcher
+- Part of fetch-and-extract (query first, then fetch)
+
+**Current Status:** Needs design. Adds complexity to both config parsing and fetch scripts.
+
 ## Design Principles
 
 1. **Scripts are CI-agnostic** - No `GITHUB_*` variables in scripts
 2. **AUTH_TOKEN is optional** - Scripts work with pre-configured CI auth (Azure DevOps, GitLab, etc.)
 3. **Action.yaml does the mapping** - GitHub-specific context mapped to generic vars
 4. **Sensible defaults in actions** - GitHub Package URLs defaulted in action.yaml, not scripts
+5. **Publish uses env vars** - For CI integration with mapped context
+6. **Fetch uses positional args** - For direct invocation from config-driven dispatchers
