@@ -12,41 +12,22 @@ setup() {
   export TEST_ZIP_DIR=$(mktemp -d)
   export TEST_ZIP_NAME="test-manifests.zip"
   echo "test content" > "$TEST_ZIP_DIR/$TEST_ZIP_NAME"
-  # Set up mock gh CLI
-  export MOCK_GH_CALLS=$(mktemp)
-  mkdir -p "$MOCK_BIN_DIR"
-  cat > "$MOCK_BIN_DIR/gh" << 'MOCKGH'
-#!/usr/bin/env bash
-echo "$*" >> "$MOCK_GH_CALLS"
-if [[ "$1" == "release" && "$2" == "view" ]]; then
-  if [[ "$4" == "--json" ]]; then
-    echo "https://github.com/test/repo/releases/tag/1.0.0"
-  fi
-  exit 0
-fi
-if [[ "$1" == "release" && "$2" == "upload" ]]; then
-  exit 0
-fi
-exit 0
-MOCKGH
-  chmod +x "$MOCK_BIN_DIR/gh"
-  export PATH="$MOCK_BIN_DIR:$PATH"
 }
 
 teardown() {
   cleanup_mock_docker
   rm -f "$GITHUB_OUTPUT"
   rm -rf "$TEST_ZIP_DIR"
-  rm -f "$MOCK_GH_CALLS"
 }
 
-@test "fails when MANIFESTS_REPO_PROVIDER_TYPE not set" {
+@test "defaults to docker when MANIFESTS_REPO_PROVIDER_TYPE not set" {
   unset MANIFESTS_REPO_PROVIDER_TYPE
+  export MANIFESTS_URI="ghcr.io/test/my-repo:1.0.0-manifests"
 
   run "$SCRIPTS_DIR/kubernetes-manifests-repo-provider-publish"
-  [ "$status" -ne 0 ]
-  assert_output_contains "MANIFESTS_REPO_PROVIDER_TYPE is required"
-  assert_output_contains "Available:"
+  [ "$status" -eq 0 ]
+  assert_output_contains "Selected repo provider: docker"
+  assert_output_contains "Kubernetes Manifests Repo Provider Publish: Docker"
 }
 
 @test "fails when MANIFESTS_REPO_PROVIDER_TYPE is unknown" {
@@ -58,7 +39,7 @@ teardown() {
   assert_output_contains "Available:"
 }
 
-@test "dispatches to docker repo provider" {
+@test "dispatches to docker repo provider when explicit" {
   export MANIFESTS_REPO_PROVIDER_TYPE="docker"
   export MANIFESTS_URI="ghcr.io/test/my-repo:1.0.0-manifests"
 
@@ -68,25 +49,11 @@ teardown() {
   assert_output_contains "Kubernetes Manifests Repo Provider Publish: Docker"
 }
 
-@test "dispatches to github-release repo provider" {
-  export MANIFESTS_REPO_PROVIDER_TYPE="github-release"
-  export MANIFESTS_ZIP_SUB_PATH="$TEST_ZIP_DIR"
-  export MANIFESTS_ZIP_FILE_NAME="$TEST_ZIP_NAME"
-  export REPO_PROVIDER_VERSION="1.0.0"
-  export GITHUB_TOKEN="test-token"
-
-  run "$SCRIPTS_DIR/kubernetes-manifests-repo-provider-publish"
-  [ "$status" -eq 0 ]
-  assert_output_contains "Selected repo provider: github-release"
-  assert_output_contains "Kubernetes Manifests Repo Provider Publish: GitHub Release"
-}
-
 @test "lists available repo providers on error" {
-  unset MANIFESTS_REPO_PROVIDER_TYPE
+  export MANIFESTS_REPO_PROVIDER_TYPE="nonexistent"
 
   run "$SCRIPTS_DIR/kubernetes-manifests-repo-provider-publish"
   [ "$status" -ne 0 ]
   # Should list the available repo providers
   assert_output_contains "docker"
-  assert_output_contains "github-release"
 }

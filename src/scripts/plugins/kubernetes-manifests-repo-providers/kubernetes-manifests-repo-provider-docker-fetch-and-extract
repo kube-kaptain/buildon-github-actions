@@ -1,0 +1,122 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025 Kaptain contributors (Fred Cooke)
+#
+# kubernetes-manifests-repo-provider-docker-fetch-and-extract - Fetches and extracts manifests from a Docker image
+#
+# Pulls a manifest image, extracts the zip file, and unpacks to standard output locations.
+# Reciprocal of kubernetes-manifests-repo-provider-docker-package + publish.
+#
+# Usage:
+#   kubernetes-manifests-repo-provider-docker-fetch-and-extract <manifests-image-uri>
+#
+# Arguments:
+#   manifests-image-uri - Full image reference (e.g., ghcr.io/kube-kaptain/my/my-app:1.2.3-manifests)
+#
+# Environment Variables:
+#   OUTPUT_SUB_PATH - Build output sub-path (default: target)
+#
+# Output Locations:
+#   ${OUTPUT_SUB_PATH}/fetched-manifests/   - Downloaded zip file
+#   ${OUTPUT_SUB_PATH}/extracted-manifests/ - Unpacked manifest files
+#
+# The script will:
+#   1. Pull the image
+#   2. Create a container to access the filesystem
+#   3. Find and copy the zip file to ${OUTPUT_SUB_PATH}/fetched-manifests/
+#   4. Extract to ${OUTPUT_SUB_PATH}/extracted-manifests/
+#   5. Clean up container
+#
+set -euo pipefail
+
+# Logging configuration (CI-agnostic)
+LOG_ERROR_PREFIX="${LOG_ERROR_PREFIX:-}"
+LOG_ERROR_SUFFIX="${LOG_ERROR_SUFFIX:-}"
+
+# Build output sub-path
+OUTPUT_SUB_PATH="${OUTPUT_SUB_PATH:-target}"
+
+usage() {
+  echo "Usage: $(basename "$0") <manifests-image-uri>" >&2
+  echo "" >&2
+  echo "Arguments:" >&2
+  echo "  manifests-image-uri  Full image reference (e.g., ghcr.io/kube-kaptain/my/my-app:1.2.3-manifests)" >&2
+  echo "" >&2
+  echo "Environment:" >&2
+  echo "  OUTPUT_SUB_PATH  Build output sub-path (default: target)" >&2
+  echo "" >&2
+  echo "Output Locations:" >&2
+  echo "  \${OUTPUT_SUB_PATH}/fetched-manifests/   - Downloaded zip file" >&2
+  echo "  \${OUTPUT_SUB_PATH}/extracted-manifests/ - Unpacked manifest files" >&2
+  exit 1
+}
+
+main() {
+  # Validate arguments
+  if [[ $# -lt 1 ]]; then
+    echo "${LOG_ERROR_PREFIX}Missing required argument: manifests-image-uri${LOG_ERROR_SUFFIX}" >&2
+    usage
+  fi
+
+  local manifests_image_uri="$1"
+  local fetched_manifests_sub_path="${OUTPUT_SUB_PATH}/fetched-manifests"
+  local extracted_manifests_sub_path="${OUTPUT_SUB_PATH}/extracted-manifests"
+
+  echo "=== Kubernetes Manifests Repo Provider Fetch-and-Extract: Docker ===" >&2
+  echo "Image: ${manifests_image_uri}" >&2
+  echo "Fetch to: ${fetched_manifests_sub_path}" >&2
+  echo "Extract to: ${extracted_manifests_sub_path}" >&2
+  echo "====================================================================" >&2
+
+  # Pull the image
+  echo "Pulling image..." >&2
+  if ! docker pull "${manifests_image_uri}"; then
+    echo "${LOG_ERROR_PREFIX}Failed to pull image: ${manifests_image_uri}${LOG_ERROR_SUFFIX}" >&2
+    exit 1
+  fi
+
+  # Create container (without starting it) to access filesystem
+  echo "Creating container..." >&2
+  local container_id
+  container_id=$(docker create "${manifests_image_uri}")
+
+  # Ensure cleanup on exit (shellcheck: we intentionally expand now to capture current container_id)
+  # shellcheck disable=SC2064
+  trap "docker rm '${container_id}' >/dev/null 2>&1 || true" EXIT
+
+  # Find zip file in image root
+  echo "Finding manifest zip in image..." >&2
+  local zip_file
+  zip_file=$(docker run --rm --entrypoint="" "${manifests_image_uri}" ls -1 / 2>/dev/null | grep '\.zip$' | head -n1 || true)
+
+  if [[ -z "${zip_file}" ]]; then
+    echo "${LOG_ERROR_PREFIX}No zip file found in image root${LOG_ERROR_SUFFIX}" >&2
+    exit 1
+  fi
+
+  echo "Found: /${zip_file}" >&2
+
+  # Create output sub-paths
+  mkdir -p "${fetched_manifests_sub_path}"
+  mkdir -p "${extracted_manifests_sub_path}"
+
+  # Copy zip from container
+  echo "Copying zip from container..." >&2
+  if ! docker cp "${container_id}:/${zip_file}" "${fetched_manifests_sub_path}/${zip_file}"; then
+    echo "${LOG_ERROR_PREFIX}Failed to copy zip from container${LOG_ERROR_SUFFIX}" >&2
+    exit 1
+  fi
+
+  # Extract zip to output
+  echo "Unpacking to ${extracted_manifests_sub_path}..." >&2
+  if ! unzip -q -o "${fetched_manifests_sub_path}/${zip_file}" -d "${extracted_manifests_sub_path}"; then
+    echo "${LOG_ERROR_PREFIX}Failed to extract zip${LOG_ERROR_SUFFIX}" >&2
+    exit 1
+  fi
+
+  echo "Kubernetes Manifests Repo Provider Fetch-and-Extract: Docker complete" >&2
+  echo "Zip file: ${fetched_manifests_sub_path}/${zip_file}" >&2
+  echo "Manifests: ${extracted_manifests_sub_path}" >&2
+}
+
+main "$@"

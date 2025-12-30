@@ -22,13 +22,18 @@ teardown() {
   rm -rf "$OUTPUT_SUB_PATH"
 }
 
-@test "fails when MANIFESTS_REPO_PROVIDER_TYPE not set" {
+@test "defaults to docker when MANIFESTS_REPO_PROVIDER_TYPE not set" {
   unset MANIFESTS_REPO_PROVIDER_TYPE
+  export MANIFESTS_ZIP_SUB_PATH="$TEST_ZIP_DIR"
+  export MANIFESTS_ZIP_FILE_NAME="$TEST_ZIP_NAME"
+  export REPO_PROVIDER_URL="ghcr.io"
+  export REPO_PROVIDER_NAME="test/my-repo"
+  export REPO_PROVIDER_VERSION="1.0.0-manifests"
 
   run "$SCRIPTS_DIR/kubernetes-manifests-repo-provider-package"
-  [ "$status" -ne 0 ]
-  assert_output_contains "MANIFESTS_REPO_PROVIDER_TYPE is required"
-  assert_output_contains "Available:"
+  [ "$status" -eq 0 ]
+  assert_output_contains "Selected repo provider: docker"
+  assert_output_contains "Kubernetes Manifests Repo Provider Package: Docker"
 }
 
 @test "fails when MANIFESTS_REPO_PROVIDER_TYPE is unknown" {
@@ -40,7 +45,7 @@ teardown() {
   assert_output_contains "Available:"
 }
 
-@test "dispatches to docker repo provider" {
+@test "dispatches to docker repo provider when explicit" {
   export MANIFESTS_REPO_PROVIDER_TYPE="docker"
   export MANIFESTS_ZIP_SUB_PATH="$TEST_ZIP_DIR"
   export MANIFESTS_ZIP_FILE_NAME="$TEST_ZIP_NAME"
@@ -54,24 +59,11 @@ teardown() {
   assert_output_contains "Kubernetes Manifests Repo Provider Package: Docker"
 }
 
-@test "dispatches to github-release repo provider" {
-  export MANIFESTS_REPO_PROVIDER_TYPE="github-release"
-  export MANIFESTS_ZIP_SUB_PATH="$TEST_ZIP_DIR"
-  export MANIFESTS_ZIP_FILE_NAME="$TEST_ZIP_NAME"
-  export REPO_PROVIDER_VERSION="1.0.0"
-
-  run "$SCRIPTS_DIR/kubernetes-manifests-repo-provider-package"
-  [ "$status" -eq 0 ]
-  assert_output_contains "Selected repo provider: github-release"
-  assert_output_contains "Kubernetes Manifests Repo Provider Package: GitHub Release"
-}
-
 @test "lists available repo providers on error" {
-  unset MANIFESTS_REPO_PROVIDER_TYPE
+  export MANIFESTS_REPO_PROVIDER_TYPE="nonexistent"
 
   run "$SCRIPTS_DIR/kubernetes-manifests-repo-provider-package"
   [ "$status" -ne 0 ]
   # Should list the available repo providers
   assert_output_contains "docker"
-  assert_output_contains "github-release"
 }
