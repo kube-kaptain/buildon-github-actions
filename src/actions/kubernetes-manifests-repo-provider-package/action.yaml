@@ -7,87 +7,249 @@ author: 'kube-kaptain'
 
 inputs:
   manifests-repo-provider-type:
-    description: 'Manifests repo provider type (required): docker, github-release'
+    description: 'Manifests repo provider type (required): docker, github-release, npm, rubygems, maven, nuget'
     required: true
-  manifests-zip-full-path:
-    description: 'Full path to the manifests zip file (directory + filename)'
+
+  # ============================================================================
+  # Common inputs (all providers)
+  # ============================================================================
+  manifests-zip-sub-path:
+    description: 'Relative path to the directory containing the manifests zip'
     required: true
-  manifests-zip-name:
-    description: 'Filename for the manifests zip (required for github-release)'
-    required: false
-    default: ''
-  output-path:
-    description: 'Build output directory'
+  manifests-zip-file-name:
+    description: 'Filename of the manifests zip'
+    required: true
+  output-sub-path:
+    description: 'Build output directory (relative)'
     required: false
     default: 'target'
-  # Docker repo provider inputs
+
+  # ============================================================================
+  # User-friendly inputs (mapped to REPO_PROVIDER_* internally)
+  # ============================================================================
+
+  # --- Docker-specific inputs ---
   target-registry:
-    description: 'Target container registry (docker repo provider)'
+    description: 'Target container registry (docker)'
     required: false
     default: 'ghcr.io'
   target-base-path:
-    description: 'Path between registry and image name (docker repo provider)'
+    description: 'Path between registry and image name (docker)'
     required: false
     default: ''
   target-image-name:
-    description: 'Target image name (docker repo provider)'
+    description: 'Target image name (docker)'
     required: false
     default: ''
   docker-tag:
-    description: 'Tag for target image (docker repo provider)'
+    description: 'Tag for target image (docker, includes prerelease suffix if applicable)'
     required: false
     default: ''
-  confirm-image-doesnt-exist:
-    description: 'Fail if target image already exists in registry (docker repo provider)'
-    required: false
-    default: 'true'
-  # GitHub release repo provider inputs
+
+  # --- GitHub Release-specific inputs ---
   version:
-    description: 'Release tag/version (github-release repo provider)'
+    description: 'Release tag/version (github-release, npm, rubygems, maven, nuget)'
+    required: false
+    default: ''
+
+  # --- npm-specific inputs ---
+  npm-scope:
+    description: 'npm scope with @ prefix (e.g., @myorg)'
+    required: false
+    default: ''
+
+  # --- RubyGems-specific inputs ---
+  rubygems-owner:
+    description: 'RubyGems package owner'
+    required: false
+    default: ''
+
+  # --- Maven-specific inputs ---
+  maven-group-id:
+    description: 'Maven groupId (defaults to io.github.<owner>)'
+    required: false
+    default: ''
+
+  # --- NuGet-specific inputs ---
+  nuget-owner:
+    description: 'NuGet package owner'
+    required: false
+    default: ''
+
+  # --- Shared inputs (multiple providers) ---
+  project-name:
+    description: 'Project name (becomes package/artifact name for npm, rubygems, maven, nuget)'
+    required: false
+    default: ''
+
+  # --- Generic overrides (rarely needed) ---
+  registry-url:
+    description: 'Registry/repository URL override (computed per provider if not set)'
     required: false
     default: ''
 
 outputs:
+  # --- Pass-through for publish step ---
   manifests-uri:
     description: 'Manifests location (for publish step)'
     value: ${{ steps.package.outputs.MANIFESTS_URI }}
-  manifests-zip-path:
-    description: 'Path to manifests zip (pass through for publish step)'
-    value: ${{ steps.package.outputs.MANIFESTS_ZIP_PATH }}
-  manifests-zip-name:
+  manifests-artifact-sub-path:
+    description: 'Relative path to packaged artifact (for publish step)'
+    value: ${{ steps.package.outputs.MANIFESTS_ARTIFACT_SUB_PATH }}
+  manifests-zip-sub-path:
+    description: 'Relative path to directory containing manifests zip (pass through for publish step)'
+    value: ${{ steps.package.outputs.MANIFESTS_ZIP_SUB_PATH }}
+  manifests-zip-file-name:
     description: 'Filename for manifests zip (pass through for publish step)'
-    value: ${{ steps.package.outputs.MANIFESTS_ZIP_NAME }}
+    value: ${{ steps.package.outputs.MANIFESTS_ZIP_FILE_NAME }}
   version:
     description: 'Version/tag (pass through for publish step)'
     value: ${{ steps.package.outputs.VERSION }}
 
+  # --- REPO_PROVIDER_* outputs (for publish step) ---
+  repo-provider-url:
+    description: 'Computed REPO_PROVIDER_URL (for publish step)'
+    value: ${{ steps.computed.outputs.url }}
+  repo-provider-namespace:
+    description: 'Computed REPO_PROVIDER_NAMESPACE (for publish step)'
+    value: ${{ steps.computed.outputs.namespace }}
+  repo-provider-name:
+    description: 'Computed REPO_PROVIDER_NAME (for publish step)'
+    value: ${{ steps.computed.outputs.name }}
+  repo-provider-version:
+    description: 'Computed REPO_PROVIDER_VERSION (for publish step)'
+    value: ${{ steps.computed.outputs.version }}
+  maven-group-id:
+    description: 'Computed Maven groupId (for publish step)'
+    value: ${{ steps.computed.outputs.maven_group_id }}
+
 runs:
   using: 'composite'
   steps:
-    - name: Compute target base path
-      id: base-path
+    # ==========================================================================
+    # Compute REPO_PROVIDER_* values from user-friendly inputs
+    # Each concept has its own clean if/else block
+    # ==========================================================================
+    - name: Compute repo provider values
+      id: computed
       shell: bash
       run: |
-        # Auto-set base path for GHCR if not explicitly provided
-        if [[ "${{ inputs.target-registry }}" == "ghcr.io" && -z "${{ inputs.target-base-path }}" ]]; then
-          echo "path=${{ github.repository_owner }}" >> "$GITHUB_OUTPUT"
+        PROVIDER="${{ inputs.manifests-repo-provider-type }}"
+        REPO="${{ github.repository }}"
+        OWNER="${{ github.repository_owner }}"
+
+        # =====================================================================
+        # REPO_PROVIDER_URL
+        # =====================================================================
+        if [[ -n "${{ inputs.registry-url }}" ]]; then
+          URL="${{ inputs.registry-url }}"
+        elif [[ "$PROVIDER" == "docker" ]]; then
+          URL="${{ inputs.target-registry }}"
+        elif [[ "$PROVIDER" == "github-release" ]]; then
+          URL="https://github.com/${REPO}/releases"
+        elif [[ "$PROVIDER" == "npm" ]]; then
+          URL="https://npm.pkg.github.com"
+        elif [[ "$PROVIDER" == "rubygems" ]]; then
+          URL="https://rubygems.pkg.github.com/${OWNER}"
+        elif [[ "$PROVIDER" == "maven" ]]; then
+          URL="https://maven.pkg.github.com/${REPO}"
+        elif [[ "$PROVIDER" == "nuget" ]]; then
+          URL="https://nuget.pkg.github.com/${OWNER}/index.json"
         else
-          echo "path=${{ inputs.target-base-path }}" >> "$GITHUB_OUTPUT"
+          URL=""
+        fi
+        echo "url=${URL}" >> "$GITHUB_OUTPUT"
+
+        # =====================================================================
+        # REPO_PROVIDER_NAMESPACE
+        # =====================================================================
+        if [[ "$PROVIDER" == "docker" ]]; then
+          if [[ -n "${{ inputs.target-base-path }}" ]]; then
+            NAMESPACE="${{ inputs.target-base-path }}"
+          elif [[ "${{ inputs.target-registry }}" == "ghcr.io" ]]; then
+            NAMESPACE="${OWNER}"
+          else
+            NAMESPACE=""
+          fi
+        elif [[ "$PROVIDER" == "github-release" ]]; then
+          NAMESPACE="${REPO}"
+        elif [[ "$PROVIDER" == "npm" ]]; then
+          if [[ -n "${{ inputs.npm-scope }}" ]]; then
+            NAMESPACE="${{ inputs.npm-scope }}"
+          else
+            NAMESPACE="@${OWNER}"
+          fi
+        elif [[ "$PROVIDER" == "rubygems" ]]; then
+          if [[ -n "${{ inputs.rubygems-owner }}" ]]; then
+            NAMESPACE="${{ inputs.rubygems-owner }}"
+          else
+            NAMESPACE="${OWNER}"
+          fi
+        elif [[ "$PROVIDER" == "maven" ]]; then
+          NAMESPACE="${REPO}"
+        elif [[ "$PROVIDER" == "nuget" ]]; then
+          if [[ -n "${{ inputs.nuget-owner }}" ]]; then
+            NAMESPACE="${{ inputs.nuget-owner }}"
+          else
+            NAMESPACE="${OWNER}"
+          fi
+        else
+          NAMESPACE=""
+        fi
+        echo "namespace=${NAMESPACE}" >> "$GITHUB_OUTPUT"
+
+        # =====================================================================
+        # REPO_PROVIDER_NAME
+        # =====================================================================
+        if [[ "$PROVIDER" == "docker" ]]; then
+          NAME="${{ inputs.target-image-name }}"
+        else
+          NAME="${{ inputs.project-name }}"
+        fi
+        echo "name=${NAME}" >> "$GITHUB_OUTPUT"
+
+        # =====================================================================
+        # REPO_PROVIDER_VERSION
+        # =====================================================================
+        if [[ "$PROVIDER" == "docker" ]]; then
+          VERSION="${{ inputs.docker-tag }}"
+        else
+          VERSION="${{ inputs.version }}"
+        fi
+        echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+
+        # =====================================================================
+        # MAVEN_GROUP_ID (maven-specific)
+        # =====================================================================
+        if [[ -n "${{ inputs.maven-group-id }}" ]]; then
+          echo "maven_group_id=${{ inputs.maven-group-id }}" >> "$GITHUB_OUTPUT"
+        else
+          echo "maven_group_id=io.github.${OWNER}" >> "$GITHUB_OUTPUT"
         fi
 
+    # ==========================================================================
+    # Package manifests for repo provider
+    # ==========================================================================
     - name: Package manifests for repo provider
       id: package
       shell: bash
       env:
         LOG_ERROR_PREFIX: '::error::'
         MANIFESTS_REPO_PROVIDER_TYPE: ${{ inputs.manifests-repo-provider-type }}
-        MANIFESTS_ZIP_PATH: ${{ inputs.manifests-zip-full-path }}
-        MANIFESTS_ZIP_NAME: ${{ inputs.manifests-zip-name }}
-        OUTPUT_PATH: ${{ inputs.output-path }}
-        TARGET_REGISTRY: ${{ inputs.target-registry }}
-        TARGET_BASE_PATH: ${{ steps.base-path.outputs.path }}
-        TARGET_IMAGE_NAME: ${{ inputs.target-image-name }}
-        DOCKER_TAG: ${{ inputs.docker-tag }}
-        CONFIRM_IMAGE_DOESNT_EXIST: ${{ inputs.confirm-image-doesnt-exist }}
-        VERSION: ${{ inputs.version }}
+        OUTPUT_SUB_PATH: ${{ inputs.output-sub-path }}
+
+        # --- Pass-through inputs ---
+        MANIFESTS_ZIP_SUB_PATH: ${{ inputs.manifests-zip-sub-path }}
+        MANIFESTS_ZIP_FILE_NAME: ${{ inputs.manifests-zip-file-name }}
+
+        # --- REPO_PROVIDER_* API (generic contract) ---
+        REPO_PROVIDER_URL: ${{ steps.computed.outputs.url }}
+        REPO_PROVIDER_NAMESPACE: ${{ steps.computed.outputs.namespace }}
+        REPO_PROVIDER_NAME: ${{ steps.computed.outputs.name }}
+        REPO_PROVIDER_VERSION: ${{ steps.computed.outputs.version }}
+        REPO_PROVIDER_AUTH_TOKEN: ${{ github.token }}
+        REPO_PROVIDER_AUTH_USER: ${{ github.actor }}
+
+        # --- Provider-specific additions ---
+        MAVEN_GROUP_ID: ${{ steps.computed.outputs.maven_group_id }}
       run: "${{ github.action_path }}/../../scripts/main/kubernetes-manifests-repo-provider-package"

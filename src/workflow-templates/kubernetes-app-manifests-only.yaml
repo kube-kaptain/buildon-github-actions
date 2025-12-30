@@ -6,8 +6,8 @@ on:
   workflow_call:
     inputs:
       # Manifest configuration
-      manifests-path:
-        description: 'Directory containing Kubernetes manifests'
+      manifests-sub-path:
+        description: 'Directory containing Kubernetes manifests (relative)'
         required: false
         type: string
         default: 'src/kubernetes'
@@ -17,7 +17,7 @@ on:
         type: string
         default: 'shell'
       token-name-style:
-        description: 'Case style for token names in manifests (UPPER_SNAKE, lower_snake, kebab-case, camelCase, PascalCase, lower.dot, UPPER.DOT)'
+        description: 'Case style for token names (UPPER_SNAKE, lower_snake, kebab-case, camelCase, PascalCase, lower.dot, UPPER.DOT)'
         required: false
         type: string
         default: 'PascalCase'
@@ -31,11 +31,16 @@ on:
         required: false
         type: boolean
         default: false
-      config-path:
-        description: 'Directory containing user-defined token files'
+      config-sub-path:
+        description: 'Directory containing user-defined token files (relative)'
         required: false
         type: string
         default: 'src/config'
+      output-sub-path:
+        description: 'Build output directory (relative)'
+        required: false
+        type: string
+        default: 'target'
       config-value-trailing-newline:
         description: 'How to handle trailing newlines in config values (strip-for-single-line, preserve-all, always-strip-one-newline)'
         required: false
@@ -57,11 +62,6 @@ on:
         required: false
         type: string
         default: ''
-      confirm-image-doesnt-exist:
-        description: 'Fail if target image already exists in registry'
-        required: false
-        type: boolean
-        default: true
       # Version generator inputs (pass-through)
       default-branch:
         description: 'The default/release branch name'
@@ -115,6 +115,11 @@ on:
         required: false
         type: string
         default: ''
+      pre-package-prepare-script-sub-path:
+        description: 'Path to pre-package prepare script relative to .github/ (e.g., bin/pre-package-prepare.bash)'
+        required: false
+        type: string
+        default: ''
       docker-registry-logins:
         description: 'YAML config for Docker registry logins (registry URL as key)'
         required: false
@@ -160,15 +165,12 @@ on:
         description: 'Whether this is a release build'
         value: ${{ jobs.build.outputs.is-release }}
       # Package outputs
-      manifests-zip-path:
-        description: 'Directory containing manifests zip file'
-        value: ${{ jobs.build.outputs.manifests-zip-path }}
-      manifests-zip-name:
+      manifests-zip-sub-path:
+        description: 'Directory containing manifests zip file (relative)'
+        value: ${{ jobs.build.outputs.manifests-zip-sub-path }}
+      manifests-zip-file-name:
         description: 'Name of manifests zip file'
-        value: ${{ jobs.build.outputs.manifests-zip-name }}
-      manifests-zip-full-path:
-        description: 'Full path to manifests zip file'
-        value: ${{ jobs.build.outputs.manifests-zip-full-path }}
+        value: ${{ jobs.build.outputs.manifests-zip-file-name }}
       # Manifest repo provider publish outputs
       manifests-uri:
         description: 'Reference to published manifests (format depends on repo provider)'
@@ -207,9 +209,8 @@ jobs:
       docker-image-name: ${{ steps.versions.outputs.docker-image-name }}
       project-name: ${{ steps.versions.outputs.project-name }}
       is-release: ${{ steps.versions.outputs.is-release }}
-      manifests-zip-path: ${{ steps.manifest-package.outputs.manifests-zip-path }}
-      manifests-zip-name: ${{ steps.manifest-package.outputs.manifests-zip-name }}
-      manifests-zip-full-path: ${{ steps.manifest-package.outputs.manifests-zip-full-path }}
+      manifests-zip-sub-path: ${{ steps.manifest-package.outputs.manifests-zip-sub-path }}
+      manifests-zip-file-name: ${{ steps.manifest-package.outputs.manifests-zip-file-name }}
       manifests-uri: ${{ steps.manifest-repo-provider-publish.outputs.manifests-uri }}
       manifests-published: ${{ steps.manifest-repo-provider-publish.outputs.manifests-published }}
     steps:
@@ -224,6 +225,11 @@ jobs:
       # INJECT: github-check-start(name="Versions & Naming", id="check-versions")
       # INJECT: versions-and-naming
       # INJECT: github-check-end(name="Versions & Naming", id="check-versions")
+
+      # === Pre-package Prepare ===
+      # INJECT: github-check-start(name="Pre-package Prepare", id="check-pre-package-prepare", if="inputs.pre-package-prepare-script-sub-path != ''")
+      # INJECT: pre-package-prepare
+      # INJECT: github-check-end(name="Pre-package Prepare", id="check-pre-package-prepare", if="inputs.pre-package-prepare-script-sub-path != ''")
 
       # === Manifest Package ===
       # INJECT: compute-target-base-path

@@ -6,8 +6,8 @@ on:
   workflow_call:
     inputs:
       # Dockerfile configuration
-      dockerfile-path:
-        description: 'Directory containing Dockerfile (also used as build context)'
+      dockerfile-sub-path:
+        description: 'Directory containing Dockerfile, relative (also used as build context)'
         required: false
         type: string
         default: 'src/docker'
@@ -22,8 +22,8 @@ on:
         type: boolean
         default: true
       # Manifest configuration
-      manifests-path:
-        description: 'Directory containing Kubernetes manifests'
+      manifests-sub-path:
+        description: 'Directory containing Kubernetes manifests (relative)'
         required: false
         type: string
         default: 'src/kubernetes'
@@ -33,7 +33,7 @@ on:
         type: string
         default: 'shell'
       token-name-style:
-        description: 'Case style for token names in manifests (UPPER_SNAKE, lower_snake, kebab-case, camelCase, PascalCase, lower.dot, UPPER.DOT)'
+        description: 'Case style for token names (UPPER_SNAKE, lower_snake, kebab-case, camelCase, PascalCase, lower.dot, UPPER.DOT)'
         required: false
         type: string
         default: 'PascalCase'
@@ -47,11 +47,16 @@ on:
         required: false
         type: boolean
         default: false
-      config-path:
-        description: 'Directory containing user-defined token files'
+      config-sub-path:
+        description: 'Directory containing user-defined token files (relative)'
         required: false
         type: string
         default: 'src/config'
+      output-sub-path:
+        description: 'Build output directory (relative)'
+        required: false
+        type: string
+        default: 'target'
       config-value-trailing-newline:
         description: 'How to handle trailing newlines in config values (strip-for-single-line, preserve-all, always-strip-one-newline)'
         required: false
@@ -73,11 +78,6 @@ on:
         required: false
         type: string
         default: ''
-      confirm-image-doesnt-exist:
-        description: 'Fail if target image already exists in registry'
-        required: false
-        type: boolean
-        default: true
       # Version generator inputs (pass-through)
       default-branch:
         description: 'The default/release branch name'
@@ -136,6 +136,16 @@ on:
         required: false
         type: string
         default: ''
+      pre-docker-prepare-script-sub-path:
+        description: 'Path to pre-docker prepare script relative to .github/ (e.g., bin/pre-docker-prepare.bash)'
+        required: false
+        type: string
+        default: ''
+      pre-package-prepare-script-sub-path:
+        description: 'Path to pre-package prepare script relative to .github/ (e.g., bin/pre-package-prepare.bash)'
+        required: false
+        type: string
+        default: ''
       docker-registry-logins:
         description: 'YAML config for Docker registry logins (registry URL as key)'
         required: false
@@ -191,15 +201,12 @@ on:
         description: 'Whether docker image was pushed'
         value: ${{ jobs.build.outputs.docker-image-pushed }}
       # Manifest package outputs
-      manifests-zip-path:
-        description: 'Directory containing manifests zip file'
-        value: ${{ jobs.build.outputs.manifests-zip-path }}
-      manifests-zip-name:
+      manifests-zip-sub-path:
+        description: 'Directory containing manifests zip file (relative)'
+        value: ${{ jobs.build.outputs.manifests-zip-sub-path }}
+      manifests-zip-file-name:
         description: 'Name of manifests zip file'
-        value: ${{ jobs.build.outputs.manifests-zip-name }}
-      manifests-zip-full-path:
-        description: 'Full path to manifests zip file'
-        value: ${{ jobs.build.outputs.manifests-zip-full-path }}
+        value: ${{ jobs.build.outputs.manifests-zip-file-name }}
       # Manifest repo provider publish outputs
       manifests-uri:
         description: 'Reference to published manifests (format depends on repo provider)'
@@ -311,9 +318,8 @@ jobs:
       is-release: ${{ steps.versions.outputs.is-release }}
       target-image-full-uri: ${{ steps.docker-build.outputs.target-image-full-uri }}
       docker-image-pushed: ${{ steps.docker-push.outputs.image-pushed }}
-      manifests-zip-path: ${{ steps.manifest-package.outputs.manifests-zip-path }}
-      manifests-zip-name: ${{ steps.manifest-package.outputs.manifests-zip-name }}
-      manifests-zip-full-path: ${{ steps.manifest-package.outputs.manifests-zip-full-path }}
+      manifests-zip-sub-path: ${{ steps.manifest-package.outputs.manifests-zip-sub-path }}
+      manifests-zip-file-name: ${{ steps.manifest-package.outputs.manifests-zip-file-name }}
       manifests-uri: ${{ steps.manifest-repo-provider-publish.outputs.manifests-uri }}
       manifests-published: ${{ steps.manifest-repo-provider-publish.outputs.manifests-published }}
     steps:
@@ -399,7 +405,7 @@ jobs:
       - name: Run pre-tagging tests
         if: inputs.pre-tagging-tests-script-sub-path != ''
         id: pre-tagging-tests
-        uses: ./.github/buildon-github-actions/src/actions/run-test-script
+        uses: ./.github/buildon-github-actions/src/actions/run-hook-script
         with:
           script-sub-path: ${{ inputs.pre-tagging-tests-script-sub-path }}
       - name: Pass check - Pre-tagging Tests
@@ -442,6 +448,41 @@ jobs:
           action: fail
           check-run-id: ${{ steps.check-versions.outputs.check-run-id }}
 
+      # === Pre-docker Prepare ===
+      - name: Start check - Pre-docker Prepare
+        if: inputs.pre-docker-prepare-script-sub-path != ''
+        id: check-pre-docker-prepare
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
+        with:
+          action: start
+          check-name: 'Build & Publish → Pre-docker Prepare'
+      - name: Run pre-docker prepare
+        if: inputs.pre-docker-prepare-script-sub-path != ''
+        id: pre-docker-prepare
+        uses: ./.github/buildon-github-actions/src/actions/run-hook-script
+        with:
+          script-sub-path: ${{ inputs.pre-docker-prepare-script-sub-path }}
+          dockerfile-sub-path: ${{ inputs.dockerfile-sub-path }}
+          docker-context-sub-path: ${{ inputs.output-sub-path }}/docker/substituted
+          output-sub-path: ${{ inputs.output-sub-path }}
+          version: ${{ steps.versions.outputs.version }}
+          docker-tag: ${{ steps.versions.outputs.docker-tag }}
+          docker-image-name: ${{ steps.versions.outputs.docker-image-name }}
+          project-name: ${{ steps.versions.outputs.project-name }}
+          is-release: ${{ steps.versions.outputs.is-release }}
+      - name: Pass check - Pre-docker Prepare
+        if: inputs.pre-docker-prepare-script-sub-path != '' && success()
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
+        with:
+          action: pass
+          check-run-id: ${{ steps.check-pre-docker-prepare.outputs.check-run-id }}
+      - name: Fail check - Pre-docker Prepare
+        if: inputs.pre-docker-prepare-script-sub-path != '' && failure()
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
+        with:
+          action: fail
+          check-run-id: ${{ steps.check-pre-docker-prepare.outputs.check-run-id }}
+
       # === Docker Build ===
       - name: Start check - Docker Build
         id: check-docker-build
@@ -459,10 +500,17 @@ jobs:
           docker-tag: ${{ steps.versions.outputs.docker-tag }}
           version: ${{ steps.versions.outputs.version }}
           project-name: ${{ steps.versions.outputs.project-name }}
-          dockerfile-path: ${{ inputs.dockerfile-path }}
+          is-release: ${{ steps.versions.outputs.is-release }}
+          dockerfile-sub-path: ${{ inputs.dockerfile-sub-path }}
+          output-sub-path: ${{ inputs.output-sub-path }}
           squash: ${{ inputs.squash }}
           no-cache: ${{ inputs.no-cache }}
-          confirm-image-doesnt-exist: ${{ inputs.confirm-image-doesnt-exist }}
+          substitution-token-style: ${{ inputs.substitution-token-style }}
+          token-name-style: ${{ inputs.token-name-style }}
+          token-name-validation: ${{ inputs.token-name-validation }}
+          config-sub-path: ${{ inputs.config-sub-path }}
+          allow-builtin-token-override: ${{ inputs.allow-builtin-token-override }}
+          config-value-trailing-newline: ${{ inputs.config-value-trailing-newline }}
       - name: Pass check - Docker Build
         if: success()
         uses: ./.github/buildon-github-actions/src/actions/github-check-run
@@ -487,7 +535,7 @@ jobs:
       - name: Run post-docker tests
         if: inputs.post-docker-tests-script-sub-path != ''
         id: post-docker-tests
-        uses: ./.github/buildon-github-actions/src/actions/run-test-script
+        uses: ./.github/buildon-github-actions/src/actions/run-hook-script
         with:
           script-sub-path: ${{ inputs.post-docker-tests-script-sub-path }}
           version: ${{ steps.versions.outputs.version }}
@@ -509,6 +557,41 @@ jobs:
           action: fail
           check-run-id: ${{ steps.check-post-docker.outputs.check-run-id }}
 
+      # === Pre-package Prepare ===
+      - name: Start check - Pre-package Prepare
+        if: inputs.pre-package-prepare-script-sub-path != ''
+        id: check-pre-package-prepare
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
+        with:
+          action: start
+          check-name: 'Build & Publish → Pre-package Prepare'
+      - name: Run pre-package prepare
+        if: inputs.pre-package-prepare-script-sub-path != ''
+        id: pre-package-prepare
+        uses: ./.github/buildon-github-actions/src/actions/run-hook-script
+        with:
+          script-sub-path: ${{ inputs.pre-package-prepare-script-sub-path }}
+          manifests-sub-path: ${{ inputs.manifests-sub-path }}
+          manifests-substituted-sub-path: ${{ inputs.output-sub-path }}/manifests/substituted/${{ steps.versions.outputs.project-name }}
+          output-sub-path: ${{ inputs.output-sub-path }}
+          version: ${{ steps.versions.outputs.version }}
+          docker-tag: ${{ steps.versions.outputs.docker-tag }}
+          docker-image-name: ${{ steps.versions.outputs.docker-image-name }}
+          project-name: ${{ steps.versions.outputs.project-name }}
+          is-release: ${{ steps.versions.outputs.is-release }}
+      - name: Pass check - Pre-package Prepare
+        if: inputs.pre-package-prepare-script-sub-path != '' && success()
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
+        with:
+          action: pass
+          check-run-id: ${{ steps.check-pre-package-prepare.outputs.check-run-id }}
+      - name: Fail check - Pre-package Prepare
+        if: inputs.pre-package-prepare-script-sub-path != '' && failure()
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
+        with:
+          action: fail
+          check-run-id: ${{ steps.check-pre-package-prepare.outputs.check-run-id }}
+
       # === Manifest Package ===
       - name: Start check - Package Manifests
         id: check-manifest-package
@@ -520,7 +603,7 @@ jobs:
         id: manifest-package
         uses: ./.github/buildon-github-actions/src/actions/kubernetes-manifests-package
         with:
-          manifests-path: ${{ inputs.manifests-path }}
+          manifests-sub-path: ${{ inputs.manifests-sub-path }}
           project-name: ${{ steps.versions.outputs.project-name }}
           version: ${{ steps.versions.outputs.version }}
           docker-tag: ${{ steps.versions.outputs.docker-tag }}
@@ -533,8 +616,9 @@ jobs:
           token-name-style: ${{ inputs.token-name-style }}
           token-name-validation: ${{ inputs.token-name-validation }}
           allow-builtin-token-override: ${{ inputs.allow-builtin-token-override }}
-          config-path: ${{ inputs.config-path }}
+          config-sub-path: ${{ inputs.config-sub-path }}
           config-value-trailing-newline: ${{ inputs.config-value-trailing-newline }}
+          output-sub-path: ${{ inputs.output-sub-path }}
       - name: Pass check - Package Manifests
         if: success()
         uses: ./.github/buildon-github-actions/src/actions/github-check-run
@@ -560,14 +644,14 @@ jobs:
         uses: ./.github/buildon-github-actions/src/actions/kubernetes-manifests-repo-provider-package
         with:
           manifests-repo-provider-type: ${{ inputs.manifests-repo-provider-type }}
-          manifests-zip-full-path: ${{ steps.manifest-package.outputs.manifests-zip-full-path }}
-          manifests-zip-name: ${{ steps.manifest-package.outputs.manifests-zip-name }}
+          manifests-zip-sub-path: ${{ steps.manifest-package.outputs.manifests-zip-sub-path }}
+          manifests-zip-file-name: ${{ steps.manifest-package.outputs.manifests-zip-file-name }}
           target-registry: ${{ steps.docker-build.outputs.target-registry }}
           target-base-path: ${{ steps.docker-build.outputs.target-base-path }}
           target-image-name: ${{ steps.versions.outputs.docker-image-name }}
           docker-tag: ${{ steps.versions.outputs.docker-tag }}-manifests
-          confirm-image-doesnt-exist: ${{ inputs.confirm-image-doesnt-exist }}
           version: ${{ steps.versions.outputs.version }}
+          output-sub-path: ${{ inputs.output-sub-path }}
       - name: Pass check - Package Manifests for Repo Provider
         if: success()
         uses: ./.github/buildon-github-actions/src/actions/github-check-run
@@ -592,9 +676,11 @@ jobs:
       - name: Run post-package tests
         if: inputs.post-package-tests-script-sub-path != ''
         id: post-package-tests
-        uses: ./.github/buildon-github-actions/src/actions/run-test-script
+        uses: ./.github/buildon-github-actions/src/actions/run-hook-script
         with:
           script-sub-path: ${{ inputs.post-package-tests-script-sub-path }}
+          manifests-zip-sub-path: ${{ steps.manifest-package.outputs.manifests-zip-sub-path }}
+          manifests-zip-file-name: ${{ steps.manifest-package.outputs.manifests-zip-file-name }}
           version: ${{ steps.versions.outputs.version }}
           docker-tag: ${{ steps.versions.outputs.docker-tag }}
           docker-image-name: ${{ steps.versions.outputs.docker-image-name }}
@@ -656,10 +742,15 @@ jobs:
         with:
           manifests-repo-provider-type: ${{ inputs.manifests-repo-provider-type }}
           manifests-uri: ${{ steps.manifest-repo-provider-package.outputs.manifests-uri }}
-          manifests-zip-path: ${{ steps.manifest-repo-provider-package.outputs.manifests-zip-path }}
-          manifests-zip-name: ${{ steps.manifest-repo-provider-package.outputs.manifests-zip-name }}
+          manifests-zip-sub-path: ${{ steps.manifest-repo-provider-package.outputs.manifests-zip-sub-path }}
+          manifests-zip-file-name: ${{ steps.manifest-repo-provider-package.outputs.manifests-zip-file-name }}
           version: ${{ steps.manifest-repo-provider-package.outputs.version }}
           is-release: ${{ steps.versions.outputs.is-release }}
+          repo-provider-url: ${{ steps.manifest-repo-provider-package.outputs.repo-provider-url }}
+          repo-provider-namespace: ${{ steps.manifest-repo-provider-package.outputs.repo-provider-namespace }}
+          repo-provider-name: ${{ steps.manifest-repo-provider-package.outputs.repo-provider-name }}
+          repo-provider-version: ${{ steps.manifest-repo-provider-package.outputs.repo-provider-version }}
+          maven-group-id: ${{ steps.manifest-repo-provider-package.outputs.maven-group-id }}
       - name: Pass check - Publish Manifests via Repo Provider
         if: steps.versions.outputs.is-release == 'true' && success()
         uses: ./.github/buildon-github-actions/src/actions/github-check-run

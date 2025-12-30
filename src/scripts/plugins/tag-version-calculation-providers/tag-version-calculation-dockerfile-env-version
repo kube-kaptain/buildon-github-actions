@@ -11,7 +11,7 @@
 #   4. Increment the patch component, or start at x.y.1 if no tags exist in series
 #
 # Inputs (environment variables):
-#   DOCKERFILE_PATH    - Path to directory containing Dockerfile (default: src/docker)
+#   DOCKERFILE_SUB_PATH - Path to directory containing Dockerfile (default: src/docker)
 #   ENV_VARIABLE_NAME  - Name of ENV variable to extract (default: KUBECTL_VERSION)
 #   MAX_VERSION_PARTS  - Fail if version exceeds this depth (required)
 #
@@ -20,14 +20,14 @@
 #
 set -euo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "${0}")" && pwd)"
 
 # Logging configuration (CI-agnostic)
 LOG_ERROR_PREFIX="${LOG_ERROR_PREFIX:-}"
 LOG_ERROR_SUFFIX="${LOG_ERROR_SUFFIX:-}"
 
 # Configuration with defaults
-DOCKERFILE_PATH="${DOCKERFILE_PATH:-src/docker}"
+DOCKERFILE_SUB_PATH="${DOCKERFILE_SUB_PATH:-src/docker}"
 ENV_VARIABLE_NAME="${ENV_VARIABLE_NAME:-KUBECTL_VERSION}"
 
 # Required inputs
@@ -38,63 +38,63 @@ fi
 
 # Extract version from Dockerfile ENV variable
 extract_env_version() {
-  local dockerfile="$DOCKERFILE_PATH/Dockerfile"
+  local dockerfile="${DOCKERFILE_SUB_PATH}/Dockerfile"
 
-  if [[ ! -f "$dockerfile" ]]; then
-    echo "${LOG_ERROR_PREFIX}Dockerfile not found: $dockerfile${LOG_ERROR_SUFFIX}" >&2
+  if [[ ! -f "${dockerfile}" ]]; then
+    echo "${LOG_ERROR_PREFIX}Dockerfile not found: ${dockerfile}${LOG_ERROR_SUFFIX}" >&2
     exit 1
   fi
 
   # Match: ENV VARNAME=x.y.z (3-part version)
   local version
-  version=$(grep -E "^ENV ${ENV_VARIABLE_NAME}=[0-9]+\.[0-9]+\.[0-9]+$" "$dockerfile" | head -1 | sed "s/^ENV ${ENV_VARIABLE_NAME}=//")
+  version=$(grep -E "^ENV ${ENV_VARIABLE_NAME}=[0-9]+\.[0-9]+\.[0-9]+$" "${dockerfile}" | head -1 | sed "s/^ENV ${ENV_VARIABLE_NAME}=//")
 
-  if [[ -z "$version" ]]; then
-    echo "${LOG_ERROR_PREFIX}Could not find ENV ${ENV_VARIABLE_NAME}=x.y.z in $dockerfile${LOG_ERROR_SUFFIX}" >&2
+  if [[ -z "${version}" ]]; then
+    echo "${LOG_ERROR_PREFIX}Could not find ENV ${ENV_VARIABLE_NAME}=x.y.z in ${dockerfile}${LOG_ERROR_SUFFIX}" >&2
     exit 1
   fi
 
-  echo "$version"
+  echo "${version}"
 }
 
 # Get major.minor prefix from version
 get_major_minor() {
-  local version="$1"
+  local version="${1}"
   local major minor
-  IFS='.' read -r major minor _ <<< "$version"
+  IFS='.' read -r major minor _ <<< "${version}"
   echo "${major}.${minor}"
 }
 
 # Check if a tag is a pure numeric version (no -rc1, -beta, etc)
 is_numeric_version() {
-  local tag="$1"
+  local tag="${1}"
   tag="${tag#v}"
-  [[ "$tag" =~ ^[0-9]+(\.[0-9]+)+$ ]]
+  [[ "${tag}" =~ ^[0-9]+(\.[0-9]+)+$ ]]
 }
 
 # Find highest tag matching major.minor prefix
 find_highest_in_series() {
-  local prefix="$1"
+  local prefix="${1}"
 
   # Get ALL tags in repo matching our prefix with pure numeric versions only
   local highest
   highest=$(git tag --list | while read -r tag; do
     local clean="${tag#v}"
     # Must start with our prefix, followed by dot and digits only
-    if [[ "$clean" =~ ^${prefix}\.[0-9]+$ ]] && is_numeric_version "$tag"; then
-      echo "$tag"
+    if [[ "${clean}" =~ ^${prefix}\.[0-9]+$ ]] && is_numeric_version "${tag}"; then
+      echo "${tag}"
     fi
-  done | "$SCRIPT_DIR/../../main/version-sort" | tail -n1)
+  done | "${SCRIPT_DIR}/../../main/version-sort" | tail -n1)
 
-  echo "$highest"
+  echo "${highest}"
 }
 
 # Increment patch version
 increment_patch() {
-  local prefix="$1"
-  local current="$2"
+  local prefix="${1}"
+  local current="${2}"
 
-  if [[ -z "$current" ]]; then
+  if [[ -z "${current}" ]]; then
     # No existing tag in series, start at prefix.1 (first patch version in a series should always be 1, it's the 1st version not the 0th)
     echo "${prefix}.1"
     return
@@ -104,17 +104,17 @@ increment_patch() {
   current="${current#v}"
 
   # Split and increment patch
-  IFS='.' read -ra parts <<< "$current"
+  IFS='.' read -ra parts <<< "${current}"
   local patch=$((parts[2] + 1))
   echo "${parts[0]}.${parts[1]}.${patch}"
 }
 
 # Count parts in a version string
 count_version_parts() {
-  local version="$1"
+  local version="${1}"
   version="${version#v}"
   local dot_count
-  dot_count=$(echo "$version" | tr -cd '.' | wc -c | tr -d ' ')
+  dot_count=$(echo "${version}" | tr -cd '.' | wc -c | tr -d ' ')
   echo $((dot_count + 1))
 }
 
@@ -126,32 +126,32 @@ main() {
 
   # Step 2: Get major.minor prefix
   local prefix
-  prefix=$(get_major_minor "$env_version")
+  prefix=$(get_major_minor "${env_version}")
   echo "Using version series: ${prefix}.x" >&2
 
   # Step 3: Find highest existing tag in series
   local highest_tag
-  highest_tag=$(find_highest_in_series "$prefix")
-  if [[ -n "$highest_tag" ]]; then
-    echo "Highest existing tag in series: $highest_tag" >&2
+  highest_tag=$(find_highest_in_series "${prefix}")
+  if [[ -n "${highest_tag}" ]]; then
+    echo "Highest existing tag in series: ${highest_tag}" >&2
   else
     echo "No existing tags in ${prefix}.x series" >&2
   fi
 
   # Step 4: Increment patch
   local new_version
-  new_version=$(increment_patch "$prefix" "$highest_tag")
+  new_version=$(increment_patch "${prefix}" "${highest_tag}")
 
   # Step 5: Validate against MAX_VERSION_PARTS
   local part_count
-  part_count=$(count_version_parts "$new_version")
-  if [[ $part_count -gt $MAX_VERSION_PARTS ]]; then
-    echo "${LOG_ERROR_PREFIX}Version '$new_version' has $part_count parts, exceeds MAX_VERSION_PARTS=$MAX_VERSION_PARTS${LOG_ERROR_SUFFIX}" >&2
+  part_count=$(count_version_parts "${new_version}")
+  if [[ ${part_count} -gt ${MAX_VERSION_PARTS} ]]; then
+    echo "${LOG_ERROR_PREFIX}Version '${new_version}' has ${part_count} parts, exceeds MAX_VERSION_PARTS=${MAX_VERSION_PARTS}${LOG_ERROR_SUFFIX}" >&2
     exit 1
   fi
 
   # Output the version
-  echo "VERSION=$new_version"
+  echo "VERSION=${new_version}"
 }
 
 main "$@"

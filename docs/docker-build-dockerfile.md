@@ -6,12 +6,18 @@ Docker Build Dockerfile
 
 | Input | Type | Default | Description |
 |-------|------|---------|-------------|
-| `dockerfile-path` | string | `src/docker` | Directory containing Dockerfile (also used as build context) |
+| `dockerfile-sub-path` | string | `src/docker` | Directory containing Dockerfile, relative (also used as build context) |
+| `output-sub-path` | string | `target` | Build output directory (relative) |
 | `squash` | boolean | `true` | Enable --squash (requires experimental mode) |
 | `no-cache` | boolean | `true` | Disable layer caching for reproducible builds |
+| `substitution-token-style` | string | `shell` | Token delimiter syntax for variables (shell, mustache, helm, erb, github-actions, blade, stringtemplate, ognl, t4, swift) |
+| `token-name-style` | string | `PascalCase` | Case style for token names (UPPER_SNAKE, lower_snake, kebab-case, camelCase, PascalCase, lower.dot, UPPER.DOT) |
+| `token-name-validation` | string | `MATCH` | How to validate user token names (MATCH = must match token-name-style, ALL = accept any valid name) |
+| `config-sub-path` | string | `src/config` | Directory containing user-defined token files (relative) |
+| `allow-builtin-token-override` | boolean | `false` | Allow user tokens to override built-in tokens (for template/reusable projects) |
+| `config-value-trailing-newline` | string | `strip-for-single-line` | How to handle trailing newlines in config values (strip-for-single-line, preserve-all, always-strip-one-newline) |
 | `target-registry` | string | `ghcr.io` | Target container registry |
 | `target-base-path` | string | `""` | Path between registry and image name (auto-set for GHCR) |
-| `confirm-image-doesnt-exist` | boolean | `true` | Fail if target image already exists in registry |
 | `default-branch` | string | `main` | The default/release branch name |
 | `additional-release-branches` | string | `""` | Comma-separated list of additional release branches |
 | `block-slashes` | boolean | `false` | Block branch names containing slashes |
@@ -22,6 +28,7 @@ Docker Build Dockerfile
 | `max-version-parts` | number | `3` | Maximum allowed version parts (fail if exceeded) |
 | `pre-tagging-tests-script-sub-path` | string | `""` | Path to pre-tagging test script relative to .github/ (e.g., bin/pre-tagging.bash) |
 | `post-docker-tests-script-sub-path` | string | `""` | Path to post-docker test script relative to .github/ (e.g., bin/post-docker.bash) |
+| `pre-docker-prepare-script-sub-path` | string | `""` | Path to pre-docker prepare script relative to .github/ (e.g., bin/pre-docker-prepare.bash) |
 | `docker-registry-logins` | string | `""` | YAML config for Docker registry logins (registry URL as key) |
 
 ## Secrets

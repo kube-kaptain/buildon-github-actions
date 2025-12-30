@@ -313,7 +313,7 @@ ENV HELM_VERSION=3.14.0' > src/docker/Dockerfile
 ENV KUBECTL_VERSION=1.29.0' > custom/path/Dockerfile
 
   export TAG_VERSION_CALCULATION_STRATEGY=dockerfile-env-version
-  export DOCKERFILE_PATH=custom/path
+  export DOCKERFILE_SUB_PATH=custom/path
 
   run "$SCRIPTS_DIR/versions-and-naming"
   [ "$status" -eq 0 ]
@@ -361,4 +361,60 @@ ENV KUBECTL_VERSION=1.29.0' > src/docker/Dockerfile
   run "$SCRIPTS_DIR/versions-and-naming"
   [ "$status" -eq 0 ]
   assert_var_equals "VERSION" "1.29.1"
+}
+
+# BUILD_LOCATION tests
+
+@test "fails when BUILD_LOCATION is not set" {
+  TEST_REPO=$(clone_fixture "tag-none")
+  cd "$TEST_REPO"
+  unset BUILD_LOCATION
+
+  run "$SCRIPTS_DIR/versions-and-naming"
+  [ "$status" -eq 1 ]
+  assert_output_contains "BUILD_LOCATION is required"
+}
+
+@test "fails when BUILD_LOCATION has invalid value" {
+  TEST_REPO=$(clone_fixture "tag-none")
+  cd "$TEST_REPO"
+  export BUILD_LOCATION="invalid_value"
+
+  run "$SCRIPTS_DIR/versions-and-naming"
+  [ "$status" -eq 1 ]
+  assert_output_contains "Invalid BUILD_LOCATION"
+}
+
+@test "BUILD_LOCATION=local forces IS_RELEASE=false on default branch" {
+  TEST_REPO=$(clone_fixture "tag-none")
+  cd "$TEST_REPO"
+  export BUILD_LOCATION="local"
+
+  run "$SCRIPTS_DIR/versions-and-naming"
+  [ "$status" -eq 0 ]
+  assert_var_equals "IS_RELEASE" "false"
+  assert_var_equals "DOCKER_TAG" "1.0.0-PRERELEASE"
+}
+
+@test "BUILD_LOCATION=local forces IS_RELEASE=false on additional release branch" {
+  TEST_REPO=$(clone_fixture "tag-feature-branch")
+  cd "$TEST_REPO"
+  export BUILD_LOCATION="local"
+  export ADDITIONAL_RELEASE_BRANCHES="feature-test"
+
+  run "$SCRIPTS_DIR/versions-and-naming"
+  [ "$status" -eq 0 ]
+  assert_var_equals "IS_RELEASE" "false"
+  assert_var_equals "DOCKER_TAG" "1.0.1-PRERELEASE"
+}
+
+@test "BUILD_LOCATION=build_server allows IS_RELEASE=true on default branch" {
+  TEST_REPO=$(clone_fixture "tag-none")
+  cd "$TEST_REPO"
+  export BUILD_LOCATION="build_server"
+
+  run "$SCRIPTS_DIR/versions-and-naming"
+  [ "$status" -eq 0 ]
+  assert_var_equals "IS_RELEASE" "true"
+  assert_var_equals "DOCKER_TAG" "1.0.0"
 }

@@ -9,7 +9,7 @@ PROJECT_ROOT="${PROJECT_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd
 # Path to scripts, repo providers, and fixtures
 SCRIPTS_DIR="$PROJECT_ROOT/src/scripts/main"
 PLUGINS_DIR="$PROJECT_ROOT/src/scripts/plugins"
-REPO_PROVIDERS_DIR="$PLUGINS_DIR/kube-manifests-repo-providers"
+REPO_PROVIDERS_DIR="$PLUGINS_DIR/kubernetes-manifests-repo-providers"
 FIXTURES_DIR="$PROJECT_ROOT/src/test/fixtures"
 MOCK_BIN_DIR="$PROJECT_ROOT/src/test/mock-bin"
 
@@ -25,6 +25,8 @@ exec /usr/bin/git "$@"
 MOCKGIT
   chmod +x "$MOCK_BIN_DIR/git"
   export PATH="$MOCK_BIN_DIR:$PATH"
+  # Default BUILD_LOCATION for tests (simulates CI environment)
+  export BUILD_LOCATION="${BUILD_LOCATION:-build_server}"
 }
 
 # Clean up mock git

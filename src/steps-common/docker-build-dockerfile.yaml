@@ -11,7 +11,14 @@
     docker-tag: ${{ steps.versions.outputs.docker-tag }}
     version: ${{ steps.versions.outputs.version }}
     project-name: ${{ steps.versions.outputs.project-name }}
-    dockerfile-path: ${{ inputs.dockerfile-path }}
+    is-release: ${{ steps.versions.outputs.is-release }}
+    dockerfile-sub-path: ${{ inputs.dockerfile-sub-path }}
+    output-sub-path: ${{ inputs.output-sub-path }}
     squash: ${{ inputs.squash }}
     no-cache: ${{ inputs.no-cache }}
-    confirm-image-doesnt-exist: ${{ inputs.confirm-image-doesnt-exist }}
+    substitution-token-style: ${{ inputs.substitution-token-style }}
+    token-name-style: ${{ inputs.token-name-style }}
+    token-name-validation: ${{ inputs.token-name-validation }}
+    config-sub-path: ${{ inputs.config-sub-path }}
+    allow-builtin-token-override: ${{ inputs.allow-builtin-token-override }}
+    config-value-trailing-newline: ${{ inputs.config-value-trailing-newline }}

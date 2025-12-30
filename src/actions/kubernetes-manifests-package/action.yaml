@@ -6,8 +6,8 @@ description: 'Packages Kubernetes manifests into a zip with variable substitutio
 author: 'kube-kaptain'
 
 inputs:
-  manifests-path:
-    description: 'Directory containing Kubernetes manifests'
+  manifests-sub-path:
+    description: 'Directory containing Kubernetes manifests (relative)'
     required: false
     default: 'src/kubernetes'
   project-name:
@@ -16,8 +16,8 @@ inputs:
   version:
     description: 'Version for variable substitution and naming'
     required: true
-  output-path:
-    description: 'Build output directory'
+  output-sub-path:
+    description: 'Build output directory (relative)'
     required: false
     default: 'target'
   docker-tag:
@@ -60,8 +60,8 @@ inputs:
     description: 'Allow user tokens to override built-in tokens (for template/reusable projects)'
     required: false
     default: 'false'
-  config-path:
-    description: 'Directory containing user-defined token files'
+  config-sub-path:
+    description: 'Directory containing user-defined token files (relative)'
     required: false
     default: 'src/config'
   config-value-trailing-newline:
@@ -70,15 +70,12 @@ inputs:
     default: 'strip-for-single-line'
 
 outputs:
-  manifests-zip-path:
-    description: 'Directory containing the zip file'
-    value: ${{ steps.package.outputs.MANIFESTS_ZIP_PATH }}
-  manifests-zip-name:
+  manifests-zip-sub-path:
+    description: 'Directory containing the zip file (relative)'
+    value: ${{ steps.package.outputs.MANIFESTS_ZIP_SUB_PATH }}
+  manifests-zip-file-name:
     description: 'Filename of the zip'
-    value: ${{ steps.package.outputs.MANIFESTS_ZIP_NAME }}
-  manifests-zip-full-path:
-    description: 'Full path to created zip file (directory + filename)'
-    value: ${{ steps.package.outputs.MANIFESTS_ZIP_FULL_PATH }}
+    value: ${{ steps.package.outputs.MANIFESTS_ZIP_FILE_NAME }}
 
 runs:
   using: 'composite'
@@ -88,10 +85,10 @@ runs:
       shell: bash
       env:
         LOG_ERROR_PREFIX: '::error::'
-        MANIFESTS_PATH: ${{ inputs.manifests-path }}
+        MANIFESTS_SUB_PATH: ${{ inputs.manifests-sub-path }}
         PROJECT_NAME: ${{ inputs.project-name }}
         VERSION: ${{ inputs.version }}
-        OUTPUT_PATH: ${{ inputs.output-path }}
+        OUTPUT_SUB_PATH: ${{ inputs.output-sub-path }}
         DOCKER_TAG: ${{ inputs.docker-tag }}
         DOCKER_IMAGE_NAME: ${{ inputs.docker-image-name }}
         DOCKER_IMAGE_FULL_URI: ${{ inputs.docker-image-full-uri }}
@@ -102,6 +99,6 @@ runs:
         TOKEN_NAME_STYLE: ${{ inputs.token-name-style }}
         TOKEN_NAME_VALIDATION: ${{ inputs.token-name-validation }}
         ALLOW_BUILTIN_TOKEN_OVERRIDE: ${{ inputs.allow-builtin-token-override }}
-        CONFIG_PATH: ${{ inputs.config-path }}
+        CONFIG_SUB_PATH: ${{ inputs.config-sub-path }}
         CONFIG_VALUE_TRAILING_NEWLINE: ${{ inputs.config-value-trailing-newline }}
       run: "${{ github.action_path }}/../../scripts/main/kubernetes-manifests-package"

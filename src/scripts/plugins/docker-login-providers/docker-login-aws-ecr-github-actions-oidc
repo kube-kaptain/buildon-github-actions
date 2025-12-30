@@ -20,30 +20,31 @@
 set -euo pipefail
 
 # secret_method=$1 - unused for OIDC
-registry="$2"
-role_arn="$3"
-region="$4"
+registry="${2}"
+role_arn="${3}"
+region="${4}"
 session_name="${5:-github-actions}"
 
-echo "Assuming AWS role $role_arn via OIDC..." >&2
+echo "Assuming AWS role ${role_arn} via OIDC..." >&2
 
-token=$(curl -s -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
-  "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=sts.amazonaws.com" | yq -r '.value')
+# shellcheck disable=SC2154 # ACTIONS_ID_TOKEN_* are set by GitHub Actions runtime
+token=$(curl -s -H "Authorization: bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" \
+  "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=sts.amazonaws.com" | yq -r '.value')
 
 creds=$(aws sts assume-role-with-web-identity \
-  --role-arn "$role_arn" \
-  --role-session-name "$session_name" \
-  --web-identity-token "$token" \
+  --role-arn "${role_arn}" \
+  --role-session-name "${session_name}" \
+  --web-identity-token "${token}" \
   --duration-seconds 3600 \
   --output json)
 
 export AWS_ACCESS_KEY_ID
 export AWS_SECRET_ACCESS_KEY
 export AWS_SESSION_TOKEN
-AWS_ACCESS_KEY_ID=$(echo "$creds" | yq -r '.Credentials.AccessKeyId')
-AWS_SECRET_ACCESS_KEY=$(echo "$creds" | yq -r '.Credentials.SecretAccessKey')
-AWS_SESSION_TOKEN=$(echo "$creds" | yq -r '.Credentials.SessionToken')
-export AWS_DEFAULT_REGION="$region"
+AWS_ACCESS_KEY_ID=$(echo "${creds}" | yq -r '.Credentials.AccessKeyId')
+AWS_SECRET_ACCESS_KEY=$(echo "${creds}" | yq -r '.Credentials.SecretAccessKey')
+AWS_SESSION_TOKEN=$(echo "${creds}" | yq -r '.Credentials.SessionToken')
+export AWS_DEFAULT_REGION="${region}"
 
-echo "Logging in to AWS ECR $registry..." >&2
-aws ecr get-login-password --region "$region" | docker login --username AWS --password-stdin "$registry"
+echo "Logging in to AWS ECR ${registry}..." >&2
+aws ecr get-login-password --region "${region}" | docker login --username AWS --password-stdin "${registry}"

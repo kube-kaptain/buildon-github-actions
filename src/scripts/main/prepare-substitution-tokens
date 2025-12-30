@@ -1,0 +1,228 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025 Kaptain contributors (Fred Cooke)
+#
+# prepare-substitution-tokens - Prepares token files for substitution
+#
+# Writes built-in tokens from environment variables and copies user config tokens.
+# Used by kubernetes-manifests-package and docker-build-dockerfile.
+#
+# Inputs (environment variables):
+#   TOKENS_OUTPUT_SUB_PATH - Where to write token files (required)
+#   CONFIG_SUB_PATH        - User config directory (default: src/config)
+#   TOKEN_NAME_STYLE       - Case style for token names (default: PascalCase)
+#   TOKEN_NAME_VALIDATION  - How to validate user token names (default: MATCH)
+#   ALLOW_BUILTIN_TOKEN_OVERRIDE - Allow user tokens to override built-ins (default: false)
+#   CONFIG_VALUE_TRAILING_NEWLINE - Trailing newline handling (default: strip-for-single-line)
+#
+# Built-in tokens (read from env, written if set):
+#   PROJECT_NAME, VERSION, DOCKER_TAG, DOCKER_IMAGE_NAME
+#   TARGET_REGISTRY, TARGET_BASE_PATH, IS_RELEASE
+#   DOCKER_IMAGE_FULL_URI, MANIFESTS_ZIP_FILE_NAME
+#
+set -euo pipefail
+
+# Locate script directory for finding plugins
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PLUGINS_DIR="${SCRIPT_DIR}/../plugins"
+
+# Logging configuration (CI-agnostic)
+LOG_ERROR_PREFIX="${LOG_ERROR_PREFIX:-}"
+LOG_ERROR_SUFFIX="${LOG_ERROR_SUFFIX:-}"
+
+# Required inputs
+TOKENS_OUTPUT_SUB_PATH="${TOKENS_OUTPUT_SUB_PATH:?TOKENS_OUTPUT_SUB_PATH is required}"
+
+# Optional inputs with defaults
+CONFIG_SUB_PATH="${CONFIG_SUB_PATH:-src/config}"
+TOKEN_NAME_STYLE="${TOKEN_NAME_STYLE:-PascalCase}"
+TOKEN_NAME_VALIDATION="${TOKEN_NAME_VALIDATION:-MATCH}"
+ALLOW_BUILTIN_TOKEN_OVERRIDE="${ALLOW_BUILTIN_TOKEN_OVERRIDE:-false}"
+CONFIG_VALUE_TRAILING_NEWLINE="${CONFIG_VALUE_TRAILING_NEWLINE:-strip-for-single-line}"
+
+# Required built-in tokens (must be set by caller - provided by versions-and-naming)
+PROJECT_NAME="${PROJECT_NAME:?PROJECT_NAME is required}"
+VERSION="${VERSION:?VERSION is required}"
+IS_RELEASE="${IS_RELEASE:?IS_RELEASE is required}"
+DOCKER_TAG="${DOCKER_TAG:?DOCKER_TAG is required}"
+DOCKER_IMAGE_NAME="${DOCKER_IMAGE_NAME:?DOCKER_IMAGE_NAME is required}"
+
+# =============================================================================
+# Case conversion functions - translate UPPER_SNAKE to target style
+# =============================================================================
+
+to_upper_snake() {
+  echo "$1"  # Already in UPPER_SNAKE
+}
+
+to_lower_snake() {
+  echo "$1" | tr '[:upper:]' '[:lower:]'
+}
+
+to_kebab_case() {
+  echo "$1" | tr '[:upper:]_' '[:lower:]-'
+}
+
+to_camel_case() {
+  local input="$1"
+  local result=""
+  local capitalize=false
+
+  input=$(echo "${input}" | tr '[:upper:]' '[:lower:]')
+
+  for (( i=0; i<${#input}; i++ )); do
+    local char="${input:${i}:1}"
+    if [[ "${char}" == "_" ]]; then
+      capitalize=true
+    elif [[ "${capitalize}" == "true" ]]; then
+      result+=$(echo "${char}" | tr '[:lower:]' '[:upper:]')
+      capitalize=false
+    else
+      result+="${char}"
+    fi
+  done
+
+  echo "${result}"
+}
+
+to_pascal_case() {
+  local camel
+  camel=$(to_camel_case "$1")
+  echo "$(echo "${camel:0:1}" | tr '[:lower:]' '[:upper:]')${camel:1}"
+}
+
+to_lower_dot() {
+  echo "$1" | tr '[:upper:]_' '[:lower:].'
+}
+
+to_upper_dot() {
+  echo "$1" | tr '_' '.'
+}
+
+# Translate variable name from UPPER_SNAKE to configured style
+translate_var_name() {
+  local var_name="$1"
+
+  case "${TOKEN_NAME_STYLE}" in
+    UPPER_SNAKE)  to_upper_snake "${var_name}" ;;
+    lower_snake)  to_lower_snake "${var_name}" ;;
+    kebab-case)   to_kebab_case "${var_name}" ;;
+    camelCase)    to_camel_case "${var_name}" ;;
+    PascalCase)   to_pascal_case "${var_name}" ;;
+    lower.dot)    to_lower_dot "${var_name}" ;;
+    UPPER.DOT)    to_upper_dot "${var_name}" ;;
+    *)
+      echo "${LOG_ERROR_PREFIX}Unknown token name style: ${TOKEN_NAME_STYLE}${LOG_ERROR_SUFFIX}" >&2
+      exit 1
+      ;;
+  esac
+}
+
+# Write a built-in token file
+write_builtin_token() {
+  local name="$1"
+  local value="$2"
+  local target_name
+  target_name=$(translate_var_name "${name}")
+
+  printf '%s' "${value}" > "${TOKENS_OUTPUT_SUB_PATH}/${target_name}"
+}
+
+# Get validator script for a style
+get_validator_script() {
+  local style="$1"
+  echo "${PLUGINS_DIR}/token-name-validators/${style}"
+}
+
+main() {
+  echo "Preparing substitution tokens..." >&2
+  echo "  Output: ${TOKENS_OUTPUT_SUB_PATH}" >&2
+  echo "  Config: ${CONFIG_SUB_PATH}" >&2
+  echo "  Name style: ${TOKEN_NAME_STYLE}" >&2
+  echo "  Validation: ${TOKEN_NAME_VALIDATION}" >&2
+
+  # Create output directory
+  mkdir -p "${TOKENS_OUTPUT_SUB_PATH}"
+
+  # Step 1: Write built-in tokens from environment variables
+  echo "Writing built-in tokens..." >&2
+
+  # Required tokens provided by versions-and-naming which always precedes this)
+  write_builtin_token "PROJECT_NAME" "${PROJECT_NAME}"
+  write_builtin_token "VERSION" "${VERSION}"
+  write_builtin_token "IS_RELEASE" "${IS_RELEASE}"
+  write_builtin_token "DOCKER_TAG" "${DOCKER_TAG}"
+  write_builtin_token "DOCKER_IMAGE_NAME" "${DOCKER_IMAGE_NAME}"
+  # Note, the 2 docker specific ones are always generated regardless
+
+  # Optional dockerfile build tokens (not available in kubernetes-app-manifests-only)
+  if [[ -n "${DOCKER_IMAGE_FULL_URI:-}" ]]; then
+    write_builtin_token "DOCKER_IMAGE_FULL_URI" "${DOCKER_IMAGE_FULL_URI}"
+  fi
+  if [[ -n "${TARGET_REGISTRY:-}" ]]; then
+    write_builtin_token "TARGET_REGISTRY" "${TARGET_REGISTRY}"
+  fi
+  if [[ -n "${TARGET_BASE_PATH:-}" ]]; then
+    write_builtin_token "TARGET_BASE_PATH" "${TARGET_BASE_PATH}"
+  fi
+
+  # Optional manifest packaging tokens (not available in docker-build-dockerfile)
+  if [[ -n "${MANIFESTS_ZIP_FILE_NAME:-}" ]]; then
+    write_builtin_token "MANIFESTS_ZIP_FILE_NAME" "${MANIFESTS_ZIP_FILE_NAME}"
+  fi
+
+  # Step 2: Validate and copy user config if it exists
+  if [[ -d "${CONFIG_SUB_PATH}" ]] && [[ -n "$(find "${CONFIG_SUB_PATH}" -type f 2>/dev/null)" ]]; then
+    echo "Validating user config tokens..." >&2
+
+    # Determine which validator to use
+    local validator_style
+    if [[ "${TOKEN_NAME_VALIDATION}" == "MATCH" ]]; then
+      validator_style="${TOKEN_NAME_STYLE}"
+    else
+      validator_style="ALL"
+    fi
+
+    local validator_script
+    validator_script=$(get_validator_script "${validator_style}")
+
+    if [[ ! -x "${validator_script}" ]]; then
+      echo "${LOG_ERROR_PREFIX}Validator not found: ${validator_style}${LOG_ERROR_SUFFIX}" >&2
+      exit 1
+    fi
+
+    # Run validator
+    if ! "${validator_script}" "${CONFIG_SUB_PATH}"; then
+      exit 1
+    fi
+
+    # Step 3: Check for conflicts with built-in tokens
+    if [[ "${ALLOW_BUILTIN_TOKEN_OVERRIDE}" != "true" ]]; then
+      local conflicts=()
+
+      while IFS= read -r -d '' user_file; do
+        local user_token="${user_file#"${CONFIG_SUB_PATH}"/}"
+        # Check if this token name matches any built-in
+        if [[ -f "${TOKENS_OUTPUT_SUB_PATH}/${user_token}" ]]; then
+          conflicts+=("${user_token}")
+        fi
+      done < <(find "${CONFIG_SUB_PATH}" -type f -print0)
+
+      if [[ ${#conflicts[@]} -gt 0 ]]; then
+        echo "${LOG_ERROR_PREFIX}Found attempt to override built-in variable(s) - this is not allowed:${LOG_ERROR_SUFFIX}" >&2
+        for conflict in "${conflicts[@]}"; do
+          echo "  ${conflict}" >&2
+        done
+        exit 1
+      fi
+    fi
+
+    # Step 4: Copy user config to output (may override built-ins if allowed)
+    echo "Copying user config tokens..." >&2
+    cp -R "${CONFIG_SUB_PATH}"/* "${TOKENS_OUTPUT_SUB_PATH}/"
+  fi
+
+  echo "Token preparation complete" >&2
+}
+
+main "$@"

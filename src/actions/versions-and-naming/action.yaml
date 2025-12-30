@@ -22,7 +22,7 @@ inputs:
     description: 'Strategy for calculating version (git-auto-closest-highest, dockerfile-env-version)'
     required: false
     default: 'git-auto-closest-highest'
-  dockerfile-path:
+  dockerfile-sub-path:
     description: 'Path to directory containing Dockerfile (for dockerfile-env-version strategy)'
     required: false
     default: 'src/docker'
@@ -74,10 +74,11 @@ runs:
       shell: bash
       env:
         LOG_ERROR_PREFIX: '::error::'
+        BUILD_LOCATION: build_server
         DEFAULT_BRANCH: ${{ inputs.default-branch }}
         ADDITIONAL_RELEASE_BRANCHES: ${{ inputs.additional-release-branches }}
         MAX_VERSION_PARTS: ${{ inputs.max-version-parts }}
         TAG_VERSION_CALCULATION_STRATEGY: ${{ inputs.tag-version-calculation-strategy }}
-        DOCKERFILE_PATH: ${{ inputs.dockerfile-path }}
+        DOCKERFILE_SUB_PATH: ${{ inputs.dockerfile-sub-path }}
         ENV_VARIABLE_NAME: ${{ inputs.env-variable-name }}
       run: "${{ github.action_path }}/../../scripts/main/versions-and-naming"

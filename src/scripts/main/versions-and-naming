@@ -22,8 +22,8 @@
 #
 set -euo pipefail
 
-SCRIPT_DIR="$(dirname "$0")"
-PLUGINS_DIR="$SCRIPT_DIR/../plugins"
+SCRIPT_DIR="$(dirname "${0}")"
+PLUGINS_DIR="${SCRIPT_DIR}/../plugins"
 
 # Logging configuration (CI-agnostic)
 LOG_ERROR_PREFIX="${LOG_ERROR_PREFIX:-}"
@@ -34,8 +34,21 @@ DEFAULT_BRANCH="${DEFAULT_BRANCH:-main}"
 ADDITIONAL_RELEASE_BRANCHES="${ADDITIONAL_RELEASE_BRANCHES:-}"  # Comma-separated list of additional release branches
 MAX_VERSION_PARTS="${MAX_VERSION_PARTS:-3}"  # Fail if version exceeds this many parts
 TAG_VERSION_CALCULATION_STRATEGY="${TAG_VERSION_CALCULATION_STRATEGY:-git-auto-closest-highest}"
-DOCKERFILE_PATH="${DOCKERFILE_PATH:-src/docker}"  # For dockerfile-env-version strategy
+DOCKERFILE_SUB_PATH="${DOCKERFILE_SUB_PATH:-src/docker}"  # For dockerfile-env-version strategy
 ENV_VARIABLE_NAME="${ENV_VARIABLE_NAME:-KUBECTL_VERSION}"  # For dockerfile-env-version strategy
+
+# Validate BUILD_LOCATION (required)
+validate_build_location() {
+  if [[ -z "${BUILD_LOCATION:-}" ]]; then
+    echo "${LOG_ERROR_PREFIX}BUILD_LOCATION is required. Valid values: local, build_server${LOG_ERROR_SUFFIX}" >&2
+    exit 1
+  fi
+
+  if [[ "${BUILD_LOCATION}" != "local" && "${BUILD_LOCATION}" != "build_server" ]]; then
+    echo "${LOG_ERROR_PREFIX}Invalid BUILD_LOCATION: ${BUILD_LOCATION}. Valid values: local, build_server${LOG_ERROR_SUFFIX}" >&2
+    exit 1
+  fi
+}
 
 # Get current branch
 get_current_branch() {
@@ -49,18 +62,18 @@ get_project_name() {
 
 # Check if current branch is a release branch
 is_release_branch() {
-  local current_branch="$1"
+  local current_branch="${1}"
 
   # Check if it's the default branch
-  if [[ "$current_branch" == "$DEFAULT_BRANCH" ]]; then
+  if [[ "${current_branch}" == "${DEFAULT_BRANCH}" ]]; then
     return 0
   fi
 
   # Check if it matches any additional release branch
-  if [[ -n "$ADDITIONAL_RELEASE_BRANCHES" ]]; then
-    IFS=',' read -ra branches <<< "$ADDITIONAL_RELEASE_BRANCHES"
+  if [[ -n "${ADDITIONAL_RELEASE_BRANCHES}" ]]; then
+    IFS=',' read -ra branches <<< "${ADDITIONAL_RELEASE_BRANCHES}"
     for branch in "${branches[@]}"; do
-      if [[ "$current_branch" == "$branch" ]]; then
+      if [[ "${current_branch}" == "${branch}" ]]; then
         return 0
       fi
     done
@@ -71,38 +84,38 @@ is_release_branch() {
 
 # Pad or truncate version to exactly N parts
 version_to_n_parts() {
-  local version="$1"
-  local n="$2"
+  local version="${1}"
+  local n="${2}"
   version="${version#v}"
 
-  IFS='.' read -ra parts <<< "$version"
+  IFS='.' read -ra parts <<< "${version}"
   local current_parts=${#parts[@]}
 
   # Build result with exactly n parts
   local result=""
   for ((i=0; i<n; i++)); do
-    if [[ $i -gt 0 ]]; then
+    if [[ ${i} -gt 0 ]]; then
       result+="."
     fi
-    if [[ $i -lt $current_parts ]]; then
-      result+="${parts[$i]}"
+    if [[ ${i} -lt ${current_parts} ]]; then
+      result+="${parts[${i}]}"
     else
       result+="0"
     fi
   done
 
-  echo "$result"
+  echo "${result}"
 }
 
 output_var() {
-  local name="$1"
-  local value="$2"
+  local name="${1}"
+  local value="${2}"
 
   echo "${name}=${value}"
 
   # If running in GitHub Actions, set output
   if [[ -n "${GITHUB_OUTPUT:-}" ]]; then
-    echo "${name}=${value}" >> "$GITHUB_OUTPUT"
+    echo "${name}=${value}" >> "${GITHUB_OUTPUT}"
   fi
 
   # Also export for downstream scripts
@@ -111,36 +124,40 @@ output_var() {
 
 # Push tag to remote
 push_tag() {
-  local tag="$1"
+  local tag="${1}"
   git config user.email "noreply@kaptain.org"
   git config user.name "Kube Kaptain"
-  git tag -m "Automatic release tag by Kaptain build script." "$tag" HEAD
-  git push origin "$tag"
+  git tag -m "Automatic release tag by Kaptain build script." "${tag}" HEAD
+  git push origin "${tag}"
 }
 
 main() {
+  # Validate BUILD_LOCATION first
+  validate_build_location
+
   local current_branch
   current_branch=$(get_current_branch)
 
   local project_name
   project_name=$(get_project_name)
 
-  # Determine if this is a release branch
+  # Determine if this is a release build
+  # Local builds are never releases, regardless of branch
   local is_release="false"
-  if is_release_branch "$current_branch"; then
+  if [[ "${BUILD_LOCATION}" == "build_server" ]] && is_release_branch "${current_branch}"; then
     is_release="true"
   fi
 
   # Validate strategy plugin exists
-  local strategy_script="$PLUGINS_DIR/tag-version-calculation-providers/tag-version-calculation-$TAG_VERSION_CALCULATION_STRATEGY"
-  if [[ ! -x "$strategy_script" ]]; then
-    echo "${LOG_ERROR_PREFIX}Unknown tag version calculation strategy: $TAG_VERSION_CALCULATION_STRATEGY${LOG_ERROR_SUFFIX}" >&2
-    echo "Expected executable: $strategy_script" >&2
+  local strategy_script="${PLUGINS_DIR}/tag-version-calculation-providers/tag-version-calculation-${TAG_VERSION_CALCULATION_STRATEGY}"
+  if [[ ! -x "${strategy_script}" ]]; then
+    echo "${LOG_ERROR_PREFIX}Unknown tag version calculation strategy: ${TAG_VERSION_CALCULATION_STRATEGY}${LOG_ERROR_SUFFIX}" >&2
+    echo "Expected executable: ${strategy_script}" >&2
     echo "Available strategies:" >&2
-    for f in "$PLUGINS_DIR"/tag-version-calculation-providers/tag-version-calculation-*; do
-      if [[ -x "$f" ]]; then
+    for f in "${PLUGINS_DIR}"/tag-version-calculation-providers/tag-version-calculation-*; do
+      if [[ -x "${f}" ]]; then
         local name
-        name=$(basename "$f")
+        name=$(basename "${f}")
         echo "  - ${name#tag-version-calculation-}" >&2
       fi
     done
@@ -150,48 +167,48 @@ main() {
   # Call the strategy plugin
   local plugin_output
   plugin_output=$(
-    MAX_VERSION_PARTS="$MAX_VERSION_PARTS" \
-    DOCKERFILE_PATH="$DOCKERFILE_PATH" \
-    ENV_VARIABLE_NAME="$ENV_VARIABLE_NAME" \
-    LOG_ERROR_PREFIX="$LOG_ERROR_PREFIX" \
-    LOG_ERROR_SUFFIX="$LOG_ERROR_SUFFIX" \
-    "$strategy_script"
+    MAX_VERSION_PARTS="${MAX_VERSION_PARTS}" \
+    DOCKERFILE_SUB_PATH="${DOCKERFILE_SUB_PATH}" \
+    ENV_VARIABLE_NAME="${ENV_VARIABLE_NAME}" \
+    LOG_ERROR_PREFIX="${LOG_ERROR_PREFIX}" \
+    LOG_ERROR_SUFFIX="${LOG_ERROR_SUFFIX}" \
+    "${strategy_script}"
   ) || exit $?
 
   # Parse VERSION from plugin output
   local new_version
-  new_version=$(echo "$plugin_output" | grep '^VERSION=' | cut -d= -f2-)
+  new_version=$(echo "${plugin_output}" | grep '^VERSION=' | cut -d= -f2-)
 
-  if [[ -z "$new_version" ]]; then
+  if [[ -z "${new_version}" ]]; then
     echo "${LOG_ERROR_PREFIX}Strategy plugin did not output VERSION${LOG_ERROR_SUFFIX}" >&2
     exit 1
   fi
 
   # Push tag if this is a release build
-  if [[ "$is_release" == "true" ]]; then
-    echo "Tagging release: $new_version" >&2
-    push_tag "$new_version"
+  if [[ "${is_release}" == "true" ]]; then
+    echo "Tagging release: ${new_version}" >&2
+    push_tag "${new_version}"
   else
-    echo "Pre-release build: $new_version (no tag push)" >&2
+    echo "Pre-release build: ${new_version} (no tag push)" >&2
   fi
 
   # Generate DOCKER_TAG based on release status
   local docker_tag
-  if [[ "$is_release" == "true" ]]; then
-    docker_tag="$new_version"
+  if [[ "${is_release}" == "true" ]]; then
+    docker_tag="${new_version}"
   else
     docker_tag="${new_version}-PRERELEASE"
   fi
 
   # Generate padded/truncated versions for different ecosystems
   local version_2_part version_3_part version_4_part
-  version_2_part=$(version_to_n_parts "$new_version" 2)
-  version_3_part=$(version_to_n_parts "$new_version" 3)
-  version_4_part=$(version_to_n_parts "$new_version" 4)
+  version_2_part=$(version_to_n_parts "${new_version}" 2)
+  version_3_part=$(version_to_n_parts "${new_version}" 3)
+  version_4_part=$(version_to_n_parts "${new_version}" 4)
 
   # Extract individual parts (major.minor.patch...)
   local clean_version="${new_version#v}"
-  IFS='.' read -ra version_parts <<< "$clean_version"
+  IFS='.' read -ra version_parts <<< "${clean_version}"
   local version_major="${version_parts[0]:-0}"
   local version_minor="${version_parts[1]:-0}"
   local version_patch="${version_parts[2]:-0}"
@@ -201,17 +218,17 @@ main() {
   local prefix="${project_name%%-*}"
   docker_image_name="${prefix}/${project_name}"
 
-  output_var "VERSION" "$new_version"
-  output_var "VERSION_MAJOR" "$version_major"
-  output_var "VERSION_MINOR" "$version_minor"
-  output_var "VERSION_PATCH" "$version_patch"
-  output_var "VERSION_2_PART" "$version_2_part"
-  output_var "VERSION_3_PART" "$version_3_part"
-  output_var "VERSION_4_PART" "$version_4_part"
-  output_var "DOCKER_TAG" "$docker_tag"
-  output_var "DOCKER_IMAGE_NAME" "$docker_image_name"
-  output_var "IS_RELEASE" "$is_release"
-  output_var "PROJECT_NAME" "$project_name"
+  output_var "VERSION" "${new_version}"
+  output_var "VERSION_MAJOR" "${version_major}"
+  output_var "VERSION_MINOR" "${version_minor}"
+  output_var "VERSION_PATCH" "${version_patch}"
+  output_var "VERSION_2_PART" "${version_2_part}"
+  output_var "VERSION_3_PART" "${version_3_part}"
+  output_var "VERSION_4_PART" "${version_4_part}"
+  output_var "DOCKER_TAG" "${docker_tag}"
+  output_var "DOCKER_IMAGE_NAME" "${docker_image_name}"
+  output_var "IS_RELEASE" "${is_release}"
+  output_var "PROJECT_NAME" "${project_name}"
 }
 
 main "$@"

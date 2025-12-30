@@ -48,7 +48,7 @@ jobs:
 # │ Dockerfile Configuration                                                │
 # └─────────────────────────────────────────────────────────────────────────┘
 #     with:
-#       dockerfile-path: 'docker'  # 'build', '.'
+#       dockerfile-sub-path: 'docker'  # 'build', '.'
 #       squash: false  # true
 #       no-cache: false  # true
 
@@ -58,7 +58,6 @@ jobs:
 #     with:
 #       target-registry: 'myregistry.example.com'  # ecr, gcr, harbor, nexus
 #       target-base-path: 'my-team/images'
-#       confirm-image-doesnt-exist: false  # true
 
 # ┌─────────────────────────────────────────────────────────────────────────┐
 # │ Branch Configuration                                                    │

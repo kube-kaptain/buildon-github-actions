@@ -72,7 +72,7 @@ See [`examples/`](examples/) for more usage patterns.
 | Action | Description |
 |--------|-------------|
 | `basic-quality-checks` | Basic quality checks for commits and branches |
-| `docker-build-dockerfile` | Builds a Docker image from a Dockerfile (build only, use docker-push to push) |
+| `docker-build-dockerfile` | Builds a Docker image from a Dockerfile with token substitution (build only, use docker-push to push) |
 | `docker-build-retag` | Pulls and retags Docker images (no push) |
 | `docker-push` | Pushes a Docker image to registry |
 | `docker-registry-logins` | Authenticate to container registries (GHCR by default, configure others as needed) |
@@ -81,7 +81,7 @@ See [`examples/`](examples/) for more usage patterns.
 | `kubernetes-manifests-repo-provider-package` | Packages manifests for repo provider (builds docker image, prepares release). Does NOT publish. |
 | `kubernetes-manifests-repo-provider-publish` | Publishes manifests via pluggable repo provider. Requires package step to run first. |
 | `resolve-target-registry-and-base-path` | Resolves target registry (defaults to ghcr.io) and computes base path (auto-detects org for GHCR) |
-| `run-test-script` | Runs a user-provided test script from the .github/ directory |
+| `run-hook-script` | Runs a user-provided hook script from the .github/ directory |
 | `versions-and-naming` | Generates version numbers, tags, and naming for releases |
 <!-- ACTIONS-END -->
 
@@ -97,18 +97,20 @@ See [`examples/`](examples/) for more usage patterns.
 | `block-conventional-commits` | boolean | `false` | Block commits that use conventional commit format |
 | `block-double-hyphens` | boolean | `true` | Block branch names containing double hyphens (typo detection) |
 | `block-slashes` | boolean | `false` | Block branch names containing slashes |
-| `config-path` | string | `src/config` | Directory containing user-defined token files |
+| `config-sub-path` | string | `src/config` | Directory containing user-defined token files (relative) |
 | `config-value-trailing-newline` | string | `strip-for-single-line` | How to handle trailing newlines in config values (strip-for-single-line, preserve-all, always-strip-one-newline) |
-| `confirm-image-doesnt-exist` | boolean | `true` | Fail if target image already exists in registry |
 | `default-branch` | string | `main` | The default/release branch name |
 | `docker-registry-logins` | string | `""` | YAML config for Docker registry logins (registry URL as key) |
-| `dockerfile-path` | string | `src/docker` | Directory containing Dockerfile (also used as build context) |
-| `manifests-path` | string | `src/kubernetes` | Directory containing Kubernetes manifests |
+| `dockerfile-sub-path` | string | `src/docker` | Directory containing Dockerfile, relative (also used as build context) |
 | `manifests-repo-provider-type` | string | *required* | Repo provider type for manifest storage (docker, github-release). Required - consumer must choose. |
+| `manifests-sub-path` | string | `src/kubernetes` | Directory containing Kubernetes manifests (relative) |
 | `max-version-parts` | number | `3` | Maximum allowed version parts (fail if exceeded) |
 | `no-cache` | boolean | `true` | Disable layer caching for reproducible builds |
+| `output-sub-path` | string | `target` | Build output directory (relative) |
 | `post-docker-tests-script-sub-path` | string | `""` | Path to post-docker test script relative to .github/ (e.g., bin/post-docker.bash) |
 | `post-package-tests-script-sub-path` | string | `""` | Path to post-package test script relative to .github/ (e.g., bin/post-package.bash) |
+| `pre-docker-prepare-script-sub-path` | string | `""` | Path to pre-docker prepare script relative to .github/ (e.g., bin/pre-docker-prepare.bash) |
+| `pre-package-prepare-script-sub-path` | string | `""` | Path to pre-package prepare script relative to .github/ (e.g., bin/pre-package-prepare.bash) |
 | `pre-tagging-tests-script-sub-path` | string | `""` | Path to pre-tagging test script relative to .github/ (e.g., bin/pre-tagging.bash) |
 | `require-conventional-branches` | boolean | `false` | Require branch names start with feature/, fix/, etc. |
 | `require-conventional-commits` | boolean | `false` | Require commits use conventional commit format (feat:, fix:, etc.) |
@@ -119,7 +121,7 @@ See [`examples/`](examples/) for more usage patterns.
 | `substitution-token-style` | string | `shell` | Token delimiter syntax for variables (shell, mustache, helm, erb, github-actions, blade, stringtemplate, ognl, t4, swift) |
 | `target-base-path` | string | `""` | Path between registry and image name (auto-set for GHCR) |
 | `target-registry` | string | `ghcr.io` | Target container registry |
-| `token-name-style` | string | `PascalCase` | Case style for token names in manifests (UPPER_SNAKE, lower_snake, kebab-case, camelCase, PascalCase, lower.dot, UPPER.DOT) |
+| `token-name-style` | string | `PascalCase` | Case style for token names (UPPER_SNAKE, lower_snake, kebab-case, camelCase, PascalCase, lower.dot, UPPER.DOT) |
 | `token-name-validation` | string | `MATCH` | How to validate user token names (MATCH = must match token-name-style, ALL = accept any valid name) |
 <!-- INPUTS-END -->
 
@@ -180,7 +182,7 @@ For version-locked images (kubectl, helm, terraform), use `dockerfile-env-versio
 uses: kube-kaptain/buildon-github-actions/.github/workflows/docker-build-dockerfile.yaml@v1
 with:
   tag-version-calculation-strategy: dockerfile-env-version
-  dockerfile-path: src/docker          # default
+  dockerfile-sub-path: src/docker      # default
   env-variable-name: KUBECTL_VERSION   # default
 ```
 

@@ -2,7 +2,7 @@
 # Copyright (c) 2025 Kaptain contributors (Fred Cooke)
 
 name: 'Docker Build Dockerfile'
-description: 'Builds a Docker image from a Dockerfile (build only, use docker-push to push)'
+description: 'Builds a Docker image from a Dockerfile with token substitution (build only, use docker-push to push)'
 author: 'kube-kaptain'
 
 inputs:
@@ -26,10 +26,17 @@ inputs:
   project-name:
     description: 'Project name (from version generator, passed as build arg)'
     required: true
-  dockerfile-path:
-    description: 'Directory containing Dockerfile (also used as build context)'
+  is-release:
+    description: 'Whether this is a release build (from version generator)'
+    required: true
+  dockerfile-sub-path:
+    description: 'Directory containing Dockerfile, relative (also used as build context)'
     required: false
     default: 'src/docker'
+  output-sub-path:
+    description: 'Build output directory (relative)'
+    required: false
+    default: 'target'
   squash:
     description: 'Enable --squash (requires experimental mode)'
     required: false
@@ -38,10 +45,31 @@ inputs:
     description: 'Disable layer caching for reproducible builds (default: true)'
     required: false
     default: 'true'
-  confirm-image-doesnt-exist:
-    description: 'Fail if target image already exists in registry'
+  # Token substitution configuration
+  substitution-token-style:
+    description: 'Token delimiter syntax (shell, mustache, helm, erb, github-actions, blade, stringtemplate, ognl, t4, swift)'
     required: false
-    default: 'true'
+    default: 'shell'
+  token-name-style:
+    description: 'Case style for token names (UPPER_SNAKE, lower_snake, kebab-case, camelCase, PascalCase, lower.dot, UPPER.DOT)'
+    required: false
+    default: 'PascalCase'
+  token-name-validation:
+    description: 'How to validate user token names (MATCH = must match token-name-style, ALL = accept any valid name)'
+    required: false
+    default: 'MATCH'
+  config-sub-path:
+    description: 'Directory containing user-defined token files (relative)'
+    required: false
+    default: 'src/config'
+  allow-builtin-token-override:
+    description: 'Allow user tokens to override built-in tokens (for template/reusable projects)'
+    required: false
+    default: 'false'
+  config-value-trailing-newline:
+    description: 'How to handle trailing newlines in config values (strip-for-single-line, preserve-all, always-strip-one-newline)'
+    required: false
+    default: 'strip-for-single-line'
 
 outputs:
   target-image-full-uri:
@@ -75,8 +103,15 @@ runs:
         DOCKER_TAG: ${{ inputs.docker-tag }}
         VERSION: ${{ inputs.version }}
         PROJECT_NAME: ${{ inputs.project-name }}
-        DOCKERFILE_PATH: ${{ inputs.dockerfile-path }}
+        IS_RELEASE: ${{ inputs.is-release }}
+        DOCKERFILE_SUB_PATH: ${{ inputs.dockerfile-sub-path }}
+        OUTPUT_SUB_PATH: ${{ inputs.output-sub-path }}
         SQUASH: ${{ inputs.squash }}
         NO_CACHE: ${{ inputs.no-cache }}
-        CONFIRM_IMAGE_DOESNT_EXIST: ${{ inputs.confirm-image-doesnt-exist }}
+        SUBSTITUTION_TOKEN_STYLE: ${{ inputs.substitution-token-style }}
+        TOKEN_NAME_STYLE: ${{ inputs.token-name-style }}
+        TOKEN_NAME_VALIDATION: ${{ inputs.token-name-validation }}
+        CONFIG_SUB_PATH: ${{ inputs.config-sub-path }}
+        ALLOW_BUILTIN_TOKEN_OVERRIDE: ${{ inputs.allow-builtin-token-override }}
+        CONFIG_VALUE_TRAILING_NEWLINE: ${{ inputs.config-value-trailing-newline }}
       run: "${{ github.action_path }}/../../scripts/main/docker-build-dockerfile"

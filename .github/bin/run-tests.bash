@@ -146,15 +146,24 @@ run_shellcheck() {
   log_info "Running shellcheck on scripts"
   local scripts=()
   local globs=(
-    "$PROJECT_ROOT/src/scripts/main/*"
-    "$PROJECT_ROOT/src/scripts/plugins/*/*"
+    "${PROJECT_ROOT}/src/scripts/main/*"
+    "${PROJECT_ROOT}/src/scripts/plugins/*/*"
+  )
+
+  # Style checks to enable (in addition to defaults)
+  local enables=(
+    --enable=require-variable-braces
+    --enable=require-double-brackets
+    --enable=avoid-nullary-conditions
+    --enable=check-unassigned-uppercase
+    --enable=deprecate-which
   )
 
   for glob in "${globs[@]}"; do
     for file in $glob; do
       # Skip markdown files - they're documentation, not scripts
-      [[ "$file" == *.md ]] && continue
-      [[ -f "$file" ]] && scripts+=("$file")
+      [[ "${file}" == *.md ]] && continue
+      [[ -f "${file}" ]] && scripts+=("${file}")
     done
   done
 
@@ -166,12 +175,12 @@ run_shellcheck() {
   log_info "Checking ${#scripts[@]} scripts"
 
   if command -v shellcheck &>/dev/null; then
-    shellcheck "${scripts[@]}"
+    shellcheck "${enables[@]}" "${scripts[@]}"
   elif has_docker; then
     docker run --rm \
-      -v "$PROJECT_ROOT:/workspace" \
+      -v "${PROJECT_ROOT}:/workspace" \
       koalaman/shellcheck:stable \
-      "${scripts[@]/#$PROJECT_ROOT//workspace}"
+      "${enables[@]}" "${scripts[@]/#${PROJECT_ROOT}//workspace}"
   else
     log_warn "shellcheck not available, skipping"
     return 0
@@ -182,7 +191,7 @@ run_shellcheck() {
 
 main() {
   log_info "Starting test suite"
-  log_info "Project root: $PROJECT_ROOT"
+  log_info "Project root: ${PROJECT_ROOT}"
 
   # Check scripts are executable
   check_executables

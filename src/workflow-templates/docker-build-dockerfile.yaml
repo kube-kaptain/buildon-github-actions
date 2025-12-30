@@ -6,11 +6,16 @@ on:
   workflow_call:
     inputs:
       # Dockerfile configuration
-      dockerfile-path:
-        description: 'Directory containing Dockerfile (also used as build context)'
+      dockerfile-sub-path:
+        description: 'Directory containing Dockerfile, relative (also used as build context)'
         required: false
         type: string
         default: 'src/docker'
+      output-sub-path:
+        description: 'Build output directory (relative)'
+        required: false
+        type: string
+        default: 'target'
       squash:
         description: 'Enable --squash (requires experimental mode)'
         required: false
@@ -21,6 +26,37 @@ on:
         required: false
         type: boolean
         default: true
+      # Token substitution configuration
+      substitution-token-style:
+        description: 'Token delimiter syntax for variables (shell, mustache, helm, erb, github-actions, blade, stringtemplate, ognl, t4, swift)'
+        required: false
+        type: string
+        default: 'shell'
+      token-name-style:
+        description: 'Case style for token names (UPPER_SNAKE, lower_snake, kebab-case, camelCase, PascalCase, lower.dot, UPPER.DOT)'
+        required: false
+        type: string
+        default: 'PascalCase'
+      token-name-validation:
+        description: 'How to validate user token names (MATCH = must match token-name-style, ALL = accept any valid name)'
+        required: false
+        type: string
+        default: 'MATCH'
+      config-sub-path:
+        description: 'Directory containing user-defined token files (relative)'
+        required: false
+        type: string
+        default: 'src/config'
+      allow-builtin-token-override:
+        description: 'Allow user tokens to override built-in tokens (for template/reusable projects)'
+        required: false
+        type: boolean
+        default: false
+      config-value-trailing-newline:
+        description: 'How to handle trailing newlines in config values (strip-for-single-line, preserve-all, always-strip-one-newline)'
+        required: false
+        type: string
+        default: 'strip-for-single-line'
       # Target configuration
       target-registry:
         description: 'Target container registry'
@@ -32,11 +68,6 @@ on:
         required: false
         type: string
         default: ''
-      confirm-image-doesnt-exist:
-        description: 'Fail if target image already exists in registry'
-        required: false
-        type: boolean
-        default: true
       # Version generator inputs (pass-through)
       default-branch:
         description: 'The default/release branch name'
@@ -85,6 +116,11 @@ on:
         default: ''
       post-docker-tests-script-sub-path:
         description: 'Path to post-docker test script relative to .github/ (e.g., bin/post-docker.bash)'
+        required: false
+        type: string
+        default: ''
+      pre-docker-prepare-script-sub-path:
+        description: 'Path to pre-docker prepare script relative to .github/ (e.g., bin/pre-docker-prepare.bash)'
         required: false
         type: string
         default: ''
@@ -190,6 +226,11 @@ jobs:
       # INJECT: github-check-start(name="Versions & Naming", id="check-versions")
       # INJECT: versions-and-naming
       # INJECT: github-check-end(name="Versions & Naming", id="check-versions")
+
+      # === Pre-docker Prepare ===
+      # INJECT: github-check-start(name="Pre-docker Prepare", id="check-pre-docker-prepare", if="inputs.pre-docker-prepare-script-sub-path != ''")
+      # INJECT: pre-docker-prepare
+      # INJECT: github-check-end(name="Pre-docker Prepare", id="check-pre-docker-prepare", if="inputs.pre-docker-prepare-script-sub-path != ''")
 
       # === Docker Build ===
       # INJECT: github-check-start(name="Docker Build", id="check-docker-build")
