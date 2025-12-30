@@ -62,11 +62,12 @@ on:
         required: false
         type: string
         default: 'strip-for-single-line'
-      # Repo provider configuration (required - no default)
+      # Repo provider configuration
       manifests-repo-provider-type:
-        description: 'Repo provider type for manifest storage (docker, github-release). Required - consumer must choose.'
-        required: true
+        description: 'Repo provider type for manifest storage (default: docker, currently the only supported provider)'
+        required: false
         type: string
+        default: 'docker'
       # Target configuration
       target-registry:
         description: 'Target container registry'
@@ -750,7 +751,6 @@ jobs:
           repo-provider-namespace: ${{ steps.manifest-repo-provider-package.outputs.repo-provider-namespace }}
           repo-provider-name: ${{ steps.manifest-repo-provider-package.outputs.repo-provider-name }}
           repo-provider-version: ${{ steps.manifest-repo-provider-package.outputs.repo-provider-version }}
-          maven-group-id: ${{ steps.manifest-repo-provider-package.outputs.maven-group-id }}
       - name: Pass check - Publish Manifests via Repo Provider
         if: steps.versions.outputs.is-release == 'true' && success()
         uses: ./.github/buildon-github-actions/src/actions/github-check-run

@@ -46,11 +46,12 @@ on:
         required: false
         type: string
         default: 'strip-for-single-line'
-      # Repo provider configuration (required - no default)
+      # Repo provider configuration
       manifests-repo-provider-type:
-        description: 'Repo provider type for manifest storage (docker, github-release). Required - consumer must choose.'
-        required: true
+        description: 'Repo provider type for manifest storage (default: docker, currently the only supported provider)'
+        required: false
         type: string
+        default: 'docker'
       # Target configuration (for docker repo provider)
       target-registry:
         description: 'Target container registry'

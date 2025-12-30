@@ -78,7 +78,7 @@ See [`examples/`](examples/) for more usage patterns.
 | `docker-registry-logins` | Authenticate to container registries (GHCR by default, configure others as needed) |
 | `github-check-run` | Create or update GitHub Check Runs for granular PR status reporting |
 | `kubernetes-manifests-package` | Packages Kubernetes manifests into a zip with variable substitution |
-| `kubernetes-manifests-repo-provider-package` | Packages manifests for repo provider (builds docker image, prepares release). Does NOT publish. |
+| `kubernetes-manifests-repo-provider-package` | Packages manifests for repo provider (builds docker image). Does NOT publish. |
 | `kubernetes-manifests-repo-provider-publish` | Publishes manifests via pluggable repo provider. Requires package step to run first. |
 | `resolve-target-registry-and-base-path` | Resolves target registry (defaults to ghcr.io) and computes base path (auto-detects org for GHCR) |
 | `run-hook-script` | Runs a user-provided hook script from the .github/ directory |
@@ -102,7 +102,7 @@ See [`examples/`](examples/) for more usage patterns.
 | `default-branch` | string | `main` | The default/release branch name |
 | `docker-registry-logins` | string | `""` | YAML config for Docker registry logins (registry URL as key) |
 | `dockerfile-sub-path` | string | `src/docker` | Directory containing Dockerfile, relative (also used as build context) |
-| `manifests-repo-provider-type` | string | *required* | Repo provider type for manifest storage (docker, github-release). Required - consumer must choose. |
+| `manifests-repo-provider-type` | string | `docker` | Repo provider type for manifest storage (default: docker, currently the only supported provider) |
 | `manifests-sub-path` | string | `src/kubernetes` | Directory containing Kubernetes manifests (relative) |
 | `max-version-parts` | number | `3` | Maximum allowed version parts (fail if exceeded) |
 | `no-cache` | boolean | `true` | Disable layer caching for reproducible builds |
