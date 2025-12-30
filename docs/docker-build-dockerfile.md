@@ -28,6 +28,7 @@ Docker Build Dockerfile
 | `max-version-parts` | number | `3` | Maximum allowed version parts (fail if exceeded) |
 | `pre-tagging-tests-script-sub-path` | string | `""` | Path to pre-tagging test script relative to .github/ (e.g., bin/pre-tagging.bash) |
 | `post-docker-tests-script-sub-path` | string | `""` | Path to post-docker test script relative to .github/ (e.g., bin/post-docker.bash) |
+| `pre-docker-prepare-script-sub-path` | string | `""` | Path to pre-docker prepare script relative to .github/ (e.g., bin/pre-docker-prepare.bash) |
 | `docker-registry-logins` | string | `""` | YAML config for Docker registry logins (registry URL as key) |
 
 ## Secrets

@@ -30,6 +30,7 @@ Kubernetes App - Docker Retag
 | `block-conventional-commits` | boolean | `false` | Block commits that use conventional commit format |
 | `pre-tagging-tests-script-sub-path` | string | `""` | Path to pre-tagging test script relative to .github/ (e.g., bin/pre-tagging.bash) |
 | `post-package-tests-script-sub-path` | string | `""` | Path to post-package test script relative to .github/ (e.g., bin/post-package.bash) |
+| `pre-package-prepare-script-sub-path` | string | `""` | Path to pre-package prepare script relative to .github/ (e.g., bin/pre-package-prepare.bash) |
 | `docker-registry-logins` | string | `""` | YAML config for Docker registry logins (registry URL as key) |
 
 ## Secrets

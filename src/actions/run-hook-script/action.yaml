@@ -1,13 +1,43 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2025 Kaptain contributors (Fred Cooke)
 
-name: Run Test Script
-description: Runs a user-provided test script from the .github/ directory
+name: Run Hook Script
+description: Runs a user-provided hook script from the .github/ directory
 
 inputs:
   script-sub-path:
     description: 'Path to script relative to .github/ (e.g., bin/pre-tagging.bash)'
     required: true
+  # Paths for file preparation
+  dockerfile-sub-path:
+    description: 'Docker source directory (relative)'
+    required: false
+    default: ''
+  docker-context-sub-path:
+    description: 'Docker build context directory (relative, where docker build runs from)'
+    required: false
+    default: ''
+  manifests-sub-path:
+    description: 'Manifests source directory (relative)'
+    required: false
+    default: ''
+  manifests-substituted-sub-path:
+    description: 'Manifests substituted directory (relative, where substituted manifests go)'
+    required: false
+    default: ''
+  manifests-zip-sub-path:
+    description: 'Manifests zip directory (relative, where the zip file is created)'
+    required: false
+    default: ''
+  manifests-zip-file-name:
+    description: 'Manifests zip file name'
+    required: false
+    default: ''
+  output-sub-path:
+    description: 'Build output directory (relative)'
+    required: false
+    default: ''
+  # Version information
   version:
     description: 'Version string'
     required: false
@@ -65,20 +95,29 @@ runs:
       run: |
         SCRIPT_SUB_PATH=".github/${{ inputs.script-sub-path }}"
         if [[ ! -f "$SCRIPT_SUB_PATH" ]]; then
-          echo "::error::Test script not found: $SCRIPT_SUB_PATH"
+          echo "::error::Hook script not found: $SCRIPT_SUB_PATH"
           echo "Configured script-sub-path '${{ inputs.script-sub-path }}' does not exist under .github/"
           exit 1
         fi
         if [[ ! -x "$SCRIPT_SUB_PATH" ]]; then
-          echo "::error::Test script is not executable: $SCRIPT_SUB_PATH"
+          echo "::error::Hook script is not executable: $SCRIPT_SUB_PATH"
           echo "Run: chmod +x $SCRIPT_SUB_PATH"
           exit 1
         fi
         echo "Found executable script: $SCRIPT_SUB_PATH"
 
-    - name: Run test script
+    - name: Run hook script
       shell: bash
       env:
+        # Paths
+        DOCKERFILE_SUB_PATH: ${{ inputs.dockerfile-sub-path }}
+        DOCKER_CONTEXT_SUB_PATH: ${{ inputs.docker-context-sub-path }}
+        MANIFESTS_SUB_PATH: ${{ inputs.manifests-sub-path }}
+        MANIFESTS_SUBSTITUTED_SUB_PATH: ${{ inputs.manifests-substituted-sub-path }}
+        MANIFESTS_ZIP_SUB_PATH: ${{ inputs.manifests-zip-sub-path }}
+        MANIFESTS_ZIP_FILE_NAME: ${{ inputs.manifests-zip-file-name }}
+        OUTPUT_SUB_PATH: ${{ inputs.output-sub-path }}
+        # Version info
         VERSION: ${{ inputs.version }}
         VERSION_MAJOR: ${{ inputs.version-major }}
         VERSION_MINOR: ${{ inputs.version-minor }}

@@ -128,6 +128,11 @@ on:
         required: false
         type: string
         default: ''
+      pre-package-prepare-script-sub-path:
+        description: 'Path to pre-package prepare script relative to .github/ (e.g., bin/pre-package-prepare.bash)'
+        required: false
+        type: string
+        default: ''
       docker-registry-logins:
         description: 'YAML config for Docker registry logins (registry URL as key)'
         required: false
@@ -257,6 +262,11 @@ jobs:
       # INJECT: github-check-start(name="Docker Retag", id="check-docker-retag")
       # INJECT: docker-build-retag
       # INJECT: github-check-end(name="Docker Retag", id="check-docker-retag")
+
+      # === Pre-package Prepare ===
+      # INJECT: github-check-start(name="Pre-package Prepare", id="check-pre-package-prepare", if="inputs.pre-package-prepare-script-sub-path != ''")
+      # INJECT: pre-package-prepare
+      # INJECT: github-check-end(name="Pre-package Prepare", id="check-pre-package-prepare", if="inputs.pre-package-prepare-script-sub-path != ''")
 
       # === Manifest Package ===
       # INJECT: github-check-start(name="Package Manifests", id="check-manifest-package")

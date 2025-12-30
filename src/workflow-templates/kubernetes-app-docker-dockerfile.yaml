@@ -136,6 +136,16 @@ on:
         required: false
         type: string
         default: ''
+      pre-docker-prepare-script-sub-path:
+        description: 'Path to pre-docker prepare script relative to .github/ (e.g., bin/pre-docker-prepare.bash)'
+        required: false
+        type: string
+        default: ''
+      pre-package-prepare-script-sub-path:
+        description: 'Path to pre-package prepare script relative to .github/ (e.g., bin/pre-package-prepare.bash)'
+        required: false
+        type: string
+        default: ''
       docker-registry-logins:
         description: 'YAML config for Docker registry logins (registry URL as key)'
         required: false
@@ -257,6 +267,11 @@ jobs:
       # INJECT: versions-and-naming
       # INJECT: github-check-end(name="Versions & Naming", id="check-versions")
 
+      # === Pre-docker Prepare ===
+      # INJECT: github-check-start(name="Pre-docker Prepare", id="check-pre-docker-prepare", if="inputs.pre-docker-prepare-script-sub-path != ''")
+      # INJECT: pre-docker-prepare
+      # INJECT: github-check-end(name="Pre-docker Prepare", id="check-pre-docker-prepare", if="inputs.pre-docker-prepare-script-sub-path != ''")
+
       # === Docker Build ===
       # INJECT: github-check-start(name="Docker Build", id="check-docker-build")
       # INJECT: docker-build-dockerfile
@@ -266,6 +281,11 @@ jobs:
       # INJECT: github-check-start(name="Post-docker Tests", id="check-post-docker", if="inputs.post-docker-tests-script-sub-path != ''")
       # INJECT: post-docker-tests
       # INJECT: github-check-end(name="Post-docker Tests", id="check-post-docker", if="inputs.post-docker-tests-script-sub-path != ''")
+
+      # === Pre-package Prepare ===
+      # INJECT: github-check-start(name="Pre-package Prepare", id="check-pre-package-prepare", if="inputs.pre-package-prepare-script-sub-path != ''")
+      # INJECT: pre-package-prepare
+      # INJECT: github-check-end(name="Pre-package Prepare", id="check-pre-package-prepare", if="inputs.pre-package-prepare-script-sub-path != ''")
 
       # === Manifest Package ===
       # INJECT: github-check-start(name="Package Manifests", id="check-manifest-package")

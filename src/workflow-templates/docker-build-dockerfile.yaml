@@ -119,6 +119,11 @@ on:
         required: false
         type: string
         default: ''
+      pre-docker-prepare-script-sub-path:
+        description: 'Path to pre-docker prepare script relative to .github/ (e.g., bin/pre-docker-prepare.bash)'
+        required: false
+        type: string
+        default: ''
       docker-registry-logins:
         description: 'YAML config for Docker registry logins (registry URL as key)'
         required: false
@@ -221,6 +226,11 @@ jobs:
       # INJECT: github-check-start(name="Versions & Naming", id="check-versions")
       # INJECT: versions-and-naming
       # INJECT: github-check-end(name="Versions & Naming", id="check-versions")
+
+      # === Pre-docker Prepare ===
+      # INJECT: github-check-start(name="Pre-docker Prepare", id="check-pre-docker-prepare", if="inputs.pre-docker-prepare-script-sub-path != ''")
+      # INJECT: pre-docker-prepare
+      # INJECT: github-check-end(name="Pre-docker Prepare", id="check-pre-docker-prepare", if="inputs.pre-docker-prepare-script-sub-path != ''")
 
       # === Docker Build ===
       # INJECT: github-check-start(name="Docker Build", id="check-docker-build")

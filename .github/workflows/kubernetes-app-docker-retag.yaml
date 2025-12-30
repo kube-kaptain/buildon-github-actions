@@ -128,6 +128,11 @@ on:
         required: false
         type: string
         default: ''
+      pre-package-prepare-script-sub-path:
+        description: 'Path to pre-package prepare script relative to .github/ (e.g., bin/pre-package-prepare.bash)'
+        required: false
+        type: string
+        default: ''
       docker-registry-logins:
         description: 'YAML config for Docker registry logins (registry URL as key)'
         required: false
@@ -391,7 +396,7 @@ jobs:
       - name: Run pre-tagging tests
         if: inputs.pre-tagging-tests-script-sub-path != ''
         id: pre-tagging-tests
-        uses: ./.github/buildon-github-actions/src/actions/run-test-script
+        uses: ./.github/buildon-github-actions/src/actions/run-hook-script
         with:
           script-sub-path: ${{ inputs.pre-tagging-tests-script-sub-path }}
       - name: Pass check - Pre-tagging Tests
@@ -464,6 +469,41 @@ jobs:
         with:
           action: fail
           check-run-id: ${{ steps.check-docker-retag.outputs.check-run-id }}
+
+      # === Pre-package Prepare ===
+      - name: Start check - Pre-package Prepare
+        if: inputs.pre-package-prepare-script-sub-path != ''
+        id: check-pre-package-prepare
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
+        with:
+          action: start
+          check-name: 'Build & Publish → Pre-package Prepare'
+      - name: Run pre-package prepare
+        if: inputs.pre-package-prepare-script-sub-path != ''
+        id: pre-package-prepare
+        uses: ./.github/buildon-github-actions/src/actions/run-hook-script
+        with:
+          script-sub-path: ${{ inputs.pre-package-prepare-script-sub-path }}
+          manifests-sub-path: ${{ inputs.manifests-sub-path }}
+          manifests-substituted-sub-path: ${{ inputs.output-sub-path }}/manifests/substituted/${{ steps.versions.outputs.project-name }}
+          output-sub-path: ${{ inputs.output-sub-path }}
+          version: ${{ steps.versions.outputs.version }}
+          docker-tag: ${{ steps.versions.outputs.docker-tag }}
+          docker-image-name: ${{ steps.versions.outputs.docker-image-name }}
+          project-name: ${{ steps.versions.outputs.project-name }}
+          is-release: ${{ steps.versions.outputs.is-release }}
+      - name: Pass check - Pre-package Prepare
+        if: inputs.pre-package-prepare-script-sub-path != '' && success()
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
+        with:
+          action: pass
+          check-run-id: ${{ steps.check-pre-package-prepare.outputs.check-run-id }}
+      - name: Fail check - Pre-package Prepare
+        if: inputs.pre-package-prepare-script-sub-path != '' && failure()
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
+        with:
+          action: fail
+          check-run-id: ${{ steps.check-pre-package-prepare.outputs.check-run-id }}
 
       # === Manifest Package ===
       - name: Start check - Package Manifests
@@ -549,9 +589,11 @@ jobs:
       - name: Run post-package tests
         if: inputs.post-package-tests-script-sub-path != ''
         id: post-package-tests
-        uses: ./.github/buildon-github-actions/src/actions/run-test-script
+        uses: ./.github/buildon-github-actions/src/actions/run-hook-script
         with:
           script-sub-path: ${{ inputs.post-package-tests-script-sub-path }}
+          manifests-zip-sub-path: ${{ steps.manifest-package.outputs.manifests-zip-sub-path }}
+          manifests-zip-file-name: ${{ steps.manifest-package.outputs.manifests-zip-file-name }}
           version: ${{ steps.versions.outputs.version }}
           docker-tag: ${{ steps.versions.outputs.docker-tag }}
           docker-image-name: ${{ steps.versions.outputs.docker-image-name }}

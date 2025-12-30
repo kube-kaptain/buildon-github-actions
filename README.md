@@ -81,7 +81,7 @@ See [`examples/`](examples/) for more usage patterns.
 | `kubernetes-manifests-repo-provider-package` | Packages manifests for repo provider (builds docker image, prepares release). Does NOT publish. |
 | `kubernetes-manifests-repo-provider-publish` | Publishes manifests via pluggable repo provider. Requires package step to run first. |
 | `resolve-target-registry-and-base-path` | Resolves target registry (defaults to ghcr.io) and computes base path (auto-detects org for GHCR) |
-| `run-test-script` | Runs a user-provided test script from the .github/ directory |
+| `run-hook-script` | Runs a user-provided hook script from the .github/ directory |
 | `versions-and-naming` | Generates version numbers, tags, and naming for releases |
 <!-- ACTIONS-END -->
 
@@ -109,6 +109,8 @@ See [`examples/`](examples/) for more usage patterns.
 | `output-sub-path` | string | `target` | Build output directory (relative) |
 | `post-docker-tests-script-sub-path` | string | `""` | Path to post-docker test script relative to .github/ (e.g., bin/post-docker.bash) |
 | `post-package-tests-script-sub-path` | string | `""` | Path to post-package test script relative to .github/ (e.g., bin/post-package.bash) |
+| `pre-docker-prepare-script-sub-path` | string | `""` | Path to pre-docker prepare script relative to .github/ (e.g., bin/pre-docker-prepare.bash) |
+| `pre-package-prepare-script-sub-path` | string | `""` | Path to pre-package prepare script relative to .github/ (e.g., bin/pre-package-prepare.bash) |
 | `pre-tagging-tests-script-sub-path` | string | `""` | Path to pre-tagging test script relative to .github/ (e.g., bin/pre-tagging.bash) |
 | `require-conventional-branches` | boolean | `false` | Require branch names start with feature/, fix/, etc. |
 | `require-conventional-commits` | boolean | `false` | Require commits use conventional commit format (feat:, fix:, etc.) |
