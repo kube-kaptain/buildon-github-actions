@@ -12,3 +12,8 @@
     manifests-zip-file-name: ${{ steps.manifest-repo-provider-package.outputs.manifests-zip-file-name }}
     version: ${{ steps.manifest-repo-provider-package.outputs.version }}
     is-release: ${{ steps.versions.outputs.is-release }}
+    repo-provider-url: ${{ steps.manifest-repo-provider-package.outputs.repo-provider-url }}
+    repo-provider-namespace: ${{ steps.manifest-repo-provider-package.outputs.repo-provider-namespace }}
+    repo-provider-name: ${{ steps.manifest-repo-provider-package.outputs.repo-provider-name }}
+    repo-provider-version: ${{ steps.manifest-repo-provider-package.outputs.repo-provider-version }}
+    maven-group-id: ${{ steps.manifest-repo-provider-package.outputs.maven-group-id }}
