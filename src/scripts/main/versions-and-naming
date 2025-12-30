@@ -37,6 +37,19 @@ TAG_VERSION_CALCULATION_STRATEGY="${TAG_VERSION_CALCULATION_STRATEGY:-git-auto-c
 DOCKERFILE_SUB_PATH="${DOCKERFILE_SUB_PATH:-src/docker}"  # For dockerfile-env-version strategy
 ENV_VARIABLE_NAME="${ENV_VARIABLE_NAME:-KUBECTL_VERSION}"  # For dockerfile-env-version strategy
 
+# Validate BUILD_LOCATION (required)
+validate_build_location() {
+  if [[ -z "${BUILD_LOCATION:-}" ]]; then
+    echo "${LOG_ERROR_PREFIX}BUILD_LOCATION is required. Valid values: local, build_server${LOG_ERROR_SUFFIX}" >&2
+    exit 1
+  fi
+
+  if [[ "${BUILD_LOCATION}" != "local" && "${BUILD_LOCATION}" != "build_server" ]]; then
+    echo "${LOG_ERROR_PREFIX}Invalid BUILD_LOCATION: ${BUILD_LOCATION}. Valid values: local, build_server${LOG_ERROR_SUFFIX}" >&2
+    exit 1
+  fi
+}
+
 # Get current branch
 get_current_branch() {
   git rev-parse --abbrev-ref HEAD
@@ -119,15 +132,19 @@ push_tag() {
 }
 
 main() {
+  # Validate BUILD_LOCATION first
+  validate_build_location
+
   local current_branch
   current_branch=$(get_current_branch)
 
   local project_name
   project_name=$(get_project_name)
 
-  # Determine if this is a release branch
+  # Determine if this is a release build
+  # Local builds are never releases, regardless of branch
   local is_release="false"
-  if is_release_branch "${current_branch}"; then
+  if [[ "${BUILD_LOCATION}" == "build_server" ]] && is_release_branch "${current_branch}"; then
     is_release="true"
   fi
 
