@@ -20,23 +20,24 @@
 set -euo pipefail
 
 # secret_method=$1 - unused for OIDC
-registry="$2"
-client_id="$3"
-tenant_id="$4"
-subscription_id="$5"
+registry="${2}"
+client_id="${3}"
+tenant_id="${4}"
+subscription_id="${5}"
 
 echo "Authenticating to Azure via OIDC..." >&2
 
-token=$(curl -s -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
-  "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=api://AzureADTokenExchange" | yq -r '.value')
+# shellcheck disable=SC2154 # ACTIONS_ID_TOKEN_* are set by GitHub Actions runtime
+token=$(curl -s -H "Authorization: bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" \
+  "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=api://AzureADTokenExchange" | yq -r '.value')
 
 az login --service-principal \
-  -u "$client_id" \
-  -t "$tenant_id" \
-  --federated-token "$token" \
+  -u "${client_id}" \
+  -t "${tenant_id}" \
+  --federated-token "${token}" \
   --output none
 
-az account set --subscription "$subscription_id"
+az account set --subscription "${subscription_id}"
 
-echo "Logging in to Azure ACR $registry..." >&2
+echo "Logging in to Azure ACR ${registry}..." >&2
 az acr login --name "${registry%.azurecr.io}"

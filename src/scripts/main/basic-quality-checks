@@ -25,7 +25,7 @@ BLOCK_DOUBLE_HYPHENS="${BLOCK_DOUBLE_HYPHENS:-true}"
 REQUIRE_CONVENTIONAL_BRANCHES="${REQUIRE_CONVENTIONAL_BRANCHES:-false}"
 REQUIRE_CONVENTIONAL_COMMITS="${REQUIRE_CONVENTIONAL_COMMITS:-false}"
 BLOCK_CONVENTIONAL_COMMITS="${BLOCK_CONVENTIONAL_COMMITS:-false}"
-TARGET_BRANCH="${TARGET_BRANCH:-$DEFAULT_BRANCH}"
+TARGET_BRANCH="${TARGET_BRANCH:-${DEFAULT_BRANCH}}"
 PR_CREATOR="${PR_CREATOR:-}"
 
 CONVENTIONAL_BRANCH_PREFIXES="feature/|feat/|bugfix/|fix/|hotfix/|release/|chore/"
@@ -61,12 +61,12 @@ is_github_default_branch_name() {
   local branch="$1"
 
   # Only check if we know the PR creator
-  if [[ -z "$PR_CREATOR" ]]; then
+  if [[ -z "${PR_CREATOR}" ]]; then
     return 1
   fi
 
   # Pattern: <pr-creator>-patch-<number>
-  if [[ "$branch" == "${PR_CREATOR}-patch-"* ]] && [[ "$branch" =~ -patch-[0-9]+$ ]]; then
+  if [[ "${branch}" == "${PR_CREATOR}-patch-"* ]] && [[ "${branch}" =~ -patch-[0-9]+$ ]]; then
     return 0
   fi
 
@@ -76,41 +76,41 @@ is_github_default_branch_name() {
 # Check if branch contains a slash
 has_slash() {
   local branch="$1"
-  [[ "$branch" == *"/"* ]]
+  [[ "${branch}" == *"/"* ]]
 }
 
 # Check if branch contains double hyphens
 has_double_hyphen() {
   local branch="$1"
-  [[ "$branch" == *"--"* ]]
+  [[ "${branch}" == *"--"* ]]
 }
 
 # Check if branch starts with an allowed prefix
 has_branch_prefix() {
   local branch="$1"
-  echo "$branch" | grep -qE "^($CONVENTIONAL_BRANCH_PREFIXES)"
+  echo "${branch}" | grep -qE "^(${CONVENTIONAL_BRANCH_PREFIXES})"
 }
 
 # Check if commit message starts with a conventional type
 is_conventional_commit() {
   local commit="$1"
   local message
-  message=$(git log -1 --format="%s" "$commit")
-  echo "$message" | grep -qE "^($CONVENTIONAL_COMMIT_TYPES)"
+  message=$(git log -1 --format="%s" "${commit}")
+  echo "${message}" | grep -qE "^(${CONVENTIONAL_COMMIT_TYPES})"
 }
 
 # Check if target branch is allowed
 is_valid_target() {
   local target="$1"
 
-  if [[ "$target" == "$DEFAULT_BRANCH" ]]; then
+  if [[ "${target}" == "${DEFAULT_BRANCH}" ]]; then
     return 0
   fi
 
-  if [[ -n "$ADDITIONAL_RELEASE_BRANCHES" ]]; then
-    IFS=',' read -ra branches <<< "$ADDITIONAL_RELEASE_BRANCHES"
+  if [[ -n "${ADDITIONAL_RELEASE_BRANCHES}" ]]; then
+    IFS=',' read -ra branches <<< "${ADDITIONAL_RELEASE_BRANCHES}"
     for branch in "${branches[@]}"; do
-      if [[ "$target" == "$branch" ]]; then
+      if [[ "${target}" == "${branch}" ]]; then
         return 0
       fi
     done
@@ -124,16 +124,16 @@ resolve_target_ref() {
   local target="$1"
 
   if git remote | grep -q origin; then
-    if git fetch origin "$target" --quiet 2>/dev/null; then
-      echo "origin/$target"
-    elif git rev-parse "$target" &>/dev/null; then
-      echo "$target"
+    if git fetch origin "${target}" --quiet 2>/dev/null; then
+      echo "origin/${target}"
+    elif git rev-parse "${target}" &>/dev/null; then
+      echo "${target}"
     else
-      echo "${LOG_ERROR_PREFIX}Target branch '$target' not found on origin or locally${LOG_ERROR_SUFFIX}" >&2
+      echo "${LOG_ERROR_PREFIX}Target branch '${target}' not found on origin or locally${LOG_ERROR_SUFFIX}" >&2
       exit 42
     fi
   else
-    echo "$target"
+    echo "${target}"
   fi
 }
 
@@ -141,7 +141,7 @@ resolve_target_ref() {
 get_branch_commits() {
   local target="$1"
   local target_ref
-  target_ref=$(resolve_target_ref "$target")
+  target_ref=$(resolve_target_ref "${target}")
   git log --format="%H" "${target_ref}..HEAD" 2>/dev/null
 }
 
@@ -149,8 +149,8 @@ get_branch_commits() {
 is_merge_commit() {
   local commit="$1"
   local parent_count
-  parent_count=$(git rev-list --parents -n1 "$commit" | wc -w)
-  [[ $parent_count -gt 2 ]]
+  parent_count=$(git rev-list --parents -n1 "${commit}" | wc -w)
+  [[ ${parent_count} -gt 2 ]]
 }
 
 # Check if commit message matches GitHub UI default pattern
@@ -159,32 +159,32 @@ is_merge_commit() {
 is_github_ui_commit() {
   local commit="$1"
   local message
-  message=$(git log -1 --format="%s" "$commit")
+  message=$(git log -1 --format="%s" "${commit}")
 
   # Get first two words
   local first_word second_word
-  first_word=$(echo "$message" | awk '{print $1}')
-  second_word=$(echo "$message" | awk '{print $2}')
+  first_word=$(echo "${message}" | awk '{print $1}')
+  second_word=$(echo "${message}" | awk '{print $2}')
 
   # Check if first word is Update/Create/Delete
-  if [[ "$first_word" != "Update" && "$first_word" != "Create" && "$first_word" != "Delete" ]]; then
+  if [[ "${first_word}" != "Update" && "${first_word}" != "Create" && "${first_word}" != "Delete" ]]; then
     return 1
   fi
 
   # Get the single file changed in this commit
   local files_changed
-  files_changed=$(git diff-tree --no-commit-id --name-only -r "$commit")
+  files_changed=$(git diff-tree --no-commit-id --name-only -r "${commit}")
   local file_count
-  file_count=$(echo "$files_changed" | wc -l | tr -d ' ')
+  file_count=$(echo "${files_changed}" | wc -l | tr -d ' ')
 
   # Only flag if single file changed and it matches the second word
-  if [[ "$file_count" -eq 1 ]]; then
+  if [[ "${file_count}" -eq 1 ]]; then
     local changed_file
-    changed_file=$(echo "$files_changed" | head -1)
+    changed_file=$(echo "${files_changed}" | head -1)
     # Check if second word matches the filename (with or without path)
     local basename_changed
-    basename_changed=$(basename "$changed_file")
-    if [[ "$second_word" == "$changed_file" || "$second_word" == "$basename_changed" ]]; then
+    basename_changed=$(basename "${changed_file}")
+    if [[ "${second_word}" == "${changed_file}" || "${second_word}" == "${basename_changed}" ]]; then
       return 0
     fi
   fi
@@ -196,14 +196,14 @@ is_github_ui_commit() {
 is_ff_from_target() {
   local target="$1"
   local target_ref
-  target_ref=$(resolve_target_ref "$target")
+  target_ref=$(resolve_target_ref "${target}")
 
-  if ! git rev-parse "$target_ref" &>/dev/null; then
-    echo "${LOG_ERROR_PREFIX}Target ref '$target_ref' not found${LOG_ERROR_SUFFIX}" >&2
+  if ! git rev-parse "${target_ref}" &>/dev/null; then
+    echo "${LOG_ERROR_PREFIX}Target ref '${target_ref}' not found${LOG_ERROR_SUFFIX}" >&2
     exit 42
   fi
 
-  git merge-base --is-ancestor "$target_ref" HEAD
+  git merge-base --is-ancestor "${target_ref}" HEAD
 }
 
 # Report error (accumulates, doesn't exit)
@@ -211,67 +211,67 @@ error() {
   local flag="$1"
   local message="$2"
   echo "${LOG_ERROR_PREFIX}${message}${LOG_ERROR_SUFFIX}" >&2
-  echo "✗ $message" >&2
+  echo "✗ ${message}" >&2
   ERROR_CODE=$((ERROR_CODE | flag))
 }
 
 # Report success
 pass() {
   local message="$1"
-  echo "✓ $message" >&2
+  echo "✓ ${message}" >&2
 }
 
 main() {
   local branch
   branch=$(get_pr_branch)
 
-  echo "Checking quality for branch: $branch" >&2
-  echo "Target branch: $TARGET_BRANCH" >&2
+  echo "Checking quality for branch: ${branch}" >&2
+  echo "Target branch: ${TARGET_BRANCH}" >&2
 
   # Skip checks for the default branch itself (post-merge)
-  if [[ "$branch" == "$DEFAULT_BRANCH" ]]; then
+  if [[ "${branch}" == "${DEFAULT_BRANCH}" ]]; then
     echo "Skipping checks for default branch (post-merge context)" >&2
     exit 0
   fi
 
   # Check 1: Block GitHub default branch names
-  if is_github_default_branch_name "$branch"; then
-    error $FLAG_BAD_BRANCH "Branch name '$branch' matches GitHub's default naming pattern. Please use a descriptive branch name."
+  if is_github_default_branch_name "${branch}"; then
+    error ${FLAG_BAD_BRANCH} "Branch name '${branch}' matches GitHub's default naming pattern. Please use a descriptive branch name."
   else
     pass "Branch name is not a GitHub default"
   fi
 
   # Check 2: Optionally block slashes in branch names
-  if [[ "$BLOCK_SLASHES" == "true" ]]; then
-    if has_slash "$branch"; then
-      error $FLAG_BAD_BRANCH "Branch name '$branch' contains a slash. Please use hyphens instead."
+  if [[ "${BLOCK_SLASHES}" == "true" ]]; then
+    if has_slash "${branch}"; then
+      error ${FLAG_BAD_BRANCH} "Branch name '${branch}' contains a slash. Please use hyphens instead."
     else
       pass "Branch name contains no slashes"
     fi
   fi
 
   # Check 3: Block double hyphens in branch names (default: on)
-  if [[ "$BLOCK_DOUBLE_HYPHENS" == "true" ]]; then
-    if has_double_hyphen "$branch"; then
-      error $FLAG_BAD_BRANCH "Branch name '$branch' contains double hyphens. This is likely a typo."
+  if [[ "${BLOCK_DOUBLE_HYPHENS}" == "true" ]]; then
+    if has_double_hyphen "${branch}"; then
+      error ${FLAG_BAD_BRANCH} "Branch name '${branch}' contains double hyphens. This is likely a typo."
     else
       pass "Branch name contains no double hyphens"
     fi
   fi
 
   # Check 4: Optionally require branch prefix (feature/, fix/, etc.)
-  if [[ "$REQUIRE_CONVENTIONAL_BRANCHES" == "true" ]]; then
-    if has_branch_prefix "$branch"; then
+  if [[ "${REQUIRE_CONVENTIONAL_BRANCHES}" == "true" ]]; then
+    if has_branch_prefix "${branch}"; then
       pass "Branch name has required prefix"
     else
-      error $FLAG_BAD_BRANCH "Branch name '$branch' must start with a prefix: feature/, feat/, bugfix/, fix/, hotfix/, release/, or chore/"
+      error ${FLAG_BAD_BRANCH} "Branch name '${branch}' must start with a prefix: feature/, feat/, bugfix/, fix/, hotfix/, release/, or chore/"
     fi
   fi
 
   # Check 5: Validate PR target branch
   if is_pr_context; then
-    if ! is_valid_target "$TARGET_BRANCH"; then
-      error $FLAG_BAD_TARGET "PR targets '$TARGET_BRANCH' which is not an allowed target branch."
+    if ! is_valid_target "${TARGET_BRANCH}"; then
+      error ${FLAG_BAD_TARGET} "PR targets '${TARGET_BRANCH}' which is not an allowed target branch."
     else
       pass "PR targets an allowed branch"
     fi
@@ -279,85 +279,85 @@ main() {
 
   # Get commits to check
   local commits
-  commits=$(get_branch_commits "$TARGET_BRANCH")
+  commits=$(get_branch_commits "${TARGET_BRANCH}")
 
-  if [[ -z "$commits" ]]; then
+  if [[ -z "${commits}" ]]; then
     echo "No commits to check (branch may already be merged)" >&2
   else
     local commit_count
-    commit_count=$(echo "$commits" | wc -l | tr -d ' ')
+    commit_count=$(echo "${commits}" | wc -l | tr -d ' ')
 
     # Check 6: No merge commits
     local merge_found=false
-    for commit in $commits; do
-      if is_merge_commit "$commit"; then
-        error $FLAG_MERGE_COMMIT "Commit $commit is a merge commit. Please rebase your branch instead of merging."
+    for commit in ${commits}; do
+      if is_merge_commit "${commit}"; then
+        error ${FLAG_MERGE_COMMIT} "Commit ${commit} is a merge commit. Please rebase your branch instead of merging."
         merge_found=true
       fi
     done
-    if [[ "$merge_found" == "false" ]]; then
-      pass "No merge commits found from $commit_count commits checked"
+    if [[ "${merge_found}" == "false" ]]; then
+      pass "No merge commits found from ${commit_count} commits checked"
     fi
 
     # Check 7: No GitHub UI default commit messages
     local bad_msg_found=false
-    for commit in $commits; do
-      if is_github_ui_commit "$commit"; then
+    for commit in ${commits}; do
+      if is_github_ui_commit "${commit}"; then
         local msg
-        msg=$(git log -1 --format="%s" "$commit")
-        error $FLAG_BAD_COMMIT "Commit $commit appears to have a GitHub UI default message: '$msg'. Please use descriptive commit messages. All commits update something - never include Update in your message."
+        msg=$(git log -1 --format="%s" "${commit}")
+        error ${FLAG_BAD_COMMIT} "Commit ${commit} appears to have a GitHub UI default message: '${msg}'. Please use descriptive commit messages. All commits update something - never include Update in your message."
         bad_msg_found=true
       fi
     done
-    if [[ "$bad_msg_found" == "false" ]]; then
-      pass "No GitHub generated commit messages from $commit_count commits checked"
+    if [[ "${bad_msg_found}" == "false" ]]; then
+      pass "No GitHub generated commit messages from ${commit_count} commits checked"
     fi
 
     # Check 8: Optionally require conventional commit format
-    if [[ "$REQUIRE_CONVENTIONAL_COMMITS" == "true" ]]; then
+    if [[ "${REQUIRE_CONVENTIONAL_COMMITS}" == "true" ]]; then
       local non_conventional_found=false
-      for commit in $commits; do
-        if ! is_conventional_commit "$commit"; then
+      for commit in ${commits}; do
+        if ! is_conventional_commit "${commit}"; then
           local msg
-          msg=$(git log -1 --format="%s" "$commit")
-          error $FLAG_BAD_COMMIT "Commit $commit does not use conventional commit format: '$msg'. Must start with: build:, chore:, ci:, docs:, feat:, fix:, perf:, refactor:, revert:, style:, or test:"
+          msg=$(git log -1 --format="%s" "${commit}")
+          error ${FLAG_BAD_COMMIT} "Commit ${commit} does not use conventional commit format: '${msg}'. Must start with: build:, chore:, ci:, docs:, feat:, fix:, perf:, refactor:, revert:, style:, or test:"
           non_conventional_found=true
         fi
       done
-      if [[ "$non_conventional_found" == "false" ]]; then
+      if [[ "${non_conventional_found}" == "false" ]]; then
         pass "All commits use conventional commit format"
       fi
     fi
 
     # Check 9: Optionally block conventional commit format
-    if [[ "$BLOCK_CONVENTIONAL_COMMITS" == "true" ]]; then
+    if [[ "${BLOCK_CONVENTIONAL_COMMITS}" == "true" ]]; then
       local conventional_found=false
-      for commit in $commits; do
-        if is_conventional_commit "$commit"; then
+      for commit in ${commits}; do
+        if is_conventional_commit "${commit}"; then
           local msg
-          msg=$(git log -1 --format="%s" "$commit")
-          error $FLAG_BAD_COMMIT "Commit $commit uses conventional commit format which is not allowed: '$msg'"
+          msg=$(git log -1 --format="%s" "${commit}")
+          error ${FLAG_BAD_COMMIT} "Commit ${commit} uses conventional commit format which is not allowed: '${msg}'"
           conventional_found=true
         fi
       done
-      if [[ "$conventional_found" == "false" ]]; then
+      if [[ "${conventional_found}" == "false" ]]; then
         pass "No commits use conventional commit format"
       fi
     fi
   fi
 
   # Check 10: Branch is fast-forward from target
-  if ! is_ff_from_target "$TARGET_BRANCH"; then
-    error $FLAG_NOT_REBASED "Branch is not up to date with '$TARGET_BRANCH'. Please rebase your branch."
+  if ! is_ff_from_target "${TARGET_BRANCH}"; then
+    error ${FLAG_NOT_REBASED} "Branch is not up to date with '${TARGET_BRANCH}'. Please rebase your branch."
   else
     pass "Branch is fast-forward from target"
   fi
 
-  if [[ $ERROR_CODE -eq 0 ]]; then
+  if [[ ${ERROR_CODE} -eq 0 ]]; then
     echo "All quality checks passed!" >&2
   fi
 
-  exit $ERROR_CODE
+  exit ${ERROR_CODE}
 }
 
 main "$@"

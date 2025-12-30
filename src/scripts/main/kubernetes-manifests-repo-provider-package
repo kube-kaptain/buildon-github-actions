@@ -24,25 +24,25 @@ LOG_ERROR_SUFFIX="${LOG_ERROR_SUFFIX:-}"
 
 # Locate script directory (where this selector lives)
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PLUGINS_DIR="$SCRIPT_DIR/../plugins"
-REPO_PROVIDERS_DIR="$PLUGINS_DIR/kubernetes-manifests-repo-providers"
+PLUGINS_DIR="${SCRIPT_DIR}/../plugins"
+REPO_PROVIDERS_DIR="${PLUGINS_DIR}/kubernetes-manifests-repo-providers"
 SCRIPT_PREFIX="kubernetes-manifests-repo-provider-"
 SCRIPT_SUFFIX="-package"
 
 # List available repo providers (extract type from script name)
 list_providers() {
   local providers=()
-  if [[ -d "$REPO_PROVIDERS_DIR" ]]; then
+  if [[ -d "${REPO_PROVIDERS_DIR}" ]]; then
     while IFS= read -r provider; do
-      if [[ -x "$provider" ]]; then
+      if [[ -x "${provider}" ]]; then
         local name
-        name=$(basename "$provider")
+        name=$(basename "${provider}")
         # Strip prefix and suffix to get the provider type
-        name="${name#"$SCRIPT_PREFIX"}"
-        name="${name%"$SCRIPT_SUFFIX"}"
-        providers+=("$name")
+        name="${name#"${SCRIPT_PREFIX}"}"
+        name="${name%"${SCRIPT_SUFFIX}"}"
+        providers+=("${name}")
       fi
-    done < <(find "$REPO_PROVIDERS_DIR" -maxdepth 1 -type f -name "${SCRIPT_PREFIX}*${SCRIPT_SUFFIX}")
+    done < <(find "${REPO_PROVIDERS_DIR}" -maxdepth 1 -type f -name "${SCRIPT_PREFIX}*${SCRIPT_SUFFIX}")
   fi
   echo "${providers[*]}"
 }
@@ -52,30 +52,30 @@ main() {
   if [[ -z "${MANIFESTS_REPO_PROVIDER_TYPE:-}" ]]; then
     local available
     available=$(list_providers)
-    echo "${LOG_ERROR_PREFIX}MANIFESTS_REPO_PROVIDER_TYPE is required. Available: $available${LOG_ERROR_SUFFIX}" >&2
+    echo "${LOG_ERROR_PREFIX}MANIFESTS_REPO_PROVIDER_TYPE is required. Available: ${available}${LOG_ERROR_SUFFIX}" >&2
     exit 1
   fi
 
   # Check repo provider script exists
-  local provider_script="$REPO_PROVIDERS_DIR/${SCRIPT_PREFIX}${MANIFESTS_REPO_PROVIDER_TYPE}${SCRIPT_SUFFIX}"
-  if [[ ! -f "$provider_script" ]]; then
+  local provider_script="${REPO_PROVIDERS_DIR}/${SCRIPT_PREFIX}${MANIFESTS_REPO_PROVIDER_TYPE}${SCRIPT_SUFFIX}"
+  if [[ ! -f "${provider_script}" ]]; then
     local available
     available=$(list_providers)
-    echo "${LOG_ERROR_PREFIX}Unknown repo provider type: $MANIFESTS_REPO_PROVIDER_TYPE. Available: $available${LOG_ERROR_SUFFIX}" >&2
+    echo "${LOG_ERROR_PREFIX}Unknown repo provider type: ${MANIFESTS_REPO_PROVIDER_TYPE}. Available: ${available}${LOG_ERROR_SUFFIX}" >&2
     exit 1
   fi
 
-  if [[ ! -x "$provider_script" ]]; then
-    echo "${LOG_ERROR_PREFIX}Repo provider script not executable: $provider_script${LOG_ERROR_SUFFIX}" >&2
+  if [[ ! -x "${provider_script}" ]]; then
+    echo "${LOG_ERROR_PREFIX}Repo provider script not executable: ${provider_script}${LOG_ERROR_SUFFIX}" >&2
     exit 1
   fi
 
   echo "=== Kubernetes Manifests Repo Provider Package ===" >&2
-  echo "Selected repo provider: $MANIFESTS_REPO_PROVIDER_TYPE" >&2
+  echo "Selected repo provider: ${MANIFESTS_REPO_PROVIDER_TYPE}" >&2
   echo "===================================================" >&2
 
   # Execute repo provider script
-  exec "$provider_script" "$@"
+  exec "${provider_script}" "$@"
 }
 
 main "$@"

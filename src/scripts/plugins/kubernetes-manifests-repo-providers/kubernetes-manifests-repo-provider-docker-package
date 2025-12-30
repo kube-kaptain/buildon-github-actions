@@ -46,20 +46,20 @@ CONFIRM_IMAGE_DOESNT_EXIST="${CONFIRM_IMAGE_DOESNT_EXIST:-true}"
 BASE_IMAGE="registry.k8s.io/pause:3.10.1"
 
 # Build output structure
-PUBLISH_SUB_PATH="$OUTPUT_SUB_PATH/publish/docker"
+PUBLISH_SUB_PATH="${OUTPUT_SUB_PATH}/publish/docker"
 
 # Assemble full image URI
-if [[ -n "$base_path" ]]; then
+if [[ -n "${base_path}" ]]; then
   image_uri="${registry}/${base_path}/${image_name}:${tag}"
 else
   image_uri="${registry}/${image_name}:${tag}"
 fi
 
 confirm_image_doesnt_exist() {
-  local image="$1"
+  local image="${1}"
 
-  if docker manifest inspect "$image" &>/dev/null; then
-    echo "${LOG_ERROR_PREFIX}Target image already exists in registry: $image${LOG_ERROR_SUFFIX}" >&2
+  if docker manifest inspect "${image}" &>/dev/null; then
+    echo "${LOG_ERROR_PREFIX}Target image already exists in registry: ${image}${LOG_ERROR_SUFFIX}" >&2
     return 1
   fi
 
@@ -68,52 +68,52 @@ confirm_image_doesnt_exist() {
 }
 
 output_var() {
-  local name="$1"
-  local value="$2"
+  local name="${1}"
+  local value="${2}"
 
   echo "${name}=${value}"
 
   if [[ -n "${GITHUB_OUTPUT:-}" ]]; then
-    echo "${name}=${value}" >> "$GITHUB_OUTPUT"
+    echo "${name}=${value}" >> "${GITHUB_OUTPUT}"
   fi
 }
 
 main() {
   echo "=== Kubernetes Manifests Repo Provider Package: Docker ===" >&2
-  echo "Manifests zip path: $MANIFESTS_ZIP_SUB_PATH" >&2
-  echo "Manifests zip name: $MANIFESTS_ZIP_FILE_NAME" >&2
-  echo "Base image: $BASE_IMAGE" >&2
-  echo "Target: $image_uri" >&2
+  echo "Manifests zip path: ${MANIFESTS_ZIP_SUB_PATH}" >&2
+  echo "Manifests zip name: ${MANIFESTS_ZIP_FILE_NAME}" >&2
+  echo "Base image: ${BASE_IMAGE}" >&2
+  echo "Target: ${image_uri}" >&2
   echo "===========================================================" >&2
 
   # Validate zip exists
-  if [[ ! -f "$MANIFESTS_ZIP_SUB_PATH/$MANIFESTS_ZIP_FILE_NAME" ]]; then
-    echo "${LOG_ERROR_PREFIX}Manifests zip not found: $MANIFESTS_ZIP_SUB_PATH/$MANIFESTS_ZIP_FILE_NAME${LOG_ERROR_SUFFIX}" >&2
+  if [[ ! -f "${MANIFESTS_ZIP_SUB_PATH}/${MANIFESTS_ZIP_FILE_NAME}" ]]; then
+    echo "${LOG_ERROR_PREFIX}Manifests zip not found: ${MANIFESTS_ZIP_SUB_PATH}/${MANIFESTS_ZIP_FILE_NAME}${LOG_ERROR_SUFFIX}" >&2
     exit 1
   fi
 
   # Confirm target doesn't exist (if configured)
-  if [[ "$CONFIRM_IMAGE_DOESNT_EXIST" == "true" ]]; then
-    confirm_image_doesnt_exist "$image_uri" || exit 1
+  if [[ "${CONFIRM_IMAGE_DOESNT_EXIST}" == "true" ]]; then
+    confirm_image_doesnt_exist "${image_uri}" || exit 1
   fi
 
   # Create publish build directory (instead of temp dir)
-  rm -rf "$PUBLISH_SUB_PATH"
-  mkdir -p "$PUBLISH_SUB_PATH"
+  rm -rf "${PUBLISH_SUB_PATH}"
+  mkdir -p "${PUBLISH_SUB_PATH}"
 
   # Copy zip to publish dir
-  cp "$MANIFESTS_ZIP_SUB_PATH/$MANIFESTS_ZIP_FILE_NAME" "$PUBLISH_SUB_PATH/"
+  cp "${MANIFESTS_ZIP_SUB_PATH}/${MANIFESTS_ZIP_FILE_NAME}" "${PUBLISH_SUB_PATH}/"
 
   # Create Dockerfile
-  cat > "$PUBLISH_SUB_PATH/Dockerfile" <<EOF
+  cat > "${PUBLISH_SUB_PATH}/Dockerfile" <<EOF
 FROM ${BASE_IMAGE}
 COPY ${MANIFESTS_ZIP_FILE_NAME} /${MANIFESTS_ZIP_FILE_NAME}
 EOF
 
   echo "Building manifest image..." >&2
-  docker build -t "$image_uri" "$PUBLISH_SUB_PATH"
+  docker build -t "${image_uri}" "${PUBLISH_SUB_PATH}"
 
-  output_var "MANIFESTS_URI" "$image_uri"
+  output_var "MANIFESTS_URI" "${image_uri}"
 
   echo "Kubernetes Manifests Repo Provider Package: Docker complete" >&2
 }

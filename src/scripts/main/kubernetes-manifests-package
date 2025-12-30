@@ -95,7 +95,7 @@ to_camel_case() {
   input=$(echo "${input}" | tr '[:upper:]' '[:lower:]')
 
   for (( i=0; i<${#input}; i++ )); do
-    local char="${input:$i:1}"
+    local char="${input:${i}:1}"
     if [[ "${char}" == "_" ]]; then
       capitalize=true
     elif [[ "${capitalize}" == "true" ]]; then
@@ -307,7 +307,8 @@ main() {
   echo "Creating zip: ${MANIFESTS_ZIP_SUB_PATH}/${zip_name}" >&2
   # Capture repo root first since this command cds somewhere else
 
-  local repo_root="$(pwd)"
+  local repo_root
+  repo_root="$(pwd)"
   (cd "${MANIFESTS_SUBSTITUTED_SUB_PATH}" && zip -rq "${repo_root}/${MANIFESTS_ZIP_SUB_PATH}/${zip_name}" "${PROJECT_NAME}")
 
   # Verify zip was created

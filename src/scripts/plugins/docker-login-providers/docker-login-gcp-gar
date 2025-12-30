@@ -13,14 +13,14 @@
 #
 set -euo pipefail
 
-SCRIPT_DIR="$(dirname "$0")"
-PLUGINS_DIR="$SCRIPT_DIR/.."
+SCRIPT_DIR="$(dirname "${0}")"
+PLUGINS_DIR="${SCRIPT_DIR}/.."
 
-secret_method="$1"
-registry="$2"
-service_account_key_secret="$3"
+secret_method="${1}"
+registry="${2}"
+service_account_key_secret="${3}"
 
-key_json=$("$PLUGINS_DIR/secret-value-providers/get-secret-$secret_method" "$service_account_key_secret") || exit 1
+key_json=$("${PLUGINS_DIR}/secret-value-providers/get-secret-${secret_method}" "${service_account_key_secret}") || exit 1
 
-echo "Logging in to Google Artifact Registry $registry..." >&2
-echo "$key_json" | docker login -u _json_key --password-stdin "https://$registry"
+echo "Logging in to Google Artifact Registry ${registry}..." >&2
+echo "${key_json}" | docker login -u _json_key --password-stdin "https://${registry}"

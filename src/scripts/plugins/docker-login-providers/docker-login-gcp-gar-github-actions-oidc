@@ -19,32 +19,33 @@
 set -euo pipefail
 
 # secret_method=$1 - unused for OIDC
-registry="$2"
-workload_identity_provider="$3"
-service_account="$4"
+registry="${2}"
+workload_identity_provider="${3}"
+service_account="${4}"
 
 echo "Authenticating to GCP via Workload Identity Federation..." >&2
 
-token=$(curl -s -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
-  "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=$workload_identity_provider" | yq -r '.value')
+# shellcheck disable=SC2154 # ACTIONS_ID_TOKEN_* are set by GitHub Actions runtime
+token=$(curl -s -H "Authorization: bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" \
+  "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=${workload_identity_provider}" | yq -r '.value')
 
 access_token=$(curl -s -X POST \
   "https://sts.googleapis.com/v1/token" \
   -H "Content-Type: application/json" \
   -d "{
     \"grant_type\": \"urn:ietf:params:oauth:grant-type:token-exchange\",
-    \"audience\": \"//iam.googleapis.com/$workload_identity_provider\",
+    \"audience\": \"//iam.googleapis.com/${workload_identity_provider}\",
     \"scope\": \"https://www.googleapis.com/auth/cloud-platform\",
     \"requested_token_type\": \"urn:ietf:params:oauth:token-type:access_token\",
     \"subject_token_type\": \"urn:ietf:params:oauth:token-type:jwt\",
-    \"subject_token\": \"$token\"
+    \"subject_token\": \"${token}\"
   }" | yq -r '.access_token')
 
 sa_token=$(curl -s -X POST \
   "https://iamcredentials.googleapis.com/v1/projects/-/serviceAccounts/${service_account}:generateAccessToken" \
-  -H "Authorization: Bearer $access_token" \
+  -H "Authorization: Bearer ${access_token}" \
   -H "Content-Type: application/json" \
   -d '{"scope": ["https://www.googleapis.com/auth/cloud-platform"]}' | yq -r '.accessToken')
 
-echo "Logging in to Google Artifact Registry $registry..." >&2
-echo "$sa_token" | docker login -u oauth2accesstoken --password-stdin "https://$registry"
+echo "Logging in to Google Artifact Registry ${registry}..." >&2
+echo "${sa_token}" | docker login -u oauth2accesstoken --password-stdin "https://${registry}"

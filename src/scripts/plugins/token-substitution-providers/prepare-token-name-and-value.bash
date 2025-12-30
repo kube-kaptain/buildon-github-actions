@@ -28,30 +28,30 @@ fi
 
 # Token name is the file path (relative)
 # shellcheck disable=SC2034 # TOKEN_NAME is used by the sourcing script
-TOKEN_NAME="$TOKEN_FILE"
+TOKEN_NAME="${TOKEN_FILE}"
 
 # Read file content preserving trailing newlines exactly
 # Bash $() strips trailing newlines, so append 'x' as sentinel and remove after
 # Using && ensures cat errors propagate (with ; the echo would mask failures)
-raw_content=$(cat "$TOKEN_FILE" && echo x)
+raw_content=$(cat "${TOKEN_FILE}" && echo x)
 raw_content="${raw_content%x}"
 
 # Apply trailing newline handling based on CONFIG_VALUE_TRAILING_NEWLINE
 CONFIG_VALUE_TRAILING_NEWLINE="${CONFIG_VALUE_TRAILING_NEWLINE:-strip-for-single-line}"
 
 # shellcheck disable=SC2034 # TOKEN_VALUE is used by the sourcing script
-if [[ "$CONFIG_VALUE_TRAILING_NEWLINE" == "preserve-all" ]]; then
-  TOKEN_VALUE="$raw_content"
-elif [[ "$CONFIG_VALUE_TRAILING_NEWLINE" == "always-strip-one-newline" ]]; then
+if [[ "${CONFIG_VALUE_TRAILING_NEWLINE}" == "preserve-all" ]]; then
+  TOKEN_VALUE="${raw_content}"
+elif [[ "${CONFIG_VALUE_TRAILING_NEWLINE}" == "always-strip-one-newline" ]]; then
   # Strip exactly one trailing newline if present
   TOKEN_VALUE="${raw_content%$'\n'}"
 else
   # Default: strip-for-single-line
   # Check if content contains a newline before the final position (multi-line)
   content_without_final_newline="${raw_content%$'\n'}"
-  if [[ "$content_without_final_newline" == *$'\n'* ]]; then
+  if [[ "${content_without_final_newline}" == *$'\n'* ]]; then
     # Multi-line: keep as-is (preserve all newlines)
-    TOKEN_VALUE="$raw_content"
+    TOKEN_VALUE="${raw_content}"
   else
     # Single-line: strip trailing newline if present
     TOKEN_VALUE="${raw_content%$'\n'}"
