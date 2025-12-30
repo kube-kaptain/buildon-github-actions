@@ -58,7 +58,6 @@ jobs:
 #     with:
 #       target-registry: 'myregistry.example.com'  # ecr, gcr, harbor, nexus
 #       target-base-path: 'my-team/images'
-#       confirm-image-doesnt-exist: false  # true
 
 # ┌─────────────────────────────────────────────────────────────────────────┐
 # │ Branch Configuration                                                    │

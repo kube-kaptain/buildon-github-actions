@@ -12,7 +12,6 @@
 #   TARGET_BASE_PATH    - Path between registry and image name (optional)
 #   TARGET_IMAGE_NAME   - Target image name (from version generator)
 #   DOCKER_TAG          - Target tag (from version generator)
-#   CONFIRM_IMAGE_DOESNT_EXIST  - "true" to fail if target already exists (default: true)
 #
 # Outputs:
 #   SOURCE_IMAGE_FULL_URI - Full source image reference
@@ -34,7 +33,6 @@ DOCKER_TAG="${DOCKER_TAG:?DOCKER_TAG is required}"
 
 # Optional inputs with defaults
 TARGET_BASE_PATH="${TARGET_BASE_PATH:-}"
-CONFIRM_IMAGE_DOESNT_EXIST="${CONFIRM_IMAGE_DOESNT_EXIST:-true}"
 
 # Assemble full image URIs
 SOURCE_IMAGE_FULL_URI="${SOURCE_REGISTRY}/${SOURCE_IMAGE_NAME}:${SOURCE_TAG}"
@@ -78,10 +76,8 @@ main() {
   echo "Pulling source image: ${SOURCE_IMAGE_FULL_URI}" >&2
   docker pull "${SOURCE_IMAGE_FULL_URI}"
 
-  # Confirm target doesn't exist (if configured)
-  if [[ "${CONFIRM_IMAGE_DOESNT_EXIST}" == "true" ]]; then
-    confirm_image_doesnt_exist "${TARGET_IMAGE_FULL_URI}" || exit 1
-  fi
+  # Confirm target doesn't exist (fail fast)
+  confirm_image_doesnt_exist "${TARGET_IMAGE_FULL_URI}" || exit 1
 
   echo "Tagging: ${SOURCE_IMAGE_FULL_URI} -> ${TARGET_IMAGE_FULL_URI}" >&2
   docker tag "${SOURCE_IMAGE_FULL_URI}" "${TARGET_IMAGE_FULL_URI}"

@@ -133,27 +133,16 @@ set_required_env() {
   assert_output_contains "REPO_PROVIDER_URL"
 }
 
-@test "defaults CONFIRM_IMAGE_DOESNT_EXIST to true" {
+@test "always checks for existing image" {
   set_required_env
-  unset CONFIRM_IMAGE_DOESNT_EXIST
 
   run "$REPO_PROVIDERS_DIR/kubernetes-manifests-repo-provider-docker-package"
   [ "$status" -eq 0 ]
   assert_docker_called "manifest inspect"
 }
 
-@test "skips confirm when CONFIRM_IMAGE_DOESNT_EXIST=false" {
+@test "fails when image already exists" {
   set_required_env
-  export CONFIRM_IMAGE_DOESNT_EXIST="false"
-
-  run "$REPO_PROVIDERS_DIR/kubernetes-manifests-repo-provider-docker-package"
-  [ "$status" -eq 0 ]
-  assert_docker_not_called "manifest"
-}
-
-@test "fails when image already exists and confirm enabled" {
-  set_required_env
-  export CONFIRM_IMAGE_DOESNT_EXIST="true"
   # Make docker manifest inspect succeed (image exists)
   echo '#!/bin/bash
 if [[ "$1" == "manifest" && "$2" == "inspect" ]]; then

@@ -166,9 +166,8 @@ set_required_env() {
   assert_docker_called "$TEST_DIR"
 }
 
-@test "fails when image already exists and confirm enabled" {
+@test "fails when image already exists" {
   set_required_env
-  export CONFIRM_IMAGE_DOESNT_EXIST="true"
   # Make docker manifest inspect succeed (image exists)
   echo '#!/bin/bash
 if [[ "$1" == "manifest" && "$2" == "inspect" ]]; then
@@ -186,18 +185,8 @@ exit 0' > "$MOCK_BIN_DIR/docker"
   assert_output_contains "already exists"
 }
 
-@test "skips existence check when confirm disabled" {
+@test "always checks for existing image" {
   set_required_env
-  export CONFIRM_IMAGE_DOESNT_EXIST="false"
-
-  run "$SCRIPTS_DIR/docker-build-dockerfile"
-  [ "$status" -eq 0 ]
-  assert_docker_not_called "manifest"
-}
-
-@test "defaults confirm-image-doesnt-exist to true" {
-  set_required_env
-  unset CONFIRM_IMAGE_DOESNT_EXIST
 
   run "$SCRIPTS_DIR/docker-build-dockerfile"
   [ "$status" -eq 0 ]

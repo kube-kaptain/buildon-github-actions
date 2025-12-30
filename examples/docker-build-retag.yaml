@@ -50,7 +50,6 @@ jobs:
 #     with:
 #       target-registry: 'myregistry.example.com'  # ecr, gcr, harbor, nexus
 #       target-base-path: 'my-team/vendored'
-#       confirm-image-doesnt-exist: false  # true
 
 # ┌─────────────────────────────────────────────────────────────────────────┐
 # │ Branch Configuration                                                    │

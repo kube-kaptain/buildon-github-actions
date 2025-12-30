@@ -12,7 +12,6 @@ Docker Build Dockerfile
 | `no-cache` | boolean | `true` | Disable layer caching for reproducible builds |
 | `target-registry` | string | `ghcr.io` | Target container registry |
 | `target-base-path` | string | `""` | Path between registry and image name (auto-set for GHCR) |
-| `confirm-image-doesnt-exist` | boolean | `true` | Fail if target image already exists in registry |
 | `default-branch` | string | `main` | The default/release branch name |
 | `additional-release-branches` | string | `""` | Comma-separated list of additional release branches |
 | `block-slashes` | boolean | `false` | Block branch names containing slashes |

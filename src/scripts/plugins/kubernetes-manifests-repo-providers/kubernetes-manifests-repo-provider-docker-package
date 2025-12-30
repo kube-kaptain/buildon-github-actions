@@ -15,7 +15,6 @@
 #   MANIFESTS_ZIP_SUB_PATH      - Path to the zip file location (required)
 #   MANIFESTS_ZIP_FILE_NAME      - Filename of the zip (required)
 #   OUTPUT_SUB_PATH         - Build output directory (default: target)
-#   CONFIRM_IMAGE_DOESNT_EXIST - "true" to fail if exists (default: true)
 #
 # Outputs:
 #   MANIFESTS_URI           - Full image reference (for use by publish step)
@@ -40,7 +39,6 @@ tag="${REPO_PROVIDER_VERSION:?REPO_PROVIDER_VERSION (tag) is required}"
 MANIFESTS_ZIP_SUB_PATH="${MANIFESTS_ZIP_SUB_PATH:?MANIFESTS_ZIP_SUB_PATH is required}"
 MANIFESTS_ZIP_FILE_NAME="${MANIFESTS_ZIP_FILE_NAME:?MANIFESTS_ZIP_FILE_NAME is required}"
 OUTPUT_SUB_PATH="${OUTPUT_SUB_PATH:-target}"
-CONFIRM_IMAGE_DOESNT_EXIST="${CONFIRM_IMAGE_DOESNT_EXIST:-true}"
 
 # Base image for manifest containers
 BASE_IMAGE="registry.k8s.io/pause:3.10.1"
@@ -92,10 +90,8 @@ main() {
     exit 1
   fi
 
-  # Confirm target doesn't exist (if configured)
-  if [[ "${CONFIRM_IMAGE_DOESNT_EXIST}" == "true" ]]; then
-    confirm_image_doesnt_exist "${image_uri}" || exit 1
-  fi
+  # Confirm target doesn't exist (fail fast)
+  confirm_image_doesnt_exist "${image_uri}" || exit 1
 
   # Create publish build directory (instead of temp dir)
   rm -rf "${PUBLISH_SUB_PATH}"

@@ -37,11 +37,6 @@ on:
         required: false
         type: string
         default: ''
-      confirm-image-doesnt-exist:
-        description: 'Fail if target image already exists in registry'
-        required: false
-        type: boolean
-        default: true
       # Version generator inputs (pass-through)
       default-branch:
         description: 'The default/release branch name'
@@ -397,7 +392,6 @@ jobs:
           dockerfile-sub-path: ${{ inputs.dockerfile-sub-path }}
           squash: ${{ inputs.squash }}
           no-cache: ${{ inputs.no-cache }}
-          confirm-image-doesnt-exist: ${{ inputs.confirm-image-doesnt-exist }}
       - name: Pass check - Docker Build
         if: success()
         uses: ./.github/buildon-github-actions/src/actions/github-check-run

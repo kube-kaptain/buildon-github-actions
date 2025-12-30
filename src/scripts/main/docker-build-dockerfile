@@ -17,7 +17,6 @@
 #   DOCKERFILE_SUB_PATH - Directory containing Dockerfile, relative (default: src/docker)
 #   SQUASH              - "false" to disable --squash (default: true, always squash for clean D files)
 #   NO_CACHE            - "false" to enable layer caching (default: true, always build fresh)
-#   CONFIRM_IMAGE_DOESNT_EXIST - "true" to fail if target exists (default: true)
 #
 # Outputs:
 #   TARGET_IMAGE_FULL_URI - Full image reference (for use in push step)
@@ -40,7 +39,6 @@ TARGET_BASE_PATH="${TARGET_BASE_PATH:-}"
 DOCKERFILE_SUB_PATH="${DOCKERFILE_SUB_PATH:-src/docker}"
 SQUASH="${SQUASH:-true}"
 NO_CACHE="${NO_CACHE:-true}"
-CONFIRM_IMAGE_DOESNT_EXIST="${CONFIRM_IMAGE_DOESNT_EXIST:-true}"
 
 # Dockerfile must always be named exactly "Dockerfile"
 DOCKERFILE="${DOCKERFILE_SUB_PATH}/Dockerfile"
@@ -134,9 +132,7 @@ main() {
   fi
 
   # Confirm target doesn't exist before building (fail fast)
-  if [[ "${CONFIRM_IMAGE_DOESNT_EXIST}" == "true" ]]; then
-    confirm_image_doesnt_exist "${TARGET_IMAGE_FULL_URI}" || exit 1
-  fi
+  confirm_image_doesnt_exist "${TARGET_IMAGE_FULL_URI}" || exit 1
 
   # Enable experimental mode if squash requested
   if [[ "${SQUASH}" == "true" ]]; then

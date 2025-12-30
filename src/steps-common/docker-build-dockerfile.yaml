@@ -14,4 +14,3 @@
     dockerfile-sub-path: ${{ inputs.dockerfile-sub-path }}
     squash: ${{ inputs.squash }}
     no-cache: ${{ inputs.no-cache }}
-    confirm-image-doesnt-exist: ${{ inputs.confirm-image-doesnt-exist }}

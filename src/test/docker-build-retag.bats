@@ -97,9 +97,8 @@ set_required_env() {
   assert_output_contains "TARGET_IMAGE_NAME"
 }
 
-@test "defaults CONFIRM_IMAGE_DOESNT_EXIST to true" {
+@test "fails when image already exists" {
   set_required_env
-  # Don't set CONFIRM_IMAGE_DOESNT_EXIST - should default to true
   # Mock docker manifest inspect to return success (image exists)
   export MOCK_DOCKER_MANIFEST_EXISTS="true"
 
@@ -108,19 +107,19 @@ set_required_env() {
   assert_output_contains "already exists"
 }
 
-@test "skips confirm when CONFIRM_IMAGE_DOESNT_EXIST=false" {
+@test "always checks for existing image" {
   set_required_env
-  export CONFIRM_IMAGE_DOESNT_EXIST="false"
 
   run "$SCRIPTS_DIR/docker-build-retag"
   [ "$status" -eq 0 ]
+  # Should have called manifest inspect (the mock returns non-zero by default)
+  assert_docker_called "manifest inspect"
 }
 
 @test "works with custom registry and base path" {
   set_required_env
   export TARGET_REGISTRY="myregistry.example.com"
   export TARGET_BASE_PATH="docker-local"
-  export CONFIRM_IMAGE_DOESNT_EXIST="false"
 
   run "$SCRIPTS_DIR/docker-build-retag"
   [ "$status" -eq 0 ]

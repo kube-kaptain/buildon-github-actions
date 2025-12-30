@@ -62,11 +62,6 @@ on:
         required: false
         type: string
         default: ''
-      confirm-image-doesnt-exist:
-        description: 'Fail if target image already exists in registry'
-        required: false
-        type: boolean
-        default: true
       # Version generator inputs (pass-through)
       default-branch:
         description: 'The default/release branch name'
@@ -474,7 +469,6 @@ jobs:
           target-base-path: ${{ steps.docker-build.outputs.target-base-path }}
           target-image-name: ${{ steps.versions.outputs.docker-image-name }}
           docker-tag: ${{ steps.versions.outputs.docker-tag }}-manifests
-          confirm-image-doesnt-exist: ${{ inputs.confirm-image-doesnt-exist }}
           version: ${{ steps.versions.outputs.version }}
           output-sub-path: ${{ inputs.output-sub-path }}
       - name: Pass check - Package Manifests for Repo Provider

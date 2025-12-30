@@ -99,7 +99,6 @@ See [`examples/`](examples/) for more usage patterns.
 | `block-slashes` | boolean | `false` | Block branch names containing slashes |
 | `config-sub-path` | string | `src/config` | Directory containing user-defined token files (relative) |
 | `config-value-trailing-newline` | string | `strip-for-single-line` | How to handle trailing newlines in config values (strip-for-single-line, preserve-all, always-strip-one-newline) |
-| `confirm-image-doesnt-exist` | boolean | `true` | Fail if target image already exists in registry |
 | `default-branch` | string | `main` | The default/release branch name |
 | `docker-registry-logins` | string | `""` | YAML config for Docker registry logins (registry URL as key) |
 | `dockerfile-sub-path` | string | `src/docker` | Directory containing Dockerfile, relative (also used as build context) |

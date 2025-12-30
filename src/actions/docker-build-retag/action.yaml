@@ -29,10 +29,6 @@ inputs:
   docker-tag:
     description: 'Tag for target image (from version generator docker-tag)'
     required: true
-  confirm-image-doesnt-exist:
-    description: 'Fail if target image already exists in registry'
-    required: false
-    default: 'true'
 
 outputs:
   source-image-full-uri:
@@ -70,5 +66,4 @@ runs:
         TARGET_BASE_PATH: ${{ steps.resolve.outputs.target-base-path }}
         TARGET_IMAGE_NAME: ${{ inputs.target-image-name }}
         DOCKER_TAG: ${{ inputs.docker-tag }}
-        CONFIRM_IMAGE_DOESNT_EXIST: ${{ inputs.confirm-image-doesnt-exist }}
       run: "${{ github.action_path }}/../../scripts/main/docker-build-retag"

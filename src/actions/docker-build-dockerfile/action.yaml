@@ -38,10 +38,6 @@ inputs:
     description: 'Disable layer caching for reproducible builds (default: true)'
     required: false
     default: 'true'
-  confirm-image-doesnt-exist:
-    description: 'Fail if target image already exists in registry'
-    required: false
-    default: 'true'
 
 outputs:
   target-image-full-uri:
@@ -78,5 +74,4 @@ runs:
         DOCKERFILE_SUB_PATH: ${{ inputs.dockerfile-sub-path }}
         SQUASH: ${{ inputs.squash }}
         NO_CACHE: ${{ inputs.no-cache }}
-        CONFIRM_IMAGE_DOESNT_EXIST: ${{ inputs.confirm-image-doesnt-exist }}
       run: "${{ github.action_path }}/../../scripts/main/docker-build-dockerfile"

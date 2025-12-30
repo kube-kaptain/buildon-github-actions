@@ -20,7 +20,6 @@ Kubernetes App - Docker Retag
 | `manifests-repo-provider-type` | string | *required* | Repo provider type for manifest storage (docker, github-release). Required - consumer must choose. |
 | `target-registry` | string | `ghcr.io` | Target container registry |
 | `target-base-path` | string | `""` | Path between registry and image name (auto-set for GHCR) |
-| `confirm-image-doesnt-exist` | boolean | `true` | Fail if target image already exists in registry |
 | `default-branch` | string | `main` | The default/release branch name |
 | `additional-release-branches` | string | `""` | Comma-separated list of additional release branches |
 | `max-version-parts` | number | `3` | Maximum allowed version parts (fail if exceeded) |

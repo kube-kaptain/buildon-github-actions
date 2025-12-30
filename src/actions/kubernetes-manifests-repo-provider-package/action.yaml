@@ -45,10 +45,6 @@ inputs:
     description: 'Tag for target image (docker, includes prerelease suffix if applicable)'
     required: false
     default: ''
-  confirm-image-doesnt-exist:
-    description: 'Fail if target image already exists in registry (docker)'
-    required: false
-    default: 'true'
 
   # --- GitHub Release-specific inputs ---
   version:
@@ -255,6 +251,5 @@ runs:
         REPO_PROVIDER_AUTH_USER: ${{ github.actor }}
 
         # --- Provider-specific additions ---
-        CONFIRM_IMAGE_DOESNT_EXIST: ${{ inputs.confirm-image-doesnt-exist }}
         MAVEN_GROUP_ID: ${{ steps.computed.outputs.maven_group_id }}
       run: "${{ github.action_path }}/../../scripts/main/kubernetes-manifests-repo-provider-package"

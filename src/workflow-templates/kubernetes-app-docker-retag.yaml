@@ -75,11 +75,6 @@ on:
         required: false
         type: string
         default: ''
-      confirm-image-doesnt-exist:
-        description: 'Fail if target image already exists in registry'
-        required: false
-        type: boolean
-        default: true
       # Version generator inputs (pass-through)
       default-branch:
         description: 'The default/release branch name'
