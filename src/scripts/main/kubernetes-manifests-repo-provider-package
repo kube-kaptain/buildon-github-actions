@@ -9,8 +9,7 @@
 # Available repo providers are discovered from plugins/kubernetes-manifests-repo-providers/
 #
 # Inputs (environment variables):
-#   MANIFESTS_REPO_PROVIDER_TYPE - Type of repo provider to use (required, no default)
-#                                   Available: docker, github-release
+#   MANIFESTS_REPO_PROVIDER_TYPE - Type of repo provider to use (default: docker)
 #   All other env vars are passed through to the package script
 #
 # Outputs:
@@ -48,13 +47,8 @@ list_providers() {
 }
 
 main() {
-  # Require MANIFESTS_REPO_PROVIDER_TYPE
-  if [[ -z "${MANIFESTS_REPO_PROVIDER_TYPE:-}" ]]; then
-    local available
-    available=$(list_providers)
-    echo "${LOG_ERROR_PREFIX}MANIFESTS_REPO_PROVIDER_TYPE is required. Available: ${available}${LOG_ERROR_SUFFIX}" >&2
-    exit 1
-  fi
+  # Default to docker if not specified
+  MANIFESTS_REPO_PROVIDER_TYPE="${MANIFESTS_REPO_PROVIDER_TYPE:-docker}"
 
   # Check repo provider script exists
   local provider_script="${REPO_PROVIDERS_DIR}/${SCRIPT_PREFIX}${MANIFESTS_REPO_PROVIDER_TYPE}${SCRIPT_SUFFIX}"
