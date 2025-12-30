@@ -7,12 +7,14 @@
 # Uploads a zip file to a GitHub release. The zip must already exist.
 # Pair with kubernetes-manifests-repo-provider-github-release-package.
 #
-# Inputs (environment variables):
-#   MANIFESTS_ZIP_PATH - Path to zip file (required)
-#   MANIFESTS_ZIP_NAME - Filename for upload (required)
-#   VERSION           - Release tag (required)
-#   GITHUB_TOKEN      - For gh CLI authentication (required)
-#   IS_RELEASE        - "true" to actually upload (default: false)
+# Inputs (environment variables - REPO_PROVIDER_* API):
+#   REPO_PROVIDER_URL        - Releases URL (informational)
+#   REPO_PROVIDER_NAMESPACE  - Repository (owner/repo)
+#   REPO_PROVIDER_VERSION    - Release tag (required)
+#   REPO_PROVIDER_AUTH_TOKEN - For gh CLI authentication (optional, CI may pre-configure)
+#   MANIFESTS_ZIP_SUB_PATH       - Path to the zip file location (required)
+#   MANIFESTS_ZIP_FILE_NAME       - Filename of the zip (required)
+#   IS_RELEASE               - "true" to actually upload (default: false)
 #
 # Outputs:
 #   MANIFESTS_URI       - URL to the release
@@ -24,12 +26,19 @@ set -euo pipefail
 LOG_ERROR_PREFIX="${LOG_ERROR_PREFIX:-}"
 LOG_ERROR_SUFFIX="${LOG_ERROR_SUFFIX:-}"
 
-# Required inputs
-MANIFESTS_ZIP_PATH="${MANIFESTS_ZIP_PATH:?MANIFESTS_ZIP_PATH is required}"
-MANIFESTS_ZIP_NAME="${MANIFESTS_ZIP_NAME:?MANIFESTS_ZIP_NAME is required}"
-VERSION="${VERSION:?VERSION is required}"
+# =============================================================================
+# Map REPO_PROVIDER_* → GitHub Release terminology
+# =============================================================================
+release_tag="${REPO_PROVIDER_VERSION:?REPO_PROVIDER_VERSION (release tag) is required}"
+auth_token="${REPO_PROVIDER_AUTH_TOKEN:-}"
+# Note: REPO_PROVIDER_URL, REPO_PROVIDER_NAMESPACE are available but gh CLI
+# uses GITHUB_* context, so we don't need them here
 
-# Optional inputs with defaults
+# =============================================================================
+# Other inputs
+# =============================================================================
+MANIFESTS_ZIP_SUB_PATH="${MANIFESTS_ZIP_SUB_PATH:?MANIFESTS_ZIP_SUB_PATH is required}"
+MANIFESTS_ZIP_FILE_NAME="${MANIFESTS_ZIP_FILE_NAME:?MANIFESTS_ZIP_FILE_NAME is required}"
 IS_RELEASE="${IS_RELEASE:-false}"
 
 output_var() {
@@ -45,41 +54,46 @@ output_var() {
 
 main() {
   echo "=== Kubernetes Manifests Repo Provider Publish: GitHub Release ===" >&2
-  echo "Manifests zip: $MANIFESTS_ZIP_PATH" >&2
-  echo "Manifests zip name: $MANIFESTS_ZIP_NAME" >&2
-  echo "Version: $VERSION" >&2
+  echo "Manifests zip path: $MANIFESTS_ZIP_SUB_PATH" >&2
+  echo "Manifests zip name: $MANIFESTS_ZIP_FILE_NAME" >&2
+  echo "Release tag: $release_tag" >&2
   echo "===================================================================" >&2
 
   # Validate zip exists
-  if [[ ! -f "$MANIFESTS_ZIP_PATH" ]]; then
-    echo "${LOG_ERROR_PREFIX}Manifests zip not found: $MANIFESTS_ZIP_PATH${LOG_ERROR_SUFFIX}" >&2
+  if [[ ! -f "$MANIFESTS_ZIP_SUB_PATH/$MANIFESTS_ZIP_FILE_NAME" ]]; then
+    echo "${LOG_ERROR_PREFIX}Manifests zip not found: $MANIFESTS_ZIP_SUB_PATH/$MANIFESTS_ZIP_FILE_NAME${LOG_ERROR_SUFFIX}" >&2
     exit 1
   fi
 
-  # Check GITHUB_TOKEN is set
-  if [[ -z "${GITHUB_TOKEN:-}" ]]; then
-    echo "${LOG_ERROR_PREFIX}GITHUB_TOKEN is required for release upload${LOG_ERROR_SUFFIX}" >&2
+  # Check auth token is available (either REPO_PROVIDER_AUTH_TOKEN or pre-configured GITHUB_TOKEN)
+  if [[ -z "$auth_token" && -z "${GITHUB_TOKEN:-}" ]]; then
+    echo "${LOG_ERROR_PREFIX}REPO_PROVIDER_AUTH_TOKEN is required for release upload (unless CI pre-configures GITHUB_TOKEN)${LOG_ERROR_SUFFIX}" >&2
     exit 1
+  fi
+
+  # Set GITHUB_TOKEN from auth_token if provided (gh CLI uses GITHUB_TOKEN)
+  if [[ -n "$auth_token" ]]; then
+    export GITHUB_TOKEN="$auth_token"
   fi
 
   # Upload if release
   if [[ "$IS_RELEASE" == "true" ]]; then
     # Check if release exists
-    echo "Checking for existing release: $VERSION" >&2
+    echo "Checking for existing release: $release_tag" >&2
     local release_url
-    if gh release view "$VERSION" --json url -q '.url' &>/dev/null; then
-      release_url=$(gh release view "$VERSION" --json url -q '.url')
+    if gh release view "$release_tag" --json url -q '.url' &>/dev/null; then
+      release_url=$(gh release view "$release_tag" --json url -q '.url')
       echo "Found existing release: $release_url" >&2
     else
-      echo "Creating release: $VERSION" >&2
-      gh release create "$VERSION" --title "$VERSION" --notes "Release $VERSION"
-      release_url=$(gh release view "$VERSION" --json url -q '.url')
+      echo "Creating release: $release_tag" >&2
+      gh release create "$release_tag" --title "$release_tag" --notes "Release $release_tag"
+      release_url=$(gh release view "$release_tag" --json url -q '.url')
       echo "Created release: $release_url" >&2
     fi
 
     # Upload asset
-    echo "Uploading: $MANIFESTS_ZIP_NAME" >&2
-    gh release upload "$VERSION" "$MANIFESTS_ZIP_PATH" --clobber
+    echo "Uploading: $MANIFESTS_ZIP_FILE_NAME" >&2
+    gh release upload "$release_tag" "$MANIFESTS_ZIP_SUB_PATH/$MANIFESTS_ZIP_FILE_NAME" --clobber
 
     output_var "MANIFESTS_URI" "$release_url"
     output_var "MANIFESTS_PUBLISHED" "true"

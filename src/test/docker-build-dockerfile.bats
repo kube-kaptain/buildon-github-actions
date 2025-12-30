@@ -25,7 +25,7 @@ set_required_env() {
   export DOCKER_TAG="1.0.0"
   export VERSION="1.0.0"
   export PROJECT_NAME="my-repo"
-  export DOCKERFILE_PATH="$TEST_DIR"
+  export DOCKERFILE_SUB_PATH="$TEST_DIR"
   export SQUASH="false"
 }
 
@@ -67,7 +67,7 @@ set_required_env() {
 @test "fails when TARGET_REGISTRY missing" {
   export TARGET_IMAGE_NAME="test/my-repo"
   export DOCKER_TAG="1.0.0"
-  export DOCKERFILE_PATH="$TEST_DIR"
+  export DOCKERFILE_SUB_PATH="$TEST_DIR"
 
   run "$SCRIPTS_DIR/docker-build-dockerfile"
   [ "$status" -ne 0 ]
@@ -76,7 +76,7 @@ set_required_env() {
 
 @test "fails when Dockerfile directory not found" {
   set_required_env
-  export DOCKERFILE_PATH="/nonexistent/path"
+  export DOCKERFILE_SUB_PATH="/nonexistent/path"
 
   run "$SCRIPTS_DIR/docker-build-dockerfile"
   [ "$status" -ne 0 ]

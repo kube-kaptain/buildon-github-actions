@@ -10,26 +10,28 @@ load helpers
 setup() {
   setup_mock_docker
   export GITHUB_OUTPUT=$(mktemp)
-  # Create a test zip file
-  export TEST_ZIP=$(mktemp)
-  echo "test content" > "$TEST_ZIP"
+  # Create a test zip in a directory
+  export TEST_ZIP_DIR=$(mktemp -d)
+  export TEST_ZIP_NAME="test-manifests.zip"
+  echo "test content" > "$TEST_ZIP_DIR/$TEST_ZIP_NAME"
   # Create output directory
-  export OUTPUT_PATH=$(mktemp -d)
+  export OUTPUT_SUB_PATH=$(mktemp -d)
 }
 
 teardown() {
   cleanup_mock_docker
   rm -f "$GITHUB_OUTPUT"
-  rm -f "$TEST_ZIP"
-  rm -rf "$OUTPUT_PATH"
+  rm -rf "$TEST_ZIP_DIR"
+  rm -rf "$OUTPUT_SUB_PATH"
 }
 
-# Required env vars for most tests
+# Required env vars for most tests (using REPO_PROVIDER_* API)
 set_required_env() {
-  export MANIFESTS_ZIP_PATH="$TEST_ZIP"
-  export TARGET_REGISTRY="ghcr.io"
-  export TARGET_IMAGE_NAME="test/my-repo"
-  export DOCKER_TAG="1.0.0-manifests"
+  export MANIFESTS_ZIP_SUB_PATH="$TEST_ZIP_DIR"
+  export MANIFESTS_ZIP_FILE_NAME="$TEST_ZIP_NAME"
+  export REPO_PROVIDER_URL="ghcr.io"
+  export REPO_PROVIDER_NAME="test/my-repo"
+  export REPO_PROVIDER_VERSION="1.0.0-manifests"
 }
 
 @test "assembles target URI without base path" {
@@ -42,7 +44,7 @@ set_required_env() {
 
 @test "assembles target URI with base path" {
   set_required_env
-  export TARGET_BASE_PATH="kube-kaptain"
+  export REPO_PROVIDER_NAMESPACE="kube-kaptain"
 
   run "$REPO_PROVIDERS_DIR/kubernetes-manifests-repo-provider-docker-package"
   [ "$status" -eq 0 ]
@@ -63,12 +65,10 @@ set_required_env() {
   run "$REPO_PROVIDERS_DIR/kubernetes-manifests-repo-provider-docker-package"
   [ "$status" -eq 0 ]
   # Verify publish directory was created
-  [ -d "$OUTPUT_PATH/publish/docker" ]
-  [ -f "$OUTPUT_PATH/publish/docker/Dockerfile" ]
-  # Zip file should be copied with original name (basename of TEST_ZIP)
-  local zip_name
-  zip_name=$(basename "$TEST_ZIP")
-  [ -f "$OUTPUT_PATH/publish/docker/$zip_name" ]
+  [ -d "$OUTPUT_SUB_PATH/publish/docker" ]
+  [ -f "$OUTPUT_SUB_PATH/publish/docker/Dockerfile" ]
+  # Zip file should be copied with original name
+  [ -f "$OUTPUT_SUB_PATH/publish/docker/$TEST_ZIP_NAME" ]
 }
 
 @test "does not push (package only)" {
@@ -79,55 +79,58 @@ set_required_env() {
   assert_docker_not_called "push"
 }
 
-@test "fails when MANIFESTS_ZIP_PATH missing" {
-  export TARGET_REGISTRY="ghcr.io"
-  export TARGET_IMAGE_NAME="test/my-repo"
-  export DOCKER_TAG="1.0.0-manifests"
-  unset MANIFESTS_ZIP_PATH
+@test "fails when MANIFESTS_ZIP_SUB_PATH missing" {
+  export REPO_PROVIDER_URL="ghcr.io"
+  export REPO_PROVIDER_NAME="test/my-repo"
+  export REPO_PROVIDER_VERSION="1.0.0-manifests"
+  unset MANIFESTS_ZIP_SUB_PATH
 
   run "$REPO_PROVIDERS_DIR/kubernetes-manifests-repo-provider-docker-package"
   [ "$status" -ne 0 ]
-  assert_output_contains "MANIFESTS_ZIP_PATH"
+  assert_output_contains "MANIFESTS_ZIP_SUB_PATH"
 }
 
 @test "fails when zip file not found" {
   set_required_env
-  export MANIFESTS_ZIP_PATH="/nonexistent/file.zip"
+  export MANIFESTS_ZIP_SUB_PATH="/nonexistent"
+  export MANIFESTS_ZIP_FILE_NAME="file.zip"
 
   run "$REPO_PROVIDERS_DIR/kubernetes-manifests-repo-provider-docker-package"
   [ "$status" -ne 0 ]
   assert_output_contains "Manifests zip not found"
 }
 
-@test "fails when TARGET_IMAGE_NAME missing" {
-  export MANIFESTS_ZIP_PATH="$TEST_ZIP"
-  export TARGET_REGISTRY="ghcr.io"
-  export DOCKER_TAG="1.0.0-manifests"
+@test "fails when REPO_PROVIDER_NAME missing" {
+  export MANIFESTS_ZIP_SUB_PATH="$TEST_ZIP_DIR"
+  export MANIFESTS_ZIP_FILE_NAME="$TEST_ZIP_NAME"
+  export REPO_PROVIDER_URL="ghcr.io"
+  export REPO_PROVIDER_VERSION="1.0.0-manifests"
 
   run "$REPO_PROVIDERS_DIR/kubernetes-manifests-repo-provider-docker-package"
   [ "$status" -ne 0 ]
-  assert_output_contains "TARGET_IMAGE_NAME"
+  assert_output_contains "REPO_PROVIDER_NAME"
 }
 
-@test "fails when DOCKER_TAG missing" {
-  export MANIFESTS_ZIP_PATH="$TEST_ZIP"
-  export TARGET_REGISTRY="ghcr.io"
-  export TARGET_IMAGE_NAME="test/my-repo"
+@test "fails when REPO_PROVIDER_VERSION missing" {
+  export MANIFESTS_ZIP_SUB_PATH="$TEST_ZIP_DIR"
+  export MANIFESTS_ZIP_FILE_NAME="$TEST_ZIP_NAME"
+  export REPO_PROVIDER_URL="ghcr.io"
+  export REPO_PROVIDER_NAME="test/my-repo"
 
   run "$REPO_PROVIDERS_DIR/kubernetes-manifests-repo-provider-docker-package"
   [ "$status" -ne 0 ]
-  assert_output_contains "DOCKER_TAG"
+  assert_output_contains "REPO_PROVIDER_VERSION"
 }
 
-@test "defaults TARGET_REGISTRY to ghcr.io" {
-  export MANIFESTS_ZIP_PATH="$TEST_ZIP"
-  export TARGET_IMAGE_NAME="test/my-repo"
-  export DOCKER_TAG="1.0.0-manifests"
-  unset TARGET_REGISTRY
+@test "fails when REPO_PROVIDER_URL missing" {
+  export MANIFESTS_ZIP_SUB_PATH="$TEST_ZIP_DIR"
+  export MANIFESTS_ZIP_FILE_NAME="$TEST_ZIP_NAME"
+  export REPO_PROVIDER_NAME="test/my-repo"
+  export REPO_PROVIDER_VERSION="1.0.0-manifests"
 
   run "$REPO_PROVIDERS_DIR/kubernetes-manifests-repo-provider-docker-package"
-  [ "$status" -eq 0 ]
-  assert_var_equals "MANIFESTS_URI" "ghcr.io/test/my-repo:1.0.0-manifests"
+  [ "$status" -ne 0 ]
+  assert_output_contains "REPO_PROVIDER_URL"
 }
 
 @test "defaults CONFIRM_IMAGE_DOESNT_EXIST to true" {

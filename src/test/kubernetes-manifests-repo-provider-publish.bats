@@ -9,8 +9,9 @@ load helpers
 setup() {
   setup_mock_docker
   export GITHUB_OUTPUT=$(mktemp)
-  export TEST_ZIP=$(mktemp)
-  echo "test content" > "$TEST_ZIP"
+  export TEST_ZIP_DIR=$(mktemp -d)
+  export TEST_ZIP_NAME="test-manifests.zip"
+  echo "test content" > "$TEST_ZIP_DIR/$TEST_ZIP_NAME"
   # Set up mock gh CLI
   export MOCK_GH_CALLS=$(mktemp)
   mkdir -p "$MOCK_BIN_DIR"
@@ -35,7 +36,7 @@ MOCKGH
 teardown() {
   cleanup_mock_docker
   rm -f "$GITHUB_OUTPUT"
-  rm -f "$TEST_ZIP"
+  rm -rf "$TEST_ZIP_DIR"
   rm -f "$MOCK_GH_CALLS"
 }
 
@@ -69,9 +70,9 @@ teardown() {
 
 @test "dispatches to github-release repo provider" {
   export MANIFESTS_REPO_PROVIDER_TYPE="github-release"
-  export MANIFESTS_ZIP_PATH="$TEST_ZIP"
-  export MANIFESTS_ZIP_NAME="test-1.0.0-manifests.zip"
-  export VERSION="1.0.0"
+  export MANIFESTS_ZIP_SUB_PATH="$TEST_ZIP_DIR"
+  export MANIFESTS_ZIP_FILE_NAME="$TEST_ZIP_NAME"
+  export REPO_PROVIDER_VERSION="1.0.0"
   export GITHUB_TOKEN="test-token"
 
   run "$SCRIPTS_DIR/kubernetes-manifests-repo-provider-publish"

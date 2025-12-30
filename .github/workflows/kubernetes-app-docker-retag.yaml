@@ -19,8 +19,8 @@ on:
         required: true
         type: string
       # Manifest configuration
-      manifests-path:
-        description: 'Directory containing Kubernetes manifests'
+      manifests-sub-path:
+        description: 'Directory containing Kubernetes manifests (relative)'
         required: false
         type: string
         default: 'src/kubernetes'
@@ -44,11 +44,16 @@ on:
         required: false
         type: boolean
         default: false
-      config-path:
-        description: 'Directory containing user-defined token files'
+      config-sub-path:
+        description: 'Directory containing user-defined token files (relative)'
         required: false
         type: string
         default: 'src/config'
+      output-sub-path:
+        description: 'Build output directory (relative)'
+        required: false
+        type: string
+        default: 'target'
       config-value-trailing-newline:
         description: 'How to handle trailing newlines in config values (strip-for-single-line, preserve-all, always-strip-one-newline)'
         required: false
@@ -186,15 +191,12 @@ on:
         description: 'Whether docker image was pushed'
         value: ${{ jobs.build.outputs.docker-image-pushed }}
       # Manifest package outputs
-      manifests-zip-path:
-        description: 'Directory containing manifests zip file'
-        value: ${{ jobs.build.outputs.manifests-zip-path }}
-      manifests-zip-name:
+      manifests-zip-sub-path:
+        description: 'Directory containing manifests zip file (relative)'
+        value: ${{ jobs.build.outputs.manifests-zip-sub-path }}
+      manifests-zip-file-name:
         description: 'Name of manifests zip file'
-        value: ${{ jobs.build.outputs.manifests-zip-name }}
-      manifests-zip-full-path:
-        description: 'Full path to manifests zip file'
-        value: ${{ jobs.build.outputs.manifests-zip-full-path }}
+        value: ${{ jobs.build.outputs.manifests-zip-file-name }}
       # Manifest repo provider publish outputs
       manifests-uri:
         description: 'Reference to published manifests (format depends on repo provider)'
@@ -307,9 +309,8 @@ jobs:
       source-image-full-uri: ${{ steps.docker-build.outputs.source-image-full-uri }}
       target-image-full-uri: ${{ steps.docker-build.outputs.target-image-full-uri }}
       docker-image-pushed: ${{ steps.docker-push.outputs.image-pushed }}
-      manifests-zip-path: ${{ steps.manifest-package.outputs.manifests-zip-path }}
-      manifests-zip-name: ${{ steps.manifest-package.outputs.manifests-zip-name }}
-      manifests-zip-full-path: ${{ steps.manifest-package.outputs.manifests-zip-full-path }}
+      manifests-zip-sub-path: ${{ steps.manifest-package.outputs.manifests-zip-sub-path }}
+      manifests-zip-file-name: ${{ steps.manifest-package.outputs.manifests-zip-file-name }}
       manifests-uri: ${{ steps.manifest-repo-provider-publish.outputs.manifests-uri }}
       manifests-published: ${{ steps.manifest-repo-provider-publish.outputs.manifests-published }}
     steps:
@@ -481,7 +482,7 @@ jobs:
         id: manifest-package
         uses: ./.github/buildon-github-actions/src/actions/kubernetes-manifests-package
         with:
-          manifests-path: ${{ inputs.manifests-path }}
+          manifests-sub-path: ${{ inputs.manifests-sub-path }}
           project-name: ${{ steps.versions.outputs.project-name }}
           version: ${{ steps.versions.outputs.version }}
           docker-tag: ${{ steps.versions.outputs.docker-tag }}
@@ -494,8 +495,9 @@ jobs:
           token-name-style: ${{ inputs.token-name-style }}
           token-name-validation: ${{ inputs.token-name-validation }}
           allow-builtin-token-override: ${{ inputs.allow-builtin-token-override }}
-          config-path: ${{ inputs.config-path }}
+          config-sub-path: ${{ inputs.config-sub-path }}
           config-value-trailing-newline: ${{ inputs.config-value-trailing-newline }}
+          output-sub-path: ${{ inputs.output-sub-path }}
       - name: Pass check - Package Manifests
         if: success()
         uses: ./.github/buildon-github-actions/src/actions/github-check-run
@@ -521,14 +523,15 @@ jobs:
         uses: ./.github/buildon-github-actions/src/actions/kubernetes-manifests-repo-provider-package
         with:
           manifests-repo-provider-type: ${{ inputs.manifests-repo-provider-type }}
-          manifests-zip-full-path: ${{ steps.manifest-package.outputs.manifests-zip-full-path }}
-          manifests-zip-name: ${{ steps.manifest-package.outputs.manifests-zip-name }}
+          manifests-zip-sub-path: ${{ steps.manifest-package.outputs.manifests-zip-sub-path }}
+          manifests-zip-file-name: ${{ steps.manifest-package.outputs.manifests-zip-file-name }}
           target-registry: ${{ steps.docker-build.outputs.target-registry }}
           target-base-path: ${{ steps.docker-build.outputs.target-base-path }}
           target-image-name: ${{ steps.versions.outputs.docker-image-name }}
           docker-tag: ${{ steps.versions.outputs.docker-tag }}-manifests
           confirm-image-doesnt-exist: ${{ inputs.confirm-image-doesnt-exist }}
           version: ${{ steps.versions.outputs.version }}
+          output-sub-path: ${{ inputs.output-sub-path }}
       - name: Pass check - Package Manifests for Repo Provider
         if: success()
         uses: ./.github/buildon-github-actions/src/actions/github-check-run
@@ -617,8 +620,8 @@ jobs:
         with:
           manifests-repo-provider-type: ${{ inputs.manifests-repo-provider-type }}
           manifests-uri: ${{ steps.manifest-repo-provider-package.outputs.manifests-uri }}
-          manifests-zip-path: ${{ steps.manifest-repo-provider-package.outputs.manifests-zip-path }}
-          manifests-zip-name: ${{ steps.manifest-repo-provider-package.outputs.manifests-zip-name }}
+          manifests-zip-sub-path: ${{ steps.manifest-repo-provider-package.outputs.manifests-zip-sub-path }}
+          manifests-zip-file-name: ${{ steps.manifest-repo-provider-package.outputs.manifests-zip-file-name }}
           version: ${{ steps.manifest-repo-provider-package.outputs.version }}
           is-release: ${{ steps.versions.outputs.is-release }}
       - name: Pass check - Publish Manifests via Repo Provider

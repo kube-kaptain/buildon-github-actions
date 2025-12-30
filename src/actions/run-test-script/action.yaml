@@ -63,18 +63,18 @@ runs:
     - name: Validate script exists
       shell: bash
       run: |
-        SCRIPT_PATH=".github/${{ inputs.script-sub-path }}"
-        if [[ ! -f "$SCRIPT_PATH" ]]; then
-          echo "::error::Test script not found: $SCRIPT_PATH"
+        SCRIPT_SUB_PATH=".github/${{ inputs.script-sub-path }}"
+        if [[ ! -f "$SCRIPT_SUB_PATH" ]]; then
+          echo "::error::Test script not found: $SCRIPT_SUB_PATH"
           echo "Configured script-sub-path '${{ inputs.script-sub-path }}' does not exist under .github/"
           exit 1
         fi
-        if [[ ! -x "$SCRIPT_PATH" ]]; then
-          echo "::error::Test script is not executable: $SCRIPT_PATH"
-          echo "Run: chmod +x $SCRIPT_PATH"
+        if [[ ! -x "$SCRIPT_SUB_PATH" ]]; then
+          echo "::error::Test script is not executable: $SCRIPT_SUB_PATH"
+          echo "Run: chmod +x $SCRIPT_SUB_PATH"
           exit 1
         fi
-        echo "Found executable script: $SCRIPT_PATH"
+        echo "Found executable script: $SCRIPT_SUB_PATH"
 
     - name: Run test script
       shell: bash
@@ -92,6 +92,6 @@ runs:
         PROJECT_NAME: ${{ inputs.project-name }}
         TARGET_IMAGE_FULL_URI: ${{ inputs.target-image-full-uri }}
       run: |
-        SCRIPT_PATH=".github/${{ inputs.script-sub-path }}"
-        echo "Running: $SCRIPT_PATH"
-        "$SCRIPT_PATH"
+        SCRIPT_SUB_PATH=".github/${{ inputs.script-sub-path }}"
+        echo "Running: $SCRIPT_SUB_PATH"
+        "$SCRIPT_SUB_PATH"

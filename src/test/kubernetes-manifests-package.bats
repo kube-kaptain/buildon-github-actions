@@ -6,16 +6,18 @@ load helpers
 
 setup() {
   export GITHUB_OUTPUT=$(mktemp)
-  export TEST_MANIFESTS=$(mktemp -d)
-  export OUTPUT_PATH=$(mktemp -d)
-  export CONFIG_DIR=$(mktemp -d)
+  # Create test directories as relative sub-paths (script expects relative paths)
+  export TEST_WORK_DIR="test-workdir-$$"
+  mkdir -p "$TEST_WORK_DIR"
+  export TEST_MANIFESTS="$TEST_WORK_DIR/manifests"
+  export OUTPUT_SUB_PATH="$TEST_WORK_DIR/target"
+  export CONFIG_DIR="$TEST_WORK_DIR/config"
+  mkdir -p "$TEST_MANIFESTS" "$OUTPUT_SUB_PATH" "$CONFIG_DIR"
 }
 
 teardown() {
   rm -f "$GITHUB_OUTPUT"
-  rm -rf "$TEST_MANIFESTS"
-  rm -rf "$OUTPUT_PATH"
-  rm -rf "$CONFIG_DIR"
+  rm -rf "$TEST_WORK_DIR"
 }
 
 # Create sample manifest file
@@ -38,8 +40,8 @@ create_config_token() {
 set_required_env() {
   export PROJECT_NAME="my-project"
   export VERSION="1.2.3"
-  export MANIFESTS_PATH="$TEST_MANIFESTS"
-  export CONFIG_PATH="$CONFIG_DIR"
+  export MANIFESTS_SUB_PATH="$TEST_MANIFESTS"
+  export CONFIG_SUB_PATH="$CONFIG_DIR"
 }
 
 @test "creates zip from directory" {
@@ -48,8 +50,8 @@ set_required_env() {
 
   run "$SCRIPTS_DIR/kubernetes-manifests-package"
   [ "$status" -eq 0 ]
-  assert_var_equals "MANIFESTS_ZIP_NAME" "my-project-1.2.3-manifests.zip"
-  [ -f "$OUTPUT_PATH/manifests/zip/my-project-1.2.3-manifests.zip" ]
+  assert_var_equals "MANIFESTS_ZIP_FILE_NAME" "my-project-1.2.3-manifests.zip"
+  [ -f "$OUTPUT_SUB_PATH/manifests/zip/my-project-1.2.3-manifests.zip" ]
 }
 
 @test "creates target directory structure" {
@@ -58,10 +60,10 @@ set_required_env() {
 
   run "$SCRIPTS_DIR/kubernetes-manifests-package"
   [ "$status" -eq 0 ]
-  [ -d "$OUTPUT_PATH/manifests/raw" ]
-  [ -d "$OUTPUT_PATH/manifests/config" ]
-  [ -d "$OUTPUT_PATH/manifests/substituted" ]
-  [ -d "$OUTPUT_PATH/manifests/zip" ]
+  [ -d "$OUTPUT_SUB_PATH/manifests/raw" ]
+  [ -d "$OUTPUT_SUB_PATH/manifests/config" ]
+  [ -d "$OUTPUT_SUB_PATH/manifests/substituted" ]
+  [ -d "$OUTPUT_SUB_PATH/manifests/zip" ]
 }
 
 @test "writes built-in tokens as files" {
@@ -72,10 +74,10 @@ set_required_env() {
   [ "$status" -eq 0 ]
 
   # Default style is PascalCase
-  [ -f "$OUTPUT_PATH/manifests/config/ProjectName" ]
-  [ -f "$OUTPUT_PATH/manifests/config/Version" ]
-  [ "$(cat "$OUTPUT_PATH/manifests/config/ProjectName")" = "my-project" ]
-  [ "$(cat "$OUTPUT_PATH/manifests/config/Version")" = "1.2.3" ]
+  [ -f "$OUTPUT_SUB_PATH/manifests/config/ProjectName" ]
+  [ -f "$OUTPUT_SUB_PATH/manifests/config/Version" ]
+  [ "$(cat "$OUTPUT_SUB_PATH/manifests/config/ProjectName")" = "my-project" ]
+  [ "$(cat "$OUTPUT_SUB_PATH/manifests/config/Version")" = "1.2.3" ]
 }
 
 @test "substitutes ProjectName with PascalCase style (default)" {
@@ -85,7 +87,7 @@ set_required_env() {
   run "$SCRIPTS_DIR/kubernetes-manifests-package"
   [ "$status" -eq 0 ]
 
-  unzip -p "$OUTPUT_PATH/manifests/zip/my-project-1.2.3-manifests.zip" my-project/deployment.yaml | grep -q "name: my-project-app"
+  unzip -p "$OUTPUT_SUB_PATH/manifests/zip/my-project-1.2.3-manifests.zip" my-project/deployment.yaml | grep -q "name: my-project-app"
 }
 
 @test "substitutes with kebab-case style" {
@@ -96,7 +98,7 @@ set_required_env() {
   run "$SCRIPTS_DIR/kubernetes-manifests-package"
   [ "$status" -eq 0 ]
 
-  unzip -p "$OUTPUT_PATH/manifests/zip/my-project-1.2.3-manifests.zip" my-project/deployment.yaml | grep -q "name: my-project-app"
+  unzip -p "$OUTPUT_SUB_PATH/manifests/zip/my-project-1.2.3-manifests.zip" my-project/deployment.yaml | grep -q "name: my-project-app"
 }
 
 @test "substitutes with UPPER_SNAKE style" {
@@ -107,7 +109,7 @@ set_required_env() {
   run "$SCRIPTS_DIR/kubernetes-manifests-package"
   [ "$status" -eq 0 ]
 
-  unzip -p "$OUTPUT_PATH/manifests/zip/my-project-1.2.3-manifests.zip" my-project/deployment.yaml | grep -q "name: my-project-app"
+  unzip -p "$OUTPUT_SUB_PATH/manifests/zip/my-project-1.2.3-manifests.zip" my-project/deployment.yaml | grep -q "name: my-project-app"
 }
 
 @test "substitutes VERSION" {
@@ -117,7 +119,7 @@ set_required_env() {
   run "$SCRIPTS_DIR/kubernetes-manifests-package"
   [ "$status" -eq 0 ]
 
-  unzip -p "$OUTPUT_PATH/manifests/zip/my-project-1.2.3-manifests.zip" my-project/deployment.yaml | grep -q "version: 1.2.3"
+  unzip -p "$OUTPUT_SUB_PATH/manifests/zip/my-project-1.2.3-manifests.zip" my-project/deployment.yaml | grep -q "version: 1.2.3"
 }
 
 @test "substitutes DOCKER_TAG when provided" {
@@ -128,7 +130,7 @@ set_required_env() {
   run "$SCRIPTS_DIR/kubernetes-manifests-package"
   [ "$status" -eq 0 ]
 
-  unzip -p "$OUTPUT_PATH/manifests/zip/my-project-1.2.3-manifests.zip" my-project/deployment.yaml | grep -q "image: myrepo:1.2.3-PRERELEASE"
+  unzip -p "$OUTPUT_SUB_PATH/manifests/zip/my-project-1.2.3-manifests.zip" my-project/deployment.yaml | grep -q "image: myrepo:1.2.3-PRERELEASE"
 }
 
 @test "substitutes DOCKER_IMAGE_NAME when provided" {
@@ -139,7 +141,7 @@ set_required_env() {
   run "$SCRIPTS_DIR/kubernetes-manifests-package"
   [ "$status" -eq 0 ]
 
-  unzip -p "$OUTPUT_PATH/manifests/zip/my-project-1.2.3-manifests.zip" my-project/deployment.yaml | grep -q "image: org/my-image"
+  unzip -p "$OUTPUT_SUB_PATH/manifests/zip/my-project-1.2.3-manifests.zip" my-project/deployment.yaml | grep -q "image: org/my-image"
 }
 
 @test "copies user config tokens" {
@@ -150,7 +152,7 @@ set_required_env() {
   run "$SCRIPTS_DIR/kubernetes-manifests-package"
   [ "$status" -eq 0 ]
 
-  unzip -p "$OUTPUT_PATH/manifests/zip/my-project-1.2.3-manifests.zip" my-project/deployment.yaml | grep -q "custom: custom-value"
+  unzip -p "$OUTPUT_SUB_PATH/manifests/zip/my-project-1.2.3-manifests.zip" my-project/deployment.yaml | grep -q "custom: custom-value"
 }
 
 @test "validates user config names match token-name-style" {
@@ -175,7 +177,7 @@ set_required_env() {
   run "$SCRIPTS_DIR/kubernetes-manifests-package"
   [ "$status" -eq 0 ]
 
-  unzip -p "$OUTPUT_PATH/manifests/zip/my-project-1.2.3-manifests.zip" my-project/deployment.yaml | grep -q "custom: value"
+  unzip -p "$OUTPUT_SUB_PATH/manifests/zip/my-project-1.2.3-manifests.zip" my-project/deployment.yaml | grep -q "custom: value"
 }
 
 @test "blocks builtin override by default" {
@@ -198,7 +200,7 @@ set_required_env() {
   run "$SCRIPTS_DIR/kubernetes-manifests-package"
   [ "$status" -eq 0 ]
 
-  unzip -p "$OUTPUT_PATH/manifests/zip/my-project-1.2.3-manifests.zip" my-project/deployment.yaml | grep -q "name: overridden-value"
+  unzip -p "$OUTPUT_SUB_PATH/manifests/zip/my-project-1.2.3-manifests.zip" my-project/deployment.yaml | grep -q "name: overridden-value"
 }
 
 @test "preserves directory structure" {
@@ -209,8 +211,8 @@ set_required_env() {
   run "$SCRIPTS_DIR/kubernetes-manifests-package"
   [ "$status" -eq 0 ]
 
-  unzip -l "$OUTPUT_PATH/manifests/zip/my-project-1.2.3-manifests.zip" | grep -q "my-project/base/deployment.yaml"
-  unzip -l "$OUTPUT_PATH/manifests/zip/my-project-1.2.3-manifests.zip" | grep -q "my-project/overlays/prod/patch.yaml"
+  unzip -l "$OUTPUT_SUB_PATH/manifests/zip/my-project-1.2.3-manifests.zip" | grep -q "my-project/base/deployment.yaml"
+  unzip -l "$OUTPUT_SUB_PATH/manifests/zip/my-project-1.2.3-manifests.zip" | grep -q "my-project/overlays/prod/patch.yaml"
 }
 
 @test "wraps contents in project-name directory" {
@@ -220,13 +222,13 @@ set_required_env() {
   run "$SCRIPTS_DIR/kubernetes-manifests-package"
   [ "$status" -eq 0 ]
 
-  unzip -l "$OUTPUT_PATH/manifests/zip/my-project-1.2.3-manifests.zip" | grep -q "my-project/"
-  unzip -l "$OUTPUT_PATH/manifests/zip/my-project-1.2.3-manifests.zip" | grep -q "my-project/deployment.yaml"
+  unzip -l "$OUTPUT_SUB_PATH/manifests/zip/my-project-1.2.3-manifests.zip" | grep -q "my-project/"
+  unzip -l "$OUTPUT_SUB_PATH/manifests/zip/my-project-1.2.3-manifests.zip" | grep -q "my-project/deployment.yaml"
 }
 
 @test "fails when manifests directory not found" {
   set_required_env
-  export MANIFESTS_PATH="/nonexistent/path"
+  export MANIFESTS_SUB_PATH="/nonexistent/path"
 
   run "$SCRIPTS_DIR/kubernetes-manifests-package"
   [ "$status" -ne 0 ]
@@ -243,7 +245,7 @@ set_required_env() {
 
 @test "fails when PROJECT_NAME missing" {
   export VERSION="1.0.0"
-  export MANIFESTS_PATH="$TEST_MANIFESTS"
+  export MANIFESTS_SUB_PATH="$TEST_MANIFESTS"
   create_manifest "deployment.yaml"
 
   run "$SCRIPTS_DIR/kubernetes-manifests-package"
@@ -253,7 +255,7 @@ set_required_env() {
 
 @test "fails when VERSION missing" {
   export PROJECT_NAME="my-project"
-  export MANIFESTS_PATH="$TEST_MANIFESTS"
+  export MANIFESTS_SUB_PATH="$TEST_MANIFESTS"
   create_manifest "deployment.yaml"
 
   run "$SCRIPTS_DIR/kubernetes-manifests-package"
@@ -261,19 +263,19 @@ set_required_env() {
   assert_output_contains "VERSION"
 }
 
-@test "defaults MANIFESTS_PATH to src/kubernetes" {
+@test "defaults MANIFESTS_SUB_PATH to src/kubernetes" {
   export PROJECT_NAME="my-project"
   export VERSION="1.0.0"
-  unset MANIFESTS_PATH
+  unset MANIFESTS_SUB_PATH
 
   run "$SCRIPTS_DIR/kubernetes-manifests-package"
   [ "$status" -ne 0 ]
   assert_output_contains "src/kubernetes"
 }
 
-@test "defaults OUTPUT_PATH to target" {
+@test "defaults OUTPUT_SUB_PATH to target" {
   set_required_env
-  unset OUTPUT_PATH
+  unset OUTPUT_SUB_PATH
   create_manifest "deployment.yaml"
 
   run "$SCRIPTS_DIR/kubernetes-manifests-package"
@@ -291,7 +293,7 @@ set_required_env() {
   [ "$status" -eq 0 ]
   assert_output_contains "Name style: PascalCase"
 
-  unzip -p "$OUTPUT_PATH/manifests/zip/my-project-1.2.3-manifests.zip" my-project/deployment.yaml | grep -q "name: my-project"
+  unzip -p "$OUTPUT_SUB_PATH/manifests/zip/my-project-1.2.3-manifests.zip" my-project/deployment.yaml | grep -q "name: my-project"
 }
 
 @test "reports yaml file count" {
@@ -312,7 +314,7 @@ set_required_env() {
   run "$SCRIPTS_DIR/kubernetes-manifests-package"
   [ "$status" -eq 0 ]
 
-  unzip -p "$OUTPUT_PATH/manifests/zip/my-project-1.2.3-manifests.zip" my-project/deployment.yaml | grep -q "name: my-project"
+  unzip -p "$OUTPUT_SUB_PATH/manifests/zip/my-project-1.2.3-manifests.zip" my-project/deployment.yaml | grep -q "name: my-project"
 }
 
 @test "substitutes with UPPER.DOT style" {
@@ -323,7 +325,7 @@ set_required_env() {
   run "$SCRIPTS_DIR/kubernetes-manifests-package"
   [ "$status" -eq 0 ]
 
-  unzip -p "$OUTPUT_PATH/manifests/zip/my-project-1.2.3-manifests.zip" my-project/deployment.yaml | grep -q "name: my-project"
+  unzip -p "$OUTPUT_SUB_PATH/manifests/zip/my-project-1.2.3-manifests.zip" my-project/deployment.yaml | grep -q "name: my-project"
 }
 
 @test "fails with unknown token name style" {
@@ -354,7 +356,7 @@ set_required_env() {
   run "$SCRIPTS_DIR/kubernetes-manifests-package"
   [ "$status" -eq 0 ]
 
-  unzip -p "$OUTPUT_PATH/manifests/zip/my-project-1.2.3-manifests.zip" my-project/deployment.yaml | grep -q "name: my-project"
+  unzip -p "$OUTPUT_SUB_PATH/manifests/zip/my-project-1.2.3-manifests.zip" my-project/deployment.yaml | grep -q "name: my-project"
 }
 
 @test "fails with unknown substitution token style" {
@@ -376,18 +378,18 @@ set_required_env() {
   run "$SCRIPTS_DIR/kubernetes-manifests-package"
   [ "$status" -eq 0 ]
 
-  unzip -p "$OUTPUT_PATH/manifests/zip/my-project-1.2.3-manifests.zip" my-project/deployment.yaml | grep -q "value: nested-value"
+  unzip -p "$OUTPUT_SUB_PATH/manifests/zip/my-project-1.2.3-manifests.zip" my-project/deployment.yaml | grep -q "value: nested-value"
 }
 
 @test "succeeds with no user config directory" {
   set_required_env
-  export CONFIG_PATH="/nonexistent/config"
+  export CONFIG_SUB_PATH="/nonexistent/config"
   create_manifest "deployment.yaml" 'name: ${ProjectName}'
 
   run "$SCRIPTS_DIR/kubernetes-manifests-package"
   [ "$status" -eq 0 ]
 
-  unzip -p "$OUTPUT_PATH/manifests/zip/my-project-1.2.3-manifests.zip" my-project/deployment.yaml | grep -q "name: my-project"
+  unzip -p "$OUTPUT_SUB_PATH/manifests/zip/my-project-1.2.3-manifests.zip" my-project/deployment.yaml | grep -q "name: my-project"
 }
 
 @test "succeeds with empty user config directory" {
@@ -397,7 +399,7 @@ set_required_env() {
   run "$SCRIPTS_DIR/kubernetes-manifests-package"
   [ "$status" -eq 0 ]
 
-  unzip -p "$OUTPUT_PATH/manifests/zip/my-project-1.2.3-manifests.zip" my-project/deployment.yaml | grep -q "name: my-project"
+  unzip -p "$OUTPUT_SUB_PATH/manifests/zip/my-project-1.2.3-manifests.zip" my-project/deployment.yaml | grep -q "name: my-project"
 }
 
 @test "lists all conflicting tokens" {

@@ -5,7 +5,7 @@
   id: manifest-package
   uses: ./.github/buildon-github-actions/src/actions/kubernetes-manifests-package
   with:
-    manifests-path: ${{ inputs.manifests-path }}
+    manifests-sub-path: ${{ inputs.manifests-sub-path }}
     project-name: ${{ steps.versions.outputs.project-name }}
     version: ${{ steps.versions.outputs.version }}
     docker-tag: ${{ steps.versions.outputs.docker-tag }}
@@ -18,5 +18,6 @@
     token-name-style: ${{ inputs.token-name-style }}
     token-name-validation: ${{ inputs.token-name-validation }}
     allow-builtin-token-override: ${{ inputs.allow-builtin-token-override }}
-    config-path: ${{ inputs.config-path }}
+    config-sub-path: ${{ inputs.config-sub-path }}
     config-value-trailing-newline: ${{ inputs.config-value-trailing-newline }}
+    output-sub-path: ${{ inputs.output-sub-path }}

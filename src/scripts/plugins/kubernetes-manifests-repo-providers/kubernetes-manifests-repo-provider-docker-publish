@@ -7,11 +7,12 @@
 # Pushes a Docker image that was built by kubernetes-manifests-repo-provider-docker-package.
 # This script ONLY pushes - the image must already exist locally.
 #
-# Inputs (environment variables):
+# Inputs (environment variables - REPO_PROVIDER_* API):
 #   MANIFESTS_URI       - Full image reference to push (required, from package step)
 #   IS_RELEASE          - "true" to actually push (default: false)
+#   (REPO_PROVIDER_* vars available but not needed - image URI from package step)
 #
-# Outputs::
+# Outputs:
 #   MANIFESTS_URI       - Full image reference (same as input)
 #   MANIFESTS_PUBLISHED - "true" if pushed, "false" if skipped
 #

@@ -313,7 +313,7 @@ ENV HELM_VERSION=3.14.0' > src/docker/Dockerfile
 ENV KUBECTL_VERSION=1.29.0' > custom/path/Dockerfile
 
   export TAG_VERSION_CALCULATION_STRATEGY=dockerfile-env-version
-  export DOCKERFILE_PATH=custom/path
+  export DOCKERFILE_SUB_PATH=custom/path
 
   run "$SCRIPTS_DIR/versions-and-naming"
   [ "$status" -eq 0 ]

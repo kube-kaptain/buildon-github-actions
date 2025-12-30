@@ -37,7 +37,7 @@ jobs:
 # │ Dockerfile Configuration                                                │
 # └─────────────────────────────────────────────────────────────────────────┘
 #     with:
-#       dockerfile-path: 'docker'  # 'build', '.'
+#       dockerfile-sub-path: 'docker'  # 'build', '.'
 #       squash: false  # true
 #       no-cache: false  # true
 

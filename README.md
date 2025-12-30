@@ -97,16 +97,17 @@ See [`examples/`](examples/) for more usage patterns.
 | `block-conventional-commits` | boolean | `false` | Block commits that use conventional commit format |
 | `block-double-hyphens` | boolean | `true` | Block branch names containing double hyphens (typo detection) |
 | `block-slashes` | boolean | `false` | Block branch names containing slashes |
-| `config-path` | string | `src/config` | Directory containing user-defined token files |
+| `config-sub-path` | string | `src/config` | Directory containing user-defined token files (relative) |
 | `config-value-trailing-newline` | string | `strip-for-single-line` | How to handle trailing newlines in config values (strip-for-single-line, preserve-all, always-strip-one-newline) |
 | `confirm-image-doesnt-exist` | boolean | `true` | Fail if target image already exists in registry |
 | `default-branch` | string | `main` | The default/release branch name |
 | `docker-registry-logins` | string | `""` | YAML config for Docker registry logins (registry URL as key) |
-| `dockerfile-path` | string | `src/docker` | Directory containing Dockerfile (also used as build context) |
-| `manifests-path` | string | `src/kubernetes` | Directory containing Kubernetes manifests |
+| `dockerfile-sub-path` | string | `src/docker` | Directory containing Dockerfile, relative (also used as build context) |
 | `manifests-repo-provider-type` | string | *required* | Repo provider type for manifest storage (docker, github-release). Required - consumer must choose. |
+| `manifests-sub-path` | string | `src/kubernetes` | Directory containing Kubernetes manifests (relative) |
 | `max-version-parts` | number | `3` | Maximum allowed version parts (fail if exceeded) |
 | `no-cache` | boolean | `true` | Disable layer caching for reproducible builds |
+| `output-sub-path` | string | `target` | Build output directory (relative) |
 | `post-docker-tests-script-sub-path` | string | `""` | Path to post-docker test script relative to .github/ (e.g., bin/post-docker.bash) |
 | `post-package-tests-script-sub-path` | string | `""` | Path to post-package test script relative to .github/ (e.g., bin/post-package.bash) |
 | `pre-tagging-tests-script-sub-path` | string | `""` | Path to pre-tagging test script relative to .github/ (e.g., bin/pre-tagging.bash) |
@@ -180,7 +181,7 @@ For version-locked images (kubectl, helm, terraform), use `dockerfile-env-versio
 uses: kube-kaptain/buildon-github-actions/.github/workflows/docker-build-dockerfile.yaml@v1
 with:
   tag-version-calculation-strategy: dockerfile-env-version
-  dockerfile-path: src/docker          # default
+  dockerfile-sub-path: src/docker      # default
   env-variable-name: KUBECTL_VERSION   # default
 ```
 

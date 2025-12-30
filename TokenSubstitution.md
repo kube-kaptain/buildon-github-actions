@@ -14,7 +14,7 @@ The system substitutes `${ProjectName}` (or other syntax) with `my-app` across a
 
 ```
 src/
-  config/                    # User-defined tokens (configurable via config-path)
+  config/                    # User-defined tokens (configurable via config-sub-path)
     MyVar                    # Simple token
     MyCategory/
       MySubVar               # Nested token -> ${MyCategory/MySubVar}
@@ -34,7 +34,7 @@ target/manifests/            # Build output
 | `token-name-style` | `PascalCase` | Naming convention for tokens |
 | `token-name-validation` | `MATCH` | `MATCH` = must match style, `ALL` = any valid name |
 | `allow-builtin-token-override` | `false` | Allow user tokens to override built-ins |
-| `config-path` | `src/config` | Directory for user-defined tokens |
+| `config-sub-path` | `src/config` | Directory for user-defined tokens (relative) |
 | `config-value-trailing-newline` | `strip-for-single-line` | How to handle trailing newlines |
 
 ## Substitution Token Styles
@@ -96,7 +96,7 @@ Built-in token names are converted to match `token-name-style` (e.g., `PROJECT_N
 
 ## User Tokens
 
-Place files in `src/config/` (or configured `config-path`):
+Place files in `src/config/` (or configured `config-sub-path`):
 
 ```
 src/config/

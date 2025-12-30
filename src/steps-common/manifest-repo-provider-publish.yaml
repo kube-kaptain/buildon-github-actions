@@ -8,7 +8,7 @@
   with:
     manifests-repo-provider-type: ${{ inputs.manifests-repo-provider-type }}
     manifests-uri: ${{ steps.manifest-repo-provider-package.outputs.manifests-uri }}
-    manifests-zip-path: ${{ steps.manifest-repo-provider-package.outputs.manifests-zip-path }}
-    manifests-zip-name: ${{ steps.manifest-repo-provider-package.outputs.manifests-zip-name }}
+    manifests-zip-sub-path: ${{ steps.manifest-repo-provider-package.outputs.manifests-zip-sub-path }}
+    manifests-zip-file-name: ${{ steps.manifest-repo-provider-package.outputs.manifests-zip-file-name }}
     version: ${{ steps.manifest-repo-provider-package.outputs.version }}
     is-release: ${{ steps.versions.outputs.is-release }}

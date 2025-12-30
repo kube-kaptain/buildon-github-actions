@@ -8,15 +8,18 @@
 # For GitHub releases, there's no intermediate artifact to build - this just validates.
 # Pair with kubernetes-manifests-repo-provider-github-release-publish.
 #
-# Inputs (environment variables):
-#   MANIFESTS_ZIP_PATH - Path to zip file (required)
-#   MANIFESTS_ZIP_NAME - Filename for upload (required)
-#   VERSION           - Release tag (required)
+# Inputs (environment variables - REPO_PROVIDER_* API):
+#   REPO_PROVIDER_URL       - Releases URL (informational)
+#   REPO_PROVIDER_NAMESPACE - Repository (owner/repo)
+#   REPO_PROVIDER_NAME      - Asset base name
+#   REPO_PROVIDER_VERSION   - Release tag (required)
+#   MANIFESTS_ZIP_SUB_PATH      - Path to the zip file location (required)
+#   MANIFESTS_ZIP_FILE_NAME      - Filename of the zip (required)
 #
 # Outputs:
-#   MANIFESTS_ZIP_PATH - Path to zip file (pass through for publish step)
-#   MANIFESTS_ZIP_NAME - Filename for upload (pass through for publish step)
-#   VERSION            - Release tag (pass through for publish step)
+#   MANIFESTS_ZIP_SUB_PATH      - Path to zip file (pass through for publish step)
+#   MANIFESTS_ZIP_FILE_NAME      - Filename for upload (pass through for publish step)
+#   VERSION                 - Release tag (pass through for publish step)
 #
 set -euo pipefail
 
@@ -24,10 +27,18 @@ set -euo pipefail
 LOG_ERROR_PREFIX="${LOG_ERROR_PREFIX:-}"
 LOG_ERROR_SUFFIX="${LOG_ERROR_SUFFIX:-}"
 
-# Required inputs
-MANIFESTS_ZIP_PATH="${MANIFESTS_ZIP_PATH:?MANIFESTS_ZIP_PATH is required}"
-MANIFESTS_ZIP_NAME="${MANIFESTS_ZIP_NAME:?MANIFESTS_ZIP_NAME is required}"
-VERSION="${VERSION:?VERSION is required}"
+# =============================================================================
+# Map REPO_PROVIDER_* → GitHub Release terminology
+# =============================================================================
+release_tag="${REPO_PROVIDER_VERSION:?REPO_PROVIDER_VERSION (release tag) is required}"
+# Note: REPO_PROVIDER_URL, REPO_PROVIDER_NAMESPACE, REPO_PROVIDER_NAME are available
+# but not needed for package step (just validates zip exists)
+
+# =============================================================================
+# Other inputs
+# =============================================================================
+MANIFESTS_ZIP_SUB_PATH="${MANIFESTS_ZIP_SUB_PATH:?MANIFESTS_ZIP_SUB_PATH is required}"
+MANIFESTS_ZIP_FILE_NAME="${MANIFESTS_ZIP_FILE_NAME:?MANIFESTS_ZIP_FILE_NAME is required}"
 
 output_var() {
   local name="$1"
@@ -42,21 +53,21 @@ output_var() {
 
 main() {
   echo "=== Kubernetes Manifests Repo Provider Package: GitHub Release ===" >&2
-  echo "Manifests zip: $MANIFESTS_ZIP_PATH" >&2
-  echo "Manifests zip name: $MANIFESTS_ZIP_NAME" >&2
-  echo "Version: $VERSION" >&2
+  echo "Manifests zip path: $MANIFESTS_ZIP_SUB_PATH" >&2
+  echo "Manifests zip name: $MANIFESTS_ZIP_FILE_NAME" >&2
+  echo "Release tag: $release_tag" >&2
   echo "===================================================================" >&2
 
   # Validate zip exists
-  if [[ ! -f "$MANIFESTS_ZIP_PATH" ]]; then
-    echo "${LOG_ERROR_PREFIX}Manifests zip not found: $MANIFESTS_ZIP_PATH${LOG_ERROR_SUFFIX}" >&2
+  if [[ ! -f "$MANIFESTS_ZIP_SUB_PATH/$MANIFESTS_ZIP_FILE_NAME" ]]; then
+    echo "${LOG_ERROR_PREFIX}Manifests zip not found: $MANIFESTS_ZIP_SUB_PATH/$MANIFESTS_ZIP_FILE_NAME${LOG_ERROR_SUFFIX}" >&2
     exit 1
   fi
 
   # Pass through values for publish step
-  output_var "MANIFESTS_ZIP_PATH" "$MANIFESTS_ZIP_PATH"
-  output_var "MANIFESTS_ZIP_NAME" "$MANIFESTS_ZIP_NAME"
-  output_var "VERSION" "$VERSION"
+  output_var "MANIFESTS_ZIP_SUB_PATH" "$MANIFESTS_ZIP_SUB_PATH"
+  output_var "MANIFESTS_ZIP_FILE_NAME" "$MANIFESTS_ZIP_FILE_NAME"
+  output_var "VERSION" "$release_tag"
 
   echo "Kubernetes Manifests Repo Provider Package: GitHub Release complete" >&2
 }

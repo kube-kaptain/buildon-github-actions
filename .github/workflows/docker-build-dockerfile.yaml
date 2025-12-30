@@ -6,11 +6,16 @@ on:
   workflow_call:
     inputs:
       # Dockerfile configuration
-      dockerfile-path:
-        description: 'Directory containing Dockerfile (also used as build context)'
+      dockerfile-sub-path:
+        description: 'Directory containing Dockerfile, relative (also used as build context)'
         required: false
         type: string
         default: 'src/docker'
+      output-sub-path:
+        description: 'Build output directory (relative)'
+        required: false
+        type: string
+        default: 'target'
       squash:
         description: 'Enable --squash (requires experimental mode)'
         required: false
@@ -389,7 +394,7 @@ jobs:
           docker-tag: ${{ steps.versions.outputs.docker-tag }}
           version: ${{ steps.versions.outputs.version }}
           project-name: ${{ steps.versions.outputs.project-name }}
-          dockerfile-path: ${{ inputs.dockerfile-path }}
+          dockerfile-sub-path: ${{ inputs.dockerfile-sub-path }}
           squash: ${{ inputs.squash }}
           no-cache: ${{ inputs.no-cache }}
           confirm-image-doesnt-exist: ${{ inputs.confirm-image-doesnt-exist }}

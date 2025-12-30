@@ -14,7 +14,7 @@
 #   DOCKER_TAG          - Tag for the image (from version generator)
 #   VERSION             - Version number (from version generator, passed as build arg)
 #   PROJECT_NAME        - Project name (from version generator, passed as build arg)
-#   DOCKERFILE_PATH     - Directory containing Dockerfile (default: src/docker)
+#   DOCKERFILE_SUB_PATH - Directory containing Dockerfile, relative (default: src/docker)
 #   SQUASH              - "false" to disable --squash (default: true, always squash for clean D files)
 #   NO_CACHE            - "false" to enable layer caching (default: true, always build fresh)
 #   CONFIRM_IMAGE_DOESNT_EXIST - "true" to fail if target exists (default: true)
@@ -37,14 +37,14 @@ PROJECT_NAME="${PROJECT_NAME:?PROJECT_NAME is required}"
 
 # Optional inputs with defaults
 TARGET_BASE_PATH="${TARGET_BASE_PATH:-}"
-DOCKERFILE_PATH="${DOCKERFILE_PATH:-src/docker}"
+DOCKERFILE_SUB_PATH="${DOCKERFILE_SUB_PATH:-src/docker}"
 SQUASH="${SQUASH:-true}"
 NO_CACHE="${NO_CACHE:-true}"
 CONFIRM_IMAGE_DOESNT_EXIST="${CONFIRM_IMAGE_DOESNT_EXIST:-true}"
 
 # Dockerfile must always be named exactly "Dockerfile"
-DOCKERFILE="${DOCKERFILE_PATH}/Dockerfile"
-CONTEXT="${DOCKERFILE_PATH}"
+DOCKERFILE="${DOCKERFILE_SUB_PATH}/Dockerfile"
+CONTEXT="${DOCKERFILE_SUB_PATH}"
 
 # Assemble full image URI
 if [[ -n "$TARGET_BASE_PATH" ]]; then
@@ -98,13 +98,13 @@ output_var() {
 main() {
   echo "=== Docker Build Dockerfile ===" >&2
   echo "Target: $TARGET_IMAGE_FULL_URI" >&2
-  echo "Dockerfile path: $DOCKERFILE_PATH" >&2
+  echo "Dockerfile sub-path: $DOCKERFILE_SUB_PATH" >&2
   echo "Squash: $SQUASH" >&2
   echo "===============================" >&2
 
   # Validate directory exists
-  if [[ ! -d "$DOCKERFILE_PATH" ]]; then
-    echo "${LOG_ERROR_PREFIX}Dockerfile directory not found: $DOCKERFILE_PATH${LOG_ERROR_SUFFIX}" >&2
+  if [[ ! -d "$DOCKERFILE_SUB_PATH" ]]; then
+    echo "${LOG_ERROR_PREFIX}Dockerfile directory not found: $DOCKERFILE_SUB_PATH${LOG_ERROR_SUFFIX}" >&2
     exit 1
   fi
 
@@ -112,7 +112,7 @@ main() {
   # Loop through files to verify exact case (works on case-insensitive filesystems)
   local exact_match=false
   local wrong_case=""
-  for f in "$DOCKERFILE_PATH"/*; do
+  for f in "$DOCKERFILE_SUB_PATH"/*; do
     [[ -f "$f" ]] || continue
     local name
     name=$(basename "$f")
@@ -128,7 +128,7 @@ main() {
     if [[ -n "$wrong_case" ]]; then
       echo "${LOG_ERROR_PREFIX}Dockerfile has wrong case: found '$wrong_case' but must be exactly 'Dockerfile'${LOG_ERROR_SUFFIX}" >&2
     else
-      echo "${LOG_ERROR_PREFIX}Dockerfile not found in: $DOCKERFILE_PATH${LOG_ERROR_SUFFIX}" >&2
+      echo "${LOG_ERROR_PREFIX}Dockerfile not found in: $DOCKERFILE_SUB_PATH${LOG_ERROR_SUFFIX}" >&2
     fi
     exit 1
   fi

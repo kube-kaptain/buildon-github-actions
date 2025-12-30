@@ -9,16 +9,17 @@ load helpers
 setup() {
   setup_mock_docker
   export GITHUB_OUTPUT=$(mktemp)
-  export TEST_ZIP=$(mktemp)
-  echo "test content" > "$TEST_ZIP"
-  export OUTPUT_PATH=$(mktemp -d)
+  export TEST_ZIP_DIR=$(mktemp -d)
+  export TEST_ZIP_NAME="test-manifests.zip"
+  echo "test content" > "$TEST_ZIP_DIR/$TEST_ZIP_NAME"
+  export OUTPUT_SUB_PATH=$(mktemp -d)
 }
 
 teardown() {
   cleanup_mock_docker
   rm -f "$GITHUB_OUTPUT"
-  rm -f "$TEST_ZIP"
-  rm -rf "$OUTPUT_PATH"
+  rm -rf "$TEST_ZIP_DIR"
+  rm -rf "$OUTPUT_SUB_PATH"
 }
 
 @test "fails when MANIFESTS_REPO_PROVIDER_TYPE not set" {
@@ -41,10 +42,11 @@ teardown() {
 
 @test "dispatches to docker repo provider" {
   export MANIFESTS_REPO_PROVIDER_TYPE="docker"
-  export MANIFESTS_ZIP_PATH="$TEST_ZIP"
-  export TARGET_REGISTRY="ghcr.io"
-  export TARGET_IMAGE_NAME="test/my-repo"
-  export DOCKER_TAG="1.0.0-manifests"
+  export MANIFESTS_ZIP_SUB_PATH="$TEST_ZIP_DIR"
+  export MANIFESTS_ZIP_FILE_NAME="$TEST_ZIP_NAME"
+  export REPO_PROVIDER_URL="ghcr.io"
+  export REPO_PROVIDER_NAME="test/my-repo"
+  export REPO_PROVIDER_VERSION="1.0.0-manifests"
 
   run "$SCRIPTS_DIR/kubernetes-manifests-repo-provider-package"
   [ "$status" -eq 0 ]
@@ -54,9 +56,9 @@ teardown() {
 
 @test "dispatches to github-release repo provider" {
   export MANIFESTS_REPO_PROVIDER_TYPE="github-release"
-  export MANIFESTS_ZIP_PATH="$TEST_ZIP"
-  export MANIFESTS_ZIP_NAME="test-1.0.0-manifests.zip"
-  export VERSION="1.0.0"
+  export MANIFESTS_ZIP_SUB_PATH="$TEST_ZIP_DIR"
+  export MANIFESTS_ZIP_FILE_NAME="$TEST_ZIP_NAME"
+  export REPO_PROVIDER_VERSION="1.0.0"
 
   run "$SCRIPTS_DIR/kubernetes-manifests-repo-provider-package"
   [ "$status" -eq 0 ]

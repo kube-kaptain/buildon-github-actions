@@ -34,7 +34,7 @@ DEFAULT_BRANCH="${DEFAULT_BRANCH:-main}"
 ADDITIONAL_RELEASE_BRANCHES="${ADDITIONAL_RELEASE_BRANCHES:-}"  # Comma-separated list of additional release branches
 MAX_VERSION_PARTS="${MAX_VERSION_PARTS:-3}"  # Fail if version exceeds this many parts
 TAG_VERSION_CALCULATION_STRATEGY="${TAG_VERSION_CALCULATION_STRATEGY:-git-auto-closest-highest}"
-DOCKERFILE_PATH="${DOCKERFILE_PATH:-src/docker}"  # For dockerfile-env-version strategy
+DOCKERFILE_SUB_PATH="${DOCKERFILE_SUB_PATH:-src/docker}"  # For dockerfile-env-version strategy
 ENV_VARIABLE_NAME="${ENV_VARIABLE_NAME:-KUBECTL_VERSION}"  # For dockerfile-env-version strategy
 
 # Get current branch
@@ -151,7 +151,7 @@ main() {
   local plugin_output
   plugin_output=$(
     MAX_VERSION_PARTS="$MAX_VERSION_PARTS" \
-    DOCKERFILE_PATH="$DOCKERFILE_PATH" \
+    DOCKERFILE_SUB_PATH="$DOCKERFILE_SUB_PATH" \
     ENV_VARIABLE_NAME="$ENV_VARIABLE_NAME" \
     LOG_ERROR_PREFIX="$LOG_ERROR_PREFIX" \
     LOG_ERROR_SUFFIX="$LOG_ERROR_SUFFIX" \

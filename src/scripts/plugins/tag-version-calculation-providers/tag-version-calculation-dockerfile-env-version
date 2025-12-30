@@ -11,7 +11,7 @@
 #   4. Increment the patch component, or start at x.y.1 if no tags exist in series
 #
 # Inputs (environment variables):
-#   DOCKERFILE_PATH    - Path to directory containing Dockerfile (default: src/docker)
+#   DOCKERFILE_SUB_PATH - Path to directory containing Dockerfile (default: src/docker)
 #   ENV_VARIABLE_NAME  - Name of ENV variable to extract (default: KUBECTL_VERSION)
 #   MAX_VERSION_PARTS  - Fail if version exceeds this depth (required)
 #
@@ -27,7 +27,7 @@ LOG_ERROR_PREFIX="${LOG_ERROR_PREFIX:-}"
 LOG_ERROR_SUFFIX="${LOG_ERROR_SUFFIX:-}"
 
 # Configuration with defaults
-DOCKERFILE_PATH="${DOCKERFILE_PATH:-src/docker}"
+DOCKERFILE_SUB_PATH="${DOCKERFILE_SUB_PATH:-src/docker}"
 ENV_VARIABLE_NAME="${ENV_VARIABLE_NAME:-KUBECTL_VERSION}"
 
 # Required inputs
@@ -38,7 +38,7 @@ fi
 
 # Extract version from Dockerfile ENV variable
 extract_env_version() {
-  local dockerfile="$DOCKERFILE_PATH/Dockerfile"
+  local dockerfile="$DOCKERFILE_SUB_PATH/Dockerfile"
 
   if [[ ! -f "$dockerfile" ]]; then
     echo "${LOG_ERROR_PREFIX}Dockerfile not found: $dockerfile${LOG_ERROR_SUFFIX}" >&2

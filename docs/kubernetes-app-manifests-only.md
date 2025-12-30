@@ -6,12 +6,13 @@ Kubernetes App - Manifests Only
 
 | Input | Type | Default | Description |
 |-------|------|---------|-------------|
-| `manifests-path` | string | `src/kubernetes` | Directory containing Kubernetes manifests |
+| `manifests-sub-path` | string | `src/kubernetes` | Directory containing Kubernetes manifests (relative) |
 | `substitution-token-style` | string | `shell` | Token delimiter syntax for variables (shell, mustache, helm, erb, github-actions, blade, stringtemplate, ognl, t4, swift) |
 | `token-name-style` | string | `PascalCase` | Case style for token names in manifests (UPPER_SNAKE, lower_snake, kebab-case, camelCase, PascalCase, lower.dot, UPPER.DOT) |
 | `token-name-validation` | string | `MATCH` | How to validate user token names (MATCH = must match token-name-style, ALL = accept any valid name) |
 | `allow-builtin-token-override` | boolean | `false` | Allow user tokens to override built-in tokens (for template/reusable projects) |
-| `config-path` | string | `src/config` | Directory containing user-defined token files |
+| `config-sub-path` | string | `src/config` | Directory containing user-defined token files (relative) |
+| `output-sub-path` | string | `target` | Build output directory (relative) |
 | `config-value-trailing-newline` | string | `strip-for-single-line` | How to handle trailing newlines in config values (strip-for-single-line, preserve-all, always-strip-one-newline) |
 | `manifests-repo-provider-type` | string | *required* | Repo provider type for manifest storage (docker, github-release). Required - consumer must choose. |
 | `target-registry` | string | `ghcr.io` | Target container registry |
@@ -50,8 +51,7 @@ Kubernetes App - Manifests Only
 | `docker-image-name` | Docker image name |
 | `project-name` | The repository/project name |
 | `is-release` | Whether this is a release build |
-| `manifests-zip-path` | Directory containing manifests zip file |
-| `manifests-zip-name` | Name of manifests zip file |
-| `manifests-zip-full-path` | Full path to manifests zip file |
+| `manifests-zip-sub-path` | Directory containing manifests zip file (relative) |
+| `manifests-zip-file-name` | Name of manifests zip file |
 | `manifests-uri` | Reference to published manifests (format depends on repo provider) |
 | `manifests-published` | Whether manifests were published |

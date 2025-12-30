@@ -6,7 +6,8 @@ Docker Build Dockerfile
 
 | Input | Type | Default | Description |
 |-------|------|---------|-------------|
-| `dockerfile-path` | string | `src/docker` | Directory containing Dockerfile (also used as build context) |
+| `dockerfile-sub-path` | string | `src/docker` | Directory containing Dockerfile, relative (also used as build context) |
+| `output-sub-path` | string | `target` | Build output directory (relative) |
 | `squash` | boolean | `true` | Enable --squash (requires experimental mode) |
 | `no-cache` | boolean | `true` | Disable layer caching for reproducible builds |
 | `target-registry` | string | `ghcr.io` | Target container registry |

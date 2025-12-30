@@ -10,9 +10,10 @@ load helpers
 
 setup() {
   export GITHUB_OUTPUT=$(mktemp)
-  # Create a test zip file
-  export TEST_ZIP=$(mktemp)
-  echo "test content" > "$TEST_ZIP"
+  # Create a test zip in a directory
+  export TEST_ZIP_DIR=$(mktemp -d)
+  export TEST_ZIP_NAME="my-project-1.0.0-manifests.zip"
+  echo "test content" > "$TEST_ZIP_DIR/$TEST_ZIP_NAME"
   # Set up mock gh CLI
   export MOCK_GH_CALLS=$(mktemp)
   mkdir -p "$MOCK_BIN_DIR"
@@ -46,7 +47,7 @@ MOCKGH
 
 teardown() {
   rm -f "$GITHUB_OUTPUT"
-  rm -f "$TEST_ZIP"
+  rm -rf "$TEST_ZIP_DIR"
   rm -f "$MOCK_GH_CALLS"
   rm -f "$MOCK_GH_CALLS.created"
   rm -f "$MOCK_BIN_DIR/gh"
@@ -75,12 +76,12 @@ assert_gh_not_called() {
   fi
 }
 
-# Required env vars for most tests
+# Required env vars for most tests (using REPO_PROVIDER_* API)
 set_required_env() {
-  export MANIFESTS_ZIP_PATH="$TEST_ZIP"
-  export MANIFESTS_ZIP_NAME="my-project-1.0.0-manifests.zip"
-  export VERSION="1.0.0"
-  export GITHUB_TOKEN="test-token"
+  export MANIFESTS_ZIP_SUB_PATH="$TEST_ZIP_DIR"
+  export MANIFESTS_ZIP_FILE_NAME="$TEST_ZIP_NAME"
+  export REPO_PROVIDER_VERSION="1.0.0"
+  export REPO_PROVIDER_AUTH_TOKEN="test-token"
   export IS_RELEASE="true"
 }
 
@@ -114,54 +115,70 @@ set_required_env() {
   assert_gh_called "release upload"
 }
 
-@test "fails when MANIFESTS_ZIP_PATH missing" {
-  export MANIFESTS_ZIP_NAME="my-project-1.0.0-manifests.zip"
-  export VERSION="1.0.0"
-  unset MANIFESTS_ZIP_PATH
+@test "fails when MANIFESTS_ZIP_SUB_PATH missing" {
+  export MANIFESTS_ZIP_FILE_NAME="my-project-1.0.0-manifests.zip"
+  export REPO_PROVIDER_VERSION="1.0.0"
+  unset MANIFESTS_ZIP_SUB_PATH
 
   run "$REPO_PROVIDERS_DIR/kubernetes-manifests-repo-provider-github-release-publish"
   [ "$status" -ne 0 ]
-  assert_output_contains "MANIFESTS_ZIP_PATH"
+  assert_output_contains "MANIFESTS_ZIP_SUB_PATH"
 }
 
-@test "fails when MANIFESTS_ZIP_NAME missing" {
-  export MANIFESTS_ZIP_PATH="$TEST_ZIP"
-  export VERSION="1.0.0"
-  unset MANIFESTS_ZIP_NAME
+@test "fails when MANIFESTS_ZIP_FILE_NAME missing" {
+  export MANIFESTS_ZIP_SUB_PATH="$TEST_ZIP_DIR"
+  export REPO_PROVIDER_VERSION="1.0.0"
+  unset MANIFESTS_ZIP_FILE_NAME
 
   run "$REPO_PROVIDERS_DIR/kubernetes-manifests-repo-provider-github-release-publish"
   [ "$status" -ne 0 ]
-  assert_output_contains "MANIFESTS_ZIP_NAME"
+  assert_output_contains "MANIFESTS_ZIP_FILE_NAME"
 }
 
-@test "fails when VERSION missing" {
-  export MANIFESTS_ZIP_PATH="$TEST_ZIP"
-  export MANIFESTS_ZIP_NAME="my-project-1.0.0-manifests.zip"
-  unset VERSION
+@test "fails when REPO_PROVIDER_VERSION missing" {
+  export MANIFESTS_ZIP_SUB_PATH="$TEST_ZIP_DIR"
+  export MANIFESTS_ZIP_FILE_NAME="$TEST_ZIP_NAME"
+  unset REPO_PROVIDER_VERSION
 
   run "$REPO_PROVIDERS_DIR/kubernetes-manifests-repo-provider-github-release-publish"
   [ "$status" -ne 0 ]
-  assert_output_contains "VERSION"
+  assert_output_contains "REPO_PROVIDER_VERSION"
 }
 
 @test "fails when zip file not found" {
   set_required_env
-  export MANIFESTS_ZIP_PATH="/nonexistent/file.zip"
+  export MANIFESTS_ZIP_SUB_PATH="/nonexistent"
 
   run "$REPO_PROVIDERS_DIR/kubernetes-manifests-repo-provider-github-release-publish"
   [ "$status" -ne 0 ]
   assert_output_contains "Manifests zip not found"
 }
 
-@test "fails when GITHUB_TOKEN missing" {
-  export MANIFESTS_ZIP_PATH="$TEST_ZIP"
-  export MANIFESTS_ZIP_NAME="my-project-1.0.0-manifests.zip"
-  export VERSION="1.0.0"
+@test "fails when REPO_PROVIDER_AUTH_TOKEN missing and GITHUB_TOKEN not pre-configured" {
+  export MANIFESTS_ZIP_SUB_PATH="$TEST_ZIP_DIR"
+  export MANIFESTS_ZIP_FILE_NAME="$TEST_ZIP_NAME"
+  export REPO_PROVIDER_VERSION="1.0.0"
+  export IS_RELEASE="true"
+  unset REPO_PROVIDER_AUTH_TOKEN
   unset GITHUB_TOKEN
 
   run "$REPO_PROVIDERS_DIR/kubernetes-manifests-repo-provider-github-release-publish"
   [ "$status" -ne 0 ]
-  assert_output_contains "GITHUB_TOKEN"
+  assert_output_contains "REPO_PROVIDER_AUTH_TOKEN"
+}
+
+@test "works with pre-configured GITHUB_TOKEN (no REPO_PROVIDER_AUTH_TOKEN needed)" {
+  export MANIFESTS_ZIP_SUB_PATH="$TEST_ZIP_DIR"
+  export MANIFESTS_ZIP_FILE_NAME="$TEST_ZIP_NAME"
+  export REPO_PROVIDER_VERSION="1.0.0"
+  export IS_RELEASE="true"
+  export GITHUB_TOKEN="pre-configured-token"
+  export MOCK_RELEASE_EXISTS="true"
+  unset REPO_PROVIDER_AUTH_TOKEN
+
+  run "$REPO_PROVIDERS_DIR/kubernetes-manifests-repo-provider-github-release-publish"
+  [ "$status" -eq 0 ]
+  assert_gh_called "release upload"
 }
 
 @test "uses clobber flag on upload" {
