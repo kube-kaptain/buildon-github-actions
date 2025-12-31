@@ -22,7 +22,7 @@ inputs:
     description: 'Block branch names containing slashes'
     required: false
     default: 'false'
-  block-double-hyphens:
+  block-double-hyphen-containing-branches:
     description: 'Block branch names containing double hyphens (typo detection)'
     required: false
     default: 'true'
@@ -55,7 +55,7 @@ runs:
         ADDITIONAL_RELEASE_BRANCHES: ${{ inputs.additional-release-branches }}
         BLOCK_SLASHES: ${{ inputs.block-slashes }}
         BLOCK_SLASH_CONTAINING_BRANCHES: ${{ inputs.block-slash-containing-branches }}
-        BLOCK_DOUBLE_HYPHENS: ${{ inputs.block-double-hyphens }}
+        BLOCK_DOUBLE_HYPHEN_CONTAINING_BRANCHES: ${{ inputs.block-double-hyphen-containing-branches }}
         REQUIRE_CONVENTIONAL_BRANCHES: ${{ inputs.require-conventional-branches }}
         REQUIRE_CONVENTIONAL_COMMITS: ${{ inputs.require-conventional-commits }}
         BLOCK_CONVENTIONAL_COMMITS: ${{ inputs.block-conventional-commits }}

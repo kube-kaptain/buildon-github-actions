@@ -98,7 +98,7 @@ See [`examples/`](examples/) for more usage patterns.
 | `additional-release-branches` | string | `""` | Comma-separated list of additional release branches |
 | `allow-builtin-token-override` | boolean | `false` | Allow user tokens to override built-in tokens (for template/reusable projects) |
 | `block-conventional-commits` | boolean | `false` | Block commits that use conventional commit format |
-| `block-double-hyphens` | boolean | `true` | Block branch names containing double hyphens (typo detection) |
+| `block-double-hyphen-containing-branches` | boolean | `true` | Block branch names containing double hyphens (typo detection) |
 | `block-slash-containing-branches` | boolean | `false` | Block branch names containing slashes |
 | `block-slashes` | boolean | `false` | DEPRECATED: Use block-slash-containing-branches instead |
 | `config-sub-path` | string | `src/config` | Directory containing user-defined token files (relative) |

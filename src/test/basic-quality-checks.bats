@@ -180,7 +180,7 @@ teardown() {
   cd "$TEST_REPO"
 
   export PR_BRANCH=fix--something
-  export BLOCK_DOUBLE_HYPHENS=false
+  export BLOCK_DOUBLE_HYPHEN_CONTAINING_BRANCHES=false
   run "$SCRIPTS_DIR/basic-quality-checks"
   [ "$status" -eq 0 ]
 }
