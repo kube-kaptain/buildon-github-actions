@@ -216,3 +216,8 @@ jobs:
       # INJECT: github-check-start(name="Docker Retag", id="check-docker-retag")
       # INJECT: docker-build-retag
       # INJECT: github-check-end(name="Docker Retag", id="check-docker-retag")
+
+      # === Docker Push ===
+      # INJECT: github-check-start(name="Docker Push", id="check-docker-push")
+      # INJECT: docker-push
+      # INJECT: github-check-end(name="Docker Push", id="check-docker-push")
