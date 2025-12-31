@@ -33,9 +33,9 @@ inputs:
     required: false
     default: ''
   target-registry:
-    description: 'Target container registry'
+    description: 'Target container registry (defaults to ghcr.io)'
     required: false
-    default: 'ghcr.io'
+    default: ''
   target-base-path:
     description: 'Path between registry and image name'
     required: false
@@ -58,14 +58,6 @@ inputs:
     default: ''
   version:
     description: 'Version tag (for future non-docker providers)'
-    required: false
-    default: ''
-
-  # ============================================================================
-  # Generic overrides (rarely needed)
-  # ============================================================================
-  registry-url:
-    description: 'Registry/repository URL override (computed if not set)'
     required: false
     default: ''
 
@@ -105,6 +97,16 @@ runs:
   using: 'composite'
   steps:
     # ==========================================================================
+    # Resolve target registry and base path (handles GHCR defaults)
+    # ==========================================================================
+    - name: Resolve target registry and base path
+      id: resolve
+      uses: ./.github/buildon-github-actions/src/actions/resolve-target-registry-and-base-path
+      with:
+        target-registry: ${{ inputs.target-registry }}
+        target-base-path: ${{ inputs.target-base-path }}
+
+    # ==========================================================================
     # Compute REPO_PROVIDER_* values from user-friendly inputs
     # ==========================================================================
     - name: Compute repo provider values
@@ -112,7 +114,6 @@ runs:
       shell: bash
       run: |
         PROVIDER="${{ inputs.manifests-repo-provider-type }}"
-        OWNER="${{ github.repository_owner }}"
 
         # =====================================================================
         # Validate provider type
@@ -123,26 +124,14 @@ runs:
         fi
 
         # =====================================================================
-        # REPO_PROVIDER_URL
+        # REPO_PROVIDER_URL (from resolver)
         # =====================================================================
-        if [[ -n "${{ inputs.registry-url }}" ]]; then
-          URL="${{ inputs.registry-url }}"
-        else
-          URL="${{ inputs.target-registry }}"
-        fi
-        echo "url=${URL}" >> "$GITHUB_OUTPUT"
+        echo "url=${{ steps.resolve.outputs.target-registry }}" >> "$GITHUB_OUTPUT"
 
         # =====================================================================
-        # REPO_PROVIDER_NAMESPACE
+        # REPO_PROVIDER_NAMESPACE (from resolver)
         # =====================================================================
-        if [[ -n "${{ inputs.target-base-path }}" ]]; then
-          NAMESPACE="${{ inputs.target-base-path }}"
-        elif [[ "${{ inputs.target-registry }}" == "ghcr.io" ]]; then
-          NAMESPACE="${OWNER}"
-        else
-          NAMESPACE=""
-        fi
-        echo "namespace=${NAMESPACE}" >> "$GITHUB_OUTPUT"
+        echo "namespace=${{ steps.resolve.outputs.target-base-path }}" >> "$GITHUB_OUTPUT"
 
         # =====================================================================
         # REPO_PROVIDER_NAME

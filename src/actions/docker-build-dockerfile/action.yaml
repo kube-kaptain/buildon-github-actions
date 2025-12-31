@@ -7,9 +7,9 @@ author: 'kube-kaptain'
 
 inputs:
   target-registry:
-    description: 'Target container registry'
+    description: 'Target container registry (defaults to ghcr.io)'
     required: false
-    default: 'ghcr.io'
+    default: ''
   target-base-path:
     description: 'Path between registry and image name (leave empty for GHCR auto-detect)'
     required: false
