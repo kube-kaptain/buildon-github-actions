@@ -7,7 +7,7 @@ on:
     inputs:
       # Dockerfile configuration
       dockerfile-sub-path:
-        description: 'Directory containing Dockerfile, relative (also used as build context)'
+        description: 'Directory containing Dockerfile, relative to repo root.'
         required: false
         type: string
         default: 'src/docker'
@@ -95,6 +95,31 @@ on:
         required: false
         type: number
         default: 3
+      tag-version-calculation-strategy:
+        description: 'Strategy for calculating version (git-auto-closest-highest, file-pattern-match)'
+        required: false
+        type: string
+        default: 'git-auto-closest-highest'
+      tag-version-pattern-type:
+        description: 'Pattern type for file-pattern-match strategy (dockerfile-env-kubectl, retag-workflow-source-tag, custom)'
+        required: false
+        type: string
+        default: 'dockerfile-env-kubectl'
+      tag-version-source-sub-path:
+        description: 'Override path to source directory (takes precedence over dockerfile-sub-path)'
+        required: false
+        type: string
+        default: ''
+      tag-version-source-file-name:
+        description: 'Override source file name (defaults based on pattern type)'
+        required: false
+        type: string
+        default: ''
+      tag-version-source-custom-pattern:
+        description: 'Regex with capture group for version extraction (required for custom pattern type)'
+        required: false
+        type: string
+        default: ''
       # Quality check inputs
       block-slashes:
         description: 'Block branch names containing slashes'

@@ -257,23 +257,24 @@ teardown() {
   assert_var_equals "DOCKER_IMAGE_NAME" "group/group-project-specialisation"
 }
 
-# dockerfile-env-version strategy tests
+# file-pattern-match strategy tests
 
-@test "dockerfile-env-version extracts version from ENV and starts at x.y.1" {
+@test "file-pattern-match dockerfile-env-kubectl extracts version from ENV and starts at x.y.1" {
   TEST_REPO=$(clone_fixture "tag-none")
   cd "$TEST_REPO"
   mkdir -p src/docker
   echo 'FROM alpine:3.19
 ENV KUBECTL_VERSION=1.28.0' > src/docker/Dockerfile
 
-  export TAG_VERSION_CALCULATION_STRATEGY=dockerfile-env-version
+  export TAG_VERSION_CALCULATION_STRATEGY=file-pattern-match
+  export TAG_VERSION_PATTERN_TYPE=dockerfile-env-kubectl
 
   run "$SCRIPTS_DIR/versions-and-naming"
   [ "$status" -eq 0 ]
   assert_var_equals "VERSION" "1.28.1"
 }
 
-@test "dockerfile-env-version increments patch from existing tags" {
+@test "file-pattern-match dockerfile-env-kubectl increments patch from existing tags" {
   TEST_REPO=$(clone_fixture "tag-none")
   cd "$TEST_REPO"
   mkdir -p src/docker
@@ -283,69 +284,76 @@ ENV KUBECTL_VERSION=1.28.0' > src/docker/Dockerfile
   git tag -m "test" 1.28.1
   git tag -m "test" 1.28.2
 
-  export TAG_VERSION_CALCULATION_STRATEGY=dockerfile-env-version
+  export TAG_VERSION_CALCULATION_STRATEGY=file-pattern-match
+  export TAG_VERSION_PATTERN_TYPE=dockerfile-env-kubectl
 
   run "$SCRIPTS_DIR/versions-and-naming"
   [ "$status" -eq 0 ]
   assert_var_equals "VERSION" "1.28.3"
 }
 
-@test "dockerfile-env-version uses custom ENV variable name" {
+@test "file-pattern-match uses custom pattern for different ENV variable" {
   TEST_REPO=$(clone_fixture "tag-none")
   cd "$TEST_REPO"
   mkdir -p src/docker
   echo 'FROM alpine:3.19
 ENV HELM_VERSION=3.14.0' > src/docker/Dockerfile
 
-  export TAG_VERSION_CALCULATION_STRATEGY=dockerfile-env-version
-  export ENV_VARIABLE_NAME=HELM_VERSION
+  export TAG_VERSION_CALCULATION_STRATEGY=file-pattern-match
+  export TAG_VERSION_PATTERN_TYPE=custom
+  export TAG_VERSION_SOURCE_SUB_PATH=src/docker
+  export TAG_VERSION_SOURCE_FILE_NAME=Dockerfile
+  export TAG_VERSION_SOURCE_CUSTOM_PATTERN='^ENV HELM_VERSION=([0-9]+\.[0-9]+\.[0-9]+)$'
 
   run "$SCRIPTS_DIR/versions-and-naming"
   [ "$status" -eq 0 ]
   assert_var_equals "VERSION" "3.14.1"
 }
 
-@test "dockerfile-env-version uses custom dockerfile path" {
+@test "file-pattern-match dockerfile-env-kubectl uses custom source path" {
   TEST_REPO=$(clone_fixture "tag-none")
   cd "$TEST_REPO"
   mkdir -p custom/path
   echo 'FROM alpine:3.19
 ENV KUBECTL_VERSION=1.29.0' > custom/path/Dockerfile
 
-  export TAG_VERSION_CALCULATION_STRATEGY=dockerfile-env-version
-  export DOCKERFILE_SUB_PATH=custom/path
+  export TAG_VERSION_CALCULATION_STRATEGY=file-pattern-match
+  export TAG_VERSION_PATTERN_TYPE=dockerfile-env-kubectl
+  export TAG_VERSION_SOURCE_SUB_PATH=custom/path
 
   run "$SCRIPTS_DIR/versions-and-naming"
   [ "$status" -eq 0 ]
   assert_var_equals "VERSION" "1.29.1"
 }
 
-@test "dockerfile-env-version fails if Dockerfile not found" {
+@test "file-pattern-match fails if source file not found" {
   TEST_REPO=$(clone_fixture "tag-none")
   cd "$TEST_REPO"
   # No Dockerfile created
 
-  export TAG_VERSION_CALCULATION_STRATEGY=dockerfile-env-version
+  export TAG_VERSION_CALCULATION_STRATEGY=file-pattern-match
+  export TAG_VERSION_PATTERN_TYPE=dockerfile-env-kubectl
 
   run "$SCRIPTS_DIR/versions-and-naming"
   [ "$status" -eq 1 ]
-  assert_output_contains "Dockerfile not found"
+  assert_output_contains "Source file not found"
 }
 
-@test "dockerfile-env-version fails if ENV variable not found" {
+@test "file-pattern-match fails if pattern not matched" {
   TEST_REPO=$(clone_fixture "tag-none")
   cd "$TEST_REPO"
   mkdir -p src/docker
   echo 'FROM alpine:3.19' > src/docker/Dockerfile
 
-  export TAG_VERSION_CALCULATION_STRATEGY=dockerfile-env-version
+  export TAG_VERSION_CALCULATION_STRATEGY=file-pattern-match
+  export TAG_VERSION_PATTERN_TYPE=dockerfile-env-kubectl
 
   run "$SCRIPTS_DIR/versions-and-naming"
   [ "$status" -eq 1 ]
-  assert_output_contains "Could not find ENV KUBECTL_VERSION"
+  assert_output_contains "Could not find version matching pattern"
 }
 
-@test "dockerfile-env-version ignores tags from different series" {
+@test "file-pattern-match ignores tags from different series" {
   TEST_REPO=$(clone_fixture "tag-none")
   cd "$TEST_REPO"
   mkdir -p src/docker
@@ -356,11 +364,95 @@ ENV KUBECTL_VERSION=1.29.0' > src/docker/Dockerfile
   git tag -m "test" 1.28.5
   git tag -m "test" 1.30.0
 
-  export TAG_VERSION_CALCULATION_STRATEGY=dockerfile-env-version
+  export TAG_VERSION_CALCULATION_STRATEGY=file-pattern-match
+  export TAG_VERSION_PATTERN_TYPE=dockerfile-env-kubectl
 
   run "$SCRIPTS_DIR/versions-and-naming"
   [ "$status" -eq 0 ]
   assert_var_equals "VERSION" "1.29.1"
+}
+
+@test "file-pattern-match retag-workflow-source-tag extracts from workflow file" {
+  TEST_REPO=$(clone_fixture "tag-none")
+  cd "$TEST_REPO"
+  mkdir -p .github/workflows
+  echo 'name: Build
+on: push
+jobs:
+  build:
+    uses: example/workflow@v1
+    with:
+      source-tag: 3.10.1' > .github/workflows/build.yaml
+
+  export TAG_VERSION_CALCULATION_STRATEGY=file-pattern-match
+  export TAG_VERSION_PATTERN_TYPE=retag-workflow-source-tag
+
+  run "$SCRIPTS_DIR/versions-and-naming"
+  [ "$status" -eq 0 ]
+  assert_var_equals "VERSION" "3.10.1"
+}
+
+@test "file-pattern-match retag-workflow-source-tag handles quoted values" {
+  TEST_REPO=$(clone_fixture "tag-none")
+  cd "$TEST_REPO"
+  mkdir -p .github/workflows
+  echo "name: Build
+on: push
+jobs:
+  build:
+    uses: example/workflow@v1
+    with:
+      source-tag: '2.5.0'" > .github/workflows/build.yaml
+
+  export TAG_VERSION_CALCULATION_STRATEGY=file-pattern-match
+  export TAG_VERSION_PATTERN_TYPE=retag-workflow-source-tag
+
+  run "$SCRIPTS_DIR/versions-and-naming"
+  [ "$status" -eq 0 ]
+  assert_var_equals "VERSION" "2.5.1"
+}
+
+@test "file-pattern-match custom type requires all inputs" {
+  TEST_REPO=$(clone_fixture "tag-none")
+  cd "$TEST_REPO"
+
+  export TAG_VERSION_CALCULATION_STRATEGY=file-pattern-match
+  export TAG_VERSION_PATTERN_TYPE=custom
+  # Missing required inputs
+
+  run "$SCRIPTS_DIR/versions-and-naming"
+  [ "$status" -eq 1 ]
+  assert_output_contains "required for custom pattern type"
+}
+
+@test "file-pattern-match fails for unknown pattern type" {
+  TEST_REPO=$(clone_fixture "tag-none")
+  cd "$TEST_REPO"
+
+  export TAG_VERSION_CALCULATION_STRATEGY=file-pattern-match
+  export TAG_VERSION_PATTERN_TYPE=unknown-type
+
+  run "$SCRIPTS_DIR/versions-and-naming"
+  [ "$status" -eq 1 ]
+  assert_output_contains "Unknown TAG_VERSION_PATTERN_TYPE"
+}
+
+@test "file-pattern-match fails when custom pattern captures non-version" {
+  TEST_REPO=$(clone_fixture "tag-none")
+  cd "$TEST_REPO"
+  mkdir -p src/config
+  echo 'APP_NAME=my-cool-app' > src/config/settings.txt
+
+  export TAG_VERSION_CALCULATION_STRATEGY=file-pattern-match
+  export TAG_VERSION_PATTERN_TYPE=custom
+  export TAG_VERSION_SOURCE_SUB_PATH=src/config
+  export TAG_VERSION_SOURCE_FILE_NAME=settings.txt
+  # This pattern captures "my-cool-app" which is not a version
+  export TAG_VERSION_SOURCE_CUSTOM_PATTERN='^APP_NAME=(.+)$'
+
+  run "$SCRIPTS_DIR/versions-and-naming"
+  [ "$status" -eq 1 ]
+  assert_output_contains "not a valid version format"
 }
 
 # BUILD_LOCATION tests

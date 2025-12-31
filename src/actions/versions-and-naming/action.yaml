@@ -19,17 +19,29 @@ inputs:
     required: false
     default: '3'
   tag-version-calculation-strategy:
-    description: 'Strategy for calculating version (git-auto-closest-highest, dockerfile-env-version)'
+    description: 'Strategy for calculating version (git-auto-closest-highest, file-pattern-match)'
     required: false
     default: 'git-auto-closest-highest'
+  tag-version-pattern-type:
+    description: 'Pattern type for file-pattern-match strategy (dockerfile-env-kubectl, retag-workflow-source-tag, custom)'
+    required: false
+    default: 'dockerfile-env-kubectl'
   dockerfile-sub-path:
-    description: 'Path to directory containing Dockerfile (for dockerfile-env-version strategy)'
+    description: 'Directory containing Dockerfile, relative to repo root.'
     required: false
-    default: 'src/docker'
-  env-variable-name:
-    description: 'Name of ENV variable to extract version from (for dockerfile-env-version strategy)'
+    default: ''
+  tag-version-source-sub-path:
+    description: 'Override path to source directory (optional, takes precedence over dockerfile-sub-path, which provides the default)'
     required: false
-    default: 'KUBECTL_VERSION'
+    default: ''
+  tag-version-source-file-name:
+    description: 'Override source file name (optional, defaults based on pattern type)'
+    required: false
+    default: ''
+  tag-version-source-custom-pattern:
+    description: 'Regex with capture group for version extraction (required for custom pattern type)'
+    required: false
+    default: ''
 
 outputs:
   version:
@@ -79,6 +91,8 @@ runs:
         ADDITIONAL_RELEASE_BRANCHES: ${{ inputs.additional-release-branches }}
         MAX_VERSION_PARTS: ${{ inputs.max-version-parts }}
         TAG_VERSION_CALCULATION_STRATEGY: ${{ inputs.tag-version-calculation-strategy }}
-        DOCKERFILE_SUB_PATH: ${{ inputs.dockerfile-sub-path }}
-        ENV_VARIABLE_NAME: ${{ inputs.env-variable-name }}
+        TAG_VERSION_PATTERN_TYPE: ${{ inputs.tag-version-pattern-type }}
+        TAG_VERSION_SOURCE_SUB_PATH: ${{ inputs.tag-version-source-sub-path || inputs.dockerfile-sub-path }}
+        TAG_VERSION_SOURCE_FILE_NAME: ${{ inputs.tag-version-source-file-name }}
+        TAG_VERSION_SOURCE_CUSTOM_PATTERN: ${{ inputs.tag-version-source-custom-pattern }}
       run: "${{ github.action_path }}/../../scripts/main/versions-and-naming"

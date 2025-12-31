@@ -34,8 +34,11 @@ DEFAULT_BRANCH="${DEFAULT_BRANCH:-main}"
 ADDITIONAL_RELEASE_BRANCHES="${ADDITIONAL_RELEASE_BRANCHES:-}"  # Comma-separated list of additional release branches
 MAX_VERSION_PARTS="${MAX_VERSION_PARTS:-3}"  # Fail if version exceeds this many parts
 TAG_VERSION_CALCULATION_STRATEGY="${TAG_VERSION_CALCULATION_STRATEGY:-git-auto-closest-highest}"
-DOCKERFILE_SUB_PATH="${DOCKERFILE_SUB_PATH:-src/docker}"  # For dockerfile-env-version strategy
-ENV_VARIABLE_NAME="${ENV_VARIABLE_NAME:-KUBECTL_VERSION}"  # For dockerfile-env-version strategy
+# For file-pattern-match strategy
+TAG_VERSION_PATTERN_TYPE="${TAG_VERSION_PATTERN_TYPE:-dockerfile-env-kubectl}"
+TAG_VERSION_SOURCE_SUB_PATH="${TAG_VERSION_SOURCE_SUB_PATH:-}"  # Optional override
+TAG_VERSION_SOURCE_FILE_NAME="${TAG_VERSION_SOURCE_FILE_NAME:-}"  # Optional override
+TAG_VERSION_SOURCE_CUSTOM_PATTERN="${TAG_VERSION_SOURCE_CUSTOM_PATTERN:-}"  # Required for custom type
 
 # Validate BUILD_LOCATION (required)
 validate_build_location() {
@@ -168,8 +171,10 @@ main() {
   local plugin_output
   plugin_output=$(
     MAX_VERSION_PARTS="${MAX_VERSION_PARTS}" \
-    DOCKERFILE_SUB_PATH="${DOCKERFILE_SUB_PATH}" \
-    ENV_VARIABLE_NAME="${ENV_VARIABLE_NAME}" \
+    TAG_VERSION_PATTERN_TYPE="${TAG_VERSION_PATTERN_TYPE}" \
+    TAG_VERSION_SOURCE_SUB_PATH="${TAG_VERSION_SOURCE_SUB_PATH}" \
+    TAG_VERSION_SOURCE_FILE_NAME="${TAG_VERSION_SOURCE_FILE_NAME}" \
+    TAG_VERSION_SOURCE_CUSTOM_PATTERN="${TAG_VERSION_SOURCE_CUSTOM_PATTERN}" \
     LOG_ERROR_PREFIX="${LOG_ERROR_PREFIX}" \
     LOG_ERROR_SUFFIX="${LOG_ERROR_SUFFIX}" \
     "${strategy_script}"
