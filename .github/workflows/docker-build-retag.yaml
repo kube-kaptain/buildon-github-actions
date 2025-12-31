@@ -432,6 +432,7 @@ jobs:
 
       # === Docker Push ===
       - name: Start check - Docker Push
+        if: steps.versions.outputs.is-release == 'true'
         id: check-docker-push
         uses: ./.github/buildon-github-actions/src/actions/github-check-run
         with:
@@ -445,13 +446,13 @@ jobs:
           docker-image-full-uri: ${{ steps.docker-build.outputs.target-image-full-uri }}
           is-release: ${{ steps.versions.outputs.is-release }}
       - name: Pass check - Docker Push
-        if: success()
+        if: steps.versions.outputs.is-release == 'true' && success()
         uses: ./.github/buildon-github-actions/src/actions/github-check-run
         with:
           action: pass
           check-run-id: ${{ steps.check-docker-push.outputs.check-run-id }}
       - name: Fail check - Docker Push
-        if: failure()
+        if: steps.versions.outputs.is-release == 'true' && failure()
         uses: ./.github/buildon-github-actions/src/actions/github-check-run
         with:
           action: fail
