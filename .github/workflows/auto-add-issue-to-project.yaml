@@ -15,10 +15,13 @@ on:
 jobs:
   add-to-project:
     runs-on: ubuntu-latest
+    permissions:
+      issues: read
+      projects: write
     steps:
       - name: Add issue to project
         env:
-          GH_TOKEN: ${{ secrets.PROJECT_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
           ISSUE_NODE_ID: ${{ github.event.issue.node_id }}
           ORG: ${{ github.repository_owner }}
           PROJECT_NUMBER: ${{ inputs.project-number }}

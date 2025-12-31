@@ -10,4 +10,6 @@ on:
 jobs:
   add-to-project:
     uses: ./.github/workflows/auto-add-issue-to-project.yaml
-    secrets: inherit
+    permissions:
+      issues: read
+      projects: write
