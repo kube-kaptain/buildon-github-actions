@@ -667,8 +667,6 @@ main() {
   # These files are not generated from templates - preserve them
   local preserved_files=(
     "build.yaml"
-    "auto-add-issue-to-project.yaml"
-    "auto-add-issue-to-project-1.yaml"
   )
 
   if [[ -d "$OUTPUT_DIR" ]]; then
