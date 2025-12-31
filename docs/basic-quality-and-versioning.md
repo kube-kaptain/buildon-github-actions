@@ -8,7 +8,8 @@ Basic Quality and Versioning
 |-------|------|---------|-------------|
 | `default-branch` | string | `main` | The default/release branch name |
 | `additional-release-branches` | string | `""` | Comma-separated list of additional release branches |
-| `block-slashes` | boolean | `false` | Block branch names containing slashes |
+| `block-slashes` | boolean | `false` | DEPRECATED: Use block-slash-containing-branches instead |
+| `block-slash-containing-branches` | boolean | `false` | Block branch names containing slashes |
 | `block-double-hyphens` | boolean | `true` | Block branch names containing double hyphens (typo detection) |
 | `require-conventional-branches` | boolean | `false` | Require branch names start with feature/, fix/, etc. |
 | `require-conventional-commits` | boolean | `false` | Require commits use conventional commit format (feat:, fix:, etc.) |

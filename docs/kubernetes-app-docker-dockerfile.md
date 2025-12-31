@@ -29,7 +29,8 @@ Kubernetes App - Docker Dockerfile
 | `tag-version-source-sub-path` | string | `""` | Override path to source directory (takes precedence over dockerfile-sub-path) |
 | `tag-version-source-file-name` | string | `""` | Override source file name (defaults based on pattern type) |
 | `tag-version-source-custom-pattern` | string | `""` | Regex with capture group for version extraction (required for custom pattern type) |
-| `block-slashes` | boolean | `false` | Block branch names containing slashes |
+| `block-slashes` | boolean | `false` | DEPRECATED: Use block-slash-containing-branches instead |
+| `block-slash-containing-branches` | boolean | `false` | Block branch names containing slashes |
 | `block-double-hyphens` | boolean | `true` | Block branch names containing double hyphens (typo detection) |
 | `require-conventional-branches` | boolean | `false` | Require branch names start with feature/, fix/, etc. |
 | `require-conventional-commits` | boolean | `false` | Require commits use conventional commit format (feat:, fix:, etc.) |

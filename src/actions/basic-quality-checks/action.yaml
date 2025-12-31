@@ -15,6 +15,10 @@ inputs:
     required: false
     default: ''
   block-slashes:
+    description: 'DEPRECATED: Use block-slash-containing-branches instead'
+    required: false
+    default: ''
+  block-slash-containing-branches:
     description: 'Block branch names containing slashes'
     required: false
     default: 'false'
@@ -50,6 +54,7 @@ runs:
         DEFAULT_BRANCH: ${{ inputs.default-branch }}
         ADDITIONAL_RELEASE_BRANCHES: ${{ inputs.additional-release-branches }}
         BLOCK_SLASHES: ${{ inputs.block-slashes }}
+        BLOCK_SLASH_CONTAINING_BRANCHES: ${{ inputs.block-slash-containing-branches }}
         BLOCK_DOUBLE_HYPHENS: ${{ inputs.block-double-hyphens }}
         REQUIRE_CONVENTIONAL_BRANCHES: ${{ inputs.require-conventional-branches }}
         REQUIRE_CONVENTIONAL_COMMITS: ${{ inputs.require-conventional-commits }}

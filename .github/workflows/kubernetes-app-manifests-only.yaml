@@ -116,6 +116,11 @@ on:
         default: ''
       # Quality check inputs
       block-slashes:
+        description: 'DEPRECATED: Use block-slash-containing-branches instead'
+        required: false
+        type: boolean
+        default: false
+      block-slash-containing-branches:
         description: 'Block branch names containing slashes'
         required: false
         type: boolean
@@ -291,6 +296,7 @@ jobs:
           default-branch: ${{ inputs.default-branch }}
           additional-release-branches: ${{ inputs.additional-release-branches }}
           block-slashes: ${{ inputs.block-slashes }}
+          block-slash-containing-branches: ${{ inputs.block-slash-containing-branches }}
           block-double-hyphens: ${{ inputs.block-double-hyphens }}
           require-conventional-branches: ${{ inputs.require-conventional-branches }}
           require-conventional-commits: ${{ inputs.require-conventional-commits }}

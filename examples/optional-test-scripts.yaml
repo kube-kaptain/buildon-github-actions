@@ -70,11 +70,11 @@ jobs:
 # │ Quality Checks                                                          │
 # └─────────────────────────────────────────────────────────────────────────┘
 #     with:
-#       block-slashes: true                  # Default is false
-#       block-double-hyphens: false          # Default is true
-#       require-conventional-branches: true  # Default is false
-#       require-conventional-commits: true   # Default is false
-#       block-conventional-commits: true     # Default is false
+#       block-slash-containing-branches: true  # Default is false
+#       block-double-hyphens: false            # Default is true
+#       require-conventional-branches: true    # Default is false
+#       require-conventional-commits: true     # Default is false
+#       block-conventional-commits: true       # Default is false
 
 # ┌─────────────────────────────────────────────────────────────────────────┐
 # │ Version Configuration                                                   │
