@@ -1,0 +1,40 @@
+# SPDX-License-Identifier: CC0-1.0
+# This example is released to the public domain. Use freely without attribution.
+#
+# Version From Custom Pattern
+#
+# Extract version from any file using a custom regex pattern.
+# Use when the built-in patterns don't match your version source.
+#
+# The regex must have exactly one capture group that captures the version (x.y.z format).
+#
+# Copy this to .github/workflows/build.yaml in your repo.
+
+name: Build with Custom Version Pattern
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    uses: kube-kaptain/buildon-github-actions/.github/workflows/basic-quality-and-versioning.yaml@1.0.11
+    permissions:
+      contents: write
+      checks: write
+    with:
+      tag-version-calculation-strategy: 'file-pattern-match'
+      tag-version-pattern-type: 'custom'
+      tag-version-source-sub-path: 'src/config'
+      tag-version-source-file-name: 'version.properties'
+      tag-version-source-custom-pattern: '^app\.version=([0-9]+\.[0-9]+\.[0-9]+)$'
+
+# Example version.properties file:
+#   app.name=my-app
+#   app.version=2.5.0
+#   app.author=team
+#
+# The pattern captures '2.5.0' from the app.version line.
+# First build: tags 2.5.1, second: 2.5.2, etc.

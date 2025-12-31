@@ -1,0 +1,42 @@
+# SPDX-License-Identifier: CC0-1.0
+# This example is released to the public domain. Use freely without attribution.
+#
+# Version From Retag Source Tag
+#
+# Extract version from the source-tag input in a retag workflow file.
+# The version tracks the upstream image you're retagging.
+#
+# The version series (major.minor) is extracted, then the patch is auto-incremented
+# based on existing tags in that series.
+#
+# Example: source-tag: '3.21' below
+#   - First build: tags 3.21.1
+#   - Second build: tags 3.21.2
+#   - Update to 3.22: tags 3.22.1
+#
+# Copy this to .github/workflows/build.yaml in your repo.
+
+name: Docker Retag with Version from Retag Source Tag
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  retag:
+    uses: kube-kaptain/buildon-github-actions/.github/workflows/docker-build-retag.yaml@1.0.11
+    permissions:
+      contents: write
+      packages: write
+      checks: write
+    with:
+      source-registry: docker.io
+      source-image-name: library/alpine
+      source-tag: '3.21'
+      tag-version-calculation-strategy: 'file-pattern-match'
+      tag-version-pattern-type: 'retag-workflow-source-tag'
+
+# The pattern looks for 'source-tag: x.y.z' in .github/workflows/build.yaml
+# When you update source-tag above, the version series changes automatically.
