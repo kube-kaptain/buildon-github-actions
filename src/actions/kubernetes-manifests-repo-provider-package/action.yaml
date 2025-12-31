@@ -116,14 +116,6 @@ runs:
         PROVIDER="${{ inputs.manifests-repo-provider-type }}"
 
         # =====================================================================
-        # Validate provider type
-        # =====================================================================
-        if [[ "$PROVIDER" != "docker" ]]; then
-          echo "::error::Unknown manifests-repo-provider-type: ${PROVIDER}. Only 'docker' is currently supported."
-          exit 1
-        fi
-
-        # =====================================================================
         # REPO_PROVIDER_URL (from resolver)
         # =====================================================================
         echo "url=${{ steps.resolve.outputs.target-registry }}" >> "$GITHUB_OUTPUT"
