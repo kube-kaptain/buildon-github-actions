@@ -72,6 +72,17 @@ jobs:
 #       max-version-parts: 2  # Default is 3, but any positive integer 1 or higher is valid
 
 # ┌─────────────────────────────────────────────────────────────────────────┐
+# │ Version Calculation Strategy                                            │
+# └─────────────────────────────────────────────────────────────────────────┘
+# Default: git-auto-closest-highest (finds closest tag, increments it)
+# Alternative: file-pattern-match (extracts version from a file)
+#
+#     with:
+#       tag-version-calculation-strategy: 'file-pattern-match'
+#       tag-version-pattern-type: 'dockerfile-env-kubectl'  # default
+#       dockerfile-sub-path: 'src/docker'  # where to find Dockerfile
+
+# ┌─────────────────────────────────────────────────────────────────────────┐
 # │ Test Injection                                                          │
 # └─────────────────────────────────────────────────────────────────────────┘
 #     with:

@@ -38,3 +38,27 @@ jobs:
 # └─────────────────────────────────────────────────────────────────────────┘
 #     with:
 #       max-version-parts: 2  # Default is 3, but any positive integer 1 or higher is valid
+
+# ┌─────────────────────────────────────────────────────────────────────────┐
+# │ Version Calculation Strategy                                            │
+# └─────────────────────────────────────────────────────────────────────────┘
+# Default: git-auto-closest-highest (finds closest tag, increments it)
+# Alternative: file-pattern-match (extracts version from a file)
+#
+#     with:
+#       tag-version-calculation-strategy: 'file-pattern-match'
+#       tag-version-pattern-type: 'dockerfile-env-kubectl'  # default
+#       dockerfile-sub-path: 'src/docker'  # where to find Dockerfile
+#
+# Pattern types with defaults:
+#   dockerfile-env-kubectl: src/docker/Dockerfile, ENV KUBECTL_VERSION=x.y.z
+#   retag-workflow-source-tag: .github/workflows/build.yaml, source-tag: x.y.z
+#   custom: requires all inputs below
+#
+# Custom pattern example:
+#     with:
+#       tag-version-calculation-strategy: 'file-pattern-match'
+#       tag-version-pattern-type: 'custom'
+#       tag-version-source-sub-path: 'src/config'
+#       tag-version-source-file-name: 'version.txt'
+#       tag-version-source-custom-pattern: '^VERSION=([0-9]+\.[0-9]+\.[0-9]+)$'

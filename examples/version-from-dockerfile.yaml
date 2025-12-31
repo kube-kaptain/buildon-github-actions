@@ -1,0 +1,42 @@
+# SPDX-License-Identifier: CC0-1.0
+# This example is released to the public domain. Use freely without attribution.
+#
+# Version From Dockerfile
+#
+# Extract version from an ENV variable in your Dockerfile rather than using git tags.
+# Useful when your image wraps a specific upstream version (e.g., kubectl, helm).
+#
+# The version series (major.minor) is extracted, then the patch is auto-incremented
+# based on existing tags in that series.
+#
+# Example: ENV KUBECTL_VERSION=1.28.0 in Dockerfile
+#   - First build: tags 1.28.1
+#   - Second build: tags 1.28.2
+#   - Update to 1.29.0: tags 1.29.1
+#
+# Copy this to .github/workflows/build.yaml in your repo.
+
+name: Docker Build with Version from Dockerfile
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    uses: kube-kaptain/buildon-github-actions/.github/workflows/docker-build-dockerfile.yaml@1.0.11
+    permissions:
+      contents: write
+      packages: write
+      checks: write
+    with:
+      tag-version-calculation-strategy: 'file-pattern-match'
+      tag-version-pattern-type: 'dockerfile-env-kubectl'
+      # dockerfile-sub-path: 'src/docker'  # default, change if your Dockerfile is elsewhere
+
+# Your Dockerfile should contain a line like:
+#   ENV KUBECTL_VERSION=1.28.0
+#
+# The pattern matches: ENV KUBECTL_VERSION=x.y.z
