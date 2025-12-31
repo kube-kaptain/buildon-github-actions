@@ -20,6 +20,12 @@ Kubernetes App - Manifests Only
 | `default-branch` | string | `main` | The default/release branch name |
 | `additional-release-branches` | string | `""` | Comma-separated list of additional release branches |
 | `max-version-parts` | number | `3` | Maximum allowed version parts (fail if exceeded) |
+| `tag-version-calculation-strategy` | string | `git-auto-closest-highest` | Strategy for calculating version (git-auto-closest-highest, file-pattern-match) |
+| `tag-version-pattern-type` | string | `dockerfile-env-kubectl` | Pattern type for file-pattern-match strategy (dockerfile-env-kubectl, retag-workflow-source-tag, custom) |
+| `dockerfile-sub-path` | string | `src/docker` | Directory containing Dockerfile, relative to repo root. |
+| `tag-version-source-sub-path` | string | `""` | Override path to source directory (takes precedence over dockerfile-sub-path) |
+| `tag-version-source-file-name` | string | `""` | Override source file name (defaults based on pattern type) |
+| `tag-version-source-custom-pattern` | string | `""` | Regex with capture group for version extraction (required for custom pattern type) |
 | `block-slashes` | boolean | `false` | Block branch names containing slashes |
 | `block-double-hyphens` | boolean | `true` | Block branch names containing double hyphens (typo detection) |
 | `require-conventional-branches` | boolean | `false` | Require branch names start with feature/, fix/, etc. |

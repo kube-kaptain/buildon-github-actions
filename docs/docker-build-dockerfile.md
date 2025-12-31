@@ -6,7 +6,7 @@ Docker Build Dockerfile
 
 | Input | Type | Default | Description |
 |-------|------|---------|-------------|
-| `dockerfile-sub-path` | string | `src/docker` | Directory containing Dockerfile, relative (also used as build context) |
+| `dockerfile-sub-path` | string | `src/docker` | Directory containing Dockerfile, relative to repo root. |
 | `output-sub-path` | string | `target` | Build output directory (relative) |
 | `squash` | boolean | `true` | Enable --squash (requires experimental mode) |
 | `no-cache` | boolean | `true` | Disable layer caching for reproducible builds |
@@ -26,6 +26,11 @@ Docker Build Dockerfile
 | `require-conventional-commits` | boolean | `false` | Require commits use conventional commit format (feat:, fix:, etc.) |
 | `block-conventional-commits` | boolean | `false` | Block commits that use conventional commit format |
 | `max-version-parts` | number | `3` | Maximum allowed version parts (fail if exceeded) |
+| `tag-version-calculation-strategy` | string | `git-auto-closest-highest` | Strategy for calculating version (git-auto-closest-highest, file-pattern-match) |
+| `tag-version-pattern-type` | string | `dockerfile-env-kubectl` | Pattern type for file-pattern-match strategy (dockerfile-env-kubectl, retag-workflow-source-tag, custom) |
+| `tag-version-source-sub-path` | string | `""` | Override path to source directory (takes precedence over dockerfile-sub-path) |
+| `tag-version-source-file-name` | string | `""` | Override source file name (defaults based on pattern type) |
+| `tag-version-source-custom-pattern` | string | `""` | Regex with capture group for version extraction (required for custom pattern type) |
 | `pre-tagging-tests-script-sub-path` | string | `""` | Path to pre-tagging test script relative to .github/ (e.g., bin/pre-tagging.bash) |
 | `post-docker-tests-script-sub-path` | string | `""` | Path to post-docker test script relative to .github/ (e.g., bin/post-docker.bash) |
 | `pre-docker-prepare-script-sub-path` | string | `""` | Path to pre-docker prepare script relative to .github/ (e.g., bin/pre-docker-prepare.bash) |

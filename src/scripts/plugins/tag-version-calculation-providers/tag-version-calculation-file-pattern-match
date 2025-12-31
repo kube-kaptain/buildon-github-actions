@@ -1,0 +1,220 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025 Kaptain contributors (Fred Cooke)
+#
+# tag-version-calculation-file-pattern-match - Version from file pattern matching
+#
+# Algorithm:
+#   1. Read file and extract version using pattern type or custom regex
+#   2. Use major.minor as the series prefix (e.g., 1.28)
+#   3. Find highest existing tag matching that series (e.g., 1.28.5)
+#   4. Increment the patch component, or start at x.y.1 if no tags exist in series
+#
+# Inputs (environment variables):
+#   TAG_VERSION_PATTERN_TYPE - Pattern type (required):
+#     - dockerfile-env-kubectl: defaults to src/docker/Dockerfile, pattern ENV KUBECTL_VERSION=x.y.z
+#     - retag-workflow-source-tag: defaults to .github/workflows/build.yaml, pattern source-tag: x.y.z
+#     - custom: requires all TAG_VERSION_SOURCE_* inputs
+#   TAG_VERSION_SOURCE_SUB_PATH - Override path to directory (required for custom)
+#   TAG_VERSION_SOURCE_FILE_NAME - Override file name (required for custom)
+#   TAG_VERSION_SOURCE_CUSTOM_PATTERN - Regex with capture group (required for custom)
+#   MAX_VERSION_PARTS - Fail if version exceeds this depth (required)
+#
+# Outputs (stdout):
+#   VERSION=x.y.z
+#
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${0}")" && pwd)"
+
+# Logging configuration (CI-agnostic)
+LOG_ERROR_PREFIX="${LOG_ERROR_PREFIX:-}"
+LOG_ERROR_SUFFIX="${LOG_ERROR_SUFFIX:-}"
+
+# Required inputs
+if [[ -z "${TAG_VERSION_PATTERN_TYPE:-}" ]]; then
+  echo "${LOG_ERROR_PREFIX}TAG_VERSION_PATTERN_TYPE is required (dockerfile-env-kubectl, retag-workflow-source-tag, custom)${LOG_ERROR_SUFFIX}" >&2
+  exit 1
+fi
+
+if [[ -z "${MAX_VERSION_PARTS:-}" ]]; then
+  echo "${LOG_ERROR_PREFIX}MAX_VERSION_PARTS is required${LOG_ERROR_SUFFIX}" >&2
+  exit 1
+fi
+
+# Set defaults based on pattern type
+set_defaults_for_type() {
+  case "${TAG_VERSION_PATTERN_TYPE}" in
+    dockerfile-env-kubectl)
+      SOURCE_SUB_PATH="${TAG_VERSION_SOURCE_SUB_PATH:-src/docker}"
+      SOURCE_FILE_NAME="${TAG_VERSION_SOURCE_FILE_NAME:-Dockerfile}"
+      VERSION_PATTERN='^ENV KUBECTL_VERSION=([0-9]+\.[0-9]+\.[0-9]+)$'
+      ;;
+    retag-workflow-source-tag)
+      SOURCE_SUB_PATH="${TAG_VERSION_SOURCE_SUB_PATH:-.github/workflows}"
+      SOURCE_FILE_NAME="${TAG_VERSION_SOURCE_FILE_NAME:-build.yaml}"
+      VERSION_PATTERN="^[[:space:]]*source-tag:[[:space:]]*['\"]?([0-9]+\.[0-9]+\.[0-9]+)['\"]?$"
+      ;;
+    custom)
+      if [[ -z "${TAG_VERSION_SOURCE_SUB_PATH:-}" ]]; then
+        echo "${LOG_ERROR_PREFIX}TAG_VERSION_SOURCE_SUB_PATH is required for custom pattern type${LOG_ERROR_SUFFIX}" >&2
+        exit 1
+      fi
+      if [[ -z "${TAG_VERSION_SOURCE_FILE_NAME:-}" ]]; then
+        echo "${LOG_ERROR_PREFIX}TAG_VERSION_SOURCE_FILE_NAME is required for custom pattern type${LOG_ERROR_SUFFIX}" >&2
+        exit 1
+      fi
+      if [[ -z "${TAG_VERSION_SOURCE_CUSTOM_PATTERN:-}" ]]; then
+        echo "${LOG_ERROR_PREFIX}TAG_VERSION_SOURCE_CUSTOM_PATTERN is required for custom pattern type${LOG_ERROR_SUFFIX}" >&2
+        exit 1
+      fi
+      SOURCE_SUB_PATH="${TAG_VERSION_SOURCE_SUB_PATH}"
+      SOURCE_FILE_NAME="${TAG_VERSION_SOURCE_FILE_NAME}"
+      VERSION_PATTERN="${TAG_VERSION_SOURCE_CUSTOM_PATTERN}"
+      ;;
+    *)
+      echo "${LOG_ERROR_PREFIX}Unknown TAG_VERSION_PATTERN_TYPE: ${TAG_VERSION_PATTERN_TYPE}${LOG_ERROR_SUFFIX}" >&2
+      echo "Valid types: dockerfile-env-kubectl, retag-workflow-source-tag, custom" >&2
+      exit 1
+      ;;
+  esac
+}
+
+# Validate that a string looks like a version (digits separated by dots)
+validate_version_format() {
+  local value="${1}"
+  if [[ ! "${value}" =~ ^[0-9]+(\.[0-9]+)+$ ]]; then
+    echo "${LOG_ERROR_PREFIX}Captured value '${value}' is not a valid version format${LOG_ERROR_SUFFIX}" >&2
+    echo "Expected: digits separated by dots (e.g., 1.28.0, 3.14.1)" >&2
+    exit 1
+  fi
+}
+
+# Extract version from file using pattern
+extract_version() {
+  local source_file="${SOURCE_SUB_PATH}/${SOURCE_FILE_NAME}"
+
+  if [[ ! -f "${source_file}" ]]; then
+    echo "${LOG_ERROR_PREFIX}Source file not found: ${source_file}${LOG_ERROR_SUFFIX}" >&2
+    exit 1
+  fi
+
+  # Extract version using pattern - capture group 1
+  local version
+  version=$(grep -E "${VERSION_PATTERN}" "${source_file}" | head -1 | sed -E "s/${VERSION_PATTERN}/\\1/")
+
+  if [[ -z "${version}" ]]; then
+    echo "${LOG_ERROR_PREFIX}Could not find version matching pattern in ${source_file}${LOG_ERROR_SUFFIX}" >&2
+    echo "Pattern: ${VERSION_PATTERN}" >&2
+    exit 1
+  fi
+
+  # Validate the captured value is actually a version
+  validate_version_format "${version}"
+
+  echo "${version}"
+}
+
+# Get major.minor prefix from version
+get_major_minor() {
+  local version="${1}"
+  local major minor
+  IFS='.' read -r major minor _ <<< "${version}"
+  echo "${major}.${minor}"
+}
+
+# Check if a tag is a pure numeric version (no -rc1, -beta, etc)
+is_numeric_version() {
+  local tag="${1}"
+  tag="${tag#v}"
+  [[ "${tag}" =~ ^[0-9]+(\.[0-9]+)+$ ]]
+}
+
+# Find highest tag matching major.minor prefix
+find_highest_in_series() {
+  local prefix="${1}"
+
+  # Get ALL tags in repo matching our prefix with pure numeric versions only
+  local highest
+  highest=$(git tag --list | while read -r tag; do
+    local clean="${tag#v}"
+    # Must start with our prefix, followed by dot and digits only
+    if [[ "${clean}" =~ ^${prefix}\.[0-9]+$ ]] && is_numeric_version "${tag}"; then
+      echo "${tag}"
+    fi
+  done | "${SCRIPT_DIR}/../../main/version-sort" | tail -n1)
+
+  echo "${highest}"
+}
+
+# Increment patch version
+increment_patch() {
+  local prefix="${1}"
+  local current="${2}"
+
+  if [[ -z "${current}" ]]; then
+    # No existing tag in series, start at prefix.1
+    echo "${prefix}.1"
+    return
+  fi
+
+  # Remove 'v' prefix if present
+  current="${current#v}"
+
+  # Split and increment patch
+  IFS='.' read -ra parts <<< "${current}"
+  local patch=$((parts[2] + 1))
+  echo "${parts[0]}.${parts[1]}.${patch}"
+}
+
+# Count parts in a version string
+count_version_parts() {
+  local version="${1}"
+  version="${version#v}"
+  local dot_count
+  dot_count=$(echo "${version}" | tr -cd '.' | wc -c | tr -d ' ')
+  echo $((dot_count + 1))
+}
+
+main() {
+  # Step 0: Set defaults based on pattern type
+  set_defaults_for_type
+  echo "Pattern type: ${TAG_VERSION_PATTERN_TYPE}" >&2
+  echo "Source file: ${SOURCE_SUB_PATH}/${SOURCE_FILE_NAME}" >&2
+
+  # Step 1: Extract version from file
+  local source_version
+  source_version=$(extract_version)
+  echo "Found version: ${source_version}" >&2
+
+  # Step 2: Get major.minor prefix
+  local prefix
+  prefix=$(get_major_minor "${source_version}")
+  echo "Using version series: ${prefix}.x" >&2
+
+  # Step 3: Find highest existing tag in series
+  local highest_tag
+  highest_tag=$(find_highest_in_series "${prefix}")
+  if [[ -n "${highest_tag}" ]]; then
+    echo "Highest existing tag in series: ${highest_tag}" >&2
+  else
+    echo "No existing tags in ${prefix}.x series" >&2
+  fi
+
+  # Step 4: Increment patch
+  local new_version
+  new_version=$(increment_patch "${prefix}" "${highest_tag}")
+
+  # Step 5: Validate against MAX_VERSION_PARTS
+  local part_count
+  part_count=$(count_version_parts "${new_version}")
+  if [[ ${part_count} -gt ${MAX_VERSION_PARTS} ]]; then
+    echo "${LOG_ERROR_PREFIX}Version '${new_version}' has ${part_count} parts, exceeds MAX_VERSION_PARTS=${MAX_VERSION_PARTS}${LOG_ERROR_SUFFIX}" >&2
+    exit 1
+  fi
+
+  # Output the version
+  echo "VERSION=${new_version}"
+}
+
+main "$@"

@@ -8,3 +8,9 @@
     default-branch: ${{ inputs.default-branch }}
     additional-release-branches: ${{ inputs.additional-release-branches }}
     max-version-parts: ${{ inputs.max-version-parts }}
+    tag-version-calculation-strategy: ${{ inputs.tag-version-calculation-strategy }}
+    tag-version-pattern-type: ${{ inputs.tag-version-pattern-type }}
+    dockerfile-sub-path: ${{ inputs.dockerfile-sub-path }}
+    tag-version-source-sub-path: ${{ inputs.tag-version-source-sub-path }}
+    tag-version-source-file-name: ${{ inputs.tag-version-source-file-name }}
+    tag-version-source-custom-pattern: ${{ inputs.tag-version-source-custom-pattern }}

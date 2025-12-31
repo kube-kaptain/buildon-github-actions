@@ -20,6 +20,36 @@ on:
         required: false
         type: number
         default: 3
+      tag-version-calculation-strategy:
+        description: 'Strategy for calculating version (git-auto-closest-highest, file-pattern-match)'
+        required: false
+        type: string
+        default: 'git-auto-closest-highest'
+      tag-version-pattern-type:
+        description: 'Pattern type for file-pattern-match strategy (dockerfile-env-kubectl, retag-workflow-source-tag, custom)'
+        required: false
+        type: string
+        default: 'dockerfile-env-kubectl'
+      dockerfile-sub-path:
+        description: 'Directory containing Dockerfile, relative to repo root.'
+        required: false
+        type: string
+        default: 'src/docker'
+      tag-version-source-sub-path:
+        description: 'Override path to source directory (takes precedence over dockerfile-sub-path)'
+        required: false
+        type: string
+        default: ''
+      tag-version-source-file-name:
+        description: 'Override source file name (defaults based on pattern type)'
+        required: false
+        type: string
+        default: ''
+      tag-version-source-custom-pattern:
+        description: 'Regex with capture group for version extraction (required for custom pattern type)'
+        required: false
+        type: string
+        default: ''
       pre-tagging-tests-script-sub-path:
         description: 'Path to pre-tagging test script relative to .github/ (e.g., bin/pre-tagging.bash)'
         required: false
@@ -153,3 +183,9 @@ jobs:
           default-branch: ${{ inputs.default-branch }}
           additional-release-branches: ${{ inputs.additional-release-branches }}
           max-version-parts: ${{ inputs.max-version-parts }}
+          tag-version-calculation-strategy: ${{ inputs.tag-version-calculation-strategy }}
+          tag-version-pattern-type: ${{ inputs.tag-version-pattern-type }}
+          dockerfile-sub-path: ${{ inputs.dockerfile-sub-path }}
+          tag-version-source-sub-path: ${{ inputs.tag-version-source-sub-path }}
+          tag-version-source-file-name: ${{ inputs.tag-version-source-file-name }}
+          tag-version-source-custom-pattern: ${{ inputs.tag-version-source-custom-pattern }}
