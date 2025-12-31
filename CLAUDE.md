@@ -78,6 +78,8 @@ Scripts use env vars for configuration:
 
 Runs shellcheck + BATS tests against fixture repos.
 
+**Note:** Tests only cover scripts (`src/scripts/`), not GitHub Actions files (`src/actions/`, `src/steps-common/`, `src/workflow-templates/`). For changes that only touch action.yaml, steps, or workflow template files, run `src/bin/assemble-workflows.bash` instead - it regenerates workflows from templates and generates docs from workflow inputs.
+
 ## Bash Portability
 
 macOS ships bash 3.2, GitHub Actions ubuntu-24.04 has bash 5.x. Key differences:
