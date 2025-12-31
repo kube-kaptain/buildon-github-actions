@@ -52,6 +52,11 @@ on:
         required: false
         type: string
         default: 'docker'
+      manifests-packaging-base-image:
+        description: 'Base image for manifest packaging (default: ghcr.io/kube-kaptain/image/image-pause:3.10.2)'
+        required: false
+        type: string
+        default: ''
       # Target configuration (for docker repo provider)
       target-registry:
         description: 'Target container registry'

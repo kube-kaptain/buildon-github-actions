@@ -6,6 +6,7 @@
   uses: ./.github/buildon-github-actions/src/actions/kubernetes-manifests-repo-provider-package
   with:
     manifests-repo-provider-type: ${{ inputs.manifests-repo-provider-type }}
+    manifests-packaging-base-image: ${{ inputs.manifests-packaging-base-image }}
     manifests-zip-sub-path: ${{ steps.manifest-package.outputs.manifests-zip-sub-path }}
     manifests-zip-file-name: ${{ steps.manifest-package.outputs.manifests-zip-file-name }}
     target-registry: ${{ steps.docker-build.outputs.target-registry }}

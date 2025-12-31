@@ -157,11 +157,20 @@ exit 0' > "$MOCK_BIN_DIR/docker"
   assert_output_contains "already exists"
 }
 
-@test "uses pause image as base" {
+@test "uses default pause image as base" {
   set_required_env
 
   run "$REPO_PROVIDERS_DIR/kubernetes-manifests-repo-provider-docker-package"
   [ "$status" -eq 0 ]
   # The script should output info about using pause as base
-  assert_output_contains "registry.k8s.io/pause:3.10.1"
+  assert_output_contains "ghcr.io/kube-kaptain/image/image-pause:3.10.2"
+}
+
+@test "allows overriding base image" {
+  set_required_env
+  export MANIFESTS_PACKAGING_BASE_IMAGE="custom.registry.io/my-org/custom-pause:1.0.0"
+
+  run "$REPO_PROVIDERS_DIR/kubernetes-manifests-repo-provider-docker-package"
+  [ "$status" -eq 0 ]
+  assert_output_contains "custom.registry.io/my-org/custom-pause:1.0.0"
 }

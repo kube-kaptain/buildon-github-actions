@@ -4,7 +4,7 @@
 #
 # kubernetes-manifests-repo-provider-docker-package - Packages manifests zip as a Docker image
 #
-# Uses registry.k8s.io/pause:3.10.1 as base, stores zip at /<original-filename>
+# Uses a minimal base image, stores zip at /<original-filename>
 # Builds the image but does NOT push. Pair with kubernetes-manifests-repo-provider-docker-publish.
 #
 # Inputs (environment variables - REPO_PROVIDER_* API):
@@ -15,6 +15,7 @@
 #   MANIFESTS_ZIP_SUB_PATH      - Path to the zip file location (required)
 #   MANIFESTS_ZIP_FILE_NAME      - Filename of the zip (required)
 #   OUTPUT_SUB_PATH         - Build output directory (default: target)
+#   MANIFESTS_PACKAGING_BASE_IMAGE - Base image for manifest packaging (default: ghcr.io/kube-kaptain/image/image-pause:3.10.2)
 #
 # Outputs:
 #   MANIFESTS_URI           - Full image reference (for use by publish step)
@@ -40,8 +41,8 @@ MANIFESTS_ZIP_SUB_PATH="${MANIFESTS_ZIP_SUB_PATH:?MANIFESTS_ZIP_SUB_PATH is requ
 MANIFESTS_ZIP_FILE_NAME="${MANIFESTS_ZIP_FILE_NAME:?MANIFESTS_ZIP_FILE_NAME is required}"
 OUTPUT_SUB_PATH="${OUTPUT_SUB_PATH:-target}"
 
-# Base image for manifest containers
-BASE_IMAGE="registry.k8s.io/pause:3.10.1"
+# Base image for manifest packaging
+BASE_IMAGE="${MANIFESTS_PACKAGING_BASE_IMAGE:-ghcr.io/kube-kaptain/image/image-pause:3.10.2}"
 
 # Build output structure
 PUBLISH_SUB_PATH="${OUTPUT_SUB_PATH}/publish/docker"
