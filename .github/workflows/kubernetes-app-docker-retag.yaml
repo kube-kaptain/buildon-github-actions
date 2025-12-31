@@ -65,6 +65,11 @@ on:
         required: false
         type: string
         default: 'docker'
+      manifests-packaging-base-image:
+        description: 'Base image for manifest packaging (default: ghcr.io/kube-kaptain/image/image-pause:3.10.2)'
+        required: false
+        type: string
+        default: ''
       # Target configuration
       target-registry:
         description: 'Target container registry'
@@ -594,6 +599,7 @@ jobs:
         uses: ./.github/buildon-github-actions/src/actions/kubernetes-manifests-repo-provider-package
         with:
           manifests-repo-provider-type: ${{ inputs.manifests-repo-provider-type }}
+          manifests-packaging-base-image: ${{ inputs.manifests-packaging-base-image }}
           manifests-zip-sub-path: ${{ steps.manifest-package.outputs.manifests-zip-sub-path }}
           manifests-zip-file-name: ${{ steps.manifest-package.outputs.manifests-zip-file-name }}
           target-registry: ${{ steps.docker-build.outputs.target-registry }}

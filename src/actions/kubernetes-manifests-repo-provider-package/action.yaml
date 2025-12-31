@@ -28,6 +28,10 @@ inputs:
   # ============================================================================
   # Docker-specific inputs
   # ============================================================================
+  manifests-packaging-base-image:
+    description: 'Base image for manifest packaging (default: ghcr.io/kube-kaptain/image/image-pause:3.10.2)'
+    required: false
+    default: ''
   target-registry:
     description: 'Target container registry'
     required: false
@@ -170,6 +174,7 @@ runs:
         LOG_ERROR_PREFIX: '::error::'
         MANIFESTS_REPO_PROVIDER_TYPE: ${{ inputs.manifests-repo-provider-type }}
         OUTPUT_SUB_PATH: ${{ inputs.output-sub-path }}
+        MANIFESTS_PACKAGING_BASE_IMAGE: ${{ inputs.manifests-packaging-base-image }}
 
         # --- Pass-through inputs ---
         MANIFESTS_ZIP_SUB_PATH: ${{ inputs.manifests-zip-sub-path }}
