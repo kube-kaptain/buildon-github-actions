@@ -61,13 +61,14 @@ teardown() {
   assert_var_equals "VERSION_4_PART" "1.2.3.5"
 }
 
-@test "strips v prefix from existing tags" {
+@test "ignores v-prefixed tags" {
   TEST_REPO=$(clone_fixture "tag-vprefixed")
   cd "$TEST_REPO"
 
   run "$SCRIPTS_DIR/versions-and-naming"
   [ "$status" -eq 0 ]
-  assert_var_equals "VERSION" "1.0.1"
+  # v1.0.0 exists but should be ignored, so starts fresh at 1.0.0
+  assert_var_equals "VERSION" "1.0.0"
 }
 
 @test "finds highest tag across multiple" {

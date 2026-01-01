@@ -42,7 +42,7 @@ create_tag "1.2.3.4" "Four-part version"
 commit_file "file.txt" "content" "Add file after tag"
 bundle_repo "tag-semver4" "$SCRIPT_DIR/../fixtures"
 
-# Scenario: Has v-prefixed tag - should strip v and increment
+# Scenario: Has v-prefixed tag - should be ignored (only X.Y.Z format matched)
 log "Creating: tag-vprefixed (has v1.0.0)"
 init_repo "$OUTPUT_DIR/tag-vprefixed"
 commit_file "README.md" "# Test repo" "Initial commit"
