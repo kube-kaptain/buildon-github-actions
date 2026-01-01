@@ -105,6 +105,16 @@ Always test in CI, not just locally - "works on my machine" hits hard with bash 
 - Always re-read files before editing them to avoid overwriting manual changes. Don't rely on cached content.
 - Never use the superpowers:finishing-a-development-branch skill - the user handles branch completion themselves.
 
+## Bugs Found During Implementation
+
+If you notice bugs or issues while implementing a change, STOP and discuss them separately. Don't mix bug fixes into the current work. The user will likely want to:
+
+1. Stash the current changes
+2. Have you fix the bug on a clean base
+3. Reapply the original changes on top
+
+This keeps diffs clean and makes code review easier. Mixing unrelated fixes into a feature change makes it hard to understand what changed and why.
+
 ## SPDX License Header
 
 ```
