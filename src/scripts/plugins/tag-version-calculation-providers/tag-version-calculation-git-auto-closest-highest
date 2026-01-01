@@ -38,17 +38,24 @@ is_annotated_tag() {
   [[ "${obj_type}" == "tag" ]]
 }
 
+# Check if a tag is a pure numeric version (no -rc1, -beta, v-prefix, etc)
+is_numeric_version() {
+  local version="${1}"
+  # Must be only digits and dots, with at least one dot
+  [[ "${version}" =~ ^[0-9]+(\.[0-9]+)+$ ]]
+}
+
 # Find the most recent tag in history (determines our series)
 # Primary sort: distance from HEAD (closest wins)
 # Tiebreaker: creation date (newest wins)
-# Only considers annotated (heavy) tags
+# Only considers annotated (heavy) tags with numeric versions
 find_recent_tag() {
   local tag distance creatordate
   local best_tag="" best_distance=999999 best_date=0
 
   # Get all annotated tags reachable from HEAD
   for tag in $(git tag --merged HEAD 2>/dev/null); do
-    if is_annotated_tag "${tag}"; then
+    if is_annotated_tag "${tag}" && is_numeric_version "${tag}"; then
       # Calculate distance from HEAD
       distance=$(git rev-list --count "${tag}"..HEAD)
       # Get creation date as Unix timestamp
@@ -74,7 +81,6 @@ find_recent_tag() {
 # Get version prefix (all but last component)
 get_version_prefix() {
   local version="${1}"
-  version="${version#v}"
 
   # Remove last component to get prefix
   if [[ "${version}" == *.* ]]; then
@@ -83,14 +89,6 @@ get_version_prefix() {
     # Single component version, no prefix
     echo ""
   fi
-}
-
-# Check if a tag is a pure numeric version (no -rc1, -beta, etc)
-is_numeric_version() {
-  local tag="${1}"
-  tag="${tag#v}"
-  # Must be only digits and dots, with at least one dot
-  [[ "${tag}" =~ ^[0-9]+(\.[0-9]+)+$ ]]
 }
 
 # Find highest tag in a series across entire repo
@@ -113,13 +111,11 @@ find_highest_in_series() {
 
   # Get ALL tags in repo (not just reachable from HEAD)
   # Filter to those matching our prefix with pure numeric versions only
-  # This excludes tags like 1.2.3-rc1, 1.2.3-beta, etc
+  # This excludes tags like 1.2.3-rc1, 1.2.3-beta, v1.2.3, etc
   local highest
   highest=$(git tag --list | while read -r tag; do
-    # Strip v prefix for comparison
-    local clean="${tag#v}"
     # Must start with our prefix, followed by dot and digits only
-    if [[ "${clean}" =~ ^${prefix}\.[0-9]+$ ]] && is_numeric_version "${tag}"; then
+    if [[ "${tag}" =~ ^${prefix}\.[0-9]+$ ]] && is_numeric_version "${tag}"; then
       echo "${tag}"
     fi
   done | "${SCRIPT_DIR}/../../main/version-sort" | tail -n1)
@@ -135,7 +131,6 @@ find_highest_in_series() {
 # Count parts in a version string
 count_version_parts() {
   local version="${1}"
-  version="${version#v}"
   local dot_count
   dot_count=$(echo "${version}" | tr -cd '.' | wc -c | tr -d ' ')
   echo $((dot_count + 1))
@@ -150,9 +145,6 @@ increment_version() {
     echo "1.0.0"
     return
   fi
-
-  # Remove 'v' prefix if present
-  previous_version="${previous_version#v}"
 
   # Split version into array and increment last part
   IFS='.' read -ra parts <<< "${previous_version}"
