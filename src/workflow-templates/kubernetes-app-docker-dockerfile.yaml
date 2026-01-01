@@ -110,6 +110,11 @@ on:
         required: false
         type: string
         default: 'dockerfile-env-kubectl'
+      tag-version-prefix-parts:
+        description: 'Number of parts from source version to use as prefix (default 2, output = prefix + 1 parts)'
+        required: false
+        type: string
+        default: ''
       tag-version-source-sub-path:
         description: 'Override path to source directory (takes precedence over dockerfile-sub-path)'
         required: false

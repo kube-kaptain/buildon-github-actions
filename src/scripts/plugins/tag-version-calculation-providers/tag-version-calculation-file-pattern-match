@@ -6,9 +6,9 @@
 #
 # Algorithm:
 #   1. Read file and extract version using pattern type or custom regex
-#   2. Use major.minor as the series prefix (e.g., 1.28)
-#   3. Find highest existing tag matching that series (e.g., 1.28.5)
-#   4. Increment the patch component, or start at x.y.1 if no tags exist in series
+#   2. Use first N parts as the series prefix (configurable, default 2)
+#   3. Find highest existing tag matching that series
+#   4. Increment the last component, or start at prefix.1 if no tags exist in series
 #
 # Inputs (environment variables):
 #   TAG_VERSION_PATTERN_TYPE - Pattern type (required):
@@ -18,6 +18,7 @@
 #   TAG_VERSION_SOURCE_SUB_PATH - Override path to directory (required for custom)
 #   TAG_VERSION_SOURCE_FILE_NAME - Override file name (required for custom)
 #   TAG_VERSION_SOURCE_CUSTOM_PATTERN - Regex with capture group (required for custom)
+#   TAG_VERSION_PREFIX_PARTS - Number of parts from source version to use as prefix (default 2)
 #   MAX_VERSION_PARTS - Fail if version exceeds this depth (required)
 #
 # Outputs (stdout):
@@ -39,6 +40,15 @@ fi
 
 if [[ -z "${MAX_VERSION_PARTS:-}" ]]; then
   echo "${LOG_ERROR_PREFIX}MAX_VERSION_PARTS is required${LOG_ERROR_SUFFIX}" >&2
+  exit 1
+fi
+
+# Optional config with default
+TAG_VERSION_PREFIX_PARTS="${TAG_VERSION_PREFIX_PARTS:-2}"
+
+# Validate PREFIX_PARTS + 1 doesn't exceed MAX_VERSION_PARTS
+if [[ $((TAG_VERSION_PREFIX_PARTS + 1)) -gt ${MAX_VERSION_PARTS} ]]; then
+  echo "${LOG_ERROR_PREFIX}TAG_VERSION_PREFIX_PARTS (${TAG_VERSION_PREFIX_PARTS}) + 1 exceeds MAX_VERSION_PARTS (${MAX_VERSION_PARTS})${LOG_ERROR_SUFFIX}" >&2
   exit 1
 fi
 
@@ -85,9 +95,9 @@ set_defaults_for_type() {
 # Validate that a string looks like a version (digits separated by dots)
 validate_version_format() {
   local value="${1}"
-  if [[ ! "${value}" =~ ^[0-9]+(\.[0-9]+)+$ ]]; then
+  if [[ ! "${value}" =~ ^[0-9]+(\.[0-9]+)*$ ]]; then
     echo "${LOG_ERROR_PREFIX}Captured value '${value}' is not a valid version format${LOG_ERROR_SUFFIX}" >&2
-    echo "Expected: digits separated by dots (e.g., 1.28.0, 3.14.1)" >&2
+    echo "Expected: digits separated by dots (e.g., 1, 1.28, 1.28.0)" >&2
     exit 1
   fi
 }
@@ -117,19 +127,20 @@ extract_version() {
   echo "${version}"
 }
 
-# Get major.minor prefix from version
-get_major_minor() {
+# Get N-part prefix from version
+get_prefix() {
   local version="${1}"
-  local major minor
-  IFS='.' read -r major minor _ <<< "${version}"
-  echo "${major}.${minor}"
-}
+  local num_parts="${2}"
 
-# Check if a tag is a pure numeric version (no -rc1, -beta, etc)
-is_numeric_version() {
-  local tag="${1}"
-  tag="${tag#v}"
-  [[ "${tag}" =~ ^[0-9]+(\.[0-9]+)+$ ]]
+  IFS='.' read -ra parts <<< "${version}"
+  local result=""
+  for ((i=0; i<num_parts && i<${#parts[@]}; i++)); do
+    if [[ ${i} -gt 0 ]]; then
+      result+="."
+    fi
+    result+="${parts[${i}]}"
+  done
+  echo "${result}"
 }
 
 # Find highest tag matching major.minor prefix
@@ -137,11 +148,10 @@ find_highest_in_series() {
   local prefix="${1}"
 
   # Get ALL tags in repo matching our prefix with pure numeric versions only
+  # The regex ensures: starts with prefix, followed by dot and digits only, no suffixes
   local highest
   highest=$(git tag --list | while read -r tag; do
-    local clean="${tag#v}"
-    # Must start with our prefix, followed by dot and digits only
-    if [[ "${clean}" =~ ^${prefix}\.[0-9]+$ ]] && is_numeric_version "${tag}"; then
+    if [[ "${tag}" =~ ^${prefix}\.[0-9]+$ ]]; then
       echo "${tag}"
     fi
   done | "${SCRIPT_DIR}/../../main/version-sort" | tail -n1)
@@ -149,30 +159,28 @@ find_highest_in_series() {
   echo "${highest}"
 }
 
-# Increment patch version
-increment_patch() {
+# Increment last version component
+increment_version() {
   local prefix="${1}"
-  local current="${2}"
+  local previous_version="${2}"
 
-  if [[ -z "${current}" ]]; then
+  if [[ -z "${previous_version}" ]]; then
     # No existing tag in series, start at prefix.1
     echo "${prefix}.1"
     return
   fi
 
-  # Remove 'v' prefix if present
-  current="${current#v}"
-
-  # Split and increment patch
-  IFS='.' read -ra parts <<< "${current}"
-  local patch=$((parts[2] + 1))
-  echo "${parts[0]}.${parts[1]}.${patch}"
+  # Split and increment last part
+  IFS='.' read -ra parts <<< "${previous_version}"
+  local last_idx=$((${#parts[@]} - 1))
+  parts[last_idx]=$((parts[last_idx] + 1))
+  local IFS='.'
+  echo "${parts[*]}"
 }
 
 # Count parts in a version string
 count_version_parts() {
   local version="${1}"
-  version="${version#v}"
   local dot_count
   dot_count=$(echo "${version}" | tr -cd '.' | wc -c | tr -d ' ')
   echo $((dot_count + 1))
@@ -189,9 +197,17 @@ main() {
   source_version=$(extract_version)
   echo "Found version: ${source_version}" >&2
 
-  # Step 2: Get major.minor prefix
+  # Step 1.5: Validate source version has enough parts for PREFIX_PARTS
+  local source_part_count
+  source_part_count=$(count_version_parts "${source_version}")
+  if [[ ${TAG_VERSION_PREFIX_PARTS} -gt ${source_part_count} ]]; then
+    echo "${LOG_ERROR_PREFIX}TAG_VERSION_PREFIX_PARTS (${TAG_VERSION_PREFIX_PARTS}) exceeds source version parts (${source_part_count} in '${source_version}')${LOG_ERROR_SUFFIX}" >&2
+    exit 1
+  fi
+
+  # Step 2: Get N-part prefix from source version
   local prefix
-  prefix=$(get_major_minor "${source_version}")
+  prefix=$(get_prefix "${source_version}" "${TAG_VERSION_PREFIX_PARTS}")
   echo "Using version series: ${prefix}.x" >&2
 
   # Step 3: Find highest existing tag in series
@@ -203,20 +219,20 @@ main() {
     echo "No existing tags in ${prefix}.x series" >&2
   fi
 
-  # Step 4: Increment patch
-  local new_version
-  new_version=$(increment_patch "${prefix}" "${highest_tag}")
+  # Step 4: Increment version
+  local version
+  version=$(increment_version "${prefix}" "${highest_tag}")
 
   # Step 5: Validate against MAX_VERSION_PARTS
   local part_count
-  part_count=$(count_version_parts "${new_version}")
+  part_count=$(count_version_parts "${version}")
   if [[ ${part_count} -gt ${MAX_VERSION_PARTS} ]]; then
-    echo "${LOG_ERROR_PREFIX}Version '${new_version}' has ${part_count} parts, exceeds MAX_VERSION_PARTS=${MAX_VERSION_PARTS}${LOG_ERROR_SUFFIX}" >&2
+    echo "${LOG_ERROR_PREFIX}Version '${version}' has ${part_count} parts, exceeds MAX_VERSION_PARTS=${MAX_VERSION_PARTS}${LOG_ERROR_SUFFIX}" >&2
     exit 1
   fi
 
   # Output the version
-  echo "VERSION=${new_version}"
+  echo "VERSION=${version}"
 }
 
 main "$@"

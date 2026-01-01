@@ -30,6 +30,11 @@ on:
         required: false
         type: string
         default: 'dockerfile-env-kubectl'
+      tag-version-prefix-parts:
+        description: 'Number of parts from source version to use as prefix (default 2, output = prefix + 1 parts)'
+        required: false
+        type: string
+        default: ''
       dockerfile-sub-path:
         description: 'Directory containing Dockerfile, relative to repo root.'
         required: false
