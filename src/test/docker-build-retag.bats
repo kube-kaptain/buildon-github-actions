@@ -16,11 +16,13 @@ teardown() {
 
 # Required env vars for most tests
 set_required_env() {
-  export SOURCE_REGISTRY="docker.io"
-  export SOURCE_IMAGE_NAME="library/alpine"
-  export SOURCE_TAG="3.21"
-  export TARGET_REGISTRY="ghcr.io"
-  export TARGET_IMAGE_NAME="test/my-repo"
+  export DOCKER_SOURCE_REGISTRY="docker.io"
+  export DOCKER_SOURCE_BASE_PATH="library"
+  export DOCKER_SOURCE_IMAGE_NAME="alpine"
+  export DOCKER_SOURCE_TAG="3.21"
+  export DOCKER_TARGET_REGISTRY="ghcr.io"
+  export DOCKER_TARGET_BASE_PATH="test"
+  export DOCKER_IMAGE_NAME="my-repo"
   export DOCKER_TAG="1.0.0"
 }
 
@@ -29,24 +31,33 @@ set_required_env() {
 
   run "$SCRIPTS_DIR/docker-build-retag"
   [ "$status" -eq 0 ]
-  assert_var_equals "SOURCE_IMAGE_FULL_URI" "docker.io/library/alpine:3.21"
+  assert_var_equals "DOCKER_SOURCE_IMAGE_FULL_URI" "docker.io/library/alpine:3.21"
 }
 
 @test "assembles target URI without base path" {
   set_required_env
+  unset DOCKER_TARGET_BASE_PATH
 
   run "$SCRIPTS_DIR/docker-build-retag"
   [ "$status" -eq 0 ]
-  assert_var_equals "TARGET_IMAGE_FULL_URI" "ghcr.io/test/my-repo:1.0.0"
+  assert_var_equals "DOCKER_TARGET_IMAGE_FULL_URI" "ghcr.io/my-repo:1.0.0"
 }
 
 @test "assembles target URI with base path" {
   set_required_env
-  export TARGET_BASE_PATH="kube-kaptain"
 
   run "$SCRIPTS_DIR/docker-build-retag"
   [ "$status" -eq 0 ]
-  assert_var_equals "TARGET_IMAGE_FULL_URI" "ghcr.io/kube-kaptain/test/my-repo:1.0.0"
+  assert_var_equals "DOCKER_TARGET_IMAGE_FULL_URI" "ghcr.io/test/my-repo:1.0.0"
+}
+
+@test "assembles source URI without base path" {
+  set_required_env
+  unset DOCKER_SOURCE_BASE_PATH
+
+  run "$SCRIPTS_DIR/docker-build-retag"
+  [ "$status" -eq 0 ]
+  assert_var_equals "DOCKER_SOURCE_IMAGE_FULL_URI" "docker.io/alpine:3.21"
 }
 
 @test "calls docker pull with source image" {
@@ -65,6 +76,81 @@ set_required_env() {
   assert_docker_called "tag docker.io/library/alpine:3.21 ghcr.io/test/my-repo:1.0.0"
 }
 
+# === Warning and stripping tests ===
+
+@test "fails when source registry contains path" {
+  set_required_env
+  export DOCKER_SOURCE_REGISTRY="docker.io/library"
+  unset DOCKER_SOURCE_BASE_PATH
+
+  run "$SCRIPTS_DIR/docker-build-retag"
+  [ "$status" -ne 0 ]
+  assert_output_contains "DOCKER_SOURCE_REGISTRY cannot contain slashes"
+}
+
+@test "fails when target registry contains path" {
+  set_required_env
+  export DOCKER_TARGET_REGISTRY="ghcr.io/org"
+
+  run "$SCRIPTS_DIR/docker-build-retag"
+  [ "$status" -ne 0 ]
+  assert_output_contains "DOCKER_TARGET_REGISTRY cannot contain slashes"
+}
+
+@test "warns and strips leading slash from image name" {
+  set_required_env
+  export DOCKER_SOURCE_IMAGE_NAME="/alpine"
+  unset DOCKER_SOURCE_BASE_PATH
+
+  run "$SCRIPTS_DIR/docker-build-retag"
+  [ "$status" -eq 0 ]
+  assert_output_contains "DOCKER_SOURCE_IMAGE_NAME has leading/trailing slashes"
+  assert_output_contains "Stripping"
+  assert_var_equals "DOCKER_SOURCE_IMAGE_FULL_URI" "docker.io/alpine:3.21"
+}
+
+@test "allows internal slashes in image name" {
+  set_required_env
+  export DOCKER_SOURCE_IMAGE_NAME="library/alpine"
+  unset DOCKER_SOURCE_BASE_PATH
+
+  run "$SCRIPTS_DIR/docker-build-retag"
+  [ "$status" -eq 0 ]
+  # No warning - internal slashes are valid
+  assert_var_equals "DOCKER_SOURCE_IMAGE_FULL_URI" "docker.io/library/alpine:3.21"
+}
+
+@test "warns and strips leading slash from base path" {
+  set_required_env
+  export DOCKER_SOURCE_BASE_PATH="/library"
+
+  run "$SCRIPTS_DIR/docker-build-retag"
+  [ "$status" -eq 0 ]
+  assert_output_contains "DOCKER_SOURCE_BASE_PATH has leading/trailing slashes"
+  assert_var_equals "DOCKER_SOURCE_IMAGE_FULL_URI" "docker.io/library/alpine:3.21"
+}
+
+@test "warns and strips trailing slash from base path" {
+  set_required_env
+  export DOCKER_TARGET_BASE_PATH="test/"
+
+  run "$SCRIPTS_DIR/docker-build-retag"
+  [ "$status" -eq 0 ]
+  assert_output_contains "DOCKER_TARGET_BASE_PATH has leading/trailing slashes"
+  assert_var_equals "DOCKER_TARGET_IMAGE_FULL_URI" "ghcr.io/test/my-repo:1.0.0"
+}
+
+@test "uses LOG_WARNING_PREFIX in warnings" {
+  set_required_env
+  export DOCKER_SOURCE_IMAGE_NAME="/alpine"
+  export LOG_WARNING_PREFIX="::warning::"
+  unset DOCKER_SOURCE_BASE_PATH
+
+  run "$SCRIPTS_DIR/docker-build-retag"
+  [ "$status" -eq 0 ]
+  assert_output_contains "::warning::DOCKER_SOURCE_IMAGE_NAME has leading/trailing slashes"
+}
+
 @test "does not push (build only)" {
   set_required_env
 
@@ -73,28 +159,31 @@ set_required_env() {
   assert_docker_not_called "push"
 }
 
-@test "fails when SOURCE_REGISTRY missing" {
-  export SOURCE_IMAGE_NAME="library/alpine"
-  export SOURCE_TAG="3.21"
-  export TARGET_REGISTRY="ghcr.io"
-  export TARGET_IMAGE_NAME="test/my-repo"
+@test "fails when DOCKER_SOURCE_REGISTRY missing" {
+  export DOCKER_SOURCE_BASE_PATH="library"
+  export DOCKER_SOURCE_IMAGE_NAME="alpine"
+  export DOCKER_SOURCE_TAG="3.21"
+  export DOCKER_TARGET_REGISTRY="ghcr.io"
+  export DOCKER_TARGET_BASE_PATH="test"
+  export DOCKER_IMAGE_NAME="my-repo"
   export DOCKER_TAG="1.0.0"
 
   run "$SCRIPTS_DIR/docker-build-retag"
   [ "$status" -ne 0 ]
-  assert_output_contains "SOURCE_REGISTRY"
+  assert_output_contains "DOCKER_SOURCE_REGISTRY"
 }
 
-@test "fails when TARGET_IMAGE_NAME missing" {
-  export SOURCE_REGISTRY="docker.io"
-  export SOURCE_IMAGE_NAME="library/alpine"
-  export SOURCE_TAG="3.21"
-  export TARGET_REGISTRY="ghcr.io"
+@test "fails when DOCKER_IMAGE_NAME missing" {
+  export DOCKER_SOURCE_REGISTRY="docker.io"
+  export DOCKER_SOURCE_BASE_PATH="library"
+  export DOCKER_SOURCE_IMAGE_NAME="alpine"
+  export DOCKER_SOURCE_TAG="3.21"
+  export DOCKER_TARGET_REGISTRY="ghcr.io"
   export DOCKER_TAG="1.0.0"
 
   run "$SCRIPTS_DIR/docker-build-retag"
   [ "$status" -ne 0 ]
-  assert_output_contains "TARGET_IMAGE_NAME"
+  assert_output_contains "DOCKER_IMAGE_NAME"
 }
 
 @test "fails when image already exists" {
@@ -118,10 +207,10 @@ set_required_env() {
 
 @test "works with custom registry and base path" {
   set_required_env
-  export TARGET_REGISTRY="myregistry.example.com"
-  export TARGET_BASE_PATH="docker-local"
+  export DOCKER_TARGET_REGISTRY="myregistry.example.com"
+  export DOCKER_TARGET_BASE_PATH="docker-local"
 
   run "$SCRIPTS_DIR/docker-build-retag"
   [ "$status" -eq 0 ]
-  assert_var_equals "TARGET_IMAGE_FULL_URI" "myregistry.example.com/docker-local/test/my-repo:1.0.0"
+  assert_var_equals "DOCKER_TARGET_IMAGE_FULL_URI" "myregistry.example.com/docker-local/my-repo:1.0.0"
 }

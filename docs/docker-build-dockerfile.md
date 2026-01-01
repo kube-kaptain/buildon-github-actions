@@ -16,12 +16,13 @@ Docker Build Dockerfile
 | `config-sub-path` | string | `src/config` | Directory containing user-defined token files (relative) |
 | `allow-builtin-token-override` | boolean | `false` | Allow user tokens to override built-in tokens (for template/reusable projects) |
 | `config-value-trailing-newline` | string | `strip-for-single-line` | How to handle trailing newlines in config values (strip-for-single-line, preserve-all, always-strip-one-newline) |
-| `target-registry` | string | `ghcr.io` | Target container registry |
-| `target-base-path` | string | `""` | Path between registry and image name (auto-set for GHCR) |
+| `docker-target-registry` | string | `ghcr.io` | Target container registry |
+| `docker-target-base-path` | string | `""` | Path between registry and image name (auto-set for GHCR) |
 | `default-branch` | string | `main` | The default/release branch name |
 | `additional-release-branches` | string | `""` | Comma-separated list of additional release branches |
-| `block-slashes` | boolean | `false` | Block branch names containing slashes |
-| `block-double-hyphens` | boolean | `true` | Block branch names containing double hyphens (typo detection) |
+| `block-slashes` | boolean | `false` | DEPRECATED: Use block-slash-containing-branches instead |
+| `block-slash-containing-branches` | boolean | `false` | Block branch names containing slashes |
+| `block-double-hyphen-containing-branches` | boolean | `true` | Block branch names containing double hyphens (typo detection) |
 | `require-conventional-branches` | boolean | `false` | Require branch names start with feature/, fix/, etc. |
 | `require-conventional-commits` | boolean | `false` | Require commits use conventional commit format (feat:, fix:, etc.) |
 | `block-conventional-commits` | boolean | `false` | Block commits that use conventional commit format |

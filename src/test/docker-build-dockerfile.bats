@@ -23,10 +23,9 @@ teardown() {
 
 # Required env vars for most tests
 set_required_env() {
-  export TARGET_REGISTRY="ghcr.io"
-  export TARGET_IMAGE_NAME="test/my-repo"
-  export DOCKER_TAG="1.0.0"
+  export DOCKER_TARGET_REGISTRY="ghcr.io"
   export DOCKER_IMAGE_NAME="test/my-repo"
+  export DOCKER_TAG="1.0.0"
   export VERSION="1.0.0"
   export PROJECT_NAME="my-repo"
   export DOCKERFILE_SUB_PATH="$TEST_DIR"
@@ -40,16 +39,16 @@ set_required_env() {
 
   run "$SCRIPTS_DIR/docker-build-dockerfile"
   [ "$status" -eq 0 ]
-  assert_var_equals "TARGET_IMAGE_FULL_URI" "ghcr.io/test/my-repo:1.0.0"
+  assert_var_equals "DOCKER_TARGET_IMAGE_FULL_URI" "ghcr.io/test/my-repo:1.0.0"
 }
 
 @test "assembles target URI with base path" {
   set_required_env
-  export TARGET_BASE_PATH="kube-kaptain"
+  export DOCKER_TARGET_BASE_PATH="kube-kaptain"
 
   run "$SCRIPTS_DIR/docker-build-dockerfile"
   [ "$status" -eq 0 ]
-  assert_var_equals "TARGET_IMAGE_FULL_URI" "ghcr.io/kube-kaptain/test/my-repo:1.0.0"
+  assert_var_equals "DOCKER_TARGET_IMAGE_FULL_URI" "ghcr.io/kube-kaptain/test/my-repo:1.0.0"
 }
 
 @test "calls docker build with correct args" {
@@ -70,14 +69,14 @@ set_required_env() {
   assert_docker_not_called "push"
 }
 
-@test "fails when TARGET_REGISTRY missing" {
-  export TARGET_IMAGE_NAME="test/my-repo"
+@test "fails when DOCKER_TARGET_REGISTRY missing" {
+  export DOCKER_IMAGE_NAME="test/my-repo"
   export DOCKER_TAG="1.0.0"
   export DOCKERFILE_SUB_PATH="$TEST_DIR"
 
   run "$SCRIPTS_DIR/docker-build-dockerfile"
   [ "$status" -ne 0 ]
-  assert_output_contains "TARGET_REGISTRY"
+  assert_output_contains "DOCKER_TARGET_REGISTRY"
 }
 
 @test "fails when Dockerfile directory not found" {
@@ -222,7 +221,7 @@ exit 0' > "$MOCK_BIN_DIR/docker"
   set_required_env
   # Create Dockerfile with token
   echo 'FROM ${TargetRegistry}/${TargetBasePath}/base:1.0' > "$TEST_DIR/Dockerfile"
-  export TARGET_BASE_PATH="my-org"
+  export DOCKER_TARGET_BASE_PATH="my-org"
 
   run "$SCRIPTS_DIR/docker-build-dockerfile"
   [ "$status" -eq 0 ]
@@ -248,7 +247,7 @@ exit 0' > "$MOCK_BIN_DIR/docker"
 
 @test "substitutes tokens in all docker files" {
   set_required_env
-  export TARGET_BASE_PATH="my-org"
+  export DOCKER_TARGET_BASE_PATH="my-org"
   # Create files with tokens
   echo 'FROM alpine:3.21' > "$TEST_DIR/Dockerfile"
   echo 'REGISTRY=${TargetRegistry}' > "$TEST_DIR/config.sh"

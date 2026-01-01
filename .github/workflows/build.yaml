@@ -1,7 +1,4 @@
-# SPDX-License-Identifier: MIT
-# Copyright (c) 2025 Kaptain contributors (Fred Cooke)
-
-name: Build
+name: Basic Quality Checks
 
 on:
   push:
@@ -13,7 +10,8 @@ jobs:
   build:
     uses: ./.github/workflows/basic-quality-and-versioning.yaml
     with:
-      block-slashes: true
+      block-conventional-commits: true
+      block-slash-containing-branches: true
       pre-tagging-tests-script-sub-path: bin/pre-tagging.bash
     permissions:
       contents: write

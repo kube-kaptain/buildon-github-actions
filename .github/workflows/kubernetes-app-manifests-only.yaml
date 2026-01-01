@@ -58,12 +58,12 @@ on:
         type: string
         default: ''
       # Target configuration (for docker repo provider)
-      target-registry:
+      docker-target-registry:
         description: 'Target container registry'
         required: false
         type: string
         default: 'ghcr.io'
-      target-base-path:
+      docker-target-base-path:
         description: 'Path between registry and image name (auto-set for GHCR)'
         required: false
         type: string
@@ -116,11 +116,16 @@ on:
         default: ''
       # Quality check inputs
       block-slashes:
+        description: 'DEPRECATED: Use block-slash-containing-branches instead'
+        required: false
+        type: boolean
+        default: false
+      block-slash-containing-branches:
         description: 'Block branch names containing slashes'
         required: false
         type: boolean
         default: false
-      block-double-hyphens:
+      block-double-hyphen-containing-branches:
         description: 'Block branch names containing double hyphens (typo detection)'
         required: false
         type: boolean
@@ -291,7 +296,8 @@ jobs:
           default-branch: ${{ inputs.default-branch }}
           additional-release-branches: ${{ inputs.additional-release-branches }}
           block-slashes: ${{ inputs.block-slashes }}
-          block-double-hyphens: ${{ inputs.block-double-hyphens }}
+          block-slash-containing-branches: ${{ inputs.block-slash-containing-branches }}
+          block-double-hyphen-containing-branches: ${{ inputs.block-double-hyphen-containing-branches }}
           require-conventional-branches: ${{ inputs.require-conventional-branches }}
           require-conventional-commits: ${{ inputs.require-conventional-commits }}
           block-conventional-commits: ${{ inputs.block-conventional-commits }}
@@ -486,8 +492,8 @@ jobs:
         id: docker-build
         uses: ./.github/buildon-github-actions/src/actions/resolve-target-registry-and-base-path
         with:
-          target-registry: ${{ inputs.target-registry }}
-          target-base-path: ${{ inputs.target-base-path }}
+          target-registry: ${{ inputs.docker-target-registry }}
+          target-base-path: ${{ inputs.docker-target-base-path }}
       - name: Start check - Package Manifests
         id: check-manifest-package
         uses: ./.github/buildon-github-actions/src/actions/github-check-run
@@ -503,9 +509,9 @@ jobs:
           version: ${{ steps.versions.outputs.version }}
           docker-tag: ${{ steps.versions.outputs.docker-tag }}
           docker-image-name: ${{ steps.versions.outputs.docker-image-name }}
-          docker-image-full-uri: ${{ steps.docker-build.outputs.target-image-full-uri }}
-          target-registry: ${{ steps.docker-build.outputs.target-registry }}
-          target-base-path: ${{ steps.docker-build.outputs.target-base-path }}
+          docker-image-full-uri: ${{ steps.docker-build.outputs.docker-target-image-full-uri }}
+          docker-target-registry: ${{ steps.docker-build.outputs.docker-target-registry }}
+          docker-target-base-path: ${{ steps.docker-build.outputs.docker-target-base-path }}
           is-release: ${{ steps.versions.outputs.is-release }}
           substitution-token-style: ${{ inputs.substitution-token-style }}
           token-name-style: ${{ inputs.token-name-style }}
@@ -539,7 +545,7 @@ jobs:
         with:
           config: ${{ inputs.docker-registry-logins }}
           secrets-json: ${{ secrets.docker-registry-logins-secrets || toJSON(secrets) }}
-          target-registry: ${{ inputs.target-registry }}
+          docker-target-registry: ${{ inputs.docker-target-registry }}
       - name: Package manifests for repo provider
         id: manifest-repo-provider-package
         uses: ./.github/buildon-github-actions/src/actions/kubernetes-manifests-repo-provider-package
@@ -548,9 +554,9 @@ jobs:
           manifests-packaging-base-image: ${{ inputs.manifests-packaging-base-image }}
           manifests-zip-sub-path: ${{ steps.manifest-package.outputs.manifests-zip-sub-path }}
           manifests-zip-file-name: ${{ steps.manifest-package.outputs.manifests-zip-file-name }}
-          target-registry: ${{ steps.docker-build.outputs.target-registry }}
-          target-base-path: ${{ steps.docker-build.outputs.target-base-path }}
-          target-image-name: ${{ steps.versions.outputs.docker-image-name }}
+          docker-target-registry: ${{ steps.docker-build.outputs.docker-target-registry }}
+          docker-target-base-path: ${{ steps.docker-build.outputs.docker-target-base-path }}
+          docker-image-name: ${{ steps.versions.outputs.docker-image-name }}
           docker-tag: ${{ steps.versions.outputs.docker-tag }}-manifests
           version: ${{ steps.versions.outputs.version }}
           output-sub-path: ${{ inputs.output-sub-path }}

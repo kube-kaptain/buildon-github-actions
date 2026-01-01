@@ -20,8 +20,9 @@ LOG_ERROR_SUFFIX="${LOG_ERROR_SUFFIX:-}"
 # Configuration with defaults
 DEFAULT_BRANCH="${DEFAULT_BRANCH:-main}"
 ADDITIONAL_RELEASE_BRANCHES="${ADDITIONAL_RELEASE_BRANCHES:-}"
-BLOCK_SLASHES="${BLOCK_SLASHES:-false}"
-BLOCK_DOUBLE_HYPHENS="${BLOCK_DOUBLE_HYPHENS:-true}"
+# New names take precedence over deprecated names
+BLOCK_SLASH_CONTAINING_BRANCHES="${BLOCK_SLASH_CONTAINING_BRANCHES:-${BLOCK_SLASHES:-false}}"
+BLOCK_DOUBLE_HYPHEN_CONTAINING_BRANCHES="${BLOCK_DOUBLE_HYPHEN_CONTAINING_BRANCHES:-true}"
 REQUIRE_CONVENTIONAL_BRANCHES="${REQUIRE_CONVENTIONAL_BRANCHES:-false}"
 REQUIRE_CONVENTIONAL_COMMITS="${REQUIRE_CONVENTIONAL_COMMITS:-false}"
 BLOCK_CONVENTIONAL_COMMITS="${BLOCK_CONVENTIONAL_COMMITS:-false}"
@@ -242,7 +243,7 @@ main() {
   fi
 
   # Check 2: Optionally block slashes in branch names
-  if [[ "${BLOCK_SLASHES}" == "true" ]]; then
+  if [[ "${BLOCK_SLASH_CONTAINING_BRANCHES}" == "true" ]]; then
     if has_slash "${branch}"; then
       error ${FLAG_BAD_BRANCH} "Branch name '${branch}' contains a slash. Please use hyphens instead."
     else
@@ -251,7 +252,7 @@ main() {
   fi
 
   # Check 3: Block double hyphens in branch names (default: on)
-  if [[ "${BLOCK_DOUBLE_HYPHENS}" == "true" ]]; then
+  if [[ "${BLOCK_DOUBLE_HYPHEN_CONTAINING_BRANCHES}" == "true" ]]; then
     if has_double_hyphen "${branch}"; then
       error ${FLAG_BAD_BRANCH} "Branch name '${branch}' contains double hyphens. This is likely a typo."
     else

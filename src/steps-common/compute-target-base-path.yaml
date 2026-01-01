@@ -7,5 +7,5 @@
   id: docker-build
   uses: ./.github/buildon-github-actions/src/actions/resolve-target-registry-and-base-path
   with:
-    target-registry: ${{ inputs.target-registry }}
-    target-base-path: ${{ inputs.target-base-path }}
+    target-registry: ${{ inputs.docker-target-registry }}
+    target-base-path: ${{ inputs.docker-target-base-path }}

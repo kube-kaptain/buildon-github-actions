@@ -152,6 +152,7 @@ run_shellcheck() {
 
   # Style checks to enable (in addition to defaults)
   local enables=(
+    --external-sources
     --enable=require-variable-braces
     --enable=require-double-brackets
     --enable=avoid-nullary-conditions

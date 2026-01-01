@@ -12,4 +12,4 @@
     docker-image-name: ${{ steps.versions.outputs.docker-image-name }}
     project-name: ${{ steps.versions.outputs.project-name }}
     is-release: ${{ steps.versions.outputs.is-release }}
-    target-image-full-uri: ${{ steps.docker-build.outputs.target-image-full-uri }}
+    target-image-full-uri: ${{ steps.docker-build.outputs.docker-target-image-full-uri }}

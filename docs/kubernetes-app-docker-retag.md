@@ -6,9 +6,10 @@ Kubernetes App - Docker Retag
 
 | Input | Type | Default | Description |
 |-------|------|---------|-------------|
-| `source-registry` | string | *required* | Upstream registry (e.g., docker.io) |
-| `source-image-name` | string | *required* | Upstream image name (e.g., library/nginx) |
-| `source-tag` | string | *required* | Upstream image tag (e.g., 1.25) |
+| `docker-source-registry` | string | *required* | Upstream registry (e.g., docker.io) |
+| `docker-source-base-path` | string | `""` | Path between registry and image name (e.g., library) |
+| `docker-source-image-name` | string | *required* | Upstream image name (e.g., nginx) |
+| `docker-source-tag` | string | *required* | Upstream image tag (e.g., 1.25) |
 | `manifests-sub-path` | string | `src/kubernetes` | Directory containing Kubernetes manifests (relative) |
 | `substitution-token-style` | string | `shell` | Token delimiter syntax for variables (shell, mustache, helm, erb, github-actions, blade, stringtemplate, ognl, t4, swift) |
 | `token-name-style` | string | `PascalCase` | Case style for token names (UPPER_SNAKE, lower_snake, kebab-case, camelCase, PascalCase, lower.dot, UPPER.DOT) |
@@ -19,8 +20,8 @@ Kubernetes App - Docker Retag
 | `config-value-trailing-newline` | string | `strip-for-single-line` | How to handle trailing newlines in config values (strip-for-single-line, preserve-all, always-strip-one-newline) |
 | `manifests-repo-provider-type` | string | `docker` | Repo provider type for manifest storage (default: docker, currently the only supported provider) |
 | `manifests-packaging-base-image` | string | `""` | Base image for manifest packaging (default: ghcr.io/kube-kaptain/image/image-pause:3.10.2) |
-| `target-registry` | string | `ghcr.io` | Target container registry |
-| `target-base-path` | string | `""` | Path between registry and image name (auto-set for GHCR) |
+| `docker-target-registry` | string | `ghcr.io` | Target container registry |
+| `docker-target-base-path` | string | `""` | Path between registry and image name (auto-set for GHCR) |
 | `default-branch` | string | `main` | The default/release branch name |
 | `additional-release-branches` | string | `""` | Comma-separated list of additional release branches |
 | `max-version-parts` | number | `3` | Maximum allowed version parts (fail if exceeded) |
@@ -30,8 +31,9 @@ Kubernetes App - Docker Retag
 | `tag-version-source-sub-path` | string | `""` | Override path to source directory (takes precedence over dockerfile-sub-path) |
 | `tag-version-source-file-name` | string | `""` | Override source file name (defaults based on pattern type) |
 | `tag-version-source-custom-pattern` | string | `""` | Regex with capture group for version extraction (required for custom pattern type) |
-| `block-slashes` | boolean | `false` | Block branch names containing slashes |
-| `block-double-hyphens` | boolean | `true` | Block branch names containing double hyphens (typo detection) |
+| `block-slashes` | boolean | `false` | DEPRECATED: Use block-slash-containing-branches instead |
+| `block-slash-containing-branches` | boolean | `false` | Block branch names containing slashes |
+| `block-double-hyphen-containing-branches` | boolean | `true` | Block branch names containing double hyphens (typo detection) |
 | `require-conventional-branches` | boolean | `false` | Require branch names start with feature/, fix/, etc. |
 | `require-conventional-commits` | boolean | `false` | Require commits use conventional commit format (feat:, fix:, etc.) |
 | `block-conventional-commits` | boolean | `false` | Block commits that use conventional commit format |
@@ -61,9 +63,9 @@ Kubernetes App - Docker Retag
 | `docker-image-name` | Docker image name |
 | `project-name` | The repository/project name |
 | `is-release` | Whether this is a release build |
-| `source-image-full-uri` | Full source image reference |
-| `target-image-full-uri` | Full target image reference (action output name) |
-| `docker-image-full-uri` | Full docker image reference (alias for target-image-full-uri) |
+| `docker-source-image-full-uri` | Full source image reference |
+| `docker-target-image-full-uri` | Full target image reference |
+| `docker-image-full-uri` | Full docker image reference (alias for docker-target-image-full-uri) |
 | `docker-image-pushed` | Whether docker image was pushed |
 | `manifests-zip-sub-path` | Directory containing manifests zip file (relative) |
 | `manifests-zip-file-name` | Name of manifests zip file |

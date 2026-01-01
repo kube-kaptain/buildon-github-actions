@@ -58,12 +58,12 @@ on:
         type: string
         default: 'strip-for-single-line'
       # Target configuration
-      target-registry:
+      docker-target-registry:
         description: 'Target container registry'
         required: false
         type: string
         default: 'ghcr.io'
-      target-base-path:
+      docker-target-base-path:
         description: 'Path between registry and image name (auto-set for GHCR)'
         required: false
         type: string
@@ -80,11 +80,16 @@ on:
         type: string
         default: ''
       block-slashes:
+        description: 'DEPRECATED: Use block-slash-containing-branches instead'
+        required: false
+        type: boolean
+        default: false
+      block-slash-containing-branches:
         description: 'Block branch names containing slashes'
         required: false
         type: boolean
         default: false
-      block-double-hyphens:
+      block-double-hyphen-containing-branches:
         description: 'Block branch names containing double hyphens (typo detection)'
         required: false
         type: boolean
@@ -234,7 +239,7 @@ jobs:
       docker-image-name: ${{ steps.versions.outputs.docker-image-name }}
       project-name: ${{ steps.versions.outputs.project-name }}
       is-release: ${{ steps.versions.outputs.is-release }}
-      target-image-full-uri: ${{ steps.docker-build.outputs.target-image-full-uri }}
+      target-image-full-uri: ${{ steps.docker-build.outputs.docker-target-image-full-uri }}
       docker-image-pushed: ${{ steps.docker-push.outputs.image-pushed }}
     steps:
       # INJECT: parse-workflow-ref-and-checkout

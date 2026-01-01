@@ -8,7 +8,8 @@
     default-branch: ${{ inputs.default-branch }}
     additional-release-branches: ${{ inputs.additional-release-branches }}
     block-slashes: ${{ inputs.block-slashes }}
-    block-double-hyphens: ${{ inputs.block-double-hyphens }}
+    block-slash-containing-branches: ${{ inputs.block-slash-containing-branches }}
+    block-double-hyphen-containing-branches: ${{ inputs.block-double-hyphen-containing-branches }}
     require-conventional-branches: ${{ inputs.require-conventional-branches }}
     require-conventional-commits: ${{ inputs.require-conventional-commits }}
     block-conventional-commits: ${{ inputs.block-conventional-commits }}

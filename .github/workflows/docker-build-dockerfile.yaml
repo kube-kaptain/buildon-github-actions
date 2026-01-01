@@ -58,12 +58,12 @@ on:
         type: string
         default: 'strip-for-single-line'
       # Target configuration
-      target-registry:
+      docker-target-registry:
         description: 'Target container registry'
         required: false
         type: string
         default: 'ghcr.io'
-      target-base-path:
+      docker-target-base-path:
         description: 'Path between registry and image name (auto-set for GHCR)'
         required: false
         type: string
@@ -80,11 +80,16 @@ on:
         type: string
         default: ''
       block-slashes:
+        description: 'DEPRECATED: Use block-slash-containing-branches instead'
+        required: false
+        type: boolean
+        default: false
+      block-slash-containing-branches:
         description: 'Block branch names containing slashes'
         required: false
         type: boolean
         default: false
-      block-double-hyphens:
+      block-double-hyphen-containing-branches:
         description: 'Block branch names containing double hyphens (typo detection)'
         required: false
         type: boolean
@@ -280,7 +285,8 @@ jobs:
           default-branch: ${{ inputs.default-branch }}
           additional-release-branches: ${{ inputs.additional-release-branches }}
           block-slashes: ${{ inputs.block-slashes }}
-          block-double-hyphens: ${{ inputs.block-double-hyphens }}
+          block-slash-containing-branches: ${{ inputs.block-slash-containing-branches }}
+          block-double-hyphen-containing-branches: ${{ inputs.block-double-hyphen-containing-branches }}
           require-conventional-branches: ${{ inputs.require-conventional-branches }}
           require-conventional-commits: ${{ inputs.require-conventional-commits }}
           block-conventional-commits: ${{ inputs.block-conventional-commits }}
@@ -305,7 +311,7 @@ jobs:
       docker-image-name: ${{ steps.versions.outputs.docker-image-name }}
       project-name: ${{ steps.versions.outputs.project-name }}
       is-release: ${{ steps.versions.outputs.is-release }}
-      target-image-full-uri: ${{ steps.docker-build.outputs.target-image-full-uri }}
+      target-image-full-uri: ${{ steps.docker-build.outputs.docker-target-image-full-uri }}
       docker-image-pushed: ${{ steps.docker-push.outputs.image-pushed }}
     steps:
       - name: Checkout
@@ -377,7 +383,7 @@ jobs:
         with:
           config: ${{ inputs.docker-registry-logins }}
           secrets-json: ${{ secrets.docker-registry-logins-secrets || toJSON(secrets) }}
-          target-registry: ${{ inputs.target-registry }}
+          docker-target-registry: ${{ inputs.docker-target-registry }}
 
       # === Pre-tagging Tests ===
       - name: Start check - Pre-tagging Tests
@@ -485,9 +491,9 @@ jobs:
         id: docker-build
         uses: ./.github/buildon-github-actions/src/actions/docker-build-dockerfile
         with:
-          target-registry: ${{ inputs.target-registry }}
-          target-base-path: ${{ inputs.target-base-path }}
-          target-image-name: ${{ steps.versions.outputs.docker-image-name }}
+          docker-target-registry: ${{ inputs.docker-target-registry }}
+          docker-target-base-path: ${{ inputs.docker-target-base-path }}
+          docker-image-name: ${{ steps.versions.outputs.docker-image-name }}
           docker-tag: ${{ steps.versions.outputs.docker-tag }}
           version: ${{ steps.versions.outputs.version }}
           project-name: ${{ steps.versions.outputs.project-name }}
@@ -534,7 +540,7 @@ jobs:
           docker-image-name: ${{ steps.versions.outputs.docker-image-name }}
           project-name: ${{ steps.versions.outputs.project-name }}
           is-release: ${{ steps.versions.outputs.is-release }}
-          target-image-full-uri: ${{ steps.docker-build.outputs.target-image-full-uri }}
+          target-image-full-uri: ${{ steps.docker-build.outputs.docker-target-image-full-uri }}
       - name: Pass check - Post-docker Tests
         if: inputs.post-docker-tests-script-sub-path != '' && success()
         uses: ./.github/buildon-github-actions/src/actions/github-check-run
@@ -561,7 +567,7 @@ jobs:
         if: steps.versions.outputs.is-release == 'true'
         uses: ./.github/buildon-github-actions/src/actions/docker-push
         with:
-          docker-image-full-uri: ${{ steps.docker-build.outputs.target-image-full-uri }}
+          docker-image-full-uri: ${{ steps.docker-build.outputs.docker-target-image-full-uri }}
           is-release: ${{ steps.versions.outputs.is-release }}
       - name: Pass check - Docker Push
         if: steps.versions.outputs.is-release == 'true' && success()

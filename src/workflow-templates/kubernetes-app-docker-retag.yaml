@@ -5,16 +5,21 @@ name: Kubernetes App - Docker Retag
 on:
   workflow_call:
     inputs:
-      # Source image configuration
-      source-registry:
+      # Docker source image configuration
+      docker-source-registry:
         description: 'Upstream registry (e.g., docker.io)'
         required: true
         type: string
-      source-image-name:
-        description: 'Upstream image name (e.g., library/nginx)'
+      docker-source-base-path:
+        description: 'Path between registry and image name (e.g., library)'
+        required: false
+        type: string
+        default: ''
+      docker-source-image-name:
+        description: 'Upstream image name (e.g., nginx)'
         required: true
         type: string
-      source-tag:
+      docker-source-tag:
         description: 'Upstream image tag (e.g., 1.25)'
         required: true
         type: string
@@ -70,13 +75,13 @@ on:
         required: false
         type: string
         default: ''
-      # Target configuration
-      target-registry:
+      # Docker target configuration
+      docker-target-registry:
         description: 'Target container registry'
         required: false
         type: string
         default: 'ghcr.io'
-      target-base-path:
+      docker-target-base-path:
         description: 'Path between registry and image name (auto-set for GHCR)'
         required: false
         type: string
@@ -129,11 +134,16 @@ on:
         default: ''
       # Quality check inputs
       block-slashes:
+        description: 'DEPRECATED: Use block-slash-containing-branches instead'
+        required: false
+        type: boolean
+        default: false
+      block-slash-containing-branches:
         description: 'Block branch names containing slashes'
         required: false
         type: boolean
         default: false
-      block-double-hyphens:
+      block-double-hyphen-containing-branches:
         description: 'Block branch names containing double hyphens (typo detection)'
         required: false
         type: boolean
@@ -214,15 +224,15 @@ on:
         description: 'Whether this is a release build'
         value: ${{ jobs.build.outputs.is-release }}
       # Docker retag outputs
-      source-image-full-uri:
+      docker-source-image-full-uri:
         description: 'Full source image reference'
-        value: ${{ jobs.build.outputs.source-image-full-uri }}
-      target-image-full-uri:
-        description: 'Full target image reference (action output name)'
-        value: ${{ jobs.build.outputs.target-image-full-uri }}
+        value: ${{ jobs.build.outputs.docker-source-image-full-uri }}
+      docker-target-image-full-uri:
+        description: 'Full target image reference'
+        value: ${{ jobs.build.outputs.docker-target-image-full-uri }}
       docker-image-full-uri:
-        description: 'Full docker image reference (alias for target-image-full-uri)'
-        value: ${{ jobs.build.outputs.target-image-full-uri }}
+        description: 'Full docker image reference (alias for docker-target-image-full-uri)'
+        value: ${{ jobs.build.outputs.docker-target-image-full-uri }}
       docker-image-pushed:
         description: 'Whether docker image was pushed'
         value: ${{ jobs.build.outputs.docker-image-pushed }}
@@ -271,8 +281,8 @@ jobs:
       docker-image-name: ${{ steps.versions.outputs.docker-image-name }}
       project-name: ${{ steps.versions.outputs.project-name }}
       is-release: ${{ steps.versions.outputs.is-release }}
-      source-image-full-uri: ${{ steps.docker-build.outputs.source-image-full-uri }}
-      target-image-full-uri: ${{ steps.docker-build.outputs.target-image-full-uri }}
+      docker-source-image-full-uri: ${{ steps.docker-build.outputs.docker-source-image-full-uri }}
+      docker-target-image-full-uri: ${{ steps.docker-build.outputs.docker-target-image-full-uri }}
       docker-image-pushed: ${{ steps.docker-push.outputs.image-pushed }}
       manifests-zip-sub-path: ${{ steps.manifest-package.outputs.manifests-zip-sub-path }}
       manifests-zip-file-name: ${{ steps.manifest-package.outputs.manifests-zip-file-name }}

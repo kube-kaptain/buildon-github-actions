@@ -5,16 +5,21 @@ name: Kubernetes App - Docker Retag
 on:
   workflow_call:
     inputs:
-      # Source image configuration
-      source-registry:
+      # Docker source image configuration
+      docker-source-registry:
         description: 'Upstream registry (e.g., docker.io)'
         required: true
         type: string
-      source-image-name:
-        description: 'Upstream image name (e.g., library/nginx)'
+      docker-source-base-path:
+        description: 'Path between registry and image name (e.g., library)'
+        required: false
+        type: string
+        default: ''
+      docker-source-image-name:
+        description: 'Upstream image name (e.g., nginx)'
         required: true
         type: string
-      source-tag:
+      docker-source-tag:
         description: 'Upstream image tag (e.g., 1.25)'
         required: true
         type: string
@@ -70,13 +75,13 @@ on:
         required: false
         type: string
         default: ''
-      # Target configuration
-      target-registry:
+      # Docker target configuration
+      docker-target-registry:
         description: 'Target container registry'
         required: false
         type: string
         default: 'ghcr.io'
-      target-base-path:
+      docker-target-base-path:
         description: 'Path between registry and image name (auto-set for GHCR)'
         required: false
         type: string
@@ -129,11 +134,16 @@ on:
         default: ''
       # Quality check inputs
       block-slashes:
+        description: 'DEPRECATED: Use block-slash-containing-branches instead'
+        required: false
+        type: boolean
+        default: false
+      block-slash-containing-branches:
         description: 'Block branch names containing slashes'
         required: false
         type: boolean
         default: false
-      block-double-hyphens:
+      block-double-hyphen-containing-branches:
         description: 'Block branch names containing double hyphens (typo detection)'
         required: false
         type: boolean
@@ -214,15 +224,15 @@ on:
         description: 'Whether this is a release build'
         value: ${{ jobs.build.outputs.is-release }}
       # Docker retag outputs
-      source-image-full-uri:
+      docker-source-image-full-uri:
         description: 'Full source image reference'
-        value: ${{ jobs.build.outputs.source-image-full-uri }}
-      target-image-full-uri:
-        description: 'Full target image reference (action output name)'
-        value: ${{ jobs.build.outputs.target-image-full-uri }}
+        value: ${{ jobs.build.outputs.docker-source-image-full-uri }}
+      docker-target-image-full-uri:
+        description: 'Full target image reference'
+        value: ${{ jobs.build.outputs.docker-target-image-full-uri }}
       docker-image-full-uri:
-        description: 'Full docker image reference (alias for target-image-full-uri)'
-        value: ${{ jobs.build.outputs.target-image-full-uri }}
+        description: 'Full docker image reference (alias for docker-target-image-full-uri)'
+        value: ${{ jobs.build.outputs.docker-target-image-full-uri }}
       docker-image-pushed:
         description: 'Whether docker image was pushed'
         value: ${{ jobs.build.outputs.docker-image-pushed }}
@@ -317,7 +327,8 @@ jobs:
           default-branch: ${{ inputs.default-branch }}
           additional-release-branches: ${{ inputs.additional-release-branches }}
           block-slashes: ${{ inputs.block-slashes }}
-          block-double-hyphens: ${{ inputs.block-double-hyphens }}
+          block-slash-containing-branches: ${{ inputs.block-slash-containing-branches }}
+          block-double-hyphen-containing-branches: ${{ inputs.block-double-hyphen-containing-branches }}
           require-conventional-branches: ${{ inputs.require-conventional-branches }}
           require-conventional-commits: ${{ inputs.require-conventional-commits }}
           block-conventional-commits: ${{ inputs.block-conventional-commits }}
@@ -342,8 +353,8 @@ jobs:
       docker-image-name: ${{ steps.versions.outputs.docker-image-name }}
       project-name: ${{ steps.versions.outputs.project-name }}
       is-release: ${{ steps.versions.outputs.is-release }}
-      source-image-full-uri: ${{ steps.docker-build.outputs.source-image-full-uri }}
-      target-image-full-uri: ${{ steps.docker-build.outputs.target-image-full-uri }}
+      docker-source-image-full-uri: ${{ steps.docker-build.outputs.docker-source-image-full-uri }}
+      docker-target-image-full-uri: ${{ steps.docker-build.outputs.docker-target-image-full-uri }}
       docker-image-pushed: ${{ steps.docker-push.outputs.image-pushed }}
       manifests-zip-sub-path: ${{ steps.manifest-package.outputs.manifests-zip-sub-path }}
       manifests-zip-file-name: ${{ steps.manifest-package.outputs.manifests-zip-file-name }}
@@ -419,7 +430,7 @@ jobs:
         with:
           config: ${{ inputs.docker-registry-logins }}
           secrets-json: ${{ secrets.docker-registry-logins-secrets || toJSON(secrets) }}
-          target-registry: ${{ inputs.target-registry }}
+          docker-target-registry: ${{ inputs.docker-target-registry }}
 
       # === Pre-tagging Tests ===
       - name: Start check - Pre-tagging Tests
@@ -492,12 +503,13 @@ jobs:
         id: docker-build
         uses: ./.github/buildon-github-actions/src/actions/docker-build-retag
         with:
-          source-registry: ${{ inputs.source-registry }}
-          source-image-name: ${{ inputs.source-image-name }}
-          source-tag: ${{ inputs.source-tag }}
-          target-registry: ${{ inputs.target-registry }}
-          target-base-path: ${{ inputs.target-base-path }}
-          target-image-name: ${{ steps.versions.outputs.docker-image-name }}
+          docker-source-registry: ${{ inputs.docker-source-registry }}
+          docker-source-base-path: ${{ inputs.docker-source-base-path }}
+          docker-source-image-name: ${{ inputs.docker-source-image-name }}
+          docker-source-tag: ${{ inputs.docker-source-tag }}
+          docker-target-registry: ${{ inputs.docker-target-registry }}
+          docker-target-base-path: ${{ inputs.docker-target-base-path }}
+          docker-image-name: ${{ steps.versions.outputs.docker-image-name }}
           docker-tag: ${{ steps.versions.outputs.docker-tag }}
       - name: Pass check - Docker Retag
         if: success()
@@ -563,9 +575,9 @@ jobs:
           version: ${{ steps.versions.outputs.version }}
           docker-tag: ${{ steps.versions.outputs.docker-tag }}
           docker-image-name: ${{ steps.versions.outputs.docker-image-name }}
-          docker-image-full-uri: ${{ steps.docker-build.outputs.target-image-full-uri }}
-          target-registry: ${{ steps.docker-build.outputs.target-registry }}
-          target-base-path: ${{ steps.docker-build.outputs.target-base-path }}
+          docker-image-full-uri: ${{ steps.docker-build.outputs.docker-target-image-full-uri }}
+          docker-target-registry: ${{ steps.docker-build.outputs.docker-target-registry }}
+          docker-target-base-path: ${{ steps.docker-build.outputs.docker-target-base-path }}
           is-release: ${{ steps.versions.outputs.is-release }}
           substitution-token-style: ${{ inputs.substitution-token-style }}
           token-name-style: ${{ inputs.token-name-style }}
@@ -602,9 +614,9 @@ jobs:
           manifests-packaging-base-image: ${{ inputs.manifests-packaging-base-image }}
           manifests-zip-sub-path: ${{ steps.manifest-package.outputs.manifests-zip-sub-path }}
           manifests-zip-file-name: ${{ steps.manifest-package.outputs.manifests-zip-file-name }}
-          target-registry: ${{ steps.docker-build.outputs.target-registry }}
-          target-base-path: ${{ steps.docker-build.outputs.target-base-path }}
-          target-image-name: ${{ steps.versions.outputs.docker-image-name }}
+          docker-target-registry: ${{ steps.docker-build.outputs.docker-target-registry }}
+          docker-target-base-path: ${{ steps.docker-build.outputs.docker-target-base-path }}
+          docker-image-name: ${{ steps.versions.outputs.docker-image-name }}
           docker-tag: ${{ steps.versions.outputs.docker-tag }}-manifests
           version: ${{ steps.versions.outputs.version }}
           output-sub-path: ${{ inputs.output-sub-path }}
@@ -668,7 +680,7 @@ jobs:
         if: steps.versions.outputs.is-release == 'true'
         uses: ./.github/buildon-github-actions/src/actions/docker-push
         with:
-          docker-image-full-uri: ${{ steps.docker-build.outputs.target-image-full-uri }}
+          docker-image-full-uri: ${{ steps.docker-build.outputs.docker-target-image-full-uri }}
           is-release: ${{ steps.versions.outputs.is-release }}
       - name: Pass check - Docker Push
         if: steps.versions.outputs.is-release == 'true' && success()

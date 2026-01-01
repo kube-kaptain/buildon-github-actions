@@ -27,9 +27,10 @@ jobs:
       packages: write
       checks: write
     with:
-      source-registry: docker.io
-      source-image-name: library/alpine
-      source-tag: '3.21'
+      docker-source-registry: docker.io
+      docker-source-base-path: library
+      docker-source-image-name: alpine
+      docker-source-tag: '3.21'
 
 # ┌───────────────────────────────────────────────────────────────────────────┐
 # │ All Available Options                                                     │
@@ -40,16 +41,17 @@ jobs:
 # │ Source Image (REQUIRED)                                                 │
 # └─────────────────────────────────────────────────────────────────────────┘
 #     with:
-#       source-registry: docker.io
-#       source-image-name: library/alpine
-#       source-tag: '3.21'
+#       docker-source-registry: docker.io
+#       docker-source-base-path: library      # Optional, if upstream uses a base path
+#       docker-source-image-name: alpine
+#       docker-source-tag: '3.21'
 
 # ┌─────────────────────────────────────────────────────────────────────────┐
 # │ Target Registry                                                         │
 # └─────────────────────────────────────────────────────────────────────────┘
 #     with:
-#       target-registry: 'myregistry.example.com'  # ecr, gcr, harbor, nexus
-#       target-base-path: 'my-team/vendored'
+#       docker-target-registry: 'myregistry.example.com'  # ecr, gcr, harbor, nexus
+#       docker-target-base-path: 'my-team/vendored'
 
 # ┌─────────────────────────────────────────────────────────────────────────┐
 # │ Branch Configuration                                                    │
@@ -62,11 +64,11 @@ jobs:
 # │ Quality Checks                                                          │
 # └─────────────────────────────────────────────────────────────────────────┘
 #     with:
-#       block-slashes: true                  # Default is false
-#       block-double-hyphens: false          # Default is true
-#       require-conventional-branches: true  # Default is false
-#       require-conventional-commits: true   # Default is false
-#       block-conventional-commits: true     # Default is false
+#       block-slash-containing-branches: true           # Default is false
+#       block-double-hyphen-containing-branches: false  # Default is true
+#       require-conventional-branches: true             # Default is false
+#       require-conventional-commits: true              # Default is false
+#       block-conventional-commits: true                # Default is false
 
 # ┌─────────────────────────────────────────────────────────────────────────┐
 # │ Version Configuration                                                   │
