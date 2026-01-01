@@ -149,8 +149,7 @@ increment_version() {
   # Split version into array and increment last part
   IFS='.' read -ra parts <<< "${previous_version}"
   local last_idx=$((${#parts[@]} - 1))
-  # shellcheck disable=SC2004 # Using braces for consistency despite being inside arithmetic
-  parts[${last_idx}]=$((parts[${last_idx}] + 1))
+  parts[last_idx]=$((parts[last_idx] + 1))
   local IFS='.'
   echo "${parts[*]}"
 }
