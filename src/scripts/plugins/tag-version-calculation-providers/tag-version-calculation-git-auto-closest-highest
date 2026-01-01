@@ -41,8 +41,8 @@ is_annotated_tag() {
 # Check if a tag is a pure numeric version (no -rc1, -beta, v-prefix, etc)
 is_numeric_version() {
   local version="${1}"
-  # Must be only digits and dots, with at least one dot
-  [[ "${version}" =~ ^[0-9]+(\.[0-9]+)+$ ]]
+  # Must be only digits and dots
+  [[ "${version}" =~ ^[0-9]+(\.[0-9]+)*$ ]]
 }
 
 # Find the most recent tag in history (determines our series)
