@@ -26,6 +26,30 @@ create_tag "1.0.0" "First release"
 commit_file "file.txt" "content" "Add file after tag"
 bundle_repo "tag-semver3" "$SCRIPT_DIR/../fixtures"
 
+# Scenario: Has 7 (single-part) - should increment to 8
+log "Creating: tag-semver1 (has 7)"
+init_repo "$OUTPUT_DIR/tag-semver1"
+commit_file "README.md" "# Test repo" "Initial commit"
+create_tag "7" "Single-part version"
+commit_file "file.txt" "content" "Add file after tag"
+bundle_repo "tag-semver1" "$SCRIPT_DIR/../fixtures"
+
+# Scenario: Has 41 (two-digit single-part) - should increment to 42
+log "Creating: tag-semver1-twodigit (has 41)"
+init_repo "$OUTPUT_DIR/tag-semver1-twodigit"
+commit_file "README.md" "# Test repo" "Initial commit"
+create_tag "41" "Two-digit single-part version"
+commit_file "file.txt" "content" "Add file after tag"
+bundle_repo "tag-semver1-twodigit" "$SCRIPT_DIR/../fixtures"
+
+# Scenario: Has 1234567890 (10-digit single-part) - should increment to 1234567891
+log "Creating: tag-semver1-tendigit (has 1234567890)"
+init_repo "$OUTPUT_DIR/tag-semver1-tendigit"
+commit_file "README.md" "# Test repo" "Initial commit"
+create_tag "1234567890" "Ten-digit single-part version"
+commit_file "file.txt" "content" "Add file after tag"
+bundle_repo "tag-semver1-tendigit" "$SCRIPT_DIR/../fixtures"
+
 # Scenario: Has 1.2 (two-part) - should increment to 1.3
 log "Creating: tag-semver2 (has 1.2)"
 init_repo "$OUTPUT_DIR/tag-semver2"
@@ -41,6 +65,14 @@ commit_file "README.md" "# Test repo" "Initial commit"
 create_tag "1.2.3.4" "Four-part version"
 commit_file "file.txt" "content" "Add file after tag"
 bundle_repo "tag-semver4" "$SCRIPT_DIR/../fixtures"
+
+# Scenario: Has 1.2.3.4.5.6.7.8.9.0 (ten-part) - should increment to 1.2.3.4.5.6.7.8.9.1
+log "Creating: tag-semver10 (has 1.2.3.4.5.6.7.8.9.0)"
+init_repo "$OUTPUT_DIR/tag-semver10"
+commit_file "README.md" "# Test repo" "Initial commit"
+create_tag "1.2.3.4.5.6.7.8.9.0" "Ten-part version"
+commit_file "file.txt" "content" "Add file after tag"
+bundle_repo "tag-semver10" "$SCRIPT_DIR/../fixtures"
 
 # Scenario: Has v-prefixed tag - should be ignored (only X.Y.Z format matched)
 log "Creating: tag-vprefixed (has v1.0.0)"

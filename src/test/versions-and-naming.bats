@@ -38,6 +38,36 @@ teardown() {
   assert_var_equals "VERSION" "1.0.1"
 }
 
+@test "increments single-part version 7 to 8" {
+  TEST_REPO=$(clone_fixture "tag-semver1")
+  cd "$TEST_REPO"
+  export MAX_VERSION_PARTS=1
+
+  run "$SCRIPTS_DIR/versions-and-naming"
+  [ "$status" -eq 0 ]
+  assert_var_equals "VERSION" "8"
+}
+
+@test "increments two-digit single-part version 41 to 42" {
+  TEST_REPO=$(clone_fixture "tag-semver1-twodigit")
+  cd "$TEST_REPO"
+  export MAX_VERSION_PARTS=1
+
+  run "$SCRIPTS_DIR/versions-and-naming"
+  [ "$status" -eq 0 ]
+  assert_var_equals "VERSION" "42"
+}
+
+@test "increments ten-digit single-part version 1234567890 to 1234567891" {
+  TEST_REPO=$(clone_fixture "tag-semver1-tendigit")
+  cd "$TEST_REPO"
+  export MAX_VERSION_PARTS=1
+
+  run "$SCRIPTS_DIR/versions-and-naming"
+  [ "$status" -eq 0 ]
+  assert_var_equals "VERSION" "1234567891"
+}
+
 @test "increments minor version for two-part tags" {
   TEST_REPO=$(clone_fixture "tag-semver2")
   cd "$TEST_REPO"
@@ -59,6 +89,16 @@ teardown() {
   assert_var_equals "VERSION" "1.2.3.5"
   assert_var_equals "VERSION_3_PART" "1.2.3"
   assert_var_equals "VERSION_4_PART" "1.2.3.5"
+}
+
+@test "increments ten-part version 1.2.3.4.5.6.7.8.9.0 to 1.2.3.4.5.6.7.8.9.1" {
+  TEST_REPO=$(clone_fixture "tag-semver10")
+  cd "$TEST_REPO"
+  export MAX_VERSION_PARTS=10
+
+  run "$SCRIPTS_DIR/versions-and-naming"
+  [ "$status" -eq 0 ]
+  assert_var_equals "VERSION" "1.2.3.4.5.6.7.8.9.1"
 }
 
 @test "ignores v-prefixed tags" {
