@@ -22,7 +22,7 @@ set_required_env() {
   export DOCKER_SOURCE_TAG="3.21"
   export DOCKER_TARGET_REGISTRY="ghcr.io"
   export DOCKER_TARGET_BASE_PATH="test"
-  export DOCKER_TARGET_IMAGE_NAME="my-repo"
+  export DOCKER_IMAGE_NAME="my-repo"
   export DOCKER_TAG="1.0.0"
 }
 
@@ -78,28 +78,46 @@ set_required_env() {
 
 # === Warning and stripping tests ===
 
-@test "warns and strips path from registry" {
+@test "fails when source registry contains path" {
   set_required_env
   export DOCKER_SOURCE_REGISTRY="docker.io/library"
   unset DOCKER_SOURCE_BASE_PATH
 
   run "$SCRIPTS_DIR/docker-build-retag"
+  [ "$status" -ne 0 ]
+  assert_output_contains "DOCKER_SOURCE_REGISTRY cannot contain slashes"
+}
+
+@test "fails when target registry contains path" {
+  set_required_env
+  export DOCKER_TARGET_REGISTRY="ghcr.io/org"
+
+  run "$SCRIPTS_DIR/docker-build-retag"
+  [ "$status" -ne 0 ]
+  assert_output_contains "DOCKER_TARGET_REGISTRY cannot contain slashes"
+}
+
+@test "warns and strips leading slash from image name" {
+  set_required_env
+  export DOCKER_SOURCE_IMAGE_NAME="/alpine"
+  unset DOCKER_SOURCE_BASE_PATH
+
+  run "$SCRIPTS_DIR/docker-build-retag"
   [ "$status" -eq 0 ]
-  assert_output_contains "DOCKER_SOURCE_REGISTRY contains path"
+  assert_output_contains "DOCKER_SOURCE_IMAGE_NAME has leading/trailing slashes"
   assert_output_contains "Stripping"
   assert_var_equals "DOCKER_SOURCE_IMAGE_FULL_URI" "docker.io/alpine:3.21"
 }
 
-@test "warns and strips path from image name" {
+@test "allows internal slashes in image name" {
   set_required_env
   export DOCKER_SOURCE_IMAGE_NAME="library/alpine"
   unset DOCKER_SOURCE_BASE_PATH
 
   run "$SCRIPTS_DIR/docker-build-retag"
   [ "$status" -eq 0 ]
-  assert_output_contains "DOCKER_SOURCE_IMAGE_NAME contains path"
-  assert_output_contains "Stripping"
-  assert_var_equals "DOCKER_SOURCE_IMAGE_FULL_URI" "docker.io/alpine:3.21"
+  # No warning - internal slashes are valid
+  assert_var_equals "DOCKER_SOURCE_IMAGE_FULL_URI" "docker.io/library/alpine:3.21"
 }
 
 @test "warns and strips leading slash from base path" {
@@ -124,13 +142,13 @@ set_required_env() {
 
 @test "uses LOG_WARNING_PREFIX in warnings" {
   set_required_env
-  export DOCKER_SOURCE_REGISTRY="docker.io/library"
+  export DOCKER_SOURCE_IMAGE_NAME="/alpine"
   export LOG_WARNING_PREFIX="::warning::"
   unset DOCKER_SOURCE_BASE_PATH
 
   run "$SCRIPTS_DIR/docker-build-retag"
   [ "$status" -eq 0 ]
-  assert_output_contains "::warning::DOCKER_SOURCE_REGISTRY contains path"
+  assert_output_contains "::warning::DOCKER_SOURCE_IMAGE_NAME has leading/trailing slashes"
 }
 
 @test "does not push (build only)" {
@@ -147,7 +165,7 @@ set_required_env() {
   export DOCKER_SOURCE_TAG="3.21"
   export DOCKER_TARGET_REGISTRY="ghcr.io"
   export DOCKER_TARGET_BASE_PATH="test"
-  export DOCKER_TARGET_IMAGE_NAME="my-repo"
+  export DOCKER_IMAGE_NAME="my-repo"
   export DOCKER_TAG="1.0.0"
 
   run "$SCRIPTS_DIR/docker-build-retag"
@@ -155,7 +173,7 @@ set_required_env() {
   assert_output_contains "DOCKER_SOURCE_REGISTRY"
 }
 
-@test "fails when DOCKER_TARGET_IMAGE_NAME missing" {
+@test "fails when DOCKER_IMAGE_NAME missing" {
   export DOCKER_SOURCE_REGISTRY="docker.io"
   export DOCKER_SOURCE_BASE_PATH="library"
   export DOCKER_SOURCE_IMAGE_NAME="alpine"
@@ -165,7 +183,7 @@ set_required_env() {
 
   run "$SCRIPTS_DIR/docker-build-retag"
   [ "$status" -ne 0 ]
-  assert_output_contains "DOCKER_TARGET_IMAGE_NAME"
+  assert_output_contains "DOCKER_IMAGE_NAME"
 }
 
 @test "fails when image already exists" {

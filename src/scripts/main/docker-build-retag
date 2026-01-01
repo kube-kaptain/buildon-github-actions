@@ -5,14 +5,16 @@
 # docker-build-retag - Pulls and retags Docker images (no push)
 #
 # Inputs (environment variables):
-#   DOCKER_SOURCE_REGISTRY     - Source registry (e.g., docker.io)
-#   DOCKER_SOURCE_BASE_PATH    - Path between registry and image name (optional, e.g., library)
-#   DOCKER_SOURCE_IMAGE_NAME   - Source image name (e.g., nginx)
-#   DOCKER_SOURCE_TAG          - Source image tag (e.g., 1.25)
-#   DOCKER_TARGET_REGISTRY     - Target registry (e.g., ghcr.io)
-#   DOCKER_TARGET_BASE_PATH    - Path between registry and image name (optional)
-#   DOCKER_TARGET_IMAGE_NAME   - Target image name (from version generator)
-#   DOCKER_TAG          - Target tag (from version generator)
+# User set inputs (validate):
+#   DOCKER_SOURCE_REGISTRY       - Source registry (e.g., docker.io)
+#   DOCKER_SOURCE_BASE_PATH      - Path between registry and image name (optional, e.g., library)
+#   DOCKER_SOURCE_IMAGE_NAME     - Source image name (e.g., nginx)
+#   DOCKER_SOURCE_TAG            - Source image tag (e.g., 1.25)
+#   DOCKER_TARGET_REGISTRY       - Target registry (e.g., ghcr.io)
+#   DOCKER_TARGET_BASE_PATH      - Path between registry and image name (optional)
+# System generated:
+#   DOCKER_IMAGE_NAME            - Target image name (from version generator)
+#   DOCKER_TAG                   - Target tag (from version generator)
 #
 # Outputs:
 #   DOCKER_SOURCE_IMAGE_FULL_URI - Full source image reference
@@ -20,96 +22,53 @@
 #
 set -euo pipefail
 
+# Locate script directory for sourcing shared scripts
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
 # Logging configuration (CI-agnostic)
 LOG_ERROR_PREFIX="${LOG_ERROR_PREFIX:-}"
 LOG_ERROR_SUFFIX="${LOG_ERROR_SUFFIX:-}"
 LOG_WARNING_PREFIX="${LOG_WARNING_PREFIX:-}"
 LOG_WARNING_SUFFIX="${LOG_WARNING_SUFFIX:-}"
 
-# === Map external DOCKER_* names to internal names ===
-INPUT_SOURCE_REGISTRY="${DOCKER_SOURCE_REGISTRY:?DOCKER_SOURCE_REGISTRY is required}"
+# === Source inputs ===
+SOURCE_REGISTRY="${DOCKER_SOURCE_REGISTRY:?DOCKER_SOURCE_REGISTRY is required}"
 INPUT_SOURCE_BASE_PATH="${DOCKER_SOURCE_BASE_PATH:-}"
 INPUT_SOURCE_IMAGE_NAME="${DOCKER_SOURCE_IMAGE_NAME:?DOCKER_SOURCE_IMAGE_NAME is required}"
 SOURCE_TAG="${DOCKER_SOURCE_TAG:?DOCKER_SOURCE_TAG is required}"
-INPUT_TARGET_REGISTRY="${DOCKER_TARGET_REGISTRY:?DOCKER_TARGET_REGISTRY is required}"
-INPUT_TARGET_BASE_PATH="${DOCKER_TARGET_BASE_PATH:-}"
-INPUT_TARGET_IMAGE_NAME="${DOCKER_TARGET_IMAGE_NAME:?DOCKER_TARGET_IMAGE_NAME is required}"
-DOCKER_TAG="${DOCKER_TAG:?DOCKER_TAG is required}"
 
-# === Validate and strip misplaced paths ===
+# === Validate source inputs ===
 
-# Strip path from registries (should use base-path instead)
-SOURCE_REGISTRY="${INPUT_SOURCE_REGISTRY%%/*}"
-if [[ "${INPUT_SOURCE_REGISTRY}" != "${SOURCE_REGISTRY}" ]]; then
-  echo "${LOG_WARNING_PREFIX}DOCKER_SOURCE_REGISTRY contains path - use DOCKER_SOURCE_BASE_PATH instead. Stripping.${LOG_WARNING_SUFFIX}" >&2
+# Source registry cannot contain slashes
+if [[ "${SOURCE_REGISTRY}" == */* ]]; then
+  echo "${LOG_ERROR_PREFIX}DOCKER_SOURCE_REGISTRY cannot contain slashes - use DOCKER_SOURCE_BASE_PATH for paths${LOG_ERROR_SUFFIX}" >&2
+  exit 1
 fi
 
-TARGET_REGISTRY="${INPUT_TARGET_REGISTRY%%/*}"
-if [[ "${INPUT_TARGET_REGISTRY}" != "${TARGET_REGISTRY}" ]]; then
-  echo "${LOG_WARNING_PREFIX}DOCKER_TARGET_REGISTRY contains path - use DOCKER_TARGET_BASE_PATH instead. Stripping.${LOG_WARNING_SUFFIX}" >&2
-fi
-
-# Strip path from image names (should use base-path instead)
-SOURCE_IMAGE_NAME="${INPUT_SOURCE_IMAGE_NAME##*/}"
+# Strip leading/trailing slashes from source image name (internal slashes are valid)
+SOURCE_IMAGE_NAME="${INPUT_SOURCE_IMAGE_NAME#/}"
+SOURCE_IMAGE_NAME="${SOURCE_IMAGE_NAME%/}"
 if [[ "${INPUT_SOURCE_IMAGE_NAME}" != "${SOURCE_IMAGE_NAME}" ]]; then
-  echo "${LOG_WARNING_PREFIX}DOCKER_SOURCE_IMAGE_NAME contains path - use DOCKER_SOURCE_BASE_PATH instead. Stripping.${LOG_WARNING_SUFFIX}" >&2
+  echo "${LOG_WARNING_PREFIX}DOCKER_SOURCE_IMAGE_NAME has leading/trailing slashes. Stripping.${LOG_WARNING_SUFFIX}" >&2
 fi
 
-TARGET_IMAGE_NAME="${INPUT_TARGET_IMAGE_NAME##*/}"
-if [[ "${INPUT_TARGET_IMAGE_NAME}" != "${TARGET_IMAGE_NAME}" ]]; then
-  echo "${LOG_WARNING_PREFIX}DOCKER_TARGET_IMAGE_NAME contains path - use DOCKER_TARGET_BASE_PATH instead. Stripping.${LOG_WARNING_SUFFIX}" >&2
-fi
-
-# Strip leading/trailing slashes from base paths
+# Strip leading/trailing slashes from source base path
 SOURCE_BASE_PATH="${INPUT_SOURCE_BASE_PATH#/}"
 SOURCE_BASE_PATH="${SOURCE_BASE_PATH%/}"
 if [[ "${INPUT_SOURCE_BASE_PATH}" != "${SOURCE_BASE_PATH}" ]]; then
   echo "${LOG_WARNING_PREFIX}DOCKER_SOURCE_BASE_PATH has leading/trailing slashes. Stripping.${LOG_WARNING_SUFFIX}" >&2
 fi
 
-TARGET_BASE_PATH="${INPUT_TARGET_BASE_PATH#/}"
-TARGET_BASE_PATH="${TARGET_BASE_PATH%/}"
-if [[ "${INPUT_TARGET_BASE_PATH}" != "${TARGET_BASE_PATH}" ]]; then
-  echo "${LOG_WARNING_PREFIX}DOCKER_TARGET_BASE_PATH has leading/trailing slashes. Stripping.${LOG_WARNING_SUFFIX}" >&2
-fi
-
-# === Assemble full image URIs ===
-# Pattern: registry + "/" + base-path + "/" + image-name + ":" + tag
+# === Assemble source image URI ===
 if [[ -n "${SOURCE_BASE_PATH}" ]]; then
   SOURCE_IMAGE_FULL_URI="${SOURCE_REGISTRY}/${SOURCE_BASE_PATH}/${SOURCE_IMAGE_NAME}:${SOURCE_TAG}"
 else
   SOURCE_IMAGE_FULL_URI="${SOURCE_REGISTRY}/${SOURCE_IMAGE_NAME}:${SOURCE_TAG}"
 fi
-if [[ -n "${TARGET_BASE_PATH}" ]]; then
-  TARGET_IMAGE_FULL_URI="${TARGET_REGISTRY}/${TARGET_BASE_PATH}/${TARGET_IMAGE_NAME}:${DOCKER_TAG}"
-else
-  TARGET_IMAGE_FULL_URI="${TARGET_REGISTRY}/${TARGET_IMAGE_NAME}:${DOCKER_TAG}"
-fi
 
-confirm_image_doesnt_exist() {
-  local image="${1}"
-
-  # Check registry for existing image via manifest inspect (no layer download)
-  if docker manifest inspect "${image}" &>/dev/null; then
-    echo "${LOG_ERROR_PREFIX}Target image already exists in registry: ${image}${LOG_ERROR_SUFFIX}" >&2
-    return 1
-  fi
-
-  echo "Confirmed image does not exist in registry (safe to push)" >&2
-  return 0
-}
-
-# Output variable for GitHub Actions
-output_var() {
-  local name="${1}"
-  local value="${2}"
-
-  echo "${name}=${value}"
-
-  if [[ -n "${GITHUB_OUTPUT:-}" ]]; then
-    echo "${name}=${value}" >> "${GITHUB_OUTPUT}"
-  fi
-}
+# === Shared target validation, URI assembly, and utilities ===
+# shellcheck source=src/scripts/main/docker-build-shared
+source "${SCRIPT_DIR}/docker-build-shared"
 
 main() {
   echo "=== Docker Retag ===" >&2
@@ -121,7 +80,7 @@ main() {
   docker pull "${SOURCE_IMAGE_FULL_URI}"
 
   # Confirm target doesn't exist (fail fast)
-  confirm_image_doesnt_exist "${TARGET_IMAGE_FULL_URI}" || exit 1
+  confirm_target_image_doesnt_exist || exit 1
 
   echo "Tagging: ${SOURCE_IMAGE_FULL_URI} -> ${TARGET_IMAGE_FULL_URI}" >&2
   docker tag "${SOURCE_IMAGE_FULL_URI}" "${TARGET_IMAGE_FULL_URI}"

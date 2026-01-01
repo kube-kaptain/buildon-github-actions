@@ -12,12 +12,14 @@
 # This separation allows injecting test steps between build and push.
 #
 # Inputs (environment variables):
-#   TARGET_REGISTRY     - Container registry (e.g., ghcr.io)
-#   TARGET_BASE_PATH    - Path between registry and image name (optional)
-#   TARGET_IMAGE_NAME   - Image name (from version generator)
-#   DOCKER_TAG          - Tag for the image (from version generator)
+# System generated:
+#   DOCKER_IMAGE_NAME        - Image name (from version generator)
+#   DOCKER_TAG               - Tag for the image (from version generator)
 #   VERSION             - Version number (from version generator, passed as build arg)
 #   PROJECT_NAME        - Project name (from version generator, passed as build arg)
+# User set inputs (validate):
+#   DOCKER_TARGET_REGISTRY   - Container registry (e.g., ghcr.io)
+#   DOCKER_TARGET_BASE_PATH  - Path between registry and image name (optional)
 #   DOCKERFILE_SUB_PATH - Directory containing Dockerfile, relative (default: src/docker)
 #   OUTPUT_SUB_PATH     - Build output directory, relative (default: target)
 #   SQUASH              - "false" to disable --squash (default: true, always squash for clean D files)
@@ -40,16 +42,18 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # Logging configuration (CI-agnostic)
 LOG_ERROR_PREFIX="${LOG_ERROR_PREFIX:-}"
 LOG_ERROR_SUFFIX="${LOG_ERROR_SUFFIX:-}"
+LOG_WARNING_PREFIX="${LOG_WARNING_PREFIX:-}"
+LOG_WARNING_SUFFIX="${LOG_WARNING_SUFFIX:-}"
 
-# Required inputs
-TARGET_REGISTRY="${TARGET_REGISTRY:?TARGET_REGISTRY is required}"
-TARGET_IMAGE_NAME="${TARGET_IMAGE_NAME:?TARGET_IMAGE_NAME is required}"
-DOCKER_TAG="${DOCKER_TAG:?DOCKER_TAG is required}"
+# === Shared target validation, URI assembly, and utilities ===
+# shellcheck source=src/scripts/main/docker-build-shared
+source "${SCRIPT_DIR}/docker-build-shared"
+
+# Required inputs (DOCKER_TAG validated in shared script)
 VERSION="${VERSION:?VERSION is required}"
 PROJECT_NAME="${PROJECT_NAME:?PROJECT_NAME is required}"
 
-# Optional inputs with defaults
-TARGET_BASE_PATH="${TARGET_BASE_PATH:-}"
+# Other optional inputs with defaults
 DOCKERFILE_SUB_PATH="${DOCKERFILE_SUB_PATH:-src/docker}"
 OUTPUT_SUB_PATH="${OUTPUT_SUB_PATH:-target}"
 SQUASH="${SQUASH:-true}"
@@ -64,25 +68,6 @@ CONFIG_VALUE_TRAILING_NEWLINE="${CONFIG_VALUE_TRAILING_NEWLINE:-strip-for-single
 # Build output structure (sub-paths, relative to working directory)
 DOCKER_CONFIG_SUB_PATH="${OUTPUT_SUB_PATH}/docker/config"
 DOCKER_SUBSTITUTED_SUB_PATH="${OUTPUT_SUB_PATH}/docker/substituted"
-
-# Assemble full image URI
-if [[ -n "${TARGET_BASE_PATH}" ]]; then
-  TARGET_IMAGE_FULL_URI="${TARGET_REGISTRY}/${TARGET_BASE_PATH}/${TARGET_IMAGE_NAME}:${DOCKER_TAG}"
-else
-  TARGET_IMAGE_FULL_URI="${TARGET_REGISTRY}/${TARGET_IMAGE_NAME}:${DOCKER_TAG}"
-fi
-
-confirm_image_doesnt_exist() {
-  local image="${1}"
-
-  if docker manifest inspect "${image}" &>/dev/null; then
-    echo "${LOG_ERROR_PREFIX}Target image already exists in registry: ${image}${LOG_ERROR_SUFFIX}" >&2
-    return 1
-  fi
-
-  echo "Confirmed image does not exist in registry (safe to build and push)" >&2
-  return 0
-}
 
 enable_experimental() {
   # Enable Docker experimental features for --squash
@@ -101,17 +86,6 @@ enable_experimental() {
     return 1
   fi
   echo "Docker experimental mode enabled" >&2
-}
-
-output_var() {
-  local name="${1}"
-  local value="${2}"
-
-  echo "${name}=${value}"
-
-  if [[ -n "${GITHUB_OUTPUT:-}" ]]; then
-    echo "${name}=${value}" >> "${GITHUB_OUTPUT}"
-  fi
 }
 
 main() {
@@ -156,7 +130,7 @@ main() {
   fi
 
   # Confirm target doesn't exist before building (fail fast)
-  confirm_image_doesnt_exist "${TARGET_IMAGE_FULL_URI}" || exit 1
+  confirm_target_image_doesnt_exist || exit 1
 
   # Copy docker directory to build output for substitution
   echo "" >&2
@@ -180,7 +154,7 @@ main() {
   PROJECT_NAME="${PROJECT_NAME}" \
   VERSION="${VERSION}" \
   DOCKER_TAG="${DOCKER_TAG}" \
-  DOCKER_IMAGE_NAME="${TARGET_IMAGE_NAME}" \
+  DOCKER_IMAGE_NAME="${DOCKER_IMAGE_NAME}" \
   DOCKER_IMAGE_FULL_URI="${TARGET_IMAGE_FULL_URI}" \
   TARGET_REGISTRY="${TARGET_REGISTRY}" \
   TARGET_BASE_PATH="${TARGET_BASE_PATH}" \
@@ -217,7 +191,7 @@ main() {
   local build_datetime
   build_datetime=$(date -u +%Y-%m-%dT%H:%M:%SZ)
   cmd+=(--label "version=${DOCKER_TAG}")
-  cmd+=(--label "image.name=${TARGET_IMAGE_NAME}")
+  cmd+=(--label "image.name=${DOCKER_IMAGE_NAME}")
   cmd+=(--label "build.datetime=${build_datetime}")
 
   # Add squash if enabled

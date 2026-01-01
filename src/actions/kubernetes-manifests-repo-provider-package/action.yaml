@@ -40,8 +40,8 @@ inputs:
     description: 'Path between registry and image name'
     required: false
     default: ''
-  docker-target-image-name:
-    description: 'Target image name'
+  docker-image-name:
+    description: 'Image name (from version generator)'
     required: false
     default: ''
   docker-tag:
@@ -129,7 +129,7 @@ runs:
         # REPO_PROVIDER_NAME
         # =====================================================================
         if [[ "$PROVIDER" == "docker" ]]; then
-          NAME="${{ inputs.docker-target-image-name }}"
+          NAME="${{ inputs.docker-image-name }}"
         else
           NAME="${{ inputs.project-name }}"
         fi
