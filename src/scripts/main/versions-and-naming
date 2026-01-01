@@ -128,11 +128,12 @@ output_var() {
 
 # Push tag to remote
 push_tag() {
-  local tag="${1}"
+  local version="${1}"
+  local project_name="${2}"
   git config user.email "noreply@kaptain.org"
   git config user.name "Kube Kaptain"
-  git tag -m "Automatic release tag by Kaptain build script." "${tag}" HEAD
-  git push origin "${tag}"
+  git tag -m "Automatic release tag for version ${version} of ${project_name} by Kaptain build script." "${version}" HEAD
+  git push origin "${version}"
 }
 
 main() {
@@ -183,38 +184,38 @@ main() {
   ) || exit $?
 
   # Parse VERSION from plugin output
-  local new_version
-  new_version=$(echo "${plugin_output}" | grep '^VERSION=' | cut -d= -f2-)
+  local version
+  version=$(echo "${plugin_output}" | grep '^VERSION=' | cut -d= -f2-)
 
-  if [[ -z "${new_version}" ]]; then
+  if [[ -z "${version}" ]]; then
     echo "${LOG_ERROR_PREFIX}Strategy plugin did not output VERSION${LOG_ERROR_SUFFIX}" >&2
     exit 1
   fi
 
   # Push tag if this is a release build
   if [[ "${is_release}" == "true" ]]; then
-    echo "Tagging release: ${new_version}" >&2
-    push_tag "${new_version}"
+    echo "Tagging release: ${version}" >&2
+    push_tag "${version}" "${project_name}"
   else
-    echo "Pre-release build: ${new_version} (no tag push)" >&2
+    echo "Pre-release build: ${version} (no tag push)" >&2
   fi
 
   # Generate DOCKER_TAG based on release status
   local docker_tag
   if [[ "${is_release}" == "true" ]]; then
-    docker_tag="${new_version}"
+    docker_tag="${version}"
   else
-    docker_tag="${new_version}-PRERELEASE"
+    docker_tag="${version}-PRERELEASE"
   fi
 
   # Generate padded/truncated versions for different ecosystems
   local version_2_part version_3_part version_4_part
-  version_2_part=$(version_to_n_parts "${new_version}" 2)
-  version_3_part=$(version_to_n_parts "${new_version}" 3)
-  version_4_part=$(version_to_n_parts "${new_version}" 4)
+  version_2_part=$(version_to_n_parts "${version}" 2)
+  version_3_part=$(version_to_n_parts "${version}" 3)
+  version_4_part=$(version_to_n_parts "${version}" 4)
 
   # Extract individual parts (major.minor.patch...)
-  local clean_version="${new_version#v}"
+  local clean_version="${version#v}"
   IFS='.' read -ra version_parts <<< "${clean_version}"
   local version_major="${version_parts[0]:-0}"
   local version_minor="${version_parts[1]:-0}"
@@ -225,7 +226,7 @@ main() {
   local prefix="${project_name%%-*}"
   docker_image_name="${prefix}/${project_name}"
 
-  output_var "VERSION" "${new_version}"
+  output_var "VERSION" "${version}"
   output_var "VERSION_MAJOR" "${version_major}"
   output_var "VERSION_MINOR" "${version_minor}"
   output_var "VERSION_PATCH" "${version_patch}"

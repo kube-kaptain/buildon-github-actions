@@ -152,19 +152,19 @@ find_highest_in_series() {
 # Increment patch version
 increment_patch() {
   local prefix="${1}"
-  local current="${2}"
+  local previous_version="${2}"
 
-  if [[ -z "${current}" ]]; then
+  if [[ -z "${previous_version}" ]]; then
     # No existing tag in series, start at prefix.1
     echo "${prefix}.1"
     return
   fi
 
   # Remove 'v' prefix if present
-  current="${current#v}"
+  previous_version="${previous_version#v}"
 
   # Split and increment patch
-  IFS='.' read -ra parts <<< "${current}"
+  IFS='.' read -ra parts <<< "${previous_version}"
   local patch=$((parts[2] + 1))
   echo "${parts[0]}.${parts[1]}.${patch}"
 }
@@ -204,19 +204,19 @@ main() {
   fi
 
   # Step 4: Increment patch
-  local new_version
-  new_version=$(increment_patch "${prefix}" "${highest_tag}")
+  local version
+  version=$(increment_patch "${prefix}" "${highest_tag}")
 
   # Step 5: Validate against MAX_VERSION_PARTS
   local part_count
-  part_count=$(count_version_parts "${new_version}")
+  part_count=$(count_version_parts "${version}")
   if [[ ${part_count} -gt ${MAX_VERSION_PARTS} ]]; then
-    echo "${LOG_ERROR_PREFIX}Version '${new_version}' has ${part_count} parts, exceeds MAX_VERSION_PARTS=${MAX_VERSION_PARTS}${LOG_ERROR_SUFFIX}" >&2
+    echo "${LOG_ERROR_PREFIX}Version '${version}' has ${part_count} parts, exceeds MAX_VERSION_PARTS=${MAX_VERSION_PARTS}${LOG_ERROR_SUFFIX}" >&2
     exit 1
   fi
 
   # Output the version
-  echo "VERSION=${new_version}"
+  echo "VERSION=${version}"
 }
 
 main "$@"

@@ -143,19 +143,19 @@ count_version_parts() {
 
 # Increment version - always increments last component
 increment_version() {
-  local current="${1}"
+  local previous_version="${1}"
 
-  if [[ -z "${current}" ]]; then
+  if [[ -z "${previous_version}" ]]; then
     # No existing tag, start at 1.0.0
     echo "1.0.0"
     return
   fi
 
   # Remove 'v' prefix if present
-  current="${current#v}"
+  previous_version="${previous_version#v}"
 
   # Split version into array and increment last part
-  IFS='.' read -ra parts <<< "${current}"
+  IFS='.' read -ra parts <<< "${previous_version}"
   local last_idx=$((${#parts[@]} - 1))
   # shellcheck disable=SC2004 # Using braces for consistency despite being inside arithmetic
   parts[${last_idx}]=$((parts[${last_idx}] + 1))
@@ -173,19 +173,19 @@ main() {
   highest_tag=$(find_highest_in_series "${recent_tag}")
 
   # Step 3: Increment the highest
-  local new_version
-  new_version=$(increment_version "${highest_tag}")
+  local version
+  version=$(increment_version "${highest_tag}")
 
   # Step 4: Validate against MAX_VERSION_PARTS
   local part_count
-  part_count=$(count_version_parts "${new_version}")
+  part_count=$(count_version_parts "${version}")
   if [[ ${part_count} -gt ${MAX_VERSION_PARTS} ]]; then
-    echo "${LOG_ERROR_PREFIX}Version '${new_version}' has ${part_count} parts, exceeds MAX_VERSION_PARTS=${MAX_VERSION_PARTS}${LOG_ERROR_SUFFIX}" >&2
+    echo "${LOG_ERROR_PREFIX}Version '${version}' has ${part_count} parts, exceeds MAX_VERSION_PARTS=${MAX_VERSION_PARTS}${LOG_ERROR_SUFFIX}" >&2
     exit 1
   fi
 
   # Output the version
-  echo "VERSION=${new_version}"
+  echo "VERSION=${version}"
 }
 
 main "$@"
