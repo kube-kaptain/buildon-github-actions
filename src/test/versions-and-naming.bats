@@ -496,6 +496,145 @@ jobs:
   assert_output_contains "not a valid version format"
 }
 
+@test "file-pattern-match TAG_VERSION_PREFIX_PARTS=2 uses two-part prefix (default behavior)" {
+  TEST_REPO=$(clone_fixture "tag-none")
+  cd "$TEST_REPO"
+  mkdir -p src/docker
+  echo 'FROM alpine:3.19
+ENV KUBECTL_VERSION=1.28.5' > src/docker/Dockerfile
+  # Tags in 1.28.X series
+  git tag -m "test" 1.28.1
+  git tag -m "test" 1.28.2
+
+  export TAG_VERSION_CALCULATION_STRATEGY=file-pattern-match
+  export TAG_VERSION_PATTERN_TYPE=dockerfile-env-kubectl
+  export TAG_VERSION_PREFIX_PARTS=2
+  export MAX_VERSION_PARTS=3
+
+  run "$SCRIPTS_DIR/versions-and-naming"
+  [ "$status" -eq 0 ]
+  # prefix=1.28, highest in series=1.28.2, next=1.28.3
+  assert_var_equals "VERSION" "1.28.3"
+}
+
+@test "file-pattern-match TAG_VERSION_PREFIX_PARTS=1 uses single-part prefix" {
+  TEST_REPO=$(clone_fixture "tag-none")
+  cd "$TEST_REPO"
+  mkdir -p src/docker
+  echo 'FROM alpine:3.19
+ENV KUBECTL_VERSION=1.28.5' > src/docker/Dockerfile
+  # Tags in 1.X series
+  git tag -m "test" 1.3
+  git tag -m "test" 1.10
+
+  export TAG_VERSION_CALCULATION_STRATEGY=file-pattern-match
+  export TAG_VERSION_PATTERN_TYPE=dockerfile-env-kubectl
+  export TAG_VERSION_PREFIX_PARTS=1
+  export MAX_VERSION_PARTS=2
+
+  run "$SCRIPTS_DIR/versions-and-naming"
+  [ "$status" -eq 0 ]
+  # prefix=1, highest in series=1.10, next=1.11
+  assert_var_equals "VERSION" "1.11"
+}
+
+@test "file-pattern-match TAG_VERSION_PREFIX_PARTS=3 uses full source version as prefix" {
+  TEST_REPO=$(clone_fixture "tag-none")
+  cd "$TEST_REPO"
+  mkdir -p src/docker
+  echo 'FROM alpine:3.19
+ENV KUBECTL_VERSION=1.28.5' > src/docker/Dockerfile
+  # Tags in 1.28.5.X series
+  git tag -m "test" 1.28.5.1
+  git tag -m "test" 1.28.5.2
+
+  export TAG_VERSION_CALCULATION_STRATEGY=file-pattern-match
+  export TAG_VERSION_PATTERN_TYPE=dockerfile-env-kubectl
+  export TAG_VERSION_PREFIX_PARTS=3
+  export MAX_VERSION_PARTS=4
+
+  run "$SCRIPTS_DIR/versions-and-naming"
+  [ "$status" -eq 0 ]
+  # prefix=1.28.5, highest in series=1.28.5.2, next=1.28.5.3
+  assert_var_equals "VERSION" "1.28.5.3"
+}
+
+@test "file-pattern-match TAG_VERSION_PREFIX_PARTS=3 starts at prefix.1 when no tags exist" {
+  TEST_REPO=$(clone_fixture "tag-none")
+  cd "$TEST_REPO"
+  mkdir -p src/docker
+  echo 'FROM alpine:3.19
+ENV KUBECTL_VERSION=1.28.5' > src/docker/Dockerfile
+
+  export TAG_VERSION_CALCULATION_STRATEGY=file-pattern-match
+  export TAG_VERSION_PATTERN_TYPE=dockerfile-env-kubectl
+  export TAG_VERSION_PREFIX_PARTS=3
+  export MAX_VERSION_PARTS=4
+
+  run "$SCRIPTS_DIR/versions-and-naming"
+  [ "$status" -eq 0 ]
+  # prefix=1.28.5, no existing tags, start at 1.28.5.1
+  assert_var_equals "VERSION" "1.28.5.1"
+}
+
+@test "file-pattern-match fails when PREFIX_PARTS + 1 exceeds MAX_VERSION_PARTS" {
+  TEST_REPO=$(clone_fixture "tag-none")
+  cd "$TEST_REPO"
+  mkdir -p src/docker
+  echo 'FROM alpine:3.19
+ENV KUBECTL_VERSION=1.28.5' > src/docker/Dockerfile
+
+  export TAG_VERSION_CALCULATION_STRATEGY=file-pattern-match
+  export TAG_VERSION_PATTERN_TYPE=dockerfile-env-kubectl
+  export TAG_VERSION_PREFIX_PARTS=3
+  export MAX_VERSION_PARTS=3  # Output would be 4 parts, exceeds limit
+
+  run "$SCRIPTS_DIR/versions-and-naming"
+  [ "$status" -eq 1 ]
+  # PREFIX_PARTS=3 means output has 4 parts, but MAX_VERSION_PARTS=3
+  assert_output_contains "TAG_VERSION_PREFIX_PARTS (3) + 1 exceeds MAX_VERSION_PARTS (3)"
+}
+
+@test "file-pattern-match fails when PREFIX_PARTS=2 but source has 1 part" {
+  TEST_REPO=$(clone_fixture "tag-none")
+  cd "$TEST_REPO"
+  mkdir -p src/config
+  echo 'VERSION=7' > src/config/version.txt
+
+  export TAG_VERSION_CALCULATION_STRATEGY=file-pattern-match
+  export TAG_VERSION_PATTERN_TYPE=custom
+  export TAG_VERSION_SOURCE_SUB_PATH=src/config
+  export TAG_VERSION_SOURCE_FILE_NAME=version.txt
+  export TAG_VERSION_SOURCE_CUSTOM_PATTERN='^VERSION=([0-9]+)$'
+  export TAG_VERSION_PREFIX_PARTS=2  # Source only has 1 part
+  export MAX_VERSION_PARTS=3
+
+  run "$SCRIPTS_DIR/versions-and-naming"
+  [ "$status" -eq 1 ]
+  # PREFIX_PARTS=2 but source "7" only has 1 part
+  assert_output_contains "TAG_VERSION_PREFIX_PARTS (2) exceeds source version parts (1 in '7')"
+}
+
+@test "file-pattern-match fails when PREFIX_PARTS=3 but source has 2 parts" {
+  TEST_REPO=$(clone_fixture "tag-none")
+  cd "$TEST_REPO"
+  mkdir -p src/config
+  echo 'VERSION=1.28' > src/config/version.txt
+
+  export TAG_VERSION_CALCULATION_STRATEGY=file-pattern-match
+  export TAG_VERSION_PATTERN_TYPE=custom
+  export TAG_VERSION_SOURCE_SUB_PATH=src/config
+  export TAG_VERSION_SOURCE_FILE_NAME=version.txt
+  export TAG_VERSION_SOURCE_CUSTOM_PATTERN='^VERSION=([0-9]+\.[0-9]+)$'
+  export TAG_VERSION_PREFIX_PARTS=3  # Source only has 2 parts
+  export MAX_VERSION_PARTS=4
+
+  run "$SCRIPTS_DIR/versions-and-naming"
+  [ "$status" -eq 1 ]
+  # PREFIX_PARTS=3 but source "1.28" only has 2 parts
+  assert_output_contains "TAG_VERSION_PREFIX_PARTS (3) exceeds source version parts (2 in '1.28')"
+}
+
 # BUILD_LOCATION tests
 
 @test "fails when BUILD_LOCATION is not set" {
