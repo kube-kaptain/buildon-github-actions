@@ -1,7 +1,6 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2025 Kaptain contributors (Fred Cooke)
 
-# Check out the repo we're building for
 - name: Checkout
   uses: actions/checkout@v4.2.2
   with:
@@ -51,7 +50,6 @@
   env:
     GITHUB_WORKFLOW_REF: ${{ github.workflow_ref }}
 
-# Check out the buildon tooling repo
 - name: Checkout actions
   if: steps.parse.outputs.ref != 'LOCAL'
   uses: actions/checkout@v4.2.2
@@ -59,7 +57,6 @@
     repository: kube-kaptain/buildon-github-actions
     ref: ${{ steps.parse.outputs.ref }}
     path: .github/buildon-github-actions
-    token: ${{ secrets.KUBE_KAPTAIN_ORG || github.token }}
 
 - name: Link local actions
   if: steps.parse.outputs.ref == 'LOCAL'

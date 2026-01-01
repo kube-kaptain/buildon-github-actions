@@ -221,7 +221,6 @@ jobs:
     permissions:
       contents: read
     steps:
-      # Check out the repo we're building for
       - name: Checkout
         uses: actions/checkout@v4.2.2
         with:
@@ -271,7 +270,6 @@ jobs:
         env:
           GITHUB_WORKFLOW_REF: ${{ github.workflow_ref }}
 
-      # Check out the buildon tooling repo
       - name: Checkout actions
         if: steps.parse.outputs.ref != 'LOCAL'
         uses: actions/checkout@v4.2.2
@@ -279,7 +277,6 @@ jobs:
           repository: kube-kaptain/buildon-github-actions
           ref: ${{ steps.parse.outputs.ref }}
           path: .github/buildon-github-actions
-          token: ${{ secrets.KUBE_KAPTAIN_ORG || github.token }}
 
       - name: Link local actions
         if: steps.parse.outputs.ref == 'LOCAL'
@@ -322,7 +319,6 @@ jobs:
       target-image-full-uri: ${{ steps.docker-build.outputs.docker-target-image-full-uri }}
       docker-image-pushed: ${{ steps.docker-push.outputs.image-pushed }}
     steps:
-      # Check out the repo we're building for
       - name: Checkout
         uses: actions/checkout@v4.2.2
         with:
@@ -372,7 +368,6 @@ jobs:
         env:
           GITHUB_WORKFLOW_REF: ${{ github.workflow_ref }}
 
-      # Check out the buildon tooling repo
       - name: Checkout actions
         if: steps.parse.outputs.ref != 'LOCAL'
         uses: actions/checkout@v4.2.2
@@ -380,7 +375,6 @@ jobs:
           repository: kube-kaptain/buildon-github-actions
           ref: ${{ steps.parse.outputs.ref }}
           path: .github/buildon-github-actions
-          token: ${{ secrets.KUBE_KAPTAIN_ORG || github.token }}
 
       - name: Link local actions
         if: steps.parse.outputs.ref == 'LOCAL'
