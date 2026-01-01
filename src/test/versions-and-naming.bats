@@ -382,7 +382,7 @@ jobs:
   build:
     uses: example/workflow@v1
     with:
-      source-tag: 3.10.1' > .github/workflows/build.yaml
+      docker-source-tag: 3.10.1' > .github/workflows/build.yaml
 
   export TAG_VERSION_CALCULATION_STRATEGY=file-pattern-match
   export TAG_VERSION_PATTERN_TYPE=retag-workflow-source-tag
@@ -402,7 +402,7 @@ jobs:
   build:
     uses: example/workflow@v1
     with:
-      source-tag: '2.5.0'" > .github/workflows/build.yaml
+      docker-source-tag: '2.5.0'" > .github/workflows/build.yaml
 
   export TAG_VERSION_CALCULATION_STRATEGY=file-pattern-match
   export TAG_VERSION_PATTERN_TYPE=retag-workflow-source-tag
