@@ -125,21 +125,15 @@ get_major_minor() {
   echo "${major}.${minor}"
 }
 
-# Check if a tag is a pure numeric version (no -rc1, -beta, v-prefix, etc)
-is_numeric_version() {
-  local version="${1}"
-  [[ "${version}" =~ ^[0-9]+(\.[0-9]+)+$ ]]
-}
-
 # Find highest tag matching major.minor prefix
 find_highest_in_series() {
   local prefix="${1}"
 
   # Get ALL tags in repo matching our prefix with pure numeric versions only
+  # The regex ensures: starts with prefix, followed by dot and digits only, no suffixes
   local highest
   highest=$(git tag --list | while read -r tag; do
-    # Must start with our prefix, followed by dot and digits only
-    if [[ "${tag}" =~ ^${prefix}\.[0-9]+$ ]] && is_numeric_version "${tag}"; then
+    if [[ "${tag}" =~ ^${prefix}\.[0-9]+$ ]]; then
       echo "${tag}"
     fi
   done | "${SCRIPT_DIR}/../../main/version-sort" | tail -n1)
