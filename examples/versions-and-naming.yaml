@@ -52,7 +52,7 @@ jobs:
 #
 # Pattern types with defaults:
 #   dockerfile-env-kubectl: src/docker/Dockerfile, ENV KUBECTL_VERSION=x.y.z
-#   retag-workflow-source-tag: .github/workflows/build.yaml, source-tag: x.y.z
+#   retag-workflow-source-tag: .github/workflows/build.yaml, docker-source-tag: x.y.z
 #   custom: requires all inputs below
 #
 # Custom pattern example:
