@@ -26,6 +26,10 @@ inputs:
     description: 'Pattern type for file-pattern-match strategy (dockerfile-env-kubectl, retag-workflow-source-tag, custom)'
     required: false
     default: 'dockerfile-env-kubectl'
+  tag-version-prefix-parts:
+    description: 'Number of parts from source version to use as prefix (default 2, output = prefix + 1 parts)'
+    required: false
+    default: ''
   dockerfile-sub-path:
     description: 'Directory containing Dockerfile, relative to repo root.'
     required: false
@@ -92,6 +96,7 @@ runs:
         MAX_VERSION_PARTS: ${{ inputs.max-version-parts }}
         TAG_VERSION_CALCULATION_STRATEGY: ${{ inputs.tag-version-calculation-strategy }}
         TAG_VERSION_PATTERN_TYPE: ${{ inputs.tag-version-pattern-type }}
+        TAG_VERSION_PREFIX_PARTS: ${{ inputs.tag-version-prefix-parts }}
         DOCKERFILE_SUB_PATH: ${{ inputs.dockerfile-sub-path }}
         TAG_VERSION_SOURCE_SUB_PATH: ${{ inputs.tag-version-source-sub-path }}
         TAG_VERSION_SOURCE_FILE_NAME: ${{ inputs.tag-version-source-file-name }}

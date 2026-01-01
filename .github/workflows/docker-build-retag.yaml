@@ -90,6 +90,11 @@ on:
         required: false
         type: string
         default: 'dockerfile-env-kubectl'
+      tag-version-prefix-parts:
+        description: 'Number of parts from source version to use as prefix (default 2, output = prefix + 1 parts)'
+        required: false
+        type: string
+        default: ''
       dockerfile-sub-path:
         description: 'Directory containing Dockerfile, relative to repo root.'
         required: false
@@ -393,6 +398,7 @@ jobs:
           max-version-parts: ${{ inputs.max-version-parts }}
           tag-version-calculation-strategy: ${{ inputs.tag-version-calculation-strategy }}
           tag-version-pattern-type: ${{ inputs.tag-version-pattern-type }}
+          tag-version-prefix-parts: ${{ inputs.tag-version-prefix-parts }}
           dockerfile-sub-path: ${{ inputs.dockerfile-sub-path }}
           tag-version-source-sub-path: ${{ inputs.tag-version-source-sub-path }}
           tag-version-source-file-name: ${{ inputs.tag-version-source-file-name }}

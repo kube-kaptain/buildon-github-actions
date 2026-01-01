@@ -1,0 +1,49 @@
+# SPDX-License-Identifier: CC0-1.0
+# This example is released to the public domain. Use freely without attribution.
+#
+# Version Prefix Parts
+#
+# Control how many parts of the source version become the prefix for auto-incrementing.
+# The output has prefix + 1 parts (the extra part is the auto-incremented component).
+#
+# Default: prefix-parts=2 → source 1.28.0 → prefix 1.28 → output 1.28.1
+#
+# Examples:
+#   prefix-parts=1 → source 1.28.0 → prefix 1 → output 1.1
+#   prefix-parts=2 → source 1.28.0 → prefix 1.28 → output 1.28.1 (default)
+#   prefix-parts=3 → source 1.28.0 → prefix 1.28.0 → output 1.28.0.1
+#
+# Use prefix-parts=3 when you want 4-part versions (e.g., tracking exact upstream
+# versions while adding your own patch number).
+#
+# Copy this to .github/workflows/build.yaml in your repo.
+
+name: Docker Build with 4-Part Version
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    uses: kube-kaptain/buildon-github-actions/.github/workflows/docker-build-dockerfile.yaml@1.0.11
+    permissions:
+      contents: write
+      packages: write
+      checks: write
+    with:
+      tag-version-calculation-strategy: 'file-pattern-match'
+      tag-version-pattern-type: 'dockerfile-env-kubectl'
+      tag-version-prefix-parts: '3'
+      max-version-parts: 4
+
+# Your Dockerfile should contain a line like:
+#   ENV KUBECTL_VERSION=1.28.0
+#
+# With prefix-parts=3:
+#   - First build: tags 1.28.0.1
+#   - Second build: tags 1.28.0.2
+#   - Update to 1.28.1: tags 1.28.1.1
+#   - Update to 1.29.0: tags 1.29.0.1
