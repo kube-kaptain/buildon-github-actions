@@ -13,7 +13,7 @@
 # Inputs (environment variables):
 #   TAG_VERSION_PATTERN_TYPE - Pattern type (required):
 #     - dockerfile-env-kubectl: defaults to src/docker/Dockerfile, pattern ENV KUBECTL_VERSION=x.y.z
-#     - retag-workflow-source-tag: defaults to .github/workflows/build.yaml, pattern source-tag: x.y.z
+#     - retag-workflow-source-tag: defaults to .github/workflows/build.yaml, pattern docker-source-tag: x.y.z
 #     - custom: requires all TAG_VERSION_SOURCE_* inputs
 #   TAG_VERSION_SOURCE_SUB_PATH - Override path to directory (required for custom)
 #   TAG_VERSION_SOURCE_FILE_NAME - Override file name (required for custom)
@@ -55,7 +55,7 @@ set_defaults_for_type() {
       # For retag pattern: only use TAG_VERSION_SOURCE_SUB_PATH override, not DOCKERFILE_SUB_PATH
       SOURCE_SUB_PATH="${TAG_VERSION_SOURCE_SUB_PATH:-.github/workflows}"
       SOURCE_FILE_NAME="${TAG_VERSION_SOURCE_FILE_NAME:-build.yaml}"
-      VERSION_PATTERN="^[[:space:]]*source-tag:[[:space:]]*['\"]?([0-9]+\.[0-9]+\.[0-9]+)['\"]?$"
+      VERSION_PATTERN="^[[:space:]]*docker-source-tag:[[:space:]]*['\"]?([0-9]+\.[0-9]+\.[0-9]+)['\"]?$"
       ;;
     custom)
       if [[ -z "${TAG_VERSION_SOURCE_SUB_PATH:-}" ]]; then
