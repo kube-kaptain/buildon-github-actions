@@ -74,12 +74,12 @@ on:
         type: string
         default: ''
       # Target configuration
-      target-registry:
+      docker-target-registry:
         description: 'Target container registry'
         required: false
         type: string
         default: 'ghcr.io'
-      target-base-path:
+      docker-target-base-path:
         description: 'Path between registry and image name (auto-set for GHCR)'
         required: false
         type: string
@@ -353,7 +353,7 @@ jobs:
       docker-image-name: ${{ steps.versions.outputs.docker-image-name }}
       project-name: ${{ steps.versions.outputs.project-name }}
       is-release: ${{ steps.versions.outputs.is-release }}
-      target-image-full-uri: ${{ steps.docker-build.outputs.target-image-full-uri }}
+      target-image-full-uri: ${{ steps.docker-build.outputs.docker-target-image-full-uri }}
       docker-image-pushed: ${{ steps.docker-push.outputs.image-pushed }}
       manifests-zip-sub-path: ${{ steps.manifest-package.outputs.manifests-zip-sub-path }}
       manifests-zip-file-name: ${{ steps.manifest-package.outputs.manifests-zip-file-name }}
@@ -429,7 +429,7 @@ jobs:
         with:
           config: ${{ inputs.docker-registry-logins }}
           secrets-json: ${{ secrets.docker-registry-logins-secrets || toJSON(secrets) }}
-          target-registry: ${{ inputs.target-registry }}
+          docker-target-registry: ${{ inputs.docker-target-registry }}
 
       # === Pre-tagging Tests ===
       - name: Start check - Pre-tagging Tests
@@ -537,9 +537,9 @@ jobs:
         id: docker-build
         uses: ./.github/buildon-github-actions/src/actions/docker-build-dockerfile
         with:
-          target-registry: ${{ inputs.target-registry }}
-          target-base-path: ${{ inputs.target-base-path }}
-          target-image-name: ${{ steps.versions.outputs.docker-image-name }}
+          docker-target-registry: ${{ inputs.docker-target-registry }}
+          docker-target-base-path: ${{ inputs.docker-target-base-path }}
+          docker-target-image-name: ${{ steps.versions.outputs.docker-image-name }}
           docker-tag: ${{ steps.versions.outputs.docker-tag }}
           version: ${{ steps.versions.outputs.version }}
           project-name: ${{ steps.versions.outputs.project-name }}
@@ -586,7 +586,7 @@ jobs:
           docker-image-name: ${{ steps.versions.outputs.docker-image-name }}
           project-name: ${{ steps.versions.outputs.project-name }}
           is-release: ${{ steps.versions.outputs.is-release }}
-          target-image-full-uri: ${{ steps.docker-build.outputs.target-image-full-uri }}
+          target-image-full-uri: ${{ steps.docker-build.outputs.docker-target-image-full-uri }}
       - name: Pass check - Post-docker Tests
         if: inputs.post-docker-tests-script-sub-path != '' && success()
         uses: ./.github/buildon-github-actions/src/actions/github-check-run
@@ -651,9 +651,9 @@ jobs:
           version: ${{ steps.versions.outputs.version }}
           docker-tag: ${{ steps.versions.outputs.docker-tag }}
           docker-image-name: ${{ steps.versions.outputs.docker-image-name }}
-          docker-image-full-uri: ${{ steps.docker-build.outputs.target-image-full-uri }}
-          target-registry: ${{ steps.docker-build.outputs.target-registry }}
-          target-base-path: ${{ steps.docker-build.outputs.target-base-path }}
+          docker-image-full-uri: ${{ steps.docker-build.outputs.docker-target-image-full-uri }}
+          docker-target-registry: ${{ steps.docker-build.outputs.docker-target-registry }}
+          docker-target-base-path: ${{ steps.docker-build.outputs.docker-target-base-path }}
           is-release: ${{ steps.versions.outputs.is-release }}
           substitution-token-style: ${{ inputs.substitution-token-style }}
           token-name-style: ${{ inputs.token-name-style }}
@@ -690,9 +690,9 @@ jobs:
           manifests-packaging-base-image: ${{ inputs.manifests-packaging-base-image }}
           manifests-zip-sub-path: ${{ steps.manifest-package.outputs.manifests-zip-sub-path }}
           manifests-zip-file-name: ${{ steps.manifest-package.outputs.manifests-zip-file-name }}
-          target-registry: ${{ steps.docker-build.outputs.target-registry }}
-          target-base-path: ${{ steps.docker-build.outputs.target-base-path }}
-          target-image-name: ${{ steps.versions.outputs.docker-image-name }}
+          docker-target-registry: ${{ steps.docker-build.outputs.docker-target-registry }}
+          docker-target-base-path: ${{ steps.docker-build.outputs.docker-target-base-path }}
+          docker-target-image-name: ${{ steps.versions.outputs.docker-image-name }}
           docker-tag: ${{ steps.versions.outputs.docker-tag }}-manifests
           version: ${{ steps.versions.outputs.version }}
           output-sub-path: ${{ inputs.output-sub-path }}
@@ -756,7 +756,7 @@ jobs:
         if: steps.versions.outputs.is-release == 'true'
         uses: ./.github/buildon-github-actions/src/actions/docker-push
         with:
-          docker-image-full-uri: ${{ steps.docker-build.outputs.target-image-full-uri }}
+          docker-image-full-uri: ${{ steps.docker-build.outputs.docker-target-image-full-uri }}
           is-release: ${{ steps.versions.outputs.is-release }}
       - name: Pass check - Docker Push
         if: steps.versions.outputs.is-release == 'true' && success()

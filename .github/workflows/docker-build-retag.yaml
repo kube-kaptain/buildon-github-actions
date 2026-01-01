@@ -5,31 +5,31 @@ name: Docker Build Retag
 on:
   workflow_call:
     inputs:
-      # Source image (4 parts)
-      source-registry:
+      # Docker source image (4 parts)
+      docker-source-registry:
         description: 'Upstream registry (e.g., docker.io)'
         required: true
         type: string
-      source-base-path:
+      docker-source-base-path:
         description: 'Path between registry and image name (e.g., library)'
         required: false
         type: string
         default: ''
-      source-image-name:
+      docker-source-image-name:
         description: 'Upstream image name (e.g., nginx)'
         required: true
         type: string
-      source-tag:
+      docker-source-tag:
         description: 'Upstream image tag (e.g., 1.25)'
         required: true
         type: string
-      # Target configuration
-      target-registry:
+      # Docker target configuration
+      docker-target-registry:
         description: 'Target container registry'
         required: false
         type: string
         default: 'ghcr.io'
-      target-base-path:
+      docker-target-base-path:
         description: 'Path between registry and image name (auto-set for GHCR)'
         required: false
         type: string
@@ -160,15 +160,15 @@ on:
         description: 'Whether this is a release build'
         value: ${{ jobs.build.outputs.is-release }}
       # Retag outputs
-      source-image-full-uri:
+      docker-source-image-full-uri:
         description: 'Full source image reference'
-        value: ${{ jobs.build.outputs.source-image-full-uri }}
-      target-image-full-uri:
-        description: 'Full target image reference (action output name)'
-        value: ${{ jobs.build.outputs.target-image-full-uri }}
+        value: ${{ jobs.build.outputs.docker-source-image-full-uri }}
+      docker-target-image-full-uri:
+        description: 'Full target image reference'
+        value: ${{ jobs.build.outputs.docker-target-image-full-uri }}
       docker-image-full-uri:
-        description: 'Full docker image reference (alias for target-image-full-uri)'
-        value: ${{ jobs.build.outputs.target-image-full-uri }}
+        description: 'Full docker image reference (alias for docker-target-image-full-uri)'
+        value: ${{ jobs.build.outputs.docker-target-image-full-uri }}
       docker-image-pushed:
         description: 'Whether docker image was pushed'
         value: ${{ jobs.build.outputs.docker-image-pushed }}
@@ -275,9 +275,9 @@ jobs:
       docker-image-name: ${{ steps.versions.outputs.docker-image-name }}
       project-name: ${{ steps.versions.outputs.project-name }}
       is-release: ${{ steps.versions.outputs.is-release }}
-      source-image-full-uri: ${{ steps.docker-build.outputs.source-image-full-uri }}
-      target-image-full-uri: ${{ steps.docker-build.outputs.target-image-full-uri }}
-      docker-image-pushed: ${{ steps.docker-build.outputs.image-pushed }}
+      docker-source-image-full-uri: ${{ steps.docker-build.outputs.docker-source-image-full-uri }}
+      docker-target-image-full-uri: ${{ steps.docker-build.outputs.docker-target-image-full-uri }}
+      docker-image-pushed: ${{ steps.docker-push.outputs.image-pushed }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4.2.2
@@ -348,7 +348,7 @@ jobs:
         with:
           config: ${{ inputs.docker-registry-logins }}
           secrets-json: ${{ secrets.docker-registry-logins-secrets || toJSON(secrets) }}
-          target-registry: ${{ inputs.target-registry }}
+          docker-target-registry: ${{ inputs.docker-target-registry }}
 
       # === Pre-tagging Tests ===
       - name: Start check - Pre-tagging Tests
@@ -421,13 +421,13 @@ jobs:
         id: docker-build
         uses: ./.github/buildon-github-actions/src/actions/docker-build-retag
         with:
-          source-registry: ${{ inputs.source-registry }}
-          source-base-path: ${{ inputs.source-base-path }}
-          source-image-name: ${{ inputs.source-image-name }}
-          source-tag: ${{ inputs.source-tag }}
-          target-registry: ${{ inputs.target-registry }}
-          target-base-path: ${{ inputs.target-base-path }}
-          target-image-name: ${{ steps.versions.outputs.docker-image-name }}
+          docker-source-registry: ${{ inputs.docker-source-registry }}
+          docker-source-base-path: ${{ inputs.docker-source-base-path }}
+          docker-source-image-name: ${{ inputs.docker-source-image-name }}
+          docker-source-tag: ${{ inputs.docker-source-tag }}
+          docker-target-registry: ${{ inputs.docker-target-registry }}
+          docker-target-base-path: ${{ inputs.docker-target-base-path }}
+          docker-target-image-name: ${{ steps.versions.outputs.docker-image-name }}
           docker-tag: ${{ steps.versions.outputs.docker-tag }}
       - name: Pass check - Docker Retag
         if: success()
@@ -455,7 +455,7 @@ jobs:
         if: steps.versions.outputs.is-release == 'true'
         uses: ./.github/buildon-github-actions/src/actions/docker-push
         with:
-          docker-image-full-uri: ${{ steps.docker-build.outputs.target-image-full-uri }}
+          docker-image-full-uri: ${{ steps.docker-build.outputs.docker-target-image-full-uri }}
           is-release: ${{ steps.versions.outputs.is-release }}
       - name: Pass check - Docker Push
         if: steps.versions.outputs.is-release == 'true' && success()

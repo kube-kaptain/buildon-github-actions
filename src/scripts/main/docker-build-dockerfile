@@ -30,7 +30,7 @@
 #   CONFIG_VALUE_TRAILING_NEWLINE - Trailing newline handling (default: strip-for-single-line)
 #
 # Outputs:
-#   TARGET_IMAGE_FULL_URI - Full image reference (for use in push step)
+#   DOCKER_TARGET_IMAGE_FULL_URI - Full image reference (for use in push step)
 #
 set -euo pipefail
 
@@ -237,7 +237,7 @@ main() {
   echo "Building: ${cmd[*]}" >&2
   "${cmd[@]}"
 
-  output_var "TARGET_IMAGE_FULL_URI" "${TARGET_IMAGE_FULL_URI}"
+  output_var "DOCKER_TARGET_IMAGE_FULL_URI" "${TARGET_IMAGE_FULL_URI}"
 
   echo "" >&2
   echo "Docker Build Dockerfile complete" >&2

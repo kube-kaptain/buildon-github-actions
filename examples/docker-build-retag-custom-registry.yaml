@@ -27,11 +27,11 @@ jobs:
       checks: write
     secrets: inherit
     with:
-      source-registry: docker.io
-      source-base-path: library
-      source-image-name: nginx
-      source-tag: '1.27'
-      target-registry: myregistry.example.com
+      docker-source-registry: docker.io
+      docker-source-base-path: library
+      docker-source-image-name: nginx
+      docker-source-tag: '1.27'
+      docker-target-registry: myregistry.example.com
       docker-registry-logins: |
         myregistry.example.com:
           type: username-password
@@ -47,17 +47,17 @@ jobs:
 # │ Source Image (REQUIRED)                                                 │
 # └─────────────────────────────────────────────────────────────────────────┘
 #     with:
-#       source-registry: docker.io
-#       source-base-path: library      # Optional, if upstream uses a base path
-#       source-image-name: alpine
-#       source-tag: '3.21'
+#       docker-source-registry: docker.io
+#       docker-source-base-path: library      # Optional, if upstream uses a base path
+#       docker-source-image-name: alpine
+#       docker-source-tag: '3.21'
 
 # ┌─────────────────────────────────────────────────────────────────────────┐
 # │ Target Registry                                                         │
 # └─────────────────────────────────────────────────────────────────────────┘
 #     with:
-#       target-registry: 'myregistry.example.com'  # ecr, gcr, harbor, nexus
-#       target-base-path: 'my-team/vendored'
+#       docker-target-registry: 'myregistry.example.com'  # ecr, gcr, harbor, nexus
+#       docker-target-base-path: 'my-team/vendored'
 
 # ┌─────────────────────────────────────────────────────────────────────────┐
 # │ Branch Configuration                                                    │

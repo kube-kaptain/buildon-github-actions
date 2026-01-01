@@ -32,11 +32,11 @@ inputs:
     description: 'Full Docker image URI for variable substitution (optional)'
     required: false
     default: ''
-  target-registry:
+  docker-target-registry:
     description: 'Target registry for variable substitution (optional)'
     required: false
     default: ''
-  target-base-path:
+  docker-target-base-path:
     description: 'Target base path for variable substitution (optional)'
     required: false
     default: ''
@@ -92,8 +92,8 @@ runs:
         DOCKER_TAG: ${{ inputs.docker-tag }}
         DOCKER_IMAGE_NAME: ${{ inputs.docker-image-name }}
         DOCKER_IMAGE_FULL_URI: ${{ inputs.docker-image-full-uri }}
-        TARGET_REGISTRY: ${{ inputs.target-registry }}
-        TARGET_BASE_PATH: ${{ inputs.target-base-path }}
+        TARGET_REGISTRY: ${{ inputs.docker-target-registry }}
+        TARGET_BASE_PATH: ${{ inputs.docker-target-base-path }}
         IS_RELEASE: ${{ inputs.is-release }}
         SUBSTITUTION_TOKEN_STYLE: ${{ inputs.substitution-token-style }}
         TOKEN_NAME_STYLE: ${{ inputs.token-name-style }}

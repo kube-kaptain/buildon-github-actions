@@ -47,8 +47,8 @@ jobs:
 # │ Target Registry                                                         │
 # └─────────────────────────────────────────────────────────────────────────┘
 #     with:
-#       target-registry: 'myregistry.example.com'  # ecr, gcr, harbor, nexus
-#       target-base-path: 'my-team/images'
+#       docker-target-registry: 'myregistry.example.com'  # ecr, gcr, harbor, nexus
+#       docker-target-base-path: 'my-team/images'
 
 # ┌─────────────────────────────────────────────────────────────────────────┐
 # │ Branch Configuration                                                    │

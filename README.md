@@ -105,6 +105,12 @@ See [`examples/`](examples/) for more usage patterns.
 | `config-value-trailing-newline` | string | `strip-for-single-line` | How to handle trailing newlines in config values (strip-for-single-line, preserve-all, always-strip-one-newline) |
 | `default-branch` | string | `main` | The default/release branch name |
 | `docker-registry-logins` | string | `""` | YAML config for Docker registry logins (registry URL as key) |
+| `docker-source-base-path` | string | `""` | Path between registry and image name (e.g., library) |
+| `docker-source-image-name` | string | *required* | Upstream image name (e.g., nginx) |
+| `docker-source-registry` | string | *required* | Upstream registry (e.g., docker.io) |
+| `docker-source-tag` | string | *required* | Upstream image tag (e.g., 1.25) |
+| `docker-target-base-path` | string | `""` | Path between registry and image name (auto-set for GHCR) |
+| `docker-target-registry` | string | `ghcr.io` | Target container registry |
 | `dockerfile-sub-path` | string | `src/docker` | Directory containing Dockerfile, relative to repo root. |
 | `manifests-packaging-base-image` | string | `""` | Base image for manifest packaging (default: ghcr.io/kube-kaptain/image/image-pause:3.10.2) |
 | `manifests-repo-provider-type` | string | `docker` | Repo provider type for manifest storage (default: docker, currently the only supported provider) |
@@ -119,10 +125,6 @@ See [`examples/`](examples/) for more usage patterns.
 | `pre-tagging-tests-script-sub-path` | string | `""` | Path to pre-tagging test script relative to .github/ (e.g., bin/pre-tagging.bash) |
 | `require-conventional-branches` | boolean | `false` | Require branch names start with feature/, fix/, etc. |
 | `require-conventional-commits` | boolean | `false` | Require commits use conventional commit format (feat:, fix:, etc.) |
-| `source-base-path` | string | `""` | Path between registry and image name (e.g., library) |
-| `source-image-name` | string | *required* | Upstream image name (e.g., nginx) |
-| `source-registry` | string | *required* | Upstream registry (e.g., docker.io) |
-| `source-tag` | string | *required* | Upstream image tag (e.g., 1.25) |
 | `squash` | boolean | `true` | Enable --squash (requires experimental mode) |
 | `substitution-token-style` | string | `shell` | Token delimiter syntax for variables (shell, mustache, helm, erb, github-actions, blade, stringtemplate, ognl, t4, swift) |
 | `tag-version-calculation-strategy` | string | `git-auto-closest-highest` | Strategy for calculating version (git-auto-closest-highest, file-pattern-match) |
@@ -130,8 +132,6 @@ See [`examples/`](examples/) for more usage patterns.
 | `tag-version-source-custom-pattern` | string | `""` | Regex with capture group for version extraction (required for custom pattern type) |
 | `tag-version-source-file-name` | string | `""` | Override source file name (defaults based on pattern type) |
 | `tag-version-source-sub-path` | string | `""` | Override path to source directory (takes precedence over dockerfile-sub-path) |
-| `target-base-path` | string | `""` | Path between registry and image name (auto-set for GHCR) |
-| `target-registry` | string | `ghcr.io` | Target container registry |
 | `token-name-style` | string | `PascalCase` | Case style for token names (UPPER_SNAKE, lower_snake, kebab-case, camelCase, PascalCase, lower.dot, UPPER.DOT) |
 | `token-name-validation` | string | `MATCH` | How to validate user token names (MATCH = must match token-name-style, ALL = accept any valid name) |
 <!-- INPUTS-END -->

@@ -40,7 +40,7 @@ set_required_env() {
 
   run "$SCRIPTS_DIR/docker-build-dockerfile"
   [ "$status" -eq 0 ]
-  assert_var_equals "TARGET_IMAGE_FULL_URI" "ghcr.io/test/my-repo:1.0.0"
+  assert_var_equals "DOCKER_TARGET_IMAGE_FULL_URI" "ghcr.io/test/my-repo:1.0.0"
 }
 
 @test "assembles target URI with base path" {
@@ -49,7 +49,7 @@ set_required_env() {
 
   run "$SCRIPTS_DIR/docker-build-dockerfile"
   [ "$status" -eq 0 ]
-  assert_var_equals "TARGET_IMAGE_FULL_URI" "ghcr.io/kube-kaptain/test/my-repo:1.0.0"
+  assert_var_equals "DOCKER_TARGET_IMAGE_FULL_URI" "ghcr.io/kube-kaptain/test/my-repo:1.0.0"
 }
 
 @test "calls docker build with correct args" {

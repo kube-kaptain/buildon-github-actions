@@ -6,15 +6,15 @@ description: 'Builds a Docker image from a Dockerfile with token substitution (b
 author: 'kube-kaptain'
 
 inputs:
-  target-registry:
+  docker-target-registry:
     description: 'Target container registry (defaults to ghcr.io)'
     required: false
     default: ''
-  target-base-path:
+  docker-target-base-path:
     description: 'Path between registry and image name (leave empty for GHCR auto-detect)'
     required: false
     default: ''
-  target-image-name:
+  docker-target-image-name:
     description: 'Target image name (from version generator docker-image-name)'
     required: true
   docker-tag:
@@ -72,13 +72,13 @@ inputs:
     default: 'strip-for-single-line'
 
 outputs:
-  target-image-full-uri:
+  docker-target-image-full-uri:
     description: 'Full target image reference (for passing to docker-push)'
-    value: ${{ steps.build.outputs.TARGET_IMAGE_FULL_URI }}
-  target-registry:
+    value: ${{ steps.build.outputs.DOCKER_TARGET_IMAGE_FULL_URI }}
+  docker-target-registry:
     description: 'Resolved target registry (for passing to manifest-package)'
     value: ${{ steps.resolve.outputs.target-registry }}
-  target-base-path:
+  docker-target-base-path:
     description: 'Computed target base path (for passing to manifest-package)'
     value: ${{ steps.resolve.outputs.target-base-path }}
 
@@ -89,8 +89,8 @@ runs:
       id: resolve
       uses: ./.github/buildon-github-actions/src/actions/resolve-target-registry-and-base-path
       with:
-        target-registry: ${{ inputs.target-registry }}
-        target-base-path: ${{ inputs.target-base-path }}
+        target-registry: ${{ inputs.docker-target-registry }}
+        target-base-path: ${{ inputs.docker-target-base-path }}
 
     - name: Build image
       id: build
@@ -99,7 +99,7 @@ runs:
         LOG_ERROR_PREFIX: '::error::'
         TARGET_REGISTRY: ${{ steps.resolve.outputs.target-registry }}
         TARGET_BASE_PATH: ${{ steps.resolve.outputs.target-base-path }}
-        TARGET_IMAGE_NAME: ${{ inputs.target-image-name }}
+        TARGET_IMAGE_NAME: ${{ inputs.docker-target-image-name }}
         DOCKER_TAG: ${{ inputs.docker-tag }}
         VERSION: ${{ inputs.version }}
         PROJECT_NAME: ${{ inputs.project-name }}

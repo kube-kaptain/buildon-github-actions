@@ -16,8 +16,8 @@ Docker Build Dockerfile
 | `config-sub-path` | string | `src/config` | Directory containing user-defined token files (relative) |
 | `allow-builtin-token-override` | boolean | `false` | Allow user tokens to override built-in tokens (for template/reusable projects) |
 | `config-value-trailing-newline` | string | `strip-for-single-line` | How to handle trailing newlines in config values (strip-for-single-line, preserve-all, always-strip-one-newline) |
-| `target-registry` | string | `ghcr.io` | Target container registry |
-| `target-base-path` | string | `""` | Path between registry and image name (auto-set for GHCR) |
+| `docker-target-registry` | string | `ghcr.io` | Target container registry |
+| `docker-target-base-path` | string | `""` | Path between registry and image name (auto-set for GHCR) |
 | `default-branch` | string | `main` | The default/release branch name |
 | `additional-release-branches` | string | `""` | Comma-separated list of additional release branches |
 | `block-slashes` | boolean | `false` | DEPRECATED: Use block-slash-containing-branches instead |

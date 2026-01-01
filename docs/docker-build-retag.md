@@ -6,12 +6,12 @@ Docker Build Retag
 
 | Input | Type | Default | Description |
 |-------|------|---------|-------------|
-| `source-registry` | string | *required* | Upstream registry (e.g., docker.io) |
-| `source-base-path` | string | `""` | Path between registry and image name (e.g., library) |
-| `source-image-name` | string | *required* | Upstream image name (e.g., nginx) |
-| `source-tag` | string | *required* | Upstream image tag (e.g., 1.25) |
-| `target-registry` | string | `ghcr.io` | Target container registry |
-| `target-base-path` | string | `""` | Path between registry and image name (auto-set for GHCR) |
+| `docker-source-registry` | string | *required* | Upstream registry (e.g., docker.io) |
+| `docker-source-base-path` | string | `""` | Path between registry and image name (e.g., library) |
+| `docker-source-image-name` | string | *required* | Upstream image name (e.g., nginx) |
+| `docker-source-tag` | string | *required* | Upstream image tag (e.g., 1.25) |
+| `docker-target-registry` | string | `ghcr.io` | Target container registry |
+| `docker-target-base-path` | string | `""` | Path between registry and image name (auto-set for GHCR) |
 | `default-branch` | string | `main` | The default/release branch name |
 | `additional-release-branches` | string | `""` | Comma-separated list of additional release branches |
 | `block-slashes` | boolean | `false` | DEPRECATED: Use block-slash-containing-branches instead |
@@ -51,7 +51,7 @@ Docker Build Retag
 | `docker-image-name` | Docker image name |
 | `project-name` | The repository/project name |
 | `is-release` | Whether this is a release build |
-| `source-image-full-uri` | Full source image reference |
-| `target-image-full-uri` | Full target image reference (action output name) |
-| `docker-image-full-uri` | Full docker image reference (alias for target-image-full-uri) |
+| `docker-source-image-full-uri` | Full source image reference |
+| `docker-target-image-full-uri` | Full target image reference |
+| `docker-image-full-uri` | Full docker image reference (alias for docker-target-image-full-uri) |
 | `docker-image-pushed` | Whether docker image was pushed |

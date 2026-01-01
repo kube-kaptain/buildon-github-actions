@@ -32,15 +32,15 @@ inputs:
     description: 'Base image for manifest packaging (default: ghcr.io/kube-kaptain/image/image-pause:3.10.2)'
     required: false
     default: ''
-  target-registry:
+  docker-target-registry:
     description: 'Target container registry (defaults to ghcr.io)'
     required: false
     default: ''
-  target-base-path:
+  docker-target-base-path:
     description: 'Path between registry and image name'
     required: false
     default: ''
-  target-image-name:
+  docker-target-image-name:
     description: 'Target image name'
     required: false
     default: ''
@@ -103,8 +103,8 @@ runs:
       id: resolve
       uses: ./.github/buildon-github-actions/src/actions/resolve-target-registry-and-base-path
       with:
-        target-registry: ${{ inputs.target-registry }}
-        target-base-path: ${{ inputs.target-base-path }}
+        target-registry: ${{ inputs.docker-target-registry }}
+        target-base-path: ${{ inputs.docker-target-base-path }}
 
     # ==========================================================================
     # Compute REPO_PROVIDER_* values from user-friendly inputs
@@ -129,7 +129,7 @@ runs:
         # REPO_PROVIDER_NAME
         # =====================================================================
         if [[ "$PROVIDER" == "docker" ]]; then
-          NAME="${{ inputs.target-image-name }}"
+          NAME="${{ inputs.docker-target-image-name }}"
         else
           NAME="${{ inputs.project-name }}"
         fi

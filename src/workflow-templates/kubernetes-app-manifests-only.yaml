@@ -58,12 +58,12 @@ on:
         type: string
         default: ''
       # Target configuration (for docker repo provider)
-      target-registry:
+      docker-target-registry:
         description: 'Target container registry'
         required: false
         type: string
         default: 'ghcr.io'
-      target-base-path:
+      docker-target-base-path:
         description: 'Path between registry and image name (auto-set for GHCR)'
         required: false
         type: string

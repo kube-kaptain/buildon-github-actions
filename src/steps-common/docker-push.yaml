@@ -6,5 +6,5 @@
   if: steps.versions.outputs.is-release == 'true'
   uses: ./.github/buildon-github-actions/src/actions/docker-push
   with:
-    docker-image-full-uri: ${{ steps.docker-build.outputs.target-image-full-uri }}
+    docker-image-full-uri: ${{ steps.docker-build.outputs.docker-target-image-full-uri }}
     is-release: ${{ steps.versions.outputs.is-release }}

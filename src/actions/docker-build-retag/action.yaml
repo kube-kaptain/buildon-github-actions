@@ -6,28 +6,28 @@ description: 'Pulls and retags Docker images (no push)'
 author: 'kube-kaptain'
 
 inputs:
-  source-registry:
+  docker-source-registry:
     description: 'Upstream registry (e.g., docker.io)'
     required: true
-  source-base-path:
+  docker-source-base-path:
     description: 'Path between registry and image name (e.g., library)'
     required: false
     default: ''
-  source-image-name:
+  docker-source-image-name:
     description: 'Upstream image name (e.g., nginx)'
     required: true
-  source-tag:
+  docker-source-tag:
     description: 'Upstream image tag (e.g., 1.25)'
     required: true
-  target-registry:
+  docker-target-registry:
     description: 'Target container registry (defaults to ghcr.io)'
     required: false
     default: ''
-  target-base-path:
+  docker-target-base-path:
     description: 'Path between registry and image name (leave empty for GHCR auto-detect)'
     required: false
     default: ''
-  target-image-name:
+  docker-target-image-name:
     description: 'Target image name (from version generator docker-image-name)'
     required: true
   docker-tag:
@@ -35,16 +35,16 @@ inputs:
     required: true
 
 outputs:
-  source-image-full-uri:
+  docker-source-image-full-uri:
     description: 'Full source image reference'
-    value: ${{ steps.retag.outputs.SOURCE_IMAGE_FULL_URI }}
-  target-image-full-uri:
+    value: ${{ steps.retag.outputs.DOCKER_SOURCE_IMAGE_FULL_URI }}
+  docker-target-image-full-uri:
     description: 'Full target image reference'
-    value: ${{ steps.retag.outputs.TARGET_IMAGE_FULL_URI }}
-  target-registry:
+    value: ${{ steps.retag.outputs.DOCKER_TARGET_IMAGE_FULL_URI }}
+  docker-target-registry:
     description: 'Resolved target registry (for passing to manifest-package)'
     value: ${{ steps.resolve.outputs.target-registry }}
-  target-base-path:
+  docker-target-base-path:
     description: 'Computed target base path (for passing to manifest-package)'
     value: ${{ steps.resolve.outputs.target-base-path }}
 
@@ -55,8 +55,8 @@ runs:
       id: resolve
       uses: ./.github/buildon-github-actions/src/actions/resolve-target-registry-and-base-path
       with:
-        target-registry: ${{ inputs.target-registry }}
-        target-base-path: ${{ inputs.target-base-path }}
+        target-registry: ${{ inputs.docker-target-registry }}
+        target-base-path: ${{ inputs.docker-target-base-path }}
 
     - name: Pull and retag
       id: retag
@@ -64,12 +64,12 @@ runs:
       env:
         LOG_ERROR_PREFIX: '::error::'
         LOG_WARNING_PREFIX: '::warning::'
-        SOURCE_REGISTRY: ${{ inputs.source-registry }}
-        SOURCE_BASE_PATH: ${{ inputs.source-base-path }}
-        SOURCE_IMAGE_NAME: ${{ inputs.source-image-name }}
-        SOURCE_TAG: ${{ inputs.source-tag }}
-        TARGET_REGISTRY: ${{ steps.resolve.outputs.target-registry }}
-        TARGET_BASE_PATH: ${{ steps.resolve.outputs.target-base-path }}
-        TARGET_IMAGE_NAME: ${{ inputs.target-image-name }}
+        DOCKER_SOURCE_REGISTRY: ${{ inputs.docker-source-registry }}
+        DOCKER_SOURCE_BASE_PATH: ${{ inputs.docker-source-base-path }}
+        DOCKER_SOURCE_IMAGE_NAME: ${{ inputs.docker-source-image-name }}
+        DOCKER_SOURCE_TAG: ${{ inputs.docker-source-tag }}
+        DOCKER_TARGET_REGISTRY: ${{ steps.resolve.outputs.target-registry }}
+        DOCKER_TARGET_BASE_PATH: ${{ steps.resolve.outputs.target-base-path }}
+        DOCKER_TARGET_IMAGE_NAME: ${{ inputs.docker-target-image-name }}
         DOCKER_TAG: ${{ inputs.docker-tag }}
       run: "${{ github.action_path }}/../../scripts/main/docker-build-retag"
