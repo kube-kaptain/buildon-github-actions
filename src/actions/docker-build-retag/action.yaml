@@ -9,8 +9,12 @@ inputs:
   source-registry:
     description: 'Upstream registry (e.g., docker.io)'
     required: true
+  source-base-path:
+    description: 'Path between registry and image name (e.g., library)'
+    required: false
+    default: ''
   source-image-name:
-    description: 'Upstream image name (e.g., library/nginx)'
+    description: 'Upstream image name (e.g., nginx)'
     required: true
   source-tag:
     description: 'Upstream image tag (e.g., 1.25)'
@@ -59,7 +63,9 @@ runs:
       shell: bash
       env:
         LOG_ERROR_PREFIX: '::error::'
+        LOG_WARNING_PREFIX: '::warning::'
         SOURCE_REGISTRY: ${{ inputs.source-registry }}
+        SOURCE_BASE_PATH: ${{ inputs.source-base-path }}
         SOURCE_IMAGE_NAME: ${{ inputs.source-image-name }}
         SOURCE_TAG: ${{ inputs.source-tag }}
         TARGET_REGISTRY: ${{ steps.resolve.outputs.target-registry }}

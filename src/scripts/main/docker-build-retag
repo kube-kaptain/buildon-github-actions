@@ -6,7 +6,8 @@
 #
 # Inputs (environment variables):
 #   SOURCE_REGISTRY     - Source registry (e.g., docker.io)
-#   SOURCE_IMAGE_NAME   - Source image name (e.g., library/nginx)
+#   SOURCE_BASE_PATH    - Path between registry and image name (optional, e.g., library)
+#   SOURCE_IMAGE_NAME   - Source image name (e.g., nginx)
 #   SOURCE_TAG          - Source image tag (e.g., 1.25)
 #   TARGET_REGISTRY     - Target registry (e.g., ghcr.io)
 #   TARGET_BASE_PATH    - Path between registry and image name (optional)
@@ -22,20 +23,59 @@ set -euo pipefail
 # Logging configuration (CI-agnostic)
 LOG_ERROR_PREFIX="${LOG_ERROR_PREFIX:-}"
 LOG_ERROR_SUFFIX="${LOG_ERROR_SUFFIX:-}"
+LOG_WARNING_PREFIX="${LOG_WARNING_PREFIX:-}"
+LOG_WARNING_SUFFIX="${LOG_WARNING_SUFFIX:-}"
 
-# Required inputs
-SOURCE_REGISTRY="${SOURCE_REGISTRY:?SOURCE_REGISTRY is required}"
-SOURCE_IMAGE_NAME="${SOURCE_IMAGE_NAME:?SOURCE_IMAGE_NAME is required}"
+# Required inputs (save originals, then strip misplaced paths)
+INPUT_SOURCE_REGISTRY="${SOURCE_REGISTRY:?SOURCE_REGISTRY is required}"
+SOURCE_REGISTRY="${INPUT_SOURCE_REGISTRY%%/*}"
+if [[ "${INPUT_SOURCE_REGISTRY}" != "${SOURCE_REGISTRY}" ]]; then
+  echo "${LOG_WARNING_PREFIX}SOURCE_REGISTRY contains path - use SOURCE_BASE_PATH instead. Stripping.${LOG_WARNING_SUFFIX}" >&2
+fi
+
+INPUT_TARGET_REGISTRY="${TARGET_REGISTRY:?TARGET_REGISTRY is required}"
+TARGET_REGISTRY="${INPUT_TARGET_REGISTRY%%/*}"
+if [[ "${INPUT_TARGET_REGISTRY}" != "${TARGET_REGISTRY}" ]]; then
+  echo "${LOG_WARNING_PREFIX}TARGET_REGISTRY contains path - use TARGET_BASE_PATH instead. Stripping.${LOG_WARNING_SUFFIX}" >&2
+fi
+
+INPUT_SOURCE_IMAGE_NAME="${SOURCE_IMAGE_NAME:?SOURCE_IMAGE_NAME is required}"
+SOURCE_IMAGE_NAME="${INPUT_SOURCE_IMAGE_NAME##*/}"
+if [[ "${INPUT_SOURCE_IMAGE_NAME}" != "${SOURCE_IMAGE_NAME}" ]]; then
+  echo "${LOG_WARNING_PREFIX}SOURCE_IMAGE_NAME contains path - use SOURCE_BASE_PATH instead. Stripping.${LOG_WARNING_SUFFIX}" >&2
+fi
+
+INPUT_TARGET_IMAGE_NAME="${TARGET_IMAGE_NAME:?TARGET_IMAGE_NAME is required}"
+TARGET_IMAGE_NAME="${INPUT_TARGET_IMAGE_NAME##*/}"
+if [[ "${INPUT_TARGET_IMAGE_NAME}" != "${TARGET_IMAGE_NAME}" ]]; then
+  echo "${LOG_WARNING_PREFIX}TARGET_IMAGE_NAME contains path - use TARGET_BASE_PATH instead. Stripping.${LOG_WARNING_SUFFIX}" >&2
+fi
+
 SOURCE_TAG="${SOURCE_TAG:?SOURCE_TAG is required}"
-TARGET_REGISTRY="${TARGET_REGISTRY:?TARGET_REGISTRY is required}"
-TARGET_IMAGE_NAME="${TARGET_IMAGE_NAME:?TARGET_IMAGE_NAME is required}"
 DOCKER_TAG="${DOCKER_TAG:?DOCKER_TAG is required}"
 
-# Optional inputs with defaults
-TARGET_BASE_PATH="${TARGET_BASE_PATH:-}"
+# Optional inputs (strip leading/trailing slashes from base paths)
+INPUT_SOURCE_BASE_PATH="${SOURCE_BASE_PATH:-}"
+SOURCE_BASE_PATH="${INPUT_SOURCE_BASE_PATH#/}"
+SOURCE_BASE_PATH="${SOURCE_BASE_PATH%/}"
+if [[ "${INPUT_SOURCE_BASE_PATH}" != "${SOURCE_BASE_PATH}" ]]; then
+  echo "${LOG_WARNING_PREFIX}SOURCE_BASE_PATH has leading/trailing slashes. Stripping.${LOG_WARNING_SUFFIX}" >&2
+fi
+
+INPUT_TARGET_BASE_PATH="${TARGET_BASE_PATH:-}"
+TARGET_BASE_PATH="${INPUT_TARGET_BASE_PATH#/}"
+TARGET_BASE_PATH="${TARGET_BASE_PATH%/}"
+if [[ "${INPUT_TARGET_BASE_PATH}" != "${TARGET_BASE_PATH}" ]]; then
+  echo "${LOG_WARNING_PREFIX}TARGET_BASE_PATH has leading/trailing slashes. Stripping.${LOG_WARNING_SUFFIX}" >&2
+fi
 
 # Assemble full image URIs
-SOURCE_IMAGE_FULL_URI="${SOURCE_REGISTRY}/${SOURCE_IMAGE_NAME}:${SOURCE_TAG}"
+# Pattern: registry + "/" + base-path + "/" + image-name + ":" + tag
+if [[ -n "${SOURCE_BASE_PATH}" ]]; then
+  SOURCE_IMAGE_FULL_URI="${SOURCE_REGISTRY}/${SOURCE_BASE_PATH}/${SOURCE_IMAGE_NAME}:${SOURCE_TAG}"
+else
+  SOURCE_IMAGE_FULL_URI="${SOURCE_REGISTRY}/${SOURCE_IMAGE_NAME}:${SOURCE_TAG}"
+fi
 if [[ -n "${TARGET_BASE_PATH}" ]]; then
   TARGET_IMAGE_FULL_URI="${TARGET_REGISTRY}/${TARGET_BASE_PATH}/${TARGET_IMAGE_NAME}:${DOCKER_TAG}"
 else

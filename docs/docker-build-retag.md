@@ -7,7 +7,8 @@ Docker Build Retag
 | Input | Type | Default | Description |
 |-------|------|---------|-------------|
 | `source-registry` | string | *required* | Upstream registry (e.g., docker.io) |
-| `source-image-name` | string | *required* | Upstream image name (e.g., library/nginx) |
+| `source-base-path` | string | `""` | Path between registry and image name (e.g., library) |
+| `source-image-name` | string | *required* | Upstream image name (e.g., nginx) |
 | `source-tag` | string | *required* | Upstream image tag (e.g., 1.25) |
 | `target-registry` | string | `ghcr.io` | Target container registry |
 | `target-base-path` | string | `""` | Path between registry and image name (auto-set for GHCR) |

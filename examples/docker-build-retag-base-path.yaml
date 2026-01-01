@@ -27,9 +27,10 @@ jobs:
       checks: write
     with:
       source-registry: docker.io
-      source-image-name: library/redis
+      source-base-path: library
+      source-image-name: redis
       source-tag: '7.4'
-      target-base-path: my-team/vendored # This is what you set how you need it
+      target-base-path: my-team/vendored  # This is what you set how you need it
 
 # ┌───────────────────────────────────────────────────────────────────────────┐
 # │ All Available Options                                                     │
@@ -41,7 +42,8 @@ jobs:
 # └─────────────────────────────────────────────────────────────────────────┘
 #     with:
 #       source-registry: docker.io
-#       source-image-name: library/alpine
+#       source-base-path: library      # Optional, if upstream uses a base path
+#       source-image-name: alpine
 #       source-tag: '3.21'
 
 # ┌─────────────────────────────────────────────────────────────────────────┐

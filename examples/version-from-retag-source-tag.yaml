@@ -33,7 +33,8 @@ jobs:
       checks: write
     with:
       source-registry: docker.io
-      source-image-name: library/alpine
+      source-base-path: library
+      source-image-name: alpine
       source-tag: '3.21'
       tag-version-calculation-strategy: 'file-pattern-match'
       tag-version-pattern-type: 'retag-workflow-source-tag'

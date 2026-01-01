@@ -5,13 +5,18 @@ name: Docker Build Retag
 on:
   workflow_call:
     inputs:
-      # Source image (3 parts)
+      # Source image (4 parts)
       source-registry:
         description: 'Upstream registry (e.g., docker.io)'
         required: true
         type: string
+      source-base-path:
+        description: 'Path between registry and image name (e.g., library)'
+        required: false
+        type: string
+        default: ''
       source-image-name:
-        description: 'Upstream image name (e.g., library/nginx)'
+        description: 'Upstream image name (e.g., nginx)'
         required: true
         type: string
       source-tag:

@@ -119,7 +119,8 @@ See [`examples/`](examples/) for more usage patterns.
 | `pre-tagging-tests-script-sub-path` | string | `""` | Path to pre-tagging test script relative to .github/ (e.g., bin/pre-tagging.bash) |
 | `require-conventional-branches` | boolean | `false` | Require branch names start with feature/, fix/, etc. |
 | `require-conventional-commits` | boolean | `false` | Require commits use conventional commit format (feat:, fix:, etc.) |
-| `source-image-name` | string | *required* | Upstream image name (e.g., library/nginx) |
+| `source-base-path` | string | `""` | Path between registry and image name (e.g., library) |
+| `source-image-name` | string | *required* | Upstream image name (e.g., nginx) |
 | `source-registry` | string | *required* | Upstream registry (e.g., docker.io) |
 | `source-tag` | string | *required* | Upstream image tag (e.g., 1.25) |
 | `squash` | boolean | `true` | Enable --squash (requires experimental mode) |
