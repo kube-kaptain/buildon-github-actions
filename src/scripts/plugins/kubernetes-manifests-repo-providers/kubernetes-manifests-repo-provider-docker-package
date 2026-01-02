@@ -104,6 +104,9 @@ main() {
   # Create Dockerfile
   cat > "${PUBLISH_SUB_PATH}/Dockerfile" <<EOF
 FROM ${BASE_IMAGE}
+LABEL version="${tag}"
+LABEL project.name="${image_name}"
+LABEL image.name="${image_uri}"
 COPY ${MANIFESTS_ZIP_FILE_NAME} /${MANIFESTS_ZIP_FILE_NAME}
 EOF
 
