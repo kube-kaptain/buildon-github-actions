@@ -135,12 +135,14 @@ generate_check_end() {
   safe_full_name=$(escape_sed_replacement "$full_check_name")
   safe_id=$(escape_sed_replacement "$check_id")
 
+  # Guard: fail condition also checks that start step ran (prevents cascade failures)
+  local check_ran_guard="steps.${check_id}.outputs.check-run-id != ''"
   if [[ -n "$condition" ]]; then
     safe_pass="$(escape_sed_replacement "$condition") \&\& success()"
-    safe_fail="$(escape_sed_replacement "$condition") \&\& failure()"
+    safe_fail="$(escape_sed_replacement "$condition") \&\& failure() \&\& ${check_ran_guard}"
   else
     safe_pass="success()"
-    safe_fail="failure()"
+    safe_fail="failure() \&\& ${check_ran_guard}"
   fi
 
   cat "$template_file" \

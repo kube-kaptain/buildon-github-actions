@@ -473,7 +473,7 @@ jobs:
           action: pass
           check-run-id: ${{ steps.check-pre-tagging.outputs.check-run-id }}
       - name: Fail check - Pre-tagging Tests
-        if: inputs.pre-tagging-tests-script-sub-path != '' && failure()
+        if: inputs.pre-tagging-tests-script-sub-path != '' && failure() && steps.check-pre-tagging.outputs.check-run-id != ''
         uses: ./.github/buildon-github-actions/src/actions/github-check-run
         with:
           action: fail
@@ -507,7 +507,7 @@ jobs:
           action: pass
           check-run-id: ${{ steps.check-versions.outputs.check-run-id }}
       - name: Fail check - Versions & Naming
-        if: failure()
+        if: failure() && steps.check-versions.outputs.check-run-id != ''
         uses: ./.github/buildon-github-actions/src/actions/github-check-run
         with:
           action: fail
@@ -539,7 +539,7 @@ jobs:
           action: pass
           check-run-id: ${{ steps.check-docker-retag.outputs.check-run-id }}
       - name: Fail check - Docker Retag
-        if: failure()
+        if: failure() && steps.check-docker-retag.outputs.check-run-id != ''
         uses: ./.github/buildon-github-actions/src/actions/github-check-run
         with:
           action: fail
@@ -574,7 +574,7 @@ jobs:
           action: pass
           check-run-id: ${{ steps.check-pre-package-prepare.outputs.check-run-id }}
       - name: Fail check - Pre-package Prepare
-        if: inputs.pre-package-prepare-script-sub-path != '' && failure()
+        if: inputs.pre-package-prepare-script-sub-path != '' && failure() && steps.check-pre-package-prepare.outputs.check-run-id != ''
         uses: ./.github/buildon-github-actions/src/actions/github-check-run
         with:
           action: fail
@@ -614,7 +614,7 @@ jobs:
           action: pass
           check-run-id: ${{ steps.check-manifest-package.outputs.check-run-id }}
       - name: Fail check - Package Manifests
-        if: failure()
+        if: failure() && steps.check-manifest-package.outputs.check-run-id != ''
         uses: ./.github/buildon-github-actions/src/actions/github-check-run
         with:
           action: fail
@@ -648,7 +648,7 @@ jobs:
           action: pass
           check-run-id: ${{ steps.check-manifest-repo-provider-package.outputs.check-run-id }}
       - name: Fail check - Package Manifests for Repo Provider
-        if: failure()
+        if: failure() && steps.check-manifest-repo-provider-package.outputs.check-run-id != ''
         uses: ./.github/buildon-github-actions/src/actions/github-check-run
         with:
           action: fail
@@ -682,7 +682,7 @@ jobs:
           action: pass
           check-run-id: ${{ steps.check-post-package.outputs.check-run-id }}
       - name: Fail check - Post-package Tests
-        if: inputs.post-package-tests-script-sub-path != '' && failure()
+        if: inputs.post-package-tests-script-sub-path != '' && failure() && steps.check-post-package.outputs.check-run-id != ''
         uses: ./.github/buildon-github-actions/src/actions/github-check-run
         with:
           action: fail
@@ -710,7 +710,7 @@ jobs:
           action: pass
           check-run-id: ${{ steps.check-docker-push.outputs.check-run-id }}
       - name: Fail check - Docker Push
-        if: steps.versions.outputs.is-release == 'true' && failure()
+        if: steps.versions.outputs.is-release == 'true' && failure() && steps.check-docker-push.outputs.check-run-id != ''
         uses: ./.github/buildon-github-actions/src/actions/github-check-run
         with:
           action: fail
@@ -746,7 +746,7 @@ jobs:
           action: pass
           check-run-id: ${{ steps.check-manifest-repo-provider-publish.outputs.check-run-id }}
       - name: Fail check - Publish Manifests via Repo Provider
-        if: steps.versions.outputs.is-release == 'true' && failure()
+        if: steps.versions.outputs.is-release == 'true' && failure() && steps.check-manifest-repo-provider-publish.outputs.check-run-id != ''
         uses: ./.github/buildon-github-actions/src/actions/github-check-run
         with:
           action: fail
@@ -805,7 +805,7 @@ jobs:
           action: pass
           check-run-id: ${{ steps.check-github-release.outputs.check-run-id }}
       - name: Fail check - GitHub Release
-        if: inputs.github-release-enabled == 'true' && steps.versions.outputs.is-release == 'true' && failure()
+        if: inputs.github-release-enabled == 'true' && steps.versions.outputs.is-release == 'true' && failure() && steps.check-github-release.outputs.check-run-id != ''
         uses: ./.github/buildon-github-actions/src/actions/github-check-run
         with:
           action: fail

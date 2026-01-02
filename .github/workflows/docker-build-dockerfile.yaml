@@ -426,7 +426,7 @@ jobs:
           action: pass
           check-run-id: ${{ steps.check-pre-tagging.outputs.check-run-id }}
       - name: Fail check - Pre-tagging Tests
-        if: inputs.pre-tagging-tests-script-sub-path != '' && failure()
+        if: inputs.pre-tagging-tests-script-sub-path != '' && failure() && steps.check-pre-tagging.outputs.check-run-id != ''
         uses: ./.github/buildon-github-actions/src/actions/github-check-run
         with:
           action: fail
@@ -460,7 +460,7 @@ jobs:
           action: pass
           check-run-id: ${{ steps.check-versions.outputs.check-run-id }}
       - name: Fail check - Versions & Naming
-        if: failure()
+        if: failure() && steps.check-versions.outputs.check-run-id != ''
         uses: ./.github/buildon-github-actions/src/actions/github-check-run
         with:
           action: fail
@@ -495,7 +495,7 @@ jobs:
           action: pass
           check-run-id: ${{ steps.check-pre-docker-prepare.outputs.check-run-id }}
       - name: Fail check - Pre-docker Prepare
-        if: inputs.pre-docker-prepare-script-sub-path != '' && failure()
+        if: inputs.pre-docker-prepare-script-sub-path != '' && failure() && steps.check-pre-docker-prepare.outputs.check-run-id != ''
         uses: ./.github/buildon-github-actions/src/actions/github-check-run
         with:
           action: fail
@@ -536,7 +536,7 @@ jobs:
           action: pass
           check-run-id: ${{ steps.check-docker-build.outputs.check-run-id }}
       - name: Fail check - Docker Build
-        if: failure()
+        if: failure() && steps.check-docker-build.outputs.check-run-id != ''
         uses: ./.github/buildon-github-actions/src/actions/github-check-run
         with:
           action: fail
@@ -569,7 +569,7 @@ jobs:
           action: pass
           check-run-id: ${{ steps.check-post-docker.outputs.check-run-id }}
       - name: Fail check - Post-docker Tests
-        if: inputs.post-docker-tests-script-sub-path != '' && failure()
+        if: inputs.post-docker-tests-script-sub-path != '' && failure() && steps.check-post-docker.outputs.check-run-id != ''
         uses: ./.github/buildon-github-actions/src/actions/github-check-run
         with:
           action: fail
@@ -597,7 +597,7 @@ jobs:
           action: pass
           check-run-id: ${{ steps.check-docker-push.outputs.check-run-id }}
       - name: Fail check - Docker Push
-        if: steps.versions.outputs.is-release == 'true' && failure()
+        if: steps.versions.outputs.is-release == 'true' && failure() && steps.check-docker-push.outputs.check-run-id != ''
         uses: ./.github/buildon-github-actions/src/actions/github-check-run
         with:
           action: fail
@@ -654,7 +654,7 @@ jobs:
           action: pass
           check-run-id: ${{ steps.check-github-release.outputs.check-run-id }}
       - name: Fail check - GitHub Release
-        if: inputs.github-release-enabled == 'true' && steps.versions.outputs.is-release == 'true' && failure()
+        if: inputs.github-release-enabled == 'true' && steps.versions.outputs.is-release == 'true' && failure() && steps.check-github-release.outputs.check-run-id != ''
         uses: ./.github/buildon-github-actions/src/actions/github-check-run
         with:
           action: fail
