@@ -1,6 +1,6 @@
 #!/usr/bin/env bats
 # SPDX-License-Identifier: MIT
-# Copyright (c) 2025 Kaptain contributors (Fred Cooke)
+# Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
 #
 # Tests for kubernetes-manifests-repo-provider-docker-package
 # This script builds a Docker image containing the manifests zip.

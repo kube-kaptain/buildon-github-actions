@@ -13,7 +13,7 @@ Forks must preserve license headers and attribution.
 
 Applies to MIT and CC-BY-SA-4.0 licensed content:
 
-Copyright (c) 2025 Kaptain contributors (Fred Cooke)
+Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
 
 
 ## MIT License
