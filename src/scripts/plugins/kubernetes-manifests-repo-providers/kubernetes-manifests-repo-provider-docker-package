@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: MIT
-# Copyright (c) 2025 Kaptain contributors (Fred Cooke)
+# Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
 #
 # kubernetes-manifests-repo-provider-docker-package - Packages manifests zip as a Docker image
 #
@@ -104,6 +104,9 @@ main() {
   # Create Dockerfile
   cat > "${PUBLISH_SUB_PATH}/Dockerfile" <<EOF
 FROM ${BASE_IMAGE}
+LABEL version="${tag}"
+LABEL project.name="${image_name}"
+LABEL image.name="${image_uri}"
 COPY ${MANIFESTS_ZIP_FILE_NAME} /${MANIFESTS_ZIP_FILE_NAME}
 EOF
 

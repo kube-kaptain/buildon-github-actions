@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: MIT
-# Copyright (c) 2025 Kaptain contributors (Fred Cooke)
+# Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
 #
 # docker-login-azure-acr-github-actions-oidc - Login to Azure ACR via GitHub Actions OIDC
 #

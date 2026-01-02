@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: MIT
-# Copyright (c) 2025 Kaptain contributors (Fred Cooke)
+# Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
 #
 # prepare-token-name-and-value.bash - Shared helper for token substitution
 #

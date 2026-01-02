@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: MIT
-# Copyright (c) 2025 Kaptain contributors (Fred Cooke)
+# Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
 
 name: Versions & Naming
 on:
@@ -60,6 +60,21 @@ on:
         required: false
         type: string
         default: ''
+      # GitHub Release configuration
+      github-release-enabled:
+        description: 'Create a GitHub release on version tags'
+        required: false
+        type: boolean
+      github-release-files:
+        description: 'Files to attach to the release (space-separated)'
+        required: false
+        type: string
+        default: ''
+      github-release-notes:
+        description: 'Release notes (leave empty for auto-generated)'
+        required: false
+        type: string
+        default: ''
     outputs:
       version:
         description: 'The generated version'
@@ -113,7 +128,6 @@ jobs:
       is-release: ${{ steps.versions.outputs.is-release }}
       project-name: ${{ steps.versions.outputs.project-name }}
     steps:
-      # Check out the repo we're building for
       - name: Checkout
         uses: actions/checkout@v4.2.2
         with:
@@ -163,7 +177,6 @@ jobs:
         env:
           GITHUB_WORKFLOW_REF: ${{ github.workflow_ref }}
 
-      # Check out the buildon tooling repo
       - name: Checkout actions
         if: steps.parse.outputs.ref != 'LOCAL'
         uses: actions/checkout@v4.2.2
@@ -171,7 +184,6 @@ jobs:
           repository: kube-kaptain/buildon-github-actions
           ref: ${{ steps.parse.outputs.ref }}
           path: .github/buildon-github-actions
-          token: ${{ secrets.KUBE_KAPTAIN_ORG || github.token }}
 
       - name: Link local actions
         if: steps.parse.outputs.ref == 'LOCAL'
@@ -198,3 +210,57 @@ jobs:
           tag-version-source-sub-path: ${{ inputs.tag-version-source-sub-path }}
           tag-version-source-file-name: ${{ inputs.tag-version-source-file-name }}
           tag-version-source-custom-pattern: ${{ inputs.tag-version-source-custom-pattern }}
+
+      # === GitHub Release ===
+      - name: Start check - GitHub Release
+        if: inputs.github-release-enabled == 'true' && steps.versions.outputs.is-release == 'true' && success()
+        id: check-github-release
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
+        with:
+          action: start
+          check-name: 'Versions & Naming → GitHub Release'
+      - name: Compute release notes
+        id: release-notes
+        if: inputs.github-release-enabled == 'true' && steps.versions.outputs.is-release == 'true'
+        shell: bash
+        env:
+          USER_NOTES: ${{ inputs.github-release-notes }}
+          VERSION: ${{ steps.versions.outputs.version }}
+          PROJECT_NAME: ${{ steps.versions.outputs.project-name }}
+        run: |
+          if [[ -n "${USER_NOTES}" ]]; then
+            # User provided notes override entirely
+            {
+              echo "notes<<NOTES_EOF"
+              echo "${USER_NOTES}"
+              echo "NOTES_EOF"
+            } >> "${GITHUB_OUTPUT}"
+          else
+            # Default format
+            {
+              echo "notes<<NOTES_EOF"
+              echo "Automatic release for version ${VERSION} of ${PROJECT_NAME} by Kaptain build script."
+              echo "NOTES_EOF"
+            } >> "${GITHUB_OUTPUT}"
+          fi
+
+      - name: GitHub Release
+        if: inputs.github-release-enabled == 'true' && steps.versions.outputs.is-release == 'true'
+        uses: ./.github/buildon-github-actions/src/actions/github-release
+        with:
+          github-release-enabled: ${{ inputs.github-release-enabled }}
+          github-release-files: ""
+          github-release-tag: ${{ steps.versions.outputs.version }}
+          github-release-notes: ${{ steps.release-notes.outputs.notes }}
+      - name: Pass check - GitHub Release
+        if: inputs.github-release-enabled == 'true' && steps.versions.outputs.is-release == 'true' && success()
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
+        with:
+          action: pass
+          check-run-id: ${{ steps.check-github-release.outputs.check-run-id }}
+      - name: Fail check - GitHub Release
+        if: inputs.github-release-enabled == 'true' && steps.versions.outputs.is-release == 'true' && failure() && steps.check-github-release.outputs.check-run-id != ''
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
+        with:
+          action: fail
+          check-run-id: ${{ steps.check-github-release.outputs.check-run-id }}

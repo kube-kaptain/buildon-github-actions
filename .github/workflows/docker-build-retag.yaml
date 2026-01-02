@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: MIT
-# Copyright (c) 2025 Kaptain contributors (Fred Cooke)
+# Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
 
 name: Docker Build Retag
 on:
@@ -125,6 +125,21 @@ on:
         required: false
         type: string
         default: ''
+      # GitHub Release configuration
+      github-release-enabled:
+        description: 'Create a GitHub release on version tags'
+        required: false
+        type: boolean
+      github-release-files:
+        description: 'Files to attach to the release (space-separated)'
+        required: false
+        type: string
+        default: ''
+      github-release-notes:
+        description: 'Release notes (leave empty for auto-generated)'
+        required: false
+        type: string
+        default: ''
     secrets:
       docker-registry-logins-secrets:
         description: 'JSON object of secrets for docker-registry-logins (e.g., {"DOCKER_USER": "x", "DOCKER_PASS": "y"})'
@@ -185,7 +200,6 @@ jobs:
     permissions:
       contents: read
     steps:
-      # Check out the repo we're building for
       - name: Checkout
         uses: actions/checkout@v4.2.2
         with:
@@ -235,7 +249,6 @@ jobs:
         env:
           GITHUB_WORKFLOW_REF: ${{ github.workflow_ref }}
 
-      # Check out the buildon tooling repo
       - name: Checkout actions
         if: steps.parse.outputs.ref != 'LOCAL'
         uses: actions/checkout@v4.2.2
@@ -243,7 +256,6 @@ jobs:
           repository: kube-kaptain/buildon-github-actions
           ref: ${{ steps.parse.outputs.ref }}
           path: .github/buildon-github-actions
-          token: ${{ secrets.KUBE_KAPTAIN_ORG || github.token }}
 
       - name: Link local actions
         if: steps.parse.outputs.ref == 'LOCAL'
@@ -287,7 +299,6 @@ jobs:
       docker-target-image-full-uri: ${{ steps.docker-build.outputs.docker-target-image-full-uri }}
       docker-image-pushed: ${{ steps.docker-push.outputs.image-pushed }}
     steps:
-      # Check out the repo we're building for
       - name: Checkout
         uses: actions/checkout@v4.2.2
         with:
@@ -337,7 +348,6 @@ jobs:
         env:
           GITHUB_WORKFLOW_REF: ${{ github.workflow_ref }}
 
-      # Check out the buildon tooling repo
       - name: Checkout actions
         if: steps.parse.outputs.ref != 'LOCAL'
         uses: actions/checkout@v4.2.2
@@ -345,7 +355,6 @@ jobs:
           repository: kube-kaptain/buildon-github-actions
           ref: ${{ steps.parse.outputs.ref }}
           path: .github/buildon-github-actions
-          token: ${{ secrets.KUBE_KAPTAIN_ORG || github.token }}
 
       - name: Link local actions
         if: steps.parse.outputs.ref == 'LOCAL'
@@ -363,7 +372,7 @@ jobs:
 
       # === Pre-tagging Tests ===
       - name: Start check - Pre-tagging Tests
-        if: inputs.pre-tagging-tests-script-sub-path != ''
+        if: inputs.pre-tagging-tests-script-sub-path != '' && success()
         id: check-pre-tagging
         uses: ./.github/buildon-github-actions/src/actions/github-check-run
         with:
@@ -382,7 +391,7 @@ jobs:
           action: pass
           check-run-id: ${{ steps.check-pre-tagging.outputs.check-run-id }}
       - name: Fail check - Pre-tagging Tests
-        if: inputs.pre-tagging-tests-script-sub-path != '' && failure()
+        if: inputs.pre-tagging-tests-script-sub-path != '' && failure() && steps.check-pre-tagging.outputs.check-run-id != ''
         uses: ./.github/buildon-github-actions/src/actions/github-check-run
         with:
           action: fail
@@ -416,7 +425,7 @@ jobs:
           action: pass
           check-run-id: ${{ steps.check-versions.outputs.check-run-id }}
       - name: Fail check - Versions & Naming
-        if: failure()
+        if: failure() && steps.check-versions.outputs.check-run-id != ''
         uses: ./.github/buildon-github-actions/src/actions/github-check-run
         with:
           action: fail
@@ -448,7 +457,7 @@ jobs:
           action: pass
           check-run-id: ${{ steps.check-docker-retag.outputs.check-run-id }}
       - name: Fail check - Docker Retag
-        if: failure()
+        if: failure() && steps.check-docker-retag.outputs.check-run-id != ''
         uses: ./.github/buildon-github-actions/src/actions/github-check-run
         with:
           action: fail
@@ -456,7 +465,7 @@ jobs:
 
       # === Docker Push ===
       - name: Start check - Docker Push
-        if: steps.versions.outputs.is-release == 'true'
+        if: steps.versions.outputs.is-release == 'true' && success()
         id: check-docker-push
         uses: ./.github/buildon-github-actions/src/actions/github-check-run
         with:
@@ -476,8 +485,65 @@ jobs:
           action: pass
           check-run-id: ${{ steps.check-docker-push.outputs.check-run-id }}
       - name: Fail check - Docker Push
-        if: steps.versions.outputs.is-release == 'true' && failure()
+        if: steps.versions.outputs.is-release == 'true' && failure() && steps.check-docker-push.outputs.check-run-id != ''
         uses: ./.github/buildon-github-actions/src/actions/github-check-run
         with:
           action: fail
           check-run-id: ${{ steps.check-docker-push.outputs.check-run-id }}
+
+      # === GitHub Release ===
+      - name: Start check - GitHub Release
+        if: inputs.github-release-enabled == 'true' && steps.versions.outputs.is-release == 'true' && success()
+        id: check-github-release
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
+        with:
+          action: start
+          check-name: 'Build & Push → GitHub Release'
+      - name: Compute release notes
+        id: release-notes
+        if: inputs.github-release-enabled == 'true' && steps.versions.outputs.is-release == 'true'
+        shell: bash
+        env:
+          USER_NOTES: ${{ inputs.github-release-notes }}
+          VERSION: ${{ steps.versions.outputs.version }}
+          PROJECT_NAME: ${{ steps.versions.outputs.project-name }}
+          DOCKER_URI: ${{ steps.docker-build.outputs.docker-target-image-full-uri }}
+        run: |
+          if [[ -n "${USER_NOTES}" ]]; then
+            # User provided notes override entirely
+            {
+              echo "notes<<NOTES_EOF"
+              echo "${USER_NOTES}"
+              echo "NOTES_EOF"
+            } >> "${GITHUB_OUTPUT}"
+          else
+            # Default format
+            {
+              echo "notes<<NOTES_EOF"
+              echo "Automatic Docker release for version ${VERSION} of ${PROJECT_NAME} by Kaptain build script."
+              echo ""
+              echo "Docker Image: ${DOCKER_URI}"
+              echo "NOTES_EOF"
+            } >> "${GITHUB_OUTPUT}"
+          fi
+
+      - name: GitHub Release
+        if: inputs.github-release-enabled == 'true' && steps.versions.outputs.is-release == 'true'
+        uses: ./.github/buildon-github-actions/src/actions/github-release
+        with:
+          github-release-enabled: ${{ inputs.github-release-enabled }}
+          github-release-files: ${{ inputs.github-release-files }}
+          github-release-tag: ${{ steps.versions.outputs.version }}
+          github-release-notes: ${{ steps.release-notes.outputs.notes }}
+      - name: Pass check - GitHub Release
+        if: inputs.github-release-enabled == 'true' && steps.versions.outputs.is-release == 'true' && success()
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
+        with:
+          action: pass
+          check-run-id: ${{ steps.check-github-release.outputs.check-run-id }}
+      - name: Fail check - GitHub Release
+        if: inputs.github-release-enabled == 'true' && steps.versions.outputs.is-release == 'true' && failure() && steps.check-github-release.outputs.check-run-id != ''
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
+        with:
+          action: fail
+          check-run-id: ${{ steps.check-github-release.outputs.check-run-id }}

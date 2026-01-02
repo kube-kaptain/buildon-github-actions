@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: MIT
-# Copyright (c) 2025 Kaptain contributors (Fred Cooke)
+# Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
 
 name: Docker Build Retag
 on:
@@ -125,6 +125,21 @@ on:
         required: false
         type: string
         default: ''
+      # GitHub Release configuration
+      github-release-enabled:
+        description: 'Create a GitHub release on version tags'
+        required: false
+        type: boolean
+      github-release-files:
+        description: 'Files to attach to the release (space-separated)'
+        required: false
+        type: string
+        default: ''
+      github-release-notes:
+        description: 'Release notes (leave empty for auto-generated)'
+        required: false
+        type: string
+        default: ''
     secrets:
       docker-registry-logins-secrets:
         description: 'JSON object of secrets for docker-registry-logins (e.g., {"DOCKER_USER": "x", "DOCKER_PASS": "y"})'
@@ -236,3 +251,8 @@ jobs:
       # INJECT: github-check-start(name="Docker Push", id="check-docker-push", if="steps.versions.outputs.is-release == 'true'")
       # INJECT: docker-push
       # INJECT: github-check-end(name="Docker Push", id="check-docker-push", if="steps.versions.outputs.is-release == 'true'")
+
+      # === GitHub Release ===
+      # INJECT: github-check-start(name="GitHub Release", id="check-github-release", if="inputs.github-release-enabled == 'true' && steps.versions.outputs.is-release == 'true'")
+      # INJECT: github-release-docker
+      # INJECT: github-check-end(name="GitHub Release", id="check-github-release", if="inputs.github-release-enabled == 'true' && steps.versions.outputs.is-release == 'true'")

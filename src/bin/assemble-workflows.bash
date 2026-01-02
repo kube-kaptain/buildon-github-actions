@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: MIT
-# Copyright (c) 2025 Kaptain contributors (Fred Cooke)
+# Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
 
 # assemble-workflows.bash - Generate workflow files from templates
 #
@@ -94,8 +94,9 @@ generate_check_start() {
   safe_id=$(escape_sed_replacement "$check_id")
 
   # Use marker for optional if line - delete the line if no condition
+  # Conditional checks need && success() to prevent running after earlier failures
   if [[ -n "$condition" ]]; then
-    safe_if_line="  if: $(escape_sed_replacement "$condition")"
+    safe_if_line="  if: $(escape_sed_replacement "$condition") \&\& success()"
   else
     safe_if_line="__DELETE_THIS_LINE__"
   fi
@@ -135,12 +136,14 @@ generate_check_end() {
   safe_full_name=$(escape_sed_replacement "$full_check_name")
   safe_id=$(escape_sed_replacement "$check_id")
 
+  # Guard: fail condition also checks that start step ran (prevents cascade failures)
+  local check_ran_guard="steps.${check_id}.outputs.check-run-id != ''"
   if [[ -n "$condition" ]]; then
     safe_pass="$(escape_sed_replacement "$condition") \&\& success()"
-    safe_fail="$(escape_sed_replacement "$condition") \&\& failure()"
+    safe_fail="$(escape_sed_replacement "$condition") \&\& failure() \&\& ${check_ran_guard}"
   else
     safe_pass="success()"
-    safe_fail="failure()"
+    safe_fail="failure() \&\& ${check_ran_guard}"
   fi
 
   cat "$template_file" \

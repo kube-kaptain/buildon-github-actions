@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: MIT
-# Copyright (c) 2025 Kaptain contributors (Fred Cooke)
+# Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
 
 name: Kubernetes App - Manifests Only
 on:
@@ -171,6 +171,21 @@ on:
         required: false
         type: string
         default: ''
+      # GitHub Release configuration
+      github-release-enabled:
+        description: 'Create a GitHub release on version tags'
+        required: false
+        type: boolean
+      github-release-files:
+        description: 'Files to attach to the release (space-separated)'
+        required: false
+        type: string
+        default: ''
+      github-release-notes:
+        description: 'Release notes (leave empty for auto-generated)'
+        required: false
+        type: string
+        default: ''
     secrets:
       docker-registry-logins-secrets:
         description: 'JSON object of secrets for docker-registry-logins (e.g., {"DOCKER_USER": "x", "DOCKER_PASS": "y"})'
@@ -232,7 +247,6 @@ jobs:
     permissions:
       contents: read
     steps:
-      # Check out the repo we're building for
       - name: Checkout
         uses: actions/checkout@v4.2.2
         with:
@@ -282,7 +296,6 @@ jobs:
         env:
           GITHUB_WORKFLOW_REF: ${{ github.workflow_ref }}
 
-      # Check out the buildon tooling repo
       - name: Checkout actions
         if: steps.parse.outputs.ref != 'LOCAL'
         uses: actions/checkout@v4.2.2
@@ -290,7 +303,6 @@ jobs:
           repository: kube-kaptain/buildon-github-actions
           ref: ${{ steps.parse.outputs.ref }}
           path: .github/buildon-github-actions
-          token: ${{ secrets.KUBE_KAPTAIN_ORG || github.token }}
 
       - name: Link local actions
         if: steps.parse.outputs.ref == 'LOCAL'
@@ -335,7 +347,6 @@ jobs:
       manifests-uri: ${{ steps.manifest-repo-provider-publish.outputs.manifests-uri }}
       manifests-published: ${{ steps.manifest-repo-provider-publish.outputs.manifests-published }}
     steps:
-      # Check out the repo we're building for
       - name: Checkout
         uses: actions/checkout@v4.2.2
         with:
@@ -385,7 +396,6 @@ jobs:
         env:
           GITHUB_WORKFLOW_REF: ${{ github.workflow_ref }}
 
-      # Check out the buildon tooling repo
       - name: Checkout actions
         if: steps.parse.outputs.ref != 'LOCAL'
         uses: actions/checkout@v4.2.2
@@ -393,7 +403,6 @@ jobs:
           repository: kube-kaptain/buildon-github-actions
           ref: ${{ steps.parse.outputs.ref }}
           path: .github/buildon-github-actions
-          token: ${{ secrets.KUBE_KAPTAIN_ORG || github.token }}
 
       - name: Link local actions
         if: steps.parse.outputs.ref == 'LOCAL'
@@ -403,7 +412,7 @@ jobs:
 
       # === Pre-tagging Tests ===
       - name: Start check - Pre-tagging Tests
-        if: inputs.pre-tagging-tests-script-sub-path != ''
+        if: inputs.pre-tagging-tests-script-sub-path != '' && success()
         id: check-pre-tagging
         uses: ./.github/buildon-github-actions/src/actions/github-check-run
         with:
@@ -422,7 +431,7 @@ jobs:
           action: pass
           check-run-id: ${{ steps.check-pre-tagging.outputs.check-run-id }}
       - name: Fail check - Pre-tagging Tests
-        if: inputs.pre-tagging-tests-script-sub-path != '' && failure()
+        if: inputs.pre-tagging-tests-script-sub-path != '' && failure() && steps.check-pre-tagging.outputs.check-run-id != ''
         uses: ./.github/buildon-github-actions/src/actions/github-check-run
         with:
           action: fail
@@ -456,7 +465,7 @@ jobs:
           action: pass
           check-run-id: ${{ steps.check-versions.outputs.check-run-id }}
       - name: Fail check - Versions & Naming
-        if: failure()
+        if: failure() && steps.check-versions.outputs.check-run-id != ''
         uses: ./.github/buildon-github-actions/src/actions/github-check-run
         with:
           action: fail
@@ -464,7 +473,7 @@ jobs:
 
       # === Pre-package Prepare ===
       - name: Start check - Pre-package Prepare
-        if: inputs.pre-package-prepare-script-sub-path != ''
+        if: inputs.pre-package-prepare-script-sub-path != '' && success()
         id: check-pre-package-prepare
         uses: ./.github/buildon-github-actions/src/actions/github-check-run
         with:
@@ -491,7 +500,7 @@ jobs:
           action: pass
           check-run-id: ${{ steps.check-pre-package-prepare.outputs.check-run-id }}
       - name: Fail check - Pre-package Prepare
-        if: inputs.pre-package-prepare-script-sub-path != '' && failure()
+        if: inputs.pre-package-prepare-script-sub-path != '' && failure() && steps.check-pre-package-prepare.outputs.check-run-id != ''
         uses: ./.github/buildon-github-actions/src/actions/github-check-run
         with:
           action: fail
@@ -539,7 +548,7 @@ jobs:
           action: pass
           check-run-id: ${{ steps.check-manifest-package.outputs.check-run-id }}
       - name: Fail check - Package Manifests
-        if: failure()
+        if: failure() && steps.check-manifest-package.outputs.check-run-id != ''
         uses: ./.github/buildon-github-actions/src/actions/github-check-run
         with:
           action: fail
@@ -579,7 +588,7 @@ jobs:
           action: pass
           check-run-id: ${{ steps.check-manifest-repo-provider-package.outputs.check-run-id }}
       - name: Fail check - Package Manifests for Repo Provider
-        if: failure()
+        if: failure() && steps.check-manifest-repo-provider-package.outputs.check-run-id != ''
         uses: ./.github/buildon-github-actions/src/actions/github-check-run
         with:
           action: fail
@@ -587,7 +596,7 @@ jobs:
 
       # === Post-package Tests ===
       - name: Start check - Post-package Tests
-        if: inputs.post-package-tests-script-sub-path != ''
+        if: inputs.post-package-tests-script-sub-path != '' && success()
         id: check-post-package
         uses: ./.github/buildon-github-actions/src/actions/github-check-run
         with:
@@ -613,7 +622,7 @@ jobs:
           action: pass
           check-run-id: ${{ steps.check-post-package.outputs.check-run-id }}
       - name: Fail check - Post-package Tests
-        if: inputs.post-package-tests-script-sub-path != '' && failure()
+        if: inputs.post-package-tests-script-sub-path != '' && failure() && steps.check-post-package.outputs.check-run-id != ''
         uses: ./.github/buildon-github-actions/src/actions/github-check-run
         with:
           action: fail
@@ -621,7 +630,7 @@ jobs:
 
       # === Manifest Repo Provider Publish ===
       - name: Start check - Publish Manifests via Repo Provider
-        if: steps.versions.outputs.is-release == 'true'
+        if: steps.versions.outputs.is-release == 'true' && success()
         id: check-manifest-repo-provider-publish
         uses: ./.github/buildon-github-actions/src/actions/github-check-run
         with:
@@ -649,8 +658,65 @@ jobs:
           action: pass
           check-run-id: ${{ steps.check-manifest-repo-provider-publish.outputs.check-run-id }}
       - name: Fail check - Publish Manifests via Repo Provider
-        if: steps.versions.outputs.is-release == 'true' && failure()
+        if: steps.versions.outputs.is-release == 'true' && failure() && steps.check-manifest-repo-provider-publish.outputs.check-run-id != ''
         uses: ./.github/buildon-github-actions/src/actions/github-check-run
         with:
           action: fail
           check-run-id: ${{ steps.check-manifest-repo-provider-publish.outputs.check-run-id }}
+
+      # === GitHub Release ===
+      - name: Start check - GitHub Release
+        if: inputs.github-release-enabled == 'true' && steps.versions.outputs.is-release == 'true' && success()
+        id: check-github-release
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
+        with:
+          action: start
+          check-name: 'Build & Publish → GitHub Release'
+      - name: Compute release notes
+        id: release-notes
+        if: inputs.github-release-enabled == 'true' && steps.versions.outputs.is-release == 'true'
+        shell: bash
+        env:
+          USER_NOTES: ${{ inputs.github-release-notes }}
+          VERSION: ${{ steps.versions.outputs.version }}
+          PROJECT_NAME: ${{ steps.versions.outputs.project-name }}
+          MANIFESTS_URI: ${{ steps.manifest-repo-provider-publish.outputs.manifests-uri }}
+        run: |
+          if [[ -n "${USER_NOTES}" ]]; then
+            # User provided notes override entirely
+            {
+              echo "notes<<NOTES_EOF"
+              echo "${USER_NOTES}"
+              echo "NOTES_EOF"
+            } >> "${GITHUB_OUTPUT}"
+          else
+            # Default format
+            {
+              echo "notes<<NOTES_EOF"
+              echo "Automatic Kube Manifests release for version ${VERSION} of ${PROJECT_NAME} by Kaptain build script. This release page has the manifest zip attached as well as the manifests docker image with the same zip inside for automatic consumption."
+              echo ""
+              echo "Manifests Image: ${MANIFESTS_URI}"
+              echo "NOTES_EOF"
+            } >> "${GITHUB_OUTPUT}"
+          fi
+
+      - name: GitHub Release
+        if: inputs.github-release-enabled == 'true' && steps.versions.outputs.is-release == 'true'
+        uses: ./.github/buildon-github-actions/src/actions/github-release
+        with:
+          github-release-enabled: ${{ inputs.github-release-enabled }}
+          github-release-files: ${{ steps.manifest-package.outputs.manifests-zip-sub-path }}/${{ steps.manifest-package.outputs.manifests-zip-file-name }} ${{ inputs.github-release-files }}
+          github-release-tag: ${{ steps.versions.outputs.version }}
+          github-release-notes: ${{ steps.release-notes.outputs.notes }}
+      - name: Pass check - GitHub Release
+        if: inputs.github-release-enabled == 'true' && steps.versions.outputs.is-release == 'true' && success()
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
+        with:
+          action: pass
+          check-run-id: ${{ steps.check-github-release.outputs.check-run-id }}
+      - name: Fail check - GitHub Release
+        if: inputs.github-release-enabled == 'true' && steps.versions.outputs.is-release == 'true' && failure() && steps.check-github-release.outputs.check-run-id != ''
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
+        with:
+          action: fail
+          check-run-id: ${{ steps.check-github-release.outputs.check-run-id }}

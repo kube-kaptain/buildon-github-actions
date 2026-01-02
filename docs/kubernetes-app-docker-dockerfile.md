@@ -42,6 +42,9 @@ Kubernetes App - Docker Dockerfile
 | `pre-docker-prepare-script-sub-path` | string | `""` | Path to pre-docker prepare script relative to .github/ (e.g., bin/pre-docker-prepare.bash) |
 | `pre-package-prepare-script-sub-path` | string | `""` | Path to pre-package prepare script relative to .github/ (e.g., bin/pre-package-prepare.bash) |
 | `docker-registry-logins` | string | `""` | YAML config for Docker registry logins (registry URL as key) |
+| `github-release-enabled` | boolean | `""` | Create a GitHub release on version tags |
+| `github-release-files` | string | `""` | Files to attach to the release (space-separated) |
+| `github-release-notes` | string | `""` | Release notes (leave empty for auto-generated) |
 
 ## Secrets
 

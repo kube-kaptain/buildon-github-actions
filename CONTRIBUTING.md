@@ -1,5 +1,13 @@
 # Contributing
 
+## Best Ways To Help
+
+1. Use the system, even for basic things like `Basic Quality Checks` on repos that just have docs or whatever like this one. The more use on the more types of projects, the better.
+2. Provide feedback (negative preferred, positive graciously accepted) via any means possible/convenient: PR comments, issue comments, email me, telegram, signal app, linkedin, whatever suits.
+3. Report issues of any type on the repo responsible for them and always check the project box since this cannot be automated without upgrading and paying for the org.
+4. Share the project with your friends and colleagues in the industry and recommend it - the buildon-* projects make it super easy to convert your entire operation over.
+
+
 ## Intellectual Property Requirements
 
 Before your contributions can be accepted, you must demonstrate that your current employment contract does not contain a greedy IP clause that claims ownership of work done in your own time.

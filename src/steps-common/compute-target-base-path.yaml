@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: MIT
-# Copyright (c) 2025 Kaptain contributors (Fred Cooke)
+# Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
 
 # Compute target registry and base path for manifests-only workflows (no docker build step)
 # Uses same step id as docker-build so manifest-package can use consistent output reference

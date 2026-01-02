@@ -1,0 +1,76 @@
+# SPDX-License-Identifier: CC0-1.0
+# This example is released to the public domain. Use freely without attribution.
+#
+# GitHub Release Options
+#
+# All workflows that include versions-and-naming create GitHub releases by default.
+# This example shows how to disable releases or customize the release notes.
+#
+# Release notes automatically include relevant URIs:
+# - Docker workflows: Docker image URI
+# - Kubernetes app workflows: Docker image + manifests image URIs
+
+# ┌───────────────────────────────────────────────────────────────────────────┐
+# │ Disable GitHub Release                                                    │
+# └───────────────────────────────────────────────────────────────────────────┘
+# Set github-release-enabled to false to skip creating a release.
+# Useful for intermediate builds or when you manage releases separately.
+
+name: Build Without Release
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    uses: kube-kaptain/buildon-github-actions/.github/workflows/docker-build-dockerfile.yaml@1.0.11
+    permissions:
+      contents: write
+      packages: write
+      checks: write
+    with:
+      github-release-enabled: false
+
+# ┌───────────────────────────────────────────────────────────────────────────┐
+# │ Custom Release Notes                                                      │
+# └───────────────────────────────────────────────────────────────────────────┘
+# Fully override the default release notes with custom content.
+# Default notes follow the format:
+#   "Automatic {type} release for version {version} of {project} by Kaptain build script."
+#   followed by relevant URIs (Docker Image, Manifests Image, etc.)
+#
+#   with:
+#     github-release-notes: |
+#       ## What's New
+#       - Feature X
+#       - Bug fix Y
+#
+#       ## Breaking Changes
+#       - Changed Z
+
+# ┌───────────────────────────────────────────────────────────────────────────┐
+# │ Additional Release Files                                                  │
+# └───────────────────────────────────────────────────────────────────────────┘
+# Attach extra files to the release (space-separated).
+# Kubernetes app workflows automatically include the manifests zip.
+#
+#   with:
+#     github-release-files: 'CHANGELOG.md LICENSE'
+
+# ┌───────────────────────────────────────────────────────────────────────────┐
+# │ Combined Example                                                          │
+# └───────────────────────────────────────────────────────────────────────────┘
+#
+# jobs:
+#   build:
+#     uses: kube-kaptain/buildon-github-actions/.github/workflows/kubernetes-app-docker-dockerfile.yaml@1.0.11
+#     permissions:
+#       contents: write
+#       packages: write
+#       checks: write
+#     with:
+#       github-release-notes: |
+#         Production-ready release with updated dependencies.
+#       github-release-files: 'docs/MIGRATION.md'

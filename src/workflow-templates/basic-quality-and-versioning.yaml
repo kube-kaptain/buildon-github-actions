@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: MIT
-# Copyright (c) 2025 Kaptain contributors (Fred Cooke)
+# Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
 
 name: Basic Quality and Versioning
 on:
@@ -90,6 +90,21 @@ on:
         required: false
         type: string
         default: ''
+      # GitHub Release configuration
+      github-release-enabled:
+        description: 'Create a GitHub release on version tags'
+        required: false
+        type: boolean
+      github-release-files:
+        description: 'Files to attach to the release (space-separated)'
+        required: false
+        type: string
+        default: ''
+      github-release-notes:
+        description: 'Release notes (leave empty for auto-generated)'
+        required: false
+        type: string
+        default: ''
     outputs:
       version:
         description: 'The generated version'
@@ -158,3 +173,8 @@ jobs:
       # INJECT: pre-tagging-tests
       # INJECT: github-check-end(name="Pre-tagging Tests", id="check-pre-tagging", if="inputs.pre-tagging-tests-script-sub-path != ''")
       # INJECT: versions-and-naming
+
+      # === GitHub Release ===
+      # INJECT: github-check-start(name="GitHub Release", id="check-github-release", if="inputs.github-release-enabled == 'true' && steps.versions.outputs.is-release == 'true'")
+      # INJECT: github-release-no-files
+      # INJECT: github-check-end(name="GitHub Release", id="check-github-release", if="inputs.github-release-enabled == 'true' && steps.versions.outputs.is-release == 'true'")

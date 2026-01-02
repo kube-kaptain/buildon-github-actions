@@ -44,8 +44,10 @@ See [`examples/`](examples/) for more usage patterns.
 | [`docker-registry-logins-explicit.yaml`](examples/docker-registry-logins-explicit.yaml) | More typing, but shows exactly what the workflow receives |
 | [`docker-registry-logins-ghcr-pat.yaml`](examples/docker-registry-logins-ghcr-pat.yaml) |   - Push to packages in a different repo or org (GITHUB_TOKEN is scoped to current repo) |
 | [`docker-registry-logins-inherit.yaml`](examples/docker-registry-logins-inherit.yaml) | Secret values are looked up by the names specified in the config |
+| [`github-release-options.yaml`](examples/github-release-options.yaml) | All workflows that include versions-and-naming create GitHub releases by default |
 | [`optional-test-scripts.yaml`](examples/optional-test-scripts.yaml) | Shows how to add custom test scripts to workflows that support them |
 | [`quality-only.yaml`](examples/quality-only.yaml) | Enforce quality standards on PRs without automatic tagging |
+| [`spec-check-filter-release.yaml`](examples/spec-check-filter-release.yaml) | Build and release JSON Schema or API spec files |
 | [`version-from-custom-pattern.yaml`](examples/version-from-custom-pattern.yaml) | Extract version from any file using a custom regex pattern |
 | [`version-from-dockerfile.yaml`](examples/version-from-dockerfile.yaml) | Extract version from an ENV variable in your Dockerfile rather than using git tags |
 | [`version-from-retag-source-tag.yaml`](examples/version-from-retag-source-tag.yaml) | Extract version from the source-tag input in a retag workflow file |
@@ -67,6 +69,7 @@ See [`examples/`](examples/) for more usage patterns.
 | `kubernetes-app-docker-dockerfile.yaml` | Kubernetes App - Docker Dockerfile |
 | `kubernetes-app-docker-retag.yaml` | Kubernetes App - Docker Retag |
 | `kubernetes-app-manifests-only.yaml` | Kubernetes App - Manifests Only |
+| `spec-check-filter-release.yaml` | Spec Check Filter Release |
 | `versions-and-naming.yaml` | Versions & Naming |
 <!-- WORKFLOWS-END -->
 
@@ -81,6 +84,7 @@ See [`examples/`](examples/) for more usage patterns.
 | `docker-push` | Pushes a Docker image to registry |
 | `docker-registry-logins` | Authenticate to container registries (GHCR by default, configure others as needed) |
 | `github-check-run` | Create or update GitHub Check Runs for granular PR status reporting |
+| `github-release` | Create GitHub release with assets |
 | `kubernetes-manifests-package` | Packages Kubernetes manifests into a zip with variable substitution |
 | `kubernetes-manifests-repo-provider-package` | Packages manifests for repo provider (builds docker image). Does NOT publish. |
 | `kubernetes-manifests-repo-provider-publish` | Publishes manifests via pluggable repo provider. Requires package step to run first. |
@@ -113,6 +117,9 @@ See [`examples/`](examples/) for more usage patterns.
 | `docker-target-base-path` | string | `""` | Path between registry and image name (auto-set for GHCR) |
 | `docker-target-registry` | string | `ghcr.io` | Target container registry |
 | `dockerfile-sub-path` | string | `src/docker` | Directory containing Dockerfile, relative to repo root. |
+| `github-release-enabled` | boolean | `""` | Create a GitHub release on version tags |
+| `github-release-files` | string | `""` | Files to attach to the release (space-separated) |
+| `github-release-notes` | string | `""` | Release notes (leave empty for auto-generated) |
 | `manifests-packaging-base-image` | string | `""` | Base image for manifest packaging (default: ghcr.io/kube-kaptain/image/image-pause:3.10.2) |
 | `manifests-repo-provider-type` | string | `docker` | Repo provider type for manifest storage (default: docker, currently the only supported provider) |
 | `manifests-sub-path` | string | `src/kubernetes` | Directory containing Kubernetes manifests (relative) |
@@ -126,6 +133,9 @@ See [`examples/`](examples/) for more usage patterns.
 | `pre-tagging-tests-script-sub-path` | string | `""` | Path to pre-tagging test script relative to .github/ (e.g., bin/pre-tagging.bash) |
 | `require-conventional-branches` | boolean | `false` | Require branch names start with feature/, fix/, etc. |
 | `require-conventional-commits` | boolean | `false` | Require commits use conventional commit format (feat:, fix:, etc.) |
+| `spec-packaging-base-image` | string | `ghcr.io/kube-kaptain/image/image-pause:3.10.2` | Base image for spec packaging |
+| `spec-type` | string | *required* | Type of spec (schema or api) |
+| `spec-validation-type` | string | `basic` | Schema validator to use (basic, ajv, python3-jsonschema) |
 | `squash` | boolean | `true` | Enable --squash (requires experimental mode) |
 | `substitution-token-style` | string | `shell` | Token delimiter syntax for variables (shell, mustache, helm, erb, github-actions, blade, stringtemplate, ognl, t4, swift) |
 | `tag-version-calculation-strategy` | string | `git-auto-closest-highest` | Strategy for calculating version (git-auto-closest-highest, file-pattern-match) |
@@ -158,6 +168,7 @@ See [`examples/`](examples/) for more usage patterns.
 | `kubernetes-app-docker-dockerfile.yaml` | Kubernetes App - Docker Dockerfile | [docs/kubernetes-app-docker-dockerfile.md](docs/kubernetes-app-docker-dockerfile.md) |
 | `kubernetes-app-docker-retag.yaml` | Kubernetes App - Docker Retag | [docs/kubernetes-app-docker-retag.md](docs/kubernetes-app-docker-retag.md) |
 | `kubernetes-app-manifests-only.yaml` | Kubernetes App - Manifests Only | [docs/kubernetes-app-manifests-only.md](docs/kubernetes-app-manifests-only.md) |
+| `spec-check-filter-release.yaml` | Spec Check Filter Release | [docs/spec-check-filter-release.md](docs/spec-check-filter-release.md) |
 | `versions-and-naming.yaml` | Versions & Naming | [docs/versions-and-naming.md](docs/versions-and-naming.md) |
 <!-- WORKFLOW-DOCS-END -->
 
@@ -347,5 +358,5 @@ Forks must preserve license headers and attribution. See [LICENSE.txt](LICENSE.t
 
 ```
 SPDX-License-Identifier: MIT
-Copyright (c) 2025 Kaptain contributors (Fred Cooke)
+Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
 ```

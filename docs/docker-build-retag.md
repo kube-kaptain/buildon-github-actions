@@ -30,6 +30,9 @@ Docker Build Retag
 | `tag-version-source-custom-pattern` | string | `""` | Regex with capture group for version extraction (required for custom pattern type) |
 | `pre-tagging-tests-script-sub-path` | string | `""` | Path to pre-tagging test script relative to .github/ (e.g., bin/pre-tagging.bash) |
 | `docker-registry-logins` | string | `""` | YAML config for Docker registry logins (registry URL as key) |
+| `github-release-enabled` | boolean | `""` | Create a GitHub release on version tags |
+| `github-release-files` | string | `""` | Files to attach to the release (space-separated) |
+| `github-release-notes` | string | `""` | Release notes (leave empty for auto-generated) |
 
 ## Secrets
 
