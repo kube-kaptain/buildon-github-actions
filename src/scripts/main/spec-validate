@@ -44,8 +44,10 @@ fi
 validate_with_ajv() {
   echo "Installing ajv-cli..." >&2
   npm install -g ajv-cli ajv-formats >&2
+  echo "Downloading schema..." >&2
+  curl -sSL "$2" -o "${SPEC_SUB_PATH}/schema.json"
   echo "Validating with ajv..." >&2
-  ajv validate -s "$2" -d "$1" --spec=draft7 -c ajv-formats
+  ajv validate -s "${SPEC_SUB_PATH}/schema.json" -d "$1" --spec=draft7 -c ajv-formats
 }
 
 validate_with_python() {
