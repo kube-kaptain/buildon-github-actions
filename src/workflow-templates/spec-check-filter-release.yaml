@@ -339,10 +339,10 @@ jobs:
       # INJECT: github-check-end(name="Docker Push", id="check-docker-push", if="steps.versions.outputs.is-release == 'true'")
 
       # === GitHub Release ===
-      # INJECT: github-check-start(name="GitHub Release", id="check-github-release", if="inputs.github-release-enabled == 'true' && steps.versions.outputs.is-release == 'true'")
+      # INJECT: github-check-start(name="GitHub Release", id="check-github-release", if="inputs.github-release-enabled == true && steps.versions.outputs.is-release == 'true'")
       - name: Compute release notes
         id: release-notes
-        if: inputs.github-release-enabled == 'true' && steps.versions.outputs.is-release == 'true' && success()
+        if: inputs.github-release-enabled == true && steps.versions.outputs.is-release == 'true' && success()
         shell: bash
         env:
           USER_NOTES: ${{ inputs.github-release-notes }}
@@ -374,11 +374,11 @@ jobs:
             } >> "${GITHUB_OUTPUT}"
           fi
       - name: GitHub Release
-        if: inputs.github-release-enabled == 'true' && steps.versions.outputs.is-release == 'true' && success()
+        if: inputs.github-release-enabled == true && steps.versions.outputs.is-release == 'true' && success()
         uses: ./.github/buildon-github-actions/src/actions/github-release
         with:
           github-release-enabled: ${{ inputs.github-release-enabled }}
           github-release-files: ${{ steps.spec-package-prepare.outputs.SPEC_SUB_PATH }}/${{ steps.spec-package-prepare.outputs.SPEC_YAML }} ${{ steps.spec-package-prepare.outputs.SPEC_SUB_PATH }}/${{ steps.spec-package-prepare.outputs.SPEC_JSON }} ${{ inputs.github-release-files }}
           github-release-tag: ${{ steps.versions.outputs.version }}
           github-release-notes: ${{ steps.release-notes.outputs.notes }}
-      # INJECT: github-check-end(name="GitHub Release", id="check-github-release", if="inputs.github-release-enabled == 'true' && steps.versions.outputs.is-release == 'true'")
+      # INJECT: github-check-end(name="GitHub Release", id="check-github-release", if="inputs.github-release-enabled == true && steps.versions.outputs.is-release == 'true'")

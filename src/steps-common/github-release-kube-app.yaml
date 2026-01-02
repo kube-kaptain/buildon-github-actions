@@ -3,7 +3,7 @@
 
 - name: Compute release notes
   id: release-notes
-  if: inputs.github-release-enabled == 'true' && steps.versions.outputs.is-release == 'true'
+  if: inputs.github-release-enabled == true && steps.versions.outputs.is-release == 'true'
   shell: bash
   env:
     USER_NOTES: ${{ inputs.github-release-notes }}
@@ -32,7 +32,7 @@
     fi
 
 - name: GitHub Release
-  if: inputs.github-release-enabled == 'true' && steps.versions.outputs.is-release == 'true'
+  if: inputs.github-release-enabled == true && steps.versions.outputs.is-release == 'true'
   uses: ./.github/buildon-github-actions/src/actions/github-release
   with:
     github-release-enabled: ${{ inputs.github-release-enabled }}

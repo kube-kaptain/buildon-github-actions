@@ -24,7 +24,7 @@ runs:
   using: composite
   steps:
     - name: Create release
-      if: inputs.github-release-enabled == 'true'
+      if: inputs.github-release-enabled == true
       shell: bash
       env:
         GH_TOKEN: ${{ github.token }}

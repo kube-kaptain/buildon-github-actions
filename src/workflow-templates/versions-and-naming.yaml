@@ -133,6 +133,6 @@ jobs:
       # INJECT: versions-and-naming
 
       # === GitHub Release ===
-      # INJECT: github-check-start(name="GitHub Release", id="check-github-release", if="inputs.github-release-enabled == 'true' && steps.versions.outputs.is-release == 'true'")
+      # INJECT: github-check-start(name="GitHub Release", id="check-github-release", if="inputs.github-release-enabled == true && steps.versions.outputs.is-release == 'true'")
       # INJECT: github-release-no-files
-      # INJECT: github-check-end(name="GitHub Release", id="check-github-release", if="inputs.github-release-enabled == 'true' && steps.versions.outputs.is-release == 'true'")
+      # INJECT: github-check-end(name="GitHub Release", id="check-github-release", if="inputs.github-release-enabled == true && steps.versions.outputs.is-release == 'true'")
