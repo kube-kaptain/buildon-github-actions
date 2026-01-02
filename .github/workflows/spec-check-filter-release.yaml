@@ -11,7 +11,7 @@ on:
         required: true
         type: string
       spec-validation-type:
-        description: 'Schema validator to use (basic, ajv, python3-jsonschema)'
+        description: 'Schema validator to use (basic, python3-jsonschema)'
         required: false
         type: string
         default: 'basic'

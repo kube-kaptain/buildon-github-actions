@@ -135,7 +135,7 @@ See [`examples/`](examples/) for more usage patterns.
 | `require-conventional-commits` | boolean | `false` | Require commits use conventional commit format (feat:, fix:, etc.) |
 | `spec-packaging-base-image` | string | `ghcr.io/kube-kaptain/image/image-pause:3.10.2` | Base image for spec packaging |
 | `spec-type` | string | *required* | Type of spec (schema or api) |
-| `spec-validation-type` | string | `basic` | Schema validator to use (basic, ajv, python3-jsonschema) |
+| `spec-validation-type` | string | `basic` | Schema validator to use (basic, python3-jsonschema) |
 | `squash` | boolean | `true` | Enable --squash (requires experimental mode) |
 | `substitution-token-style` | string | `shell` | Token delimiter syntax for variables (shell, mustache, helm, erb, github-actions, blade, stringtemplate, ognl, t4, swift) |
 | `tag-version-calculation-strategy` | string | `git-auto-closest-highest` | Strategy for calculating version (git-auto-closest-highest, file-pattern-match) |

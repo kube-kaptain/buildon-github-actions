@@ -13,7 +13,7 @@
 #   SPEC_JSON         - File name of spec JSON file
 #
 # Inputs via env vars (optional):
-#   SPEC_VALIDATION_TYPE - Validator: basic, ajv, python3-jsonschema (default: basic)
+#   SPEC_VALIDATION_TYPE - Validator: basic, python3-jsonschema (default: basic)
 
 set -euo pipefail
 
@@ -41,15 +41,6 @@ if [[ ! -f "${spec_file}" ]]; then
   exit 1
 fi
 
-validate_with_ajv() {
-  echo "Installing ajv-cli..." >&2
-  npm install -g ajv-cli ajv-formats >&2
-  echo "Downloading schema..." >&2
-  curl -sSL "$2" -o "${SPEC_SUB_PATH}/schema.json"
-  echo "Validating with ajv..." >&2
-  ajv validate -s "${SPEC_SUB_PATH}/schema.json" -d "$1" --spec=draft7 -c ajv-formats
-}
-
 validate_with_python() {
   echo "Installing python3-jsonschema..." >&2
   sudo apt-get update -qq && sudo apt-get install -y -qq python3-jsonschema >&2
@@ -73,8 +64,7 @@ echo "Schema: ${schema_url}" >&2
 
 # Validate
 case "${SPEC_VALIDATION_TYPE}" in
-  basic) echo "Basic validation complete: skipping actual schema validation" >&2 ;;
-  ajv) validate_with_ajv "${spec_file}" "${schema_url}" ;;
+  basic) echo "Basic validation: schema validation skipped" >&2 ;;
   python3-jsonschema) validate_with_python "${spec_file}" "${schema_url}" ;;
   *) echo "${LOG_ERROR_PREFIX}Unknown SPEC_VALIDATION_TYPE: ${SPEC_VALIDATION_TYPE}${LOG_ERROR_SUFFIX}" >&2; exit 1 ;;
 esac
