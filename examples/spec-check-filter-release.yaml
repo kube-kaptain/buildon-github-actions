@@ -1,0 +1,98 @@
+# SPDX-License-Identifier: CC0-1.0
+# This example is released to the public domain. Use freely without attribution.
+#
+# Spec Check Filter Release
+#
+# Build and release JSON Schema or API spec files. Copies the spec to a versioned
+# filename, converts to JSON, packages both into a Docker image, and optionally
+# creates a GitHub release with the spec files attached.
+#
+# Your spec file should be named ${repo-name}.yaml in the repo root.
+# For example: my-api-schema.yaml for a repo named my-api-schema.
+#
+# Token substitution is handled by the docker build step, so you can use
+# ${Version}, ${ProjectName}, etc. in your spec files.
+#
+# - PRs: Build with version-PRERELEASE tag (not pushed)
+# - Push to main: Git tag, build, docker tag with clean version, push to GHCR
+#
+# Copy this to .github/workflows/build.yaml in your repo.
+
+name: Spec Check Filter Release
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    uses: kube-kaptain/buildon-github-actions/.github/workflows/spec-check-filter-release.yaml@1.0.11
+    permissions:
+      contents: write
+      packages: write
+      checks: write
+    with:
+      spec-type: 'schema'  # or 'api'
+
+# ┌───────────────────────────────────────────────────────────────────────────┐
+# │ All Available Options                                                     │
+# │ Uncomment and add to the job above as needed                              │
+# └───────────────────────────────────────────────────────────────────────────┘
+
+# ┌─────────────────────────────────────────────────────────────────────────┐
+# │ Spec Configuration                                                      │
+# └─────────────────────────────────────────────────────────────────────────┘
+#     with:
+#       spec-type: 'api'  # 'schema' for JSON Schema, 'api' for API specs (must declare $schema)
+#       spec-validation-type: 'ajv'  # 'basic' (default), 'ajv', 'python3-jsonschema'
+#       spec-packaging-base-image: 'scratch'  # Default is pause image
+
+# ┌─────────────────────────────────────────────────────────────────────────┐
+# │ Token Substitution                                                      │
+# └─────────────────────────────────────────────────────────────────────────┘
+# Tokens like ${Version} in your spec are replaced during docker build.
+# Add custom tokens by creating files in src/config/ (e.g., src/config/MyToken)
+#
+#     with:
+#       substitution-token-style: 'mustache'  # Default is 'shell' (${Token})
+#       token-name-style: 'UPPER_SNAKE'  # Default is 'PascalCase'
+#       config-sub-path: 'config'  # Default is 'src/config'
+
+# ┌─────────────────────────────────────────────────────────────────────────┐
+# │ Target Registry                                                         │
+# └─────────────────────────────────────────────────────────────────────────┘
+#     with:
+#       docker-target-registry: 'myregistry.example.com'
+#       docker-target-base-path: 'my-team/specs'
+
+# ┌─────────────────────────────────────────────────────────────────────────┐
+# │ GitHub Release                                                          │
+# └─────────────────────────────────────────────────────────────────────────┘
+#     with:
+#       github-release-enabled: true
+#       github-release-files: 'extra-file.txt'  # Additional files to attach
+#       github-release-notes: 'Custom release notes'
+
+# ┌─────────────────────────────────────────────────────────────────────────┐
+# │ Branch Configuration                                                    │
+# └─────────────────────────────────────────────────────────────────────────┘
+#     with:
+#       default-branch: 'master'
+#       additional-release-branches: 'main-1.x,main-2.x'
+
+# ┌─────────────────────────────────────────────────────────────────────────┐
+# │ Quality Checks                                                          │
+# └─────────────────────────────────────────────────────────────────────────┘
+#     with:
+#       block-slash-containing-branches: true
+#       block-double-hyphen-containing-branches: false
+#       require-conventional-branches: true
+#       require-conventional-commits: true
+
+# ┌─────────────────────────────────────────────────────────────────────────┐
+# │ Test Injection                                                          │
+# └─────────────────────────────────────────────────────────────────────────┘
+#     with:
+#       pre-tagging-tests-script-sub-path: 'bin/run-tests.bash'

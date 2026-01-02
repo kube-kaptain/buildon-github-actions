@@ -1,0 +1,661 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
+
+name: Spec Check Filter Release
+on:
+  workflow_call:
+    inputs:
+      # Spec configuration
+      spec-type:
+        description: 'Type of spec (schema or api)'
+        required: true
+        type: string
+      spec-validation-type:
+        description: 'Schema validator to use (basic, ajv, python3-jsonschema)'
+        required: false
+        type: string
+        default: 'basic'
+      spec-packaging-base-image:
+        description: 'Base image for spec packaging'
+        required: false
+        type: string
+        default: 'ghcr.io/kube-kaptain/image/image-pause:3.10.2'
+      output-sub-path:
+        description: 'Build output directory (relative)'
+        required: false
+        type: string
+        default: 'target'
+      # Token substitution configuration
+      substitution-token-style:
+        description: 'Token delimiter syntax for variables (shell, mustache, helm, erb, github-actions, blade, stringtemplate, ognl, t4, swift)'
+        required: false
+        type: string
+        default: 'shell'
+      token-name-style:
+        description: 'Case style for token names (UPPER_SNAKE, lower_snake, kebab-case, camelCase, PascalCase, lower.dot, UPPER.DOT)'
+        required: false
+        type: string
+        default: 'PascalCase'
+      token-name-validation:
+        description: 'How to validate user token names (MATCH = must match token-name-style, ALL = accept any valid name)'
+        required: false
+        type: string
+        default: 'MATCH'
+      config-sub-path:
+        description: 'Directory containing user-defined token files (relative)'
+        required: false
+        type: string
+        default: 'src/config'
+      allow-builtin-token-override:
+        description: 'Allow user tokens to override built-in tokens (for template/reusable projects)'
+        required: false
+        type: boolean
+        default: false
+      config-value-trailing-newline:
+        description: 'How to handle trailing newlines in config values (strip-for-single-line, preserve-all, always-strip-one-newline)'
+        required: false
+        type: string
+        default: 'strip-for-single-line'
+      # Target configuration
+      docker-target-registry:
+        description: 'Target container registry'
+        required: false
+        type: string
+        default: 'ghcr.io'
+      docker-target-base-path:
+        description: 'Path between registry and image name (auto-set for GHCR)'
+        required: false
+        type: string
+        default: ''
+      # Version generator inputs (pass-through)
+      default-branch:
+        description: 'The default/release branch name'
+        required: false
+        type: string
+        default: 'main'
+      additional-release-branches:
+        description: 'Comma-separated list of additional release branches'
+        required: false
+        type: string
+        default: ''
+      block-slashes:
+        description: 'DEPRECATED: Use block-slash-containing-branches instead'
+        required: false
+        type: boolean
+        default: false
+      block-slash-containing-branches:
+        description: 'Block branch names containing slashes'
+        required: false
+        type: boolean
+        default: false
+      block-double-hyphen-containing-branches:
+        description: 'Block branch names containing double hyphens (typo detection)'
+        required: false
+        type: boolean
+        default: true
+      require-conventional-branches:
+        description: 'Require branch names start with feature/, fix/, etc.'
+        required: false
+        type: boolean
+        default: false
+      require-conventional-commits:
+        description: 'Require commits use conventional commit format (feat:, fix:, etc.)'
+        required: false
+        type: boolean
+        default: false
+      block-conventional-commits:
+        description: 'Block commits that use conventional commit format'
+        required: false
+        type: boolean
+        default: false
+      max-version-parts:
+        description: 'Maximum allowed version parts (fail if exceeded)'
+        required: false
+        type: number
+        default: 3
+      tag-version-calculation-strategy:
+        description: 'Strategy for calculating version (git-auto-closest-highest, file-pattern-match)'
+        required: false
+        type: string
+        default: 'git-auto-closest-highest'
+      tag-version-pattern-type:
+        description: 'Pattern type for file-pattern-match strategy (dockerfile-env-kubectl, retag-workflow-source-tag, custom)'
+        required: false
+        type: string
+        default: 'dockerfile-env-kubectl'
+      tag-version-prefix-parts:
+        description: 'Number of parts from source version to use as prefix (default 2, output = prefix + 1 parts)'
+        required: false
+        type: string
+        default: ''
+      dockerfile-sub-path:
+        description: 'Directory containing Dockerfile, relative to repo root.'
+        required: false
+        type: string
+        default: 'src/docker'
+      tag-version-source-sub-path:
+        description: 'Override path to source directory (takes precedence over dockerfile-sub-path)'
+        required: false
+        type: string
+        default: ''
+      tag-version-source-file-name:
+        description: 'Override source file name (defaults based on pattern type)'
+        required: false
+        type: string
+        default: ''
+      tag-version-source-custom-pattern:
+        description: 'Regex with capture group for version extraction (required for custom pattern type)'
+        required: false
+        type: string
+        default: ''
+      pre-tagging-tests-script-sub-path:
+        description: 'Path to pre-tagging test script relative to .github/ (e.g., bin/pre-tagging.bash)'
+        required: false
+        type: string
+        default: ''
+      docker-registry-logins:
+        description: 'YAML config for Docker registry logins (registry URL as key)'
+        required: false
+        type: string
+        default: ''
+      # GitHub Release configuration
+      github-release-enabled:
+        description: 'Create a GitHub release on version tags'
+        required: false
+        type: boolean
+      github-release-files:
+        description: 'Files to attach to the release (space-separated)'
+        required: false
+        type: string
+        default: ''
+      github-release-notes:
+        description: 'Release notes (leave empty for auto-generated)'
+        required: false
+        type: string
+        default: ''
+    secrets:
+      docker-registry-logins-secrets:
+        description: 'JSON object of secrets for docker-registry-logins (e.g., {"DOCKER_USER": "x", "DOCKER_PASS": "y"})'
+        required: false
+    outputs:
+      # Version outputs
+      version:
+        description: 'The generated version'
+        value: ${{ jobs.build.outputs.version }}
+      version-major:
+        description: 'Major version number'
+        value: ${{ jobs.build.outputs.version-major }}
+      version-minor:
+        description: 'Minor version number'
+        value: ${{ jobs.build.outputs.version-minor }}
+      version-patch:
+        description: 'Patch version number'
+        value: ${{ jobs.build.outputs.version-patch }}
+      version-2-part:
+        description: 'Version padded/truncated to 2 parts'
+        value: ${{ jobs.build.outputs.version-2-part }}
+      version-3-part:
+        description: 'Version padded/truncated to 3 parts'
+        value: ${{ jobs.build.outputs.version-3-part }}
+      version-4-part:
+        description: 'Version padded/truncated to 4 parts'
+        value: ${{ jobs.build.outputs.version-4-part }}
+      docker-tag:
+        description: 'Tag for Docker images'
+        value: ${{ jobs.build.outputs.docker-tag }}
+      docker-image-name:
+        description: 'Docker image name'
+        value: ${{ jobs.build.outputs.docker-image-name }}
+      project-name:
+        description: 'The repository/project name'
+        value: ${{ jobs.build.outputs.project-name }}
+      is-release:
+        description: 'Whether this is a release build'
+        value: ${{ jobs.build.outputs.is-release }}
+      # Build outputs
+      target-image-full-uri:
+        description: 'Full target image reference (action output name)'
+        value: ${{ jobs.build.outputs.target-image-full-uri }}
+      docker-image-full-uri:
+        description: 'Full docker image reference (alias for target-image-full-uri)'
+        value: ${{ jobs.build.outputs.target-image-full-uri }}
+      docker-image-pushed:
+        description: 'Whether docker image was pushed'
+        value: ${{ jobs.build.outputs.docker-image-pushed }}
+      # Spec outputs
+      spec-sub-path:
+        description: 'Directory containing spec files (relative)'
+        value: ${{ jobs.build.outputs.spec-sub-path }}
+      spec-yaml:
+        description: 'File name of spec YAML file'
+        value: ${{ jobs.build.outputs.spec-yaml }}
+      spec-json:
+        description: 'File name of spec JSON file'
+        value: ${{ jobs.build.outputs.spec-json }}
+jobs:
+  basic-quality-checks:
+    name: Basic Quality Checks
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4.2.2
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Parse workflow ref
+        id: parse
+        run: |
+          # Extract caller's workflow file path from github.workflow_ref
+          # Format: owner/repo/.github/workflows/file.yaml@ref
+          workflow_path="${GITHUB_WORKFLOW_REF%%@*}"
+          workflow_file=".github/workflows/${workflow_path##*/}"
+
+          echo "Resolving ref for reusable workflow: spec-check-filter-release.yaml"
+          echo "Caller workflow: $workflow_file"
+
+          # Check for local call (dogfooding) - uses: ./.github/workflows/...
+          if grep -q 'uses:[[:space:]]*\./.github/workflows/spec-check-filter-release\.yaml[[:space:]]*$' "$workflow_file" || \
+             grep -q 'uses:[[:space:]]*\./.github/workflows/spec-check-filter-release\.yaml[[:space:]]*#' "$workflow_file"; then
+            echo "Local workflow call detected (dogfooding)"
+            echo "ref=LOCAL" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          # Find all uses lines that call this workflow and extract refs
+          refs=$(grep -o 'buildon-github-actions/.github/workflows/spec-check-filter-release\.yaml@[^[:space:]"'"'"']*' "$workflow_file" | sed 's/.*@//')
+
+          if [ -z "$refs" ]; then
+            echo "::error::Could not find buildon-github-actions ref in $workflow_file"
+            exit 1
+          fi
+
+          # Check all refs are identical
+          unique_refs=$(echo "$refs" | sort -u)
+          ref_count=$(echo "$unique_refs" | wc -l | tr -d ' ')
+          echo "Found $ref_count unique ref(s): $(echo "$unique_refs" | tr '\n' ' ')"
+
+          if [ "$ref_count" -gt 1 ]; then
+            echo "::error::Multiple different refs found in $workflow_file: $(echo "$unique_refs" | tr '\n' ' ')"
+            exit 1
+          fi
+
+          echo "Resolved ref: $unique_refs"
+          echo "ref=$unique_refs" >> "$GITHUB_OUTPUT"
+        env:
+          GITHUB_WORKFLOW_REF: ${{ github.workflow_ref }}
+
+      - name: Checkout actions
+        if: steps.parse.outputs.ref != 'LOCAL'
+        uses: actions/checkout@v4.2.2
+        with:
+          repository: kube-kaptain/buildon-github-actions
+          ref: ${{ steps.parse.outputs.ref }}
+          path: .github/buildon-github-actions
+
+      - name: Link local actions
+        if: steps.parse.outputs.ref == 'LOCAL'
+        run: |
+          echo "Linking local actions for dogfooding"
+          ln -s "$(pwd)" .github/buildon-github-actions
+      - name: Basic quality checks
+        id: quality
+        uses: ./.github/buildon-github-actions/src/actions/basic-quality-checks
+        with:
+          default-branch: ${{ inputs.default-branch }}
+          additional-release-branches: ${{ inputs.additional-release-branches }}
+          block-slashes: ${{ inputs.block-slashes }}
+          block-slash-containing-branches: ${{ inputs.block-slash-containing-branches }}
+          block-double-hyphen-containing-branches: ${{ inputs.block-double-hyphen-containing-branches }}
+          require-conventional-branches: ${{ inputs.require-conventional-branches }}
+          require-conventional-commits: ${{ inputs.require-conventional-commits }}
+          block-conventional-commits: ${{ inputs.block-conventional-commits }}
+  build:
+    name: Build & Push
+    needs: basic-quality-checks
+    if: always() && (needs.basic-quality-checks.result == 'success' || needs.basic-quality-checks.result == 'skipped')
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+      packages: write
+      checks: write
+    outputs:
+      version: ${{ steps.versions.outputs.version }}
+      version-major: ${{ steps.versions.outputs.version-major }}
+      version-minor: ${{ steps.versions.outputs.version-minor }}
+      version-patch: ${{ steps.versions.outputs.version-patch }}
+      version-2-part: ${{ steps.versions.outputs.version-2-part }}
+      version-3-part: ${{ steps.versions.outputs.version-3-part }}
+      version-4-part: ${{ steps.versions.outputs.version-4-part }}
+      docker-tag: ${{ steps.versions.outputs.docker-tag }}
+      docker-image-name: ${{ steps.versions.outputs.docker-image-name }}
+      project-name: ${{ steps.versions.outputs.project-name }}
+      is-release: ${{ steps.versions.outputs.is-release }}
+      target-image-full-uri: ${{ steps.docker-build.outputs.docker-target-image-full-uri }}
+      docker-image-pushed: ${{ steps.docker-push.outputs.image-pushed }}
+      spec-sub-path: ${{ steps.spec-package-prepare.outputs.SPEC_SUB_PATH }}
+      spec-yaml: ${{ steps.spec-package-prepare.outputs.SPEC_YAML }}
+      spec-json: ${{ steps.spec-package-prepare.outputs.SPEC_JSON }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4.2.2
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Parse workflow ref
+        id: parse
+        run: |
+          # Extract caller's workflow file path from github.workflow_ref
+          # Format: owner/repo/.github/workflows/file.yaml@ref
+          workflow_path="${GITHUB_WORKFLOW_REF%%@*}"
+          workflow_file=".github/workflows/${workflow_path##*/}"
+
+          echo "Resolving ref for reusable workflow: spec-check-filter-release.yaml"
+          echo "Caller workflow: $workflow_file"
+
+          # Check for local call (dogfooding) - uses: ./.github/workflows/...
+          if grep -q 'uses:[[:space:]]*\./.github/workflows/spec-check-filter-release\.yaml[[:space:]]*$' "$workflow_file" || \
+             grep -q 'uses:[[:space:]]*\./.github/workflows/spec-check-filter-release\.yaml[[:space:]]*#' "$workflow_file"; then
+            echo "Local workflow call detected (dogfooding)"
+            echo "ref=LOCAL" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          # Find all uses lines that call this workflow and extract refs
+          refs=$(grep -o 'buildon-github-actions/.github/workflows/spec-check-filter-release\.yaml@[^[:space:]"'"'"']*' "$workflow_file" | sed 's/.*@//')
+
+          if [ -z "$refs" ]; then
+            echo "::error::Could not find buildon-github-actions ref in $workflow_file"
+            exit 1
+          fi
+
+          # Check all refs are identical
+          unique_refs=$(echo "$refs" | sort -u)
+          ref_count=$(echo "$unique_refs" | wc -l | tr -d ' ')
+          echo "Found $ref_count unique ref(s): $(echo "$unique_refs" | tr '\n' ' ')"
+
+          if [ "$ref_count" -gt 1 ]; then
+            echo "::error::Multiple different refs found in $workflow_file: $(echo "$unique_refs" | tr '\n' ' ')"
+            exit 1
+          fi
+
+          echo "Resolved ref: $unique_refs"
+          echo "ref=$unique_refs" >> "$GITHUB_OUTPUT"
+        env:
+          GITHUB_WORKFLOW_REF: ${{ github.workflow_ref }}
+
+      - name: Checkout actions
+        if: steps.parse.outputs.ref != 'LOCAL'
+        uses: actions/checkout@v4.2.2
+        with:
+          repository: kube-kaptain/buildon-github-actions
+          ref: ${{ steps.parse.outputs.ref }}
+          path: .github/buildon-github-actions
+
+      - name: Link local actions
+        if: steps.parse.outputs.ref == 'LOCAL'
+        run: |
+          echo "Linking local actions for dogfooding"
+          ln -s "$(pwd)" .github/buildon-github-actions
+
+      # === Docker Registry Logins ===
+      - name: Docker registry logins
+        uses: ./.github/buildon-github-actions/src/actions/docker-registry-logins
+        with:
+          config: ${{ inputs.docker-registry-logins }}
+          secrets-json: ${{ secrets.docker-registry-logins-secrets || toJSON(secrets) }}
+          docker-target-registry: ${{ inputs.docker-target-registry }}
+
+      # === Pre-tagging Tests ===
+      - name: Start check - Pre-tagging Tests
+        if: inputs.pre-tagging-tests-script-sub-path != ''
+        id: check-pre-tagging
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
+        with:
+          action: start
+          check-name: 'Build & Push → Pre-tagging Tests'
+      - name: Run pre-tagging tests
+        if: inputs.pre-tagging-tests-script-sub-path != ''
+        id: pre-tagging-tests
+        uses: ./.github/buildon-github-actions/src/actions/run-hook-script
+        with:
+          script-sub-path: ${{ inputs.pre-tagging-tests-script-sub-path }}
+      - name: Pass check - Pre-tagging Tests
+        if: inputs.pre-tagging-tests-script-sub-path != '' && success()
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
+        with:
+          action: pass
+          check-run-id: ${{ steps.check-pre-tagging.outputs.check-run-id }}
+      - name: Fail check - Pre-tagging Tests
+        if: inputs.pre-tagging-tests-script-sub-path != '' && failure()
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
+        with:
+          action: fail
+          check-run-id: ${{ steps.check-pre-tagging.outputs.check-run-id }}
+
+      # === Versions & Naming ===
+      - name: Start check - Versions & Naming
+        id: check-versions
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
+        with:
+          action: start
+          check-name: 'Build & Push → Versions & Naming'
+      - name: Generate versions and naming
+        id: versions
+        uses: ./.github/buildon-github-actions/src/actions/versions-and-naming
+        with:
+          default-branch: ${{ inputs.default-branch }}
+          additional-release-branches: ${{ inputs.additional-release-branches }}
+          max-version-parts: ${{ inputs.max-version-parts }}
+          tag-version-calculation-strategy: ${{ inputs.tag-version-calculation-strategy }}
+          tag-version-pattern-type: ${{ inputs.tag-version-pattern-type }}
+          tag-version-prefix-parts: ${{ inputs.tag-version-prefix-parts }}
+          dockerfile-sub-path: ${{ inputs.dockerfile-sub-path }}
+          tag-version-source-sub-path: ${{ inputs.tag-version-source-sub-path }}
+          tag-version-source-file-name: ${{ inputs.tag-version-source-file-name }}
+          tag-version-source-custom-pattern: ${{ inputs.tag-version-source-custom-pattern }}
+      - name: Pass check - Versions & Naming
+        if: success()
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
+        with:
+          action: pass
+          check-run-id: ${{ steps.check-versions.outputs.check-run-id }}
+      - name: Fail check - Versions & Naming
+        if: failure()
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
+        with:
+          action: fail
+          check-run-id: ${{ steps.check-versions.outputs.check-run-id }}
+
+      # === Spec Package Prepare ===
+      - name: Start check - Spec Package Prepare
+        id: check-spec-prepare
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
+        with:
+          action: start
+          check-name: 'Build & Push → Spec Package Prepare'
+      - name: Spec package prepare
+        id: spec-package-prepare
+        shell: bash
+        env:
+          PROJECT_NAME: ${{ steps.versions.outputs.project-name }}
+          VERSION: ${{ steps.versions.outputs.version }}
+          OUTPUT_SUB_PATH: ${{ inputs.output-sub-path }}
+          SPEC_PACKAGING_BASE_IMAGE: ${{ inputs.spec-packaging-base-image }}
+        run: ./.github/buildon-github-actions/src/scripts/main/spec-package-prepare
+      - name: Pass check - Spec Package Prepare
+        if: success()
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
+        with:
+          action: pass
+          check-run-id: ${{ steps.check-spec-prepare.outputs.check-run-id }}
+      - name: Fail check - Spec Package Prepare
+        if: failure()
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
+        with:
+          action: fail
+          check-run-id: ${{ steps.check-spec-prepare.outputs.check-run-id }}
+
+      # === Docker Build ===
+      - name: Start check - Docker Build
+        id: check-docker-build
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
+        with:
+          action: start
+          check-name: 'Build & Push → Docker Build'
+      - name: Build image
+        id: docker-build
+        uses: ./.github/buildon-github-actions/src/actions/docker-build-dockerfile
+        with:
+          docker-target-registry: ${{ inputs.docker-target-registry }}
+          docker-target-base-path: ${{ inputs.docker-target-base-path }}
+          docker-image-name: ${{ steps.versions.outputs.docker-image-name }}
+          docker-tag: ${{ steps.versions.outputs.docker-tag }}
+          version: ${{ steps.versions.outputs.version }}
+          project-name: ${{ steps.versions.outputs.project-name }}
+          is-release: ${{ steps.versions.outputs.is-release }}
+          dockerfile-sub-path: ${{ steps.spec-package-prepare.outputs.DOCKERFILE_SUB_PATH }}
+          output-sub-path: ${{ inputs.output-sub-path }}
+          substitution-token-style: ${{ inputs.substitution-token-style }}
+          token-name-style: ${{ inputs.token-name-style }}
+          token-name-validation: ${{ inputs.token-name-validation }}
+          config-sub-path: ${{ inputs.config-sub-path }}
+          allow-builtin-token-override: ${{ inputs.allow-builtin-token-override }}
+          config-value-trailing-newline: ${{ inputs.config-value-trailing-newline }}
+      - name: Pass check - Docker Build
+        if: success()
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
+        with:
+          action: pass
+          check-run-id: ${{ steps.check-docker-build.outputs.check-run-id }}
+      - name: Fail check - Docker Build
+        if: failure()
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
+        with:
+          action: fail
+          check-run-id: ${{ steps.check-docker-build.outputs.check-run-id }}
+
+      # === Spec Validate ===
+      - name: Start check - Spec Validate
+        id: check-spec-validate
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
+        with:
+          action: start
+          check-name: 'Build & Push → Spec Validate'
+      - name: Spec validate
+        id: spec-validate
+        shell: bash
+        env:
+          SPEC_TYPE: ${{ inputs.spec-type }}
+          SPEC_VALIDATION_TYPE: ${{ inputs.spec-validation-type }}
+          SPEC_SUB_PATH: ${{ steps.spec-package-prepare.outputs.SPEC_SUB_PATH }}
+          SPEC_JSON: ${{ steps.spec-package-prepare.outputs.SPEC_JSON }}
+        run: ./.github/buildon-github-actions/src/scripts/main/spec-validate
+      - name: Pass check - Spec Validate
+        if: success()
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
+        with:
+          action: pass
+          check-run-id: ${{ steps.check-spec-validate.outputs.check-run-id }}
+      - name: Fail check - Spec Validate
+        if: failure()
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
+        with:
+          action: fail
+          check-run-id: ${{ steps.check-spec-validate.outputs.check-run-id }}
+
+      # === Docker Push ===
+      - name: Start check - Docker Push
+        if: steps.versions.outputs.is-release == 'true'
+        id: check-docker-push
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
+        with:
+          action: start
+          check-name: 'Build & Push → Docker Push'
+      - name: Push image
+        id: docker-push
+        if: steps.versions.outputs.is-release == 'true'
+        uses: ./.github/buildon-github-actions/src/actions/docker-push
+        with:
+          docker-image-full-uri: ${{ steps.docker-build.outputs.docker-target-image-full-uri }}
+          is-release: ${{ steps.versions.outputs.is-release }}
+      - name: Pass check - Docker Push
+        if: steps.versions.outputs.is-release == 'true' && success()
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
+        with:
+          action: pass
+          check-run-id: ${{ steps.check-docker-push.outputs.check-run-id }}
+      - name: Fail check - Docker Push
+        if: steps.versions.outputs.is-release == 'true' && failure()
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
+        with:
+          action: fail
+          check-run-id: ${{ steps.check-docker-push.outputs.check-run-id }}
+
+      # === GitHub Release ===
+      - name: Start check - GitHub Release
+        if: inputs.github-release-enabled == 'true' && steps.versions.outputs.is-release == 'true'
+        id: check-github-release
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
+        with:
+          action: start
+          check-name: 'Build & Push → GitHub Release'
+      - name: Compute release notes
+        id: release-notes
+        if: inputs.github-release-enabled == 'true' && steps.versions.outputs.is-release == 'true'
+        shell: bash
+        env:
+          USER_NOTES: ${{ inputs.github-release-notes }}
+          VERSION: ${{ steps.versions.outputs.version }}
+          PROJECT_NAME: ${{ steps.versions.outputs.project-name }}
+          DOCKER_URI: ${{ steps.docker-build.outputs.docker-target-image-full-uri }}
+          SPEC_TYPE: ${{ inputs.spec-type }}
+        run: |
+          if [[ -n "${USER_NOTES}" ]]; then
+            # User provided notes override entirely
+            {
+              echo "notes<<NOTES_EOF"
+              echo "${USER_NOTES}"
+              echo "NOTES_EOF"
+            } >> "${GITHUB_OUTPUT}"
+          else
+            # Default format
+            if [[ "${SPEC_TYPE}" == "schema" ]]; then
+              type_label="Schema"
+            else
+              type_label="API Spec"
+            fi
+            {
+              echo "notes<<NOTES_EOF"
+              echo "Automatic ${type_label} release for version ${VERSION} of ${PROJECT_NAME} by Kaptain build script. This release includes both YAML and JSON formats of the spec, and a Docker image with both files bundled."
+              echo ""
+              echo "Docker Image: ${DOCKER_URI}"
+              echo "NOTES_EOF"
+            } >> "${GITHUB_OUTPUT}"
+          fi
+      - name: GitHub Release
+        if: inputs.github-release-enabled == 'true' && steps.versions.outputs.is-release == 'true'
+        uses: ./.github/buildon-github-actions/src/actions/github-release
+        with:
+          github-release-enabled: ${{ inputs.github-release-enabled }}
+          github-release-files: ${{ steps.spec-package-prepare.outputs.SPEC_SUB_PATH }}/${{ steps.spec-package-prepare.outputs.SPEC_YAML }} ${{ steps.spec-package-prepare.outputs.SPEC_SUB_PATH }}/${{ steps.spec-package-prepare.outputs.SPEC_JSON }} ${{ inputs.github-release-files }}
+          github-release-tag: ${{ steps.versions.outputs.version }}
+          github-release-notes: ${{ steps.release-notes.outputs.notes }}
+      - name: Pass check - GitHub Release
+        if: inputs.github-release-enabled == 'true' && steps.versions.outputs.is-release == 'true' && success()
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
+        with:
+          action: pass
+          check-run-id: ${{ steps.check-github-release.outputs.check-run-id }}
+      - name: Fail check - GitHub Release
+        if: inputs.github-release-enabled == 'true' && steps.versions.outputs.is-release == 'true' && failure()
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
+        with:
+          action: fail
+          check-run-id: ${{ steps.check-github-release.outputs.check-run-id }}

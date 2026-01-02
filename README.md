@@ -47,6 +47,7 @@ See [`examples/`](examples/) for more usage patterns.
 | [`github-release-options.yaml`](examples/github-release-options.yaml) | All workflows that include versions-and-naming create GitHub releases by default |
 | [`optional-test-scripts.yaml`](examples/optional-test-scripts.yaml) | Shows how to add custom test scripts to workflows that support them |
 | [`quality-only.yaml`](examples/quality-only.yaml) | Enforce quality standards on PRs without automatic tagging |
+| [`spec-check-filter-release.yaml`](examples/spec-check-filter-release.yaml) | Build and release JSON Schema or API spec files |
 | [`version-from-custom-pattern.yaml`](examples/version-from-custom-pattern.yaml) | Extract version from any file using a custom regex pattern |
 | [`version-from-dockerfile.yaml`](examples/version-from-dockerfile.yaml) | Extract version from an ENV variable in your Dockerfile rather than using git tags |
 | [`version-from-retag-source-tag.yaml`](examples/version-from-retag-source-tag.yaml) | Extract version from the source-tag input in a retag workflow file |
@@ -68,6 +69,7 @@ See [`examples/`](examples/) for more usage patterns.
 | `kubernetes-app-docker-dockerfile.yaml` | Kubernetes App - Docker Dockerfile |
 | `kubernetes-app-docker-retag.yaml` | Kubernetes App - Docker Retag |
 | `kubernetes-app-manifests-only.yaml` | Kubernetes App - Manifests Only |
+| `spec-check-filter-release.yaml` | Spec Check Filter Release |
 | `versions-and-naming.yaml` | Versions & Naming |
 <!-- WORKFLOWS-END -->
 
@@ -131,6 +133,9 @@ See [`examples/`](examples/) for more usage patterns.
 | `pre-tagging-tests-script-sub-path` | string | `""` | Path to pre-tagging test script relative to .github/ (e.g., bin/pre-tagging.bash) |
 | `require-conventional-branches` | boolean | `false` | Require branch names start with feature/, fix/, etc. |
 | `require-conventional-commits` | boolean | `false` | Require commits use conventional commit format (feat:, fix:, etc.) |
+| `spec-packaging-base-image` | string | `ghcr.io/kube-kaptain/image/image-pause:3.10.2` | Base image for spec packaging |
+| `spec-type` | string | *required* | Type of spec (schema or api) |
+| `spec-validation-type` | string | `basic` | Schema validator to use (basic, ajv, python3-jsonschema) |
 | `squash` | boolean | `true` | Enable --squash (requires experimental mode) |
 | `substitution-token-style` | string | `shell` | Token delimiter syntax for variables (shell, mustache, helm, erb, github-actions, blade, stringtemplate, ognl, t4, swift) |
 | `tag-version-calculation-strategy` | string | `git-auto-closest-highest` | Strategy for calculating version (git-auto-closest-highest, file-pattern-match) |
@@ -163,6 +168,7 @@ See [`examples/`](examples/) for more usage patterns.
 | `kubernetes-app-docker-dockerfile.yaml` | Kubernetes App - Docker Dockerfile | [docs/kubernetes-app-docker-dockerfile.md](docs/kubernetes-app-docker-dockerfile.md) |
 | `kubernetes-app-docker-retag.yaml` | Kubernetes App - Docker Retag | [docs/kubernetes-app-docker-retag.md](docs/kubernetes-app-docker-retag.md) |
 | `kubernetes-app-manifests-only.yaml` | Kubernetes App - Manifests Only | [docs/kubernetes-app-manifests-only.md](docs/kubernetes-app-manifests-only.md) |
+| `spec-check-filter-release.yaml` | Spec Check Filter Release | [docs/spec-check-filter-release.md](docs/spec-check-filter-release.md) |
 | `versions-and-naming.yaml` | Versions & Naming | [docs/versions-and-naming.md](docs/versions-and-naming.md) |
 <!-- WORKFLOW-DOCS-END -->
 

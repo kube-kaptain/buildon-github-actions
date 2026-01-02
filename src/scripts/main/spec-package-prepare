@@ -1,0 +1,74 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
+#
+# Spec Package Prepare
+#
+# Copies spec file to output directory, converts to JSON, generates Dockerfile.
+# Token substitution is handled by the docker build step.
+#
+# Inputs via env vars (required):
+#   PROJECT_NAME      - Repository/project name (also used to find ${PROJECT_NAME}.yaml)
+#   VERSION           - Version string for output files
+#   OUTPUT_SUB_PATH   - Base directory for output files
+#
+# Inputs via env vars (optional):
+#   SPEC_PACKAGING_BASE_IMAGE - Base image for Dockerfile (default: pause image)
+#
+# Outputs:
+#   SPEC_SUB_PATH        - Directory containing spec files (relative)
+#   SPEC_YAML            - File name of spec YAML file
+#   SPEC_JSON            - File name of spec JSON file
+#   DOCKERFILE_SUB_PATH  - Directory containing generated Dockerfile
+
+set -euo pipefail
+
+LOG_ERROR_PREFIX="${LOG_ERROR_PREFIX:-}"
+LOG_ERROR_SUFFIX="${LOG_ERROR_SUFFIX:-}"
+
+echo "=== Spec Package Prepare ===" >&2
+
+# Validate inputs
+PROJECT_NAME="${PROJECT_NAME:?PROJECT_NAME is required}"
+VERSION="${VERSION:?VERSION is required}"
+OUTPUT_SUB_PATH="${OUTPUT_SUB_PATH:?OUTPUT_SUB_PATH is required}"
+SPEC_PACKAGING_BASE_IMAGE="${SPEC_PACKAGING_BASE_IMAGE:-ghcr.io/kube-kaptain/image/image-pause:3.10.2}"
+
+# Validate source file exists
+spec_file="${PROJECT_NAME}.yaml"
+if [[ ! -f "${spec_file}" ]]; then
+  echo "${LOG_ERROR_PREFIX}Spec file not found: ${spec_file}${LOG_ERROR_SUFFIX}" >&2
+  exit 1
+fi
+
+# Setup directories
+spec_dir="${OUTPUT_SUB_PATH}/spec"
+mkdir -p "${spec_dir}"
+
+echo "Copying original to versioned..." >&2
+spec_yaml="${PROJECT_NAME}-${VERSION}.yaml"
+cp "${spec_file}" "${spec_dir}/${spec_yaml}"
+echo "Copied: ${spec_file} -> ${spec_dir}/${spec_yaml}" >&2
+
+echo "Converting to JSON..." >&2
+spec_json="${PROJECT_NAME}-${VERSION}.json"
+yq eval -o=json '.' "${spec_dir}/${spec_yaml}" > "${spec_dir}/${spec_json}"
+echo "Converted: ${spec_dir}/${spec_json}" >&2
+
+# Generate Dockerfile
+cat > "${spec_dir}/Dockerfile" <<EOF
+FROM ${SPEC_PACKAGING_BASE_IMAGE}
+COPY ${spec_yaml} /
+COPY ${spec_json} /
+EOF
+echo "Generated: ${spec_dir}/Dockerfile" >&2
+
+# Write outputs
+{
+  echo "SPEC_SUB_PATH=${spec_dir}"
+  echo "SPEC_YAML=${spec_yaml}"
+  echo "SPEC_JSON=${spec_json}"
+  echo "DOCKERFILE_SUB_PATH=${spec_dir}"
+} >> "${GITHUB_OUTPUT:-/dev/stdout}"
+
+echo "Done" >&2

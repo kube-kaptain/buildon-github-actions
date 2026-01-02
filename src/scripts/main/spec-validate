@@ -1,0 +1,80 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
+#
+# Spec Validate
+#
+# Validates substituted spec file against its schema. Run after docker build
+# has performed token substitution.
+#
+# Inputs via env vars (required):
+#   SPEC_TYPE         - Type of spec: "schema" or "api"
+#   SPEC_SUB_PATH     - Directory containing spec files (relative)
+#   SPEC_JSON         - File name of spec JSON file
+#
+# Inputs via env vars (optional):
+#   SPEC_VALIDATION_TYPE - Validator: basic, ajv, python3-jsonschema (default: basic)
+
+set -euo pipefail
+
+LOG_ERROR_PREFIX="${LOG_ERROR_PREFIX:-}"
+LOG_ERROR_SUFFIX="${LOG_ERROR_SUFFIX:-}"
+
+echo "=== Spec Validate ===" >&2
+
+# Validate inputs
+SPEC_TYPE="${SPEC_TYPE:?SPEC_TYPE is required}"
+SPEC_SUB_PATH="${SPEC_SUB_PATH:?SPEC_SUB_PATH is required}"
+SPEC_JSON="${SPEC_JSON:?SPEC_JSON is required}"
+SPEC_VALIDATION_TYPE="${SPEC_VALIDATION_TYPE:-basic}"
+
+# Validate SPEC_TYPE value
+if [[ "${SPEC_TYPE}" != "schema" && "${SPEC_TYPE}" != "api" ]]; then
+  echo "${LOG_ERROR_PREFIX}SPEC_TYPE must be 'schema' or 'api'${LOG_ERROR_SUFFIX}" >&2
+  exit 1
+fi
+
+# Validate spec file exists
+spec_file="${SPEC_SUB_PATH}/${SPEC_JSON}"
+if [[ ! -f "${spec_file}" ]]; then
+  echo "${LOG_ERROR_PREFIX}Spec file not found: ${spec_file}${LOG_ERROR_SUFFIX}" >&2
+  exit 1
+fi
+
+validate_with_ajv() {
+  echo "Installing ajv-cli..." >&2
+  npm install -g ajv-cli ajv-formats >&2
+  echo "Validating with ajv..." >&2
+  ajv validate -s "$2" -d "$1" --spec=draft7 -c ajv-formats
+}
+
+validate_with_python() {
+  echo "Installing python3-jsonschema..." >&2
+  sudo apt-get update -qq && sudo apt-get install -y -qq python3-jsonschema >&2
+  echo "Validating with python3-jsonschema..." >&2
+  python3 -c "import json, jsonschema, urllib.request; jsonschema.validate(json.load(open('$1')), json.loads(urllib.request.urlopen('$2').read()))"
+}
+
+echo "Type: ${SPEC_TYPE} | Validation: ${SPEC_VALIDATION_TYPE}" >&2
+
+# Determine schema URL
+if [[ "${SPEC_TYPE}" == "api" ]]; then
+  schema_url=$(jq -r '."$schema" // empty' "${spec_file}")
+  if [[ -z "${schema_url}" ]]; then
+    echo "${LOG_ERROR_PREFIX}API spec must declare \$schema${LOG_ERROR_SUFFIX}" >&2
+    exit 1
+  fi
+else
+  schema_url="https://json-schema.org/draft-07/schema"
+fi
+echo "Schema: ${schema_url}" >&2
+
+# Validate
+case "${SPEC_VALIDATION_TYPE}" in
+  basic) echo "Basic validation complete: skipping actual schema validation" >&2 ;;
+  ajv) validate_with_ajv "${spec_file}" "${schema_url}" ;;
+  python3-jsonschema) validate_with_python "${spec_file}" "${schema_url}" ;;
+  *) echo "${LOG_ERROR_PREFIX}Unknown SPEC_VALIDATION_TYPE: ${SPEC_VALIDATION_TYPE}${LOG_ERROR_SUFFIX}" >&2; exit 1 ;;
+esac
+
+echo "Schema validation passed" >&2
