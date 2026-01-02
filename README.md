@@ -117,7 +117,7 @@ See [`examples/`](examples/) for more usage patterns.
 | `docker-target-base-path` | string | `""` | Path between registry and image name (auto-set for GHCR) |
 | `docker-target-registry` | string | `ghcr.io` | Target container registry |
 | `dockerfile-sub-path` | string | `src/docker` | Directory containing Dockerfile, relative to repo root. |
-| `github-release-enabled` | boolean | `""` | Create a GitHub release on version tags |
+| `github-release-enabled` | boolean | `true` | Create a GitHub release on version tags |
 | `github-release-files` | string | `""` | Files to attach to the release (space-separated) |
 | `github-release-notes` | string | `""` | Release notes (leave empty for auto-generated) |
 | `manifests-packaging-base-image` | string | `""` | Base image for manifest packaging (default: ghcr.io/kube-kaptain/image/image-pause:3.10.2) |

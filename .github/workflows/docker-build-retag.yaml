@@ -130,6 +130,7 @@ on:
         description: 'Create a GitHub release on version tags'
         required: false
         type: boolean
+        default: true
       github-release-files:
         description: 'Files to attach to the release (space-separated)'
         required: false
