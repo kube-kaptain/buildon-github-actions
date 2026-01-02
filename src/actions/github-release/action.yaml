@@ -1,0 +1,39 @@
+# SPDX-License-Identifier: CC-BY-SA-4.0
+# Copyright (c) 2025 Kaptain contributors (Fred Cooke)
+name: GitHub Release
+description: Create GitHub release with assets
+
+inputs:
+  github-release-enabled:
+    description: Whether to create a GitHub release
+    required: false
+    default: "true"
+  github-release-files:
+    description: Files to attach (space-separated or glob pattern)
+    required: true
+  github-release-tag:
+    description: Release tag
+    required: false
+    default: ${{ github.ref_name }}
+  github-release-notes:
+    description: Release notes
+    required: false
+    default: ""
+
+runs:
+  using: composite
+  steps:
+    - name: Create release
+      if: inputs.github-release-enabled == 'true'
+      shell: bash
+      env:
+        GH_TOKEN: ${{ github.token }}
+        FILES: ${{ inputs.github-release-files }}
+        TAG: ${{ inputs.github-release-tag }}
+        NOTES: ${{ inputs.github-release-notes }}
+      run: |
+        if [[ -n "${NOTES}" ]]; then
+          gh release create "${TAG}" ${FILES} --notes "${NOTES}"
+        else
+          gh release create "${TAG}" ${FILES} --generate-notes
+        fi

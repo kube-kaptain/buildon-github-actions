@@ -1,0 +1,39 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025 Kaptain contributors (Fred Cooke)
+
+- name: Compute release notes
+  id: release-notes
+  if: inputs.github-release-enabled == 'true' && steps.versions.outputs.is-release == 'true'
+  shell: bash
+  env:
+    USER_NOTES: ${{ inputs.github-release-notes }}
+    VERSION: ${{ steps.versions.outputs.version }}
+    PROJECT_NAME: ${{ steps.versions.outputs.project-name }}
+    MANIFESTS_URI: ${{ steps.manifest-repo-provider-publish.outputs.manifests-uri }}
+  run: |
+    if [[ -n "${USER_NOTES}" ]]; then
+      # User provided notes override entirely
+      {
+        echo "notes<<NOTES_EOF"
+        echo "${USER_NOTES}"
+        echo "NOTES_EOF"
+      } >> "${GITHUB_OUTPUT}"
+    else
+      # Default format
+      {
+        echo "notes<<NOTES_EOF"
+        echo "Automatic Kube Manifests release for version ${VERSION} of ${PROJECT_NAME} by Kaptain build script. This release page has the manifest zip attached as well as the manifests docker image with the same zip inside for automatic consumption."
+        echo ""
+        echo "Manifests Image: ${MANIFESTS_URI}"
+        echo "NOTES_EOF"
+      } >> "${GITHUB_OUTPUT}"
+    fi
+
+- name: GitHub Release
+  if: inputs.github-release-enabled == 'true' && steps.versions.outputs.is-release == 'true'
+  uses: ./.github/buildon-github-actions/src/actions/github-release
+  with:
+    github-release-enabled: ${{ inputs.github-release-enabled }}
+    github-release-files: ${{ steps.manifest-package.outputs.manifests-zip-sub-path }}/${{ steps.manifest-package.outputs.manifests-zip-file-name }} ${{ inputs.github-release-files }}
+    github-release-tag: ${{ steps.versions.outputs.version }}
+    github-release-notes: ${{ steps.release-notes.outputs.notes }}
