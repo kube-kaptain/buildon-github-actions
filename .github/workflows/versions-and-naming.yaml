@@ -213,7 +213,7 @@ jobs:
 
       # === GitHub Release ===
       - name: Start check - GitHub Release
-        if: inputs.github-release-enabled == 'true' && steps.versions.outputs.is-release == 'true'
+        if: inputs.github-release-enabled == 'true' && steps.versions.outputs.is-release == 'true' && success()
         id: check-github-release
         uses: ./.github/buildon-github-actions/src/actions/github-check-run
         with:

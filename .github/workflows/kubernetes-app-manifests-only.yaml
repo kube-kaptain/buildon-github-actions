@@ -412,7 +412,7 @@ jobs:
 
       # === Pre-tagging Tests ===
       - name: Start check - Pre-tagging Tests
-        if: inputs.pre-tagging-tests-script-sub-path != ''
+        if: inputs.pre-tagging-tests-script-sub-path != '' && success()
         id: check-pre-tagging
         uses: ./.github/buildon-github-actions/src/actions/github-check-run
         with:
@@ -473,7 +473,7 @@ jobs:
 
       # === Pre-package Prepare ===
       - name: Start check - Pre-package Prepare
-        if: inputs.pre-package-prepare-script-sub-path != ''
+        if: inputs.pre-package-prepare-script-sub-path != '' && success()
         id: check-pre-package-prepare
         uses: ./.github/buildon-github-actions/src/actions/github-check-run
         with:
@@ -596,7 +596,7 @@ jobs:
 
       # === Post-package Tests ===
       - name: Start check - Post-package Tests
-        if: inputs.post-package-tests-script-sub-path != ''
+        if: inputs.post-package-tests-script-sub-path != '' && success()
         id: check-post-package
         uses: ./.github/buildon-github-actions/src/actions/github-check-run
         with:
@@ -630,7 +630,7 @@ jobs:
 
       # === Manifest Repo Provider Publish ===
       - name: Start check - Publish Manifests via Repo Provider
-        if: steps.versions.outputs.is-release == 'true'
+        if: steps.versions.outputs.is-release == 'true' && success()
         id: check-manifest-repo-provider-publish
         uses: ./.github/buildon-github-actions/src/actions/github-check-run
         with:
@@ -666,7 +666,7 @@ jobs:
 
       # === GitHub Release ===
       - name: Start check - GitHub Release
-        if: inputs.github-release-enabled == 'true' && steps.versions.outputs.is-release == 'true'
+        if: inputs.github-release-enabled == 'true' && steps.versions.outputs.is-release == 'true' && success()
         id: check-github-release
         uses: ./.github/buildon-github-actions/src/actions/github-check-run
         with:

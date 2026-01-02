@@ -94,8 +94,9 @@ generate_check_start() {
   safe_id=$(escape_sed_replacement "$check_id")
 
   # Use marker for optional if line - delete the line if no condition
+  # Conditional checks need && success() to prevent running after earlier failures
   if [[ -n "$condition" ]]; then
-    safe_if_line="  if: $(escape_sed_replacement "$condition")"
+    safe_if_line="  if: $(escape_sed_replacement "$condition") \&\& success()"
   else
     safe_if_line="__DELETE_THIS_LINE__"
   fi

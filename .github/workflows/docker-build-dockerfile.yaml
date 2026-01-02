@@ -407,7 +407,7 @@ jobs:
 
       # === Pre-tagging Tests ===
       - name: Start check - Pre-tagging Tests
-        if: inputs.pre-tagging-tests-script-sub-path != ''
+        if: inputs.pre-tagging-tests-script-sub-path != '' && success()
         id: check-pre-tagging
         uses: ./.github/buildon-github-actions/src/actions/github-check-run
         with:
@@ -468,7 +468,7 @@ jobs:
 
       # === Pre-docker Prepare ===
       - name: Start check - Pre-docker Prepare
-        if: inputs.pre-docker-prepare-script-sub-path != ''
+        if: inputs.pre-docker-prepare-script-sub-path != '' && success()
         id: check-pre-docker-prepare
         uses: ./.github/buildon-github-actions/src/actions/github-check-run
         with:
@@ -544,7 +544,7 @@ jobs:
 
       # === Post-docker Tests ===
       - name: Start check - Post-docker Tests
-        if: inputs.post-docker-tests-script-sub-path != ''
+        if: inputs.post-docker-tests-script-sub-path != '' && success()
         id: check-post-docker
         uses: ./.github/buildon-github-actions/src/actions/github-check-run
         with:
@@ -577,7 +577,7 @@ jobs:
 
       # === Docker Push ===
       - name: Start check - Docker Push
-        if: steps.versions.outputs.is-release == 'true'
+        if: steps.versions.outputs.is-release == 'true' && success()
         id: check-docker-push
         uses: ./.github/buildon-github-actions/src/actions/github-check-run
         with:
@@ -605,7 +605,7 @@ jobs:
 
       # === GitHub Release ===
       - name: Start check - GitHub Release
-        if: inputs.github-release-enabled == 'true' && steps.versions.outputs.is-release == 'true'
+        if: inputs.github-release-enabled == 'true' && steps.versions.outputs.is-release == 'true' && success()
         id: check-github-release
         uses: ./.github/buildon-github-actions/src/actions/github-check-run
         with:
