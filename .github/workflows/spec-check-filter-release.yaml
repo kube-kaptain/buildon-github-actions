@@ -214,19 +214,15 @@ on:
         description: 'Whether this is a release build'
         value: ${{ jobs.build.outputs.is-release }}
       # Build outputs
-      target-image-full-uri:
-        description: 'Full target image reference (action output name)'
-        value: ${{ jobs.build.outputs.target-image-full-uri }}
-      docker-image-full-uri:
-        description: 'Full docker image reference (alias for target-image-full-uri)'
-        value: ${{ jobs.build.outputs.target-image-full-uri }}
+      docker-target-image-full-uri:
+        description: 'Full target image reference'
+        value: ${{ jobs.build.outputs.docker-target-image-full-uri }}
       docker-image-pushed:
         description: 'Whether docker image was pushed'
         value: ${{ jobs.build.outputs.docker-image-pushed }}
-      # Spec outputs
-      spec-sub-path:
-        description: 'Directory containing spec files (relative)'
-        value: ${{ jobs.build.outputs.spec-sub-path }}
+      docker-substituted-sub-path:
+        description: 'Directory containing substituted files (relative)'
+        value: ${{ jobs.build.outputs.docker-substituted-sub-path }}
       spec-yaml:
         description: 'File name of spec YAML file'
         value: ${{ jobs.build.outputs.spec-yaml }}
@@ -336,9 +332,9 @@ jobs:
       docker-image-name: ${{ steps.versions.outputs.docker-image-name }}
       project-name: ${{ steps.versions.outputs.project-name }}
       is-release: ${{ steps.versions.outputs.is-release }}
-      target-image-full-uri: ${{ steps.docker-build.outputs.docker-target-image-full-uri }}
+      docker-target-image-full-uri: ${{ steps.docker-build.outputs.docker-target-image-full-uri }}
       docker-image-pushed: ${{ steps.docker-push.outputs.image-pushed }}
-      spec-sub-path: ${{ steps.spec-package-prepare.outputs.SPEC_SUB_PATH }}
+      docker-substituted-sub-path: ${{ steps.docker-build.outputs.docker-substituted-sub-path }}
       spec-yaml: ${{ steps.spec-package-prepare.outputs.SPEC_YAML }}
       spec-json: ${{ steps.spec-package-prepare.outputs.SPEC_JSON }}
     steps:
@@ -656,7 +652,7 @@ jobs:
         uses: ./.github/buildon-github-actions/src/actions/github-release
         with:
           github-release-enabled: ${{ inputs.github-release-enabled }}
-          github-release-files: ${{ steps.spec-package-prepare.outputs.SPEC_SUB_PATH }}/${{ steps.spec-package-prepare.outputs.SPEC_YAML }} ${{ steps.spec-package-prepare.outputs.SPEC_SUB_PATH }}/${{ steps.spec-package-prepare.outputs.SPEC_JSON }} ${{ inputs.github-release-files }}
+          github-release-files: ${{ steps.docker-build.outputs.docker-substituted-sub-path }}/${{ steps.spec-package-prepare.outputs.SPEC_YAML }} ${{ steps.docker-build.outputs.docker-substituted-sub-path }}/${{ steps.spec-package-prepare.outputs.SPEC_JSON }} ${{ inputs.github-release-files }}
           github-release-tag: ${{ steps.versions.outputs.version }}
           github-release-notes: ${{ steps.release-notes.outputs.notes }}
           github-release-title: ${{ steps.release-notes.outputs.title }}

@@ -212,6 +212,7 @@ main() {
   "${cmd[@]}"
 
   output_var "DOCKER_TARGET_IMAGE_FULL_URI" "${TARGET_IMAGE_FULL_URI}"
+  output_var "DOCKER_SUBSTITUTED_SUB_PATH" "${DOCKER_SUBSTITUTED_SUB_PATH}"
 
   echo "" >&2
   echo "Docker Build Dockerfile complete" >&2
