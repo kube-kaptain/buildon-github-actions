@@ -246,6 +246,7 @@ jobs:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-24.04
     permissions:
+      actions: read
       contents: read
     steps:
       - name: Get job ID
@@ -338,6 +339,7 @@ jobs:
     if: always() && (needs.basic-quality-checks.result == 'success' || needs.basic-quality-checks.result == 'skipped')
     runs-on: ubuntu-24.04
     permissions:
+      actions: read
       contents: write
       packages: write
       checks: write

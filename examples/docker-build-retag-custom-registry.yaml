@@ -22,6 +22,7 @@ jobs:
   retag:
     uses: kube-kaptain/buildon-github-actions/.github/workflows/docker-build-retag.yaml@1.0.11
     permissions:
+      actions: read
       contents: write
       packages: write
       checks: write

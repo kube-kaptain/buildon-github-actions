@@ -14,5 +14,6 @@ jobs:
       block-slash-containing-branches: true
       pre-tagging-tests-script-sub-path: bin/pre-tagging.bash
     permissions:
+      actions: read
       contents: write
       checks: write

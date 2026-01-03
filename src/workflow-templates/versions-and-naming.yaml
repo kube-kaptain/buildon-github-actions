@@ -115,6 +115,7 @@ jobs:
     name: Versions & Naming
     runs-on: ubuntu-24.04
     permissions:
+      actions: read
       contents: write
     outputs:
       version: ${{ steps.versions.outputs.version }}

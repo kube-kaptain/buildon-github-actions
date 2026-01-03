@@ -15,6 +15,7 @@ jobs:
   build:
     uses: kube-kaptain/buildon-github-actions/.github/workflows/docker-build-dockerfile.yaml@1
     permissions:
+      actions: read
       contents: write
       packages: write
       checks: write
