@@ -29,7 +29,7 @@ inputs:
   # Docker-specific inputs
   # ============================================================================
   manifests-packaging-base-image:
-    description: 'Base image for manifest packaging (default: ghcr.io/kube-kaptain/image/image-pause:3.10.2)'
+    description: 'Base image for manifest packaging (default: scratch)'
     required: false
     default: ''
   docker-target-registry:

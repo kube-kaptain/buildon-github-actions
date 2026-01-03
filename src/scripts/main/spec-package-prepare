@@ -32,7 +32,7 @@ echo "=== Spec Package Prepare ===" >&2
 PROJECT_NAME="${PROJECT_NAME:?PROJECT_NAME is required}"
 VERSION="${VERSION:?VERSION is required}"
 OUTPUT_SUB_PATH="${OUTPUT_SUB_PATH:?OUTPUT_SUB_PATH is required}"
-SPEC_PACKAGING_BASE_IMAGE="${SPEC_PACKAGING_BASE_IMAGE:-ghcr.io/kube-kaptain/image/image-pause:3.10.2}"
+SPEC_PACKAGING_BASE_IMAGE="${SPEC_PACKAGING_BASE_IMAGE:-scratch}"
 
 # Validate source file exists
 spec_file="${PROJECT_NAME}.yaml"

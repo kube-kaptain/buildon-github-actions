@@ -157,13 +157,13 @@ exit 0' > "$MOCK_BIN_DIR/docker"
   assert_output_contains "already exists"
 }
 
-@test "uses default pause image as base" {
+@test "uses scratch as default base image" {
   set_required_env
 
   run "$REPO_PROVIDERS_DIR/kubernetes-manifests-repo-provider-docker-package"
   [ "$status" -eq 0 ]
-  # The script should output info about using pause as base
-  assert_output_contains "ghcr.io/kube-kaptain/image/image-pause:3.10.2"
+  # The script should output info about using scratch as base
+  assert_output_contains "scratch"
 }
 
 @test "allows overriding base image" {
