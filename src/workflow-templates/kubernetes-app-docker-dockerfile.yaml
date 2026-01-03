@@ -197,6 +197,7 @@ on:
         description: 'Create a GitHub release on version tags'
         required: false
         type: boolean
+        default: true
       github-release-files:
         description: 'Files to attach to the release (space-separated)'
         required: false
@@ -369,6 +370,6 @@ jobs:
       # INJECT: github-check-end(name="Publish Manifests via Repo Provider", id="check-manifest-repo-provider-publish", if="steps.versions.outputs.is-release == 'true'")
 
       # === GitHub Release ===
-      # INJECT: github-check-start(name="GitHub Release", id="check-github-release", if="inputs.github-release-enabled == 'true' && steps.versions.outputs.is-release == 'true'")
+      # INJECT: github-check-start(name="GitHub Release", id="check-github-release", if="inputs.github-release-enabled == true && steps.versions.outputs.is-release == 'true'")
       # INJECT: github-release-kube-app
-      # INJECT: github-check-end(name="GitHub Release", id="check-github-release", if="inputs.github-release-enabled == 'true' && steps.versions.outputs.is-release == 'true'")
+      # INJECT: github-check-end(name="GitHub Release", id="check-github-release", if="inputs.github-release-enabled == true && steps.versions.outputs.is-release == 'true'")

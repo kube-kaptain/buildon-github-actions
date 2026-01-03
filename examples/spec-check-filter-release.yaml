@@ -46,7 +46,7 @@ jobs:
 # └─────────────────────────────────────────────────────────────────────────┘
 #     with:
 #       spec-type: 'api'  # 'schema' for JSON Schema, 'api' for API specs (must declare $schema)
-#       spec-validation-type: 'ajv'  # 'basic' (default), 'ajv', 'python3-jsonschema'
+#       spec-validation-type: 'python3-jsonschema'  # 'basic' (default), 'python3-jsonschema'
 #       spec-packaging-base-image: 'scratch'  # Default is pause image
 
 # ┌─────────────────────────────────────────────────────────────────────────┐

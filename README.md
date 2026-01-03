@@ -117,7 +117,7 @@ See [`examples/`](examples/) for more usage patterns.
 | `docker-target-base-path` | string | `""` | Path between registry and image name (auto-set for GHCR) |
 | `docker-target-registry` | string | `ghcr.io` | Target container registry |
 | `dockerfile-sub-path` | string | `src/docker` | Directory containing Dockerfile, relative to repo root. |
-| `github-release-enabled` | boolean | `""` | Create a GitHub release on version tags |
+| `github-release-enabled` | boolean | `true` | Create a GitHub release on version tags |
 | `github-release-files` | string | `""` | Files to attach to the release (space-separated) |
 | `github-release-notes` | string | `""` | Release notes (leave empty for auto-generated) |
 | `manifests-packaging-base-image` | string | `""` | Base image for manifest packaging (default: ghcr.io/kube-kaptain/image/image-pause:3.10.2) |
@@ -135,7 +135,7 @@ See [`examples/`](examples/) for more usage patterns.
 | `require-conventional-commits` | boolean | `false` | Require commits use conventional commit format (feat:, fix:, etc.) |
 | `spec-packaging-base-image` | string | `ghcr.io/kube-kaptain/image/image-pause:3.10.2` | Base image for spec packaging |
 | `spec-type` | string | *required* | Type of spec (schema or api) |
-| `spec-validation-type` | string | `basic` | Schema validator to use (basic, ajv, python3-jsonschema) |
+| `spec-validation-type` | string | `basic` | Schema validator to use (basic, python3-jsonschema) |
 | `squash` | boolean | `true` | Enable --squash (requires experimental mode) |
 | `substitution-token-style` | string | `shell` | Token delimiter syntax for variables (shell, mustache, helm, erb, github-actions, blade, stringtemplate, ognl, t4, swift) |
 | `tag-version-calculation-strategy` | string | `git-auto-closest-highest` | Strategy for calculating version (git-auto-closest-highest, file-pattern-match) |

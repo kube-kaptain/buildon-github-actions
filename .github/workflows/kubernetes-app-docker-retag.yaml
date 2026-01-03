@@ -194,6 +194,7 @@ on:
         description: 'Create a GitHub release on version tags'
         required: false
         type: boolean
+        default: true
       github-release-files:
         description: 'Files to attach to the release (space-separated)'
         required: false
@@ -754,7 +755,7 @@ jobs:
 
       # === GitHub Release ===
       - name: Start check - GitHub Release
-        if: inputs.github-release-enabled == 'true' && steps.versions.outputs.is-release == 'true' && success()
+        if: inputs.github-release-enabled == true && steps.versions.outputs.is-release == 'true' && success()
         id: check-github-release
         uses: ./.github/buildon-github-actions/src/actions/github-check-run
         with:
@@ -762,7 +763,7 @@ jobs:
           check-name: 'Build & Publish → GitHub Release'
       - name: Compute release notes
         id: release-notes
-        if: inputs.github-release-enabled == 'true' && steps.versions.outputs.is-release == 'true'
+        if: inputs.github-release-enabled == true && steps.versions.outputs.is-release == 'true'
         shell: bash
         env:
           USER_NOTES: ${{ inputs.github-release-notes }}
@@ -791,7 +792,7 @@ jobs:
           fi
 
       - name: GitHub Release
-        if: inputs.github-release-enabled == 'true' && steps.versions.outputs.is-release == 'true'
+        if: inputs.github-release-enabled == true && steps.versions.outputs.is-release == 'true'
         uses: ./.github/buildon-github-actions/src/actions/github-release
         with:
           github-release-enabled: ${{ inputs.github-release-enabled }}
@@ -799,13 +800,13 @@ jobs:
           github-release-tag: ${{ steps.versions.outputs.version }}
           github-release-notes: ${{ steps.release-notes.outputs.notes }}
       - name: Pass check - GitHub Release
-        if: inputs.github-release-enabled == 'true' && steps.versions.outputs.is-release == 'true' && success()
+        if: inputs.github-release-enabled == true && steps.versions.outputs.is-release == 'true' && success()
         uses: ./.github/buildon-github-actions/src/actions/github-check-run
         with:
           action: pass
           check-run-id: ${{ steps.check-github-release.outputs.check-run-id }}
       - name: Fail check - GitHub Release
-        if: inputs.github-release-enabled == 'true' && steps.versions.outputs.is-release == 'true' && failure() && steps.check-github-release.outputs.check-run-id != ''
+        if: inputs.github-release-enabled == true && steps.versions.outputs.is-release == 'true' && failure() && steps.check-github-release.outputs.check-run-id != ''
         uses: ./.github/buildon-github-actions/src/actions/github-check-run
         with:
           action: fail

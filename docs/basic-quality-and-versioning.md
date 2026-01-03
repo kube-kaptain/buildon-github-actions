@@ -23,7 +23,7 @@ Basic Quality and Versioning
 | `tag-version-source-file-name` | string | `""` | Override source file name (defaults based on pattern type) |
 | `tag-version-source-custom-pattern` | string | `""` | Regex with capture group for version extraction (required for custom pattern type) |
 | `pre-tagging-tests-script-sub-path` | string | `""` | Path to pre-tagging test script relative to .github/ (e.g., bin/pre-tagging.bash) |
-| `github-release-enabled` | boolean | `""` | Create a GitHub release on version tags |
+| `github-release-enabled` | boolean | `true` | Create a GitHub release on version tags |
 | `github-release-files` | string | `""` | Files to attach to the release (space-separated) |
 | `github-release-notes` | string | `""` | Release notes (leave empty for auto-generated) |
 
