@@ -241,6 +241,16 @@ jobs:
     permissions:
       contents: read
     steps:
+      - name: Get job ID
+        id: job-info
+        run: |
+          job_id=$(gh api "/repos/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}/jobs" \
+            --jq '.jobs[] | select(.status == "in_progress") | .id')
+          echo "job-id=${job_id}" >> "$GITHUB_OUTPUT"
+          echo "Resolved job ID: ${job_id}" >&2
+        env:
+          GH_TOKEN: ${{ github.token }}
+
       - name: Checkout
         uses: actions/checkout@v4.2.2
         with:
@@ -342,6 +352,16 @@ jobs:
       spec-yaml: ${{ steps.spec-package-prepare.outputs.SPEC_YAML }}
       spec-json: ${{ steps.spec-package-prepare.outputs.SPEC_JSON }}
     steps:
+      - name: Get job ID
+        id: job-info
+        run: |
+          job_id=$(gh api "/repos/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}/jobs" \
+            --jq '.jobs[] | select(.status == "in_progress") | .id')
+          echo "job-id=${job_id}" >> "$GITHUB_OUTPUT"
+          echo "Resolved job ID: ${job_id}" >&2
+        env:
+          GH_TOKEN: ${{ github.token }}
+
       - name: Checkout
         uses: actions/checkout@v4.2.2
         with:
@@ -421,6 +441,7 @@ jobs:
         with:
           action: start
           check-name: 'Build & Push → Pre-tagging Tests'
+          job-id: ${{ steps.job-info.outputs.job-id }}
       - name: Run pre-tagging tests
         if: inputs.pre-tagging-tests-script-sub-path != ''
         id: pre-tagging-tests
@@ -447,6 +468,7 @@ jobs:
         with:
           action: start
           check-name: 'Build & Push → Versions & Naming'
+          job-id: ${{ steps.job-info.outputs.job-id }}
       - name: Generate versions and naming
         id: versions
         uses: ./.github/buildon-github-actions/src/actions/versions-and-naming
@@ -481,6 +503,7 @@ jobs:
         with:
           action: start
           check-name: 'Build & Push → Spec Package Prepare'
+          job-id: ${{ steps.job-info.outputs.job-id }}
       - name: Spec package prepare
         id: spec-package-prepare
         shell: bash
@@ -510,6 +533,7 @@ jobs:
         with:
           action: start
           check-name: 'Build & Push → Docker Build'
+          job-id: ${{ steps.job-info.outputs.job-id }}
       - name: Build image
         id: docker-build
         uses: ./.github/buildon-github-actions/src/actions/docker-build-dockerfile
@@ -549,6 +573,7 @@ jobs:
         with:
           action: start
           check-name: 'Build & Push → Spec Validate'
+          job-id: ${{ steps.job-info.outputs.job-id }}
       - name: Spec validate
         id: spec-validate
         shell: bash
@@ -579,6 +604,7 @@ jobs:
         with:
           action: start
           check-name: 'Build & Push → Docker Push'
+          job-id: ${{ steps.job-info.outputs.job-id }}
       - name: Push image
         id: docker-push
         if: steps.versions.outputs.is-release == 'true'
@@ -607,6 +633,7 @@ jobs:
         with:
           action: start
           check-name: 'Build & Push → GitHub Release'
+          job-id: ${{ steps.job-info.outputs.job-id }}
       - name: Compute release notes
         id: release-notes
         if: inputs.github-release-enabled == true && steps.versions.outputs.is-release == 'true' && success()

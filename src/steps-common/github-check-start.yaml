@@ -8,3 +8,4 @@ ${CHECK_IF_LINE}
   with:
     action: start
     check-name: '${CHECK_FULL_NAME}'
+    job-id: ${{ steps.job-info.outputs.job-id }}

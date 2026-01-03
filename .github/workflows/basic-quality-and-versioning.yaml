@@ -146,6 +146,16 @@ jobs:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-24.04
     steps:
+      - name: Get job ID
+        id: job-info
+        run: |
+          job_id=$(gh api "/repos/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}/jobs" \
+            --jq '.jobs[] | select(.status == "in_progress") | .id')
+          echo "job-id=${job_id}" >> "$GITHUB_OUTPUT"
+          echo "Resolved job ID: ${job_id}" >&2
+        env:
+          GH_TOKEN: ${{ github.token }}
+
       - name: Checkout
         uses: actions/checkout@v4.2.2
         with:
@@ -241,6 +251,16 @@ jobs:
       is-release: ${{ steps.versions.outputs.is-release }}
       project-name: ${{ steps.versions.outputs.project-name }}
     steps:
+      - name: Get job ID
+        id: job-info
+        run: |
+          job_id=$(gh api "/repos/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}/jobs" \
+            --jq '.jobs[] | select(.status == "in_progress") | .id')
+          echo "job-id=${job_id}" >> "$GITHUB_OUTPUT"
+          echo "Resolved job ID: ${job_id}" >&2
+        env:
+          GH_TOKEN: ${{ github.token }}
+
       - name: Checkout
         uses: actions/checkout@v4.2.2
         with:
@@ -310,6 +330,7 @@ jobs:
         with:
           action: start
           check-name: 'Versions & Naming → Pre-tagging Tests'
+          job-id: ${{ steps.job-info.outputs.job-id }}
       - name: Run pre-tagging tests
         if: inputs.pre-tagging-tests-script-sub-path != ''
         id: pre-tagging-tests
@@ -351,6 +372,7 @@ jobs:
         with:
           action: start
           check-name: 'Versions & Naming → GitHub Release'
+          job-id: ${{ steps.job-info.outputs.job-id }}
       - name: Compute release notes
         id: release-notes
         if: inputs.github-release-enabled == true && steps.versions.outputs.is-release == 'true'

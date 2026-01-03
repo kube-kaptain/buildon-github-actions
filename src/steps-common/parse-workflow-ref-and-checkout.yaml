@@ -1,6 +1,16 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
 
+- name: Get job ID
+  id: job-info
+  run: |
+    job_id=$(gh api "/repos/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}/jobs" \
+      --jq '.jobs[] | select(.status == "in_progress") | .id')
+    echo "job-id=${job_id}" >> "$GITHUB_OUTPUT"
+    echo "Resolved job ID: ${job_id}" >&2
+  env:
+    GH_TOKEN: ${{ github.token }}
+
 - name: Checkout
   uses: actions/checkout@v4.2.2
   with:

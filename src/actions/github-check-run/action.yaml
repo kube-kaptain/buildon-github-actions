@@ -17,6 +17,10 @@ inputs:
     description: 'ID of existing check run (required for pass/fail/skip)'
     required: false
     default: ''
+  job-id:
+    description: 'Job ID for details URL (optional, for start action)'
+    required: false
+    default: ''
   summary:
     description: 'Optional summary text'
     required: false
@@ -37,10 +41,13 @@ runs:
         ACTION: ${{ inputs.action }}
         CHECK_NAME: ${{ inputs.check-name }}
         CHECK_RUN_ID: ${{ inputs.check-run-id }}
+        JOB_ID: ${{ inputs.job-id }}
         CHECK_SUMMARY: ${{ inputs.summary }}
         GITHUB_TOKEN: ${{ github.token }}
         GITHUB_REPOSITORY: ${{ github.repository }}
         GITHUB_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        GITHUB_SERVER_URL: ${{ github.server_url }}
+        GITHUB_RUN_ID: ${{ github.run_id }}
       run: |
         set -euo pipefail
 
@@ -57,6 +64,12 @@ runs:
           local name="${CHECK_NAME:?CHECK_NAME is required for start}"
           local summary="${CHECK_SUMMARY:-}"
 
+          # Build details URL if job ID is available
+          local details_url_arg=()
+          if [[ -n "${JOB_ID:-}" ]]; then
+            details_url_arg=(-f "details_url=${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}/job/${JOB_ID}")
+          fi
+
           local response
           response=$(gh api \
             --method POST \
@@ -65,7 +78,8 @@ runs:
             -f "name=${name}" \
             -f "head_sha=${GITHUB_SHA}" \
             -f "status=in_progress" \
-            -f "started_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)")
+            -f "started_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            "${details_url_arg[@]}")
 
           local check_run_id
           check_run_id=$(echo "$response" | jq -r '.id')

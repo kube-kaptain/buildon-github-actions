@@ -279,6 +279,16 @@ jobs:
     permissions:
       contents: read
     steps:
+      - name: Get job ID
+        id: job-info
+        run: |
+          job_id=$(gh api "/repos/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}/jobs" \
+            --jq '.jobs[] | select(.status == "in_progress") | .id')
+          echo "job-id=${job_id}" >> "$GITHUB_OUTPUT"
+          echo "Resolved job ID: ${job_id}" >&2
+        env:
+          GH_TOKEN: ${{ github.token }}
+
       - name: Checkout
         uses: actions/checkout@v4.2.2
         with:
@@ -381,6 +391,16 @@ jobs:
       manifests-uri: ${{ steps.manifest-repo-provider-publish.outputs.manifests-uri }}
       manifests-published: ${{ steps.manifest-repo-provider-publish.outputs.manifests-published }}
     steps:
+      - name: Get job ID
+        id: job-info
+        run: |
+          job_id=$(gh api "/repos/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}/jobs" \
+            --jq '.jobs[] | select(.status == "in_progress") | .id')
+          echo "job-id=${job_id}" >> "$GITHUB_OUTPUT"
+          echo "Resolved job ID: ${job_id}" >&2
+        env:
+          GH_TOKEN: ${{ github.token }}
+
       - name: Checkout
         uses: actions/checkout@v4.2.2
         with:
@@ -460,6 +480,7 @@ jobs:
         with:
           action: start
           check-name: 'Build & Publish → Pre-tagging Tests'
+          job-id: ${{ steps.job-info.outputs.job-id }}
       - name: Run pre-tagging tests
         if: inputs.pre-tagging-tests-script-sub-path != ''
         id: pre-tagging-tests
@@ -486,6 +507,7 @@ jobs:
         with:
           action: start
           check-name: 'Build & Publish → Versions & Naming'
+          job-id: ${{ steps.job-info.outputs.job-id }}
       - name: Generate versions and naming
         id: versions
         uses: ./.github/buildon-github-actions/src/actions/versions-and-naming
@@ -521,6 +543,7 @@ jobs:
         with:
           action: start
           check-name: 'Build & Publish → Pre-docker Prepare'
+          job-id: ${{ steps.job-info.outputs.job-id }}
       - name: Run pre-docker prepare
         if: inputs.pre-docker-prepare-script-sub-path != ''
         id: pre-docker-prepare
@@ -555,6 +578,7 @@ jobs:
         with:
           action: start
           check-name: 'Build & Publish → Docker Build'
+          job-id: ${{ steps.job-info.outputs.job-id }}
       - name: Build image
         id: docker-build
         uses: ./.github/buildon-github-actions/src/actions/docker-build-dockerfile
@@ -597,6 +621,7 @@ jobs:
         with:
           action: start
           check-name: 'Build & Publish → Post-docker Tests'
+          job-id: ${{ steps.job-info.outputs.job-id }}
       - name: Run post-docker tests
         if: inputs.post-docker-tests-script-sub-path != ''
         id: post-docker-tests
@@ -630,6 +655,7 @@ jobs:
         with:
           action: start
           check-name: 'Build & Publish → Pre-package Prepare'
+          job-id: ${{ steps.job-info.outputs.job-id }}
       - name: Run pre-package prepare
         if: inputs.pre-package-prepare-script-sub-path != ''
         id: pre-package-prepare
@@ -664,6 +690,7 @@ jobs:
         with:
           action: start
           check-name: 'Build & Publish → Package Manifests'
+          job-id: ${{ steps.job-info.outputs.job-id }}
       - name: Package manifests
         id: manifest-package
         uses: ./.github/buildon-github-actions/src/actions/kubernetes-manifests-package
@@ -704,6 +731,7 @@ jobs:
         with:
           action: start
           check-name: 'Build & Publish → Package Manifests for Repo Provider'
+          job-id: ${{ steps.job-info.outputs.job-id }}
       - name: Package manifests for repo provider
         id: manifest-repo-provider-package
         uses: ./.github/buildon-github-actions/src/actions/kubernetes-manifests-repo-provider-package
@@ -739,6 +767,7 @@ jobs:
         with:
           action: start
           check-name: 'Build & Publish → Post-package Tests'
+          job-id: ${{ steps.job-info.outputs.job-id }}
       - name: Run post-package tests
         if: inputs.post-package-tests-script-sub-path != ''
         id: post-package-tests
@@ -773,6 +802,7 @@ jobs:
         with:
           action: start
           check-name: 'Build & Publish → Docker Push'
+          job-id: ${{ steps.job-info.outputs.job-id }}
       - name: Push image
         id: docker-push
         if: steps.versions.outputs.is-release == 'true'
@@ -801,6 +831,7 @@ jobs:
         with:
           action: start
           check-name: 'Build & Publish → Publish Manifests via Repo Provider'
+          job-id: ${{ steps.job-info.outputs.job-id }}
       - name: Publish manifests via repo provider
         id: manifest-repo-provider-publish
         if: steps.versions.outputs.is-release == 'true'
@@ -837,6 +868,7 @@ jobs:
         with:
           action: start
           check-name: 'Build & Publish → GitHub Release'
+          job-id: ${{ steps.job-info.outputs.job-id }}
       - name: Compute release notes
         id: release-notes
         if: inputs.github-release-enabled == true && steps.versions.outputs.is-release == 'true'
