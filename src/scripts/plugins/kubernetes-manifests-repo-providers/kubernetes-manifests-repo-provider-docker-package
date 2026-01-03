@@ -15,7 +15,7 @@
 #   MANIFESTS_ZIP_SUB_PATH      - Path to the zip file location (required)
 #   MANIFESTS_ZIP_FILE_NAME      - Filename of the zip (required)
 #   OUTPUT_SUB_PATH         - Build output directory (default: target)
-#   MANIFESTS_PACKAGING_BASE_IMAGE - Base image for manifest packaging (default: ghcr.io/kube-kaptain/image/image-pause:3.10.2)
+#   MANIFESTS_PACKAGING_BASE_IMAGE - Base image for manifest packaging (default: scratch)
 #
 # Outputs:
 #   MANIFESTS_URI           - Full image reference (for use by publish step)
@@ -42,7 +42,7 @@ MANIFESTS_ZIP_FILE_NAME="${MANIFESTS_ZIP_FILE_NAME:?MANIFESTS_ZIP_FILE_NAME is r
 OUTPUT_SUB_PATH="${OUTPUT_SUB_PATH:-target}"
 
 # Base image for manifest packaging
-BASE_IMAGE="${MANIFESTS_PACKAGING_BASE_IMAGE:-ghcr.io/kube-kaptain/image/image-pause:3.10.2}"
+BASE_IMAGE="${MANIFESTS_PACKAGING_BASE_IMAGE:-scratch}"
 
 # Build output structure
 PUBLISH_SUB_PATH="${OUTPUT_SUB_PATH}/publish/docker"

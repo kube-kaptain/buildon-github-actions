@@ -120,7 +120,7 @@ See [`examples/`](examples/) for more usage patterns.
 | `github-release-enabled` | boolean | `true` | Create a GitHub release on version tags |
 | `github-release-files` | string | `""` | Files to attach to the release (space-separated) |
 | `github-release-notes` | string | `""` | Release notes (leave empty for auto-generated) |
-| `manifests-packaging-base-image` | string | `""` | Base image for manifest packaging (default: ghcr.io/kube-kaptain/image/image-pause:3.10.2) |
+| `manifests-packaging-base-image` | string | `""` | Base image for manifest packaging (default: scratch) |
 | `manifests-repo-provider-type` | string | `docker` | Repo provider type for manifest storage (default: docker, currently the only supported provider) |
 | `manifests-sub-path` | string | `src/kubernetes` | Directory containing Kubernetes manifests (relative) |
 | `max-version-parts` | number | `3` | Maximum allowed version parts (fail if exceeded) |
@@ -133,7 +133,7 @@ See [`examples/`](examples/) for more usage patterns.
 | `pre-tagging-tests-script-sub-path` | string | `""` | Path to pre-tagging test script relative to .github/ (e.g., bin/pre-tagging.bash) |
 | `require-conventional-branches` | boolean | `false` | Require branch names start with feature/, fix/, etc. |
 | `require-conventional-commits` | boolean | `false` | Require commits use conventional commit format (feat:, fix:, etc.) |
-| `spec-packaging-base-image` | string | `ghcr.io/kube-kaptain/image/image-pause:3.10.2` | Base image for spec packaging |
+| `spec-packaging-base-image` | string | `scratch` | Base image for spec packaging |
 | `spec-type` | string | *required* | Type of spec (schema or api) |
 | `spec-validation-type` | string | `basic` | Schema validator to use (basic, python3-jsonschema) |
 | `squash` | boolean | `true` | Enable --squash (requires experimental mode) |

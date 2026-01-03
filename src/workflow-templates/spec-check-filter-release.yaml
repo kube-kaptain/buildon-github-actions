@@ -19,7 +19,7 @@ on:
         description: 'Base image for spec packaging'
         required: false
         type: string
-        default: 'ghcr.io/kube-kaptain/image/image-pause:3.10.2'
+        default: 'scratch'
       output-sub-path:
         description: 'Build output directory (relative)'
         required: false
