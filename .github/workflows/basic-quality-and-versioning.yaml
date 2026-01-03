@@ -344,12 +344,14 @@ jobs:
         with:
           action: pass
           check-run-id: ${{ steps.check-pre-tagging.outputs.check-run-id }}
+          job-id: ${{ steps.job-info.outputs.job-id }}
       - name: Fail check - Pre-tagging Tests
         if: inputs.pre-tagging-tests-script-sub-path != '' && failure() && steps.check-pre-tagging.outputs.check-run-id != ''
         uses: ./.github/buildon-github-actions/src/actions/github-check-run
         with:
           action: fail
           check-run-id: ${{ steps.check-pre-tagging.outputs.check-run-id }}
+          job-id: ${{ steps.job-info.outputs.job-id }}
       - name: Generate versions and naming
         id: versions
         uses: ./.github/buildon-github-actions/src/actions/versions-and-naming
@@ -413,9 +415,11 @@ jobs:
         with:
           action: pass
           check-run-id: ${{ steps.check-github-release.outputs.check-run-id }}
+          job-id: ${{ steps.job-info.outputs.job-id }}
       - name: Fail check - GitHub Release
         if: inputs.github-release-enabled == true && steps.versions.outputs.is-release == 'true' && failure() && steps.check-github-release.outputs.check-run-id != ''
         uses: ./.github/buildon-github-actions/src/actions/github-check-run
         with:
           action: fail
           check-run-id: ${{ steps.check-github-release.outputs.check-run-id }}
+          job-id: ${{ steps.job-info.outputs.job-id }}

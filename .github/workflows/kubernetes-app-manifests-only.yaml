@@ -454,12 +454,14 @@ jobs:
         with:
           action: pass
           check-run-id: ${{ steps.check-pre-tagging.outputs.check-run-id }}
+          job-id: ${{ steps.job-info.outputs.job-id }}
       - name: Fail check - Pre-tagging Tests
         if: inputs.pre-tagging-tests-script-sub-path != '' && failure() && steps.check-pre-tagging.outputs.check-run-id != ''
         uses: ./.github/buildon-github-actions/src/actions/github-check-run
         with:
           action: fail
           check-run-id: ${{ steps.check-pre-tagging.outputs.check-run-id }}
+          job-id: ${{ steps.job-info.outputs.job-id }}
 
       # === Versions & Naming ===
       - name: Start check - Versions & Naming
@@ -489,12 +491,14 @@ jobs:
         with:
           action: pass
           check-run-id: ${{ steps.check-versions.outputs.check-run-id }}
+          job-id: ${{ steps.job-info.outputs.job-id }}
       - name: Fail check - Versions & Naming
         if: failure() && steps.check-versions.outputs.check-run-id != ''
         uses: ./.github/buildon-github-actions/src/actions/github-check-run
         with:
           action: fail
           check-run-id: ${{ steps.check-versions.outputs.check-run-id }}
+          job-id: ${{ steps.job-info.outputs.job-id }}
 
       # === Pre-package Prepare ===
       - name: Start check - Pre-package Prepare
@@ -525,12 +529,14 @@ jobs:
         with:
           action: pass
           check-run-id: ${{ steps.check-pre-package-prepare.outputs.check-run-id }}
+          job-id: ${{ steps.job-info.outputs.job-id }}
       - name: Fail check - Pre-package Prepare
         if: inputs.pre-package-prepare-script-sub-path != '' && failure() && steps.check-pre-package-prepare.outputs.check-run-id != ''
         uses: ./.github/buildon-github-actions/src/actions/github-check-run
         with:
           action: fail
           check-run-id: ${{ steps.check-pre-package-prepare.outputs.check-run-id }}
+          job-id: ${{ steps.job-info.outputs.job-id }}
 
       # === Manifest Package ===
       # Compute target registry and base path for manifests-only workflows (no docker build step)
@@ -574,12 +580,14 @@ jobs:
         with:
           action: pass
           check-run-id: ${{ steps.check-manifest-package.outputs.check-run-id }}
+          job-id: ${{ steps.job-info.outputs.job-id }}
       - name: Fail check - Package Manifests
         if: failure() && steps.check-manifest-package.outputs.check-run-id != ''
         uses: ./.github/buildon-github-actions/src/actions/github-check-run
         with:
           action: fail
           check-run-id: ${{ steps.check-manifest-package.outputs.check-run-id }}
+          job-id: ${{ steps.job-info.outputs.job-id }}
 
       # === Manifest Repo Provider Package ===
       - name: Start check - Package Manifests for Repo Provider
@@ -615,12 +623,14 @@ jobs:
         with:
           action: pass
           check-run-id: ${{ steps.check-manifest-repo-provider-package.outputs.check-run-id }}
+          job-id: ${{ steps.job-info.outputs.job-id }}
       - name: Fail check - Package Manifests for Repo Provider
         if: failure() && steps.check-manifest-repo-provider-package.outputs.check-run-id != ''
         uses: ./.github/buildon-github-actions/src/actions/github-check-run
         with:
           action: fail
           check-run-id: ${{ steps.check-manifest-repo-provider-package.outputs.check-run-id }}
+          job-id: ${{ steps.job-info.outputs.job-id }}
 
       # === Post-package Tests ===
       - name: Start check - Post-package Tests
@@ -650,12 +660,14 @@ jobs:
         with:
           action: pass
           check-run-id: ${{ steps.check-post-package.outputs.check-run-id }}
+          job-id: ${{ steps.job-info.outputs.job-id }}
       - name: Fail check - Post-package Tests
         if: inputs.post-package-tests-script-sub-path != '' && failure() && steps.check-post-package.outputs.check-run-id != ''
         uses: ./.github/buildon-github-actions/src/actions/github-check-run
         with:
           action: fail
           check-run-id: ${{ steps.check-post-package.outputs.check-run-id }}
+          job-id: ${{ steps.job-info.outputs.job-id }}
 
       # === Manifest Repo Provider Publish ===
       - name: Start check - Publish Manifests via Repo Provider
@@ -687,12 +699,14 @@ jobs:
         with:
           action: pass
           check-run-id: ${{ steps.check-manifest-repo-provider-publish.outputs.check-run-id }}
+          job-id: ${{ steps.job-info.outputs.job-id }}
       - name: Fail check - Publish Manifests via Repo Provider
         if: steps.versions.outputs.is-release == 'true' && failure() && steps.check-manifest-repo-provider-publish.outputs.check-run-id != ''
         uses: ./.github/buildon-github-actions/src/actions/github-check-run
         with:
           action: fail
           check-run-id: ${{ steps.check-manifest-repo-provider-publish.outputs.check-run-id }}
+          job-id: ${{ steps.job-info.outputs.job-id }}
 
       # === GitHub Release ===
       - name: Start check - GitHub Release
@@ -745,9 +759,11 @@ jobs:
         with:
           action: pass
           check-run-id: ${{ steps.check-github-release.outputs.check-run-id }}
+          job-id: ${{ steps.job-info.outputs.job-id }}
       - name: Fail check - GitHub Release
         if: inputs.github-release-enabled == true && steps.versions.outputs.is-release == 'true' && failure() && steps.check-github-release.outputs.check-run-id != ''
         uses: ./.github/buildon-github-actions/src/actions/github-check-run
         with:
           action: fail
           check-run-id: ${{ steps.check-github-release.outputs.check-run-id }}
+          job-id: ${{ steps.job-info.outputs.job-id }}

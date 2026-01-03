@@ -271,9 +271,11 @@ jobs:
         with:
           action: pass
           check-run-id: ${{ steps.check-github-release.outputs.check-run-id }}
+          job-id: ${{ steps.job-info.outputs.job-id }}
       - name: Fail check - GitHub Release
         if: inputs.github-release-enabled == true && steps.versions.outputs.is-release == 'true' && failure() && steps.check-github-release.outputs.check-run-id != ''
         uses: ./.github/buildon-github-actions/src/actions/github-check-run
         with:
           action: fail
           check-run-id: ${{ steps.check-github-release.outputs.check-run-id }}
+          job-id: ${{ steps.job-info.outputs.job-id }}

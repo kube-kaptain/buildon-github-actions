@@ -414,12 +414,14 @@ jobs:
         with:
           action: pass
           check-run-id: ${{ steps.check-pre-tagging.outputs.check-run-id }}
+          job-id: ${{ steps.job-info.outputs.job-id }}
       - name: Fail check - Pre-tagging Tests
         if: inputs.pre-tagging-tests-script-sub-path != '' && failure() && steps.check-pre-tagging.outputs.check-run-id != ''
         uses: ./.github/buildon-github-actions/src/actions/github-check-run
         with:
           action: fail
           check-run-id: ${{ steps.check-pre-tagging.outputs.check-run-id }}
+          job-id: ${{ steps.job-info.outputs.job-id }}
 
       # === Versions & Naming ===
       - name: Start check - Versions & Naming
@@ -449,12 +451,14 @@ jobs:
         with:
           action: pass
           check-run-id: ${{ steps.check-versions.outputs.check-run-id }}
+          job-id: ${{ steps.job-info.outputs.job-id }}
       - name: Fail check - Versions & Naming
         if: failure() && steps.check-versions.outputs.check-run-id != ''
         uses: ./.github/buildon-github-actions/src/actions/github-check-run
         with:
           action: fail
           check-run-id: ${{ steps.check-versions.outputs.check-run-id }}
+          job-id: ${{ steps.job-info.outputs.job-id }}
 
       # === Docker Retag ===
       - name: Start check - Docker Retag
@@ -482,12 +486,14 @@ jobs:
         with:
           action: pass
           check-run-id: ${{ steps.check-docker-retag.outputs.check-run-id }}
+          job-id: ${{ steps.job-info.outputs.job-id }}
       - name: Fail check - Docker Retag
         if: failure() && steps.check-docker-retag.outputs.check-run-id != ''
         uses: ./.github/buildon-github-actions/src/actions/github-check-run
         with:
           action: fail
           check-run-id: ${{ steps.check-docker-retag.outputs.check-run-id }}
+          job-id: ${{ steps.job-info.outputs.job-id }}
 
       # === Docker Push ===
       - name: Start check - Docker Push
@@ -511,12 +517,14 @@ jobs:
         with:
           action: pass
           check-run-id: ${{ steps.check-docker-push.outputs.check-run-id }}
+          job-id: ${{ steps.job-info.outputs.job-id }}
       - name: Fail check - Docker Push
         if: steps.versions.outputs.is-release == 'true' && failure() && steps.check-docker-push.outputs.check-run-id != ''
         uses: ./.github/buildon-github-actions/src/actions/github-check-run
         with:
           action: fail
           check-run-id: ${{ steps.check-docker-push.outputs.check-run-id }}
+          job-id: ${{ steps.job-info.outputs.job-id }}
 
       # === GitHub Release ===
       - name: Start check - GitHub Release
@@ -569,9 +577,11 @@ jobs:
         with:
           action: pass
           check-run-id: ${{ steps.check-github-release.outputs.check-run-id }}
+          job-id: ${{ steps.job-info.outputs.job-id }}
       - name: Fail check - GitHub Release
         if: inputs.github-release-enabled == true && steps.versions.outputs.is-release == 'true' && failure() && steps.check-github-release.outputs.check-run-id != ''
         uses: ./.github/buildon-github-actions/src/actions/github-check-run
         with:
           action: fail
           check-run-id: ${{ steps.check-github-release.outputs.check-run-id }}
+          job-id: ${{ steps.job-info.outputs.job-id }}
