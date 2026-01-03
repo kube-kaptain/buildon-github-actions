@@ -11,6 +11,9 @@
     PROJECT_NAME: ${{ steps.versions.outputs.project-name }}
     DOCKER_URI: ${{ steps.docker-build.outputs.docker-target-image-full-uri }}
   run: |
+    display_name=$(./.github/buildon-github-actions/src/scripts/main/format-project-title "${PROJECT_NAME}")
+    echo "title=${VERSION} — ${display_name}" >> "${GITHUB_OUTPUT}"
+
     if [[ -n "${USER_NOTES}" ]]; then
       # User provided notes override entirely
       {
@@ -24,7 +27,8 @@
         echo "notes<<NOTES_EOF"
         echo "Automatic Docker release for version ${VERSION} of ${PROJECT_NAME} by Kaptain build script."
         echo ""
-        echo "Docker Image: ${DOCKER_URI}"
+        echo "### Release Assets"
+        echo "* Docker Image: [${DOCKER_URI}](https://${DOCKER_URI})"
         echo "NOTES_EOF"
       } >> "${GITHUB_OUTPUT}"
     fi
@@ -37,3 +41,4 @@
     github-release-files: ${{ inputs.github-release-files }}
     github-release-tag: ${{ steps.versions.outputs.version }}
     github-release-notes: ${{ steps.release-notes.outputs.notes }}
+    github-release-title: ${{ steps.release-notes.outputs.title }}

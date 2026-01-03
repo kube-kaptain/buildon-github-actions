@@ -1,0 +1,59 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
+#
+# Formats a kebab-case project name into a display title with proper casing.
+# Usage: format-project-title <project-name>
+# Output: Formatted title to stdout
+#
+# Example: format-project-title "buildon-github-actions" -> "Buildon GitHub Actions"
+
+set -euo pipefail
+
+if [[ $# -ne 1 ]]; then
+  echo "Usage: format-project-title <project-name>" >&2
+  exit 1
+fi
+
+project_name="$1"
+
+# Map special words to their display form (bash 3.2 compatible)
+map_word() {
+  case "$1" in
+    api) echo "API" ;;
+    ubi) echo "UBI" ;;
+    json) echo "JSON" ;;
+    yaml) echo "YAML" ;;
+    xml) echo "XML" ;;
+    github) echo "GitHub" ;;
+    cli) echo "CLI" ;;
+    http) echo "HTTP" ;;
+    https) echo "HTTPS" ;;
+    url) echo "URL" ;;
+    id) echo "ID" ;;
+    ui) echo "UI" ;;
+    io) echo "IO" ;;
+    aws) echo "AWS" ;;
+    gcp) echo "GCP" ;;
+    k8s) echo "K8s" ;;
+    *) echo "" ;;
+  esac
+}
+
+result=""
+for word in ${project_name//-/ }; do
+  # Convert to lowercase for lookup
+  lower=$(echo "${word}" | tr '[:upper:]' '[:lower:]')
+  mapped=$(map_word "${lower}")
+  if [[ -n "${mapped}" ]]; then
+    result+="${mapped} "
+  else
+    # Title case: uppercase first letter
+    first=$(echo "${word:0:1}" | tr '[:lower:]' '[:upper:]')
+    rest=$(echo "${word:1}" | tr '[:upper:]' '[:lower:]')
+    result+="${first}${rest} "
+  fi
+done
+
+# Remove trailing space
+echo "${result% }"
