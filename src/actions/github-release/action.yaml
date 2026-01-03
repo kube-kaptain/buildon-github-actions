@@ -19,6 +19,10 @@ inputs:
     description: Release notes
     required: false
     default: ""
+  github-release-title:
+    description: Release title
+    required: false
+    default: ""
 
 runs:
   using: composite
@@ -31,9 +35,10 @@ runs:
         FILES: ${{ inputs.github-release-files }}
         TAG: ${{ inputs.github-release-tag }}
         NOTES: ${{ inputs.github-release-notes }}
+        TITLE: ${{ inputs.github-release-title }}
       run: |
         if [[ -n "${NOTES}" ]]; then
-          gh release create "${TAG}" ${FILES} --notes "${NOTES}"
+          gh release create "${TAG}" ${FILES} --title "${TITLE}" --notes "${NOTES}"
         else
-          gh release create "${TAG}" ${FILES} --generate-notes
+          gh release create "${TAG}" ${FILES} --title "${TITLE}" --generate-notes
         fi

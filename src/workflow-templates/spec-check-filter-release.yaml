@@ -356,6 +356,9 @@ jobs:
           GITHUB_SERVER_URL: ${{ github.server_url }}
           GITHUB_REPOSITORY: ${{ github.repository }}
         run: |
+          display_name=$(./.github/buildon-github-actions/src/scripts/main/format-project-title "${PROJECT_NAME}")
+          echo "title=${VERSION} — ${display_name}" >> "${GITHUB_OUTPUT}"
+
           if [[ -n "${USER_NOTES}" ]]; then
             # User provided notes override entirely
             {
@@ -390,4 +393,5 @@ jobs:
           github-release-files: ${{ steps.spec-package-prepare.outputs.SPEC_SUB_PATH }}/${{ steps.spec-package-prepare.outputs.SPEC_YAML }} ${{ steps.spec-package-prepare.outputs.SPEC_SUB_PATH }}/${{ steps.spec-package-prepare.outputs.SPEC_JSON }} ${{ inputs.github-release-files }}
           github-release-tag: ${{ steps.versions.outputs.version }}
           github-release-notes: ${{ steps.release-notes.outputs.notes }}
+          github-release-title: ${{ steps.release-notes.outputs.title }}
       # INJECT: github-check-end(name="GitHub Release", id="check-github-release", if="inputs.github-release-enabled == true && steps.versions.outputs.is-release == 'true'")
