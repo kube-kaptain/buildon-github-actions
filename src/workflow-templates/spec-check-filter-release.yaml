@@ -325,7 +325,7 @@ jobs:
         env:
           SPEC_TYPE: ${{ inputs.spec-type }}
           SPEC_VALIDATION_TYPE: ${{ inputs.spec-validation-type }}
-          SPEC_SUB_PATH: ${{ steps.spec-package-prepare.outputs.SPEC_SUB_PATH }}
+          SPEC_SUB_PATH: ${{ steps.docker-build.outputs.docker-substituted-sub-path }}
           SPEC_JSON: ${{ steps.spec-package-prepare.outputs.SPEC_JSON }}
         run: ./.github/buildon-github-actions/src/scripts/main/spec-validate
       # INJECT: github-check-end(name="Spec Validate", id="check-spec-validate")
