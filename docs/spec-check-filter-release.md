@@ -61,9 +61,8 @@ Spec Check Filter Release
 | `docker-image-name` | Docker image name |
 | `project-name` | The repository/project name |
 | `is-release` | Whether this is a release build |
-| `target-image-full-uri` | Full target image reference (action output name) |
-| `docker-image-full-uri` | Full docker image reference (alias for target-image-full-uri) |
+| `docker-target-image-full-uri` | Full target image reference |
 | `docker-image-pushed` | Whether docker image was pushed |
-| `spec-sub-path` | Directory containing spec files (relative) |
+| `docker-substituted-sub-path` | Directory containing substituted files (relative) |
 | `spec-yaml` | File name of spec YAML file |
 | `spec-json` | File name of spec JSON file |
