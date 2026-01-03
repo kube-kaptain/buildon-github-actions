@@ -24,7 +24,8 @@
         echo "notes<<NOTES_EOF"
         echo "Automatic Docker release for version ${VERSION} of ${PROJECT_NAME} by Kaptain build script."
         echo ""
-        echo "Docker Image: [${DOCKER_URI}](https://${DOCKER_URI})"
+        echo "### Release Assets"
+        echo "* Docker Image: [${DOCKER_URI}](https://${DOCKER_URI})"
         echo "NOTES_EOF"
       } >> "${GITHUB_OUTPUT}"
     fi
