@@ -31,6 +31,7 @@ LOG_ERROR_SUFFIX="${LOG_ERROR_SUFFIX:-}"
 
 # Configuration with defaults
 BUILD_MODE="${BUILD_MODE:-local}"
+REPOSITORY_NAME="${REPOSITORY_NAME:?Is required}"
 DEFAULT_BRANCH="${DEFAULT_BRANCH:-main}"
 ADDITIONAL_RELEASE_BRANCHES="${ADDITIONAL_RELEASE_BRANCHES:-}"  # Comma-separated list of additional release branches
 MAX_VERSION_PARTS="${MAX_VERSION_PARTS:-3}"  # Fail if version exceeds this many parts
@@ -52,10 +53,6 @@ get_current_branch() {
   git rev-parse --abbrev-ref HEAD
 }
 
-# Get repository name
-get_project_name() {
-  basename "$(git rev-parse --show-toplevel)"
-}
 
 # Check if current branch is a release branch
 is_release_branch() {
@@ -133,8 +130,7 @@ main() {
   local current_branch
   current_branch=$(get_current_branch)
 
-  local project_name
-  project_name=$(get_project_name)
+  local project_name="${REPOSITORY_NAME}"
 
   # Determine if this is a release build
   # Local builds are never releases, regardless of branch
