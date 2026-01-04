@@ -90,7 +90,7 @@ runs:
       shell: bash
       env:
         LOG_ERROR_PREFIX: '::error::'
-        BUILD_LOCATION: build_server
+        BUILD_MODE: build_server
         DEFAULT_BRANCH: ${{ inputs.default-branch }}
         ADDITIONAL_RELEASE_BRANCHES: ${{ inputs.additional-release-branches }}
         MAX_VERSION_PARTS: ${{ inputs.max-version-parts }}

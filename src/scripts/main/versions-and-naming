@@ -30,6 +30,7 @@ LOG_ERROR_PREFIX="${LOG_ERROR_PREFIX:-}"
 LOG_ERROR_SUFFIX="${LOG_ERROR_SUFFIX:-}"
 
 # Configuration with defaults
+BUILD_MODE="${BUILD_MODE:-local}"
 DEFAULT_BRANCH="${DEFAULT_BRANCH:-main}"
 ADDITIONAL_RELEASE_BRANCHES="${ADDITIONAL_RELEASE_BRANCHES:-}"  # Comma-separated list of additional release branches
 MAX_VERSION_PARTS="${MAX_VERSION_PARTS:-3}"  # Fail if version exceeds this many parts
@@ -42,20 +43,11 @@ TAG_VERSION_SOURCE_SUB_PATH="${TAG_VERSION_SOURCE_SUB_PATH:-}"  # Optional overr
 TAG_VERSION_SOURCE_FILE_NAME="${TAG_VERSION_SOURCE_FILE_NAME:-}"  # Optional override
 TAG_VERSION_SOURCE_CUSTOM_PATTERN="${TAG_VERSION_SOURCE_CUSTOM_PATTERN:-}"  # Required for custom type
 
-# Validate BUILD_LOCATION (required)
-validate_build_location() {
-  if [[ -z "${BUILD_LOCATION:-}" ]]; then
-    echo "${LOG_ERROR_PREFIX}BUILD_LOCATION is required. Valid values: local, build_server${LOG_ERROR_SUFFIX}" >&2
-    exit 1
-  fi
+if [[ "${BUILD_MODE}" != "local" && "${BUILD_MODE}" != "build_server" ]]; then
+  echo "${LOG_ERROR_PREFIX}Invalid BUILD_MODE: ${BUILD_MODE}. Valid values: local, build_server${LOG_ERROR_SUFFIX}" >&2
+  exit 1
+fi
 
-  if [[ "${BUILD_LOCATION}" != "local" && "${BUILD_LOCATION}" != "build_server" ]]; then
-    echo "${LOG_ERROR_PREFIX}Invalid BUILD_LOCATION: ${BUILD_LOCATION}. Valid values: local, build_server${LOG_ERROR_SUFFIX}" >&2
-    exit 1
-  fi
-}
-
-# Get current branch
 get_current_branch() {
   git rev-parse --abbrev-ref HEAD
 }
@@ -138,9 +130,6 @@ push_tag() {
 }
 
 main() {
-  # Validate BUILD_LOCATION first
-  validate_build_location
-
   local current_branch
   current_branch=$(get_current_branch)
 
@@ -150,7 +139,7 @@ main() {
   # Determine if this is a release build
   # Local builds are never releases, regardless of branch
   local is_release="false"
-  if [[ "${BUILD_LOCATION}" == "build_server" ]] && is_release_branch "${current_branch}"; then
+  if [[ "${BUILD_MODE}" == "build_server" ]] && is_release_branch "${current_branch}"; then
     is_release="true"
   fi
 
