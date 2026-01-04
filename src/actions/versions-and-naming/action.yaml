@@ -92,6 +92,7 @@ runs:
         LOG_ERROR_PREFIX: '::error::'
         BUILD_MODE: build_server
         REPOSITORY_NAME: ${{ github.event.repository.name }}
+        CURRENT_BRANCH: ${{ github.ref_name }}
         DEFAULT_BRANCH: ${{ inputs.default-branch }}
         ADDITIONAL_RELEASE_BRANCHES: ${{ inputs.additional-release-branches }}
         MAX_VERSION_PARTS: ${{ inputs.max-version-parts }}

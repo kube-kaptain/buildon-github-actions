@@ -32,6 +32,7 @@ LOG_ERROR_SUFFIX="${LOG_ERROR_SUFFIX:-}"
 # Configuration with defaults
 BUILD_MODE="${BUILD_MODE:-local}"
 REPOSITORY_NAME="${REPOSITORY_NAME:?Is required}"
+CURRENT_BRANCH="${CURRENT_BRANCH:?Is required}"
 DEFAULT_BRANCH="${DEFAULT_BRANCH:-main}"
 ADDITIONAL_RELEASE_BRANCHES="${ADDITIONAL_RELEASE_BRANCHES:-}"  # Comma-separated list of additional release branches
 MAX_VERSION_PARTS="${MAX_VERSION_PARTS:-3}"  # Fail if version exceeds this many parts
@@ -48,11 +49,6 @@ if [[ "${BUILD_MODE}" != "local" && "${BUILD_MODE}" != "build_server" ]]; then
   echo "${LOG_ERROR_PREFIX}Invalid BUILD_MODE: ${BUILD_MODE}. Valid values: local, build_server${LOG_ERROR_SUFFIX}" >&2
   exit 1
 fi
-
-get_current_branch() {
-  git rev-parse --abbrev-ref HEAD
-}
-
 
 # Check if current branch is a release branch
 is_release_branch() {
@@ -127,9 +123,7 @@ push_tag() {
 }
 
 main() {
-  local current_branch
-  current_branch=$(get_current_branch)
-
+  local current_branch="${CURRENT_BRANCH}"
   local project_name="${REPOSITORY_NAME}"
 
   # Determine if this is a release build
