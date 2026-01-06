@@ -41,7 +41,7 @@ teardown() {
   export PR_BRANCH=testuser-patch-1
   export PR_CREATOR=testuser
   run "$SCRIPTS_DIR/basic-quality-checks"
-  [ "$status" -eq 1 ]
+  [ "$status" -eq 2 ]
   assert_output_contains "GitHub's default naming pattern"
 }
 
@@ -61,7 +61,7 @@ teardown() {
   export PR_BRANCH=feature/something
   export BLOCK_SLASHES=true
   run "$SCRIPTS_DIR/basic-quality-checks"
-  [ "$status" -eq 1 ]
+  [ "$status" -eq 2 ]
   assert_output_contains "contains a slash"
 }
 
@@ -71,7 +71,7 @@ teardown() {
 
   export PR_BRANCH=fix-docs
   run "$SCRIPTS_DIR/basic-quality-checks"
-  [ "$status" -eq 2 ]
+  [ "$status" -eq 4 ]
   assert_output_contains "GitHub UI default message"
 }
 
@@ -81,7 +81,7 @@ teardown() {
 
   export PR_BRANCH=add-file
   run "$SCRIPTS_DIR/basic-quality-checks"
-  [ "$status" -eq 2 ]
+  [ "$status" -eq 4 ]
   assert_output_contains "GitHub UI default message"
 }
 
@@ -91,7 +91,7 @@ teardown() {
 
   export PR_BRANCH=remove-file
   run "$SCRIPTS_DIR/basic-quality-checks"
-  [ "$status" -eq 2 ]
+  [ "$status" -eq 4 ]
   assert_output_contains "GitHub UI default message"
 }
 
@@ -101,7 +101,7 @@ teardown() {
 
   export PR_BRANCH=feature-with-merge
   run "$SCRIPTS_DIR/basic-quality-checks"
-  [ "$status" -eq 4 ]
+  [ "$status" -eq 8 ]
   assert_output_contains "merge commit"
 }
 
@@ -121,7 +121,7 @@ teardown() {
 
   export PR_BRANCH=fix-readme
   run "$SCRIPTS_DIR/basic-quality-checks"
-  [ "$status" -eq 2 ]
+  [ "$status" -eq 4 ]
   assert_output_contains "GitHub UI default message"
 }
 
@@ -132,8 +132,8 @@ teardown() {
   export PR_BRANCH=testuser-patch-1
   export PR_CREATOR=testuser
   run "$SCRIPTS_DIR/basic-quality-checks"
-  # Should have both FLAG_BAD_BRANCH (1) and FLAG_BAD_COMMIT (2) = 3
-  [ "$status" -eq 3 ]
+  # Should have both FLAG_BAD_BRANCH (2) and FLAG_BAD_COMMIT (4) = 6
+  [ "$status" -eq 6 ]
 }
 
 @test "validates target branch in PR context" {
@@ -144,7 +144,7 @@ teardown() {
   export TARGET_BRANCH=develop
   export GITHUB_HEAD_REF=fix-something
   run "$SCRIPTS_DIR/basic-quality-checks"
-  # FLAG_BAD_TARGET = 16, but also FLAG_NOT_REBASED = 8 since develop doesn't exist
+  # FLAG_BAD_TARGET = 16, and FLAG_BAD_CONTENTS = 8 since develop doesn't exist
   # Actually the script checks if target is allowed first
   [ "$status" -ne 0 ]
   assert_output_contains "not an allowed target"
@@ -171,7 +171,7 @@ teardown() {
 
   export PR_BRANCH=fix--something
   run "$SCRIPTS_DIR/basic-quality-checks"
-  [ "$status" -eq 1 ]
+  [ "$status" -eq 2 ]
   assert_output_contains "double hyphens"
 }
 
@@ -192,7 +192,7 @@ teardown() {
   export PR_BRANCH=my-branch
   export REQUIRE_CONVENTIONAL_BRANCHES=true
   run "$SCRIPTS_DIR/basic-quality-checks"
-  [ "$status" -eq 1 ]
+  [ "$status" -eq 2 ]
   assert_output_contains "must start with a prefix"
 }
 
@@ -214,7 +214,7 @@ teardown() {
   export PR_BRANCH=fix-something
   export REQUIRE_CONVENTIONAL_COMMITS=true
   run "$SCRIPTS_DIR/basic-quality-checks"
-  [ "$status" -eq 2 ]
+  [ "$status" -eq 4 ]
   assert_output_contains "does not use conventional commit format"
 }
 
@@ -225,6 +225,6 @@ teardown() {
   export PR_BRANCH=add-feature
   export BLOCK_CONVENTIONAL_COMMITS=true
   run "$SCRIPTS_DIR/basic-quality-checks"
-  [ "$status" -eq 2 ]
+  [ "$status" -eq 4 ]
   assert_output_contains "conventional commit format which is not allowed"
 }

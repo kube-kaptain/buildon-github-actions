@@ -5,11 +5,26 @@
 # basic-quality-checks - Enforces commit and branch quality standards
 #
 # Exit codes are bit flags (can be combined):
-#   1  = bad branch name
-#   2  = bad commit message
-#   4  = merge commit found
-#   8  = not rebased on target
-#   16 = bad PR target branch
+#   0  = All quality checks passed
+#   1  = Conflicting configuration error or unexpected error from tooling
+#   2  = Bad branch name. Checks:
+#        - Auto-generated pattern: always-on (branch names in the form creator-patch-N)
+#        - Slashes: default off (turn on with BLOCK_SLASH_CONTAINING_BRANCHES=true)
+#        - Double hyphens: default on (turn off with BLOCK_DOUBLE_HYPHEN_CONTAINING_BRANCHES=false)
+#        - Conventional prefixes: default off (turn on with REQUIRE_CONVENTIONAL_BRANCHES=true)
+#   4  = Bad commit message. Checks:
+#        - Web UI auto-generated: always-on ("Update X", "Create X", "Delete X" are bad even if hand written)
+#        - Require conventional format: default off (turn on with REQUIRE_CONVENTIONAL_COMMITS=true)
+#        - Block conventional format: default off (turn on with BLOCK_CONVENTIONAL_COMMITS=true)
+#   8  = Bad branch contents. Checks:
+#        - Merge commit detected: always-on (no matter how they got there, eg back-merge from main)
+#        - Not rebased onto target: always-on (must be up to date to guarantee correctness after merge)
+#   16 = Bad merge candidate setup. Checks:
+#        - Invalid target branch: always-on (controlled by RELEASE_BRANCH and ADDITIONAL_RELEASE_BRANCHES)
+#        - Target branch not found: always-on
+#   32 = Reserved
+#   64 = Reserved
+#  128 = Reserved
 #
 set -uo pipefail
 
@@ -33,12 +48,11 @@ PR_CREATOR="${PR_CREATOR:-}"
 CONVENTIONAL_BRANCH_PREFIXES="feature/|feat/|bugfix/|fix/|hotfix/|release/|chore/"
 CONVENTIONAL_COMMIT_TYPES="build:|chore:|ci:|docs:|feat:|fix:|perf:|refactor:|revert:|style:|test:"
 
-# Bit flags for exit codes
-FLAG_BAD_BRANCH=1
-FLAG_BAD_COMMIT=2
-FLAG_MERGE_COMMIT=4
-FLAG_NOT_REBASED=8
-FLAG_BAD_TARGET=16
+# Bit flags for exit codes (1 reserved for config/unexpected errors)
+FLAG_BAD_BRANCH=2
+FLAG_BAD_COMMIT=4
+FLAG_BAD_CONTENTS=8
+FLAG_BAD_SETUP=16
 
 # Accumulated error code
 ERROR_CODE=0
@@ -273,7 +287,7 @@ main() {
   # Check 5: Validate PR target branch
   if is_pr_context; then
     if ! is_valid_target "${TARGET_BRANCH}"; then
-      error ${FLAG_BAD_TARGET} "PR targets '${TARGET_BRANCH}' which is not an allowed target branch."
+      error ${FLAG_BAD_SETUP} "PR targets '${TARGET_BRANCH}' which is not an allowed target branch."
     else
       pass "PR targets an allowed branch"
     fi
@@ -293,7 +307,7 @@ main() {
     local merge_found=false
     for commit in ${commits}; do
       if is_merge_commit "${commit}"; then
-        error ${FLAG_MERGE_COMMIT} "Commit ${commit} is a merge commit. Please rebase your branch instead of merging."
+        error ${FLAG_BAD_CONTENTS} "Commit ${commit} is a merge commit. Please rebase your branch instead of merging."
         merge_found=true
       fi
     done
@@ -350,7 +364,7 @@ main() {
 
   # Check 10: Branch is fast-forward from target
   if ! is_ff_from_target "${TARGET_BRANCH}"; then
-    error ${FLAG_NOT_REBASED} "Branch is not up to date with '${TARGET_BRANCH}'. Please rebase your branch."
+    error ${FLAG_BAD_CONTENTS} "Branch is not up to date with '${TARGET_BRANCH}'. Please rebase your branch."
   else
     pass "Branch is fast-forward from target"
   fi
