@@ -6,12 +6,13 @@ load helpers
 
 setup() {
   export GITHUB_OUTPUT=$(mktemp)
-  # Create test directories as relative sub-paths (script expects relative paths)
-  export TEST_WORK_DIR="test-workdir-$$"
-  mkdir -p "$TEST_WORK_DIR"
-  export TEST_MANIFESTS="$TEST_WORK_DIR/manifests"
-  export OUTPUT_SUB_PATH="$TEST_WORK_DIR/target"
-  export CONFIG_DIR="$TEST_WORK_DIR/config"
+  # Create test directories in temp location
+  export TEST_WORK_DIR=$(mktemp -d)
+  cd "$TEST_WORK_DIR"
+  # Use relative paths from within the temp dir
+  export TEST_MANIFESTS="manifests"
+  export OUTPUT_SUB_PATH="target"
+  export CONFIG_DIR="config"
   mkdir -p "$TEST_MANIFESTS" "$OUTPUT_SUB_PATH" "$CONFIG_DIR"
 }
 

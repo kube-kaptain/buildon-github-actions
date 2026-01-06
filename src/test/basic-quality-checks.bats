@@ -25,6 +25,28 @@ teardown() {
   assert_output_contains "RELEASE_BRANCH (develop) must match DEFAULT_BRANCH (main)"
 }
 
+@test "fails when additional-release-branch not prefixed with release-branch" {
+  TEST_REPO=$(clone_fixture "qc-clean")
+  cd "$TEST_REPO"
+
+  export ADDITIONAL_RELEASE_BRANCHES="release-1.0.x"
+  export PR_BRANCH=fix-something
+  run "$SCRIPTS_DIR/basic-quality-checks"
+  [ "$status" -eq 1 ]
+  assert_output_contains "must start with 'main' followed by a divider"
+}
+
+@test "accepts additional-release-branches with valid prefixes" {
+  TEST_REPO=$(clone_fixture "qc-clean")
+  cd "$TEST_REPO"
+
+  # All valid dividers: . - / _ +
+  export ADDITIONAL_RELEASE_BRANCHES="main-1.0,main.hotfix,main/patch,main_test,main+experimental"
+  export PR_BRANCH=fix-something
+  run "$SCRIPTS_DIR/basic-quality-checks"
+  [ "$status" -eq 0 ]
+}
+
 @test "passes for clean feature branch" {
   TEST_REPO=$(clone_fixture "qc-clean")
   cd "$TEST_REPO"
@@ -166,12 +188,12 @@ teardown() {
   TEST_REPO=$(clone_fixture "qc-clean")
   cd "$TEST_REPO"
   git checkout main --quiet
-  git checkout -b release-1.0.x --quiet
+  git checkout -b main-1.0.x --quiet
   git checkout fix-something --quiet
 
   export PR_BRANCH=fix-something
-  export TARGET_BRANCH=release-1.0.x
-  export ADDITIONAL_RELEASE_BRANCHES="release-1.0.x"
+  export TARGET_BRANCH=main-1.0.x
+  export ADDITIONAL_RELEASE_BRANCHES="main-1.0.x"
   export GITHUB_HEAD_REF=fix-something
   run "$SCRIPTS_DIR/basic-quality-checks"
   [ "$status" -eq 0 ]

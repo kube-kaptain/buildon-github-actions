@@ -244,6 +244,18 @@ main() {
     exit 1
   fi
 
+  # Validate additional release branches are prefixed with release branch
+  if [[ -n "${ADDITIONAL_RELEASE_BRANCHES}" ]]; then
+    IFS=',' read -ra additional_branches <<< "${ADDITIONAL_RELEASE_BRANCHES}"
+    for additional in "${additional_branches[@]}"; do
+      # Must be release-branch exactly, or release-branch followed by a divider
+      if [[ "${additional}" != "${RELEASE_BRANCH}" ]] && ! [[ "${additional}" =~ ^${RELEASE_BRANCH}[.\-/_+] ]]; then
+        echo "${LOG_ERROR_PREFIX}Configuration error: Additional release branch '${additional}' must start with '${RELEASE_BRANCH}' followed by a divider (. - / _ +)${LOG_ERROR_SUFFIX}" >&2
+        exit 1
+      fi
+    done
+  fi
+
   local branch
   branch=$(get_pr_branch)
 
