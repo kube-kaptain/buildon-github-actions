@@ -6,7 +6,7 @@ Basic Quality and Versioning
 
 | Input | Type | Default | Description |
 |-------|------|---------|-------------|
-| `default-branch` | string | `main` | The default/release branch name |
+| `release-branch` | string | `main` | The release branch name |
 | `additional-release-branches` | string | `""` | Comma-separated list of additional release branches |
 | `block-slashes` | boolean | `false` | DEPRECATED: Use block-slash-containing-branches instead |
 | `block-slash-containing-branches` | boolean | `false` | Block branch names containing slashes |

@@ -22,7 +22,7 @@ Kubernetes App - Docker Retag
 | `manifests-packaging-base-image` | string | `""` | Base image for manifest packaging (default: scratch) |
 | `docker-target-registry` | string | `ghcr.io` | Target container registry |
 | `docker-target-base-path` | string | `""` | Path between registry and image name (auto-set for GHCR) |
-| `default-branch` | string | `main` | The default/release branch name |
+| `release-branch` | string | `main` | The release branch name |
 | `additional-release-branches` | string | `""` | Comma-separated list of additional release branches |
 | `max-version-parts` | number | `3` | Maximum allowed version parts (fail if exceeded) |
 | `tag-version-calculation-strategy` | string | `git-auto-closest-highest` | Strategy for calculating version (git-auto-closest-highest, file-pattern-match) |

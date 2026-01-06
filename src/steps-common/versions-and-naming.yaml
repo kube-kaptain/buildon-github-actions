@@ -5,7 +5,7 @@
   id: versions
   uses: ./.github/buildon-github-actions/src/actions/versions-and-naming
   with:
-    default-branch: ${{ inputs.default-branch }}
+    release-branch: ${{ inputs.release-branch }}
     additional-release-branches: ${{ inputs.additional-release-branches }}
     max-version-parts: ${{ inputs.max-version-parts }}
     tag-version-calculation-strategy: ${{ inputs.tag-version-calculation-strategy }}

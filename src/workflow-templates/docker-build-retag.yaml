@@ -35,8 +35,8 @@ on:
         type: string
         default: ''
       # Version generator inputs (pass-through)
-      default-branch:
-        description: 'The default/release branch name'
+      release-branch:
+        description: 'The release branch name'
         required: false
         type: string
         default: 'main'

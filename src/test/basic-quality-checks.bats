@@ -23,7 +23,7 @@ teardown() {
   assert_output_contains "All quality checks passed"
 }
 
-@test "skips checks on default branch" {
+@test "skips checks on release branch" {
   TEST_REPO=$(clone_fixture "qc-clean")
   cd "$TEST_REPO"
   git checkout main --quiet
@@ -31,7 +31,7 @@ teardown() {
   export PR_BRANCH=main
   run "$SCRIPTS_DIR/basic-quality-checks"
   [ "$status" -eq 0 ]
-  assert_output_contains "Skipping checks for default branch"
+  assert_output_contains "Skipping checks for release branch"
 }
 
 @test "blocks GitHub default branch names" {

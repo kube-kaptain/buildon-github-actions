@@ -6,12 +6,11 @@ description: 'Generates version numbers, tags, and naming for releases'
 author: 'kube-kaptain'
 
 inputs:
-  default-branch:
-    description: 'The default/release branch name'
+  release-branch:
+    description: 'The release branch name'
     required: false
-    default: 'main'
   additional-release-branches:
-    description: 'Comma-separated list of additional release branch patterns'
+    description: 'Comma-separated list of additional release branches'
     required: false
     default: ''
   max-version-parts:
@@ -90,10 +89,12 @@ runs:
       shell: bash
       env:
         LOG_ERROR_PREFIX: '::error::'
+        LOG_WARNING_PREFIX: '::warning::'
         BUILD_MODE: build_server
         REPOSITORY_NAME: ${{ github.event.repository.name }}
         CURRENT_BRANCH: ${{ github.ref_name }}
-        DEFAULT_BRANCH: ${{ inputs.default-branch }}
+        RELEASE_BRANCH: ${{ inputs.release-branch }}
+        DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
         ADDITIONAL_RELEASE_BRANCHES: ${{ inputs.additional-release-branches }}
         MAX_VERSION_PARTS: ${{ inputs.max-version-parts }}
         TAG_VERSION_CALCULATION_STRATEGY: ${{ inputs.tag-version-calculation-strategy }}

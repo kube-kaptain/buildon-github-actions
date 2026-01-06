@@ -87,8 +87,8 @@ on:
         type: string
         default: ''
       # Version generator inputs (pass-through)
-      default-branch:
-        description: 'The default/release branch name'
+      release-branch:
+        description: 'The release branch name'
         required: false
         type: string
         default: 'main'
@@ -345,7 +345,7 @@ jobs:
         id: quality
         uses: ./.github/buildon-github-actions/src/actions/basic-quality-checks
         with:
-          default-branch: ${{ inputs.default-branch }}
+          release-branch: ${{ inputs.release-branch }}
           additional-release-branches: ${{ inputs.additional-release-branches }}
           block-slashes: ${{ inputs.block-slashes }}
           block-slash-containing-branches: ${{ inputs.block-slash-containing-branches }}
@@ -491,7 +491,7 @@ jobs:
         id: versions
         uses: ./.github/buildon-github-actions/src/actions/versions-and-naming
         with:
-          default-branch: ${{ inputs.default-branch }}
+          release-branch: ${{ inputs.release-branch }}
           additional-release-branches: ${{ inputs.additional-release-branches }}
           max-version-parts: ${{ inputs.max-version-parts }}
           tag-version-calculation-strategy: ${{ inputs.tag-version-calculation-strategy }}

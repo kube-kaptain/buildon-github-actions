@@ -29,12 +29,22 @@ PLUGINS_DIR="${SCRIPT_DIR}/../plugins"
 LOG_ERROR_PREFIX="${LOG_ERROR_PREFIX:-}"
 LOG_ERROR_SUFFIX="${LOG_ERROR_SUFFIX:-}"
 
-# Configuration with defaults
+# Input configuration
 BUILD_MODE="${BUILD_MODE:-local}"
 REPOSITORY_NAME="${REPOSITORY_NAME:?Is required}"
 CURRENT_BRANCH="${CURRENT_BRANCH:?Is required}"
-DEFAULT_BRANCH="${DEFAULT_BRANCH:-main}"
-ADDITIONAL_RELEASE_BRANCHES="${ADDITIONAL_RELEASE_BRANCHES:-}"  # Comma-separated list of additional release branches
+
+echo "Critical inputs:" >&2
+echo "  Repository name: ${REPOSITORY_NAME}" >&2
+echo "  Current branch:  ${CURRENT_BRANCH}" >&2
+echo "  Release branch:  ${RELEASE_BRANCH:-<not set>}" >&2
+echo "  Default branch:  ${DEFAULT_BRANCH:-<not set>}" >&2
+echo "  Build mode:      ${BUILD_MODE}" >&2
+echo >&2
+
+# shellcheck source=src/scripts/main/branch-setup-shared
+source "${SCRIPT_DIR}/branch-setup-shared"
+
 MAX_VERSION_PARTS="${MAX_VERSION_PARTS:-3}"  # Fail if version exceeds this many parts
 TAG_VERSION_CALCULATION_STRATEGY="${TAG_VERSION_CALCULATION_STRATEGY:-git-auto-closest-highest}"
 # For file-pattern-match strategy
@@ -49,28 +59,6 @@ if [[ "${BUILD_MODE}" != "local" && "${BUILD_MODE}" != "build_server" ]]; then
   echo "${LOG_ERROR_PREFIX}Invalid BUILD_MODE: ${BUILD_MODE}. Valid values: local, build_server${LOG_ERROR_SUFFIX}" >&2
   exit 1
 fi
-
-# Check if current branch is a release branch
-is_release_branch() {
-  local current_branch="${1}"
-
-  # Check if it's the default branch
-  if [[ "${current_branch}" == "${DEFAULT_BRANCH}" ]]; then
-    return 0
-  fi
-
-  # Check if it matches any additional release branch
-  if [[ -n "${ADDITIONAL_RELEASE_BRANCHES}" ]]; then
-    IFS=',' read -ra branches <<< "${ADDITIONAL_RELEASE_BRANCHES}"
-    for branch in "${branches[@]}"; do
-      if [[ "${current_branch}" == "${branch}" ]]; then
-        return 0
-      fi
-    done
-  fi
-
-  return 1
-}
 
 # Pad or truncate version to exactly N parts
 version_to_n_parts() {

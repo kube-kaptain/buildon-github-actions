@@ -13,13 +13,14 @@
 #
 set -uo pipefail
 
+SCRIPT_DIR="$(dirname "${0}")"
+
 # Logging configuration (CI-agnostic)
 LOG_ERROR_PREFIX="${LOG_ERROR_PREFIX:-}"
 LOG_ERROR_SUFFIX="${LOG_ERROR_SUFFIX:-}"
 
-# Configuration with defaults
-DEFAULT_BRANCH="${DEFAULT_BRANCH:-main}"
-ADDITIONAL_RELEASE_BRANCHES="${ADDITIONAL_RELEASE_BRANCHES:-}"
+# shellcheck source=src/scripts/main/branch-setup-shared
+source "${SCRIPT_DIR}/branch-setup-shared"
 # New names take precedence over deprecated names
 BLOCK_SLASH_CONTAINING_BRANCHES="${BLOCK_SLASH_CONTAINING_BRANCHES:-${BLOCK_SLASHES:-false}}"
 BLOCK_DOUBLE_HYPHEN_CONTAINING_BRANCHES="${BLOCK_DOUBLE_HYPHEN_CONTAINING_BRANCHES:-true}"
@@ -229,9 +230,9 @@ main() {
   echo "Checking quality for branch: ${branch}" >&2
   echo "Target branch: ${TARGET_BRANCH}" >&2
 
-  # Skip checks for the default branch itself (post-merge)
-  if [[ "${branch}" == "${DEFAULT_BRANCH}" ]]; then
-    echo "Skipping checks for default branch (post-merge context)" >&2
+  # Skip checks for release branches (post-merge context)
+  if is_release_branch "${branch}"; then
+    echo "Skipping checks for release branch (post-merge context)" >&2
     exit 0
   fi
 
