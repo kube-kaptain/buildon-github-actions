@@ -305,7 +305,7 @@ main() {
   # Check 5: Validate PR target branch
   if is_pr_context; then
     if ! is_valid_target "${TARGET_BRANCH}"; then
-      error ${FLAG_BAD_SETUP} "PR targets '${TARGET_BRANCH}' which is not an allowed target branch."
+      error ${FLAG_BAD_SETUP} "PR targets '${TARGET_BRANCH}' which is not a release branch. PRs must target ${RELEASE_BRANCH} or a configured additional release branch."
     else
       pass "PR targets an allowed branch"
     fi

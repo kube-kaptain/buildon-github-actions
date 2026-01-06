@@ -181,7 +181,7 @@ teardown() {
   # FLAG_BAD_TARGET = 16, and FLAG_BAD_CONTENTS = 8 since develop doesn't exist
   # Actually the script checks if target is allowed first
   [ "$status" -ne 0 ]
-  assert_output_contains "not an allowed target"
+  assert_output_contains "not a release branch"
 }
 
 @test "allows configured patch branches as targets" {
