@@ -13,6 +13,18 @@ teardown() {
   cleanup_test_repo "$TEST_REPO"
 }
 
+@test "fails when release-branch differs from default-branch" {
+  TEST_REPO=$(clone_fixture "qc-clean")
+  cd "$TEST_REPO"
+
+  export DEFAULT_BRANCH=main
+  export RELEASE_BRANCH=develop
+  export PR_BRANCH=fix-something
+  run "$SCRIPTS_DIR/basic-quality-checks"
+  [ "$status" -eq 1 ]
+  assert_output_contains "RELEASE_BRANCH (develop) must match DEFAULT_BRANCH (main)"
+}
+
 @test "passes for clean feature branch" {
   TEST_REPO=$(clone_fixture "qc-clean")
   cd "$TEST_REPO"

@@ -238,6 +238,12 @@ pass() {
 }
 
 main() {
+  # Configuration validation - fail fast on conflicting settings
+  if [[ "${RELEASE_BRANCH}" != "${DEFAULT_BRANCH}" ]]; then
+    echo "${LOG_ERROR_PREFIX}Configuration error: RELEASE_BRANCH (${RELEASE_BRANCH}) must match DEFAULT_BRANCH (${DEFAULT_BRANCH})${LOG_ERROR_SUFFIX}" >&2
+    exit 1
+  fi
+
   local branch
   branch=$(get_pr_branch)
 
