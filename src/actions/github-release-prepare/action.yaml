@@ -106,6 +106,7 @@ runs:
         set -euo pipefail
 
         # Fixed output subdirectory (shared knowledge with github-release action)
+        OUTPUT_SUB_PATH="${OUTPUT_SUB_PATH:-target}"
         RELEASE_OUTPUT_DIR="${OUTPUT_SUB_PATH}/github-release"
 
         # Add version suffix to filename before extension

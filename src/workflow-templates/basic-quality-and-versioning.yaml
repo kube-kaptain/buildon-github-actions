@@ -85,6 +85,11 @@ on:
         required: false
         type: string
         default: ''
+      output-sub-path:
+        description: 'Build output directory (relative)'
+        required: false
+        type: string
+        default: 'target'
       pre-tagging-tests-script-sub-path:
         description: 'Path to pre-tagging test script relative to .github/ (e.g., bin/pre-tagging.bash)'
         required: false
