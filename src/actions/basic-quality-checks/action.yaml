@@ -47,16 +47,16 @@ runs:
       env:
         LOG_ERROR_PREFIX: '::error::'
         LOG_WARNING_PREFIX: '::warning::'
-        DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        CURRENT_BRANCH: ${{ github.head_ref || github.ref_name }}
         RELEASE_BRANCH: ${{ inputs.release-branch }}
         ADDITIONAL_RELEASE_BRANCHES: ${{ inputs.additional-release-branches }}
+        DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        TARGET_BRANCH: ${{ github.base_ref }}
+        MERGE_CANDIDATE_CREATOR: ${{ github.event.pull_request.user.login }}
         BLOCK_SLASHES: ${{ inputs.block-slashes }}
         BLOCK_SLASH_CONTAINING_BRANCHES: ${{ inputs.block-slash-containing-branches }}
         BLOCK_DOUBLE_HYPHEN_CONTAINING_BRANCHES: ${{ inputs.block-double-hyphen-containing-branches }}
         REQUIRE_CONVENTIONAL_BRANCHES: ${{ inputs.require-conventional-branches }}
-        REQUIRE_CONVENTIONAL_COMMITS: ${{ inputs.require-conventional-commits }}
         BLOCK_CONVENTIONAL_COMMITS: ${{ inputs.block-conventional-commits }}
-        TARGET_BRANCH: ${{ github.base_ref }}
-        PR_BRANCH: ${{ github.head_ref }}
-        PR_CREATOR: ${{ github.event.pull_request.user.login }}
+        REQUIRE_CONVENTIONAL_COMMITS: ${{ inputs.require-conventional-commits }}
       run: "${{ github.action_path }}/../../scripts/main/basic-quality-checks"
