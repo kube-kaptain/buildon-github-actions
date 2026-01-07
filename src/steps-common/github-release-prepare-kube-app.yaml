@@ -3,7 +3,7 @@
 
 - name: Prepare release files
   id: github-release-prepare
-  if: inputs.github-release-enabled == true && steps.versions.outputs.is-release == 'true'
+  if: inputs.github-release-enabled == true
   uses: ./.github/buildon-github-actions/src/actions/github-release-prepare
   with:
     github-release-files: ${{ steps.manifest-package.outputs.manifests-zip-sub-path }}/${{ steps.manifest-package.outputs.manifests-zip-file-name }} ${{ inputs.github-release-files }}
