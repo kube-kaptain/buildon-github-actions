@@ -172,8 +172,8 @@ teardown() {
 @test "respects ADDITIONAL_RELEASE_BRANCHES configuration" {
   TEST_REPO=$(clone_fixture "tag-feature-branch")
   cd "$TEST_REPO"
-  export CURRENT_BRANCH=feature-test
-  export ADDITIONAL_RELEASE_BRANCHES="feature-test"
+  export CURRENT_BRANCH=main-test
+  export ADDITIONAL_RELEASE_BRANCHES="main-test"
 
   run "$SCRIPTS_DIR/versions-and-naming"
   [ "$status" -eq 0 ]
@@ -674,9 +674,9 @@ ENV KUBECTL_VERSION=1.28.5' > src/docker/Dockerfile
 @test "BUILD_MODE=local forces IS_RELEASE=false on additional release branch" {
   TEST_REPO=$(clone_fixture "tag-feature-branch")
   cd "$TEST_REPO"
-  export CURRENT_BRANCH=feature-test
+  export CURRENT_BRANCH=main-test
   export BUILD_MODE="local"
-  export ADDITIONAL_RELEASE_BRANCHES="feature-test"
+  export ADDITIONAL_RELEASE_BRANCHES="main-test"
 
   run "$SCRIPTS_DIR/versions-and-naming"
   [ "$status" -eq 0 ]
@@ -693,4 +693,37 @@ ENV KUBECTL_VERSION=1.28.5' > src/docker/Dockerfile
   [ "$status" -eq 0 ]
   assert_var_equals "IS_RELEASE" "true"
   assert_var_equals "DOCKER_TAG" "1.0.0"
+}
+
+# Branch configuration validation tests
+
+@test "fails when release-branch differs from default-branch" {
+  TEST_REPO=$(clone_fixture "tag-none")
+  cd "$TEST_REPO"
+
+  export DEFAULT_BRANCH=main
+  export RELEASE_BRANCH=develop
+  run "$SCRIPTS_DIR/versions-and-naming"
+  [ "$status" -eq 1 ]
+  assert_output_contains "RELEASE_BRANCH (develop) must match DEFAULT_BRANCH (main)"
+}
+
+@test "fails when additional-release-branch not prefixed with release-branch" {
+  TEST_REPO=$(clone_fixture "tag-none")
+  cd "$TEST_REPO"
+
+  export ADDITIONAL_RELEASE_BRANCHES="release-1.0.x"
+  run "$SCRIPTS_DIR/versions-and-naming"
+  [ "$status" -eq 1 ]
+  assert_output_contains "must start with 'main' followed by a divider"
+}
+
+@test "accepts additional-release-branches with valid prefixes" {
+  TEST_REPO=$(clone_fixture "tag-none")
+  cd "$TEST_REPO"
+
+  # All valid dividers: . - / _ +
+  export ADDITIONAL_RELEASE_BRANCHES="main-1.0,main.hotfix,main/patch,main_test,main+experimental"
+  run "$SCRIPTS_DIR/versions-and-naming"
+  [ "$status" -eq 0 ]
 }

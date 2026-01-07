@@ -30,14 +30,7 @@ set -uo pipefail
 
 SCRIPT_DIR="$(dirname "${0}")"
 
-# Logging configuration (CI-agnostic)
-LOG_ERROR_PREFIX="${LOG_ERROR_PREFIX:-}"
-LOG_ERROR_SUFFIX="${LOG_ERROR_SUFFIX:-}"
-
-# Branch context (RELEASE_BRANCH, ADDITIONAL_RELEASE_BRANCHES, DEFAULT_BRANCH from shared)
-# shellcheck source=src/scripts/main/branch-setup-shared
-source "${SCRIPT_DIR}/branch-setup-shared"
-CURRENT_BRANCH="${CURRENT_BRANCH:?Is required}"
+# Script-specific inputs
 TARGET_BRANCH="${TARGET_BRANCH:?Is required - quality checks only make sense in PR context}"
 MERGE_CANDIDATE_CREATOR="${MERGE_CANDIDATE_CREATOR:-}"
 
@@ -56,6 +49,9 @@ FLAG_BAD_BRANCH=2
 FLAG_BAD_COMMIT=4
 FLAG_BAD_CONTENTS=8
 FLAG_BAD_SETUP=16
+
+# shellcheck source=src/scripts/main/branch-setup-shared
+source "${SCRIPT_DIR}/branch-setup-shared"
 
 # Accumulated error code
 ERROR_CODE=0
@@ -206,24 +202,6 @@ pass() {
 }
 
 main() {
-  # Configuration validation - fail fast on conflicting settings
-  if [[ "${RELEASE_BRANCH}" != "${DEFAULT_BRANCH}" ]]; then
-    echo "${LOG_ERROR_PREFIX}Configuration error: RELEASE_BRANCH (${RELEASE_BRANCH}) must match DEFAULT_BRANCH (${DEFAULT_BRANCH})${LOG_ERROR_SUFFIX}" >&2
-    exit 1
-  fi
-
-  # Validate additional release branches are prefixed with release branch
-  if [[ -n "${ADDITIONAL_RELEASE_BRANCHES}" ]]; then
-    IFS=',' read -ra additional_branches <<< "${ADDITIONAL_RELEASE_BRANCHES}"
-    for additional in "${additional_branches[@]}"; do
-      # Must be release-branch exactly, or release-branch followed by a divider
-      if [[ "${additional}" != "${RELEASE_BRANCH}" ]] && ! [[ "${additional}" =~ ^${RELEASE_BRANCH}[-._/+] ]]; then
-        echo "${LOG_ERROR_PREFIX}Configuration error: Additional release branch '${additional}' must start with '${RELEASE_BRANCH}' followed by a divider (. - / _ +)${LOG_ERROR_SUFFIX}" >&2
-        exit 1
-      fi
-    done
-  fi
-
   echo "Checking quality for branch: ${CURRENT_BRANCH}" >&2
   echo "Target branch: ${TARGET_BRANCH}" >&2
 

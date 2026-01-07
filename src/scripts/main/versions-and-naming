@@ -25,35 +25,46 @@ set -euo pipefail
 SCRIPT_DIR="$(dirname "${0}")"
 PLUGINS_DIR="${SCRIPT_DIR}/../plugins"
 
-# Logging configuration (CI-agnostic)
-LOG_ERROR_PREFIX="${LOG_ERROR_PREFIX:-}"
-LOG_ERROR_SUFFIX="${LOG_ERROR_SUFFIX:-}"
-
-# Input configuration
+# Script-specific inputs
 BUILD_MODE="${BUILD_MODE:-local}"
 REPOSITORY_NAME="${REPOSITORY_NAME:?Is required}"
-CURRENT_BRANCH="${CURRENT_BRANCH:?Is required}"
 
-echo "Critical inputs:" >&2
-echo "  Repository name: ${REPOSITORY_NAME}" >&2
-echo "  Current branch:  ${CURRENT_BRANCH}" >&2
-echo "  Release branch:  ${RELEASE_BRANCH:-<not set>}" >&2
-echo "  Default branch:  ${DEFAULT_BRANCH:-<not set>}" >&2
-echo "  Build mode:      ${BUILD_MODE}" >&2
-echo >&2
+# Version calculation configuration
+MAX_VERSION_PARTS="${MAX_VERSION_PARTS:-3}"
+TAG_VERSION_CALCULATION_STRATEGY="${TAG_VERSION_CALCULATION_STRATEGY:-git-auto-closest-highest}"
+TAG_VERSION_PATTERN_TYPE="${TAG_VERSION_PATTERN_TYPE:-dockerfile-env-kubectl}"
+TAG_VERSION_PREFIX_PARTS="${TAG_VERSION_PREFIX_PARTS:-}"
+DOCKERFILE_SUB_PATH="${DOCKERFILE_SUB_PATH:-}"
+TAG_VERSION_SOURCE_SUB_PATH="${TAG_VERSION_SOURCE_SUB_PATH:-}"
+TAG_VERSION_SOURCE_FILE_NAME="${TAG_VERSION_SOURCE_FILE_NAME:-}"
+TAG_VERSION_SOURCE_CUSTOM_PATTERN="${TAG_VERSION_SOURCE_CUSTOM_PATTERN:-}"
 
 # shellcheck source=src/scripts/main/branch-setup-shared
 source "${SCRIPT_DIR}/branch-setup-shared"
 
-MAX_VERSION_PARTS="${MAX_VERSION_PARTS:-3}"  # Fail if version exceeds this many parts
-TAG_VERSION_CALCULATION_STRATEGY="${TAG_VERSION_CALCULATION_STRATEGY:-git-auto-closest-highest}"
-# For file-pattern-match strategy
-TAG_VERSION_PATTERN_TYPE="${TAG_VERSION_PATTERN_TYPE:-dockerfile-env-kubectl}"
-TAG_VERSION_PREFIX_PARTS="${TAG_VERSION_PREFIX_PARTS:-}"  # Number of parts from source version to use as prefix (default 2)
-DOCKERFILE_SUB_PATH="${DOCKERFILE_SUB_PATH:-}"  # Fallback for dockerfile-env-kubectl pattern type
-TAG_VERSION_SOURCE_SUB_PATH="${TAG_VERSION_SOURCE_SUB_PATH:-}"  # Optional override
-TAG_VERSION_SOURCE_FILE_NAME="${TAG_VERSION_SOURCE_FILE_NAME:-}"  # Optional override
-TAG_VERSION_SOURCE_CUSTOM_PATTERN="${TAG_VERSION_SOURCE_CUSTOM_PATTERN:-}"  # Required for custom type
+echo "Critical inputs:" >&2
+echo "  Repository name: ${REPOSITORY_NAME}" >&2
+echo "  Current branch:  ${CURRENT_BRANCH}" >&2
+echo "  Release branch:  ${RELEASE_BRANCH}" >&2
+echo "  Default branch:  ${DEFAULT_BRANCH}" >&2
+echo "  Build mode:      ${BUILD_MODE}" >&2
+echo >&2
+
+# Configuration validation - fail fast on conflicting settings
+if [[ "${RELEASE_BRANCH}" != "${DEFAULT_BRANCH}" ]]; then
+  echo "${LOG_ERROR_PREFIX}Configuration error: RELEASE_BRANCH (${RELEASE_BRANCH}) must match DEFAULT_BRANCH (${DEFAULT_BRANCH})${LOG_ERROR_SUFFIX}" >&2
+  exit 1
+fi
+
+if [[ -n "${ADDITIONAL_RELEASE_BRANCHES}" ]]; then
+  IFS=',' read -ra additional_branches <<< "${ADDITIONAL_RELEASE_BRANCHES}"
+  for additional in "${additional_branches[@]}"; do
+    if [[ "${additional}" != "${RELEASE_BRANCH}" ]] && ! [[ "${additional}" =~ ^${RELEASE_BRANCH}[-._/+] ]]; then
+      echo "${LOG_ERROR_PREFIX}Configuration error: Additional release branch '${additional}' must start with '${RELEASE_BRANCH}' followed by a divider (. - / _ +)${LOG_ERROR_SUFFIX}" >&2
+      exit 1
+    fi
+  done
+fi
 
 if [[ "${BUILD_MODE}" != "local" && "${BUILD_MODE}" != "build_server" ]]; then
   echo "${LOG_ERROR_PREFIX}Invalid BUILD_MODE: ${BUILD_MODE}. Valid values: local, build_server${LOG_ERROR_SUFFIX}" >&2

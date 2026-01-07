@@ -7,9 +7,14 @@
 # Sourced by scripts that need release branch handling.
 #
 
-# Warning logging configuration (CI-agnostic)
+# Logging configuration (CI-agnostic)
+LOG_ERROR_PREFIX="${LOG_ERROR_PREFIX:-}"
+LOG_ERROR_SUFFIX="${LOG_ERROR_SUFFIX:-}"
 LOG_WARNING_PREFIX="${LOG_WARNING_PREFIX:-}"
 LOG_WARNING_SUFFIX="${LOG_WARNING_SUFFIX:-}"
+
+# Current branch (required by all consumers)
+CURRENT_BRANCH="${CURRENT_BRANCH:?Is required}"
 
 # Branch configuration (no defaults - warn and apply if not set)
 RELEASE_BRANCH="${RELEASE_BRANCH:-}"
