@@ -1,12 +1,21 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
 
+# Copy manifests zip directly (already has version in filename, binary file)
+- name: Copy manifests zip to release directory
+  if: inputs.github-release-enabled == true
+  shell: bash
+  run: |
+    mkdir -p "${{ inputs.output-sub-path }}/github-release"
+    cp "${{ steps.manifest-package.outputs.manifests-zip-sub-path }}/${{ steps.manifest-package.outputs.manifests-zip-file-name }}" \
+       "${{ inputs.output-sub-path }}/github-release/"
+
 - name: Prepare release files
   id: github-release-prepare
   if: inputs.github-release-enabled == true
   uses: ./.github/buildon-github-actions/src/actions/github-release-prepare
   with:
-    github-release-files: ${{ steps.manifest-package.outputs.manifests-zip-sub-path }}/${{ steps.manifest-package.outputs.manifests-zip-file-name }} ${{ inputs.github-release-files }}
+    github-release-files: ${{ inputs.github-release-files }}
     output-sub-path: ${{ inputs.output-sub-path }}
     version: ${{ steps.versions.outputs.version }}
     project-name: ${{ steps.versions.outputs.project-name }}

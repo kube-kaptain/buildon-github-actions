@@ -780,12 +780,21 @@ jobs:
           check-run-id: ${{ steps.check-post-package.outputs.check-run-id }}
 
       # === GitHub Release Prepare ===
+      # Copy manifests zip directly (already has version in filename, binary file)
+      - name: Copy manifests zip to release directory
+        if: inputs.github-release-enabled == true && success()
+        shell: bash
+        run: |
+          mkdir -p "${{ inputs.output-sub-path }}/github-release"
+          cp "${{ steps.manifest-package.outputs.manifests-zip-sub-path }}/${{ steps.manifest-package.outputs.manifests-zip-file-name }}" \
+             "${{ inputs.output-sub-path }}/github-release/"
+
       - name: Prepare release files
         id: github-release-prepare
         if: inputs.github-release-enabled == true && success()
         uses: ./.github/buildon-github-actions/src/actions/github-release-prepare
         with:
-          github-release-files: ${{ steps.manifest-package.outputs.manifests-zip-sub-path }}/${{ steps.manifest-package.outputs.manifests-zip-file-name }} ${{ inputs.github-release-files }}
+          github-release-files: ${{ inputs.github-release-files }}
           output-sub-path: ${{ inputs.output-sub-path }}
           version: ${{ steps.versions.outputs.version }}
           project-name: ${{ steps.versions.outputs.project-name }}
