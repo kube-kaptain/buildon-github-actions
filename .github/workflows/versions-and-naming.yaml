@@ -193,7 +193,7 @@ jobs:
           GITHUB_WORKFLOW_REF: ${{ github.workflow_ref }}
 
       - name: Checkout actions
-        if: steps.parse.outputs.ref != 'LOCAL'
+        if: steps.parse.outputs.ref != 'LOCAL' && success()
         uses: actions/checkout@v4.2.2
         with:
           repository: kube-kaptain/buildon-github-actions
@@ -201,12 +201,12 @@ jobs:
           path: .github/buildon-github-actions
 
       - name: Link local actions
-        if: steps.parse.outputs.ref == 'LOCAL'
+        if: steps.parse.outputs.ref == 'LOCAL' && success()
         run: |
           echo "Linking local actions for dogfooding"
           ln -s "$(pwd)" .github/buildon-github-actions
       - name: Run pre-tagging tests
-        if: inputs.pre-tagging-tests-script-sub-path != ''
+        if: inputs.pre-tagging-tests-script-sub-path != '' && success()
         id: pre-tagging-tests
         uses: ./.github/buildon-github-actions/src/actions/run-hook-script
         with:
@@ -229,7 +229,7 @@ jobs:
       # === GitHub Release Prepare ===
       - name: Prepare release files
         id: github-release-prepare
-        if: inputs.github-release-enabled == true && steps.versions.outputs.is-release == 'true'
+        if: inputs.github-release-enabled == true && steps.versions.outputs.is-release == 'true' && success()
         uses: ./.github/buildon-github-actions/src/actions/github-release-prepare
         with:
           github-release-files: ${{ inputs.github-release-files }}
@@ -250,7 +250,7 @@ jobs:
 
       # === Git Tag Push ===
       - name: Push git tag
-        if: steps.versions.outputs.is-release == 'true'
+        if: steps.versions.outputs.is-release == 'true' && success()
         uses: ./.github/buildon-github-actions/src/actions/git-push-tag
         with:
           git-tag: ${{ steps.versions.outputs.git-tag }}
@@ -266,7 +266,7 @@ jobs:
           check-name: 'Versions & Naming → GitHub Release'
       - name: Compute release notes
         id: release-notes
-        if: inputs.github-release-enabled == true && steps.versions.outputs.is-release == 'true'
+        if: inputs.github-release-enabled == true && steps.versions.outputs.is-release == 'true' && success()
         shell: bash
         env:
           USER_NOTES: ${{ inputs.github-release-notes }}
@@ -293,7 +293,7 @@ jobs:
           fi
 
       - name: GitHub Release
-        if: inputs.github-release-enabled == true && steps.versions.outputs.is-release == 'true'
+        if: inputs.github-release-enabled == true && steps.versions.outputs.is-release == 'true' && success()
         uses: ./.github/buildon-github-actions/src/actions/github-release
         with:
           github-release-enabled: ${{ inputs.github-release-enabled }}

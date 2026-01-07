@@ -290,7 +290,7 @@ jobs:
           GITHUB_WORKFLOW_REF: ${{ github.workflow_ref }}
 
       - name: Checkout actions
-        if: steps.parse.outputs.ref != 'LOCAL'
+        if: steps.parse.outputs.ref != 'LOCAL' && success()
         uses: actions/checkout@v4.2.2
         with:
           repository: kube-kaptain/buildon-github-actions
@@ -298,7 +298,7 @@ jobs:
           path: .github/buildon-github-actions
 
       - name: Link local actions
-        if: steps.parse.outputs.ref == 'LOCAL'
+        if: steps.parse.outputs.ref == 'LOCAL' && success()
         run: |
           echo "Linking local actions for dogfooding"
           ln -s "$(pwd)" .github/buildon-github-actions
@@ -392,7 +392,7 @@ jobs:
           GITHUB_WORKFLOW_REF: ${{ github.workflow_ref }}
 
       - name: Checkout actions
-        if: steps.parse.outputs.ref != 'LOCAL'
+        if: steps.parse.outputs.ref != 'LOCAL' && success()
         uses: actions/checkout@v4.2.2
         with:
           repository: kube-kaptain/buildon-github-actions
@@ -400,7 +400,7 @@ jobs:
           path: .github/buildon-github-actions
 
       - name: Link local actions
-        if: steps.parse.outputs.ref == 'LOCAL'
+        if: steps.parse.outputs.ref == 'LOCAL' && success()
         run: |
           echo "Linking local actions for dogfooding"
           ln -s "$(pwd)" .github/buildon-github-actions
@@ -422,7 +422,7 @@ jobs:
           action: start
           check-name: 'Build & Push → Pre-tagging Tests'
       - name: Run pre-tagging tests
-        if: inputs.pre-tagging-tests-script-sub-path != ''
+        if: inputs.pre-tagging-tests-script-sub-path != '' && success()
         id: pre-tagging-tests
         uses: ./.github/buildon-github-actions/src/actions/run-hook-script
         with:
@@ -573,7 +573,7 @@ jobs:
 
       # === Git Tag Push ===
       - name: Push git tag
-        if: steps.versions.outputs.is-release == 'true'
+        if: steps.versions.outputs.is-release == 'true' && success()
         uses: ./.github/buildon-github-actions/src/actions/git-push-tag
         with:
           git-tag: ${{ steps.versions.outputs.git-tag }}
@@ -589,7 +589,7 @@ jobs:
           check-name: 'Build & Push → Docker Push'
       - name: Push image
         id: docker-push
-        if: steps.versions.outputs.is-release == 'true'
+        if: steps.versions.outputs.is-release == 'true' && success()
         uses: ./.github/buildon-github-actions/src/actions/docker-push
         with:
           docker-image-full-uri: ${{ steps.docker-build.outputs.docker-target-image-full-uri }}

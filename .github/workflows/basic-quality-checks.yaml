@@ -100,7 +100,7 @@ jobs:
           GITHUB_WORKFLOW_REF: ${{ github.workflow_ref }}
 
       - name: Checkout actions
-        if: steps.parse.outputs.ref != 'LOCAL'
+        if: steps.parse.outputs.ref != 'LOCAL' && success()
         uses: actions/checkout@v4.2.2
         with:
           repository: kube-kaptain/buildon-github-actions
@@ -108,7 +108,7 @@ jobs:
           path: .github/buildon-github-actions
 
       - name: Link local actions
-        if: steps.parse.outputs.ref == 'LOCAL'
+        if: steps.parse.outputs.ref == 'LOCAL' && success()
         run: |
           echo "Linking local actions for dogfooding"
           ln -s "$(pwd)" .github/buildon-github-actions
