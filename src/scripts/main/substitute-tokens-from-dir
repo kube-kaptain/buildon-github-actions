@@ -9,12 +9,12 @@
 # Supports nested directories: path becomes part of token name (e.g., category/my-var).
 #
 # Usage:
-#   substitute-tokens-from-dir <token-style> <tokens-dir> <target-dir>
+#   substitute-tokens-from-dir <token-style> <tokens-dir> <target-file-or-dir>
 #
 # Arguments:
-#   token-style  - Substitution syntax (shell, mustache, helm, erb, github-actions, etc.)
-#   tokens-dir   - Directory containing token files
-#   target-dir   - Directory containing files to substitute into (modified in-place)
+#   token-style        - Substitution syntax (shell, mustache, helm, erb, github-actions, etc.)
+#   tokens-dir         - Directory containing token files
+#   target-file-or-dir - File or directory to substitute into (modified in-place)
 #
 # Environment:
 #   CONFIG_VALUE_TRAILING_NEWLINE - How to handle trailing newlines in token values
@@ -35,13 +35,13 @@ LOG_ERROR_SUFFIX="${LOG_ERROR_SUFFIX:-}"
 
 # Validate arguments
 if [[ $# -ne 3 ]]; then
-  echo "${LOG_ERROR_PREFIX}Usage: substitute-tokens-from-dir <token-style> <tokens-dir> <target-dir>${LOG_ERROR_SUFFIX}" >&2
+  echo "${LOG_ERROR_PREFIX}Usage: substitute-tokens-from-dir <token-style> <tokens-dir> <target-file-or-dir>${LOG_ERROR_SUFFIX}" >&2
   exit 1
 fi
 
 TOKEN_STYLE="${1:-shell}"
 TOKENS_DIR="${2}"
-TARGET_DIR="${3}"
+TARGET="${3}"
 
 # Validate token style script exists
 PROVIDER_SCRIPT="${PLUGINS_DIR}/token-substitution-providers/substitute-${TOKEN_STYLE}-style-token"
@@ -56,9 +56,13 @@ if [[ ! -d "${TOKENS_DIR}" ]]; then
   exit 1
 fi
 
-# Validate target directory exists
-if [[ ! -d "${TARGET_DIR}" ]]; then
-  echo "${LOG_ERROR_PREFIX}Target directory not found: ${TARGET_DIR}${LOG_ERROR_SUFFIX}" >&2
+# Validate target exists (file or directory)
+if [[ -d "${TARGET}" ]]; then
+  TARGET_MODE="dir"
+elif [[ -f "${TARGET}" ]]; then
+  TARGET_MODE="file"
+else
+  echo "${LOG_ERROR_PREFIX}Target not found: ${TARGET}${LOG_ERROR_SUFFIX}" >&2
   exit 1
 fi
 
@@ -94,8 +98,13 @@ if [[ ${#binary_files_found[@]} -gt 0 ]]; then
   exit 1
 fi
 
-# Convert target directory to absolute path for the provider script
-TARGET_DIR_ABS="$(cd "${TARGET_DIR}" && pwd)"
+# Convert target to absolute path for the provider script
+if [[ "${TARGET_MODE}" == "dir" ]]; then
+  TARGET_ABS="$(cd "${TARGET}" && pwd)"
+else
+  # For files, get absolute path
+  TARGET_ABS="$(cd "$(dirname "${TARGET}")" && pwd)/$(basename "${TARGET}")"
+fi
 
 # Process tokens from tokens directory
 # cd to tokens-dir so token paths are relative (become token names)
@@ -110,5 +119,5 @@ while IFS= read -r token_file; do
   # Call the style-specific substitution script
   # Pass CONFIG_VALUE_TRAILING_NEWLINE to child
   CONFIG_VALUE_TRAILING_NEWLINE="${CONFIG_VALUE_TRAILING_NEWLINE:-strip-for-single-line}" \
-  "${PROVIDER_SCRIPT}" "${token_file}" "${TARGET_DIR_ABS}"
+  "${PROVIDER_SCRIPT}" "${token_file}" "${TARGET_ABS}"
 done < <(find . -type f | LC_ALL=C sort)

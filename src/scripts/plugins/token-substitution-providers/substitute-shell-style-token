@@ -5,14 +5,14 @@
 # substitute-shell-style-token - Substitutes a single shell-style ${TOKEN} in files
 #
 # Called from tokens directory as working directory.
-# Substitutes ${TOKEN_NAME} with TOKEN_VALUE in-place across all files in target-dir.
+# Substitutes ${TOKEN_NAME} with TOKEN_VALUE in-place in target file or all files in target dir.
 #
 # Usage:
-#   substitute-shell-style-token <token-file> <target-dir>
+#   substitute-shell-style-token <token-file> <target-file-or-dir>
 #
 # Arguments:
-#   token-file  - Path to token file (relative to current dir, becomes token name)
-#   target-dir  - Directory containing files to substitute into (absolute path)
+#   token-file         - Path to token file (relative to current dir, becomes token name)
+#   target-file-or-dir - File or directory to substitute into (absolute path)
 #
 # Environment:
 #   CONFIG_VALUE_TRAILING_NEWLINE - How to handle trailing newlines in token values
@@ -34,12 +34,12 @@ LOG_ERROR_SUFFIX="${LOG_ERROR_SUFFIX:-}"
 
 # Validate arguments
 if [[ ${#} -ne 2 ]]; then
-  echo "${LOG_ERROR_PREFIX}Usage: substitute-shell-style-token <token-file> <target-dir>${LOG_ERROR_SUFFIX}" >&2
+  echo "${LOG_ERROR_PREFIX}Usage: substitute-shell-style-token <token-file> <target-file-or-dir>${LOG_ERROR_SUFFIX}" >&2
   exit 1
 fi
 
 TOKEN_FILE="${1}"
-TARGET_DIR="${2}"
+TARGET="${2}"
 
 # Validate token file exists
 if [[ ! -f "${TOKEN_FILE}" ]]; then
@@ -47,9 +47,13 @@ if [[ ! -f "${TOKEN_FILE}" ]]; then
   exit 1
 fi
 
-# Validate target directory exists
-if [[ ! -d "${TARGET_DIR}" ]]; then
-  echo "${LOG_ERROR_PREFIX}Target directory not found: ${TARGET_DIR}${LOG_ERROR_SUFFIX}" >&2
+# Validate target exists (file or directory)
+if [[ -d "${TARGET}" ]]; then
+  TARGET_MODE="dir"
+elif [[ -f "${TARGET}" ]]; then
+  TARGET_MODE="file"
+else
+  echo "${LOG_ERROR_PREFIX}Target not found: ${TARGET}${LOG_ERROR_SUFFIX}" >&2
   exit 1
 fi
 
@@ -102,8 +106,12 @@ substitute_in_file() {
   printf '%s' "${result}" > "${file}"
 }
 
-# Process all files in target directory
+# Process target file(s)
 # shellcheck disable=SC2153,SC2154 # TOKEN_NAME/TOKEN_VALUE set by sourced prepare-token-name-and-value.bash
-while IFS= read -r -d '' file; do
-  substitute_in_file "${file}" "${TOKEN_NAME}" "${TOKEN_VALUE}"
-done < <(find "${TARGET_DIR}" -type f -print0)
+if [[ "${TARGET_MODE}" == "file" ]]; then
+  substitute_in_file "${TARGET}" "${TOKEN_NAME}" "${TOKEN_VALUE}"
+else
+  while IFS= read -r -d '' file; do
+    substitute_in_file "${file}" "${TOKEN_NAME}" "${TOKEN_VALUE}"
+  done < <(find "${TARGET}" -type f -print0)
+fi
