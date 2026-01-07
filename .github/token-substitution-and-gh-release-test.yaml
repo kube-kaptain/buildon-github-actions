@@ -1,0 +1,11 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
+#
+# Test file for token substitution and GitHub release file processing
+# Built-in tokens available in basic-quality-and-versioning workflow
+data:
+  ProjectName: ${ProjectName}
+  Version: ${Version}
+  DockerTag: ${DockerTag}
+  DockerImageName: ${DockerImageName}
+  IsRelease: ${IsRelease}

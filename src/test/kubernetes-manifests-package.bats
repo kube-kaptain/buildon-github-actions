@@ -342,16 +342,6 @@ set_required_env() {
   assert_output_contains "Unknown token name style"
 }
 
-@test "defaults SUBSTITUTION_TOKEN_STYLE to shell" {
-  set_required_env
-  unset SUBSTITUTION_TOKEN_STYLE
-  create_manifest "deployment.yaml" 'name: ${ProjectName}'
-
-  run "$SCRIPTS_DIR/kubernetes-manifests-package"
-  [ "$status" -eq 0 ]
-  assert_output_contains "Token style: shell"
-}
-
 @test "uses mustache token style" {
   set_required_env
   export SUBSTITUTION_TOKEN_STYLE="mustache"

@@ -38,27 +38,21 @@ inputs:
   substitution-token-style:
     description: 'Token delimiter syntax'
     required: false
-    default: 'shell'
   token-name-style:
     description: 'Case style for token names'
     required: false
-    default: 'PascalCase'
   token-name-validation:
     description: 'How to validate token names'
     required: false
-    default: 'MATCH'
   config-sub-path:
     description: 'User config directory'
     required: false
-    default: 'src/config'
   allow-builtin-token-override:
     description: 'Allow user tokens to override built-ins'
     required: false
-    default: 'false'
   config-value-trailing-newline:
     description: 'Trailing newline handling'
     required: false
-    default: 'strip-for-single-line'
   docker-image-full-uri:
     description: 'Full Docker image URI (optional built-in token)'
     required: false
@@ -105,8 +99,20 @@ runs:
       run: |
         set -euo pipefail
 
-        # Fixed output subdirectory (shared knowledge with github-release action)
+        # Apply defaults for inputs used directly in this script
         OUTPUT_SUB_PATH="${OUTPUT_SUB_PATH:-target}"
+        ADD_VERSION_TO_FILENAMES="${ADD_VERSION_TO_FILENAMES:-true}"
+        SUBSTITUTE_TOKENS_IN_FILES="${SUBSTITUTE_TOKENS_IN_FILES:-true}"
+
+        # Pass-through vars (called scripts default their own; these just satisfy set -u)
+        SUBSTITUTION_TOKEN_STYLE="${SUBSTITUTION_TOKEN_STYLE:-}"
+        TOKEN_NAME_STYLE="${TOKEN_NAME_STYLE:-}"
+        TOKEN_NAME_VALIDATION="${TOKEN_NAME_VALIDATION:-}"
+        ALLOW_BUILTIN_TOKEN_OVERRIDE="${ALLOW_BUILTIN_TOKEN_OVERRIDE:-}"
+        CONFIG_SUB_PATH="${CONFIG_SUB_PATH:-}"
+        CONFIG_VALUE_TRAILING_NEWLINE="${CONFIG_VALUE_TRAILING_NEWLINE:-}"
+
+        # Fixed output subdirectory (shared knowledge with github-release action)
         RELEASE_OUTPUT_DIR="${OUTPUT_SUB_PATH}/github-release"
 
         # Add version suffix to filename before extension
