@@ -360,7 +360,7 @@ jobs:
       # === GitHub Release Prepare ===
       - name: Prepare release files
         id: github-release-prepare
-        if: inputs.github-release-enabled == true && steps.versions.outputs.is-release == 'true' && success()
+        if: inputs.github-release-enabled == true && success()
         uses: ./.github/buildon-github-actions/src/actions/github-release-prepare
         with:
           github-release-files: ${{ inputs.github-release-files }}
