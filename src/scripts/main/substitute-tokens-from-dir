@@ -39,7 +39,7 @@ if [[ $# -ne 3 ]]; then
   exit 1
 fi
 
-TOKEN_STYLE="${1}"
+TOKEN_STYLE="${1:-shell}"
 TOKENS_DIR="${2}"
 TARGET_DIR="${3}"
 
