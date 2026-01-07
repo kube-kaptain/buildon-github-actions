@@ -573,6 +573,7 @@ jobs:
 
       # === Git Tag Push ===
       - name: Push git tag
+        if: steps.versions.outputs.is-release == 'true'
         uses: ./.github/buildon-github-actions/src/actions/git-push-tag
         with:
           git-tag: ${{ steps.versions.outputs.git-tag }}

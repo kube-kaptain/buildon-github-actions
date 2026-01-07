@@ -40,6 +40,8 @@ Docker Build Dockerfile
 | `github-release-enabled` | boolean | `true` | Create a GitHub release on version tags |
 | `github-release-files` | string | `""` | Files to attach to the release (space-separated) |
 | `github-release-notes` | string | `""` | Release notes (leave empty for auto-generated) |
+| `github-release-add-version-to-filenames` | boolean | `true` | Add version suffix to release filenames (e.g., file.yaml -> file-1.2.3.yaml) |
+| `github-release-substitute-tokens-in-files` | boolean | `true` | Apply token substitution to release files |
 
 ## Secrets
 

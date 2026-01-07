@@ -141,6 +141,16 @@ on:
         required: false
         type: string
         default: ''
+      github-release-add-version-to-filenames:
+        description: 'Add version suffix to release filenames (e.g., file.yaml -> file-1.2.3.yaml)'
+        required: false
+        type: boolean
+        default: true
+      github-release-substitute-tokens-in-files:
+        description: 'Apply token substitution to release files'
+        required: false
+        type: boolean
+        default: true
     secrets:
       docker-registry-logins-secrets:
         description: 'JSON object of secrets for docker-registry-logins (e.g., {"DOCKER_USER": "x", "DOCKER_PASS": "y"})'
@@ -468,8 +478,34 @@ jobs:
           action: fail
           check-run-id: ${{ steps.check-docker-retag.outputs.check-run-id }}
 
+      # === GitHub Release Prepare ===
+      - name: Prepare release files
+        id: github-release-prepare
+        if: inputs.github-release-enabled == true && steps.versions.outputs.is-release == 'true'
+        uses: ./.github/buildon-github-actions/src/actions/github-release-prepare
+        with:
+          github-release-files: ${{ inputs.github-release-files }}
+          output-sub-path: ${{ inputs.output-sub-path }}
+          version: ${{ steps.versions.outputs.version }}
+          project-name: ${{ steps.versions.outputs.project-name }}
+          docker-tag: ${{ steps.versions.outputs.docker-tag }}
+          docker-image-name: ${{ steps.versions.outputs.docker-image-name }}
+          is-release: ${{ steps.versions.outputs.is-release }}
+          github-release-add-version-to-filenames: ${{ inputs.github-release-add-version-to-filenames }}
+          github-release-substitute-tokens-in-files: ${{ inputs.github-release-substitute-tokens-in-files }}
+          substitution-token-style: ${{ inputs.substitution-token-style }}
+          token-name-style: ${{ inputs.token-name-style }}
+          token-name-validation: ${{ inputs.token-name-validation }}
+          config-sub-path: ${{ inputs.config-sub-path }}
+          allow-builtin-token-override: ${{ inputs.allow-builtin-token-override }}
+          config-value-trailing-newline: ${{ inputs.config-value-trailing-newline }}
+          docker-image-full-uri: ${{ steps.docker-build.outputs.docker-target-image-full-uri }}
+          target-registry: ${{ inputs.docker-target-registry }}
+          target-base-path: ${{ inputs.docker-target-base-path }}
+
       # === Git Tag Push ===
       - name: Push git tag
+        if: steps.versions.outputs.is-release == 'true'
         uses: ./.github/buildon-github-actions/src/actions/git-push-tag
         with:
           git-tag: ${{ steps.versions.outputs.git-tag }}
@@ -548,7 +584,7 @@ jobs:
         uses: ./.github/buildon-github-actions/src/actions/github-release
         with:
           github-release-enabled: ${{ inputs.github-release-enabled }}
-          github-release-files: ${{ inputs.github-release-files }}
+          output-sub-path: ${{ inputs.output-sub-path }}
           github-release-tag: ${{ steps.versions.outputs.version }}
           github-release-notes: ${{ steps.release-notes.outputs.notes }}
           github-release-title: ${{ steps.release-notes.outputs.title }}

@@ -187,6 +187,16 @@ on:
         required: false
         type: string
         default: ''
+      github-release-add-version-to-filenames:
+        description: 'Add version suffix to release filenames (e.g., file.yaml -> file-1.2.3.yaml)'
+        required: false
+        type: boolean
+        default: true
+      github-release-substitute-tokens-in-files:
+        description: 'Apply token substitution to release files'
+        required: false
+        type: boolean
+        default: true
     secrets:
       docker-registry-logins-secrets:
         description: 'JSON object of secrets for docker-registry-logins (e.g., {"DOCKER_USER": "x", "DOCKER_PASS": "y"})'
@@ -313,6 +323,9 @@ jobs:
       # INJECT: github-check-start(name="Post-package Tests", id="check-post-package", if="inputs.post-package-tests-script-sub-path != ''")
       # INJECT: post-package-tests
       # INJECT: github-check-end(name="Post-package Tests", id="check-post-package", if="inputs.post-package-tests-script-sub-path != ''")
+
+      # === GitHub Release Prepare ===
+      # INJECT: github-release-prepare-kube-app
 
       # === Git Tag Push ===
       # INJECT: git-push-tag

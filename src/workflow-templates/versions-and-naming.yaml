@@ -76,6 +76,16 @@ on:
         required: false
         type: string
         default: ''
+      github-release-add-version-to-filenames:
+        description: 'Add version suffix to release filenames (e.g., file.yaml -> file-1.2.3.yaml)'
+        required: false
+        type: boolean
+        default: true
+      github-release-substitute-tokens-in-files:
+        description: 'Apply token substitution to release files'
+        required: false
+        type: boolean
+        default: true
     outputs:
       version:
         description: 'The generated version'
@@ -136,6 +146,9 @@ jobs:
       # INJECT: parse-workflow-ref-and-checkout
       # INJECT: pre-tagging-tests
       # INJECT: versions-and-naming
+
+      # === GitHub Release Prepare ===
+      # INJECT: github-release-prepare-no-files
 
       # === Git Tag Push ===
       # INJECT: git-push-tag
