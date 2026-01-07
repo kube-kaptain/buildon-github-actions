@@ -65,6 +65,7 @@ Kubernetes App - Docker Retag
 | `version-4-part` | Version padded/truncated to 4 parts |
 | `docker-tag` | Tag for Docker images |
 | `docker-image-name` | Docker image name |
+| `git-tag` | Tag for git |
 | `project-name` | The repository/project name |
 | `is-release` | Whether this is a release build |
 | `docker-source-image-full-uri` | Full source image reference |

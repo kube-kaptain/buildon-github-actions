@@ -17,6 +17,7 @@
 #   VERSION_4_PART    - Version padded/truncated to 4 parts (e.g., 1.2.3.0)
 #   DOCKER_TAG        - Same as VERSION on release branch, suffixed otherwise
 #   DOCKER_IMAGE_NAME - Docker image name (prefix/project-name)
+#   GIT_TAG           - Tag for git (same as DOCKER_TAG)
 #   IS_RELEASE        - "true" if on release branch, "false" otherwise
 #   PROJECT_NAME      - Repository name
 #
@@ -111,14 +112,13 @@ output_var() {
   export "${name}=${value}"
 }
 
-# Push tag to remote
-push_tag() {
-  local version="${1}"
+# Create tag locally (push happens later via git-push-tag)
+create_tag() {
+  local tag="${1}"
   local project_name="${2}"
   git config user.email "noreply@kaptain.org"
   git config user.name "Kube Kaptain"
-  git tag -m "Automatic release tag for version ${version} of ${project_name} by Kaptain build script." "${version}" HEAD
-  git push origin "${version}"
+  git tag -m "Automatic release tag for version ${tag} of ${project_name} by Kaptain build script." "${tag}" HEAD
 }
 
 main() {
@@ -172,20 +172,19 @@ main() {
     exit 1
   fi
 
-  # Push tag if this is a release build
-  if [[ "${is_release}" == "true" ]]; then
-    echo "Tagging release: ${version}" >&2
-    push_tag "${version}" "${project_name}"
-  else
-    echo "Pre-release build: ${version} (no tag push)" >&2
-  fi
-
-  # Generate DOCKER_TAG based on release status
+  # Generate DOCKER_TAG and GIT_TAG based on release status
   local docker_tag
   if [[ "${is_release}" == "true" ]]; then
     docker_tag="${version}"
   else
     docker_tag="${version}-PRERELEASE"
+  fi
+  local git_tag="${docker_tag}"
+
+  # Create tag locally for build_server mode (push happens later)
+  if [[ "${BUILD_MODE}" == "build_server" ]]; then
+    echo "Creating tag: ${git_tag}" >&2
+    create_tag "${git_tag}" "${project_name}"
   fi
 
   # Generate padded/truncated versions for different ecosystems
@@ -215,6 +214,7 @@ main() {
   output_var "VERSION_4_PART" "${version_4_part}"
   output_var "DOCKER_TAG" "${docker_tag}"
   output_var "DOCKER_IMAGE_NAME" "${docker_image_name}"
+  output_var "GIT_TAG" "${git_tag}"
   output_var "IS_RELEASE" "${is_release}"
   output_var "PROJECT_NAME" "${project_name}"
 }

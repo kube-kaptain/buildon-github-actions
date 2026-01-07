@@ -59,6 +59,7 @@ Spec Check Filter Release
 | `version-4-part` | Version padded/truncated to 4 parts |
 | `docker-tag` | Tag for Docker images |
 | `docker-image-name` | Docker image name |
+| `git-tag` | Tag for git |
 | `project-name` | The repository/project name |
 | `is-release` | Whether this is a release build |
 | `docker-target-image-full-uri` | Full target image reference |

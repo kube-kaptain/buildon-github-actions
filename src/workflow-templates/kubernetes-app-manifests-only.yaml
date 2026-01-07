@@ -220,6 +220,9 @@ on:
       docker-image-name:
         description: 'Docker image name'
         value: ${{ jobs.build.outputs.docker-image-name }}
+      git-tag:
+        description: 'Tag for git'
+        value: ${{ jobs.build.outputs.git-tag }}
       project-name:
         description: 'The repository/project name'
         value: ${{ jobs.build.outputs.project-name }}
@@ -269,6 +272,7 @@ jobs:
       version-4-part: ${{ steps.versions.outputs.version-4-part }}
       docker-tag: ${{ steps.versions.outputs.docker-tag }}
       docker-image-name: ${{ steps.versions.outputs.docker-image-name }}
+      git-tag: ${{ steps.versions.outputs.git-tag }}
       project-name: ${{ steps.versions.outputs.project-name }}
       is-release: ${{ steps.versions.outputs.is-release }}
       manifests-zip-sub-path: ${{ steps.manifest-package.outputs.manifests-zip-sub-path }}
@@ -309,6 +313,9 @@ jobs:
       # INJECT: github-check-start(name="Post-package Tests", id="check-post-package", if="inputs.post-package-tests-script-sub-path != ''")
       # INJECT: post-package-tests
       # INJECT: github-check-end(name="Post-package Tests", id="check-post-package", if="inputs.post-package-tests-script-sub-path != ''")
+
+      # === Git Tag Push ===
+      # INJECT: git-push-tag
 
       # === Manifest Repo Provider Publish ===
       # INJECT: github-check-start(name="Publish Manifests via Repo Provider", id="check-manifest-repo-provider-publish", if="steps.versions.outputs.is-release == 'true'")

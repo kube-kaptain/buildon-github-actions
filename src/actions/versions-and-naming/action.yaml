@@ -74,6 +74,9 @@ outputs:
   docker-image-name:
     description: 'Docker image name (prefix/project-name)'
     value: ${{ steps.generate.outputs.DOCKER_IMAGE_NAME }}
+  git-tag:
+    description: 'Tag for git (same as docker-tag)'
+    value: ${{ steps.generate.outputs.GIT_TAG }}
   is-release:
     description: 'Whether this is a release build (true/false)'
     value: ${{ steps.generate.outputs.IS_RELEASE }}

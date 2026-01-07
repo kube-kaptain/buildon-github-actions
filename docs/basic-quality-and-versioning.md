@@ -40,5 +40,6 @@ Basic Quality and Versioning
 | `version-4-part` | Version padded/truncated to 4 parts |
 | `docker-tag` | Tag for Docker images |
 | `docker-image-name` | Docker image name (prefix/project-name) |
+| `git-tag` | Tag for git |
 | `is-release` | Whether this is a release build |
 | `project-name` | The repository/project name |

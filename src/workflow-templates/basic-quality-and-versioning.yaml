@@ -134,6 +134,9 @@ on:
       docker-image-name:
         description: 'Docker image name (prefix/project-name)'
         value: ${{ jobs.versions-and-naming.outputs.docker-image-name }}
+      git-tag:
+        description: 'Tag for git'
+        value: ${{ jobs.versions-and-naming.outputs.git-tag }}
       is-release:
         description: 'Whether this is a release build'
         value: ${{ jobs.versions-and-naming.outputs.is-release }}
@@ -166,6 +169,7 @@ jobs:
       version-4-part: ${{ steps.versions.outputs.version-4-part }}
       docker-tag: ${{ steps.versions.outputs.docker-tag }}
       docker-image-name: ${{ steps.versions.outputs.docker-image-name }}
+      git-tag: ${{ steps.versions.outputs.git-tag }}
       is-release: ${{ steps.versions.outputs.is-release }}
       project-name: ${{ steps.versions.outputs.project-name }}
     steps:
@@ -174,6 +178,9 @@ jobs:
       # INJECT: pre-tagging-tests
       # INJECT: github-check-end(name="Pre-tagging Tests", id="check-pre-tagging", if="inputs.pre-tagging-tests-script-sub-path != ''")
       # INJECT: versions-and-naming
+
+      # === Git Tag Push ===
+      # INJECT: git-push-tag
 
       # === GitHub Release ===
       # INJECT: github-check-start(name="GitHub Release", id="check-github-release", if="inputs.github-release-enabled == true && steps.versions.outputs.is-release == 'true'")

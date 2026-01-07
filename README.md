@@ -83,6 +83,7 @@ See [`examples/`](examples/) for more usage patterns.
 | `docker-build-retag` | Pulls and retags Docker images (no push) |
 | `docker-push` | Pushes a Docker image to registry |
 | `docker-registry-logins` | Authenticate to container registries (GHCR by default, configure others as needed) |
+| `git-push-tag` | Pushes an existing git tag to origin |
 | `github-check-run` | Create or update GitHub Check Runs for granular PR status reporting |
 | `github-release` | Create GitHub release with assets |
 | `kubernetes-manifests-package` | Packages Kubernetes manifests into a zip with variable substitution |

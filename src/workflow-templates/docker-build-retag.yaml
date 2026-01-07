@@ -174,6 +174,9 @@ on:
       docker-image-name:
         description: 'Docker image name'
         value: ${{ jobs.build.outputs.docker-image-name }}
+      git-tag:
+        description: 'Tag for git'
+        value: ${{ jobs.build.outputs.git-tag }}
       project-name:
         description: 'The repository/project name'
         value: ${{ jobs.build.outputs.project-name }}
@@ -222,6 +225,7 @@ jobs:
       version-4-part: ${{ steps.versions.outputs.version-4-part }}
       docker-tag: ${{ steps.versions.outputs.docker-tag }}
       docker-image-name: ${{ steps.versions.outputs.docker-image-name }}
+      git-tag: ${{ steps.versions.outputs.git-tag }}
       project-name: ${{ steps.versions.outputs.project-name }}
       is-release: ${{ steps.versions.outputs.is-release }}
       docker-source-image-full-uri: ${{ steps.docker-build.outputs.docker-source-image-full-uri }}
@@ -247,6 +251,9 @@ jobs:
       # INJECT: github-check-start(name="Docker Retag", id="check-docker-retag")
       # INJECT: docker-build-retag
       # INJECT: github-check-end(name="Docker Retag", id="check-docker-retag")
+
+      # === Git Tag Push ===
+      # INJECT: git-push-tag
 
       # === Docker Push ===
       # INJECT: github-check-start(name="Docker Push", id="check-docker-push", if="steps.versions.outputs.is-release == 'true'")

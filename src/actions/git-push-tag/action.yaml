@@ -1,0 +1,24 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
+
+name: 'Git Push Tag'
+description: 'Pushes an existing git tag to origin'
+author: 'kube-kaptain'
+
+inputs:
+  git-tag:
+    description: 'Tag to push'
+    required: true
+  is-release:
+    description: 'Whether to push (true) or skip (false)'
+    required: true
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Push tag
+      shell: bash
+      env:
+        GIT_TAG: ${{ inputs.git-tag }}
+        IS_RELEASE: ${{ inputs.is-release }}
+      run: "${{ github.action_path }}/../../scripts/main/git-push-tag"

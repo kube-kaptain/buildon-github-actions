@@ -1,0 +1,8 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
+
+- name: Push git tag
+  uses: ./.github/buildon-github-actions/src/actions/git-push-tag
+  with:
+    git-tag: ${{ steps.versions.outputs.git-tag }}
+    is-release: ${{ steps.versions.outputs.is-release }}

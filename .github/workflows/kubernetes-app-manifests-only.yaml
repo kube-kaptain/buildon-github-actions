@@ -220,6 +220,9 @@ on:
       docker-image-name:
         description: 'Docker image name'
         value: ${{ jobs.build.outputs.docker-image-name }}
+      git-tag:
+        description: 'Tag for git'
+        value: ${{ jobs.build.outputs.git-tag }}
       project-name:
         description: 'The repository/project name'
         value: ${{ jobs.build.outputs.project-name }}
@@ -341,6 +344,7 @@ jobs:
       version-4-part: ${{ steps.versions.outputs.version-4-part }}
       docker-tag: ${{ steps.versions.outputs.docker-tag }}
       docker-image-name: ${{ steps.versions.outputs.docker-image-name }}
+      git-tag: ${{ steps.versions.outputs.git-tag }}
       project-name: ${{ steps.versions.outputs.project-name }}
       is-release: ${{ steps.versions.outputs.is-release }}
       manifests-zip-sub-path: ${{ steps.manifest-package.outputs.manifests-zip-sub-path }}
@@ -628,6 +632,13 @@ jobs:
         with:
           action: fail
           check-run-id: ${{ steps.check-post-package.outputs.check-run-id }}
+
+      # === Git Tag Push ===
+      - name: Push git tag
+        uses: ./.github/buildon-github-actions/src/actions/git-push-tag
+        with:
+          git-tag: ${{ steps.versions.outputs.git-tag }}
+          is-release: ${{ steps.versions.outputs.is-release }}
 
       # === Manifest Repo Provider Publish ===
       - name: Start check - Publish Manifests via Repo Provider

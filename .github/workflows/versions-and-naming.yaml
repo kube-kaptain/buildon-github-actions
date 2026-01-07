@@ -104,6 +104,9 @@ on:
       docker-image-name:
         description: 'Docker image name (prefix/project-name)'
         value: ${{ jobs.versions-and-naming.outputs.docker-image-name }}
+      git-tag:
+        description: 'Tag for git'
+        value: ${{ jobs.versions-and-naming.outputs.git-tag }}
       is-release:
         description: 'Whether this is a release build'
         value: ${{ jobs.versions-and-naming.outputs.is-release }}
@@ -126,6 +129,7 @@ jobs:
       version-4-part: ${{ steps.versions.outputs.version-4-part }}
       docker-tag: ${{ steps.versions.outputs.docker-tag }}
       docker-image-name: ${{ steps.versions.outputs.docker-image-name }}
+      git-tag: ${{ steps.versions.outputs.git-tag }}
       is-release: ${{ steps.versions.outputs.is-release }}
       project-name: ${{ steps.versions.outputs.project-name }}
     steps:
@@ -211,6 +215,13 @@ jobs:
           tag-version-source-sub-path: ${{ inputs.tag-version-source-sub-path }}
           tag-version-source-file-name: ${{ inputs.tag-version-source-file-name }}
           tag-version-source-custom-pattern: ${{ inputs.tag-version-source-custom-pattern }}
+
+      # === Git Tag Push ===
+      - name: Push git tag
+        uses: ./.github/buildon-github-actions/src/actions/git-push-tag
+        with:
+          git-tag: ${{ steps.versions.outputs.git-tag }}
+          is-release: ${{ steps.versions.outputs.is-release }}
 
       # === GitHub Release ===
       - name: Start check - GitHub Release

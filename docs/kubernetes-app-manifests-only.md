@@ -61,6 +61,7 @@ Kubernetes App - Manifests Only
 | `version-4-part` | Version padded/truncated to 4 parts |
 | `docker-tag` | Tag for Docker images |
 | `docker-image-name` | Docker image name |
+| `git-tag` | Tag for git |
 | `project-name` | The repository/project name |
 | `is-release` | Whether this is a release build |
 | `manifests-zip-sub-path` | Directory containing manifests zip file (relative) |
