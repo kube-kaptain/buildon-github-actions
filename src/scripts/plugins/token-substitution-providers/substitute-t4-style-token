@@ -8,7 +8,7 @@
 # Substitutes <#= TOKEN_NAME #> with TOKEN_VALUE in-place across all files in target-dir.
 #
 # Usage:
-#   substitute-t4-style-token <token-file> <target-dir>
+#   substitute-t4-style-token <token-file> <target-file-or-dir>
 #
 set -euo pipefail
 
@@ -17,20 +17,24 @@ LOG_ERROR_PREFIX="${LOG_ERROR_PREFIX:-}"
 LOG_ERROR_SUFFIX="${LOG_ERROR_SUFFIX:-}"
 
 if [[ ${#} -ne 2 ]]; then
-  echo "${LOG_ERROR_PREFIX}Usage: substitute-t4-style-token <token-file> <target-dir>${LOG_ERROR_SUFFIX}" >&2
+  echo "${LOG_ERROR_PREFIX}Usage: substitute-t4-style-token <token-file> <target-file-or-dir>${LOG_ERROR_SUFFIX}" >&2
   exit 1
 fi
 
 TOKEN_FILE="${1}"
-TARGET_DIR="${2}"
+TARGET="${2}"
 
 if [[ ! -f "${TOKEN_FILE}" ]]; then
   echo "${LOG_ERROR_PREFIX}Token file not found: ${TOKEN_FILE}${LOG_ERROR_SUFFIX}" >&2
   exit 1
 fi
 
-if [[ ! -d "${TARGET_DIR}" ]]; then
-  echo "${LOG_ERROR_PREFIX}Target directory not found: ${TARGET_DIR}${LOG_ERROR_SUFFIX}" >&2
+if [[ -d "${TARGET}" ]]; then
+  TARGET_MODE="dir"
+elif [[ -f "${TARGET}" ]]; then
+  TARGET_MODE="file"
+else
+  echo "${LOG_ERROR_PREFIX}Target not found: ${TARGET}${LOG_ERROR_SUFFIX}" >&2
   exit 1
 fi
 
@@ -71,6 +75,10 @@ substitute_in_file() {
 }
 
 # shellcheck disable=SC2153,SC2154 # TOKEN_NAME/TOKEN_VALUE set by sourced prepare-token-name-and-value.bash
-while IFS= read -r -d '' file; do
+if [[ "${TARGET_MODE}" == "file" ]]; then
+  substitute_in_file "${TARGET}" "${TOKEN_NAME}" "${TOKEN_VALUE}"
+else
+  while IFS= read -r -d '' file; do
   substitute_in_file "${file}" "${TOKEN_NAME}" "${TOKEN_VALUE}"
-done < <(find "${TARGET_DIR}" -type f -print0)
+  done < <(find "${TARGET}" -type f -print0)
+fi
