@@ -3,7 +3,6 @@
 
 name: 'Kubernetes Manifests Repo Provider Package'
 description: 'Packages manifests for repo provider (builds docker image). Does NOT publish.'
-author: 'kube-kaptain'
 
 inputs:
   manifests-repo-provider-type:

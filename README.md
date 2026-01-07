@@ -83,8 +83,10 @@ See [`examples/`](examples/) for more usage patterns.
 | `docker-build-retag` | Pulls and retags Docker images (no push) |
 | `docker-push` | Pushes a Docker image to registry |
 | `docker-registry-logins` | Authenticate to container registries (GHCR by default, configure others as needed) |
+| `git-push-tag` | Pushes an existing git tag to origin |
 | `github-check-run` | Create or update GitHub Check Runs for granular PR status reporting |
-| `github-release` | Create GitHub release with assets |
+| `github-release-prepare` | Prepares files for GitHub release with optional substitution and version suffix |
+| `github-release` | Create GitHub release with assets from prepared directory |
 | `kubernetes-manifests-package` | Packages Kubernetes manifests into a zip with variable substitution |
 | `kubernetes-manifests-repo-provider-package` | Packages manifests for repo provider (builds docker image). Does NOT publish. |
 | `kubernetes-manifests-repo-provider-publish` | Publishes manifests via pluggable repo provider. Requires package step to run first. |
@@ -108,7 +110,6 @@ See [`examples/`](examples/) for more usage patterns.
 | `block-slashes` | boolean | `false` | DEPRECATED: Use block-slash-containing-branches instead |
 | `config-sub-path` | string | `src/config` | Directory containing user-defined token files (relative) |
 | `config-value-trailing-newline` | string | `strip-for-single-line` | How to handle trailing newlines in config values (strip-for-single-line, preserve-all, always-strip-one-newline) |
-| `default-branch` | string | `main` | The default/release branch name |
 | `docker-registry-logins` | string | `""` | YAML config for Docker registry logins (registry URL as key) |
 | `docker-source-base-path` | string | `""` | Path between registry and image name (e.g., library) |
 | `docker-source-image-name` | string | *required* | Upstream image name (e.g., nginx) |
@@ -117,9 +118,11 @@ See [`examples/`](examples/) for more usage patterns.
 | `docker-target-base-path` | string | `""` | Path between registry and image name (auto-set for GHCR) |
 | `docker-target-registry` | string | `ghcr.io` | Target container registry |
 | `dockerfile-sub-path` | string | `src/docker` | Directory containing Dockerfile, relative to repo root. |
+| `github-release-add-version-to-filenames` | boolean | `true` | Add version suffix to release filenames (e.g., file.yaml -> file-1.2.3.yaml) |
 | `github-release-enabled` | boolean | `true` | Create a GitHub release on version tags |
 | `github-release-files` | string | `""` | Files to attach to the release (space-separated) |
 | `github-release-notes` | string | `""` | Release notes (leave empty for auto-generated) |
+| `github-release-substitute-tokens-in-files` | boolean | `true` | Apply token substitution to release files |
 | `manifests-packaging-base-image` | string | `""` | Base image for manifest packaging (default: scratch) |
 | `manifests-repo-provider-type` | string | `docker` | Repo provider type for manifest storage (default: docker, currently the only supported provider) |
 | `manifests-sub-path` | string | `src/kubernetes` | Directory containing Kubernetes manifests (relative) |
@@ -131,6 +134,7 @@ See [`examples/`](examples/) for more usage patterns.
 | `pre-docker-prepare-script-sub-path` | string | `""` | Path to pre-docker prepare script relative to .github/ (e.g., bin/pre-docker-prepare.bash) |
 | `pre-package-prepare-script-sub-path` | string | `""` | Path to pre-package prepare script relative to .github/ (e.g., bin/pre-package-prepare.bash) |
 | `pre-tagging-tests-script-sub-path` | string | `""` | Path to pre-tagging test script relative to .github/ (e.g., bin/pre-tagging.bash) |
+| `release-branch` | string | `main` | The release branch name |
 | `require-conventional-branches` | boolean | `false` | Require branch names start with feature/, fix/, etc. |
 | `require-conventional-commits` | boolean | `false` | Require commits use conventional commit format (feat:, fix:, etc.) |
 | `spec-packaging-base-image` | string | `scratch` | Base image for spec packaging |

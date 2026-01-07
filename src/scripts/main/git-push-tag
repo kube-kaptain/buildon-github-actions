@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
+#
+# git-push-tag - Pushes an existing git tag to origin
+#
+# Inputs (environment variables):
+#   GIT_TAG    - Tag to push (required)
+#   IS_RELEASE - "true" to push, "false" to skip (default: false)
+#
+set -euo pipefail
+
+# Required inputs
+GIT_TAG="${GIT_TAG:?GIT_TAG is required}"
+
+# Optional inputs with defaults
+IS_RELEASE="${IS_RELEASE:-false}"
+
+if [[ "${IS_RELEASE}" == "true" ]]; then
+  echo "Pushing tag: ${GIT_TAG}" >&2
+  git push origin "${GIT_TAG}"
+else
+  echo "Skipping tag push (IS_RELEASE=${IS_RELEASE})" >&2
+fi

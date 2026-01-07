@@ -5,8 +5,8 @@ name: Basic Quality and Versioning
 on:
   workflow_call:
     inputs:
-      default-branch:
-        description: 'The default/release branch name'
+      release-branch:
+        description: 'The release branch name'
         required: false
         type: string
         default: 'main'
@@ -106,6 +106,16 @@ on:
         required: false
         type: string
         default: ''
+      github-release-add-version-to-filenames:
+        description: 'Add version suffix to release filenames (e.g., file.yaml -> file-1.2.3.yaml)'
+        required: false
+        type: boolean
+        default: true
+      github-release-substitute-tokens-in-files:
+        description: 'Apply token substitution to release files'
+        required: false
+        type: boolean
+        default: true
     outputs:
       version:
         description: 'The generated version'
@@ -134,6 +144,9 @@ on:
       docker-image-name:
         description: 'Docker image name (prefix/project-name)'
         value: ${{ jobs.versions-and-naming.outputs.docker-image-name }}
+      git-tag:
+        description: 'Tag for git'
+        value: ${{ jobs.versions-and-naming.outputs.git-tag }}
       is-release:
         description: 'Whether this is a release build'
         value: ${{ jobs.versions-and-naming.outputs.is-release }}
@@ -196,7 +209,7 @@ jobs:
           GITHUB_WORKFLOW_REF: ${{ github.workflow_ref }}
 
       - name: Checkout actions
-        if: steps.parse.outputs.ref != 'LOCAL'
+        if: steps.parse.outputs.ref != 'LOCAL' && success()
         uses: actions/checkout@v4.2.2
         with:
           repository: kube-kaptain/buildon-github-actions
@@ -204,7 +217,7 @@ jobs:
           path: .github/buildon-github-actions
 
       - name: Link local actions
-        if: steps.parse.outputs.ref == 'LOCAL'
+        if: steps.parse.outputs.ref == 'LOCAL' && success()
         run: |
           echo "Linking local actions for dogfooding"
           ln -s "$(pwd)" .github/buildon-github-actions
@@ -212,7 +225,7 @@ jobs:
         id: quality
         uses: ./.github/buildon-github-actions/src/actions/basic-quality-checks
         with:
-          default-branch: ${{ inputs.default-branch }}
+          release-branch: ${{ inputs.release-branch }}
           additional-release-branches: ${{ inputs.additional-release-branches }}
           block-slashes: ${{ inputs.block-slashes }}
           block-slash-containing-branches: ${{ inputs.block-slash-containing-branches }}
@@ -238,6 +251,7 @@ jobs:
       version-4-part: ${{ steps.versions.outputs.version-4-part }}
       docker-tag: ${{ steps.versions.outputs.docker-tag }}
       docker-image-name: ${{ steps.versions.outputs.docker-image-name }}
+      git-tag: ${{ steps.versions.outputs.git-tag }}
       is-release: ${{ steps.versions.outputs.is-release }}
       project-name: ${{ steps.versions.outputs.project-name }}
     steps:
@@ -291,7 +305,7 @@ jobs:
           GITHUB_WORKFLOW_REF: ${{ github.workflow_ref }}
 
       - name: Checkout actions
-        if: steps.parse.outputs.ref != 'LOCAL'
+        if: steps.parse.outputs.ref != 'LOCAL' && success()
         uses: actions/checkout@v4.2.2
         with:
           repository: kube-kaptain/buildon-github-actions
@@ -299,7 +313,7 @@ jobs:
           path: .github/buildon-github-actions
 
       - name: Link local actions
-        if: steps.parse.outputs.ref == 'LOCAL'
+        if: steps.parse.outputs.ref == 'LOCAL' && success()
         run: |
           echo "Linking local actions for dogfooding"
           ln -s "$(pwd)" .github/buildon-github-actions
@@ -311,7 +325,7 @@ jobs:
           action: start
           check-name: 'Versions & Naming → Pre-tagging Tests'
       - name: Run pre-tagging tests
-        if: inputs.pre-tagging-tests-script-sub-path != ''
+        if: inputs.pre-tagging-tests-script-sub-path != '' && success()
         id: pre-tagging-tests
         uses: ./.github/buildon-github-actions/src/actions/run-hook-script
         with:
@@ -332,7 +346,7 @@ jobs:
         id: versions
         uses: ./.github/buildon-github-actions/src/actions/versions-and-naming
         with:
-          default-branch: ${{ inputs.default-branch }}
+          release-branch: ${{ inputs.release-branch }}
           additional-release-branches: ${{ inputs.additional-release-branches }}
           max-version-parts: ${{ inputs.max-version-parts }}
           tag-version-calculation-strategy: ${{ inputs.tag-version-calculation-strategy }}
@@ -342,6 +356,36 @@ jobs:
           tag-version-source-sub-path: ${{ inputs.tag-version-source-sub-path }}
           tag-version-source-file-name: ${{ inputs.tag-version-source-file-name }}
           tag-version-source-custom-pattern: ${{ inputs.tag-version-source-custom-pattern }}
+
+      # === GitHub Release Prepare ===
+      - name: Prepare release files
+        id: github-release-prepare
+        if: inputs.github-release-enabled == true && steps.versions.outputs.is-release == 'true' && success()
+        uses: ./.github/buildon-github-actions/src/actions/github-release-prepare
+        with:
+          github-release-files: ${{ inputs.github-release-files }}
+          output-sub-path: ${{ inputs.output-sub-path }}
+          version: ${{ steps.versions.outputs.version }}
+          project-name: ${{ steps.versions.outputs.project-name }}
+          docker-tag: ${{ steps.versions.outputs.docker-tag }}
+          docker-image-name: ${{ steps.versions.outputs.docker-image-name }}
+          is-release: ${{ steps.versions.outputs.is-release }}
+          github-release-add-version-to-filenames: ${{ inputs.github-release-add-version-to-filenames }}
+          github-release-substitute-tokens-in-files: ${{ inputs.github-release-substitute-tokens-in-files }}
+          substitution-token-style: ${{ inputs.substitution-token-style }}
+          token-name-style: ${{ inputs.token-name-style }}
+          token-name-validation: ${{ inputs.token-name-validation }}
+          config-sub-path: ${{ inputs.config-sub-path }}
+          allow-builtin-token-override: ${{ inputs.allow-builtin-token-override }}
+          config-value-trailing-newline: ${{ inputs.config-value-trailing-newline }}
+
+      # === Git Tag Push ===
+      - name: Push git tag
+        if: steps.versions.outputs.is-release == 'true' && success()
+        uses: ./.github/buildon-github-actions/src/actions/git-push-tag
+        with:
+          git-tag: ${{ steps.versions.outputs.git-tag }}
+          is-release: ${{ steps.versions.outputs.is-release }}
 
       # === GitHub Release ===
       - name: Start check - GitHub Release
@@ -353,7 +397,7 @@ jobs:
           check-name: 'Versions & Naming → GitHub Release'
       - name: Compute release notes
         id: release-notes
-        if: inputs.github-release-enabled == true && steps.versions.outputs.is-release == 'true'
+        if: inputs.github-release-enabled == true && steps.versions.outputs.is-release == 'true' && success()
         shell: bash
         env:
           USER_NOTES: ${{ inputs.github-release-notes }}
@@ -380,11 +424,11 @@ jobs:
           fi
 
       - name: GitHub Release
-        if: inputs.github-release-enabled == true && steps.versions.outputs.is-release == 'true'
+        if: inputs.github-release-enabled == true && steps.versions.outputs.is-release == 'true' && success()
         uses: ./.github/buildon-github-actions/src/actions/github-release
         with:
           github-release-enabled: ${{ inputs.github-release-enabled }}
-          github-release-files: ""
+          output-sub-path: ${{ inputs.output-sub-path }}
           github-release-tag: ${{ steps.versions.outputs.version }}
           github-release-notes: ${{ steps.release-notes.outputs.notes }}
           github-release-title: ${{ steps.release-notes.outputs.title }}

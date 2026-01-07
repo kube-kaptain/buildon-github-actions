@@ -3,15 +3,13 @@
 
 name: 'Basic Quality Checks'
 description: 'Basic quality checks for commits and branches'
-author: 'kube-kaptain'
 
 inputs:
-  default-branch:
-    description: 'The default/release branch name'
+  release-branch:
+    description: 'The release branch name'
     required: false
-    default: 'main'
   additional-release-branches:
-    description: 'Comma-separated list of allowed target branches beyond default'
+    description: 'Comma-separated list of additional release branches'
     required: false
     default: ''
   block-slashes:
@@ -38,10 +36,6 @@ inputs:
     description: 'Block commits that use conventional commit format'
     required: false
     default: 'false'
-  target-branch:
-    description: 'The target branch for PR checks (usually auto-detected)'
-    required: false
-    default: ''
 
 runs:
   using: 'composite'
@@ -51,15 +45,17 @@ runs:
       shell: bash
       env:
         LOG_ERROR_PREFIX: '::error::'
-        DEFAULT_BRANCH: ${{ inputs.default-branch }}
+        LOG_WARNING_PREFIX: '::warning::'
+        CURRENT_BRANCH: ${{ github.head_ref || github.ref_name }}
+        RELEASE_BRANCH: ${{ inputs.release-branch }}
         ADDITIONAL_RELEASE_BRANCHES: ${{ inputs.additional-release-branches }}
+        DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        TARGET_BRANCH: ${{ github.base_ref }}
+        MERGE_CANDIDATE_CREATOR: ${{ github.event.pull_request.user.login }}
         BLOCK_SLASHES: ${{ inputs.block-slashes }}
         BLOCK_SLASH_CONTAINING_BRANCHES: ${{ inputs.block-slash-containing-branches }}
         BLOCK_DOUBLE_HYPHEN_CONTAINING_BRANCHES: ${{ inputs.block-double-hyphen-containing-branches }}
         REQUIRE_CONVENTIONAL_BRANCHES: ${{ inputs.require-conventional-branches }}
-        REQUIRE_CONVENTIONAL_COMMITS: ${{ inputs.require-conventional-commits }}
         BLOCK_CONVENTIONAL_COMMITS: ${{ inputs.block-conventional-commits }}
-        TARGET_BRANCH: ${{ inputs.target-branch || github.base_ref || inputs.default-branch }}
-        PR_BRANCH: ${{ github.head_ref }}
-        PR_CREATOR: ${{ github.event.pull_request.user.login }}
+        REQUIRE_CONVENTIONAL_COMMITS: ${{ inputs.require-conventional-commits }}
       run: "${{ github.action_path }}/../../scripts/main/basic-quality-checks"

@@ -3,7 +3,6 @@
 
 name: 'Resolve Target Registry and Base Path'
 description: 'Resolves target registry (defaults to ghcr.io) and computes base path (auto-detects org for GHCR)'
-author: 'kube-kaptain'
 
 inputs:
   target-registry:

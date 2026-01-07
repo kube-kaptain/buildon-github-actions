@@ -17,6 +17,7 @@
 #   VERSION_4_PART    - Version padded/truncated to 4 parts (e.g., 1.2.3.0)
 #   DOCKER_TAG        - Same as VERSION on release branch, suffixed otherwise
 #   DOCKER_IMAGE_NAME - Docker image name (prefix/project-name)
+#   GIT_TAG           - Tag for git (same as DOCKER_TAG)
 #   IS_RELEASE        - "true" if on release branch, "false" otherwise
 #   PROJECT_NAME      - Repository name
 #
@@ -25,67 +26,51 @@ set -euo pipefail
 SCRIPT_DIR="$(dirname "${0}")"
 PLUGINS_DIR="${SCRIPT_DIR}/../plugins"
 
-# Logging configuration (CI-agnostic)
-LOG_ERROR_PREFIX="${LOG_ERROR_PREFIX:-}"
-LOG_ERROR_SUFFIX="${LOG_ERROR_SUFFIX:-}"
+# Script-specific inputs
+BUILD_MODE="${BUILD_MODE:-local}"
+REPOSITORY_NAME="${REPOSITORY_NAME:?Is required}"
 
-# Configuration with defaults
-DEFAULT_BRANCH="${DEFAULT_BRANCH:-main}"
-ADDITIONAL_RELEASE_BRANCHES="${ADDITIONAL_RELEASE_BRANCHES:-}"  # Comma-separated list of additional release branches
-MAX_VERSION_PARTS="${MAX_VERSION_PARTS:-3}"  # Fail if version exceeds this many parts
+# Version calculation configuration
+MAX_VERSION_PARTS="${MAX_VERSION_PARTS:-3}"
 TAG_VERSION_CALCULATION_STRATEGY="${TAG_VERSION_CALCULATION_STRATEGY:-git-auto-closest-highest}"
-# For file-pattern-match strategy
 TAG_VERSION_PATTERN_TYPE="${TAG_VERSION_PATTERN_TYPE:-dockerfile-env-kubectl}"
-TAG_VERSION_PREFIX_PARTS="${TAG_VERSION_PREFIX_PARTS:-}"  # Number of parts from source version to use as prefix (default 2)
-DOCKERFILE_SUB_PATH="${DOCKERFILE_SUB_PATH:-}"  # Fallback for dockerfile-env-kubectl pattern type
-TAG_VERSION_SOURCE_SUB_PATH="${TAG_VERSION_SOURCE_SUB_PATH:-}"  # Optional override
-TAG_VERSION_SOURCE_FILE_NAME="${TAG_VERSION_SOURCE_FILE_NAME:-}"  # Optional override
-TAG_VERSION_SOURCE_CUSTOM_PATTERN="${TAG_VERSION_SOURCE_CUSTOM_PATTERN:-}"  # Required for custom type
+TAG_VERSION_PREFIX_PARTS="${TAG_VERSION_PREFIX_PARTS:-}"
+DOCKERFILE_SUB_PATH="${DOCKERFILE_SUB_PATH:-}"
+TAG_VERSION_SOURCE_SUB_PATH="${TAG_VERSION_SOURCE_SUB_PATH:-}"
+TAG_VERSION_SOURCE_FILE_NAME="${TAG_VERSION_SOURCE_FILE_NAME:-}"
+TAG_VERSION_SOURCE_CUSTOM_PATTERN="${TAG_VERSION_SOURCE_CUSTOM_PATTERN:-}"
 
-# Validate BUILD_LOCATION (required)
-validate_build_location() {
-  if [[ -z "${BUILD_LOCATION:-}" ]]; then
-    echo "${LOG_ERROR_PREFIX}BUILD_LOCATION is required. Valid values: local, build_server${LOG_ERROR_SUFFIX}" >&2
-    exit 1
-  fi
+# shellcheck source=src/scripts/main/branch-setup-shared
+source "${SCRIPT_DIR}/branch-setup-shared"
 
-  if [[ "${BUILD_LOCATION}" != "local" && "${BUILD_LOCATION}" != "build_server" ]]; then
-    echo "${LOG_ERROR_PREFIX}Invalid BUILD_LOCATION: ${BUILD_LOCATION}. Valid values: local, build_server${LOG_ERROR_SUFFIX}" >&2
-    exit 1
-  fi
-}
+echo "Critical inputs:" >&2
+echo "  Repository name: ${REPOSITORY_NAME}" >&2
+echo "  Current branch:  ${CURRENT_BRANCH}" >&2
+echo "  Release branch:  ${RELEASE_BRANCH}" >&2
+echo "  Default branch:  ${DEFAULT_BRANCH}" >&2
+echo "  Build mode:      ${BUILD_MODE}" >&2
+echo >&2
 
-# Get current branch
-get_current_branch() {
-  git rev-parse --abbrev-ref HEAD
-}
+# Configuration validation - fail fast on conflicting settings
+if [[ "${RELEASE_BRANCH}" != "${DEFAULT_BRANCH}" ]]; then
+  echo "${LOG_ERROR_PREFIX}Configuration error: RELEASE_BRANCH (${RELEASE_BRANCH}) must match DEFAULT_BRANCH (${DEFAULT_BRANCH})${LOG_ERROR_SUFFIX}" >&2
+  exit 1
+fi
 
-# Get repository name
-get_project_name() {
-  basename "$(git rev-parse --show-toplevel)"
-}
+if [[ -n "${ADDITIONAL_RELEASE_BRANCHES}" ]]; then
+  IFS=',' read -ra additional_branches <<< "${ADDITIONAL_RELEASE_BRANCHES}"
+  for additional in "${additional_branches[@]}"; do
+    if [[ "${additional}" != "${RELEASE_BRANCH}" ]] && ! [[ "${additional}" =~ ^${RELEASE_BRANCH}[-._/+] ]]; then
+      echo "${LOG_ERROR_PREFIX}Configuration error: Additional release branch '${additional}' must start with '${RELEASE_BRANCH}' followed by a divider (. - / _ +)${LOG_ERROR_SUFFIX}" >&2
+      exit 1
+    fi
+  done
+fi
 
-# Check if current branch is a release branch
-is_release_branch() {
-  local current_branch="${1}"
-
-  # Check if it's the default branch
-  if [[ "${current_branch}" == "${DEFAULT_BRANCH}" ]]; then
-    return 0
-  fi
-
-  # Check if it matches any additional release branch
-  if [[ -n "${ADDITIONAL_RELEASE_BRANCHES}" ]]; then
-    IFS=',' read -ra branches <<< "${ADDITIONAL_RELEASE_BRANCHES}"
-    for branch in "${branches[@]}"; do
-      if [[ "${current_branch}" == "${branch}" ]]; then
-        return 0
-      fi
-    done
-  fi
-
-  return 1
-}
+if [[ "${BUILD_MODE}" != "local" && "${BUILD_MODE}" != "build_server" ]]; then
+  echo "${LOG_ERROR_PREFIX}Invalid BUILD_MODE: ${BUILD_MODE}. Valid values: local, build_server${LOG_ERROR_SUFFIX}" >&2
+  exit 1
+fi
 
 # Pad or truncate version to exactly N parts
 version_to_n_parts() {
@@ -127,30 +112,23 @@ output_var() {
   export "${name}=${value}"
 }
 
-# Push tag to remote
-push_tag() {
-  local version="${1}"
+# Create tag locally (push happens later via git-push-tag)
+create_tag() {
+  local tag="${1}"
   local project_name="${2}"
   git config user.email "noreply@kaptain.org"
   git config user.name "Kube Kaptain"
-  git tag -m "Automatic release tag for version ${version} of ${project_name} by Kaptain build script." "${version}" HEAD
-  git push origin "${version}"
+  git tag -m "Automatic release tag for version ${tag} of ${project_name} by Kaptain build script." "${tag}" HEAD
 }
 
 main() {
-  # Validate BUILD_LOCATION first
-  validate_build_location
-
-  local current_branch
-  current_branch=$(get_current_branch)
-
-  local project_name
-  project_name=$(get_project_name)
+  local current_branch="${CURRENT_BRANCH}"
+  local project_name="${REPOSITORY_NAME}"
 
   # Determine if this is a release build
   # Local builds are never releases, regardless of branch
   local is_release="false"
-  if [[ "${BUILD_LOCATION}" == "build_server" ]] && is_release_branch "${current_branch}"; then
+  if [[ "${BUILD_MODE}" == "build_server" ]] && is_release_branch "${current_branch}"; then
     is_release="true"
   fi
 
@@ -194,20 +172,19 @@ main() {
     exit 1
   fi
 
-  # Push tag if this is a release build
-  if [[ "${is_release}" == "true" ]]; then
-    echo "Tagging release: ${version}" >&2
-    push_tag "${version}" "${project_name}"
-  else
-    echo "Pre-release build: ${version} (no tag push)" >&2
-  fi
-
-  # Generate DOCKER_TAG based on release status
+  # Generate DOCKER_TAG and GIT_TAG based on release status
   local docker_tag
   if [[ "${is_release}" == "true" ]]; then
     docker_tag="${version}"
   else
     docker_tag="${version}-PRERELEASE"
+  fi
+  local git_tag="${docker_tag}"
+
+  # Create tag locally for build_server mode (push happens later)
+  if [[ "${BUILD_MODE}" == "build_server" ]]; then
+    echo "Creating tag: ${git_tag}" >&2
+    create_tag "${git_tag}" "${project_name}"
   fi
 
   # Generate padded/truncated versions for different ecosystems
@@ -237,6 +214,7 @@ main() {
   output_var "VERSION_4_PART" "${version_4_part}"
   output_var "DOCKER_TAG" "${docker_tag}"
   output_var "DOCKER_IMAGE_NAME" "${docker_image_name}"
+  output_var "GIT_TAG" "${git_tag}"
   output_var "IS_RELEASE" "${is_release}"
   output_var "PROJECT_NAME" "${project_name}"
 }

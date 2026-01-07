@@ -46,6 +46,25 @@ indent_chunk() {
   done
 }
 
+# Append && success() to if: conditions that don't already have a status check function
+append_success_to_conditions() {
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    # Match lines with "if:" followed by a condition
+    if [[ "$line" =~ ^([[:space:]]*if:[[:space:]]*)(.+)$ ]]; then
+      local prefix="${BASH_REMATCH[1]}"
+      local condition="${BASH_REMATCH[2]}"
+      # Only append if no status check function already present
+      if [[ ! "$condition" =~ (success|failure|always|cancelled)\(\) ]]; then
+        echo "${prefix}${condition} && success()"
+      else
+        echo "$line"
+      fi
+    else
+      echo "$line"
+    fi
+  done
+}
+
 # Parse parameter value from params string: name="value" or name='value'
 parse_param() {
   local params="$1"
@@ -241,10 +260,11 @@ process_template() {
         exit 1
       fi
 
-      # Read chunk, strip SPDX header, replace placeholders, and apply indentation
+      # Read chunk, strip SPDX header, replace placeholders, append success() to conditions, and apply indentation
       local chunk
       chunk=$(cat "$chunk_file" | strip_spdx_header)
       chunk="${chunk//\$\{WORKFLOW_NAME\}/$workflow_name}"
+      chunk=$(echo "$chunk" | append_success_to_conditions)
 
       # Apply indentation to chunk (first line gets indent, others get indent prepended)
       local indented_chunk

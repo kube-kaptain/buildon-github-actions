@@ -18,7 +18,7 @@ Docker Build Dockerfile
 | `config-value-trailing-newline` | string | `strip-for-single-line` | How to handle trailing newlines in config values (strip-for-single-line, preserve-all, always-strip-one-newline) |
 | `docker-target-registry` | string | `ghcr.io` | Target container registry |
 | `docker-target-base-path` | string | `""` | Path between registry and image name (auto-set for GHCR) |
-| `default-branch` | string | `main` | The default/release branch name |
+| `release-branch` | string | `main` | The release branch name |
 | `additional-release-branches` | string | `""` | Comma-separated list of additional release branches |
 | `block-slashes` | boolean | `false` | DEPRECATED: Use block-slash-containing-branches instead |
 | `block-slash-containing-branches` | boolean | `false` | Block branch names containing slashes |
@@ -40,6 +40,8 @@ Docker Build Dockerfile
 | `github-release-enabled` | boolean | `true` | Create a GitHub release on version tags |
 | `github-release-files` | string | `""` | Files to attach to the release (space-separated) |
 | `github-release-notes` | string | `""` | Release notes (leave empty for auto-generated) |
+| `github-release-add-version-to-filenames` | boolean | `true` | Add version suffix to release filenames (e.g., file.yaml -> file-1.2.3.yaml) |
+| `github-release-substitute-tokens-in-files` | boolean | `true` | Apply token substitution to release files |
 
 ## Secrets
 
@@ -60,6 +62,7 @@ Docker Build Dockerfile
 | `version-4-part` | Version padded/truncated to 4 parts |
 | `docker-tag` | Tag for Docker images |
 | `docker-image-name` | Docker image name |
+| `git-tag` | Tag for git |
 | `project-name` | The repository/project name |
 | `is-release` | Whether this is a release build |
 | `target-image-full-uri` | Full target image reference (action output name) |

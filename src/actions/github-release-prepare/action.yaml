@@ -1,0 +1,204 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
+name: GitHub Release Prepare
+description: Prepares files for GitHub release with optional substitution and version suffix
+
+inputs:
+  github-release-files:
+    description: 'Files to attach to release (space-separated)'
+    required: false
+    default: ''
+  output-sub-path:
+    description: 'Build output directory'
+    required: false
+    default: 'target'
+  version:
+    description: 'Version for filename suffix'
+    required: true
+  project-name:
+    description: 'Project name for token substitution'
+    required: true
+  docker-tag:
+    description: 'Docker tag for token substitution'
+    required: true
+  docker-image-name:
+    description: 'Docker image name for token substitution'
+    required: true
+  is-release:
+    description: 'Whether this is a release build'
+    required: true
+  github-release-add-version-to-filenames:
+    description: 'Add version suffix to filenames'
+    required: false
+    default: 'true'
+  github-release-substitute-tokens-in-files:
+    description: 'Apply token substitution to files'
+    required: false
+    default: 'true'
+  substitution-token-style:
+    description: 'Token delimiter syntax'
+    required: false
+    default: 'shell'
+  token-name-style:
+    description: 'Case style for token names'
+    required: false
+    default: 'PascalCase'
+  token-name-validation:
+    description: 'How to validate token names'
+    required: false
+    default: 'MATCH'
+  config-sub-path:
+    description: 'User config directory'
+    required: false
+    default: 'src/config'
+  allow-builtin-token-override:
+    description: 'Allow user tokens to override built-ins'
+    required: false
+    default: 'false'
+  config-value-trailing-newline:
+    description: 'Trailing newline handling'
+    required: false
+    default: 'strip-for-single-line'
+  docker-image-full-uri:
+    description: 'Full Docker image URI (optional built-in token)'
+    required: false
+    default: ''
+  target-registry:
+    description: 'Target registry (optional built-in token)'
+    required: false
+    default: ''
+  target-base-path:
+    description: 'Target base path (optional built-in token)'
+    required: false
+    default: ''
+  manifests-zip-file-name:
+    description: 'Manifests zip filename (optional built-in token)'
+    required: false
+    default: ''
+
+runs:
+  using: composite
+  steps:
+    - name: Prepare release files
+      shell: bash
+      env:
+        GITHUB_RELEASE_FILES: ${{ inputs.github-release-files }}
+        OUTPUT_SUB_PATH: ${{ inputs.output-sub-path }}
+        VERSION: ${{ inputs.version }}
+        PROJECT_NAME: ${{ inputs.project-name }}
+        DOCKER_TAG: ${{ inputs.docker-tag }}
+        DOCKER_IMAGE_NAME: ${{ inputs.docker-image-name }}
+        IS_RELEASE: ${{ inputs.is-release }}
+        ADD_VERSION_TO_FILENAMES: ${{ inputs.github-release-add-version-to-filenames }}
+        SUBSTITUTE_TOKENS_IN_FILES: ${{ inputs.github-release-substitute-tokens-in-files }}
+        SUBSTITUTION_TOKEN_STYLE: ${{ inputs.substitution-token-style }}
+        TOKEN_NAME_STYLE: ${{ inputs.token-name-style }}
+        TOKEN_NAME_VALIDATION: ${{ inputs.token-name-validation }}
+        CONFIG_SUB_PATH: ${{ inputs.config-sub-path }}
+        ALLOW_BUILTIN_TOKEN_OVERRIDE: ${{ inputs.allow-builtin-token-override }}
+        CONFIG_VALUE_TRAILING_NEWLINE: ${{ inputs.config-value-trailing-newline }}
+        DOCKER_IMAGE_FULL_URI: ${{ inputs.docker-image-full-uri }}
+        TARGET_REGISTRY: ${{ inputs.target-registry }}
+        TARGET_BASE_PATH: ${{ inputs.target-base-path }}
+        MANIFESTS_ZIP_FILE_NAME: ${{ inputs.manifests-zip-file-name }}
+        SCRIPTS_DIR: ${{ github.action_path }}/../../scripts/main
+      run: |
+        set -euo pipefail
+
+        # Fixed output subdirectory (shared knowledge with github-release action)
+        RELEASE_OUTPUT_DIR="${OUTPUT_SUB_PATH}/github-release"
+
+        # Add version suffix to filename before extension
+        # e.g., template.yaml -> template-1.2.3.yaml
+        add_version_suffix() {
+          local filename="$1"
+          local version="$2"
+          local base ext
+
+          if [[ "${filename}" == *.* ]]; then
+            base="${filename%.*}"
+            ext="${filename##*.}"
+            echo "${base}-${version}.${ext}"
+          else
+            echo "${filename}-${version}"
+          fi
+        }
+
+        echo "Preparing GitHub release files..."
+        echo "  Output: ${RELEASE_OUTPUT_DIR}"
+        echo "  Add version to filenames: ${ADD_VERSION_TO_FILENAMES}"
+        echo "  Substitute tokens: ${SUBSTITUTE_TOKENS_IN_FILES}"
+
+        # Create output directory
+        mkdir -p "${RELEASE_OUTPUT_DIR}"
+
+        # If no files specified, we're done (release will have no attachments)
+        if [[ -z "${GITHUB_RELEASE_FILES}" ]]; then
+          echo "No files specified for release"
+          exit 0
+        fi
+
+        # Prepare tokens if substitution is enabled
+        tokens_dir=""
+        if [[ "${SUBSTITUTE_TOKENS_IN_FILES}" == "true" ]]; then
+          tokens_dir="${OUTPUT_SUB_PATH}/github-release-tokens"
+          echo "Preparing substitution tokens..."
+
+          TOKENS_OUTPUT_SUB_PATH="${tokens_dir}" \
+          CONFIG_SUB_PATH="${CONFIG_SUB_PATH}" \
+          TOKEN_NAME_STYLE="${TOKEN_NAME_STYLE}" \
+          TOKEN_NAME_VALIDATION="${TOKEN_NAME_VALIDATION}" \
+          ALLOW_BUILTIN_TOKEN_OVERRIDE="${ALLOW_BUILTIN_TOKEN_OVERRIDE}" \
+          CONFIG_VALUE_TRAILING_NEWLINE="${CONFIG_VALUE_TRAILING_NEWLINE}" \
+          PROJECT_NAME="${PROJECT_NAME}" \
+          VERSION="${VERSION}" \
+          IS_RELEASE="${IS_RELEASE}" \
+          DOCKER_TAG="${DOCKER_TAG}" \
+          DOCKER_IMAGE_NAME="${DOCKER_IMAGE_NAME}" \
+          DOCKER_IMAGE_FULL_URI="${DOCKER_IMAGE_FULL_URI:-}" \
+          TARGET_REGISTRY="${TARGET_REGISTRY:-}" \
+          TARGET_BASE_PATH="${TARGET_BASE_PATH:-}" \
+          MANIFESTS_ZIP_FILE_NAME="${MANIFESTS_ZIP_FILE_NAME:-}" \
+            "${SCRIPTS_DIR}/prepare-substitution-tokens"
+        fi
+
+        # Process each file
+        # shellcheck disable=SC2086 # Intentional word splitting
+        for source_file in ${GITHUB_RELEASE_FILES}; do
+          if [[ ! -f "${source_file}" ]]; then
+            echo "::error::Source file not found: ${source_file}"
+            exit 1
+          fi
+
+          filename=$(basename "${source_file}")
+
+          # Determine target filename
+          target_filename="${filename}"
+          if [[ "${ADD_VERSION_TO_FILENAMES}" == "true" ]]; then
+            target_filename=$(add_version_suffix "${filename}" "${VERSION}")
+          fi
+
+          target_path="${RELEASE_OUTPUT_DIR}/${target_filename}"
+
+          echo "  ${source_file} -> ${target_filename}"
+
+          # Copy file (copy IS the rename)
+          cp "${source_file}" "${target_path}"
+
+          # Apply substitution if enabled
+          if [[ "${SUBSTITUTE_TOKENS_IN_FILES}" == "true" ]]; then
+            CONFIG_VALUE_TRAILING_NEWLINE="${CONFIG_VALUE_TRAILING_NEWLINE}" \
+              "${SCRIPTS_DIR}/substitute-tokens-from-dir" \
+              "${SUBSTITUTION_TOKEN_STYLE}" \
+              "${tokens_dir}" \
+              "${RELEASE_OUTPUT_DIR}"
+          fi
+        done
+
+        # Clean up tokens dir
+        if [[ -n "${tokens_dir}" ]] && [[ -d "${tokens_dir}" ]]; then
+          rm -rf "${tokens_dir}"
+        fi
+
+        echo "GitHub release preparation complete"
+        echo "  Output directory: ${RELEASE_OUTPUT_DIR}"

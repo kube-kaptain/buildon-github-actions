@@ -5,8 +5,8 @@ name: Basic Quality Checks
 on:
   workflow_call:
     inputs:
-      default-branch:
-        description: 'The default/release branch name'
+      release-branch:
+        description: 'The release branch name'
         required: false
         type: string
         default: 'main'
@@ -100,7 +100,7 @@ jobs:
           GITHUB_WORKFLOW_REF: ${{ github.workflow_ref }}
 
       - name: Checkout actions
-        if: steps.parse.outputs.ref != 'LOCAL'
+        if: steps.parse.outputs.ref != 'LOCAL' && success()
         uses: actions/checkout@v4.2.2
         with:
           repository: kube-kaptain/buildon-github-actions
@@ -108,7 +108,7 @@ jobs:
           path: .github/buildon-github-actions
 
       - name: Link local actions
-        if: steps.parse.outputs.ref == 'LOCAL'
+        if: steps.parse.outputs.ref == 'LOCAL' && success()
         run: |
           echo "Linking local actions for dogfooding"
           ln -s "$(pwd)" .github/buildon-github-actions
@@ -116,7 +116,7 @@ jobs:
         id: quality
         uses: ./.github/buildon-github-actions/src/actions/basic-quality-checks
         with:
-          default-branch: ${{ inputs.default-branch }}
+          release-branch: ${{ inputs.release-branch }}
           additional-release-branches: ${{ inputs.additional-release-branches }}
           block-slashes: ${{ inputs.block-slashes }}
           block-slash-containing-branches: ${{ inputs.block-slash-containing-branches }}

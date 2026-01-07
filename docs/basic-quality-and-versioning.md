@@ -6,7 +6,7 @@ Basic Quality and Versioning
 
 | Input | Type | Default | Description |
 |-------|------|---------|-------------|
-| `default-branch` | string | `main` | The default/release branch name |
+| `release-branch` | string | `main` | The release branch name |
 | `additional-release-branches` | string | `""` | Comma-separated list of additional release branches |
 | `block-slashes` | boolean | `false` | DEPRECATED: Use block-slash-containing-branches instead |
 | `block-slash-containing-branches` | boolean | `false` | Block branch names containing slashes |
@@ -26,6 +26,8 @@ Basic Quality and Versioning
 | `github-release-enabled` | boolean | `true` | Create a GitHub release on version tags |
 | `github-release-files` | string | `""` | Files to attach to the release (space-separated) |
 | `github-release-notes` | string | `""` | Release notes (leave empty for auto-generated) |
+| `github-release-add-version-to-filenames` | boolean | `true` | Add version suffix to release filenames (e.g., file.yaml -> file-1.2.3.yaml) |
+| `github-release-substitute-tokens-in-files` | boolean | `true` | Apply token substitution to release files |
 
 ## Outputs
 
@@ -40,5 +42,6 @@ Basic Quality and Versioning
 | `version-4-part` | Version padded/truncated to 4 parts |
 | `docker-tag` | Tag for Docker images |
 | `docker-image-name` | Docker image name (prefix/project-name) |
+| `git-tag` | Tag for git |
 | `is-release` | Whether this is a release build |
 | `project-name` | The repository/project name |

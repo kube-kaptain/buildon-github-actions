@@ -25,8 +25,10 @@ exec /usr/bin/git "$@"
 MOCKGIT
   chmod +x "$MOCK_BIN_DIR/git"
   export PATH="$MOCK_BIN_DIR:$PATH"
-  # Default BUILD_LOCATION for tests (simulates CI environment)
-  export BUILD_LOCATION="${BUILD_LOCATION:-build_server}"
+  # Default BUILD_MODE for tests (simulates CI environment)
+  export BUILD_MODE="${BUILD_MODE:-build_server}"
+  # Default RELEASE_BRANCH for tests
+  export RELEASE_BRANCH="${RELEASE_BRANCH:-main}"
 }
 
 # Clean up mock git

@@ -18,7 +18,7 @@ Spec Check Filter Release
 | `config-value-trailing-newline` | string | `strip-for-single-line` | How to handle trailing newlines in config values (strip-for-single-line, preserve-all, always-strip-one-newline) |
 | `docker-target-registry` | string | `ghcr.io` | Target container registry |
 | `docker-target-base-path` | string | `""` | Path between registry and image name (auto-set for GHCR) |
-| `default-branch` | string | `main` | The default/release branch name |
+| `release-branch` | string | `main` | The release branch name |
 | `additional-release-branches` | string | `""` | Comma-separated list of additional release branches |
 | `block-slashes` | boolean | `false` | DEPRECATED: Use block-slash-containing-branches instead |
 | `block-slash-containing-branches` | boolean | `false` | Block branch names containing slashes |
@@ -59,6 +59,7 @@ Spec Check Filter Release
 | `version-4-part` | Version padded/truncated to 4 parts |
 | `docker-tag` | Tag for Docker images |
 | `docker-image-name` | Docker image name |
+| `git-tag` | Tag for git |
 | `project-name` | The repository/project name |
 | `is-release` | Whether this is a release build |
 | `docker-target-image-full-uri` | Full target image reference |

@@ -5,7 +5,7 @@
   id: quality
   uses: ./.github/buildon-github-actions/src/actions/basic-quality-checks
   with:
-    default-branch: ${{ inputs.default-branch }}
+    release-branch: ${{ inputs.release-branch }}
     additional-release-branches: ${{ inputs.additional-release-branches }}
     block-slashes: ${{ inputs.block-slashes }}
     block-slash-containing-branches: ${{ inputs.block-slash-containing-branches }}

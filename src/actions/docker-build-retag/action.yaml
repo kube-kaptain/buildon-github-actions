@@ -3,7 +3,6 @@
 
 name: 'Docker Build Retag'
 description: 'Pulls and retags Docker images (no push)'
-author: 'kube-kaptain'
 
 inputs:
   docker-source-registry:

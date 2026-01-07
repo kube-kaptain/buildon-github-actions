@@ -34,7 +34,7 @@
   uses: ./.github/buildon-github-actions/src/actions/github-release
   with:
     github-release-enabled: ${{ inputs.github-release-enabled }}
-    github-release-files: ""
+    output-sub-path: ${{ inputs.output-sub-path }}
     github-release-tag: ${{ steps.versions.outputs.version }}
     github-release-notes: ${{ steps.release-notes.outputs.notes }}
     github-release-title: ${{ steps.release-notes.outputs.title }}

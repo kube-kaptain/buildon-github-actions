@@ -1,16 +1,17 @@
-# SPDX-License-Identifier: CC-BY-SA-4.0
+# SPDX-License-Identifier: MIT
 # Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
 name: GitHub Release
-description: Create GitHub release with assets
+description: Create GitHub release with assets from prepared directory
 
 inputs:
   github-release-enabled:
     description: Whether to create a GitHub release
     required: false
     default: "true"
-  github-release-files:
-    description: Files to attach (space-separated or glob pattern)
-    required: true
+  output-sub-path:
+    description: Build output directory (files read from {output-sub-path}/github-release/)
+    required: false
+    default: "target"
   github-release-tag:
     description: Release tag
     required: false
@@ -32,13 +33,27 @@ runs:
       shell: bash
       env:
         GH_TOKEN: ${{ github.token }}
-        FILES: ${{ inputs.github-release-files }}
+        OUTPUT_SUB_PATH: ${{ inputs.output-sub-path }}
         TAG: ${{ inputs.github-release-tag }}
         NOTES: ${{ inputs.github-release-notes }}
         TITLE: ${{ inputs.github-release-title }}
       run: |
+        RELEASE_DIR="${OUTPUT_SUB_PATH}/github-release"
+
+        # Collect files from prepared directory
+        FILES=""
+        if [[ -d "${RELEASE_DIR}" ]]; then
+          for f in "${RELEASE_DIR}"/*; do
+            if [[ -f "$f" ]]; then
+              FILES="${FILES} ${f}"
+            fi
+          done
+        fi
+
         if [[ -n "${NOTES}" ]]; then
+          # shellcheck disable=SC2086 # Intentional word splitting for FILES
           gh release create "${TAG}" ${FILES} --title "${TITLE}" --notes "${NOTES}"
         else
+          # shellcheck disable=SC2086 # Intentional word splitting for FILES
           gh release create "${TAG}" ${FILES} --title "${TITLE}" --generate-notes
         fi

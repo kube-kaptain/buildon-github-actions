@@ -6,6 +6,8 @@ load helpers
 
 setup() {
   export DEFAULT_BRANCH=main
+  export CURRENT_BRANCH=main
+  export REPOSITORY_NAME=test-repo
   setup_mock_git
 }
 
@@ -132,6 +134,7 @@ teardown() {
 @test "sets IS_RELEASE=false on feature branch" {
   TEST_REPO=$(clone_fixture "tag-feature-branch")
   cd "$TEST_REPO"
+  export CURRENT_BRANCH=feature-test
 
   run "$SCRIPTS_DIR/versions-and-naming"
   [ "$status" -eq 0 ]
@@ -141,6 +144,7 @@ teardown() {
 @test "adds PRERELEASE suffix on non-release branch" {
   TEST_REPO=$(clone_fixture "tag-feature-branch")
   cd "$TEST_REPO"
+  export CURRENT_BRANCH=feature-test
 
   run "$SCRIPTS_DIR/versions-and-naming"
   [ "$status" -eq 0 ]
@@ -168,7 +172,8 @@ teardown() {
 @test "respects ADDITIONAL_RELEASE_BRANCHES configuration" {
   TEST_REPO=$(clone_fixture "tag-feature-branch")
   cd "$TEST_REPO"
-  export ADDITIONAL_RELEASE_BRANCHES="feature-test"
+  export CURRENT_BRANCH=main-test
+  export ADDITIONAL_RELEASE_BRANCHES="main-test"
 
   run "$SCRIPTS_DIR/versions-and-naming"
   [ "$status" -eq 0 ]
@@ -286,12 +291,8 @@ teardown() {
 
 @test "generates docker image name from repo prefix" {
   TEST_REPO=$(clone_fixture "tag-none")
-  # Rename to match group-project-specialisation pattern
-  local parent_dir=$(dirname "$TEST_REPO")
-  local new_name="$parent_dir/group-project-specialisation"
-  mv "$TEST_REPO" "$new_name"
-  TEST_REPO="$new_name"
   cd "$TEST_REPO"
+  export REPOSITORY_NAME=group-project-specialisation
 
   run "$SCRIPTS_DIR/versions-and-naming"
   [ "$status" -eq 0 ]
@@ -635,32 +636,34 @@ ENV KUBECTL_VERSION=1.28.5' > src/docker/Dockerfile
   assert_output_contains "TAG_VERSION_PREFIX_PARTS (3) exceeds source version parts (2 in '1.28')"
 }
 
-# BUILD_LOCATION tests
+# BUILD_MODE tests
 
-@test "fails when BUILD_LOCATION is not set" {
+@test "fails when BUILD_MODE has invalid value" {
   TEST_REPO=$(clone_fixture "tag-none")
   cd "$TEST_REPO"
-  unset BUILD_LOCATION
+  export BUILD_MODE="invalid_value"
 
   run "$SCRIPTS_DIR/versions-and-naming"
   [ "$status" -eq 1 ]
-  assert_output_contains "BUILD_LOCATION is required"
+  assert_output_contains "Invalid BUILD_MODE"
 }
 
-@test "fails when BUILD_LOCATION has invalid value" {
+@test "BUILD_MODE defaults to local when not set" {
   TEST_REPO=$(clone_fixture "tag-none")
   cd "$TEST_REPO"
-  export BUILD_LOCATION="invalid_value"
+  unset BUILD_MODE
 
   run "$SCRIPTS_DIR/versions-and-naming"
-  [ "$status" -eq 1 ]
-  assert_output_contains "Invalid BUILD_LOCATION"
+  [ "$status" -eq 0 ]
+  # Without BUILD_MODE, defaults to local which forces IS_RELEASE=false
+  assert_var_equals "IS_RELEASE" "false"
+  assert_var_equals "DOCKER_TAG" "1.0.0-PRERELEASE"
 }
 
-@test "BUILD_LOCATION=local forces IS_RELEASE=false on default branch" {
+@test "BUILD_MODE=local forces IS_RELEASE=false on release branch" {
   TEST_REPO=$(clone_fixture "tag-none")
   cd "$TEST_REPO"
-  export BUILD_LOCATION="local"
+  export BUILD_MODE="local"
 
   run "$SCRIPTS_DIR/versions-and-naming"
   [ "$status" -eq 0 ]
@@ -668,11 +671,12 @@ ENV KUBECTL_VERSION=1.28.5' > src/docker/Dockerfile
   assert_var_equals "DOCKER_TAG" "1.0.0-PRERELEASE"
 }
 
-@test "BUILD_LOCATION=local forces IS_RELEASE=false on additional release branch" {
+@test "BUILD_MODE=local forces IS_RELEASE=false on additional release branch" {
   TEST_REPO=$(clone_fixture "tag-feature-branch")
   cd "$TEST_REPO"
-  export BUILD_LOCATION="local"
-  export ADDITIONAL_RELEASE_BRANCHES="feature-test"
+  export CURRENT_BRANCH=main-test
+  export BUILD_MODE="local"
+  export ADDITIONAL_RELEASE_BRANCHES="main-test"
 
   run "$SCRIPTS_DIR/versions-and-naming"
   [ "$status" -eq 0 ]
@@ -680,13 +684,46 @@ ENV KUBECTL_VERSION=1.28.5' > src/docker/Dockerfile
   assert_var_equals "DOCKER_TAG" "1.0.1-PRERELEASE"
 }
 
-@test "BUILD_LOCATION=build_server allows IS_RELEASE=true on default branch" {
+@test "BUILD_MODE=build_server allows IS_RELEASE=true on release branch" {
   TEST_REPO=$(clone_fixture "tag-none")
   cd "$TEST_REPO"
-  export BUILD_LOCATION="build_server"
+  export BUILD_MODE="build_server"
 
   run "$SCRIPTS_DIR/versions-and-naming"
   [ "$status" -eq 0 ]
   assert_var_equals "IS_RELEASE" "true"
   assert_var_equals "DOCKER_TAG" "1.0.0"
+}
+
+# Branch configuration validation tests
+
+@test "fails when release-branch differs from default-branch" {
+  TEST_REPO=$(clone_fixture "tag-none")
+  cd "$TEST_REPO"
+
+  export DEFAULT_BRANCH=main
+  export RELEASE_BRANCH=develop
+  run "$SCRIPTS_DIR/versions-and-naming"
+  [ "$status" -eq 1 ]
+  assert_output_contains "RELEASE_BRANCH (develop) must match DEFAULT_BRANCH (main)"
+}
+
+@test "fails when additional-release-branch not prefixed with release-branch" {
+  TEST_REPO=$(clone_fixture "tag-none")
+  cd "$TEST_REPO"
+
+  export ADDITIONAL_RELEASE_BRANCHES="release-1.0.x"
+  run "$SCRIPTS_DIR/versions-and-naming"
+  [ "$status" -eq 1 ]
+  assert_output_contains "must start with 'main' followed by a divider"
+}
+
+@test "accepts additional-release-branches with valid prefixes" {
+  TEST_REPO=$(clone_fixture "tag-none")
+  cd "$TEST_REPO"
+
+  # All valid dividers: . - / _ +
+  export ADDITIONAL_RELEASE_BRANCHES="main-1.0,main.hotfix,main/patch,main_test,main+experimental"
+  run "$SCRIPTS_DIR/versions-and-naming"
+  [ "$status" -eq 0 ]
 }
