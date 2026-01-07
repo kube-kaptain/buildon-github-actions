@@ -186,19 +186,18 @@ runs:
           fi
 
           target_path="${RELEASE_OUTPUT_DIR}/${target_filename}"
-
           echo "  ${source_file} -> ${target_filename}"
 
           # Copy file (copy IS the rename)
           cp "${source_file}" "${target_path}"
 
-          # Apply substitution if enabled
+          # Apply substitution if enabled (to this file only)
           if [[ "${SUBSTITUTE_TOKENS_IN_FILES}" == "true" ]]; then
             CONFIG_VALUE_TRAILING_NEWLINE="${CONFIG_VALUE_TRAILING_NEWLINE}" \
               "${SCRIPTS_DIR}/substitute-tokens-from-dir" \
               "${SUBSTITUTION_TOKEN_STYLE}" \
               "${tokens_dir}" \
-              "${RELEASE_OUTPUT_DIR}"
+              "${target_path}"
           fi
         done
 
