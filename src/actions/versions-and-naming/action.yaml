@@ -3,7 +3,6 @@
 
 name: 'Versions & Naming'
 description: 'Generates version numbers, tags, and naming for releases'
-author: 'kube-kaptain'
 
 inputs:
   release-branch:

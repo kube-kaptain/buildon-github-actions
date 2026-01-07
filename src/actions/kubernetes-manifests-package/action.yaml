@@ -3,7 +3,6 @@
 
 name: 'Kubernetes Manifests Package'
 description: 'Packages Kubernetes manifests into a zip with variable substitution'
-author: 'kube-kaptain'
 
 inputs:
   manifests-sub-path:

@@ -3,7 +3,6 @@
 
 name: 'Kubernetes Manifests Repo Provider Publish'
 description: 'Publishes manifests via pluggable repo provider. Requires package step to run first.'
-author: 'kube-kaptain'
 
 inputs:
   manifests-repo-provider-type:

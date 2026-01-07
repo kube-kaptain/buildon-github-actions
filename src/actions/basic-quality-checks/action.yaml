@@ -3,7 +3,6 @@
 
 name: 'Basic Quality Checks'
 description: 'Basic quality checks for commits and branches'
-author: 'kube-kaptain'
 
 inputs:
   release-branch:

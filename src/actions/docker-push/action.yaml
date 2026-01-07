@@ -3,7 +3,6 @@
 
 name: 'Docker Push'
 description: 'Pushes a Docker image to registry'
-author: 'kube-kaptain'
 
 inputs:
   docker-image-full-uri:

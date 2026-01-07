@@ -3,7 +3,6 @@
 
 name: 'Git Push Tag'
 description: 'Pushes an existing git tag to origin'
-author: 'kube-kaptain'
 
 inputs:
   git-tag:

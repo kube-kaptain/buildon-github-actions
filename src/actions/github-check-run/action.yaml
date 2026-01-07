@@ -3,7 +3,6 @@
 
 name: 'GitHub Check Run'
 description: 'Create or update GitHub Check Runs for granular PR status reporting'
-author: 'kube-kaptain'
 
 inputs:
   action:
