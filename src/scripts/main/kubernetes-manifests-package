@@ -117,7 +117,7 @@ main() {
   while IFS= read -r file; do
     total_files=$((total_files + 1))
     case "${file}" in
-      *.yaml|*.yml) yaml_count=$((yaml_count + 1)) ;;
+      *.yaml) yaml_count=$((yaml_count + 1)) ;;
       *) other_count=$((other_count + 1)) ;;
     esac
   done < <(find "${MANIFESTS_RAW_SUB_PATH}" -type f)
@@ -128,7 +128,7 @@ main() {
   fi
 
   echo "" >&2
-  echo "Found ${yaml_count} manifest file(s) (.yaml/.yml)" >&2
+  echo "Found ${yaml_count} manifest file(s) (.yaml)" >&2
   if [[ ${other_count} -gt 0 ]]; then
     echo "Found ${other_count} non-manifest file(s)" >&2
   fi
