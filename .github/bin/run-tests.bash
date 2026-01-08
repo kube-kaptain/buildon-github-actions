@@ -109,24 +109,29 @@ check_generated_files() {
     return 0
   fi
 
-  # Check for any dirty templates (staged, unstaged, or untracked)
-  # Using git status to catch all cases: modified, added, deleted, untracked
-  local dirty_templates
-  dirty_templates=$(git -C "$PROJECT_ROOT" status --porcelain src/workflow-templates/ 2>/dev/null | grep -v '^?' || true)
+  # Check for any dirty source files that affect generation (staged or unstaged)
+  # Workflow templates, step fragments, and actions all contribute to generated output
+  local dirty_sources
+  dirty_sources=$(git -C "$PROJECT_ROOT" status --porcelain \
+    src/workflow-templates/ \
+    src/steps-common/ \
+    src/actions/ \
+    2>/dev/null | grep -v '^?' || true)
 
-  # If ANY workflow template is dirty, all generated file changes are considered
-  # local work in progress (README, docs, workflows all regenerate from templates)
-  if [[ -n "$dirty_templates" ]]; then
-    log_warn "Uncommitted local changes (workflow templates dirty - OK locally):"
+  # If ANY source is dirty, generated file changes are local work in progress
+  if [[ -n "$dirty_sources" ]]; then
+    log_warn "Uncommitted local changes detected - generated files regenerated OK:"
     echo "$modified_generated" | while IFS= read -r file; do
       [[ -n "$file" ]] && log_warn "  - $file"
     done
-    log_info "Generated files OK (uncommitted local work detected)"
+    log_info "Generated files OK (stage/commit when ready)"
     return 0
   fi
 
-  # No templates dirty but generated files changed - this is a real error
-  log_error "Generated files are out of date. Run ./src/bin/assemble-workflows.bash and commit:"
+  # No sources dirty but generated files changed - assemble already ran, just need to commit
+  log_error "Generated files were regenerated but source files are already committed."
+  log_error "This likely means you committed source changes without regenerating."
+  log_error "The files below have been regenerated - stage and commit them:"
   echo "$modified_generated" | while IFS= read -r file; do
     [[ -n "$file" ]] && log_error "  - $file"
   done
