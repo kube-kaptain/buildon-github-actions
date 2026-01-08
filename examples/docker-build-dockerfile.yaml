@@ -54,7 +54,7 @@ jobs:
 # │ Branch Configuration                                                    │
 # └─────────────────────────────────────────────────────────────────────────┘
 #     with:
-#       default-branch: 'master'  # Default is main, use whatever you want
+#       release-branch: 'master'  # Default is main, use whatever you want
 #       additional-release-branches: 'main-1.x,main-2.x'
 
 # ┌─────────────────────────────────────────────────────────────────────────┐
