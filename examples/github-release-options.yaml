@@ -25,7 +25,7 @@ on:
 
 jobs:
   build:
-    uses: kube-kaptain/buildon-github-actions/.github/workflows/docker-build-dockerfile.yaml@1.0.11
+    uses: kube-kaptain/buildon-github-actions/.github/workflows/docker-build-dockerfile.yaml@1.0.39
     permissions:
       contents: write
       packages: write
@@ -72,7 +72,7 @@ jobs:
 #
 # jobs:
 #   build:
-#     uses: kube-kaptain/buildon-github-actions/.github/workflows/kubernetes-app-docker-dockerfile.yaml@1.0.11
+#     uses: kube-kaptain/buildon-github-actions/.github/workflows/kubernetes-app-docker-dockerfile.yaml@1.0.39
 #     permissions:
 #       contents: write
 #       packages: write

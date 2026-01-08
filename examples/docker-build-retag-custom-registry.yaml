@@ -20,7 +20,7 @@ on:
 
 jobs:
   retag:
-    uses: kube-kaptain/buildon-github-actions/.github/workflows/docker-build-retag.yaml@1.0.11
+    uses: kube-kaptain/buildon-github-actions/.github/workflows/docker-build-retag.yaml@1.0.39
     permissions:
       contents: write
       packages: write

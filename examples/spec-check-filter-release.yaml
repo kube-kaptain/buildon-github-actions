@@ -28,7 +28,7 @@ on:
 
 jobs:
   build:
-    uses: kube-kaptain/buildon-github-actions/.github/workflows/spec-check-filter-release.yaml@1.0.11
+    uses: kube-kaptain/buildon-github-actions/.github/workflows/spec-check-filter-release.yaml@1.0.39
     permissions:
       contents: write
       packages: write
