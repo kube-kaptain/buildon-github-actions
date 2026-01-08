@@ -17,7 +17,7 @@ on:
         type: string
         default: 'shell'
       token-name-style:
-        description: 'Case style for token names (UPPER_SNAKE, lower_snake, kebab-case, camelCase, PascalCase, lower.dot, UPPER.DOT)'
+        description: 'Case style for token names (UPPER_SNAKE, lower_snake, lower-kebab, UPPER-KEBAB, camelCase, PascalCase, lower.dot, UPPER.DOT)'
         required: false
         type: string
         default: 'PascalCase'
@@ -644,6 +644,13 @@ jobs:
           check-run-id: ${{ steps.check-post-package.outputs.check-run-id }}
 
       # === GitHub Release Prepare ===
+      - name: Start check - GitHub Release Prepare
+        if: inputs.github-release-enabled == true && success()
+        id: check-github-release-prepare
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
+        with:
+          action: start
+          check-name: 'Build & Publish → GitHub Release Prepare'
       # Copy manifests zip directly (already has version in filename, binary file)
       - name: Copy manifests zip to release directory
         if: inputs.github-release-enabled == true && success()
@@ -677,14 +684,45 @@ jobs:
           target-registry: ${{ inputs.docker-target-registry }}
           target-base-path: ${{ inputs.docker-target-base-path }}
           manifests-zip-file-name: ${{ steps.manifest-package.outputs.manifests-zip-file-name }}
+      - name: Pass check - GitHub Release Prepare
+        if: inputs.github-release-enabled == true && success()
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
+        with:
+          action: pass
+          check-run-id: ${{ steps.check-github-release-prepare.outputs.check-run-id }}
+      - name: Fail check - GitHub Release Prepare
+        if: inputs.github-release-enabled == true && failure() && steps.check-github-release-prepare.outputs.check-run-id != ''
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
+        with:
+          action: fail
+          check-run-id: ${{ steps.check-github-release-prepare.outputs.check-run-id }}
 
       # === Git Tag Push ===
+      - name: Start check - Git Tag Push
+        if: steps.versions.outputs.is-release == 'true' && success()
+        id: check-git-push-tag
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
+        with:
+          action: start
+          check-name: 'Build & Publish → Git Tag Push'
       - name: Push git tag
         if: steps.versions.outputs.is-release == 'true' && success()
         uses: ./.github/buildon-github-actions/src/actions/git-push-tag
         with:
           git-tag: ${{ steps.versions.outputs.git-tag }}
           is-release: ${{ steps.versions.outputs.is-release }}
+      - name: Pass check - Git Tag Push
+        if: steps.versions.outputs.is-release == 'true' && success()
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
+        with:
+          action: pass
+          check-run-id: ${{ steps.check-git-push-tag.outputs.check-run-id }}
+      - name: Fail check - Git Tag Push
+        if: steps.versions.outputs.is-release == 'true' && failure() && steps.check-git-push-tag.outputs.check-run-id != ''
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
+        with:
+          action: fail
+          check-run-id: ${{ steps.check-git-push-tag.outputs.check-run-id }}
 
       # === Manifest Repo Provider Publish ===
       - name: Start check - Publish Manifests via Repo Provider

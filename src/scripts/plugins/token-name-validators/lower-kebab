@@ -2,13 +2,13 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
 #
-# kebab-case - Validates token names follow kebab-case convention
+# lower-kebab - Validates token names follow lower-kebab convention
 #
 # Valid: my-var, my-var-2, my-2-var, 2-my-var, a, my-category/my-sub-var
 # Invalid: MY_VAR, my_var, myVar, MyVar
 #
 # Usage:
-#   kebab-case <directory>
+#   lower-kebab <directory>
 #
 set -euo pipefail
 
@@ -16,7 +16,7 @@ LOG_ERROR_PREFIX="${LOG_ERROR_PREFIX:-}"
 LOG_ERROR_SUFFIX="${LOG_ERROR_SUFFIX:-}"
 
 if [[ ${#} -ne 1 ]]; then
-  echo "${LOG_ERROR_PREFIX}Usage: kebab-case <directory>${LOG_ERROR_SUFFIX}" >&2
+  echo "${LOG_ERROR_PREFIX}Usage: lower-kebab <directory>${LOG_ERROR_SUFFIX}" >&2
   exit 1
 fi
 
@@ -57,7 +57,7 @@ while IFS= read -r -d '' file; do
 done < <(find "${DIR}" -type f -print0)
 
 if [[ ${#invalid_names[@]} -gt 0 ]]; then
-  echo "${LOG_ERROR_PREFIX}Invalid kebab-case token names:${LOG_ERROR_SUFFIX}" >&2
+  echo "${LOG_ERROR_PREFIX}Invalid lower-kebab token names:${LOG_ERROR_SUFFIX}" >&2
   for name in "${invalid_names[@]}"; do
     echo "  ${name}" >&2
   done

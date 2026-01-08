@@ -410,7 +410,7 @@ b: $undefined_ref"
   done
 }
 
-@test "all styles: kebab-case token name" {
+@test "all styles: lower-kebab token name" {
   for style_def in "${STYLES[@]}"; do
     local style="${style_def%%|*}"
 

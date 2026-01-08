@@ -1,0 +1,67 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
+#
+# UPPER-KEBAB - Validates token names follow UPPER-KEBAB convention
+#
+# Valid: MY-VAR, MY-VAR-2, MY-2-VAR, 2-MY-VAR, A, MY-CATEGORY/MY-SUB-VAR
+# Invalid: my_var, MY_VAR, myVar, MyVar
+#
+# Usage:
+#   UPPER-KEBAB <directory>
+#
+set -euo pipefail
+
+LOG_ERROR_PREFIX="${LOG_ERROR_PREFIX:-}"
+LOG_ERROR_SUFFIX="${LOG_ERROR_SUFFIX:-}"
+
+if [[ ${#} -ne 1 ]]; then
+  echo "${LOG_ERROR_PREFIX}Usage: UPPER-KEBAB <directory>${LOG_ERROR_SUFFIX}" >&2
+  exit 1
+fi
+
+DIR="${1}"
+
+if [[ ! -d "${DIR}" ]]; then
+  echo "${LOG_ERROR_PREFIX}Directory not found: ${DIR}${LOG_ERROR_SUFFIX}" >&2
+  exit 1
+fi
+
+is_valid_name() {
+  local name="${1}"
+
+  local segment
+  while IFS= read -r segment; do
+    if [[ ${#segment} -eq 1 ]]; then
+      if [[ ! "${segment}" =~ ^[A-Z0-9]$ ]]; then
+        return 1
+      fi
+    else
+      if [[ ! "${segment}" =~ ^[A-Z0-9][A-Z0-9-]*[A-Z0-9]$ ]]; then
+        return 1
+      fi
+    fi
+  done <<< "${name//\//$'\n'}"
+
+  return 0
+}
+
+invalid_names=()
+
+while IFS= read -r -d '' file; do
+  rel_path="${file#"${DIR}"/}"
+
+  if ! is_valid_name "${rel_path}"; then
+    invalid_names+=("${rel_path}")
+  fi
+done < <(find "${DIR}" -type f -print0)
+
+if [[ ${#invalid_names[@]} -gt 0 ]]; then
+  echo "${LOG_ERROR_PREFIX}Invalid UPPER-KEBAB token names:${LOG_ERROR_SUFFIX}" >&2
+  for name in "${invalid_names[@]}"; do
+    echo "  ${name}" >&2
+  done
+  exit 1
+fi
+
+exit 0

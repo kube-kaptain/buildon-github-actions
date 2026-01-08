@@ -44,7 +44,7 @@ create_target() {
   [ "$result" = "name: my-app" ]
 }
 
-@test "substitutes kebab-case token name" {
+@test "substitutes lower-kebab token name" {
   create_token "project-name" "my-app"
   create_target "test.yaml" 'name: ${project-name}'
 

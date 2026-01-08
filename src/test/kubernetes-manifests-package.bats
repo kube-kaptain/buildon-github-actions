@@ -94,9 +94,9 @@ set_required_env() {
   unzip -p "$OUTPUT_SUB_PATH/manifests/zip/my-project-1.2.3-manifests.zip" my-project/deployment.yaml | grep -q "name: my-project-app"
 }
 
-@test "substitutes with kebab-case style" {
+@test "substitutes with lower-kebab style" {
   set_required_env
-  export TOKEN_NAME_STYLE="kebab-case"
+  export TOKEN_NAME_STYLE="lower-kebab"
   create_manifest "deployment.yaml" 'name: ${project-name}-app'
 
   run "$SCRIPTS_DIR/kubernetes-manifests-package"

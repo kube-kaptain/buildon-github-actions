@@ -35,7 +35,7 @@ on:
         type: string
         default: 'shell'
       token-name-style:
-        description: 'Case style for token names (UPPER_SNAKE, lower_snake, kebab-case, camelCase, PascalCase, lower.dot, UPPER.DOT)'
+        description: 'Case style for token names (UPPER_SNAKE, lower_snake, lower-kebab, UPPER-KEBAB, camelCase, PascalCase, lower.dot, UPPER.DOT)'
         required: false
         type: string
         default: 'PascalCase'
@@ -365,10 +365,14 @@ jobs:
       # INJECT: github-check-end(name="Post-package Tests", id="check-post-package", if="inputs.post-package-tests-script-sub-path != ''")
 
       # === GitHub Release Prepare ===
+      # INJECT: github-check-start(name="GitHub Release Prepare", id="check-github-release-prepare", if="inputs.github-release-enabled == true")
       # INJECT: github-release-prepare-kube-app
+      # INJECT: github-check-end(name="GitHub Release Prepare", id="check-github-release-prepare", if="inputs.github-release-enabled == true")
 
       # === Git Tag Push ===
+      # INJECT: github-check-start(name="Git Tag Push", id="check-git-push-tag", if="steps.versions.outputs.is-release == 'true'")
       # INJECT: git-push-tag
+      # INJECT: github-check-end(name="Git Tag Push", id="check-git-push-tag", if="steps.versions.outputs.is-release == 'true'")
 
       # === Docker Push ===
       # INJECT: github-check-start(name="Docker Push", id="check-docker-push", if="steps.versions.outputs.is-release == 'true'")

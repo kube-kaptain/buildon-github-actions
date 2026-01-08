@@ -54,7 +54,7 @@ create_token() {
   assert_output_contains "my_var"
 }
 
-@test "UPPER_SNAKE: rejects kebab-case" {
+@test "UPPER_SNAKE: rejects lower-kebab" {
   create_token "MY-VAR"
 
   run "$VALIDATORS_DIR/UPPER_SNAKE" "$TEST_DIR"
@@ -103,9 +103,9 @@ create_token() {
   [ "$status" -ne 0 ]
 }
 
-# === kebab-case tests ===
+# === lower-kebab tests ===
 
-@test "kebab-case: accepts valid names" {
+@test "lower-kebab: accepts valid names" {
   create_token "my-var"
   create_token "my-var-2"
   create_token "my-2-var"
@@ -113,29 +113,65 @@ create_token() {
   create_token "2-my-var"
   create_token "2-password-secret"
 
-  run "$VALIDATORS_DIR/kebab-case" "$TEST_DIR"
+  run "$VALIDATORS_DIR/lower-kebab" "$TEST_DIR"
   [ "$status" -eq 0 ]
 }
 
-@test "kebab-case: accepts nested paths" {
+@test "lower-kebab: accepts nested paths" {
   create_token "my-category/my-var"
   create_token "my-category/my-sub-var"
 
-  run "$VALIDATORS_DIR/kebab-case" "$TEST_DIR"
+  run "$VALIDATORS_DIR/lower-kebab" "$TEST_DIR"
   [ "$status" -eq 0 ]
 }
 
-@test "kebab-case: rejects underscore" {
+@test "lower-kebab: rejects underscore" {
   create_token "my_var"
 
-  run "$VALIDATORS_DIR/kebab-case" "$TEST_DIR"
+  run "$VALIDATORS_DIR/lower-kebab" "$TEST_DIR"
   [ "$status" -ne 0 ]
 }
 
-@test "kebab-case: rejects uppercase" {
+@test "lower-kebab: rejects uppercase" {
   create_token "MY-VAR"
 
-  run "$VALIDATORS_DIR/kebab-case" "$TEST_DIR"
+  run "$VALIDATORS_DIR/lower-kebab" "$TEST_DIR"
+  [ "$status" -ne 0 ]
+}
+
+# === UPPER-KEBAB tests ===
+
+@test "UPPER-KEBAB: accepts valid names" {
+  create_token "MY-VAR"
+  create_token "MY-VAR-2"
+  create_token "MY-2-VAR"
+  create_token "A"
+  create_token "2-MY-VAR"
+  create_token "2-PASSWORD-SECRET"
+
+  run "$VALIDATORS_DIR/UPPER-KEBAB" "$TEST_DIR"
+  [ "$status" -eq 0 ]
+}
+
+@test "UPPER-KEBAB: accepts nested paths" {
+  create_token "MY-CATEGORY/MY-VAR"
+  create_token "MY-CATEGORY/MY-SUB-VAR"
+
+  run "$VALIDATORS_DIR/UPPER-KEBAB" "$TEST_DIR"
+  [ "$status" -eq 0 ]
+}
+
+@test "UPPER-KEBAB: rejects underscore" {
+  create_token "MY_VAR"
+
+  run "$VALIDATORS_DIR/UPPER-KEBAB" "$TEST_DIR"
+  [ "$status" -ne 0 ]
+}
+
+@test "UPPER-KEBAB: rejects lowercase" {
+  create_token "my-var"
+
+  run "$VALIDATORS_DIR/UPPER-KEBAB" "$TEST_DIR"
   [ "$status" -ne 0 ]
 }
 
