@@ -59,8 +59,12 @@ to_lower_snake() {
   echo "$1" | tr '[:upper:]' '[:lower:]'
 }
 
-to_kebab_case() {
+to_lower_kebab() {
   echo "$1" | tr '[:upper:]_' '[:lower:]-'
+}
+
+to_upper_kebab() {
+  echo "$1" | tr '[:lower:]_' '[:upper:]-'
 }
 
 to_camel_case() {
@@ -106,7 +110,8 @@ translate_var_name() {
   case "${TOKEN_NAME_STYLE}" in
     UPPER_SNAKE)  to_upper_snake "${var_name}" ;;
     lower_snake)  to_lower_snake "${var_name}" ;;
-    kebab-case)   to_kebab_case "${var_name}" ;;
+    UPPER-KEBAB)  to_upper_kebab "${var_name}" ;;
+    lower-kebab)  to_lower_kebab "${var_name}" ;;
     camelCase)    to_camel_case "${var_name}" ;;
     PascalCase)   to_pascal_case "${var_name}" ;;
     lower.dot)    to_lower_dot "${var_name}" ;;

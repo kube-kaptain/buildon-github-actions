@@ -47,7 +47,7 @@ inputs:
     description: 'Token delimiter syntax for variables (shell, mustache, helm, erb, github-actions, blade, stringtemplate, ognl, t4, swift)'
     required: false
   token-name-style:
-    description: 'Case style for token names in manifests (UPPER_SNAKE, lower_snake, kebab-case, camelCase, PascalCase, lower.dot, UPPER.DOT)'
+    description: 'Case style for token names in manifests (UPPER_SNAKE, lower_snake, lower-kebab, UPPER-KEBAB, camelCase, PascalCase, lower.dot, UPPER.DOT)'
     required: false
   token-name-validation:
     description: 'How to validate user token names (MATCH = must match token-name-style, ALL = accept any valid name)'
