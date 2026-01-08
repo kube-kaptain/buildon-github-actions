@@ -57,8 +57,11 @@ jobs:
 #
 #     with:
 #       substitution-token-style: 'mustache'  # Default is 'shell' (${Token})
-#       token-name-style: 'UPPER_SNAKE'  # Default is 'PascalCase'
-#       config-sub-path: 'config'  # Default is 'src/config'
+#       token-name-style: 'UPPER_SNAKE'       # Default is 'PascalCase'
+#       token-name-validation: 'ALL'          # Default is 'MATCH' (must match style)
+#       config-sub-path: 'config'             # Default is 'src/config'
+#       allow-builtin-token-override: true    # Default is false
+#       config-value-trailing-newline: 'preserve-all'  # Default is 'strip-for-single-line'
 
 # ┌─────────────────────────────────────────────────────────────────────────┐
 # │ Target Registry                                                         │
@@ -70,6 +73,12 @@ jobs:
 # ┌─────────────────────────────────────────────────────────────────────────┐
 # │ GitHub Release                                                          │
 # └─────────────────────────────────────────────────────────────────────────┘
+# Note: This workflow is specialised for spec files. Versioning and token
+# substitution are handled by the docker build step, so the
+# github-release-add-version-to-filenames and github-release-substitute-tokens-in-files
+# options are NOT available here - the spec files are already processed.
+# Additional files can be added but will be subject to the job's default behaviours.
+#
 #     with:
 #       github-release-enabled: true
 #       github-release-files: 'extra-file.txt'  # Additional files to attach
@@ -90,9 +99,40 @@ jobs:
 #       block-double-hyphen-containing-branches: false
 #       require-conventional-branches: true
 #       require-conventional-commits: true
+#       block-conventional-commits: true                # Default is false
+
+# ┌─────────────────────────────────────────────────────────────────────────┐
+# │ Version Configuration                                                   │
+# └─────────────────────────────────────────────────────────────────────────┘
+#     with:
+#       max-version-parts: 2  # Default is 3
+
+# ┌─────────────────────────────────────────────────────────────────────────┐
+# │ Version Calculation Strategy                                            │
+# └─────────────────────────────────────────────────────────────────────────┘
+# Default: git-auto-closest-highest (finds closest tag, increments it)
+# Alternative: file-pattern-match (extracts version from a file)
+#
+#     with:
+#       tag-version-calculation-strategy: 'file-pattern-match'
+#       tag-version-pattern-type: 'custom'
+#       tag-version-source-sub-path: 'src'
+#       tag-version-source-file-name: 'version.txt'
+#       tag-version-source-custom-pattern: '^([0-9]+\.[0-9]+\.[0-9]+)$'
 
 # ┌─────────────────────────────────────────────────────────────────────────┐
 # │ Test Injection                                                          │
 # └─────────────────────────────────────────────────────────────────────────┘
 #     with:
 #       pre-tagging-tests-script-sub-path: 'bin/run-tests.bash'
+
+# ┌─────────────────────────────────────────────────────────────────────────┐
+# │ Output Configuration                                                    │
+# └─────────────────────────────────────────────────────────────────────────┘
+#     with:
+#       output-sub-path: 'build'  # Default is 'target'
+
+# ┌─────────────────────────────────────────────────────────────────────────┐
+# │ Registry Credentials                                                    │
+# └─────────────────────────────────────────────────────────────────────────┘
+# See docker-registry-logins-*.yaml examples for authentication options

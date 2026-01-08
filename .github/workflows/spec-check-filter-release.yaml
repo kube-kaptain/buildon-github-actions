@@ -174,6 +174,11 @@ on:
         required: false
         type: string
         default: ''
+      # NOTE: github-release-add-version-to-filenames and github-release-substitute-tokens-in-files
+      # NOTE: are intentionally NOT exposed here. This workflow is specialised for spec files where
+      # NOTE: versioning and token substitution are handled by the docker build step, not the release
+      # NOTE: step. The spec files are already versioned and substituted before release. Additional
+      # NOTE: files can be added but will be subject to the behaviours configured by the job itself.
     secrets:
       docker-registry-logins-secrets:
         description: 'JSON object of secrets for docker-registry-logins (e.g., {"DOCKER_USER": "x", "DOCKER_PASS": "y"})'

@@ -89,6 +89,42 @@ jobs:
 #       tag-version-pattern-type: 'retag-workflow-source-tag'
 
 # ┌─────────────────────────────────────────────────────────────────────────┐
+# │ Test Injection                                                          │
+# └─────────────────────────────────────────────────────────────────────────┘
+#     with:
+#       pre-tagging-tests-script-sub-path: 'bin/run-tests.bash'
+
+# ┌─────────────────────────────────────────────────────────────────────────┐
+# │ Token Substitution                                                      │
+# └─────────────────────────────────────────────────────────────────────────┘
+# Tokens like ${Version} are replaced in release files during processing.
+# Add custom tokens by creating files in src/config/ (e.g., src/config/MyToken)
+#
+#     with:
+#       substitution-token-style: 'mustache'  # Default is 'shell' (${Token})
+#       token-name-style: 'UPPER_SNAKE'       # Default is 'PascalCase'
+#       token-name-validation: 'ALL'          # Default is 'MATCH' (must match style)
+#       config-sub-path: 'config'             # Default is 'src/config'
+#       allow-builtin-token-override: true    # Default is false
+#       config-value-trailing-newline: 'preserve-all'  # Default is 'strip-for-single-line'
+
+# ┌─────────────────────────────────────────────────────────────────────────┐
+# │ GitHub Release                                                          │
+# └─────────────────────────────────────────────────────────────────────────┘
+#     with:
+#       github-release-enabled: true                        # Default is true
+#       github-release-files: 'dist/output.txt'             # Files to attach
+#       github-release-notes: 'Custom release notes'        # Leave empty for auto
+#       github-release-add-version-to-filenames: false      # Default is true
+#       github-release-substitute-tokens-in-files: false    # Default is true
+
+# ┌─────────────────────────────────────────────────────────────────────────┐
+# │ Output Configuration                                                    │
+# └─────────────────────────────────────────────────────────────────────────┘
+#     with:
+#       output-sub-path: 'build'  # Default is 'target'
+
+# ┌─────────────────────────────────────────────────────────────────────────┐
 # │ Registry Credentials                                                    │
 # └─────────────────────────────────────────────────────────────────────────┘
 # See docker-registry-logins-*.yaml examples for authentication options
