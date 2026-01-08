@@ -28,7 +28,7 @@ on:
 
 jobs:
   build:
-    uses: kube-kaptain/buildon-github-actions/.github/workflows/spec-check-filter-release.yaml@1.0.11
+    uses: kube-kaptain/buildon-github-actions/.github/workflows/spec-check-filter-release.yaml@1.0.39
     permissions:
       contents: write
       packages: write
@@ -57,8 +57,11 @@ jobs:
 #
 #     with:
 #       substitution-token-style: 'mustache'  # Default is 'shell' (${Token})
-#       token-name-style: 'UPPER_SNAKE'  # Default is 'PascalCase'
-#       config-sub-path: 'config'  # Default is 'src/config'
+#       token-name-style: 'UPPER_SNAKE'       # Default is 'PascalCase'
+#       token-name-validation: 'ALL'          # Default is 'MATCH' (must match style)
+#       config-sub-path: 'config'             # Default is 'src/config'
+#       allow-builtin-token-override: true    # Default is false
+#       config-value-trailing-newline: 'preserve-all'  # Default is 'strip-for-single-line'
 
 # ┌─────────────────────────────────────────────────────────────────────────┐
 # │ Target Registry                                                         │
@@ -70,16 +73,22 @@ jobs:
 # ┌─────────────────────────────────────────────────────────────────────────┐
 # │ GitHub Release                                                          │
 # └─────────────────────────────────────────────────────────────────────────┘
+# The spec files are automatically included in the release. Additional files
+# specified here are subject to the job's default behaviors: token substitution
+# (substituted-files) or no substitution (verbatim-files), and version suffix.
+#
 #     with:
-#       github-release-enabled: true
-#       github-release-files: 'extra-file.txt'  # Additional files to attach
-#       github-release-notes: 'Custom release notes'
+#       github-release-enabled: true                           # Default is true
+#       github-release-substituted-files: 'template.yaml'      # Tokens replaced
+#       github-release-verbatim-files: 'extra-file.txt'        # Copied as-is
+#       github-release-notes: 'Custom release notes'           # Leave empty for auto
+#       github-release-add-version-to-filenames: false         # Default is true
 
 # ┌─────────────────────────────────────────────────────────────────────────┐
 # │ Branch Configuration                                                    │
 # └─────────────────────────────────────────────────────────────────────────┘
 #     with:
-#       default-branch: 'master'
+#       release-branch: 'master'
 #       additional-release-branches: 'main-1.x,main-2.x'
 
 # ┌─────────────────────────────────────────────────────────────────────────┐
@@ -90,9 +99,40 @@ jobs:
 #       block-double-hyphen-containing-branches: false
 #       require-conventional-branches: true
 #       require-conventional-commits: true
+#       block-conventional-commits: true                # Default is false
+
+# ┌─────────────────────────────────────────────────────────────────────────┐
+# │ Version Configuration                                                   │
+# └─────────────────────────────────────────────────────────────────────────┘
+#     with:
+#       max-version-parts: 2  # Default is 3
+
+# ┌─────────────────────────────────────────────────────────────────────────┐
+# │ Version Calculation Strategy                                            │
+# └─────────────────────────────────────────────────────────────────────────┘
+# Default: git-auto-closest-highest (finds closest tag, increments it)
+# Alternative: file-pattern-match (extracts version from a file)
+#
+#     with:
+#       tag-version-calculation-strategy: 'file-pattern-match'
+#       tag-version-pattern-type: 'custom'
+#       tag-version-source-sub-path: 'src'
+#       tag-version-source-file-name: 'version.txt'
+#       tag-version-source-custom-pattern: '^([0-9]+\.[0-9]+\.[0-9]+)$'
 
 # ┌─────────────────────────────────────────────────────────────────────────┐
 # │ Test Injection                                                          │
 # └─────────────────────────────────────────────────────────────────────────┘
 #     with:
 #       pre-tagging-tests-script-sub-path: 'bin/run-tests.bash'
+
+# ┌─────────────────────────────────────────────────────────────────────────┐
+# │ Output Configuration                                                    │
+# └─────────────────────────────────────────────────────────────────────────┘
+#     with:
+#       output-sub-path: 'build'  # Default is 'target'
+
+# ┌─────────────────────────────────────────────────────────────────────────┐
+# │ Registry Credentials                                                    │
+# └─────────────────────────────────────────────────────────────────────────┘
+# See docker-registry-logins-*.yaml examples for authentication options

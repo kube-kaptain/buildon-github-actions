@@ -58,7 +58,8 @@ target/manifests/            # Build output
 |-------|----------------|------------------|
 | `UPPER_SNAKE` | `MY_VAR`, `MY_2_VAR`, `2_MY_VAR` | `my_var`, `my-var` |
 | `lower_snake` | `my_var`, `my_2_var`, `2_my_var` | `MY_VAR`, `my-var` |
-| `kebab-case` | `my-var`, `my-2-var`, `2-my-var` | `MY_VAR`, `my_var` |
+| `lower-kebab` | `my-var`, `my-2-var`, `2-my-var` | `MY_VAR`, `my_var` |
+| `UPPER-KEBAB` | `MY-VAR`, `MY-2-VAR`, `2-MY-VAR` | `my-var`, `my_var` |
 | `camelCase` | `myVar`, `my2Var`, `2MyVar` | `MyVar`, `my_var` |
 | `PascalCase` | `MyVar`, `My2Var`, `2MyVar` | `myVar`, `MY_VAR` |
 | `lower.dot` | `my.var`, `my.2.var`, `2.my.var` | `MY.VAR`, `my_var` |

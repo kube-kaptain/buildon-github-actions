@@ -164,8 +164,13 @@ on:
         required: false
         type: boolean
         default: true
-      github-release-files:
-        description: 'Files to attach to the release (space-separated)'
+      github-release-substituted-files:
+        description: 'Files with token substitution and version suffix (space-separated)'
+        required: false
+        type: string
+        default: ''
+      github-release-verbatim-files:
+        description: 'Files copied as-is with version suffix only (space-separated)'
         required: false
         type: string
         default: ''
@@ -174,6 +179,11 @@ on:
         required: false
         type: string
         default: ''
+      github-release-add-version-to-filenames:
+        description: 'Add version suffix to release filenames (e.g., file.yaml -> file-1.2.3.yaml)'
+        required: false
+        type: boolean
+        default: true
     secrets:
       docker-registry-logins-secrets:
         description: 'JSON object of secrets for docker-registry-logins (e.g., {"DOCKER_USER": "x", "DOCKER_PASS": "y"})'
@@ -571,6 +581,113 @@ jobs:
           action: fail
           check-run-id: ${{ steps.check-spec-validate.outputs.check-run-id }}
 
+      # === Spec GitHub Release Prepare ===
+      - name: Start check - Spec GitHub Release Prepare
+        if: inputs.github-release-enabled == true && success()
+        id: check-spec-github-release-prepare
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
+        with:
+          action: start
+          check-name: 'Build & Push → Spec GitHub Release Prepare'
+      - name: Prepare spec files for release
+        id: prepare-spec-release
+        if: inputs.github-release-enabled == true
+        shell: bash
+        env:
+          OUTPUT_SUB_PATH: ${{ inputs.output-sub-path }}
+          SUBSTITUTED_SUB_PATH: ${{ steps.docker-build.outputs.docker-substituted-sub-path }}
+          SPEC_YAML: ${{ steps.spec-package-prepare.outputs.SPEC_YAML }}
+          SPEC_JSON: ${{ steps.spec-package-prepare.outputs.SPEC_JSON }}
+          VERSION: ${{ steps.versions.outputs.version }}
+        run: |
+          set -euo pipefail
+          RELEASE_DIR="${OUTPUT_SUB_PATH}/github-release"
+          mkdir -p "${RELEASE_DIR}"
+
+          # Add version suffix to filename (e.g., spec.yaml -> spec-1.2.3.yaml)
+          add_version_suffix() {
+            local filename="$1"
+            local base ext
+            if [[ "${filename}" == *.* ]]; then
+              base="${filename%.*}"
+              ext="${filename##*.}"
+              echo "${base}-${VERSION}.${ext}"
+            else
+              echo "${filename}-${VERSION}"
+            fi
+          }
+
+          # Copy spec files (already substituted by docker-build) with version suffix
+          SPEC_YAML_VERSIONED=$(add_version_suffix "${SPEC_YAML}")
+          SPEC_JSON_VERSIONED=$(add_version_suffix "${SPEC_JSON}")
+
+          cp "${SUBSTITUTED_SUB_PATH}/${SPEC_YAML}" "${RELEASE_DIR}/${SPEC_YAML_VERSIONED}"
+          cp "${SUBSTITUTED_SUB_PATH}/${SPEC_JSON}" "${RELEASE_DIR}/${SPEC_JSON_VERSIONED}"
+
+          echo "Prepared spec files for release:"
+          echo "  ${SPEC_YAML} -> ${SPEC_YAML_VERSIONED}"
+          echo "  ${SPEC_JSON} -> ${SPEC_JSON_VERSIONED}"
+
+          # Output versioned filenames for release notes
+          echo "spec-yaml-versioned=${SPEC_YAML_VERSIONED}" >> "${GITHUB_OUTPUT}"
+          echo "spec-json-versioned=${SPEC_JSON_VERSIONED}" >> "${GITHUB_OUTPUT}"
+      - name: Pass check - Spec GitHub Release Prepare
+        if: inputs.github-release-enabled == true && success()
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
+        with:
+          action: pass
+          check-run-id: ${{ steps.check-spec-github-release-prepare.outputs.check-run-id }}
+      - name: Fail check - Spec GitHub Release Prepare
+        if: inputs.github-release-enabled == true && failure() && steps.check-spec-github-release-prepare.outputs.check-run-id != ''
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
+        with:
+          action: fail
+          check-run-id: ${{ steps.check-spec-github-release-prepare.outputs.check-run-id }}
+
+      # === GitHub Release Prepare ===
+      - name: Start check - GitHub Release Prepare
+        if: inputs.github-release-enabled == true && success()
+        id: check-github-release-prepare
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
+        with:
+          action: start
+          check-name: 'Build & Push → GitHub Release Prepare'
+      - name: Prepare release files
+        id: github-release-prepare
+        if: inputs.github-release-enabled == true && success()
+        uses: ./.github/buildon-github-actions/src/actions/github-release-prepare
+        with:
+          github-release-substituted-files: ${{ inputs.github-release-substituted-files }}
+          github-release-verbatim-files: ${{ inputs.github-release-verbatim-files }}
+          output-sub-path: ${{ inputs.output-sub-path }}
+          version: ${{ steps.versions.outputs.version }}
+          project-name: ${{ steps.versions.outputs.project-name }}
+          docker-tag: ${{ steps.versions.outputs.docker-tag }}
+          docker-image-name: ${{ steps.versions.outputs.docker-image-name }}
+          is-release: ${{ steps.versions.outputs.is-release }}
+          github-release-add-version-to-filenames: ${{ inputs.github-release-add-version-to-filenames }}
+          substitution-token-style: ${{ inputs.substitution-token-style }}
+          token-name-style: ${{ inputs.token-name-style }}
+          token-name-validation: ${{ inputs.token-name-validation }}
+          config-sub-path: ${{ inputs.config-sub-path }}
+          allow-builtin-token-override: ${{ inputs.allow-builtin-token-override }}
+          config-value-trailing-newline: ${{ inputs.config-value-trailing-newline }}
+          docker-image-full-uri: ${{ steps.docker-build.outputs.docker-target-image-full-uri }}
+          target-registry: ${{ inputs.docker-target-registry }}
+          target-base-path: ${{ inputs.docker-target-base-path }}
+      - name: Pass check - GitHub Release Prepare
+        if: inputs.github-release-enabled == true && success()
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
+        with:
+          action: pass
+          check-run-id: ${{ steps.check-github-release-prepare.outputs.check-run-id }}
+      - name: Fail check - GitHub Release Prepare
+        if: inputs.github-release-enabled == true && failure() && steps.check-github-release-prepare.outputs.check-run-id != ''
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
+        with:
+          action: fail
+          check-run-id: ${{ steps.check-github-release-prepare.outputs.check-run-id }}
+
       # === Git Tag Push ===
       - name: Start check - Git Tag Push
         if: steps.versions.outputs.is-release == 'true' && success()
@@ -644,8 +761,8 @@ jobs:
           PROJECT_NAME: ${{ steps.versions.outputs.project-name }}
           DOCKER_URI: ${{ steps.docker-build.outputs.docker-target-image-full-uri }}
           SPEC_TYPE: ${{ inputs.spec-type }}
-          SPEC_YAML: ${{ steps.spec-package-prepare.outputs.SPEC_YAML }}
-          SPEC_JSON: ${{ steps.spec-package-prepare.outputs.SPEC_JSON }}
+          SPEC_YAML: ${{ steps.prepare-spec-release.outputs.spec-yaml-versioned }}
+          SPEC_JSON: ${{ steps.prepare-spec-release.outputs.spec-json-versioned }}
           GITHUB_SERVER_URL: ${{ github.server_url }}
           GITHUB_REPOSITORY: ${{ github.repository }}
         run: |
@@ -683,7 +800,7 @@ jobs:
         uses: ./.github/buildon-github-actions/src/actions/github-release
         with:
           github-release-enabled: ${{ inputs.github-release-enabled }}
-          github-release-files: ${{ steps.docker-build.outputs.docker-substituted-sub-path }}/${{ steps.spec-package-prepare.outputs.SPEC_YAML }} ${{ steps.docker-build.outputs.docker-substituted-sub-path }}/${{ steps.spec-package-prepare.outputs.SPEC_JSON }} ${{ inputs.github-release-files }}
+          output-sub-path: ${{ inputs.output-sub-path }}
           github-release-tag: ${{ steps.versions.outputs.version }}
           github-release-notes: ${{ steps.release-notes.outputs.notes }}
           github-release-title: ${{ steps.release-notes.outputs.title }}

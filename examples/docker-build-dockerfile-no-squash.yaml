@@ -20,7 +20,7 @@ on:
 
 jobs:
   build:
-    uses: kube-kaptain/buildon-github-actions/.github/workflows/docker-build-dockerfile.yaml@1.0.11
+    uses: kube-kaptain/buildon-github-actions/.github/workflows/docker-build-dockerfile.yaml@1.0.39
     permissions:
       contents: write
       packages: write
@@ -52,7 +52,7 @@ jobs:
 # │ Branch Configuration                                                    │
 # └─────────────────────────────────────────────────────────────────────────┘
 #     with:
-#       default-branch: 'master'  # Default is main, use whatever you want
+#       release-branch: 'master'  # Default is main, use whatever you want
 #       additional-release-branches: 'main-1.x,main-2.x'
 
 # ┌─────────────────────────────────────────────────────────────────────────┐
@@ -88,6 +88,36 @@ jobs:
 #     with:
 #       pre-tagging-tests-script-sub-path: 'bin/run-tests.bash'
 #       post-docker-tests-script-sub-path: 'bin/test-container.bash'
+
+# ┌─────────────────────────────────────────────────────────────────────────┐
+# │ Token Substitution                                                      │
+# └─────────────────────────────────────────────────────────────────────────┘
+# Tokens like ${Version} in your Dockerfile/release files are replaced.
+# Add custom tokens by creating files in src/config/ (e.g., src/config/MyToken)
+#
+#     with:
+#       substitution-token-style: 'mustache'  # Default is 'shell' (${Token})
+#       token-name-style: 'UPPER_SNAKE'       # Default is 'PascalCase'
+#       token-name-validation: 'ALL'          # Default is 'MATCH' (must match style)
+#       config-sub-path: 'config'             # Default is 'src/config'
+#       allow-builtin-token-override: true    # Default is false
+#       config-value-trailing-newline: 'preserve-all'  # Default is 'strip-for-single-line'
+
+# ┌─────────────────────────────────────────────────────────────────────────┐
+# │ GitHub Release                                                          │
+# └─────────────────────────────────────────────────────────────────────────┘
+#     with:
+#       github-release-enabled: true                           # Default is true
+#       github-release-substituted-files: 'dist/output.txt'    # Tokens replaced
+#       github-release-verbatim-files: 'CHANGELOG.md'          # Copied as-is
+#       github-release-notes: 'Custom release notes'           # Leave empty for auto
+#       github-release-add-version-to-filenames: false         # Default is true
+
+# ┌─────────────────────────────────────────────────────────────────────────┐
+# │ Output Configuration                                                    │
+# └─────────────────────────────────────────────────────────────────────────┘
+#     with:
+#       output-sub-path: 'build'  # Default is 'target'
 
 # ┌─────────────────────────────────────────────────────────────────────────┐
 # │ Registry Credentials                                                    │

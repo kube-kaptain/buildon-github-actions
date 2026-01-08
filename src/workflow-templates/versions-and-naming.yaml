@@ -60,6 +60,37 @@ on:
         required: false
         type: string
         default: 'target'
+      # Token substitution configuration (for github-release file processing)
+      substitution-token-style:
+        description: 'Token delimiter syntax for variables (shell, mustache, helm, erb, github-actions, blade, stringtemplate, ognl, t4, swift)'
+        required: false
+        type: string
+        default: 'shell'
+      token-name-style:
+        description: 'Case style for token names (UPPER_SNAKE, lower_snake, lower-kebab, UPPER-KEBAB, camelCase, PascalCase, lower.dot, UPPER.DOT)'
+        required: false
+        type: string
+        default: 'PascalCase'
+      token-name-validation:
+        description: 'How to validate user token names (MATCH = must match token-name-style, ALL = accept any valid name)'
+        required: false
+        type: string
+        default: 'MATCH'
+      config-sub-path:
+        description: 'Directory containing user-defined token files (relative)'
+        required: false
+        type: string
+        default: 'src/config'
+      allow-builtin-token-override:
+        description: 'Allow user tokens to override built-in tokens (for template/reusable projects)'
+        required: false
+        type: boolean
+        default: false
+      config-value-trailing-newline:
+        description: 'How to handle trailing newlines in config values (strip-for-single-line, preserve-all, always-strip-one-newline)'
+        required: false
+        type: string
+        default: 'strip-for-single-line'
       pre-tagging-tests-script-sub-path:
         description: 'Path to pre-tagging test script relative to .github/ (e.g., bin/pre-tagging.bash)'
         required: false
@@ -71,8 +102,13 @@ on:
         required: false
         type: boolean
         default: true
-      github-release-files:
-        description: 'Files to attach to the release (space-separated)'
+      github-release-substituted-files:
+        description: 'Files with token substitution and version suffix (space-separated)'
+        required: false
+        type: string
+        default: ''
+      github-release-verbatim-files:
+        description: 'Files copied as-is with version suffix only (space-separated)'
         required: false
         type: string
         default: ''
@@ -83,11 +119,6 @@ on:
         default: ''
       github-release-add-version-to-filenames:
         description: 'Add version suffix to release filenames (e.g., file.yaml -> file-1.2.3.yaml)'
-        required: false
-        type: boolean
-        default: true
-      github-release-substitute-tokens-in-files:
-        description: 'Apply token substitution to release files'
         required: false
         type: boolean
         default: true

@@ -177,8 +177,13 @@ on:
         required: false
         type: boolean
         default: true
-      github-release-files:
-        description: 'Files to attach to the release (space-separated)'
+      github-release-substituted-files:
+        description: 'Files with token substitution and version suffix (space-separated)'
+        required: false
+        type: string
+        default: ''
+      github-release-verbatim-files:
+        description: 'Files copied as-is with version suffix only (space-separated)'
         required: false
         type: string
         default: ''
@@ -189,11 +194,6 @@ on:
         default: ''
       github-release-add-version-to-filenames:
         description: 'Add version suffix to release filenames (e.g., file.yaml -> file-1.2.3.yaml)'
-        required: false
-        type: boolean
-        default: true
-      github-release-substitute-tokens-in-files:
-        description: 'Apply token substitution to release files'
         required: false
         type: boolean
         default: true
@@ -665,7 +665,8 @@ jobs:
         if: inputs.github-release-enabled == true && success()
         uses: ./.github/buildon-github-actions/src/actions/github-release-prepare
         with:
-          github-release-files: ${{ inputs.github-release-files }}
+          github-release-substituted-files: ${{ inputs.github-release-substituted-files }}
+          github-release-verbatim-files: ${{ inputs.github-release-verbatim-files }}
           output-sub-path: ${{ inputs.output-sub-path }}
           version: ${{ steps.versions.outputs.version }}
           project-name: ${{ steps.versions.outputs.project-name }}
@@ -673,7 +674,6 @@ jobs:
           docker-image-name: ${{ steps.versions.outputs.docker-image-name }}
           is-release: ${{ steps.versions.outputs.is-release }}
           github-release-add-version-to-filenames: ${{ inputs.github-release-add-version-to-filenames }}
-          github-release-substitute-tokens-in-files: ${{ inputs.github-release-substitute-tokens-in-files }}
           substitution-token-style: ${{ inputs.substitution-token-style }}
           token-name-style: ${{ inputs.token-name-style }}
           token-name-validation: ${{ inputs.token-name-validation }}
