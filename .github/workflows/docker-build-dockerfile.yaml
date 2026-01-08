@@ -591,6 +591,13 @@ jobs:
           check-run-id: ${{ steps.check-post-docker.outputs.check-run-id }}
 
       # === GitHub Release Prepare ===
+      - name: Start check - GitHub Release Prepare
+        if: inputs.github-release-enabled == true && success()
+        id: check-github-release-prepare
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
+        with:
+          action: start
+          check-name: 'Build & Push → GitHub Release Prepare'
       - name: Prepare release files
         id: github-release-prepare
         if: inputs.github-release-enabled == true && success()
@@ -614,14 +621,45 @@ jobs:
           docker-image-full-uri: ${{ steps.docker-build.outputs.docker-target-image-full-uri }}
           target-registry: ${{ inputs.docker-target-registry }}
           target-base-path: ${{ inputs.docker-target-base-path }}
+      - name: Pass check - GitHub Release Prepare
+        if: inputs.github-release-enabled == true && success()
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
+        with:
+          action: pass
+          check-run-id: ${{ steps.check-github-release-prepare.outputs.check-run-id }}
+      - name: Fail check - GitHub Release Prepare
+        if: inputs.github-release-enabled == true && failure() && steps.check-github-release-prepare.outputs.check-run-id != ''
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
+        with:
+          action: fail
+          check-run-id: ${{ steps.check-github-release-prepare.outputs.check-run-id }}
 
       # === Git Tag Push ===
+      - name: Start check - Git Tag Push
+        if: steps.versions.outputs.is-release == 'true' && success()
+        id: check-git-push-tag
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
+        with:
+          action: start
+          check-name: 'Build & Push → Git Tag Push'
       - name: Push git tag
         if: steps.versions.outputs.is-release == 'true' && success()
         uses: ./.github/buildon-github-actions/src/actions/git-push-tag
         with:
           git-tag: ${{ steps.versions.outputs.git-tag }}
           is-release: ${{ steps.versions.outputs.is-release }}
+      - name: Pass check - Git Tag Push
+        if: steps.versions.outputs.is-release == 'true' && success()
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
+        with:
+          action: pass
+          check-run-id: ${{ steps.check-git-push-tag.outputs.check-run-id }}
+      - name: Fail check - Git Tag Push
+        if: steps.versions.outputs.is-release == 'true' && failure() && steps.check-git-push-tag.outputs.check-run-id != ''
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
+        with:
+          action: fail
+          check-run-id: ${{ steps.check-git-push-tag.outputs.check-run-id }}
 
       # === Docker Push ===
       - name: Start check - Docker Push

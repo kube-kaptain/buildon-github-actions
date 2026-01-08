@@ -335,7 +335,9 @@ jobs:
       # INJECT: github-check-end(name="Spec Validate", id="check-spec-validate")
 
       # === Git Tag Push ===
+      # INJECT: github-check-start(name="Git Tag Push", id="check-git-push-tag", if="steps.versions.outputs.is-release == 'true'")
       # INJECT: git-push-tag
+      # INJECT: github-check-end(name="Git Tag Push", id="check-git-push-tag", if="steps.versions.outputs.is-release == 'true'")
 
       # === Docker Push ===
       # INJECT: github-check-start(name="Docker Push", id="check-docker-push", if="steps.versions.outputs.is-release == 'true'")

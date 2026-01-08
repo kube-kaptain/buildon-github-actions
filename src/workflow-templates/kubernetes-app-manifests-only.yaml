@@ -325,10 +325,14 @@ jobs:
       # INJECT: github-check-end(name="Post-package Tests", id="check-post-package", if="inputs.post-package-tests-script-sub-path != ''")
 
       # === GitHub Release Prepare ===
+      # INJECT: github-check-start(name="GitHub Release Prepare", id="check-github-release-prepare", if="inputs.github-release-enabled == true")
       # INJECT: github-release-prepare-kube-app
+      # INJECT: github-check-end(name="GitHub Release Prepare", id="check-github-release-prepare", if="inputs.github-release-enabled == true")
 
       # === Git Tag Push ===
+      # INJECT: github-check-start(name="Git Tag Push", id="check-git-push-tag", if="steps.versions.outputs.is-release == 'true'")
       # INJECT: git-push-tag
+      # INJECT: github-check-end(name="Git Tag Push", id="check-git-push-tag", if="steps.versions.outputs.is-release == 'true'")
 
       # === Manifest Repo Provider Publish ===
       # INJECT: github-check-start(name="Publish Manifests via Repo Provider", id="check-manifest-repo-provider-publish", if="steps.versions.outputs.is-release == 'true'")
