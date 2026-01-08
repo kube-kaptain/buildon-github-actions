@@ -56,12 +56,12 @@ main() {
     local available
     available=$(list_providers)
     echo "${LOG_ERROR_PREFIX}Unknown repo provider type: ${MANIFESTS_REPO_PROVIDER_TYPE}. Available: ${available}${LOG_ERROR_SUFFIX}" >&2
-    exit 1
+    exit 2
   fi
 
   if [[ ! -x "${provider_script}" ]]; then
     echo "${LOG_ERROR_PREFIX}Repo provider script not executable: ${provider_script}${LOG_ERROR_SUFFIX}" >&2
-    exit 1
+    exit 3
   fi
 
   echo "=== Kubernetes Manifests Repo Provider Publish ===" >&2
