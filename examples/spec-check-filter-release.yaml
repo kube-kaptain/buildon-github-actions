@@ -73,16 +73,12 @@ jobs:
 # ┌─────────────────────────────────────────────────────────────────────────┐
 # │ GitHub Release                                                          │
 # └─────────────────────────────────────────────────────────────────────────┘
-# Note: This workflow is specialised for spec files. Versioning and token
-# substitution are handled by the docker build step, so the
-# github-release-add-version-to-filenames and github-release-substitute-tokens-in-files
-# options are NOT available here - the spec files are already processed.
-# Additional files can be added but will be subject to the job's default behaviours.
-#
 #     with:
-#       github-release-enabled: true
-#       github-release-files: 'extra-file.txt'  # Additional files to attach
-#       github-release-notes: 'Custom release notes'
+#       github-release-enabled: true                        # Default is true
+#       github-release-files: 'extra-file.txt'              # Additional files to attach
+#       github-release-notes: 'Custom release notes'        # Leave empty for auto
+#       github-release-add-version-to-filenames: false      # Default is true
+#       github-release-substitute-tokens-in-files: false    # Default is true
 
 # ┌─────────────────────────────────────────────────────────────────────────┐
 # │ Branch Configuration                                                    │
