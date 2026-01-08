@@ -12,6 +12,7 @@ Docker Build Retag
 | `docker-source-tag` | string | *required* | Upstream image tag (e.g., 1.25) |
 | `docker-target-registry` | string | `ghcr.io` | Target container registry |
 | `docker-target-base-path` | string | `""` | Path between registry and image name (auto-set for GHCR) |
+| `docker-push-targets` | string | `""` | JSON array of additional push targets [{registry, base-path?}] |
 | `release-branch` | string | `main` | The release branch name |
 | `additional-release-branches` | string | `""` | Comma-separated list of additional release branches |
 | `block-slashes` | boolean | `false` | DEPRECATED: Use block-slash-containing-branches instead |

@@ -1,0 +1,89 @@
+# SPDX-License-Identifier: CC0-1.0
+# This example is released to the public domain. Use freely without attribution.
+#
+# Docker Push Targets - Multi-Registry Publishing
+#
+# Push the same Docker image to multiple registries. Useful for:
+# - AWS Lambda in multiple accounts (each needs its own ECR)
+# - Multi-cloud deployments (GHCR + ECR + GCR)
+# - Internal mirrors alongside public registries
+#
+# The primary image is always pushed to the target registry (GHCR by default).
+# Additional targets receive the same image with identical tags.
+#
+# Copy this to .github/workflows/build.yaml in your repo.
+
+name: Docker Push Targets
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    uses: kube-kaptain/buildon-github-actions/.github/workflows/docker-build-dockerfile.yaml@1.0.40
+    permissions:
+      contents: write
+      packages: write
+      checks: write
+    with:
+      # JSON array of additional push targets
+      # Each target needs: registry (required), base-path (optional)
+      docker-push-targets: |
+        [
+          {"registry": "123456789012.dkr.ecr.us-east-1.amazonaws.com"},
+          {"registry": "987654321098.dkr.ecr.us-west-2.amazonaws.com", "base-path": "my-team"}
+        ]
+      # Configure registry credentials for the additional targets
+      docker-registry-logins: |
+        123456789012.dkr.ecr.us-east-1.amazonaws.com:
+          username: AWS
+          password: ECR_TOKEN_EAST
+        987654321098.dkr.ecr.us-west-2.amazonaws.com:
+          username: AWS
+          password: ECR_TOKEN_WEST
+    secrets:
+      docker-registry-logins-secrets: |
+        {
+          "ECR_TOKEN_EAST": "${{ secrets.ECR_TOKEN_EAST }}",
+          "ECR_TOKEN_WEST": "${{ secrets.ECR_TOKEN_WEST }}"
+        }
+
+# ┌───────────────────────────────────────────────────────────────────────────┐
+# │ How It Works                                                              │
+# └───────────────────────────────────────────────────────────────────────────┘
+#
+# 1. Image is built and tagged for primary registry (GHCR by default)
+# 2. Docker Multi-Tag: Image is tagged for each additional target
+# 3. Primary image is pushed to GHCR
+# 4. Docker Multi-Push: Image is pushed to each additional target
+#
+# For Kubernetes app workflows, manifest packages are also multi-pushed.
+
+# ┌───────────────────────────────────────────────────────────────────────────┐
+# │ Target Format                                                             │
+# └───────────────────────────────────────────────────────────────────────────┘
+#
+# Each target in the JSON array:
+#   registry   - Required. The registry URL (e.g., "ecr.aws/123456789012")
+#   base-path  - Optional. Path between registry and image name
+#
+# Examples:
+#   {"registry": "docker.io", "base-path": "myorg"}
+#     -> docker.io/myorg/image-name:tag
+#
+#   {"registry": "123456789012.dkr.ecr.us-east-1.amazonaws.com"}
+#     -> 123456789012.dkr.ecr.us-east-1.amazonaws.com/image-name:tag
+
+# ┌───────────────────────────────────────────────────────────────────────────┐
+# │ Supported Workflows                                                       │
+# └───────────────────────────────────────────────────────────────────────────┘
+#
+# - docker-build-dockerfile.yaml
+# - docker-build-retag.yaml
+# - kubernetes-app-docker-dockerfile.yaml
+# - kubernetes-app-docker-retag.yaml
+# - kubernetes-app-manifests-only.yaml
+# - spec-check-filter-release.yaml

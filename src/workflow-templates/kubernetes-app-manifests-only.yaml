@@ -68,6 +68,11 @@ on:
         required: false
         type: string
         default: ''
+      docker-push-targets:
+        description: 'JSON array of additional push targets [{registry, base-path?}]'
+        required: false
+        type: string
+        default: ''
       # Version generator inputs (pass-through)
       release-branch:
         description: 'The release branch name'
@@ -319,6 +324,11 @@ jobs:
       # INJECT: manifest-repo-provider-package
       # INJECT: github-check-end(name="Package Manifests for Repo Provider", id="check-manifest-repo-provider-package")
 
+      # === Manifest Multi-Tag ===
+      # INJECT: github-check-start(name="Manifest Multi-Tag", id="check-manifest-multi-tag", if="inputs.docker-push-targets != '' && steps.versions.outputs.is-release == 'true' && inputs.manifests-repo-provider-type == 'docker'")
+      # INJECT: manifest-multi-tag
+      # INJECT: github-check-end(name="Manifest Multi-Tag", id="check-manifest-multi-tag", if="inputs.docker-push-targets != '' && steps.versions.outputs.is-release == 'true' && inputs.manifests-repo-provider-type == 'docker'")
+
       # === Post-package Tests ===
       # INJECT: github-check-start(name="Post-package Tests", id="check-post-package", if="inputs.post-package-tests-script-sub-path != ''")
       # INJECT: post-package-tests
@@ -338,6 +348,11 @@ jobs:
       # INJECT: github-check-start(name="Publish Manifests via Repo Provider", id="check-manifest-repo-provider-publish", if="steps.versions.outputs.is-release == 'true'")
       # INJECT: manifest-repo-provider-publish
       # INJECT: github-check-end(name="Publish Manifests via Repo Provider", id="check-manifest-repo-provider-publish", if="steps.versions.outputs.is-release == 'true'")
+
+      # === Manifest Multi-Push ===
+      # INJECT: github-check-start(name="Manifest Multi-Push", id="check-manifest-multi-push", if="inputs.docker-push-targets != '' && steps.versions.outputs.is-release == 'true' && inputs.manifests-repo-provider-type == 'docker'")
+      # INJECT: manifest-multi-push
+      # INJECT: github-check-end(name="Manifest Multi-Push", id="check-manifest-multi-push", if="inputs.docker-push-targets != '' && steps.versions.outputs.is-release == 'true' && inputs.manifests-repo-provider-type == 'docker'")
 
       # === GitHub Release ===
       # INJECT: github-check-start(name="GitHub Release", id="check-github-release", if="inputs.github-release-enabled == true && steps.versions.outputs.is-release == 'true'")
