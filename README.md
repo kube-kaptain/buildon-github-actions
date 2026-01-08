@@ -120,9 +120,9 @@ See [`examples/`](examples/) for more usage patterns.
 | `dockerfile-sub-path` | string | `src/docker` | Directory containing Dockerfile, relative to repo root. |
 | `github-release-add-version-to-filenames` | boolean | `true` | Add version suffix to release filenames (e.g., file.yaml -> file-1.2.3.yaml) |
 | `github-release-enabled` | boolean | `true` | Create a GitHub release on version tags |
-| `github-release-files` | string | `""` | Files to attach to the release (space-separated) |
 | `github-release-notes` | string | `""` | Release notes (leave empty for auto-generated) |
-| `github-release-substitute-tokens-in-files` | boolean | `true` | Apply token substitution to release files |
+| `github-release-substituted-files` | string | `""` | Files with token substitution and version suffix (space-separated) |
+| `github-release-verbatim-files` | string | `""` | Files copied as-is with version suffix only (space-separated) |
 | `manifests-packaging-base-image` | string | `""` | Base image for manifest packaging (default: scratch) |
 | `manifests-repo-provider-type` | string | `docker` | Repo provider type for manifest storage (default: docker, currently the only supported provider) |
 | `manifests-sub-path` | string | `src/kubernetes` | Directory containing Kubernetes manifests (relative) |

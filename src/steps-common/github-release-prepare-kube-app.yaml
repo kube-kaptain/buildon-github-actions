@@ -15,7 +15,8 @@
   if: inputs.github-release-enabled == true
   uses: ./.github/buildon-github-actions/src/actions/github-release-prepare
   with:
-    github-release-files: ${{ inputs.github-release-files }}
+    github-release-substituted-files: ${{ inputs.github-release-substituted-files }}
+    github-release-verbatim-files: ${{ inputs.github-release-verbatim-files }}
     output-sub-path: ${{ inputs.output-sub-path }}
     version: ${{ steps.versions.outputs.version }}
     project-name: ${{ steps.versions.outputs.project-name }}
@@ -23,7 +24,6 @@
     docker-image-name: ${{ steps.versions.outputs.docker-image-name }}
     is-release: ${{ steps.versions.outputs.is-release }}
     github-release-add-version-to-filenames: ${{ inputs.github-release-add-version-to-filenames }}
-    github-release-substitute-tokens-in-files: ${{ inputs.github-release-substitute-tokens-in-files }}
     substitution-token-style: ${{ inputs.substitution-token-style }}
     token-name-style: ${{ inputs.token-name-style }}
     token-name-validation: ${{ inputs.token-name-validation }}

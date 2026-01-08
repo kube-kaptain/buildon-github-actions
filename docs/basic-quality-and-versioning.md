@@ -31,10 +31,10 @@ Basic Quality and Versioning
 | `config-value-trailing-newline` | string | `strip-for-single-line` | How to handle trailing newlines in config values (strip-for-single-line, preserve-all, always-strip-one-newline) |
 | `pre-tagging-tests-script-sub-path` | string | `""` | Path to pre-tagging test script relative to .github/ (e.g., bin/pre-tagging.bash) |
 | `github-release-enabled` | boolean | `true` | Create a GitHub release on version tags |
-| `github-release-files` | string | `""` | Files to attach to the release (space-separated) |
+| `github-release-substituted-files` | string | `""` | Files with token substitution and version suffix (space-separated) |
+| `github-release-verbatim-files` | string | `""` | Files copied as-is with version suffix only (space-separated) |
 | `github-release-notes` | string | `""` | Release notes (leave empty for auto-generated) |
 | `github-release-add-version-to-filenames` | boolean | `true` | Add version suffix to release filenames (e.g., file.yaml -> file-1.2.3.yaml) |
-| `github-release-substitute-tokens-in-files` | boolean | `true` | Apply token substitution to release files |
 
 ## Outputs
 

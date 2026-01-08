@@ -4,8 +4,12 @@ name: GitHub Release Prepare
 description: Prepares files for GitHub release with optional substitution and version suffix
 
 inputs:
-  github-release-files:
-    description: 'Files to attach to release (space-separated)'
+  github-release-substituted-files:
+    description: 'Files with token substitution and version suffix (space-separated)'
+    required: false
+    default: ''
+  github-release-verbatim-files:
+    description: 'Files copied as-is with version suffix only (space-separated)'
     required: false
     default: ''
   output-sub-path:
@@ -29,10 +33,6 @@ inputs:
     required: true
   github-release-add-version-to-filenames:
     description: 'Add version suffix to filenames'
-    required: false
-    default: 'true'
-  github-release-substitute-tokens-in-files:
-    description: 'Apply token substitution to files'
     required: false
     default: 'true'
   substitution-token-style:
@@ -76,7 +76,8 @@ runs:
     - name: Prepare release files
       shell: bash
       env:
-        GITHUB_RELEASE_FILES: ${{ inputs.github-release-files }}
+        GITHUB_RELEASE_SUBSTITUTED_FILES: ${{ inputs.github-release-substituted-files }}
+        GITHUB_RELEASE_VERBATIM_FILES: ${{ inputs.github-release-verbatim-files }}
         OUTPUT_SUB_PATH: ${{ inputs.output-sub-path }}
         VERSION: ${{ inputs.version }}
         PROJECT_NAME: ${{ inputs.project-name }}
@@ -84,7 +85,6 @@ runs:
         DOCKER_IMAGE_NAME: ${{ inputs.docker-image-name }}
         IS_RELEASE: ${{ inputs.is-release }}
         ADD_VERSION_TO_FILENAMES: ${{ inputs.github-release-add-version-to-filenames }}
-        SUBSTITUTE_TOKENS_IN_FILES: ${{ inputs.github-release-substitute-tokens-in-files }}
         SUBSTITUTION_TOKEN_STYLE: ${{ inputs.substitution-token-style }}
         TOKEN_NAME_STYLE: ${{ inputs.token-name-style }}
         TOKEN_NAME_VALIDATION: ${{ inputs.token-name-validation }}
@@ -102,7 +102,6 @@ runs:
         # Apply defaults for inputs used directly in this script
         OUTPUT_SUB_PATH="${OUTPUT_SUB_PATH:-target}"
         ADD_VERSION_TO_FILENAMES="${ADD_VERSION_TO_FILENAMES:-true}"
-        SUBSTITUTE_TOKENS_IN_FILES="${SUBSTITUTE_TOKENS_IN_FILES:-true}"
 
         # Pass-through vars (called scripts default their own; these just satisfy set -u)
         SUBSTITUTION_TOKEN_STYLE="${SUBSTITUTION_TOKEN_STYLE:-}"
@@ -134,20 +133,19 @@ runs:
         echo "Preparing GitHub release files..."
         echo "  Output: ${RELEASE_OUTPUT_DIR}"
         echo "  Add version to filenames: ${ADD_VERSION_TO_FILENAMES}"
-        echo "  Substitute tokens: ${SUBSTITUTE_TOKENS_IN_FILES}"
 
         # Create output directory
         mkdir -p "${RELEASE_OUTPUT_DIR}"
 
-        # If no files specified, we're done (release will have no attachments)
-        if [[ -z "${GITHUB_RELEASE_FILES}" ]]; then
+        # If no files specified in either list, we're done
+        if [[ -z "${GITHUB_RELEASE_SUBSTITUTED_FILES}" ]] && [[ -z "${GITHUB_RELEASE_VERBATIM_FILES}" ]]; then
           echo "No files specified for release"
           exit 0
         fi
 
-        # Prepare tokens if substitution is enabled
+        # Prepare tokens if we have substituted files
         tokens_dir=""
-        if [[ "${SUBSTITUTE_TOKENS_IN_FILES}" == "true" ]]; then
+        if [[ -n "${GITHUB_RELEASE_SUBSTITUTED_FILES}" ]]; then
           tokens_dir="${OUTPUT_SUB_PATH}/github-release-tokens"
           echo "Preparing substitution tokens..."
 
@@ -169,37 +167,57 @@ runs:
             "${SCRIPTS_DIR}/prepare-substitution-tokens"
         fi
 
-        # Process each file
-        # shellcheck disable=SC2086 # Intentional word splitting
-        for source_file in ${GITHUB_RELEASE_FILES}; do
-          if [[ ! -f "${source_file}" ]]; then
-            echo "::error::Source file not found: ${source_file}"
-            exit 1
-          fi
+        # Process substituted files (token replacement + version suffix)
+        if [[ -n "${GITHUB_RELEASE_SUBSTITUTED_FILES}" ]]; then
+          echo "Processing substituted files..."
+          # shellcheck disable=SC2086 # Intentional word splitting
+          for source_file in ${GITHUB_RELEASE_SUBSTITUTED_FILES}; do
+            if [[ ! -f "${source_file}" ]]; then
+              echo "::error::Source file not found: ${source_file}"
+              exit 1
+            fi
 
-          filename=$(basename "${source_file}")
+            filename=$(basename "${source_file}")
+            if [[ "${ADD_VERSION_TO_FILENAMES}" == "true" ]]; then
+              target_filename=$(add_version_suffix "${filename}" "${VERSION}")
+            else
+              target_filename="${filename}"
+            fi
+            target_path="${RELEASE_OUTPUT_DIR}/${target_filename}"
+            echo "  ${source_file} -> ${target_filename} (substituted)"
 
-          # Determine target filename
-          target_filename="${filename}"
-          if [[ "${ADD_VERSION_TO_FILENAMES}" == "true" ]]; then
-            target_filename=$(add_version_suffix "${filename}" "${VERSION}")
-          fi
+            cp "${source_file}" "${target_path}"
 
-          target_path="${RELEASE_OUTPUT_DIR}/${target_filename}"
-          echo "  ${source_file} -> ${target_filename}"
-
-          # Copy file (copy IS the rename)
-          cp "${source_file}" "${target_path}"
-
-          # Apply substitution if enabled (to this file only)
-          if [[ "${SUBSTITUTE_TOKENS_IN_FILES}" == "true" ]]; then
             CONFIG_VALUE_TRAILING_NEWLINE="${CONFIG_VALUE_TRAILING_NEWLINE}" \
               "${SCRIPTS_DIR}/substitute-tokens-from-dir" \
               "${SUBSTITUTION_TOKEN_STYLE}" \
               "${tokens_dir}" \
               "${target_path}"
-          fi
-        done
+          done
+        fi
+
+        # Process verbatim files (version suffix only, no substitution)
+        if [[ -n "${GITHUB_RELEASE_VERBATIM_FILES}" ]]; then
+          echo "Processing verbatim files..."
+          # shellcheck disable=SC2086 # Intentional word splitting
+          for source_file in ${GITHUB_RELEASE_VERBATIM_FILES}; do
+            if [[ ! -f "${source_file}" ]]; then
+              echo "::error::Source file not found: ${source_file}"
+              exit 1
+            fi
+
+            filename=$(basename "${source_file}")
+            if [[ "${ADD_VERSION_TO_FILENAMES}" == "true" ]]; then
+              target_filename=$(add_version_suffix "${filename}" "${VERSION}")
+            else
+              target_filename="${filename}"
+            fi
+            target_path="${RELEASE_OUTPUT_DIR}/${target_filename}"
+            echo "  ${source_file} -> ${target_filename} (verbatim)"
+
+            cp "${source_file}" "${target_path}"
+          done
+        fi
 
         # Clean up tokens dir
         if [[ -n "${tokens_dir}" ]] && [[ -d "${tokens_dir}" ]]; then

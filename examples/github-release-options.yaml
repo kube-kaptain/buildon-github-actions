@@ -53,11 +53,18 @@ jobs:
 # ┌───────────────────────────────────────────────────────────────────────────┐
 # │ Additional Release Files                                                  │
 # └───────────────────────────────────────────────────────────────────────────┘
-# Attach extra files to the release (space-separated).
+# Attach extra files to the release (space-separated). Two options:
+# - github-release-substituted-files: Token substitution + version suffix
+# - github-release-verbatim-files: Copied as-is with version suffix only
+#
+# Both lists get version suffix (e.g., file.yaml -> file-1.2.3.yaml).
+# Use github-release-add-version-to-filenames: false to disable the suffix.
+#
 # Kubernetes app workflows automatically include the manifests zip.
 #
 #   with:
-#     github-release-files: 'CHANGELOG.md LICENSE'
+#     github-release-substituted-files: 'template.yaml'  # Tokens replaced
+#     github-release-verbatim-files: 'CHANGELOG.md LICENSE'  # Copied as-is
 
 # ┌───────────────────────────────────────────────────────────────────────────┐
 # │ Combined Example                                                          │
@@ -73,4 +80,4 @@ jobs:
 #     with:
 #       github-release-notes: |
 #         Production-ready release with updated dependencies.
-#       github-release-files: 'docs/MIGRATION.md'
+#       github-release-substituted-files: 'docs/MIGRATION.md'

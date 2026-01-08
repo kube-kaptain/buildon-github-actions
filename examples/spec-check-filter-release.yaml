@@ -73,12 +73,16 @@ jobs:
 # ┌─────────────────────────────────────────────────────────────────────────┐
 # │ GitHub Release                                                          │
 # └─────────────────────────────────────────────────────────────────────────┘
+# The spec files are automatically included in the release. Additional files
+# specified here are subject to the job's default behaviors: token substitution
+# (substituted-files) or no substitution (verbatim-files), and version suffix.
+#
 #     with:
-#       github-release-enabled: true                        # Default is true
-#       github-release-files: 'extra-file.txt'              # Additional files to attach
-#       github-release-notes: 'Custom release notes'        # Leave empty for auto
-#       github-release-add-version-to-filenames: false      # Default is true
-#       github-release-substitute-tokens-in-files: false    # Default is true
+#       github-release-enabled: true                           # Default is true
+#       github-release-substituted-files: 'template.yaml'      # Tokens replaced
+#       github-release-verbatim-files: 'extra-file.txt'        # Copied as-is
+#       github-release-notes: 'Custom release notes'           # Leave empty for auto
+#       github-release-add-version-to-filenames: false         # Default is true
 
 # ┌─────────────────────────────────────────────────────────────────────────┐
 # │ Branch Configuration                                                    │

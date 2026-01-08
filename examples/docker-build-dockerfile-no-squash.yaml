@@ -107,11 +107,11 @@ jobs:
 # │ GitHub Release                                                          │
 # └─────────────────────────────────────────────────────────────────────────┘
 #     with:
-#       github-release-enabled: true                        # Default is true
-#       github-release-files: 'dist/output.txt'             # Files to attach
-#       github-release-notes: 'Custom release notes'        # Leave empty for auto
-#       github-release-add-version-to-filenames: false      # Default is true
-#       github-release-substitute-tokens-in-files: false    # Default is true
+#       github-release-enabled: true                           # Default is true
+#       github-release-substituted-files: 'dist/output.txt'    # Tokens replaced
+#       github-release-verbatim-files: 'CHANGELOG.md'          # Copied as-is
+#       github-release-notes: 'Custom release notes'           # Leave empty for auto
+#       github-release-add-version-to-filenames: false         # Default is true
 
 # ┌─────────────────────────────────────────────────────────────────────────┐
 # │ Output Configuration                                                    │
