@@ -230,21 +230,25 @@ set_required_env() {
   unzip -l "$OUTPUT_SUB_PATH/manifests/zip/my-project-1.2.3-manifests.zip" | grep -q "my-project/deployment.yaml"
 }
 
-@test "fails when manifests directory not found" {
+@test "fails when manifests directory not found and raw is empty" {
   set_required_env
   export MANIFESTS_SUB_PATH="/nonexistent/path"
 
   run "$SCRIPTS_DIR/kubernetes-manifests-package"
   [ "$status" -ne 0 ]
-  assert_output_contains "Manifests directory not found"
+  # Should report the dir is not found, then fail because raw/ is empty
+  assert_output_contains "Source directory not found"
+  assert_output_contains "No manifests to package"
 }
 
-@test "fails when manifests directory is empty" {
+@test "fails when manifests directory is empty and raw is empty" {
   set_required_env
 
   run "$SCRIPTS_DIR/kubernetes-manifests-package"
   [ "$status" -ne 0 ]
-  assert_output_contains "directory is empty"
+  # Should report source is empty, then fail because raw/ is empty
+  assert_output_contains "Source directory empty"
+  assert_output_contains "No manifests to package"
 }
 
 @test "fails when PROJECT_NAME missing" {
@@ -274,7 +278,9 @@ set_required_env() {
 
   run "$SCRIPTS_DIR/kubernetes-manifests-package"
   [ "$status" -ne 0 ]
-  assert_output_contains "src/kubernetes"
+  # Reports the default path and fails because raw/ is empty
+  assert_output_contains "Source directory not found: src/kubernetes"
+  assert_output_contains "No manifests to package"
 }
 
 @test "defaults OUTPUT_SUB_PATH to target" {
@@ -406,4 +412,36 @@ set_required_env() {
   [ "$status" -ne 0 ]
   assert_output_contains "ProjectName"
   assert_output_contains "Version"
+}
+
+@test "succeeds with pre-populated raw directory and no source" {
+  set_required_env
+  export MANIFESTS_SUB_PATH="/nonexistent/path"
+
+  # Simulate hooks pre-populating raw/
+  mkdir -p "$OUTPUT_SUB_PATH/manifests/raw"
+  echo 'apiVersion: v1' > "$OUTPUT_SUB_PATH/manifests/raw/from-hook.yaml"
+
+  run "$SCRIPTS_DIR/kubernetes-manifests-package"
+  [ "$status" -eq 0 ]
+  assert_output_contains "Source directory not found"
+  assert_output_contains "Found 1 manifest file(s)"
+  [ -f "$OUTPUT_SUB_PATH/manifests/zip/my-project-1.2.3-manifests.zip" ]
+}
+
+@test "source files override pre-populated raw files" {
+  set_required_env
+
+  # Simulate hooks pre-populating raw/
+  mkdir -p "$OUTPUT_SUB_PATH/manifests/raw"
+  echo 'name: from-hook' > "$OUTPUT_SUB_PATH/manifests/raw/deployment.yaml"
+
+  # Source has same file with different content
+  create_manifest "deployment.yaml" 'name: from-source'
+
+  run "$SCRIPTS_DIR/kubernetes-manifests-package"
+  [ "$status" -eq 0 ]
+
+  # Source should override hook content
+  unzip -p "$OUTPUT_SUB_PATH/manifests/zip/my-project-1.2.3-manifests.zip" my-project/deployment.yaml | grep -q "name: from-source"
 }

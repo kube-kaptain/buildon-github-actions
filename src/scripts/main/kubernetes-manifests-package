@@ -86,13 +86,30 @@ main() {
   [[ -n "${DOCKER_IMAGE_NAME}" ]] && echo "Docker image: ${DOCKER_IMAGE_NAME}" >&2
   echo "====================================" >&2
 
-  # Validate manifests directory exists
-  if [[ ! -d "${MANIFESTS_SUB_PATH}" ]]; then
-    echo "${LOG_ERROR_PREFIX}Manifests directory not found: ${MANIFESTS_SUB_PATH}${LOG_ERROR_SUFFIX}" >&2
-    exit 1
+  # Create output directory structure (may already exist from pre-package hooks)
+  mkdir -p "${MANIFESTS_RAW_SUB_PATH}"
+  mkdir -p "${MANIFESTS_ZIP_SUB_PATH}"
+
+  # Copy from source to raw if source exists and has files
+  # (Hooks may have already contributed to raw/ - source files override)
+  if [[ -d "${MANIFESTS_SUB_PATH}" ]]; then
+    local source_file_count
+    source_file_count=$(find "${MANIFESTS_SUB_PATH}" -type f | wc -l | tr -d ' ')
+
+    if [[ "${source_file_count}" -gt 0 ]]; then
+      echo "" >&2
+      echo "Copying ${source_file_count} file(s) from ${MANIFESTS_SUB_PATH}" >&2
+      cp -R "${MANIFESTS_SUB_PATH}"/* "${MANIFESTS_RAW_SUB_PATH}/"
+    else
+      echo "" >&2
+      echo "Source directory empty: ${MANIFESTS_SUB_PATH}" >&2
+    fi
+  else
+    echo "" >&2
+    echo "Source directory not found: ${MANIFESTS_SUB_PATH}" >&2
   fi
 
-  # Count files by type
+  # Validate raw/ has files (from any source: hooks or src/kubernetes)
   local yaml_count=0
   local other_count=0
   local total_files=0
@@ -103,10 +120,10 @@ main() {
       *.yaml|*.yml) yaml_count=$((yaml_count + 1)) ;;
       *) other_count=$((other_count + 1)) ;;
     esac
-  done < <(find "${MANIFESTS_SUB_PATH}" -type f)
+  done < <(find "${MANIFESTS_RAW_SUB_PATH}" -type f)
 
   if [[ "${total_files}" -eq 0 ]]; then
-    echo "${LOG_ERROR_PREFIX}Manifests directory is empty: ${MANIFESTS_SUB_PATH}${LOG_ERROR_SUFFIX}" >&2
+    echo "${LOG_ERROR_PREFIX}No manifests to package (${MANIFESTS_RAW_SUB_PATH} is empty)${LOG_ERROR_SUFFIX}" >&2
     exit 1
   fi
 
@@ -115,13 +132,6 @@ main() {
   if [[ ${other_count} -gt 0 ]]; then
     echo "Found ${other_count} non-manifest file(s)" >&2
   fi
-
-  # Create output directory structure
-  mkdir -p "${MANIFESTS_RAW_SUB_PATH}"
-  mkdir -p "${MANIFESTS_ZIP_SUB_PATH}"
-
-  # Copy to raw (preserving original)
-  cp -R "${MANIFESTS_SUB_PATH}"/* "${MANIFESTS_RAW_SUB_PATH}/"
 
   # Compute the zip filename (used as a built-in token)
   local zip_name="${PROJECT_NAME}-${VERSION}-manifests.zip"
@@ -149,7 +159,7 @@ main() {
   echo "" >&2
   echo "Preparing manifests for substitution..." >&2
   mkdir -p "${MANIFESTS_SUBSTITUTED_SUB_PATH}/${PROJECT_NAME}"
-  cp -R "${MANIFESTS_SUB_PATH}"/* "${MANIFESTS_SUBSTITUTED_SUB_PATH}/${PROJECT_NAME}/"
+  cp -R "${MANIFESTS_RAW_SUB_PATH}"/* "${MANIFESTS_SUBSTITUTED_SUB_PATH}/${PROJECT_NAME}/"
 
   # Perform variable substitution
   echo "Performing variable substitution..." >&2
