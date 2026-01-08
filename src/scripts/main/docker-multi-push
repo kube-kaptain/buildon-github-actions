@@ -1,0 +1,104 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
+#
+# docker-multi-push - Pushes Docker image to multiple registries
+#
+# Inputs (environment variables):
+#   DOCKER_IMAGE_NAME     - Image name portion (required)
+#   DOCKER_TAG            - Tag for images (required)
+#   DOCKER_PUSH_TARGETS   - JSON array of targets [{registry, base-path?}] (required)
+#   IS_RELEASE            - "true" to push, "false" to skip (default: false)
+#
+# Each target in the JSON array:
+#   registry  - Target registry (required)
+#   base-path - Optional base path within registry
+#
+# Outputs:
+#   IMAGES_PUSHED - Number of images pushed
+#
+set -euo pipefail
+
+# Required inputs
+DOCKER_IMAGE_NAME="${DOCKER_IMAGE_NAME:?DOCKER_IMAGE_NAME is required}"
+DOCKER_TAG="${DOCKER_TAG:?DOCKER_TAG is required}"
+DOCKER_PUSH_TARGETS="${DOCKER_PUSH_TARGETS:?DOCKER_PUSH_TARGETS is required}"
+
+# Optional inputs with defaults
+IS_RELEASE="${IS_RELEASE:-false}"
+
+# Output variable for GitHub Actions
+output_var() {
+  local name="${1}"
+  local value="${2}"
+
+  echo "${name}=${value}"
+
+  if [[ -n "${GITHUB_OUTPUT:-}" ]]; then
+    echo "${name}=${value}" >> "${GITHUB_OUTPUT}"
+  fi
+}
+
+# Build full image URI from components
+build_image_uri() {
+  local registry="${1}"
+  local base_path="${2}"
+  local image_name="${3}"
+  local tag="${4}"
+
+  if [[ -n "${base_path}" ]]; then
+    echo "${registry}/${base_path}/${image_name}:${tag}"
+  else
+    echo "${registry}/${image_name}:${tag}"
+  fi
+}
+
+main() {
+  echo "=== Docker Multi-Push ===" >&2
+  echo "Image name: ${DOCKER_IMAGE_NAME}" >&2
+  echo "Tag: ${DOCKER_TAG}" >&2
+  echo "Is Release: ${IS_RELEASE}" >&2
+  echo "==========================" >&2
+
+  # Validate JSON before processing
+  if ! echo "${DOCKER_PUSH_TARGETS}" | jq -e 'type == "array"' > /dev/null 2>&1; then
+    echo "${LOG_ERROR_PREFIX:-}DOCKER_PUSH_TARGETS must be a valid JSON array${LOG_ERROR_SUFFIX:-}" >&2
+    exit 1
+  fi
+
+  if [[ "${IS_RELEASE}" != "true" ]]; then
+    echo "Skipping push (IS_RELEASE=${IS_RELEASE})" >&2
+    output_var "IMAGES_PUSHED" "0"
+    return 0
+  fi
+
+  local count=0
+
+  # Parse JSON and iterate over targets
+  while IFS= read -r target; do
+    local registry base_path target_uri
+
+    registry=$(echo "${target}" | jq -r '.registry')
+    base_path=$(echo "${target}" | jq -r '.["base-path"] // ""')
+
+    # Validate registry is present
+    if [[ -z "${registry}" ]] || [[ "${registry}" == "null" ]]; then
+      echo "${LOG_ERROR_PREFIX:-}Push target missing required 'registry' field${LOG_ERROR_SUFFIX:-}" >&2
+      exit 1
+    fi
+
+    target_uri=$(build_image_uri "${registry}" "${base_path}" "${DOCKER_IMAGE_NAME}" "${DOCKER_TAG}")
+
+    echo "Pushing: ${target_uri}" >&2
+    docker push "${target_uri}"
+
+    count=$((count + 1))
+  done < <(echo "${DOCKER_PUSH_TARGETS}" | jq -c '.[]')
+
+  output_var "IMAGES_PUSHED" "${count}"
+
+  echo "" >&2
+  echo "Docker Multi-Push complete: ${count} image(s) pushed" >&2
+}
+
+main "$@"

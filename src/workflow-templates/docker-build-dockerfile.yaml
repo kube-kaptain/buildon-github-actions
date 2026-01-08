@@ -68,6 +68,11 @@ on:
         required: false
         type: string
         default: ''
+      docker-push-targets:
+        description: 'JSON array of additional push targets [{registry, base-path?}]'
+        required: false
+        type: string
+        default: ''
       # Version generator inputs (pass-through)
       release-branch:
         description: 'The release branch name'
@@ -302,6 +307,11 @@ jobs:
       # INJECT: docker-build-dockerfile
       # INJECT: github-check-end(name="Docker Build", id="check-docker-build")
 
+      # === Docker Multi-Tag ===
+      # INJECT: github-check-start(name="Docker Multi-Tag", id="check-docker-multi-tag", if="inputs.docker-push-targets != '' && steps.versions.outputs.is-release == 'true'")
+      # INJECT: docker-multi-tag
+      # INJECT: github-check-end(name="Docker Multi-Tag", id="check-docker-multi-tag", if="inputs.docker-push-targets != '' && steps.versions.outputs.is-release == 'true'")
+
       # === Post-docker Tests ===
       # INJECT: github-check-start(name="Post-docker Tests", id="check-post-docker", if="inputs.post-docker-tests-script-sub-path != ''")
       # INJECT: post-docker-tests
@@ -321,6 +331,11 @@ jobs:
       # INJECT: github-check-start(name="Docker Push", id="check-docker-push", if="steps.versions.outputs.is-release == 'true'")
       # INJECT: docker-push
       # INJECT: github-check-end(name="Docker Push", id="check-docker-push", if="steps.versions.outputs.is-release == 'true'")
+
+      # === Docker Multi-Push ===
+      # INJECT: github-check-start(name="Docker Multi-Push", id="check-docker-multi-push", if="inputs.docker-push-targets != '' && steps.versions.outputs.is-release == 'true'")
+      # INJECT: docker-multi-push
+      # INJECT: github-check-end(name="Docker Multi-Push", id="check-docker-multi-push", if="inputs.docker-push-targets != '' && steps.versions.outputs.is-release == 'true'")
 
       # === GitHub Release ===
       # INJECT: github-check-start(name="GitHub Release", id="check-github-release", if="inputs.github-release-enabled == true && steps.versions.outputs.is-release == 'true'")

@@ -20,7 +20,7 @@ on:
 
 jobs:
   build:
-    uses: kube-kaptain/buildon-github-actions/.github/workflows/docker-build-dockerfile.yaml@1.0.39
+    uses: kube-kaptain/buildon-github-actions/.github/workflows/docker-build-dockerfile.yaml@1.0.40
     permissions:
       contents: write
       packages: write
@@ -118,6 +118,19 @@ jobs:
 # └─────────────────────────────────────────────────────────────────────────┘
 #     with:
 #       output-sub-path: 'build'  # Default is 'target'
+
+# ┌─────────────────────────────────────────────────────────────────────────┐
+# │ Multi-Registry Push                                                     │
+# └─────────────────────────────────────────────────────────────────────────┘
+# Push the same image to additional registries (e.g., multiple AWS accounts)
+# See docker-push-targets.yaml example for full details
+#
+#     with:
+#       docker-push-targets: |
+#         [
+#           {"registry": "123456789012.dkr.ecr.us-east-1.amazonaws.com"},
+#           {"registry": "other.registry.com", "base-path": "my-team"}
+#         ]
 
 # ┌─────────────────────────────────────────────────────────────────────────┐
 # │ Registry Credentials                                                    │

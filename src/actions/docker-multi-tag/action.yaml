@@ -1,0 +1,37 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
+
+name: 'Docker Multi-Tag'
+description: 'Tags a Docker image for multiple registries'
+
+inputs:
+  docker-image-full-uri:
+    description: 'Full URI of the image to tag from'
+    required: true
+  docker-image-name:
+    description: 'Image name portion'
+    required: true
+  docker-tag:
+    description: 'Tag for images'
+    required: true
+  docker-push-targets:
+    description: 'JSON array of targets [{registry, base-path?}]'
+    required: true
+
+outputs:
+  images-tagged:
+    description: 'Number of images tagged'
+    value: ${{ steps.tag.outputs.IMAGES_TAGGED }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Tag images
+      id: tag
+      shell: bash
+      env:
+        DOCKER_IMAGE_FULL_URI: ${{ inputs.docker-image-full-uri }}
+        DOCKER_IMAGE_NAME: ${{ inputs.docker-image-name }}
+        DOCKER_TAG: ${{ inputs.docker-tag }}
+        DOCKER_PUSH_TARGETS: ${{ inputs.docker-push-targets }}
+      run: "${{ github.action_path }}/../../scripts/main/docker-multi-tag"
