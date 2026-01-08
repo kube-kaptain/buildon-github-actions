@@ -64,7 +64,7 @@ set_required_env() {
 
   run "$SCRIPTS_DIR/kubernetes-manifests-package"
   [ "$status" -eq 0 ]
-  [ -d "$OUTPUT_SUB_PATH/manifests/raw" ]
+  [ -d "$OUTPUT_SUB_PATH/manifests/combined" ]
   [ -d "$OUTPUT_SUB_PATH/manifests/config" ]
   [ -d "$OUTPUT_SUB_PATH/manifests/substituted" ]
   [ -d "$OUTPUT_SUB_PATH/manifests/zip" ]
@@ -230,23 +230,23 @@ set_required_env() {
   unzip -l "$OUTPUT_SUB_PATH/manifests/zip/my-project-1.2.3-manifests.zip" | grep -q "my-project/deployment.yaml"
 }
 
-@test "fails when manifests directory not found and raw is empty" {
+@test "fails when manifests directory not found and combined is empty" {
   set_required_env
   export MANIFESTS_SUB_PATH="/nonexistent/path"
 
   run "$SCRIPTS_DIR/kubernetes-manifests-package"
   [ "$status" -ne 0 ]
-  # Should report the dir is not found, then fail because raw/ is empty
+  # Should report the dir is not found, then fail because combined/ is empty
   assert_output_contains "Source directory not found"
   assert_output_contains "No manifests to package"
 }
 
-@test "fails when manifests directory is empty and raw is empty" {
+@test "fails when manifests directory is empty and combined is empty" {
   set_required_env
 
   run "$SCRIPTS_DIR/kubernetes-manifests-package"
   [ "$status" -ne 0 ]
-  # Should report source is empty, then fail because raw/ is empty
+  # Should report source is empty, then fail because combined/ is empty
   assert_output_contains "Source directory empty"
   assert_output_contains "No manifests to package"
 }
@@ -278,7 +278,7 @@ set_required_env() {
 
   run "$SCRIPTS_DIR/kubernetes-manifests-package"
   [ "$status" -ne 0 ]
-  # Reports the default path and fails because raw/ is empty
+  # Reports the default path and fails because combined/ is empty
   assert_output_contains "Source directory not found: src/kubernetes"
   assert_output_contains "No manifests to package"
 }
@@ -414,13 +414,13 @@ set_required_env() {
   assert_output_contains "Version"
 }
 
-@test "succeeds with pre-populated raw directory and no source" {
+@test "succeeds with pre-populated combined directory and no source" {
   set_required_env
   export MANIFESTS_SUB_PATH="/nonexistent/path"
 
-  # Simulate hooks pre-populating raw/
-  mkdir -p "$OUTPUT_SUB_PATH/manifests/raw"
-  echo 'apiVersion: v1' > "$OUTPUT_SUB_PATH/manifests/raw/from-hook.yaml"
+  # Simulate hooks pre-populating combined/
+  mkdir -p "$OUTPUT_SUB_PATH/manifests/combined"
+  echo 'apiVersion: v1' > "$OUTPUT_SUB_PATH/manifests/combined/from-hook.yaml"
 
   run "$SCRIPTS_DIR/kubernetes-manifests-package"
   [ "$status" -eq 0 ]
@@ -429,12 +429,12 @@ set_required_env() {
   [ -f "$OUTPUT_SUB_PATH/manifests/zip/my-project-1.2.3-manifests.zip" ]
 }
 
-@test "source files override pre-populated raw files" {
+@test "source files override pre-populated combined files" {
   set_required_env
 
-  # Simulate hooks pre-populating raw/
-  mkdir -p "$OUTPUT_SUB_PATH/manifests/raw"
-  echo 'name: from-hook' > "$OUTPUT_SUB_PATH/manifests/raw/deployment.yaml"
+  # Simulate hooks pre-populating combined/
+  mkdir -p "$OUTPUT_SUB_PATH/manifests/combined"
+  echo 'name: from-hook' > "$OUTPUT_SUB_PATH/manifests/combined/deployment.yaml"
 
   # Source has same file with different content
   create_manifest "deployment.yaml" 'name: from-source'
