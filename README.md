@@ -63,15 +63,15 @@ See [`examples/`](examples/) for more usage patterns.
 <!-- WORKFLOWS-START -->
 | Workflow | Description |
 |----------|-------------|
-| `basic-quality-and-versioning.yaml` | Basic Quality and Versioning |
-| `basic-quality-checks.yaml` | Basic Quality Checks |
-| `docker-build-dockerfile.yaml` | Docker Build Dockerfile |
-| `docker-build-retag.yaml` | Docker Build Retag |
-| `kubernetes-app-docker-dockerfile.yaml` | Kubernetes App - Docker Dockerfile |
-| `kubernetes-app-docker-retag.yaml` | Kubernetes App - Docker Retag |
-| `kubernetes-app-manifests-only.yaml` | Kubernetes App - Manifests Only |
-| `spec-check-filter-release.yaml` | Spec Check Filter Release |
-| `versions-and-naming.yaml` | Versions & Naming |
+| `basic-quality-checks.yaml` | Enforces basic quality - blocks bad branch names, bad commit messages, and bad branch structure |
+| `versions-and-naming.yaml` | Calculates and sets all critical artifact naming and version/tag information, and performs a GitHub release |
+| `basic-quality-and-versioning.yaml` | Quality checks and naming/versioning combined - the standard foundation for most projects |
+| `docker-build-dockerfile.yaml` | Everything from quality and versions above, but also builds a docker image from a Dockerfile |
+| `docker-build-retag.yaml` | Everything from quality and version above, but also pulls, retags, and republishes a docker image |
+| `kubernetes-app-manifests-only.yaml` | Everything from quality and version above, plus packages Kubernetes manifests with token substitution |
+| `kubernetes-app-docker-dockerfile.yaml` | Everything from both docker Dockerfile and Kubernetes manifest packaging - a full kube app build |
+| `kubernetes-app-docker-retag.yaml` | Everything from both docker retag and Kubernetes manifest packaging - for apps using upstream images |
+| `spec-check-filter-release.yaml` | Everything from quality and version above, but also validates and packages a JSON Schema or an API Spec |
 <!-- WORKFLOWS-END -->
 
 ### Actions

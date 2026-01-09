@@ -2,6 +2,8 @@
 # Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
 
 name: Kubernetes App - Manifests Only
+kaptain-order: 60
+kaptain-description: Everything from quality and version above, plus packages Kubernetes manifests with token substitution
 on:
   workflow_call:
     inputs:

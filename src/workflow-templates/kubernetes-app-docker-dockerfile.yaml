@@ -2,6 +2,8 @@
 # Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
 
 name: Kubernetes App - Docker Dockerfile
+kaptain-order: 70
+kaptain-description: Everything from both docker Dockerfile and Kubernetes manifest packaging - a full kube app build
 on:
   workflow_call:
     inputs:

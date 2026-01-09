@@ -2,6 +2,8 @@
 # Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
 
 name: Versions & Naming
+kaptain-order: 20
+kaptain-description: Calculates and sets all critical artifact naming and version/tag information, and performs a GitHub release
 on:
   workflow_call:
     inputs:

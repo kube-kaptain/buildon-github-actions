@@ -2,6 +2,8 @@
 # Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
 
 name: Spec Check Filter Release
+kaptain-order: 90
+kaptain-description: Everything from quality and version above, but also validates and packages a JSON Schema or an API Spec
 on:
   workflow_call:
     inputs:

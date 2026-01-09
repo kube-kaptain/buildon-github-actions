@@ -2,6 +2,8 @@
 # Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
 
 name: Basic Quality Checks
+kaptain-order: 10
+kaptain-description: Enforces basic quality - blocks bad branch names, bad commit messages, and bad branch structure
 on:
   workflow_call:
     inputs:

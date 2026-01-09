@@ -2,6 +2,8 @@
 # Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
 
 name: Kubernetes App - Docker Retag
+kaptain-order: 80
+kaptain-description: Everything from both docker retag and Kubernetes manifest packaging - for apps using upstream images
 on:
   workflow_call:
     inputs:
