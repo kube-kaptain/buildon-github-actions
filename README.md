@@ -93,9 +93,9 @@ See [`examples/`](examples/) for more usage patterns.
 | `github-release` | Create GitHub release with assets from prepared directory |
 | `hook-post-docker-tests` | Runs user's hook script after Docker image is built for integration tests, security scans, or validation |
 | `hook-post-package-tests` | Runs user's hook script after manifest packaging for validation, additional tests, or verification |
-| `hook-pre-docker-prepare` | Runs user's hook script before Docker build to modify Dockerfile or copy files into docker context |
+| `hook-pre-docker-prepare` | Runs user's hook script before Docker build preparation to modify Dockerfile, copy files, or perform setup |
 | `hook-pre-package-prepare` | Runs user's hook script before manifest packaging to generate ConfigMaps, modify manifests, or add files |
-| `hook-pre-tagging-tests` | Runs user's hook script before tagging/versioning occurs (before versions-and-naming, so version info is NOT available) |
+| `hook-pre-tagging-tests` | Runs user's hook script before tagging/versioning for custom validation or preparation |
 | `kubernetes-manifests-package` | Packages Kubernetes manifests into a zip with variable substitution |
 | `kubernetes-manifests-repo-provider-package` | Packages manifests for repo provider (builds docker image). Does NOT publish. |
 | `kubernetes-manifests-repo-provider-publish` | Publishes manifests via pluggable repo provider. Requires package step to run first. |

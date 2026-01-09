@@ -5,17 +5,249 @@ name: Hook - Post-Package Tests
 description: Runs user's hook script after manifest packaging for validation, additional tests, or verification
 
 inputs:
+  # Hook script path
   script-sub-path:
     description: 'Path to script relative to .github/ (e.g., bin/post-package.bash)'
     required: true
-  manifests-zip-sub-path:
-    description: 'Manifests zip directory (relative, where the zip file is created)'
-    required: true
-  manifests-zip-file-name:
-    description: 'Manifests zip file name'
-    required: true
+
+  # === Workflow Inputs ===
+  # Build output
+  output-sub-path:
+    description: 'Build output directory (relative)'
+    required: false
+    default: 'target'
+
+  # Docker registry logins
+  docker-registry-logins:
+    description: 'YAML config for Docker registry logins'
+    required: false
+    default: ''
+  # Docker build options
+  dockerfile-sub-path:
+    description: 'Directory containing Dockerfile, relative to repo root'
+    required: false
+    default: 'src/docker'
+  squash:
+    description: 'Enable --squash (requires experimental mode)'
+    required: false
+    default: 'true'
+  no-cache:
+    description: 'Disable layer caching for reproducible builds'
+    required: false
+    default: 'true'
+  # Docker target config
+  docker-target-registry:
+    description: 'Target container registry'
+    required: false
+    default: 'ghcr.io'
+  docker-target-base-path:
+    description: 'Path between registry and image name'
+    required: false
+    default: ''
+  # Docker push targets
+  docker-push-targets:
+    description: 'JSON array of additional push targets'
+    required: false
+    default: ''
+
+  # Manifests source
+  manifests-sub-path:
+    description: 'Directory containing Kubernetes manifests (relative)'
+    required: false
+    default: 'src/kubernetes'
+  # Manifests packaging
+  manifests-repo-provider-type:
+    description: 'Repo provider type for manifest storage'
+    required: false
+    default: 'docker'
+  manifests-packaging-base-image:
+    description: 'Base image for manifest packaging'
+    required: false
+    default: ''
+
+  # Kubernetes Generation
+  kubernetes-global-additional-labels:
+    description: 'Additional labels for all Kubernetes manifests (comma-separated key=value)'
+    required: false
+    default: ''
+  kubernetes-global-additional-annotations:
+    description: 'Additional annotations for all Kubernetes manifests (comma-separated key=value)'
+    required: false
+    default: ''
+  # Kubernetes ConfigMap Generation
+  kubernetes-configmap-sub-path:
+    description: 'Directory containing ConfigMap data files (relative)'
+    required: false
+    default: 'src/configmap'
+  kubernetes-configmap-name-checksum-injection:
+    description: 'Enable checksum injection suffix in ConfigMap name'
+    required: false
+    default: 'true'
+  kubernetes-configmap-additional-labels:
+    description: 'Additional labels specific to ConfigMap (comma-separated key=value)'
+    required: false
+    default: ''
+  kubernetes-configmap-additional-annotations:
+    description: 'Additional annotations specific to ConfigMap (comma-separated key=value)'
+    required: false
+    default: ''
+
+  # Token substitution
+  substitution-token-style:
+    description: 'Token delimiter syntax (shell, mustache, helm, erb, etc.)'
+    required: false
+    default: 'shell'
+  token-name-style:
+    description: 'Case style for token names (UPPER_SNAKE, PascalCase, etc.)'
+    required: false
+    default: 'PascalCase'
+  token-name-validation:
+    description: 'How to validate user token names (MATCH, ALL)'
+    required: false
+    default: 'MATCH'
+  allow-builtin-token-override:
+    description: 'Allow user tokens to override built-in tokens'
+    required: false
+    default: 'false'
+  config-sub-path:
+    description: 'Directory containing user-defined token files (relative)'
+    required: false
+    default: 'src/config'
+  config-value-trailing-newline:
+    description: 'How to handle trailing newlines in config values'
+    required: false
+    default: 'strip-for-single-line'
+
+  # Naming, Versions, and Tags calculation
+  release-branch:
+    description: 'The release branch name'
+    required: false
+    default: 'main'
+  additional-release-branches:
+    description: 'Comma-separated list of additional release branches'
+    required: false
+    default: ''
+  max-version-parts:
+    description: 'Maximum allowed version parts'
+    required: false
+    default: '3'
+  tag-version-calculation-strategy:
+    description: 'Strategy for calculating version'
+    required: false
+    default: 'git-auto-closest-highest'
+  tag-version-pattern-type:
+    description: 'Pattern type for file-pattern-match strategy'
+    required: false
+    default: 'dockerfile-env-kubectl'
+  tag-version-prefix-parts:
+    description: 'Number of parts from source version to use as prefix'
+    required: false
+    default: ''
+  tag-version-source-sub-path:
+    description: 'Override path to source directory'
+    required: false
+    default: ''
+  tag-version-source-file-name:
+    description: 'Override source file name'
+    required: false
+    default: ''
+  tag-version-source-custom-pattern:
+    description: 'Regex with capture group for version extraction'
+    required: false
+    default: ''
+
+  # Quality check options
+  block-slashes:
+    description: 'DEPRECATED: Use block-slash-containing-branches instead'
+    required: false
+    default: 'false'
+  block-slash-containing-branches:
+    description: 'Block branch names containing slashes'
+    required: false
+    default: 'false'
+  block-double-hyphen-containing-branches:
+    description: 'Block branch names containing double hyphens'
+    required: false
+    default: 'true'
+  require-conventional-branches:
+    description: 'Require branch names start with feature/, fix/, etc.'
+    required: false
+    default: 'false'
+  require-conventional-commits:
+    description: 'Require commits use conventional commit format'
+    required: false
+    default: 'false'
+  block-conventional-commits:
+    description: 'Block commits that use conventional commit format'
+    required: false
+    default: 'false'
+
+  # Hook script paths
+  pre-tagging-tests-script-sub-path:
+    description: 'Path to pre-tagging test script'
+    required: false
+    default: ''
+  pre-docker-prepare-script-sub-path:
+    description: 'Path to pre-docker prepare script'
+    required: false
+    default: ''
+  post-docker-tests-script-sub-path:
+    description: 'Path to post-docker test script'
+    required: false
+    default: ''
+  pre-package-prepare-script-sub-path:
+    description: 'Path to pre-package prepare script'
+    required: false
+    default: ''
+  post-package-tests-script-sub-path:
+    description: 'Path to post-package test script'
+    required: false
+    default: ''
+
+  # GitHub release
+  github-release-enabled:
+    description: 'Create a GitHub release on version tags'
+    required: false
+    default: 'true'
+  github-release-substituted-files:
+    description: 'Files with token substitution and version suffix'
+    required: false
+    default: ''
+  github-release-verbatim-files:
+    description: 'Files copied as-is with version suffix only'
+    required: false
+    default: ''
+  github-release-notes:
+    description: 'Release notes (leave empty for auto-generated)'
+    required: false
+    default: ''
+  github-release-add-version-to-filenames:
+    description: 'Add version suffix to release filenames'
+    required: false
+    default: 'true'
+
+  # === Step Outputs ===
+  # Version outputs (from versions-and-naming)
   version:
     description: 'Version string'
+    required: true
+  version-major:
+    description: 'Major version number'
+    required: true
+  version-minor:
+    description: 'Minor version number'
+    required: true
+  version-patch:
+    description: 'Patch version number'
+    required: true
+  version-2-part:
+    description: 'Version padded/truncated to 2 parts'
+    required: true
+  version-3-part:
+    description: 'Version padded/truncated to 3 parts'
+    required: true
+  version-4-part:
+    description: 'Version padded/truncated to 4 parts'
     required: true
   docker-tag:
     description: 'Docker tag'
@@ -23,11 +255,29 @@ inputs:
   docker-image-name:
     description: 'Docker image name'
     required: true
+  git-tag:
+    description: 'Git tag'
+    required: true
   project-name:
     description: 'Project name'
     required: true
   is-release:
     description: 'Whether this is a release build'
+    required: true
+  # Docker outputs (from docker-build)
+  target-image-full-uri:
+    description: 'Full target image URI (registry/name:tag) - empty in manifests-only workflows'
+    required: false
+    default: ''
+  # Manifest outputs (from manifest-package)
+  manifests-substituted-sub-path:
+    description: 'Manifests substituted directory (for inspection)'
+    required: true
+  manifests-zip-sub-path:
+    description: 'Directory containing the zip file'
+    required: true
+  manifests-zip-file-name:
+    description: 'Name of the zip file'
     required: true
 
 runs:
@@ -37,11 +287,80 @@ runs:
       shell: bash
       env:
         HOOK_SCRIPT_SUB_PATH: .github/${{ inputs.script-sub-path }}
-        MANIFESTS_ZIP_SUB_PATH: ${{ inputs.manifests-zip-sub-path }}
-        MANIFESTS_ZIP_FILE_NAME: ${{ inputs.manifests-zip-file-name }}
+        # Workflow inputs - build output
+        OUTPUT_SUB_PATH: ${{ inputs.output-sub-path }}
+        # Workflow inputs - docker
+        DOCKER_REGISTRY_LOGINS: ${{ inputs.docker-registry-logins }}
+        DOCKERFILE_SUB_PATH: ${{ inputs.dockerfile-sub-path }}
+        SQUASH: ${{ inputs.squash }}
+        NO_CACHE: ${{ inputs.no-cache }}
+        DOCKER_TARGET_REGISTRY: ${{ inputs.docker-target-registry }}
+        DOCKER_TARGET_BASE_PATH: ${{ inputs.docker-target-base-path }}
+        DOCKER_PUSH_TARGETS: ${{ inputs.docker-push-targets }}
+        # Workflow inputs - manifests
+        MANIFESTS_SUB_PATH: ${{ inputs.manifests-sub-path }}
+        MANIFESTS_REPO_PROVIDER_TYPE: ${{ inputs.manifests-repo-provider-type }}
+        MANIFESTS_PACKAGING_BASE_IMAGE: ${{ inputs.manifests-packaging-base-image }}
+        # Workflow inputs - kubernetes
+        KUBERNETES_GLOBAL_ADDITIONAL_LABELS: ${{ inputs.kubernetes-global-additional-labels }}
+        KUBERNETES_GLOBAL_ADDITIONAL_ANNOTATIONS: ${{ inputs.kubernetes-global-additional-annotations }}
+        KUBERNETES_CONFIGMAP_SUB_PATH: ${{ inputs.kubernetes-configmap-sub-path }}
+        KUBERNETES_CONFIGMAP_NAME_CHECKSUM_INJECTION: ${{ inputs.kubernetes-configmap-name-checksum-injection }}
+        KUBERNETES_CONFIGMAP_ADDITIONAL_LABELS: ${{ inputs.kubernetes-configmap-additional-labels }}
+        KUBERNETES_CONFIGMAP_ADDITIONAL_ANNOTATIONS: ${{ inputs.kubernetes-configmap-additional-annotations }}
+        # Workflow inputs - token substitution
+        SUBSTITUTION_TOKEN_STYLE: ${{ inputs.substitution-token-style }}
+        TOKEN_NAME_STYLE: ${{ inputs.token-name-style }}
+        TOKEN_NAME_VALIDATION: ${{ inputs.token-name-validation }}
+        ALLOW_BUILTIN_TOKEN_OVERRIDE: ${{ inputs.allow-builtin-token-override }}
+        CONFIG_SUB_PATH: ${{ inputs.config-sub-path }}
+        CONFIG_VALUE_TRAILING_NEWLINE: ${{ inputs.config-value-trailing-newline }}
+        # Workflow inputs - naming, versions, tags
+        RELEASE_BRANCH: ${{ inputs.release-branch }}
+        ADDITIONAL_RELEASE_BRANCHES: ${{ inputs.additional-release-branches }}
+        MAX_VERSION_PARTS: ${{ inputs.max-version-parts }}
+        TAG_VERSION_CALCULATION_STRATEGY: ${{ inputs.tag-version-calculation-strategy }}
+        TAG_VERSION_PATTERN_TYPE: ${{ inputs.tag-version-pattern-type }}
+        TAG_VERSION_PREFIX_PARTS: ${{ inputs.tag-version-prefix-parts }}
+        TAG_VERSION_SOURCE_SUB_PATH: ${{ inputs.tag-version-source-sub-path }}
+        TAG_VERSION_SOURCE_FILE_NAME: ${{ inputs.tag-version-source-file-name }}
+        TAG_VERSION_SOURCE_CUSTOM_PATTERN: ${{ inputs.tag-version-source-custom-pattern }}
+        # Workflow inputs - quality checks
+        BLOCK_SLASHES: ${{ inputs.block-slashes }}
+        BLOCK_SLASH_CONTAINING_BRANCHES: ${{ inputs.block-slash-containing-branches }}
+        BLOCK_DOUBLE_HYPHEN_CONTAINING_BRANCHES: ${{ inputs.block-double-hyphen-containing-branches }}
+        REQUIRE_CONVENTIONAL_BRANCHES: ${{ inputs.require-conventional-branches }}
+        REQUIRE_CONVENTIONAL_COMMITS: ${{ inputs.require-conventional-commits }}
+        BLOCK_CONVENTIONAL_COMMITS: ${{ inputs.block-conventional-commits }}
+        # Workflow inputs - hook script paths
+        PRE_TAGGING_TESTS_SCRIPT_SUB_PATH: ${{ inputs.pre-tagging-tests-script-sub-path }}
+        PRE_DOCKER_PREPARE_SCRIPT_SUB_PATH: ${{ inputs.pre-docker-prepare-script-sub-path }}
+        POST_DOCKER_TESTS_SCRIPT_SUB_PATH: ${{ inputs.post-docker-tests-script-sub-path }}
+        PRE_PACKAGE_PREPARE_SCRIPT_SUB_PATH: ${{ inputs.pre-package-prepare-script-sub-path }}
+        POST_PACKAGE_TESTS_SCRIPT_SUB_PATH: ${{ inputs.post-package-tests-script-sub-path }}
+        # Workflow inputs - github release
+        GITHUB_RELEASE_ENABLED: ${{ inputs.github-release-enabled }}
+        GITHUB_RELEASE_SUBSTITUTED_FILES: ${{ inputs.github-release-substituted-files }}
+        GITHUB_RELEASE_VERBATIM_FILES: ${{ inputs.github-release-verbatim-files }}
+        GITHUB_RELEASE_NOTES: ${{ inputs.github-release-notes }}
+        GITHUB_RELEASE_ADD_VERSION_TO_FILENAMES: ${{ inputs.github-release-add-version-to-filenames }}
+        # Step outputs - version
         VERSION: ${{ inputs.version }}
+        VERSION_MAJOR: ${{ inputs.version-major }}
+        VERSION_MINOR: ${{ inputs.version-minor }}
+        VERSION_PATCH: ${{ inputs.version-patch }}
+        VERSION_2_PART: ${{ inputs.version-2-part }}
+        VERSION_3_PART: ${{ inputs.version-3-part }}
+        VERSION_4_PART: ${{ inputs.version-4-part }}
         DOCKER_TAG: ${{ inputs.docker-tag }}
         DOCKER_IMAGE_NAME: ${{ inputs.docker-image-name }}
+        GIT_TAG: ${{ inputs.git-tag }}
         PROJECT_NAME: ${{ inputs.project-name }}
         IS_RELEASE: ${{ inputs.is-release }}
+        # Step outputs - docker
+        TARGET_IMAGE_FULL_URI: ${{ inputs.target-image-full-uri }}
+        # Step outputs - manifest
+        MANIFESTS_SUBSTITUTED_SUB_PATH: ${{ inputs.manifests-substituted-sub-path }}
+        MANIFESTS_ZIP_SUB_PATH: ${{ inputs.manifests-zip-sub-path }}
+        MANIFESTS_ZIP_FILE_NAME: ${{ inputs.manifests-zip-file-name }}
       run: .github/buildon-github-actions/src/scripts/main/hook-post-package-tests
