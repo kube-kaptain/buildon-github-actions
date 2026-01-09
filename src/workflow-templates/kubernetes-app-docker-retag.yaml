@@ -367,7 +367,7 @@ jobs:
 
       # === Pre-tagging Tests ===
       # INJECT: github-check-start(name="Pre-tagging Tests", id="check-pre-tagging", if="inputs.pre-tagging-tests-script-sub-path != ''")
-      # INJECT: pre-tagging-tests
+      # INJECT: hook-pre-tagging-tests
       # INJECT: github-check-end(name="Pre-tagging Tests", id="check-pre-tagging", if="inputs.pre-tagging-tests-script-sub-path != ''")
 
       # === Versions & Naming ===
@@ -392,7 +392,7 @@ jobs:
 
       # === Pre-package Prepare ===
       # INJECT: github-check-start(name="Pre-package Prepare", id="check-pre-package-prepare", if="inputs.pre-package-prepare-script-sub-path != ''")
-      # INJECT: pre-package-prepare
+      # INJECT: hook-pre-package-prepare
       # INJECT: github-check-end(name="Pre-package Prepare", id="check-pre-package-prepare", if="inputs.pre-package-prepare-script-sub-path != ''")
 
       # === Manifest Package ===
@@ -412,7 +412,7 @@ jobs:
 
       # === Post-package Tests ===
       # INJECT: github-check-start(name="Post-package Tests", id="check-post-package", if="inputs.post-package-tests-script-sub-path != ''")
-      # INJECT: post-package-tests
+      # INJECT: hook-post-package-tests
       # INJECT: github-check-end(name="Post-package Tests", id="check-post-package", if="inputs.post-package-tests-script-sub-path != ''")
 
       # === GitHub Release Prepare ===

@@ -4,7 +4,7 @@
 - name: Run post-docker tests
   if: inputs.post-docker-tests-script-sub-path != ''
   id: post-docker-tests
-  uses: ./.github/buildon-github-actions/src/actions/run-hook-script
+  uses: ./.github/buildon-github-actions/src/actions/hook-post-docker-tests
   with:
     script-sub-path: ${{ inputs.post-docker-tests-script-sub-path }}
     version: ${{ steps.versions.outputs.version }}

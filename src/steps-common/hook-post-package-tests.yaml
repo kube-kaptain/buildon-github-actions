@@ -4,7 +4,7 @@
 - name: Run post-package tests
   if: inputs.post-package-tests-script-sub-path != ''
   id: post-package-tests
-  uses: ./.github/buildon-github-actions/src/actions/run-hook-script
+  uses: ./.github/buildon-github-actions/src/actions/hook-post-package-tests
   with:
     script-sub-path: ${{ inputs.post-package-tests-script-sub-path }}
     manifests-zip-sub-path: ${{ steps.manifest-package.outputs.manifests-zip-sub-path }}

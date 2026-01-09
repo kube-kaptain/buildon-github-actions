@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
+#
+# hook-post-package-tests - Entry point for post-package-tests hook
+#
+# Runs user's hook script after manifest packaging is complete.
+# Use this hook to validate the final package, run additional tests,
+# or perform any post-packaging verification.
+#
+# Inputs (environment variables):
+#   HOOK_SCRIPT_SUB_PATH - Path to user's hook script (set by CI wrapper)
+#
+# Available context (set by CI wrapper):
+#   MANIFESTS_ZIP_SUB_PATH, MANIFESTS_ZIP_FILE_NAME
+#   VERSION, DOCKER_TAG, DOCKER_IMAGE_NAME, PROJECT_NAME, IS_RELEASE
+#
+set -euo pipefail
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=src/scripts/lib/hook-runner.bash
+source "${SCRIPT_DIR}/../lib/hook-runner.bash"

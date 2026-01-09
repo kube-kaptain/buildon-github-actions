@@ -1,0 +1,51 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
+
+name: Hook - Pre-Docker Prepare
+description: Runs user's hook script before Docker build to modify Dockerfile or copy files into docker context
+
+inputs:
+  script-sub-path:
+    description: 'Path to script relative to .github/ (e.g., bin/pre-docker.bash)'
+    required: true
+  dockerfile-sub-path:
+    description: 'Docker source directory (relative)'
+    required: true
+  docker-context-sub-path:
+    description: 'Docker build context directory (relative, where docker build runs from)'
+    required: true
+  output-sub-path:
+    description: 'Build output directory (relative)'
+    required: true
+  version:
+    description: 'Version string'
+    required: true
+  docker-tag:
+    description: 'Docker tag'
+    required: true
+  docker-image-name:
+    description: 'Docker image name'
+    required: true
+  project-name:
+    description: 'Project name'
+    required: true
+  is-release:
+    description: 'Whether this is a release build'
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Run pre-docker prepare hook
+      shell: bash
+      env:
+        HOOK_SCRIPT_SUB_PATH: .github/${{ inputs.script-sub-path }}
+        DOCKERFILE_SUB_PATH: ${{ inputs.dockerfile-sub-path }}
+        DOCKER_CONTEXT_SUB_PATH: ${{ inputs.docker-context-sub-path }}
+        OUTPUT_SUB_PATH: ${{ inputs.output-sub-path }}
+        VERSION: ${{ inputs.version }}
+        DOCKER_TAG: ${{ inputs.docker-tag }}
+        DOCKER_IMAGE_NAME: ${{ inputs.docker-image-name }}
+        PROJECT_NAME: ${{ inputs.project-name }}
+        IS_RELEASE: ${{ inputs.is-release }}
+      run: .github/buildon-github-actions/src/scripts/main/hook-pre-docker-prepare

@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
+#
+# hook-pre-docker-prepare - Entry point for pre-docker-prepare hook
+#
+# Runs user's hook script before Docker build preparation.
+# Use this hook to modify Dockerfile, copy files into docker context,
+# or perform other preparation before the Docker image is built.
+#
+# Inputs (environment variables):
+#   HOOK_SCRIPT_SUB_PATH - Path to user's hook script (set by CI wrapper)
+#
+# Available context (set by CI wrapper):
+#   DOCKERFILE_SUB_PATH, DOCKER_CONTEXT_SUB_PATH, OUTPUT_SUB_PATH
+#   VERSION, DOCKER_TAG, DOCKER_IMAGE_NAME, PROJECT_NAME, IS_RELEASE
+#
+set -euo pipefail
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=src/scripts/lib/hook-runner.bash
+source "${SCRIPT_DIR}/../lib/hook-runner.bash"

@@ -253,7 +253,7 @@ jobs:
       - name: Run pre-tagging tests
         if: inputs.pre-tagging-tests-script-sub-path != '' && success()
         id: pre-tagging-tests
-        uses: ./.github/buildon-github-actions/src/actions/run-hook-script
+        uses: ./.github/buildon-github-actions/src/actions/hook-pre-tagging-tests
         with:
           script-sub-path: ${{ inputs.pre-tagging-tests-script-sub-path }}
       - name: Pass check - Pre-tagging Tests

@@ -1,14 +1,14 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
 
-- name: Run pre-package prepare
-  if: inputs.pre-package-prepare-script-sub-path != ''
-  id: pre-package-prepare
-  uses: ./.github/buildon-github-actions/src/actions/run-hook-script
+- name: Run pre-docker prepare
+  if: inputs.pre-docker-prepare-script-sub-path != ''
+  id: pre-docker-prepare
+  uses: ./.github/buildon-github-actions/src/actions/hook-pre-docker-prepare
   with:
-    script-sub-path: ${{ inputs.pre-package-prepare-script-sub-path }}
-    manifests-sub-path: ${{ inputs.manifests-sub-path }}
-    manifests-substituted-sub-path: ${{ inputs.output-sub-path }}/manifests/substituted/${{ steps.versions.outputs.project-name }}
+    script-sub-path: ${{ inputs.pre-docker-prepare-script-sub-path }}
+    dockerfile-sub-path: ${{ inputs.dockerfile-sub-path }}
+    docker-context-sub-path: ${{ inputs.output-sub-path }}/docker/substituted
     output-sub-path: ${{ inputs.output-sub-path }}
     version: ${{ steps.versions.outputs.version }}
     docker-tag: ${{ steps.versions.outputs.docker-tag }}

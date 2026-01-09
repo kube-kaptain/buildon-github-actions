@@ -91,11 +91,15 @@ See [`examples/`](examples/) for more usage patterns.
 | `github-check-run` | Create or update GitHub Check Runs for granular PR status reporting |
 | `github-release-prepare` | Prepares files for GitHub release with optional substitution and version suffix |
 | `github-release` | Create GitHub release with assets from prepared directory |
+| `hook-post-docker-tests` | Runs user's hook script after Docker image is built for integration tests, security scans, or validation |
+| `hook-post-package-tests` | Runs user's hook script after manifest packaging for validation, additional tests, or verification |
+| `hook-pre-docker-prepare` | Runs user's hook script before Docker build to modify Dockerfile or copy files into docker context |
+| `hook-pre-package-prepare` | Runs user's hook script before manifest packaging to generate ConfigMaps, modify manifests, or add files |
+| `hook-pre-tagging-tests` | Runs user's hook script before tagging/versioning occurs (before versions-and-naming, so version info is NOT available) |
 | `kubernetes-manifests-package` | Packages Kubernetes manifests into a zip with variable substitution |
 | `kubernetes-manifests-repo-provider-package` | Packages manifests for repo provider (builds docker image). Does NOT publish. |
 | `kubernetes-manifests-repo-provider-publish` | Publishes manifests via pluggable repo provider. Requires package step to run first. |
 | `resolve-target-registry-and-base-path` | Resolves target registry (defaults to ghcr.io) and computes base path (auto-detects org for GHCR) |
-| `run-hook-script` | Runs a user-provided hook script from the .github/ directory |
 | `versions-and-naming` | Generates version numbers, tags, and naming for releases |
 <!-- ACTIONS-END -->
 

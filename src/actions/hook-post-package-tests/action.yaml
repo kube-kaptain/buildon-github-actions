@@ -1,0 +1,47 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
+
+name: Hook - Post-Package Tests
+description: Runs user's hook script after manifest packaging for validation, additional tests, or verification
+
+inputs:
+  script-sub-path:
+    description: 'Path to script relative to .github/ (e.g., bin/post-package.bash)'
+    required: true
+  manifests-zip-sub-path:
+    description: 'Manifests zip directory (relative, where the zip file is created)'
+    required: true
+  manifests-zip-file-name:
+    description: 'Manifests zip file name'
+    required: true
+  version:
+    description: 'Version string'
+    required: true
+  docker-tag:
+    description: 'Docker tag'
+    required: true
+  docker-image-name:
+    description: 'Docker image name'
+    required: true
+  project-name:
+    description: 'Project name'
+    required: true
+  is-release:
+    description: 'Whether this is a release build'
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Run post-package tests hook
+      shell: bash
+      env:
+        HOOK_SCRIPT_SUB_PATH: .github/${{ inputs.script-sub-path }}
+        MANIFESTS_ZIP_SUB_PATH: ${{ inputs.manifests-zip-sub-path }}
+        MANIFESTS_ZIP_FILE_NAME: ${{ inputs.manifests-zip-file-name }}
+        VERSION: ${{ inputs.version }}
+        DOCKER_TAG: ${{ inputs.docker-tag }}
+        DOCKER_IMAGE_NAME: ${{ inputs.docker-image-name }}
+        PROJECT_NAME: ${{ inputs.project-name }}
+        IS_RELEASE: ${{ inputs.is-release }}
+      run: .github/buildon-github-actions/src/scripts/main/hook-post-package-tests

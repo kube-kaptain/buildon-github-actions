@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
+#
+# hook-pre-package-prepare - Entry point for pre-package-prepare hook
+#
+# Runs user's hook script before manifest packaging.
+# Use this hook to generate additional ConfigMaps, modify manifests,
+# or add files to the package before it's zipped.
+#
+# Inputs (environment variables):
+#   HOOK_SCRIPT_SUB_PATH - Path to user's hook script (set by CI wrapper)
+#
+# Available context (set by CI wrapper):
+#   MANIFESTS_SUB_PATH, MANIFESTS_SUBSTITUTED_SUB_PATH, OUTPUT_SUB_PATH
+#   VERSION, DOCKER_TAG, DOCKER_IMAGE_NAME, PROJECT_NAME, IS_RELEASE
+#
+set -euo pipefail
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=src/scripts/lib/hook-runner.bash
+source "${SCRIPT_DIR}/../lib/hook-runner.bash"

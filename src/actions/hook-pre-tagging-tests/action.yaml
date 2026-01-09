@@ -1,0 +1,19 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
+
+name: Hook - Pre-Tagging Tests
+description: Runs user's hook script before tagging/versioning occurs (before versions-and-naming, so version info is NOT available)
+
+inputs:
+  script-sub-path:
+    description: 'Path to script relative to .github/ (e.g., bin/pre-tagging.bash)'
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Run pre-tagging tests hook
+      shell: bash
+      env:
+        HOOK_SCRIPT_SUB_PATH: .github/${{ inputs.script-sub-path }}
+      run: .github/buildon-github-actions/src/scripts/main/hook-pre-tagging-tests
