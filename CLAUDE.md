@@ -52,16 +52,7 @@ The publish scripts here (`kubernetes-manifest-publish`, plugins in `kube-manife
 
 ## Environment Variables
 
-Scripts use env vars for configuration:
-
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `DEFAULT_BRANCH` | `main` | The release branch name |
-| `ADDITIONAL_RELEASE_BRANCHES` | `""` | Comma-separated additional release branches |
-| `MAX_VERSION_PARTS` | `3` | Fail if version exceeds this depth |
-| `PR_BRANCH` | current branch | Source branch for PR checks |
-| `TARGET_BRANCH` | `DEFAULT_BRANCH` | Target branch for rebase checks |
-| `BLOCK_SLASHES` | `false` | Block `/` in branch names |
+Entrypoint scripts use env vars for configuration.
 
 ## Tag Algorithm
 
