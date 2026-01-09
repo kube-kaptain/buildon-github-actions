@@ -95,7 +95,7 @@ on:
         required: false
         type: string
         default: ''
-      max-version-parts:
+      tag-version-max-parts:
         description: 'Maximum allowed version parts (fail if exceeded)'
         required: false
         type: number
@@ -492,7 +492,7 @@ jobs:
           # Naming, Versions, and Tags calculation
           release-branch: ${{ inputs.release-branch }}
           additional-release-branches: ${{ inputs.additional-release-branches }}
-          max-version-parts: ${{ inputs.max-version-parts }}
+          tag-version-max-parts: ${{ inputs.tag-version-max-parts }}
           tag-version-calculation-strategy: ${{ inputs.tag-version-calculation-strategy }}
           tag-version-pattern-type: ${{ inputs.tag-version-pattern-type }}
           tag-version-prefix-parts: ${{ inputs.tag-version-prefix-parts }}
@@ -547,7 +547,7 @@ jobs:
         with:
           release-branch: ${{ inputs.release-branch }}
           additional-release-branches: ${{ inputs.additional-release-branches }}
-          max-version-parts: ${{ inputs.max-version-parts }}
+          tag-version-max-parts: ${{ inputs.tag-version-max-parts }}
           tag-version-calculation-strategy: ${{ inputs.tag-version-calculation-strategy }}
           tag-version-pattern-type: ${{ inputs.tag-version-pattern-type }}
           tag-version-prefix-parts: ${{ inputs.tag-version-prefix-parts }}
@@ -624,7 +624,7 @@ jobs:
           # Naming, Versions, and Tags calculation
           release-branch: ${{ inputs.release-branch }}
           additional-release-branches: ${{ inputs.additional-release-branches }}
-          max-version-parts: ${{ inputs.max-version-parts }}
+          tag-version-max-parts: ${{ inputs.tag-version-max-parts }}
           tag-version-calculation-strategy: ${{ inputs.tag-version-calculation-strategy }}
           tag-version-pattern-type: ${{ inputs.tag-version-pattern-type }}
           tag-version-prefix-parts: ${{ inputs.tag-version-prefix-parts }}
@@ -810,7 +810,7 @@ jobs:
           # Naming, Versions, and Tags calculation
           release-branch: ${{ inputs.release-branch }}
           additional-release-branches: ${{ inputs.additional-release-branches }}
-          max-version-parts: ${{ inputs.max-version-parts }}
+          tag-version-max-parts: ${{ inputs.tag-version-max-parts }}
           tag-version-calculation-strategy: ${{ inputs.tag-version-calculation-strategy }}
           tag-version-pattern-type: ${{ inputs.tag-version-pattern-type }}
           tag-version-prefix-parts: ${{ inputs.tag-version-prefix-parts }}

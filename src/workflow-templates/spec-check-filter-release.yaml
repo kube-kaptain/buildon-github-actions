@@ -113,7 +113,7 @@ on:
         required: false
         type: string
         default: ''
-      max-version-parts:
+      tag-version-max-parts:
         description: 'Maximum allowed version parts (fail if exceeded)'
         required: false
         type: number

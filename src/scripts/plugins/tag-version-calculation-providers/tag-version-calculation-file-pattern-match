@@ -19,7 +19,7 @@
 #   TAG_VERSION_SOURCE_FILE_NAME - Override file name (required for custom)
 #   TAG_VERSION_SOURCE_CUSTOM_PATTERN - Regex with capture group (required for custom)
 #   TAG_VERSION_PREFIX_PARTS - Number of parts from source version to use as prefix (default 2)
-#   MAX_VERSION_PARTS - Fail if version exceeds this depth (required)
+#   TAG_VERSION_MAX_PARTS - Fail if version exceeds this depth (required)
 #
 # Outputs (stdout):
 #   VERSION=x.y.z
@@ -38,17 +38,17 @@ if [[ -z "${TAG_VERSION_PATTERN_TYPE:-}" ]]; then
   exit 1
 fi
 
-if [[ -z "${MAX_VERSION_PARTS:-}" ]]; then
-  echo "${LOG_ERROR_PREFIX}MAX_VERSION_PARTS is required${LOG_ERROR_SUFFIX}" >&2
+if [[ -z "${TAG_VERSION_MAX_PARTS:-}" ]]; then
+  echo "${LOG_ERROR_PREFIX}TAG_VERSION_MAX_PARTS is required${LOG_ERROR_SUFFIX}" >&2
   exit 1
 fi
 
 # Optional config with default
 TAG_VERSION_PREFIX_PARTS="${TAG_VERSION_PREFIX_PARTS:-2}"
 
-# Validate PREFIX_PARTS + 1 doesn't exceed MAX_VERSION_PARTS
-if [[ $((TAG_VERSION_PREFIX_PARTS + 1)) -gt ${MAX_VERSION_PARTS} ]]; then
-  echo "${LOG_ERROR_PREFIX}TAG_VERSION_PREFIX_PARTS (${TAG_VERSION_PREFIX_PARTS}) + 1 exceeds MAX_VERSION_PARTS (${MAX_VERSION_PARTS})${LOG_ERROR_SUFFIX}" >&2
+# Validate PREFIX_PARTS + 1 doesn't exceed TAG_VERSION_MAX_PARTS
+if [[ $((TAG_VERSION_PREFIX_PARTS + 1)) -gt ${TAG_VERSION_MAX_PARTS} ]]; then
+  echo "${LOG_ERROR_PREFIX}TAG_VERSION_PREFIX_PARTS (${TAG_VERSION_PREFIX_PARTS}) + 1 exceeds TAG_VERSION_MAX_PARTS (${TAG_VERSION_MAX_PARTS})${LOG_ERROR_SUFFIX}" >&2
   exit 1
 fi
 
@@ -223,11 +223,11 @@ main() {
   local version
   version=$(increment_version "${prefix}" "${highest_tag}")
 
-  # Step 5: Validate against MAX_VERSION_PARTS
+  # Step 5: Validate against TAG_VERSION_MAX_PARTS
   local part_count
   part_count=$(count_version_parts "${version}")
-  if [[ ${part_count} -gt ${MAX_VERSION_PARTS} ]]; then
-    echo "${LOG_ERROR_PREFIX}Version '${version}' has ${part_count} parts, exceeds MAX_VERSION_PARTS=${MAX_VERSION_PARTS}${LOG_ERROR_SUFFIX}" >&2
+  if [[ ${part_count} -gt ${TAG_VERSION_MAX_PARTS} ]]; then
+    echo "${LOG_ERROR_PREFIX}Version '${version}' has ${part_count} parts, exceeds TAG_VERSION_MAX_PARTS=${TAG_VERSION_MAX_PARTS}${LOG_ERROR_SUFFIX}" >&2
     exit 1
   fi
 
