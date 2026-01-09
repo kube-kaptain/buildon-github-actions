@@ -2,6 +2,16 @@
 
 Reusable GitHub Actions library for CI/CD pipelines with quality enforcement and automatic versioning.
 
+## Rules
+
+1. Do not start making changes unless explicitly asked to do so - plan and get agreement and go ahead from the user - only then can you start
+2. If while making changes you discover something the user has asked for is not possible or not correct, do not adapt, report back and come to agreement on the path forward, offer suggestions
+3. Don't use any git operations that can change state locally or remotely eg no fetch no pull no push no commit no add no rm no mv etc - just use normal commands to manipulate the working dir
+3. Don't pull things out into functions or similar if it's single use - abstract later if you need it a second or more time
+4. Only run tests for shell script changes - running tests includes rebuilding generated README.md docs/ and .github/workflows - if only changing steps, actions, workflow templates use src/bin/assemble-workflows.bash only
+5. For non-script changes don't regenerate with src/bin/assemble-worfklows.bash until the user has reviewed your work and approved - they may run it themselves - wasting CPU cycles before it's final is pointless
+6. examples/ are not generated (but should be) and require maintenance along with other tasks
+
 ## Project Structure
 
 ```
