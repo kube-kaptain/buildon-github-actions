@@ -40,8 +40,8 @@ TAG_VERSION_SOURCE_SUB_PATH="${TAG_VERSION_SOURCE_SUB_PATH:-}"
 TAG_VERSION_SOURCE_FILE_NAME="${TAG_VERSION_SOURCE_FILE_NAME:-}"
 TAG_VERSION_SOURCE_CUSTOM_PATTERN="${TAG_VERSION_SOURCE_CUSTOM_PATTERN:-}"
 
-# shellcheck source=src/scripts/main/branch-setup-shared
-source "${SCRIPT_DIR}/branch-setup-shared"
+# shellcheck source=src/scripts/lib/branch-setup-shared.bash
+source "${SCRIPT_DIR}/../lib/branch-setup-shared.bash"
 
 echo "Critical inputs:" >&2
 echo "  Repository name: ${REPOSITORY_NAME}" >&2

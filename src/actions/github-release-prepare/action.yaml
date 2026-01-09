@@ -95,7 +95,7 @@ runs:
         TARGET_REGISTRY: ${{ inputs.target-registry }}
         TARGET_BASE_PATH: ${{ inputs.target-base-path }}
         MANIFESTS_ZIP_FILE_NAME: ${{ inputs.manifests-zip-file-name }}
-        SCRIPTS_DIR: ${{ github.action_path }}/../../scripts/main
+        UTIL_DIR: ${{ github.action_path }}/../../scripts/util
       run: |
         set -euo pipefail
 
@@ -164,7 +164,7 @@ runs:
           TARGET_REGISTRY="${TARGET_REGISTRY:-}" \
           TARGET_BASE_PATH="${TARGET_BASE_PATH:-}" \
           MANIFESTS_ZIP_FILE_NAME="${MANIFESTS_ZIP_FILE_NAME:-}" \
-            "${SCRIPTS_DIR}/prepare-substitution-tokens"
+            "${UTIL_DIR}/prepare-substitution-tokens"
         fi
 
         # Process substituted files (token replacement + version suffix)
@@ -189,7 +189,7 @@ runs:
             cp "${source_file}" "${target_path}"
 
             CONFIG_VALUE_TRAILING_NEWLINE="${CONFIG_VALUE_TRAILING_NEWLINE}" \
-              "${SCRIPTS_DIR}/substitute-tokens-from-dir" \
+              "${UTIL_DIR}/substitute-tokens-from-dir" \
               "${SUBSTITUTION_TOKEN_STYLE}" \
               "${tokens_dir}" \
               "${target_path}"

@@ -153,7 +153,7 @@ main() {
   TARGET_BASE_PATH="${TARGET_BASE_PATH}" \
   IS_RELEASE="${IS_RELEASE}" \
   MANIFESTS_ZIP_FILE_NAME="${zip_name}" \
-  "${SCRIPT_DIR}/prepare-substitution-tokens"
+  "${SCRIPT_DIR}/../util/prepare-substitution-tokens"
 
   # Copy manifests to substituted/<project-name>/
   echo "" >&2
@@ -164,7 +164,7 @@ main() {
   # Perform variable substitution
   echo "Performing variable substitution..." >&2
   CONFIG_VALUE_TRAILING_NEWLINE="${CONFIG_VALUE_TRAILING_NEWLINE}" \
-  "${SCRIPT_DIR}/substitute-tokens-from-dir" \
+  "${SCRIPT_DIR}/../util/substitute-tokens-from-dir" \
     "${SUBSTITUTION_TOKEN_STYLE}" \
     "${MANIFESTS_CONFIG_SUB_PATH}" \
     "${MANIFESTS_SUBSTITUTED_SUB_PATH}/${PROJECT_NAME}"

@@ -118,7 +118,7 @@ find_highest_in_series() {
     if [[ "${tag}" =~ ^${prefix}\.[0-9]+$ ]] && is_numeric_version "${tag}"; then
       echo "${tag}"
     fi
-  done | "${SCRIPT_DIR}/../../main/version-sort" | tail -n1)
+  done | "${SCRIPT_DIR}/../../util/version-sort" | tail -n1)
 
   if [[ -z "${highest}" ]]; then
     # No matching tags found, use the recent tag

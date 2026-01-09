@@ -6,7 +6,7 @@ load helpers
 
 # Helper to run version-sort with input
 sort_versions() {
-  printf '%s\n' "$@" | "$SCRIPTS_DIR/version-sort"
+  printf '%s\n' "$@" | "$UTIL_DIR/version-sort"
 }
 
 # Helper to assert exact output
@@ -129,7 +129,7 @@ assert_output_equals() {
 # =============================================================================
 
 @test "handles empty input" {
-  run "$SCRIPTS_DIR/version-sort" < /dev/null
+  run "$UTIL_DIR/version-sort" < /dev/null
   [ "$status" -eq 0 ]
   [ -z "$output" ]
 }

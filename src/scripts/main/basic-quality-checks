@@ -50,8 +50,8 @@ FLAG_BAD_COMMIT=4
 FLAG_BAD_CONTENTS=8
 FLAG_BAD_SETUP=16
 
-# shellcheck source=src/scripts/main/branch-setup-shared
-source "${SCRIPT_DIR}/branch-setup-shared"
+# shellcheck source=src/scripts/lib/branch-setup-shared.bash
+source "${SCRIPT_DIR}/../lib/branch-setup-shared.bash"
 
 # Accumulated error code
 ERROR_CODE=0

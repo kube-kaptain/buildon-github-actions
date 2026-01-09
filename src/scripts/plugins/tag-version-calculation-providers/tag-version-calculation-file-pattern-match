@@ -154,7 +154,7 @@ find_highest_in_series() {
     if [[ "${tag}" =~ ^${prefix}\.[0-9]+$ ]]; then
       echo "${tag}"
     fi
-  done | "${SCRIPT_DIR}/../../main/version-sort" | tail -n1)
+  done | "${SCRIPT_DIR}/../../util/version-sort" | tail -n1)
 
   echo "${highest}"
 }

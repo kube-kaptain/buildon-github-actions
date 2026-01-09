@@ -46,8 +46,8 @@ LOG_WARNING_PREFIX="${LOG_WARNING_PREFIX:-}"
 LOG_WARNING_SUFFIX="${LOG_WARNING_SUFFIX:-}"
 
 # === Shared target validation, URI assembly, and utilities ===
-# shellcheck source=src/scripts/main/docker-build-shared
-source "${SCRIPT_DIR}/docker-build-shared"
+# shellcheck source=src/scripts/lib/docker-build-shared.bash
+source "${SCRIPT_DIR}/../lib/docker-build-shared.bash"
 
 # Required inputs (DOCKER_TAG validated in shared script)
 VERSION="${VERSION:?VERSION is required}"
@@ -160,13 +160,13 @@ main() {
   DOCKER_IMAGE_FULL_URI="${TARGET_IMAGE_FULL_URI}" \
   TARGET_REGISTRY="${TARGET_REGISTRY}" \
   TARGET_BASE_PATH="${TARGET_BASE_PATH}" \
-  "${SCRIPT_DIR}/prepare-substitution-tokens"
+  "${SCRIPT_DIR}/../util/prepare-substitution-tokens"
 
   # Perform variable substitution on copied docker directory
   echo "" >&2
   echo "Performing variable substitution..." >&2
   CONFIG_VALUE_TRAILING_NEWLINE="${CONFIG_VALUE_TRAILING_NEWLINE}" \
-  "${SCRIPT_DIR}/substitute-tokens-from-dir" \
+  "${SCRIPT_DIR}/../util/substitute-tokens-from-dir" \
     "${SUBSTITUTION_TOKEN_STYLE}" \
     "${DOCKER_CONFIG_SUB_PATH}" \
     "${DOCKER_SUBSTITUTED_SUB_PATH}"

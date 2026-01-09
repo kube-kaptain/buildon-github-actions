@@ -38,9 +38,9 @@ else
   exit 1
 fi
 
-# shellcheck source=prepare-token-name-and-value.bash
+# shellcheck source=src/scripts/lib/prepare-token-name-and-value.bash
 # shellcheck disable=SC1091 # shellcheck can't resolve dynamic path
-source "${SCRIPT_DIR}/prepare-token-name-and-value.bash"
+source "${SCRIPT_DIR}/../../lib/prepare-token-name-and-value.bash"
 
 substitute_in_file() {
   local file="${1}"

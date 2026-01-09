@@ -6,8 +6,9 @@
 # Get project root
 PROJECT_ROOT="${PROJECT_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
 
-# Path to scripts, repo providers, and fixtures
+# Path to scripts, utilities, repo providers, and fixtures
 SCRIPTS_DIR="$PROJECT_ROOT/src/scripts/main"
+UTIL_DIR="$PROJECT_ROOT/src/scripts/util"
 PLUGINS_DIR="$PROJECT_ROOT/src/scripts/plugins"
 REPO_PROVIDERS_DIR="$PLUGINS_DIR/kubernetes-manifests-repo-providers"
 FIXTURES_DIR="$PROJECT_ROOT/src/test/fixtures"
