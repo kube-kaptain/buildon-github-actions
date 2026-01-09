@@ -27,6 +27,37 @@ on:
         required: false
         type: string
         default: 'src/kubernetes'
+      # ConfigMap configuration
+      kubernetes-configmap-sub-path:
+        description: 'Directory containing ConfigMap data files (relative)'
+        required: false
+        type: string
+        default: 'src/configmap'
+      kubernetes-configmap-name-checksum-injection:
+        description: 'Enable checksum injection suffix in ConfigMap name (true: ProjectName-configmap-checksum, false: ProjectName)'
+        required: false
+        type: boolean
+        default: true
+      kubernetes-global-additional-labels:
+        description: 'Additional labels for all Kubernetes manifests (comma-separated key=value)'
+        required: false
+        type: string
+        default: ''
+      kubernetes-global-additional-annotations:
+        description: 'Additional annotations for all Kubernetes manifests (comma-separated key=value)'
+        required: false
+        type: string
+        default: ''
+      kubernetes-configmap-additional-labels:
+        description: 'Additional labels specific to ConfigMap (comma-separated key=value)'
+        required: false
+        type: string
+        default: ''
+      kubernetes-configmap-additional-annotations:
+        description: 'Additional annotations specific to ConfigMap (comma-separated key=value)'
+        required: false
+        type: string
+        default: ''
       substitution-token-style:
         description: 'Token delimiter syntax for variables (shell, mustache, helm, erb, github-actions, blade, stringtemplate, ognl, t4, swift)'
         required: false
@@ -362,6 +393,11 @@ jobs:
       # INJECT: github-check-start(name="Post-docker Tests", id="check-post-docker", if="inputs.post-docker-tests-script-sub-path != ''")
       # INJECT: post-docker-tests
       # INJECT: github-check-end(name="Post-docker Tests", id="check-post-docker", if="inputs.post-docker-tests-script-sub-path != ''")
+
+      # === Generate ConfigMap ===
+      # INJECT: github-check-start(name="Generate ConfigMap", id="check-generate-configmap", if="inputs.kubernetes-configmap-sub-path != ''")
+      # INJECT: generate-kubernetes-configmap
+      # INJECT: github-check-end(name="Generate ConfigMap", id="check-generate-configmap", if="inputs.kubernetes-configmap-sub-path != ''")
 
       # === Pre-package Prepare ===
       # INJECT: github-check-start(name="Pre-package Prepare", id="check-pre-package-prepare", if="inputs.pre-package-prepare-script-sub-path != ''")

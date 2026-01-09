@@ -86,6 +86,7 @@ See [`examples/`](examples/) for more usage patterns.
 | `docker-multi-tag` | Tags a Docker image for multiple registries |
 | `docker-push` | Pushes a Docker image to registry |
 | `docker-registry-logins` | Authenticate to container registries (GHCR by default, configure others as needed) |
+| `generate-kubernetes-configmap` | Generates a Kubernetes ConfigMap manifest from files in a directory |
 | `git-push-tag` | Pushes an existing git tag to origin |
 | `github-check-run` | Create or update GitHub Check Runs for granular PR status reporting |
 | `github-release-prepare` | Prepares files for GitHub release with optional substitution and version suffix |
@@ -127,6 +128,12 @@ See [`examples/`](examples/) for more usage patterns.
 | `github-release-notes` | string | `""` | Release notes (leave empty for auto-generated) |
 | `github-release-substituted-files` | string | `""` | Files with token substitution and version suffix (space-separated) |
 | `github-release-verbatim-files` | string | `""` | Files copied as-is with version suffix only (space-separated) |
+| `kubernetes-configmap-additional-annotations` | string | `""` | Additional annotations specific to ConfigMap (comma-separated key=value) |
+| `kubernetes-configmap-additional-labels` | string | `""` | Additional labels specific to ConfigMap (comma-separated key=value) |
+| `kubernetes-configmap-name-checksum-injection` | boolean | `true` | Enable checksum injection suffix in ConfigMap name (true: ProjectName-configmap-checksum, false: ProjectName) |
+| `kubernetes-configmap-sub-path` | string | `src/configmap` | Directory containing ConfigMap data files (relative) |
+| `kubernetes-global-additional-annotations` | string | `""` | Additional annotations for all Kubernetes manifests (comma-separated key=value) |
+| `kubernetes-global-additional-labels` | string | `""` | Additional labels for all Kubernetes manifests (comma-separated key=value) |
 | `manifests-packaging-base-image` | string | `""` | Base image for manifest packaging (default: scratch) |
 | `manifests-repo-provider-type` | string | `docker` | Repo provider type for manifest storage (default: docker, currently the only supported provider) |
 | `manifests-sub-path` | string | `src/kubernetes` | Directory containing Kubernetes manifests (relative) |

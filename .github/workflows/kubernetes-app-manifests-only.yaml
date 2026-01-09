@@ -11,6 +11,37 @@ on:
         required: false
         type: string
         default: 'src/kubernetes'
+      # ConfigMap configuration
+      kubernetes-configmap-sub-path:
+        description: 'Directory containing ConfigMap data files (relative)'
+        required: false
+        type: string
+        default: 'src/configmap'
+      kubernetes-configmap-name-checksum-injection:
+        description: 'Enable checksum injection suffix in ConfigMap name (true: ProjectName-configmap-checksum, false: ProjectName)'
+        required: false
+        type: boolean
+        default: true
+      kubernetes-global-additional-labels:
+        description: 'Additional labels for all Kubernetes manifests (comma-separated key=value)'
+        required: false
+        type: string
+        default: ''
+      kubernetes-global-additional-annotations:
+        description: 'Additional annotations for all Kubernetes manifests (comma-separated key=value)'
+        required: false
+        type: string
+        default: ''
+      kubernetes-configmap-additional-labels:
+        description: 'Additional labels specific to ConfigMap (comma-separated key=value)'
+        required: false
+        type: string
+        default: ''
+      kubernetes-configmap-additional-annotations:
+        description: 'Additional annotations specific to ConfigMap (comma-separated key=value)'
+        required: false
+        type: string
+        default: ''
       substitution-token-style:
         description: 'Token delimiter syntax for variables (shell, mustache, helm, erb, github-actions, blade, stringtemplate, ognl, t4, swift)'
         required: false
@@ -490,6 +521,41 @@ jobs:
         with:
           action: fail
           check-run-id: ${{ steps.check-versions.outputs.check-run-id }}
+
+      # === Generate ConfigMap ===
+      - name: Start check - Generate ConfigMap
+        if: inputs.kubernetes-configmap-sub-path != '' && success()
+        id: check-generate-configmap
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
+        with:
+          action: start
+          check-name: 'Build & Publish → Generate ConfigMap'
+      - name: Generate ConfigMap manifest
+        id: generate-configmap
+        if: inputs.kubernetes-configmap-sub-path != '' && success()
+        uses: ./.github/buildon-github-actions/src/actions/generate-kubernetes-configmap
+        with:
+          kubernetes-configmap-sub-path: ${{ inputs.kubernetes-configmap-sub-path }}
+          output-sub-path: ${{ inputs.output-sub-path }}
+          token-name-style: ${{ inputs.token-name-style }}
+          substitution-token-style: ${{ inputs.substitution-token-style }}
+          kubernetes-configmap-name-checksum-injection: ${{ inputs.kubernetes-configmap-name-checksum-injection }}
+          kubernetes-global-additional-labels: ${{ inputs.kubernetes-global-additional-labels }}
+          kubernetes-global-additional-annotations: ${{ inputs.kubernetes-global-additional-annotations }}
+          kubernetes-configmap-additional-labels: ${{ inputs.kubernetes-configmap-additional-labels }}
+          kubernetes-configmap-additional-annotations: ${{ inputs.kubernetes-configmap-additional-annotations }}
+      - name: Pass check - Generate ConfigMap
+        if: inputs.kubernetes-configmap-sub-path != '' && success()
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
+        with:
+          action: pass
+          check-run-id: ${{ steps.check-generate-configmap.outputs.check-run-id }}
+      - name: Fail check - Generate ConfigMap
+        if: inputs.kubernetes-configmap-sub-path != '' && failure() && steps.check-generate-configmap.outputs.check-run-id != ''
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
+        with:
+          action: fail
+          check-run-id: ${{ steps.check-generate-configmap.outputs.check-run-id }}
 
       # === Pre-package Prepare ===
       - name: Start check - Pre-package Prepare
