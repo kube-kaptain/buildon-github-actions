@@ -22,8 +22,8 @@
 #   DOCKER_TARGET_BASE_PATH  - Path between registry and image name (optional)
 #   DOCKERFILE_SUB_PATH - Directory containing Dockerfile, relative (default: src/docker)
 #   OUTPUT_SUB_PATH     - Build output directory, relative (default: target)
-#   SQUASH              - "false" to disable --squash (default: true, always squash for clean D files)
-#   NO_CACHE            - "false" to enable layer caching (default: true, always build fresh)
+#   DOCKERFILE_SQUASH   - "false" to disable --squash (default: true, always squash for clean D files)
+#   DOCKERFILE_NO_CACHE - "false" to enable layer caching (default: true, always build fresh)
 #   SUBSTITUTION_TOKEN_STYLE - Token delimiter syntax (default: shell)
 #   TOKEN_NAME_STYLE    - Case style for token names (default: PascalCase)
 #   TOKEN_NAME_VALIDATION - How to validate user token names (default: MATCH)
@@ -56,8 +56,8 @@ PROJECT_NAME="${PROJECT_NAME:?PROJECT_NAME is required}"
 # Apply defaults for inputs used directly in this script
 DOCKERFILE_SUB_PATH="${DOCKERFILE_SUB_PATH:-src/docker}"
 OUTPUT_SUB_PATH="${OUTPUT_SUB_PATH:-target}"
-SQUASH="${SQUASH:-true}"
-NO_CACHE="${NO_CACHE:-true}"
+DOCKERFILE_SQUASH="${DOCKERFILE_SQUASH:-true}"
+DOCKERFILE_NO_CACHE="${DOCKERFILE_NO_CACHE:-true}"
 
 # Pass-through vars (called scripts default their own; these just satisfy set -u)
 SUBSTITUTION_TOKEN_STYLE="${SUBSTITUTION_TOKEN_STYLE:-}"
@@ -95,7 +95,7 @@ main() {
   echo "Target: ${TARGET_IMAGE_FULL_URI}" >&2
   echo "Dockerfile sub-path: ${DOCKERFILE_SUB_PATH}" >&2
   echo "Output sub-path: ${OUTPUT_SUB_PATH}" >&2
-  echo "Squash: ${SQUASH}" >&2
+  echo "Squash: ${DOCKERFILE_SQUASH}" >&2
   echo "Token style: ${SUBSTITUTION_TOKEN_STYLE}" >&2
   echo "Name style: ${TOKEN_NAME_STYLE}" >&2
   echo "===============================" >&2
@@ -176,7 +176,7 @@ main() {
   local context="${DOCKER_SUBSTITUTED_SUB_PATH}"
 
   # Enable experimental mode if squash requested
-  if [[ "${SQUASH}" == "true" ]]; then
+  if [[ "${DOCKERFILE_SQUASH}" == "true" ]]; then
     enable_experimental
     # Disable BuildKit - it doesn't support --squash (just warns and builds fat images)
     export DOCKER_BUILDKIT=0
@@ -197,12 +197,12 @@ main() {
   cmd+=(--label "build.datetime=${build_datetime}")
 
   # Add squash if enabled
-  if [[ "${SQUASH}" == "true" ]]; then
+  if [[ "${DOCKERFILE_SQUASH}" == "true" ]]; then
     cmd+=(--squash)
   fi
 
   # Disable layer caching by default for reproducible builds
-  if [[ "${NO_CACHE}" == "true" ]]; then
+  if [[ "${DOCKERFILE_NO_CACHE}" == "true" ]]; then
     cmd+=(--no-cache)
   fi
 

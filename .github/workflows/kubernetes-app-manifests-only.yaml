@@ -5,23 +5,56 @@ name: Kubernetes App - Manifests Only
 on:
   workflow_call:
     inputs:
-      # Manifest configuration
+      # Build output
+      output-sub-path:
+        description: 'Build output directory (relative)'
+        required: false
+        type: string
+        default: 'target'
+
+      # Docker registry logins
+      docker-registry-logins:
+        description: 'YAML config for Docker registry logins (registry URL as key)'
+        required: false
+        type: string
+        default: ''
+      # Docker target config (for docker repo provider)
+      docker-target-registry:
+        description: 'Target container registry'
+        required: false
+        type: string
+        default: 'ghcr.io'
+      docker-target-base-path:
+        description: 'Path between registry and image name (auto-set for GHCR)'
+        required: false
+        type: string
+        default: ''
+      # Docker push targets
+      docker-push-targets:
+        description: 'JSON array of additional push targets [{registry, base-path?}]'
+        required: false
+        type: string
+        default: ''
+
+      # Manifests source
       manifests-sub-path:
         description: 'Directory containing Kubernetes manifests (relative)'
         required: false
         type: string
         default: 'src/kubernetes'
-      # ConfigMap configuration
-      kubernetes-configmap-sub-path:
-        description: 'Directory containing ConfigMap data files (relative)'
+      # Manifests packaging
+      manifests-repo-provider-type:
+        description: 'Repo provider type for manifest storage (default: docker, currently the only supported provider)'
         required: false
         type: string
-        default: 'src/configmap'
-      kubernetes-configmap-name-checksum-injection:
-        description: 'Enable checksum injection suffix in ConfigMap name (true: ProjectName-configmap-checksum, false: ProjectName)'
+        default: 'docker'
+      manifests-packaging-base-image:
+        description: 'Base image for manifest packaging (default: scratch)'
         required: false
-        type: boolean
-        default: true
+        type: string
+        default: ''
+
+      # Kubernetes generation
       kubernetes-global-additional-labels:
         description: 'Additional labels for all Kubernetes manifests (comma-separated key=value)'
         required: false
@@ -32,6 +65,17 @@ on:
         required: false
         type: string
         default: ''
+      # Kubernetes ConfigMap generation
+      kubernetes-configmap-sub-path:
+        description: 'Directory containing ConfigMap data files (relative)'
+        required: false
+        type: string
+        default: 'src/configmap'
+      kubernetes-configmap-name-checksum-injection:
+        description: 'Enable checksum injection suffix in ConfigMap name (true: ProjectName-configmap-checksum, false: ProjectName)'
+        required: false
+        type: boolean
+        default: true
       kubernetes-configmap-additional-labels:
         description: 'Additional labels specific to ConfigMap (comma-separated key=value)'
         required: false
@@ -42,6 +86,8 @@ on:
         required: false
         type: string
         default: ''
+
+      # Token substitution
       substitution-token-style:
         description: 'Token delimiter syntax for variables (shell, mustache, helm, erb, github-actions, blade, stringtemplate, ognl, t4, swift)'
         required: false
@@ -67,44 +113,13 @@ on:
         required: false
         type: string
         default: 'src/config'
-      output-sub-path:
-        description: 'Build output directory (relative)'
-        required: false
-        type: string
-        default: 'target'
       config-value-trailing-newline:
         description: 'How to handle trailing newlines in config values (strip-for-single-line, preserve-all, always-strip-one-newline)'
         required: false
         type: string
         default: 'strip-for-single-line'
-      # Repo provider configuration
-      manifests-repo-provider-type:
-        description: 'Repo provider type for manifest storage (default: docker, currently the only supported provider)'
-        required: false
-        type: string
-        default: 'docker'
-      manifests-packaging-base-image:
-        description: 'Base image for manifest packaging (default: scratch)'
-        required: false
-        type: string
-        default: ''
-      # Target configuration (for docker repo provider)
-      docker-target-registry:
-        description: 'Target container registry'
-        required: false
-        type: string
-        default: 'ghcr.io'
-      docker-target-base-path:
-        description: 'Path between registry and image name (auto-set for GHCR)'
-        required: false
-        type: string
-        default: ''
-      docker-push-targets:
-        description: 'JSON array of additional push targets [{registry, base-path?}]'
-        required: false
-        type: string
-        default: ''
-      # Version generator inputs (pass-through)
+
+      # Naming, Versions, and Tags calculation
       release-branch:
         description: 'The release branch name'
         required: false
@@ -140,6 +155,16 @@ on:
         required: false
         type: string
         default: 'src/docker'
+      dockerfile-squash:
+        description: 'Enable --squash (requires experimental mode)'
+        required: false
+        type: boolean
+        default: true
+      dockerfile-no-cache:
+        description: 'Disable layer caching for reproducible builds'
+        required: false
+        type: boolean
+        default: true
       tag-version-source-sub-path:
         description: 'Override path to source directory (takes precedence over dockerfile-sub-path)'
         required: false
@@ -155,7 +180,8 @@ on:
         required: false
         type: string
         default: ''
-      # Quality check inputs
+
+      # Quality check options
       block-slashes:
         description: 'DEPRECATED: Use block-slash-containing-branches instead'
         required: false
@@ -186,14 +212,10 @@ on:
         required: false
         type: boolean
         default: false
-      # Test injection points
+
+      # Hook script paths
       pre-tagging-tests-script-sub-path:
         description: 'Path to pre-tagging test script relative to .github/ (e.g., bin/pre-tagging.bash)'
-        required: false
-        type: string
-        default: ''
-      post-package-tests-script-sub-path:
-        description: 'Path to post-package test script relative to .github/ (e.g., bin/post-package.bash)'
         required: false
         type: string
         default: ''
@@ -202,12 +224,13 @@ on:
         required: false
         type: string
         default: ''
-      docker-registry-logins:
-        description: 'YAML config for Docker registry logins (registry URL as key)'
+      post-package-tests-script-sub-path:
+        description: 'Path to post-package test script relative to .github/ (e.g., bin/post-package.bash)'
         required: false
         type: string
         default: ''
-      # GitHub Release configuration
+
+      # GitHub release
       github-release-enabled:
         description: 'Create a GitHub release on version tags'
         required: false
@@ -478,22 +501,25 @@ jobs:
           # === Workflow Inputs ===
           # Build output
           output-sub-path: ${{ inputs.output-sub-path }}
+
           # Docker registry logins
           docker-registry-logins: ${{ inputs.docker-registry-logins }}
           # Docker build options
           dockerfile-sub-path: ${{ inputs.dockerfile-sub-path }}
-          squash: ${{ inputs.squash }}
-          no-cache: ${{ inputs.no-cache }}
+          dockerfile-squash: ${{ inputs.dockerfile-squash }}
+          dockerfile-no-cache: ${{ inputs.dockerfile-no-cache }}
           # Docker target config
           docker-target-registry: ${{ inputs.docker-target-registry }}
           docker-target-base-path: ${{ inputs.docker-target-base-path }}
           # Docker push targets
           docker-push-targets: ${{ inputs.docker-push-targets }}
+
           # Manifests source
           manifests-sub-path: ${{ inputs.manifests-sub-path }}
           # Manifests packaging
           manifests-repo-provider-type: ${{ inputs.manifests-repo-provider-type }}
           manifests-packaging-base-image: ${{ inputs.manifests-packaging-base-image }}
+
           # Kubernetes Generation
           kubernetes-global-additional-labels: ${{ inputs.kubernetes-global-additional-labels }}
           kubernetes-global-additional-annotations: ${{ inputs.kubernetes-global-additional-annotations }}
@@ -502,6 +528,7 @@ jobs:
           kubernetes-configmap-name-checksum-injection: ${{ inputs.kubernetes-configmap-name-checksum-injection }}
           kubernetes-configmap-additional-labels: ${{ inputs.kubernetes-configmap-additional-labels }}
           kubernetes-configmap-additional-annotations: ${{ inputs.kubernetes-configmap-additional-annotations }}
+
           # Token substitution
           substitution-token-style: ${{ inputs.substitution-token-style }}
           token-name-style: ${{ inputs.token-name-style }}
@@ -509,6 +536,7 @@ jobs:
           allow-builtin-token-override: ${{ inputs.allow-builtin-token-override }}
           config-sub-path: ${{ inputs.config-sub-path }}
           config-value-trailing-newline: ${{ inputs.config-value-trailing-newline }}
+
           # Naming, Versions, and Tags calculation
           release-branch: ${{ inputs.release-branch }}
           additional-release-branches: ${{ inputs.additional-release-branches }}
@@ -519,6 +547,7 @@ jobs:
           tag-version-source-sub-path: ${{ inputs.tag-version-source-sub-path }}
           tag-version-source-file-name: ${{ inputs.tag-version-source-file-name }}
           tag-version-source-custom-pattern: ${{ inputs.tag-version-source-custom-pattern }}
+
           # Quality check options
           block-slashes: ${{ inputs.block-slashes }}
           block-slash-containing-branches: ${{ inputs.block-slash-containing-branches }}
@@ -526,12 +555,14 @@ jobs:
           require-conventional-branches: ${{ inputs.require-conventional-branches }}
           require-conventional-commits: ${{ inputs.require-conventional-commits }}
           block-conventional-commits: ${{ inputs.block-conventional-commits }}
+
           # Hook script paths
           pre-tagging-tests-script-sub-path: ${{ inputs.pre-tagging-tests-script-sub-path }}
           pre-docker-prepare-script-sub-path: ${{ inputs.pre-docker-prepare-script-sub-path }}
           post-docker-tests-script-sub-path: ${{ inputs.post-docker-tests-script-sub-path }}
           pre-package-prepare-script-sub-path: ${{ inputs.pre-package-prepare-script-sub-path }}
           post-package-tests-script-sub-path: ${{ inputs.post-package-tests-script-sub-path }}
+
           # GitHub release
           github-release-enabled: ${{ inputs.github-release-enabled }}
           github-release-substituted-files: ${{ inputs.github-release-substituted-files }}
@@ -637,22 +668,25 @@ jobs:
           # === Workflow Inputs ===
           # Build output
           output-sub-path: ${{ inputs.output-sub-path }}
+
           # Docker registry logins
           docker-registry-logins: ${{ inputs.docker-registry-logins }}
           # Docker build options
           dockerfile-sub-path: ${{ inputs.dockerfile-sub-path }}
-          squash: ${{ inputs.squash }}
-          no-cache: ${{ inputs.no-cache }}
+          dockerfile-squash: ${{ inputs.dockerfile-squash }}
+          dockerfile-no-cache: ${{ inputs.dockerfile-no-cache }}
           # Docker target config
           docker-target-registry: ${{ inputs.docker-target-registry }}
           docker-target-base-path: ${{ inputs.docker-target-base-path }}
           # Docker push targets
           docker-push-targets: ${{ inputs.docker-push-targets }}
+
           # Manifests source
           manifests-sub-path: ${{ inputs.manifests-sub-path }}
           # Manifests packaging
           manifests-repo-provider-type: ${{ inputs.manifests-repo-provider-type }}
           manifests-packaging-base-image: ${{ inputs.manifests-packaging-base-image }}
+
           # Kubernetes Generation
           kubernetes-global-additional-labels: ${{ inputs.kubernetes-global-additional-labels }}
           kubernetes-global-additional-annotations: ${{ inputs.kubernetes-global-additional-annotations }}
@@ -661,6 +695,7 @@ jobs:
           kubernetes-configmap-name-checksum-injection: ${{ inputs.kubernetes-configmap-name-checksum-injection }}
           kubernetes-configmap-additional-labels: ${{ inputs.kubernetes-configmap-additional-labels }}
           kubernetes-configmap-additional-annotations: ${{ inputs.kubernetes-configmap-additional-annotations }}
+
           # Token substitution
           substitution-token-style: ${{ inputs.substitution-token-style }}
           token-name-style: ${{ inputs.token-name-style }}
@@ -668,6 +703,7 @@ jobs:
           allow-builtin-token-override: ${{ inputs.allow-builtin-token-override }}
           config-sub-path: ${{ inputs.config-sub-path }}
           config-value-trailing-newline: ${{ inputs.config-value-trailing-newline }}
+
           # Naming, Versions, and Tags calculation
           release-branch: ${{ inputs.release-branch }}
           additional-release-branches: ${{ inputs.additional-release-branches }}
@@ -678,6 +714,7 @@ jobs:
           tag-version-source-sub-path: ${{ inputs.tag-version-source-sub-path }}
           tag-version-source-file-name: ${{ inputs.tag-version-source-file-name }}
           tag-version-source-custom-pattern: ${{ inputs.tag-version-source-custom-pattern }}
+
           # Quality check options
           block-slashes: ${{ inputs.block-slashes }}
           block-slash-containing-branches: ${{ inputs.block-slash-containing-branches }}
@@ -685,18 +722,21 @@ jobs:
           require-conventional-branches: ${{ inputs.require-conventional-branches }}
           require-conventional-commits: ${{ inputs.require-conventional-commits }}
           block-conventional-commits: ${{ inputs.block-conventional-commits }}
+
           # Hook script paths
           pre-tagging-tests-script-sub-path: ${{ inputs.pre-tagging-tests-script-sub-path }}
           pre-docker-prepare-script-sub-path: ${{ inputs.pre-docker-prepare-script-sub-path }}
           post-docker-tests-script-sub-path: ${{ inputs.post-docker-tests-script-sub-path }}
           pre-package-prepare-script-sub-path: ${{ inputs.pre-package-prepare-script-sub-path }}
           post-package-tests-script-sub-path: ${{ inputs.post-package-tests-script-sub-path }}
+
           # GitHub release
           github-release-enabled: ${{ inputs.github-release-enabled }}
           github-release-substituted-files: ${{ inputs.github-release-substituted-files }}
           github-release-verbatim-files: ${{ inputs.github-release-verbatim-files }}
           github-release-notes: ${{ inputs.github-release-notes }}
           github-release-add-version-to-filenames: ${{ inputs.github-release-add-version-to-filenames }}
+
           # === Step Outputs ===
           # Version outputs (from versions-and-naming)
           version: ${{ steps.versions.outputs.version }}
@@ -712,6 +752,7 @@ jobs:
           project-name: ${{ steps.versions.outputs.project-name }}
           is-release: ${{ steps.versions.outputs.is-release }}
           # Docker outputs (from docker-build - empty in manifests-only workflows)
+          docker-substituted-sub-path: ${{ steps.docker-build.outputs.docker-substituted-sub-path }}
           target-image-full-uri: ${{ steps.docker-build.outputs.docker-target-image-full-uri }}
           # Manifest outputs (computed path for this position)
           manifests-substituted-sub-path: ${{ inputs.output-sub-path }}/manifests/substituted/${{ steps.versions.outputs.project-name }}
@@ -863,22 +904,25 @@ jobs:
           # === Workflow Inputs ===
           # Build output
           output-sub-path: ${{ inputs.output-sub-path }}
+
           # Docker registry logins
           docker-registry-logins: ${{ inputs.docker-registry-logins }}
           # Docker build options
           dockerfile-sub-path: ${{ inputs.dockerfile-sub-path }}
-          squash: ${{ inputs.squash }}
-          no-cache: ${{ inputs.no-cache }}
+          dockerfile-squash: ${{ inputs.dockerfile-squash }}
+          dockerfile-no-cache: ${{ inputs.dockerfile-no-cache }}
           # Docker target config
           docker-target-registry: ${{ inputs.docker-target-registry }}
           docker-target-base-path: ${{ inputs.docker-target-base-path }}
           # Docker push targets
           docker-push-targets: ${{ inputs.docker-push-targets }}
+
           # Manifests source
           manifests-sub-path: ${{ inputs.manifests-sub-path }}
           # Manifests packaging
           manifests-repo-provider-type: ${{ inputs.manifests-repo-provider-type }}
           manifests-packaging-base-image: ${{ inputs.manifests-packaging-base-image }}
+
           # Kubernetes Generation
           kubernetes-global-additional-labels: ${{ inputs.kubernetes-global-additional-labels }}
           kubernetes-global-additional-annotations: ${{ inputs.kubernetes-global-additional-annotations }}
@@ -887,6 +931,7 @@ jobs:
           kubernetes-configmap-name-checksum-injection: ${{ inputs.kubernetes-configmap-name-checksum-injection }}
           kubernetes-configmap-additional-labels: ${{ inputs.kubernetes-configmap-additional-labels }}
           kubernetes-configmap-additional-annotations: ${{ inputs.kubernetes-configmap-additional-annotations }}
+
           # Token substitution
           substitution-token-style: ${{ inputs.substitution-token-style }}
           token-name-style: ${{ inputs.token-name-style }}
@@ -894,6 +939,7 @@ jobs:
           allow-builtin-token-override: ${{ inputs.allow-builtin-token-override }}
           config-sub-path: ${{ inputs.config-sub-path }}
           config-value-trailing-newline: ${{ inputs.config-value-trailing-newline }}
+
           # Naming, Versions, and Tags calculation
           release-branch: ${{ inputs.release-branch }}
           additional-release-branches: ${{ inputs.additional-release-branches }}
@@ -904,6 +950,7 @@ jobs:
           tag-version-source-sub-path: ${{ inputs.tag-version-source-sub-path }}
           tag-version-source-file-name: ${{ inputs.tag-version-source-file-name }}
           tag-version-source-custom-pattern: ${{ inputs.tag-version-source-custom-pattern }}
+
           # Quality check options
           block-slashes: ${{ inputs.block-slashes }}
           block-slash-containing-branches: ${{ inputs.block-slash-containing-branches }}
@@ -911,18 +958,21 @@ jobs:
           require-conventional-branches: ${{ inputs.require-conventional-branches }}
           require-conventional-commits: ${{ inputs.require-conventional-commits }}
           block-conventional-commits: ${{ inputs.block-conventional-commits }}
+
           # Hook script paths
           pre-tagging-tests-script-sub-path: ${{ inputs.pre-tagging-tests-script-sub-path }}
           pre-docker-prepare-script-sub-path: ${{ inputs.pre-docker-prepare-script-sub-path }}
           post-docker-tests-script-sub-path: ${{ inputs.post-docker-tests-script-sub-path }}
           pre-package-prepare-script-sub-path: ${{ inputs.pre-package-prepare-script-sub-path }}
           post-package-tests-script-sub-path: ${{ inputs.post-package-tests-script-sub-path }}
+
           # GitHub release
           github-release-enabled: ${{ inputs.github-release-enabled }}
           github-release-substituted-files: ${{ inputs.github-release-substituted-files }}
           github-release-verbatim-files: ${{ inputs.github-release-verbatim-files }}
           github-release-notes: ${{ inputs.github-release-notes }}
           github-release-add-version-to-filenames: ${{ inputs.github-release-add-version-to-filenames }}
+
           # === Step Outputs ===
           # Version outputs (from versions-and-naming)
           version: ${{ steps.versions.outputs.version }}
@@ -938,11 +988,14 @@ jobs:
           project-name: ${{ steps.versions.outputs.project-name }}
           is-release: ${{ steps.versions.outputs.is-release }}
           # Docker outputs (from docker-build - empty in manifests-only workflows)
+          docker-substituted-sub-path: ${{ steps.docker-build.outputs.docker-substituted-sub-path }}
           target-image-full-uri: ${{ steps.docker-build.outputs.docker-target-image-full-uri }}
           # Manifest outputs (from manifest-package)
           manifests-substituted-sub-path: ${{ inputs.output-sub-path }}/manifests/substituted/${{ steps.versions.outputs.project-name }}
           manifests-zip-sub-path: ${{ steps.manifest-package.outputs.manifests-zip-sub-path }}
           manifests-zip-file-name: ${{ steps.manifest-package.outputs.manifests-zip-file-name }}
+          # Manifest repo provider outputs (from manifest-repo-provider-package)
+          manifests-uri: ${{ steps.manifest-repo-provider-package.outputs.manifests-uri }}
       - name: Pass check - Post-package Tests
         if: inputs.post-package-tests-script-sub-path != '' && success()
         uses: ./.github/buildon-github-actions/src/actions/github-check-run

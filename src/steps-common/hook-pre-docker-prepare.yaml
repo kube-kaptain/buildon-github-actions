@@ -10,22 +10,25 @@
     # === Workflow Inputs ===
     # Build output
     output-sub-path: ${{ inputs.output-sub-path }}
+
     # Docker registry logins
     docker-registry-logins: ${{ inputs.docker-registry-logins }}
     # Docker build options
     dockerfile-sub-path: ${{ inputs.dockerfile-sub-path }}
-    squash: ${{ inputs.squash }}
-    no-cache: ${{ inputs.no-cache }}
+    dockerfile-squash: ${{ inputs.dockerfile-squash }}
+    dockerfile-no-cache: ${{ inputs.dockerfile-no-cache }}
     # Docker target config
     docker-target-registry: ${{ inputs.docker-target-registry }}
     docker-target-base-path: ${{ inputs.docker-target-base-path }}
     # Docker push targets
     docker-push-targets: ${{ inputs.docker-push-targets }}
+
     # Manifests source
     manifests-sub-path: ${{ inputs.manifests-sub-path }}
     # Manifests packaging
     manifests-repo-provider-type: ${{ inputs.manifests-repo-provider-type }}
     manifests-packaging-base-image: ${{ inputs.manifests-packaging-base-image }}
+
     # Kubernetes Generation
     kubernetes-global-additional-labels: ${{ inputs.kubernetes-global-additional-labels }}
     kubernetes-global-additional-annotations: ${{ inputs.kubernetes-global-additional-annotations }}
@@ -34,6 +37,7 @@
     kubernetes-configmap-name-checksum-injection: ${{ inputs.kubernetes-configmap-name-checksum-injection }}
     kubernetes-configmap-additional-labels: ${{ inputs.kubernetes-configmap-additional-labels }}
     kubernetes-configmap-additional-annotations: ${{ inputs.kubernetes-configmap-additional-annotations }}
+
     # Token substitution
     substitution-token-style: ${{ inputs.substitution-token-style }}
     token-name-style: ${{ inputs.token-name-style }}
@@ -41,6 +45,7 @@
     allow-builtin-token-override: ${{ inputs.allow-builtin-token-override }}
     config-sub-path: ${{ inputs.config-sub-path }}
     config-value-trailing-newline: ${{ inputs.config-value-trailing-newline }}
+
     # Naming, Versions, and Tags calculation
     release-branch: ${{ inputs.release-branch }}
     additional-release-branches: ${{ inputs.additional-release-branches }}
@@ -51,6 +56,7 @@
     tag-version-source-sub-path: ${{ inputs.tag-version-source-sub-path }}
     tag-version-source-file-name: ${{ inputs.tag-version-source-file-name }}
     tag-version-source-custom-pattern: ${{ inputs.tag-version-source-custom-pattern }}
+
     # Quality check options
     block-slashes: ${{ inputs.block-slashes }}
     block-slash-containing-branches: ${{ inputs.block-slash-containing-branches }}
@@ -58,18 +64,21 @@
     require-conventional-branches: ${{ inputs.require-conventional-branches }}
     require-conventional-commits: ${{ inputs.require-conventional-commits }}
     block-conventional-commits: ${{ inputs.block-conventional-commits }}
+
     # Hook script paths
     pre-tagging-tests-script-sub-path: ${{ inputs.pre-tagging-tests-script-sub-path }}
     pre-docker-prepare-script-sub-path: ${{ inputs.pre-docker-prepare-script-sub-path }}
     post-docker-tests-script-sub-path: ${{ inputs.post-docker-tests-script-sub-path }}
     pre-package-prepare-script-sub-path: ${{ inputs.pre-package-prepare-script-sub-path }}
     post-package-tests-script-sub-path: ${{ inputs.post-package-tests-script-sub-path }}
+
     # GitHub release
     github-release-enabled: ${{ inputs.github-release-enabled }}
     github-release-substituted-files: ${{ inputs.github-release-substituted-files }}
     github-release-verbatim-files: ${{ inputs.github-release-verbatim-files }}
     github-release-notes: ${{ inputs.github-release-notes }}
     github-release-add-version-to-filenames: ${{ inputs.github-release-add-version-to-filenames }}
+
     # === Step Outputs ===
     # Version outputs (from versions-and-naming)
     version: ${{ steps.versions.outputs.version }}
@@ -85,4 +94,4 @@
     project-name: ${{ steps.versions.outputs.project-name }}
     is-release: ${{ steps.versions.outputs.is-release }}
     # Docker outputs (computed path for this position)
-    docker-context-sub-path: ${{ inputs.output-sub-path }}/docker/substituted
+    docker-substituted-sub-path: ${{ inputs.output-sub-path }}/docker/substituted

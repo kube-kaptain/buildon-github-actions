@@ -5,6 +5,7 @@ name: Basic Quality Checks
 on:
   workflow_call:
     inputs:
+      # Quality check options
       release-branch:
         description: 'The release branch name'
         required: false
@@ -45,6 +46,7 @@ on:
         required: false
         type: boolean
         default: false
+
 jobs:
   basic-quality-checks:
     name: Basic Quality Checks

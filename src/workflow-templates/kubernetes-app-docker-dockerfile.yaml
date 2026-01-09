@@ -7,39 +7,72 @@ kaptain-description: Everything from both docker Dockerfile and Kubernetes manif
 on:
   workflow_call:
     inputs:
-      # Dockerfile configuration
+      # Build output
+      output-sub-path:
+        description: 'Build output directory (relative)'
+        required: false
+        type: string
+        default: 'target'
+
+      # Docker registry logins
+      docker-registry-logins:
+        description: 'YAML config for Docker registry logins (registry URL as key)'
+        required: false
+        type: string
+        default: ''
+      # Docker build options
       dockerfile-sub-path:
         description: 'Directory containing Dockerfile, relative to repo root.'
         required: false
         type: string
         default: 'src/docker'
-      squash:
+      dockerfile-squash:
         description: 'Enable --squash (requires experimental mode)'
         required: false
         type: boolean
         default: true
-      no-cache:
+      dockerfile-no-cache:
         description: 'Disable layer caching for reproducible builds'
         required: false
         type: boolean
         default: true
-      # Manifest configuration
+      # Docker target config
+      docker-target-registry:
+        description: 'Target container registry'
+        required: false
+        type: string
+        default: 'ghcr.io'
+      docker-target-base-path:
+        description: 'Path between registry and image name (auto-set for GHCR)'
+        required: false
+        type: string
+        default: ''
+      # Docker push targets
+      docker-push-targets:
+        description: 'JSON array of additional push targets [{registry, base-path?}]'
+        required: false
+        type: string
+        default: ''
+
+      # Manifests source
       manifests-sub-path:
         description: 'Directory containing Kubernetes manifests (relative)'
         required: false
         type: string
         default: 'src/kubernetes'
-      # ConfigMap configuration
-      kubernetes-configmap-sub-path:
-        description: 'Directory containing ConfigMap data files (relative)'
+      # Manifests packaging
+      manifests-repo-provider-type:
+        description: 'Repo provider type for manifest storage (default: docker, currently the only supported provider)'
         required: false
         type: string
-        default: 'src/configmap'
-      kubernetes-configmap-name-checksum-injection:
-        description: 'Enable checksum injection suffix in ConfigMap name (true: ProjectName-configmap-checksum, false: ProjectName)'
+        default: 'docker'
+      manifests-packaging-base-image:
+        description: 'Base image for manifest packaging (default: scratch)'
         required: false
-        type: boolean
-        default: true
+        type: string
+        default: ''
+
+      # Kubernetes generation
       kubernetes-global-additional-labels:
         description: 'Additional labels for all Kubernetes manifests (comma-separated key=value)'
         required: false
@@ -50,6 +83,17 @@ on:
         required: false
         type: string
         default: ''
+      # Kubernetes ConfigMap generation
+      kubernetes-configmap-sub-path:
+        description: 'Directory containing ConfigMap data files (relative)'
+        required: false
+        type: string
+        default: 'src/configmap'
+      kubernetes-configmap-name-checksum-injection:
+        description: 'Enable checksum injection suffix in ConfigMap name (true: ProjectName-configmap-checksum, false: ProjectName)'
+        required: false
+        type: boolean
+        default: true
       kubernetes-configmap-additional-labels:
         description: 'Additional labels specific to ConfigMap (comma-separated key=value)'
         required: false
@@ -60,6 +104,8 @@ on:
         required: false
         type: string
         default: ''
+
+      # Token substitution
       substitution-token-style:
         description: 'Token delimiter syntax for variables (shell, mustache, helm, erb, github-actions, blade, stringtemplate, ognl, t4, swift)'
         required: false
@@ -85,44 +131,13 @@ on:
         required: false
         type: string
         default: 'src/config'
-      output-sub-path:
-        description: 'Build output directory (relative)'
-        required: false
-        type: string
-        default: 'target'
       config-value-trailing-newline:
         description: 'How to handle trailing newlines in config values (strip-for-single-line, preserve-all, always-strip-one-newline)'
         required: false
         type: string
         default: 'strip-for-single-line'
-      # Repo provider configuration
-      manifests-repo-provider-type:
-        description: 'Repo provider type for manifest storage (default: docker, currently the only supported provider)'
-        required: false
-        type: string
-        default: 'docker'
-      manifests-packaging-base-image:
-        description: 'Base image for manifest packaging (default: scratch)'
-        required: false
-        type: string
-        default: ''
-      # Target configuration
-      docker-target-registry:
-        description: 'Target container registry'
-        required: false
-        type: string
-        default: 'ghcr.io'
-      docker-target-base-path:
-        description: 'Path between registry and image name (auto-set for GHCR)'
-        required: false
-        type: string
-        default: ''
-      docker-push-targets:
-        description: 'JSON array of additional push targets [{registry, base-path?}]'
-        required: false
-        type: string
-        default: ''
-      # Version generator inputs (pass-through)
+
+      # Naming, Versions, and Tags calculation
       release-branch:
         description: 'The release branch name'
         required: false
@@ -168,7 +183,8 @@ on:
         required: false
         type: string
         default: ''
-      # Quality check inputs
+
+      # Quality check options
       block-slashes:
         description: 'DEPRECATED: Use block-slash-containing-branches instead'
         required: false
@@ -199,19 +215,10 @@ on:
         required: false
         type: boolean
         default: false
-      # Test injection points
+
+      # Hook script paths
       pre-tagging-tests-script-sub-path:
         description: 'Path to pre-tagging test script relative to .github/ (e.g., bin/pre-tagging.bash)'
-        required: false
-        type: string
-        default: ''
-      post-docker-tests-script-sub-path:
-        description: 'Path to post-docker test script relative to .github/ (e.g., bin/post-docker.bash)'
-        required: false
-        type: string
-        default: ''
-      post-package-tests-script-sub-path:
-        description: 'Path to post-package test script relative to .github/ (e.g., bin/post-package.bash)'
         required: false
         type: string
         default: ''
@@ -220,17 +227,23 @@ on:
         required: false
         type: string
         default: ''
+      post-docker-tests-script-sub-path:
+        description: 'Path to post-docker test script relative to .github/ (e.g., bin/post-docker.bash)'
+        required: false
+        type: string
+        default: ''
       pre-package-prepare-script-sub-path:
         description: 'Path to pre-package prepare script relative to .github/ (e.g., bin/pre-package-prepare.bash)'
         required: false
         type: string
         default: ''
-      docker-registry-logins:
-        description: 'YAML config for Docker registry logins (registry URL as key)'
+      post-package-tests-script-sub-path:
+        description: 'Path to post-package test script relative to .github/ (e.g., bin/post-package.bash)'
         required: false
         type: string
         default: ''
-      # GitHub Release configuration
+
+      # GitHub release
       github-release-enabled:
         description: 'Create a GitHub release on version tags'
         required: false

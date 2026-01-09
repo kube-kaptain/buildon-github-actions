@@ -27,11 +27,11 @@ inputs:
     description: 'Directory containing Dockerfile, relative to repo root'
     required: false
     default: 'src/docker'
-  squash:
+  dockerfile-squash:
     description: 'Enable --squash (requires experimental mode)'
     required: false
     default: 'true'
-  no-cache:
+  dockerfile-no-cache:
     description: 'Disable layer caching for reproducible builds'
     required: false
     default: 'true'
@@ -238,25 +238,34 @@ runs:
         HOOK_SCRIPT_SUB_PATH: .github/${{ inputs.script-sub-path }}
         # Workflow inputs - build output
         OUTPUT_SUB_PATH: ${{ inputs.output-sub-path }}
-        # Workflow inputs - docker
+
+        # Workflow inputs - docker registry logins
         DOCKER_REGISTRY_LOGINS: ${{ inputs.docker-registry-logins }}
+        # Workflow inputs - docker build options
         DOCKERFILE_SUB_PATH: ${{ inputs.dockerfile-sub-path }}
-        SQUASH: ${{ inputs.squash }}
-        NO_CACHE: ${{ inputs.no-cache }}
+        DOCKERFILE_SQUASH: ${{ inputs.dockerfile-squash }}
+        DOCKERFILE_NO_CACHE: ${{ inputs.dockerfile-no-cache }}
+        # Workflow inputs - docker target config
         DOCKER_TARGET_REGISTRY: ${{ inputs.docker-target-registry }}
         DOCKER_TARGET_BASE_PATH: ${{ inputs.docker-target-base-path }}
+        # Workflow inputs - docker push targets
         DOCKER_PUSH_TARGETS: ${{ inputs.docker-push-targets }}
-        # Workflow inputs - manifests
+
+        # Workflow inputs - manifests source
         MANIFESTS_SUB_PATH: ${{ inputs.manifests-sub-path }}
+        # Workflow inputs - manifests packaging
         MANIFESTS_REPO_PROVIDER_TYPE: ${{ inputs.manifests-repo-provider-type }}
         MANIFESTS_PACKAGING_BASE_IMAGE: ${{ inputs.manifests-packaging-base-image }}
-        # Workflow inputs - kubernetes
+
+        # Workflow inputs - kubernetes generation
         KUBERNETES_GLOBAL_ADDITIONAL_LABELS: ${{ inputs.kubernetes-global-additional-labels }}
         KUBERNETES_GLOBAL_ADDITIONAL_ANNOTATIONS: ${{ inputs.kubernetes-global-additional-annotations }}
+        # Workflow inputs - kubernetes configmap generation
         KUBERNETES_CONFIGMAP_SUB_PATH: ${{ inputs.kubernetes-configmap-sub-path }}
         KUBERNETES_CONFIGMAP_NAME_CHECKSUM_INJECTION: ${{ inputs.kubernetes-configmap-name-checksum-injection }}
         KUBERNETES_CONFIGMAP_ADDITIONAL_LABELS: ${{ inputs.kubernetes-configmap-additional-labels }}
         KUBERNETES_CONFIGMAP_ADDITIONAL_ANNOTATIONS: ${{ inputs.kubernetes-configmap-additional-annotations }}
+
         # Workflow inputs - token substitution
         SUBSTITUTION_TOKEN_STYLE: ${{ inputs.substitution-token-style }}
         TOKEN_NAME_STYLE: ${{ inputs.token-name-style }}
@@ -264,7 +273,8 @@ runs:
         ALLOW_BUILTIN_TOKEN_OVERRIDE: ${{ inputs.allow-builtin-token-override }}
         CONFIG_SUB_PATH: ${{ inputs.config-sub-path }}
         CONFIG_VALUE_TRAILING_NEWLINE: ${{ inputs.config-value-trailing-newline }}
-        # Workflow inputs - naming, versions, tags
+
+        # Workflow inputs - naming, versions, and tags calculation
         RELEASE_BRANCH: ${{ inputs.release-branch }}
         ADDITIONAL_RELEASE_BRANCHES: ${{ inputs.additional-release-branches }}
         MAX_VERSION_PARTS: ${{ inputs.max-version-parts }}
@@ -274,19 +284,22 @@ runs:
         TAG_VERSION_SOURCE_SUB_PATH: ${{ inputs.tag-version-source-sub-path }}
         TAG_VERSION_SOURCE_FILE_NAME: ${{ inputs.tag-version-source-file-name }}
         TAG_VERSION_SOURCE_CUSTOM_PATTERN: ${{ inputs.tag-version-source-custom-pattern }}
-        # Workflow inputs - quality checks
+
+        # Workflow inputs - quality check options
         BLOCK_SLASHES: ${{ inputs.block-slashes }}
         BLOCK_SLASH_CONTAINING_BRANCHES: ${{ inputs.block-slash-containing-branches }}
         BLOCK_DOUBLE_HYPHEN_CONTAINING_BRANCHES: ${{ inputs.block-double-hyphen-containing-branches }}
         REQUIRE_CONVENTIONAL_BRANCHES: ${{ inputs.require-conventional-branches }}
         REQUIRE_CONVENTIONAL_COMMITS: ${{ inputs.require-conventional-commits }}
         BLOCK_CONVENTIONAL_COMMITS: ${{ inputs.block-conventional-commits }}
+
         # Workflow inputs - hook script paths
         PRE_TAGGING_TESTS_SCRIPT_SUB_PATH: ${{ inputs.pre-tagging-tests-script-sub-path }}
         PRE_DOCKER_PREPARE_SCRIPT_SUB_PATH: ${{ inputs.pre-docker-prepare-script-sub-path }}
         POST_DOCKER_TESTS_SCRIPT_SUB_PATH: ${{ inputs.post-docker-tests-script-sub-path }}
         PRE_PACKAGE_PREPARE_SCRIPT_SUB_PATH: ${{ inputs.pre-package-prepare-script-sub-path }}
         POST_PACKAGE_TESTS_SCRIPT_SUB_PATH: ${{ inputs.post-package-tests-script-sub-path }}
+
         # Workflow inputs - github release
         GITHUB_RELEASE_ENABLED: ${{ inputs.github-release-enabled }}
         GITHUB_RELEASE_SUBSTITUTED_FILES: ${{ inputs.github-release-substituted-files }}

@@ -36,11 +36,11 @@ inputs:
     description: 'Build output directory (relative)'
     required: false
     default: 'target'
-  squash:
+  dockerfile-squash:
     description: 'Enable --squash (requires experimental mode)'
     required: false
     default: 'true'
-  no-cache:
+  dockerfile-no-cache:
     description: 'Disable layer caching for reproducible builds (default: true)'
     required: false
     default: 'true'
@@ -103,8 +103,8 @@ runs:
         IS_RELEASE: ${{ inputs.is-release }}
         DOCKERFILE_SUB_PATH: ${{ inputs.dockerfile-sub-path }}
         OUTPUT_SUB_PATH: ${{ inputs.output-sub-path }}
-        SQUASH: ${{ inputs.squash }}
-        NO_CACHE: ${{ inputs.no-cache }}
+        DOCKERFILE_SQUASH: ${{ inputs.dockerfile-squash }}
+        DOCKERFILE_NO_CACHE: ${{ inputs.dockerfile-no-cache }}
         SUBSTITUTION_TOKEN_STYLE: ${{ inputs.substitution-token-style }}
         TOKEN_NAME_STYLE: ${{ inputs.token-name-style }}
         TOKEN_NAME_VALIDATION: ${{ inputs.token-name-validation }}
