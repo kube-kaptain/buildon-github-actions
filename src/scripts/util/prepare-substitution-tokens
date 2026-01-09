@@ -22,9 +22,13 @@
 #
 set -euo pipefail
 
-# Locate script directory for finding plugins
+# Locate script directory for finding plugins and libraries
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+LIB_DIR="${SCRIPT_DIR}/../lib"
 PLUGINS_DIR="${SCRIPT_DIR}/../plugins"
+
+# Source the token formatting library
+source "${LIB_DIR}/token-format.bash"
 
 # Logging configuration (CI-agnostic)
 LOG_ERROR_PREFIX="${LOG_ERROR_PREFIX:-}"
@@ -40,6 +44,12 @@ TOKEN_NAME_VALIDATION="${TOKEN_NAME_VALIDATION:-MATCH}"
 ALLOW_BUILTIN_TOKEN_OVERRIDE="${ALLOW_BUILTIN_TOKEN_OVERRIDE:-false}"
 CONFIG_VALUE_TRAILING_NEWLINE="${CONFIG_VALUE_TRAILING_NEWLINE:-strip-for-single-line}"
 
+# Validate token name style upfront
+if ! is_valid_token_name_style "${TOKEN_NAME_STYLE}"; then
+  echo "${LOG_ERROR_PREFIX}Unknown token name style: ${TOKEN_NAME_STYLE}${LOG_ERROR_SUFFIX}" >&2
+  exit 1
+fi
+
 # Required built-in tokens (must be set by caller - provided by versions-and-naming)
 PROJECT_NAME="${PROJECT_NAME:?PROJECT_NAME is required}"
 VERSION="${VERSION:?VERSION is required}"
@@ -47,96 +57,14 @@ IS_RELEASE="${IS_RELEASE:?IS_RELEASE is required}"
 DOCKER_TAG="${DOCKER_TAG:?DOCKER_TAG is required}"
 DOCKER_IMAGE_NAME="${DOCKER_IMAGE_NAME:?DOCKER_IMAGE_NAME is required}"
 
-# =============================================================================
-# Case conversion functions - translate UPPER_SNAKE to target style
-# =============================================================================
-
-to_upper_snake() {
-  echo "$1"  # Already in UPPER_SNAKE
-}
-
-to_lower_snake() {
-  echo "$1" | tr '[:upper:]' '[:lower:]'
-}
-
-to_lower_kebab() {
-  echo "$1" | tr '[:upper:]_' '[:lower:]-'
-}
-
-to_upper_kebab() {
-  echo "$1" | tr '[:lower:]_' '[:upper:]-'
-}
-
-to_camel_case() {
-  local input="$1"
-  local result=""
-  local capitalize=false
-
-  input=$(echo "${input}" | tr '[:upper:]' '[:lower:]')
-
-  for (( i=0; i<${#input}; i++ )); do
-    local char="${input:${i}:1}"
-    if [[ "${char}" == "_" ]]; then
-      capitalize=true
-    elif [[ "${capitalize}" == "true" ]]; then
-      result+=$(echo "${char}" | tr '[:lower:]' '[:upper:]')
-      capitalize=false
-    else
-      result+="${char}"
-    fi
-  done
-
-  echo "${result}"
-}
-
-to_pascal_case() {
-  local camel
-  camel=$(to_camel_case "$1")
-  echo "$(echo "${camel:0:1}" | tr '[:lower:]' '[:upper:]')${camel:1}"
-}
-
-to_lower_dot() {
-  echo "$1" | tr '[:upper:]_' '[:lower:].'
-}
-
-to_upper_dot() {
-  echo "$1" | tr '_' '.'
-}
-
-# Translate variable name from UPPER_SNAKE to configured style
-translate_var_name() {
-  local var_name="$1"
-
-  case "${TOKEN_NAME_STYLE}" in
-    UPPER_SNAKE)  to_upper_snake "${var_name}" ;;
-    lower_snake)  to_lower_snake "${var_name}" ;;
-    UPPER-KEBAB)  to_upper_kebab "${var_name}" ;;
-    lower-kebab)  to_lower_kebab "${var_name}" ;;
-    camelCase)    to_camel_case "${var_name}" ;;
-    PascalCase)   to_pascal_case "${var_name}" ;;
-    lower.dot)    to_lower_dot "${var_name}" ;;
-    UPPER.DOT)    to_upper_dot "${var_name}" ;;
-    *)
-      echo "${LOG_ERROR_PREFIX}Unknown token name style: ${TOKEN_NAME_STYLE}${LOG_ERROR_SUFFIX}" >&2
-      exit 1
-      ;;
-  esac
-}
-
 # Write a built-in token file
 write_builtin_token() {
   local name="$1"
   local value="$2"
   local target_name
-  target_name=$(translate_var_name "${name}")
+  target_name=$(convert_token_name "${TOKEN_NAME_STYLE}" "${name}")
 
   printf '%s' "${value}" > "${TOKENS_OUTPUT_SUB_PATH}/${target_name}"
-}
-
-# Get validator script for a style
-get_validator_script() {
-  local style="$1"
-  echo "${PLUGINS_DIR}/token-name-validators/${style}"
 }
 
 main() {
@@ -188,8 +116,7 @@ main() {
       validator_style="ALL"
     fi
 
-    local validator_script
-    validator_script=$(get_validator_script "${validator_style}")
+    local validator_script="${PLUGINS_DIR}/token-name-validators/${validator_style}"
 
     if [[ ! -x "${validator_script}" ]]; then
       echo "${LOG_ERROR_PREFIX}Validator not found: ${validator_style}${LOG_ERROR_SUFFIX}" >&2

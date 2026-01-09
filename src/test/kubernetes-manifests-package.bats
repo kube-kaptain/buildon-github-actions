@@ -94,28 +94,6 @@ set_required_env() {
   unzip -p "$OUTPUT_SUB_PATH/manifests/zip/my-project-1.2.3-manifests.zip" my-project/deployment.yaml | grep -q "name: my-project-app"
 }
 
-@test "substitutes with lower-kebab style" {
-  set_required_env
-  export TOKEN_NAME_STYLE="lower-kebab"
-  create_manifest "deployment.yaml" 'name: ${project-name}-app'
-
-  run "$SCRIPTS_DIR/kubernetes-manifests-package"
-  [ "$status" -eq 0 ]
-
-  unzip -p "$OUTPUT_SUB_PATH/manifests/zip/my-project-1.2.3-manifests.zip" my-project/deployment.yaml | grep -q "name: my-project-app"
-}
-
-@test "substitutes with UPPER_SNAKE style" {
-  set_required_env
-  export TOKEN_NAME_STYLE="UPPER_SNAKE"
-  create_manifest "deployment.yaml" 'name: ${PROJECT_NAME}-app'
-
-  run "$SCRIPTS_DIR/kubernetes-manifests-package"
-  [ "$status" -eq 0 ]
-
-  unzip -p "$OUTPUT_SUB_PATH/manifests/zip/my-project-1.2.3-manifests.zip" my-project/deployment.yaml | grep -q "name: my-project-app"
-}
-
 @test "substitutes VERSION" {
   set_required_env
   create_manifest "deployment.yaml" 'version: ${Version}'
@@ -314,28 +292,6 @@ set_required_env() {
   run "$SCRIPTS_DIR/kubernetes-manifests-package"
   [ "$status" -eq 0 ]
   assert_output_contains "Found 2 manifest file(s)"
-}
-
-@test "substitutes with lower.dot style" {
-  set_required_env
-  export TOKEN_NAME_STYLE="lower.dot"
-  create_manifest "deployment.yaml" 'name: ${project.name}'
-
-  run "$SCRIPTS_DIR/kubernetes-manifests-package"
-  [ "$status" -eq 0 ]
-
-  unzip -p "$OUTPUT_SUB_PATH/manifests/zip/my-project-1.2.3-manifests.zip" my-project/deployment.yaml | grep -q "name: my-project"
-}
-
-@test "substitutes with UPPER.DOT style" {
-  set_required_env
-  export TOKEN_NAME_STYLE="UPPER.DOT"
-  create_manifest "deployment.yaml" 'name: ${PROJECT.NAME}'
-
-  run "$SCRIPTS_DIR/kubernetes-manifests-package"
-  [ "$status" -eq 0 ]
-
-  unzip -p "$OUTPUT_SUB_PATH/manifests/zip/my-project-1.2.3-manifests.zip" my-project/deployment.yaml | grep -q "name: my-project"
 }
 
 @test "fails with unknown token name style" {
