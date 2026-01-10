@@ -95,11 +95,11 @@ jobs:
 # │ Quality Checks                                                          │
 # └─────────────────────────────────────────────────────────────────────────┘
 #     with:
-#       block-slash-containing-branches: true
-#       block-double-hyphen-containing-branches: false
-#       require-conventional-branches: true
-#       require-conventional-commits: true
-#       block-conventional-commits: true                # Default is false
+#       qc-block-slash-containing-branches: true
+#       qc-block-double-hyphen-containing-branches: false
+#       qc-require-conventional-branches: true
+#       qc-require-conventional-commits: true
+#       qc-block-conventional-commits: true                # Default is false
 
 # ┌─────────────────────────────────────────────────────────────────────────┐
 # │ Version Configuration                                                   │

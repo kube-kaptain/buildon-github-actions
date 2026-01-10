@@ -41,11 +41,11 @@ Kubernetes App - Docker Retag
 | `tag-version-source-file-name` | string | `""` | Override source file name (defaults based on pattern type) |
 | `tag-version-source-custom-pattern` | string | `""` | Regex with capture group for version extraction (required for custom pattern type) |
 | `block-slashes` | boolean | `false` | DEPRECATED: Use block-slash-containing-branches instead |
-| `block-slash-containing-branches` | boolean | `false` | Block branch names containing slashes |
-| `block-double-hyphen-containing-branches` | boolean | `true` | Block branch names containing double hyphens (typo detection) |
-| `require-conventional-branches` | boolean | `false` | Require branch names start with feature/, fix/, etc. |
-| `require-conventional-commits` | boolean | `false` | Require commits use conventional commit format (feat:, fix:, etc.) |
-| `block-conventional-commits` | boolean | `false` | Block commits that use conventional commit format |
+| `qc-block-slash-containing-branches` | boolean | `false` | Block branch names containing slashes |
+| `qc-block-double-hyphen-containing-branches` | boolean | `true` | Block branch names containing double hyphens (typo detection) |
+| `qc-require-conventional-branches` | boolean | `false` | Require branch names start with feature/, fix/, etc. |
+| `qc-require-conventional-commits` | boolean | `false` | Require commits use conventional commit format (feat:, fix:, etc.) |
+| `qc-block-conventional-commits` | boolean | `false` | Block commits that use conventional commit format |
 | `pre-tagging-tests-script-sub-path` | string | `""` | Path to pre-tagging test script relative to .github/ (e.g., bin/pre-tagging.bash) |
 | `pre-package-prepare-script-sub-path` | string | `""` | Path to pre-package prepare script relative to .github/ (e.g., bin/pre-package-prepare.bash) |
 | `post-package-tests-script-sub-path` | string | `""` | Path to post-package test script relative to .github/ (e.g., bin/post-package.bash) |

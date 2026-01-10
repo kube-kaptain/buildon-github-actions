@@ -112,9 +112,6 @@ See [`examples/`](examples/) for more usage patterns.
 |-------|------|---------|-------------|
 | `additional-release-branches` | string | `""` | Comma-separated list of additional release branches |
 | `allow-builtin-token-override` | boolean | `false` | Allow user tokens to override built-in tokens (for template/reusable projects) |
-| `block-conventional-commits` | boolean | `false` | Block commits that use conventional commit format |
-| `block-double-hyphen-containing-branches` | boolean | `true` | Block branch names containing double hyphens (typo detection) |
-| `block-slash-containing-branches` | boolean | `false` | Block branch names containing slashes |
 | `block-slashes` | boolean | `false` | DEPRECATED: Use block-slash-containing-branches instead |
 | `config-sub-path` | string | `src/config` | Directory containing user-defined token files (relative) |
 | `config-value-trailing-newline` | string | `strip-for-single-line` | How to handle trailing newlines in config values (strip-for-single-line, preserve-all, always-strip-one-newline) |
@@ -149,9 +146,12 @@ See [`examples/`](examples/) for more usage patterns.
 | `pre-docker-prepare-script-sub-path` | string | `""` | Path to pre-docker prepare script relative to .github/ (e.g., bin/pre-docker-prepare.bash) |
 | `pre-package-prepare-script-sub-path` | string | `""` | Path to pre-package prepare script relative to .github/ (e.g., bin/pre-package-prepare.bash) |
 | `pre-tagging-tests-script-sub-path` | string | `""` | Path to pre-tagging test script relative to .github/ (e.g., bin/pre-tagging.bash) |
+| `qc-block-conventional-commits` | boolean | `false` | Block commits that use conventional commit format |
+| `qc-block-double-hyphen-containing-branches` | boolean | `true` | Block branch names containing double hyphens (typo detection) |
+| `qc-block-slash-containing-branches` | boolean | `false` | Block branch names containing slashes |
+| `qc-require-conventional-branches` | boolean | `false` | Require branch names start with feature/, fix/, etc. |
+| `qc-require-conventional-commits` | boolean | `false` | Require commits use conventional commit format (feat:, fix:, etc.) |
 | `release-branch` | string | `main` | The release branch name |
-| `require-conventional-branches` | boolean | `false` | Require branch names start with feature/, fix/, etc. |
-| `require-conventional-commits` | boolean | `false` | Require commits use conventional commit format (feat:, fix:, etc.) |
 | `spec-packaging-base-image` | string | `scratch` | Base image for spec packaging |
 | `spec-type` | string | *required* | Type of spec (schema or api) |
 | `spec-validation-type` | string | `basic` | Schema validator to use (basic, python3-jsonschema) |

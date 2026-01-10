@@ -315,11 +315,11 @@ jobs:
 
           # Quality check options
           block-slashes: ${{ inputs.block-slashes }}
-          block-slash-containing-branches: ${{ inputs.block-slash-containing-branches }}
-          block-double-hyphen-containing-branches: ${{ inputs.block-double-hyphen-containing-branches }}
-          require-conventional-branches: ${{ inputs.require-conventional-branches }}
-          require-conventional-commits: ${{ inputs.require-conventional-commits }}
-          block-conventional-commits: ${{ inputs.block-conventional-commits }}
+          qc-block-slash-containing-branches: ${{ inputs.qc-block-slash-containing-branches }}
+          qc-block-double-hyphen-containing-branches: ${{ inputs.qc-block-double-hyphen-containing-branches }}
+          qc-require-conventional-branches: ${{ inputs.qc-require-conventional-branches }}
+          qc-require-conventional-commits: ${{ inputs.qc-require-conventional-commits }}
+          qc-block-conventional-commits: ${{ inputs.qc-block-conventional-commits }}
 
           # Hook script paths
           pre-tagging-tests-script-sub-path: ${{ inputs.pre-tagging-tests-script-sub-path }}
