@@ -8,8 +8,10 @@
 #   is_valid_token_name_style        - Check if name style is valid
 #   is_valid_substitution_token_style - Check if substitution style is valid
 #   convert_token_name               - Convert UPPER_SNAKE to target name style
+#   convert_kebab_name               - Convert lower-kebab to target name style
 #   format_token_reference           - Wrap name with substitution delimiters
 #   format_canonical_token           - Convenience combining both
+#   format_project_suffixed_token    - Combine project name + suffix into delimited token
 
 # Internal: lowercase a string (bash 3.2 compatible)
 _lowercase() {
@@ -29,6 +31,10 @@ _capitalize() {
 # Usage: is_valid_token_name_style <style>
 # Returns: 0 if valid, 1 if invalid
 is_valid_token_name_style() {
+  if [[ $# -ne 1 ]]; then
+    echo "Error: is_valid_token_name_style requires exactly 1 argument, got $#" >&2
+    return 1
+  fi
   case "${1:-}" in
     PascalCase|camelCase|UPPER_SNAKE|lower_snake|lower-kebab|UPPER-KEBAB|lower.dot|UPPER.DOT)
       return 0
@@ -43,6 +49,10 @@ is_valid_token_name_style() {
 # Usage: is_valid_substitution_token_style <style>
 # Returns: 0 if valid, 1 if invalid
 is_valid_substitution_token_style() {
+  if [[ $# -ne 1 ]]; then
+    echo "Error: is_valid_substitution_token_style requires exactly 1 argument, got $#" >&2
+    return 1
+  fi
   case "${1:-}" in
     shell|mustache|helm|erb|github-actions|blade|stringtemplate|ognl|t4|swift)
       return 0
@@ -57,6 +67,11 @@ is_valid_substitution_token_style() {
 # Usage: convert_token_name <style> <UPPER_SNAKE_NAME>
 # Styles: PascalCase, camelCase, UPPER_SNAKE, lower_snake, lower-kebab, UPPER-KEBAB, lower.dot, UPPER.DOT
 convert_token_name() {
+  if [[ $# -ne 2 ]]; then
+    echo "Error: convert_token_name requires exactly 2 arguments, got $#" >&2
+    return 1
+  fi
+
   local style="${1:-}"
   local name="${2:-}"
 
@@ -106,6 +121,11 @@ convert_token_name() {
 # Usage: format_token_reference <style> <name>
 # Styles: shell, mustache, helm, erb, github-actions, blade, stringtemplate, ognl, t4, swift
 format_token_reference() {
+  if [[ $# -ne 2 ]]; then
+    echo "Error: format_token_reference requires exactly 2 arguments, got $#" >&2
+    return 1
+  fi
+
   local style="${1:-}"
   local name="${2:-}"
 
@@ -160,6 +180,11 @@ format_token_reference() {
 # Convenience: convert name and wrap with delimiters
 # Usage: format_canonical_token <substitution-style> <name-style> <UPPER_SNAKE_NAME>
 format_canonical_token() {
+  if [[ $# -ne 3 ]]; then
+    echo "Error: format_canonical_token requires exactly 3 arguments, got $#" >&2
+    return 1
+  fi
+
   local subst_style="${1:-}"
   local name_style="${2:-}"
   local canonical_name="${3:-}"
@@ -181,6 +206,79 @@ format_canonical_token() {
   local converted_name
   converted_name=$(convert_token_name "$name_style" "$canonical_name") || return 1
   format_token_reference "$subst_style" "$converted_name"
+}
+
+# Convert lower-kebab-case name to target style
+# Usage: convert_kebab_name <style> <lower-kebab-name>
+# Converts repo-style names (my-cool-project) to any supported style
+# Example: convert_kebab_name "PascalCase" "my-cool-project" → "MyCoolProject"
+convert_kebab_name() {
+  if [[ $# -ne 2 ]]; then
+    echo "Error: convert_kebab_name requires exactly 2 arguments, got $#" >&2
+    return 1
+  fi
+
+  local style="${1:-}"
+  local kebab_name="${2:-}"
+
+  # Validate inputs
+  if [[ -z "$style" ]]; then
+    echo "Error: name style is required" >&2
+    return 1
+  fi
+  if [[ -z "$kebab_name" || "$kebab_name" =~ ^[[:space:]]+$ ]]; then
+    echo "Error: kebab name is required and cannot be whitespace-only" >&2
+    return 1
+  fi
+
+  # Convert lower-kebab to UPPER_SNAKE, then use existing converter
+  local upper_snake
+  upper_snake=$(echo "$kebab_name" | tr '-' '_' | tr '[:lower:]' '[:upper:]')
+  convert_token_name "$style" "$upper_snake"
+}
+
+# Combine project name with suffix into a formatted, delimited token
+# Usage: format_project_suffixed_token <delimiter-style> <name-style> <project-name-kebab> <SUFFIX_UPPER_SNAKE>
+# Useful for creating compound tokens like ${MyProjectAffinityColocateApp}
+# Example: format_project_suffixed_token "shell" "PascalCase" "my-project" "AFFINITY_COLOCATE_APP"
+#          Returns: ${MyProjectAffinityColocateApp}
+format_project_suffixed_token() {
+  if [[ $# -ne 4 ]]; then
+    echo "Error: format_project_suffixed_token requires exactly 4 arguments, got $#" >&2
+    return 1
+  fi
+
+  local delim_style="${1:-}"
+  local name_style="${2:-}"
+  local project_kebab="${3:-}"
+  local suffix_upper_snake="${4:-}"
+
+  # Validate inputs
+  if [[ -z "$delim_style" ]]; then
+    echo "Error: delimiter style is required" >&2
+    return 1
+  fi
+  if [[ -z "$name_style" ]]; then
+    echo "Error: name style is required" >&2
+    return 1
+  fi
+  if [[ -z "$project_kebab" ]]; then
+    echo "Error: project name (kebab) is required" >&2
+    return 1
+  fi
+  if [[ -z "$suffix_upper_snake" ]]; then
+    echo "Error: suffix (UPPER_SNAKE) is required" >&2
+    return 1
+  fi
+
+  local project_converted suffix_converted combined
+  project_converted=$(convert_kebab_name "$name_style" "$project_kebab") || return 1
+  # Suffix is always PascalCase when joining - ensures proper compound identifier
+  # e.g., myProject + AffinityColocateApp = myProjectAffinityColocateApp
+  suffix_converted=$(convert_token_name "PascalCase" "$suffix_upper_snake") || return 1
+  combined="${project_converted}${suffix_converted}"
+
+  format_token_reference "$delim_style" "$combined"
 }
 
 # Internal: Convert UPPER_SNAKE to PascalCase

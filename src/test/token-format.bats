@@ -6,8 +6,10 @@
 #
 # This library provides:
 #   convert_token_name  - Convert UPPER_SNAKE to target name style
+#   convert_kebab_name  - Convert lower-kebab to target name style
 #   format_token_reference - Wrap name with substitution delimiters
 #   format_canonical_token - Convenience combining both
+#   format_project_suffixed_token - Combine project + suffix into delimited token
 
 load helpers
 
@@ -408,4 +410,190 @@ setup() {
 @test "format_canonical_token: empty name style fails" {
   run format_canonical_token shell "" PROJECT_NAME
   [ "$status" -ne 0 ]
+}
+
+# =============================================================================
+# convert_kebab_name tests - lower-kebab to target style
+# =============================================================================
+
+@test "convert_kebab_name: PascalCase - simple" {
+  result=$(convert_kebab_name PascalCase my-project)
+  [ "$result" = "MyProject" ]
+}
+
+@test "convert_kebab_name: PascalCase - three words" {
+  result=$(convert_kebab_name PascalCase my-cool-project)
+  [ "$result" = "MyCoolProject" ]
+}
+
+@test "convert_kebab_name: camelCase - simple" {
+  result=$(convert_kebab_name camelCase my-project)
+  [ "$result" = "myProject" ]
+}
+
+@test "convert_kebab_name: camelCase - three words" {
+  result=$(convert_kebab_name camelCase my-cool-project)
+  [ "$result" = "myCoolProject" ]
+}
+
+@test "convert_kebab_name: UPPER_SNAKE - simple" {
+  result=$(convert_kebab_name UPPER_SNAKE my-project)
+  [ "$result" = "MY_PROJECT" ]
+}
+
+@test "convert_kebab_name: lower_snake - three words" {
+  result=$(convert_kebab_name lower_snake my-cool-project)
+  [ "$result" = "my_cool_project" ]
+}
+
+@test "convert_kebab_name: lower-kebab - passthrough" {
+  result=$(convert_kebab_name lower-kebab my-project)
+  [ "$result" = "my-project" ]
+}
+
+@test "convert_kebab_name: UPPER-KEBAB - simple" {
+  result=$(convert_kebab_name UPPER-KEBAB my-project)
+  [ "$result" = "MY-PROJECT" ]
+}
+
+@test "convert_kebab_name: lower.dot - three words" {
+  result=$(convert_kebab_name lower.dot my-cool-project)
+  [ "$result" = "my.cool.project" ]
+}
+
+@test "convert_kebab_name: UPPER.DOT - simple" {
+  result=$(convert_kebab_name UPPER.DOT my-project)
+  [ "$result" = "MY.PROJECT" ]
+}
+
+@test "convert_kebab_name: single word" {
+  result=$(convert_kebab_name PascalCase project)
+  [ "$result" = "Project" ]
+}
+
+# --- Error cases ---
+
+@test "convert_kebab_name: missing arguments fails" {
+  run convert_kebab_name PascalCase
+  [ "$status" -ne 0 ]
+  assert_output_contains "requires exactly 2 arguments"
+}
+
+@test "convert_kebab_name: empty name fails" {
+  run convert_kebab_name PascalCase ""
+  [ "$status" -ne 0 ]
+}
+
+@test "convert_kebab_name: unknown style fails" {
+  run convert_kebab_name UnknownStyle my-project
+  [ "$status" -ne 0 ]
+}
+
+# =============================================================================
+# format_project_suffixed_token tests - project + suffix combined
+# =============================================================================
+
+@test "format_project_suffixed_token: shell + PascalCase" {
+  result=$(format_project_suffixed_token shell PascalCase my-project AFFINITY_COLOCATE_APP)
+  [ "$result" = "\${MyProjectAffinityColocateApp}" ]
+}
+
+@test "format_project_suffixed_token: mustache + PascalCase" {
+  result=$(format_project_suffixed_token mustache PascalCase my-project AFFINITY_COLOCATE_APP)
+  [ "$result" = "{{ MyProjectAffinityColocateApp }}" ]
+}
+
+@test "format_project_suffixed_token: shell + camelCase" {
+  result=$(format_project_suffixed_token shell camelCase my-project AFFINITY_COLOCATE_APP)
+  [ "$result" = "\${myProjectAffinityColocateApp}" ]
+}
+
+@test "format_project_suffixed_token: helm + PascalCase" {
+  result=$(format_project_suffixed_token helm PascalCase my-cool-service DATABASE_URL)
+  [ "$result" = "{{ .Values.MyCoolServiceDatabaseUrl }}" ]
+}
+
+@test "format_project_suffixed_token: shell + lower_snake" {
+  result=$(format_project_suffixed_token shell lower_snake my-project SOME_CONFIG)
+  [ "$result" = "\${my_projectSomeConfig}" ]
+}
+
+@test "format_project_suffixed_token: suffix always PascalCase when joining" {
+  # Even with camelCase, suffix joins with capital letter
+  result=$(format_project_suffixed_token shell camelCase my-service CONFIG_VALUE)
+  [ "$result" = "\${myServiceConfigValue}" ]
+}
+
+# --- Error cases ---
+
+@test "format_project_suffixed_token: missing argument fails" {
+  run format_project_suffixed_token shell PascalCase my-project
+  [ "$status" -ne 0 ]
+  assert_output_contains "requires exactly 4 arguments"
+}
+
+@test "format_project_suffixed_token: empty project name fails" {
+  run format_project_suffixed_token shell PascalCase "" SOME_SUFFIX
+  [ "$status" -ne 0 ]
+}
+
+@test "format_project_suffixed_token: empty suffix fails" {
+  run format_project_suffixed_token shell PascalCase my-project ""
+  [ "$status" -ne 0 ]
+}
+
+@test "format_project_suffixed_token: invalid delimiter style fails" {
+  run format_project_suffixed_token invalid PascalCase my-project SOME_SUFFIX
+  [ "$status" -ne 0 ]
+}
+
+@test "format_project_suffixed_token: invalid name style fails" {
+  run format_project_suffixed_token shell InvalidStyle my-project SOME_SUFFIX
+  [ "$status" -ne 0 ]
+}
+
+# =============================================================================
+# Argument count validation tests
+# =============================================================================
+
+@test "is_valid_token_name_style: wrong arg count fails" {
+  run is_valid_token_name_style
+  [ "$status" -ne 0 ]
+  assert_output_contains "requires exactly 1 argument"
+}
+
+@test "is_valid_substitution_token_style: wrong arg count fails" {
+  run is_valid_substitution_token_style
+  [ "$status" -ne 0 ]
+  assert_output_contains "requires exactly 1 argument"
+}
+
+@test "convert_token_name: wrong arg count fails" {
+  run convert_token_name PascalCase
+  [ "$status" -ne 0 ]
+  assert_output_contains "requires exactly 2 arguments"
+}
+
+@test "format_token_reference: wrong arg count fails" {
+  run format_token_reference shell
+  [ "$status" -ne 0 ]
+  assert_output_contains "requires exactly 2 arguments"
+}
+
+@test "format_canonical_token: wrong arg count fails" {
+  run format_canonical_token shell PascalCase
+  [ "$status" -ne 0 ]
+  assert_output_contains "requires exactly 3 arguments"
+}
+
+@test "convert_kebab_name: wrong arg count fails" {
+  run convert_kebab_name PascalCase
+  [ "$status" -ne 0 ]
+  assert_output_contains "requires exactly 2 arguments"
+}
+
+@test "format_project_suffixed_token: wrong arg count fails" {
+  run format_project_suffixed_token shell PascalCase my-project
+  [ "$status" -ne 0 ]
+  assert_output_contains "requires exactly 4 arguments"
 }
