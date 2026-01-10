@@ -5,10 +5,43 @@
 # Kubernetes metadata generation library
 #
 # Functions:
+#   validate_combined_sub_path - Validate combined sub-path format for output directory nesting
 #   generate_manifest_header  - Output apiVersion, kind, metadata.name (and optionally namespace)
 #   merge_key_value_pairs     - Merge two comma-separated key=value lists (second overrides first)
 #   generate_yaml_map         - Output YAML map block with configurable indentation
 #   generate_metadata_map     - Convenience wrapper for metadata-level maps (2-space indent)
+
+# Validate combined sub-path format
+# Usage: validate_combined_sub_path <path>
+#
+# Validates that a combined sub-path (used for output directory nesting) follows rules:
+#   - Only lowercase letters, digits, hyphens, and slashes allowed
+#   - Must not start or end with a slash
+#   - Empty path is valid (returns 0)
+#
+# Exit codes:
+#   0 - Valid (or empty)
+#   5 - Invalid characters
+#   6 - Leading or trailing slash
+#
+validate_combined_sub_path() {
+  local path="$1"
+
+  # Empty path is valid
+  if [[ -z "${path}" ]]; then
+    return 0
+  fi
+
+  if [[ ! "${path}" =~ ^[a-z0-9/-]+$ ]]; then
+    echo "${LOG_ERROR_PREFIX:-}Combined sub-path must contain only lowercase letters, digits, hyphens, and slashes, got: ${path}${LOG_ERROR_SUFFIX:-}" >&2
+    exit 5
+  fi
+
+  if [[ "${path}" == /* || "${path}" == */ ]]; then
+    echo "${LOG_ERROR_PREFIX:-}Combined sub-path must not start or end with a slash, got: ${path}${LOG_ERROR_SUFFIX:-}" >&2
+    exit 6
+  fi
+}
 
 # Generate manifest header (apiVersion, kind, metadata.name, optionally namespace)
 # Usage: generate_manifest_header <apiVersion> <kind> <name> [namespace]

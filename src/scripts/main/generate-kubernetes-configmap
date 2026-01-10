@@ -40,6 +40,8 @@ LIB_DIR="${SCRIPT_DIR}/../lib"
 source "${LIB_DIR}/token-format.bash"
 # shellcheck source=src/scripts/lib/kubernetes-metadata.bash
 source "${LIB_DIR}/kubernetes-metadata.bash"
+# shellcheck source=src/scripts/lib/kubernetes-configuration-entries.bash
+source "${LIB_DIR}/kubernetes-configuration-entries.bash"
 
 # Logging configuration (CI-agnostic)
 LOG_ERROR_PREFIX="${LOG_ERROR_PREFIX:-}"
@@ -71,30 +73,11 @@ if [[ "${KUBERNETES_CONFIGMAP_NAME_CHECKSUM_INJECTION}" != "true" && "${KUBERNET
   exit 4
 fi
 
-# Validate combined sub-path (only lowercase letters, digits, hyphens, slashes allowed; no leading/trailing slashes)
-if [[ -n "${KUBERNETES_CONFIGMAP_COMBINED_SUB_PATH}" ]]; then
-  if [[ ! "${KUBERNETES_CONFIGMAP_COMBINED_SUB_PATH}" =~ ^[a-z0-9/-]+$ ]]; then
-    echo "${LOG_ERROR_PREFIX}KUBERNETES_CONFIGMAP_COMBINED_SUB_PATH must contain only lowercase letters, digits, hyphens, and slashes, got: ${KUBERNETES_CONFIGMAP_COMBINED_SUB_PATH}${LOG_ERROR_SUFFIX}" >&2
-    exit 5
-  fi
-  if [[ "${KUBERNETES_CONFIGMAP_COMBINED_SUB_PATH}" == /* || "${KUBERNETES_CONFIGMAP_COMBINED_SUB_PATH}" == */ ]]; then
-    echo "${LOG_ERROR_PREFIX}KUBERNETES_CONFIGMAP_COMBINED_SUB_PATH must not start or end with a slash, got: ${KUBERNETES_CONFIGMAP_COMBINED_SUB_PATH}${LOG_ERROR_SUFFIX}" >&2
-    exit 6
-  fi
-fi
+# Validate combined sub-path format
+validate_combined_sub_path "${KUBERNETES_CONFIGMAP_COMBINED_SUB_PATH}"
 
-# Check if source directory exists
-if [[ ! -d "${KUBERNETES_CONFIGMAP_SUB_PATH}" ]]; then
-  echo "ConfigMap source directory '${KUBERNETES_CONFIGMAP_SUB_PATH}' not found, skipping ConfigMap generation" >&2
-  exit 0
-fi
-
-# Check if directory has files (excluding dotfiles)
-file_count=$(find "${KUBERNETES_CONFIGMAP_SUB_PATH}" -type f -not -name '.*' 2>/dev/null | wc -l | tr -d ' ')
-if [[ "${file_count}" -eq 0 ]]; then
-  echo "${LOG_ERROR_PREFIX}No files found (excluding dotfiles) in ConfigMap source directory '${KUBERNETES_CONFIGMAP_SUB_PATH}'${LOG_ERROR_SUFFIX}" >&2
-  exit 7
-fi
+# Validate source directory exists and has files
+validate_configuration_entries_directory "${KUBERNETES_CONFIGMAP_SUB_PATH}" "ConfigMap"
 
 # Generate token references
 project_name_token=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "PROJECT_NAME")
@@ -152,19 +135,8 @@ merged_annotations=$(merge_key_value_pairs "${merged_annotations}" "${KUBERNETES
   generate_metadata_map "labels" "${merged_labels}"
   generate_metadata_map "annotations" "${merged_annotations}"
   echo "data:"
-
-  # Add each file as a data entry (excluding dotfiles)
-  while IFS= read -r -d '' filepath; do
-    filename=$(basename "${filepath}")
-    # Use block scalar for content to preserve formatting
-    echo "  ${filename}: |"
-    # Indent each line of content by 4 spaces
-    while IFS= read -r line || [[ -n "${line}" ]]; do
-      echo "    ${line}"
-    done < "${filepath}"
-  done < <(find "${KUBERNETES_CONFIGMAP_SUB_PATH}" -type f -not -name '.*' -print0 | sort -z)
-
+  generate_configuration_entries "${KUBERNETES_CONFIGMAP_SUB_PATH}"
 } > "${output_file}"
 
 echo "Generated ConfigMap manifest: ${output_file}" >&2
-echo "  Files included: ${file_count}" >&2
+echo "  Files included: ${SOURCE_FILE_COUNT}" >&2
