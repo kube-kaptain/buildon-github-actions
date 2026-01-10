@@ -2,11 +2,11 @@
 # Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
 
 - name: Run post-package tests
-  if: inputs.post-package-tests-script-sub-path != ''
+  if: inputs.hook-post-package-tests-script-sub-path != ''
   id: post-package-tests
   uses: ./.github/buildon-github-actions/src/actions/hook-post-package-tests
   with:
-    script-sub-path: ${{ inputs.post-package-tests-script-sub-path }}
+    script-sub-path: ${{ inputs.hook-post-package-tests-script-sub-path }}
     # === Workflow Inputs ===
     # Build output
     output-sub-path: ${{ inputs.output-sub-path }}
@@ -66,11 +66,11 @@
     qc-block-conventional-commits: ${{ inputs.qc-block-conventional-commits }}
 
     # Hook script paths
-    pre-tagging-tests-script-sub-path: ${{ inputs.pre-tagging-tests-script-sub-path }}
-    pre-docker-prepare-script-sub-path: ${{ inputs.pre-docker-prepare-script-sub-path }}
-    post-docker-tests-script-sub-path: ${{ inputs.post-docker-tests-script-sub-path }}
-    pre-package-prepare-script-sub-path: ${{ inputs.pre-package-prepare-script-sub-path }}
-    post-package-tests-script-sub-path: ${{ inputs.post-package-tests-script-sub-path }}
+    hook-pre-tagging-tests-script-sub-path: ${{ inputs.hook-pre-tagging-tests-script-sub-path }}
+    hook-pre-docker-prepare-script-sub-path: ${{ inputs.hook-pre-docker-prepare-script-sub-path }}
+    hook-post-docker-tests-script-sub-path: ${{ inputs.hook-post-docker-tests-script-sub-path }}
+    hook-pre-package-prepare-script-sub-path: ${{ inputs.hook-pre-package-prepare-script-sub-path }}
+    hook-post-package-tests-script-sub-path: ${{ inputs.hook-post-package-tests-script-sub-path }}
 
     # GitHub release
     github-release-enabled: ${{ inputs.github-release-enabled }}

@@ -183,23 +183,23 @@ inputs:
     default: 'false'
 
   # Hook script paths
-  pre-tagging-tests-script-sub-path:
+  hook-pre-tagging-tests-script-sub-path:
     description: 'Path to pre-tagging test script'
     required: false
     default: ''
-  pre-docker-prepare-script-sub-path:
+  hook-pre-docker-prepare-script-sub-path:
     description: 'Path to pre-docker prepare script'
     required: false
     default: ''
-  post-docker-tests-script-sub-path:
+  hook-post-docker-tests-script-sub-path:
     description: 'Path to post-docker test script'
     required: false
     default: ''
-  pre-package-prepare-script-sub-path:
+  hook-pre-package-prepare-script-sub-path:
     description: 'Path to pre-package prepare script'
     required: false
     default: ''
-  post-package-tests-script-sub-path:
+  hook-post-package-tests-script-sub-path:
     description: 'Path to post-package test script'
     required: false
     default: ''
@@ -343,11 +343,11 @@ runs:
         QC_BLOCK_CONVENTIONAL_COMMITS: ${{ inputs.qc-block-conventional-commits }}
 
         # Workflow inputs - hook script paths
-        PRE_TAGGING_TESTS_SCRIPT_SUB_PATH: ${{ inputs.pre-tagging-tests-script-sub-path }}
-        PRE_DOCKER_PREPARE_SCRIPT_SUB_PATH: ${{ inputs.pre-docker-prepare-script-sub-path }}
-        POST_DOCKER_TESTS_SCRIPT_SUB_PATH: ${{ inputs.post-docker-tests-script-sub-path }}
-        PRE_PACKAGE_PREPARE_SCRIPT_SUB_PATH: ${{ inputs.pre-package-prepare-script-sub-path }}
-        POST_PACKAGE_TESTS_SCRIPT_SUB_PATH: ${{ inputs.post-package-tests-script-sub-path }}
+        HOOK_PRE_TAGGING_TESTS_SCRIPT_SUB_PATH: ${{ inputs.hook-pre-tagging-tests-script-sub-path }}
+        HOOK_PRE_DOCKER_PREPARE_SCRIPT_SUB_PATH: ${{ inputs.hook-pre-docker-prepare-script-sub-path }}
+        HOOK_POST_DOCKER_TESTS_SCRIPT_SUB_PATH: ${{ inputs.hook-post-docker-tests-script-sub-path }}
+        HOOK_PRE_PACKAGE_PREPARE_SCRIPT_SUB_PATH: ${{ inputs.hook-pre-package-prepare-script-sub-path }}
+        HOOK_POST_PACKAGE_TESTS_SCRIPT_SUB_PATH: ${{ inputs.hook-post-package-tests-script-sub-path }}
 
         # Workflow inputs - github release
         GITHUB_RELEASE_ENABLED: ${{ inputs.github-release-enabled }}

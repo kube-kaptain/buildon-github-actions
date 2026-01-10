@@ -12,7 +12,7 @@ jobs:
     with:
       block-conventional-commits: true
       block-slash-containing-branches: true
-      pre-tagging-tests-script-sub-path: bin/pre-tagging.bash
+      hook-pre-tagging-tests-script-sub-path: bin/pre-tagging.bash
       github-release-substituted-files: .github/token-substitution-and-gh-release-test.yaml
     permissions:
       contents: write

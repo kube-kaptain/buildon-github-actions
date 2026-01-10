@@ -86,8 +86,8 @@ jobs:
 # │ Test Injection                                                          │
 # └─────────────────────────────────────────────────────────────────────────┘
 #     with:
-#       pre-tagging-tests-script-sub-path: 'bin/run-tests.bash'
-#       post-docker-tests-script-sub-path: 'bin/test-container.bash'
+#       hook-pre-tagging-tests-script-sub-path: 'bin/run-tests.bash'
+#       hook-post-docker-tests-script-sub-path: 'bin/test-container.bash'
 
 # ┌─────────────────────────────────────────────────────────────────────────┐
 # │ Token Substitution                                                      │

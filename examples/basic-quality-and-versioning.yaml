@@ -67,7 +67,7 @@ jobs:
 # │ Test Injection                                                          │
 # └─────────────────────────────────────────────────────────────────────────┘
 #     with:
-#       pre-tagging-tests-script-sub-path: 'bin/run-tests.bash'
+#       hook-pre-tagging-tests-script-sub-path: 'bin/run-tests.bash'
 
 # ┌─────────────────────────────────────────────────────────────────────────┐
 # │ Token Substitution                                                      │

@@ -99,7 +99,7 @@ on:
         default: ''
 
       # Hook script paths
-      pre-tagging-tests-script-sub-path:
+      hook-pre-tagging-tests-script-sub-path:
         description: 'Path to pre-tagging test script relative to .github/ (e.g., bin/pre-tagging.bash)'
         required: false
         type: string
@@ -191,9 +191,9 @@ jobs:
       # INJECT: parse-workflow-ref-and-checkout
 
       # === Pre-tagging Tests ===
-      # INJECT: github-check-start(name="Pre-tagging Tests", id="check-pre-tagging", if="inputs.pre-tagging-tests-script-sub-path != ''")
+      # INJECT: github-check-start(name="Pre-tagging Tests", id="check-pre-tagging", if="inputs.hook-pre-tagging-tests-script-sub-path != ''")
       # INJECT: hook-pre-tagging-tests
-      # INJECT: github-check-end(name="Pre-tagging Tests", id="check-pre-tagging", if="inputs.pre-tagging-tests-script-sub-path != ''")
+      # INJECT: github-check-end(name="Pre-tagging Tests", id="check-pre-tagging", if="inputs.hook-pre-tagging-tests-script-sub-path != ''")
 
       # === Versions & Naming ===
       # INJECT: github-check-start(name="Versions & Naming", id="check-versions")

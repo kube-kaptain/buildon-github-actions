@@ -214,17 +214,17 @@ on:
         default: false
 
       # Hook script paths
-      pre-tagging-tests-script-sub-path:
+      hook-pre-tagging-tests-script-sub-path:
         description: 'Path to pre-tagging test script relative to .github/ (e.g., bin/pre-tagging.bash)'
         required: false
         type: string
         default: ''
-      pre-package-prepare-script-sub-path:
+      hook-pre-package-prepare-script-sub-path:
         description: 'Path to pre-package prepare script relative to .github/ (e.g., bin/pre-package-prepare.bash)'
         required: false
         type: string
         default: ''
-      post-package-tests-script-sub-path:
+      hook-post-package-tests-script-sub-path:
         description: 'Path to post-package test script relative to .github/ (e.g., bin/post-package.bash)'
         required: false
         type: string
@@ -486,18 +486,18 @@ jobs:
 
       # === Pre-tagging Tests ===
       - name: Start check - Pre-tagging Tests
-        if: inputs.pre-tagging-tests-script-sub-path != '' && success()
+        if: inputs.hook-pre-tagging-tests-script-sub-path != '' && success()
         id: check-pre-tagging
         uses: ./.github/buildon-github-actions/src/actions/github-check-run
         with:
           action: start
           check-name: 'Build & Publish → Pre-tagging Tests'
       - name: Run pre-tagging tests
-        if: inputs.pre-tagging-tests-script-sub-path != '' && success()
+        if: inputs.hook-pre-tagging-tests-script-sub-path != '' && success()
         id: pre-tagging-tests
         uses: ./.github/buildon-github-actions/src/actions/hook-pre-tagging-tests
         with:
-          script-sub-path: ${{ inputs.pre-tagging-tests-script-sub-path }}
+          script-sub-path: ${{ inputs.hook-pre-tagging-tests-script-sub-path }}
           # === Workflow Inputs ===
           # Build output
           output-sub-path: ${{ inputs.output-sub-path }}
@@ -557,11 +557,11 @@ jobs:
           qc-block-conventional-commits: ${{ inputs.qc-block-conventional-commits }}
 
           # Hook script paths
-          pre-tagging-tests-script-sub-path: ${{ inputs.pre-tagging-tests-script-sub-path }}
-          pre-docker-prepare-script-sub-path: ${{ inputs.pre-docker-prepare-script-sub-path }}
-          post-docker-tests-script-sub-path: ${{ inputs.post-docker-tests-script-sub-path }}
-          pre-package-prepare-script-sub-path: ${{ inputs.pre-package-prepare-script-sub-path }}
-          post-package-tests-script-sub-path: ${{ inputs.post-package-tests-script-sub-path }}
+          hook-pre-tagging-tests-script-sub-path: ${{ inputs.hook-pre-tagging-tests-script-sub-path }}
+          hook-pre-docker-prepare-script-sub-path: ${{ inputs.hook-pre-docker-prepare-script-sub-path }}
+          hook-post-docker-tests-script-sub-path: ${{ inputs.hook-post-docker-tests-script-sub-path }}
+          hook-pre-package-prepare-script-sub-path: ${{ inputs.hook-pre-package-prepare-script-sub-path }}
+          hook-post-package-tests-script-sub-path: ${{ inputs.hook-post-package-tests-script-sub-path }}
 
           # GitHub release
           github-release-enabled: ${{ inputs.github-release-enabled }}
@@ -570,13 +570,13 @@ jobs:
           github-release-notes: ${{ inputs.github-release-notes }}
           github-release-add-version-to-filenames: ${{ inputs.github-release-add-version-to-filenames }}
       - name: Pass check - Pre-tagging Tests
-        if: inputs.pre-tagging-tests-script-sub-path != '' && success()
+        if: inputs.hook-pre-tagging-tests-script-sub-path != '' && success()
         uses: ./.github/buildon-github-actions/src/actions/github-check-run
         with:
           action: pass
           check-run-id: ${{ steps.check-pre-tagging.outputs.check-run-id }}
       - name: Fail check - Pre-tagging Tests
-        if: inputs.pre-tagging-tests-script-sub-path != '' && failure() && steps.check-pre-tagging.outputs.check-run-id != ''
+        if: inputs.hook-pre-tagging-tests-script-sub-path != '' && failure() && steps.check-pre-tagging.outputs.check-run-id != ''
         uses: ./.github/buildon-github-actions/src/actions/github-check-run
         with:
           action: fail
@@ -653,18 +653,18 @@ jobs:
 
       # === Pre-package Prepare ===
       - name: Start check - Pre-package Prepare
-        if: inputs.pre-package-prepare-script-sub-path != '' && success()
+        if: inputs.hook-pre-package-prepare-script-sub-path != '' && success()
         id: check-pre-package-prepare
         uses: ./.github/buildon-github-actions/src/actions/github-check-run
         with:
           action: start
           check-name: 'Build & Publish → Pre-package Prepare'
       - name: Run pre-package prepare
-        if: inputs.pre-package-prepare-script-sub-path != '' && success()
+        if: inputs.hook-pre-package-prepare-script-sub-path != '' && success()
         id: pre-package-prepare
         uses: ./.github/buildon-github-actions/src/actions/hook-pre-package-prepare
         with:
-          script-sub-path: ${{ inputs.pre-package-prepare-script-sub-path }}
+          script-sub-path: ${{ inputs.hook-pre-package-prepare-script-sub-path }}
           # === Workflow Inputs ===
           # Build output
           output-sub-path: ${{ inputs.output-sub-path }}
@@ -724,11 +724,11 @@ jobs:
           qc-block-conventional-commits: ${{ inputs.qc-block-conventional-commits }}
 
           # Hook script paths
-          pre-tagging-tests-script-sub-path: ${{ inputs.pre-tagging-tests-script-sub-path }}
-          pre-docker-prepare-script-sub-path: ${{ inputs.pre-docker-prepare-script-sub-path }}
-          post-docker-tests-script-sub-path: ${{ inputs.post-docker-tests-script-sub-path }}
-          pre-package-prepare-script-sub-path: ${{ inputs.pre-package-prepare-script-sub-path }}
-          post-package-tests-script-sub-path: ${{ inputs.post-package-tests-script-sub-path }}
+          hook-pre-tagging-tests-script-sub-path: ${{ inputs.hook-pre-tagging-tests-script-sub-path }}
+          hook-pre-docker-prepare-script-sub-path: ${{ inputs.hook-pre-docker-prepare-script-sub-path }}
+          hook-post-docker-tests-script-sub-path: ${{ inputs.hook-post-docker-tests-script-sub-path }}
+          hook-pre-package-prepare-script-sub-path: ${{ inputs.hook-pre-package-prepare-script-sub-path }}
+          hook-post-package-tests-script-sub-path: ${{ inputs.hook-post-package-tests-script-sub-path }}
 
           # GitHub release
           github-release-enabled: ${{ inputs.github-release-enabled }}
@@ -757,13 +757,13 @@ jobs:
           # Manifest outputs (computed path for this position)
           manifests-substituted-sub-path: ${{ inputs.output-sub-path }}/manifests/substituted/${{ steps.versions.outputs.project-name }}
       - name: Pass check - Pre-package Prepare
-        if: inputs.pre-package-prepare-script-sub-path != '' && success()
+        if: inputs.hook-pre-package-prepare-script-sub-path != '' && success()
         uses: ./.github/buildon-github-actions/src/actions/github-check-run
         with:
           action: pass
           check-run-id: ${{ steps.check-pre-package-prepare.outputs.check-run-id }}
       - name: Fail check - Pre-package Prepare
-        if: inputs.pre-package-prepare-script-sub-path != '' && failure() && steps.check-pre-package-prepare.outputs.check-run-id != ''
+        if: inputs.hook-pre-package-prepare-script-sub-path != '' && failure() && steps.check-pre-package-prepare.outputs.check-run-id != ''
         uses: ./.github/buildon-github-actions/src/actions/github-check-run
         with:
           action: fail
@@ -889,18 +889,18 @@ jobs:
 
       # === Post-package Tests ===
       - name: Start check - Post-package Tests
-        if: inputs.post-package-tests-script-sub-path != '' && success()
+        if: inputs.hook-post-package-tests-script-sub-path != '' && success()
         id: check-post-package
         uses: ./.github/buildon-github-actions/src/actions/github-check-run
         with:
           action: start
           check-name: 'Build & Publish → Post-package Tests'
       - name: Run post-package tests
-        if: inputs.post-package-tests-script-sub-path != '' && success()
+        if: inputs.hook-post-package-tests-script-sub-path != '' && success()
         id: post-package-tests
         uses: ./.github/buildon-github-actions/src/actions/hook-post-package-tests
         with:
-          script-sub-path: ${{ inputs.post-package-tests-script-sub-path }}
+          script-sub-path: ${{ inputs.hook-post-package-tests-script-sub-path }}
           # === Workflow Inputs ===
           # Build output
           output-sub-path: ${{ inputs.output-sub-path }}
@@ -960,11 +960,11 @@ jobs:
           qc-block-conventional-commits: ${{ inputs.qc-block-conventional-commits }}
 
           # Hook script paths
-          pre-tagging-tests-script-sub-path: ${{ inputs.pre-tagging-tests-script-sub-path }}
-          pre-docker-prepare-script-sub-path: ${{ inputs.pre-docker-prepare-script-sub-path }}
-          post-docker-tests-script-sub-path: ${{ inputs.post-docker-tests-script-sub-path }}
-          pre-package-prepare-script-sub-path: ${{ inputs.pre-package-prepare-script-sub-path }}
-          post-package-tests-script-sub-path: ${{ inputs.post-package-tests-script-sub-path }}
+          hook-pre-tagging-tests-script-sub-path: ${{ inputs.hook-pre-tagging-tests-script-sub-path }}
+          hook-pre-docker-prepare-script-sub-path: ${{ inputs.hook-pre-docker-prepare-script-sub-path }}
+          hook-post-docker-tests-script-sub-path: ${{ inputs.hook-post-docker-tests-script-sub-path }}
+          hook-pre-package-prepare-script-sub-path: ${{ inputs.hook-pre-package-prepare-script-sub-path }}
+          hook-post-package-tests-script-sub-path: ${{ inputs.hook-post-package-tests-script-sub-path }}
 
           # GitHub release
           github-release-enabled: ${{ inputs.github-release-enabled }}
@@ -997,13 +997,13 @@ jobs:
           # Manifest repo provider outputs (from manifest-repo-provider-package)
           manifests-uri: ${{ steps.manifest-repo-provider-package.outputs.manifests-uri }}
       - name: Pass check - Post-package Tests
-        if: inputs.post-package-tests-script-sub-path != '' && success()
+        if: inputs.hook-post-package-tests-script-sub-path != '' && success()
         uses: ./.github/buildon-github-actions/src/actions/github-check-run
         with:
           action: pass
           check-run-id: ${{ steps.check-post-package.outputs.check-run-id }}
       - name: Fail check - Post-package Tests
-        if: inputs.post-package-tests-script-sub-path != '' && failure() && steps.check-post-package.outputs.check-run-id != ''
+        if: inputs.hook-post-package-tests-script-sub-path != '' && failure() && steps.check-post-package.outputs.check-run-id != ''
         uses: ./.github/buildon-github-actions/src/actions/github-check-run
         with:
           action: fail

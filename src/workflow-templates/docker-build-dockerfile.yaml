@@ -166,17 +166,17 @@ on:
         default: false
 
       # Hook script paths
-      pre-tagging-tests-script-sub-path:
+      hook-pre-tagging-tests-script-sub-path:
         description: 'Path to pre-tagging test script relative to .github/ (e.g., bin/pre-tagging.bash)'
         required: false
         type: string
         default: ''
-      pre-docker-prepare-script-sub-path:
+      hook-pre-docker-prepare-script-sub-path:
         description: 'Path to pre-docker prepare script relative to .github/ (e.g., bin/pre-docker-prepare.bash)'
         required: false
         type: string
         default: ''
-      post-docker-tests-script-sub-path:
+      hook-post-docker-tests-script-sub-path:
         description: 'Path to post-docker test script relative to .github/ (e.g., bin/post-docker.bash)'
         required: false
         type: string
@@ -301,9 +301,9 @@ jobs:
       # INJECT: docker-registry-logins
 
       # === Pre-tagging Tests ===
-      # INJECT: github-check-start(name="Pre-tagging Tests", id="check-pre-tagging", if="inputs.pre-tagging-tests-script-sub-path != ''")
+      # INJECT: github-check-start(name="Pre-tagging Tests", id="check-pre-tagging", if="inputs.hook-pre-tagging-tests-script-sub-path != ''")
       # INJECT: hook-pre-tagging-tests
-      # INJECT: github-check-end(name="Pre-tagging Tests", id="check-pre-tagging", if="inputs.pre-tagging-tests-script-sub-path != ''")
+      # INJECT: github-check-end(name="Pre-tagging Tests", id="check-pre-tagging", if="inputs.hook-pre-tagging-tests-script-sub-path != ''")
 
       # === Versions & Naming ===
       # INJECT: github-check-start(name="Versions & Naming", id="check-versions")
@@ -311,9 +311,9 @@ jobs:
       # INJECT: github-check-end(name="Versions & Naming", id="check-versions")
 
       # === Pre-docker Prepare ===
-      # INJECT: github-check-start(name="Pre-docker Prepare", id="check-pre-docker-prepare", if="inputs.pre-docker-prepare-script-sub-path != ''")
+      # INJECT: github-check-start(name="Pre-docker Prepare", id="check-pre-docker-prepare", if="inputs.hook-pre-docker-prepare-script-sub-path != ''")
       # INJECT: hook-pre-docker-prepare
-      # INJECT: github-check-end(name="Pre-docker Prepare", id="check-pre-docker-prepare", if="inputs.pre-docker-prepare-script-sub-path != ''")
+      # INJECT: github-check-end(name="Pre-docker Prepare", id="check-pre-docker-prepare", if="inputs.hook-pre-docker-prepare-script-sub-path != ''")
 
       # === Docker Build ===
       # INJECT: github-check-start(name="Docker Build", id="check-docker-build")
@@ -326,9 +326,9 @@ jobs:
       # INJECT: github-check-end(name="Docker Multi-Tag", id="check-docker-multi-tag", if="inputs.docker-push-targets != '' && steps.versions.outputs.is-release == 'true'")
 
       # === Post-docker Tests ===
-      # INJECT: github-check-start(name="Post-docker Tests", id="check-post-docker", if="inputs.post-docker-tests-script-sub-path != ''")
+      # INJECT: github-check-start(name="Post-docker Tests", id="check-post-docker", if="inputs.hook-post-docker-tests-script-sub-path != ''")
       # INJECT: hook-post-docker-tests
-      # INJECT: github-check-end(name="Post-docker Tests", id="check-post-docker", if="inputs.post-docker-tests-script-sub-path != ''")
+      # INJECT: github-check-end(name="Post-docker Tests", id="check-post-docker", if="inputs.hook-post-docker-tests-script-sub-path != ''")
 
       # === GitHub Release Prepare ===
       # INJECT: github-check-start(name="GitHub Release Prepare", id="check-github-release-prepare", if="inputs.github-release-enabled == true")
