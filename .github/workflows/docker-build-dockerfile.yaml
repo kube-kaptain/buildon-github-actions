@@ -480,6 +480,11 @@ jobs:
           kubernetes-configmap-name-checksum-injection: ${{ inputs.kubernetes-configmap-name-checksum-injection }}
           kubernetes-configmap-additional-labels: ${{ inputs.kubernetes-configmap-additional-labels }}
           kubernetes-configmap-additional-annotations: ${{ inputs.kubernetes-configmap-additional-annotations }}
+          # Kubernetes Secret template generation
+          kubernetes-secret-template-sub-path: ${{ inputs.kubernetes-secret-template-sub-path }}
+          kubernetes-secret-template-name-checksum-injection: ${{ inputs.kubernetes-secret-template-name-checksum-injection }}
+          kubernetes-secret-template-additional-labels: ${{ inputs.kubernetes-secret-template-additional-labels }}
+          kubernetes-secret-template-additional-annotations: ${{ inputs.kubernetes-secret-template-additional-annotations }}
 
           # Token substitution
           token-delimiter-style: ${{ inputs.token-delimiter-style }}
@@ -612,6 +617,11 @@ jobs:
           kubernetes-configmap-name-checksum-injection: ${{ inputs.kubernetes-configmap-name-checksum-injection }}
           kubernetes-configmap-additional-labels: ${{ inputs.kubernetes-configmap-additional-labels }}
           kubernetes-configmap-additional-annotations: ${{ inputs.kubernetes-configmap-additional-annotations }}
+          # Kubernetes Secret template generation
+          kubernetes-secret-template-sub-path: ${{ inputs.kubernetes-secret-template-sub-path }}
+          kubernetes-secret-template-name-checksum-injection: ${{ inputs.kubernetes-secret-template-name-checksum-injection }}
+          kubernetes-secret-template-additional-labels: ${{ inputs.kubernetes-secret-template-additional-labels }}
+          kubernetes-secret-template-additional-annotations: ${{ inputs.kubernetes-secret-template-additional-annotations }}
 
           # Token substitution
           token-delimiter-style: ${{ inputs.token-delimiter-style }}
@@ -798,6 +808,11 @@ jobs:
           kubernetes-configmap-name-checksum-injection: ${{ inputs.kubernetes-configmap-name-checksum-injection }}
           kubernetes-configmap-additional-labels: ${{ inputs.kubernetes-configmap-additional-labels }}
           kubernetes-configmap-additional-annotations: ${{ inputs.kubernetes-configmap-additional-annotations }}
+          # Kubernetes Secret template generation
+          kubernetes-secret-template-sub-path: ${{ inputs.kubernetes-secret-template-sub-path }}
+          kubernetes-secret-template-name-checksum-injection: ${{ inputs.kubernetes-secret-template-name-checksum-injection }}
+          kubernetes-secret-template-additional-labels: ${{ inputs.kubernetes-secret-template-additional-labels }}
+          kubernetes-secret-template-additional-annotations: ${{ inputs.kubernetes-secret-template-additional-annotations }}
 
           # Token substitution
           token-delimiter-style: ${{ inputs.token-delimiter-style }}
