@@ -93,7 +93,7 @@ inputs:
     default: ''
 
   # Token substitution
-  substitution-token-style:
+  token-delimiter-style:
     description: 'Token delimiter syntax (shell, mustache, helm, erb, etc.)'
     required: false
     default: 'shell'
@@ -310,7 +310,7 @@ runs:
         KUBERNETES_CONFIGMAP_ADDITIONAL_ANNOTATIONS: ${{ inputs.kubernetes-configmap-additional-annotations }}
 
         # Workflow inputs - token substitution
-        SUBSTITUTION_TOKEN_STYLE: ${{ inputs.substitution-token-style }}
+        TOKEN_DELIMITER_STYLE: ${{ inputs.token-delimiter-style }}
         TOKEN_NAME_STYLE: ${{ inputs.token-name-style }}
         TOKEN_NAME_VALIDATION: ${{ inputs.token-name-validation }}
         ALLOW_BUILTIN_TOKEN_OVERRIDE: ${{ inputs.allow-builtin-token-override }}

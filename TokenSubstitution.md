@@ -30,7 +30,7 @@ target/manifests/            # Build output
 
 | Input | Default | Description |
 |-------|---------|-------------|
-| `substitution-token-style` | `shell` | Delimiter syntax for tokens |
+| `token-delimiter-style` | `shell` | Delimiter syntax for tokens |
 | `token-name-style` | `PascalCase` | Naming convention for tokens |
 | `token-name-validation` | `MATCH` | `MATCH` = must match style, `ALL` = any valid name |
 | `allow-builtin-token-override` | `false` | Allow user tokens to override built-ins |

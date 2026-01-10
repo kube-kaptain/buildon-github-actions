@@ -9,7 +9,7 @@
     kubernetes-configmap-sub-path: ${{ inputs.kubernetes-configmap-sub-path }}
     output-sub-path: ${{ inputs.output-sub-path }}
     token-name-style: ${{ inputs.token-name-style }}
-    substitution-token-style: ${{ inputs.substitution-token-style }}
+    token-delimiter-style: ${{ inputs.token-delimiter-style }}
     kubernetes-configmap-name-checksum-injection: ${{ inputs.kubernetes-configmap-name-checksum-injection }}
     kubernetes-global-additional-labels: ${{ inputs.kubernetes-global-additional-labels }}
     kubernetes-global-additional-annotations: ${{ inputs.kubernetes-global-additional-annotations }}

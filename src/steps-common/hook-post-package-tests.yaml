@@ -39,7 +39,7 @@
     kubernetes-configmap-additional-annotations: ${{ inputs.kubernetes-configmap-additional-annotations }}
 
     # Token substitution
-    substitution-token-style: ${{ inputs.substitution-token-style }}
+    token-delimiter-style: ${{ inputs.token-delimiter-style }}
     token-name-style: ${{ inputs.token-name-style }}
     token-name-validation: ${{ inputs.token-name-validation }}
     allow-builtin-token-override: ${{ inputs.allow-builtin-token-override }}

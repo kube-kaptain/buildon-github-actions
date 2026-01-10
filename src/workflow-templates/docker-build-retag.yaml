@@ -57,7 +57,7 @@ on:
         default: ''
 
       # Token substitution
-      substitution-token-style:
+      token-delimiter-style:
         description: 'Token delimiter syntax for variables (shell, mustache, helm, erb, github-actions, blade, stringtemplate, ognl, t4, swift)'
         required: false
         type: string

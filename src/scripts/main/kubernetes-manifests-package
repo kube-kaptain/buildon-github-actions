@@ -15,7 +15,7 @@
 #   TARGET_REGISTRY - Target registry for substitution (optional)
 #   TARGET_BASE_PATH - Target base path for substitution (optional)
 #   IS_RELEASE      - Release flag for substitution (optional)
-#   SUBSTITUTION_TOKEN_STYLE - Token delimiter syntax (default: shell)
+#   TOKEN_DELIMITER_STYLE - Token delimiter syntax (default: shell)
 #   TOKEN_NAME_STYLE - Case style for token names (default: PascalCase)
 #   TOKEN_NAME_VALIDATION - How to validate user token names (default: MATCH)
 #   ALLOW_BUILTIN_TOKEN_OVERRIDE - Allow user tokens to override built-ins (default: false)
@@ -50,7 +50,7 @@ DOCKER_IMAGE_FULL_URI="${DOCKER_IMAGE_FULL_URI:-}"
 TARGET_REGISTRY="${TARGET_REGISTRY:-}"
 TARGET_BASE_PATH="${TARGET_BASE_PATH:-}"
 IS_RELEASE="${IS_RELEASE:-}"
-SUBSTITUTION_TOKEN_STYLE="${SUBSTITUTION_TOKEN_STYLE:-}"
+TOKEN_DELIMITER_STYLE="${TOKEN_DELIMITER_STYLE:-}"
 TOKEN_NAME_STYLE="${TOKEN_NAME_STYLE:-}"
 TOKEN_NAME_VALIDATION="${TOKEN_NAME_VALIDATION:-}"
 ALLOW_BUILTIN_TOKEN_OVERRIDE="${ALLOW_BUILTIN_TOKEN_OVERRIDE:-}"
@@ -165,7 +165,7 @@ main() {
   echo "Performing variable substitution..." >&2
   CONFIG_VALUE_TRAILING_NEWLINE="${CONFIG_VALUE_TRAILING_NEWLINE}" \
   "${SCRIPT_DIR}/../util/substitute-tokens-from-dir" \
-    "${SUBSTITUTION_TOKEN_STYLE}" \
+    "${TOKEN_DELIMITER_STYLE}" \
     "${MANIFESTS_CONFIG_SUB_PATH}" \
     "${MANIFESTS_SUBSTITUTED_SUB_PATH}/${PROJECT_NAME}"
 

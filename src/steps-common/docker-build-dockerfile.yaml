@@ -16,7 +16,7 @@
     output-sub-path: ${{ inputs.output-sub-path }}
     dockerfile-squash: ${{ inputs.dockerfile-squash }}
     dockerfile-no-cache: ${{ inputs.dockerfile-no-cache }}
-    substitution-token-style: ${{ inputs.substitution-token-style }}
+    token-delimiter-style: ${{ inputs.token-delimiter-style }}
     token-name-style: ${{ inputs.token-name-style }}
     token-name-validation: ${{ inputs.token-name-validation }}
     config-sub-path: ${{ inputs.config-sub-path }}

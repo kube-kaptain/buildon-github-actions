@@ -104,7 +104,7 @@ on:
         default: ''
 
       # Token substitution
-      substitution-token-style:
+      token-delimiter-style:
         description: 'Token delimiter syntax for variables (shell, mustache, helm, erb, github-actions, blade, stringtemplate, ognl, t4, swift)'
         required: false
         type: string
@@ -561,7 +561,7 @@ jobs:
           kubernetes-configmap-additional-annotations: ${{ inputs.kubernetes-configmap-additional-annotations }}
 
           # Token substitution
-          substitution-token-style: ${{ inputs.substitution-token-style }}
+          token-delimiter-style: ${{ inputs.token-delimiter-style }}
           token-name-style: ${{ inputs.token-name-style }}
           token-name-validation: ${{ inputs.token-name-validation }}
           allow-builtin-token-override: ${{ inputs.allow-builtin-token-override }}
@@ -693,7 +693,7 @@ jobs:
           kubernetes-configmap-additional-annotations: ${{ inputs.kubernetes-configmap-additional-annotations }}
 
           # Token substitution
-          substitution-token-style: ${{ inputs.substitution-token-style }}
+          token-delimiter-style: ${{ inputs.token-delimiter-style }}
           token-name-style: ${{ inputs.token-name-style }}
           token-name-validation: ${{ inputs.token-name-validation }}
           allow-builtin-token-override: ${{ inputs.allow-builtin-token-override }}
@@ -784,7 +784,7 @@ jobs:
           output-sub-path: ${{ inputs.output-sub-path }}
           dockerfile-squash: ${{ inputs.dockerfile-squash }}
           dockerfile-no-cache: ${{ inputs.dockerfile-no-cache }}
-          substitution-token-style: ${{ inputs.substitution-token-style }}
+          token-delimiter-style: ${{ inputs.token-delimiter-style }}
           token-name-style: ${{ inputs.token-name-style }}
           token-name-validation: ${{ inputs.token-name-validation }}
           config-sub-path: ${{ inputs.config-sub-path }}
@@ -879,7 +879,7 @@ jobs:
           kubernetes-configmap-additional-annotations: ${{ inputs.kubernetes-configmap-additional-annotations }}
 
           # Token substitution
-          substitution-token-style: ${{ inputs.substitution-token-style }}
+          token-delimiter-style: ${{ inputs.token-delimiter-style }}
           token-name-style: ${{ inputs.token-name-style }}
           token-name-validation: ${{ inputs.token-name-validation }}
           allow-builtin-token-override: ${{ inputs.allow-builtin-token-override }}
@@ -965,7 +965,7 @@ jobs:
           kubernetes-configmap-sub-path: ${{ inputs.kubernetes-configmap-sub-path }}
           output-sub-path: ${{ inputs.output-sub-path }}
           token-name-style: ${{ inputs.token-name-style }}
-          substitution-token-style: ${{ inputs.substitution-token-style }}
+          token-delimiter-style: ${{ inputs.token-delimiter-style }}
           kubernetes-configmap-name-checksum-injection: ${{ inputs.kubernetes-configmap-name-checksum-injection }}
           kubernetes-global-additional-labels: ${{ inputs.kubernetes-global-additional-labels }}
           kubernetes-global-additional-annotations: ${{ inputs.kubernetes-global-additional-annotations }}
@@ -1030,7 +1030,7 @@ jobs:
           kubernetes-configmap-additional-annotations: ${{ inputs.kubernetes-configmap-additional-annotations }}
 
           # Token substitution
-          substitution-token-style: ${{ inputs.substitution-token-style }}
+          token-delimiter-style: ${{ inputs.token-delimiter-style }}
           token-name-style: ${{ inputs.token-name-style }}
           token-name-validation: ${{ inputs.token-name-validation }}
           allow-builtin-token-override: ${{ inputs.allow-builtin-token-override }}
@@ -1122,7 +1122,7 @@ jobs:
           docker-target-registry: ${{ steps.docker-build.outputs.docker-target-registry }}
           docker-target-base-path: ${{ steps.docker-build.outputs.docker-target-base-path }}
           is-release: ${{ steps.versions.outputs.is-release }}
-          substitution-token-style: ${{ inputs.substitution-token-style }}
+          token-delimiter-style: ${{ inputs.token-delimiter-style }}
           token-name-style: ${{ inputs.token-name-style }}
           token-name-validation: ${{ inputs.token-name-validation }}
           allow-builtin-token-override: ${{ inputs.allow-builtin-token-override }}
@@ -1252,7 +1252,7 @@ jobs:
           kubernetes-configmap-additional-annotations: ${{ inputs.kubernetes-configmap-additional-annotations }}
 
           # Token substitution
-          substitution-token-style: ${{ inputs.substitution-token-style }}
+          token-delimiter-style: ${{ inputs.token-delimiter-style }}
           token-name-style: ${{ inputs.token-name-style }}
           token-name-validation: ${{ inputs.token-name-validation }}
           allow-builtin-token-override: ${{ inputs.allow-builtin-token-override }}
@@ -1359,7 +1359,7 @@ jobs:
           docker-image-name: ${{ steps.versions.outputs.docker-image-name }}
           is-release: ${{ steps.versions.outputs.is-release }}
           github-release-add-version-to-filenames: ${{ inputs.github-release-add-version-to-filenames }}
-          substitution-token-style: ${{ inputs.substitution-token-style }}
+          token-delimiter-style: ${{ inputs.token-delimiter-style }}
           token-name-style: ${{ inputs.token-name-style }}
           token-name-validation: ${{ inputs.token-name-validation }}
           config-sub-path: ${{ inputs.config-sub-path }}

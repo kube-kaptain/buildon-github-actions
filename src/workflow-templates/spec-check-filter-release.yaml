@@ -71,7 +71,7 @@ on:
         default: 'scratch'
 
       # Token substitution
-      substitution-token-style:
+      token-delimiter-style:
         description: 'Token delimiter syntax for variables (shell, mustache, helm, erb, github-actions, blade, stringtemplate, ognl, t4, swift)'
         required: false
         type: string
@@ -355,7 +355,7 @@ jobs:
           dockerfile-squash: ${{ inputs.dockerfile-squash }}
           dockerfile-no-cache: ${{ inputs.dockerfile-no-cache }}
           output-sub-path: ${{ inputs.output-sub-path }}
-          substitution-token-style: ${{ inputs.substitution-token-style }}
+          token-delimiter-style: ${{ inputs.token-delimiter-style }}
           token-name-style: ${{ inputs.token-name-style }}
           token-name-validation: ${{ inputs.token-name-validation }}
           config-sub-path: ${{ inputs.config-sub-path }}

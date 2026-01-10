@@ -11,7 +11,7 @@ setup() {
   export OUTPUT_SUB_PATH=$(mktemp -d)
   export PROJECT_NAME="my-project"
   export TOKEN_NAME_STYLE="PascalCase"
-  export SUBSTITUTION_TOKEN_STYLE="shell"
+  export TOKEN_DELIMITER_STYLE="shell"
   export KUBERNETES_CONFIGMAP_NAME_CHECKSUM_INJECTION="true"
 }
 
@@ -164,7 +164,7 @@ read_manifest() {
 
 @test "respects mustache substitution style" {
   create_config_file "app.properties" "key=value"
-  export SUBSTITUTION_TOKEN_STYLE="mustache"
+  export TOKEN_DELIMITER_STYLE="mustache"
 
   run "$SCRIPTS_DIR/generate-kubernetes-configmap"
   [ "$status" -eq 0 ]
@@ -176,7 +176,7 @@ read_manifest() {
 
 @test "respects helm substitution style" {
   create_config_file "app.properties" "key=value"
-  export SUBSTITUTION_TOKEN_STYLE="helm"
+  export TOKEN_DELIMITER_STYLE="helm"
 
   run "$SCRIPTS_DIR/generate-kubernetes-configmap"
   [ "$status" -eq 0 ]
@@ -264,7 +264,7 @@ line3=value3"
 
 @test "fails with unknown substitution token style" {
   create_config_file "app.properties" "key=value"
-  export SUBSTITUTION_TOKEN_STYLE="unknown"
+  export TOKEN_DELIMITER_STYLE="unknown"
 
   run "$SCRIPTS_DIR/generate-kubernetes-configmap"
   [ "$status" -eq 3 ]

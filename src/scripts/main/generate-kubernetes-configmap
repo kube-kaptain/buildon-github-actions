@@ -16,7 +16,7 @@
 #   OUTPUT_SUB_PATH            - Build output directory (default: target)
 #   PROJECT_NAME               - Used in metadata.name (required)
 #   TOKEN_NAME_STYLE           - Style for token references (default: PascalCase)
-#   SUBSTITUTION_TOKEN_STYLE   - Delimiter style for tokens (default: shell)
+#   TOKEN_DELIMITER_STYLE   - Delimiter style for tokens (default: shell)
 #   KUBERNETES_CONFIGMAP_NAME_CHECKSUM_INJECTION - Enable checksum injection suffix in name (default: true)
 #   KUBERNETES_GLOBAL_ADDITIONAL_LABELS      - Extra labels for all manifests (comma-separated key=value)
 #   KUBERNETES_GLOBAL_ADDITIONAL_ANNOTATIONS - Extra annotations for all manifests
@@ -52,7 +52,7 @@ default_configmap_sub_path="src/configmap${KUBERNETES_CONFIGMAP_NAME_SUFFIX:+-${
 KUBERNETES_CONFIGMAP_SUB_PATH="${KUBERNETES_CONFIGMAP_SUB_PATH:-${default_configmap_sub_path}}"
 OUTPUT_SUB_PATH="${OUTPUT_SUB_PATH:-target}"
 TOKEN_NAME_STYLE="${TOKEN_NAME_STYLE:-PascalCase}"
-SUBSTITUTION_TOKEN_STYLE="${SUBSTITUTION_TOKEN_STYLE:-shell}"
+TOKEN_DELIMITER_STYLE="${TOKEN_DELIMITER_STYLE:-shell}"
 KUBERNETES_CONFIGMAP_NAME_CHECKSUM_INJECTION="${KUBERNETES_CONFIGMAP_NAME_CHECKSUM_INJECTION:-true}"
 
 # Validate styles upfront
@@ -61,8 +61,8 @@ if ! is_valid_token_name_style "${TOKEN_NAME_STYLE}"; then
   exit 2
 fi
 
-if ! is_valid_substitution_token_style "${SUBSTITUTION_TOKEN_STYLE}"; then
-  echo "${LOG_ERROR_PREFIX}Unknown substitution token style: ${SUBSTITUTION_TOKEN_STYLE}${LOG_ERROR_SUFFIX}" >&2
+if ! is_valid_substitution_token_style "${TOKEN_DELIMITER_STYLE}"; then
+  echo "${LOG_ERROR_PREFIX}Unknown substitution token style: ${TOKEN_DELIMITER_STYLE}${LOG_ERROR_SUFFIX}" >&2
   exit 3
 fi
 
@@ -97,9 +97,9 @@ if [[ "${file_count}" -eq 0 ]]; then
 fi
 
 # Generate token references
-project_name_token=$(format_canonical_token "${SUBSTITUTION_TOKEN_STYLE}" "${TOKEN_NAME_STYLE}" "PROJECT_NAME")
-environment_token=$(format_canonical_token "${SUBSTITUTION_TOKEN_STYLE}" "${TOKEN_NAME_STYLE}" "ENVIRONMENT")
-version_token=$(format_canonical_token "${SUBSTITUTION_TOKEN_STYLE}" "${TOKEN_NAME_STYLE}" "VERSION")
+project_name_token=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "PROJECT_NAME")
+environment_token=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "ENVIRONMENT")
+version_token=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "VERSION")
 
 # Build metadata.name: ${ProjectName}[-${combined}][-${suffix}][-configmap-checksum]
 # For nested paths like omg/wtf, replace / with - to get omg-wtf

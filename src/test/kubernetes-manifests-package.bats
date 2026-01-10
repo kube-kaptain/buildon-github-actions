@@ -306,7 +306,7 @@ set_required_env() {
 
 @test "uses mustache token style" {
   set_required_env
-  export SUBSTITUTION_TOKEN_STYLE="mustache"
+  export TOKEN_DELIMITER_STYLE="mustache"
   create_manifest "deployment.yaml" 'name: {{ ProjectName }}'
 
   run "$SCRIPTS_DIR/kubernetes-manifests-package"
@@ -317,7 +317,7 @@ set_required_env() {
 
 @test "fails with unknown substitution token style" {
   set_required_env
-  export SUBSTITUTION_TOKEN_STYLE="unknown"
+  export TOKEN_DELIMITER_STYLE="unknown"
   create_manifest "deployment.yaml" 'name: {{ProjectName}}'
 
   run "$SCRIPTS_DIR/kubernetes-manifests-package"

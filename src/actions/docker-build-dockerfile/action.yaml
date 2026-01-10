@@ -45,7 +45,7 @@ inputs:
     required: false
     default: 'true'
   # Token substitution configuration
-  substitution-token-style:
+  token-delimiter-style:
     description: 'Token delimiter syntax (shell, mustache, helm, erb, github-actions, blade, stringtemplate, ognl, t4, swift)'
     required: false
   token-name-style:
@@ -105,7 +105,7 @@ runs:
         OUTPUT_SUB_PATH: ${{ inputs.output-sub-path }}
         DOCKERFILE_SQUASH: ${{ inputs.dockerfile-squash }}
         DOCKERFILE_NO_CACHE: ${{ inputs.dockerfile-no-cache }}
-        SUBSTITUTION_TOKEN_STYLE: ${{ inputs.substitution-token-style }}
+        TOKEN_DELIMITER_STYLE: ${{ inputs.token-delimiter-style }}
         TOKEN_NAME_STYLE: ${{ inputs.token-name-style }}
         TOKEN_NAME_VALIDATION: ${{ inputs.token-name-validation }}
         CONFIG_SUB_PATH: ${{ inputs.config-sub-path }}
