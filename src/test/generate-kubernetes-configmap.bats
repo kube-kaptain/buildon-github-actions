@@ -28,6 +28,16 @@ create_config_file() {
   printf '%s' "$content" > "$KUBERNETES_CONFIGMAP_SUB_PATH/$filename"
 }
 
+# Helper to create a config file in a suffixed directory
+create_config_file_with_suffix() {
+  local suffix="$1"
+  local filename="$2"
+  local content="$3"
+  local suffixed_path="${KUBERNETES_CONFIGMAP_SUB_PATH}-${suffix}"
+  mkdir -p "$(dirname "$suffixed_path/$filename")"
+  printf '%s' "$content" > "$suffixed_path/$filename"
+}
+
 # Helper to read generated manifest
 read_manifest() {
   cat "$OUTPUT_SUB_PATH/manifests/combined/configmap.yaml"
@@ -425,7 +435,7 @@ line3=value3"
 }
 
 @test "suffix affects metadata.name with checksum" {
-  create_config_file "app.properties" "key=value"
+  create_config_file_with_suffix "nginx" "app.properties" "key=value"
   export KUBERNETES_CONFIGMAP_NAME_SUFFIX="nginx"
 
   run "$SCRIPTS_DIR/generate-kubernetes-configmap"
@@ -436,7 +446,7 @@ line3=value3"
 }
 
 @test "suffix affects metadata.name without checksum" {
-  create_config_file "app.properties" "key=value"
+  create_config_file_with_suffix "nginx" "app.properties" "key=value"
   export KUBERNETES_CONFIGMAP_NAME_SUFFIX="nginx"
   export KUBERNETES_CONFIGMAP_NAME_CHECKSUM_INJECTION="false"
 
@@ -449,7 +459,7 @@ line3=value3"
 }
 
 @test "suffix affects output filename" {
-  create_config_file "app.properties" "key=value"
+  create_config_file_with_suffix "nginx" "app.properties" "key=value"
   export KUBERNETES_CONFIGMAP_NAME_SUFFIX="nginx"
 
   run "$SCRIPTS_DIR/generate-kubernetes-configmap"
@@ -469,8 +479,8 @@ line3=value3"
 }
 
 @test "suffix with custom sub-path still affects name and filename" {
-  # User overrides sub-path but provides suffix
-  create_config_file "app.properties" "key=value"
+  # User overrides sub-path but provides suffix - suffix appends to path
+  create_config_file_with_suffix "custom" "app.properties" "key=value"
   export KUBERNETES_CONFIGMAP_NAME_SUFFIX="custom"
 
   run "$SCRIPTS_DIR/generate-kubernetes-configmap"
@@ -482,6 +492,46 @@ line3=value3"
   # Name should include suffix
   manifest=$(cat "$OUTPUT_SUB_PATH/manifests/combined/configmap-custom.yaml")
   [[ "$manifest" == *'name: ${ProjectName}-custom-configmap-checksum'* ]]
+}
+
+@test "suffix appends to custom sub-path for source directory" {
+  # Create a custom base path and the suffixed version
+  local custom_base=$(mktemp -d)
+  local custom_suffixed="${custom_base}-nginx"
+  mkdir -p "$custom_suffixed"
+  printf 'nginx=config' > "$custom_suffixed/nginx.conf"
+
+  # Set custom base path and suffix - should look in custom_base-nginx
+  export KUBERNETES_CONFIGMAP_SUB_PATH="$custom_base"
+  export KUBERNETES_CONFIGMAP_NAME_SUFFIX="nginx"
+
+  run "$SCRIPTS_DIR/generate-kubernetes-configmap"
+  [ "$status" -eq 0 ]
+
+  # Should have read from the suffixed directory
+  manifest=$(cat "$OUTPUT_SUB_PATH/manifests/combined/configmap-nginx.yaml")
+  [[ "$manifest" == *"nginx.conf:"* ]]
+  [[ "$manifest" == *"nginx=config"* ]]
+
+  rm -rf "$custom_base" "$custom_suffixed"
+}
+
+@test "custom sub-path without suffix uses path as-is" {
+  # Create a custom path
+  local custom_path=$(mktemp -d)
+  printf 'custom=value' > "$custom_path/custom.properties"
+
+  # Set custom path, no suffix
+  export KUBERNETES_CONFIGMAP_SUB_PATH="$custom_path"
+
+  run "$SCRIPTS_DIR/generate-kubernetes-configmap"
+  [ "$status" -eq 0 ]
+
+  manifest=$(cat "$OUTPUT_SUB_PATH/manifests/combined/configmap.yaml")
+  [[ "$manifest" == *"custom.properties:"* ]]
+  [[ "$manifest" == *"custom=value"* ]]
+
+  rm -rf "$custom_path"
 }
 
 # =============================================================================
@@ -524,7 +574,7 @@ line3=value3"
 }
 
 @test "combined sub-path with suffix: name is ProjectName-combined-suffix-checksum" {
-  create_config_file "app.properties" "key=value"
+  create_config_file_with_suffix "wtf" "app.properties" "key=value"
   export KUBERNETES_CONFIGMAP_COMBINED_SUB_PATH="omg"
   export KUBERNETES_CONFIGMAP_NAME_SUFFIX="wtf"
 
@@ -540,7 +590,7 @@ line3=value3"
 }
 
 @test "combined sub-path with suffix, no checksum: name is ProjectName-combined-suffix" {
-  create_config_file "app.properties" "key=value"
+  create_config_file_with_suffix "wtf" "app.properties" "key=value"
   export KUBERNETES_CONFIGMAP_COMBINED_SUB_PATH="omg"
   export KUBERNETES_CONFIGMAP_NAME_SUFFIX="wtf"
   export KUBERNETES_CONFIGMAP_NAME_CHECKSUM_INJECTION="false"
@@ -584,7 +634,7 @@ line3=value3"
 }
 
 @test "nested combined sub-path with suffix: name is ProjectName-omg-wtf-suffix-checksum" {
-  create_config_file "app.properties" "key=value"
+  create_config_file_with_suffix "lol" "app.properties" "key=value"
   export KUBERNETES_CONFIGMAP_COMBINED_SUB_PATH="omg/wtf"
   export KUBERNETES_CONFIGMAP_NAME_SUFFIX="lol"
 

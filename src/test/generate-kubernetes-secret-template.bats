@@ -17,15 +17,29 @@ setup() {
 
 teardown() {
   rm -rf "$KUBERNETES_SECRET_TEMPLATE_SUB_PATH"
+  rm -rf "${KUBERNETES_SECRET_TEMPLATE_SUB_PATH}.template"
   rm -rf "$OUTPUT_SUB_PATH"
 }
 
 # Helper to create a secret template file
+# Note: .template is always appended as static suffix to the base path
 create_secret_file() {
   local filename="$1"
   local content="$2"
-  mkdir -p "$(dirname "$KUBERNETES_SECRET_TEMPLATE_SUB_PATH/$filename")"
-  printf '%s' "$content" > "$KUBERNETES_SECRET_TEMPLATE_SUB_PATH/$filename"
+  local template_path="${KUBERNETES_SECRET_TEMPLATE_SUB_PATH}.template"
+  mkdir -p "$(dirname "$template_path/$filename")"
+  printf '%s' "$content" > "$template_path/$filename"
+}
+
+# Helper to create a secret template file in a suffixed directory
+# Note: .template is always appended as static suffix
+create_secret_file_with_suffix() {
+  local suffix="$1"
+  local filename="$2"
+  local content="$3"
+  local suffixed_path="${KUBERNETES_SECRET_TEMPLATE_SUB_PATH}-${suffix}.template"
+  mkdir -p "$(dirname "$suffixed_path/$filename")"
+  printf '%s' "$content" > "$suffixed_path/$filename"
 }
 
 # Helper to read generated manifest
@@ -206,7 +220,10 @@ read_manifest() {
 
 @test "fails when secret template directory has only dotfiles" {
   # Directory exists but has only dotfiles (like .gitkeep)
-  touch "$KUBERNETES_SECRET_TEMPLATE_SUB_PATH/.gitkeep"
+  # Note: .template is always appended to the base path
+  local template_path="${KUBERNETES_SECRET_TEMPLATE_SUB_PATH}.template"
+  mkdir -p "$template_path"
+  touch "$template_path/.gitkeep"
 
   run "$SCRIPTS_DIR/generate-kubernetes-secret-template"
   [ "$status" -eq 7 ]
@@ -359,7 +376,7 @@ line3=${Value3}'
 }
 
 @test "suffix affects metadata.name with checksum" {
-  create_secret_file "password" '${Password}'
+  create_secret_file_with_suffix "db" "password" '${Password}'
   export KUBERNETES_SECRET_TEMPLATE_NAME_SUFFIX="db"
 
   run "$SCRIPTS_DIR/generate-kubernetes-secret-template"
@@ -370,7 +387,7 @@ line3=${Value3}'
 }
 
 @test "suffix affects metadata.name without checksum" {
-  create_secret_file "password" '${Password}'
+  create_secret_file_with_suffix "db" "password" '${Password}'
   export KUBERNETES_SECRET_TEMPLATE_NAME_SUFFIX="db"
   export KUBERNETES_SECRET_TEMPLATE_NAME_CHECKSUM_INJECTION="false"
 
@@ -383,7 +400,7 @@ line3=${Value3}'
 }
 
 @test "suffix affects output filename" {
-  create_secret_file "password" '${Password}'
+  create_secret_file_with_suffix "db" "password" '${Password}'
   export KUBERNETES_SECRET_TEMPLATE_NAME_SUFFIX="db"
 
   run "$SCRIPTS_DIR/generate-kubernetes-secret-template"
@@ -400,6 +417,71 @@ line3=${Value3}'
   [ "$status" -eq 0 ]
 
   [ -f "$OUTPUT_SUB_PATH/manifests/combined/secret.template.yaml" ]
+}
+
+@test "suffix appends to custom sub-path for source directory" {
+  # Create a custom base path and the suffixed version with .template
+  local custom_base=$(mktemp -d)
+  local custom_suffixed="${custom_base}-db.template"
+  mkdir -p "$custom_suffixed"
+  printf '${DbPassword}' > "$custom_suffixed/password"
+
+  # Set custom base path and suffix - should look in custom_base-db.template
+  export KUBERNETES_SECRET_TEMPLATE_SUB_PATH="$custom_base"
+  export KUBERNETES_SECRET_TEMPLATE_NAME_SUFFIX="db"
+
+  run "$SCRIPTS_DIR/generate-kubernetes-secret-template"
+  [ "$status" -eq 0 ]
+
+  # Should have read from the suffixed directory
+  manifest=$(cat "$OUTPUT_SUB_PATH/manifests/combined/secret-db.template.yaml")
+  [[ "$manifest" == *"password:"* ]]
+  [[ "$manifest" == *'${DbPassword}'* ]]
+
+  rm -rf "$custom_base" "$custom_suffixed"
+}
+
+@test "custom sub-path without suffix uses path with static suffix" {
+  # Create a custom path with .template suffix
+  local custom_path=$(mktemp -d)
+  local custom_path_template="${custom_path}.template"
+  mkdir -p "$custom_path_template"
+  printf '${CustomSecret}' > "$custom_path_template/secret-key"
+
+  # Set custom path, no suffix - .template is still added
+  export KUBERNETES_SECRET_TEMPLATE_SUB_PATH="$custom_path"
+
+  run "$SCRIPTS_DIR/generate-kubernetes-secret-template"
+  [ "$status" -eq 0 ]
+
+  manifest=$(cat "$OUTPUT_SUB_PATH/manifests/combined/secret.template.yaml")
+  [[ "$manifest" == *"secret-key:"* ]]
+  [[ "$manifest" == *'${CustomSecret}'* ]]
+
+  rm -rf "$custom_path" "$custom_path_template"
+}
+
+@test "suffix with custom sub-path affects name and filename" {
+  # Create the expected suffixed path with .template
+  local custom_base=$(mktemp -d)
+  local custom_suffixed="${custom_base}-api.template"
+  mkdir -p "$custom_suffixed"
+  printf '${ApiKey}' > "$custom_suffixed/api-key"
+
+  export KUBERNETES_SECRET_TEMPLATE_SUB_PATH="$custom_base"
+  export KUBERNETES_SECRET_TEMPLATE_NAME_SUFFIX="api"
+
+  run "$SCRIPTS_DIR/generate-kubernetes-secret-template"
+  [ "$status" -eq 0 ]
+
+  # Filename should include suffix
+  [ -f "$OUTPUT_SUB_PATH/manifests/combined/secret-api.template.yaml" ]
+
+  # Name should include suffix
+  manifest=$(cat "$OUTPUT_SUB_PATH/manifests/combined/secret-api.template.yaml")
+  [[ "$manifest" == *'name: ${ProjectName}-api-secret-checksum'* ]]
+
+  rm -rf "$custom_base" "$custom_suffixed"
 }
 
 # =============================================================================
@@ -429,7 +511,7 @@ line3=${Value3}'
 }
 
 @test "combined sub-path with suffix: name is ProjectName-combined-suffix-checksum" {
-  create_secret_file "password" '${Password}'
+  create_secret_file_with_suffix "wtf" "password" '${Password}'
   export KUBERNETES_SECRET_TEMPLATE_COMBINED_SUB_PATH="omg"
   export KUBERNETES_SECRET_TEMPLATE_NAME_SUFFIX="wtf"
 

@@ -40,8 +40,8 @@ LIB_DIR="${SCRIPT_DIR}/../lib"
 source "${LIB_DIR}/token-format.bash"
 # shellcheck source=src/scripts/lib/kubernetes-metadata.bash
 source "${LIB_DIR}/kubernetes-metadata.bash"
-# shellcheck source=src/scripts/lib/kubernetes-configuration-entries.bash
-source "${LIB_DIR}/kubernetes-configuration-entries.bash"
+# shellcheck source=src/scripts/lib/kubernetes-configuration.bash
+source "${LIB_DIR}/kubernetes-configuration.bash"
 
 # Logging configuration (CI-agnostic)
 LOG_ERROR_PREFIX="${LOG_ERROR_PREFIX:-}"
@@ -50,8 +50,8 @@ LOG_ERROR_SUFFIX="${LOG_ERROR_SUFFIX:-}"
 # Inputs with defaults
 KUBERNETES_CONFIGMAP_NAME_SUFFIX="${KUBERNETES_CONFIGMAP_NAME_SUFFIX:-}"
 KUBERNETES_CONFIGMAP_COMBINED_SUB_PATH="${KUBERNETES_CONFIGMAP_COMBINED_SUB_PATH:-}"
-default_configmap_sub_path="src/configmap${KUBERNETES_CONFIGMAP_NAME_SUFFIX:+-${KUBERNETES_CONFIGMAP_NAME_SUFFIX}}"
-KUBERNETES_CONFIGMAP_SUB_PATH="${KUBERNETES_CONFIGMAP_SUB_PATH:-${default_configmap_sub_path}}"
+KUBERNETES_CONFIGMAP_BASE_PATH="${KUBERNETES_CONFIGMAP_SUB_PATH:-src/configmap}"
+KUBERNETES_CONFIGMAP_SUB_PATH=$(build_configuration_source_path "${KUBERNETES_CONFIGMAP_BASE_PATH}" "${KUBERNETES_CONFIGMAP_NAME_SUFFIX}" "")
 OUTPUT_SUB_PATH="${OUTPUT_SUB_PATH:-target}"
 TOKEN_NAME_STYLE="${TOKEN_NAME_STYLE:-PascalCase}"
 TOKEN_DELIMITER_STYLE="${TOKEN_DELIMITER_STYLE:-shell}"

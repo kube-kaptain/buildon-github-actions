@@ -2,14 +2,57 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
 #
-# Kubernetes configuration entries library
+# Kubernetes configuration library
 #
-# Functions for validating and working with configuration entry directories
-# (files that become data/stringData entries in ConfigMap/Secret resources)
+# Functions for building source paths, validating directories, and generating
+# configuration entries for ConfigMap/Secret/deployment-env resources.
 #
 # Functions:
+#   build_configuration_source_path      - Build source path with suffix support
 #   validate_configuration_entries_directory - Check directory exists and has files
-#   generate_configuration_entries           - Output YAML data entries from files
+#   generate_configuration_entries       - Output YAML data entries from files
+
+# Build a configuration source path with consistent suffix handling
+# Usage: build_configuration_source_path <base_path> <suffix> <static_suffix>
+#
+# If base_path already ends with static_suffix, strips it first, inserts name suffix,
+# then re-adds static_suffix. If not, appends name suffix then static_suffix.
+# This ensures consistent behavior whether the base path is default or overridden.
+#
+# Arguments:
+#   base_path     - Base directory path (e.g., "src/secret.template", "custom/path")
+#   suffix        - Optional name suffix (e.g., "nginx", "db")
+#   static_suffix - Static suffix always at the end (e.g., "", ".template", "-env")
+#
+# Examples:
+#   build_configuration_source_path "src/configmap" "" ""                    → src/configmap
+#   build_configuration_source_path "src/configmap" "nginx" ""               → src/configmap-nginx
+#   build_configuration_source_path "src/secret.template" "" ".template"     → src/secret.template
+#   build_configuration_source_path "src/secret.template" "db" ".template"   → src/secret-db.template
+#   build_configuration_source_path "custom/path" "db" ".template"           → custom/path-db.template
+#   build_configuration_source_path "custom/path.template" "db" ".template"  → custom/path-db.template
+#   build_configuration_source_path "src/deployment-env" "worker" "-env"     → src/deployment-worker-env
+#   build_configuration_source_path "custom/path" "worker" "-env"            → custom/path-worker-env
+#
+build_configuration_source_path() {
+  local base_path="$1"
+  local suffix="$2"
+  local static_suffix="$3"
+
+  local core_path="$base_path"
+
+  # If static_suffix is non-empty and base_path ends with it, strip it
+  if [[ -n "${static_suffix}" && "${base_path}" == *"${static_suffix}" ]]; then
+    core_path="${base_path%"${static_suffix}"}"
+  fi
+
+  # Build the result: core + optional name suffix + static suffix
+  if [[ -n "${suffix}" ]]; then
+    echo "${core_path}-${suffix}${static_suffix}"
+  else
+    echo "${core_path}${static_suffix}"
+  fi
+}
 
 # Validate a configuration entries directory
 # Usage: validate_configuration_entries_directory <directory> <resource_type_label>
