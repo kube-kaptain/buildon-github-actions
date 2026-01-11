@@ -12,6 +12,15 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 TEST_DIR="$PROJECT_ROOT/src/test"
 
+# Sanitize environment to prevent CI workflow inputs from bleeding into tests
+# Keep only essential system variables, unset everything else
+while IFS='=' read -r name _; do
+  case "$name" in
+    PATH|HOME|TMPDIR|TERM|USER|LANG|LC_*|SHELL) ;;
+    *) unset "$name" ;;
+  esac
+done < <(env)
+
 # Colors for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
