@@ -36,7 +36,7 @@ has_docker() {
 run_local() {
   log_info "Running tests with local BATS"
   cd "$TEST_DIR"
-  bats --tap *.bats
+  bats *.bats
 }
 
 # Run tests with Docker
