@@ -67,8 +67,8 @@ else
 fi
 
 # === Shared target validation, URI assembly, and utilities ===
-# shellcheck source=src/scripts/main/docker-build-shared
-source "${SCRIPT_DIR}/docker-build-shared"
+# shellcheck source=src/scripts/lib/docker-build-shared.bash
+source "${SCRIPT_DIR}/../lib/docker-build-shared.bash"
 
 main() {
   echo "=== Docker Retag ===" >&2

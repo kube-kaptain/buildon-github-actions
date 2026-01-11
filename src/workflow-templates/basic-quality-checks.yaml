@@ -2,9 +2,12 @@
 # Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
 
 name: Basic Quality Checks
+kaptain-order: 10
+kaptain-description: Enforces basic quality - blocks bad branch names, bad commit messages, and bad branch structure
 on:
   workflow_call:
     inputs:
+      # Quality check options
       release-branch:
         description: 'The release branch name'
         required: false
@@ -20,31 +23,32 @@ on:
         required: false
         type: boolean
         default: false
-      block-slash-containing-branches:
+      qc-block-slash-containing-branches:
         description: 'Block branch names containing slashes'
         required: false
         type: boolean
         default: false
-      block-double-hyphen-containing-branches:
+      qc-block-double-hyphen-containing-branches:
         description: 'Block branch names containing double hyphens (typo detection)'
         required: false
         type: boolean
         default: true
-      require-conventional-branches:
+      qc-require-conventional-branches:
         description: 'Require branch names start with feature/, fix/, etc.'
         required: false
         type: boolean
         default: false
-      require-conventional-commits:
+      qc-require-conventional-commits:
         description: 'Require commits use conventional commit format (feat:, fix:, etc.)'
         required: false
         type: boolean
         default: false
-      block-conventional-commits:
+      qc-block-conventional-commits:
         description: 'Block commits that use conventional commit format'
         required: false
         type: boolean
         default: false
+
 jobs:
   basic-quality-checks:
     name: Basic Quality Checks

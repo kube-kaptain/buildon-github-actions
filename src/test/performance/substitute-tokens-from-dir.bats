@@ -50,7 +50,7 @@ data:"
   local start_time end_time elapsed
   start_time=$(date +%s.%N)
 
-  run "$SCRIPTS_DIR/substitute-tokens-from-dir" shell "$TOKENS_DIR" "$TARGET_DIR"
+  run "$UTIL_DIR/substitute-tokens-from-dir" shell "$TOKENS_DIR" "$TARGET_DIR"
 
   end_time=$(date +%s.%N)
   elapsed=$(echo "$end_time - $start_time" | bc)
@@ -82,7 +82,7 @@ data:"
   local start_time end_time elapsed
   start_time=$(date +%s.%N)
 
-  run "$SCRIPTS_DIR/substitute-tokens-from-dir" shell "$TOKENS_DIR" "$TARGET_DIR"
+  run "$UTIL_DIR/substitute-tokens-from-dir" shell "$TOKENS_DIR" "$TARGET_DIR"
 
   end_time=$(date +%s.%N)
   elapsed=$(echo "$end_time - $start_time" | bc)

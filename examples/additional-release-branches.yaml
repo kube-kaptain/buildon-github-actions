@@ -59,11 +59,11 @@ jobs:
 # │ Quality Checks                                                          │
 # └─────────────────────────────────────────────────────────────────────────┘
 #     with:
-#       block-slash-containing-branches: true           # Default is false
-#       block-double-hyphen-containing-branches: false  # Default is true
-#       require-conventional-branches: true             # Default is false
-#       require-conventional-commits: true              # Default is false
-#       block-conventional-commits: true                # Default is false
+#       qc-block-slash-containing-branches: true           # Default is false
+#       qc-block-double-hyphen-containing-branches: false  # Default is true
+#       qc-require-conventional-branches: true             # Default is false
+#       qc-require-conventional-commits: true              # Default is false
+#       qc-block-conventional-commits: true                # Default is false
 
 # ┌─────────────────────────────────────────────────────────────────────────┐
 # │ Version Configuration                                                   │
@@ -86,7 +86,7 @@ jobs:
 # │ Test Injection                                                          │
 # └─────────────────────────────────────────────────────────────────────────┘
 #     with:
-#       pre-tagging-tests-script-sub-path: 'bin/run-tests.bash'
+#       hook-pre-tagging-tests-script-sub-path: 'bin/run-tests.bash'
 
 # ┌─────────────────────────────────────────────────────────────────────────┐
 # │ Token Substitution                                                      │
@@ -95,7 +95,7 @@ jobs:
 # Add custom tokens by creating files in src/config/ (e.g., src/config/MyToken)
 #
 #     with:
-#       substitution-token-style: 'mustache'  # Default is 'shell' (${Token})
+#       token-delimiter-style: 'mustache'  # Default is 'shell' (${Token})
 #       token-name-style: 'UPPER_SNAKE'       # Default is 'PascalCase'
 #       token-name-validation: 'ALL'          # Default is 'MATCH' (must match style)
 #       config-sub-path: 'config'             # Default is 'src/config'

@@ -11,7 +11,7 @@
 #   4. Increment the last component
 #
 # Inputs (environment variables):
-#   MAX_VERSION_PARTS - Fail if version exceeds this depth (required)
+#   TAG_VERSION_MAX_PARTS - Fail if version exceeds this depth (required)
 #
 # Outputs (stdout):
 #   VERSION=x.y.z
@@ -25,8 +25,8 @@ LOG_ERROR_PREFIX="${LOG_ERROR_PREFIX:-}"
 LOG_ERROR_SUFFIX="${LOG_ERROR_SUFFIX:-}"
 
 # Required inputs
-if [[ -z "${MAX_VERSION_PARTS:-}" ]]; then
-  echo "${LOG_ERROR_PREFIX}MAX_VERSION_PARTS is required${LOG_ERROR_SUFFIX}" >&2
+if [[ -z "${TAG_VERSION_MAX_PARTS:-}" ]]; then
+  echo "${LOG_ERROR_PREFIX}TAG_VERSION_MAX_PARTS is required${LOG_ERROR_SUFFIX}" >&2
   exit 1
 fi
 
@@ -118,7 +118,7 @@ find_highest_in_series() {
     if [[ "${tag}" =~ ^${prefix}\.[0-9]+$ ]] && is_numeric_version "${tag}"; then
       echo "${tag}"
     fi
-  done | "${SCRIPT_DIR}/../../main/version-sort" | tail -n1)
+  done | "${SCRIPT_DIR}/../../util/version-sort" | tail -n1)
 
   if [[ -z "${highest}" ]]; then
     # No matching tags found, use the recent tag
@@ -167,11 +167,11 @@ main() {
   local version
   version=$(increment_version "${highest_tag}")
 
-  # Step 4: Validate against MAX_VERSION_PARTS
+  # Step 4: Validate against TAG_VERSION_MAX_PARTS
   local part_count
   part_count=$(count_version_parts "${version}")
-  if [[ ${part_count} -gt ${MAX_VERSION_PARTS} ]]; then
-    echo "${LOG_ERROR_PREFIX}Version '${version}' has ${part_count} parts, exceeds MAX_VERSION_PARTS=${MAX_VERSION_PARTS}${LOG_ERROR_SUFFIX}" >&2
+  if [[ ${part_count} -gt ${TAG_VERSION_MAX_PARTS} ]]; then
+    echo "${LOG_ERROR_PREFIX}Version '${version}' has ${part_count} parts, exceeds TAG_VERSION_MAX_PARTS=${TAG_VERSION_MAX_PARTS}${LOG_ERROR_SUFFIX}" >&2
     exit 1
   fi
 

@@ -63,15 +63,15 @@ See [`examples/`](examples/) for more usage patterns.
 <!-- WORKFLOWS-START -->
 | Workflow | Description |
 |----------|-------------|
-| `basic-quality-and-versioning.yaml` | Basic Quality and Versioning |
-| `basic-quality-checks.yaml` | Basic Quality Checks |
-| `docker-build-dockerfile.yaml` | Docker Build Dockerfile |
-| `docker-build-retag.yaml` | Docker Build Retag |
-| `kubernetes-app-docker-dockerfile.yaml` | Kubernetes App - Docker Dockerfile |
-| `kubernetes-app-docker-retag.yaml` | Kubernetes App - Docker Retag |
-| `kubernetes-app-manifests-only.yaml` | Kubernetes App - Manifests Only |
-| `spec-check-filter-release.yaml` | Spec Check Filter Release |
-| `versions-and-naming.yaml` | Versions & Naming |
+| `basic-quality-checks.yaml` | Enforces basic quality - blocks bad branch names, bad commit messages, and bad branch structure |
+| `versions-and-naming.yaml` | Calculates and sets all critical artifact naming and version/tag information, and performs a GitHub release |
+| `basic-quality-and-versioning.yaml` | Quality checks and naming/versioning combined - the standard foundation for most projects |
+| `docker-build-dockerfile.yaml` | Everything from quality and versions above, but also builds a docker image from a Dockerfile |
+| `docker-build-retag.yaml` | Everything from quality and version above, but also pulls, retags, and republishes a docker image |
+| `kubernetes-app-manifests-only.yaml` | Everything from quality and version above, plus packages Kubernetes manifests with token substitution |
+| `kubernetes-app-docker-dockerfile.yaml` | Everything from both docker Dockerfile and Kubernetes manifest packaging - a full kube app build |
+| `kubernetes-app-docker-retag.yaml` | Everything from both docker retag and Kubernetes manifest packaging - for apps using upstream images |
+| `spec-check-filter-release.yaml` | Everything from quality and version above, but also validates and packages a JSON Schema or an API Spec |
 <!-- WORKFLOWS-END -->
 
 ### Actions
@@ -86,15 +86,21 @@ See [`examples/`](examples/) for more usage patterns.
 | `docker-multi-tag` | Tags a Docker image for multiple registries |
 | `docker-push` | Pushes a Docker image to registry |
 | `docker-registry-logins` | Authenticate to container registries (GHCR by default, configure others as needed) |
+| `generate-kubernetes-configmap` | Generates a Kubernetes ConfigMap manifest from files in a directory |
+| `generate-kubernetes-secret-template` | Generates a Kubernetes Secret template manifest from files in a directory |
 | `git-push-tag` | Pushes an existing git tag to origin |
 | `github-check-run` | Create or update GitHub Check Runs for granular PR status reporting |
 | `github-release-prepare` | Prepares files for GitHub release with optional substitution and version suffix |
 | `github-release` | Create GitHub release with assets from prepared directory |
+| `hook-post-docker-tests` | Runs user's hook script after Docker image is built for integration tests, security scans, or validation |
+| `hook-post-package-tests` | Runs user's hook script after manifest packaging for validation, additional tests, or verification |
+| `hook-pre-docker-prepare` | Runs user's hook script before Docker build preparation to modify Dockerfile, copy files, or perform setup |
+| `hook-pre-package-prepare` | Runs user's hook script before manifest packaging to generate ConfigMaps, modify manifests, or add files |
+| `hook-pre-tagging-tests` | Runs user's hook script before tagging/versioning for custom validation or preparation |
 | `kubernetes-manifests-package` | Packages Kubernetes manifests into a zip with variable substitution |
 | `kubernetes-manifests-repo-provider-package` | Packages manifests for repo provider (builds docker image). Does NOT publish. |
 | `kubernetes-manifests-repo-provider-publish` | Publishes manifests via pluggable repo provider. Requires package step to run first. |
 | `resolve-target-registry-and-base-path` | Resolves target registry (defaults to ghcr.io) and computes base path (auto-detects org for GHCR) |
-| `run-hook-script` | Runs a user-provided hook script from the .github/ directory |
 | `versions-and-naming` | Generates version numbers, tags, and naming for releases |
 <!-- ACTIONS-END -->
 
@@ -107,9 +113,6 @@ See [`examples/`](examples/) for more usage patterns.
 |-------|------|---------|-------------|
 | `additional-release-branches` | string | `""` | Comma-separated list of additional release branches |
 | `allow-builtin-token-override` | boolean | `false` | Allow user tokens to override built-in tokens (for template/reusable projects) |
-| `block-conventional-commits` | boolean | `false` | Block commits that use conventional commit format |
-| `block-double-hyphen-containing-branches` | boolean | `true` | Block branch names containing double hyphens (typo detection) |
-| `block-slash-containing-branches` | boolean | `false` | Block branch names containing slashes |
 | `block-slashes` | boolean | `false` | DEPRECATED: Use block-slash-containing-branches instead |
 | `config-sub-path` | string | `src/config` | Directory containing user-defined token files (relative) |
 | `config-value-trailing-newline` | string | `strip-for-single-line` | How to handle trailing newlines in config values (strip-for-single-line, preserve-all, always-strip-one-newline) |
@@ -121,37 +124,50 @@ See [`examples/`](examples/) for more usage patterns.
 | `docker-source-tag` | string | *required* | Upstream image tag (e.g., 1.25) |
 | `docker-target-base-path` | string | `""` | Path between registry and image name (auto-set for GHCR) |
 | `docker-target-registry` | string | `ghcr.io` | Target container registry |
+| `dockerfile-no-cache` | boolean | `true` | Disable layer caching for reproducible builds |
+| `dockerfile-squash` | boolean | `true` | Enable --squash (requires experimental mode) |
 | `dockerfile-sub-path` | string | `src/docker` | Directory containing Dockerfile, relative to repo root. |
 | `github-release-add-version-to-filenames` | boolean | `true` | Add version suffix to release filenames (e.g., file.yaml -> file-1.2.3.yaml) |
 | `github-release-enabled` | boolean | `true` | Create a GitHub release on version tags |
 | `github-release-notes` | string | `""` | Release notes (leave empty for auto-generated) |
 | `github-release-substituted-files` | string | `""` | Files with token substitution and version suffix (space-separated) |
 | `github-release-verbatim-files` | string | `""` | Files copied as-is with version suffix only (space-separated) |
+| `hook-post-docker-tests-script-sub-path` | string | `""` | Path to post-docker test script relative to .github/ (e.g., bin/post-docker.bash) |
+| `hook-post-package-tests-script-sub-path` | string | `""` | Path to post-package test script relative to .github/ (e.g., bin/post-package.bash) |
+| `hook-pre-docker-prepare-script-sub-path` | string | `""` | Path to pre-docker prepare script relative to .github/ (e.g., bin/pre-docker-prepare.bash) |
+| `hook-pre-package-prepare-script-sub-path` | string | `""` | Path to pre-package prepare script relative to .github/ (e.g., bin/pre-package-prepare.bash) |
+| `hook-pre-tagging-tests-script-sub-path` | string | `""` | Path to pre-tagging test script relative to .github/ (e.g., bin/pre-tagging.bash) |
+| `kubernetes-configmap-additional-annotations` | string | `""` | Additional annotations specific to ConfigMap (comma-separated key=value) |
+| `kubernetes-configmap-additional-labels` | string | `""` | Additional labels specific to ConfigMap (comma-separated key=value) |
+| `kubernetes-configmap-name-checksum-injection` | boolean | `true` | Enable checksum injection suffix in ConfigMap name (true: ProjectName-configmap-checksum, false: ProjectName) |
+| `kubernetes-configmap-sub-path` | string | `src/configmap` | Directory containing ConfigMap data files (relative) |
+| `kubernetes-global-additional-annotations` | string | `""` | Additional annotations for all Kubernetes manifests (comma-separated key=value) |
+| `kubernetes-global-additional-labels` | string | `""` | Additional labels for all Kubernetes manifests (comma-separated key=value) |
+| `kubernetes-secret-template-additional-annotations` | string | `""` | Additional annotations specific to Secret template (comma-separated key=value) |
+| `kubernetes-secret-template-additional-labels` | string | `""` | Additional labels specific to Secret template (comma-separated key=value) |
+| `kubernetes-secret-template-name-checksum-injection` | boolean | `true` | Enable checksum injection suffix in Secret name (true: ProjectName-secret-checksum, false: ProjectName) |
+| `kubernetes-secret-template-sub-path` | string | `src/secret.template` | Directory containing Secret template data files (relative) |
 | `manifests-packaging-base-image` | string | `""` | Base image for manifest packaging (default: scratch) |
 | `manifests-repo-provider-type` | string | `docker` | Repo provider type for manifest storage (default: docker, currently the only supported provider) |
 | `manifests-sub-path` | string | `src/kubernetes` | Directory containing Kubernetes manifests (relative) |
-| `max-version-parts` | number | `3` | Maximum allowed version parts (fail if exceeded) |
-| `no-cache` | boolean | `true` | Disable layer caching for reproducible builds |
 | `output-sub-path` | string | `target` | Build output directory (relative) |
-| `post-docker-tests-script-sub-path` | string | `""` | Path to post-docker test script relative to .github/ (e.g., bin/post-docker.bash) |
-| `post-package-tests-script-sub-path` | string | `""` | Path to post-package test script relative to .github/ (e.g., bin/post-package.bash) |
-| `pre-docker-prepare-script-sub-path` | string | `""` | Path to pre-docker prepare script relative to .github/ (e.g., bin/pre-docker-prepare.bash) |
-| `pre-package-prepare-script-sub-path` | string | `""` | Path to pre-package prepare script relative to .github/ (e.g., bin/pre-package-prepare.bash) |
-| `pre-tagging-tests-script-sub-path` | string | `""` | Path to pre-tagging test script relative to .github/ (e.g., bin/pre-tagging.bash) |
+| `qc-block-conventional-commits` | boolean | `false` | Block commits that use conventional commit format |
+| `qc-block-double-hyphen-containing-branches` | boolean | `true` | Block branch names containing double hyphens (typo detection) |
+| `qc-block-slash-containing-branches` | boolean | `false` | Block branch names containing slashes |
+| `qc-require-conventional-branches` | boolean | `false` | Require branch names start with feature/, fix/, etc. |
+| `qc-require-conventional-commits` | boolean | `false` | Require commits use conventional commit format (feat:, fix:, etc.) |
 | `release-branch` | string | `main` | The release branch name |
-| `require-conventional-branches` | boolean | `false` | Require branch names start with feature/, fix/, etc. |
-| `require-conventional-commits` | boolean | `false` | Require commits use conventional commit format (feat:, fix:, etc.) |
 | `spec-packaging-base-image` | string | `scratch` | Base image for spec packaging |
 | `spec-type` | string | *required* | Type of spec (schema or api) |
 | `spec-validation-type` | string | `basic` | Schema validator to use (basic, python3-jsonschema) |
-| `squash` | boolean | `true` | Enable --squash (requires experimental mode) |
-| `substitution-token-style` | string | `shell` | Token delimiter syntax for variables (shell, mustache, helm, erb, github-actions, blade, stringtemplate, ognl, t4, swift) |
 | `tag-version-calculation-strategy` | string | `git-auto-closest-highest` | Strategy for calculating version (git-auto-closest-highest, file-pattern-match) |
+| `tag-version-max-parts` | number | `3` | Maximum allowed version parts (fail if exceeded) |
 | `tag-version-pattern-type` | string | `dockerfile-env-kubectl` | Pattern type for file-pattern-match strategy (dockerfile-env-kubectl, retag-workflow-source-tag, custom) |
 | `tag-version-prefix-parts` | string | `""` | Number of parts from source version to use as prefix (default 2, output = prefix + 1 parts) |
 | `tag-version-source-custom-pattern` | string | `""` | Regex with capture group for version extraction (required for custom pattern type) |
 | `tag-version-source-file-name` | string | `""` | Override source file name (defaults based on pattern type) |
 | `tag-version-source-sub-path` | string | `""` | Override path to source directory (takes precedence over dockerfile-sub-path) |
+| `token-delimiter-style` | string | `shell` | Token delimiter syntax for variables (shell, mustache, helm, erb, github-actions, blade, stringtemplate, ognl, t4, swift) |
 | `token-name-style` | string | `PascalCase` | Case style for token names (UPPER_SNAKE, lower_snake, lower-kebab, UPPER-KEBAB, camelCase, PascalCase, lower.dot, UPPER.DOT) |
 | `token-name-validation` | string | `MATCH` | How to validate user token names (MATCH = must match token-name-style, ALL = accept any valid name) |
 <!-- INPUTS-END -->

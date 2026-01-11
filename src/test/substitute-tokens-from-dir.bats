@@ -38,7 +38,7 @@ create_target() {
   create_target "test.yaml" 'name: ${ProjectName}
 version: ${Version}'
 
-  run "$SCRIPTS_DIR/substitute-tokens-from-dir" shell "$TOKENS_DIR" "$TARGET_DIR"
+  run "$UTIL_DIR/substitute-tokens-from-dir" shell "$TOKENS_DIR" "$TARGET_DIR"
   [ "$status" -eq 0 ]
 
   grep -q "name: my-app" "$TARGET_DIR/test.yaml"
@@ -53,7 +53,7 @@ version: ${Version}'
   create_token "foo" "actual-value"
   create_target "test.yaml" 'result: ${bar}'
 
-  run "$SCRIPTS_DIR/substitute-tokens-from-dir" shell "$TOKENS_DIR" "$TARGET_DIR"
+  run "$UTIL_DIR/substitute-tokens-from-dir" shell "$TOKENS_DIR" "$TARGET_DIR"
   [ "$status" -eq 0 ]
 
   # bar processed first: ${bar} -> ${foo}
@@ -66,13 +66,13 @@ version: ${Version}'
   create_token "Var" "value"
   create_target "test.yaml" 'key: ${Var}'
 
-  run "$SCRIPTS_DIR/substitute-tokens-from-dir" unknown-style "$TOKENS_DIR" "$TARGET_DIR"
+  run "$UTIL_DIR/substitute-tokens-from-dir" unknown-style "$TOKENS_DIR" "$TARGET_DIR"
   [ "$status" -ne 0 ]
   assert_output_contains "Unknown token style"
 }
 
 @test "fails when tokens directory not found" {
-  run "$SCRIPTS_DIR/substitute-tokens-from-dir" shell "/nonexistent" "$TARGET_DIR"
+  run "$UTIL_DIR/substitute-tokens-from-dir" shell "/nonexistent" "$TARGET_DIR"
   [ "$status" -ne 0 ]
   assert_output_contains "not found"
 }
@@ -80,7 +80,7 @@ version: ${Version}'
 @test "fails when target directory not found" {
   create_token "Var" "value"
 
-  run "$SCRIPTS_DIR/substitute-tokens-from-dir" shell "$TOKENS_DIR" "/nonexistent"
+  run "$UTIL_DIR/substitute-tokens-from-dir" shell "$TOKENS_DIR" "/nonexistent"
   [ "$status" -ne 0 ]
   assert_output_contains "not found"
 }
@@ -90,7 +90,7 @@ version: ${Version}'
   ln -s RealToken "$TOKENS_DIR/SymlinkToken"
   create_target "test.yaml" 'key: ${RealToken}'
 
-  run "$SCRIPTS_DIR/substitute-tokens-from-dir" shell "$TOKENS_DIR" "$TARGET_DIR"
+  run "$UTIL_DIR/substitute-tokens-from-dir" shell "$TOKENS_DIR" "$TARGET_DIR"
   [ "$status" -ne 0 ]
   assert_output_contains "Symlinks not allowed"
   assert_output_contains "SymlinkToken"
@@ -100,7 +100,7 @@ version: ${Version}'
   printf 'binary\x00content' > "$TOKENS_DIR/BinaryToken"
   create_target "test.yaml" 'key: ${BinaryToken}'
 
-  run "$SCRIPTS_DIR/substitute-tokens-from-dir" shell "$TOKENS_DIR" "$TARGET_DIR"
+  run "$UTIL_DIR/substitute-tokens-from-dir" shell "$TOKENS_DIR" "$TARGET_DIR"
   [ "$status" -ne 0 ]
   assert_output_contains "Binary files"
   assert_output_contains "BinaryToken"
@@ -111,7 +111,7 @@ version: ${Version}'
   printf '%s' "nested-value" > "$TOKENS_DIR/category/sub-var"
   create_target "test.yaml" 'value: ${category/sub-var}'
 
-  run "$SCRIPTS_DIR/substitute-tokens-from-dir" shell "$TOKENS_DIR" "$TARGET_DIR"
+  run "$UTIL_DIR/substitute-tokens-from-dir" shell "$TOKENS_DIR" "$TARGET_DIR"
   [ "$status" -eq 0 ]
 
   result=$(cat "$TARGET_DIR/test.yaml")
@@ -121,7 +121,7 @@ version: ${Version}'
 @test "empty tokens directory succeeds" {
   create_target "test.yaml" 'unchanged: ${NotSubstituted}'
 
-  run "$SCRIPTS_DIR/substitute-tokens-from-dir" shell "$TOKENS_DIR" "$TARGET_DIR"
+  run "$UTIL_DIR/substitute-tokens-from-dir" shell "$TOKENS_DIR" "$TARGET_DIR"
   [ "$status" -eq 0 ]
 
   result=$(cat "$TARGET_DIR/test.yaml")
@@ -133,7 +133,7 @@ version: ${Version}'
   create_target "test.yaml" 'key: ${Var}'
 
   CONFIG_VALUE_TRAILING_NEWLINE="strip-for-single-line" \
-  run "$SCRIPTS_DIR/substitute-tokens-from-dir" shell "$TOKENS_DIR" "$TARGET_DIR"
+  run "$UTIL_DIR/substitute-tokens-from-dir" shell "$TOKENS_DIR" "$TARGET_DIR"
   [ "$status" -eq 0 ]
 
   result=$(cat "$TARGET_DIR/test.yaml")
@@ -146,7 +146,7 @@ version: ${Version}'
   ln -s RealToken "$TOKENS_DIR/Symlink2"
   create_target "test.yaml" 'key: value'
 
-  run "$SCRIPTS_DIR/substitute-tokens-from-dir" shell "$TOKENS_DIR" "$TARGET_DIR"
+  run "$UTIL_DIR/substitute-tokens-from-dir" shell "$TOKENS_DIR" "$TARGET_DIR"
   [ "$status" -ne 0 ]
   assert_output_contains "Symlink1"
   assert_output_contains "Symlink2"
@@ -157,7 +157,7 @@ version: ${Version}'
   printf 'more\x00binary' > "$TOKENS_DIR/Binary2"
   create_target "test.yaml" 'key: value'
 
-  run "$SCRIPTS_DIR/substitute-tokens-from-dir" shell "$TOKENS_DIR" "$TARGET_DIR"
+  run "$UTIL_DIR/substitute-tokens-from-dir" shell "$TOKENS_DIR" "$TARGET_DIR"
   [ "$status" -ne 0 ]
   assert_output_contains "Binary1"
   assert_output_contains "Binary2"

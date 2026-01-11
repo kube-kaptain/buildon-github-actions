@@ -1,0 +1,62 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
+
+name: 'Generate Kubernetes Secret Template'
+description: 'Generates a Kubernetes Secret template manifest from files in a directory'
+
+inputs:
+  kubernetes-secret-template-sub-path:
+    description: 'Directory containing Secret template data files (relative)'
+    required: false
+    default: 'src/secret.template'
+  output-sub-path:
+    description: 'Build output directory (relative)'
+    required: false
+    default: 'target'
+  token-name-style:
+    description: 'Case style for token names (UPPER_SNAKE, lower_snake, lower-kebab, UPPER-KEBAB, camelCase, PascalCase, lower.dot, UPPER.DOT)'
+    required: false
+    default: 'PascalCase'
+  token-delimiter-style:
+    description: 'Token delimiter syntax for variables (shell, mustache, helm, erb, github-actions, blade, stringtemplate, ognl, t4, swift)'
+    required: false
+    default: 'shell'
+  kubernetes-secret-template-name-checksum-injection:
+    description: 'Enable checksum injection suffix in Secret name (true: ProjectName-secret-checksum, false: ProjectName)'
+    required: false
+    default: 'true'
+  kubernetes-global-additional-labels:
+    description: 'Additional labels for all Kubernetes manifests (comma-separated key=value)'
+    required: false
+    default: ''
+  kubernetes-global-additional-annotations:
+    description: 'Additional annotations for all Kubernetes manifests (comma-separated key=value)'
+    required: false
+    default: ''
+  kubernetes-secret-template-additional-labels:
+    description: 'Additional labels specific to Secret template (comma-separated key=value)'
+    required: false
+    default: ''
+  kubernetes-secret-template-additional-annotations:
+    description: 'Additional annotations specific to Secret template (comma-separated key=value)'
+    required: false
+    default: ''
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Generate Secret template manifest
+      id: generate
+      shell: bash
+      env:
+        LOG_ERROR_PREFIX: '::error::'
+        KUBERNETES_SECRET_TEMPLATE_SUB_PATH: ${{ inputs.kubernetes-secret-template-sub-path }}
+        OUTPUT_SUB_PATH: ${{ inputs.output-sub-path }}
+        TOKEN_NAME_STYLE: ${{ inputs.token-name-style }}
+        TOKEN_DELIMITER_STYLE: ${{ inputs.token-delimiter-style }}
+        KUBERNETES_SECRET_TEMPLATE_NAME_CHECKSUM_INJECTION: ${{ inputs.kubernetes-secret-template-name-checksum-injection }}
+        KUBERNETES_GLOBAL_ADDITIONAL_LABELS: ${{ inputs.kubernetes-global-additional-labels }}
+        KUBERNETES_GLOBAL_ADDITIONAL_ANNOTATIONS: ${{ inputs.kubernetes-global-additional-annotations }}
+        KUBERNETES_SECRET_TEMPLATE_ADDITIONAL_LABELS: ${{ inputs.kubernetes-secret-template-additional-labels }}
+        KUBERNETES_SECRET_TEMPLATE_ADDITIONAL_ANNOTATIONS: ${{ inputs.kubernetes-secret-template-additional-annotations }}
+      run: "${{ github.action_path }}/../../scripts/generators/generate-kubernetes-secret-template"

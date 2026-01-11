@@ -2,9 +2,51 @@
 # Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
 
 name: Basic Quality and Versioning
+kaptain-order: 30
+kaptain-description: Quality checks and naming/versioning combined - the standard foundation for most projects
 on:
   workflow_call:
     inputs:
+      # Build output
+      output-sub-path:
+        description: 'Build output directory (relative)'
+        required: false
+        type: string
+        default: 'target'
+
+      # Token substitution
+      token-delimiter-style:
+        description: 'Token delimiter syntax for variables (shell, mustache, helm, erb, github-actions, blade, stringtemplate, ognl, t4, swift)'
+        required: false
+        type: string
+        default: 'shell'
+      token-name-style:
+        description: 'Case style for token names (UPPER_SNAKE, lower_snake, lower-kebab, UPPER-KEBAB, camelCase, PascalCase, lower.dot, UPPER.DOT)'
+        required: false
+        type: string
+        default: 'PascalCase'
+      token-name-validation:
+        description: 'How to validate user token names (MATCH = must match token-name-style, ALL = accept any valid name)'
+        required: false
+        type: string
+        default: 'MATCH'
+      allow-builtin-token-override:
+        description: 'Allow user tokens to override built-in tokens (for template/reusable projects)'
+        required: false
+        type: boolean
+        default: false
+      config-sub-path:
+        description: 'Directory containing user-defined token files (relative)'
+        required: false
+        type: string
+        default: 'src/config'
+      config-value-trailing-newline:
+        description: 'How to handle trailing newlines in config values (strip-for-single-line, preserve-all, always-strip-one-newline)'
+        required: false
+        type: string
+        default: 'strip-for-single-line'
+
+      # Naming, Versions, and Tags calculation
       release-branch:
         description: 'The release branch name'
         required: false
@@ -15,37 +57,7 @@ on:
         required: false
         type: string
         default: ''
-      block-slashes:
-        description: 'DEPRECATED: Use block-slash-containing-branches instead'
-        required: false
-        type: boolean
-        default: false
-      block-slash-containing-branches:
-        description: 'Block branch names containing slashes'
-        required: false
-        type: boolean
-        default: false
-      block-double-hyphen-containing-branches:
-        description: 'Block branch names containing double hyphens (typo detection)'
-        required: false
-        type: boolean
-        default: true
-      require-conventional-branches:
-        description: 'Require branch names start with feature/, fix/, etc.'
-        required: false
-        type: boolean
-        default: false
-      require-conventional-commits:
-        description: 'Require commits use conventional commit format (feat:, fix:, etc.)'
-        required: false
-        type: boolean
-        default: false
-      block-conventional-commits:
-        description: 'Block commits that use conventional commit format'
-        required: false
-        type: boolean
-        default: false
-      max-version-parts:
+      tag-version-max-parts:
         description: 'Maximum allowed version parts (fail if exceeded)'
         required: false
         type: number
@@ -85,48 +97,47 @@ on:
         required: false
         type: string
         default: ''
-      output-sub-path:
-        description: 'Build output directory (relative)'
-        required: false
-        type: string
-        default: 'target'
-      # Token substitution configuration (for github-release file processing)
-      substitution-token-style:
-        description: 'Token delimiter syntax for variables (shell, mustache, helm, erb, github-actions, blade, stringtemplate, ognl, t4, swift)'
-        required: false
-        type: string
-        default: 'shell'
-      token-name-style:
-        description: 'Case style for token names (UPPER_SNAKE, lower_snake, lower-kebab, UPPER-KEBAB, camelCase, PascalCase, lower.dot, UPPER.DOT)'
-        required: false
-        type: string
-        default: 'PascalCase'
-      token-name-validation:
-        description: 'How to validate user token names (MATCH = must match token-name-style, ALL = accept any valid name)'
-        required: false
-        type: string
-        default: 'MATCH'
-      config-sub-path:
-        description: 'Directory containing user-defined token files (relative)'
-        required: false
-        type: string
-        default: 'src/config'
-      allow-builtin-token-override:
-        description: 'Allow user tokens to override built-in tokens (for template/reusable projects)'
+
+      # Quality check options
+      block-slashes:
+        description: 'DEPRECATED: Use block-slash-containing-branches instead'
         required: false
         type: boolean
         default: false
-      config-value-trailing-newline:
-        description: 'How to handle trailing newlines in config values (strip-for-single-line, preserve-all, always-strip-one-newline)'
+      qc-block-slash-containing-branches:
+        description: 'Block branch names containing slashes'
         required: false
-        type: string
-        default: 'strip-for-single-line'
-      pre-tagging-tests-script-sub-path:
+        type: boolean
+        default: false
+      qc-block-double-hyphen-containing-branches:
+        description: 'Block branch names containing double hyphens (typo detection)'
+        required: false
+        type: boolean
+        default: true
+      qc-require-conventional-branches:
+        description: 'Require branch names start with feature/, fix/, etc.'
+        required: false
+        type: boolean
+        default: false
+      qc-require-conventional-commits:
+        description: 'Require commits use conventional commit format (feat:, fix:, etc.)'
+        required: false
+        type: boolean
+        default: false
+      qc-block-conventional-commits:
+        description: 'Block commits that use conventional commit format'
+        required: false
+        type: boolean
+        default: false
+
+      # Hook script paths
+      hook-pre-tagging-tests-script-sub-path:
         description: 'Path to pre-tagging test script relative to .github/ (e.g., bin/pre-tagging.bash)'
         required: false
         type: string
         default: ''
-      # GitHub Release configuration
+
+      # GitHub release
       github-release-enabled:
         description: 'Create a GitHub release on version tags'
         required: false
@@ -220,9 +231,9 @@ jobs:
       project-name: ${{ steps.versions.outputs.project-name }}
     steps:
       # INJECT: parse-workflow-ref-and-checkout
-      # INJECT: github-check-start(name="Pre-tagging Tests", id="check-pre-tagging", if="inputs.pre-tagging-tests-script-sub-path != ''")
-      # INJECT: pre-tagging-tests
-      # INJECT: github-check-end(name="Pre-tagging Tests", id="check-pre-tagging", if="inputs.pre-tagging-tests-script-sub-path != ''")
+      # INJECT: github-check-start(name="Pre-tagging Tests", id="check-pre-tagging", if="inputs.hook-pre-tagging-tests-script-sub-path != ''")
+      # INJECT: hook-pre-tagging-tests
+      # INJECT: github-check-end(name="Pre-tagging Tests", id="check-pre-tagging", if="inputs.hook-pre-tagging-tests-script-sub-path != ''")
 
       # === Versions & Naming ===
       # INJECT: github-check-start(name="Versions & Naming", id="check-versions")

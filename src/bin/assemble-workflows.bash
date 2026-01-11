@@ -193,6 +193,11 @@ process_template() {
 
   # Process line by line to handle INJECT markers with proper indentation
   while IFS= read -r line || [[ -n "$line" ]]; do
+    # Skip kaptain-* metadata fields (used for README generation only)
+    if [[ "$line" =~ ^kaptain- ]]; then
+      continue
+    fi
+
     # Track when we enter jobs: section
     if [[ "$line" == "jobs:" ]]; then
       in_jobs_section=true
@@ -550,17 +555,25 @@ generate_examples_table() {
   done
 }
 
-# Generate workflows table for README (simple list, not docs links)
+# Generate workflows table for README (sorted by kaptain-order)
 generate_workflows_table() {
   echo "| Workflow | Description |"
   echo "|----------|-------------|"
 
+  # Collect workflows with order, then sort
+  local entries=()
   for workflow in "$TEMPLATES_DIR"/*.yaml; do
     [[ -f "$workflow" ]] || continue
-    local wf_basename description
+    local wf_basename order description
     wf_basename=$(basename "$workflow")
-    description=$(yq '.name // ""' "$workflow")
-    echo "| \`$wf_basename\` | $description |"
+    order=$(yq '.["kaptain-order"] // 999' "$workflow")
+    description=$(yq '.["kaptain-description"] // .name // ""' "$workflow")
+    entries+=("$order|$wf_basename|$description")
+  done
+
+  # Sort by order and output
+  printf '%s\n' "${entries[@]}" | sort -t'|' -k1 -n | while IFS='|' read -r _ name desc; do
+    echo "| \`$name\` | $desc |"
   done
 }
 

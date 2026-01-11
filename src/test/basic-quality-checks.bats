@@ -195,7 +195,7 @@ teardown() {
   cd "$TEST_REPO"
 
   export CURRENT_BRANCH=fix--something
-  export BLOCK_DOUBLE_HYPHEN_CONTAINING_BRANCHES=false
+  export QC_BLOCK_DOUBLE_HYPHEN_CONTAINING_BRANCHES=false
   run "$SCRIPTS_DIR/basic-quality-checks"
   [ "$status" -eq 0 ]
 }
@@ -205,7 +205,7 @@ teardown() {
   cd "$TEST_REPO"
 
   export CURRENT_BRANCH=my-branch
-  export REQUIRE_CONVENTIONAL_BRANCHES=true
+  export QC_REQUIRE_CONVENTIONAL_BRANCHES=true
   run "$SCRIPTS_DIR/basic-quality-checks"
   [ "$status" -eq 2 ]
   assert_output_contains "must start with a prefix"
@@ -216,7 +216,7 @@ teardown() {
   cd "$TEST_REPO"
 
   export CURRENT_BRANCH=feature/my-feature
-  export REQUIRE_CONVENTIONAL_BRANCHES=true
+  export QC_REQUIRE_CONVENTIONAL_BRANCHES=true
   run "$SCRIPTS_DIR/basic-quality-checks"
   [ "$status" -eq 0 ]
   assert_output_contains "has required prefix"
@@ -226,7 +226,7 @@ teardown() {
   TEST_REPO=$(clone_fixture "qc-clean")
   cd "$TEST_REPO"
 
-  export REQUIRE_CONVENTIONAL_COMMITS=true
+  export QC_REQUIRE_CONVENTIONAL_COMMITS=true
   run "$SCRIPTS_DIR/basic-quality-checks"
   [ "$status" -eq 4 ]
   assert_output_contains "does not use conventional commit format"
@@ -236,7 +236,7 @@ teardown() {
   TEST_REPO=$(clone_fixture "qc-conventional-commit")
   cd "$TEST_REPO"
 
-  export BLOCK_CONVENTIONAL_COMMITS=true
+  export QC_BLOCK_CONVENTIONAL_COMMITS=true
   run "$SCRIPTS_DIR/basic-quality-checks"
   [ "$status" -eq 4 ]
   assert_output_contains "conventional commit format which is not allowed"

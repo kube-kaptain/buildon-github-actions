@@ -12,6 +12,15 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 TEST_DIR="$PROJECT_ROOT/src/test"
 
+# Sanitize environment to prevent CI workflow inputs from bleeding into tests
+# Keep only essential system variables, unset everything else
+while IFS='=' read -r name _; do
+  case "$name" in
+    PATH|HOME|TMPDIR|TERM|USER|LANG|LC_*|SHELL) ;;
+    *) unset "$name" ;;
+  esac
+done < <(env)
+
 # Colors for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -36,12 +45,12 @@ has_docker() {
 run_local() {
   log_info "Running tests with local BATS"
   cd "$TEST_DIR"
-  bats --tap *.bats
+  bats *.bats
 }
 
 # Run tests with Docker
 run_docker() {
-  log_info "Running tests with Docker (bats/bats:latest)"
+  log_info "Running tests with Docker (bats/bats:1.13.0)"
   docker run --rm \
     -v "$PROJECT_ROOT:/workspace" \
     -w /workspace/src/test \
@@ -56,6 +65,7 @@ check_executables() {
   local scripts=()
   local globs=(
     "$PROJECT_ROOT/src/scripts/main/*"
+    "$PROJECT_ROOT/src/scripts/generators/*"
     "$PROJECT_ROOT/src/scripts/plugins/*/*"
     "$PROJECT_ROOT/src/test/*.bash"
     "$PROJECT_ROOT/src/test/repo-gen/*.bash"
@@ -109,24 +119,29 @@ check_generated_files() {
     return 0
   fi
 
-  # Check for any dirty templates (staged, unstaged, or untracked)
-  # Using git status to catch all cases: modified, added, deleted, untracked
-  local dirty_templates
-  dirty_templates=$(git -C "$PROJECT_ROOT" status --porcelain src/workflow-templates/ 2>/dev/null | grep -v '^?' || true)
+  # Check for any dirty source files that affect generation (staged or unstaged)
+  # Workflow templates, step fragments, and actions all contribute to generated output
+  local dirty_sources
+  dirty_sources=$(git -C "$PROJECT_ROOT" status --porcelain \
+    src/workflow-templates/ \
+    src/steps-common/ \
+    src/actions/ \
+    2>/dev/null | grep -v '^?' || true)
 
-  # If ANY workflow template is dirty, all generated file changes are considered
-  # local work in progress (README, docs, workflows all regenerate from templates)
-  if [[ -n "$dirty_templates" ]]; then
-    log_warn "Uncommitted local changes (workflow templates dirty - OK locally):"
+  # If ANY source is dirty, generated file changes are local work in progress
+  if [[ -n "$dirty_sources" ]]; then
+    log_warn "Uncommitted local changes detected - generated files regenerated OK:"
     echo "$modified_generated" | while IFS= read -r file; do
       [[ -n "$file" ]] && log_warn "  - $file"
     done
-    log_info "Generated files OK (uncommitted local work detected)"
+    log_info "Generated files OK (stage/commit when ready)"
     return 0
   fi
 
-  # No templates dirty but generated files changed - this is a real error
-  log_error "Generated files are out of date. Run ./src/bin/assemble-workflows.bash and commit:"
+  # No sources dirty but generated files changed - assemble already ran, just need to commit
+  log_error "Generated files were regenerated but source files are already committed."
+  log_error "This likely means you committed source changes without regenerating."
+  log_error "The files below have been regenerated - stage and commit them:"
   echo "$modified_generated" | while IFS= read -r file; do
     [[ -n "$file" ]] && log_error "  - $file"
   done
@@ -147,6 +162,7 @@ run_shellcheck() {
   local scripts=()
   local globs=(
     "${PROJECT_ROOT}/src/scripts/main/*"
+    "${PROJECT_ROOT}/src/scripts/generators/*"
     "${PROJECT_ROOT}/src/scripts/plugins/*/*"
   )
 
@@ -180,7 +196,7 @@ run_shellcheck() {
   elif has_docker; then
     docker run --rm \
       -v "${PROJECT_ROOT}:/workspace" \
-      koalaman/shellcheck:stable \
+      koalaman/shellcheck:v0.10.0 \
       "${enables[@]}" "${scripts[@]/#${PROJECT_ROOT}//workspace}"
   else
     log_warn "shellcheck not available, skipping"

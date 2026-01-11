@@ -1,0 +1,60 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
+#
+# Pod placement strategy: spread-nodes-required
+#
+# Hard requirement for pods on different nodes.
+# Warning: This can cause scheduling failures if there aren't enough nodes.
+#
+# Inputs (environment variables):
+#   TOKEN_NAME_STYLE      - Name style (PascalCase, camelCase, etc.) [required]
+#   TOKEN_DELIMITER_STYLE - Delimiter style (shell, mustache, etc.) [required]
+#   POD_PLACEMENT_INDENT  - Base indentation spaces (default: 0)
+#
+# Output:
+#   YAML affinity block with podAntiAffinity requiring different nodes
+#
+set -euo pipefail
+
+# Locate script directory for libraries
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+LIB_DIR="${SCRIPT_DIR}/../../lib"
+
+# Source libraries
+# shellcheck source=src/scripts/lib/token-format.bash
+source "${LIB_DIR}/token-format.bash"
+
+# Validate required inputs
+if [[ -z "${TOKEN_NAME_STYLE:-}" ]]; then
+  echo "Error: TOKEN_NAME_STYLE is required" >&2
+  exit 1
+fi
+
+if [[ -z "${TOKEN_DELIMITER_STYLE:-}" ]]; then
+  echo "Error: TOKEN_DELIMITER_STYLE is required" >&2
+  exit 1
+fi
+
+# Defaults
+POD_PLACEMENT_INDENT="${POD_PLACEMENT_INDENT:-0}"
+
+# Generate token for project name
+project_name_token=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "PROJECT_NAME")
+
+# Build indentation
+indent=""
+for ((i = 0; i < POD_PLACEMENT_INDENT; i++)); do
+  indent+=" "
+done
+
+# Output affinity block
+cat <<EOF
+${indent}affinity:
+${indent}  podAntiAffinity:
+${indent}    requiredDuringSchedulingIgnoredDuringExecution:
+${indent}      - labelSelector:
+${indent}          matchLabels:
+${indent}            app: ${project_name_token}
+${indent}        topologyKey: kubernetes.io/hostname
+EOF

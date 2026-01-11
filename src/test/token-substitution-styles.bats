@@ -73,7 +73,7 @@ create_target() {
 run_substitution() {
   local style="$1"
   cd "$TOKENS_DIR"
-  "$SCRIPTS_DIR/substitute-tokens-from-dir" "$style" "$TOKENS_DIR" "$TARGET_DIR"
+  "$UTIL_DIR/substitute-tokens-from-dir" "$style" "$TOKENS_DIR" "$TARGET_DIR"
 }
 
 # === Parameterized Tests ===
@@ -341,7 +341,7 @@ b: $undefined_ref"
 
     cd "$TOKENS_DIR"
     CONFIG_VALUE_TRAILING_NEWLINE="strip-for-single-line" \
-    run "$SCRIPTS_DIR/substitute-tokens-from-dir" "$style" "$TOKENS_DIR" "$TARGET_DIR"
+    run "$UTIL_DIR/substitute-tokens-from-dir" "$style" "$TOKENS_DIR" "$TARGET_DIR"
     [ "$status" -eq 0 ] || { echo "Failed for style: $style"; return 1; }
 
     local result=$(cat "$TARGET_DIR/test.yaml")
@@ -361,7 +361,7 @@ b: $undefined_ref"
 
     cd "$TOKENS_DIR"
     CONFIG_VALUE_TRAILING_NEWLINE="preserve-all" \
-    run "$SCRIPTS_DIR/substitute-tokens-from-dir" "$style" "$TOKENS_DIR" "$TARGET_DIR"
+    run "$UTIL_DIR/substitute-tokens-from-dir" "$style" "$TOKENS_DIR" "$TARGET_DIR"
     [ "$status" -eq 0 ] || { echo "Failed for style: $style"; return 1; }
 
     local content=$(cat "$TARGET_DIR/test.yaml")
@@ -382,7 +382,7 @@ b: $undefined_ref"
 
     cd "$TOKENS_DIR"
     CONFIG_VALUE_TRAILING_NEWLINE="always-strip-one-newline" \
-    run "$SCRIPTS_DIR/substitute-tokens-from-dir" "$style" "$TOKENS_DIR" "$TARGET_DIR"
+    run "$UTIL_DIR/substitute-tokens-from-dir" "$style" "$TOKENS_DIR" "$TARGET_DIR"
     [ "$status" -eq 0 ] || { echo "Failed for style: $style"; return 1; }
 
     local content=$(cat "$TARGET_DIR/test.yaml")

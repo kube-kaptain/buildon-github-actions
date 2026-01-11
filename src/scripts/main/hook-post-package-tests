@@ -1,0 +1,97 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
+#
+# hook-post-package-tests - Entry point for post-package-tests hook
+#
+# Runs user's hook script after manifest packaging is complete.
+# Use this hook to validate the final package, run additional tests,
+# or perform any post-packaging verification.
+#
+# Inputs (environment variables):
+#   HOOK_SCRIPT_SUB_PATH - Path to user's hook script (set by CI wrapper)
+#
+# Available context (set by CI wrapper):
+#   VERSION - Full version string
+#   VERSION_MAJOR - Major version number
+#   VERSION_MINOR - Minor version number
+#   VERSION_PATCH - Patch version number
+#   VERSION_2_PART - Version as 2 parts (e.g., 1.2)
+#   VERSION_3_PART - Version as 3 parts (e.g., 1.2.3)
+#   VERSION_4_PART - Version as 4 parts (e.g., 1.2.3.0)
+#   DOCKER_TAG - Docker tag (version with optional -PRERELEASE suffix)
+#   DOCKER_IMAGE_NAME - Docker image name
+#   GIT_TAG - Git tag
+#   PROJECT_NAME - Project name
+#   IS_RELEASE - Whether this is a release build (true/false)
+#   TARGET_IMAGE_FULL_URI - Full image URI (empty in manifests-only workflows)
+#   MANIFESTS_SUBSTITUTED_SUB_PATH - Where substituted manifests are (for inspection)
+#   MANIFESTS_ZIP_SUB_PATH - Directory containing the zip file
+#   MANIFESTS_ZIP_FILE_NAME - Name of the zip file
+#   ... and all workflow inputs
+#
+set -euo pipefail
+
+# === User Project Inputs ===
+# Defaults and input conditioning sourced from defaults scripts - single source of truth
+
+# shellcheck source=src/scripts/defaults/common.bash
+source "$(dirname "${BASH_SOURCE[0]}")/../defaults/common.bash"
+# shellcheck source=src/scripts/defaults/dockerfile.bash
+source "$(dirname "${BASH_SOURCE[0]}")/../defaults/dockerfile.bash"
+# shellcheck source=src/scripts/defaults/tokens.bash
+source "$(dirname "${BASH_SOURCE[0]}")/../defaults/tokens.bash"
+# shellcheck source=src/scripts/defaults/tag-versioning.bash
+source "$(dirname "${BASH_SOURCE[0]}")/../defaults/tag-versioning.bash"
+# shellcheck source=src/scripts/defaults/quality-checks.bash
+source "$(dirname "${BASH_SOURCE[0]}")/../defaults/quality-checks.bash"
+
+# === Vendor Specific ===
+# shellcheck source=src/scripts/defaults/vendor-github-release.bash
+source "$(dirname "${BASH_SOURCE[0]}")/../defaults/vendor-github-release.bash"
+
+# shellcheck source=src/scripts/defaults/hooks-leftovers.bash
+source "$(dirname "${BASH_SOURCE[0]}")/../defaults/hooks-leftovers.bash"
+
+# Export all workflow inputs
+export OUTPUT_SUB_PATH
+export DOCKER_REGISTRY_LOGINS
+export DOCKERFILE_SUB_PATH DOCKERFILE_SQUASH DOCKERFILE_NO_CACHE
+export DOCKER_TARGET_REGISTRY DOCKER_TARGET_BASE_PATH
+export DOCKER_PUSH_TARGETS
+export MANIFESTS_SUB_PATH
+export MANIFESTS_REPO_PROVIDER_TYPE MANIFESTS_PACKAGING_BASE_IMAGE
+export KUBERNETES_GLOBAL_ADDITIONAL_LABELS KUBERNETES_GLOBAL_ADDITIONAL_ANNOTATIONS
+export KUBERNETES_CONFIGMAP_SUB_PATH KUBERNETES_CONFIGMAP_NAME_CHECKSUM_INJECTION
+export KUBERNETES_CONFIGMAP_ADDITIONAL_LABELS KUBERNETES_CONFIGMAP_ADDITIONAL_ANNOTATIONS
+export KUBERNETES_SECRET_TEMPLATE_SUB_PATH KUBERNETES_SECRET_TEMPLATE_NAME_CHECKSUM_INJECTION
+export KUBERNETES_SECRET_TEMPLATE_ADDITIONAL_LABELS KUBERNETES_SECRET_TEMPLATE_ADDITIONAL_ANNOTATIONS
+export TOKEN_DELIMITER_STYLE TOKEN_NAME_STYLE TOKEN_NAME_VALIDATION
+export ALLOW_BUILTIN_TOKEN_OVERRIDE CONFIG_SUB_PATH CONFIG_VALUE_TRAILING_NEWLINE
+export RELEASE_BRANCH ADDITIONAL_RELEASE_BRANCHES TAG_VERSION_MAX_PARTS
+export TAG_VERSION_CALCULATION_STRATEGY TAG_VERSION_PATTERN_TYPE TAG_VERSION_PREFIX_PARTS
+export TAG_VERSION_SOURCE_SUB_PATH TAG_VERSION_SOURCE_FILE_NAME TAG_VERSION_SOURCE_CUSTOM_PATTERN
+export BLOCK_SLASHES QC_BLOCK_SLASH_CONTAINING_BRANCHES QC_BLOCK_DOUBLE_HYPHEN_CONTAINING_BRANCHES
+export QC_REQUIRE_CONVENTIONAL_BRANCHES QC_REQUIRE_CONVENTIONAL_COMMITS QC_BLOCK_CONVENTIONAL_COMMITS
+export GITHUB_RELEASE_ENABLED GITHUB_RELEASE_SUBSTITUTED_FILES GITHUB_RELEASE_VERBATIM_FILES
+export GITHUB_RELEASE_NOTES GITHUB_RELEASE_ADD_VERSION_TO_FILENAMES
+
+# === Step Outputs ===
+# Required vars - version outputs from versions-and-naming step
+: "${VERSION:?VERSION is required}"
+: "${DOCKER_TAG:?DOCKER_TAG is required}"
+: "${DOCKER_IMAGE_NAME:?DOCKER_IMAGE_NAME is required}"
+: "${GIT_TAG:?GIT_TAG is required}"
+: "${PROJECT_NAME:?PROJECT_NAME is required}"
+: "${IS_RELEASE:?IS_RELEASE is required}"
+# Docker outputs (from docker-build - empty in manifests-only workflows)
+TARGET_IMAGE_FULL_URI="${TARGET_IMAGE_FULL_URI:-}"
+export TARGET_IMAGE_FULL_URI
+# Manifest outputs (from manifest-package)
+: "${MANIFESTS_SUBSTITUTED_SUB_PATH:?MANIFESTS_SUBSTITUTED_SUB_PATH is required}"
+: "${MANIFESTS_ZIP_SUB_PATH:?MANIFESTS_ZIP_SUB_PATH is required}"
+: "${MANIFESTS_ZIP_FILE_NAME:?MANIFESTS_ZIP_FILE_NAME is required}"
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=src/scripts/lib/hook-runner.bash
+source "${SCRIPT_DIR}/../lib/hook-runner.bash"

@@ -9,13 +9,13 @@
 #   1  = Conflicting configuration error or unexpected error from tooling
 #   2  = Bad branch name. Checks:
 #        - Auto-generated pattern: always-on (branch names in the form creator-patch-N)
-#        - Slashes: default off (turn on with BLOCK_SLASH_CONTAINING_BRANCHES=true)
-#        - Double hyphens: default on (turn off with BLOCK_DOUBLE_HYPHEN_CONTAINING_BRANCHES=false)
-#        - Conventional prefixes: default off (turn on with REQUIRE_CONVENTIONAL_BRANCHES=true)
+#        - Slashes: default off (turn on with QC_BLOCK_SLASH_CONTAINING_BRANCHES=true)
+#        - Double hyphens: default on (turn off with QC_BLOCK_DOUBLE_HYPHEN_CONTAINING_BRANCHES=false)
+#        - Conventional prefixes: default off (turn on with QC_REQUIRE_CONVENTIONAL_BRANCHES=true)
 #   4  = Bad commit message. Checks:
 #        - Web UI auto-generated: always-on ("Update X", "Create X", "Delete X" are bad even if hand written)
-#        - Require conventional format: default off (turn on with REQUIRE_CONVENTIONAL_COMMITS=true)
-#        - Block conventional format: default off (turn on with BLOCK_CONVENTIONAL_COMMITS=true)
+#        - Require conventional format: default off (turn on with QC_REQUIRE_CONVENTIONAL_COMMITS=true)
+#        - Block conventional format: default off (turn on with QC_BLOCK_CONVENTIONAL_COMMITS=true)
 #   8  = Bad branch contents. Checks:
 #        - Merge commit detected: always-on (no matter how they got there, eg back-merge from main)
 #        - Not rebased onto target: always-on (must be up to date to guarantee correctness after merge)
@@ -34,12 +34,8 @@ SCRIPT_DIR="$(dirname "${0}")"
 TARGET_BRANCH="${TARGET_BRANCH:?Is required - quality checks only make sense in PR context}"
 MERGE_CANDIDATE_CREATOR="${MERGE_CANDIDATE_CREATOR:-}"
 
-# Check configuration (new names take precedence over deprecated names)
-BLOCK_SLASH_CONTAINING_BRANCHES="${BLOCK_SLASH_CONTAINING_BRANCHES:-${BLOCK_SLASHES:-false}}"
-BLOCK_DOUBLE_HYPHEN_CONTAINING_BRANCHES="${BLOCK_DOUBLE_HYPHEN_CONTAINING_BRANCHES:-true}"
-REQUIRE_CONVENTIONAL_BRANCHES="${REQUIRE_CONVENTIONAL_BRANCHES:-false}"
-BLOCK_CONVENTIONAL_COMMITS="${BLOCK_CONVENTIONAL_COMMITS:-false}"
-REQUIRE_CONVENTIONAL_COMMITS="${REQUIRE_CONVENTIONAL_COMMITS:-false}"
+# shellcheck source=src/scripts/defaults/quality-checks.bash
+source "${SCRIPT_DIR}/../defaults/quality-checks.bash"
 
 CONVENTIONAL_BRANCH_PREFIXES="feature/|feat/|bugfix/|fix/|hotfix/|release/|chore/"
 CONVENTIONAL_COMMIT_TYPES="build:|chore:|ci:|docs:|feat:|fix:|perf:|refactor:|revert:|style:|test:"
@@ -50,8 +46,8 @@ FLAG_BAD_COMMIT=4
 FLAG_BAD_CONTENTS=8
 FLAG_BAD_SETUP=16
 
-# shellcheck source=src/scripts/main/branch-setup-shared
-source "${SCRIPT_DIR}/branch-setup-shared"
+# shellcheck source=src/scripts/lib/branch-setup-shared.bash
+source "${SCRIPT_DIR}/../lib/branch-setup-shared.bash"
 
 # Accumulated error code
 ERROR_CODE=0
@@ -225,7 +221,7 @@ main() {
   fi
 
   # Check 2: Optionally block slashes in branch names
-  if [[ "${BLOCK_SLASH_CONTAINING_BRANCHES}" == "true" ]]; then
+  if [[ "${QC_BLOCK_SLASH_CONTAINING_BRANCHES}" == "true" ]]; then
     if has_slash "${CURRENT_BRANCH}"; then
       error ${FLAG_BAD_BRANCH} "Branch name '${CURRENT_BRANCH}' contains a slash. Please use hyphens instead."
     else
@@ -234,7 +230,7 @@ main() {
   fi
 
   # Check 3: Block double hyphens in branch names (default: on)
-  if [[ "${BLOCK_DOUBLE_HYPHEN_CONTAINING_BRANCHES}" == "true" ]]; then
+  if [[ "${QC_BLOCK_DOUBLE_HYPHEN_CONTAINING_BRANCHES}" == "true" ]]; then
     if has_double_hyphen "${CURRENT_BRANCH}"; then
       error ${FLAG_BAD_BRANCH} "Branch name '${CURRENT_BRANCH}' contains double hyphens. This is likely a typo."
     else
@@ -243,7 +239,7 @@ main() {
   fi
 
   # Check 4: Optionally require branch prefix (feature/, fix/, etc.)
-  if [[ "${REQUIRE_CONVENTIONAL_BRANCHES}" == "true" ]]; then
+  if [[ "${QC_REQUIRE_CONVENTIONAL_BRANCHES}" == "true" ]]; then
     if has_branch_prefix "${CURRENT_BRANCH}"; then
       pass "Branch name has required prefix"
     else
@@ -295,7 +291,7 @@ main() {
     fi
 
     # Check 8: Optionally require conventional commit format
-    if [[ "${REQUIRE_CONVENTIONAL_COMMITS}" == "true" ]]; then
+    if [[ "${QC_REQUIRE_CONVENTIONAL_COMMITS}" == "true" ]]; then
       local non_conventional_found=false
       for commit in ${commits}; do
         if ! is_conventional_commit "${commit}"; then
@@ -311,7 +307,7 @@ main() {
     fi
 
     # Check 9: Optionally block conventional commit format
-    if [[ "${BLOCK_CONVENTIONAL_COMMITS}" == "true" ]]; then
+    if [[ "${QC_BLOCK_CONVENTIONAL_COMMITS}" == "true" ]]; then
       local conventional_found=false
       for commit in ${commits}; do
         if is_conventional_commit "${commit}"; then

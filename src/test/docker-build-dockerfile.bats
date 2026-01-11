@@ -30,7 +30,7 @@ set_required_env() {
   export PROJECT_NAME="my-repo"
   export DOCKERFILE_SUB_PATH="$TEST_DIR"
   export OUTPUT_SUB_PATH="$OUTPUT_DIR"
-  export SQUASH="false"
+  export DOCKERFILE_SQUASH="false"
   export IS_RELEASE="true"
 }
 
@@ -127,9 +127,9 @@ set_required_env() {
   assert_docker_called "--label build.datetime="
 }
 
-@test "adds --squash when SQUASH=true" {
+@test "adds --squash when DOCKERFILE_SQUASH=true" {
   set_required_env
-  export SQUASH="true"
+  export DOCKERFILE_SQUASH="true"
   # Mock systemctl to avoid actual daemon restart
   mkdir -p "$MOCK_BIN_DIR"
   echo '#!/bin/bash' > "$MOCK_BIN_DIR/systemctl"
@@ -145,9 +145,9 @@ set_required_env() {
   assert_docker_called "--squash"
 }
 
-@test "defaults SQUASH to true" {
+@test "defaults DOCKERFILE_SQUASH to true" {
   set_required_env
-  unset SQUASH
+  unset DOCKERFILE_SQUASH
   # Mock systemctl and sudo for experimental mode
   mkdir -p "$MOCK_BIN_DIR"
   echo '#!/bin/bash' > "$MOCK_BIN_DIR/systemctl"
@@ -201,16 +201,16 @@ exit 0' > "$MOCK_BIN_DIR/docker"
 
 @test "adds --no-cache by default" {
   set_required_env
-  unset NO_CACHE
+  unset DOCKERFILE_NO_CACHE
 
   run "$SCRIPTS_DIR/docker-build-dockerfile"
   [ "$status" -eq 0 ]
   assert_docker_called "--no-cache"
 }
 
-@test "skips --no-cache when NO_CACHE=false" {
+@test "skips --no-cache when DOCKERFILE_NO_CACHE=false" {
   set_required_env
-  export NO_CACHE="false"
+  export DOCKERFILE_NO_CACHE="false"
 
   run "$SCRIPTS_DIR/docker-build-dockerfile"
   [ "$status" -eq 0 ]

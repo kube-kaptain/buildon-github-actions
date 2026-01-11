@@ -6,9 +6,9 @@
 # Shows how to add custom test scripts to workflows that support them.
 #
 # Available inputs to configure test hooks and workflow support guidance:
-# - pre-tagging-tests-script-sub-path:  Runs before version tagging in almost all workflows
-# - post-docker-tests-script-sub-path:  Runs after docker build in any workflow that includes a docker build (not retag)
-# - post-package-tests-script-sub-path: Runs after manifest packaging has occurred
+# - hook-pre-tagging-tests-script-sub-path:  Runs before version tagging in almost all workflows
+# - hook-post-docker-tests-script-sub-path:  Runs after docker build in any workflow that includes a docker build (not retag)
+# - hook-post-package-tests-script-sub-path: Runs after manifest packaging has occurred
 #
 # Scripts must be:
 # - Located under .github/ (the input is a sub-path from there)
@@ -35,9 +35,9 @@ jobs:
       checks: write
     with:
       manifests-repo-provider-type: docker
-      pre-tagging-tests-script-sub-path: bin/run-tests.bash
-      post-docker-tests-script-sub-path: bin/test-container.bash
-      post-package-tests-script-sub-path: bin/test-manifests.bash
+      hook-pre-tagging-tests-script-sub-path: bin/run-tests.bash
+      hook-post-docker-tests-script-sub-path: bin/test-container.bash
+      hook-post-package-tests-script-sub-path: bin/test-manifests.bash
 
 # ┌───────────────────────────────────────────────────────────────────────────┐
 # │ All Available Options                                                     │
@@ -70,11 +70,11 @@ jobs:
 # │ Quality Checks                                                          │
 # └─────────────────────────────────────────────────────────────────────────┘
 #     with:
-#       block-slash-containing-branches: true           # Default is false
-#       block-double-hyphen-containing-branches: false  # Default is true
-#       require-conventional-branches: true             # Default is false
-#       require-conventional-commits: true              # Default is false
-#       block-conventional-commits: true                # Default is false
+#       qc-block-slash-containing-branches: true           # Default is false
+#       qc-block-double-hyphen-containing-branches: false  # Default is true
+#       qc-require-conventional-branches: true             # Default is false
+#       qc-require-conventional-commits: true              # Default is false
+#       qc-block-conventional-commits: true                # Default is false
 
 # ┌─────────────────────────────────────────────────────────────────────────┐
 # │ Version Configuration                                                   │
@@ -97,8 +97,8 @@ jobs:
 # │ Test Injection                                                          │
 # └─────────────────────────────────────────────────────────────────────────┘
 #     with:
-#       pre-tagging-tests-script-sub-path: 'bin/run-tests.bash'
-#       post-docker-tests-script-sub-path: 'bin/test-container.bash'
+#       hook-pre-tagging-tests-script-sub-path: 'bin/run-tests.bash'
+#       hook-post-docker-tests-script-sub-path: 'bin/test-container.bash'
 
 # ┌─────────────────────────────────────────────────────────────────────────┐
 # │ Token Substitution                                                      │
@@ -107,7 +107,7 @@ jobs:
 # Add custom tokens by creating files in src/config/ (e.g., src/config/MyToken)
 #
 #     with:
-#       substitution-token-style: 'mustache'  # Default is 'shell' (${Token})
+#       token-delimiter-style: 'mustache'  # Default is 'shell' (${Token})
 #       token-name-style: 'UPPER_SNAKE'       # Default is 'PascalCase'
 #       token-name-validation: 'ALL'          # Default is 'MATCH' (must match style)
 #       config-sub-path: 'config'             # Default is 'src/config'

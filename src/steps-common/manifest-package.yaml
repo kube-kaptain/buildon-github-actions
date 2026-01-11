@@ -14,7 +14,7 @@
     docker-target-registry: ${{ steps.docker-build.outputs.docker-target-registry }}
     docker-target-base-path: ${{ steps.docker-build.outputs.docker-target-base-path }}
     is-release: ${{ steps.versions.outputs.is-release }}
-    substitution-token-style: ${{ inputs.substitution-token-style }}
+    token-delimiter-style: ${{ inputs.token-delimiter-style }}
     token-name-style: ${{ inputs.token-name-style }}
     token-name-validation: ${{ inputs.token-name-validation }}
     allow-builtin-token-override: ${{ inputs.allow-builtin-token-override }}

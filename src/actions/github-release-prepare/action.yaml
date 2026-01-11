@@ -35,7 +35,7 @@ inputs:
     description: 'Add version suffix to filenames'
     required: false
     default: 'true'
-  substitution-token-style:
+  token-delimiter-style:
     description: 'Token delimiter syntax'
     required: false
   token-name-style:
@@ -85,7 +85,7 @@ runs:
         DOCKER_IMAGE_NAME: ${{ inputs.docker-image-name }}
         IS_RELEASE: ${{ inputs.is-release }}
         ADD_VERSION_TO_FILENAMES: ${{ inputs.github-release-add-version-to-filenames }}
-        SUBSTITUTION_TOKEN_STYLE: ${{ inputs.substitution-token-style }}
+        TOKEN_DELIMITER_STYLE: ${{ inputs.token-delimiter-style }}
         TOKEN_NAME_STYLE: ${{ inputs.token-name-style }}
         TOKEN_NAME_VALIDATION: ${{ inputs.token-name-validation }}
         CONFIG_SUB_PATH: ${{ inputs.config-sub-path }}
@@ -95,7 +95,7 @@ runs:
         TARGET_REGISTRY: ${{ inputs.target-registry }}
         TARGET_BASE_PATH: ${{ inputs.target-base-path }}
         MANIFESTS_ZIP_FILE_NAME: ${{ inputs.manifests-zip-file-name }}
-        SCRIPTS_DIR: ${{ github.action_path }}/../../scripts/main
+        UTIL_DIR: ${{ github.action_path }}/../../scripts/util
       run: |
         set -euo pipefail
 
@@ -104,7 +104,7 @@ runs:
         ADD_VERSION_TO_FILENAMES="${ADD_VERSION_TO_FILENAMES:-true}"
 
         # Pass-through vars (called scripts default their own; these just satisfy set -u)
-        SUBSTITUTION_TOKEN_STYLE="${SUBSTITUTION_TOKEN_STYLE:-}"
+        TOKEN_DELIMITER_STYLE="${TOKEN_DELIMITER_STYLE:-}"
         TOKEN_NAME_STYLE="${TOKEN_NAME_STYLE:-}"
         TOKEN_NAME_VALIDATION="${TOKEN_NAME_VALIDATION:-}"
         ALLOW_BUILTIN_TOKEN_OVERRIDE="${ALLOW_BUILTIN_TOKEN_OVERRIDE:-}"
@@ -164,7 +164,7 @@ runs:
           TARGET_REGISTRY="${TARGET_REGISTRY:-}" \
           TARGET_BASE_PATH="${TARGET_BASE_PATH:-}" \
           MANIFESTS_ZIP_FILE_NAME="${MANIFESTS_ZIP_FILE_NAME:-}" \
-            "${SCRIPTS_DIR}/prepare-substitution-tokens"
+            "${UTIL_DIR}/prepare-substitution-tokens"
         fi
 
         # Process substituted files (token replacement + version suffix)
@@ -189,8 +189,8 @@ runs:
             cp "${source_file}" "${target_path}"
 
             CONFIG_VALUE_TRAILING_NEWLINE="${CONFIG_VALUE_TRAILING_NEWLINE}" \
-              "${SCRIPTS_DIR}/substitute-tokens-from-dir" \
-              "${SUBSTITUTION_TOKEN_STYLE}" \
+              "${UTIL_DIR}/substitute-tokens-from-dir" \
+              "${TOKEN_DELIMITER_STYLE}" \
               "${tokens_dir}" \
               "${target_path}"
           done

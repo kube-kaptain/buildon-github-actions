@@ -43,7 +43,7 @@ teardown() {
 @test "increments single-part version 7 to 8" {
   TEST_REPO=$(clone_fixture "tag-semver1")
   cd "$TEST_REPO"
-  export MAX_VERSION_PARTS=1
+  export TAG_VERSION_MAX_PARTS=1
 
   run "$SCRIPTS_DIR/versions-and-naming"
   [ "$status" -eq 0 ]
@@ -53,7 +53,7 @@ teardown() {
 @test "increments two-digit single-part version 41 to 42" {
   TEST_REPO=$(clone_fixture "tag-semver1-twodigit")
   cd "$TEST_REPO"
-  export MAX_VERSION_PARTS=1
+  export TAG_VERSION_MAX_PARTS=1
 
   run "$SCRIPTS_DIR/versions-and-naming"
   [ "$status" -eq 0 ]
@@ -63,7 +63,7 @@ teardown() {
 @test "increments ten-digit single-part version 1234567890 to 1234567891" {
   TEST_REPO=$(clone_fixture "tag-semver1-tendigit")
   cd "$TEST_REPO"
-  export MAX_VERSION_PARTS=1
+  export TAG_VERSION_MAX_PARTS=1
 
   run "$SCRIPTS_DIR/versions-and-naming"
   [ "$status" -eq 0 ]
@@ -84,7 +84,7 @@ teardown() {
 @test "increments last component for four-part versions" {
   TEST_REPO=$(clone_fixture "tag-semver4")
   cd "$TEST_REPO"
-  export MAX_VERSION_PARTS=4
+  export TAG_VERSION_MAX_PARTS=4
 
   run "$SCRIPTS_DIR/versions-and-naming"
   [ "$status" -eq 0 ]
@@ -96,7 +96,7 @@ teardown() {
 @test "increments ten-part version 1.2.3.4.5.6.7.8.9.0 to 1.2.3.4.5.6.7.8.9.1" {
   TEST_REPO=$(clone_fixture "tag-semver10")
   cd "$TEST_REPO"
-  export MAX_VERSION_PARTS=10
+  export TAG_VERSION_MAX_PARTS=10
 
   run "$SCRIPTS_DIR/versions-and-naming"
   [ "$status" -eq 0 ]
@@ -199,7 +199,7 @@ teardown() {
   TEST_REPO=$(clone_fixture "tag-patch-branch")
   cd "$TEST_REPO"
   export ADDITIONAL_RELEASE_BRANCHES="main-*"
-  export MAX_VERSION_PARTS=4
+  export TAG_VERSION_MAX_PARTS=4
 
   # Branch has 1.2.4.0-1.2.4.3, should get 1.2.4.4
   run "$SCRIPTS_DIR/versions-and-naming"
@@ -211,7 +211,7 @@ teardown() {
   TEST_REPO=$(clone_fixture "tag-patch-ignores-main")
   cd "$TEST_REPO"
   export ADDITIONAL_RELEASE_BRANCHES="main-*"
-  export MAX_VERSION_PARTS=4
+  export TAG_VERSION_MAX_PARTS=4
 
   # main has 1.3.0, but patch branch is in 1.2.4.X series
   # Should get 1.2.4.1, not be affected by 1.3.0
@@ -240,15 +240,15 @@ teardown() {
   assert_var_equals "VERSION" "1.2.4"
 }
 
-@test "fails when version exceeds MAX_VERSION_PARTS" {
+@test "fails when version exceeds TAG_VERSION_MAX_PARTS" {
   TEST_REPO=$(clone_fixture "tag-semver4")
   cd "$TEST_REPO"
-  export MAX_VERSION_PARTS=3
+  export TAG_VERSION_MAX_PARTS=3
 
   # Has 1.2.3.4, would generate 1.2.3.5 which is 4 parts > max 3
   run "$SCRIPTS_DIR/versions-and-naming"
   [ "$status" -eq 1 ]
-  assert_output_contains "exceeds MAX_VERSION_PARTS"
+  assert_output_contains "exceeds TAG_VERSION_MAX_PARTS"
 }
 
 # Tag date ordering tests
@@ -510,7 +510,7 @@ ENV KUBECTL_VERSION=1.28.5' > src/docker/Dockerfile
   export TAG_VERSION_CALCULATION_STRATEGY=file-pattern-match
   export TAG_VERSION_PATTERN_TYPE=dockerfile-env-kubectl
   export TAG_VERSION_PREFIX_PARTS=2
-  export MAX_VERSION_PARTS=3
+  export TAG_VERSION_MAX_PARTS=3
 
   run "$SCRIPTS_DIR/versions-and-naming"
   [ "$status" -eq 0 ]
@@ -531,7 +531,7 @@ ENV KUBECTL_VERSION=1.28.5' > src/docker/Dockerfile
   export TAG_VERSION_CALCULATION_STRATEGY=file-pattern-match
   export TAG_VERSION_PATTERN_TYPE=dockerfile-env-kubectl
   export TAG_VERSION_PREFIX_PARTS=1
-  export MAX_VERSION_PARTS=2
+  export TAG_VERSION_MAX_PARTS=2
 
   run "$SCRIPTS_DIR/versions-and-naming"
   [ "$status" -eq 0 ]
@@ -552,7 +552,7 @@ ENV KUBECTL_VERSION=1.28.5' > src/docker/Dockerfile
   export TAG_VERSION_CALCULATION_STRATEGY=file-pattern-match
   export TAG_VERSION_PATTERN_TYPE=dockerfile-env-kubectl
   export TAG_VERSION_PREFIX_PARTS=3
-  export MAX_VERSION_PARTS=4
+  export TAG_VERSION_MAX_PARTS=4
 
   run "$SCRIPTS_DIR/versions-and-naming"
   [ "$status" -eq 0 ]
@@ -570,7 +570,7 @@ ENV KUBECTL_VERSION=1.28.5' > src/docker/Dockerfile
   export TAG_VERSION_CALCULATION_STRATEGY=file-pattern-match
   export TAG_VERSION_PATTERN_TYPE=dockerfile-env-kubectl
   export TAG_VERSION_PREFIX_PARTS=3
-  export MAX_VERSION_PARTS=4
+  export TAG_VERSION_MAX_PARTS=4
 
   run "$SCRIPTS_DIR/versions-and-naming"
   [ "$status" -eq 0 ]
@@ -578,7 +578,7 @@ ENV KUBECTL_VERSION=1.28.5' > src/docker/Dockerfile
   assert_var_equals "VERSION" "1.28.5.1"
 }
 
-@test "file-pattern-match fails when PREFIX_PARTS + 1 exceeds MAX_VERSION_PARTS" {
+@test "file-pattern-match fails when PREFIX_PARTS + 1 exceeds TAG_VERSION_MAX_PARTS" {
   TEST_REPO=$(clone_fixture "tag-none")
   cd "$TEST_REPO"
   mkdir -p src/docker
@@ -588,12 +588,12 @@ ENV KUBECTL_VERSION=1.28.5' > src/docker/Dockerfile
   export TAG_VERSION_CALCULATION_STRATEGY=file-pattern-match
   export TAG_VERSION_PATTERN_TYPE=dockerfile-env-kubectl
   export TAG_VERSION_PREFIX_PARTS=3
-  export MAX_VERSION_PARTS=3  # Output would be 4 parts, exceeds limit
+  export TAG_VERSION_MAX_PARTS=3  # Output would be 4 parts, exceeds limit
 
   run "$SCRIPTS_DIR/versions-and-naming"
   [ "$status" -eq 1 ]
-  # PREFIX_PARTS=3 means output has 4 parts, but MAX_VERSION_PARTS=3
-  assert_output_contains "TAG_VERSION_PREFIX_PARTS (3) + 1 exceeds MAX_VERSION_PARTS (3)"
+  # PREFIX_PARTS=3 means output has 4 parts, but TAG_VERSION_MAX_PARTS=3
+  assert_output_contains "TAG_VERSION_PREFIX_PARTS (3) + 1 exceeds TAG_VERSION_MAX_PARTS (3)"
 }
 
 @test "file-pattern-match fails when PREFIX_PARTS=2 but source has 1 part" {
@@ -608,7 +608,7 @@ ENV KUBECTL_VERSION=1.28.5' > src/docker/Dockerfile
   export TAG_VERSION_SOURCE_FILE_NAME=version.txt
   export TAG_VERSION_SOURCE_CUSTOM_PATTERN='^VERSION=([0-9]+)$'
   export TAG_VERSION_PREFIX_PARTS=2  # Source only has 1 part
-  export MAX_VERSION_PARTS=3
+  export TAG_VERSION_MAX_PARTS=3
 
   run "$SCRIPTS_DIR/versions-and-naming"
   [ "$status" -eq 1 ]
@@ -628,7 +628,7 @@ ENV KUBECTL_VERSION=1.28.5' > src/docker/Dockerfile
   export TAG_VERSION_SOURCE_FILE_NAME=version.txt
   export TAG_VERSION_SOURCE_CUSTOM_PATTERN='^VERSION=([0-9]+\.[0-9]+)$'
   export TAG_VERSION_PREFIX_PARTS=3  # Source only has 2 parts
-  export MAX_VERSION_PARTS=4
+  export TAG_VERSION_MAX_PARTS=4
 
   run "$SCRIPTS_DIR/versions-and-naming"
   [ "$status" -eq 1 ]

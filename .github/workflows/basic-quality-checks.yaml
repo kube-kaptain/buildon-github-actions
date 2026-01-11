@@ -5,6 +5,7 @@ name: Basic Quality Checks
 on:
   workflow_call:
     inputs:
+      # Quality check options
       release-branch:
         description: 'The release branch name'
         required: false
@@ -20,31 +21,32 @@ on:
         required: false
         type: boolean
         default: false
-      block-slash-containing-branches:
+      qc-block-slash-containing-branches:
         description: 'Block branch names containing slashes'
         required: false
         type: boolean
         default: false
-      block-double-hyphen-containing-branches:
+      qc-block-double-hyphen-containing-branches:
         description: 'Block branch names containing double hyphens (typo detection)'
         required: false
         type: boolean
         default: true
-      require-conventional-branches:
+      qc-require-conventional-branches:
         description: 'Require branch names start with feature/, fix/, etc.'
         required: false
         type: boolean
         default: false
-      require-conventional-commits:
+      qc-require-conventional-commits:
         description: 'Require commits use conventional commit format (feat:, fix:, etc.)'
         required: false
         type: boolean
         default: false
-      block-conventional-commits:
+      qc-block-conventional-commits:
         description: 'Block commits that use conventional commit format'
         required: false
         type: boolean
         default: false
+
 jobs:
   basic-quality-checks:
     name: Basic Quality Checks
@@ -119,8 +121,8 @@ jobs:
           release-branch: ${{ inputs.release-branch }}
           additional-release-branches: ${{ inputs.additional-release-branches }}
           block-slashes: ${{ inputs.block-slashes }}
-          block-slash-containing-branches: ${{ inputs.block-slash-containing-branches }}
-          block-double-hyphen-containing-branches: ${{ inputs.block-double-hyphen-containing-branches }}
-          require-conventional-branches: ${{ inputs.require-conventional-branches }}
-          require-conventional-commits: ${{ inputs.require-conventional-commits }}
-          block-conventional-commits: ${{ inputs.block-conventional-commits }}
+          qc-block-slash-containing-branches: ${{ inputs.qc-block-slash-containing-branches }}
+          qc-block-double-hyphen-containing-branches: ${{ inputs.qc-block-double-hyphen-containing-branches }}
+          qc-require-conventional-branches: ${{ inputs.qc-require-conventional-branches }}
+          qc-require-conventional-commits: ${{ inputs.qc-require-conventional-commits }}
+          qc-block-conventional-commits: ${{ inputs.qc-block-conventional-commits }}
