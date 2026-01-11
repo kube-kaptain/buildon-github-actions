@@ -34,12 +34,8 @@ SCRIPT_DIR="$(dirname "${0}")"
 TARGET_BRANCH="${TARGET_BRANCH:?Is required - quality checks only make sense in PR context}"
 MERGE_CANDIDATE_CREATOR="${MERGE_CANDIDATE_CREATOR:-}"
 
-# Check configuration (new names take precedence over deprecated names)
-QC_BLOCK_SLASH_CONTAINING_BRANCHES="${QC_BLOCK_SLASH_CONTAINING_BRANCHES:-${BLOCK_SLASHES:-false}}"
-QC_BLOCK_DOUBLE_HYPHEN_CONTAINING_BRANCHES="${QC_BLOCK_DOUBLE_HYPHEN_CONTAINING_BRANCHES:-true}"
-QC_REQUIRE_CONVENTIONAL_BRANCHES="${QC_REQUIRE_CONVENTIONAL_BRANCHES:-false}"
-QC_BLOCK_CONVENTIONAL_COMMITS="${QC_BLOCK_CONVENTIONAL_COMMITS:-false}"
-QC_REQUIRE_CONVENTIONAL_COMMITS="${QC_REQUIRE_CONVENTIONAL_COMMITS:-false}"
+# shellcheck source=src/scripts/defaults/quality-checks.bash
+source "${SCRIPT_DIR}/../defaults/quality-checks.bash"
 
 CONVENTIONAL_BRANCH_PREFIXES="feature/|feat/|bugfix/|fix/|hotfix/|release/|chore/"
 CONVENTIONAL_COMMIT_TYPES="build:|chore:|ci:|docs:|feat:|fix:|perf:|refactor:|revert:|style:|test:"
