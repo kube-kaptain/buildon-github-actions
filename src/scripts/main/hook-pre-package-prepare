@@ -39,28 +39,15 @@
 #
 set -euo pipefail
 
-# === Workflow Inputs ===
-# Defaults for workflow inputs (match workflow input defaults)
+# === User Project Inputs ===
+# Defaults and input conditioning sourced from defaults scripts - single source of truth
 
-# Build output
-OUTPUT_SUB_PATH="${OUTPUT_SUB_PATH:-target}"
-# Docker registry logins
-DOCKER_REGISTRY_LOGINS="${DOCKER_REGISTRY_LOGINS:-}"
+# shellcheck source=src/scripts/defaults/common.bash
+source "$(dirname "${BASH_SOURCE[0]}")/../defaults/common.bash"
 # shellcheck source=src/scripts/defaults/dockerfile.bash
 source "$(dirname "${BASH_SOURCE[0]}")/../defaults/dockerfile.bash"
-# Docker push targets
-DOCKER_PUSH_TARGETS="${DOCKER_PUSH_TARGETS:-}"
-# Manifests source
-MANIFESTS_SUB_PATH="${MANIFESTS_SUB_PATH:-src/kubernetes}"
-# Manifests packaging
-MANIFESTS_REPO_PROVIDER_TYPE="${MANIFESTS_REPO_PROVIDER_TYPE:-docker}"
-MANIFESTS_PACKAGING_BASE_IMAGE="${MANIFESTS_PACKAGING_BASE_IMAGE:-}"
-# Token substitution
 # shellcheck source=src/scripts/defaults/tokens.bash
 source "$(dirname "${BASH_SOURCE[0]}")/../defaults/tokens.bash"
-# Naming, Versions, and Tags calculation
-RELEASE_BRANCH="${RELEASE_BRANCH:-main}"
-ADDITIONAL_RELEASE_BRANCHES="${ADDITIONAL_RELEASE_BRANCHES:-}"
 # shellcheck source=src/scripts/defaults/tag-versioning.bash
 source "$(dirname "${BASH_SOURCE[0]}")/../defaults/tag-versioning.bash"
 # shellcheck source=src/scripts/defaults/quality-checks.bash

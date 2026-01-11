@@ -39,9 +39,8 @@ LOG_ERROR_SUFFIX="${LOG_ERROR_SUFFIX:-}"
 PROJECT_NAME="${PROJECT_NAME:?PROJECT_NAME is required}"
 VERSION="${VERSION:?VERSION is required}"
 
-# Apply defaults for inputs used directly in this script
-MANIFESTS_SUB_PATH="${MANIFESTS_SUB_PATH:-src/kubernetes}"
-OUTPUT_SUB_PATH="${OUTPUT_SUB_PATH:-target}"
+# shellcheck source=src/scripts/defaults/common.bash
+source "$(dirname "${BASH_SOURCE[0]}")/../defaults/common.bash"
 
 # Pass-through vars (called scripts default their own; these just satisfy set -u)
 DOCKER_TAG="${DOCKER_TAG:-}"
