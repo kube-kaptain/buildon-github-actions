@@ -71,6 +71,11 @@ ADDITIONAL_RELEASE_BRANCHES="${ADDITIONAL_RELEASE_BRANCHES:-}"
 source "$(dirname "${BASH_SOURCE[0]}")/../defaults/tag-versioning.bash"
 # shellcheck source=src/scripts/defaults/quality-checks.bash
 source "$(dirname "${BASH_SOURCE[0]}")/../defaults/quality-checks.bash"
+
+# === Vendor Specific ===
+# shellcheck source=src/scripts/defaults/vendor-github-release.bash
+source "$(dirname "${BASH_SOURCE[0]}")/../defaults/vendor-github-release.bash"
+
 # shellcheck source=src/scripts/defaults/hooks-leftovers.bash
 source "$(dirname "${BASH_SOURCE[0]}")/../defaults/hooks-leftovers.bash"
 # Hook script paths
@@ -79,12 +84,6 @@ HOOK_PRE_DOCKER_PREPARE_SCRIPT_SUB_PATH="${HOOK_PRE_DOCKER_PREPARE_SCRIPT_SUB_PA
 HOOK_POST_DOCKER_TESTS_SCRIPT_SUB_PATH="${HOOK_POST_DOCKER_TESTS_SCRIPT_SUB_PATH:-}"
 HOOK_PRE_PACKAGE_PREPARE_SCRIPT_SUB_PATH="${HOOK_PRE_PACKAGE_PREPARE_SCRIPT_SUB_PATH:-}"
 HOOK_POST_PACKAGE_TESTS_SCRIPT_SUB_PATH="${HOOK_POST_PACKAGE_TESTS_SCRIPT_SUB_PATH:-}"
-# GitHub release
-GITHUB_RELEASE_ENABLED="${GITHUB_RELEASE_ENABLED:-true}"
-GITHUB_RELEASE_SUBSTITUTED_FILES="${GITHUB_RELEASE_SUBSTITUTED_FILES:-}"
-GITHUB_RELEASE_VERBATIM_FILES="${GITHUB_RELEASE_VERBATIM_FILES:-}"
-GITHUB_RELEASE_NOTES="${GITHUB_RELEASE_NOTES:-}"
-GITHUB_RELEASE_ADD_VERSION_TO_FILENAMES="${GITHUB_RELEASE_ADD_VERSION_TO_FILENAMES:-true}"
 
 # Export all workflow inputs
 export OUTPUT_SUB_PATH
