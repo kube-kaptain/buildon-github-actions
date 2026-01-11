@@ -8,6 +8,7 @@ PROJECT_ROOT="${PROJECT_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd
 
 # Path to scripts, utilities, libraries, repo providers, and fixtures
 SCRIPTS_DIR="$PROJECT_ROOT/src/scripts/main"
+GENERATORS_DIR="$PROJECT_ROOT/src/scripts/generators"
 UTIL_DIR="$PROJECT_ROOT/src/scripts/util"
 LIB_DIR="$PROJECT_ROOT/src/scripts/lib"
 PLUGINS_DIR="$PROJECT_ROOT/src/scripts/plugins"

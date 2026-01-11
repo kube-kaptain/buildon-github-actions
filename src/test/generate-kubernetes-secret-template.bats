@@ -54,7 +54,7 @@ read_manifest() {
 @test "generates Secret template with single file" {
   create_secret_file "database-password" '${DatabasePassword}'
 
-  run "$SCRIPTS_DIR/generate-kubernetes-secret-template"
+  run "$GENERATORS_DIR/generate-kubernetes-secret-template"
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
@@ -70,7 +70,7 @@ read_manifest() {
   create_secret_file "database-password" '${DatabasePassword}'
   create_secret_file "api-key" '${ApiKey}'
 
-  run "$SCRIPTS_DIR/generate-kubernetes-secret-template"
+  run "$GENERATORS_DIR/generate-kubernetes-secret-template"
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
@@ -81,7 +81,7 @@ read_manifest() {
 @test "type appears before metadata" {
   create_secret_file "database-password" '${DatabasePassword}'
 
-  run "$SCRIPTS_DIR/generate-kubernetes-secret-template"
+  run "$GENERATORS_DIR/generate-kubernetes-secret-template"
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
@@ -94,7 +94,7 @@ read_manifest() {
 @test "includes standard labels" {
   create_secret_file "database-password" '${DatabasePassword}'
 
-  run "$SCRIPTS_DIR/generate-kubernetes-secret-template"
+  run "$GENERATORS_DIR/generate-kubernetes-secret-template"
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
@@ -108,7 +108,7 @@ read_manifest() {
 @test "includes kaptain annotations" {
   create_secret_file "database-password" '${DatabasePassword}'
 
-  run "$SCRIPTS_DIR/generate-kubernetes-secret-template"
+  run "$GENERATORS_DIR/generate-kubernetes-secret-template"
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
@@ -122,7 +122,7 @@ read_manifest() {
 @test "uses checksum injection by default" {
   create_secret_file "database-password" '${DatabasePassword}'
 
-  run "$SCRIPTS_DIR/generate-kubernetes-secret-template"
+  run "$GENERATORS_DIR/generate-kubernetes-secret-template"
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
@@ -133,7 +133,7 @@ read_manifest() {
   create_secret_file "database-password" '${DatabasePassword}'
   export KUBERNETES_SECRET_TEMPLATE_NAME_CHECKSUM_INJECTION="false"
 
-  run "$SCRIPTS_DIR/generate-kubernetes-secret-template"
+  run "$GENERATORS_DIR/generate-kubernetes-secret-template"
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
@@ -144,7 +144,7 @@ read_manifest() {
 @test "uses Environment token for namespace" {
   create_secret_file "database-password" '${DatabasePassword}'
 
-  run "$SCRIPTS_DIR/generate-kubernetes-secret-template"
+  run "$GENERATORS_DIR/generate-kubernetes-secret-template"
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
@@ -159,7 +159,7 @@ read_manifest() {
   create_secret_file "database-password" '${DatabasePassword}'
   export TOKEN_NAME_STYLE="PascalCase"
 
-  run "$SCRIPTS_DIR/generate-kubernetes-secret-template"
+  run "$GENERATORS_DIR/generate-kubernetes-secret-template"
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
@@ -171,7 +171,7 @@ read_manifest() {
   create_secret_file "database-password" '${database-password}'
   export TOKEN_NAME_STYLE="lower-kebab"
 
-  run "$SCRIPTS_DIR/generate-kubernetes-secret-template"
+  run "$GENERATORS_DIR/generate-kubernetes-secret-template"
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
@@ -183,7 +183,7 @@ read_manifest() {
   create_secret_file "database-password" '${DATABASE_PASSWORD}'
   export TOKEN_NAME_STYLE="UPPER_SNAKE"
 
-  run "$SCRIPTS_DIR/generate-kubernetes-secret-template"
+  run "$GENERATORS_DIR/generate-kubernetes-secret-template"
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
@@ -195,7 +195,7 @@ read_manifest() {
   create_secret_file "database-password" '{{ DatabasePassword }}'
   export TOKEN_DELIMITER_STYLE="mustache"
 
-  run "$SCRIPTS_DIR/generate-kubernetes-secret-template"
+  run "$GENERATORS_DIR/generate-kubernetes-secret-template"
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
@@ -210,7 +210,7 @@ read_manifest() {
 @test "exits 0 when secret template directory does not exist" {
   rm -rf "$KUBERNETES_SECRET_TEMPLATE_SUB_PATH"
 
-  run "$SCRIPTS_DIR/generate-kubernetes-secret-template"
+  run "$GENERATORS_DIR/generate-kubernetes-secret-template"
   [ "$status" -eq 0 ]
   assert_output_contains "not found, skipping"
 
@@ -225,7 +225,7 @@ read_manifest() {
   mkdir -p "$template_path"
   touch "$template_path/.gitkeep"
 
-  run "$SCRIPTS_DIR/generate-kubernetes-secret-template"
+  run "$GENERATORS_DIR/generate-kubernetes-secret-template"
   [ "$status" -eq 7 ]
   assert_output_contains "No files found (excluding dotfiles)"
 }
@@ -239,7 +239,7 @@ read_manifest() {
 line2=${Value2}
 line3=${Value3}'
 
-  run "$SCRIPTS_DIR/generate-kubernetes-secret-template"
+  run "$GENERATORS_DIR/generate-kubernetes-secret-template"
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
@@ -251,7 +251,7 @@ line3=${Value3}'
 @test "handles content with special characters" {
   create_secret_file "connection-string" 'postgres://${DbUser}:${DbPassword}@host:5432/db?ssl=true'
 
-  run "$SCRIPTS_DIR/generate-kubernetes-secret-template"
+  run "$GENERATORS_DIR/generate-kubernetes-secret-template"
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
@@ -266,7 +266,7 @@ line3=${Value3}'
   create_secret_file "database-password" '${DatabasePassword}'
   export TOKEN_NAME_STYLE="UnknownStyle"
 
-  run "$SCRIPTS_DIR/generate-kubernetes-secret-template"
+  run "$GENERATORS_DIR/generate-kubernetes-secret-template"
   [ "$status" -eq 2 ]
   assert_output_contains "Unknown token name style"
 }
@@ -275,7 +275,7 @@ line3=${Value3}'
   create_secret_file "database-password" '${DatabasePassword}'
   export TOKEN_DELIMITER_STYLE="unknown"
 
-  run "$SCRIPTS_DIR/generate-kubernetes-secret-template"
+  run "$GENERATORS_DIR/generate-kubernetes-secret-template"
   [ "$status" -eq 3 ]
   assert_output_contains "Unknown substitution"
 }
@@ -284,7 +284,7 @@ line3=${Value3}'
   create_secret_file "database-password" '${DatabasePassword}'
   export KUBERNETES_SECRET_TEMPLATE_NAME_CHECKSUM_INJECTION="maybe"
 
-  run "$SCRIPTS_DIR/generate-kubernetes-secret-template"
+  run "$GENERATORS_DIR/generate-kubernetes-secret-template"
   [ "$status" -eq 4 ]
   assert_output_contains "KUBERNETES_SECRET_TEMPLATE_NAME_CHECKSUM_INJECTION must be 'true' or 'false'"
 }
@@ -297,7 +297,7 @@ line3=${Value3}'
   rm -rf "$OUTPUT_SUB_PATH"
   create_secret_file "database-password" '${DatabasePassword}'
 
-  run "$SCRIPTS_DIR/generate-kubernetes-secret-template"
+  run "$GENERATORS_DIR/generate-kubernetes-secret-template"
   [ "$status" -eq 0 ]
 
   [ -f "$OUTPUT_SUB_PATH/manifests/combined/secret.template.yaml" ]
@@ -308,7 +308,7 @@ line3=${Value3}'
   export OUTPUT_SUB_PATH="$custom_output"
   create_secret_file "database-password" '${DatabasePassword}'
 
-  run "$SCRIPTS_DIR/generate-kubernetes-secret-template"
+  run "$GENERATORS_DIR/generate-kubernetes-secret-template"
   [ "$status" -eq 0 ]
 
   [ -f "$custom_output/manifests/combined/secret.template.yaml" ]
@@ -323,7 +323,7 @@ line3=${Value3}'
   create_secret_file "database-password" '${DatabasePassword}'
   export KUBERNETES_GLOBAL_ADDITIONAL_LABELS="team=platform,cost-center=123"
 
-  run "$SCRIPTS_DIR/generate-kubernetes-secret-template"
+  run "$GENERATORS_DIR/generate-kubernetes-secret-template"
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
@@ -335,7 +335,7 @@ line3=${Value3}'
   create_secret_file "database-password" '${DatabasePassword}'
   export KUBERNETES_SECRET_TEMPLATE_ADDITIONAL_LABELS="secret-type=credentials"
 
-  run "$SCRIPTS_DIR/generate-kubernetes-secret-template"
+  run "$GENERATORS_DIR/generate-kubernetes-secret-template"
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
@@ -347,7 +347,7 @@ line3=${Value3}'
   export KUBERNETES_GLOBAL_ADDITIONAL_LABELS="team=global-team"
   export KUBERNETES_SECRET_TEMPLATE_ADDITIONAL_LABELS="team=secret-team"
 
-  run "$SCRIPTS_DIR/generate-kubernetes-secret-template"
+  run "$GENERATORS_DIR/generate-kubernetes-secret-template"
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
@@ -369,7 +369,7 @@ line3=${Value3}'
   unset KUBERNETES_SECRET_TEMPLATE_SUB_PATH
   export KUBERNETES_SECRET_TEMPLATE_NAME_SUFFIX="db"
 
-  run "$SCRIPTS_DIR/generate-kubernetes-secret-template"
+  run "$GENERATORS_DIR/generate-kubernetes-secret-template"
   [ "$status" -eq 0 ]
 
   rm -rf "$suffix_dir"
@@ -379,7 +379,7 @@ line3=${Value3}'
   create_secret_file_with_suffix "db" "password" '${Password}'
   export KUBERNETES_SECRET_TEMPLATE_NAME_SUFFIX="db"
 
-  run "$SCRIPTS_DIR/generate-kubernetes-secret-template"
+  run "$GENERATORS_DIR/generate-kubernetes-secret-template"
   [ "$status" -eq 0 ]
 
   manifest=$(cat "$OUTPUT_SUB_PATH/manifests/combined/secret-db.template.yaml")
@@ -391,7 +391,7 @@ line3=${Value3}'
   export KUBERNETES_SECRET_TEMPLATE_NAME_SUFFIX="db"
   export KUBERNETES_SECRET_TEMPLATE_NAME_CHECKSUM_INJECTION="false"
 
-  run "$SCRIPTS_DIR/generate-kubernetes-secret-template"
+  run "$GENERATORS_DIR/generate-kubernetes-secret-template"
   [ "$status" -eq 0 ]
 
   manifest=$(cat "$OUTPUT_SUB_PATH/manifests/combined/secret-db.template.yaml")
@@ -403,7 +403,7 @@ line3=${Value3}'
   create_secret_file_with_suffix "db" "password" '${Password}'
   export KUBERNETES_SECRET_TEMPLATE_NAME_SUFFIX="db"
 
-  run "$SCRIPTS_DIR/generate-kubernetes-secret-template"
+  run "$GENERATORS_DIR/generate-kubernetes-secret-template"
   [ "$status" -eq 0 ]
 
   [ -f "$OUTPUT_SUB_PATH/manifests/combined/secret-db.template.yaml" ]
@@ -413,7 +413,7 @@ line3=${Value3}'
 @test "no suffix uses default filename" {
   create_secret_file "password" '${Password}'
 
-  run "$SCRIPTS_DIR/generate-kubernetes-secret-template"
+  run "$GENERATORS_DIR/generate-kubernetes-secret-template"
   [ "$status" -eq 0 ]
 
   [ -f "$OUTPUT_SUB_PATH/manifests/combined/secret.template.yaml" ]
@@ -430,7 +430,7 @@ line3=${Value3}'
   export KUBERNETES_SECRET_TEMPLATE_SUB_PATH="$custom_base"
   export KUBERNETES_SECRET_TEMPLATE_NAME_SUFFIX="db"
 
-  run "$SCRIPTS_DIR/generate-kubernetes-secret-template"
+  run "$GENERATORS_DIR/generate-kubernetes-secret-template"
   [ "$status" -eq 0 ]
 
   # Should have read from the suffixed directory
@@ -451,7 +451,7 @@ line3=${Value3}'
   # Set custom path, no suffix - .template is still added
   export KUBERNETES_SECRET_TEMPLATE_SUB_PATH="$custom_path"
 
-  run "$SCRIPTS_DIR/generate-kubernetes-secret-template"
+  run "$GENERATORS_DIR/generate-kubernetes-secret-template"
   [ "$status" -eq 0 ]
 
   manifest=$(cat "$OUTPUT_SUB_PATH/manifests/combined/secret.template.yaml")
@@ -471,7 +471,7 @@ line3=${Value3}'
   export KUBERNETES_SECRET_TEMPLATE_SUB_PATH="$custom_base"
   export KUBERNETES_SECRET_TEMPLATE_NAME_SUFFIX="api"
 
-  run "$SCRIPTS_DIR/generate-kubernetes-secret-template"
+  run "$GENERATORS_DIR/generate-kubernetes-secret-template"
   [ "$status" -eq 0 ]
 
   # Filename should include suffix
@@ -492,7 +492,7 @@ line3=${Value3}'
   create_secret_file "password" '${Password}'
   export KUBERNETES_SECRET_TEMPLATE_COMBINED_SUB_PATH="omg"
 
-  run "$SCRIPTS_DIR/generate-kubernetes-secret-template"
+  run "$GENERATORS_DIR/generate-kubernetes-secret-template"
   [ "$status" -eq 0 ]
 
   [ -f "$OUTPUT_SUB_PATH/manifests/combined/omg/secret.template.yaml" ]
@@ -503,7 +503,7 @@ line3=${Value3}'
   create_secret_file "password" '${Password}'
   export KUBERNETES_SECRET_TEMPLATE_COMBINED_SUB_PATH="omg"
 
-  run "$SCRIPTS_DIR/generate-kubernetes-secret-template"
+  run "$GENERATORS_DIR/generate-kubernetes-secret-template"
   [ "$status" -eq 0 ]
 
   manifest=$(cat "$OUTPUT_SUB_PATH/manifests/combined/omg/secret.template.yaml")
@@ -515,7 +515,7 @@ line3=${Value3}'
   export KUBERNETES_SECRET_TEMPLATE_COMBINED_SUB_PATH="omg"
   export KUBERNETES_SECRET_TEMPLATE_NAME_SUFFIX="wtf"
 
-  run "$SCRIPTS_DIR/generate-kubernetes-secret-template"
+  run "$GENERATORS_DIR/generate-kubernetes-secret-template"
   [ "$status" -eq 0 ]
 
   # File goes in combined sub-path directory with suffix in filename
@@ -530,7 +530,7 @@ line3=${Value3}'
   create_secret_file "password" '${Password}'
   export KUBERNETES_SECRET_TEMPLATE_COMBINED_SUB_PATH="omg/wtf"
 
-  run "$SCRIPTS_DIR/generate-kubernetes-secret-template"
+  run "$GENERATORS_DIR/generate-kubernetes-secret-template"
   [ "$status" -eq 0 ]
 
   [ -f "$OUTPUT_SUB_PATH/manifests/combined/omg/wtf/secret.template.yaml" ]
@@ -543,7 +543,7 @@ line3=${Value3}'
   create_secret_file "password" '${Password}'
   export KUBERNETES_SECRET_TEMPLATE_COMBINED_SUB_PATH="OMG"
 
-  run "$SCRIPTS_DIR/generate-kubernetes-secret-template"
+  run "$GENERATORS_DIR/generate-kubernetes-secret-template"
   [ "$status" -eq 5 ]
   assert_output_contains "must contain only lowercase"
 }
@@ -552,7 +552,7 @@ line3=${Value3}'
   create_secret_file "password" '${Password}'
   export KUBERNETES_SECRET_TEMPLATE_COMBINED_SUB_PATH="/omg"
 
-  run "$SCRIPTS_DIR/generate-kubernetes-secret-template"
+  run "$GENERATORS_DIR/generate-kubernetes-secret-template"
   [ "$status" -eq 6 ]
   assert_output_contains "must not start or end with a slash"
 }

@@ -50,7 +50,7 @@ read_manifest() {
 @test "generates ConfigMap with single file" {
   create_config_file "app.properties" "key=value"
 
-  run "$SCRIPTS_DIR/generate-kubernetes-configmap"
+  run "$GENERATORS_DIR/generate-kubernetes-configmap"
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
@@ -64,7 +64,7 @@ read_manifest() {
   create_config_file "app.properties" "key1=value1"
   create_config_file "settings.json" '{"debug": false}'
 
-  run "$SCRIPTS_DIR/generate-kubernetes-configmap"
+  run "$GENERATORS_DIR/generate-kubernetes-configmap"
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
@@ -75,7 +75,7 @@ read_manifest() {
 @test "includes standard labels" {
   create_config_file "app.properties" "key=value"
 
-  run "$SCRIPTS_DIR/generate-kubernetes-configmap"
+  run "$GENERATORS_DIR/generate-kubernetes-configmap"
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
@@ -89,7 +89,7 @@ read_manifest() {
 @test "includes kaptain annotations" {
   create_config_file "app.properties" "key=value"
 
-  run "$SCRIPTS_DIR/generate-kubernetes-configmap"
+  run "$GENERATORS_DIR/generate-kubernetes-configmap"
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
@@ -103,7 +103,7 @@ read_manifest() {
 @test "uses checksum injection by default" {
   create_config_file "app.properties" "key=value"
 
-  run "$SCRIPTS_DIR/generate-kubernetes-configmap"
+  run "$GENERATORS_DIR/generate-kubernetes-configmap"
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
@@ -114,7 +114,7 @@ read_manifest() {
   create_config_file "app.properties" "key=value"
   export KUBERNETES_CONFIGMAP_NAME_CHECKSUM_INJECTION="false"
 
-  run "$SCRIPTS_DIR/generate-kubernetes-configmap"
+  run "$GENERATORS_DIR/generate-kubernetes-configmap"
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
@@ -125,7 +125,7 @@ read_manifest() {
 @test "uses Environment token for namespace" {
   create_config_file "app.properties" "key=value"
 
-  run "$SCRIPTS_DIR/generate-kubernetes-configmap"
+  run "$GENERATORS_DIR/generate-kubernetes-configmap"
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
@@ -140,7 +140,7 @@ read_manifest() {
   create_config_file "app.properties" "key=value"
   export TOKEN_NAME_STYLE="PascalCase"
 
-  run "$SCRIPTS_DIR/generate-kubernetes-configmap"
+  run "$GENERATORS_DIR/generate-kubernetes-configmap"
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
@@ -152,7 +152,7 @@ read_manifest() {
   create_config_file "app.properties" "key=value"
   export TOKEN_NAME_STYLE="lower-kebab"
 
-  run "$SCRIPTS_DIR/generate-kubernetes-configmap"
+  run "$GENERATORS_DIR/generate-kubernetes-configmap"
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
@@ -164,7 +164,7 @@ read_manifest() {
   create_config_file "app.properties" "key=value"
   export TOKEN_NAME_STYLE="UPPER_SNAKE"
 
-  run "$SCRIPTS_DIR/generate-kubernetes-configmap"
+  run "$GENERATORS_DIR/generate-kubernetes-configmap"
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
@@ -176,7 +176,7 @@ read_manifest() {
   create_config_file "app.properties" "key=value"
   export TOKEN_DELIMITER_STYLE="mustache"
 
-  run "$SCRIPTS_DIR/generate-kubernetes-configmap"
+  run "$GENERATORS_DIR/generate-kubernetes-configmap"
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
@@ -188,7 +188,7 @@ read_manifest() {
   create_config_file "app.properties" "key=value"
   export TOKEN_DELIMITER_STYLE="helm"
 
-  run "$SCRIPTS_DIR/generate-kubernetes-configmap"
+  run "$GENERATORS_DIR/generate-kubernetes-configmap"
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
@@ -203,7 +203,7 @@ read_manifest() {
 @test "exits 0 when configmap directory does not exist" {
   rm -rf "$KUBERNETES_CONFIGMAP_SUB_PATH"
 
-  run "$SCRIPTS_DIR/generate-kubernetes-configmap"
+  run "$GENERATORS_DIR/generate-kubernetes-configmap"
   [ "$status" -eq 0 ]
   assert_output_contains "not found, skipping"
 
@@ -215,7 +215,7 @@ read_manifest() {
   # Directory exists but has only dotfiles (like .gitkeep)
   touch "$KUBERNETES_CONFIGMAP_SUB_PATH/.gitkeep"
 
-  run "$SCRIPTS_DIR/generate-kubernetes-configmap"
+  run "$GENERATORS_DIR/generate-kubernetes-configmap"
   [ "$status" -eq 7 ]
   assert_output_contains "No files found (excluding dotfiles)"
 }
@@ -229,7 +229,7 @@ read_manifest() {
 line2=value2
 line3=value3"
 
-  run "$SCRIPTS_DIR/generate-kubernetes-configmap"
+  run "$GENERATORS_DIR/generate-kubernetes-configmap"
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
@@ -241,7 +241,7 @@ line3=value3"
 @test "handles content with special characters" {
   create_config_file "app.properties" 'url=http://example.com?foo=bar&baz=qux'
 
-  run "$SCRIPTS_DIR/generate-kubernetes-configmap"
+  run "$GENERATORS_DIR/generate-kubernetes-configmap"
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
@@ -251,7 +251,7 @@ line3=value3"
 @test "handles content with token-like strings" {
   create_config_file "app.properties" 'template=${SomeVar}'
 
-  run "$SCRIPTS_DIR/generate-kubernetes-configmap"
+  run "$GENERATORS_DIR/generate-kubernetes-configmap"
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
@@ -267,7 +267,7 @@ line3=value3"
   create_config_file "app.properties" "key=value"
   export TOKEN_NAME_STYLE="UnknownStyle"
 
-  run "$SCRIPTS_DIR/generate-kubernetes-configmap"
+  run "$GENERATORS_DIR/generate-kubernetes-configmap"
   [ "$status" -eq 2 ]
   assert_output_contains "Unknown token name style"
 }
@@ -276,7 +276,7 @@ line3=value3"
   create_config_file "app.properties" "key=value"
   export TOKEN_DELIMITER_STYLE="unknown"
 
-  run "$SCRIPTS_DIR/generate-kubernetes-configmap"
+  run "$GENERATORS_DIR/generate-kubernetes-configmap"
   [ "$status" -eq 3 ]
   assert_output_contains "Unknown substitution"
 }
@@ -285,7 +285,7 @@ line3=value3"
   create_config_file "app.properties" "key=value"
   export KUBERNETES_CONFIGMAP_NAME_CHECKSUM_INJECTION="maybe"
 
-  run "$SCRIPTS_DIR/generate-kubernetes-configmap"
+  run "$GENERATORS_DIR/generate-kubernetes-configmap"
   [ "$status" -eq 4 ]
   assert_output_contains "KUBERNETES_CONFIGMAP_NAME_CHECKSUM_INJECTION must be 'true' or 'false'"
 }
@@ -298,7 +298,7 @@ line3=value3"
   rm -rf "$OUTPUT_SUB_PATH"
   create_config_file "app.properties" "key=value"
 
-  run "$SCRIPTS_DIR/generate-kubernetes-configmap"
+  run "$GENERATORS_DIR/generate-kubernetes-configmap"
   [ "$status" -eq 0 ]
 
   [ -f "$OUTPUT_SUB_PATH/manifests/combined/configmap.yaml" ]
@@ -309,7 +309,7 @@ line3=value3"
   export OUTPUT_SUB_PATH="$custom_output"
   create_config_file "app.properties" "key=value"
 
-  run "$SCRIPTS_DIR/generate-kubernetes-configmap"
+  run "$GENERATORS_DIR/generate-kubernetes-configmap"
   [ "$status" -eq 0 ]
 
   [ -f "$custom_output/manifests/combined/configmap.yaml" ]
@@ -324,7 +324,7 @@ line3=value3"
   create_config_file "app.properties" "key=value"
   export KUBERNETES_GLOBAL_ADDITIONAL_LABELS="team=platform,cost-center=123"
 
-  run "$SCRIPTS_DIR/generate-kubernetes-configmap"
+  run "$GENERATORS_DIR/generate-kubernetes-configmap"
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
@@ -336,7 +336,7 @@ line3=value3"
   create_config_file "app.properties" "key=value"
   export KUBERNETES_GLOBAL_ADDITIONAL_ANNOTATIONS="custom/note=hello"
 
-  run "$SCRIPTS_DIR/generate-kubernetes-configmap"
+  run "$GENERATORS_DIR/generate-kubernetes-configmap"
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
@@ -347,7 +347,7 @@ line3=value3"
   create_config_file "app.properties" "key=value"
   export KUBERNETES_CONFIGMAP_ADDITIONAL_LABELS="config-type=app"
 
-  run "$SCRIPTS_DIR/generate-kubernetes-configmap"
+  run "$GENERATORS_DIR/generate-kubernetes-configmap"
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
@@ -358,7 +358,7 @@ line3=value3"
   create_config_file "app.properties" "key=value"
   export KUBERNETES_CONFIGMAP_ADDITIONAL_ANNOTATIONS="configmap/source=generated"
 
-  run "$SCRIPTS_DIR/generate-kubernetes-configmap"
+  run "$GENERATORS_DIR/generate-kubernetes-configmap"
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
@@ -370,7 +370,7 @@ line3=value3"
   export KUBERNETES_GLOBAL_ADDITIONAL_LABELS="team=global-team"
   export KUBERNETES_CONFIGMAP_ADDITIONAL_LABELS="team=configmap-team"
 
-  run "$SCRIPTS_DIR/generate-kubernetes-configmap"
+  run "$GENERATORS_DIR/generate-kubernetes-configmap"
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
@@ -383,7 +383,7 @@ line3=value3"
   export KUBERNETES_GLOBAL_ADDITIONAL_ANNOTATIONS="custom/note=global"
   export KUBERNETES_CONFIGMAP_ADDITIONAL_ANNOTATIONS="custom/note=configmap"
 
-  run "$SCRIPTS_DIR/generate-kubernetes-configmap"
+  run "$GENERATORS_DIR/generate-kubernetes-configmap"
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
@@ -395,7 +395,7 @@ line3=value3"
   create_config_file "app.properties" "key=value"
   export KUBERNETES_CONFIGMAP_ADDITIONAL_LABELS="app.kubernetes.io/managed-by=helm"
 
-  run "$SCRIPTS_DIR/generate-kubernetes-configmap"
+  run "$GENERATORS_DIR/generate-kubernetes-configmap"
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
@@ -407,7 +407,7 @@ line3=value3"
   create_config_file "app.properties" "key=value"
   export KUBERNETES_CONFIGMAP_ADDITIONAL_ANNOTATIONS='kaptain/generated-by="custom generator"'
 
-  run "$SCRIPTS_DIR/generate-kubernetes-configmap"
+  run "$GENERATORS_DIR/generate-kubernetes-configmap"
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
@@ -428,7 +428,7 @@ line3=value3"
   unset KUBERNETES_CONFIGMAP_SUB_PATH
   export KUBERNETES_CONFIGMAP_NAME_SUFFIX="nginx"
 
-  run "$SCRIPTS_DIR/generate-kubernetes-configmap"
+  run "$GENERATORS_DIR/generate-kubernetes-configmap"
   [ "$status" -eq 0 ]
 
   rm -rf "$suffix_dir"
@@ -438,7 +438,7 @@ line3=value3"
   create_config_file_with_suffix "nginx" "app.properties" "key=value"
   export KUBERNETES_CONFIGMAP_NAME_SUFFIX="nginx"
 
-  run "$SCRIPTS_DIR/generate-kubernetes-configmap"
+  run "$GENERATORS_DIR/generate-kubernetes-configmap"
   [ "$status" -eq 0 ]
 
   manifest=$(cat "$OUTPUT_SUB_PATH/manifests/combined/configmap-nginx.yaml")
@@ -450,7 +450,7 @@ line3=value3"
   export KUBERNETES_CONFIGMAP_NAME_SUFFIX="nginx"
   export KUBERNETES_CONFIGMAP_NAME_CHECKSUM_INJECTION="false"
 
-  run "$SCRIPTS_DIR/generate-kubernetes-configmap"
+  run "$GENERATORS_DIR/generate-kubernetes-configmap"
   [ "$status" -eq 0 ]
 
   manifest=$(cat "$OUTPUT_SUB_PATH/manifests/combined/configmap-nginx.yaml")
@@ -462,7 +462,7 @@ line3=value3"
   create_config_file_with_suffix "nginx" "app.properties" "key=value"
   export KUBERNETES_CONFIGMAP_NAME_SUFFIX="nginx"
 
-  run "$SCRIPTS_DIR/generate-kubernetes-configmap"
+  run "$GENERATORS_DIR/generate-kubernetes-configmap"
   [ "$status" -eq 0 ]
 
   [ -f "$OUTPUT_SUB_PATH/manifests/combined/configmap-nginx.yaml" ]
@@ -472,7 +472,7 @@ line3=value3"
 @test "no suffix uses default filename" {
   create_config_file "app.properties" "key=value"
 
-  run "$SCRIPTS_DIR/generate-kubernetes-configmap"
+  run "$GENERATORS_DIR/generate-kubernetes-configmap"
   [ "$status" -eq 0 ]
 
   [ -f "$OUTPUT_SUB_PATH/manifests/combined/configmap.yaml" ]
@@ -483,7 +483,7 @@ line3=value3"
   create_config_file_with_suffix "custom" "app.properties" "key=value"
   export KUBERNETES_CONFIGMAP_NAME_SUFFIX="custom"
 
-  run "$SCRIPTS_DIR/generate-kubernetes-configmap"
+  run "$GENERATORS_DIR/generate-kubernetes-configmap"
   [ "$status" -eq 0 ]
 
   # Filename should include suffix
@@ -505,7 +505,7 @@ line3=value3"
   export KUBERNETES_CONFIGMAP_SUB_PATH="$custom_base"
   export KUBERNETES_CONFIGMAP_NAME_SUFFIX="nginx"
 
-  run "$SCRIPTS_DIR/generate-kubernetes-configmap"
+  run "$GENERATORS_DIR/generate-kubernetes-configmap"
   [ "$status" -eq 0 ]
 
   # Should have read from the suffixed directory
@@ -524,7 +524,7 @@ line3=value3"
   # Set custom path, no suffix
   export KUBERNETES_CONFIGMAP_SUB_PATH="$custom_path"
 
-  run "$SCRIPTS_DIR/generate-kubernetes-configmap"
+  run "$GENERATORS_DIR/generate-kubernetes-configmap"
   [ "$status" -eq 0 ]
 
   manifest=$(cat "$OUTPUT_SUB_PATH/manifests/combined/configmap.yaml")
@@ -542,7 +542,7 @@ line3=value3"
   create_config_file "app.properties" "key=value"
   export KUBERNETES_CONFIGMAP_COMBINED_SUB_PATH="omg"
 
-  run "$SCRIPTS_DIR/generate-kubernetes-configmap"
+  run "$GENERATORS_DIR/generate-kubernetes-configmap"
   [ "$status" -eq 0 ]
 
   [ -f "$OUTPUT_SUB_PATH/manifests/combined/omg/configmap.yaml" ]
@@ -553,7 +553,7 @@ line3=value3"
   create_config_file "app.properties" "key=value"
   export KUBERNETES_CONFIGMAP_COMBINED_SUB_PATH="omg"
 
-  run "$SCRIPTS_DIR/generate-kubernetes-configmap"
+  run "$GENERATORS_DIR/generate-kubernetes-configmap"
   [ "$status" -eq 0 ]
 
   manifest=$(cat "$OUTPUT_SUB_PATH/manifests/combined/omg/configmap.yaml")
@@ -565,7 +565,7 @@ line3=value3"
   export KUBERNETES_CONFIGMAP_COMBINED_SUB_PATH="omg"
   export KUBERNETES_CONFIGMAP_NAME_CHECKSUM_INJECTION="false"
 
-  run "$SCRIPTS_DIR/generate-kubernetes-configmap"
+  run "$GENERATORS_DIR/generate-kubernetes-configmap"
   [ "$status" -eq 0 ]
 
   manifest=$(cat "$OUTPUT_SUB_PATH/manifests/combined/omg/configmap.yaml")
@@ -578,7 +578,7 @@ line3=value3"
   export KUBERNETES_CONFIGMAP_COMBINED_SUB_PATH="omg"
   export KUBERNETES_CONFIGMAP_NAME_SUFFIX="wtf"
 
-  run "$SCRIPTS_DIR/generate-kubernetes-configmap"
+  run "$GENERATORS_DIR/generate-kubernetes-configmap"
   [ "$status" -eq 0 ]
 
   # File goes in combined sub-path directory with suffix in filename
@@ -595,7 +595,7 @@ line3=value3"
   export KUBERNETES_CONFIGMAP_NAME_SUFFIX="wtf"
   export KUBERNETES_CONFIGMAP_NAME_CHECKSUM_INJECTION="false"
 
-  run "$SCRIPTS_DIR/generate-kubernetes-configmap"
+  run "$GENERATORS_DIR/generate-kubernetes-configmap"
   [ "$status" -eq 0 ]
 
   manifest=$(cat "$OUTPUT_SUB_PATH/manifests/combined/omg/configmap-wtf.yaml")
@@ -606,7 +606,7 @@ line3=value3"
 @test "no combined sub-path uses root combined directory" {
   create_config_file "app.properties" "key=value"
 
-  run "$SCRIPTS_DIR/generate-kubernetes-configmap"
+  run "$GENERATORS_DIR/generate-kubernetes-configmap"
   [ "$status" -eq 0 ]
 
   [ -f "$OUTPUT_SUB_PATH/manifests/combined/configmap.yaml" ]
@@ -616,7 +616,7 @@ line3=value3"
   create_config_file "app.properties" "key=value"
   export KUBERNETES_CONFIGMAP_COMBINED_SUB_PATH="omg/wtf"
 
-  run "$SCRIPTS_DIR/generate-kubernetes-configmap"
+  run "$GENERATORS_DIR/generate-kubernetes-configmap"
   [ "$status" -eq 0 ]
 
   [ -f "$OUTPUT_SUB_PATH/manifests/combined/omg/wtf/configmap.yaml" ]
@@ -626,7 +626,7 @@ line3=value3"
   create_config_file "app.properties" "key=value"
   export KUBERNETES_CONFIGMAP_COMBINED_SUB_PATH="omg/wtf"
 
-  run "$SCRIPTS_DIR/generate-kubernetes-configmap"
+  run "$GENERATORS_DIR/generate-kubernetes-configmap"
   [ "$status" -eq 0 ]
 
   manifest=$(cat "$OUTPUT_SUB_PATH/manifests/combined/omg/wtf/configmap.yaml")
@@ -638,7 +638,7 @@ line3=value3"
   export KUBERNETES_CONFIGMAP_COMBINED_SUB_PATH="omg/wtf"
   export KUBERNETES_CONFIGMAP_NAME_SUFFIX="lol"
 
-  run "$SCRIPTS_DIR/generate-kubernetes-configmap"
+  run "$GENERATORS_DIR/generate-kubernetes-configmap"
   [ "$status" -eq 0 ]
 
   [ -f "$OUTPUT_SUB_PATH/manifests/combined/omg/wtf/configmap-lol.yaml" ]
@@ -651,7 +651,7 @@ line3=value3"
   create_config_file "app.properties" "key=value"
   export KUBERNETES_CONFIGMAP_COMBINED_SUB_PATH="OMG"
 
-  run "$SCRIPTS_DIR/generate-kubernetes-configmap"
+  run "$GENERATORS_DIR/generate-kubernetes-configmap"
   [ "$status" -eq 5 ]
   assert_output_contains "must contain only lowercase"
 }
@@ -660,7 +660,7 @@ line3=value3"
   create_config_file "app.properties" "key=value"
   export KUBERNETES_CONFIGMAP_COMBINED_SUB_PATH="omg_wtf"
 
-  run "$SCRIPTS_DIR/generate-kubernetes-configmap"
+  run "$GENERATORS_DIR/generate-kubernetes-configmap"
   [ "$status" -eq 5 ]
   assert_output_contains "must contain only lowercase"
 }
@@ -669,7 +669,7 @@ line3=value3"
   create_config_file "app.properties" "key=value"
   export KUBERNETES_CONFIGMAP_COMBINED_SUB_PATH="omg@wtf"
 
-  run "$SCRIPTS_DIR/generate-kubernetes-configmap"
+  run "$GENERATORS_DIR/generate-kubernetes-configmap"
   [ "$status" -eq 5 ]
   assert_output_contains "must contain only lowercase"
 }
@@ -678,7 +678,7 @@ line3=value3"
   create_config_file "app.properties" "key=value"
   export KUBERNETES_CONFIGMAP_COMBINED_SUB_PATH="/omg"
 
-  run "$SCRIPTS_DIR/generate-kubernetes-configmap"
+  run "$GENERATORS_DIR/generate-kubernetes-configmap"
   [ "$status" -eq 6 ]
   assert_output_contains "must not start or end with a slash"
 }
@@ -687,7 +687,7 @@ line3=value3"
   create_config_file "app.properties" "key=value"
   export KUBERNETES_CONFIGMAP_COMBINED_SUB_PATH="omg/"
 
-  run "$SCRIPTS_DIR/generate-kubernetes-configmap"
+  run "$GENERATORS_DIR/generate-kubernetes-configmap"
   [ "$status" -eq 6 ]
   assert_output_contains "must not start or end with a slash"
 }
@@ -696,7 +696,7 @@ line3=value3"
   create_config_file "app.properties" "key=value"
   export KUBERNETES_CONFIGMAP_COMBINED_SUB_PATH="omg-1/wtf-2"
 
-  run "$SCRIPTS_DIR/generate-kubernetes-configmap"
+  run "$GENERATORS_DIR/generate-kubernetes-configmap"
   [ "$status" -eq 0 ]
 
   [ -f "$OUTPUT_SUB_PATH/manifests/combined/omg-1/wtf-2/configmap.yaml" ]

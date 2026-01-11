@@ -59,4 +59,4 @@ runs:
         KUBERNETES_GLOBAL_ADDITIONAL_ANNOTATIONS: ${{ inputs.kubernetes-global-additional-annotations }}
         KUBERNETES_SECRET_TEMPLATE_ADDITIONAL_LABELS: ${{ inputs.kubernetes-secret-template-additional-labels }}
         KUBERNETES_SECRET_TEMPLATE_ADDITIONAL_ANNOTATIONS: ${{ inputs.kubernetes-secret-template-additional-annotations }}
-      run: "${{ github.action_path }}/../../scripts/main/generate-kubernetes-secret-template"
+      run: "${{ github.action_path }}/../../scripts/generators/generate-kubernetes-secret-template"

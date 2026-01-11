@@ -56,6 +56,7 @@ check_executables() {
   local scripts=()
   local globs=(
     "$PROJECT_ROOT/src/scripts/main/*"
+    "$PROJECT_ROOT/src/scripts/generators/*"
     "$PROJECT_ROOT/src/scripts/plugins/*/*"
     "$PROJECT_ROOT/src/test/*.bash"
     "$PROJECT_ROOT/src/test/repo-gen/*.bash"
@@ -152,6 +153,7 @@ run_shellcheck() {
   local scripts=()
   local globs=(
     "${PROJECT_ROOT}/src/scripts/main/*"
+    "${PROJECT_ROOT}/src/scripts/generators/*"
     "${PROJECT_ROOT}/src/scripts/plugins/*/*"
   )
 
