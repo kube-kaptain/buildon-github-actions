@@ -46,13 +46,8 @@ set -euo pipefail
 OUTPUT_SUB_PATH="${OUTPUT_SUB_PATH:-target}"
 # Docker registry logins
 DOCKER_REGISTRY_LOGINS="${DOCKER_REGISTRY_LOGINS:-}"
-# Docker build options
-DOCKERFILE_SUB_PATH="${DOCKERFILE_SUB_PATH:-src/docker}"
-DOCKERFILE_SQUASH="${DOCKERFILE_SQUASH:-true}"
-DOCKERFILE_NO_CACHE="${DOCKERFILE_NO_CACHE:-true}"
-# Docker target config
-DOCKER_TARGET_REGISTRY="${DOCKER_TARGET_REGISTRY:-ghcr.io}"
-DOCKER_TARGET_BASE_PATH="${DOCKER_TARGET_BASE_PATH:-}"
+# shellcheck source=src/scripts/defaults/dockerfile.bash
+source "$(dirname "${BASH_SOURCE[0]}")/../defaults/dockerfile.bash"
 # Docker push targets
 DOCKER_PUSH_TARGETS="${DOCKER_PUSH_TARGETS:-}"
 # Manifests source
@@ -83,6 +78,8 @@ ADDITIONAL_RELEASE_BRANCHES="${ADDITIONAL_RELEASE_BRANCHES:-}"
 source "$(dirname "${BASH_SOURCE[0]}")/../defaults/tag-versioning.bash"
 # shellcheck source=src/scripts/defaults/quality-checks.bash
 source "$(dirname "${BASH_SOURCE[0]}")/../defaults/quality-checks.bash"
+# shellcheck source=src/scripts/defaults/hooks-leftovers.bash
+source "$(dirname "${BASH_SOURCE[0]}")/../defaults/hooks-leftovers.bash"
 # Hook script paths
 HOOK_PRE_TAGGING_TESTS_SCRIPT_SUB_PATH="${HOOK_PRE_TAGGING_TESTS_SCRIPT_SUB_PATH:-}"
 HOOK_PRE_DOCKER_PREPARE_SCRIPT_SUB_PATH="${HOOK_PRE_DOCKER_PREPARE_SCRIPT_SUB_PATH:-}"
