@@ -38,11 +38,8 @@ LOG_ERROR_SUFFIX="${LOG_ERROR_SUFFIX:-}"
 TOKENS_OUTPUT_SUB_PATH="${TOKENS_OUTPUT_SUB_PATH:?TOKENS_OUTPUT_SUB_PATH is required}"
 
 # Optional inputs with defaults
-CONFIG_SUB_PATH="${CONFIG_SUB_PATH:-src/config}"
-TOKEN_NAME_STYLE="${TOKEN_NAME_STYLE:-PascalCase}"
-TOKEN_NAME_VALIDATION="${TOKEN_NAME_VALIDATION:-MATCH}"
-ALLOW_BUILTIN_TOKEN_OVERRIDE="${ALLOW_BUILTIN_TOKEN_OVERRIDE:-false}"
-CONFIG_VALUE_TRAILING_NEWLINE="${CONFIG_VALUE_TRAILING_NEWLINE:-strip-for-single-line}"
+# shellcheck source=src/scripts/defaults/tokens.bash
+source "${SCRIPT_DIR}/../defaults/tokens.bash"
 
 # Validate token name style upfront
 if ! is_valid_token_name_style "${TOKEN_NAME_STYLE}"; then

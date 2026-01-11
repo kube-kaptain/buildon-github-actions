@@ -59,13 +59,9 @@ OUTPUT_SUB_PATH="${OUTPUT_SUB_PATH:-target}"
 DOCKERFILE_SQUASH="${DOCKERFILE_SQUASH:-true}"
 DOCKERFILE_NO_CACHE="${DOCKERFILE_NO_CACHE:-true}"
 
-# Pass-through vars (called scripts default their own; these just satisfy set -u)
-TOKEN_DELIMITER_STYLE="${TOKEN_DELIMITER_STYLE:-}"
-TOKEN_NAME_STYLE="${TOKEN_NAME_STYLE:-}"
-TOKEN_NAME_VALIDATION="${TOKEN_NAME_VALIDATION:-}"
-ALLOW_BUILTIN_TOKEN_OVERRIDE="${ALLOW_BUILTIN_TOKEN_OVERRIDE:-}"
-CONFIG_SUB_PATH="${CONFIG_SUB_PATH:-}"
-CONFIG_VALUE_TRAILING_NEWLINE="${CONFIG_VALUE_TRAILING_NEWLINE:-}"
+# Token substitution
+# shellcheck source=src/scripts/defaults/tokens.bash
+source "$(dirname "${BASH_SOURCE[0]}")/../defaults/tokens.bash"
 
 # Build output structure (sub-paths, relative to working directory)
 DOCKER_CONFIG_SUB_PATH="${OUTPUT_SUB_PATH}/docker/config"
