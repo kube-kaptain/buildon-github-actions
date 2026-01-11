@@ -41,7 +41,7 @@ run_local() {
 
 # Run tests with Docker
 run_docker() {
-  log_info "Running tests with Docker (bats/bats:latest)"
+  log_info "Running tests with Docker (bats/bats:1.13.0)"
   docker run --rm \
     -v "$PROJECT_ROOT:/workspace" \
     -w /workspace/src/test \
@@ -185,7 +185,7 @@ run_shellcheck() {
   elif has_docker; then
     docker run --rm \
       -v "${PROJECT_ROOT}:/workspace" \
-      koalaman/shellcheck:stable \
+      koalaman/shellcheck:v0.10.0 \
       "${enables[@]}" "${scripts[@]/#${PROJECT_ROOT}//workspace}"
   else
     log_warn "shellcheck not available, skipping"
