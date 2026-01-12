@@ -1,0 +1,52 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
+#
+# generate-kubernetes-workload - Routes to appropriate workload generator
+#
+# Validates KUBERNETES_WORKLOAD_TYPE and dispatches to the matching generator.
+# Set KUBERNETES_WORKLOAD_TYPE=none to skip workload generation entirely.
+#
+# Inputs (environment variables):
+#   KUBERNETES_WORKLOAD_TYPE - Workload type to generate (default: deployment)
+#                              Values: deployment, none
+#                              Additional types can be added by creating
+#                              generate-kubernetes-workload-<type> scripts.
+#
+# All other KUBERNETES_WORKLOAD_* and KUBERNETES_<TYPE>_* variables are
+# passed through to the selected generator.
+#
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Logging configuration (CI-agnostic)
+LOG_ERROR_PREFIX="${LOG_ERROR_PREFIX:-}"
+LOG_ERROR_SUFFIX="${LOG_ERROR_SUFFIX:-}"
+
+WORKLOAD_TYPE="${KUBERNETES_WORKLOAD_TYPE:-deployment}"
+
+# Handle disabled
+if [[ "${WORKLOAD_TYPE}" == "none" ]]; then
+  echo "Workload generation disabled (KUBERNETES_WORKLOAD_TYPE=none)" >&2
+  exit 0
+fi
+
+# Validate and find generator
+GENERATOR="${SCRIPT_DIR}/generate-kubernetes-workload-${WORKLOAD_TYPE}"
+
+if [[ ! -x "${GENERATOR}" ]]; then
+  echo "${LOG_ERROR_PREFIX}Unknown workload type '${WORKLOAD_TYPE}'${LOG_ERROR_SUFFIX}" >&2
+  echo "" >&2
+  echo "Available workload types:" >&2
+  for gen in "${SCRIPT_DIR}"/generate-kubernetes-workload-*; do
+    if [[ -x "${gen}" ]]; then
+      type_name="${gen##*generate-kubernetes-workload-}"
+      echo "  - ${type_name}" >&2
+    fi
+  done
+  exit 1
+fi
+
+# Dispatch to generator (inherits all env vars)
+exec "${GENERATOR}"

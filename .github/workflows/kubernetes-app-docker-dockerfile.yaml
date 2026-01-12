@@ -149,6 +149,142 @@ on:
         required: false
         type: string
         default: ''
+      # Kubernetes Workload generation
+      kubernetes-workload-type:
+        description: 'Workload type to generate (deployment, none)'
+        required: false
+        type: string
+        default: 'deployment'
+      kubernetes-workload-name-suffix:
+        description: 'Optional suffix for workload name and filename'
+        required: false
+        type: string
+        default: ''
+      kubernetes-workload-combined-sub-path:
+        description: 'Sub-path within combined/ for output'
+        required: false
+        type: string
+        default: ''
+      kubernetes-workload-env-sub-path:
+        description: 'Directory containing environment variable files'
+        required: false
+        type: string
+        default: 'src/workload-env'
+      kubernetes-workload-additional-labels:
+        description: 'Additional labels specific to workload (comma-separated key=value)'
+        required: false
+        type: string
+        default: ''
+      kubernetes-workload-additional-annotations:
+        description: 'Additional annotations specific to workload (comma-separated key=value)'
+        required: false
+        type: string
+        default: ''
+      kubernetes-workload-container-port:
+        description: 'Container port'
+        required: false
+        type: string
+        default: '1024'
+      kubernetes-workload-image-reference-style:
+        description: 'Image reference style (combined, separate, project-name-prefixed-combined, project-name-prefixed-separate)'
+        required: false
+        type: string
+        default: 'combined'
+      kubernetes-workload-readonly-root-filesystem:
+        description: 'Enable read-only root filesystem'
+        required: false
+        type: boolean
+        default: true
+      kubernetes-workload-seccomp-profile:
+        description: 'Seccomp profile (DISABLED, RuntimeDefault, Localhost, Unconfined)'
+        required: false
+        type: string
+        default: 'DISABLED'
+      kubernetes-workload-automount-service-account-token:
+        description: 'Automount service account token'
+        required: false
+        type: boolean
+        default: false
+      kubernetes-workload-resources-memory:
+        description: 'Memory limit (e.g., 128Mi, 1Gi)'
+        required: false
+        type: string
+        default: '10Mi'
+      kubernetes-workload-resources-cpu-request:
+        description: 'CPU request (e.g., 100m, 1)'
+        required: false
+        type: string
+        default: '100m'
+      kubernetes-workload-resources-cpu-limit:
+        description: 'CPU limit (empty for no limit)'
+        required: false
+        type: string
+        default: ''
+      kubernetes-workload-configmap-mount-path:
+        description: 'ConfigMap mount path in container'
+        required: false
+        type: string
+        default: '/configmap'
+      kubernetes-workload-secret-mount-path:
+        description: 'Secret mount path in container'
+        required: false
+        type: string
+        default: '/secret'
+      kubernetes-workload-termination-grace-period-seconds:
+        description: 'Termination grace period in seconds'
+        required: false
+        type: string
+        default: '10'
+      kubernetes-workload-prestop-command:
+        description: 'PreStop hook command (empty for none)'
+        required: false
+        type: string
+        default: ''
+      kubernetes-workload-affinity-strategy:
+        description: 'Pod affinity strategy plugin name'
+        required: false
+        type: string
+        default: 'spread-nodes-and-zones-ha'
+      kubernetes-workload-probe-liveness-check-type:
+        description: 'Liveness probe type (http-get, tcp-socket, exec, grpc, none)'
+        required: false
+        type: string
+        default: 'http-get'
+      kubernetes-workload-probe-readiness-check-type:
+        description: 'Readiness probe type (http-get, tcp-socket, exec, grpc, none)'
+        required: false
+        type: string
+        default: 'http-get'
+      kubernetes-workload-probe-startup-check-type:
+        description: 'Startup probe type (http-get, tcp-socket, exec, grpc, none)'
+        required: false
+        type: string
+        default: 'http-get'
+      kubernetes-workload-probe-liveness-http-path:
+        description: 'Liveness probe HTTP path'
+        required: false
+        type: string
+        default: '/liveness'
+      kubernetes-workload-probe-readiness-http-path:
+        description: 'Readiness probe HTTP path'
+        required: false
+        type: string
+        default: '/readiness'
+      kubernetes-workload-probe-startup-http-path:
+        description: 'Startup probe HTTP path'
+        required: false
+        type: string
+        default: '/startup'
+      kubernetes-deployment-replicas:
+        description: 'Replica count (empty for token, NO for HPA management)'
+        required: false
+        type: string
+        default: ''
+      kubernetes-deployment-revision-history-limit:
+        description: 'Number of old ReplicaSets to retain'
+        required: false
+        type: string
+        default: '10'
 
       # Token substitution
       token-delimiter-style:
@@ -617,6 +753,34 @@ jobs:
           kubernetes-serviceaccount-combined-sub-path: ${{ inputs.kubernetes-serviceaccount-combined-sub-path }}
           kubernetes-serviceaccount-additional-labels: ${{ inputs.kubernetes-serviceaccount-additional-labels }}
           kubernetes-serviceaccount-additional-annotations: ${{ inputs.kubernetes-serviceaccount-additional-annotations }}
+          # Kubernetes Workload generation
+          kubernetes-workload-type: ${{ inputs.kubernetes-workload-type }}
+          kubernetes-workload-name-suffix: ${{ inputs.kubernetes-workload-name-suffix }}
+          kubernetes-workload-combined-sub-path: ${{ inputs.kubernetes-workload-combined-sub-path }}
+          kubernetes-workload-env-sub-path: ${{ inputs.kubernetes-workload-env-sub-path }}
+          kubernetes-workload-additional-labels: ${{ inputs.kubernetes-workload-additional-labels }}
+          kubernetes-workload-additional-annotations: ${{ inputs.kubernetes-workload-additional-annotations }}
+          kubernetes-workload-container-port: ${{ inputs.kubernetes-workload-container-port }}
+          kubernetes-workload-image-reference-style: ${{ inputs.kubernetes-workload-image-reference-style }}
+          kubernetes-workload-readonly-root-filesystem: ${{ inputs.kubernetes-workload-readonly-root-filesystem }}
+          kubernetes-workload-seccomp-profile: ${{ inputs.kubernetes-workload-seccomp-profile }}
+          kubernetes-workload-automount-service-account-token: ${{ inputs.kubernetes-workload-automount-service-account-token }}
+          kubernetes-workload-resources-memory: ${{ inputs.kubernetes-workload-resources-memory }}
+          kubernetes-workload-resources-cpu-request: ${{ inputs.kubernetes-workload-resources-cpu-request }}
+          kubernetes-workload-resources-cpu-limit: ${{ inputs.kubernetes-workload-resources-cpu-limit }}
+          kubernetes-workload-configmap-mount-path: ${{ inputs.kubernetes-workload-configmap-mount-path }}
+          kubernetes-workload-secret-mount-path: ${{ inputs.kubernetes-workload-secret-mount-path }}
+          kubernetes-workload-termination-grace-period-seconds: ${{ inputs.kubernetes-workload-termination-grace-period-seconds }}
+          kubernetes-workload-prestop-command: ${{ inputs.kubernetes-workload-prestop-command }}
+          kubernetes-workload-affinity-strategy: ${{ inputs.kubernetes-workload-affinity-strategy }}
+          kubernetes-workload-probe-liveness-check-type: ${{ inputs.kubernetes-workload-probe-liveness-check-type }}
+          kubernetes-workload-probe-readiness-check-type: ${{ inputs.kubernetes-workload-probe-readiness-check-type }}
+          kubernetes-workload-probe-startup-check-type: ${{ inputs.kubernetes-workload-probe-startup-check-type }}
+          kubernetes-workload-probe-liveness-http-path: ${{ inputs.kubernetes-workload-probe-liveness-http-path }}
+          kubernetes-workload-probe-readiness-http-path: ${{ inputs.kubernetes-workload-probe-readiness-http-path }}
+          kubernetes-workload-probe-startup-http-path: ${{ inputs.kubernetes-workload-probe-startup-http-path }}
+          kubernetes-deployment-replicas: ${{ inputs.kubernetes-deployment-replicas }}
+          kubernetes-deployment-revision-history-limit: ${{ inputs.kubernetes-deployment-revision-history-limit }}
 
           # Token substitution
           token-delimiter-style: ${{ inputs.token-delimiter-style }}
@@ -760,6 +924,34 @@ jobs:
           kubernetes-serviceaccount-combined-sub-path: ${{ inputs.kubernetes-serviceaccount-combined-sub-path }}
           kubernetes-serviceaccount-additional-labels: ${{ inputs.kubernetes-serviceaccount-additional-labels }}
           kubernetes-serviceaccount-additional-annotations: ${{ inputs.kubernetes-serviceaccount-additional-annotations }}
+          # Kubernetes Workload generation
+          kubernetes-workload-type: ${{ inputs.kubernetes-workload-type }}
+          kubernetes-workload-name-suffix: ${{ inputs.kubernetes-workload-name-suffix }}
+          kubernetes-workload-combined-sub-path: ${{ inputs.kubernetes-workload-combined-sub-path }}
+          kubernetes-workload-env-sub-path: ${{ inputs.kubernetes-workload-env-sub-path }}
+          kubernetes-workload-additional-labels: ${{ inputs.kubernetes-workload-additional-labels }}
+          kubernetes-workload-additional-annotations: ${{ inputs.kubernetes-workload-additional-annotations }}
+          kubernetes-workload-container-port: ${{ inputs.kubernetes-workload-container-port }}
+          kubernetes-workload-image-reference-style: ${{ inputs.kubernetes-workload-image-reference-style }}
+          kubernetes-workload-readonly-root-filesystem: ${{ inputs.kubernetes-workload-readonly-root-filesystem }}
+          kubernetes-workload-seccomp-profile: ${{ inputs.kubernetes-workload-seccomp-profile }}
+          kubernetes-workload-automount-service-account-token: ${{ inputs.kubernetes-workload-automount-service-account-token }}
+          kubernetes-workload-resources-memory: ${{ inputs.kubernetes-workload-resources-memory }}
+          kubernetes-workload-resources-cpu-request: ${{ inputs.kubernetes-workload-resources-cpu-request }}
+          kubernetes-workload-resources-cpu-limit: ${{ inputs.kubernetes-workload-resources-cpu-limit }}
+          kubernetes-workload-configmap-mount-path: ${{ inputs.kubernetes-workload-configmap-mount-path }}
+          kubernetes-workload-secret-mount-path: ${{ inputs.kubernetes-workload-secret-mount-path }}
+          kubernetes-workload-termination-grace-period-seconds: ${{ inputs.kubernetes-workload-termination-grace-period-seconds }}
+          kubernetes-workload-prestop-command: ${{ inputs.kubernetes-workload-prestop-command }}
+          kubernetes-workload-affinity-strategy: ${{ inputs.kubernetes-workload-affinity-strategy }}
+          kubernetes-workload-probe-liveness-check-type: ${{ inputs.kubernetes-workload-probe-liveness-check-type }}
+          kubernetes-workload-probe-readiness-check-type: ${{ inputs.kubernetes-workload-probe-readiness-check-type }}
+          kubernetes-workload-probe-startup-check-type: ${{ inputs.kubernetes-workload-probe-startup-check-type }}
+          kubernetes-workload-probe-liveness-http-path: ${{ inputs.kubernetes-workload-probe-liveness-http-path }}
+          kubernetes-workload-probe-readiness-http-path: ${{ inputs.kubernetes-workload-probe-readiness-http-path }}
+          kubernetes-workload-probe-startup-http-path: ${{ inputs.kubernetes-workload-probe-startup-http-path }}
+          kubernetes-deployment-replicas: ${{ inputs.kubernetes-deployment-replicas }}
+          kubernetes-deployment-revision-history-limit: ${{ inputs.kubernetes-deployment-revision-history-limit }}
 
           # Token substitution
           token-delimiter-style: ${{ inputs.token-delimiter-style }}
@@ -957,6 +1149,34 @@ jobs:
           kubernetes-serviceaccount-combined-sub-path: ${{ inputs.kubernetes-serviceaccount-combined-sub-path }}
           kubernetes-serviceaccount-additional-labels: ${{ inputs.kubernetes-serviceaccount-additional-labels }}
           kubernetes-serviceaccount-additional-annotations: ${{ inputs.kubernetes-serviceaccount-additional-annotations }}
+          # Kubernetes Workload generation
+          kubernetes-workload-type: ${{ inputs.kubernetes-workload-type }}
+          kubernetes-workload-name-suffix: ${{ inputs.kubernetes-workload-name-suffix }}
+          kubernetes-workload-combined-sub-path: ${{ inputs.kubernetes-workload-combined-sub-path }}
+          kubernetes-workload-env-sub-path: ${{ inputs.kubernetes-workload-env-sub-path }}
+          kubernetes-workload-additional-labels: ${{ inputs.kubernetes-workload-additional-labels }}
+          kubernetes-workload-additional-annotations: ${{ inputs.kubernetes-workload-additional-annotations }}
+          kubernetes-workload-container-port: ${{ inputs.kubernetes-workload-container-port }}
+          kubernetes-workload-image-reference-style: ${{ inputs.kubernetes-workload-image-reference-style }}
+          kubernetes-workload-readonly-root-filesystem: ${{ inputs.kubernetes-workload-readonly-root-filesystem }}
+          kubernetes-workload-seccomp-profile: ${{ inputs.kubernetes-workload-seccomp-profile }}
+          kubernetes-workload-automount-service-account-token: ${{ inputs.kubernetes-workload-automount-service-account-token }}
+          kubernetes-workload-resources-memory: ${{ inputs.kubernetes-workload-resources-memory }}
+          kubernetes-workload-resources-cpu-request: ${{ inputs.kubernetes-workload-resources-cpu-request }}
+          kubernetes-workload-resources-cpu-limit: ${{ inputs.kubernetes-workload-resources-cpu-limit }}
+          kubernetes-workload-configmap-mount-path: ${{ inputs.kubernetes-workload-configmap-mount-path }}
+          kubernetes-workload-secret-mount-path: ${{ inputs.kubernetes-workload-secret-mount-path }}
+          kubernetes-workload-termination-grace-period-seconds: ${{ inputs.kubernetes-workload-termination-grace-period-seconds }}
+          kubernetes-workload-prestop-command: ${{ inputs.kubernetes-workload-prestop-command }}
+          kubernetes-workload-affinity-strategy: ${{ inputs.kubernetes-workload-affinity-strategy }}
+          kubernetes-workload-probe-liveness-check-type: ${{ inputs.kubernetes-workload-probe-liveness-check-type }}
+          kubernetes-workload-probe-readiness-check-type: ${{ inputs.kubernetes-workload-probe-readiness-check-type }}
+          kubernetes-workload-probe-startup-check-type: ${{ inputs.kubernetes-workload-probe-startup-check-type }}
+          kubernetes-workload-probe-liveness-http-path: ${{ inputs.kubernetes-workload-probe-liveness-http-path }}
+          kubernetes-workload-probe-readiness-http-path: ${{ inputs.kubernetes-workload-probe-readiness-http-path }}
+          kubernetes-workload-probe-startup-http-path: ${{ inputs.kubernetes-workload-probe-startup-http-path }}
+          kubernetes-deployment-replicas: ${{ inputs.kubernetes-deployment-replicas }}
+          kubernetes-deployment-revision-history-limit: ${{ inputs.kubernetes-deployment-revision-history-limit }}
 
           # Token substitution
           token-delimiter-style: ${{ inputs.token-delimiter-style }}
@@ -1135,6 +1355,75 @@ jobs:
           action: fail
           check-run-id: ${{ steps.check-generate-serviceaccount.outputs.check-run-id }}
 
+      # === Generate Workload ===
+      - name: Start check - Generate Workload
+        if: inputs.kubernetes-workload-type != 'none' && success()
+        id: check-generate-workload
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
+        with:
+          action: start
+          check-name: 'Build & Publish → Generate Workload'
+      - name: Generate workload manifest
+        id: generate-workload
+        if: inputs.kubernetes-workload-type != 'none' && success()
+        uses: ./.github/buildon-github-actions/src/actions/generate-kubernetes-workload
+        with:
+          # Workload type
+          kubernetes-workload-type: ${{ inputs.kubernetes-workload-type }}
+          # Common workload settings
+          kubernetes-workload-name-suffix: ${{ inputs.kubernetes-workload-name-suffix }}
+          kubernetes-workload-combined-sub-path: ${{ inputs.kubernetes-workload-combined-sub-path }}
+          kubernetes-workload-env-sub-path: ${{ inputs.kubernetes-workload-env-sub-path }}
+          kubernetes-workload-additional-labels: ${{ inputs.kubernetes-workload-additional-labels }}
+          kubernetes-workload-additional-annotations: ${{ inputs.kubernetes-workload-additional-annotations }}
+          # Container configuration
+          kubernetes-workload-container-port: ${{ inputs.kubernetes-workload-container-port }}
+          kubernetes-workload-image-reference-style: ${{ inputs.kubernetes-workload-image-reference-style }}
+          # Security settings
+          kubernetes-workload-readonly-root-filesystem: ${{ inputs.kubernetes-workload-readonly-root-filesystem }}
+          kubernetes-workload-seccomp-profile: ${{ inputs.kubernetes-workload-seccomp-profile }}
+          kubernetes-workload-automount-service-account-token: ${{ inputs.kubernetes-workload-automount-service-account-token }}
+          # Resource limits
+          kubernetes-workload-resources-memory: ${{ inputs.kubernetes-workload-resources-memory }}
+          kubernetes-workload-resources-cpu-request: ${{ inputs.kubernetes-workload-resources-cpu-request }}
+          kubernetes-workload-resources-cpu-limit: ${{ inputs.kubernetes-workload-resources-cpu-limit }}
+          # Mount paths
+          kubernetes-workload-configmap-mount-path: ${{ inputs.kubernetes-workload-configmap-mount-path }}
+          kubernetes-workload-secret-mount-path: ${{ inputs.kubernetes-workload-secret-mount-path }}
+          # Lifecycle
+          kubernetes-workload-termination-grace-period-seconds: ${{ inputs.kubernetes-workload-termination-grace-period-seconds }}
+          kubernetes-workload-prestop-command: ${{ inputs.kubernetes-workload-prestop-command }}
+          kubernetes-workload-affinity-strategy: ${{ inputs.kubernetes-workload-affinity-strategy }}
+          # Probe check types
+          kubernetes-workload-probe-liveness-check-type: ${{ inputs.kubernetes-workload-probe-liveness-check-type }}
+          kubernetes-workload-probe-readiness-check-type: ${{ inputs.kubernetes-workload-probe-readiness-check-type }}
+          kubernetes-workload-probe-startup-check-type: ${{ inputs.kubernetes-workload-probe-startup-check-type }}
+          # Probe HTTP paths
+          kubernetes-workload-probe-liveness-http-path: ${{ inputs.kubernetes-workload-probe-liveness-http-path }}
+          kubernetes-workload-probe-readiness-http-path: ${{ inputs.kubernetes-workload-probe-readiness-http-path }}
+          kubernetes-workload-probe-startup-http-path: ${{ inputs.kubernetes-workload-probe-startup-http-path }}
+          # Deployment-specific settings
+          kubernetes-deployment-replicas: ${{ inputs.kubernetes-deployment-replicas }}
+          kubernetes-deployment-revision-history-limit: ${{ inputs.kubernetes-deployment-revision-history-limit }}
+          # Global settings
+          output-sub-path: ${{ inputs.output-sub-path }}
+          token-name-style: ${{ inputs.token-name-style }}
+          token-delimiter-style: ${{ inputs.token-delimiter-style }}
+          kubernetes-global-additional-labels: ${{ inputs.kubernetes-global-additional-labels }}
+          kubernetes-global-additional-annotations: ${{ inputs.kubernetes-global-additional-annotations }}
+      - name: Pass check - Generate Workload
+        if: inputs.kubernetes-workload-type != 'none' && success()
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
+        with:
+          action: pass
+          check-run-id: ${{ steps.check-generate-workload.outputs.check-run-id }}
+      - name: Fail check - Generate Workload
+        if: inputs.kubernetes-workload-type != 'none' && failure() && steps.check-generate-workload.outputs.check-run-id != ''
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
+        with:
+          action: fail
+          check-run-id: ${{ steps.check-generate-workload.outputs.check-run-id }}
+
       # === Pre-package Prepare ===
       - name: Start check - Pre-package Prepare
         if: inputs.hook-pre-package-prepare-script-sub-path != '' && success()
@@ -1190,6 +1479,34 @@ jobs:
           kubernetes-serviceaccount-combined-sub-path: ${{ inputs.kubernetes-serviceaccount-combined-sub-path }}
           kubernetes-serviceaccount-additional-labels: ${{ inputs.kubernetes-serviceaccount-additional-labels }}
           kubernetes-serviceaccount-additional-annotations: ${{ inputs.kubernetes-serviceaccount-additional-annotations }}
+          # Kubernetes Workload generation
+          kubernetes-workload-type: ${{ inputs.kubernetes-workload-type }}
+          kubernetes-workload-name-suffix: ${{ inputs.kubernetes-workload-name-suffix }}
+          kubernetes-workload-combined-sub-path: ${{ inputs.kubernetes-workload-combined-sub-path }}
+          kubernetes-workload-env-sub-path: ${{ inputs.kubernetes-workload-env-sub-path }}
+          kubernetes-workload-additional-labels: ${{ inputs.kubernetes-workload-additional-labels }}
+          kubernetes-workload-additional-annotations: ${{ inputs.kubernetes-workload-additional-annotations }}
+          kubernetes-workload-container-port: ${{ inputs.kubernetes-workload-container-port }}
+          kubernetes-workload-image-reference-style: ${{ inputs.kubernetes-workload-image-reference-style }}
+          kubernetes-workload-readonly-root-filesystem: ${{ inputs.kubernetes-workload-readonly-root-filesystem }}
+          kubernetes-workload-seccomp-profile: ${{ inputs.kubernetes-workload-seccomp-profile }}
+          kubernetes-workload-automount-service-account-token: ${{ inputs.kubernetes-workload-automount-service-account-token }}
+          kubernetes-workload-resources-memory: ${{ inputs.kubernetes-workload-resources-memory }}
+          kubernetes-workload-resources-cpu-request: ${{ inputs.kubernetes-workload-resources-cpu-request }}
+          kubernetes-workload-resources-cpu-limit: ${{ inputs.kubernetes-workload-resources-cpu-limit }}
+          kubernetes-workload-configmap-mount-path: ${{ inputs.kubernetes-workload-configmap-mount-path }}
+          kubernetes-workload-secret-mount-path: ${{ inputs.kubernetes-workload-secret-mount-path }}
+          kubernetes-workload-termination-grace-period-seconds: ${{ inputs.kubernetes-workload-termination-grace-period-seconds }}
+          kubernetes-workload-prestop-command: ${{ inputs.kubernetes-workload-prestop-command }}
+          kubernetes-workload-affinity-strategy: ${{ inputs.kubernetes-workload-affinity-strategy }}
+          kubernetes-workload-probe-liveness-check-type: ${{ inputs.kubernetes-workload-probe-liveness-check-type }}
+          kubernetes-workload-probe-readiness-check-type: ${{ inputs.kubernetes-workload-probe-readiness-check-type }}
+          kubernetes-workload-probe-startup-check-type: ${{ inputs.kubernetes-workload-probe-startup-check-type }}
+          kubernetes-workload-probe-liveness-http-path: ${{ inputs.kubernetes-workload-probe-liveness-http-path }}
+          kubernetes-workload-probe-readiness-http-path: ${{ inputs.kubernetes-workload-probe-readiness-http-path }}
+          kubernetes-workload-probe-startup-http-path: ${{ inputs.kubernetes-workload-probe-startup-http-path }}
+          kubernetes-deployment-replicas: ${{ inputs.kubernetes-deployment-replicas }}
+          kubernetes-deployment-revision-history-limit: ${{ inputs.kubernetes-deployment-revision-history-limit }}
 
           # Token substitution
           token-delimiter-style: ${{ inputs.token-delimiter-style }}
@@ -1423,6 +1740,34 @@ jobs:
           kubernetes-serviceaccount-combined-sub-path: ${{ inputs.kubernetes-serviceaccount-combined-sub-path }}
           kubernetes-serviceaccount-additional-labels: ${{ inputs.kubernetes-serviceaccount-additional-labels }}
           kubernetes-serviceaccount-additional-annotations: ${{ inputs.kubernetes-serviceaccount-additional-annotations }}
+          # Kubernetes Workload generation
+          kubernetes-workload-type: ${{ inputs.kubernetes-workload-type }}
+          kubernetes-workload-name-suffix: ${{ inputs.kubernetes-workload-name-suffix }}
+          kubernetes-workload-combined-sub-path: ${{ inputs.kubernetes-workload-combined-sub-path }}
+          kubernetes-workload-env-sub-path: ${{ inputs.kubernetes-workload-env-sub-path }}
+          kubernetes-workload-additional-labels: ${{ inputs.kubernetes-workload-additional-labels }}
+          kubernetes-workload-additional-annotations: ${{ inputs.kubernetes-workload-additional-annotations }}
+          kubernetes-workload-container-port: ${{ inputs.kubernetes-workload-container-port }}
+          kubernetes-workload-image-reference-style: ${{ inputs.kubernetes-workload-image-reference-style }}
+          kubernetes-workload-readonly-root-filesystem: ${{ inputs.kubernetes-workload-readonly-root-filesystem }}
+          kubernetes-workload-seccomp-profile: ${{ inputs.kubernetes-workload-seccomp-profile }}
+          kubernetes-workload-automount-service-account-token: ${{ inputs.kubernetes-workload-automount-service-account-token }}
+          kubernetes-workload-resources-memory: ${{ inputs.kubernetes-workload-resources-memory }}
+          kubernetes-workload-resources-cpu-request: ${{ inputs.kubernetes-workload-resources-cpu-request }}
+          kubernetes-workload-resources-cpu-limit: ${{ inputs.kubernetes-workload-resources-cpu-limit }}
+          kubernetes-workload-configmap-mount-path: ${{ inputs.kubernetes-workload-configmap-mount-path }}
+          kubernetes-workload-secret-mount-path: ${{ inputs.kubernetes-workload-secret-mount-path }}
+          kubernetes-workload-termination-grace-period-seconds: ${{ inputs.kubernetes-workload-termination-grace-period-seconds }}
+          kubernetes-workload-prestop-command: ${{ inputs.kubernetes-workload-prestop-command }}
+          kubernetes-workload-affinity-strategy: ${{ inputs.kubernetes-workload-affinity-strategy }}
+          kubernetes-workload-probe-liveness-check-type: ${{ inputs.kubernetes-workload-probe-liveness-check-type }}
+          kubernetes-workload-probe-readiness-check-type: ${{ inputs.kubernetes-workload-probe-readiness-check-type }}
+          kubernetes-workload-probe-startup-check-type: ${{ inputs.kubernetes-workload-probe-startup-check-type }}
+          kubernetes-workload-probe-liveness-http-path: ${{ inputs.kubernetes-workload-probe-liveness-http-path }}
+          kubernetes-workload-probe-readiness-http-path: ${{ inputs.kubernetes-workload-probe-readiness-http-path }}
+          kubernetes-workload-probe-startup-http-path: ${{ inputs.kubernetes-workload-probe-startup-http-path }}
+          kubernetes-deployment-replicas: ${{ inputs.kubernetes-deployment-replicas }}
+          kubernetes-deployment-revision-history-limit: ${{ inputs.kubernetes-deployment-revision-history-limit }}
 
           # Token substitution
           token-delimiter-style: ${{ inputs.token-delimiter-style }}

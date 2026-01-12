@@ -1,0 +1,51 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
+
+- name: Generate workload manifest
+  id: generate-workload
+  if: inputs.kubernetes-workload-type != 'none'
+  uses: ./.github/buildon-github-actions/src/actions/generate-kubernetes-workload
+  with:
+    # Workload type
+    kubernetes-workload-type: ${{ inputs.kubernetes-workload-type }}
+    # Common workload settings
+    kubernetes-workload-name-suffix: ${{ inputs.kubernetes-workload-name-suffix }}
+    kubernetes-workload-combined-sub-path: ${{ inputs.kubernetes-workload-combined-sub-path }}
+    kubernetes-workload-env-sub-path: ${{ inputs.kubernetes-workload-env-sub-path }}
+    kubernetes-workload-additional-labels: ${{ inputs.kubernetes-workload-additional-labels }}
+    kubernetes-workload-additional-annotations: ${{ inputs.kubernetes-workload-additional-annotations }}
+    # Container configuration
+    kubernetes-workload-container-port: ${{ inputs.kubernetes-workload-container-port }}
+    kubernetes-workload-image-reference-style: ${{ inputs.kubernetes-workload-image-reference-style }}
+    # Security settings
+    kubernetes-workload-readonly-root-filesystem: ${{ inputs.kubernetes-workload-readonly-root-filesystem }}
+    kubernetes-workload-seccomp-profile: ${{ inputs.kubernetes-workload-seccomp-profile }}
+    kubernetes-workload-automount-service-account-token: ${{ inputs.kubernetes-workload-automount-service-account-token }}
+    # Resource limits
+    kubernetes-workload-resources-memory: ${{ inputs.kubernetes-workload-resources-memory }}
+    kubernetes-workload-resources-cpu-request: ${{ inputs.kubernetes-workload-resources-cpu-request }}
+    kubernetes-workload-resources-cpu-limit: ${{ inputs.kubernetes-workload-resources-cpu-limit }}
+    # Mount paths
+    kubernetes-workload-configmap-mount-path: ${{ inputs.kubernetes-workload-configmap-mount-path }}
+    kubernetes-workload-secret-mount-path: ${{ inputs.kubernetes-workload-secret-mount-path }}
+    # Lifecycle
+    kubernetes-workload-termination-grace-period-seconds: ${{ inputs.kubernetes-workload-termination-grace-period-seconds }}
+    kubernetes-workload-prestop-command: ${{ inputs.kubernetes-workload-prestop-command }}
+    kubernetes-workload-affinity-strategy: ${{ inputs.kubernetes-workload-affinity-strategy }}
+    # Probe check types
+    kubernetes-workload-probe-liveness-check-type: ${{ inputs.kubernetes-workload-probe-liveness-check-type }}
+    kubernetes-workload-probe-readiness-check-type: ${{ inputs.kubernetes-workload-probe-readiness-check-type }}
+    kubernetes-workload-probe-startup-check-type: ${{ inputs.kubernetes-workload-probe-startup-check-type }}
+    # Probe HTTP paths
+    kubernetes-workload-probe-liveness-http-path: ${{ inputs.kubernetes-workload-probe-liveness-http-path }}
+    kubernetes-workload-probe-readiness-http-path: ${{ inputs.kubernetes-workload-probe-readiness-http-path }}
+    kubernetes-workload-probe-startup-http-path: ${{ inputs.kubernetes-workload-probe-startup-http-path }}
+    # Deployment-specific settings
+    kubernetes-deployment-replicas: ${{ inputs.kubernetes-deployment-replicas }}
+    kubernetes-deployment-revision-history-limit: ${{ inputs.kubernetes-deployment-revision-history-limit }}
+    # Global settings
+    output-sub-path: ${{ inputs.output-sub-path }}
+    token-name-style: ${{ inputs.token-name-style }}
+    token-delimiter-style: ${{ inputs.token-delimiter-style }}
+    kubernetes-global-additional-labels: ${{ inputs.kubernetes-global-additional-labels }}
+    kubernetes-global-additional-annotations: ${{ inputs.kubernetes-global-additional-annotations }}

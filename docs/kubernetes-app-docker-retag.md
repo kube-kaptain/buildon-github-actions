@@ -33,6 +33,33 @@ Kubernetes App - Docker Retag
 | `kubernetes-serviceaccount-combined-sub-path` | string | `""` | Sub-path within combined/ for output |
 | `kubernetes-serviceaccount-additional-labels` | string | `""` | Additional labels specific to ServiceAccount (comma-separated key=value) |
 | `kubernetes-serviceaccount-additional-annotations` | string | `""` | Additional annotations specific to ServiceAccount (comma-separated key=value) |
+| `kubernetes-workload-type` | string | `deployment` | Workload type to generate (deployment, none) |
+| `kubernetes-workload-name-suffix` | string | `""` | Optional suffix for workload name and filename |
+| `kubernetes-workload-combined-sub-path` | string | `""` | Sub-path within combined/ for output |
+| `kubernetes-workload-env-sub-path` | string | `src/workload-env` | Directory containing environment variable files |
+| `kubernetes-workload-additional-labels` | string | `""` | Additional labels specific to workload (comma-separated key=value) |
+| `kubernetes-workload-additional-annotations` | string | `""` | Additional annotations specific to workload (comma-separated key=value) |
+| `kubernetes-workload-container-port` | string | `1024` | Container port |
+| `kubernetes-workload-image-reference-style` | string | `combined` | Image reference style (combined, separate, project-name-prefixed-combined, project-name-prefixed-separate) |
+| `kubernetes-workload-readonly-root-filesystem` | boolean | `true` | Enable read-only root filesystem |
+| `kubernetes-workload-seccomp-profile` | string | `DISABLED` | Seccomp profile (DISABLED, RuntimeDefault, Localhost, Unconfined) |
+| `kubernetes-workload-automount-service-account-token` | boolean | `false` | Automount service account token |
+| `kubernetes-workload-resources-memory` | string | `10Mi` | Memory limit (e.g., 128Mi, 1Gi) |
+| `kubernetes-workload-resources-cpu-request` | string | `100m` | CPU request (e.g., 100m, 1) |
+| `kubernetes-workload-resources-cpu-limit` | string | `""` | CPU limit (empty for no limit) |
+| `kubernetes-workload-configmap-mount-path` | string | `/configmap` | ConfigMap mount path in container |
+| `kubernetes-workload-secret-mount-path` | string | `/secret` | Secret mount path in container |
+| `kubernetes-workload-termination-grace-period-seconds` | string | `10` | Termination grace period in seconds |
+| `kubernetes-workload-prestop-command` | string | `""` | PreStop hook command (empty for none) |
+| `kubernetes-workload-affinity-strategy` | string | `spread-nodes-and-zones-ha` | Pod affinity strategy plugin name |
+| `kubernetes-workload-probe-liveness-check-type` | string | `http-get` | Liveness probe type (http-get, tcp-socket, exec, grpc, none) |
+| `kubernetes-workload-probe-readiness-check-type` | string | `http-get` | Readiness probe type (http-get, tcp-socket, exec, grpc, none) |
+| `kubernetes-workload-probe-startup-check-type` | string | `http-get` | Startup probe type (http-get, tcp-socket, exec, grpc, none) |
+| `kubernetes-workload-probe-liveness-http-path` | string | `/liveness` | Liveness probe HTTP path |
+| `kubernetes-workload-probe-readiness-http-path` | string | `/readiness` | Readiness probe HTTP path |
+| `kubernetes-workload-probe-startup-http-path` | string | `/startup` | Startup probe HTTP path |
+| `kubernetes-deployment-replicas` | string | `""` | Replica count (empty for token, NO for HPA management) |
+| `kubernetes-deployment-revision-history-limit` | string | `10` | Number of old ReplicaSets to retain |
 | `token-delimiter-style` | string | `shell` | Token delimiter syntax for variables (shell, mustache, helm, erb, github-actions, blade, stringtemplate, ognl, t4, swift) |
 | `token-name-style` | string | `PascalCase` | Case style for token names (UPPER_SNAKE, lower_snake, lower-kebab, UPPER-KEBAB, camelCase, PascalCase, lower.dot, UPPER.DOT) |
 | `token-name-validation` | string | `MATCH` | How to validate user token names (MATCH = must match token-name-style, ALL = accept any valid name) |

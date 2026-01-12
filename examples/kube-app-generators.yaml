@@ -44,6 +44,57 @@ jobs:
       # kubernetes-serviceaccount-additional-annotations: 'eks.amazonaws.com/role-arn=arn:aws:iam::123456789012:role/my-role'
       # kubernetes-serviceaccount-additional-annotations: 'iam.gke.io/gcp-service-account=my-sa@project.iam.gserviceaccount.com'
 
+      # ┌─────────────────────────────────────────────────────────────────────┐
+      # │ Deployment Generator                                                │
+      # └─────────────────────────────────────────────────────────────────────┘
+      # Generate a Deployment manifest with security hardening and probes.
+      # Enabled by default (kubernetes-workload-type: 'deployment').
+      # Set to 'none' to disable.
+      #
+      kubernetes-workload-type: 'deployment'
+
+      # Container configuration
+      kubernetes-workload-container-port: '8080'
+      kubernetes-workload-image-reference-style: 'combined'  # combined, separate, project-name-prefixed-*
+
+      # Resource limits - always set memory, CPU request is optional
+      kubernetes-workload-resources-memory: '256Mi'
+      kubernetes-workload-resources-cpu-request: '100m'
+      # kubernetes-workload-resources-cpu-limit: ''  # Empty = no CPU limit (recommended)
+
+      # Security hardening (secure defaults)
+      kubernetes-workload-readonly-root-filesystem: 'true'
+      kubernetes-workload-automount-service-account-token: 'false'
+      # kubernetes-workload-seccomp-profile: 'RuntimeDefault'  # DISABLED, RuntimeDefault, Localhost, Unconfined
+
+      # Health probes - all use http-get by default
+      kubernetes-workload-probe-liveness-check-type: 'http-get'
+      kubernetes-workload-probe-liveness-http-path: '/probes/liveness'
+      kubernetes-workload-probe-readiness-check-type: 'http-get'
+      kubernetes-workload-probe-readiness-http-path: '/probes/readiness'
+      kubernetes-workload-probe-startup-check-type: 'http-get'
+      kubernetes-workload-probe-startup-http-path: '/probes/startup'
+      # Probe types: http-get, tcp-socket, exec, grpc, none
+
+      # Lifecycle
+      kubernetes-workload-termination-grace-period-seconds: '30'
+      # kubernetes-workload-prestop-command: 'sleep 5'  # PreStop hook for graceful shutdown
+      # kubernetes-workload-affinity-strategy: 'spread-nodes-and-zones-ha'  # Pod affinity plugin
+
+      # Replica management
+      # kubernetes-deployment-replicas: ''  # Empty = tokenized ${Replicas} for deploy-time config
+      # kubernetes-deployment-replicas: 'NO'  # Omit replicas field entirely (for HPA management)
+      # kubernetes-deployment-replicas: '3'  # Hardcode replica count
+      kubernetes-deployment-revision-history-limit: '5'
+
+      # Volume mounts (ConfigMap and Secret from generators above)
+      kubernetes-workload-configmap-mount-path: '/config'
+      kubernetes-workload-secret-mount-path: '/secrets'
+
+      # Environment variables from files in src/workload-env/
+      # Each file becomes an env var (filename=name, contents=value)
+      # kubernetes-workload-env-sub-path: 'src/workload-env'
+
 # ┌───────────────────────────────────────────────────────────────────────────┐
 # │ ConfigMap Generator                                                       │
 # └───────────────────────────────────────────────────────────────────────────┘
@@ -83,8 +134,8 @@ jobs:
 # ┌───────────────────────────────────────────────────────────────────────────┐
 # │ Global Labels and Annotations                                             │
 # └───────────────────────────────────────────────────────────────────────────┘
-# Apply labels/annotations to ALL generated manifests (ConfigMap, Secret,
-# ServiceAccount, and future generators).
+# Apply labels/annotations to ALL generated manifests (Deployment, ConfigMap,
+# Secret, ServiceAccount).
 #
 #     with:
 #       kubernetes-global-additional-labels: 'team=platform,cost-center=123'
@@ -117,7 +168,7 @@ jobs:
 # │ Multiple Resources of the Same Type                                       │
 # └───────────────────────────────────────────────────────────────────────────┘
 # The workflow runs each generator once. For multiple instances of the same
-# resource type (e.g., multiple ServiceAccounts), you have two options:
+# resource type (e.g., multiple Deployments or ServiceAccounts), you have two options:
 #
 # Option 1: Use a hook script to run the generator additional times
 #   Create .github/bin/pre-package.bash that calls the generator script

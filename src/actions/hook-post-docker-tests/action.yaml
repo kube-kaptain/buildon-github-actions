@@ -129,6 +129,115 @@ inputs:
     description: 'Additional annotations specific to ServiceAccount (comma-separated key=value)'
     required: false
     default: ''
+  # Kubernetes Workload generation
+  kubernetes-workload-type:
+    description: 'Workload type to generate (deployment, none)'
+    required: false
+    default: 'deployment'
+  kubernetes-workload-name-suffix:
+    description: 'Optional suffix for workload name and filename'
+    required: false
+    default: ''
+  kubernetes-workload-combined-sub-path:
+    description: 'Sub-path within combined/ for output'
+    required: false
+    default: ''
+  kubernetes-workload-env-sub-path:
+    description: 'Directory containing environment variable files'
+    required: false
+    default: 'src/workload-env'
+  kubernetes-workload-additional-labels:
+    description: 'Additional labels specific to workload (comma-separated key=value)'
+    required: false
+    default: ''
+  kubernetes-workload-additional-annotations:
+    description: 'Additional annotations specific to workload (comma-separated key=value)'
+    required: false
+    default: ''
+  kubernetes-workload-container-port:
+    description: 'Container port (default: 1024)'
+    required: false
+    default: '1024'
+  kubernetes-workload-image-reference-style:
+    description: 'Image reference style (combined, separate, project-name-prefixed-combined, project-name-prefixed-separate)'
+    required: false
+    default: 'combined'
+  kubernetes-workload-readonly-root-filesystem:
+    description: 'Enable read-only root filesystem (true/false)'
+    required: false
+    default: 'true'
+  kubernetes-workload-seccomp-profile:
+    description: 'Seccomp profile (DISABLED, RuntimeDefault, Localhost, Unconfined)'
+    required: false
+    default: 'DISABLED'
+  kubernetes-workload-automount-service-account-token:
+    description: 'Automount service account token (true/false)'
+    required: false
+    default: 'false'
+  kubernetes-workload-resources-memory:
+    description: 'Memory limit (e.g., 128Mi, 1Gi)'
+    required: false
+    default: '10Mi'
+  kubernetes-workload-resources-cpu-request:
+    description: 'CPU request (e.g., 100m, 1)'
+    required: false
+    default: '100m'
+  kubernetes-workload-resources-cpu-limit:
+    description: 'CPU limit (empty for no limit)'
+    required: false
+    default: ''
+  kubernetes-workload-configmap-mount-path:
+    description: 'ConfigMap mount path in container'
+    required: false
+    default: '/configmap'
+  kubernetes-workload-secret-mount-path:
+    description: 'Secret mount path in container'
+    required: false
+    default: '/secret'
+  kubernetes-workload-termination-grace-period-seconds:
+    description: 'Termination grace period in seconds'
+    required: false
+    default: '10'
+  kubernetes-workload-prestop-command:
+    description: 'PreStop hook command (empty for none)'
+    required: false
+    default: ''
+  kubernetes-workload-affinity-strategy:
+    description: 'Pod affinity strategy plugin name'
+    required: false
+    default: 'spread-nodes-and-zones-ha'
+  kubernetes-workload-probe-liveness-check-type:
+    description: 'Liveness probe type (http-get, tcp-socket, exec, grpc, none)'
+    required: false
+    default: 'http-get'
+  kubernetes-workload-probe-readiness-check-type:
+    description: 'Readiness probe type (http-get, tcp-socket, exec, grpc, none)'
+    required: false
+    default: 'http-get'
+  kubernetes-workload-probe-startup-check-type:
+    description: 'Startup probe type (http-get, tcp-socket, exec, grpc, none)'
+    required: false
+    default: 'http-get'
+  kubernetes-workload-probe-liveness-http-path:
+    description: 'Liveness probe HTTP path'
+    required: false
+    default: '/liveness'
+  kubernetes-workload-probe-readiness-http-path:
+    description: 'Readiness probe HTTP path'
+    required: false
+    default: '/readiness'
+  kubernetes-workload-probe-startup-http-path:
+    description: 'Startup probe HTTP path'
+    required: false
+    default: '/startup'
+  kubernetes-deployment-replicas:
+    description: 'Replica count (empty for token, NO for HPA management)'
+    required: false
+    default: ''
+  kubernetes-deployment-revision-history-limit:
+    description: 'Number of old ReplicaSets to retain'
+    required: false
+    default: '10'
 
   # Token substitution
   token-delimiter-style:
@@ -357,6 +466,34 @@ runs:
         KUBERNETES_SERVICEACCOUNT_COMBINED_SUB_PATH: ${{ inputs.kubernetes-serviceaccount-combined-sub-path }}
         KUBERNETES_SERVICEACCOUNT_ADDITIONAL_LABELS: ${{ inputs.kubernetes-serviceaccount-additional-labels }}
         KUBERNETES_SERVICEACCOUNT_ADDITIONAL_ANNOTATIONS: ${{ inputs.kubernetes-serviceaccount-additional-annotations }}
+        # Workflow inputs - kubernetes workload generation
+        KUBERNETES_WORKLOAD_TYPE: ${{ inputs.kubernetes-workload-type }}
+        KUBERNETES_WORKLOAD_NAME_SUFFIX: ${{ inputs.kubernetes-workload-name-suffix }}
+        KUBERNETES_WORKLOAD_COMBINED_SUB_PATH: ${{ inputs.kubernetes-workload-combined-sub-path }}
+        KUBERNETES_WORKLOAD_ENV_SUB_PATH: ${{ inputs.kubernetes-workload-env-sub-path }}
+        KUBERNETES_WORKLOAD_ADDITIONAL_LABELS: ${{ inputs.kubernetes-workload-additional-labels }}
+        KUBERNETES_WORKLOAD_ADDITIONAL_ANNOTATIONS: ${{ inputs.kubernetes-workload-additional-annotations }}
+        KUBERNETES_WORKLOAD_CONTAINER_PORT: ${{ inputs.kubernetes-workload-container-port }}
+        KUBERNETES_WORKLOAD_IMAGE_REFERENCE_STYLE: ${{ inputs.kubernetes-workload-image-reference-style }}
+        KUBERNETES_WORKLOAD_READONLY_ROOT_FILESYSTEM: ${{ inputs.kubernetes-workload-readonly-root-filesystem }}
+        KUBERNETES_WORKLOAD_SECCOMP_PROFILE: ${{ inputs.kubernetes-workload-seccomp-profile }}
+        KUBERNETES_WORKLOAD_AUTOMOUNT_SERVICE_ACCOUNT_TOKEN: ${{ inputs.kubernetes-workload-automount-service-account-token }}
+        KUBERNETES_WORKLOAD_RESOURCES_MEMORY: ${{ inputs.kubernetes-workload-resources-memory }}
+        KUBERNETES_WORKLOAD_RESOURCES_CPU_REQUEST: ${{ inputs.kubernetes-workload-resources-cpu-request }}
+        KUBERNETES_WORKLOAD_RESOURCES_CPU_LIMIT: ${{ inputs.kubernetes-workload-resources-cpu-limit }}
+        KUBERNETES_WORKLOAD_CONFIGMAP_MOUNT_PATH: ${{ inputs.kubernetes-workload-configmap-mount-path }}
+        KUBERNETES_WORKLOAD_SECRET_MOUNT_PATH: ${{ inputs.kubernetes-workload-secret-mount-path }}
+        KUBERNETES_WORKLOAD_TERMINATION_GRACE_PERIOD_SECONDS: ${{ inputs.kubernetes-workload-termination-grace-period-seconds }}
+        KUBERNETES_WORKLOAD_PRESTOP_COMMAND: ${{ inputs.kubernetes-workload-prestop-command }}
+        KUBERNETES_WORKLOAD_AFFINITY_STRATEGY: ${{ inputs.kubernetes-workload-affinity-strategy }}
+        KUBERNETES_WORKLOAD_PROBE_LIVENESS_CHECK_TYPE: ${{ inputs.kubernetes-workload-probe-liveness-check-type }}
+        KUBERNETES_WORKLOAD_PROBE_READINESS_CHECK_TYPE: ${{ inputs.kubernetes-workload-probe-readiness-check-type }}
+        KUBERNETES_WORKLOAD_PROBE_STARTUP_CHECK_TYPE: ${{ inputs.kubernetes-workload-probe-startup-check-type }}
+        KUBERNETES_WORKLOAD_PROBE_LIVENESS_HTTP_PATH: ${{ inputs.kubernetes-workload-probe-liveness-http-path }}
+        KUBERNETES_WORKLOAD_PROBE_READINESS_HTTP_PATH: ${{ inputs.kubernetes-workload-probe-readiness-http-path }}
+        KUBERNETES_WORKLOAD_PROBE_STARTUP_HTTP_PATH: ${{ inputs.kubernetes-workload-probe-startup-http-path }}
+        KUBERNETES_DEPLOYMENT_REPLICAS: ${{ inputs.kubernetes-deployment-replicas }}
+        KUBERNETES_DEPLOYMENT_REVISION_HISTORY_LIMIT: ${{ inputs.kubernetes-deployment-revision-history-limit }}
 
         # Workflow inputs - token substitution
         TOKEN_DELIMITER_STYLE: ${{ inputs.token-delimiter-style }}
