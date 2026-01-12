@@ -101,7 +101,8 @@ read_manifest_with_suffix() {
 
   manifest=$(read_manifest)
   assert_contains "$manifest" "name: default-app"
-  assert_contains "$manifest" 'image: ${EnvironmentRegistry}/${EnvironmentRegistryBasePath}/${DockerImageName}:${DockerTag}'
+  # Default is combined style: registry+base in one token
+  assert_contains "$manifest" 'image: ${EnvironmentDockerRegistryAndBasePath}/${DockerImageName}:${DockerTag}'
   assert_contains "$manifest" "imagePullPolicy: IfNotPresent"
 }
 
@@ -111,7 +112,8 @@ read_manifest_with_suffix() {
 
   manifest=$(read_manifest)
   assert_contains "$manifest" "ports:"
-  assert_contains "$manifest" 'containerPort: ${KubernetesContainerPort}'
+  # Container port uses literal value from config (default 1024)
+  assert_contains "$manifest" "containerPort: 1024"
   assert_contains "$manifest" "protocol: TCP"
 }
 
@@ -173,8 +175,9 @@ read_manifest_with_suffix() {
   manifest=$(read_manifest)
   assert_contains "$manifest" "resources:"
   assert_contains "$manifest" "requests:"
-  assert_contains "$manifest" 'memory: ${KubernetesMemory}'
-  assert_contains "$manifest" 'cpu: ${KubernetesCpuRequest}'
+  # Resources use literal values from config
+  assert_contains "$manifest" "memory: 10Mi"
+  assert_contains "$manifest" "cpu: 100m"
   assert_contains "$manifest" "limits:"
 }
 
@@ -407,7 +410,8 @@ read_manifest_with_suffix() {
   manifest=$(read_manifest)
   assert_contains "$manifest" "volumeMounts:"
   assert_contains "$manifest" "name: configmap"
-  assert_contains "$manifest" 'mountPath: ${KubernetesConfigmapMountPath}'
+  # Mount path uses literal value from config
+  assert_contains "$manifest" "mountPath: /configmap"
   assert_contains "$manifest" "readOnly: true"
   assert_contains "$manifest" "volumes:"
   assert_contains "$manifest" "configMap:"
@@ -423,7 +427,8 @@ read_manifest_with_suffix() {
   manifest=$(read_manifest)
   assert_contains "$manifest" "volumeMounts:"
   assert_contains "$manifest" "name: secret"
-  assert_contains "$manifest" 'mountPath: ${KubernetesSecretMountPath}'
+  # Mount path uses literal value from config
+  assert_contains "$manifest" "mountPath: /secret"
   assert_contains "$manifest" "volumes:"
   assert_contains "$manifest" "secret:"
   assert_contains "$manifest" 'secretName: ${ProjectName}-secret-checksum'
