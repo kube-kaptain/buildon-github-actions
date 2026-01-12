@@ -61,10 +61,10 @@ read_manifest_with_suffix() {
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
-  [[ "$manifest" == *"apiVersion: apps/v1"* ]]
-  [[ "$manifest" == *"kind: Deployment"* ]]
-  [[ "$manifest" == *'name: ${ProjectName}'* ]]
-  [[ "$manifest" == *'namespace: ${Environment}'* ]]
+  assert_contains "$manifest" "apiVersion: apps/v1"
+  assert_contains "$manifest" "kind: Deployment"
+  assert_contains "$manifest" 'name: ${ProjectName}'
+  assert_contains "$manifest" 'namespace: ${Environment}'
 }
 
 @test "includes standard labels" {
@@ -72,11 +72,11 @@ read_manifest_with_suffix() {
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
-  [[ "$manifest" == *"labels:"* ]]
-  [[ "$manifest" == *'app: ${ProjectName}'* ]]
-  [[ "$manifest" == *'app.kubernetes.io/name: ${ProjectName}'* ]]
-  [[ "$manifest" == *'app.kubernetes.io/version: ${Version}'* ]]
-  [[ "$manifest" == *"app.kubernetes.io/managed-by: kaptain"* ]]
+  assert_contains "$manifest" "labels:"
+  assert_contains "$manifest" 'app: ${ProjectName}'
+  assert_contains "$manifest" 'app.kubernetes.io/name: ${ProjectName}'
+  assert_contains "$manifest" 'app.kubernetes.io/version: ${Version}'
+  assert_contains "$manifest" "app.kubernetes.io/managed-by: kaptain"
 }
 
 @test "includes kaptain annotations" {
@@ -84,11 +84,11 @@ read_manifest_with_suffix() {
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
-  [[ "$manifest" == *"annotations:"* ]]
-  [[ "$manifest" == *'kaptain/project-name: ${ProjectName}'* ]]
-  [[ "$manifest" == *'kaptain/version: ${Version}'* ]]
-  [[ "$manifest" == *"kaptain/build-timestamp:"* ]]
-  [[ "$manifest" == *"kubectl.kubernetes.io/default-container: default-app"* ]]
+  assert_contains "$manifest" "annotations:"
+  assert_contains "$manifest" 'kaptain/project-name: ${ProjectName}'
+  assert_contains "$manifest" 'kaptain/version: ${Version}'
+  assert_contains "$manifest" "kaptain/build-timestamp:"
+  assert_contains "$manifest" "kubectl.kubernetes.io/default-container: default-app"
 }
 
 # =============================================================================
@@ -100,9 +100,9 @@ read_manifest_with_suffix() {
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
-  [[ "$manifest" == *"name: default-app"* ]]
-  [[ "$manifest" == *'image: ${EnvironmentRegistry}/${EnvironmentRegistryBasePath}/${DockerImageName}:${DockerTag}'* ]]
-  [[ "$manifest" == *"imagePullPolicy: IfNotPresent"* ]]
+  assert_contains "$manifest" "name: default-app"
+  assert_contains "$manifest" 'image: ${EnvironmentRegistry}/${EnvironmentRegistryBasePath}/${DockerImageName}:${DockerTag}'
+  assert_contains "$manifest" "imagePullPolicy: IfNotPresent"
 }
 
 @test "generates container port" {
@@ -110,9 +110,9 @@ read_manifest_with_suffix() {
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
-  [[ "$manifest" == *"ports:"* ]]
-  [[ "$manifest" == *'containerPort: ${KubernetesContainerPort}'* ]]
-  [[ "$manifest" == *"protocol: TCP"* ]]
+  assert_contains "$manifest" "ports:"
+  assert_contains "$manifest" 'containerPort: ${KubernetesContainerPort}'
+  assert_contains "$manifest" "protocol: TCP"
 }
 
 # =============================================================================
@@ -124,11 +124,11 @@ read_manifest_with_suffix() {
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
-  [[ "$manifest" == *"runAsNonRoot: true"* ]]
-  [[ "$manifest" == *"allowPrivilegeEscalation: false"* ]]
-  [[ "$manifest" == *"readOnlyRootFilesystem: true"* ]]
-  [[ "$manifest" == *"drop:"* ]]
-  [[ "$manifest" == *"- ALL"* ]]
+  assert_contains "$manifest" "runAsNonRoot: true"
+  assert_contains "$manifest" "allowPrivilegeEscalation: false"
+  assert_contains "$manifest" "readOnlyRootFilesystem: true"
+  assert_contains "$manifest" "drop:"
+  assert_contains "$manifest" "- ALL"
   # seccompProfile omitted by default (DISABLED)
   [[ "$manifest" != *"seccompProfile:"* ]]
 }
@@ -140,8 +140,8 @@ read_manifest_with_suffix() {
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
-  [[ "$manifest" == *"seccompProfile:"* ]]
-  [[ "$manifest" == *"type: RuntimeDefault"* ]]
+  assert_contains "$manifest" "seccompProfile:"
+  assert_contains "$manifest" "type: RuntimeDefault"
 }
 
 @test "rejects invalid seccomp profile" {
@@ -159,7 +159,7 @@ read_manifest_with_suffix() {
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
-  [[ "$manifest" == *"readOnlyRootFilesystem: false"* ]]
+  assert_contains "$manifest" "readOnlyRootFilesystem: false"
 }
 
 # =============================================================================
@@ -171,11 +171,11 @@ read_manifest_with_suffix() {
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
-  [[ "$manifest" == *"resources:"* ]]
-  [[ "$manifest" == *"requests:"* ]]
-  [[ "$manifest" == *'memory: ${KubernetesMemory}'* ]]
-  [[ "$manifest" == *'cpu: ${KubernetesCpuRequest}'* ]]
-  [[ "$manifest" == *"limits:"* ]]
+  assert_contains "$manifest" "resources:"
+  assert_contains "$manifest" "requests:"
+  assert_contains "$manifest" 'memory: ${KubernetesMemory}'
+  assert_contains "$manifest" 'cpu: ${KubernetesCpuRequest}'
+  assert_contains "$manifest" "limits:"
 }
 
 @test "omits CPU limit by default" {
@@ -185,7 +185,7 @@ read_manifest_with_suffix() {
   manifest=$(read_manifest)
   # Should not have cpu under limits
   # The memory limit should be there, but not cpu
-  [[ "$manifest" == *"limits:"* ]]
+  assert_contains "$manifest" "limits:"
   # Check that limits section only has memory (no cpu: line)
   limits_section=$(echo "$manifest" | grep -A5 "limits:")
   [[ "$limits_section" != *"cpu:"* ]]
@@ -198,7 +198,7 @@ read_manifest_with_suffix() {
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
-  [[ "$manifest" == *'cpu: 500m'* ]]
+  assert_contains "$manifest" "cpu: 500m"
 }
 
 # =============================================================================
@@ -210,7 +210,7 @@ read_manifest_with_suffix() {
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
-  [[ "$manifest" == *'replicas: ${EnvironmentDefaultReplicaCount}'* ]]
+  assert_contains "$manifest" 'replicas: ${EnvironmentDefaultReplicaCount}'
 }
 
 @test "omits replicas when set to NO" {
@@ -228,7 +228,7 @@ read_manifest_with_suffix() {
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
-  [[ "$manifest" == *"revisionHistoryLimit: 10"* ]]
+  assert_contains "$manifest" "revisionHistoryLimit: 10"
 }
 
 # =============================================================================
@@ -240,10 +240,10 @@ read_manifest_with_suffix() {
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
-  [[ "$manifest" == *"strategy:"* ]]
-  [[ "$manifest" == *"type: RollingUpdate"* ]]
-  [[ "$manifest" == *"maxSurge: 1"* ]]
-  [[ "$manifest" == *"maxUnavailable: 0"* ]]
+  assert_contains "$manifest" "strategy:"
+  assert_contains "$manifest" "type: RollingUpdate"
+  assert_contains "$manifest" "maxSurge: 1"
+  assert_contains "$manifest" "maxUnavailable: 0"
 }
 
 # =============================================================================
@@ -255,11 +255,11 @@ read_manifest_with_suffix() {
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
-  [[ "$manifest" == *"livenessProbe:"* ]]
-  [[ "$manifest" == *"httpGet:"* ]]
-  [[ "$manifest" == *"path: /liveness"* ]]
-  [[ "$manifest" == *"initialDelaySeconds: 10"* ]]
-  [[ "$manifest" == *"periodSeconds: 10"* ]]
+  assert_contains "$manifest" "livenessProbe:"
+  assert_contains "$manifest" "httpGet:"
+  assert_contains "$manifest" "path: /liveness"
+  assert_contains "$manifest" "initialDelaySeconds: 10"
+  assert_contains "$manifest" "periodSeconds: 10"
 }
 
 @test "generates readiness probe with http-get by default" {
@@ -267,9 +267,9 @@ read_manifest_with_suffix() {
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
-  [[ "$manifest" == *"readinessProbe:"* ]]
-  [[ "$manifest" == *"path: /readiness"* ]]
-  [[ "$manifest" == *"initialDelaySeconds: 5"* ]]
+  assert_contains "$manifest" "readinessProbe:"
+  assert_contains "$manifest" "path: /readiness"
+  assert_contains "$manifest" "initialDelaySeconds: 5"
 }
 
 @test "generates startup probe with http-get by default" {
@@ -277,10 +277,10 @@ read_manifest_with_suffix() {
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
-  [[ "$manifest" == *"startupProbe:"* ]]
-  [[ "$manifest" == *"path: /startup"* ]]
-  [[ "$manifest" == *"initialDelaySeconds: 0"* ]]
-  [[ "$manifest" == *"failureThreshold: 30"* ]]
+  assert_contains "$manifest" "startupProbe:"
+  assert_contains "$manifest" "path: /startup"
+  assert_contains "$manifest" "initialDelaySeconds: 0"
+  assert_contains "$manifest" "failureThreshold: 30"
 }
 
 @test "generates tcp-socket probe when configured" {
@@ -290,9 +290,9 @@ read_manifest_with_suffix() {
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
-  [[ "$manifest" == *"livenessProbe:"* ]]
-  [[ "$manifest" == *"tcpSocket:"* ]]
-  [[ "$manifest" == *"port: 1024"* ]]
+  assert_contains "$manifest" "livenessProbe:"
+  assert_contains "$manifest" "tcpSocket:"
+  assert_contains "$manifest" "port: 1024"
 }
 
 @test "generates exec probe when configured" {
@@ -303,12 +303,12 @@ read_manifest_with_suffix() {
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
-  [[ "$manifest" == *"livenessProbe:"* ]]
-  [[ "$manifest" == *"exec:"* ]]
-  [[ "$manifest" == *"command:"* ]]
-  [[ "$manifest" == *"- /bin/sh"* ]]
-  [[ "$manifest" == *"- -c"* ]]
-  [[ "$manifest" == *"- pg_isready -U postgres"* ]]
+  assert_contains "$manifest" "livenessProbe:"
+  assert_contains "$manifest" "exec:"
+  assert_contains "$manifest" "command:"
+  assert_contains "$manifest" "- /bin/sh"
+  assert_contains "$manifest" "- -c"
+  assert_contains "$manifest" "- pg_isready -U postgres"
 }
 
 @test "generates grpc probe when configured" {
@@ -320,10 +320,10 @@ read_manifest_with_suffix() {
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
-  [[ "$manifest" == *"livenessProbe:"* ]]
-  [[ "$manifest" == *"grpc:"* ]]
-  [[ "$manifest" == *"port: 50051"* ]]
-  [[ "$manifest" == *"service: myapp.Health"* ]]
+  assert_contains "$manifest" "livenessProbe:"
+  assert_contains "$manifest" "grpc:"
+  assert_contains "$manifest" "port: 50051"
+  assert_contains "$manifest" "service: myapp.Health"
 }
 
 # =============================================================================
@@ -335,7 +335,7 @@ read_manifest_with_suffix() {
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
-  [[ "$manifest" == *'terminationGracePeriodSeconds: 10'* ]]
+  assert_contains "$manifest" "terminationGracePeriodSeconds: 10"
 }
 
 @test "omits preStop hook by default" {
@@ -354,10 +354,10 @@ read_manifest_with_suffix() {
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
-  [[ "$manifest" == *"lifecycle:"* ]]
-  [[ "$manifest" == *"preStop:"* ]]
-  [[ "$manifest" == *"exec:"* ]]
-  [[ "$manifest" == *"- sleep 5"* ]]
+  assert_contains "$manifest" "lifecycle:"
+  assert_contains "$manifest" "preStop:"
+  assert_contains "$manifest" "exec:"
+  assert_contains "$manifest" "- sleep 5"
 }
 
 # =============================================================================
@@ -369,11 +369,11 @@ read_manifest_with_suffix() {
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
-  [[ "$manifest" == *"affinity:"* ]]
-  [[ "$manifest" == *"podAntiAffinity:"* ]]
-  [[ "$manifest" == *"preferredDuringSchedulingIgnoredDuringExecution:"* ]]
-  [[ "$manifest" == *"weight: 100"* ]]
-  [[ "$manifest" == *"weight: 50"* ]]
+  assert_contains "$manifest" "affinity:"
+  assert_contains "$manifest" "podAntiAffinity:"
+  assert_contains "$manifest" "preferredDuringSchedulingIgnoredDuringExecution:"
+  assert_contains "$manifest" "weight: 100"
+  assert_contains "$manifest" "weight: 50"
 }
 
 @test "omits affinity when strategy is none" {
@@ -405,13 +405,13 @@ read_manifest_with_suffix() {
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
-  [[ "$manifest" == *"volumeMounts:"* ]]
-  [[ "$manifest" == *"name: configmap"* ]]
-  [[ "$manifest" == *'mountPath: ${KubernetesConfigmapMountPath}'* ]]
-  [[ "$manifest" == *"readOnly: true"* ]]
-  [[ "$manifest" == *"volumes:"* ]]
-  [[ "$manifest" == *"configMap:"* ]]
-  [[ "$manifest" == *'name: ${ProjectName}-configmap-checksum'* ]]
+  assert_contains "$manifest" "volumeMounts:"
+  assert_contains "$manifest" "name: configmap"
+  assert_contains "$manifest" 'mountPath: ${KubernetesConfigmapMountPath}'
+  assert_contains "$manifest" "readOnly: true"
+  assert_contains "$manifest" "volumes:"
+  assert_contains "$manifest" "configMap:"
+  assert_contains "$manifest" 'name: ${ProjectName}-configmap-checksum'
 }
 
 @test "includes secret volume when detected" {
@@ -421,12 +421,12 @@ read_manifest_with_suffix() {
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
-  [[ "$manifest" == *"volumeMounts:"* ]]
-  [[ "$manifest" == *"name: secret"* ]]
-  [[ "$manifest" == *'mountPath: ${KubernetesSecretMountPath}'* ]]
-  [[ "$manifest" == *"volumes:"* ]]
-  [[ "$manifest" == *"secret:"* ]]
-  [[ "$manifest" == *'secretName: ${ProjectName}-secret-checksum'* ]]
+  assert_contains "$manifest" "volumeMounts:"
+  assert_contains "$manifest" "name: secret"
+  assert_contains "$manifest" 'mountPath: ${KubernetesSecretMountPath}'
+  assert_contains "$manifest" "volumes:"
+  assert_contains "$manifest" "secret:"
+  assert_contains "$manifest" 'secretName: ${ProjectName}-secret-checksum'
 }
 
 @test "omits volumes when not detected" {
@@ -451,11 +451,11 @@ read_manifest_with_suffix() {
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
-  [[ "$manifest" == *"env:"* ]]
-  [[ "$manifest" == *"- name: DATABASE_HOST"* ]]
-  [[ "$manifest" == *'value: "db.example.com"'* ]]
-  [[ "$manifest" == *"- name: LOG_LEVEL"* ]]
-  [[ "$manifest" == *'value: "info"'* ]]
+  assert_contains "$manifest" "env:"
+  assert_contains "$manifest" "- name: DATABASE_HOST"
+  assert_contains "$manifest" 'value: "db.example.com"'
+  assert_contains "$manifest" "- name: LOG_LEVEL"
+  assert_contains "$manifest" 'value: "info"'
 }
 
 @test "omits env section when workload-env is empty" {
@@ -479,8 +479,8 @@ read_manifest_with_suffix() {
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
-  [[ "$manifest" == *'serviceAccountName: ${ProjectName}'* ]]
-  [[ "$manifest" == *"automountServiceAccountToken: false"* ]]
+  assert_contains "$manifest" 'serviceAccountName: ${ProjectName}'
+  assert_contains "$manifest" "automountServiceAccountToken: false"
 }
 
 @test "includes serviceAccountName when detected in combined output" {
@@ -493,7 +493,7 @@ read_manifest_with_suffix() {
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
-  [[ "$manifest" == *'serviceAccountName: ${ProjectName}'* ]]
+  assert_contains "$manifest" 'serviceAccountName: ${ProjectName}'
 }
 
 # =============================================================================
@@ -505,8 +505,8 @@ read_manifest_with_suffix() {
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
-  [[ "$manifest" == *"imagePullSecrets:"* ]]
-  [[ "$manifest" == *'- name: ${EnvironmentDockerRegistry}'* ]]
+  assert_contains "$manifest" "imagePullSecrets:"
+  assert_contains "$manifest" '- name: ${EnvironmentDockerRegistry}'
 }
 
 # =============================================================================
@@ -522,7 +522,7 @@ read_manifest_with_suffix() {
 
   [ -f "$OUTPUT_SUB_PATH/manifests/combined/deployment-worker.yaml" ]
   manifest=$(read_manifest_with_suffix "worker")
-  [[ "$manifest" == *'name: ${ProjectName}-worker'* ]]
+  assert_contains "$manifest" 'name: ${ProjectName}-worker'
 }
 
 @test "generates deployment in combined sub-path" {
@@ -546,8 +546,8 @@ read_manifest_with_suffix() {
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
-  [[ "$manifest" == *'${ProjectName}'* ]]
-  [[ "$manifest" == *'${Environment}'* ]]
+  assert_contains "$manifest" '${ProjectName}'
+  assert_contains "$manifest" '${Environment}'
 }
 
 @test "respects camelCase token style" {
@@ -558,8 +558,8 @@ read_manifest_with_suffix() {
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
-  [[ "$manifest" == *'${projectName}'* ]]
-  [[ "$manifest" == *'${environment}'* ]]
+  assert_contains "$manifest" '${projectName}'
+  assert_contains "$manifest" '${environment}'
 }
 
 @test "respects mustache delimiter style" {
@@ -570,8 +570,8 @@ read_manifest_with_suffix() {
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
-  [[ "$manifest" == *'{{ ProjectName }}'* ]]
-  [[ "$manifest" == *'{{ Environment }}'* ]]
+  assert_contains "$manifest" '{{ ProjectName }}'
+  assert_contains "$manifest" '{{ Environment }}'
 }
 
 # =============================================================================

@@ -205,3 +205,16 @@ assert_docker_not_called() {
     return 1
   fi
 }
+
+# Assert content contains pattern (shows actual content on failure)
+assert_contains() {
+  local content="$1"
+  local pattern="$2"
+  local label="${3:-manifest}"
+  if [[ "$content" != *"$pattern"* ]]; then
+    echo "EXPECTED PATTERN: $pattern" >&3
+    echo "ACTUAL ${label}:" >&3
+    echo "$content" >&3
+    return 1
+  fi
+}
