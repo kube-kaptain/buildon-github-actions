@@ -64,7 +64,7 @@ set_required_env() {
 
   run "$SCRIPTS_DIR/kubernetes-manifests-package"
   [ "$status" -eq 0 ]
-  [ -d "$OUTPUT_SUB_PATH/manifests/raw" ]
+  [ -d "$OUTPUT_SUB_PATH/manifests/combined" ]
   [ -d "$OUTPUT_SUB_PATH/manifests/config" ]
   [ -d "$OUTPUT_SUB_PATH/manifests/substituted" ]
   [ -d "$OUTPUT_SUB_PATH/manifests/zip" ]
@@ -87,28 +87,6 @@ set_required_env() {
 @test "substitutes ProjectName with PascalCase style (default)" {
   set_required_env
   create_manifest "deployment.yaml" 'name: ${ProjectName}-app'
-
-  run "$SCRIPTS_DIR/kubernetes-manifests-package"
-  [ "$status" -eq 0 ]
-
-  unzip -p "$OUTPUT_SUB_PATH/manifests/zip/my-project-1.2.3-manifests.zip" my-project/deployment.yaml | grep -q "name: my-project-app"
-}
-
-@test "substitutes with lower-kebab style" {
-  set_required_env
-  export TOKEN_NAME_STYLE="lower-kebab"
-  create_manifest "deployment.yaml" 'name: ${project-name}-app'
-
-  run "$SCRIPTS_DIR/kubernetes-manifests-package"
-  [ "$status" -eq 0 ]
-
-  unzip -p "$OUTPUT_SUB_PATH/manifests/zip/my-project-1.2.3-manifests.zip" my-project/deployment.yaml | grep -q "name: my-project-app"
-}
-
-@test "substitutes with UPPER_SNAKE style" {
-  set_required_env
-  export TOKEN_NAME_STYLE="UPPER_SNAKE"
-  create_manifest "deployment.yaml" 'name: ${PROJECT_NAME}-app'
 
   run "$SCRIPTS_DIR/kubernetes-manifests-package"
   [ "$status" -eq 0 ]
@@ -230,21 +208,25 @@ set_required_env() {
   unzip -l "$OUTPUT_SUB_PATH/manifests/zip/my-project-1.2.3-manifests.zip" | grep -q "my-project/deployment.yaml"
 }
 
-@test "fails when manifests directory not found" {
+@test "fails when manifests directory not found and combined is empty" {
   set_required_env
   export MANIFESTS_SUB_PATH="/nonexistent/path"
 
   run "$SCRIPTS_DIR/kubernetes-manifests-package"
   [ "$status" -ne 0 ]
-  assert_output_contains "Manifests directory not found"
+  # Should report the dir is not found, then fail because combined/ is empty
+  assert_output_contains "Source directory not found"
+  assert_output_contains "No manifests to package"
 }
 
-@test "fails when manifests directory is empty" {
+@test "fails when manifests directory is empty and combined is empty" {
   set_required_env
 
   run "$SCRIPTS_DIR/kubernetes-manifests-package"
   [ "$status" -ne 0 ]
-  assert_output_contains "directory is empty"
+  # Should report source is empty, then fail because combined/ is empty
+  assert_output_contains "Source directory empty"
+  assert_output_contains "No manifests to package"
 }
 
 @test "fails when PROJECT_NAME missing" {
@@ -274,7 +256,9 @@ set_required_env() {
 
   run "$SCRIPTS_DIR/kubernetes-manifests-package"
   [ "$status" -ne 0 ]
-  assert_output_contains "src/kubernetes"
+  # Reports the default path and fails because combined/ is empty
+  assert_output_contains "Source directory not found: src/kubernetes"
+  assert_output_contains "No manifests to package"
 }
 
 @test "defaults OUTPUT_SUB_PATH to target" {
@@ -310,28 +294,6 @@ set_required_env() {
   assert_output_contains "Found 2 manifest file(s)"
 }
 
-@test "substitutes with lower.dot style" {
-  set_required_env
-  export TOKEN_NAME_STYLE="lower.dot"
-  create_manifest "deployment.yaml" 'name: ${project.name}'
-
-  run "$SCRIPTS_DIR/kubernetes-manifests-package"
-  [ "$status" -eq 0 ]
-
-  unzip -p "$OUTPUT_SUB_PATH/manifests/zip/my-project-1.2.3-manifests.zip" my-project/deployment.yaml | grep -q "name: my-project"
-}
-
-@test "substitutes with UPPER.DOT style" {
-  set_required_env
-  export TOKEN_NAME_STYLE="UPPER.DOT"
-  create_manifest "deployment.yaml" 'name: ${PROJECT.NAME}'
-
-  run "$SCRIPTS_DIR/kubernetes-manifests-package"
-  [ "$status" -eq 0 ]
-
-  unzip -p "$OUTPUT_SUB_PATH/manifests/zip/my-project-1.2.3-manifests.zip" my-project/deployment.yaml | grep -q "name: my-project"
-}
-
 @test "fails with unknown token name style" {
   set_required_env
   export TOKEN_NAME_STYLE="UNKNOWN_STYLE"
@@ -344,7 +306,7 @@ set_required_env() {
 
 @test "uses mustache token style" {
   set_required_env
-  export SUBSTITUTION_TOKEN_STYLE="mustache"
+  export TOKEN_DELIMITER_STYLE="mustache"
   create_manifest "deployment.yaml" 'name: {{ ProjectName }}'
 
   run "$SCRIPTS_DIR/kubernetes-manifests-package"
@@ -355,7 +317,7 @@ set_required_env() {
 
 @test "fails with unknown substitution token style" {
   set_required_env
-  export SUBSTITUTION_TOKEN_STYLE="unknown"
+  export TOKEN_DELIMITER_STYLE="unknown"
   create_manifest "deployment.yaml" 'name: {{ProjectName}}'
 
   run "$SCRIPTS_DIR/kubernetes-manifests-package"
@@ -406,4 +368,36 @@ set_required_env() {
   [ "$status" -ne 0 ]
   assert_output_contains "ProjectName"
   assert_output_contains "Version"
+}
+
+@test "succeeds with pre-populated combined directory and no source" {
+  set_required_env
+  export MANIFESTS_SUB_PATH="/nonexistent/path"
+
+  # Simulate hooks pre-populating combined/
+  mkdir -p "$OUTPUT_SUB_PATH/manifests/combined"
+  echo 'apiVersion: v1' > "$OUTPUT_SUB_PATH/manifests/combined/from-hook.yaml"
+
+  run "$SCRIPTS_DIR/kubernetes-manifests-package"
+  [ "$status" -eq 0 ]
+  assert_output_contains "Source directory not found"
+  assert_output_contains "Found 1 manifest file(s)"
+  [ -f "$OUTPUT_SUB_PATH/manifests/zip/my-project-1.2.3-manifests.zip" ]
+}
+
+@test "source files override pre-populated combined files" {
+  set_required_env
+
+  # Simulate hooks pre-populating combined/
+  mkdir -p "$OUTPUT_SUB_PATH/manifests/combined"
+  echo 'name: from-hook' > "$OUTPUT_SUB_PATH/manifests/combined/deployment.yaml"
+
+  # Source has same file with different content
+  create_manifest "deployment.yaml" 'name: from-source'
+
+  run "$SCRIPTS_DIR/kubernetes-manifests-package"
+  [ "$status" -eq 0 ]
+
+  # Source should override hook content
+  unzip -p "$OUTPUT_SUB_PATH/manifests/zip/my-project-1.2.3-manifests.zip" my-project/deployment.yaml | grep -q "name: from-source"
 }

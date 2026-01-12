@@ -1,0 +1,117 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
+#
+# Dedicated to Michael McCallum (@stickycode) - inspired by his project kuuty-maven-plugin
+#
+# generate-kubernetes-configmap - Generates a Kubernetes ConfigMap from files
+#
+# Reads files from a directory and produces a ConfigMap YAML manifest with
+# each file becoming a data entry (filename → key, content → value).
+#
+# Inputs (environment variables):
+#   KUBERNETES_CONFIGMAP_NAME_SUFFIX - Optional suffix for name/filename (default: empty)
+#   KUBERNETES_CONFIGMAP_COMBINED_SUB_PATH - Sub-path within combined/ for output (default: empty)
+#   KUBERNETES_CONFIGMAP_SUB_PATH - Source directory (default: src/configmap or src/configmap-${suffix})
+#   OUTPUT_SUB_PATH            - Build output directory (default: target)
+#   PROJECT_NAME               - Used in metadata.name (required)
+#   TOKEN_NAME_STYLE           - Style for token references (default: PascalCase)
+#   TOKEN_DELIMITER_STYLE   - Delimiter style for tokens (default: shell)
+#   KUBERNETES_CONFIGMAP_NAME_CHECKSUM_INJECTION - Enable checksum injection suffix in name (default: true)
+#   KUBERNETES_GLOBAL_ADDITIONAL_LABELS      - Extra labels for all manifests (comma-separated key=value)
+#   KUBERNETES_GLOBAL_ADDITIONAL_ANNOTATIONS - Extra annotations for all manifests
+#   KUBERNETES_CONFIGMAP_ADDITIONAL_LABELS   - ConfigMap-specific extra labels
+#   KUBERNETES_CONFIGMAP_ADDITIONAL_ANNOTATIONS - ConfigMap-specific extra annotations
+#
+# Output:
+#   ${OUTPUT_SUB_PATH}/manifests/combined/[${combined-sub-path}/]configmap[-${suffix}].yaml
+#
+# metadata.name pattern:
+#   ${ProjectName}[-${combined-sub-path}][-${suffix}][-configmap-checksum]
+#
+set -euo pipefail
+
+# Locate script directory for libraries
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+LIB_DIR="${SCRIPT_DIR}/../lib"
+
+# Source libraries
+# shellcheck source=src/scripts/lib/token-format.bash
+source "${LIB_DIR}/token-format.bash"
+# shellcheck source=src/scripts/lib/kubernetes-metadata.bash
+source "${LIB_DIR}/kubernetes-metadata.bash"
+# shellcheck source=src/scripts/lib/kubernetes-configuration.bash
+source "${LIB_DIR}/kubernetes-configuration.bash"
+
+# Logging configuration (CI-agnostic)
+LOG_ERROR_PREFIX="${LOG_ERROR_PREFIX:-}"
+LOG_ERROR_SUFFIX="${LOG_ERROR_SUFFIX:-}"
+
+# Inputs with defaults
+KUBERNETES_CONFIGMAP_NAME_SUFFIX="${KUBERNETES_CONFIGMAP_NAME_SUFFIX:-}"
+KUBERNETES_CONFIGMAP_COMBINED_SUB_PATH="${KUBERNETES_CONFIGMAP_COMBINED_SUB_PATH:-}"
+KUBERNETES_CONFIGMAP_BASE_PATH="${KUBERNETES_CONFIGMAP_SUB_PATH:-src/configmap}"
+KUBERNETES_CONFIGMAP_SUB_PATH=$(build_configuration_source_path "${KUBERNETES_CONFIGMAP_BASE_PATH}" "${KUBERNETES_CONFIGMAP_NAME_SUFFIX}" "")
+OUTPUT_SUB_PATH="${OUTPUT_SUB_PATH:-target}"
+# shellcheck source=src/scripts/defaults/tokens.bash
+source "${SCRIPT_DIR}/../defaults/tokens.bash"
+KUBERNETES_CONFIGMAP_NAME_CHECKSUM_INJECTION="${KUBERNETES_CONFIGMAP_NAME_CHECKSUM_INJECTION:-true}"
+
+# Validate styles upfront
+validate_token_styles
+
+if [[ "${KUBERNETES_CONFIGMAP_NAME_CHECKSUM_INJECTION}" != "true" && "${KUBERNETES_CONFIGMAP_NAME_CHECKSUM_INJECTION}" != "false" ]]; then
+  echo "${LOG_ERROR_PREFIX}KUBERNETES_CONFIGMAP_NAME_CHECKSUM_INJECTION must be 'true' or 'false', got: ${KUBERNETES_CONFIGMAP_NAME_CHECKSUM_INJECTION}${LOG_ERROR_SUFFIX}" >&2
+  exit 4
+fi
+
+# Validate combined sub-path format
+validate_combined_sub_path "${KUBERNETES_CONFIGMAP_COMBINED_SUB_PATH}"
+
+# Validate source directory exists and has files
+validate_configuration_entries_directory "${KUBERNETES_CONFIGMAP_SUB_PATH}" "ConfigMap"
+
+# Generate token references
+project_name_token=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "PROJECT_NAME")
+environment_token=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "ENVIRONMENT")
+version_token=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "VERSION")
+
+# Build metadata.name: ${ProjectName}[-${combined}][-${suffix}][-configmap-checksum]
+name_middle=$(build_name_middle_fragment "${KUBERNETES_CONFIGMAP_COMBINED_SUB_PATH}" "${KUBERNETES_CONFIGMAP_NAME_SUFFIX}")
+
+if [[ "${KUBERNETES_CONFIGMAP_NAME_CHECKSUM_INJECTION}" == "true" ]]; then
+  configmap_name="${project_name_token}${name_middle}-configmap-checksum"
+else
+  configmap_name="${project_name_token}${name_middle}"
+fi
+
+# Create output directory
+output_dir=$(ensure_manifest_output_dir "${OUTPUT_SUB_PATH}" "${KUBERNETES_CONFIGMAP_COMBINED_SUB_PATH}")
+
+# Generate ConfigMap YAML (include suffix in filename if provided)
+if [[ -n "${KUBERNETES_CONFIGMAP_NAME_SUFFIX}" ]]; then
+  output_file="${output_dir}/configmap-${KUBERNETES_CONFIGMAP_NAME_SUFFIX}.yaml"
+else
+  output_file="${output_dir}/configmap.yaml"
+fi
+
+# Get current timestamp and script name for annotations
+build_timestamp=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+script_name=$(basename "${BASH_SOURCE[0]}")
+
+# Additional labels/annotations from inputs
+global_labels="${KUBERNETES_GLOBAL_ADDITIONAL_LABELS:-}"
+specific_labels="${KUBERNETES_CONFIGMAP_ADDITIONAL_LABELS:-}"
+global_annotations="${KUBERNETES_GLOBAL_ADDITIONAL_ANNOTATIONS:-}"
+specific_annotations="${KUBERNETES_CONFIGMAP_ADDITIONAL_ANNOTATIONS:-}"
+
+{
+  generate_manifest_header "v1" "ConfigMap" "${configmap_name}" "${environment_token}"
+  generate_metadata 2 labels
+  generate_metadata 2 annotations
+  echo "data:"
+  generate_configuration_entries "${KUBERNETES_CONFIGMAP_SUB_PATH}"
+} > "${output_file}"
+
+echo "Generated ConfigMap manifest: ${output_file}" >&2
+echo "  Files included: ${SOURCE_FILE_COUNT}" >&2

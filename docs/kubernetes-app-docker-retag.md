@@ -6,26 +6,78 @@ Kubernetes App - Docker Retag
 
 | Input | Type | Default | Description |
 |-------|------|---------|-------------|
+| `output-sub-path` | string | `target` | Build output directory (relative) |
+| `docker-registry-logins` | string | `""` | YAML config for Docker registry logins (registry URL as key) |
 | `docker-source-registry` | string | *required* | Upstream registry (e.g., docker.io) |
 | `docker-source-base-path` | string | `""` | Path between registry and image name (e.g., library) |
 | `docker-source-image-name` | string | *required* | Upstream image name (e.g., nginx) |
 | `docker-source-tag` | string | *required* | Upstream image tag (e.g., 1.25) |
+| `docker-target-registry` | string | `ghcr.io` | Target container registry |
+| `docker-target-base-path` | string | `""` | Path between registry and image name (auto-set for GHCR) |
+| `docker-push-targets` | string | `""` | JSON array of additional push targets [{registry, base-path?}] |
 | `manifests-sub-path` | string | `src/kubernetes` | Directory containing Kubernetes manifests (relative) |
-| `substitution-token-style` | string | `shell` | Token delimiter syntax for variables (shell, mustache, helm, erb, github-actions, blade, stringtemplate, ognl, t4, swift) |
+| `manifests-repo-provider-type` | string | `docker` | Repo provider type for manifest storage (default: docker, currently the only supported provider) |
+| `manifests-packaging-base-image` | string | `""` | Base image for manifest packaging (default: scratch) |
+| `kubernetes-global-additional-labels` | string | `""` | Additional labels for all Kubernetes manifests (comma-separated key=value) |
+| `kubernetes-global-additional-annotations` | string | `""` | Additional annotations for all Kubernetes manifests (comma-separated key=value) |
+| `kubernetes-configmap-sub-path` | string | `src/configmap` | Directory containing ConfigMap data files (relative) |
+| `kubernetes-configmap-name-checksum-injection` | boolean | `true` | Enable checksum injection suffix in ConfigMap name (true: ProjectName-configmap-checksum, false: ProjectName) |
+| `kubernetes-configmap-additional-labels` | string | `""` | Additional labels specific to ConfigMap (comma-separated key=value) |
+| `kubernetes-configmap-additional-annotations` | string | `""` | Additional annotations specific to ConfigMap (comma-separated key=value) |
+| `kubernetes-secret-template-sub-path` | string | `src/secret.template` | Directory containing Secret template data files (relative) |
+| `kubernetes-secret-template-name-checksum-injection` | boolean | `true` | Enable checksum injection suffix in Secret name (true: ProjectName-secret-checksum, false: ProjectName) |
+| `kubernetes-secret-template-additional-labels` | string | `""` | Additional labels specific to Secret template (comma-separated key=value) |
+| `kubernetes-secret-template-additional-annotations` | string | `""` | Additional annotations specific to Secret template (comma-separated key=value) |
+| `kubernetes-serviceaccount-generation-enabled` | boolean | `false` | Enable ServiceAccount generation (true/false) |
+| `kubernetes-serviceaccount-name-suffix` | string | `""` | Optional suffix for ServiceAccount name and filename |
+| `kubernetes-serviceaccount-combined-sub-path` | string | `""` | Sub-path within combined/ for output |
+| `kubernetes-serviceaccount-additional-labels` | string | `""` | Additional labels specific to ServiceAccount (comma-separated key=value) |
+| `kubernetes-serviceaccount-additional-annotations` | string | `""` | Additional annotations specific to ServiceAccount (comma-separated key=value) |
+| `kubernetes-workload-type` | string | `deployment` | Workload type to generate (deployment, none) |
+| `kubernetes-workload-name-suffix` | string | `""` | Optional suffix for workload name and filename |
+| `kubernetes-workload-combined-sub-path` | string | `""` | Sub-path within combined/ for output |
+| `kubernetes-workload-env-sub-path` | string | `src/workload-env` | Directory containing environment variable files |
+| `kubernetes-workload-additional-labels` | string | `""` | Additional labels specific to workload (comma-separated key=value) |
+| `kubernetes-workload-additional-annotations` | string | `""` | Additional annotations specific to workload (comma-separated key=value) |
+| `kubernetes-workload-container-port` | string | `1024` | Container port |
+| `kubernetes-workload-image-reference-style` | string | `combined` | Image reference style (combined, separate, project-name-prefixed-combined, project-name-prefixed-separate) |
+| `kubernetes-workload-readonly-root-filesystem` | boolean | `true` | Enable read-only root filesystem |
+| `kubernetes-workload-seccomp-profile` | string | `DISABLED` | Seccomp profile (DISABLED, RuntimeDefault, Localhost, Unconfined) |
+| `kubernetes-workload-automount-service-account-token` | boolean | `false` | Automount service account token |
+| `kubernetes-workload-resources-memory` | string | `10Mi` | Memory limit (e.g., 128Mi, 1Gi) |
+| `kubernetes-workload-resources-cpu-request` | string | `100m` | CPU request (e.g., 100m, 1) |
+| `kubernetes-workload-resources-cpu-limit` | string | `""` | CPU limit (empty for no limit) |
+| `kubernetes-workload-configmap-mount-path` | string | `/configmap` | ConfigMap mount path in container |
+| `kubernetes-workload-secret-mount-path` | string | `/secret` | Secret mount path in container |
+| `kubernetes-workload-termination-grace-period-seconds` | string | `10` | Termination grace period in seconds |
+| `kubernetes-workload-prestop-command` | string | `""` | PreStop hook command (empty for none) |
+| `kubernetes-workload-affinity-strategy` | string | `spread-nodes-and-zones-ha` | Pod affinity strategy plugin name |
+| `kubernetes-workload-probe-liveness-check-type` | string | `http-get` | Liveness probe type (http-get, tcp-socket, exec, grpc, none) |
+| `kubernetes-workload-probe-readiness-check-type` | string | `http-get` | Readiness probe type (http-get, tcp-socket, exec, grpc, none) |
+| `kubernetes-workload-probe-startup-check-type` | string | `http-get` | Startup probe type (http-get, tcp-socket, exec, grpc, none) |
+| `kubernetes-workload-probe-liveness-http-path` | string | `/liveness` | Liveness probe HTTP path |
+| `kubernetes-workload-probe-readiness-http-path` | string | `/readiness` | Readiness probe HTTP path |
+| `kubernetes-workload-probe-startup-http-path` | string | `/startup` | Startup probe HTTP path |
+| `kubernetes-deployment-replicas` | string | `""` | Replica count (empty for token, NO for HPA management) |
+| `kubernetes-deployment-revision-history-limit` | string | `10` | Number of old ReplicaSets to retain |
+| `kubernetes-service-generation-enabled` | boolean | `false` | Enable Service generation |
+| `kubernetes-service-type` | string | `ClusterIP` | Service type (ClusterIP, NodePort, LoadBalancer) |
+| `kubernetes-service-port` | string | `80` | Service port |
+| `kubernetes-service-target-port` | string | `""` | Target port (defaults to service port) |
+| `kubernetes-service-protocol` | string | `TCP` | Protocol (TCP, UDP, SCTP) |
+| `kubernetes-service-name-suffix` | string | `""` | Optional suffix for Service name and filename |
+| `kubernetes-service-combined-sub-path` | string | `""` | Sub-path within combined/ for output |
+| `kubernetes-service-additional-labels` | string | `""` | Additional labels specific to Service (comma-separated key=value) |
+| `kubernetes-service-additional-annotations` | string | `""` | Additional annotations specific to Service (comma-separated key=value) |
+| `token-delimiter-style` | string | `shell` | Token delimiter syntax for variables (shell, mustache, helm, erb, github-actions, blade, stringtemplate, ognl, t4, swift) |
 | `token-name-style` | string | `PascalCase` | Case style for token names (UPPER_SNAKE, lower_snake, lower-kebab, UPPER-KEBAB, camelCase, PascalCase, lower.dot, UPPER.DOT) |
 | `token-name-validation` | string | `MATCH` | How to validate user token names (MATCH = must match token-name-style, ALL = accept any valid name) |
 | `allow-builtin-token-override` | boolean | `false` | Allow user tokens to override built-in tokens (for template/reusable projects) |
 | `config-sub-path` | string | `src/config` | Directory containing user-defined token files (relative) |
-| `output-sub-path` | string | `target` | Build output directory (relative) |
 | `config-value-trailing-newline` | string | `strip-for-single-line` | How to handle trailing newlines in config values (strip-for-single-line, preserve-all, always-strip-one-newline) |
-| `manifests-repo-provider-type` | string | `docker` | Repo provider type for manifest storage (default: docker, currently the only supported provider) |
-| `manifests-packaging-base-image` | string | `""` | Base image for manifest packaging (default: scratch) |
-| `docker-target-registry` | string | `ghcr.io` | Target container registry |
-| `docker-target-base-path` | string | `""` | Path between registry and image name (auto-set for GHCR) |
-| `docker-push-targets` | string | `""` | JSON array of additional push targets [{registry, base-path?}] |
 | `release-branch` | string | `main` | The release branch name |
 | `additional-release-branches` | string | `""` | Comma-separated list of additional release branches |
-| `max-version-parts` | number | `3` | Maximum allowed version parts (fail if exceeded) |
+| `tag-version-max-parts` | number | `3` | Maximum allowed version parts (fail if exceeded) |
 | `tag-version-calculation-strategy` | string | `git-auto-closest-highest` | Strategy for calculating version (git-auto-closest-highest, file-pattern-match) |
 | `tag-version-pattern-type` | string | `dockerfile-env-kubectl` | Pattern type for file-pattern-match strategy (dockerfile-env-kubectl, retag-workflow-source-tag, custom) |
 | `tag-version-prefix-parts` | string | `""` | Number of parts from source version to use as prefix (default 2, output = prefix + 1 parts) |
@@ -34,15 +86,14 @@ Kubernetes App - Docker Retag
 | `tag-version-source-file-name` | string | `""` | Override source file name (defaults based on pattern type) |
 | `tag-version-source-custom-pattern` | string | `""` | Regex with capture group for version extraction (required for custom pattern type) |
 | `block-slashes` | boolean | `false` | DEPRECATED: Use block-slash-containing-branches instead |
-| `block-slash-containing-branches` | boolean | `false` | Block branch names containing slashes |
-| `block-double-hyphen-containing-branches` | boolean | `true` | Block branch names containing double hyphens (typo detection) |
-| `require-conventional-branches` | boolean | `false` | Require branch names start with feature/, fix/, etc. |
-| `require-conventional-commits` | boolean | `false` | Require commits use conventional commit format (feat:, fix:, etc.) |
-| `block-conventional-commits` | boolean | `false` | Block commits that use conventional commit format |
-| `pre-tagging-tests-script-sub-path` | string | `""` | Path to pre-tagging test script relative to .github/ (e.g., bin/pre-tagging.bash) |
-| `post-package-tests-script-sub-path` | string | `""` | Path to post-package test script relative to .github/ (e.g., bin/post-package.bash) |
-| `pre-package-prepare-script-sub-path` | string | `""` | Path to pre-package prepare script relative to .github/ (e.g., bin/pre-package-prepare.bash) |
-| `docker-registry-logins` | string | `""` | YAML config for Docker registry logins (registry URL as key) |
+| `qc-block-slash-containing-branches` | boolean | `false` | Block branch names containing slashes |
+| `qc-block-double-hyphen-containing-branches` | boolean | `true` | Block branch names containing double hyphens (typo detection) |
+| `qc-require-conventional-branches` | boolean | `false` | Require branch names start with feature/, fix/, etc. |
+| `qc-require-conventional-commits` | boolean | `false` | Require commits use conventional commit format (feat:, fix:, etc.) |
+| `qc-block-conventional-commits` | boolean | `false` | Block commits that use conventional commit format |
+| `hook-pre-tagging-tests-script-sub-path` | string | `""` | Path to pre-tagging test script relative to .github/ (e.g., bin/pre-tagging.bash) |
+| `hook-pre-package-prepare-script-sub-path` | string | `""` | Path to pre-package prepare script relative to .github/ (e.g., bin/pre-package-prepare.bash) |
+| `hook-post-package-tests-script-sub-path` | string | `""` | Path to post-package test script relative to .github/ (e.g., bin/post-package.bash) |
 | `github-release-enabled` | boolean | `true` | Create a GitHub release on version tags |
 | `github-release-substituted-files` | string | `""` | Files with token substitution and version suffix (space-separated) |
 | `github-release-verbatim-files` | string | `""` | Files copied as-is with version suffix only (space-separated) |

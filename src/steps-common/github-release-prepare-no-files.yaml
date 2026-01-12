@@ -15,7 +15,7 @@
     docker-image-name: ${{ steps.versions.outputs.docker-image-name }}
     is-release: ${{ steps.versions.outputs.is-release }}
     github-release-add-version-to-filenames: ${{ inputs.github-release-add-version-to-filenames }}
-    substitution-token-style: ${{ inputs.substitution-token-style }}
+    token-delimiter-style: ${{ inputs.token-delimiter-style }}
     token-name-style: ${{ inputs.token-name-style }}
     token-name-validation: ${{ inputs.token-name-validation }}
     config-sub-path: ${{ inputs.config-sub-path }}

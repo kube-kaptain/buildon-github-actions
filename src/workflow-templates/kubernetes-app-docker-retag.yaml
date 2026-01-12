@@ -2,9 +2,24 @@
 # Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
 
 name: Kubernetes App - Docker Retag
+kaptain-order: 80
+kaptain-description: Everything from both docker retag and Kubernetes manifest packaging - for apps using upstream images
 on:
   workflow_call:
     inputs:
+      # Build output
+      output-sub-path:
+        description: 'Build output directory (relative)'
+        required: false
+        type: string
+        default: 'target'
+
+      # Docker registry logins
+      docker-registry-logins:
+        description: 'YAML config for Docker registry logins (registry URL as key)'
+        required: false
+        type: string
+        default: ''
       # Docker source image configuration
       docker-source-registry:
         description: 'Upstream registry (e.g., docker.io)'
@@ -23,13 +38,306 @@ on:
         description: 'Upstream image tag (e.g., 1.25)'
         required: true
         type: string
-      # Manifest configuration
+      # Docker target config
+      docker-target-registry:
+        description: 'Target container registry'
+        required: false
+        type: string
+        default: 'ghcr.io'
+      docker-target-base-path:
+        description: 'Path between registry and image name (auto-set for GHCR)'
+        required: false
+        type: string
+        default: ''
+      # Docker push targets
+      docker-push-targets:
+        description: 'JSON array of additional push targets [{registry, base-path?}]'
+        required: false
+        type: string
+        default: ''
+
+      # Manifests source
       manifests-sub-path:
         description: 'Directory containing Kubernetes manifests (relative)'
         required: false
         type: string
         default: 'src/kubernetes'
-      substitution-token-style:
+      # Manifests packaging
+      manifests-repo-provider-type:
+        description: 'Repo provider type for manifest storage (default: docker, currently the only supported provider)'
+        required: false
+        type: string
+        default: 'docker'
+      manifests-packaging-base-image:
+        description: 'Base image for manifest packaging (default: scratch)'
+        required: false
+        type: string
+        default: ''
+
+      # Kubernetes generation
+      kubernetes-global-additional-labels:
+        description: 'Additional labels for all Kubernetes manifests (comma-separated key=value)'
+        required: false
+        type: string
+        default: ''
+      kubernetes-global-additional-annotations:
+        description: 'Additional annotations for all Kubernetes manifests (comma-separated key=value)'
+        required: false
+        type: string
+        default: ''
+      # Kubernetes ConfigMap generation
+      kubernetes-configmap-sub-path:
+        description: 'Directory containing ConfigMap data files (relative)'
+        required: false
+        type: string
+        default: 'src/configmap'
+      kubernetes-configmap-name-checksum-injection:
+        description: 'Enable checksum injection suffix in ConfigMap name (true: ProjectName-configmap-checksum, false: ProjectName)'
+        required: false
+        type: boolean
+        default: true
+      kubernetes-configmap-additional-labels:
+        description: 'Additional labels specific to ConfigMap (comma-separated key=value)'
+        required: false
+        type: string
+        default: ''
+      kubernetes-configmap-additional-annotations:
+        description: 'Additional annotations specific to ConfigMap (comma-separated key=value)'
+        required: false
+        type: string
+        default: ''
+      # Kubernetes Secret template generation
+      kubernetes-secret-template-sub-path:
+        description: 'Directory containing Secret template data files (relative)'
+        required: false
+        type: string
+        default: 'src/secret.template'
+      kubernetes-secret-template-name-checksum-injection:
+        description: 'Enable checksum injection suffix in Secret name (true: ProjectName-secret-checksum, false: ProjectName)'
+        required: false
+        type: boolean
+        default: true
+      kubernetes-secret-template-additional-labels:
+        description: 'Additional labels specific to Secret template (comma-separated key=value)'
+        required: false
+        type: string
+        default: ''
+      kubernetes-secret-template-additional-annotations:
+        description: 'Additional annotations specific to Secret template (comma-separated key=value)'
+        required: false
+        type: string
+        default: ''
+      # Kubernetes ServiceAccount generation
+      kubernetes-serviceaccount-generation-enabled:
+        description: 'Enable ServiceAccount generation (true/false)'
+        required: false
+        type: boolean
+        default: false
+      kubernetes-serviceaccount-name-suffix:
+        description: 'Optional suffix for ServiceAccount name and filename'
+        required: false
+        type: string
+        default: ''
+      kubernetes-serviceaccount-combined-sub-path:
+        description: 'Sub-path within combined/ for output'
+        required: false
+        type: string
+        default: ''
+      kubernetes-serviceaccount-additional-labels:
+        description: 'Additional labels specific to ServiceAccount (comma-separated key=value)'
+        required: false
+        type: string
+        default: ''
+      kubernetes-serviceaccount-additional-annotations:
+        description: 'Additional annotations specific to ServiceAccount (comma-separated key=value)'
+        required: false
+        type: string
+        default: ''
+      # Kubernetes Workload generation
+      kubernetes-workload-type:
+        description: 'Workload type to generate (deployment, none)'
+        required: false
+        type: string
+        default: 'deployment'
+      kubernetes-workload-name-suffix:
+        description: 'Optional suffix for workload name and filename'
+        required: false
+        type: string
+        default: ''
+      kubernetes-workload-combined-sub-path:
+        description: 'Sub-path within combined/ for output'
+        required: false
+        type: string
+        default: ''
+      kubernetes-workload-env-sub-path:
+        description: 'Directory containing environment variable files'
+        required: false
+        type: string
+        default: 'src/workload-env'
+      kubernetes-workload-additional-labels:
+        description: 'Additional labels specific to workload (comma-separated key=value)'
+        required: false
+        type: string
+        default: ''
+      kubernetes-workload-additional-annotations:
+        description: 'Additional annotations specific to workload (comma-separated key=value)'
+        required: false
+        type: string
+        default: ''
+      kubernetes-workload-container-port:
+        description: 'Container port'
+        required: false
+        type: string
+        default: '1024'
+      kubernetes-workload-image-reference-style:
+        description: 'Image reference style (combined, separate, project-name-prefixed-combined, project-name-prefixed-separate)'
+        required: false
+        type: string
+        default: 'combined'
+      kubernetes-workload-readonly-root-filesystem:
+        description: 'Enable read-only root filesystem'
+        required: false
+        type: boolean
+        default: true
+      kubernetes-workload-seccomp-profile:
+        description: 'Seccomp profile (DISABLED, RuntimeDefault, Localhost, Unconfined)'
+        required: false
+        type: string
+        default: 'DISABLED'
+      kubernetes-workload-automount-service-account-token:
+        description: 'Automount service account token'
+        required: false
+        type: boolean
+        default: false
+      kubernetes-workload-resources-memory:
+        description: 'Memory limit (e.g., 128Mi, 1Gi)'
+        required: false
+        type: string
+        default: '10Mi'
+      kubernetes-workload-resources-cpu-request:
+        description: 'CPU request (e.g., 100m, 1)'
+        required: false
+        type: string
+        default: '100m'
+      kubernetes-workload-resources-cpu-limit:
+        description: 'CPU limit (empty for no limit)'
+        required: false
+        type: string
+        default: ''
+      kubernetes-workload-configmap-mount-path:
+        description: 'ConfigMap mount path in container'
+        required: false
+        type: string
+        default: '/configmap'
+      kubernetes-workload-secret-mount-path:
+        description: 'Secret mount path in container'
+        required: false
+        type: string
+        default: '/secret'
+      kubernetes-workload-termination-grace-period-seconds:
+        description: 'Termination grace period in seconds'
+        required: false
+        type: string
+        default: '10'
+      kubernetes-workload-prestop-command:
+        description: 'PreStop hook command (empty for none)'
+        required: false
+        type: string
+        default: ''
+      kubernetes-workload-affinity-strategy:
+        description: 'Pod affinity strategy plugin name'
+        required: false
+        type: string
+        default: 'spread-nodes-and-zones-ha'
+      kubernetes-workload-probe-liveness-check-type:
+        description: 'Liveness probe type (http-get, tcp-socket, exec, grpc, none)'
+        required: false
+        type: string
+        default: 'http-get'
+      kubernetes-workload-probe-readiness-check-type:
+        description: 'Readiness probe type (http-get, tcp-socket, exec, grpc, none)'
+        required: false
+        type: string
+        default: 'http-get'
+      kubernetes-workload-probe-startup-check-type:
+        description: 'Startup probe type (http-get, tcp-socket, exec, grpc, none)'
+        required: false
+        type: string
+        default: 'http-get'
+      kubernetes-workload-probe-liveness-http-path:
+        description: 'Liveness probe HTTP path'
+        required: false
+        type: string
+        default: '/liveness'
+      kubernetes-workload-probe-readiness-http-path:
+        description: 'Readiness probe HTTP path'
+        required: false
+        type: string
+        default: '/readiness'
+      kubernetes-workload-probe-startup-http-path:
+        description: 'Startup probe HTTP path'
+        required: false
+        type: string
+        default: '/startup'
+      kubernetes-deployment-replicas:
+        description: 'Replica count (empty for token, NO for HPA management)'
+        required: false
+        type: string
+        default: ''
+      kubernetes-deployment-revision-history-limit:
+        description: 'Number of old ReplicaSets to retain'
+        required: false
+        type: string
+        default: '10'
+      # Kubernetes Service generation
+      kubernetes-service-generation-enabled:
+        description: 'Enable Service generation'
+        required: false
+        type: boolean
+        default: false
+      kubernetes-service-type:
+        description: 'Service type (ClusterIP, NodePort, LoadBalancer)'
+        required: false
+        type: string
+        default: 'ClusterIP'
+      kubernetes-service-port:
+        description: 'Service port'
+        required: false
+        type: string
+        default: '80'
+      kubernetes-service-target-port:
+        description: 'Target port (defaults to service port)'
+        required: false
+        type: string
+        default: ''
+      kubernetes-service-protocol:
+        description: 'Protocol (TCP, UDP, SCTP)'
+        required: false
+        type: string
+        default: 'TCP'
+      kubernetes-service-name-suffix:
+        description: 'Optional suffix for Service name and filename'
+        required: false
+        type: string
+        default: ''
+      kubernetes-service-combined-sub-path:
+        description: 'Sub-path within combined/ for output'
+        required: false
+        type: string
+        default: ''
+      kubernetes-service-additional-labels:
+        description: 'Additional labels specific to Service (comma-separated key=value)'
+        required: false
+        type: string
+        default: ''
+      kubernetes-service-additional-annotations:
+        description: 'Additional annotations specific to Service (comma-separated key=value)'
+        required: false
+        type: string
+        default: ''
+
+      # Token substitution
+      token-delimiter-style:
         description: 'Token delimiter syntax for variables (shell, mustache, helm, erb, github-actions, blade, stringtemplate, ognl, t4, swift)'
         required: false
         type: string
@@ -54,44 +362,13 @@ on:
         required: false
         type: string
         default: 'src/config'
-      output-sub-path:
-        description: 'Build output directory (relative)'
-        required: false
-        type: string
-        default: 'target'
       config-value-trailing-newline:
         description: 'How to handle trailing newlines in config values (strip-for-single-line, preserve-all, always-strip-one-newline)'
         required: false
         type: string
         default: 'strip-for-single-line'
-      # Repo provider configuration
-      manifests-repo-provider-type:
-        description: 'Repo provider type for manifest storage (default: docker, currently the only supported provider)'
-        required: false
-        type: string
-        default: 'docker'
-      manifests-packaging-base-image:
-        description: 'Base image for manifest packaging (default: scratch)'
-        required: false
-        type: string
-        default: ''
-      # Docker target configuration
-      docker-target-registry:
-        description: 'Target container registry'
-        required: false
-        type: string
-        default: 'ghcr.io'
-      docker-target-base-path:
-        description: 'Path between registry and image name (auto-set for GHCR)'
-        required: false
-        type: string
-        default: ''
-      docker-push-targets:
-        description: 'JSON array of additional push targets [{registry, base-path?}]'
-        required: false
-        type: string
-        default: ''
-      # Version generator inputs (pass-through)
+
+      # Naming, Versions, and Tags calculation
       release-branch:
         description: 'The release branch name'
         required: false
@@ -102,7 +379,7 @@ on:
         required: false
         type: string
         default: ''
-      max-version-parts:
+      tag-version-max-parts:
         description: 'Maximum allowed version parts (fail if exceeded)'
         required: false
         type: number
@@ -142,59 +419,57 @@ on:
         required: false
         type: string
         default: ''
-      # Quality check inputs
+
+      # Quality check options
       block-slashes:
         description: 'DEPRECATED: Use block-slash-containing-branches instead'
         required: false
         type: boolean
         default: false
-      block-slash-containing-branches:
+      qc-block-slash-containing-branches:
         description: 'Block branch names containing slashes'
         required: false
         type: boolean
         default: false
-      block-double-hyphen-containing-branches:
+      qc-block-double-hyphen-containing-branches:
         description: 'Block branch names containing double hyphens (typo detection)'
         required: false
         type: boolean
         default: true
-      require-conventional-branches:
+      qc-require-conventional-branches:
         description: 'Require branch names start with feature/, fix/, etc.'
         required: false
         type: boolean
         default: false
-      require-conventional-commits:
+      qc-require-conventional-commits:
         description: 'Require commits use conventional commit format (feat:, fix:, etc.)'
         required: false
         type: boolean
         default: false
-      block-conventional-commits:
+      qc-block-conventional-commits:
         description: 'Block commits that use conventional commit format'
         required: false
         type: boolean
         default: false
-      # Test injection points
-      pre-tagging-tests-script-sub-path:
+
+      # Hook script paths
+      hook-pre-tagging-tests-script-sub-path:
         description: 'Path to pre-tagging test script relative to .github/ (e.g., bin/pre-tagging.bash)'
         required: false
         type: string
         default: ''
-      post-package-tests-script-sub-path:
-        description: 'Path to post-package test script relative to .github/ (e.g., bin/post-package.bash)'
-        required: false
-        type: string
-        default: ''
-      pre-package-prepare-script-sub-path:
+      hook-pre-package-prepare-script-sub-path:
         description: 'Path to pre-package prepare script relative to .github/ (e.g., bin/pre-package-prepare.bash)'
         required: false
         type: string
         default: ''
-      docker-registry-logins:
-        description: 'YAML config for Docker registry logins (registry URL as key)'
+      hook-post-package-tests-script-sub-path:
+        description: 'Path to post-package test script relative to .github/ (e.g., bin/post-package.bash)'
         required: false
         type: string
         default: ''
-      # GitHub Release configuration
+
+      # GitHub release
       github-release-enabled:
         description: 'Create a GitHub release on version tags'
         required: false
@@ -335,9 +610,9 @@ jobs:
       # INJECT: docker-registry-logins
 
       # === Pre-tagging Tests ===
-      # INJECT: github-check-start(name="Pre-tagging Tests", id="check-pre-tagging", if="inputs.pre-tagging-tests-script-sub-path != ''")
-      # INJECT: pre-tagging-tests
-      # INJECT: github-check-end(name="Pre-tagging Tests", id="check-pre-tagging", if="inputs.pre-tagging-tests-script-sub-path != ''")
+      # INJECT: github-check-start(name="Pre-tagging Tests", id="check-pre-tagging", if="inputs.hook-pre-tagging-tests-script-sub-path != ''")
+      # INJECT: hook-pre-tagging-tests
+      # INJECT: github-check-end(name="Pre-tagging Tests", id="check-pre-tagging", if="inputs.hook-pre-tagging-tests-script-sub-path != ''")
 
       # === Versions & Naming ===
       # INJECT: github-check-start(name="Versions & Naming", id="check-versions")
@@ -354,10 +629,35 @@ jobs:
       # INJECT: docker-multi-tag
       # INJECT: github-check-end(name="Docker Multi-Tag", id="check-docker-multi-tag", if="inputs.docker-push-targets != '' && steps.versions.outputs.is-release == 'true'")
 
+      # === Generate ConfigMap ===
+      # INJECT: github-check-start(name="Generate ConfigMap", id="check-generate-configmap", if="inputs.kubernetes-configmap-sub-path != ''")
+      # INJECT: generate-kubernetes-configmap
+      # INJECT: github-check-end(name="Generate ConfigMap", id="check-generate-configmap", if="inputs.kubernetes-configmap-sub-path != ''")
+
+      # === Generate Secret Template ===
+      # INJECT: github-check-start(name="Generate Secret Template", id="check-generate-secret-template", if="inputs.kubernetes-secret-template-sub-path != ''")
+      # INJECT: generate-kubernetes-secret-template
+      # INJECT: github-check-end(name="Generate Secret Template", id="check-generate-secret-template", if="inputs.kubernetes-secret-template-sub-path != ''")
+
+      # === Generate ServiceAccount ===
+      # INJECT: github-check-start(name="Generate ServiceAccount", id="check-generate-serviceaccount", if="inputs.kubernetes-serviceaccount-generation-enabled == true")
+      # INJECT: generate-kubernetes-serviceaccount
+      # INJECT: github-check-end(name="Generate ServiceAccount", id="check-generate-serviceaccount", if="inputs.kubernetes-serviceaccount-generation-enabled == true")
+
+      # === Generate Workload ===
+      # INJECT: github-check-start(name="Generate Workload", id="check-generate-workload", if="inputs.kubernetes-workload-type != 'none'")
+      # INJECT: generate-kubernetes-workload
+      # INJECT: github-check-end(name="Generate Workload", id="check-generate-workload", if="inputs.kubernetes-workload-type != 'none'")
+
+      # === Generate Service ===
+      # INJECT: github-check-start(name="Generate Service", id="check-generate-service", if="inputs.kubernetes-service-generation-enabled == true && inputs.kubernetes-workload-type == 'deployment'")
+      # INJECT: generate-kubernetes-service
+      # INJECT: github-check-end(name="Generate Service", id="check-generate-service", if="inputs.kubernetes-service-generation-enabled == true && inputs.kubernetes-workload-type == 'deployment'")
+
       # === Pre-package Prepare ===
-      # INJECT: github-check-start(name="Pre-package Prepare", id="check-pre-package-prepare", if="inputs.pre-package-prepare-script-sub-path != ''")
-      # INJECT: pre-package-prepare
-      # INJECT: github-check-end(name="Pre-package Prepare", id="check-pre-package-prepare", if="inputs.pre-package-prepare-script-sub-path != ''")
+      # INJECT: github-check-start(name="Pre-package Prepare", id="check-pre-package-prepare", if="inputs.hook-pre-package-prepare-script-sub-path != ''")
+      # INJECT: hook-pre-package-prepare
+      # INJECT: github-check-end(name="Pre-package Prepare", id="check-pre-package-prepare", if="inputs.hook-pre-package-prepare-script-sub-path != ''")
 
       # === Manifest Package ===
       # INJECT: github-check-start(name="Package Manifests", id="check-manifest-package")
@@ -375,9 +675,9 @@ jobs:
       # INJECT: github-check-end(name="Manifest Multi-Tag", id="check-manifest-multi-tag", if="inputs.docker-push-targets != '' && steps.versions.outputs.is-release == 'true' && inputs.manifests-repo-provider-type == 'docker'")
 
       # === Post-package Tests ===
-      # INJECT: github-check-start(name="Post-package Tests", id="check-post-package", if="inputs.post-package-tests-script-sub-path != ''")
-      # INJECT: post-package-tests
-      # INJECT: github-check-end(name="Post-package Tests", id="check-post-package", if="inputs.post-package-tests-script-sub-path != ''")
+      # INJECT: github-check-start(name="Post-package Tests", id="check-post-package", if="inputs.hook-post-package-tests-script-sub-path != ''")
+      # INJECT: hook-post-package-tests
+      # INJECT: github-check-end(name="Post-package Tests", id="check-post-package", if="inputs.hook-post-package-tests-script-sub-path != ''")
 
       # === GitHub Release Prepare ===
       # INJECT: github-check-start(name="GitHub Release Prepare", id="check-github-release-prepare", if="inputs.github-release-enabled == true")

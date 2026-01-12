@@ -43,7 +43,7 @@ inputs:
     description: 'Release flag for variable substitution (optional)'
     required: false
     default: ''
-  substitution-token-style:
+  token-delimiter-style:
     description: 'Token delimiter syntax for variables (shell, mustache, helm, erb, github-actions, blade, stringtemplate, ognl, t4, swift)'
     required: false
   token-name-style:
@@ -88,7 +88,7 @@ runs:
         TARGET_REGISTRY: ${{ inputs.docker-target-registry }}
         TARGET_BASE_PATH: ${{ inputs.docker-target-base-path }}
         IS_RELEASE: ${{ inputs.is-release }}
-        SUBSTITUTION_TOKEN_STYLE: ${{ inputs.substitution-token-style }}
+        TOKEN_DELIMITER_STYLE: ${{ inputs.token-delimiter-style }}
         TOKEN_NAME_STYLE: ${{ inputs.token-name-style }}
         TOKEN_NAME_VALIDATION: ${{ inputs.token-name-validation }}
         ALLOW_BUILTIN_TOKEN_OVERRIDE: ${{ inputs.allow-builtin-token-override }}

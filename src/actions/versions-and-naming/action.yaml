@@ -12,7 +12,7 @@ inputs:
     description: 'Comma-separated list of additional release branches'
     required: false
     default: ''
-  max-version-parts:
+  tag-version-max-parts:
     description: 'Maximum allowed version parts (fail if exceeded)'
     required: false
     default: '3'
@@ -98,7 +98,7 @@ runs:
         RELEASE_BRANCH: ${{ inputs.release-branch }}
         DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
         ADDITIONAL_RELEASE_BRANCHES: ${{ inputs.additional-release-branches }}
-        MAX_VERSION_PARTS: ${{ inputs.max-version-parts }}
+        TAG_VERSION_MAX_PARTS: ${{ inputs.tag-version-max-parts }}
         TAG_VERSION_CALCULATION_STRATEGY: ${{ inputs.tag-version-calculation-strategy }}
         TAG_VERSION_PATTERN_TYPE: ${{ inputs.tag-version-pattern-type }}
         TAG_VERSION_PREFIX_PARTS: ${{ inputs.tag-version-prefix-parts }}

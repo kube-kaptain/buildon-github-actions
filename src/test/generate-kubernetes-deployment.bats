@@ -1,0 +1,608 @@
+#!/usr/bin/env bats
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
+#
+# Tests for generate-kubernetes-workload-deployment
+
+load helpers
+
+setup() {
+  export TEST_DIR=$(mktemp -d)
+  export OUTPUT_SUB_PATH=$(mktemp -d)
+  export PROJECT_NAME="my-project"
+  export TOKEN_NAME_STYLE="PascalCase"
+  export TOKEN_DELIMITER_STYLE="shell"
+
+  # Create test directory structure
+  mkdir -p "${TEST_DIR}/src/kubernetes"
+  mkdir -p "${TEST_DIR}/src/workload-env"
+
+  cd "${TEST_DIR}"
+}
+
+teardown() {
+  rm -rf "$TEST_DIR"
+  rm -rf "$OUTPUT_SUB_PATH"
+}
+
+# Helper to create env file
+create_env_file() {
+  local filename="$1"
+  local content="$2"
+  printf '%s' "$content" > "${TEST_DIR}/src/workload-env/$filename"
+}
+
+# Helper to create suffixed env directory
+create_env_file_with_suffix() {
+  local suffix="$1"
+  local filename="$2"
+  local content="$3"
+  mkdir -p "${TEST_DIR}/src/workload-${suffix}-env"
+  printf '%s' "$content" > "${TEST_DIR}/src/workload-${suffix}-env/$filename"
+}
+
+# Helper to read generated manifest
+read_manifest() {
+  cat "$OUTPUT_SUB_PATH/manifests/combined/deployment.yaml"
+}
+
+# Helper to read suffixed manifest
+read_manifest_with_suffix() {
+  local suffix="$1"
+  cat "$OUTPUT_SUB_PATH/manifests/combined/deployment-${suffix}.yaml"
+}
+
+# =============================================================================
+# Basic structure
+# =============================================================================
+
+@test "generates valid Deployment structure" {
+  run "$GENERATORS_DIR/generate-kubernetes-workload-deployment"
+  [ "$status" -eq 0 ]
+
+  manifest=$(read_manifest)
+  assert_contains "$manifest" "apiVersion: apps/v1"
+  assert_contains "$manifest" "kind: Deployment"
+  assert_contains "$manifest" 'name: ${ProjectName}'
+  assert_contains "$manifest" 'namespace: ${Environment}'
+}
+
+@test "includes standard labels" {
+  run "$GENERATORS_DIR/generate-kubernetes-workload-deployment"
+  [ "$status" -eq 0 ]
+
+  manifest=$(read_manifest)
+  assert_contains "$manifest" "labels:"
+  assert_contains "$manifest" 'app: ${ProjectName}'
+  assert_contains "$manifest" 'app.kubernetes.io/name: ${ProjectName}'
+  assert_contains "$manifest" 'app.kubernetes.io/version: ${Version}'
+  assert_contains "$manifest" "app.kubernetes.io/managed-by: kaptain"
+}
+
+@test "includes kaptain annotations" {
+  run "$GENERATORS_DIR/generate-kubernetes-workload-deployment"
+  [ "$status" -eq 0 ]
+
+  manifest=$(read_manifest)
+  assert_contains "$manifest" "annotations:"
+  assert_contains "$manifest" 'kaptain/project-name: ${ProjectName}'
+  assert_contains "$manifest" 'kaptain/version: ${Version}'
+  assert_contains "$manifest" "kaptain/build-timestamp:"
+  assert_contains "$manifest" "kubectl.kubernetes.io/default-container: default-app"
+}
+
+# =============================================================================
+# Container configuration
+# =============================================================================
+
+@test "generates container with correct image reference" {
+  run "$GENERATORS_DIR/generate-kubernetes-workload-deployment"
+  [ "$status" -eq 0 ]
+
+  manifest=$(read_manifest)
+  assert_contains "$manifest" "name: default-app"
+  # Default is combined style: registry+base in one token
+  assert_contains "$manifest" 'image: ${EnvironmentDockerRegistryAndBasePath}/${DockerImageName}:${DockerTag}'
+  assert_contains "$manifest" "imagePullPolicy: IfNotPresent"
+}
+
+@test "generates container port" {
+  run "$GENERATORS_DIR/generate-kubernetes-workload-deployment"
+  [ "$status" -eq 0 ]
+
+  manifest=$(read_manifest)
+  assert_contains "$manifest" "ports:"
+  # Container port uses literal value from config (default 1024)
+  assert_contains "$manifest" "containerPort: 1024"
+  assert_contains "$manifest" "protocol: TCP"
+}
+
+# =============================================================================
+# Security context
+# =============================================================================
+
+@test "generates secure defaults" {
+  run "$GENERATORS_DIR/generate-kubernetes-workload-deployment"
+  [ "$status" -eq 0 ]
+
+  manifest=$(read_manifest)
+  assert_contains "$manifest" "runAsNonRoot: true"
+  assert_contains "$manifest" "allowPrivilegeEscalation: false"
+  assert_contains "$manifest" "readOnlyRootFilesystem: true"
+  assert_contains "$manifest" "drop:"
+  assert_contains "$manifest" "- ALL"
+  # seccompProfile omitted by default (DISABLED)
+  [[ "$manifest" != *"seccompProfile:"* ]]
+}
+
+@test "includes seccomp profile when configured" {
+  export KUBERNETES_WORKLOAD_SECCOMP_PROFILE="RuntimeDefault"
+
+  run "$GENERATORS_DIR/generate-kubernetes-workload-deployment"
+  [ "$status" -eq 0 ]
+
+  manifest=$(read_manifest)
+  assert_contains "$manifest" "seccompProfile:"
+  assert_contains "$manifest" "type: RuntimeDefault"
+}
+
+@test "rejects invalid seccomp profile" {
+  export KUBERNETES_WORKLOAD_SECCOMP_PROFILE="invalid"
+
+  run "$GENERATORS_DIR/generate-kubernetes-workload-deployment"
+  [ "$status" -ne 0 ]
+  assert_output_contains "KUBERNETES_WORKLOAD_SECCOMP_PROFILE must be"
+}
+
+@test "allows disabling readonly root filesystem" {
+  export KUBERNETES_WORKLOAD_READONLY_ROOT_FILESYSTEM="false"
+
+  run "$GENERATORS_DIR/generate-kubernetes-workload-deployment"
+  [ "$status" -eq 0 ]
+
+  manifest=$(read_manifest)
+  assert_contains "$manifest" "readOnlyRootFilesystem: false"
+}
+
+# =============================================================================
+# Resources
+# =============================================================================
+
+@test "generates resource requests and limits" {
+  run "$GENERATORS_DIR/generate-kubernetes-workload-deployment"
+  [ "$status" -eq 0 ]
+
+  manifest=$(read_manifest)
+  assert_contains "$manifest" "resources:"
+  assert_contains "$manifest" "requests:"
+  # Resources use literal values from config
+  assert_contains "$manifest" "memory: 10Mi"
+  assert_contains "$manifest" "cpu: 100m"
+  assert_contains "$manifest" "limits:"
+}
+
+@test "omits CPU limit by default" {
+  run "$GENERATORS_DIR/generate-kubernetes-workload-deployment"
+  [ "$status" -eq 0 ]
+
+  manifest=$(read_manifest)
+  # Should not have cpu under limits
+  # The memory limit should be there, but not cpu
+  assert_contains "$manifest" "limits:"
+  # Check that limits section only has memory (no cpu: line)
+  limits_section=$(echo "$manifest" | grep -A5 "limits:")
+  [[ "$limits_section" != *"cpu:"* ]]
+}
+
+@test "includes CPU limit when configured" {
+  export KUBERNETES_WORKLOAD_RESOURCES_CPU_LIMIT="500m"
+
+  run "$GENERATORS_DIR/generate-kubernetes-workload-deployment"
+  [ "$status" -eq 0 ]
+
+  manifest=$(read_manifest)
+  assert_contains "$manifest" "cpu: 500m"
+}
+
+# =============================================================================
+# Replicas and scaling
+# =============================================================================
+
+@test "generates default replicas" {
+  run "$GENERATORS_DIR/generate-kubernetes-workload-deployment"
+  [ "$status" -eq 0 ]
+
+  manifest=$(read_manifest)
+  assert_contains "$manifest" 'replicas: ${EnvironmentDefaultReplicaCount}'
+}
+
+@test "omits replicas when set to NO" {
+  export KUBERNETES_DEPLOYMENT_REPLICAS="NO"
+
+  run "$GENERATORS_DIR/generate-kubernetes-workload-deployment"
+  [ "$status" -eq 0 ]
+
+  manifest=$(read_manifest)
+  [[ "$manifest" != *"replicas:"* ]]
+}
+
+@test "generates revision history limit" {
+  run "$GENERATORS_DIR/generate-kubernetes-workload-deployment"
+  [ "$status" -eq 0 ]
+
+  manifest=$(read_manifest)
+  assert_contains "$manifest" "revisionHistoryLimit: 10"
+}
+
+# =============================================================================
+# Update strategy
+# =============================================================================
+
+@test "generates zero-downtime update strategy" {
+  run "$GENERATORS_DIR/generate-kubernetes-workload-deployment"
+  [ "$status" -eq 0 ]
+
+  manifest=$(read_manifest)
+  assert_contains "$manifest" "strategy:"
+  assert_contains "$manifest" "type: RollingUpdate"
+  assert_contains "$manifest" "maxSurge: 1"
+  assert_contains "$manifest" "maxUnavailable: 0"
+}
+
+# =============================================================================
+# Probes
+# =============================================================================
+
+@test "generates liveness probe with http-get by default" {
+  run "$GENERATORS_DIR/generate-kubernetes-workload-deployment"
+  [ "$status" -eq 0 ]
+
+  manifest=$(read_manifest)
+  assert_contains "$manifest" "livenessProbe:"
+  assert_contains "$manifest" "httpGet:"
+  assert_contains "$manifest" "path: /liveness"
+  assert_contains "$manifest" "initialDelaySeconds: 10"
+  assert_contains "$manifest" "periodSeconds: 10"
+}
+
+@test "generates readiness probe with http-get by default" {
+  run "$GENERATORS_DIR/generate-kubernetes-workload-deployment"
+  [ "$status" -eq 0 ]
+
+  manifest=$(read_manifest)
+  assert_contains "$manifest" "readinessProbe:"
+  assert_contains "$manifest" "path: /readiness"
+  assert_contains "$manifest" "initialDelaySeconds: 5"
+}
+
+@test "generates startup probe with http-get by default" {
+  run "$GENERATORS_DIR/generate-kubernetes-workload-deployment"
+  [ "$status" -eq 0 ]
+
+  manifest=$(read_manifest)
+  assert_contains "$manifest" "startupProbe:"
+  assert_contains "$manifest" "path: /startup"
+  assert_contains "$manifest" "initialDelaySeconds: 0"
+  assert_contains "$manifest" "failureThreshold: 30"
+}
+
+@test "generates tcp-socket probe when configured" {
+  export KUBERNETES_WORKLOAD_PROBE_LIVENESS_CHECK_TYPE="tcp-socket"
+
+  run "$GENERATORS_DIR/generate-kubernetes-workload-deployment"
+  [ "$status" -eq 0 ]
+
+  manifest=$(read_manifest)
+  assert_contains "$manifest" "livenessProbe:"
+  assert_contains "$manifest" "tcpSocket:"
+  assert_contains "$manifest" "port: 1024"
+}
+
+@test "generates exec probe when configured" {
+  export KUBERNETES_WORKLOAD_PROBE_LIVENESS_CHECK_TYPE="exec"
+  export KUBERNETES_WORKLOAD_PROBE_LIVENESS_EXEC_COMMAND="pg_isready -U postgres"
+
+  run "$GENERATORS_DIR/generate-kubernetes-workload-deployment"
+  [ "$status" -eq 0 ]
+
+  manifest=$(read_manifest)
+  assert_contains "$manifest" "livenessProbe:"
+  assert_contains "$manifest" "exec:"
+  assert_contains "$manifest" "command:"
+  assert_contains "$manifest" "- /bin/sh"
+  assert_contains "$manifest" "- -c"
+  assert_contains "$manifest" "- pg_isready -U postgres"
+}
+
+@test "generates grpc probe when configured" {
+  export KUBERNETES_WORKLOAD_PROBE_LIVENESS_CHECK_TYPE="grpc"
+  export KUBERNETES_WORKLOAD_PROBE_LIVENESS_GRPC_PORT="50051"
+  export KUBERNETES_WORKLOAD_PROBE_LIVENESS_GRPC_SERVICE="myapp.Health"
+
+  run "$GENERATORS_DIR/generate-kubernetes-workload-deployment"
+  [ "$status" -eq 0 ]
+
+  manifest=$(read_manifest)
+  assert_contains "$manifest" "livenessProbe:"
+  assert_contains "$manifest" "grpc:"
+  assert_contains "$manifest" "port: 50051"
+  assert_contains "$manifest" "service: myapp.Health"
+}
+
+# =============================================================================
+# Termination and lifecycle
+# =============================================================================
+
+@test "generates termination grace period" {
+  run "$GENERATORS_DIR/generate-kubernetes-workload-deployment"
+  [ "$status" -eq 0 ]
+
+  manifest=$(read_manifest)
+  assert_contains "$manifest" "terminationGracePeriodSeconds: 10"
+}
+
+@test "omits preStop hook by default" {
+  run "$GENERATORS_DIR/generate-kubernetes-workload-deployment"
+  [ "$status" -eq 0 ]
+
+  manifest=$(read_manifest)
+  [[ "$manifest" != *"lifecycle:"* ]]
+  [[ "$manifest" != *"preStop:"* ]]
+}
+
+@test "includes preStop hook when configured" {
+  export KUBERNETES_WORKLOAD_PRESTOP_COMMAND="sleep 5"
+
+  run "$GENERATORS_DIR/generate-kubernetes-workload-deployment"
+  [ "$status" -eq 0 ]
+
+  manifest=$(read_manifest)
+  assert_contains "$manifest" "lifecycle:"
+  assert_contains "$manifest" "preStop:"
+  assert_contains "$manifest" "exec:"
+  assert_contains "$manifest" "- sleep 5"
+}
+
+# =============================================================================
+# Affinity
+# =============================================================================
+
+@test "generates default affinity strategy" {
+  run "$GENERATORS_DIR/generate-kubernetes-workload-deployment"
+  [ "$status" -eq 0 ]
+
+  manifest=$(read_manifest)
+  assert_contains "$manifest" "affinity:"
+  assert_contains "$manifest" "podAntiAffinity:"
+  assert_contains "$manifest" "preferredDuringSchedulingIgnoredDuringExecution:"
+  assert_contains "$manifest" "weight: 100"
+  assert_contains "$manifest" "weight: 50"
+}
+
+@test "omits affinity when strategy is none" {
+  export KUBERNETES_WORKLOAD_AFFINITY_STRATEGY="none"
+
+  run "$GENERATORS_DIR/generate-kubernetes-workload-deployment"
+  [ "$status" -eq 0 ]
+
+  manifest=$(read_manifest)
+  [[ "$manifest" != *"affinity:"* ]]
+}
+
+@test "rejects unknown affinity strategy" {
+  export KUBERNETES_WORKLOAD_AFFINITY_STRATEGY="invalid-strategy"
+
+  run "$GENERATORS_DIR/generate-kubernetes-workload-deployment"
+  [ "$status" -ne 0 ]
+  assert_output_contains "Unknown affinity strategy"
+}
+
+# =============================================================================
+# Volume mounts
+# =============================================================================
+
+@test "includes configmap volume when detected" {
+  touch "${TEST_DIR}/src/kubernetes/configmap.yaml"
+
+  run "$GENERATORS_DIR/generate-kubernetes-workload-deployment"
+  [ "$status" -eq 0 ]
+
+  manifest=$(read_manifest)
+  assert_contains "$manifest" "volumeMounts:"
+  assert_contains "$manifest" "name: configmap"
+  # Mount path uses literal value from config
+  assert_contains "$manifest" "mountPath: /configmap"
+  assert_contains "$manifest" "readOnly: true"
+  assert_contains "$manifest" "volumes:"
+  assert_contains "$manifest" "configMap:"
+  assert_contains "$manifest" 'name: ${ProjectName}-configmap-checksum'
+}
+
+@test "includes secret volume when detected" {
+  touch "${TEST_DIR}/src/kubernetes/secret.template.yaml"
+
+  run "$GENERATORS_DIR/generate-kubernetes-workload-deployment"
+  [ "$status" -eq 0 ]
+
+  manifest=$(read_manifest)
+  assert_contains "$manifest" "volumeMounts:"
+  assert_contains "$manifest" "name: secret"
+  # Mount path uses literal value from config
+  assert_contains "$manifest" "mountPath: /secret"
+  assert_contains "$manifest" "volumes:"
+  assert_contains "$manifest" "secret:"
+  assert_contains "$manifest" 'secretName: ${ProjectName}-secret-checksum'
+}
+
+@test "omits volumes when not detected" {
+  # No configmap.yaml or secret.template.yaml files exist by default
+  run "$GENERATORS_DIR/generate-kubernetes-workload-deployment"
+  [ "$status" -eq 0 ]
+
+  manifest=$(read_manifest)
+  [[ "$manifest" != *"volumeMounts:"* ]]
+  [[ "$manifest" != *"volumes:"* ]] || [[ "$manifest" == *"volumes:"*"imagePullSecrets:"* ]]
+}
+
+# =============================================================================
+# Environment variables
+# =============================================================================
+
+@test "includes environment variables from workload-env" {
+  create_env_file "DATABASE_HOST" "db.example.com"
+  create_env_file "LOG_LEVEL" "info"
+
+  run "$GENERATORS_DIR/generate-kubernetes-workload-deployment"
+  [ "$status" -eq 0 ]
+
+  manifest=$(read_manifest)
+  assert_contains "$manifest" "env:"
+  assert_contains "$manifest" "- name: DATABASE_HOST"
+  assert_contains "$manifest" 'value: "db.example.com"'
+  assert_contains "$manifest" "- name: LOG_LEVEL"
+  assert_contains "$manifest" 'value: "info"'
+}
+
+@test "omits env section when workload-env is empty" {
+  rm -rf "${TEST_DIR}/src/workload-env"
+
+  run "$GENERATORS_DIR/generate-kubernetes-workload-deployment"
+  [ "$status" -eq 0 ]
+
+  manifest=$(read_manifest)
+  [[ "$manifest" != *"env:"* ]] || [[ "$manifest" == *"env:"*"volumeMounts:"* ]]
+}
+
+# =============================================================================
+# ServiceAccount
+# =============================================================================
+
+@test "includes serviceAccountName when serviceaccount detected" {
+  touch "${TEST_DIR}/src/kubernetes/serviceaccount.yaml"
+
+  run "$GENERATORS_DIR/generate-kubernetes-workload-deployment"
+  [ "$status" -eq 0 ]
+
+  manifest=$(read_manifest)
+  assert_contains "$manifest" 'serviceAccountName: ${ProjectName}'
+  assert_contains "$manifest" "automountServiceAccountToken: false"
+}
+
+@test "includes serviceAccountName when detected in combined output" {
+  rm -f "${TEST_DIR}/src/kubernetes/serviceaccount.yaml"
+  # Simulate earlier generator having created serviceaccount in combined output
+  mkdir -p "${OUTPUT_SUB_PATH}/manifests/combined"
+  touch "${OUTPUT_SUB_PATH}/manifests/combined/serviceaccount.yaml"
+
+  run "$GENERATORS_DIR/generate-kubernetes-workload-deployment"
+  [ "$status" -eq 0 ]
+
+  manifest=$(read_manifest)
+  assert_contains "$manifest" 'serviceAccountName: ${ProjectName}'
+}
+
+# =============================================================================
+# Image pull secrets
+# =============================================================================
+
+@test "includes imagePullSecrets" {
+  run "$GENERATORS_DIR/generate-kubernetes-workload-deployment"
+  [ "$status" -eq 0 ]
+
+  manifest=$(read_manifest)
+  assert_contains "$manifest" "imagePullSecrets:"
+  assert_contains "$manifest" '- name: ${EnvironmentDockerRegistry}'
+}
+
+# =============================================================================
+# Suffix and combined path
+# =============================================================================
+
+@test "generates suffixed deployment" {
+  export KUBERNETES_WORKLOAD_NAME_SUFFIX="worker"
+  create_env_file_with_suffix "worker" "WORKER_ID" "1"
+
+  run "$GENERATORS_DIR/generate-kubernetes-workload-deployment"
+  [ "$status" -eq 0 ]
+
+  [ -f "$OUTPUT_SUB_PATH/manifests/combined/deployment-worker.yaml" ]
+  manifest=$(read_manifest_with_suffix "worker")
+  assert_contains "$manifest" 'name: ${ProjectName}-worker'
+}
+
+@test "generates deployment in combined sub-path" {
+  export KUBERNETES_WORKLOAD_COMBINED_SUB_PATH="services/backend"
+
+  run "$GENERATORS_DIR/generate-kubernetes-workload-deployment"
+  [ "$status" -eq 0 ]
+
+  [ -f "$OUTPUT_SUB_PATH/manifests/combined/services/backend/deployment.yaml" ]
+}
+
+# =============================================================================
+# Token styles
+# =============================================================================
+
+@test "respects PascalCase token style" {
+  export TOKEN_NAME_STYLE="PascalCase"
+  export TOKEN_DELIMITER_STYLE="shell"
+
+  run "$GENERATORS_DIR/generate-kubernetes-workload-deployment"
+  [ "$status" -eq 0 ]
+
+  manifest=$(read_manifest)
+  assert_contains "$manifest" '${ProjectName}'
+  assert_contains "$manifest" '${Environment}'
+}
+
+@test "respects camelCase token style" {
+  export TOKEN_NAME_STYLE="camelCase"
+  export TOKEN_DELIMITER_STYLE="shell"
+
+  run "$GENERATORS_DIR/generate-kubernetes-workload-deployment"
+  [ "$status" -eq 0 ]
+
+  manifest=$(read_manifest)
+  assert_contains "$manifest" '${projectName}'
+  assert_contains "$manifest" '${environment}'
+}
+
+@test "respects mustache delimiter style" {
+  export TOKEN_NAME_STYLE="PascalCase"
+  export TOKEN_DELIMITER_STYLE="mustache"
+
+  run "$GENERATORS_DIR/generate-kubernetes-workload-deployment"
+  [ "$status" -eq 0 ]
+
+  manifest=$(read_manifest)
+  assert_contains "$manifest" '{{ ProjectName }}'
+  assert_contains "$manifest" '{{ Environment }}'
+}
+
+# =============================================================================
+# Validation
+# =============================================================================
+
+@test "fails when PROJECT_NAME is missing" {
+  unset PROJECT_NAME
+
+  run "$GENERATORS_DIR/generate-kubernetes-workload-deployment"
+  [ "$status" -ne 0 ]
+  assert_output_contains "PROJECT_NAME is required"
+}
+
+@test "fails with unknown token name style" {
+  export TOKEN_NAME_STYLE="InvalidStyle"
+
+  run "$GENERATORS_DIR/generate-kubernetes-workload-deployment"
+  [ "$status" -ne 0 ]
+  assert_output_contains "Unknown token name style"
+}
+
+@test "fails with unknown token delimiter style" {
+  export TOKEN_DELIMITER_STYLE="invalid"
+
+  run "$GENERATORS_DIR/generate-kubernetes-workload-deployment"
+  [ "$status" -ne 0 ]
+  assert_output_contains "Unknown substitution token style"
+}

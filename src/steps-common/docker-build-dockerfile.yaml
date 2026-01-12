@@ -14,9 +14,9 @@
     is-release: ${{ steps.versions.outputs.is-release }}
     dockerfile-sub-path: ${{ inputs.dockerfile-sub-path }}
     output-sub-path: ${{ inputs.output-sub-path }}
-    squash: ${{ inputs.squash }}
-    no-cache: ${{ inputs.no-cache }}
-    substitution-token-style: ${{ inputs.substitution-token-style }}
+    dockerfile-squash: ${{ inputs.dockerfile-squash }}
+    dockerfile-no-cache: ${{ inputs.dockerfile-no-cache }}
+    token-delimiter-style: ${{ inputs.token-delimiter-style }}
     token-name-style: ${{ inputs.token-name-style }}
     token-name-validation: ${{ inputs.token-name-validation }}
     config-sub-path: ${{ inputs.config-sub-path }}

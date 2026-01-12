@@ -1,0 +1,153 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
+
+- name: Run post-package tests
+  if: inputs.hook-post-package-tests-script-sub-path != ''
+  id: post-package-tests
+  uses: ./.github/buildon-github-actions/src/actions/hook-post-package-tests
+  with:
+    script-sub-path: ${{ inputs.hook-post-package-tests-script-sub-path }}
+    # === Workflow Inputs ===
+    # Build output
+    output-sub-path: ${{ inputs.output-sub-path }}
+
+    # Docker registry logins
+    docker-registry-logins: ${{ inputs.docker-registry-logins }}
+    # Docker build options
+    dockerfile-sub-path: ${{ inputs.dockerfile-sub-path }}
+    dockerfile-squash: ${{ inputs.dockerfile-squash }}
+    dockerfile-no-cache: ${{ inputs.dockerfile-no-cache }}
+    # Docker target config
+    docker-target-registry: ${{ inputs.docker-target-registry }}
+    docker-target-base-path: ${{ inputs.docker-target-base-path }}
+    # Docker push targets
+    docker-push-targets: ${{ inputs.docker-push-targets }}
+
+    # Manifests source
+    manifests-sub-path: ${{ inputs.manifests-sub-path }}
+    # Manifests packaging
+    manifests-repo-provider-type: ${{ inputs.manifests-repo-provider-type }}
+    manifests-packaging-base-image: ${{ inputs.manifests-packaging-base-image }}
+
+    # Kubernetes Generation
+    kubernetes-global-additional-labels: ${{ inputs.kubernetes-global-additional-labels }}
+    kubernetes-global-additional-annotations: ${{ inputs.kubernetes-global-additional-annotations }}
+    # Kubernetes ConfigMap Generation
+    kubernetes-configmap-sub-path: ${{ inputs.kubernetes-configmap-sub-path }}
+    kubernetes-configmap-name-checksum-injection: ${{ inputs.kubernetes-configmap-name-checksum-injection }}
+    kubernetes-configmap-additional-labels: ${{ inputs.kubernetes-configmap-additional-labels }}
+    kubernetes-configmap-additional-annotations: ${{ inputs.kubernetes-configmap-additional-annotations }}
+    # Kubernetes Secret template generation
+    kubernetes-secret-template-sub-path: ${{ inputs.kubernetes-secret-template-sub-path }}
+    kubernetes-secret-template-name-checksum-injection: ${{ inputs.kubernetes-secret-template-name-checksum-injection }}
+    kubernetes-secret-template-additional-labels: ${{ inputs.kubernetes-secret-template-additional-labels }}
+    kubernetes-secret-template-additional-annotations: ${{ inputs.kubernetes-secret-template-additional-annotations }}
+    # Kubernetes ServiceAccount generation
+    kubernetes-serviceaccount-generation-enabled: ${{ inputs.kubernetes-serviceaccount-generation-enabled }}
+    kubernetes-serviceaccount-name-suffix: ${{ inputs.kubernetes-serviceaccount-name-suffix }}
+    kubernetes-serviceaccount-combined-sub-path: ${{ inputs.kubernetes-serviceaccount-combined-sub-path }}
+    kubernetes-serviceaccount-additional-labels: ${{ inputs.kubernetes-serviceaccount-additional-labels }}
+    kubernetes-serviceaccount-additional-annotations: ${{ inputs.kubernetes-serviceaccount-additional-annotations }}
+    # Kubernetes Workload generation
+    kubernetes-workload-type: ${{ inputs.kubernetes-workload-type }}
+    kubernetes-workload-name-suffix: ${{ inputs.kubernetes-workload-name-suffix }}
+    kubernetes-workload-combined-sub-path: ${{ inputs.kubernetes-workload-combined-sub-path }}
+    kubernetes-workload-env-sub-path: ${{ inputs.kubernetes-workload-env-sub-path }}
+    kubernetes-workload-additional-labels: ${{ inputs.kubernetes-workload-additional-labels }}
+    kubernetes-workload-additional-annotations: ${{ inputs.kubernetes-workload-additional-annotations }}
+    kubernetes-workload-container-port: ${{ inputs.kubernetes-workload-container-port }}
+    kubernetes-workload-image-reference-style: ${{ inputs.kubernetes-workload-image-reference-style }}
+    kubernetes-workload-readonly-root-filesystem: ${{ inputs.kubernetes-workload-readonly-root-filesystem }}
+    kubernetes-workload-seccomp-profile: ${{ inputs.kubernetes-workload-seccomp-profile }}
+    kubernetes-workload-automount-service-account-token: ${{ inputs.kubernetes-workload-automount-service-account-token }}
+    kubernetes-workload-resources-memory: ${{ inputs.kubernetes-workload-resources-memory }}
+    kubernetes-workload-resources-cpu-request: ${{ inputs.kubernetes-workload-resources-cpu-request }}
+    kubernetes-workload-resources-cpu-limit: ${{ inputs.kubernetes-workload-resources-cpu-limit }}
+    kubernetes-workload-configmap-mount-path: ${{ inputs.kubernetes-workload-configmap-mount-path }}
+    kubernetes-workload-secret-mount-path: ${{ inputs.kubernetes-workload-secret-mount-path }}
+    kubernetes-workload-termination-grace-period-seconds: ${{ inputs.kubernetes-workload-termination-grace-period-seconds }}
+    kubernetes-workload-prestop-command: ${{ inputs.kubernetes-workload-prestop-command }}
+    kubernetes-workload-affinity-strategy: ${{ inputs.kubernetes-workload-affinity-strategy }}
+    kubernetes-workload-probe-liveness-check-type: ${{ inputs.kubernetes-workload-probe-liveness-check-type }}
+    kubernetes-workload-probe-readiness-check-type: ${{ inputs.kubernetes-workload-probe-readiness-check-type }}
+    kubernetes-workload-probe-startup-check-type: ${{ inputs.kubernetes-workload-probe-startup-check-type }}
+    kubernetes-workload-probe-liveness-http-path: ${{ inputs.kubernetes-workload-probe-liveness-http-path }}
+    kubernetes-workload-probe-readiness-http-path: ${{ inputs.kubernetes-workload-probe-readiness-http-path }}
+    kubernetes-workload-probe-startup-http-path: ${{ inputs.kubernetes-workload-probe-startup-http-path }}
+    kubernetes-deployment-replicas: ${{ inputs.kubernetes-deployment-replicas }}
+    kubernetes-deployment-revision-history-limit: ${{ inputs.kubernetes-deployment-revision-history-limit }}
+    # Kubernetes Service generation
+    kubernetes-service-generation-enabled: ${{ inputs.kubernetes-service-generation-enabled }}
+    kubernetes-service-type: ${{ inputs.kubernetes-service-type }}
+    kubernetes-service-port: ${{ inputs.kubernetes-service-port }}
+    kubernetes-service-target-port: ${{ inputs.kubernetes-service-target-port }}
+    kubernetes-service-protocol: ${{ inputs.kubernetes-service-protocol }}
+    kubernetes-service-name-suffix: ${{ inputs.kubernetes-service-name-suffix }}
+    kubernetes-service-combined-sub-path: ${{ inputs.kubernetes-service-combined-sub-path }}
+    kubernetes-service-additional-labels: ${{ inputs.kubernetes-service-additional-labels }}
+    kubernetes-service-additional-annotations: ${{ inputs.kubernetes-service-additional-annotations }}
+
+    # Token substitution
+    token-delimiter-style: ${{ inputs.token-delimiter-style }}
+    token-name-style: ${{ inputs.token-name-style }}
+    token-name-validation: ${{ inputs.token-name-validation }}
+    allow-builtin-token-override: ${{ inputs.allow-builtin-token-override }}
+    config-sub-path: ${{ inputs.config-sub-path }}
+    config-value-trailing-newline: ${{ inputs.config-value-trailing-newline }}
+
+    # Naming, Versions, and Tags calculation
+    release-branch: ${{ inputs.release-branch }}
+    additional-release-branches: ${{ inputs.additional-release-branches }}
+    tag-version-max-parts: ${{ inputs.tag-version-max-parts }}
+    tag-version-calculation-strategy: ${{ inputs.tag-version-calculation-strategy }}
+    tag-version-pattern-type: ${{ inputs.tag-version-pattern-type }}
+    tag-version-prefix-parts: ${{ inputs.tag-version-prefix-parts }}
+    tag-version-source-sub-path: ${{ inputs.tag-version-source-sub-path }}
+    tag-version-source-file-name: ${{ inputs.tag-version-source-file-name }}
+    tag-version-source-custom-pattern: ${{ inputs.tag-version-source-custom-pattern }}
+
+    # Quality check options
+    block-slashes: ${{ inputs.block-slashes }}
+    qc-block-slash-containing-branches: ${{ inputs.qc-block-slash-containing-branches }}
+    qc-block-double-hyphen-containing-branches: ${{ inputs.qc-block-double-hyphen-containing-branches }}
+    qc-require-conventional-branches: ${{ inputs.qc-require-conventional-branches }}
+    qc-require-conventional-commits: ${{ inputs.qc-require-conventional-commits }}
+    qc-block-conventional-commits: ${{ inputs.qc-block-conventional-commits }}
+
+    # Hook script paths
+    hook-pre-tagging-tests-script-sub-path: ${{ inputs.hook-pre-tagging-tests-script-sub-path }}
+    hook-pre-docker-prepare-script-sub-path: ${{ inputs.hook-pre-docker-prepare-script-sub-path }}
+    hook-post-docker-tests-script-sub-path: ${{ inputs.hook-post-docker-tests-script-sub-path }}
+    hook-pre-package-prepare-script-sub-path: ${{ inputs.hook-pre-package-prepare-script-sub-path }}
+    hook-post-package-tests-script-sub-path: ${{ inputs.hook-post-package-tests-script-sub-path }}
+
+    # GitHub release
+    github-release-enabled: ${{ inputs.github-release-enabled }}
+    github-release-substituted-files: ${{ inputs.github-release-substituted-files }}
+    github-release-verbatim-files: ${{ inputs.github-release-verbatim-files }}
+    github-release-notes: ${{ inputs.github-release-notes }}
+    github-release-add-version-to-filenames: ${{ inputs.github-release-add-version-to-filenames }}
+
+    # === Step Outputs ===
+    # Version outputs (from versions-and-naming)
+    version: ${{ steps.versions.outputs.version }}
+    version-major: ${{ steps.versions.outputs.version-major }}
+    version-minor: ${{ steps.versions.outputs.version-minor }}
+    version-patch: ${{ steps.versions.outputs.version-patch }}
+    version-2-part: ${{ steps.versions.outputs.version-2-part }}
+    version-3-part: ${{ steps.versions.outputs.version-3-part }}
+    version-4-part: ${{ steps.versions.outputs.version-4-part }}
+    docker-tag: ${{ steps.versions.outputs.docker-tag }}
+    docker-image-name: ${{ steps.versions.outputs.docker-image-name }}
+    git-tag: ${{ steps.versions.outputs.git-tag }}
+    project-name: ${{ steps.versions.outputs.project-name }}
+    is-release: ${{ steps.versions.outputs.is-release }}
+    # Docker outputs (from docker-build - empty in manifests-only workflows)
+    docker-substituted-sub-path: ${{ steps.docker-build.outputs.docker-substituted-sub-path }}
+    target-image-full-uri: ${{ steps.docker-build.outputs.docker-target-image-full-uri }}
+    # Manifest outputs (from manifest-package)
+    manifests-substituted-sub-path: ${{ inputs.output-sub-path }}/manifests/substituted/${{ steps.versions.outputs.project-name }}
+    manifests-zip-sub-path: ${{ steps.manifest-package.outputs.manifests-zip-sub-path }}
+    manifests-zip-file-name: ${{ steps.manifest-package.outputs.manifests-zip-file-name }}
+    # Manifest repo provider outputs (from manifest-repo-provider-package)
+    manifests-uri: ${{ steps.manifest-repo-provider-package.outputs.manifests-uri }}

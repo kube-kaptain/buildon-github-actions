@@ -31,17 +31,12 @@ BUILD_MODE="${BUILD_MODE:-local}"
 REPOSITORY_NAME="${REPOSITORY_NAME:?Is required}"
 
 # Version calculation configuration
-MAX_VERSION_PARTS="${MAX_VERSION_PARTS:-3}"
-TAG_VERSION_CALCULATION_STRATEGY="${TAG_VERSION_CALCULATION_STRATEGY:-git-auto-closest-highest}"
-TAG_VERSION_PATTERN_TYPE="${TAG_VERSION_PATTERN_TYPE:-dockerfile-env-kubectl}"
-TAG_VERSION_PREFIX_PARTS="${TAG_VERSION_PREFIX_PARTS:-}"
+# shellcheck source=src/scripts/defaults/tag-versioning.bash
+source "${SCRIPT_DIR}/../defaults/tag-versioning.bash"
 DOCKERFILE_SUB_PATH="${DOCKERFILE_SUB_PATH:-}"
-TAG_VERSION_SOURCE_SUB_PATH="${TAG_VERSION_SOURCE_SUB_PATH:-}"
-TAG_VERSION_SOURCE_FILE_NAME="${TAG_VERSION_SOURCE_FILE_NAME:-}"
-TAG_VERSION_SOURCE_CUSTOM_PATTERN="${TAG_VERSION_SOURCE_CUSTOM_PATTERN:-}"
 
-# shellcheck source=src/scripts/main/branch-setup-shared
-source "${SCRIPT_DIR}/branch-setup-shared"
+# shellcheck source=src/scripts/lib/branch-setup-shared.bash
+source "${SCRIPT_DIR}/../lib/branch-setup-shared.bash"
 
 echo "Critical inputs:" >&2
 echo "  Repository name: ${REPOSITORY_NAME}" >&2
@@ -151,7 +146,7 @@ main() {
   # Call the strategy plugin
   local plugin_output
   plugin_output=$(
-    MAX_VERSION_PARTS="${MAX_VERSION_PARTS}" \
+    TAG_VERSION_MAX_PARTS="${TAG_VERSION_MAX_PARTS}" \
     TAG_VERSION_PATTERN_TYPE="${TAG_VERSION_PATTERN_TYPE}" \
     TAG_VERSION_PREFIX_PARTS="${TAG_VERSION_PREFIX_PARTS}" \
     DOCKERFILE_SUB_PATH="${DOCKERFILE_SUB_PATH}" \

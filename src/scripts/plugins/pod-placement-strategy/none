@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
+#
+# Pod placement strategy: none
+#
+# Outputs nothing - no affinity rules are added.
+# The Kubernetes scheduler places pods based on resource availability.
+#
+# Inputs (environment variables):
+#   (none required)
+#
+# Output:
+#   Empty (no output)
+#
+set -euo pipefail
+
+# No output - scheduler decides freely
+exit 0

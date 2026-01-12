@@ -38,8 +38,10 @@ runs:
         echo "target-registry=$RESOLVED_REGISTRY" >> "$GITHUB_OUTPUT"
 
         # Auto-set base path for GHCR if not explicitly provided
+        # Note: GHCR requires lowercase paths, so we lowercase the org name
         if [[ "$RESOLVED_REGISTRY" == "ghcr.io" && -z "${{ inputs.target-base-path }}" ]]; then
-          echo "target-base-path=${{ github.repository_owner }}" >> "$GITHUB_OUTPUT"
+          OWNER="${{ github.repository_owner }}"
+          echo "target-base-path=${OWNER,,}" >> "$GITHUB_OUTPUT"
         else
           echo "target-base-path=${{ inputs.target-base-path }}" >> "$GITHUB_OUTPUT"
         fi

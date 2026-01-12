@@ -1,0 +1,17 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
+
+- name: Generate ConfigMap manifest
+  id: generate-configmap
+  if: inputs.kubernetes-configmap-sub-path != ''
+  uses: ./.github/buildon-github-actions/src/actions/generate-kubernetes-configmap
+  with:
+    kubernetes-configmap-sub-path: ${{ inputs.kubernetes-configmap-sub-path }}
+    output-sub-path: ${{ inputs.output-sub-path }}
+    token-name-style: ${{ inputs.token-name-style }}
+    token-delimiter-style: ${{ inputs.token-delimiter-style }}
+    kubernetes-configmap-name-checksum-injection: ${{ inputs.kubernetes-configmap-name-checksum-injection }}
+    kubernetes-global-additional-labels: ${{ inputs.kubernetes-global-additional-labels }}
+    kubernetes-global-additional-annotations: ${{ inputs.kubernetes-global-additional-annotations }}
+    kubernetes-configmap-additional-labels: ${{ inputs.kubernetes-configmap-additional-labels }}
+    kubernetes-configmap-additional-annotations: ${{ inputs.kubernetes-configmap-additional-annotations }}

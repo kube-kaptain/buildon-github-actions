@@ -6,8 +6,11 @@
 # Get project root
 PROJECT_ROOT="${PROJECT_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
 
-# Path to scripts, repo providers, and fixtures
+# Path to scripts, utilities, libraries, repo providers, and fixtures
 SCRIPTS_DIR="$PROJECT_ROOT/src/scripts/main"
+GENERATORS_DIR="$PROJECT_ROOT/src/scripts/generators"
+UTIL_DIR="$PROJECT_ROOT/src/scripts/util"
+LIB_DIR="$PROJECT_ROOT/src/scripts/lib"
 PLUGINS_DIR="$PROJECT_ROOT/src/scripts/plugins"
 REPO_PROVIDERS_DIR="$PLUGINS_DIR/kubernetes-manifests-repo-providers"
 FIXTURES_DIR="$PROJECT_ROOT/src/test/fixtures"
@@ -199,6 +202,19 @@ assert_docker_not_called() {
     echo "Expected docker NOT to be called with: $unexpected"
     echo "Actual calls:"
     cat "$MOCK_DOCKER_CALLS"
+    return 1
+  fi
+}
+
+# Assert content contains pattern (shows actual content on failure)
+assert_contains() {
+  local content="$1"
+  local pattern="$2"
+  local label="${3:-manifest}"
+  if [[ "$content" != *"$pattern"* ]]; then
+    echo "EXPECTED PATTERN: $pattern" >&3
+    echo "ACTUAL ${label}:" >&3
+    echo "$content" >&3
     return 1
   fi
 }

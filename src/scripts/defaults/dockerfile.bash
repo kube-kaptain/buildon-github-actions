@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
+#
+# Dockerfile build defaults
+#
+# shellcheck disable=SC2034  # Variables used by sourcing scripts
+
+DOCKERFILE_SUB_PATH="${DOCKERFILE_SUB_PATH:-src/docker}"
+DOCKERFILE_SQUASH="${DOCKERFILE_SQUASH:-true}"
+DOCKERFILE_NO_CACHE="${DOCKERFILE_NO_CACHE:-true}"
