@@ -4,6 +4,7 @@ Reusable GitHub Actions library for CI/CD pipelines with quality enforcement and
 
 ## Rules
 
+0. NEVER use a tool from a docker image when a local one is available - and NEVER ever EVER ever use :latest on any docker image
 1. Do not start making changes unless explicitly asked to do so - plan and get agreement and go ahead from the user - only then can you start
 2. If while making changes you discover something the user has asked for is not possible or not correct, do not adapt, report back and come to agreement on the path forward, offer suggestions
 3. Don't use any git operations that can change state locally or remotely eg no fetch no pull no push no commit no add no rm no mv etc - just use normal commands to manipulate the working dir
