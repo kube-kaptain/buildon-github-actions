@@ -5,12 +5,14 @@
 # Kubernetes metadata generation library
 #
 # Functions:
-#   validate_combined_sub_path - Validate combined sub-path format for output directory nesting
-#   generate_manifest_header  - Output apiVersion, kind, metadata.name (and optionally namespace)
-#   merge_key_value_pairs     - Merge two comma-separated key=value lists (second overrides first)
-#   generate_yaml_map         - Output YAML map block with configurable indentation
-#   generate_metadata_map     - Convenience wrapper for metadata-level maps (2-space indent)
-#   generate_metadata         - Build and output labels or annotations with standard kaptain values
+#   validate_combined_sub_path  - Validate combined sub-path format for output directory nesting
+#   build_name_middle_fragment  - Build hyphen-prefixed name fragment from combined sub-path and suffix
+#   ensure_manifest_output_dir  - Create and return manifest output directory path
+#   generate_manifest_header    - Output apiVersion, kind, metadata.name (and optionally namespace)
+#   merge_key_value_pairs       - Merge two comma-separated key=value lists (second overrides first)
+#   generate_yaml_map           - Output YAML map block with configurable indentation
+#   generate_metadata_map       - Convenience wrapper for metadata-level maps (2-space indent)
+#   generate_metadata           - Build and output labels or annotations with standard kaptain values
 
 # Validate combined sub-path format
 # Usage: validate_combined_sub_path <path>
@@ -42,6 +44,64 @@ validate_combined_sub_path() {
     echo "${LOG_ERROR_PREFIX:-}Combined sub-path must not start or end with a slash, got: ${path}${LOG_ERROR_SUFFIX:-}" >&2
     exit 6
   fi
+}
+
+# Build hyphen-prefixed name fragment from combined sub-path and suffix
+# Usage: build_name_middle_fragment <combined_sub_path> <suffix>
+# Output: echoes fragment (empty or hyphen-prefixed string)
+# Examples:
+#   "omg/wtf" "backend" → "-omg-wtf-backend"
+#   "" "backend"        → "-backend"
+#   "omg/wtf" ""        → "-omg-wtf"
+#   "" ""               → (empty)
+build_name_middle_fragment() {
+  if [[ $# -ne 2 ]]; then
+    echo "Error: build_name_middle_fragment requires 2 arguments, got $#" >&2
+    echo "Usage: build_name_middle_fragment <combined_sub_path> <suffix>" >&2
+    return 1
+  fi
+
+  local combined_sub_path="$1"
+  local suffix="$2"
+  local result=""
+
+  if [[ -n "${combined_sub_path}" ]]; then
+    local combined_fragment="${combined_sub_path//\//-}"
+    result="-${combined_fragment}"
+  fi
+
+  if [[ -n "${suffix}" ]]; then
+    result="${result}-${suffix}"
+  fi
+
+  echo "${result}"
+}
+
+# Create and return manifest output directory path
+# Usage: ensure_manifest_output_dir <output_base_path> <combined_sub_path>
+# Output: creates directory, echoes path
+# Examples:
+#   "target" "omg/wtf" → creates & echoes "target/manifests/combined/omg/wtf"
+#   "target" ""        → creates & echoes "target/manifests/combined"
+ensure_manifest_output_dir() {
+  if [[ $# -ne 2 ]]; then
+    echo "Error: ensure_manifest_output_dir requires 2 arguments, got $#" >&2
+    echo "Usage: ensure_manifest_output_dir <output_base_path> <combined_sub_path>" >&2
+    return 1
+  fi
+
+  local output_base_path="$1"
+  local combined_sub_path="$2"
+  local output_dir
+
+  if [[ -n "${combined_sub_path}" ]]; then
+    output_dir="${output_base_path}/manifests/combined/${combined_sub_path}"
+  else
+    output_dir="${output_base_path}/manifests/combined"
+  fi
+
+  mkdir -p "${output_dir}"
+  echo "${output_dir}"
 }
 
 # Generate manifest header (apiVersion, kind, metadata.name, optionally namespace)

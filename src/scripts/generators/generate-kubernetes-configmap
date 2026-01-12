@@ -77,15 +77,7 @@ environment_token=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_N
 version_token=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "VERSION")
 
 # Build metadata.name: ${ProjectName}[-${combined}][-${suffix}][-configmap-checksum]
-# For nested paths like omg/wtf, replace / with - to get omg-wtf
-name_middle=""
-if [[ -n "${KUBERNETES_CONFIGMAP_COMBINED_SUB_PATH}" ]]; then
-  combined_name_fragment="${KUBERNETES_CONFIGMAP_COMBINED_SUB_PATH//\//-}"
-  name_middle="-${combined_name_fragment}"
-fi
-if [[ -n "${KUBERNETES_CONFIGMAP_NAME_SUFFIX}" ]]; then
-  name_middle="${name_middle}-${KUBERNETES_CONFIGMAP_NAME_SUFFIX}"
-fi
+name_middle=$(build_name_middle_fragment "${KUBERNETES_CONFIGMAP_COMBINED_SUB_PATH}" "${KUBERNETES_CONFIGMAP_NAME_SUFFIX}")
 
 if [[ "${KUBERNETES_CONFIGMAP_NAME_CHECKSUM_INJECTION}" == "true" ]]; then
   configmap_name="${project_name_token}${name_middle}-configmap-checksum"
@@ -93,13 +85,8 @@ else
   configmap_name="${project_name_token}${name_middle}"
 fi
 
-# Create output directory (include combined sub-path if provided)
-if [[ -n "${KUBERNETES_CONFIGMAP_COMBINED_SUB_PATH}" ]]; then
-  output_dir="${OUTPUT_SUB_PATH}/manifests/combined/${KUBERNETES_CONFIGMAP_COMBINED_SUB_PATH}"
-else
-  output_dir="${OUTPUT_SUB_PATH}/manifests/combined"
-fi
-mkdir -p "${output_dir}"
+# Create output directory
+output_dir=$(ensure_manifest_output_dir "${OUTPUT_SUB_PATH}" "${KUBERNETES_CONFIGMAP_COMBINED_SUB_PATH}")
 
 # Generate ConfigMap YAML (include suffix in filename if provided)
 if [[ -n "${KUBERNETES_CONFIGMAP_NAME_SUFFIX}" ]]; then
