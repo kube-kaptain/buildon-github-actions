@@ -269,6 +269,52 @@ on:
         required: false
         type: string
         default: '10'
+      # Kubernetes Service generation
+      kubernetes-service-generation-enabled:
+        description: 'Enable Service generation'
+        required: false
+        type: boolean
+        default: false
+      kubernetes-service-type:
+        description: 'Service type (ClusterIP, NodePort, LoadBalancer)'
+        required: false
+        type: string
+        default: 'ClusterIP'
+      kubernetes-service-port:
+        description: 'Service port'
+        required: false
+        type: string
+        default: '80'
+      kubernetes-service-target-port:
+        description: 'Target port (defaults to service port)'
+        required: false
+        type: string
+        default: ''
+      kubernetes-service-protocol:
+        description: 'Protocol (TCP, UDP, SCTP)'
+        required: false
+        type: string
+        default: 'TCP'
+      kubernetes-service-name-suffix:
+        description: 'Optional suffix for Service name and filename'
+        required: false
+        type: string
+        default: ''
+      kubernetes-service-combined-sub-path:
+        description: 'Sub-path within combined/ for output'
+        required: false
+        type: string
+        default: ''
+      kubernetes-service-additional-labels:
+        description: 'Additional labels specific to Service (comma-separated key=value)'
+        required: false
+        type: string
+        default: ''
+      kubernetes-service-additional-annotations:
+        description: 'Additional annotations specific to Service (comma-separated key=value)'
+        required: false
+        type: string
+        default: ''
 
       # Token substitution
       token-delimiter-style:
@@ -750,6 +796,16 @@ jobs:
           kubernetes-workload-probe-startup-http-path: ${{ inputs.kubernetes-workload-probe-startup-http-path }}
           kubernetes-deployment-replicas: ${{ inputs.kubernetes-deployment-replicas }}
           kubernetes-deployment-revision-history-limit: ${{ inputs.kubernetes-deployment-revision-history-limit }}
+          # Kubernetes Service generation
+          kubernetes-service-generation-enabled: ${{ inputs.kubernetes-service-generation-enabled }}
+          kubernetes-service-type: ${{ inputs.kubernetes-service-type }}
+          kubernetes-service-port: ${{ inputs.kubernetes-service-port }}
+          kubernetes-service-target-port: ${{ inputs.kubernetes-service-target-port }}
+          kubernetes-service-protocol: ${{ inputs.kubernetes-service-protocol }}
+          kubernetes-service-name-suffix: ${{ inputs.kubernetes-service-name-suffix }}
+          kubernetes-service-combined-sub-path: ${{ inputs.kubernetes-service-combined-sub-path }}
+          kubernetes-service-additional-labels: ${{ inputs.kubernetes-service-additional-labels }}
+          kubernetes-service-additional-annotations: ${{ inputs.kubernetes-service-additional-annotations }}
 
           # Token substitution
           token-delimiter-style: ${{ inputs.token-delimiter-style }}
@@ -1013,6 +1069,50 @@ jobs:
           action: fail
           check-run-id: ${{ steps.check-generate-workload.outputs.check-run-id }}
 
+      # === Generate Service ===
+      - name: Start check - Generate Service
+        if: inputs.kubernetes-service-generation-enabled == true && inputs.kubernetes-workload-type == 'deployment' && success()
+        id: check-generate-service
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
+        with:
+          action: start
+          check-name: 'Build & Publish → Generate Service'
+      - name: Generate Service manifest
+        id: generate-service
+        if: inputs.kubernetes-service-generation-enabled == true && inputs.kubernetes-workload-type == 'deployment' && success()
+        uses: ./.github/buildon-github-actions/src/actions/generate-kubernetes-service
+        with:
+          # Service settings
+          kubernetes-service-generation-enabled: ${{ inputs.kubernetes-service-generation-enabled }}
+          kubernetes-service-type: ${{ inputs.kubernetes-service-type }}
+          kubernetes-service-port: ${{ inputs.kubernetes-service-port }}
+          kubernetes-service-target-port: ${{ inputs.kubernetes-service-target-port }}
+          kubernetes-service-protocol: ${{ inputs.kubernetes-service-protocol }}
+          kubernetes-service-name-suffix: ${{ inputs.kubernetes-service-name-suffix }}
+          kubernetes-service-combined-sub-path: ${{ inputs.kubernetes-service-combined-sub-path }}
+          kubernetes-service-additional-labels: ${{ inputs.kubernetes-service-additional-labels }}
+          kubernetes-service-additional-annotations: ${{ inputs.kubernetes-service-additional-annotations }}
+          # Workload settings (for defaults)
+          kubernetes-workload-container-port: ${{ inputs.kubernetes-workload-container-port }}
+          # Global settings
+          output-sub-path: ${{ inputs.output-sub-path }}
+          token-name-style: ${{ inputs.token-name-style }}
+          token-delimiter-style: ${{ inputs.token-delimiter-style }}
+          kubernetes-global-additional-labels: ${{ inputs.kubernetes-global-additional-labels }}
+          kubernetes-global-additional-annotations: ${{ inputs.kubernetes-global-additional-annotations }}
+      - name: Pass check - Generate Service
+        if: inputs.kubernetes-service-generation-enabled == true && inputs.kubernetes-workload-type == 'deployment' && success()
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
+        with:
+          action: pass
+          check-run-id: ${{ steps.check-generate-service.outputs.check-run-id }}
+      - name: Fail check - Generate Service
+        if: inputs.kubernetes-service-generation-enabled == true && inputs.kubernetes-workload-type == 'deployment' && failure() && steps.check-generate-service.outputs.check-run-id != ''
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
+        with:
+          action: fail
+          check-run-id: ${{ steps.check-generate-service.outputs.check-run-id }}
+
       # === Pre-package Prepare ===
       - name: Start check - Pre-package Prepare
         if: inputs.hook-pre-package-prepare-script-sub-path != '' && success()
@@ -1096,6 +1196,16 @@ jobs:
           kubernetes-workload-probe-startup-http-path: ${{ inputs.kubernetes-workload-probe-startup-http-path }}
           kubernetes-deployment-replicas: ${{ inputs.kubernetes-deployment-replicas }}
           kubernetes-deployment-revision-history-limit: ${{ inputs.kubernetes-deployment-revision-history-limit }}
+          # Kubernetes Service generation
+          kubernetes-service-generation-enabled: ${{ inputs.kubernetes-service-generation-enabled }}
+          kubernetes-service-type: ${{ inputs.kubernetes-service-type }}
+          kubernetes-service-port: ${{ inputs.kubernetes-service-port }}
+          kubernetes-service-target-port: ${{ inputs.kubernetes-service-target-port }}
+          kubernetes-service-protocol: ${{ inputs.kubernetes-service-protocol }}
+          kubernetes-service-name-suffix: ${{ inputs.kubernetes-service-name-suffix }}
+          kubernetes-service-combined-sub-path: ${{ inputs.kubernetes-service-combined-sub-path }}
+          kubernetes-service-additional-labels: ${{ inputs.kubernetes-service-additional-labels }}
+          kubernetes-service-additional-annotations: ${{ inputs.kubernetes-service-additional-annotations }}
 
           # Token substitution
           token-delimiter-style: ${{ inputs.token-delimiter-style }}
@@ -1371,6 +1481,16 @@ jobs:
           kubernetes-workload-probe-startup-http-path: ${{ inputs.kubernetes-workload-probe-startup-http-path }}
           kubernetes-deployment-replicas: ${{ inputs.kubernetes-deployment-replicas }}
           kubernetes-deployment-revision-history-limit: ${{ inputs.kubernetes-deployment-revision-history-limit }}
+          # Kubernetes Service generation
+          kubernetes-service-generation-enabled: ${{ inputs.kubernetes-service-generation-enabled }}
+          kubernetes-service-type: ${{ inputs.kubernetes-service-type }}
+          kubernetes-service-port: ${{ inputs.kubernetes-service-port }}
+          kubernetes-service-target-port: ${{ inputs.kubernetes-service-target-port }}
+          kubernetes-service-protocol: ${{ inputs.kubernetes-service-protocol }}
+          kubernetes-service-name-suffix: ${{ inputs.kubernetes-service-name-suffix }}
+          kubernetes-service-combined-sub-path: ${{ inputs.kubernetes-service-combined-sub-path }}
+          kubernetes-service-additional-labels: ${{ inputs.kubernetes-service-additional-labels }}
+          kubernetes-service-additional-annotations: ${{ inputs.kubernetes-service-additional-annotations }}
 
           # Token substitution
           token-delimiter-style: ${{ inputs.token-delimiter-style }}

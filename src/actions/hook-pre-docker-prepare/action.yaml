@@ -238,6 +238,43 @@ inputs:
     description: 'Number of old ReplicaSets to retain'
     required: false
     default: '10'
+  # Kubernetes Service generation
+  kubernetes-service-generation-enabled:
+    description: 'Enable Service generation'
+    required: false
+    default: 'false'
+  kubernetes-service-type:
+    description: 'Service type (ClusterIP, NodePort, LoadBalancer)'
+    required: false
+    default: 'ClusterIP'
+  kubernetes-service-port:
+    description: 'Service port'
+    required: false
+    default: '80'
+  kubernetes-service-target-port:
+    description: 'Target port (defaults to service port)'
+    required: false
+    default: ''
+  kubernetes-service-protocol:
+    description: 'Protocol (TCP, UDP, SCTP)'
+    required: false
+    default: 'TCP'
+  kubernetes-service-name-suffix:
+    description: 'Optional suffix for Service name and filename'
+    required: false
+    default: ''
+  kubernetes-service-combined-sub-path:
+    description: 'Sub-path within combined/ for output'
+    required: false
+    default: ''
+  kubernetes-service-additional-labels:
+    description: 'Additional labels specific to Service (comma-separated key=value)'
+    required: false
+    default: ''
+  kubernetes-service-additional-annotations:
+    description: 'Additional annotations specific to Service (comma-separated key=value)'
+    required: false
+    default: ''
 
   # Token substitution
   token-delimiter-style:
@@ -491,6 +528,16 @@ runs:
         KUBERNETES_WORKLOAD_PROBE_STARTUP_HTTP_PATH: ${{ inputs.kubernetes-workload-probe-startup-http-path }}
         KUBERNETES_DEPLOYMENT_REPLICAS: ${{ inputs.kubernetes-deployment-replicas }}
         KUBERNETES_DEPLOYMENT_REVISION_HISTORY_LIMIT: ${{ inputs.kubernetes-deployment-revision-history-limit }}
+        # Workflow inputs - kubernetes service generation
+        KUBERNETES_SERVICE_GENERATION_ENABLED: ${{ inputs.kubernetes-service-generation-enabled }}
+        KUBERNETES_SERVICE_TYPE: ${{ inputs.kubernetes-service-type }}
+        KUBERNETES_SERVICE_PORT: ${{ inputs.kubernetes-service-port }}
+        KUBERNETES_SERVICE_TARGET_PORT: ${{ inputs.kubernetes-service-target-port }}
+        KUBERNETES_SERVICE_PROTOCOL: ${{ inputs.kubernetes-service-protocol }}
+        KUBERNETES_SERVICE_NAME_SUFFIX: ${{ inputs.kubernetes-service-name-suffix }}
+        KUBERNETES_SERVICE_COMBINED_SUB_PATH: ${{ inputs.kubernetes-service-combined-sub-path }}
+        KUBERNETES_SERVICE_ADDITIONAL_LABELS: ${{ inputs.kubernetes-service-additional-labels }}
+        KUBERNETES_SERVICE_ADDITIONAL_ANNOTATIONS: ${{ inputs.kubernetes-service-additional-annotations }}
 
         # Workflow inputs - token substitution
         TOKEN_DELIMITER_STYLE: ${{ inputs.token-delimiter-style }}

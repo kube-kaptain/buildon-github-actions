@@ -59,6 +59,15 @@ Kubernetes App - Docker Dockerfile
 | `kubernetes-workload-probe-startup-http-path` | string | `/startup` | Startup probe HTTP path |
 | `kubernetes-deployment-replicas` | string | `""` | Replica count (empty for token, NO for HPA management) |
 | `kubernetes-deployment-revision-history-limit` | string | `10` | Number of old ReplicaSets to retain |
+| `kubernetes-service-generation-enabled` | boolean | `false` | Enable Service generation |
+| `kubernetes-service-type` | string | `ClusterIP` | Service type (ClusterIP, NodePort, LoadBalancer) |
+| `kubernetes-service-port` | string | `80` | Service port |
+| `kubernetes-service-target-port` | string | `""` | Target port (defaults to service port) |
+| `kubernetes-service-protocol` | string | `TCP` | Protocol (TCP, UDP, SCTP) |
+| `kubernetes-service-name-suffix` | string | `""` | Optional suffix for Service name and filename |
+| `kubernetes-service-combined-sub-path` | string | `""` | Sub-path within combined/ for output |
+| `kubernetes-service-additional-labels` | string | `""` | Additional labels specific to Service (comma-separated key=value) |
+| `kubernetes-service-additional-annotations` | string | `""` | Additional annotations specific to Service (comma-separated key=value) |
 | `token-delimiter-style` | string | `shell` | Token delimiter syntax for variables (shell, mustache, helm, erb, github-actions, blade, stringtemplate, ognl, t4, swift) |
 | `token-name-style` | string | `PascalCase` | Case style for token names (UPPER_SNAKE, lower_snake, lower-kebab, UPPER-KEBAB, camelCase, PascalCase, lower.dot, UPPER.DOT) |
 | `token-name-validation` | string | `MATCH` | How to validate user token names (MATCH = must match token-name-style, ALL = accept any valid name) |

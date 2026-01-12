@@ -46,6 +46,7 @@ See [`examples/`](examples/) for more usage patterns.
 | [`docker-registry-logins-ghcr-pat.yaml`](examples/docker-registry-logins-ghcr-pat.yaml) |   - Push to packages in a different repo or org (GITHUB_TOKEN is scoped to current repo) |
 | [`docker-registry-logins-inherit.yaml`](examples/docker-registry-logins-inherit.yaml) | Secret values are looked up by the names specified in the config |
 | [`github-release-options.yaml`](examples/github-release-options.yaml) | All workflows that include versions-and-naming create GitHub releases by default |
+| [`kube-app-generators.yaml`](examples/kube-app-generators.yaml) | This example demonstrates how to use the Kubernetes manifest generators with |
 | [`optional-test-scripts.yaml`](examples/optional-test-scripts.yaml) | Shows how to add custom test scripts to workflows that support them |
 | [`quality-only.yaml`](examples/quality-only.yaml) | Enforce quality standards on PRs without automatic tagging |
 | [`spec-check-filter-release.yaml`](examples/spec-check-filter-release.yaml) | Build and release JSON Schema or API spec files |
@@ -88,7 +89,9 @@ See [`examples/`](examples/) for more usage patterns.
 | `docker-registry-logins` | Authenticate to container registries (GHCR by default, configure others as needed) |
 | `generate-kubernetes-configmap` | Generates a Kubernetes ConfigMap manifest from files in a directory |
 | `generate-kubernetes-secret-template` | Generates a Kubernetes Secret template manifest from files in a directory |
+| `generate-kubernetes-service` | Generates a Kubernetes Service manifest with tokenized values |
 | `generate-kubernetes-serviceaccount` | Generates a Kubernetes ServiceAccount manifest for pod identity and RBAC binding |
+| `generate-kubernetes-workload` | Routes to appropriate workload generator (Deployment, StatefulSet, etc.) |
 | `git-push-tag` | Pushes an existing git tag to origin |
 | `github-check-run` | Create or update GitHub Check Runs for granular PR status reporting |
 | `github-release-prepare` | Prepares files for GitHub release with optional substitution and version suffix |
@@ -142,17 +145,53 @@ See [`examples/`](examples/) for more usage patterns.
 | `kubernetes-configmap-additional-labels` | string | `""` | Additional labels specific to ConfigMap (comma-separated key=value) |
 | `kubernetes-configmap-name-checksum-injection` | boolean | `true` | Enable checksum injection suffix in ConfigMap name (true: ProjectName-configmap-checksum, false: ProjectName) |
 | `kubernetes-configmap-sub-path` | string | `src/configmap` | Directory containing ConfigMap data files (relative) |
+| `kubernetes-deployment-replicas` | string | `""` | Replica count (empty for token, NO for HPA management) |
+| `kubernetes-deployment-revision-history-limit` | string | `10` | Number of old ReplicaSets to retain |
 | `kubernetes-global-additional-annotations` | string | `""` | Additional annotations for all Kubernetes manifests (comma-separated key=value) |
 | `kubernetes-global-additional-labels` | string | `""` | Additional labels for all Kubernetes manifests (comma-separated key=value) |
 | `kubernetes-secret-template-additional-annotations` | string | `""` | Additional annotations specific to Secret template (comma-separated key=value) |
 | `kubernetes-secret-template-additional-labels` | string | `""` | Additional labels specific to Secret template (comma-separated key=value) |
 | `kubernetes-secret-template-name-checksum-injection` | boolean | `true` | Enable checksum injection suffix in Secret name (true: ProjectName-secret-checksum, false: ProjectName) |
 | `kubernetes-secret-template-sub-path` | string | `src/secret.template` | Directory containing Secret template data files (relative) |
+| `kubernetes-service-additional-annotations` | string | `""` | Additional annotations specific to Service (comma-separated key=value) |
+| `kubernetes-service-additional-labels` | string | `""` | Additional labels specific to Service (comma-separated key=value) |
+| `kubernetes-service-combined-sub-path` | string | `""` | Sub-path within combined/ for output |
+| `kubernetes-service-generation-enabled` | boolean | `false` | Enable Service generation |
+| `kubernetes-service-name-suffix` | string | `""` | Optional suffix for Service name and filename |
+| `kubernetes-service-port` | string | `80` | Service port |
+| `kubernetes-service-protocol` | string | `TCP` | Protocol (TCP, UDP, SCTP) |
+| `kubernetes-service-target-port` | string | `""` | Target port (defaults to service port) |
+| `kubernetes-service-type` | string | `ClusterIP` | Service type (ClusterIP, NodePort, LoadBalancer) |
 | `kubernetes-serviceaccount-additional-annotations` | string | `""` | Additional annotations specific to ServiceAccount (comma-separated key=value) |
 | `kubernetes-serviceaccount-additional-labels` | string | `""` | Additional labels specific to ServiceAccount (comma-separated key=value) |
 | `kubernetes-serviceaccount-combined-sub-path` | string | `""` | Sub-path within combined/ for output |
 | `kubernetes-serviceaccount-generation-enabled` | boolean | `false` | Enable ServiceAccount generation (true/false) |
 | `kubernetes-serviceaccount-name-suffix` | string | `""` | Optional suffix for ServiceAccount name and filename |
+| `kubernetes-workload-additional-annotations` | string | `""` | Additional annotations specific to workload (comma-separated key=value) |
+| `kubernetes-workload-additional-labels` | string | `""` | Additional labels specific to workload (comma-separated key=value) |
+| `kubernetes-workload-affinity-strategy` | string | `spread-nodes-and-zones-ha` | Pod affinity strategy plugin name |
+| `kubernetes-workload-automount-service-account-token` | boolean | `false` | Automount service account token |
+| `kubernetes-workload-combined-sub-path` | string | `""` | Sub-path within combined/ for output |
+| `kubernetes-workload-configmap-mount-path` | string | `/configmap` | ConfigMap mount path in container |
+| `kubernetes-workload-container-port` | string | `1024` | Container port |
+| `kubernetes-workload-env-sub-path` | string | `src/workload-env` | Directory containing environment variable files |
+| `kubernetes-workload-image-reference-style` | string | `combined` | Image reference style (combined, separate, project-name-prefixed-combined, project-name-prefixed-separate) |
+| `kubernetes-workload-name-suffix` | string | `""` | Optional suffix for workload name and filename |
+| `kubernetes-workload-prestop-command` | string | `""` | PreStop hook command (empty for none) |
+| `kubernetes-workload-probe-liveness-check-type` | string | `http-get` | Liveness probe type (http-get, tcp-socket, exec, grpc, none) |
+| `kubernetes-workload-probe-liveness-http-path` | string | `/liveness` | Liveness probe HTTP path |
+| `kubernetes-workload-probe-readiness-check-type` | string | `http-get` | Readiness probe type (http-get, tcp-socket, exec, grpc, none) |
+| `kubernetes-workload-probe-readiness-http-path` | string | `/readiness` | Readiness probe HTTP path |
+| `kubernetes-workload-probe-startup-check-type` | string | `http-get` | Startup probe type (http-get, tcp-socket, exec, grpc, none) |
+| `kubernetes-workload-probe-startup-http-path` | string | `/startup` | Startup probe HTTP path |
+| `kubernetes-workload-readonly-root-filesystem` | boolean | `true` | Enable read-only root filesystem |
+| `kubernetes-workload-resources-cpu-limit` | string | `""` | CPU limit (empty for no limit) |
+| `kubernetes-workload-resources-cpu-request` | string | `100m` | CPU request (e.g., 100m, 1) |
+| `kubernetes-workload-resources-memory` | string | `10Mi` | Memory limit (e.g., 128Mi, 1Gi) |
+| `kubernetes-workload-seccomp-profile` | string | `DISABLED` | Seccomp profile (DISABLED, RuntimeDefault, Localhost, Unconfined) |
+| `kubernetes-workload-secret-mount-path` | string | `/secret` | Secret mount path in container |
+| `kubernetes-workload-termination-grace-period-seconds` | string | `10` | Termination grace period in seconds |
+| `kubernetes-workload-type` | string | `deployment` | Workload type to generate (deployment, none) |
 | `manifests-packaging-base-image` | string | `""` | Base image for manifest packaging (default: scratch) |
 | `manifests-repo-provider-type` | string | `docker` | Repo provider type for manifest storage (default: docker, currently the only supported provider) |
 | `manifests-sub-path` | string | `src/kubernetes` | Directory containing Kubernetes manifests (relative) |

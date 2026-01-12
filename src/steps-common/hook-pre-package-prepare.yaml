@@ -76,6 +76,16 @@
     kubernetes-workload-probe-startup-http-path: ${{ inputs.kubernetes-workload-probe-startup-http-path }}
     kubernetes-deployment-replicas: ${{ inputs.kubernetes-deployment-replicas }}
     kubernetes-deployment-revision-history-limit: ${{ inputs.kubernetes-deployment-revision-history-limit }}
+    # Kubernetes Service generation
+    kubernetes-service-generation-enabled: ${{ inputs.kubernetes-service-generation-enabled }}
+    kubernetes-service-type: ${{ inputs.kubernetes-service-type }}
+    kubernetes-service-port: ${{ inputs.kubernetes-service-port }}
+    kubernetes-service-target-port: ${{ inputs.kubernetes-service-target-port }}
+    kubernetes-service-protocol: ${{ inputs.kubernetes-service-protocol }}
+    kubernetes-service-name-suffix: ${{ inputs.kubernetes-service-name-suffix }}
+    kubernetes-service-combined-sub-path: ${{ inputs.kubernetes-service-combined-sub-path }}
+    kubernetes-service-additional-labels: ${{ inputs.kubernetes-service-additional-labels }}
+    kubernetes-service-additional-annotations: ${{ inputs.kubernetes-service-additional-annotations }}
 
     # Token substitution
     token-delimiter-style: ${{ inputs.token-delimiter-style }}

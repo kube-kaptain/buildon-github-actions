@@ -1,0 +1,26 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
+
+- name: Generate Service manifest
+  id: generate-service
+  if: inputs.kubernetes-service-generation-enabled == true && inputs.kubernetes-workload-type == 'deployment'
+  uses: ./.github/buildon-github-actions/src/actions/generate-kubernetes-service
+  with:
+    # Service settings
+    kubernetes-service-generation-enabled: ${{ inputs.kubernetes-service-generation-enabled }}
+    kubernetes-service-type: ${{ inputs.kubernetes-service-type }}
+    kubernetes-service-port: ${{ inputs.kubernetes-service-port }}
+    kubernetes-service-target-port: ${{ inputs.kubernetes-service-target-port }}
+    kubernetes-service-protocol: ${{ inputs.kubernetes-service-protocol }}
+    kubernetes-service-name-suffix: ${{ inputs.kubernetes-service-name-suffix }}
+    kubernetes-service-combined-sub-path: ${{ inputs.kubernetes-service-combined-sub-path }}
+    kubernetes-service-additional-labels: ${{ inputs.kubernetes-service-additional-labels }}
+    kubernetes-service-additional-annotations: ${{ inputs.kubernetes-service-additional-annotations }}
+    # Workload settings (for defaults)
+    kubernetes-workload-container-port: ${{ inputs.kubernetes-workload-container-port }}
+    # Global settings
+    output-sub-path: ${{ inputs.output-sub-path }}
+    token-name-style: ${{ inputs.token-name-style }}
+    token-delimiter-style: ${{ inputs.token-delimiter-style }}
+    kubernetes-global-additional-labels: ${{ inputs.kubernetes-global-additional-labels }}
+    kubernetes-global-additional-annotations: ${{ inputs.kubernetes-global-additional-annotations }}
