@@ -597,3 +597,48 @@ setup() {
   [ "$status" -ne 0 ]
   assert_output_contains "requires exactly 4 arguments"
 }
+
+# =============================================================================
+# validate_token_styles tests - combined validation with exit
+# =============================================================================
+
+@test "validate_token_styles: passes with valid styles" {
+  TOKEN_NAME_STYLE="PascalCase"
+  TOKEN_DELIMITER_STYLE="shell"
+  run validate_token_styles
+  [ "$status" -eq 0 ]
+}
+
+@test "validate_token_styles: exits 2 for invalid name style" {
+  TOKEN_NAME_STYLE="InvalidStyle"
+  TOKEN_DELIMITER_STYLE="shell"
+  run validate_token_styles
+  [ "$status" -eq 2 ]
+  assert_output_contains "Unknown token name style"
+}
+
+@test "validate_token_styles: exits 3 for invalid delimiter style" {
+  TOKEN_NAME_STYLE="PascalCase"
+  TOKEN_DELIMITER_STYLE="invalid-delim"
+  run validate_token_styles
+  [ "$status" -eq 3 ]
+  assert_output_contains "Unknown substitution token style"
+}
+
+@test "validate_token_styles: checks name style first" {
+  TOKEN_NAME_STYLE="InvalidStyle"
+  TOKEN_DELIMITER_STYLE="invalid-delim"
+  run validate_token_styles
+  [ "$status" -eq 2 ]
+}
+
+@test "validate_token_styles: uses LOG_ERROR_PREFIX and SUFFIX" {
+  TOKEN_NAME_STYLE="InvalidStyle"
+  TOKEN_DELIMITER_STYLE="shell"
+  LOG_ERROR_PREFIX="::error::"
+  LOG_ERROR_SUFFIX="!!!"
+  run validate_token_styles
+  [ "$status" -eq 2 ]
+  assert_output_contains "::error::"
+  assert_output_contains "!!!"
+}

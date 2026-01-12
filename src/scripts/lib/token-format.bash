@@ -12,6 +12,7 @@
 #   format_token_reference           - Wrap name with substitution delimiters
 #   format_canonical_token           - Convenience combining both
 #   format_project_suffixed_token    - Combine project name + suffix into delimited token
+#   validate_token_styles            - Validate both styles and exit on error
 
 # Internal: lowercase a string (bash 3.2 compatible)
 _lowercase() {
@@ -61,6 +62,23 @@ is_valid_substitution_token_style() {
       return 1
       ;;
   esac
+}
+
+# Validate both token styles and exit on error
+# Usage: validate_token_styles
+# Reads from caller's scope: TOKEN_NAME_STYLE, TOKEN_DELIMITER_STYLE
+# Also uses: LOG_ERROR_PREFIX, LOG_ERROR_SUFFIX (optional)
+# Exits: 2 for invalid name style, 3 for invalid delimiter style
+validate_token_styles() {
+  if ! is_valid_token_name_style "${TOKEN_NAME_STYLE:-}"; then
+    echo "${LOG_ERROR_PREFIX:-}Unknown token name style: ${TOKEN_NAME_STYLE:-}${LOG_ERROR_SUFFIX:-}" >&2
+    exit 2
+  fi
+
+  if ! is_valid_substitution_token_style "${TOKEN_DELIMITER_STYLE:-}"; then
+    echo "${LOG_ERROR_PREFIX:-}Unknown substitution token style: ${TOKEN_DELIMITER_STYLE:-}${LOG_ERROR_SUFFIX:-}" >&2
+    exit 3
+  fi
 }
 
 # Convert UPPER_SNAKE_CASE name to target style
