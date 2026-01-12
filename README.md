@@ -88,6 +88,7 @@ See [`examples/`](examples/) for more usage patterns.
 | `docker-registry-logins` | Authenticate to container registries (GHCR by default, configure others as needed) |
 | `generate-kubernetes-configmap` | Generates a Kubernetes ConfigMap manifest from files in a directory |
 | `generate-kubernetes-secret-template` | Generates a Kubernetes Secret template manifest from files in a directory |
+| `generate-kubernetes-serviceaccount` | Generates a Kubernetes ServiceAccount manifest for pod identity and RBAC binding |
 | `git-push-tag` | Pushes an existing git tag to origin |
 | `github-check-run` | Create or update GitHub Check Runs for granular PR status reporting |
 | `github-release-prepare` | Prepares files for GitHub release with optional substitution and version suffix |
@@ -147,6 +148,11 @@ See [`examples/`](examples/) for more usage patterns.
 | `kubernetes-secret-template-additional-labels` | string | `""` | Additional labels specific to Secret template (comma-separated key=value) |
 | `kubernetes-secret-template-name-checksum-injection` | boolean | `true` | Enable checksum injection suffix in Secret name (true: ProjectName-secret-checksum, false: ProjectName) |
 | `kubernetes-secret-template-sub-path` | string | `src/secret.template` | Directory containing Secret template data files (relative) |
+| `kubernetes-serviceaccount-additional-annotations` | string | `""` | Additional annotations specific to ServiceAccount (comma-separated key=value) |
+| `kubernetes-serviceaccount-additional-labels` | string | `""` | Additional labels specific to ServiceAccount (comma-separated key=value) |
+| `kubernetes-serviceaccount-combined-sub-path` | string | `""` | Sub-path within combined/ for output |
+| `kubernetes-serviceaccount-generation-enabled` | boolean | `false` | Enable ServiceAccount generation (true/false) |
+| `kubernetes-serviceaccount-name-suffix` | string | `""` | Optional suffix for ServiceAccount name and filename |
 | `manifests-packaging-base-image` | string | `""` | Base image for manifest packaging (default: scratch) |
 | `manifests-repo-provider-type` | string | `docker` | Repo provider type for manifest storage (default: docker, currently the only supported provider) |
 | `manifests-sub-path` | string | `src/kubernetes` | Directory containing Kubernetes manifests (relative) |

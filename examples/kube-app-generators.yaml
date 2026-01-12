@@ -1,0 +1,149 @@
+# SPDX-License-Identifier: CC0-1.0
+# This example is released to the public domain. Use freely without attribution.
+#
+# Kubernetes App Generators
+#
+# This example demonstrates how to use the Kubernetes manifest generators with
+# the kubernetes-app-docker-dockerfile workflow. These generators create
+# Kubernetes manifests with tokenized values that are substituted at deploy time.
+#
+# Generated manifests include standard labels (app, app.kubernetes.io/*) and
+# kaptain annotations (version, build timestamp, generator info).
+#
+# Copy this to .github/workflows/build.yaml in your repo.
+
+name: Kubernetes App with Generators
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    uses: kube-kaptain/buildon-github-actions/.github/workflows/kubernetes-app-docker-dockerfile.yaml@1.0.40
+    permissions:
+      contents: write
+      packages: write
+      checks: write
+    with:
+      # ┌─────────────────────────────────────────────────────────────────────┐
+      # │ ServiceAccount Generator                                            │
+      # └─────────────────────────────────────────────────────────────────────┘
+      # Generate a ServiceAccount manifest for pod identity and RBAC binding.
+      # Useful for:
+      #   - AWS IRSA (IAM Roles for Service Accounts)
+      #   - GCP Workload Identity
+      #   - Azure Workload Identity
+      #   - Kubernetes RBAC bindings
+      #
+      kubernetes-serviceaccount-generation-enabled: true
+
+      # Optional: Add annotations for cloud provider IAM integration
+      # kubernetes-serviceaccount-additional-annotations: 'eks.amazonaws.com/role-arn=arn:aws:iam::123456789012:role/my-role'
+      # kubernetes-serviceaccount-additional-annotations: 'iam.gke.io/gcp-service-account=my-sa@project.iam.gserviceaccount.com'
+
+# ┌───────────────────────────────────────────────────────────────────────────┐
+# │ ConfigMap Generator                                                       │
+# └───────────────────────────────────────────────────────────────────────────┘
+# Generates a ConfigMap from files in a source directory.
+# Default path: src/configmap/ (only generates if directory exists and has files)
+#
+# Each file becomes a key in the ConfigMap data section.
+# Example: src/configmap/config.yaml becomes data["config.yaml"]
+#
+# By default, a checksum suffix is added to the ConfigMap name to trigger
+# pod restarts when config changes but the app doesn't.
+#
+#     with:
+#       kubernetes-configmap-sub-path: 'src/configmap'  # Default
+#       kubernetes-configmap-name-checksum-injection: true  # Default
+#       kubernetes-configmap-additional-labels: 'config-type=app'
+#       kubernetes-configmap-additional-annotations: 'note=generated'
+
+# ┌───────────────────────────────────────────────────────────────────────────┐
+# │ Secret Template Generator                                                 │
+# └───────────────────────────────────────────────────────────────────────────┘
+# Generates a Secret manifest with placeholder values for deploy-time injection.
+# Default path: src/secret.template/ (only generates if directory exists and has files)
+#
+# Each file becomes a key in the Secret stringData section. File contents are
+# used as placeholder values (typically tokens like ${DatabasePassword}).
+#
+# IMPORTANT: These are templates, not actual secrets. Real secret values are
+# injected at deploy time by Kaptain's deployment tooling.
+#
+#     with:
+#       kubernetes-secret-template-sub-path: 'src/secret.template'  # Default
+#       kubernetes-secret-template-name-checksum-injection: true  # Default
+#       kubernetes-secret-template-additional-labels: 'secret-type=app'
+#       kubernetes-secret-template-additional-annotations: 'note=template'
+
+# ┌───────────────────────────────────────────────────────────────────────────┐
+# │ Global Labels and Annotations                                             │
+# └───────────────────────────────────────────────────────────────────────────┘
+# Apply labels/annotations to ALL generated manifests (ConfigMap, Secret,
+# ServiceAccount, and future generators).
+#
+#     with:
+#       kubernetes-global-additional-labels: 'team=platform,cost-center=123'
+#       kubernetes-global-additional-annotations: 'owner=platform-team'
+
+# ┌───────────────────────────────────────────────────────────────────────────┐
+# │ Token Substitution Styles                                                 │
+# └───────────────────────────────────────────────────────────────────────────┘
+# Control how tokens appear in generated manifests.
+#
+# token-delimiter-style options:
+#   shell (default)  : ${ProjectName}
+#   mustache         : {{ ProjectName }}
+#   helm             : {{ .Values.ProjectName }}
+#   erb              : <%= ProjectName %>
+#   github-actions   : ${{ ProjectName }}
+#
+# token-name-style options:
+#   PascalCase (default) : ${ProjectName}
+#   lower-kebab          : ${project-name}
+#   UPPER_SNAKE          : ${PROJECT_NAME}
+#   lower_snake          : ${project_name}
+#   camelCase            : ${projectName}
+#
+#     with:
+#       token-delimiter-style: 'mustache'
+#       token-name-style: 'lower-kebab'
+
+# ┌───────────────────────────────────────────────────────────────────────────┐
+# │ Multiple Resources of the Same Type                                       │
+# └───────────────────────────────────────────────────────────────────────────┘
+# The workflow runs each generator once. For multiple instances of the same
+# resource type (e.g., multiple ServiceAccounts), you have two options:
+#
+# Option 1: Use a hook script to run the generator additional times
+#   Create .github/bin/pre-package.bash that calls the generator script
+#   with different KUBERNETES_SERVICEACCOUNT_NAME_SUFFIX values:
+#
+#     with:
+#       kubernetes-serviceaccount-generation-enabled: true
+#       hook-pre-package-prepare-script-sub-path: 'bin/pre-package.bash'
+#
+#   # .github/bin/pre-package.bash:
+#   # KUBERNETES_SERVICEACCOUNT_NAME_SUFFIX=worker \
+#   #   .github/buildon-github-actions/src/scripts/generators/generate-kubernetes-serviceaccount
+#
+# Option 2: Provide additional manifests manually in src/kubernetes/
+#   The generators output to target/manifests/combined/ which is merged with
+#   your static manifests from src/kubernetes/ (or manifests-sub-path).
+#   Simply add extra serviceaccount-worker.yaml etc. alongside your other manifests.
+#
+# For organizing generated output, use combined-sub-path or name-suffix:
+#
+#     with:
+#       kubernetes-serviceaccount-combined-sub-path: 'backend'
+#       # Output: target/manifests/combined/backend/serviceaccount.yaml
+#       # Name: ${ProjectName}-backend
+#
+#     with:
+#       kubernetes-serviceaccount-name-suffix: 'worker'
+#       # Output: target/manifests/combined/serviceaccount-worker.yaml
+#       # Name: ${ProjectName}-worker

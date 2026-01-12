@@ -123,6 +123,32 @@ on:
         required: false
         type: string
         default: ''
+      # Kubernetes ServiceAccount generation
+      kubernetes-serviceaccount-generation-enabled:
+        description: 'Enable ServiceAccount generation (true/false)'
+        required: false
+        type: boolean
+        default: false
+      kubernetes-serviceaccount-name-suffix:
+        description: 'Optional suffix for ServiceAccount name and filename'
+        required: false
+        type: string
+        default: ''
+      kubernetes-serviceaccount-combined-sub-path:
+        description: 'Sub-path within combined/ for output'
+        required: false
+        type: string
+        default: ''
+      kubernetes-serviceaccount-additional-labels:
+        description: 'Additional labels specific to ServiceAccount (comma-separated key=value)'
+        required: false
+        type: string
+        default: ''
+      kubernetes-serviceaccount-additional-annotations:
+        description: 'Additional annotations specific to ServiceAccount (comma-separated key=value)'
+        required: false
+        type: string
+        default: ''
 
       # Token substitution
       token-delimiter-style:
@@ -585,6 +611,12 @@ jobs:
           kubernetes-secret-template-name-checksum-injection: ${{ inputs.kubernetes-secret-template-name-checksum-injection }}
           kubernetes-secret-template-additional-labels: ${{ inputs.kubernetes-secret-template-additional-labels }}
           kubernetes-secret-template-additional-annotations: ${{ inputs.kubernetes-secret-template-additional-annotations }}
+          # Kubernetes ServiceAccount generation
+          kubernetes-serviceaccount-generation-enabled: ${{ inputs.kubernetes-serviceaccount-generation-enabled }}
+          kubernetes-serviceaccount-name-suffix: ${{ inputs.kubernetes-serviceaccount-name-suffix }}
+          kubernetes-serviceaccount-combined-sub-path: ${{ inputs.kubernetes-serviceaccount-combined-sub-path }}
+          kubernetes-serviceaccount-additional-labels: ${{ inputs.kubernetes-serviceaccount-additional-labels }}
+          kubernetes-serviceaccount-additional-annotations: ${{ inputs.kubernetes-serviceaccount-additional-annotations }}
 
           # Token substitution
           token-delimiter-style: ${{ inputs.token-delimiter-style }}
@@ -722,6 +754,12 @@ jobs:
           kubernetes-secret-template-name-checksum-injection: ${{ inputs.kubernetes-secret-template-name-checksum-injection }}
           kubernetes-secret-template-additional-labels: ${{ inputs.kubernetes-secret-template-additional-labels }}
           kubernetes-secret-template-additional-annotations: ${{ inputs.kubernetes-secret-template-additional-annotations }}
+          # Kubernetes ServiceAccount generation
+          kubernetes-serviceaccount-generation-enabled: ${{ inputs.kubernetes-serviceaccount-generation-enabled }}
+          kubernetes-serviceaccount-name-suffix: ${{ inputs.kubernetes-serviceaccount-name-suffix }}
+          kubernetes-serviceaccount-combined-sub-path: ${{ inputs.kubernetes-serviceaccount-combined-sub-path }}
+          kubernetes-serviceaccount-additional-labels: ${{ inputs.kubernetes-serviceaccount-additional-labels }}
+          kubernetes-serviceaccount-additional-annotations: ${{ inputs.kubernetes-serviceaccount-additional-annotations }}
 
           # Token substitution
           token-delimiter-style: ${{ inputs.token-delimiter-style }}
@@ -913,6 +951,12 @@ jobs:
           kubernetes-secret-template-name-checksum-injection: ${{ inputs.kubernetes-secret-template-name-checksum-injection }}
           kubernetes-secret-template-additional-labels: ${{ inputs.kubernetes-secret-template-additional-labels }}
           kubernetes-secret-template-additional-annotations: ${{ inputs.kubernetes-secret-template-additional-annotations }}
+          # Kubernetes ServiceAccount generation
+          kubernetes-serviceaccount-generation-enabled: ${{ inputs.kubernetes-serviceaccount-generation-enabled }}
+          kubernetes-serviceaccount-name-suffix: ${{ inputs.kubernetes-serviceaccount-name-suffix }}
+          kubernetes-serviceaccount-combined-sub-path: ${{ inputs.kubernetes-serviceaccount-combined-sub-path }}
+          kubernetes-serviceaccount-additional-labels: ${{ inputs.kubernetes-serviceaccount-additional-labels }}
+          kubernetes-serviceaccount-additional-annotations: ${{ inputs.kubernetes-serviceaccount-additional-annotations }}
 
           # Token substitution
           token-delimiter-style: ${{ inputs.token-delimiter-style }}
@@ -1055,6 +1099,42 @@ jobs:
           action: fail
           check-run-id: ${{ steps.check-generate-secret-template.outputs.check-run-id }}
 
+      # === Generate ServiceAccount ===
+      - name: Start check - Generate ServiceAccount
+        if: inputs.kubernetes-serviceaccount-generation-enabled == true && success()
+        id: check-generate-serviceaccount
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
+        with:
+          action: start
+          check-name: 'Build & Publish → Generate ServiceAccount'
+      - name: Generate ServiceAccount manifest
+        id: generate-serviceaccount
+        if: inputs.kubernetes-serviceaccount-generation-enabled == true && success()
+        uses: ./.github/buildon-github-actions/src/actions/generate-kubernetes-serviceaccount
+        with:
+          kubernetes-serviceaccount-generation-enabled: ${{ inputs.kubernetes-serviceaccount-generation-enabled }}
+          kubernetes-serviceaccount-name-suffix: ${{ inputs.kubernetes-serviceaccount-name-suffix }}
+          kubernetes-serviceaccount-combined-sub-path: ${{ inputs.kubernetes-serviceaccount-combined-sub-path }}
+          output-sub-path: ${{ inputs.output-sub-path }}
+          token-name-style: ${{ inputs.token-name-style }}
+          token-delimiter-style: ${{ inputs.token-delimiter-style }}
+          kubernetes-global-additional-labels: ${{ inputs.kubernetes-global-additional-labels }}
+          kubernetes-global-additional-annotations: ${{ inputs.kubernetes-global-additional-annotations }}
+          kubernetes-serviceaccount-additional-labels: ${{ inputs.kubernetes-serviceaccount-additional-labels }}
+          kubernetes-serviceaccount-additional-annotations: ${{ inputs.kubernetes-serviceaccount-additional-annotations }}
+      - name: Pass check - Generate ServiceAccount
+        if: inputs.kubernetes-serviceaccount-generation-enabled == true && success()
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
+        with:
+          action: pass
+          check-run-id: ${{ steps.check-generate-serviceaccount.outputs.check-run-id }}
+      - name: Fail check - Generate ServiceAccount
+        if: inputs.kubernetes-serviceaccount-generation-enabled == true && failure() && steps.check-generate-serviceaccount.outputs.check-run-id != ''
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
+        with:
+          action: fail
+          check-run-id: ${{ steps.check-generate-serviceaccount.outputs.check-run-id }}
+
       # === Pre-package Prepare ===
       - name: Start check - Pre-package Prepare
         if: inputs.hook-pre-package-prepare-script-sub-path != '' && success()
@@ -1104,6 +1184,12 @@ jobs:
           kubernetes-secret-template-name-checksum-injection: ${{ inputs.kubernetes-secret-template-name-checksum-injection }}
           kubernetes-secret-template-additional-labels: ${{ inputs.kubernetes-secret-template-additional-labels }}
           kubernetes-secret-template-additional-annotations: ${{ inputs.kubernetes-secret-template-additional-annotations }}
+          # Kubernetes ServiceAccount generation
+          kubernetes-serviceaccount-generation-enabled: ${{ inputs.kubernetes-serviceaccount-generation-enabled }}
+          kubernetes-serviceaccount-name-suffix: ${{ inputs.kubernetes-serviceaccount-name-suffix }}
+          kubernetes-serviceaccount-combined-sub-path: ${{ inputs.kubernetes-serviceaccount-combined-sub-path }}
+          kubernetes-serviceaccount-additional-labels: ${{ inputs.kubernetes-serviceaccount-additional-labels }}
+          kubernetes-serviceaccount-additional-annotations: ${{ inputs.kubernetes-serviceaccount-additional-annotations }}
 
           # Token substitution
           token-delimiter-style: ${{ inputs.token-delimiter-style }}
@@ -1331,6 +1417,12 @@ jobs:
           kubernetes-secret-template-name-checksum-injection: ${{ inputs.kubernetes-secret-template-name-checksum-injection }}
           kubernetes-secret-template-additional-labels: ${{ inputs.kubernetes-secret-template-additional-labels }}
           kubernetes-secret-template-additional-annotations: ${{ inputs.kubernetes-secret-template-additional-annotations }}
+          # Kubernetes ServiceAccount generation
+          kubernetes-serviceaccount-generation-enabled: ${{ inputs.kubernetes-serviceaccount-generation-enabled }}
+          kubernetes-serviceaccount-name-suffix: ${{ inputs.kubernetes-serviceaccount-name-suffix }}
+          kubernetes-serviceaccount-combined-sub-path: ${{ inputs.kubernetes-serviceaccount-combined-sub-path }}
+          kubernetes-serviceaccount-additional-labels: ${{ inputs.kubernetes-serviceaccount-additional-labels }}
+          kubernetes-serviceaccount-additional-annotations: ${{ inputs.kubernetes-serviceaccount-additional-annotations }}
 
           # Token substitution
           token-delimiter-style: ${{ inputs.token-delimiter-style }}
