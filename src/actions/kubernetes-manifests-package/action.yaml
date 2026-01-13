@@ -5,58 +5,18 @@ name: 'Kubernetes Manifests Package'
 description: 'Packages Kubernetes manifests into a zip with variable substitution'
 
 inputs:
-  manifests-sub-path:
-    description: 'Directory containing Kubernetes manifests (relative)'
-    required: false
-    default: 'src/kubernetes'
   project-name:
-    description: 'Project name for variable substitution'
+    description: 'Project name for output naming'
     required: true
   version:
-    description: 'Version for variable substitution and naming'
+    description: 'Version for output naming'
     required: true
   output-sub-path:
     description: 'Build output directory (relative)'
     required: false
     default: 'target'
-  docker-tag:
-    description: 'Docker tag for variable substitution (optional)'
-    required: false
-    default: ''
-  docker-image-name:
-    description: 'Docker image name for variable substitution (optional)'
-    required: false
-    default: ''
-  docker-image-full-uri:
-    description: 'Full Docker image URI for variable substitution (optional)'
-    required: false
-    default: ''
-  docker-target-registry:
-    description: 'Target registry for variable substitution (optional)'
-    required: false
-    default: ''
-  docker-target-base-path:
-    description: 'Target base path for variable substitution (optional)'
-    required: false
-    default: ''
-  is-release:
-    description: 'Release flag for variable substitution (optional)'
-    required: false
-    default: ''
   token-delimiter-style:
     description: 'Token delimiter syntax for variables (shell, mustache, helm, erb, github-actions, blade, stringtemplate, ognl, t4, swift)'
-    required: false
-  token-name-style:
-    description: 'Case style for token names in manifests (UPPER_SNAKE, lower_snake, lower-kebab, UPPER-KEBAB, camelCase, PascalCase, lower.dot, UPPER.DOT)'
-    required: false
-  token-name-validation:
-    description: 'How to validate user token names (MATCH = must match token-name-style, ALL = accept any valid name)'
-    required: false
-  allow-builtin-token-override:
-    description: 'Allow user tokens to override built-in tokens (for template/reusable projects)'
-    required: false
-  config-sub-path:
-    description: 'Directory containing user-defined token files (relative)'
     required: false
   config-value-trailing-newline:
     description: 'How to handle trailing newlines in config values (strip-for-single-line, preserve-all, always-strip-one-newline)'
@@ -78,20 +38,9 @@ runs:
       shell: bash
       env:
         LOG_ERROR_PREFIX: '::error::'
-        MANIFESTS_SUB_PATH: ${{ inputs.manifests-sub-path }}
         PROJECT_NAME: ${{ inputs.project-name }}
         VERSION: ${{ inputs.version }}
         OUTPUT_SUB_PATH: ${{ inputs.output-sub-path }}
-        DOCKER_TAG: ${{ inputs.docker-tag }}
-        DOCKER_IMAGE_NAME: ${{ inputs.docker-image-name }}
-        DOCKER_IMAGE_FULL_URI: ${{ inputs.docker-image-full-uri }}
-        TARGET_REGISTRY: ${{ inputs.docker-target-registry }}
-        TARGET_BASE_PATH: ${{ inputs.docker-target-base-path }}
-        IS_RELEASE: ${{ inputs.is-release }}
         TOKEN_DELIMITER_STYLE: ${{ inputs.token-delimiter-style }}
-        TOKEN_NAME_STYLE: ${{ inputs.token-name-style }}
-        TOKEN_NAME_VALIDATION: ${{ inputs.token-name-validation }}
-        ALLOW_BUILTIN_TOKEN_OVERRIDE: ${{ inputs.allow-builtin-token-override }}
-        CONFIG_SUB_PATH: ${{ inputs.config-sub-path }}
         CONFIG_VALUE_TRAILING_NEWLINE: ${{ inputs.config-value-trailing-newline }}
       run: "${{ github.action_path }}/../../scripts/main/kubernetes-manifests-package"

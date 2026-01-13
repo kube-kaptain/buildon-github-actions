@@ -1,0 +1,11 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
+
+- name: Override docker image tokens
+  id: manifest-package-only-token-override
+  uses: ./.github/buildon-github-actions/src/actions/kubernetes-manifests-package-only-token-override
+  with:
+    docker-image-name-override: ${{ inputs.docker-image-name-override }}
+    docker-tag-override: ${{ inputs.docker-image-tag-override }}
+    output-sub-path: ${{ inputs.output-sub-path }}
+    token-name-style: ${{ inputs.token-name-style }}

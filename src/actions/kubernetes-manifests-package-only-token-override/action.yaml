@@ -1,0 +1,36 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
+
+name: 'Kubernetes Manifests Package Only Token Override'
+description: 'Overrides docker image tokens for manifests-only workflow'
+
+inputs:
+  docker-image-name-override:
+    description: 'Override value for docker image name (if empty, removes token so variable remains in output)'
+    required: false
+    default: ''
+  docker-tag-override:
+    description: 'Override value for docker tag (if empty, removes token so variable remains in output)'
+    required: false
+    default: ''
+  output-sub-path:
+    description: 'Build output directory (relative)'
+    required: false
+    default: 'target'
+  token-name-style:
+    description: 'Case style for token names (must match prepare step)'
+    required: false
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Override tokens
+      id: override
+      shell: bash
+      env:
+        LOG_ERROR_PREFIX: '::error::'
+        DOCKER_IMAGE_NAME_OVERRIDE: ${{ inputs.docker-image-name-override }}
+        DOCKER_TAG_OVERRIDE: ${{ inputs.docker-tag-override }}
+        OUTPUT_SUB_PATH: ${{ inputs.output-sub-path }}
+        TOKEN_NAME_STYLE: ${{ inputs.token-name-style }}
+      run: "${{ github.action_path }}/../../scripts/main/kubernetes-manifests-package-only-token-override"
