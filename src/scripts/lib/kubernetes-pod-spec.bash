@@ -77,27 +77,30 @@ generate_container_security_context() {
 }
 
 # Generate container resources block
-# Usage: generate_container_resources <indent> <memory> <cpu_request> [cpu_limit]
+# Usage: generate_container_resources <indent> <ephemeral_storage> <memory> <cpu_request> [cpu_limit]
 #   cpu_limit is optional - omit for no CPU throttling
 generate_container_resources() {
-  if [[ $# -lt 3 || $# -gt 4 ]]; then
-    echo "Error: generate_container_resources requires 3-4 arguments, got $#" >&2
+  if [[ $# -lt 4 || $# -gt 5 ]]; then
+    echo "Error: generate_container_resources requires 4-5 arguments, got $#" >&2
     return 1
   fi
 
   local indent_count="$1"
-  local memory="$2"
-  local cpu_request="$3"
-  local cpu_limit="${4:-}"
+  local ephemeral_storage="$2"
+  local memory="$3"
+  local cpu_request="$4"
+  local cpu_limit="${5:-}"
 
   local indent
   indent=$(_pod_spec_indent "$indent_count")
 
   echo "${indent}resources:"
   echo "${indent}  requests:"
+  echo "${indent}    ephemeral-storage: ${ephemeral_storage}"
   echo "${indent}    memory: ${memory}"
   echo "${indent}    cpu: ${cpu_request}"
   echo "${indent}  limits:"
+  echo "${indent}    ephemeral-storage: ${ephemeral_storage}"
   echo "${indent}    memory: ${memory}"
   if [[ -n "${cpu_limit}" ]]; then
     echo "${indent}    cpu: ${cpu_limit}"

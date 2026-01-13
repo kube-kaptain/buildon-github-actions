@@ -78,6 +78,7 @@ AUTOMOUNT_SERVICE_ACCOUNT_TOKEN="${KUBERNETES_WORKLOAD_AUTOMOUNT_SERVICE_ACCOUNT
 MEMORY="${KUBERNETES_WORKLOAD_RESOURCES_MEMORY:-10Mi}"
 CPU_REQUEST="${KUBERNETES_WORKLOAD_RESOURCES_CPU_REQUEST:-100m}"
 CPU_LIMIT="${KUBERNETES_WORKLOAD_RESOURCES_CPU_LIMIT:-}"
+EPHEMERAL_STORAGE="${KUBERNETES_WORKLOAD_RESOURCES_EPHEMERAL_STORAGE:-10Mi}"
 
 # Scaling (deployment-specific)
 # Replicas: empty → token, "NO" → omit for HPA, other → pass through (numeric or custom token)
@@ -387,7 +388,7 @@ specific_annotations="${KUBERNETES_WORKLOAD_ADDITIONAL_ANNOTATIONS:-}"
   generate_container_security_context 10 "${READONLY_ROOT_FILESYSTEM}"
 
   # Resources
-  generate_container_resources 10 "${MEMORY}" "${CPU_REQUEST}" "${CPU_LIMIT}"
+  generate_container_resources 10 "${EPHEMERAL_STORAGE}" "${MEMORY}" "${CPU_REQUEST}" "${CPU_LIMIT}"
 
   # Lifecycle (preStop hook)
   generate_container_lifecycle 10 "${PRESTOP_COMMAND}"

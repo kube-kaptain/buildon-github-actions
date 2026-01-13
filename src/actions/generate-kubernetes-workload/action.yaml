@@ -75,6 +75,10 @@ inputs:
     description: 'CPU limit (empty for no limit)'
     required: false
     default: ''
+  kubernetes-workload-resources-ephemeral-storage:
+    description: 'Ephemeral storage request/limit for disk usage (e.g., 10Mi, 100Mi, 1Gi)'
+    required: false
+    default: '10Mi'
 
   # Mount paths
   kubernetes-workload-configmap-mount-path:
@@ -189,6 +193,7 @@ runs:
         KUBERNETES_WORKLOAD_RESOURCES_MEMORY: ${{ inputs.kubernetes-workload-resources-memory }}
         KUBERNETES_WORKLOAD_RESOURCES_CPU_REQUEST: ${{ inputs.kubernetes-workload-resources-cpu-request }}
         KUBERNETES_WORKLOAD_RESOURCES_CPU_LIMIT: ${{ inputs.kubernetes-workload-resources-cpu-limit }}
+        KUBERNETES_WORKLOAD_RESOURCES_EPHEMERAL_STORAGE: ${{ inputs.kubernetes-workload-resources-ephemeral-storage }}
         # Mount paths
         KUBERNETES_WORKLOAD_CONFIGMAP_MOUNT_PATH: ${{ inputs.kubernetes-workload-configmap-mount-path }}
         KUBERNETES_WORKLOAD_SECRET_MOUNT_PATH: ${{ inputs.kubernetes-workload-secret-mount-path }}

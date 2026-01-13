@@ -27,6 +27,7 @@
     kubernetes-workload-resources-memory: ${{ inputs.kubernetes-workload-resources-memory }}
     kubernetes-workload-resources-cpu-request: ${{ inputs.kubernetes-workload-resources-cpu-request }}
     kubernetes-workload-resources-cpu-limit: ${{ inputs.kubernetes-workload-resources-cpu-limit }}
+    kubernetes-workload-resources-ephemeral-storage: ${{ inputs.kubernetes-workload-resources-ephemeral-storage }}
     # Mount paths
     kubernetes-workload-configmap-mount-path: ${{ inputs.kubernetes-workload-configmap-mount-path }}
     kubernetes-workload-secret-mount-path: ${{ inputs.kubernetes-workload-secret-mount-path }}
