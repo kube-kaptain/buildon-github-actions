@@ -5,6 +5,11 @@ name: 'Generate Kubernetes Workload'
 description: 'Routes to appropriate workload generator (Deployment, StatefulSet, etc.)'
 
 inputs:
+  # Required context
+  project-name:
+    description: 'Project name for workload naming and labels'
+    required: true
+
   # Workload type selection
   kubernetes-workload-type:
     description: 'Workload type to generate (deployment, none)'
@@ -163,6 +168,8 @@ runs:
       shell: bash
       env:
         LOG_ERROR_PREFIX: '::error::'
+        # Required context
+        PROJECT_NAME: ${{ inputs.project-name }}
         # Workload type
         KUBERNETES_WORKLOAD_TYPE: ${{ inputs.kubernetes-workload-type }}
         # Common workload settings

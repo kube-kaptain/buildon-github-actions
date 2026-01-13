@@ -6,6 +6,8 @@
   if: inputs.kubernetes-workload-type != 'none'
   uses: ./.github/buildon-github-actions/src/actions/generate-kubernetes-workload
   with:
+    # Required context
+    project-name: ${{ steps.versions.outputs.project-name }}
     # Workload type
     kubernetes-workload-type: ${{ inputs.kubernetes-workload-type }}
     # Common workload settings
