@@ -16,6 +16,22 @@ REPO_PROVIDERS_DIR="$PLUGINS_DIR/kubernetes-manifests-repo-providers"
 FIXTURES_DIR="$PROJECT_ROOT/src/test/fixtures"
 MOCK_BIN_DIR="$PROJECT_ROOT/src/test/mock-bin"
 
+# Test output directory - all test artifacts go here for diagnostics
+TEST_TARGET_DIR="$PROJECT_ROOT/target/test"
+
+# Counter for unique directory names within a test file
+_TEST_DIR_COUNTER=0
+
+# Create a unique test directory under target/test
+# Usage: dir=$(create_test_dir "prefix")
+create_test_dir() {
+  local prefix="${1:-test}"
+  _TEST_DIR_COUNTER=$((_TEST_DIR_COUNTER + 1))
+  local dir="${TEST_TARGET_DIR}/${prefix}-${BATS_TEST_NAME:-unknown}-${_TEST_DIR_COUNTER}"
+  mkdir -p "$dir"
+  echo "$dir"
+}
+
 # Set up mock git that filters push
 setup_mock_git() {
   mkdir -p "$MOCK_BIN_DIR"
@@ -50,7 +66,7 @@ clone_fixture() {
     return 1
   fi
 
-  repo_dir=$(mktemp -d)
+  repo_dir=$(create_test_dir "fixture-${fixture_name}")
   git clone --quiet "$bundle_path" "$repo_dir" 2>/dev/null
   cd "$repo_dir"
   git config user.email "test@example.com"
@@ -67,7 +83,7 @@ clone_fixture() {
 # Create a temporary git repository for testing (legacy, prefer clone_fixture)
 create_test_repo() {
   local repo_dir
-  repo_dir=$(mktemp -d)
+  repo_dir=$(create_test_dir "repo")
 
   cd "$repo_dir"
   git init --quiet
@@ -82,12 +98,10 @@ create_test_repo() {
   echo "$repo_dir"
 }
 
-# Cleanup test repository
+# Cleanup test repository - NO-OP, files left for diagnostics
 cleanup_test_repo() {
-  local repo_dir="$1"
-  if [[ -d "$repo_dir" ]]; then
-    rm -rf "$repo_dir"
-  fi
+  # Intentionally empty - test artifacts left in target/ for diagnostics
+  :
 }
 
 # Create a branch with specific commits
@@ -159,7 +173,7 @@ assert_var_equals() {
 
 # Set up mock docker that logs calls
 setup_mock_docker() {
-  export MOCK_DOCKER_CALLS=$(mktemp)
+  export MOCK_DOCKER_CALLS=$(create_test_dir "mock-docker")/calls.log
   mkdir -p "$MOCK_BIN_DIR"
   cat > "$MOCK_BIN_DIR/docker" << 'MOCKDOCKER'
 #!/usr/bin/env bash
@@ -177,10 +191,10 @@ MOCKDOCKER
   export PATH="$MOCK_BIN_DIR:$PATH"
 }
 
-# Clean up mock docker
+# Clean up mock docker - NO-OP, files left for diagnostics
 cleanup_mock_docker() {
-  rm -f "$MOCK_DOCKER_CALLS"
   rm -f "$MOCK_BIN_DIR/docker"
+  # Leave MOCK_DOCKER_CALLS log file for diagnostics
 }
 
 # Assert docker was called with specific args

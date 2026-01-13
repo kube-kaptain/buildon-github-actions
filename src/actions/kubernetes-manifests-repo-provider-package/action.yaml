@@ -117,12 +117,12 @@ runs:
         # =====================================================================
         # REPO_PROVIDER_URL (from resolver)
         # =====================================================================
-        echo "url=${{ steps.resolve.outputs.target-registry }}" >> "$GITHUB_OUTPUT"
+        echo "url=${{ steps.resolve.outputs.docker-target-registry }}" >> "$GITHUB_OUTPUT"
 
         # =====================================================================
         # REPO_PROVIDER_NAMESPACE (from resolver)
         # =====================================================================
-        echo "namespace=${{ steps.resolve.outputs.target-base-path }}" >> "$GITHUB_OUTPUT"
+        echo "namespace=${{ steps.resolve.outputs.docker-target-base-path }}" >> "$GITHUB_OUTPUT"
 
         # =====================================================================
         # REPO_PROVIDER_NAME

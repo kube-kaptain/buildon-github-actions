@@ -15,12 +15,12 @@ inputs:
     default: ''
 
 outputs:
-  target-registry:
+  docker-target-registry:
     description: 'Resolved target registry'
-    value: ${{ steps.resolve.outputs.target-registry }}
-  target-base-path:
+    value: ${{ steps.resolve.outputs.docker-target-registry }}
+  docker-target-base-path:
     description: 'Computed target base path'
-    value: ${{ steps.resolve.outputs.target-base-path }}
+    value: ${{ steps.resolve.outputs.docker-target-base-path }}
 
 runs:
   using: 'composite'
@@ -35,13 +35,13 @@ runs:
         else
           RESOLVED_REGISTRY="ghcr.io"
         fi
-        echo "target-registry=$RESOLVED_REGISTRY" >> "$GITHUB_OUTPUT"
+        echo "docker-target-registry=$RESOLVED_REGISTRY" >> "$GITHUB_OUTPUT"
 
         # Auto-set base path for GHCR if not explicitly provided
         # Note: GHCR requires lowercase paths, so we lowercase the org name
         if [[ "$RESOLVED_REGISTRY" == "ghcr.io" && -z "${{ inputs.target-base-path }}" ]]; then
           OWNER="${{ github.repository_owner }}"
-          echo "target-base-path=${OWNER,,}" >> "$GITHUB_OUTPUT"
+          echo "docker-target-base-path=${OWNER,,}" >> "$GITHUB_OUTPUT"
         else
-          echo "target-base-path=${{ inputs.target-base-path }}" >> "$GITHUB_OUTPUT"
+          echo "docker-target-base-path=${{ inputs.target-base-path }}" >> "$GITHUB_OUTPUT"
         fi

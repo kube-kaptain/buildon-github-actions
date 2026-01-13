@@ -14,6 +14,18 @@ on:
         type: string
         default: 'target'
 
+      # Docker image override (optional - if not provided, tokens remain for later substitution)
+      docker-image-name-override:
+        description: 'Docker image name (if provided, substitutes into manifests; if empty, token remains for later substitution)'
+        required: false
+        type: string
+        default: ''
+      docker-image-tag-override:
+        description: 'Docker image tag (if provided, substitutes into manifests; if empty, token remains for later substitution)'
+        required: false
+        type: string
+        default: ''
+
       # Docker registry logins
       docker-registry-logins:
         description: 'YAML config for Docker registry logins (registry URL as key)'
@@ -625,6 +637,8 @@ jobs:
       # === Manifest Package ===
       # INJECT: compute-target-base-path
       # INJECT: github-check-start(name="Package Manifests", id="check-manifest-package")
+      # INJECT: manifest-package-prepare
+      # INJECT: manifest-package-only-token-override
       # INJECT: manifest-package
       # INJECT: github-check-end(name="Package Manifests", id="check-manifest-package")
 

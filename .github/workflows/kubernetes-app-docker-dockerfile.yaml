@@ -1444,6 +1444,8 @@ jobs:
         if: inputs.kubernetes-workload-type != 'none' && success()
         uses: ./.github/buildon-github-actions/src/actions/generate-kubernetes-workload
         with:
+          # Required context
+          project-name: ${{ steps.versions.outputs.project-name }}
           # Workload type
           kubernetes-workload-type: ${{ inputs.kubernetes-workload-type }}
           # Common workload settings
@@ -1718,9 +1720,9 @@ jobs:
         with:
           action: start
           check-name: 'Build & Publish → Package Manifests'
-      - name: Package manifests
-        id: manifest-package
-        uses: ./.github/buildon-github-actions/src/actions/kubernetes-manifests-package
+      - name: Prepare manifests for packaging
+        id: manifest-package-prepare
+        uses: ./.github/buildon-github-actions/src/actions/kubernetes-manifests-package-prepare
         with:
           manifests-sub-path: ${{ inputs.manifests-sub-path }}
           project-name: ${{ steps.versions.outputs.project-name }}
@@ -1736,6 +1738,15 @@ jobs:
           token-name-validation: ${{ inputs.token-name-validation }}
           allow-builtin-token-override: ${{ inputs.allow-builtin-token-override }}
           config-sub-path: ${{ inputs.config-sub-path }}
+          config-value-trailing-newline: ${{ inputs.config-value-trailing-newline }}
+          output-sub-path: ${{ inputs.output-sub-path }}
+      - name: Package manifests
+        id: manifest-package
+        uses: ./.github/buildon-github-actions/src/actions/kubernetes-manifests-package
+        with:
+          project-name: ${{ steps.versions.outputs.project-name }}
+          version: ${{ steps.versions.outputs.version }}
+          token-delimiter-style: ${{ inputs.token-delimiter-style }}
           config-value-trailing-newline: ${{ inputs.config-value-trailing-newline }}
           output-sub-path: ${{ inputs.output-sub-path }}
       - name: Pass check - Package Manifests

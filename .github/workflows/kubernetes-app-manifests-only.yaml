@@ -12,6 +12,18 @@ on:
         type: string
         default: 'target'
 
+      # Docker image override (optional - if not provided, tokens remain for later substitution)
+      docker-image-name-override:
+        description: 'Docker image name (if provided, substitutes into manifests; if empty, token remains for later substitution)'
+        required: false
+        type: string
+        default: ''
+      docker-image-tag-override:
+        description: 'Docker image tag (if provided, substitutes into manifests; if empty, token remains for later substitution)'
+        required: false
+        type: string
+        default: ''
+
       # Docker registry logins
       docker-registry-logins:
         description: 'YAML config for Docker registry logins (registry URL as key)'
@@ -1013,6 +1025,8 @@ jobs:
         if: inputs.kubernetes-workload-type != 'none' && success()
         uses: ./.github/buildon-github-actions/src/actions/generate-kubernetes-workload
         with:
+          # Required context
+          project-name: ${{ steps.versions.outputs.project-name }}
           # Workload type
           kubernetes-workload-type: ${{ inputs.kubernetes-workload-type }}
           # Common workload settings
@@ -1295,9 +1309,9 @@ jobs:
         with:
           action: start
           check-name: 'Build & Publish → Package Manifests'
-      - name: Package manifests
-        id: manifest-package
-        uses: ./.github/buildon-github-actions/src/actions/kubernetes-manifests-package
+      - name: Prepare manifests for packaging
+        id: manifest-package-prepare
+        uses: ./.github/buildon-github-actions/src/actions/kubernetes-manifests-package-prepare
         with:
           manifests-sub-path: ${{ inputs.manifests-sub-path }}
           project-name: ${{ steps.versions.outputs.project-name }}
@@ -1313,6 +1327,23 @@ jobs:
           token-name-validation: ${{ inputs.token-name-validation }}
           allow-builtin-token-override: ${{ inputs.allow-builtin-token-override }}
           config-sub-path: ${{ inputs.config-sub-path }}
+          config-value-trailing-newline: ${{ inputs.config-value-trailing-newline }}
+          output-sub-path: ${{ inputs.output-sub-path }}
+      - name: Override docker image tokens
+        id: manifest-package-only-token-override
+        uses: ./.github/buildon-github-actions/src/actions/kubernetes-manifests-package-only-token-override
+        with:
+          docker-image-name-override: ${{ inputs.docker-image-name-override }}
+          docker-tag-override: ${{ inputs.docker-image-tag-override }}
+          output-sub-path: ${{ inputs.output-sub-path }}
+          token-name-style: ${{ inputs.token-name-style }}
+      - name: Package manifests
+        id: manifest-package
+        uses: ./.github/buildon-github-actions/src/actions/kubernetes-manifests-package
+        with:
+          project-name: ${{ steps.versions.outputs.project-name }}
+          version: ${{ steps.versions.outputs.version }}
+          token-delimiter-style: ${{ inputs.token-delimiter-style }}
           config-value-trailing-newline: ${{ inputs.config-value-trailing-newline }}
           output-sub-path: ${{ inputs.output-sub-path }}
       - name: Pass check - Package Manifests

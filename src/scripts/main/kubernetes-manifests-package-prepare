@@ -1,0 +1,161 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
+#
+# kubernetes-manifests-package-prepare - Prepares manifests and tokens for packaging
+#
+# Sets up directory structure, copies source manifests, prepares substitution tokens.
+# Called before kubernetes-manifests-package (the "do" step).
+#
+# Inputs (environment variables):
+#   MANIFESTS_SUB_PATH  - Source directory, relative (default: src/kubernetes)
+#   PROJECT_NAME    - For variable substitution (required)
+#   VERSION         - For variable substitution (required)
+#   OUTPUT_SUB_PATH - Build output directory, relative (default: target)
+#   DOCKER_TAG      - Docker tag for substitution (required)
+#   DOCKER_IMAGE_NAME - Docker image name for substitution (required)
+#   DOCKER_IMAGE_FULL_URI - Full Docker image URI for substitution (optional)
+#   TARGET_REGISTRY - Target registry for substitution (optional)
+#   TARGET_BASE_PATH - Target base path for substitution (optional)
+#   IS_RELEASE      - Release flag for substitution (optional)
+#   TOKEN_DELIMITER_STYLE - Token delimiter syntax (default: shell)
+#   TOKEN_NAME_STYLE - Case style for token names (default: PascalCase)
+#   TOKEN_NAME_VALIDATION - How to validate user token names (default: MATCH)
+#   ALLOW_BUILTIN_TOKEN_OVERRIDE - Allow user tokens to override built-ins (default: false)
+#   CONFIG_SUB_PATH - Source directory for user-defined tokens, relative (default: src/config)
+#   CONFIG_VALUE_TRAILING_NEWLINE - Trailing newline handling (default: strip-for-single-line)
+#
+# Outputs:
+#   MANIFESTS_ZIP_FILE_NAME - Filename of zip (for subsequent steps)
+#
+set -euo pipefail
+
+# Locate script directory for calling sibling scripts
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Logging configuration (CI-agnostic)
+LOG_ERROR_PREFIX="${LOG_ERROR_PREFIX:-}"
+LOG_ERROR_SUFFIX="${LOG_ERROR_SUFFIX:-}"
+
+# Required inputs
+PROJECT_NAME="${PROJECT_NAME:?PROJECT_NAME is required}"
+VERSION="${VERSION:?VERSION is required}"
+DOCKER_TAG="${DOCKER_TAG:?DOCKER_TAG is required}"
+DOCKER_IMAGE_NAME="${DOCKER_IMAGE_NAME:?DOCKER_IMAGE_NAME is required}"
+
+# shellcheck source=src/scripts/defaults/common.bash
+source "$(dirname "${BASH_SOURCE[0]}")/../defaults/common.bash"
+
+# Pass-through vars (called scripts default their own; these just satisfy set -u)
+DOCKER_IMAGE_FULL_URI="${DOCKER_IMAGE_FULL_URI:-}"
+TARGET_REGISTRY="${TARGET_REGISTRY:-}"
+TARGET_BASE_PATH="${TARGET_BASE_PATH:-}"
+IS_RELEASE="${IS_RELEASE:-}"
+# Token substitution
+# shellcheck source=src/scripts/defaults/tokens.bash
+source "$(dirname "${BASH_SOURCE[0]}")/../defaults/tokens.bash"
+
+# Build output structure (sub-paths, relative to working directory)
+MANIFESTS_COMBINED_SUB_PATH="${OUTPUT_SUB_PATH}/manifests/combined"
+MANIFESTS_CONFIG_SUB_PATH="${OUTPUT_SUB_PATH}/manifests/config"
+MANIFESTS_ZIP_SUB_PATH="${OUTPUT_SUB_PATH}/manifests/zip"
+
+# Output variable for GitHub Actions
+output_var() {
+  local name="$1"
+  local value="$2"
+
+  echo "${name}=${value}"
+
+  if [[ -n "${GITHUB_OUTPUT:-}" ]]; then
+    echo "${name}=${value}" >> "${GITHUB_OUTPUT}"
+  fi
+}
+
+main() {
+  echo "=== Kubernetes Manifest Package Prepare ===" >&2
+  echo "Source: ${MANIFESTS_SUB_PATH}" >&2
+  echo "Config: ${CONFIG_SUB_PATH}" >&2
+  echo "Output: ${OUTPUT_SUB_PATH}" >&2
+  echo "Project: ${PROJECT_NAME}" >&2
+  echo "Version: ${VERSION}" >&2
+  echo "Docker tag: ${DOCKER_TAG}" >&2
+  echo "Docker image: ${DOCKER_IMAGE_NAME}" >&2
+  echo "============================================" >&2
+
+  # Create output directory structure (may already exist from pre-package hooks)
+  mkdir -p "${MANIFESTS_COMBINED_SUB_PATH}"
+  mkdir -p "${MANIFESTS_ZIP_SUB_PATH}"
+
+  # Copy from source to combined if source exists and has files
+  # (Hooks may have already contributed to combined/ - source files override)
+  if [[ -d "${MANIFESTS_SUB_PATH}" ]]; then
+    local source_file_count
+    source_file_count=$(find "${MANIFESTS_SUB_PATH}" -type f | wc -l | tr -d ' ')
+
+    if [[ "${source_file_count}" -gt 0 ]]; then
+      echo "" >&2
+      echo "Copying ${source_file_count} file(s) from ${MANIFESTS_SUB_PATH}" >&2
+      cp -R "${MANIFESTS_SUB_PATH}"/* "${MANIFESTS_COMBINED_SUB_PATH}/"
+    else
+      echo "" >&2
+      echo "Source directory empty: ${MANIFESTS_SUB_PATH}" >&2
+    fi
+  else
+    echo "" >&2
+    echo "Source directory not found: ${MANIFESTS_SUB_PATH}" >&2
+  fi
+
+  # Validate combined/ has files (from any source: hooks or src/kubernetes)
+  local yaml_count=0
+  local other_count=0
+  local total_files=0
+
+  while IFS= read -r file; do
+    total_files=$((total_files + 1))
+    case "${file}" in
+      *.yaml) yaml_count=$((yaml_count + 1)) ;;
+      *) other_count=$((other_count + 1)) ;;
+    esac
+  done < <(find "${MANIFESTS_COMBINED_SUB_PATH}" -type f)
+
+  if [[ "${total_files}" -eq 0 ]]; then
+    echo "${LOG_ERROR_PREFIX}No manifests to package (${MANIFESTS_COMBINED_SUB_PATH} is empty)${LOG_ERROR_SUFFIX}" >&2
+    exit 1
+  fi
+
+  echo "" >&2
+  echo "Found ${yaml_count} manifest file(s) (.yaml)" >&2
+  if [[ ${other_count} -gt 0 ]]; then
+    echo "Found ${other_count} non-manifest file(s)" >&2
+  fi
+
+  # Compute the zip filename (used as a built-in token)
+  local zip_name="${PROJECT_NAME}-${VERSION}-manifests.zip"
+
+  # Prepare substitution tokens (built-ins + user config)
+  echo "" >&2
+  TOKENS_OUTPUT_SUB_PATH="${MANIFESTS_CONFIG_SUB_PATH}" \
+  CONFIG_SUB_PATH="${CONFIG_SUB_PATH}" \
+  TOKEN_NAME_STYLE="${TOKEN_NAME_STYLE}" \
+  TOKEN_NAME_VALIDATION="${TOKEN_NAME_VALIDATION}" \
+  ALLOW_BUILTIN_TOKEN_OVERRIDE="${ALLOW_BUILTIN_TOKEN_OVERRIDE}" \
+  CONFIG_VALUE_TRAILING_NEWLINE="${CONFIG_VALUE_TRAILING_NEWLINE}" \
+  PROJECT_NAME="${PROJECT_NAME}" \
+  VERSION="${VERSION}" \
+  DOCKER_TAG="${DOCKER_TAG}" \
+  DOCKER_IMAGE_NAME="${DOCKER_IMAGE_NAME}" \
+  DOCKER_IMAGE_FULL_URI="${DOCKER_IMAGE_FULL_URI}" \
+  TARGET_REGISTRY="${TARGET_REGISTRY}" \
+  TARGET_BASE_PATH="${TARGET_BASE_PATH}" \
+  IS_RELEASE="${IS_RELEASE}" \
+  MANIFESTS_ZIP_FILE_NAME="${zip_name}" \
+  "${SCRIPT_DIR}/../util/prepare-substitution-tokens"
+
+  output_var "MANIFESTS_ZIP_FILE_NAME" "${zip_name}"
+
+  echo "" >&2
+  echo "=== Prepare Complete ===" >&2
+}
+
+main "$@"

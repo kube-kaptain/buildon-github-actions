@@ -8,14 +8,17 @@
 load helpers
 
 setup() {
-  export MOCK_DOCKER_CALLS=$(mktemp)
+  local base_dir=$(create_test_dir "k8s-repo-docker-fetch")
+  export MOCK_DOCKER_CALLS="$base_dir/docker-calls.log"
   mkdir -p "$MOCK_BIN_DIR"
 
   # Create test output directory (used as OUTPUT_SUB_PATH)
-  export OUTPUT_SUB_PATH=$(mktemp -d)
+  export OUTPUT_SUB_PATH="$base_dir/target"
+  mkdir -p "$OUTPUT_SUB_PATH"
 
   # Create a fake zip file that will be "extracted" from the container
-  export MOCK_ZIP_DIR=$(mktemp -d)
+  export MOCK_ZIP_DIR="$base_dir/mock-zip"
+  mkdir -p "$MOCK_ZIP_DIR"
   mkdir -p "$MOCK_ZIP_DIR/manifests"
   echo "deployment.yaml content" > "$MOCK_ZIP_DIR/manifests/deployment.yaml"
   echo "service.yaml content" > "$MOCK_ZIP_DIR/manifests/service.yaml"
@@ -59,10 +62,7 @@ MOCKDOCKER
 }
 
 teardown() {
-  rm -f "$MOCK_DOCKER_CALLS"
-  rm -rf "$MOCK_BIN_DIR/docker"
-  rm -rf "$OUTPUT_SUB_PATH"
-  rm -rf "$MOCK_ZIP_DIR"
+  :
 }
 
 @test "extracts manifests from docker image" {
@@ -172,8 +172,8 @@ MOCKDOCKER
 }
 
 @test "creates output directories automatically" {
-  # Start with empty OUTPUT_SUB_PATH
-  rm -rf "$OUTPUT_SUB_PATH"
+  # Use a fresh subpath to verify directory creation
+  export OUTPUT_SUB_PATH="${OUTPUT_SUB_PATH}/fresh-subdir"
   mkdir -p "$OUTPUT_SUB_PATH"
 
   run "$REPO_PROVIDERS_DIR/kubernetes-manifests-repo-provider-docker-fetch-and-extract" \

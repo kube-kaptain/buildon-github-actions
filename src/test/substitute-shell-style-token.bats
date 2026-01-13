@@ -7,13 +7,12 @@
 load helpers
 
 setup() {
-  export TOKENS_DIR=$(mktemp -d)
-  export TARGET_DIR=$(mktemp -d)
+  export TOKENS_DIR=$(create_test_dir "tokens")
+  export TARGET_DIR=$(create_test_dir "target")
 }
 
 teardown() {
-  rm -rf "$TOKENS_DIR"
-  rm -rf "$TARGET_DIR"
+  :
 }
 
 # Create a token file

@@ -6,12 +6,11 @@ load helpers
 
 setup() {
   setup_mock_docker
-  export GITHUB_OUTPUT=$(mktemp)
+  export GITHUB_OUTPUT=$(create_test_dir "docker-retag")/output
 }
 
 teardown() {
-  cleanup_mock_docker
-  rm -f "$GITHUB_OUTPUT"
+  :
 }
 
 # Required env vars for most tests

@@ -210,6 +210,11 @@ main() {
   log_info "Starting test suite"
   log_info "Project root: ${PROJECT_ROOT}"
 
+  # Clear and recreate target/test directory for test artifacts
+  rm -rf "${PROJECT_ROOT}/target/test"
+  mkdir -p "${PROJECT_ROOT}/target/test"
+  log_info "Cleared target/test/ for test artifacts"
+
   # Check scripts are executable
   check_executables
 
