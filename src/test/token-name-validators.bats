@@ -7,11 +7,11 @@
 load helpers
 
 setup() {
-  export TEST_DIR=$(mktemp -d)
+  export TEST_DIR=$(create_test_dir "validators")
 }
 
 teardown() {
-  rm -rf "$TEST_DIR"
+  :
 }
 
 VALIDATORS_DIR="$PLUGINS_DIR/token-name-validators"

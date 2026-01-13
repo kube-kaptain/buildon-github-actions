@@ -5,9 +5,8 @@
 load helpers
 
 setup() {
-  export GITHUB_OUTPUT=$(mktemp)
-  # Create test directories in temp location
-  export TEST_WORK_DIR=$(mktemp -d)
+  export TEST_WORK_DIR=$(create_test_dir "manifests-pkg")
+  export GITHUB_OUTPUT="$TEST_WORK_DIR/output"
   cd "$TEST_WORK_DIR"
   # Use relative paths from within the temp dir
   export TEST_MANIFESTS="manifests"
@@ -17,8 +16,7 @@ setup() {
 }
 
 teardown() {
-  rm -f "$GITHUB_OUTPUT"
-  rm -rf "$TEST_WORK_DIR"
+  :
 }
 
 # Create sample manifest file
@@ -269,7 +267,6 @@ set_required_env() {
   run "$SCRIPTS_DIR/kubernetes-manifests-package"
   [ "$status" -eq 0 ]
   assert_output_contains "Output: target"
-  rm -rf target/
 }
 
 @test "defaults TOKEN_NAME_STYLE to PascalCase" {

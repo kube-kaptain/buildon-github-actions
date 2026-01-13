@@ -6,19 +6,19 @@ load helpers
 
 setup() {
   setup_mock_docker
-  export GITHUB_OUTPUT=$(mktemp)
+  local base_dir=$(create_test_dir "docker-dockerfile")
+  export GITHUB_OUTPUT="$base_dir/output"
   # Create a test directory with Dockerfile
-  export TEST_DIR=$(mktemp -d)
+  export TEST_DIR="$base_dir/src"
+  mkdir -p "$TEST_DIR"
   echo "FROM alpine:3.21" > "$TEST_DIR/Dockerfile"
   # Create output directory for substitution
-  export OUTPUT_DIR=$(mktemp -d)
+  export OUTPUT_DIR="$base_dir/target"
+  mkdir -p "$OUTPUT_DIR"
 }
 
 teardown() {
-  cleanup_mock_docker
-  rm -f "$GITHUB_OUTPUT"
-  rm -rf "$TEST_DIR"
-  rm -rf "$OUTPUT_DIR"
+  :
 }
 
 # Required env vars for most tests
@@ -276,6 +276,4 @@ exit 0' > "$MOCK_BIN_DIR/docker"
   [ "$status" -eq 0 ]
   [[ "$output" == *"ENV MY_VAR=my-custom-value"* ]]
 
-  # Cleanup
-  rm -rf "$TEST_DIR/../config"
 }

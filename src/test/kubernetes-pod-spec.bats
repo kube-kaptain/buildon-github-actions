@@ -197,7 +197,7 @@ setup() {
 
 @test "generate_container_env_from_directory: generates env vars from files" {
   local test_dir
-  test_dir=$(mktemp -d)
+  test_dir=$(create_test_dir "pod-spec-env")
   echo "value1" > "$test_dir/VAR1"
   echo "value2" > "$test_dir/VAR2"
 
@@ -208,8 +208,6 @@ setup() {
   [[ "$output" == *"value: \"value1\""* ]]
   [[ "$output" == *"- name: VAR2"* ]]
   [[ "$output" == *"value: \"value2\""* ]]
-
-  rm -rf "$test_dir"
 }
 
 @test "generate_container_env_from_directory: outputs nothing when dir missing" {
@@ -220,18 +218,16 @@ setup() {
 
 @test "generate_container_env_from_directory: outputs nothing when dir empty" {
   local test_dir
-  test_dir=$(mktemp -d)
+  test_dir=$(create_test_dir "pod-spec-empty")
 
   run generate_container_env_from_directory 10 "$test_dir"
   [ "$status" -eq 0 ]
   [ -z "$output" ]
-
-  rm -rf "$test_dir"
 }
 
 @test "generate_container_env_from_directory: ignores dotfiles" {
   local test_dir
-  test_dir=$(mktemp -d)
+  test_dir=$(create_test_dir "pod-spec-dotfiles")
   echo "visible" > "$test_dir/VISIBLE"
   echo "hidden" > "$test_dir/.hidden"
 
@@ -239,8 +235,6 @@ setup() {
   [ "$status" -eq 0 ]
   [[ "$output" == *"VISIBLE"* ]]
   [[ "$output" != *".hidden"* ]]
-
-  rm -rf "$test_dir"
 }
 
 @test "generate_container_env_from_directory: fails with wrong arg count" {

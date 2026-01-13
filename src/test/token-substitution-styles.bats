@@ -10,13 +10,12 @@
 load helpers
 
 setup() {
-  export TOKENS_DIR=$(mktemp -d)
-  export TARGET_DIR=$(mktemp -d)
+  export TOKENS_DIR=$(create_test_dir "tokens-styles")
+  export TARGET_DIR=$(create_test_dir "target-styles")
 }
 
 teardown() {
-  rm -rf "$TOKENS_DIR"
-  rm -rf "$TARGET_DIR"
+  :
 }
 
 # Style definitions: name|token-pattern-template

@@ -8,7 +8,7 @@ load helpers
 
 setup() {
   source "$LIB_DIR/kubernetes-workload-detection.bash"
-  TEST_DIR=$(mktemp -d)
+  TEST_DIR=$(create_test_dir "workload-detect")
   OUTPUT_SUB_PATH="$TEST_DIR/target"
   MANIFESTS_SUB_PATH="$TEST_DIR/src/kubernetes"
   mkdir -p "$OUTPUT_SUB_PATH/manifests/combined"
@@ -16,7 +16,7 @@ setup() {
 }
 
 teardown() {
-  rm -rf "$TEST_DIR"
+  :
 }
 
 # =============================================================================

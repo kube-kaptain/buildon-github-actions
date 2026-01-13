@@ -7,8 +7,10 @@
 load helpers
 
 setup() {
-  export KUBERNETES_SECRET_TEMPLATE_SUB_PATH=$(mktemp -d)
-  export OUTPUT_SUB_PATH=$(mktemp -d)
+  local base_dir=$(create_test_dir "gen-secret-template")
+  export KUBERNETES_SECRET_TEMPLATE_SUB_PATH="$base_dir/secret"
+  export OUTPUT_SUB_PATH="$base_dir/target"
+  mkdir -p "$KUBERNETES_SECRET_TEMPLATE_SUB_PATH" "$OUTPUT_SUB_PATH"
   export PROJECT_NAME="my-project"
   export TOKEN_NAME_STYLE="PascalCase"
   export TOKEN_DELIMITER_STYLE="shell"
@@ -16,9 +18,7 @@ setup() {
 }
 
 teardown() {
-  rm -rf "$KUBERNETES_SECRET_TEMPLATE_SUB_PATH"
-  rm -rf "${KUBERNETES_SECRET_TEMPLATE_SUB_PATH}.template"
-  rm -rf "$OUTPUT_SUB_PATH"
+  :
 }
 
 # Helper to create a secret template file
@@ -208,7 +208,8 @@ read_manifest() {
 # =============================================================================
 
 @test "exits 0 when secret template directory does not exist" {
-  rm -rf "$KUBERNETES_SECRET_TEMPLATE_SUB_PATH"
+  # Point to a path that doesn't exist (subdir of our test dir)
+  export KUBERNETES_SECRET_TEMPLATE_SUB_PATH="${KUBERNETES_SECRET_TEMPLATE_SUB_PATH}/nonexistent"
 
   run "$GENERATORS_DIR/generate-kubernetes-secret-template"
   [ "$status" -eq 0 ]
@@ -294,7 +295,8 @@ line3=${Value3}'
 # =============================================================================
 
 @test "creates output directory if missing" {
-  rm -rf "$OUTPUT_SUB_PATH"
+  # Use a fresh subdirectory that doesn't exist yet
+  export OUTPUT_SUB_PATH="${OUTPUT_SUB_PATH}/fresh-subdir"
   create_secret_file "database-password" '${DatabasePassword}'
 
   run "$GENERATORS_DIR/generate-kubernetes-secret-template"
@@ -304,7 +306,7 @@ line3=${Value3}'
 }
 
 @test "respects custom OUTPUT_SUB_PATH" {
-  local custom_output=$(mktemp -d)
+  local custom_output=$(create_test_dir "secret-template-custom")
   export OUTPUT_SUB_PATH="$custom_output"
   create_secret_file "database-password" '${DatabasePassword}'
 
@@ -312,7 +314,6 @@ line3=${Value3}'
   [ "$status" -eq 0 ]
 
   [ -f "$custom_output/manifests/combined/secret.template.yaml" ]
-  rm -rf "$custom_output"
 }
 
 # =============================================================================
@@ -371,8 +372,6 @@ line3=${Value3}'
 
   run "$GENERATORS_DIR/generate-kubernetes-secret-template"
   [ "$status" -eq 0 ]
-
-  rm -rf "$suffix_dir"
 }
 
 @test "suffix affects metadata.name with checksum" {
@@ -421,7 +420,7 @@ line3=${Value3}'
 
 @test "suffix appends to custom sub-path for source directory" {
   # Create a custom base path and the suffixed version with .template
-  local custom_base=$(mktemp -d)
+  local custom_base=$(create_test_dir "secret-template-suffix-base")
   local custom_suffixed="${custom_base}-db.template"
   mkdir -p "$custom_suffixed"
   printf '${DbPassword}' > "$custom_suffixed/password"
@@ -437,13 +436,11 @@ line3=${Value3}'
   manifest=$(cat "$OUTPUT_SUB_PATH/manifests/combined/secret-db.template.yaml")
   [[ "$manifest" == *"password:"* ]]
   [[ "$manifest" == *'${DbPassword}'* ]]
-
-  rm -rf "$custom_base" "$custom_suffixed"
 }
 
 @test "custom sub-path without suffix uses path with static suffix" {
   # Create a custom path with .template suffix
-  local custom_path=$(mktemp -d)
+  local custom_path=$(create_test_dir "secret-template-custom-path")
   local custom_path_template="${custom_path}.template"
   mkdir -p "$custom_path_template"
   printf '${CustomSecret}' > "$custom_path_template/secret-key"
@@ -457,13 +454,11 @@ line3=${Value3}'
   manifest=$(cat "$OUTPUT_SUB_PATH/manifests/combined/secret.template.yaml")
   [[ "$manifest" == *"secret-key:"* ]]
   [[ "$manifest" == *'${CustomSecret}'* ]]
-
-  rm -rf "$custom_path" "$custom_path_template"
 }
 
 @test "suffix with custom sub-path affects name and filename" {
   # Create the expected suffixed path with .template
-  local custom_base=$(mktemp -d)
+  local custom_base=$(create_test_dir "secret-template-api-base")
   local custom_suffixed="${custom_base}-api.template"
   mkdir -p "$custom_suffixed"
   printf '${ApiKey}' > "$custom_suffixed/api-key"
@@ -480,8 +475,6 @@ line3=${Value3}'
   # Name should include suffix
   manifest=$(cat "$OUTPUT_SUB_PATH/manifests/combined/secret-api.template.yaml")
   [[ "$manifest" == *'name: ${ProjectName}-api-secret-checksum'* ]]
-
-  rm -rf "$custom_base" "$custom_suffixed"
 }
 
 # =============================================================================

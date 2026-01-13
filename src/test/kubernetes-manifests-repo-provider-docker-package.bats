@@ -9,20 +9,20 @@ load helpers
 
 setup() {
   setup_mock_docker
-  export GITHUB_OUTPUT=$(mktemp)
+  local base_dir=$(create_test_dir "k8s-repo-docker-pkg")
+  export GITHUB_OUTPUT="$base_dir/output"
   # Create a test zip in a directory
-  export TEST_ZIP_DIR=$(mktemp -d)
+  export TEST_ZIP_DIR="$base_dir/zip"
+  mkdir -p "$TEST_ZIP_DIR"
   export TEST_ZIP_NAME="test-manifests.zip"
   echo "test content" > "$TEST_ZIP_DIR/$TEST_ZIP_NAME"
   # Create output directory
-  export OUTPUT_SUB_PATH=$(mktemp -d)
+  export OUTPUT_SUB_PATH="$base_dir/target"
+  mkdir -p "$OUTPUT_SUB_PATH"
 }
 
 teardown() {
-  cleanup_mock_docker
-  rm -f "$GITHUB_OUTPUT"
-  rm -rf "$TEST_ZIP_DIR"
-  rm -rf "$OUTPUT_SUB_PATH"
+  :
 }
 
 # Required env vars for most tests (using REPO_PROVIDER_* API)

@@ -7,8 +7,10 @@
 load helpers
 
 setup() {
-  export TEST_DIR=$(mktemp -d)
-  export OUTPUT_SUB_PATH=$(mktemp -d)
+  local base_dir=$(create_test_dir "gen-deployment")
+  export TEST_DIR="$base_dir/workspace"
+  export OUTPUT_SUB_PATH="$base_dir/target"
+  mkdir -p "$TEST_DIR" "$OUTPUT_SUB_PATH"
   export PROJECT_NAME="my-project"
   export TOKEN_NAME_STYLE="PascalCase"
   export TOKEN_DELIMITER_STYLE="shell"
@@ -21,8 +23,7 @@ setup() {
 }
 
 teardown() {
-  rm -rf "$TEST_DIR"
-  rm -rf "$OUTPUT_SUB_PATH"
+  :
 }
 
 # Helper to create env file
@@ -464,7 +465,8 @@ read_manifest_with_suffix() {
 }
 
 @test "omits env section when workload-env is empty" {
-  rm -rf "${TEST_DIR}/src/workload-env"
+  # Rename workload-env to simulate it not existing
+  mv "${TEST_DIR}/src/workload-env" "${TEST_DIR}/src/workload-env-hidden"
 
   run "$GENERATORS_DIR/generate-kubernetes-workload-deployment"
   [ "$status" -eq 0 ]

@@ -11,7 +11,7 @@ setup() {
 }
 
 teardown() {
-  cleanup_test_repo "$TEST_REPO"
+  :
 }
 
 @test "passes for clean feature branch" {

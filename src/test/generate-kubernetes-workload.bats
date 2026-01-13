@@ -7,14 +7,14 @@
 load helpers
 
 setup() {
-  export OUTPUT_SUB_PATH=$(mktemp -d)
+  export OUTPUT_SUB_PATH=$(create_test_dir "gen-workload")
   export PROJECT_NAME="my-project"
   export TOKEN_NAME_STYLE="PascalCase"
   export TOKEN_DELIMITER_STYLE="shell"
 }
 
 teardown() {
-  rm -rf "$OUTPUT_SUB_PATH"
+  :
 }
 
 # =============================================================================

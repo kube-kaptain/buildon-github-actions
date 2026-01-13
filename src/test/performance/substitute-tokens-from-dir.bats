@@ -15,13 +15,12 @@
 load ../helpers
 
 setup() {
-  export TOKENS_DIR=$(mktemp -d)
-  export TARGET_DIR=$(mktemp -d)
+  export TOKENS_DIR=$(create_test_dir "perf-tokens")
+  export TARGET_DIR=$(create_test_dir "perf-target")
 }
 
 teardown() {
-  rm -rf "$TOKENS_DIR"
-  rm -rf "$TARGET_DIR"
+  :
 }
 
 @test "performance: 50 tokens, 250 files, ~10 tokens each" {

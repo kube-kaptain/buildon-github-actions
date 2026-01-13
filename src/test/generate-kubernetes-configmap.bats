@@ -7,8 +7,10 @@
 load helpers
 
 setup() {
-  export KUBERNETES_CONFIGMAP_SUB_PATH=$(mktemp -d)
-  export OUTPUT_SUB_PATH=$(mktemp -d)
+  local base_dir=$(create_test_dir "gen-configmap")
+  export KUBERNETES_CONFIGMAP_SUB_PATH="$base_dir/configmap"
+  export OUTPUT_SUB_PATH="$base_dir/target"
+  mkdir -p "$KUBERNETES_CONFIGMAP_SUB_PATH" "$OUTPUT_SUB_PATH"
   export PROJECT_NAME="my-project"
   export TOKEN_NAME_STYLE="PascalCase"
   export TOKEN_DELIMITER_STYLE="shell"
@@ -16,8 +18,7 @@ setup() {
 }
 
 teardown() {
-  rm -rf "$KUBERNETES_CONFIGMAP_SUB_PATH"
-  rm -rf "$OUTPUT_SUB_PATH"
+  :
 }
 
 # Helper to create a config file
@@ -201,7 +202,8 @@ read_manifest() {
 # =============================================================================
 
 @test "exits 0 when configmap directory does not exist" {
-  rm -rf "$KUBERNETES_CONFIGMAP_SUB_PATH"
+  # Point to a path that doesn't exist (subdir of our test dir)
+  export KUBERNETES_CONFIGMAP_SUB_PATH="${KUBERNETES_CONFIGMAP_SUB_PATH}/nonexistent"
 
   run "$GENERATORS_DIR/generate-kubernetes-configmap"
   [ "$status" -eq 0 ]
@@ -295,7 +297,8 @@ line3=value3"
 # =============================================================================
 
 @test "creates output directory if missing" {
-  rm -rf "$OUTPUT_SUB_PATH"
+  # Use a fresh subdirectory that doesn't exist yet
+  export OUTPUT_SUB_PATH="${OUTPUT_SUB_PATH}/fresh-subdir"
   create_config_file "app.properties" "key=value"
 
   run "$GENERATORS_DIR/generate-kubernetes-configmap"
@@ -305,7 +308,7 @@ line3=value3"
 }
 
 @test "respects custom OUTPUT_SUB_PATH" {
-  local custom_output=$(mktemp -d)
+  local custom_output=$(create_test_dir "configmap-custom")
   export OUTPUT_SUB_PATH="$custom_output"
   create_config_file "app.properties" "key=value"
 
@@ -313,7 +316,6 @@ line3=value3"
   [ "$status" -eq 0 ]
 
   [ -f "$custom_output/manifests/combined/configmap.yaml" ]
-  rm -rf "$custom_output"
 }
 
 # =============================================================================
@@ -430,8 +432,6 @@ line3=value3"
 
   run "$GENERATORS_DIR/generate-kubernetes-configmap"
   [ "$status" -eq 0 ]
-
-  rm -rf "$suffix_dir"
 }
 
 @test "suffix affects metadata.name with checksum" {
@@ -496,7 +496,7 @@ line3=value3"
 
 @test "suffix appends to custom sub-path for source directory" {
   # Create a custom base path and the suffixed version
-  local custom_base=$(mktemp -d)
+  local custom_base=$(create_test_dir "configmap-suffix-base")
   local custom_suffixed="${custom_base}-nginx"
   mkdir -p "$custom_suffixed"
   printf 'nginx=config' > "$custom_suffixed/nginx.conf"
@@ -512,13 +512,11 @@ line3=value3"
   manifest=$(cat "$OUTPUT_SUB_PATH/manifests/combined/configmap-nginx.yaml")
   [[ "$manifest" == *"nginx.conf:"* ]]
   [[ "$manifest" == *"nginx=config"* ]]
-
-  rm -rf "$custom_base" "$custom_suffixed"
 }
 
 @test "custom sub-path without suffix uses path as-is" {
   # Create a custom path
-  local custom_path=$(mktemp -d)
+  local custom_path=$(create_test_dir "configmap-custom-path")
   printf 'custom=value' > "$custom_path/custom.properties"
 
   # Set custom path, no suffix
@@ -530,8 +528,6 @@ line3=value3"
   manifest=$(cat "$OUTPUT_SUB_PATH/manifests/combined/configmap.yaml")
   [[ "$manifest" == *"custom.properties:"* ]]
   [[ "$manifest" == *"custom=value"* ]]
-
-  rm -rf "$custom_path"
 }
 
 # =============================================================================

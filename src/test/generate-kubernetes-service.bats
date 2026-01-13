@@ -7,7 +7,7 @@
 load helpers
 
 setup() {
-  export OUTPUT_SUB_PATH=$(mktemp -d)
+  export OUTPUT_SUB_PATH=$(create_test_dir "gen-svc")
   export PROJECT_NAME="my-project"
   export TOKEN_NAME_STYLE="PascalCase"
   export TOKEN_DELIMITER_STYLE="shell"
@@ -15,7 +15,7 @@ setup() {
 }
 
 teardown() {
-  rm -rf "$OUTPUT_SUB_PATH"
+  :
 }
 
 # Helper to read generated manifest
@@ -280,7 +280,8 @@ read_manifest_in_subpath() {
 # =============================================================================
 
 @test "creates output directory if missing" {
-  rm -rf "$OUTPUT_SUB_PATH"
+  # Use a fresh subdirectory that doesn't exist yet
+  export OUTPUT_SUB_PATH="${OUTPUT_SUB_PATH}/fresh-subdir"
 
   run "$GENERATORS_DIR/generate-kubernetes-service"
   [ "$status" -eq 0 ]
@@ -288,7 +289,7 @@ read_manifest_in_subpath() {
 }
 
 @test "respects custom OUTPUT_SUB_PATH" {
-  export OUTPUT_SUB_PATH=$(mktemp -d)
+  export OUTPUT_SUB_PATH=$(create_test_dir "gen-svc-custom")
 
   run "$GENERATORS_DIR/generate-kubernetes-service"
   [ "$status" -eq 0 ]
