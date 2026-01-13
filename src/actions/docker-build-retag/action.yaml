@@ -42,10 +42,10 @@ outputs:
     value: ${{ steps.retag.outputs.DOCKER_TARGET_IMAGE_FULL_URI }}
   docker-target-registry:
     description: 'Resolved target registry (for passing to manifest-package)'
-    value: ${{ steps.resolve.outputs.target-registry }}
+    value: ${{ steps.resolve.outputs.docker-target-registry }}
   docker-target-base-path:
     description: 'Computed target base path (for passing to manifest-package)'
-    value: ${{ steps.resolve.outputs.target-base-path }}
+    value: ${{ steps.resolve.outputs.docker-target-base-path }}
 
 runs:
   using: 'composite'
@@ -67,8 +67,8 @@ runs:
         DOCKER_SOURCE_BASE_PATH: ${{ inputs.docker-source-base-path }}
         DOCKER_SOURCE_IMAGE_NAME: ${{ inputs.docker-source-image-name }}
         DOCKER_SOURCE_TAG: ${{ inputs.docker-source-tag }}
-        DOCKER_TARGET_REGISTRY: ${{ steps.resolve.outputs.target-registry }}
-        DOCKER_TARGET_BASE_PATH: ${{ steps.resolve.outputs.target-base-path }}
+        DOCKER_TARGET_REGISTRY: ${{ steps.resolve.outputs.docker-target-registry }}
+        DOCKER_TARGET_BASE_PATH: ${{ steps.resolve.outputs.docker-target-base-path }}
         DOCKER_IMAGE_NAME: ${{ inputs.docker-image-name }}
         DOCKER_TAG: ${{ inputs.docker-tag }}
       run: "${{ github.action_path }}/../../scripts/main/docker-build-retag"

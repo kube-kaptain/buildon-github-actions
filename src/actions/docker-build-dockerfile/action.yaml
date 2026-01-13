@@ -73,10 +73,10 @@ outputs:
     value: ${{ steps.build.outputs.DOCKER_SUBSTITUTED_SUB_PATH }}
   docker-target-registry:
     description: 'Resolved target registry (for passing to manifest-package)'
-    value: ${{ steps.resolve.outputs.target-registry }}
+    value: ${{ steps.resolve.outputs.docker-target-registry }}
   docker-target-base-path:
     description: 'Computed target base path (for passing to manifest-package)'
-    value: ${{ steps.resolve.outputs.target-base-path }}
+    value: ${{ steps.resolve.outputs.docker-target-base-path }}
 
 runs:
   using: 'composite'
@@ -94,8 +94,8 @@ runs:
       env:
         LOG_ERROR_PREFIX: '::error::'
         LOG_WARNING_PREFIX: '::warning::'
-        DOCKER_TARGET_REGISTRY: ${{ steps.resolve.outputs.target-registry }}
-        DOCKER_TARGET_BASE_PATH: ${{ steps.resolve.outputs.target-base-path }}
+        DOCKER_TARGET_REGISTRY: ${{ steps.resolve.outputs.docker-target-registry }}
+        DOCKER_TARGET_BASE_PATH: ${{ steps.resolve.outputs.docker-target-base-path }}
         DOCKER_IMAGE_NAME: ${{ inputs.docker-image-name }}
         DOCKER_TAG: ${{ inputs.docker-tag }}
         VERSION: ${{ inputs.version }}
