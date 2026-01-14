@@ -620,9 +620,9 @@ jobs:
       # INJECT: github-check-end(name="Generate ServiceAccount", id="check-generate-serviceaccount", if="inputs.kubernetes-serviceaccount-generation-enabled == true")
 
       # === Generate Workload ===
-      # INJECT: github-check-start(name="Generate Workload", id="check-generate-workload", if="inputs.kubernetes-workload-type != 'none'")
+      # INJECT: github-check-start(name="Generate Workload Manifest", id="check-generate-workload", if="inputs.kubernetes-workload-type != 'none'")
       # INJECT: generate-kubernetes-workload
-      # INJECT: github-check-end(name="Generate Workload", id="check-generate-workload", if="inputs.kubernetes-workload-type != 'none'")
+      # INJECT: github-check-end(name="Generate Workload Manifest", id="check-generate-workload", if="inputs.kubernetes-workload-type != 'none'")
 
       # === Generate Service ===
       # INJECT: github-check-start(name="Generate Service", id="check-generate-service", if="inputs.kubernetes-service-generation-enabled == true && inputs.kubernetes-workload-type == 'deployment'")
