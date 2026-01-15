@@ -174,6 +174,10 @@ inputs:
     description: 'Automount service account token (true/false)'
     required: false
     default: 'false'
+  kubernetes-workload-image-pull-secrets:
+    description: 'Include imagePullSecrets in pod spec (ENABLED/DISABLED)'
+    required: false
+    default: 'ENABLED'
   kubernetes-workload-resources-memory:
     description: 'Memory limit (e.g., 128Mi, 1Gi)'
     required: false
@@ -512,6 +516,7 @@ runs:
         KUBERNETES_WORKLOAD_READONLY_ROOT_FILESYSTEM: ${{ inputs.kubernetes-workload-readonly-root-filesystem }}
         KUBERNETES_WORKLOAD_SECCOMP_PROFILE: ${{ inputs.kubernetes-workload-seccomp-profile }}
         KUBERNETES_WORKLOAD_AUTOMOUNT_SERVICE_ACCOUNT_TOKEN: ${{ inputs.kubernetes-workload-automount-service-account-token }}
+        KUBERNETES_WORKLOAD_IMAGE_PULL_SECRETS: ${{ inputs.kubernetes-workload-image-pull-secrets }}
         KUBERNETES_WORKLOAD_RESOURCES_MEMORY: ${{ inputs.kubernetes-workload-resources-memory }}
         KUBERNETES_WORKLOAD_RESOURCES_CPU_REQUEST: ${{ inputs.kubernetes-workload-resources-cpu-request }}
         KUBERNETES_WORKLOAD_RESOURCES_CPU_LIMIT: ${{ inputs.kubernetes-workload-resources-cpu-limit }}

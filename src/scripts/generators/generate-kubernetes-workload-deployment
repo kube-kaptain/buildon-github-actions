@@ -73,6 +73,7 @@ CONTAINER_PORT="${KUBERNETES_WORKLOAD_CONTAINER_PORT:-${KUBERNETES_GLOBAL_CONTAI
 READONLY_ROOT_FILESYSTEM="${KUBERNETES_WORKLOAD_READONLY_ROOT_FILESYSTEM:-true}"
 SECCOMP_PROFILE="${KUBERNETES_WORKLOAD_SECCOMP_PROFILE:-DISABLED}"
 AUTOMOUNT_SERVICE_ACCOUNT_TOKEN="${KUBERNETES_WORKLOAD_AUTOMOUNT_SERVICE_ACCOUNT_TOKEN:-${KUBERNETES_GLOBAL_AUTOMOUNT_SERVICE_ACCOUNT_TOKEN:-false}}"
+IMAGE_PULL_SECRETS="${KUBERNETES_WORKLOAD_IMAGE_PULL_SECRETS:-${KUBERNETES_GLOBAL_IMAGE_PULL_SECRETS:-ENABLED}}"
 
 # Resources (common workload settings)
 MEMORY="${KUBERNETES_WORKLOAD_RESOURCES_MEMORY:-10Mi}"
@@ -374,8 +375,10 @@ specific_annotations="${KUBERNETES_WORKLOAD_ADDITIONAL_ANNOTATIONS:-}"
     "${affinity_plugin}"
   fi
 
-  # Image pull secrets
-  generate_image_pull_secrets 6 "${image_pull_secret_token}"
+  # Image pull secrets (optional)
+  if [[ "${IMAGE_PULL_SECRETS}" != "DISABLED" ]]; then
+    generate_image_pull_secrets 6 "${image_pull_secret_token}"
+  fi
 
   # Containers
   echo "      containers:"

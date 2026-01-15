@@ -209,6 +209,11 @@ on:
         required: false
         type: boolean
         default: false
+      kubernetes-workload-image-pull-secrets:
+        description: 'Include imagePullSecrets in pod spec (ENABLED/DISABLED)'
+        required: false
+        type: string
+        default: 'ENABLED'
       kubernetes-workload-resources-memory:
         description: 'Memory limit (e.g., 128Mi, 1Gi)'
         required: false
