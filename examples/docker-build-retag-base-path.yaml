@@ -71,22 +71,22 @@ jobs:
 #       qc-block-conventional-commits: true                # Default is false
 
 # ┌─────────────────────────────────────────────────────────────────────────┐
-# │ Version Configuration                                                   │
+# │ Version & Tagging Configuration                                         │
 # └─────────────────────────────────────────────────────────────────────────┘
-#     with:
-#       tag-version-max-parts: 2  # Default is 3, but any positive integer 1 or higher is valid
-
-# ┌─────────────────────────────────────────────────────────────────────────┐
-# │ Version Calculation Strategy                                            │
-# └─────────────────────────────────────────────────────────────────────────┘
-# Default: git-auto-closest-highest (finds closest tag, increments it)
+# Default strategy: git-auto-closest-highest (finds closest tag, increments it)
 # Alternative: file-pattern-match (extracts version from a file)
 #
 # For retag workflows, use retag-workflow-source-tag to derive version from
-# the source-tag input in this build.yaml file:
+# the docker-source-tag input in this build.yaml file.
+#
 #     with:
-#       tag-version-calculation-strategy: 'file-pattern-match'
-#       tag-version-pattern-type: 'retag-workflow-source-tag'
+#       tag-version-max-parts: 3                                # Max version parts allowed (fail if exceeded)
+#       tag-version-calculation-strategy: 'file-pattern-match'  # or 'git-auto-closest-highest' (default)
+#       tag-version-pattern-type: 'retag-workflow-source-tag'   # 'dockerfile-env-kubectl', 'custom'
+#       tag-version-prefix-parts: '2'                           # Parts from source as prefix (output = prefix + 1)
+#       tag-version-source-sub-path: '.github/workflows'        # Override path to source directory
+#       tag-version-source-file-name: 'build.yaml'              # Override source file name
+#       tag-version-source-custom-pattern: '^VERSION=(.+)$'     # Regex with capture group (for custom type)
 
 # ┌─────────────────────────────────────────────────────────────────────────┐
 # │ Test Injection                                                          │
@@ -101,11 +101,11 @@ jobs:
 # Add custom tokens by creating files in src/config/ (e.g., src/config/MyToken)
 #
 #     with:
-#       token-delimiter-style: 'mustache'  # Default is 'shell' (${Token})
-#       token-name-style: 'UPPER_SNAKE'       # Default is 'PascalCase'
-#       token-name-validation: 'ALL'          # Default is 'MATCH' (must match style)
-#       config-sub-path: 'config'             # Default is 'src/config'
-#       allow-builtin-token-override: true    # Default is false
+#       token-delimiter-style: 'mustache'              # Default is 'shell' (${Token})
+#       token-name-style: 'UPPER_SNAKE'                # Default is 'PascalCase'
+#       token-name-validation: 'ALL'                   # Default is 'MATCH' (must match style)
+#       config-sub-path: 'config'                      # Default is 'src/config'
+#       allow-builtin-token-override: true             # Default is false
 #       config-value-trailing-newline: 'preserve-all'  # Default is 'strip-for-single-line'
 
 # ┌─────────────────────────────────────────────────────────────────────────┐

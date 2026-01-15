@@ -38,3 +38,18 @@ jobs:
 #
 # The pattern captures '2.5.0' from the app.version line.
 # First build: tags 2.5.1, second: 2.5.2, etc.
+
+# ┌─────────────────────────────────────────────────────────────────────────┐
+# │ Version & Tagging Configuration                                         │
+# └─────────────────────────────────────────────────────────────────────────┘
+# Default strategy: git-auto-closest-highest (finds closest tag, increments it)
+# Alternative: file-pattern-match (extracts version from a file)
+#
+#     with:
+#       tag-version-max-parts: 3                                # Max version parts allowed (fail if exceeded)
+#       tag-version-calculation-strategy: 'file-pattern-match'  # or 'git-auto-closest-highest' (default)
+#       tag-version-pattern-type: 'dockerfile-env-kubectl'      # 'retag-workflow-source-tag', 'custom'
+#       tag-version-prefix-parts: '2'                           # Parts from source as prefix (output = prefix + 1)
+#       tag-version-source-sub-path: 'src/docker'               # Override path to source directory
+#       tag-version-source-file-name: 'Dockerfile'              # Override source file name
+#       tag-version-source-custom-pattern: '^VERSION=(.+)$'     # Regex with capture group (for custom type)

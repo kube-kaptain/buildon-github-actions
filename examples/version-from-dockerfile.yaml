@@ -40,3 +40,18 @@ jobs:
 #   ENV KUBECTL_VERSION=1.28.0
 #
 # The pattern matches: ENV KUBECTL_VERSION=x.y.z
+
+# ┌─────────────────────────────────────────────────────────────────────────┐
+# │ Version & Tagging Configuration                                         │
+# └─────────────────────────────────────────────────────────────────────────┘
+# Default strategy: git-auto-closest-highest (finds closest tag, increments it)
+# Alternative: file-pattern-match (extracts version from a file)
+#
+#     with:
+#       tag-version-max-parts: 3                                # Max version parts allowed (fail if exceeded)
+#       tag-version-calculation-strategy: 'file-pattern-match'  # or 'git-auto-closest-highest' (default)
+#       tag-version-pattern-type: 'dockerfile-env-kubectl'      # 'retag-workflow-source-tag', 'custom'
+#       tag-version-prefix-parts: '2'                           # Parts from source as prefix (output = prefix + 1)
+#       tag-version-source-sub-path: 'src/docker'               # Override path to source directory
+#       tag-version-source-file-name: 'Dockerfile'              # Override source file name
+#       tag-version-source-custom-pattern: '^VERSION=(.+)$'     # Regex with capture group (for custom type)
