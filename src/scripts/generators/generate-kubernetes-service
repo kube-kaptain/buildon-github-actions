@@ -46,9 +46,23 @@ source "${LIB_DIR}/kubernetes-metadata.bash"
 LOG_ERROR_PREFIX="${LOG_ERROR_PREFIX:-}"
 LOG_ERROR_SUFFIX="${LOG_ERROR_SUFFIX:-}"
 
-# Check if generation is enabled (default: false)
-if [[ "${KUBERNETES_SERVICE_GENERATION_ENABLED:-false}" != "true" ]]; then
-  echo "Service generation not enabled (KUBERNETES_SERVICE_GENERATION_ENABLED != true), skipping" >&2
+# Default workload type
+KUBERNETES_WORKLOAD_TYPE="${KUBERNETES_WORKLOAD_TYPE:-deployment}"
+
+# Smart default: enabled for deployments, disabled for others, unless explicitly set
+if [[ -z "${KUBERNETES_SERVICE_GENERATION_ENABLED:-}" ]]; then
+  case "${KUBERNETES_WORKLOAD_TYPE}" in
+    deployment)
+      KUBERNETES_SERVICE_GENERATION_ENABLED="true"
+      ;;
+    *)
+      KUBERNETES_SERVICE_GENERATION_ENABLED="false"
+      ;;
+  esac
+fi
+
+if [[ "${KUBERNETES_SERVICE_GENERATION_ENABLED}" != "true" ]]; then
+  echo "Service generation not enabled (workload type: ${KUBERNETES_WORKLOAD_TYPE}), skipping" >&2
   exit 0
 fi
 
