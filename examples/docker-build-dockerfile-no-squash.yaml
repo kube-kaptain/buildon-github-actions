@@ -26,7 +26,7 @@ jobs:
       packages: write
       checks: write
     with:
-      squash: false
+      dockerfile-squash: false
 
 # ┌───────────────────────────────────────────────────────────────────────────┐
 # │ All Available Options                                                     │
@@ -38,8 +38,8 @@ jobs:
 # └─────────────────────────────────────────────────────────────────────────┘
 #     with:
 #       dockerfile-sub-path: 'docker'  # 'build', '.'
-#       squash: false  # true
-#       no-cache: false  # true
+#       dockerfile-squash: false  # true
+#       dockerfile-no-cache: false  # true
 
 # ┌─────────────────────────────────────────────────────────────────────────┐
 # │ Target Registry                                                         │
@@ -69,7 +69,7 @@ jobs:
 # │ Version Configuration                                                   │
 # └─────────────────────────────────────────────────────────────────────────┘
 #     with:
-#       max-version-parts: 2  # Default is 3, but any positive integer 1 or higher is valid
+#       tag-version-max-parts: 2  # Default is 3, but any positive integer 1 or higher is valid
 
 # ┌─────────────────────────────────────────────────────────────────────────┐
 # │ Version Calculation Strategy                                            │

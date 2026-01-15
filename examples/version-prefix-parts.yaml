@@ -37,7 +37,7 @@ jobs:
       tag-version-calculation-strategy: 'file-pattern-match'
       tag-version-pattern-type: 'dockerfile-env-kubectl'
       tag-version-prefix-parts: '3'
-      max-version-parts: 4
+      tag-version-max-parts: 4
 
 # Your Dockerfile should contain a line like:
 #   ENV KUBECTL_VERSION=1.28.0
