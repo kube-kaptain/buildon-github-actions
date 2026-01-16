@@ -1,0 +1,14 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
+#
+# Liveness probe inputs for Kubernetes workloads
+kubernetes-workload-probe-liveness-check-type:
+  description: 'Liveness probe type (http-get, tcp-socket, exec, grpc, none)'
+  required: false
+  type: string
+  default: 'http-get'
+kubernetes-workload-probe-liveness-http-path:
+  description: 'Liveness probe HTTP path'
+  required: false
+  type: string
+  default: '/liveness'

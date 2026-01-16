@@ -55,10 +55,10 @@ Kubernetes App - Docker Dockerfile
 | `kubernetes-workload-prestop-command` | string | `""` | PreStop hook command (empty for none) |
 | `kubernetes-workload-affinity-strategy` | string | `spread-nodes-and-zones-ha` | Pod affinity strategy plugin name |
 | `kubernetes-workload-probe-liveness-check-type` | string | `http-get` | Liveness probe type (http-get, tcp-socket, exec, grpc, none) |
-| `kubernetes-workload-probe-readiness-check-type` | string | `http-get` | Readiness probe type (http-get, tcp-socket, exec, grpc, none) |
-| `kubernetes-workload-probe-startup-check-type` | string | `http-get` | Startup probe type (http-get, tcp-socket, exec, grpc, none) |
 | `kubernetes-workload-probe-liveness-http-path` | string | `/liveness` | Liveness probe HTTP path |
+| `kubernetes-workload-probe-readiness-check-type` | string | `http-get` | Readiness probe type (http-get, tcp-socket, exec, grpc, none) |
 | `kubernetes-workload-probe-readiness-http-path` | string | `/readiness` | Readiness probe HTTP path |
+| `kubernetes-workload-probe-startup-check-type` | string | `http-get` | Startup probe type (http-get, tcp-socket, exec, grpc, none) |
 | `kubernetes-workload-probe-startup-http-path` | string | `/startup` | Startup probe HTTP path |
 | `kubernetes-deployment-replicas` | string | `""` | Replica count (empty for token, NO for HPA management) |
 | `kubernetes-deployment-revision-history-limit` | string | `10` | Number of old ReplicaSets to retain |

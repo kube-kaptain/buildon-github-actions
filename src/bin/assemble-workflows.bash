@@ -17,6 +17,7 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
 TEMPLATES_DIR="$REPO_ROOT/src/workflow-templates"
 STEPS_DIR="$REPO_ROOT/src/steps-common"
+INPUTS_DIR="$REPO_ROOT/src/inputs"
 OUTPUT_DIR="$REPO_ROOT/.github/workflows"
 DOCS_DIR="$REPO_ROOT/docs"
 README="$REPO_ROOT/README.md"
@@ -254,6 +255,28 @@ process_template() {
       result+="${indent}${indented_chunk}"
       echo "  Injected: $injection_type (indent: ${#indent} spaces)"
 
+    # Input injection: # INJECT-INPUT: name
+    elif [[ "$line" =~ ^([[:space:]]*)#\ INJECT-INPUT:\ ([a-zA-Z0-9_-]+)$ ]]; then
+      local indent="${BASH_REMATCH[1]}"
+      local input_name="${BASH_REMATCH[2]}"
+      local input_file="$INPUTS_DIR/${input_name}.yaml"
+
+      if [[ ! -f "$input_file" ]]; then
+        echo "  ERROR: Input file not found: $input_file" >&2
+        exit 1
+      fi
+
+      # Read input file, strip SPDX header, and apply indentation
+      local chunk
+      chunk=$(cat "$input_file" | strip_spdx_header)
+
+      # Apply indentation to chunk (first line gets indent, others get indent prepended)
+      local indented_chunk
+      indented_chunk=$(echo "$chunk" | indent_chunk "$indent")
+
+      result+="${indent}${indented_chunk}"
+      echo "  Injected input: $input_name (indent: ${#indent} spaces)"
+
     # Simple injection: # INJECT: name
     elif [[ "$line" =~ ^([[:space:]]*)#\ INJECT:\ ([a-zA-Z0-9_-]+)$ ]]; then
       local indent="${BASH_REMATCH[1]}"
@@ -297,10 +320,13 @@ lint_workflow_inputs() {
 
   local errors=0
 
-  for workflow in "$TEMPLATES_DIR"/*.yaml; do
+  # Lint assembled output files (which have INJECT-INPUT expanded)
+  for workflow in "$OUTPUT_DIR"/*.yaml; do
     [[ -f "$workflow" ]] || continue
     local wf_basename
     wf_basename=$(basename "$workflow")
+    # Skip workflows without a corresponding template
+    [[ ! -f "$TEMPLATES_DIR/$wf_basename" ]] && continue
 
     # Get all inputs from this workflow
     local inputs
@@ -351,9 +377,11 @@ generate_inputs_table() {
   local inputs_file
   inputs_file=$(mktemp)
 
-  # Collect all unique inputs across templates
-  for workflow in "$TEMPLATES_DIR"/*.yaml; do
+  # Collect all unique inputs across assembled output files (which have INJECT-INPUT expanded)
+  for workflow in "$OUTPUT_DIR"/*.yaml; do
     [[ -f "$workflow" ]] || continue
+    # Skip workflows without a corresponding template
+    [[ ! -f "$TEMPLATES_DIR/$(basename "$workflow")" ]] && continue
     local inputs
     inputs=$(yq '.on.workflow_call.inputs | keys | .[]' "$workflow" 2>/dev/null) || continue
 
@@ -395,9 +423,11 @@ generate_secrets_table() {
   local secrets_file
   secrets_file=$(mktemp)
 
-  # Collect all unique secrets across templates
-  for workflow in "$TEMPLATES_DIR"/*.yaml; do
+  # Collect all unique secrets across assembled output files
+  for workflow in "$OUTPUT_DIR"/*.yaml; do
     [[ -f "$workflow" ]] || continue
+    # Skip workflows without a corresponding template
+    [[ ! -f "$TEMPLATES_DIR/$(basename "$workflow")" ]] && continue
     local secrets
     secrets=$(yq '.on.workflow_call.secrets | keys | .[]' "$workflow" 2>/dev/null) || continue
 
@@ -418,12 +448,10 @@ generate_secrets_table() {
   rm -f "$secrets_file"
 }
 
-# Generate workflow doc file
+# Generate workflow doc file from assembled output
 generate_workflow_doc() {
-  local workflow="$1"
-  local wf_basename
-  wf_basename=$(basename "$workflow")
-  local wf_name="${wf_basename%.yaml}"
+  local wf_name="$1"
+  local workflow="$OUTPUT_DIR/${wf_name}.yaml"
   local doc_file="$DOCS_DIR/${wf_name}.md"
 
   local description
@@ -499,10 +527,12 @@ generate_workflow_links_table() {
   echo "| Workflow | Description | Documentation |"
   echo "|----------|-------------|---------------|"
 
-  for workflow in "$TEMPLATES_DIR"/*.yaml; do
+  for workflow in "$OUTPUT_DIR"/*.yaml; do
     [[ -f "$workflow" ]] || continue
     local wf_basename wf_name description
     wf_basename=$(basename "$workflow")
+    # Skip workflows without a corresponding template
+    [[ ! -f "$TEMPLATES_DIR/$wf_basename" ]] && continue
     wf_name="${wf_basename%.yaml}"
     description=$(yq '.name // ""' "$workflow")
     echo "| \`$wf_basename\` | $description | [docs/${wf_name}.md](docs/${wf_name}.md) |"
@@ -645,10 +675,15 @@ generate_docs() {
   # Create docs directory
   mkdir -p "$DOCS_DIR"
 
-  # Generate individual workflow docs
-  for workflow in "$TEMPLATES_DIR"/*.yaml; do
+  # Generate individual workflow docs from assembled output
+  for workflow in "$OUTPUT_DIR"/*.yaml; do
     [[ -f "$workflow" ]] || continue
-    generate_workflow_doc "$workflow"
+    local wf_basename wf_name
+    wf_basename=$(basename "$workflow")
+    # Skip workflows without a corresponding template
+    [[ ! -f "$TEMPLATES_DIR/$wf_basename" ]] && continue
+    wf_name="${wf_basename%.yaml}"
+    generate_workflow_doc "$wf_name"
   done
 
   # Generate and inject examples table
@@ -689,14 +724,13 @@ generate_docs() {
 }
 
 main() {
+  local start_time=$SECONDS
+  local section_start
+
   echo "Assembling workflows..."
   echo "  Templates: $TEMPLATES_DIR"
   echo "  Steps: $STEPS_DIR"
   echo "  Output: $OUTPUT_DIR"
-  echo
-
-  # Lint templates for input consistency before assembly
-  lint_workflow_inputs
   echo
 
   # Clean output directory for predictable results
@@ -719,6 +753,7 @@ main() {
   mkdir -p "$OUTPUT_DIR"
 
   # Process all templates
+  section_start=$SECONDS
   local count=0
   for template in "$TEMPLATES_DIR"/*.yaml; do
     if [[ -f "$template" ]]; then
@@ -728,14 +763,22 @@ main() {
     fi
   done
 
-  echo "Processed $count template(s)."
+  echo "Processed $count template(s) in $((SECONDS - section_start)) seconds."
+  echo
+
+  # Lint assembled outputs for input consistency
+  section_start=$SECONDS
+  lint_workflow_inputs
+  echo "Linted in $((SECONDS - section_start)) seconds."
   echo
 
   # Generate documentation
+  section_start=$SECONDS
   generate_docs
+  echo "Docs generated in $((SECONDS - section_start)) seconds."
 
   echo
-  echo "Done."
+  echo "Done in $((SECONDS - start_time)) seconds."
 }
 
 main "$@"

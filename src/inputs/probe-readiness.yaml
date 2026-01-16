@@ -1,0 +1,14 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
+#
+# Readiness probe inputs for Kubernetes workloads
+kubernetes-workload-probe-readiness-check-type:
+  description: 'Readiness probe type (http-get, tcp-socket, exec, grpc, none)'
+  required: false
+  type: string
+  default: 'http-get'
+kubernetes-workload-probe-readiness-http-path:
+  description: 'Readiness probe HTTP path'
+  required: false
+  type: string
+  default: '/readiness'

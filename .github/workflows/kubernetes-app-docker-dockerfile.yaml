@@ -260,18 +260,9 @@ on:
         required: false
         type: string
         default: 'spread-nodes-and-zones-ha'
+      # Liveness probe inputs for Kubernetes workloads
       kubernetes-workload-probe-liveness-check-type:
         description: 'Liveness probe type (http-get, tcp-socket, exec, grpc, none)'
-        required: false
-        type: string
-        default: 'http-get'
-      kubernetes-workload-probe-readiness-check-type:
-        description: 'Readiness probe type (http-get, tcp-socket, exec, grpc, none)'
-        required: false
-        type: string
-        default: 'http-get'
-      kubernetes-workload-probe-startup-check-type:
-        description: 'Startup probe type (http-get, tcp-socket, exec, grpc, none)'
         required: false
         type: string
         default: 'http-get'
@@ -280,11 +271,23 @@ on:
         required: false
         type: string
         default: '/liveness'
+      # Readiness probe inputs for Kubernetes workloads
+      kubernetes-workload-probe-readiness-check-type:
+        description: 'Readiness probe type (http-get, tcp-socket, exec, grpc, none)'
+        required: false
+        type: string
+        default: 'http-get'
       kubernetes-workload-probe-readiness-http-path:
         description: 'Readiness probe HTTP path'
         required: false
         type: string
         default: '/readiness'
+      # Startup probe inputs for Kubernetes workloads
+      kubernetes-workload-probe-startup-check-type:
+        description: 'Startup probe type (http-get, tcp-socket, exec, grpc, none)'
+        required: false
+        type: string
+        default: 'http-get'
       kubernetes-workload-probe-startup-http-path:
         description: 'Startup probe HTTP path'
         required: false
