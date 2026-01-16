@@ -75,11 +75,6 @@ on:
         required: false
         type: string
         default: ''
-      dockerfile-sub-path:
-        description: 'Directory containing Dockerfile, relative to repo root.'
-        required: false
-        type: string
-        default: 'src/docker'
       tag-version-source-sub-path:
         description: 'Override path to source directory (takes precedence over dockerfile-sub-path)'
         required: false
