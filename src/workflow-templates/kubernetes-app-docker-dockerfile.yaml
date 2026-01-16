@@ -72,17 +72,7 @@ on:
         type: string
         default: ''
 
-      # Kubernetes generation
-      kubernetes-global-additional-labels:
-        description: 'Additional labels for all Kubernetes manifests (comma-separated key=value)'
-        required: false
-        type: string
-        default: ''
-      kubernetes-global-additional-annotations:
-        description: 'Additional annotations for all Kubernetes manifests (comma-separated key=value)'
-        required: false
-        type: string
-        default: ''
+      # INJECT-INPUT: kubernetes-global
       # INJECT-INPUT: kubernetes-configmap
       # INJECT-INPUT: kubernetes-secret-template
       # INJECT-INPUT: kubernetes-serviceaccount
