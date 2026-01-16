@@ -1,0 +1,34 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
+#
+# Token substitution
+token-delimiter-style:
+  description: 'Token delimiter syntax for variables (shell, mustache, helm, erb, github-actions, blade, stringtemplate, ognl, t4, swift)'
+  required: false
+  type: string
+  default: 'shell'
+token-name-style:
+  description: 'Case style for token names (UPPER_SNAKE, lower_snake, lower-kebab, UPPER-KEBAB, camelCase, PascalCase, lower.dot, UPPER.DOT)'
+  required: false
+  type: string
+  default: 'PascalCase'
+token-name-validation:
+  description: 'How to validate user token names (MATCH = must match token-name-style, ALL = accept any valid name)'
+  required: false
+  type: string
+  default: 'MATCH'
+allow-builtin-token-override:
+  description: 'Allow user tokens to override built-in tokens (for template/reusable projects)'
+  required: false
+  type: boolean
+  default: false
+config-sub-path:
+  description: 'Directory containing user-defined token files (relative)'
+  required: false
+  type: string
+  default: 'src/config'
+config-value-trailing-newline:
+  description: 'How to handle trailing newlines in config values (strip-for-single-line, preserve-all, always-strip-one-newline)'
+  required: false
+  type: string
+  default: 'strip-for-single-line'
