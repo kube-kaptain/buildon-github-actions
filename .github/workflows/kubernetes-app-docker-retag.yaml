@@ -127,7 +127,7 @@ on:
         default: ''
       # Kubernetes ServiceAccount generation
       kubernetes-serviceaccount-generation-enabled:
-        description: 'Enable ServiceAccount generation (true/false)'
+        description: 'Enable ServiceAccount generation'
         required: false
         type: boolean
         default: false

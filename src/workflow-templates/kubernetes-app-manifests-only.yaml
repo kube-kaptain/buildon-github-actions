@@ -121,32 +121,7 @@ on:
         required: false
         type: string
         default: ''
-      # Kubernetes ServiceAccount generation
-      kubernetes-serviceaccount-generation-enabled:
-        description: 'Enable ServiceAccount generation (true/false)'
-        required: false
-        type: boolean
-        default: false
-      kubernetes-serviceaccount-name-suffix:
-        description: 'Optional suffix for ServiceAccount name and filename'
-        required: false
-        type: string
-        default: ''
-      kubernetes-serviceaccount-combined-sub-path:
-        description: 'Sub-path within combined/ for output'
-        required: false
-        type: string
-        default: ''
-      kubernetes-serviceaccount-additional-labels:
-        description: 'Additional labels specific to ServiceAccount (comma-separated key=value)'
-        required: false
-        type: string
-        default: ''
-      kubernetes-serviceaccount-additional-annotations:
-        description: 'Additional annotations specific to ServiceAccount (comma-separated key=value)'
-        required: false
-        type: string
-        default: ''
+      # INJECT-INPUT: kubernetes-serviceaccount
       # INJECT-INPUT: kubernetes-workload
       # INJECT-INPUT: kubernetes-workload-deployment
       # INJECT-INPUT: kubernetes-service

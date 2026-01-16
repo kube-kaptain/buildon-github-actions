@@ -170,7 +170,7 @@ See [`examples/`](examples/) for more usage patterns.
 | `kubernetes-serviceaccount-additional-annotations` | string | `""` | Additional annotations specific to ServiceAccount (comma-separated key=value) |
 | `kubernetes-serviceaccount-additional-labels` | string | `""` | Additional labels specific to ServiceAccount (comma-separated key=value) |
 | `kubernetes-serviceaccount-combined-sub-path` | string | `""` | Sub-path within combined/ for output |
-| `kubernetes-serviceaccount-generation-enabled` | boolean | `false` | Enable ServiceAccount generation (true/false) |
+| `kubernetes-serviceaccount-generation-enabled` | boolean | `false` | Enable ServiceAccount generation |
 | `kubernetes-serviceaccount-name-suffix` | string | `""` | Optional suffix for ServiceAccount name and filename |
 | `kubernetes-workload-additional-annotations` | string | `""` | Additional annotations specific to workload (comma-separated key=value) |
 | `kubernetes-workload-additional-labels` | string | `""` | Additional labels specific to workload (comma-separated key=value) |
