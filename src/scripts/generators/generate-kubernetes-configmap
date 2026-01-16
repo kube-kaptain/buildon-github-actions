@@ -50,8 +50,8 @@ LOG_ERROR_SUFFIX="${LOG_ERROR_SUFFIX:-}"
 # Inputs with defaults
 NAME_SUFFIX="${KUBERNETES_CONFIGMAP_NAME_SUFFIX:-}"
 COMBINED_SUB_PATH="${KUBERNETES_CONFIGMAP_COMBINED_SUB_PATH:-}"
-BASE_PATH="${KUBERNETES_CONFIGMAP_SUB_PATH:-src/configmap}"
-SUB_PATH=$(build_configuration_source_path "${BASE_PATH}" "${NAME_SUFFIX}" "")
+BASE_SUB_PATH="${KUBERNETES_CONFIGMAP_SUB_PATH:-src/configmap}"
+FINAL_SUB_PATH=$(build_configuration_source_path "${BASE_SUB_PATH}" "${NAME_SUFFIX}" "")
 OUTPUT_SUB_PATH="${OUTPUT_SUB_PATH:-target}"
 # shellcheck source=src/scripts/defaults/tokens.bash
 source "${SCRIPT_DIR}/../defaults/tokens.bash"
@@ -69,7 +69,7 @@ fi
 validate_combined_sub_path "${COMBINED_SUB_PATH}"
 
 # Validate source directory exists and has files
-validate_configuration_entries_directory "${SUB_PATH}" "ConfigMap"
+validate_configuration_entries_directory "${FINAL_SUB_PATH}" "ConfigMap"
 
 # Generate token references
 project_name_token=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "PROJECT_NAME")
@@ -110,7 +110,7 @@ specific_annotations="${KUBERNETES_CONFIGMAP_ADDITIONAL_ANNOTATIONS:-}"
   generate_metadata 2 labels
   generate_metadata 2 annotations
   echo "data:"
-  generate_configuration_entries "${SUB_PATH}"
+  generate_configuration_entries "${FINAL_SUB_PATH}"
 } > "${output_file}"
 
 echo "Generated ConfigMap manifest: ${output_file}" >&2
