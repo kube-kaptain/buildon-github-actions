@@ -48,6 +48,7 @@ Kubernetes App - Docker Retag
 | `kubernetes-workload-resources-memory` | string | `10Mi` | Memory limit (e.g., 128Mi, 1Gi) |
 | `kubernetes-workload-resources-cpu-request` | string | `100m` | CPU request (e.g., 100m, 1) |
 | `kubernetes-workload-resources-cpu-limit` | string | `""` | CPU limit (empty for no limit) |
+| `kubernetes-workload-resources-ephemeral-storage` | string | `10Mi` | Ephemeral storage request/limit (e.g., 10Mi, 100Mi, 1Gi) |
 | `kubernetes-workload-configmap-mount-path` | string | `/configmap` | ConfigMap mount path in container |
 | `kubernetes-workload-secret-mount-path` | string | `/secret` | Secret mount path in container |
 | `kubernetes-workload-configmap-keys-for-env` | string | `""` | Comma/space-separated ConfigMap keys to expose as env vars |

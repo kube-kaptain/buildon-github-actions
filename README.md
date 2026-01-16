@@ -224,6 +224,7 @@ See [`examples/`](examples/) for more usage patterns.
 | `kubernetes-workload-readonly-root-filesystem` | boolean | `true` | Enable read-only root filesystem |
 | `kubernetes-workload-resources-cpu-limit` | string | `""` | CPU limit (empty for no limit) |
 | `kubernetes-workload-resources-cpu-request` | string | `100m` | CPU request (e.g., 100m, 1) |
+| `kubernetes-workload-resources-ephemeral-storage` | string | `10Mi` | Ephemeral storage request/limit (e.g., 10Mi, 100Mi, 1Gi) |
 | `kubernetes-workload-resources-memory` | string | `10Mi` | Memory limit (e.g., 128Mi, 1Gi) |
 | `kubernetes-workload-seccomp-profile` | string | `DISABLED` | Seccomp profile (DISABLED, RuntimeDefault, Localhost, Unconfined) |
 | `kubernetes-workload-secret-keys-for-env` | string | `""` | Comma/space-separated Secret keys to expose as env vars |

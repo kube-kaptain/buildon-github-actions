@@ -222,6 +222,11 @@ on:
         required: false
         type: string
         default: ''
+      kubernetes-workload-resources-ephemeral-storage:
+        description: 'Ephemeral storage request/limit (e.g., 10Mi, 100Mi, 1Gi)'
+        required: false
+        type: string
+        default: '10Mi'
       kubernetes-workload-configmap-mount-path:
         description: 'ConfigMap mount path in container'
         required: false
