@@ -79,27 +79,7 @@ on:
         required: false
         type: string
         default: ''
-      # Kubernetes ConfigMap generation
-      kubernetes-configmap-sub-path:
-        description: 'Directory containing ConfigMap data files (relative)'
-        required: false
-        type: string
-        default: 'src/configmap'
-      kubernetes-configmap-name-checksum-injection:
-        description: 'Enable checksum injection suffix in ConfigMap name (true: ProjectName-configmap-checksum, false: ProjectName)'
-        required: false
-        type: boolean
-        default: true
-      kubernetes-configmap-additional-labels:
-        description: 'Additional labels specific to ConfigMap (comma-separated key=value)'
-        required: false
-        type: string
-        default: ''
-      kubernetes-configmap-additional-annotations:
-        description: 'Additional annotations specific to ConfigMap (comma-separated key=value)'
-        required: false
-        type: string
-        default: ''
+      # INJECT-INPUT: kubernetes-configmap
       # INJECT-INPUT: kubernetes-secret-template
       # INJECT-INPUT: kubernetes-serviceaccount
       # INJECT-INPUT: kubernetes-workload

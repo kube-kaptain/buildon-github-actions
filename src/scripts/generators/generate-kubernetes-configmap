@@ -48,14 +48,12 @@ LOG_ERROR_PREFIX="${LOG_ERROR_PREFIX:-}"
 LOG_ERROR_SUFFIX="${LOG_ERROR_SUFFIX:-}"
 
 # Inputs with defaults
-NAME_SUFFIX="${KUBERNETES_CONFIGMAP_NAME_SUFFIX:-}"
-COMBINED_SUB_PATH="${KUBERNETES_CONFIGMAP_COMBINED_SUB_PATH:-}"
-BASE_SUB_PATH="${KUBERNETES_CONFIGMAP_SUB_PATH:-src/configmap}"
-FINAL_SUB_PATH=$(build_configuration_source_path "${BASE_SUB_PATH}" "${NAME_SUFFIX}" "")
 OUTPUT_SUB_PATH="${OUTPUT_SUB_PATH:-target}"
 # shellcheck source=src/scripts/defaults/tokens.bash
 source "${SCRIPT_DIR}/../defaults/tokens.bash"
-NAME_CHECKSUM_INJECTION="${KUBERNETES_CONFIGMAP_NAME_CHECKSUM_INJECTION:-true}"
+# shellcheck source=src/scripts/defaults/kubernetes-configmap.bash
+source "${SCRIPT_DIR}/../defaults/kubernetes-configmap.bash"
+FINAL_SUB_PATH=$(build_configuration_source_path "${BASE_SUB_PATH}" "${NAME_SUFFIX}" "")
 
 # Validate styles upfront
 validate_token_styles
