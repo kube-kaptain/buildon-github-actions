@@ -94,6 +94,16 @@ inputs:
     required: false
     default: '/secret'
 
+  # Environment variable refs from ConfigMap/Secret keys
+  kubernetes-workload-configmap-keys-for-env:
+    description: 'Comma/space-separated ConfigMap keys to expose as env vars'
+    required: false
+    default: ''
+  kubernetes-workload-secret-keys-for-env:
+    description: 'Comma/space-separated Secret keys to expose as env vars'
+    required: false
+    default: ''
+
   # Lifecycle
   kubernetes-workload-termination-grace-period-seconds:
     description: 'Termination grace period in seconds'
@@ -202,6 +212,9 @@ runs:
         # Mount paths
         KUBERNETES_WORKLOAD_CONFIGMAP_MOUNT_PATH: ${{ inputs.kubernetes-workload-configmap-mount-path }}
         KUBERNETES_WORKLOAD_SECRET_MOUNT_PATH: ${{ inputs.kubernetes-workload-secret-mount-path }}
+        # Environment variable refs from ConfigMap/Secret keys
+        KUBERNETES_WORKLOAD_CONFIGMAP_KEYS_FOR_ENV: ${{ inputs.kubernetes-workload-configmap-keys-for-env }}
+        KUBERNETES_WORKLOAD_SECRET_KEYS_FOR_ENV: ${{ inputs.kubernetes-workload-secret-keys-for-env }}
         # Lifecycle
         KUBERNETES_WORKLOAD_TERMINATION_GRACE_PERIOD_SECONDS: ${{ inputs.kubernetes-workload-termination-grace-period-seconds }}
         KUBERNETES_WORKLOAD_PRESTOP_COMMAND: ${{ inputs.kubernetes-workload-prestop-command }}

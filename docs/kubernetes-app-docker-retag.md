@@ -44,11 +44,14 @@ Kubernetes App - Docker Retag
 | `kubernetes-workload-readonly-root-filesystem` | boolean | `true` | Enable read-only root filesystem |
 | `kubernetes-workload-seccomp-profile` | string | `DISABLED` | Seccomp profile (DISABLED, RuntimeDefault, Localhost, Unconfined) |
 | `kubernetes-workload-automount-service-account-token` | boolean | `false` | Automount service account token |
+| `kubernetes-workload-image-pull-secrets` | string | `ENABLED` | Include imagePullSecrets in pod spec (ENABLED/DISABLED) |
 | `kubernetes-workload-resources-memory` | string | `10Mi` | Memory limit (e.g., 128Mi, 1Gi) |
 | `kubernetes-workload-resources-cpu-request` | string | `100m` | CPU request (e.g., 100m, 1) |
 | `kubernetes-workload-resources-cpu-limit` | string | `""` | CPU limit (empty for no limit) |
 | `kubernetes-workload-configmap-mount-path` | string | `/configmap` | ConfigMap mount path in container |
 | `kubernetes-workload-secret-mount-path` | string | `/secret` | Secret mount path in container |
+| `kubernetes-workload-configmap-keys-for-env` | string | `""` | Comma/space-separated ConfigMap keys to expose as env vars |
+| `kubernetes-workload-secret-keys-for-env` | string | `""` | Comma/space-separated Secret keys to expose as env vars |
 | `kubernetes-workload-termination-grace-period-seconds` | string | `10` | Termination grace period in seconds |
 | `kubernetes-workload-prestop-command` | string | `""` | PreStop hook command (empty for none) |
 | `kubernetes-workload-affinity-strategy` | string | `spread-nodes-and-zones-ha` | Pod affinity strategy plugin name |
@@ -60,7 +63,7 @@ Kubernetes App - Docker Retag
 | `kubernetes-workload-probe-startup-http-path` | string | `/startup` | Startup probe HTTP path |
 | `kubernetes-deployment-replicas` | string | `""` | Replica count (empty for token, NO for HPA management) |
 | `kubernetes-deployment-revision-history-limit` | string | `10` | Number of old ReplicaSets to retain |
-| `kubernetes-service-generation-enabled` | boolean | `false` | Enable Service generation |
+| `kubernetes-service-generation-enabled` | boolean | `""` | Enable Service generation (default: auto based on workload type) |
 | `kubernetes-service-type` | string | `ClusterIP` | Service type (ClusterIP, NodePort, LoadBalancer) |
 | `kubernetes-service-port` | string | `80` | Service port |
 | `kubernetes-service-target-port` | string | `""` | Target port (defaults to service port) |

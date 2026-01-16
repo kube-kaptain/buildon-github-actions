@@ -504,6 +504,7 @@ jobs:
           kubernetes-workload-readonly-root-filesystem: ${{ inputs.kubernetes-workload-readonly-root-filesystem }}
           kubernetes-workload-seccomp-profile: ${{ inputs.kubernetes-workload-seccomp-profile }}
           kubernetes-workload-automount-service-account-token: ${{ inputs.kubernetes-workload-automount-service-account-token }}
+          kubernetes-workload-image-pull-secrets: ${{ inputs.kubernetes-workload-image-pull-secrets }}
           kubernetes-workload-resources-memory: ${{ inputs.kubernetes-workload-resources-memory }}
           kubernetes-workload-resources-cpu-request: ${{ inputs.kubernetes-workload-resources-cpu-request }}
           kubernetes-workload-resources-cpu-limit: ${{ inputs.kubernetes-workload-resources-cpu-limit }}

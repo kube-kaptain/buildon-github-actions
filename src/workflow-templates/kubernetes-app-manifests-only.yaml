@@ -233,6 +233,16 @@ on:
         required: false
         type: string
         default: '/secret'
+      kubernetes-workload-configmap-keys-for-env:
+        description: 'Comma/space-separated ConfigMap keys to expose as env vars'
+        required: false
+        type: string
+        default: ''
+      kubernetes-workload-secret-keys-for-env:
+        description: 'Comma/space-separated Secret keys to expose as env vars'
+        required: false
+        type: string
+        default: ''
       kubernetes-workload-termination-grace-period-seconds:
         description: 'Termination grace period in seconds'
         required: false

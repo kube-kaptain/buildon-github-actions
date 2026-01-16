@@ -14,6 +14,8 @@
 #   generate_container_ports            - Container port definitions
 #   generate_container_lifecycle        - Lifecycle hooks (preStop)
 #   generate_container_env_from_directory - Environment variables from file directory
+#   generate_container_env_refs         - Environment variables from ConfigMap/Secret key refs
+#   generate_container_env_all          - All env vars (plain + configmap refs + secret refs)
 #   generate_configmap_secret_volume_mounts - Volume mounts for ConfigMap/Secret
 #   generate_configmap_secret_volumes   - Volume definitions for ConfigMap/Secret
 #   generate_image_pull_secrets         - Image pull secrets block
@@ -158,17 +160,19 @@ generate_container_lifecycle() {
 }
 
 # Generate environment variables from a directory of files
-# Usage: generate_container_env_from_directory <indent> <env_directory>
+# Usage: generate_container_env_from_directory <indent> <env_directory> [skip_header]
 #   Each file in directory becomes an env var (filename=name, content=value)
 #   Only generates output if directory exists and has files
+#   skip_header: if "true", don't emit the "env:" header (for use with wrapper)
 generate_container_env_from_directory() {
-  if [[ $# -ne 2 ]]; then
-    echo "Error: generate_container_env_from_directory requires exactly 2 arguments, got $#" >&2
+  if [[ $# -lt 2 || $# -gt 3 ]]; then
+    echo "Error: generate_container_env_from_directory requires 2-3 arguments, got $#" >&2
     return 1
   fi
 
   local indent_count="$1"
   local env_directory="$2"
+  local skip_header="${3:-false}"
 
   # Check if directory exists and has files
   if [[ ! -d "${env_directory}" ]]; then
@@ -184,15 +188,158 @@ generate_container_env_from_directory() {
   local indent
   indent=$(_pod_spec_indent "$indent_count")
 
-  echo "${indent}env:"
+  if [[ "${skip_header}" != "true" ]]; then
+    echo "${indent}env:"
+  fi
   while IFS= read -r -d '' filepath; do
     local filename
     filename=$(basename "${filepath}")
     local content
     content=$(cat "${filepath}")
-    echo "${indent}  - name: ${filename}"
-    echo "${indent}    value: \"${content}\""
+    echo "${indent}- name: ${filename}"
+    echo "${indent}  value: \"${content}\""
   done < <(find "${env_directory}" -type f -not -name '.*' -print0 | sort -z)
+}
+
+# Generate environment variable refs from ConfigMap or Secret keys
+# Usage: generate_container_env_refs <indent> <resource_type> <resource_file_path> <resource_name> <keys_list>
+#   resource_type: "configmap" or "secret"
+#   resource_file_path: path to the yaml file to validate keys against
+#   resource_name: the name to use in configMapKeyRef/secretKeyRef
+#   keys_list: comma or space separated list of keys
+#   Only generates output if keys_list is non-empty
+generate_container_env_refs() {
+  if [[ $# -ne 5 ]]; then
+    echo "Error: generate_container_env_refs requires exactly 5 arguments, got $#" >&2
+    return 1
+  fi
+
+  local indent_count="$1"
+  local resource_type="$2"
+  local resource_file_path="$3"
+  local resource_name="$4"
+  local keys_list="$5"
+
+  # Skip if no keys
+  if [[ -z "${keys_list}" ]]; then
+    return 0
+  fi
+
+  # Determine yq path and ref type based on resource type
+  local yq_path ref_type
+  case "${resource_type}" in
+    configmap)
+      yq_path=".data"
+      ref_type="configMapKeyRef"
+      ;;
+    secret)
+      yq_path=".stringData"
+      ref_type="secretKeyRef"
+      ;;
+    *)
+      echo "Error: resource_type must be 'configmap' or 'secret', got '${resource_type}'" >&2
+      return 1
+      ;;
+  esac
+
+  # Validate file exists
+  if [[ ! -f "${resource_file_path}" ]]; then
+    echo "Error: ${resource_type} file not found: ${resource_file_path}" >&2
+    return 1
+  fi
+
+  local indent
+  indent=$(_pod_spec_indent "$indent_count")
+
+  # Split keys on comma or space and process each
+  local key
+  for key in ${keys_list//,/ }; do
+    # Skip empty keys (from multiple spaces/commas)
+    [[ -z "${key}" ]] && continue
+
+    # Validate key exists in the resource file
+    local has_key
+    has_key=$(yq "${yq_path} | has(\"${key}\")" "${resource_file_path}" 2>/dev/null)
+    if [[ "${has_key}" != "true" ]]; then
+      echo "Error: key '${key}' not found in ${resource_type} at ${yq_path} in ${resource_file_path}" >&2
+      return 1
+    fi
+
+    # Generate the env entry with valueFrom
+    echo "${indent}- name: ${key}"
+    echo "${indent}  valueFrom:"
+    echo "${indent}    ${ref_type}:"
+    echo "${indent}      name: ${resource_name}"
+    echo "${indent}      key: ${key}"
+  done
+}
+
+# Generate all container environment variables (plain KVs + configmap refs + secret refs)
+# Usage: generate_container_env_all <indent> <env_directory> \
+#          <configmap_file> <configmap_name> <configmap_keys> \
+#          <secret_file> <secret_name> <secret_keys>
+#   Emits "env:" header only if there's at least one entry
+#   Order: plain KVs, then configmap refs, then secret refs
+generate_container_env_all() {
+  if [[ $# -ne 8 ]]; then
+    echo "Error: generate_container_env_all requires exactly 8 arguments, got $#" >&2
+    return 1
+  fi
+
+  local indent_count="$1"
+  local env_directory="$2"
+  local configmap_file="$3"
+  local configmap_name="$4"
+  local configmap_keys="$5"
+  local secret_file="$6"
+  local secret_name="$7"
+  local secret_keys="$8"
+
+  # Check if there's anything to emit
+  local has_plain_env=false
+  if [[ -d "${env_directory}" ]]; then
+    local file_count
+    file_count=$(find "${env_directory}" -type f -not -name '.*' 2>/dev/null | wc -l | tr -d ' ')
+    if [[ "${file_count}" -gt 0 ]]; then
+      has_plain_env=true
+    fi
+  fi
+
+  local has_configmap_keys=false
+  if [[ -n "${configmap_keys}" && -f "${configmap_file}" ]]; then
+    has_configmap_keys=true
+  fi
+
+  local has_secret_keys=false
+  if [[ -n "${secret_keys}" && -f "${secret_file}" ]]; then
+    has_secret_keys=true
+  fi
+
+  # Nothing to emit
+  if [[ "${has_plain_env}" != "true" && "${has_configmap_keys}" != "true" && "${has_secret_keys}" != "true" ]]; then
+    return 0
+  fi
+
+  local indent
+  indent=$(_pod_spec_indent "$indent_count")
+
+  # Emit header once
+  echo "${indent}env:"
+
+  # Plain KVs (skip header since we emitted it)
+  if [[ "${has_plain_env}" == "true" ]]; then
+    generate_container_env_from_directory "$indent_count" "${env_directory}" true
+  fi
+
+  # ConfigMap refs
+  if [[ "${has_configmap_keys}" == "true" ]]; then
+    generate_container_env_refs "$indent_count" "configmap" "${configmap_file}" "${configmap_name}" "${configmap_keys}" || return 1
+  fi
+
+  # Secret refs
+  if [[ "${has_secret_keys}" == "true" ]]; then
+    generate_container_env_refs "$indent_count" "secret" "${secret_file}" "${secret_name}" "${secret_keys}" || return 1
+  fi
 }
 
 # Generate volume mounts for ConfigMap and Secret

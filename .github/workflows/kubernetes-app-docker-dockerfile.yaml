@@ -205,6 +205,11 @@ on:
         required: false
         type: boolean
         default: false
+      kubernetes-workload-image-pull-secrets:
+        description: 'Include imagePullSecrets in pod spec (ENABLED/DISABLED)'
+        required: false
+        type: string
+        default: 'ENABLED'
       kubernetes-workload-resources-memory:
         description: 'Memory limit (e.g., 128Mi, 1Gi)'
         required: false
@@ -230,6 +235,16 @@ on:
         required: false
         type: string
         default: '/secret'
+      kubernetes-workload-configmap-keys-for-env:
+        description: 'Comma/space-separated ConfigMap keys to expose as env vars'
+        required: false
+        type: string
+        default: ''
+      kubernetes-workload-secret-keys-for-env:
+        description: 'Comma/space-separated Secret keys to expose as env vars'
+        required: false
+        type: string
+        default: ''
       kubernetes-workload-termination-grace-period-seconds:
         description: 'Termination grace period in seconds'
         required: false
@@ -287,10 +302,9 @@ on:
         default: '10'
       # Kubernetes Service generation
       kubernetes-service-generation-enabled:
-        description: 'Enable Service generation'
+        description: 'Enable Service generation (default: auto based on workload type)'
         required: false
         type: boolean
-        default: false
       kubernetes-service-type:
         description: 'Service type (ClusterIP, NodePort, LoadBalancer)'
         required: false
@@ -811,6 +825,7 @@ jobs:
           kubernetes-workload-readonly-root-filesystem: ${{ inputs.kubernetes-workload-readonly-root-filesystem }}
           kubernetes-workload-seccomp-profile: ${{ inputs.kubernetes-workload-seccomp-profile }}
           kubernetes-workload-automount-service-account-token: ${{ inputs.kubernetes-workload-automount-service-account-token }}
+          kubernetes-workload-image-pull-secrets: ${{ inputs.kubernetes-workload-image-pull-secrets }}
           kubernetes-workload-resources-memory: ${{ inputs.kubernetes-workload-resources-memory }}
           kubernetes-workload-resources-cpu-request: ${{ inputs.kubernetes-workload-resources-cpu-request }}
           kubernetes-workload-resources-cpu-limit: ${{ inputs.kubernetes-workload-resources-cpu-limit }}
@@ -992,6 +1007,7 @@ jobs:
           kubernetes-workload-readonly-root-filesystem: ${{ inputs.kubernetes-workload-readonly-root-filesystem }}
           kubernetes-workload-seccomp-profile: ${{ inputs.kubernetes-workload-seccomp-profile }}
           kubernetes-workload-automount-service-account-token: ${{ inputs.kubernetes-workload-automount-service-account-token }}
+          kubernetes-workload-image-pull-secrets: ${{ inputs.kubernetes-workload-image-pull-secrets }}
           kubernetes-workload-resources-memory: ${{ inputs.kubernetes-workload-resources-memory }}
           kubernetes-workload-resources-cpu-request: ${{ inputs.kubernetes-workload-resources-cpu-request }}
           kubernetes-workload-resources-cpu-limit: ${{ inputs.kubernetes-workload-resources-cpu-limit }}
@@ -1227,6 +1243,7 @@ jobs:
           kubernetes-workload-readonly-root-filesystem: ${{ inputs.kubernetes-workload-readonly-root-filesystem }}
           kubernetes-workload-seccomp-profile: ${{ inputs.kubernetes-workload-seccomp-profile }}
           kubernetes-workload-automount-service-account-token: ${{ inputs.kubernetes-workload-automount-service-account-token }}
+          kubernetes-workload-image-pull-secrets: ${{ inputs.kubernetes-workload-image-pull-secrets }}
           kubernetes-workload-resources-memory: ${{ inputs.kubernetes-workload-resources-memory }}
           kubernetes-workload-resources-cpu-request: ${{ inputs.kubernetes-workload-resources-cpu-request }}
           kubernetes-workload-resources-cpu-limit: ${{ inputs.kubernetes-workload-resources-cpu-limit }}
@@ -1432,13 +1449,13 @@ jobs:
           check-run-id: ${{ steps.check-generate-serviceaccount.outputs.check-run-id }}
 
       # === Generate Workload ===
-      - name: Start check - Generate Workload
+      - name: Start check - Generate Workload Manifest
         if: inputs.kubernetes-workload-type != 'none' && success()
         id: check-generate-workload
         uses: ./.github/buildon-github-actions/src/actions/github-check-run
         with:
           action: start
-          check-name: 'Build & Publish → Generate Workload'
+          check-name: 'Build & Publish → Generate Workload Manifest'
       - name: Generate workload manifest
         id: generate-workload
         if: inputs.kubernetes-workload-type != 'none' && success()
@@ -1461,13 +1478,18 @@ jobs:
           kubernetes-workload-readonly-root-filesystem: ${{ inputs.kubernetes-workload-readonly-root-filesystem }}
           kubernetes-workload-seccomp-profile: ${{ inputs.kubernetes-workload-seccomp-profile }}
           kubernetes-workload-automount-service-account-token: ${{ inputs.kubernetes-workload-automount-service-account-token }}
+          kubernetes-workload-image-pull-secrets: ${{ inputs.kubernetes-workload-image-pull-secrets }}
           # Resource limits
           kubernetes-workload-resources-memory: ${{ inputs.kubernetes-workload-resources-memory }}
           kubernetes-workload-resources-cpu-request: ${{ inputs.kubernetes-workload-resources-cpu-request }}
           kubernetes-workload-resources-cpu-limit: ${{ inputs.kubernetes-workload-resources-cpu-limit }}
+          kubernetes-workload-resources-ephemeral-storage: ${{ inputs.kubernetes-workload-resources-ephemeral-storage }}
           # Mount paths
           kubernetes-workload-configmap-mount-path: ${{ inputs.kubernetes-workload-configmap-mount-path }}
           kubernetes-workload-secret-mount-path: ${{ inputs.kubernetes-workload-secret-mount-path }}
+          # Environment variable refs from ConfigMap/Secret keys
+          kubernetes-workload-configmap-keys-for-env: ${{ inputs.kubernetes-workload-configmap-keys-for-env }}
+          kubernetes-workload-secret-keys-for-env: ${{ inputs.kubernetes-workload-secret-keys-for-env }}
           # Lifecycle
           kubernetes-workload-termination-grace-period-seconds: ${{ inputs.kubernetes-workload-termination-grace-period-seconds }}
           kubernetes-workload-prestop-command: ${{ inputs.kubernetes-workload-prestop-command }}
@@ -1489,13 +1511,13 @@ jobs:
           token-delimiter-style: ${{ inputs.token-delimiter-style }}
           kubernetes-global-additional-labels: ${{ inputs.kubernetes-global-additional-labels }}
           kubernetes-global-additional-annotations: ${{ inputs.kubernetes-global-additional-annotations }}
-      - name: Pass check - Generate Workload
+      - name: Pass check - Generate Workload Manifest
         if: inputs.kubernetes-workload-type != 'none' && success()
         uses: ./.github/buildon-github-actions/src/actions/github-check-run
         with:
           action: pass
           check-run-id: ${{ steps.check-generate-workload.outputs.check-run-id }}
-      - name: Fail check - Generate Workload
+      - name: Fail check - Generate Workload Manifest
         if: inputs.kubernetes-workload-type != 'none' && failure() && steps.check-generate-workload.outputs.check-run-id != ''
         uses: ./.github/buildon-github-actions/src/actions/github-check-run
         with:
@@ -1504,7 +1526,7 @@ jobs:
 
       # === Generate Service ===
       - name: Start check - Generate Service
-        if: inputs.kubernetes-service-generation-enabled == true && inputs.kubernetes-workload-type == 'deployment' && success()
+        if: inputs.kubernetes-service-generation-enabled != false && (inputs.kubernetes-service-generation-enabled == true || inputs.kubernetes-workload-type == 'deployment') && success()
         id: check-generate-service
         uses: ./.github/buildon-github-actions/src/actions/github-check-run
         with:
@@ -1512,7 +1534,7 @@ jobs:
           check-name: 'Build & Publish → Generate Service'
       - name: Generate Service manifest
         id: generate-service
-        if: inputs.kubernetes-service-generation-enabled == true && inputs.kubernetes-workload-type == 'deployment' && success()
+        if: inputs.kubernetes-service-generation-enabled != false && (inputs.kubernetes-service-generation-enabled == true || inputs.kubernetes-workload-type == 'deployment') && success()
         uses: ./.github/buildon-github-actions/src/actions/generate-kubernetes-service
         with:
           # Service settings
@@ -1534,13 +1556,13 @@ jobs:
           kubernetes-global-additional-labels: ${{ inputs.kubernetes-global-additional-labels }}
           kubernetes-global-additional-annotations: ${{ inputs.kubernetes-global-additional-annotations }}
       - name: Pass check - Generate Service
-        if: inputs.kubernetes-service-generation-enabled == true && inputs.kubernetes-workload-type == 'deployment' && success()
+        if: inputs.kubernetes-service-generation-enabled != false && (inputs.kubernetes-service-generation-enabled == true || inputs.kubernetes-workload-type == 'deployment') && success()
         uses: ./.github/buildon-github-actions/src/actions/github-check-run
         with:
           action: pass
           check-run-id: ${{ steps.check-generate-service.outputs.check-run-id }}
       - name: Fail check - Generate Service
-        if: inputs.kubernetes-service-generation-enabled == true && inputs.kubernetes-workload-type == 'deployment' && failure() && steps.check-generate-service.outputs.check-run-id != ''
+        if: inputs.kubernetes-service-generation-enabled != false && (inputs.kubernetes-service-generation-enabled == true || inputs.kubernetes-workload-type == 'deployment') && failure() && steps.check-generate-service.outputs.check-run-id != ''
         uses: ./.github/buildon-github-actions/src/actions/github-check-run
         with:
           action: fail
@@ -1613,6 +1635,7 @@ jobs:
           kubernetes-workload-readonly-root-filesystem: ${{ inputs.kubernetes-workload-readonly-root-filesystem }}
           kubernetes-workload-seccomp-profile: ${{ inputs.kubernetes-workload-seccomp-profile }}
           kubernetes-workload-automount-service-account-token: ${{ inputs.kubernetes-workload-automount-service-account-token }}
+          kubernetes-workload-image-pull-secrets: ${{ inputs.kubernetes-workload-image-pull-secrets }}
           kubernetes-workload-resources-memory: ${{ inputs.kubernetes-workload-resources-memory }}
           kubernetes-workload-resources-cpu-request: ${{ inputs.kubernetes-workload-resources-cpu-request }}
           kubernetes-workload-resources-cpu-limit: ${{ inputs.kubernetes-workload-resources-cpu-limit }}
@@ -1893,6 +1916,7 @@ jobs:
           kubernetes-workload-readonly-root-filesystem: ${{ inputs.kubernetes-workload-readonly-root-filesystem }}
           kubernetes-workload-seccomp-profile: ${{ inputs.kubernetes-workload-seccomp-profile }}
           kubernetes-workload-automount-service-account-token: ${{ inputs.kubernetes-workload-automount-service-account-token }}
+          kubernetes-workload-image-pull-secrets: ${{ inputs.kubernetes-workload-image-pull-secrets }}
           kubernetes-workload-resources-memory: ${{ inputs.kubernetes-workload-resources-memory }}
           kubernetes-workload-resources-cpu-request: ${{ inputs.kubernetes-workload-resources-cpu-request }}
           kubernetes-workload-resources-cpu-limit: ${{ inputs.kubernetes-workload-resources-cpu-limit }}

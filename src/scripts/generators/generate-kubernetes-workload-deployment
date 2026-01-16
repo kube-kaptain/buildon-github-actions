@@ -15,6 +15,8 @@
 #
 #   Common workload settings (KUBERNETES_WORKLOAD_*):
 #     See generate-kubernetes-workload for the full list of common settings
+#     KUBERNETES_WORKLOAD_CONFIGMAP_KEYS_FOR_ENV  - Comma/space-separated keys to expose as env refs
+#     KUBERNETES_WORKLOAD_SECRET_KEYS_FOR_ENV     - Comma/space-separated keys to expose as env refs
 #
 #   Deployment-specific settings:
 #     KUBERNETES_DEPLOYMENT_REPLICAS            - Replica count (default: token, "NO" for HPA)
@@ -89,6 +91,10 @@ REVISION_HISTORY_LIMIT="${KUBERNETES_DEPLOYMENT_REVISION_HISTORY_LIMIT:-${KUBERN
 # Mounts (common workload settings)
 CONFIGMAP_MOUNT_PATH="${KUBERNETES_WORKLOAD_CONFIGMAP_MOUNT_PATH:-${KUBERNETES_GLOBAL_CONFIGMAP_MOUNT_PATH:-/configmap}}"
 SECRET_MOUNT_PATH="${KUBERNETES_WORKLOAD_SECRET_MOUNT_PATH:-${KUBERNETES_GLOBAL_SECRET_MOUNT_PATH:-/secret}}"
+
+# Environment variable refs from ConfigMap/Secret keys (common workload settings)
+CONFIGMAP_KEYS_FOR_ENV="${KUBERNETES_WORKLOAD_CONFIGMAP_KEYS_FOR_ENV:-}"
+SECRET_KEYS_FOR_ENV="${KUBERNETES_WORKLOAD_SECRET_KEYS_FOR_ENV:-}"
 
 # Termination and lifecycle (common workload settings)
 TERMINATION_GRACE_PERIOD_SECONDS="${KUBERNETES_WORKLOAD_TERMINATION_GRACE_PERIOD_SECONDS:-${KUBERNETES_GLOBAL_TERMINATION_GRACE_PERIOD_SECONDS:-10}}"
@@ -399,8 +405,10 @@ specific_annotations="${KUBERNETES_WORKLOAD_ADDITIONAL_ANNOTATIONS:-}"
   # Probes
   generate_workload_probes 10
 
-  # Environment variables
-  generate_container_env_from_directory 10 "${ENV_SUB_PATH}"
+  # Environment variables (plain KVs from directory + refs from configmap/secret keys)
+  generate_container_env_all 10 "${ENV_SUB_PATH}" \
+    "${configmap_source}" "${project_name_token}${suffix_fragment}-configmap-checksum" "${CONFIGMAP_KEYS_FOR_ENV}" \
+    "${secret_source}" "${project_name_token}${suffix_fragment}-secret-checksum" "${SECRET_KEYS_FOR_ENV}"
 
   # Volume mounts
   generate_configmap_secret_volume_mounts 10 "${has_configmap}" "${has_secret}" "${CONFIGMAP_MOUNT_PATH}" "${SECRET_MOUNT_PATH}"
