@@ -12,23 +12,7 @@ on:
       # INJECT-INPUT: docker-build
       # INJECT-INPUT: docker-retag
 
-      # Manifests source
-      manifests-sub-path:
-        description: 'Directory containing Kubernetes manifests (relative)'
-        required: false
-        type: string
-        default: 'src/kubernetes'
-      # Manifests packaging
-      manifests-repo-provider-type:
-        description: 'Repo provider type for manifest storage (default: docker, currently the only supported provider)'
-        required: false
-        type: string
-        default: 'docker'
-      manifests-packaging-base-image:
-        description: 'Base image for manifest packaging (default: scratch)'
-        required: false
-        type: string
-        default: ''
+      # INJECT-INPUT: kubernetes-app-manifests
 
       # INJECT-INPUT: kubernetes-global
       # INJECT-INPUT: kubernetes-configmap
