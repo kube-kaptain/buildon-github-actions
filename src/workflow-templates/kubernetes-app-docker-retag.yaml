@@ -7,12 +7,7 @@ kaptain-description: Everything from both docker retag and Kubernetes manifest p
 on:
   workflow_call:
     inputs:
-      # Build output
-      output-sub-path:
-        description: 'Build output directory (relative)'
-        required: false
-        type: string
-        default: 'target'
+      # INJECT-INPUT: output-sub-path
 
       # Docker registry logins
       docker-registry-logins:

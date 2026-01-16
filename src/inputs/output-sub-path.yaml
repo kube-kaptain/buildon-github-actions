@@ -1,0 +1,9 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
+#
+# Build output
+output-sub-path:
+  description: 'Build output directory (relative)'
+  required: false
+  type: string
+  default: 'target'

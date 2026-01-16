@@ -7,12 +7,7 @@ kaptain-description: Calculates and sets all critical artifact naming and versio
 on:
   workflow_call:
     inputs:
-      # Build output
-      output-sub-path:
-        description: 'Build output directory (relative)'
-        required: false
-        type: string
-        default: 'target'
+      # INJECT-INPUT: output-sub-path
 
       # INJECT-INPUT: token-substitution
 
