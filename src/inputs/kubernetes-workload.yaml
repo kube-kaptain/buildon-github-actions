@@ -1,0 +1,303 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
+#
+# Kubernetes Workload generation
+kubernetes-workload-type:
+  description: 'Workload type to generate (deployment, none)'
+  required: false
+  type: string
+  default: 'deployment'
+kubernetes-workload-name-suffix:
+  description: 'Optional suffix for workload name and filename'
+  required: false
+  type: string
+  default: ''
+kubernetes-workload-combined-sub-path:
+  description: 'Sub-path within combined/ for output'
+  required: false
+  type: string
+  default: ''
+kubernetes-workload-env-sub-path:
+  description: 'Directory containing environment variable files (default per workload type)'
+  required: false
+  type: string
+  default: ''
+kubernetes-workload-additional-labels:
+  description: 'Additional labels specific to workload (comma-separated key=value)'
+  required: false
+  type: string
+  default: ''
+kubernetes-workload-additional-annotations:
+  description: 'Additional annotations specific to workload (comma-separated key=value)'
+  required: false
+  type: string
+  default: ''
+kubernetes-workload-container-port:
+  description: 'Container port'
+  required: false
+  type: string
+  default: '1024'
+kubernetes-workload-image-reference-style:
+  description: 'Image reference style (combined, separate, project-name-prefixed-combined, project-name-prefixed-separate)'
+  required: false
+  type: string
+  default: 'combined'
+kubernetes-workload-readonly-root-filesystem:
+  description: 'Enable read-only root filesystem'
+  required: false
+  type: boolean
+  default: true
+kubernetes-workload-seccomp-profile:
+  description: 'Seccomp profile (DISABLED, RuntimeDefault, Localhost, Unconfined)'
+  required: false
+  type: string
+  default: 'DISABLED'
+kubernetes-workload-automount-service-account-token:
+  description: 'Automount service account token'
+  required: false
+  type: boolean
+  default: false
+kubernetes-workload-image-pull-secrets:
+  description: 'Include imagePullSecrets in pod spec (ENABLED/DISABLED)'
+  required: false
+  type: string
+  default: 'ENABLED'
+# Resource configuration inputs
+kubernetes-workload-resources-memory:
+  description: 'Memory limit (e.g., 128Mi, 1Gi)'
+  required: false
+  type: string
+  default: '10Mi'
+kubernetes-workload-resources-cpu-request:
+  description: 'CPU request (e.g., 100m, 1)'
+  required: false
+  type: string
+  default: '100m'
+kubernetes-workload-resources-cpu-limit:
+  description: 'CPU limit (empty for no limit)'
+  required: false
+  type: string
+  default: ''
+kubernetes-workload-resources-ephemeral-storage:
+  description: 'Ephemeral storage request/limit (e.g., 10Mi, 100Mi, 1Gi)'
+  required: false
+  type: string
+  default: '10Mi'
+kubernetes-workload-configmap-mount-path:
+  description: 'ConfigMap mount path in container'
+  required: false
+  type: string
+  default: '/configmap'
+kubernetes-workload-secret-mount-path:
+  description: 'Secret mount path in container'
+  required: false
+  type: string
+  default: '/secret'
+kubernetes-workload-configmap-keys-for-env:
+  description: 'Comma/space-separated ConfigMap keys to expose as env vars'
+  required: false
+  type: string
+  default: ''
+kubernetes-workload-secret-keys-for-env:
+  description: 'Comma/space-separated Secret keys to expose as env vars'
+  required: false
+  type: string
+  default: ''
+kubernetes-workload-termination-grace-period-seconds:
+  description: 'Termination grace period in seconds'
+  required: false
+  type: string
+  default: '10'
+kubernetes-workload-prestop-command:
+  description: 'PreStop hook command (empty for none)'
+  required: false
+  type: string
+  default: ''
+kubernetes-workload-affinity-strategy:
+  description: 'Pod affinity strategy plugin name'
+  required: false
+  type: string
+  default: 'spread-nodes-and-zones-ha'
+# Liveness probe inputs
+kubernetes-workload-probe-liveness-check-type:
+  description: 'Liveness probe type (http-get, tcp-socket, exec, grpc, none)'
+  required: false
+  type: string
+  default: 'http-get'
+kubernetes-workload-probe-liveness-http-path:
+  description: 'Liveness probe HTTP path'
+  required: false
+  type: string
+  default: '/liveness'
+kubernetes-workload-probe-liveness-http-scheme:
+  description: 'Liveness probe HTTP scheme (HTTP, HTTPS)'
+  required: false
+  type: string
+  default: 'HTTP'
+kubernetes-workload-probe-liveness-tcp-port:
+  description: 'Liveness probe TCP port (defaults to container port)'
+  required: false
+  type: string
+  default: ''
+kubernetes-workload-probe-liveness-exec-command:
+  description: 'Liveness probe exec command'
+  required: false
+  type: string
+  default: ''
+kubernetes-workload-probe-liveness-grpc-port:
+  description: 'Liveness probe gRPC port (defaults to container port)'
+  required: false
+  type: string
+  default: ''
+kubernetes-workload-probe-liveness-grpc-service:
+  description: 'Liveness probe gRPC service name'
+  required: false
+  type: string
+  default: ''
+kubernetes-workload-probe-liveness-initial-delay-seconds:
+  description: 'Liveness probe initial delay in seconds'
+  required: false
+  type: string
+  default: '10'
+kubernetes-workload-probe-liveness-period-seconds:
+  description: 'Liveness probe period in seconds'
+  required: false
+  type: string
+  default: '10'
+kubernetes-workload-probe-liveness-timeout-seconds:
+  description: 'Liveness probe timeout in seconds'
+  required: false
+  type: string
+  default: '5'
+kubernetes-workload-probe-liveness-failure-threshold:
+  description: 'Liveness probe failure threshold'
+  required: false
+  type: string
+  default: '3'
+kubernetes-workload-probe-liveness-termination-grace-period-seconds:
+  description: 'Liveness probe termination grace period (empty for default)'
+  required: false
+  type: string
+  default: ''
+# Readiness probe inputs
+kubernetes-workload-probe-readiness-check-type:
+  description: 'Readiness probe type (http-get, tcp-socket, exec, grpc, none)'
+  required: false
+  type: string
+  default: 'http-get'
+kubernetes-workload-probe-readiness-http-path:
+  description: 'Readiness probe HTTP path'
+  required: false
+  type: string
+  default: '/readiness'
+kubernetes-workload-probe-readiness-http-scheme:
+  description: 'Readiness probe HTTP scheme (HTTP, HTTPS)'
+  required: false
+  type: string
+  default: 'HTTP'
+kubernetes-workload-probe-readiness-tcp-port:
+  description: 'Readiness probe TCP port (defaults to container port)'
+  required: false
+  type: string
+  default: ''
+kubernetes-workload-probe-readiness-exec-command:
+  description: 'Readiness probe exec command'
+  required: false
+  type: string
+  default: ''
+kubernetes-workload-probe-readiness-grpc-port:
+  description: 'Readiness probe gRPC port (defaults to container port)'
+  required: false
+  type: string
+  default: ''
+kubernetes-workload-probe-readiness-grpc-service:
+  description: 'Readiness probe gRPC service name'
+  required: false
+  type: string
+  default: ''
+kubernetes-workload-probe-readiness-initial-delay-seconds:
+  description: 'Readiness probe initial delay in seconds'
+  required: false
+  type: string
+  default: '5'
+kubernetes-workload-probe-readiness-period-seconds:
+  description: 'Readiness probe period in seconds'
+  required: false
+  type: string
+  default: '5'
+kubernetes-workload-probe-readiness-timeout-seconds:
+  description: 'Readiness probe timeout in seconds'
+  required: false
+  type: string
+  default: '3'
+kubernetes-workload-probe-readiness-failure-threshold:
+  description: 'Readiness probe failure threshold'
+  required: false
+  type: string
+  default: '3'
+kubernetes-workload-probe-readiness-success-threshold:
+  description: 'Readiness probe success threshold'
+  required: false
+  type: string
+  default: '1'
+# Startup probe inputs
+kubernetes-workload-probe-startup-check-type:
+  description: 'Startup probe type (http-get, tcp-socket, exec, grpc, none)'
+  required: false
+  type: string
+  default: 'http-get'
+kubernetes-workload-probe-startup-http-path:
+  description: 'Startup probe HTTP path'
+  required: false
+  type: string
+  default: '/startup'
+kubernetes-workload-probe-startup-http-scheme:
+  description: 'Startup probe HTTP scheme (HTTP, HTTPS)'
+  required: false
+  type: string
+  default: 'HTTP'
+kubernetes-workload-probe-startup-tcp-port:
+  description: 'Startup probe TCP port (defaults to container port)'
+  required: false
+  type: string
+  default: ''
+kubernetes-workload-probe-startup-exec-command:
+  description: 'Startup probe exec command'
+  required: false
+  type: string
+  default: ''
+kubernetes-workload-probe-startup-grpc-port:
+  description: 'Startup probe gRPC port (defaults to container port)'
+  required: false
+  type: string
+  default: ''
+kubernetes-workload-probe-startup-grpc-service:
+  description: 'Startup probe gRPC service name'
+  required: false
+  type: string
+  default: ''
+kubernetes-workload-probe-startup-initial-delay-seconds:
+  description: 'Startup probe initial delay in seconds'
+  required: false
+  type: string
+  default: '0'
+kubernetes-workload-probe-startup-period-seconds:
+  description: 'Startup probe period in seconds'
+  required: false
+  type: string
+  default: '5'
+kubernetes-workload-probe-startup-timeout-seconds:
+  description: 'Startup probe timeout in seconds'
+  required: false
+  type: string
+  default: '3'
+kubernetes-workload-probe-startup-failure-threshold:
+  description: 'Startup probe failure threshold'
+  required: false
+  type: string
+  default: '30'
+kubernetes-workload-probe-startup-termination-grace-period-seconds:
+  description: 'Startup probe termination grace period (empty for default)'
+  required: false
+  type: string
+  default: ''

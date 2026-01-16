@@ -212,7 +212,7 @@ on:
         required: false
         type: string
         default: 'ENABLED'
-      # Resource configuration inputs for Kubernetes workloads
+      # Resource configuration inputs
       kubernetes-workload-resources-memory:
         description: 'Memory limit (e.g., 128Mi, 1Gi)'
         required: false
@@ -268,7 +268,7 @@ on:
         required: false
         type: string
         default: 'spread-nodes-and-zones-ha'
-      # Liveness probe inputs for Kubernetes workloads
+      # Liveness probe inputs
       kubernetes-workload-probe-liveness-check-type:
         description: 'Liveness probe type (http-get, tcp-socket, exec, grpc, none)'
         required: false
@@ -329,7 +329,7 @@ on:
         required: false
         type: string
         default: ''
-      # Readiness probe inputs for Kubernetes workloads
+      # Readiness probe inputs
       kubernetes-workload-probe-readiness-check-type:
         description: 'Readiness probe type (http-get, tcp-socket, exec, grpc, none)'
         required: false
@@ -390,7 +390,7 @@ on:
         required: false
         type: string
         default: '1'
-      # Startup probe inputs for Kubernetes workloads
+      # Startup probe inputs
       kubernetes-workload-probe-startup-check-type:
         description: 'Startup probe type (http-get, tcp-socket, exec, grpc, none)'
         required: false
