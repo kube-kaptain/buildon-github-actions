@@ -162,19 +162,19 @@ inputs:
     required: false
     default: 'target'
   token-name-style:
-    description: 'Case style for token names'
+    description: 'Case style for token names (UPPER_SNAKE, lower_snake, lower-kebab, UPPER-KEBAB, camelCase, PascalCase, lower.dot, UPPER.DOT)'
     required: false
     default: 'PascalCase'
   token-delimiter-style:
-    description: 'Token delimiter syntax'
+    description: 'Token delimiter syntax for variables (shell, mustache, helm, erb, github-actions, blade, stringtemplate, ognl, t4, swift)'
     required: false
     default: 'shell'
   kubernetes-global-additional-labels:
-    description: 'Additional labels for all Kubernetes manifests'
+    description: 'Additional labels for all Kubernetes manifests (comma-separated key=value)'
     required: false
     default: ''
   kubernetes-global-additional-annotations:
-    description: 'Additional annotations for all Kubernetes manifests'
+    description: 'Additional annotations for all Kubernetes manifests (comma-separated key=value)'
     required: false
     default: ''
 
