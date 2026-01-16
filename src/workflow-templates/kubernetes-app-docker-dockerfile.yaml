@@ -251,16 +251,7 @@ on:
       # INJECT-INPUT: probe-liveness
       # INJECT-INPUT: probe-readiness
       # INJECT-INPUT: probe-startup
-      kubernetes-deployment-replicas:
-        description: 'Replica count (empty for token, NO for HPA management)'
-        required: false
-        type: string
-        default: ''
-      kubernetes-deployment-revision-history-limit:
-        description: 'Number of old ReplicaSets to retain'
-        required: false
-        type: string
-        default: '10'
+      # INJECT-INPUT: deployment
       # Kubernetes Service generation
       kubernetes-service-generation-enabled:
         description: 'Enable Service generation (default: auto based on workload type)'

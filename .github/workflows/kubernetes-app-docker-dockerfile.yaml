@@ -449,6 +449,7 @@ on:
         required: false
         type: string
         default: ''
+      # Deployment-specific inputs for Kubernetes Deployment workloads
       kubernetes-deployment-replicas:
         description: 'Replica count (empty for token, NO for HPA management)'
         required: false
