@@ -8,13 +8,13 @@ Kubernetes App - Docker Retag
 |-------|------|---------|-------------|
 | `output-sub-path` | string | `target` | Build output directory (relative) |
 | `docker-registry-logins` | string | `""` | YAML config for Docker registry logins (registry URL as key) |
+| `docker-target-registry` | string | `ghcr.io` | Target container registry |
+| `docker-target-base-path` | string | `""` | Path between registry and image name (auto-set for GHCR) |
+| `docker-push-targets` | string | `""` | JSON array of additional push targets [{registry, base-path?}] |
 | `docker-source-registry` | string | *required* | Upstream registry (e.g., docker.io) |
 | `docker-source-base-path` | string | `""` | Path between registry and image name (e.g., library) |
 | `docker-source-image-name` | string | *required* | Upstream image name (e.g., nginx) |
 | `docker-source-tag` | string | *required* | Upstream image tag (e.g., 1.25) |
-| `docker-target-registry` | string | `ghcr.io` | Target container registry |
-| `docker-target-base-path` | string | `""` | Path between registry and image name (auto-set for GHCR) |
-| `docker-push-targets` | string | `""` | JSON array of additional push targets [{registry, base-path?}] |
 | `manifests-sub-path` | string | `src/kubernetes` | Directory containing Kubernetes manifests (relative) |
 | `manifests-repo-provider-type` | string | `docker` | Repo provider type for manifest storage (default: docker, currently the only supported provider) |
 | `manifests-packaging-base-image` | string | `""` | Base image for manifest packaging (default: scratch) |

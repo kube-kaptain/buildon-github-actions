@@ -8,12 +8,12 @@ Kubernetes App - Docker Dockerfile
 |-------|------|---------|-------------|
 | `output-sub-path` | string | `target` | Build output directory (relative) |
 | `docker-registry-logins` | string | `""` | YAML config for Docker registry logins (registry URL as key) |
-| `dockerfile-sub-path` | string | `src/docker` | Directory containing Dockerfile, relative to repo root. |
-| `dockerfile-squash` | boolean | `true` | Enable --squash (requires experimental mode) |
-| `dockerfile-no-cache` | boolean | `true` | Disable layer caching for reproducible builds |
 | `docker-target-registry` | string | `ghcr.io` | Target container registry |
 | `docker-target-base-path` | string | `""` | Path between registry and image name (auto-set for GHCR) |
 | `docker-push-targets` | string | `""` | JSON array of additional push targets [{registry, base-path?}] |
+| `dockerfile-sub-path` | string | `src/docker` | Directory containing Dockerfile, relative to repo root. |
+| `dockerfile-squash` | boolean | `true` | Enable --squash (requires experimental mode) |
+| `dockerfile-no-cache` | boolean | `true` | Disable layer caching for reproducible builds |
 | `manifests-sub-path` | string | `src/kubernetes` | Directory containing Kubernetes manifests (relative) |
 | `manifests-repo-provider-type` | string | `docker` | Repo provider type for manifest storage (default: docker, currently the only supported provider) |
 | `manifests-packaging-base-image` | string | `""` | Base image for manifest packaging (default: scratch) |

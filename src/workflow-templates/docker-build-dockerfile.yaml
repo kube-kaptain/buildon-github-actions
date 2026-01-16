@@ -15,22 +15,6 @@ on:
         required: false
         type: string
         default: ''
-      # Docker build options
-      dockerfile-sub-path:
-        description: 'Directory containing Dockerfile, relative to repo root.'
-        required: false
-        type: string
-        default: 'src/docker'
-      dockerfile-squash:
-        description: 'Enable --squash (requires experimental mode)'
-        required: false
-        type: boolean
-        default: true
-      dockerfile-no-cache:
-        description: 'Disable layer caching for reproducible builds'
-        required: false
-        type: boolean
-        default: true
       # Docker target config
       docker-target-registry:
         description: 'Target container registry'
@@ -48,6 +32,22 @@ on:
         required: false
         type: string
         default: ''
+      # Docker build options
+      dockerfile-sub-path:
+        description: 'Directory containing Dockerfile, relative to repo root.'
+        required: false
+        type: string
+        default: 'src/docker'
+      dockerfile-squash:
+        description: 'Enable --squash (requires experimental mode)'
+        required: false
+        type: boolean
+        default: true
+      dockerfile-no-cache:
+        description: 'Disable layer caching for reproducible builds'
+        required: false
+        type: boolean
+        default: true
 
       # INJECT-INPUT: token-substitution
 

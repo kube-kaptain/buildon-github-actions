@@ -15,6 +15,23 @@ on:
         required: false
         type: string
         default: ''
+      # Docker target config
+      docker-target-registry:
+        description: 'Target container registry'
+        required: false
+        type: string
+        default: 'ghcr.io'
+      docker-target-base-path:
+        description: 'Path between registry and image name (auto-set for GHCR)'
+        required: false
+        type: string
+        default: ''
+      # Docker push targets
+      docker-push-targets:
+        description: 'JSON array of additional push targets [{registry, base-path?}]'
+        required: false
+        type: string
+        default: ''
       # Docker source image configuration
       docker-source-registry:
         description: 'Upstream registry (e.g., docker.io)'
@@ -33,23 +50,6 @@ on:
         description: 'Upstream image tag (e.g., 1.25)'
         required: true
         type: string
-      # Docker target config
-      docker-target-registry:
-        description: 'Target container registry'
-        required: false
-        type: string
-        default: 'ghcr.io'
-      docker-target-base-path:
-        description: 'Path between registry and image name (auto-set for GHCR)'
-        required: false
-        type: string
-        default: ''
-      # Docker push targets
-      docker-push-targets:
-        description: 'JSON array of additional push targets [{registry, base-path?}]'
-        required: false
-        type: string
-        default: ''
 
       # INJECT-INPUT: token-substitution
 
