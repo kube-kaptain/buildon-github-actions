@@ -81,9 +81,9 @@ parse_param() {
   echo "$value"
 }
 
-# Escape special sed replacement characters (& and \)
+# Escape special sed replacement characters (& \ and | since | is our delimiter)
 escape_sed_replacement() {
-  printf '%s' "$1" | sed 's/[&\]/\\&/g'
+  printf '%s' "$1" | sed 's/[&\|]/\\&/g'
 }
 
 # Generate github-check-start step from template
