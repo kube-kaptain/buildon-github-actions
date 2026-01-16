@@ -48,28 +48,28 @@ LOG_ERROR_PREFIX="${LOG_ERROR_PREFIX:-}"
 LOG_ERROR_SUFFIX="${LOG_ERROR_SUFFIX:-}"
 
 # Inputs with defaults
-KUBERNETES_CONFIGMAP_NAME_SUFFIX="${KUBERNETES_CONFIGMAP_NAME_SUFFIX:-}"
-KUBERNETES_CONFIGMAP_COMBINED_SUB_PATH="${KUBERNETES_CONFIGMAP_COMBINED_SUB_PATH:-}"
-KUBERNETES_CONFIGMAP_BASE_PATH="${KUBERNETES_CONFIGMAP_SUB_PATH:-src/configmap}"
-KUBERNETES_CONFIGMAP_SUB_PATH=$(build_configuration_source_path "${KUBERNETES_CONFIGMAP_BASE_PATH}" "${KUBERNETES_CONFIGMAP_NAME_SUFFIX}" "")
+NAME_SUFFIX="${KUBERNETES_CONFIGMAP_NAME_SUFFIX:-}"
+COMBINED_SUB_PATH="${KUBERNETES_CONFIGMAP_COMBINED_SUB_PATH:-}"
+BASE_PATH="${KUBERNETES_CONFIGMAP_SUB_PATH:-src/configmap}"
+SUB_PATH=$(build_configuration_source_path "${BASE_PATH}" "${NAME_SUFFIX}" "")
 OUTPUT_SUB_PATH="${OUTPUT_SUB_PATH:-target}"
 # shellcheck source=src/scripts/defaults/tokens.bash
 source "${SCRIPT_DIR}/../defaults/tokens.bash"
-KUBERNETES_CONFIGMAP_NAME_CHECKSUM_INJECTION="${KUBERNETES_CONFIGMAP_NAME_CHECKSUM_INJECTION:-true}"
+NAME_CHECKSUM_INJECTION="${KUBERNETES_CONFIGMAP_NAME_CHECKSUM_INJECTION:-true}"
 
 # Validate styles upfront
 validate_token_styles
 
-if [[ "${KUBERNETES_CONFIGMAP_NAME_CHECKSUM_INJECTION}" != "true" && "${KUBERNETES_CONFIGMAP_NAME_CHECKSUM_INJECTION}" != "false" ]]; then
-  echo "${LOG_ERROR_PREFIX}KUBERNETES_CONFIGMAP_NAME_CHECKSUM_INJECTION must be 'true' or 'false', got: ${KUBERNETES_CONFIGMAP_NAME_CHECKSUM_INJECTION}${LOG_ERROR_SUFFIX}" >&2
+if [[ "${NAME_CHECKSUM_INJECTION}" != "true" && "${NAME_CHECKSUM_INJECTION}" != "false" ]]; then
+  echo "${LOG_ERROR_PREFIX}KUBERNETES_CONFIGMAP_NAME_CHECKSUM_INJECTION must be 'true' or 'false', got: ${NAME_CHECKSUM_INJECTION}${LOG_ERROR_SUFFIX}" >&2
   exit 4
 fi
 
 # Validate combined sub-path format
-validate_combined_sub_path "${KUBERNETES_CONFIGMAP_COMBINED_SUB_PATH}"
+validate_combined_sub_path "${COMBINED_SUB_PATH}"
 
 # Validate source directory exists and has files
-validate_configuration_entries_directory "${KUBERNETES_CONFIGMAP_SUB_PATH}" "ConfigMap"
+validate_configuration_entries_directory "${SUB_PATH}" "ConfigMap"
 
 # Generate token references
 project_name_token=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "PROJECT_NAME")
@@ -77,20 +77,20 @@ environment_token=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_N
 version_token=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "VERSION")
 
 # Build metadata.name: ${ProjectName}[-${combined}][-${suffix}][-configmap-checksum]
-name_middle=$(build_name_middle_fragment "${KUBERNETES_CONFIGMAP_COMBINED_SUB_PATH}" "${KUBERNETES_CONFIGMAP_NAME_SUFFIX}")
+name_middle=$(build_name_middle_fragment "${COMBINED_SUB_PATH}" "${NAME_SUFFIX}")
 
-if [[ "${KUBERNETES_CONFIGMAP_NAME_CHECKSUM_INJECTION}" == "true" ]]; then
+if [[ "${NAME_CHECKSUM_INJECTION}" == "true" ]]; then
   configmap_name="${project_name_token}${name_middle}-configmap-checksum"
 else
   configmap_name="${project_name_token}${name_middle}"
 fi
 
 # Create output directory
-output_dir=$(ensure_manifest_output_dir "${OUTPUT_SUB_PATH}" "${KUBERNETES_CONFIGMAP_COMBINED_SUB_PATH}")
+output_dir=$(ensure_manifest_output_dir "${OUTPUT_SUB_PATH}" "${COMBINED_SUB_PATH}")
 
 # Generate ConfigMap YAML (include suffix in filename if provided)
-if [[ -n "${KUBERNETES_CONFIGMAP_NAME_SUFFIX}" ]]; then
-  output_file="${output_dir}/configmap-${KUBERNETES_CONFIGMAP_NAME_SUFFIX}.yaml"
+if [[ -n "${NAME_SUFFIX}" ]]; then
+  output_file="${output_dir}/configmap-${NAME_SUFFIX}.yaml"
 else
   output_file="${output_dir}/configmap.yaml"
 fi
@@ -110,7 +110,7 @@ specific_annotations="${KUBERNETES_CONFIGMAP_ADDITIONAL_ANNOTATIONS:-}"
   generate_metadata 2 labels
   generate_metadata 2 annotations
   echo "data:"
-  generate_configuration_entries "${KUBERNETES_CONFIGMAP_SUB_PATH}"
+  generate_configuration_entries "${SUB_PATH}"
 } > "${output_file}"
 
 echo "Generated ConfigMap manifest: ${output_file}" >&2
