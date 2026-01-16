@@ -30,7 +30,7 @@ on:
         required: false
         type: string
         default: ''
-      # Docker target config (for docker repo provider)
+      # Docker target config
       docker-target-registry:
         description: 'Target container registry'
         required: false
