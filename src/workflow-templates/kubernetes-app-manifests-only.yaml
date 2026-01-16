@@ -208,21 +208,7 @@ on:
         required: false
         type: string
         default: 'ENABLED'
-      kubernetes-workload-resources-memory:
-        description: 'Memory limit (e.g., 128Mi, 1Gi)'
-        required: false
-        type: string
-        default: '10Mi'
-      kubernetes-workload-resources-cpu-request:
-        description: 'CPU request (e.g., 100m, 1)'
-        required: false
-        type: string
-        default: '100m'
-      kubernetes-workload-resources-cpu-limit:
-        description: 'CPU limit (empty for no limit)'
-        required: false
-        type: string
-        default: ''
+      # INJECT-INPUT: workload-resources
       kubernetes-workload-configmap-mount-path:
         description: 'ConfigMap mount path in container'
         required: false

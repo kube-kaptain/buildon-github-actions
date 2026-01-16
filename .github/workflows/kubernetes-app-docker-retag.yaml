@@ -212,6 +212,7 @@ on:
         required: false
         type: string
         default: 'ENABLED'
+      # Resource configuration inputs for Kubernetes workloads
       kubernetes-workload-resources-memory:
         description: 'Memory limit (e.g., 128Mi, 1Gi)'
         required: false
