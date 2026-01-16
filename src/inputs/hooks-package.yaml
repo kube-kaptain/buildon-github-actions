@@ -1,0 +1,14 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
+#
+# Manifest package hook script paths
+hook-pre-package-prepare-script-sub-path:
+  description: 'Path to pre-package prepare script relative to .github/ (e.g., bin/pre-package-prepare.bash)'
+  required: false
+  type: string
+  default: ''
+hook-post-package-tests-script-sub-path:
+  description: 'Path to post-package test script relative to .github/ (e.g., bin/post-package.bash)'
+  required: false
+  type: string
+  default: ''

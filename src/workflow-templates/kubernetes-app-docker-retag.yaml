@@ -89,22 +89,8 @@ on:
 
       # INJECT-INPUT: basic-quality-checks
 
-      # Hook script paths
-      hook-pre-tagging-tests-script-sub-path:
-        description: 'Path to pre-tagging test script relative to .github/ (e.g., bin/pre-tagging.bash)'
-        required: false
-        type: string
-        default: ''
-      hook-pre-package-prepare-script-sub-path:
-        description: 'Path to pre-package prepare script relative to .github/ (e.g., bin/pre-package-prepare.bash)'
-        required: false
-        type: string
-        default: ''
-      hook-post-package-tests-script-sub-path:
-        description: 'Path to post-package test script relative to .github/ (e.g., bin/post-package.bash)'
-        required: false
-        type: string
-        default: ''
+      # INJECT-INPUT: hooks-pre-tagging
+      # INJECT-INPUT: hooks-package
 
       # INJECT-INPUT: github-release
     secrets:

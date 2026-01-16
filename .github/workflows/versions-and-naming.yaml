@@ -92,7 +92,7 @@ on:
         type: string
         default: ''
 
-      # Hook script paths
+      # Pre tagging hook script path
       hook-pre-tagging-tests-script-sub-path:
         description: 'Path to pre-tagging test script relative to .github/ (e.g., bin/pre-tagging.bash)'
         required: false

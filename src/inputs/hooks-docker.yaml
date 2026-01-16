@@ -1,0 +1,14 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
+#
+# Docker related hook script paths
+hook-pre-docker-prepare-script-sub-path:
+  description: 'Path to pre-docker prepare script relative to .github/ (e.g., bin/pre-docker-prepare.bash)'
+  required: false
+  type: string
+  default: ''
+hook-post-docker-tests-script-sub-path:
+  description: 'Path to post-docker test script relative to .github/ (e.g., bin/post-docker.bash)'
+  required: false
+  type: string
+  default: ''
