@@ -234,11 +234,11 @@ inputs:
     description: 'Startup probe HTTP path'
     required: false
     default: '/startup'
-  kubernetes-deployment-replicas:
+  kubernetes-workload-replicas:
     description: 'Replica count (empty for token, NO for HPA management)'
     required: false
     default: ''
-  kubernetes-deployment-revision-history-limit:
+  kubernetes-workload-revision-history-limit:
     description: 'Number of old ReplicaSets to retain'
     required: false
     default: '10'
@@ -551,8 +551,8 @@ runs:
         KUBERNETES_WORKLOAD_PROBE_LIVENESS_HTTP_PATH: ${{ inputs.kubernetes-workload-probe-liveness-http-path }}
         KUBERNETES_WORKLOAD_PROBE_READINESS_HTTP_PATH: ${{ inputs.kubernetes-workload-probe-readiness-http-path }}
         KUBERNETES_WORKLOAD_PROBE_STARTUP_HTTP_PATH: ${{ inputs.kubernetes-workload-probe-startup-http-path }}
-        KUBERNETES_DEPLOYMENT_REPLICAS: ${{ inputs.kubernetes-deployment-replicas }}
-        KUBERNETES_DEPLOYMENT_REVISION_HISTORY_LIMIT: ${{ inputs.kubernetes-deployment-revision-history-limit }}
+        KUBERNETES_WORKLOAD_REPLICAS: ${{ inputs.kubernetes-workload-replicas }}
+        KUBERNETES_WORKLOAD_REVISION_HISTORY_LIMIT: ${{ inputs.kubernetes-workload-revision-history-limit }}
         # Workflow inputs - kubernetes service generation
         KUBERNETES_SERVICE_GENERATION_ENABLED: ${{ inputs.kubernetes-service-generation-enabled }}
         KUBERNETES_SERVICE_TYPE: ${{ inputs.kubernetes-service-type }}

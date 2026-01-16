@@ -17,6 +17,14 @@ inputs:
     default: 'deployment'
 
   # Common workload settings
+  kubernetes-workload-replicas:
+    description: 'Replica count (empty for token, NO for HPA management)'
+    required: false
+    default: ''
+  kubernetes-workload-revision-history-limit:
+    description: 'Number of revisions to retain (ReplicaSets for Deployment, ControllerRevisions for StatefulSet)'
+    required: false
+    default: '10'
   kubernetes-workload-name-suffix:
     description: 'Optional suffix for workload name and filename'
     required: false
@@ -146,16 +154,6 @@ inputs:
     required: false
     default: '/startup'
 
-  # Deployment-specific settings
-  kubernetes-deployment-replicas:
-    description: 'Replica count (empty for token, NO for HPA management)'
-    required: false
-    default: ''
-  kubernetes-deployment-revision-history-limit:
-    description: 'Number of old ReplicaSets to retain'
-    required: false
-    default: '10'
-
   # Global settings (passed through)
   output-sub-path:
     description: 'Build output directory (relative)'
@@ -191,6 +189,8 @@ runs:
         # Workload type
         KUBERNETES_WORKLOAD_TYPE: ${{ inputs.kubernetes-workload-type }}
         # Common workload settings
+        KUBERNETES_WORKLOAD_REPLICAS: ${{ inputs.kubernetes-workload-replicas }}
+        KUBERNETES_WORKLOAD_REVISION_HISTORY_LIMIT: ${{ inputs.kubernetes-workload-revision-history-limit }}
         KUBERNETES_WORKLOAD_NAME_SUFFIX: ${{ inputs.kubernetes-workload-name-suffix }}
         KUBERNETES_WORKLOAD_COMBINED_SUB_PATH: ${{ inputs.kubernetes-workload-combined-sub-path }}
         KUBERNETES_WORKLOAD_ENV_SUB_PATH: ${{ inputs.kubernetes-workload-env-sub-path }}
@@ -227,9 +227,6 @@ runs:
         KUBERNETES_WORKLOAD_PROBE_LIVENESS_HTTP_PATH: ${{ inputs.kubernetes-workload-probe-liveness-http-path }}
         KUBERNETES_WORKLOAD_PROBE_READINESS_HTTP_PATH: ${{ inputs.kubernetes-workload-probe-readiness-http-path }}
         KUBERNETES_WORKLOAD_PROBE_STARTUP_HTTP_PATH: ${{ inputs.kubernetes-workload-probe-startup-http-path }}
-        # Deployment-specific settings
-        KUBERNETES_DEPLOYMENT_REPLICAS: ${{ inputs.kubernetes-deployment-replicas }}
-        KUBERNETES_DEPLOYMENT_REVISION_HISTORY_LIMIT: ${{ inputs.kubernetes-deployment-revision-history-limit }}
         # Global settings
         OUTPUT_SUB_PATH: ${{ inputs.output-sub-path }}
         TOKEN_NAME_STYLE: ${{ inputs.token-name-style }}

@@ -13,6 +13,10 @@
 
 # shellcheck disable=SC2034  # Variables used by sourcing scripts
 
+# Replicas: empty → token, "NO" → omit for HPA, other → pass through (numeric or custom token)
+REPLICAS="${KUBERNETES_WORKLOAD_REPLICAS:-}"
+REVISION_HISTORY_LIMIT="${KUBERNETES_WORKLOAD_REVISION_HISTORY_LIMIT:-10}"
+
 # Image reference style
 IMAGE_REFERENCE_STYLE="${KUBERNETES_WORKLOAD_IMAGE_REFERENCE_STYLE:-combined}"
 

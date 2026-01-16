@@ -34,6 +34,8 @@ Kubernetes App - Docker Retag
 | `kubernetes-serviceaccount-additional-labels` | string | `""` | Additional labels specific to ServiceAccount (comma-separated key=value) |
 | `kubernetes-serviceaccount-additional-annotations` | string | `""` | Additional annotations specific to ServiceAccount (comma-separated key=value) |
 | `kubernetes-workload-type` | string | `deployment` | Workload type to generate (deployment, none) |
+| `kubernetes-workload-replicas` | string | `""` | Replica count (empty for token, NO for HPA management, number for fixed) |
+| `kubernetes-workload-revision-history-limit` | string | `10` | Number of revisions to retain (ReplicaSets for Deployment, ControllerRevisions for StatefulSet) |
 | `kubernetes-workload-name-suffix` | string | `""` | Optional suffix for workload name and filename |
 | `kubernetes-workload-combined-sub-path` | string | `""` | Sub-path within combined/ for output |
 | `kubernetes-workload-env-sub-path` | string | `""` | Directory containing environment variable files (default per workload type) |
@@ -92,8 +94,6 @@ Kubernetes App - Docker Retag
 | `kubernetes-workload-probe-startup-timeout-seconds` | string | `3` | Startup probe timeout in seconds |
 | `kubernetes-workload-probe-startup-failure-threshold` | string | `30` | Startup probe failure threshold |
 | `kubernetes-workload-probe-startup-termination-grace-period-seconds` | string | `""` | Startup probe termination grace period (empty for default) |
-| `kubernetes-deployment-replicas` | string | `""` | Replica count (empty for token, NO for HPA management) |
-| `kubernetes-deployment-revision-history-limit` | string | `10` | Number of old ReplicaSets to retain |
 | `kubernetes-service-generation-enabled` | boolean | `""` | Enable Service generation (default: auto based on workload type) |
 | `kubernetes-service-type` | string | `ClusterIP` | Service type (ClusterIP, NodePort, LoadBalancer) |
 | `kubernetes-service-port` | string | `80` | Service port |

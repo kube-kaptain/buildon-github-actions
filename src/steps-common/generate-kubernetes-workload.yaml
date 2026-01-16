@@ -11,6 +11,8 @@
     # Workload type
     kubernetes-workload-type: ${{ inputs.kubernetes-workload-type }}
     # Common workload settings
+    kubernetes-workload-replicas: ${{ inputs.kubernetes-workload-replicas }}
+    kubernetes-workload-revision-history-limit: ${{ inputs.kubernetes-workload-revision-history-limit }}
     kubernetes-workload-name-suffix: ${{ inputs.kubernetes-workload-name-suffix }}
     kubernetes-workload-combined-sub-path: ${{ inputs.kubernetes-workload-combined-sub-path }}
     kubernetes-workload-env-sub-path: ${{ inputs.kubernetes-workload-env-sub-path }}
@@ -47,9 +49,6 @@
     kubernetes-workload-probe-liveness-http-path: ${{ inputs.kubernetes-workload-probe-liveness-http-path }}
     kubernetes-workload-probe-readiness-http-path: ${{ inputs.kubernetes-workload-probe-readiness-http-path }}
     kubernetes-workload-probe-startup-http-path: ${{ inputs.kubernetes-workload-probe-startup-http-path }}
-    # Deployment-specific settings
-    kubernetes-deployment-replicas: ${{ inputs.kubernetes-deployment-replicas }}
-    kubernetes-deployment-revision-history-limit: ${{ inputs.kubernetes-deployment-revision-history-limit }}
     # Global settings
     output-sub-path: ${{ inputs.output-sub-path }}
     token-name-style: ${{ inputs.token-name-style }}

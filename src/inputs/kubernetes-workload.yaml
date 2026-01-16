@@ -7,6 +7,16 @@ kubernetes-workload-type:
   required: false
   type: string
   default: 'deployment'
+kubernetes-workload-replicas:
+  description: 'Replica count (empty for token, NO for HPA management, number for fixed)'
+  required: false
+  type: string
+  default: ''
+kubernetes-workload-revision-history-limit:
+  description: 'Number of revisions to retain (ReplicaSets for Deployment, ControllerRevisions for StatefulSet)'
+  required: false
+  type: string
+  default: '10'
 kubernetes-workload-name-suffix:
   description: 'Optional suffix for workload name and filename'
   required: false

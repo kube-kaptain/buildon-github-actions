@@ -218,7 +218,7 @@ read_manifest_with_suffix() {
 }
 
 @test "omits replicas when set to NO" {
-  export KUBERNETES_DEPLOYMENT_REPLICAS="NO"
+  export KUBERNETES_WORKLOAD_REPLICAS="NO"
 
   run "$GENERATORS_DIR/generate-kubernetes-workload-deployment"
   [ "$status" -eq 0 ]

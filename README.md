@@ -150,8 +150,6 @@ See [`examples/`](examples/) for more usage patterns.
 | `kubernetes-configmap-additional-labels` | string | `""` | Additional labels specific to ConfigMap (comma-separated key=value) |
 | `kubernetes-configmap-name-checksum-injection` | boolean | `true` | Enable checksum injection suffix in ConfigMap name |
 | `kubernetes-configmap-sub-path` | string | `src/configmap` | Directory containing ConfigMap data files (relative) |
-| `kubernetes-deployment-replicas` | string | `""` | Replica count (empty for token, NO for HPA management) |
-| `kubernetes-deployment-revision-history-limit` | string | `10` | Number of old ReplicaSets to retain |
 | `kubernetes-global-additional-annotations` | string | `""` | Additional annotations for all Kubernetes manifests (comma-separated key=value) |
 | `kubernetes-global-additional-labels` | string | `""` | Additional labels for all Kubernetes manifests (comma-separated key=value) |
 | `kubernetes-secret-template-additional-annotations` | string | `""` | Additional annotations specific to Secret template (comma-separated key=value) |
@@ -222,10 +220,12 @@ See [`examples/`](examples/) for more usage patterns.
 | `kubernetes-workload-probe-startup-termination-grace-period-seconds` | string | `""` | Startup probe termination grace period (empty for default) |
 | `kubernetes-workload-probe-startup-timeout-seconds` | string | `3` | Startup probe timeout in seconds |
 | `kubernetes-workload-readonly-root-filesystem` | boolean | `true` | Enable read-only root filesystem |
+| `kubernetes-workload-replicas` | string | `""` | Replica count (empty for token, NO for HPA management, number for fixed) |
 | `kubernetes-workload-resources-cpu-limit` | string | `""` | CPU limit (empty for no limit) |
 | `kubernetes-workload-resources-cpu-request` | string | `100m` | CPU request (e.g., 100m, 1) |
 | `kubernetes-workload-resources-ephemeral-storage` | string | `10Mi` | Ephemeral storage request/limit (e.g., 10Mi, 100Mi, 1Gi) |
 | `kubernetes-workload-resources-memory` | string | `10Mi` | Memory limit (e.g., 128Mi, 1Gi) |
+| `kubernetes-workload-revision-history-limit` | string | `10` | Number of revisions to retain (ReplicaSets for Deployment, ControllerRevisions for StatefulSet) |
 | `kubernetes-workload-seccomp-profile` | string | `DISABLED` | Seccomp profile (DISABLED, RuntimeDefault, Localhost, Unconfined) |
 | `kubernetes-workload-secret-keys-for-env` | string | `""` | Comma/space-separated Secret keys to expose as env vars |
 | `kubernetes-workload-secret-mount-path` | string | `/secret` | Secret mount path in container |

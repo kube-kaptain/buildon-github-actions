@@ -75,8 +75,8 @@
     kubernetes-workload-probe-liveness-http-path: ${{ inputs.kubernetes-workload-probe-liveness-http-path }}
     kubernetes-workload-probe-readiness-http-path: ${{ inputs.kubernetes-workload-probe-readiness-http-path }}
     kubernetes-workload-probe-startup-http-path: ${{ inputs.kubernetes-workload-probe-startup-http-path }}
-    kubernetes-deployment-replicas: ${{ inputs.kubernetes-deployment-replicas }}
-    kubernetes-deployment-revision-history-limit: ${{ inputs.kubernetes-deployment-revision-history-limit }}
+    kubernetes-workload-replicas: ${{ inputs.kubernetes-workload-replicas }}
+    kubernetes-workload-revision-history-limit: ${{ inputs.kubernetes-workload-revision-history-limit }}
     # Kubernetes Service generation
     kubernetes-service-generation-enabled: ${{ inputs.kubernetes-service-generation-enabled }}
     kubernetes-service-type: ${{ inputs.kubernetes-service-type }}

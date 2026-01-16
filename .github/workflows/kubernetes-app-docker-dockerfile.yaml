@@ -155,6 +155,16 @@ on:
         required: false
         type: string
         default: 'deployment'
+      kubernetes-workload-replicas:
+        description: 'Replica count (empty for token, NO for HPA management, number for fixed)'
+        required: false
+        type: string
+        default: ''
+      kubernetes-workload-revision-history-limit:
+        description: 'Number of revisions to retain (ReplicaSets for Deployment, ControllerRevisions for StatefulSet)'
+        required: false
+        type: string
+        default: '10'
       kubernetes-workload-name-suffix:
         description: 'Optional suffix for workload name and filename'
         required: false
@@ -449,17 +459,6 @@ on:
         required: false
         type: string
         default: ''
-      # Deployment-specific inputs for Kubernetes Deployment workloads
-      kubernetes-deployment-replicas:
-        description: 'Replica count (empty for token, NO for HPA management)'
-        required: false
-        type: string
-        default: ''
-      kubernetes-deployment-revision-history-limit:
-        description: 'Number of old ReplicaSets to retain'
-        required: false
-        type: string
-        default: '10'
       # Kubernetes Service generation
       kubernetes-service-generation-enabled:
         description: 'Enable Service generation (default: auto based on workload type)'
@@ -1003,8 +1002,8 @@ jobs:
           kubernetes-workload-probe-liveness-http-path: ${{ inputs.kubernetes-workload-probe-liveness-http-path }}
           kubernetes-workload-probe-readiness-http-path: ${{ inputs.kubernetes-workload-probe-readiness-http-path }}
           kubernetes-workload-probe-startup-http-path: ${{ inputs.kubernetes-workload-probe-startup-http-path }}
-          kubernetes-deployment-replicas: ${{ inputs.kubernetes-deployment-replicas }}
-          kubernetes-deployment-revision-history-limit: ${{ inputs.kubernetes-deployment-revision-history-limit }}
+          kubernetes-workload-replicas: ${{ inputs.kubernetes-workload-replicas }}
+          kubernetes-workload-revision-history-limit: ${{ inputs.kubernetes-workload-revision-history-limit }}
           # Kubernetes Service generation
           kubernetes-service-generation-enabled: ${{ inputs.kubernetes-service-generation-enabled }}
           kubernetes-service-type: ${{ inputs.kubernetes-service-type }}
@@ -1185,8 +1184,8 @@ jobs:
           kubernetes-workload-probe-liveness-http-path: ${{ inputs.kubernetes-workload-probe-liveness-http-path }}
           kubernetes-workload-probe-readiness-http-path: ${{ inputs.kubernetes-workload-probe-readiness-http-path }}
           kubernetes-workload-probe-startup-http-path: ${{ inputs.kubernetes-workload-probe-startup-http-path }}
-          kubernetes-deployment-replicas: ${{ inputs.kubernetes-deployment-replicas }}
-          kubernetes-deployment-revision-history-limit: ${{ inputs.kubernetes-deployment-revision-history-limit }}
+          kubernetes-workload-replicas: ${{ inputs.kubernetes-workload-replicas }}
+          kubernetes-workload-revision-history-limit: ${{ inputs.kubernetes-workload-revision-history-limit }}
           # Kubernetes Service generation
           kubernetes-service-generation-enabled: ${{ inputs.kubernetes-service-generation-enabled }}
           kubernetes-service-type: ${{ inputs.kubernetes-service-type }}
@@ -1421,8 +1420,8 @@ jobs:
           kubernetes-workload-probe-liveness-http-path: ${{ inputs.kubernetes-workload-probe-liveness-http-path }}
           kubernetes-workload-probe-readiness-http-path: ${{ inputs.kubernetes-workload-probe-readiness-http-path }}
           kubernetes-workload-probe-startup-http-path: ${{ inputs.kubernetes-workload-probe-startup-http-path }}
-          kubernetes-deployment-replicas: ${{ inputs.kubernetes-deployment-replicas }}
-          kubernetes-deployment-revision-history-limit: ${{ inputs.kubernetes-deployment-revision-history-limit }}
+          kubernetes-workload-replicas: ${{ inputs.kubernetes-workload-replicas }}
+          kubernetes-workload-revision-history-limit: ${{ inputs.kubernetes-workload-revision-history-limit }}
           # Kubernetes Service generation
           kubernetes-service-generation-enabled: ${{ inputs.kubernetes-service-generation-enabled }}
           kubernetes-service-type: ${{ inputs.kubernetes-service-type }}
@@ -1629,6 +1628,8 @@ jobs:
           # Workload type
           kubernetes-workload-type: ${{ inputs.kubernetes-workload-type }}
           # Common workload settings
+          kubernetes-workload-replicas: ${{ inputs.kubernetes-workload-replicas }}
+          kubernetes-workload-revision-history-limit: ${{ inputs.kubernetes-workload-revision-history-limit }}
           kubernetes-workload-name-suffix: ${{ inputs.kubernetes-workload-name-suffix }}
           kubernetes-workload-combined-sub-path: ${{ inputs.kubernetes-workload-combined-sub-path }}
           kubernetes-workload-env-sub-path: ${{ inputs.kubernetes-workload-env-sub-path }}
@@ -1665,9 +1666,6 @@ jobs:
           kubernetes-workload-probe-liveness-http-path: ${{ inputs.kubernetes-workload-probe-liveness-http-path }}
           kubernetes-workload-probe-readiness-http-path: ${{ inputs.kubernetes-workload-probe-readiness-http-path }}
           kubernetes-workload-probe-startup-http-path: ${{ inputs.kubernetes-workload-probe-startup-http-path }}
-          # Deployment-specific settings
-          kubernetes-deployment-replicas: ${{ inputs.kubernetes-deployment-replicas }}
-          kubernetes-deployment-revision-history-limit: ${{ inputs.kubernetes-deployment-revision-history-limit }}
           # Global settings
           output-sub-path: ${{ inputs.output-sub-path }}
           token-name-style: ${{ inputs.token-name-style }}
@@ -1813,8 +1811,8 @@ jobs:
           kubernetes-workload-probe-liveness-http-path: ${{ inputs.kubernetes-workload-probe-liveness-http-path }}
           kubernetes-workload-probe-readiness-http-path: ${{ inputs.kubernetes-workload-probe-readiness-http-path }}
           kubernetes-workload-probe-startup-http-path: ${{ inputs.kubernetes-workload-probe-startup-http-path }}
-          kubernetes-deployment-replicas: ${{ inputs.kubernetes-deployment-replicas }}
-          kubernetes-deployment-revision-history-limit: ${{ inputs.kubernetes-deployment-revision-history-limit }}
+          kubernetes-workload-replicas: ${{ inputs.kubernetes-workload-replicas }}
+          kubernetes-workload-revision-history-limit: ${{ inputs.kubernetes-workload-revision-history-limit }}
           # Kubernetes Service generation
           kubernetes-service-generation-enabled: ${{ inputs.kubernetes-service-generation-enabled }}
           kubernetes-service-type: ${{ inputs.kubernetes-service-type }}
@@ -2094,8 +2092,8 @@ jobs:
           kubernetes-workload-probe-liveness-http-path: ${{ inputs.kubernetes-workload-probe-liveness-http-path }}
           kubernetes-workload-probe-readiness-http-path: ${{ inputs.kubernetes-workload-probe-readiness-http-path }}
           kubernetes-workload-probe-startup-http-path: ${{ inputs.kubernetes-workload-probe-startup-http-path }}
-          kubernetes-deployment-replicas: ${{ inputs.kubernetes-deployment-replicas }}
-          kubernetes-deployment-revision-history-limit: ${{ inputs.kubernetes-deployment-revision-history-limit }}
+          kubernetes-workload-replicas: ${{ inputs.kubernetes-workload-replicas }}
+          kubernetes-workload-revision-history-limit: ${{ inputs.kubernetes-workload-revision-history-limit }}
           # Kubernetes Service generation
           kubernetes-service-generation-enabled: ${{ inputs.kubernetes-service-generation-enabled }}
           kubernetes-service-type: ${{ inputs.kubernetes-service-type }}

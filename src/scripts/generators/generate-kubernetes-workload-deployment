@@ -15,12 +15,10 @@
 #
 #   Common workload settings (KUBERNETES_WORKLOAD_*):
 #     See generate-kubernetes-workload for the full list of common settings
+#     KUBERNETES_WORKLOAD_REPLICAS                - Replica count (default: token, "NO" for HPA)
+#     KUBERNETES_WORKLOAD_REVISION_HISTORY_LIMIT  - Revision history (default: 10)
 #     KUBERNETES_WORKLOAD_CONFIGMAP_KEYS_FOR_ENV  - Comma/space-separated keys to expose as env refs
 #     KUBERNETES_WORKLOAD_SECRET_KEYS_FOR_ENV     - Comma/space-separated keys to expose as env refs
-#
-#   Deployment-specific settings:
-#     KUBERNETES_DEPLOYMENT_REPLICAS            - Replica count (default: token, "NO" for HPA)
-#     KUBERNETES_DEPLOYMENT_REVISION_HISTORY_LIMIT - Revision history (default: 10)
 #
 # Output:
 #   ${OUTPUT_SUB_PATH}/manifests/combined/[${combined-sub-path}/]deployment[-${suffix}].yaml
@@ -66,8 +64,6 @@ source "${SCRIPT_DIR}/../defaults/common.bash"
 source "${SCRIPT_DIR}/../defaults/tokens.bash"
 # shellcheck source=src/scripts/defaults/kubernetes-workload.bash
 source "${SCRIPT_DIR}/../defaults/kubernetes-workload.bash"
-# shellcheck source=src/scripts/defaults/kubernetes-workload-deployment.bash
-source "${SCRIPT_DIR}/../defaults/kubernetes-workload-deployment.bash"
 
 # =============================================================================
 # Validation
