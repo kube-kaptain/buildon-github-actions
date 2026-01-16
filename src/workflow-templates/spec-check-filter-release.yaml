@@ -75,37 +75,7 @@ on:
       # INJECT-INPUT: release-branches
       # INJECT-INPUT: tag-version
 
-      # Quality check options
-      block-slashes:
-        description: 'DEPRECATED: Use block-slash-containing-branches instead'
-        required: false
-        type: boolean
-        default: false
-      qc-block-slash-containing-branches:
-        description: 'Block branch names containing slashes'
-        required: false
-        type: boolean
-        default: false
-      qc-block-double-hyphen-containing-branches:
-        description: 'Block branch names containing double hyphens (typo detection)'
-        required: false
-        type: boolean
-        default: true
-      qc-require-conventional-branches:
-        description: 'Require branch names start with feature/, fix/, etc.'
-        required: false
-        type: boolean
-        default: false
-      qc-require-conventional-commits:
-        description: 'Require commits use conventional commit format (feat:, fix:, etc.)'
-        required: false
-        type: boolean
-        default: false
-      qc-block-conventional-commits:
-        description: 'Block commits that use conventional commit format'
-        required: false
-        type: boolean
-        default: false
+      # INJECT-INPUT: basic-quality-checks
 
       # Hook script paths
       hook-pre-tagging-tests-script-sub-path:

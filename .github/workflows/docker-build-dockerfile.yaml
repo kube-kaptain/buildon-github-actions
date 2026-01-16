@@ -132,7 +132,7 @@ on:
         type: string
         default: ''
 
-      # Quality check options
+      # Basic quality checks
       block-slashes:
         description: 'DEPRECATED: Use block-slash-containing-branches instead'
         required: false
