@@ -7,17 +7,9 @@ kaptain-description: Enforces basic quality - blocks bad branch names, bad commi
 on:
   workflow_call:
     inputs:
-      # Quality check options
-      release-branch:
-        description: 'The release branch name'
-        required: false
-        type: string
-        default: 'main'
-      additional-release-branches:
-        description: 'Comma-separated list of additional release branches'
-        required: false
-        type: string
-        default: ''
+      # INJECT-INPUT: release-branches
+
+      # Basic quality checks
       block-slashes:
         description: 'DEPRECATED: Use block-slash-containing-branches instead'
         required: false

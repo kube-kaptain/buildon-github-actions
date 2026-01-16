@@ -538,7 +538,7 @@ on:
         type: string
         default: 'strip-for-single-line'
 
-      # Naming, Versions, and Tags calculation
+      # Release branches
       release-branch:
         description: 'The release branch name'
         required: false
@@ -549,6 +549,7 @@ on:
         required: false
         type: string
         default: ''
+      # Tag version calculation
       tag-version-max-parts:
         description: 'Maximum allowed version parts (fail if exceeded)'
         required: false

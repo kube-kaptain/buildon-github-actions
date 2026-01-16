@@ -5,7 +5,7 @@ name: Basic Quality Checks
 on:
   workflow_call:
     inputs:
-      # Quality check options
+      # Release branches
       release-branch:
         description: 'The release branch name'
         required: false
@@ -16,6 +16,8 @@ on:
         required: false
         type: string
         default: ''
+
+      # Basic quality checks
       block-slashes:
         description: 'DEPRECATED: Use block-slash-containing-branches instead'
         required: false

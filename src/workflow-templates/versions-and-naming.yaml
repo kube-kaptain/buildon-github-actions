@@ -16,52 +16,8 @@ on:
 
       # INJECT-INPUT: token-substitution
 
-      # Naming, Versions, and Tags calculation
-      release-branch:
-        description: 'The release branch name'
-        required: false
-        type: string
-        default: 'main'
-      additional-release-branches:
-        description: 'Comma-separated list of additional release branches'
-        required: false
-        type: string
-        default: ''
-      tag-version-max-parts:
-        description: 'Maximum allowed version parts (fail if exceeded)'
-        required: false
-        type: number
-        default: 3
-      tag-version-calculation-strategy:
-        description: 'Strategy for calculating version (git-auto-closest-highest, file-pattern-match)'
-        required: false
-        type: string
-        default: 'git-auto-closest-highest'
-      tag-version-pattern-type:
-        description: 'Pattern type for file-pattern-match strategy (dockerfile-env-kubectl, retag-workflow-source-tag, custom)'
-        required: false
-        type: string
-        default: 'dockerfile-env-kubectl'
-      tag-version-prefix-parts:
-        description: 'Number of parts from source version to use as prefix (default 2, output = prefix + 1 parts)'
-        required: false
-        type: string
-        default: ''
-      tag-version-source-sub-path:
-        description: 'Override path to source directory (takes precedence over dockerfile-sub-path)'
-        required: false
-        type: string
-        default: ''
-      tag-version-source-file-name:
-        description: 'Override source file name (defaults based on pattern type)'
-        required: false
-        type: string
-        default: ''
-      tag-version-source-custom-pattern:
-        description: 'Regex with capture group for version extraction (required for custom pattern type)'
-        required: false
-        type: string
-        default: ''
+      # INJECT-INPUT: release-branches
+      # INJECT-INPUT: tag-version
 
       # Hook script paths
       hook-pre-tagging-tests-script-sub-path:
