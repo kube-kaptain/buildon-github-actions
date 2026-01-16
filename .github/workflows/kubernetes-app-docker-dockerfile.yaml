@@ -476,7 +476,7 @@ on:
         type: string
         default: '80'
       kubernetes-service-target-port:
-        description: 'Target port (defaults to service port)'
+        description: 'Target port (defaults to container port)'
         required: false
         type: string
         default: ''

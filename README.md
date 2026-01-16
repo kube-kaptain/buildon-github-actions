@@ -165,7 +165,7 @@ See [`examples/`](examples/) for more usage patterns.
 | `kubernetes-service-name-suffix` | string | `""` | Optional suffix for Service name and filename |
 | `kubernetes-service-port` | string | `80` | Service port |
 | `kubernetes-service-protocol` | string | `TCP` | Protocol (TCP, UDP, SCTP) |
-| `kubernetes-service-target-port` | string | `""` | Target port (defaults to service port) |
+| `kubernetes-service-target-port` | string | `""` | Target port (defaults to container port) |
 | `kubernetes-service-type` | string | `ClusterIP` | Service type (ClusterIP, NodePort, LoadBalancer) |
 | `kubernetes-serviceaccount-additional-annotations` | string | `""` | Additional annotations specific to ServiceAccount (comma-separated key=value) |
 | `kubernetes-serviceaccount-additional-labels` | string | `""` | Additional labels specific to ServiceAccount (comma-separated key=value) |

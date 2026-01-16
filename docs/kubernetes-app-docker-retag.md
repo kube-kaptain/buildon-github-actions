@@ -97,7 +97,7 @@ Kubernetes App - Docker Retag
 | `kubernetes-service-generation-enabled` | boolean | `""` | Enable Service generation (default: auto based on workload type) |
 | `kubernetes-service-type` | string | `ClusterIP` | Service type (ClusterIP, NodePort, LoadBalancer) |
 | `kubernetes-service-port` | string | `80` | Service port |
-| `kubernetes-service-target-port` | string | `""` | Target port (defaults to service port) |
+| `kubernetes-service-target-port` | string | `""` | Target port (defaults to container port) |
 | `kubernetes-service-protocol` | string | `TCP` | Protocol (TCP, UDP, SCTP) |
 | `kubernetes-service-name-suffix` | string | `""` | Optional suffix for Service name and filename |
 | `kubernetes-service-combined-sub-path` | string | `""` | Sub-path within combined/ for output |

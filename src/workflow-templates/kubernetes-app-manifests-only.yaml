@@ -149,51 +149,7 @@ on:
         default: ''
       # INJECT-INPUT: kubernetes-workload
       # INJECT-INPUT: kubernetes-workload-deployment
-      # Kubernetes Service generation
-      kubernetes-service-generation-enabled:
-        description: 'Enable Service generation (default: auto based on workload type)'
-        required: false
-        type: boolean
-      kubernetes-service-type:
-        description: 'Service type (ClusterIP, NodePort, LoadBalancer)'
-        required: false
-        type: string
-        default: 'ClusterIP'
-      kubernetes-service-port:
-        description: 'Service port'
-        required: false
-        type: string
-        default: '80'
-      kubernetes-service-target-port:
-        description: 'Target port (defaults to service port)'
-        required: false
-        type: string
-        default: ''
-      kubernetes-service-protocol:
-        description: 'Protocol (TCP, UDP, SCTP)'
-        required: false
-        type: string
-        default: 'TCP'
-      kubernetes-service-name-suffix:
-        description: 'Optional suffix for Service name and filename'
-        required: false
-        type: string
-        default: ''
-      kubernetes-service-combined-sub-path:
-        description: 'Sub-path within combined/ for output'
-        required: false
-        type: string
-        default: ''
-      kubernetes-service-additional-labels:
-        description: 'Additional labels specific to Service (comma-separated key=value)'
-        required: false
-        type: string
-        default: ''
-      kubernetes-service-additional-annotations:
-        description: 'Additional annotations specific to Service (comma-separated key=value)'
-        required: false
-        type: string
-        default: ''
+      # INJECT-INPUT: kubernetes-service
 
       # Token substitution
       token-delimiter-style:
