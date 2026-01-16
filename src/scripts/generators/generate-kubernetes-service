@@ -67,32 +67,32 @@ if [[ "${KUBERNETES_SERVICE_GENERATION_ENABLED}" != "true" ]]; then
 fi
 
 # Inputs with defaults
-KUBERNETES_SERVICE_TYPE="${KUBERNETES_SERVICE_TYPE:-ClusterIP}"
-KUBERNETES_SERVICE_PORT="${KUBERNETES_SERVICE_PORT:-80}"
-KUBERNETES_SERVICE_TARGET_PORT="${KUBERNETES_SERVICE_TARGET_PORT:-${KUBERNETES_WORKLOAD_CONTAINER_PORT:-1024}}"
-KUBERNETES_SERVICE_PROTOCOL="${KUBERNETES_SERVICE_PROTOCOL:-TCP}"
-KUBERNETES_SERVICE_NAME_SUFFIX="${KUBERNETES_SERVICE_NAME_SUFFIX:-}"
-KUBERNETES_SERVICE_COMBINED_SUB_PATH="${KUBERNETES_SERVICE_COMBINED_SUB_PATH:-}"
+SERVICE_TYPE="${KUBERNETES_SERVICE_TYPE:-ClusterIP}"
+SERVICE_PORT="${KUBERNETES_SERVICE_PORT:-80}"
+TARGET_PORT="${KUBERNETES_SERVICE_TARGET_PORT:-${KUBERNETES_WORKLOAD_CONTAINER_PORT:-1024}}"
+PROTOCOL="${KUBERNETES_SERVICE_PROTOCOL:-TCP}"
+NAME_SUFFIX="${KUBERNETES_SERVICE_NAME_SUFFIX:-}"
+COMBINED_SUB_PATH="${KUBERNETES_SERVICE_COMBINED_SUB_PATH:-}"
 OUTPUT_SUB_PATH="${OUTPUT_SUB_PATH:-target}"
 # shellcheck source=src/scripts/defaults/tokens.bash
 source "${SCRIPT_DIR}/../defaults/tokens.bash"
 
 # Validate service type
-case "${KUBERNETES_SERVICE_TYPE}" in
+case "${SERVICE_TYPE}" in
   ClusterIP|NodePort|LoadBalancer|ExternalName)
     ;;
   *)
-    echo "${LOG_ERROR_PREFIX}Invalid KUBERNETES_SERVICE_TYPE: ${KUBERNETES_SERVICE_TYPE}. Must be one of: ClusterIP, NodePort, LoadBalancer, ExternalName${LOG_ERROR_SUFFIX}" >&2
+    echo "${LOG_ERROR_PREFIX}Invalid KUBERNETES_SERVICE_TYPE: ${SERVICE_TYPE}. Must be one of: ClusterIP, NodePort, LoadBalancer, ExternalName${LOG_ERROR_SUFFIX}" >&2
     exit 4
     ;;
 esac
 
 # Validate protocol
-case "${KUBERNETES_SERVICE_PROTOCOL}" in
+case "${PROTOCOL}" in
   TCP|UDP|SCTP)
     ;;
   *)
-    echo "${LOG_ERROR_PREFIX}Invalid KUBERNETES_SERVICE_PROTOCOL: ${KUBERNETES_SERVICE_PROTOCOL}. Must be one of: TCP, UDP, SCTP${LOG_ERROR_SUFFIX}" >&2
+    echo "${LOG_ERROR_PREFIX}Invalid KUBERNETES_SERVICE_PROTOCOL: ${PROTOCOL}. Must be one of: TCP, UDP, SCTP${LOG_ERROR_SUFFIX}" >&2
     exit 7
     ;;
 esac
@@ -101,7 +101,7 @@ esac
 validate_token_styles
 
 # Validate combined sub-path format
-validate_combined_sub_path "${KUBERNETES_SERVICE_COMBINED_SUB_PATH}"
+validate_combined_sub_path "${COMBINED_SUB_PATH}"
 
 # Generate token references
 project_name_token=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "PROJECT_NAME")
@@ -109,15 +109,15 @@ environment_token=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_N
 version_token=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "VERSION")
 
 # Build metadata.name: ${ProjectName}[-${combined}][-${suffix}]
-name_middle=$(build_name_middle_fragment "${KUBERNETES_SERVICE_COMBINED_SUB_PATH}" "${KUBERNETES_SERVICE_NAME_SUFFIX}")
+name_middle=$(build_name_middle_fragment "${COMBINED_SUB_PATH}" "${NAME_SUFFIX}")
 service_name="${project_name_token}${name_middle}"
 
 # Create output directory
-output_dir=$(ensure_manifest_output_dir "${OUTPUT_SUB_PATH}" "${KUBERNETES_SERVICE_COMBINED_SUB_PATH}")
+output_dir=$(ensure_manifest_output_dir "${OUTPUT_SUB_PATH}" "${COMBINED_SUB_PATH}")
 
 # Generate Service YAML (include suffix in filename if provided)
-if [[ -n "${KUBERNETES_SERVICE_NAME_SUFFIX}" ]]; then
-  output_file="${output_dir}/service-${KUBERNETES_SERVICE_NAME_SUFFIX}.yaml"
+if [[ -n "${NAME_SUFFIX}" ]]; then
+  output_file="${output_dir}/service-${NAME_SUFFIX}.yaml"
 else
   output_file="${output_dir}/service.yaml"
 fi
@@ -137,13 +137,13 @@ specific_annotations="${KUBERNETES_SERVICE_ADDITIONAL_ANNOTATIONS:-}"
   generate_metadata 2 labels
   generate_metadata 2 annotations
   echo "spec:"
-  echo "  type: ${KUBERNETES_SERVICE_TYPE}"
+  echo "  type: ${SERVICE_TYPE}"
   echo "  selector:"
   echo "    app: ${project_name_token}"
   echo "  ports:"
-  echo "    - port: ${KUBERNETES_SERVICE_PORT}"
-  echo "      targetPort: ${KUBERNETES_SERVICE_TARGET_PORT}"
-  echo "      protocol: ${KUBERNETES_SERVICE_PROTOCOL}"
+  echo "    - port: ${SERVICE_PORT}"
+  echo "      targetPort: ${TARGET_PORT}"
+  echo "      protocol: ${PROTOCOL}"
 } > "${output_file}"
 
 echo "Generated Service manifest: ${output_file}" >&2
