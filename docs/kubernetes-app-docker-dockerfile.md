@@ -56,10 +56,40 @@ Kubernetes App - Docker Dockerfile
 | `kubernetes-workload-affinity-strategy` | string | `spread-nodes-and-zones-ha` | Pod affinity strategy plugin name |
 | `kubernetes-workload-probe-liveness-check-type` | string | `http-get` | Liveness probe type (http-get, tcp-socket, exec, grpc, none) |
 | `kubernetes-workload-probe-liveness-http-path` | string | `/liveness` | Liveness probe HTTP path |
+| `kubernetes-workload-probe-liveness-http-scheme` | string | `HTTP` | Liveness probe HTTP scheme (HTTP, HTTPS) |
+| `kubernetes-workload-probe-liveness-tcp-port` | string | `""` | Liveness probe TCP port (defaults to container port) |
+| `kubernetes-workload-probe-liveness-exec-command` | string | `""` | Liveness probe exec command |
+| `kubernetes-workload-probe-liveness-grpc-port` | string | `""` | Liveness probe gRPC port (defaults to container port) |
+| `kubernetes-workload-probe-liveness-grpc-service` | string | `""` | Liveness probe gRPC service name |
+| `kubernetes-workload-probe-liveness-initial-delay-seconds` | string | `10` | Liveness probe initial delay in seconds |
+| `kubernetes-workload-probe-liveness-period-seconds` | string | `10` | Liveness probe period in seconds |
+| `kubernetes-workload-probe-liveness-timeout-seconds` | string | `5` | Liveness probe timeout in seconds |
+| `kubernetes-workload-probe-liveness-failure-threshold` | string | `3` | Liveness probe failure threshold |
+| `kubernetes-workload-probe-liveness-termination-grace-period-seconds` | string | `""` | Liveness probe termination grace period (empty for default) |
 | `kubernetes-workload-probe-readiness-check-type` | string | `http-get` | Readiness probe type (http-get, tcp-socket, exec, grpc, none) |
 | `kubernetes-workload-probe-readiness-http-path` | string | `/readiness` | Readiness probe HTTP path |
+| `kubernetes-workload-probe-readiness-http-scheme` | string | `HTTP` | Readiness probe HTTP scheme (HTTP, HTTPS) |
+| `kubernetes-workload-probe-readiness-tcp-port` | string | `""` | Readiness probe TCP port (defaults to container port) |
+| `kubernetes-workload-probe-readiness-exec-command` | string | `""` | Readiness probe exec command |
+| `kubernetes-workload-probe-readiness-grpc-port` | string | `""` | Readiness probe gRPC port (defaults to container port) |
+| `kubernetes-workload-probe-readiness-grpc-service` | string | `""` | Readiness probe gRPC service name |
+| `kubernetes-workload-probe-readiness-initial-delay-seconds` | string | `5` | Readiness probe initial delay in seconds |
+| `kubernetes-workload-probe-readiness-period-seconds` | string | `5` | Readiness probe period in seconds |
+| `kubernetes-workload-probe-readiness-timeout-seconds` | string | `3` | Readiness probe timeout in seconds |
+| `kubernetes-workload-probe-readiness-failure-threshold` | string | `3` | Readiness probe failure threshold |
+| `kubernetes-workload-probe-readiness-success-threshold` | string | `1` | Readiness probe success threshold |
 | `kubernetes-workload-probe-startup-check-type` | string | `http-get` | Startup probe type (http-get, tcp-socket, exec, grpc, none) |
 | `kubernetes-workload-probe-startup-http-path` | string | `/startup` | Startup probe HTTP path |
+| `kubernetes-workload-probe-startup-http-scheme` | string | `HTTP` | Startup probe HTTP scheme (HTTP, HTTPS) |
+| `kubernetes-workload-probe-startup-tcp-port` | string | `""` | Startup probe TCP port (defaults to container port) |
+| `kubernetes-workload-probe-startup-exec-command` | string | `""` | Startup probe exec command |
+| `kubernetes-workload-probe-startup-grpc-port` | string | `""` | Startup probe gRPC port (defaults to container port) |
+| `kubernetes-workload-probe-startup-grpc-service` | string | `""` | Startup probe gRPC service name |
+| `kubernetes-workload-probe-startup-initial-delay-seconds` | string | `0` | Startup probe initial delay in seconds |
+| `kubernetes-workload-probe-startup-period-seconds` | string | `5` | Startup probe period in seconds |
+| `kubernetes-workload-probe-startup-timeout-seconds` | string | `3` | Startup probe timeout in seconds |
+| `kubernetes-workload-probe-startup-failure-threshold` | string | `30` | Startup probe failure threshold |
+| `kubernetes-workload-probe-startup-termination-grace-period-seconds` | string | `""` | Startup probe termination grace period (empty for default) |
 | `kubernetes-deployment-replicas` | string | `""` | Replica count (empty for token, NO for HPA management) |
 | `kubernetes-deployment-revision-history-limit` | string | `10` | Number of old ReplicaSets to retain |
 | `kubernetes-service-generation-enabled` | boolean | `""` | Enable Service generation (default: auto based on workload type) |

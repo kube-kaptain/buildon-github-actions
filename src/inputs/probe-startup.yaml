@@ -12,3 +12,53 @@ kubernetes-workload-probe-startup-http-path:
   required: false
   type: string
   default: '/startup'
+kubernetes-workload-probe-startup-http-scheme:
+  description: 'Startup probe HTTP scheme (HTTP, HTTPS)'
+  required: false
+  type: string
+  default: 'HTTP'
+kubernetes-workload-probe-startup-tcp-port:
+  description: 'Startup probe TCP port (defaults to container port)'
+  required: false
+  type: string
+  default: ''
+kubernetes-workload-probe-startup-exec-command:
+  description: 'Startup probe exec command'
+  required: false
+  type: string
+  default: ''
+kubernetes-workload-probe-startup-grpc-port:
+  description: 'Startup probe gRPC port (defaults to container port)'
+  required: false
+  type: string
+  default: ''
+kubernetes-workload-probe-startup-grpc-service:
+  description: 'Startup probe gRPC service name'
+  required: false
+  type: string
+  default: ''
+kubernetes-workload-probe-startup-initial-delay-seconds:
+  description: 'Startup probe initial delay in seconds'
+  required: false
+  type: string
+  default: '0'
+kubernetes-workload-probe-startup-period-seconds:
+  description: 'Startup probe period in seconds'
+  required: false
+  type: string
+  default: '5'
+kubernetes-workload-probe-startup-timeout-seconds:
+  description: 'Startup probe timeout in seconds'
+  required: false
+  type: string
+  default: '3'
+kubernetes-workload-probe-startup-failure-threshold:
+  description: 'Startup probe failure threshold'
+  required: false
+  type: string
+  default: '30'
+kubernetes-workload-probe-startup-termination-grace-period-seconds:
+  description: 'Startup probe termination grace period (empty for default)'
+  required: false
+  type: string
+  default: ''

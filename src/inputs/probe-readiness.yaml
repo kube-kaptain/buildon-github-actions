@@ -12,3 +12,53 @@ kubernetes-workload-probe-readiness-http-path:
   required: false
   type: string
   default: '/readiness'
+kubernetes-workload-probe-readiness-http-scheme:
+  description: 'Readiness probe HTTP scheme (HTTP, HTTPS)'
+  required: false
+  type: string
+  default: 'HTTP'
+kubernetes-workload-probe-readiness-tcp-port:
+  description: 'Readiness probe TCP port (defaults to container port)'
+  required: false
+  type: string
+  default: ''
+kubernetes-workload-probe-readiness-exec-command:
+  description: 'Readiness probe exec command'
+  required: false
+  type: string
+  default: ''
+kubernetes-workload-probe-readiness-grpc-port:
+  description: 'Readiness probe gRPC port (defaults to container port)'
+  required: false
+  type: string
+  default: ''
+kubernetes-workload-probe-readiness-grpc-service:
+  description: 'Readiness probe gRPC service name'
+  required: false
+  type: string
+  default: ''
+kubernetes-workload-probe-readiness-initial-delay-seconds:
+  description: 'Readiness probe initial delay in seconds'
+  required: false
+  type: string
+  default: '5'
+kubernetes-workload-probe-readiness-period-seconds:
+  description: 'Readiness probe period in seconds'
+  required: false
+  type: string
+  default: '5'
+kubernetes-workload-probe-readiness-timeout-seconds:
+  description: 'Readiness probe timeout in seconds'
+  required: false
+  type: string
+  default: '3'
+kubernetes-workload-probe-readiness-failure-threshold:
+  description: 'Readiness probe failure threshold'
+  required: false
+  type: string
+  default: '3'
+kubernetes-workload-probe-readiness-success-threshold:
+  description: 'Readiness probe success threshold'
+  required: false
+  type: string
+  default: '1'
