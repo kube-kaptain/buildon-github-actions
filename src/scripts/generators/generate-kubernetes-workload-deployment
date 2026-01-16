@@ -57,7 +57,7 @@ LOG_ERROR_SUFFIX="${LOG_ERROR_SUFFIX:-}"
 # Naming and paths (common workload settings)
 NAME_SUFFIX="${KUBERNETES_WORKLOAD_NAME_SUFFIX:-}"
 COMBINED_SUB_PATH="${KUBERNETES_WORKLOAD_COMBINED_SUB_PATH:-}"
-ENV_BASE_PATH="${KUBERNETES_WORKLOAD_ENV_SUB_PATH:-src/workload-env}"
+ENV_BASE_PATH="${KUBERNETES_WORKLOAD_ENV_SUB_PATH:-src/deployment-env}"
 ENV_SUB_PATH=$(build_configuration_source_path "${ENV_BASE_PATH}" "${NAME_SUFFIX}" "-env")
 
 # shellcheck source=src/scripts/defaults/common.bash

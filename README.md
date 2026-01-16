@@ -180,7 +180,7 @@ See [`examples/`](examples/) for more usage patterns.
 | `kubernetes-workload-configmap-keys-for-env` | string | `""` | Comma/space-separated ConfigMap keys to expose as env vars |
 | `kubernetes-workload-configmap-mount-path` | string | `/configmap` | ConfigMap mount path in container |
 | `kubernetes-workload-container-port` | string | `1024` | Container port |
-| `kubernetes-workload-env-sub-path` | string | `src/workload-env` | Directory containing environment variable files |
+| `kubernetes-workload-env-sub-path` | string | `""` | Directory containing environment variable files (default per workload type) |
 | `kubernetes-workload-image-pull-secrets` | string | `ENABLED` | Include imagePullSecrets in pod spec (ENABLED/DISABLED) |
 | `kubernetes-workload-image-reference-style` | string | `combined` | Image reference style (combined, separate, project-name-prefixed-combined, project-name-prefixed-separate) |
 | `kubernetes-workload-name-suffix` | string | `""` | Optional suffix for workload name and filename |

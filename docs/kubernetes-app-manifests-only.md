@@ -34,7 +34,7 @@ Kubernetes App - Manifests Only
 | `kubernetes-workload-type` | string | `deployment` | Workload type to generate (deployment, none) |
 | `kubernetes-workload-name-suffix` | string | `""` | Optional suffix for workload name and filename |
 | `kubernetes-workload-combined-sub-path` | string | `""` | Sub-path within combined/ for output |
-| `kubernetes-workload-env-sub-path` | string | `src/workload-env` | Directory containing environment variable files |
+| `kubernetes-workload-env-sub-path` | string | `""` | Directory containing environment variable files (default per workload type) |
 | `kubernetes-workload-additional-labels` | string | `""` | Additional labels specific to workload (comma-separated key=value) |
 | `kubernetes-workload-additional-annotations` | string | `""` | Additional annotations specific to workload (comma-separated key=value) |
 | `kubernetes-workload-container-port` | string | `1024` | Container port |

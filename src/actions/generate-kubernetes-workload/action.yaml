@@ -26,9 +26,9 @@ inputs:
     required: false
     default: ''
   kubernetes-workload-env-sub-path:
-    description: 'Directory containing environment variable files'
+    description: 'Directory containing environment variable files (default per workload type)'
     required: false
-    default: 'src/workload-env'
+    default: ''
   kubernetes-workload-additional-labels:
     description: 'Additional labels specific to workload (comma-separated key=value)'
     required: false
