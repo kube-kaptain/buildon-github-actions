@@ -7,17 +7,17 @@ kubernetes-service-generation-enabled:
   required: false
   type: boolean
 kubernetes-service-type:
-  description: 'Service type (ClusterIP, NodePort, LoadBalancer)'
+  description: 'Service type (ClusterIP, Headless, NoSelector, NodePort, LoadBalancer, ExternalName)'
   required: false
   type: string
   default: 'ClusterIP'
 kubernetes-service-port:
-  description: 'Service port'
+  description: 'Service port (not used for ExternalName)'
   required: false
   type: string
   default: '80'
 kubernetes-service-target-port:
-  description: 'Target port (defaults to container port)'
+  description: 'Target port (defaults to container port, not used for ExternalName)'
   required: false
   type: string
   default: ''
@@ -26,6 +26,26 @@ kubernetes-service-protocol:
   required: false
   type: string
   default: 'TCP'
+kubernetes-service-port-name:
+  description: 'Named port identifier (optional)'
+  required: false
+  type: string
+  default: ''
+kubernetes-service-node-port:
+  description: 'Node port number (NodePort type only, empty for auto-assign)'
+  required: false
+  type: string
+  default: ''
+kubernetes-service-external-name:
+  description: 'External DNS name (required for ExternalName type)'
+  required: false
+  type: string
+  default: ''
+kubernetes-service-external-traffic-policy:
+  description: 'External traffic policy (Cluster or Local, NodePort/LoadBalancer only)'
+  required: false
+  type: string
+  default: ''
 kubernetes-service-name-suffix:
   description: 'Optional suffix for Service name and filename'
   required: false

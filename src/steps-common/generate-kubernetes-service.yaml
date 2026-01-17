@@ -12,6 +12,10 @@
     kubernetes-service-port: ${{ inputs.kubernetes-service-port }}
     kubernetes-service-target-port: ${{ inputs.kubernetes-service-target-port }}
     kubernetes-service-protocol: ${{ inputs.kubernetes-service-protocol }}
+    kubernetes-service-port-name: ${{ inputs.kubernetes-service-port-name }}
+    kubernetes-service-node-port: ${{ inputs.kubernetes-service-node-port }}
+    kubernetes-service-external-name: ${{ inputs.kubernetes-service-external-name }}
+    kubernetes-service-external-traffic-policy: ${{ inputs.kubernetes-service-external-traffic-policy }}
     kubernetes-service-name-suffix: ${{ inputs.kubernetes-service-name-suffix }}
     kubernetes-service-combined-sub-path: ${{ inputs.kubernetes-service-combined-sub-path }}
     kubernetes-service-additional-labels: ${{ inputs.kubernetes-service-additional-labels }}

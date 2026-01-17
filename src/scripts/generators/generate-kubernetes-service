@@ -5,30 +5,39 @@
 # generate-kubernetes-service - Generates a Kubernetes Service manifest
 #
 # Creates a Service resource for exposing pods within the cluster or externally.
+# Supports 6 service types with appropriate configuration for each.
+#
+# Service Types:
+#   ClusterIP    - Standard internal load balancing with selector
+#   Headless     - clusterIP: None with selector (for StatefulSet DNS, pod discovery)
+#   NoSelector   - No selector, for manual Endpoints (external DB, etc.)
+#   NodePort     - External access via node ports
+#   LoadBalancer - Cloud load balancer integration
+#   ExternalName - DNS alias to external service (no ports, no selector)
 #
 # Inputs (environment variables):
-#   KUBERNETES_SERVICE_GENERATION_ENABLED - Set to "true" to enable (default: false)
-#   KUBERNETES_SERVICE_TYPE         - Service type: ClusterIP, NodePort, LoadBalancer (default: ClusterIP)
-#   KUBERNETES_SERVICE_PORT         - Service port (default: 80)
-#   KUBERNETES_SERVICE_TARGET_PORT  - Target port on pod (default: KUBERNETES_WORKLOAD_CONTAINER_PORT)
+#   KUBERNETES_SERVICE_GENERATION_ENABLED - Set to "true" to enable (default: auto)
+#   KUBERNETES_SERVICE_TYPE         - One of: ClusterIP, Headless, NoSelector, NodePort, LoadBalancer, ExternalName
+#   KUBERNETES_SERVICE_PORT         - Service port (default: 80, not used for ExternalName)
+#   KUBERNETES_SERVICE_TARGET_PORT  - Target port on pod (default: container port)
 #   KUBERNETES_SERVICE_PROTOCOL     - Protocol: TCP, UDP, SCTP (default: TCP)
-#   KUBERNETES_SERVICE_NAME_SUFFIX  - Optional suffix for name/filename (default: empty)
-#   KUBERNETES_SERVICE_COMBINED_SUB_PATH - Sub-path within combined/ for output (default: empty)
-#   KUBERNETES_WORKLOAD_CONTAINER_PORT - Container port for target-port default (default: 1024)
-#   OUTPUT_SUB_PATH            - Build output directory (default: target)
-#   PROJECT_NAME               - Used in metadata.name (required)
-#   TOKEN_NAME_STYLE           - Style for token references (default: PascalCase)
-#   TOKEN_DELIMITER_STYLE      - Delimiter style for tokens (default: shell)
-#   KUBERNETES_GLOBAL_ADDITIONAL_LABELS      - Extra labels for all manifests (comma-separated key=value)
+#   KUBERNETES_SERVICE_PORT_NAME    - Named port identifier (optional)
+#   KUBERNETES_SERVICE_NODE_PORT    - Node port number (NodePort only, empty for auto)
+#   KUBERNETES_SERVICE_EXTERNAL_NAME - External DNS name (required for ExternalName)
+#   KUBERNETES_SERVICE_EXTERNAL_TRAFFIC_POLICY - Cluster or Local (NodePort/LoadBalancer only)
+#   KUBERNETES_SERVICE_NAME_SUFFIX  - Optional suffix for name/filename
+#   KUBERNETES_SERVICE_COMBINED_SUB_PATH - Sub-path within combined/ for output
+#   OUTPUT_SUB_PATH                 - Build output directory (default: target)
+#   PROJECT_NAME                    - Used in metadata.name (required)
+#   TOKEN_NAME_STYLE                - Style for token references (default: PascalCase)
+#   TOKEN_DELIMITER_STYLE           - Delimiter style for tokens (default: shell)
+#   KUBERNETES_GLOBAL_ADDITIONAL_LABELS      - Extra labels for all manifests
 #   KUBERNETES_GLOBAL_ADDITIONAL_ANNOTATIONS - Extra annotations for all manifests
 #   KUBERNETES_SERVICE_ADDITIONAL_LABELS     - Service-specific extra labels
 #   KUBERNETES_SERVICE_ADDITIONAL_ANNOTATIONS - Service-specific extra annotations
 #
 # Output:
 #   ${OUTPUT_SUB_PATH}/manifests/combined/[${combined-sub-path}/]service[-${suffix}].yaml
-#
-# metadata.name pattern:
-#   ${ProjectName}[-${combined-sub-path}][-${suffix}]
 #
 set -euo pipefail
 
@@ -73,33 +82,126 @@ source "${SCRIPT_DIR}/../defaults/tokens.bash"
 # shellcheck source=src/scripts/defaults/kubernetes-service.bash
 source "${SCRIPT_DIR}/../defaults/kubernetes-service.bash"
 
-# Validate service type
+# =============================================================================
+# Determine type behavior
+# =============================================================================
+
+# Initialize flags based on service type
 case "${SERVICE_TYPE}" in
-  ClusterIP|NodePort|LoadBalancer|ExternalName)
+  ClusterIP)
+    has_selector=true
+    cluster_ip="auto"
+    has_ports=true
+    k8s_type="ClusterIP"
+    allows_node_port=false
+    allows_traffic_policy=false
+    requires_external_name=false
+    ;;
+  Headless)
+    has_selector=true
+    cluster_ip="None"
+    has_ports=true
+    k8s_type="ClusterIP"
+    allows_node_port=false
+    allows_traffic_policy=false
+    requires_external_name=false
+    ;;
+  NoSelector)
+    has_selector=false
+    cluster_ip="auto"
+    has_ports=true
+    k8s_type="ClusterIP"
+    allows_node_port=false
+    allows_traffic_policy=false
+    requires_external_name=false
+    ;;
+  NodePort)
+    has_selector=true
+    cluster_ip="auto"
+    has_ports=true
+    k8s_type="NodePort"
+    allows_node_port=true
+    allows_traffic_policy=true
+    requires_external_name=false
+    ;;
+  LoadBalancer)
+    has_selector=true
+    cluster_ip="auto"
+    has_ports=true
+    k8s_type="LoadBalancer"
+    allows_node_port=false
+    allows_traffic_policy=true
+    requires_external_name=false
+    ;;
+  ExternalName)
+    has_selector=false
+    cluster_ip="omit"
+    has_ports=false
+    k8s_type="ExternalName"
+    allows_node_port=false
+    allows_traffic_policy=false
+    requires_external_name=true
     ;;
   *)
-    echo "${LOG_ERROR_PREFIX}Invalid KUBERNETES_SERVICE_TYPE: ${SERVICE_TYPE}. Must be one of: ClusterIP, NodePort, LoadBalancer, ExternalName${LOG_ERROR_SUFFIX}" >&2
+    echo "${LOG_ERROR_PREFIX}Invalid KUBERNETES_SERVICE_TYPE: ${SERVICE_TYPE}. Must be one of: ClusterIP, Headless, NoSelector, NodePort, LoadBalancer, ExternalName${LOG_ERROR_SUFFIX}" >&2
     exit 4
     ;;
 esac
 
-# Validate protocol
-case "${PROTOCOL}" in
-  TCP|UDP|SCTP)
-    ;;
-  *)
-    echo "${LOG_ERROR_PREFIX}Invalid KUBERNETES_SERVICE_PROTOCOL: ${PROTOCOL}. Must be one of: TCP, UDP, SCTP${LOG_ERROR_SUFFIX}" >&2
-    exit 7
-    ;;
-esac
+# =============================================================================
+# Validation
+# =============================================================================
 
-# Validate styles upfront
+# Validate ExternalName requirements
+if [[ "${requires_external_name}" == "true" && -z "${EXTERNAL_NAME}" ]]; then
+  echo "${LOG_ERROR_PREFIX}KUBERNETES_SERVICE_EXTERNAL_NAME is required for ExternalName service type${LOG_ERROR_SUFFIX}" >&2
+  exit 4
+fi
+
+# Validate protocol (only needed if we have ports)
+if [[ "${has_ports}" == "true" ]]; then
+  case "${PROTOCOL}" in
+    TCP|UDP|SCTP)
+      ;;
+    *)
+      echo "${LOG_ERROR_PREFIX}Invalid KUBERNETES_SERVICE_PROTOCOL: ${PROTOCOL}. Must be one of: TCP, UDP, SCTP${LOG_ERROR_SUFFIX}" >&2
+      exit 7
+      ;;
+  esac
+fi
+
+# Validate node port is only used with NodePort type
+if [[ -n "${NODE_PORT}" && "${allows_node_port}" != "true" ]]; then
+  echo "${LOG_ERROR_PREFIX}KUBERNETES_SERVICE_NODE_PORT can only be used with NodePort service type${LOG_ERROR_SUFFIX}" >&2
+  exit 4
+fi
+
+# Validate external traffic policy is only used with NodePort/LoadBalancer
+if [[ -n "${EXTERNAL_TRAFFIC_POLICY}" ]]; then
+  if [[ "${allows_traffic_policy}" != "true" ]]; then
+    echo "${LOG_ERROR_PREFIX}KUBERNETES_SERVICE_EXTERNAL_TRAFFIC_POLICY can only be used with NodePort or LoadBalancer service types${LOG_ERROR_SUFFIX}" >&2
+    exit 4
+  fi
+  case "${EXTERNAL_TRAFFIC_POLICY}" in
+    Cluster|Local)
+      ;;
+    *)
+      echo "${LOG_ERROR_PREFIX}Invalid KUBERNETES_SERVICE_EXTERNAL_TRAFFIC_POLICY: ${EXTERNAL_TRAFFIC_POLICY}. Must be 'Cluster' or 'Local'${LOG_ERROR_SUFFIX}" >&2
+      exit 4
+      ;;
+  esac
+fi
+
+# Validate styles
 validate_token_styles
 
 # Validate combined sub-path format
 validate_combined_sub_path "${COMBINED_SUB_PATH}"
 
+# =============================================================================
 # Generate token references
+# =============================================================================
+
 project_name_token=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "PROJECT_NAME")
 environment_token=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "ENVIRONMENT")
 version_token=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "VERSION")
@@ -108,38 +210,106 @@ version_token=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_
 name_middle=$(build_name_middle_fragment "${COMBINED_SUB_PATH}" "${NAME_SUFFIX}")
 service_name="${project_name_token}${name_middle}"
 
-# Create output directory
+# =============================================================================
+# Create output directory and file
+# =============================================================================
+
 output_dir=$(ensure_manifest_output_dir "${OUTPUT_SUB_PATH}" "${COMBINED_SUB_PATH}")
 
-# Generate Service YAML (include suffix in filename if provided)
 if [[ -n "${NAME_SUFFIX}" ]]; then
   output_file="${output_dir}/service-${NAME_SUFFIX}.yaml"
 else
   output_file="${output_dir}/service.yaml"
 fi
 
-# Get current timestamp and script name for annotations
+# =============================================================================
+# Diagnostic output
+# =============================================================================
+
+echo "Service Configuration" >&2
+echo "  Type:                     ${SERVICE_TYPE} (k8s type: ${k8s_type})" >&2
+echo "  Has selector:             ${has_selector}" >&2
+echo "  Has ports:                ${has_ports}" >&2
+if [[ "${cluster_ip}" != "omit" ]]; then
+  echo "  ClusterIP:                ${cluster_ip}" >&2
+fi
+if [[ "${has_ports}" == "true" ]]; then
+  echo "  Port:                     ${SERVICE_PORT}" >&2
+  echo "  Target port:              ${TARGET_PORT}" >&2
+  echo "  Protocol:                 ${PROTOCOL}" >&2
+  if [[ -n "${PORT_NAME}" ]]; then
+    echo "  Port name:                ${PORT_NAME}" >&2
+  fi
+  if [[ -n "${NODE_PORT}" ]]; then
+    echo "  Node port:                ${NODE_PORT}" >&2
+  fi
+fi
+if [[ -n "${EXTERNAL_NAME}" ]]; then
+  echo "  External name:            ${EXTERNAL_NAME}" >&2
+fi
+if [[ -n "${EXTERNAL_TRAFFIC_POLICY}" ]]; then
+  echo "  External traffic policy:  ${EXTERNAL_TRAFFIC_POLICY}" >&2
+fi
+
+# =============================================================================
+# Build labels and annotations
+# =============================================================================
+
 build_timestamp=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 script_name=$(basename "${BASH_SOURCE[0]}")
 
-# Additional labels/annotations from inputs
 global_labels="${KUBERNETES_GLOBAL_ADDITIONAL_LABELS:-}"
 specific_labels="${KUBERNETES_SERVICE_ADDITIONAL_LABELS:-}"
 global_annotations="${KUBERNETES_GLOBAL_ADDITIONAL_ANNOTATIONS:-}"
 specific_annotations="${KUBERNETES_SERVICE_ADDITIONAL_ANNOTATIONS:-}"
 
+# =============================================================================
+# Generate Service YAML
+# =============================================================================
+
 {
   generate_manifest_header "v1" "Service" "${service_name}" "${environment_token}"
   generate_metadata 2 labels
   generate_metadata 2 annotations
+
   echo "spec:"
-  echo "  type: ${SERVICE_TYPE}"
-  echo "  selector:"
-  echo "    app: ${project_name_token}"
-  echo "  ports:"
-  echo "    - port: ${SERVICE_PORT}"
-  echo "      targetPort: ${TARGET_PORT}"
-  echo "      protocol: ${PROTOCOL}"
+  echo "  type: ${k8s_type}"
+
+  # ClusterIP field (None for headless, omit for ExternalName)
+  if [[ "${cluster_ip}" == "None" ]]; then
+    echo "  clusterIP: None"
+  fi
+
+  # External traffic policy (NodePort/LoadBalancer only)
+  if [[ -n "${EXTERNAL_TRAFFIC_POLICY}" ]]; then
+    echo "  externalTrafficPolicy: ${EXTERNAL_TRAFFIC_POLICY}"
+  fi
+
+  # External name (ExternalName type only)
+  if [[ -n "${EXTERNAL_NAME}" ]]; then
+    echo "  externalName: ${EXTERNAL_NAME}"
+  fi
+
+  # Selector (not for NoSelector or ExternalName)
+  if [[ "${has_selector}" == "true" ]]; then
+    echo "  selector:"
+    echo "    app: ${project_name_token}"
+  fi
+
+  # Ports (not for ExternalName)
+  if [[ "${has_ports}" == "true" ]]; then
+    echo "  ports:"
+    echo "    - port: ${SERVICE_PORT}"
+    echo "      targetPort: ${TARGET_PORT}"
+    echo "      protocol: ${PROTOCOL}"
+    if [[ -n "${PORT_NAME}" ]]; then
+      echo "      name: ${PORT_NAME}"
+    fi
+    if [[ -n "${NODE_PORT}" ]]; then
+      echo "      nodePort: ${NODE_PORT}"
+    fi
+  fi
+
 } > "${output_file}"
 
 echo "Generated Service manifest: ${output_file}" >&2

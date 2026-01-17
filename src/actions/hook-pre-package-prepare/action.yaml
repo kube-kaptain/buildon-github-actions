@@ -248,7 +248,7 @@ inputs:
     required: false
     default: 'false'
   kubernetes-service-type:
-    description: 'Service type (ClusterIP, NodePort, LoadBalancer)'
+    description: 'Service type (ClusterIP, Headless, NoSelector, NodePort, LoadBalancer, ExternalName)'
     required: false
     default: 'ClusterIP'
   kubernetes-service-port:
@@ -263,6 +263,22 @@ inputs:
     description: 'Protocol (TCP, UDP, SCTP)'
     required: false
     default: 'TCP'
+  kubernetes-service-port-name:
+    description: 'Named port identifier (optional)'
+    required: false
+    default: ''
+  kubernetes-service-node-port:
+    description: 'Node port number (NodePort type only, empty for auto-assign)'
+    required: false
+    default: ''
+  kubernetes-service-external-name:
+    description: 'External DNS name (required for ExternalName type)'
+    required: false
+    default: ''
+  kubernetes-service-external-traffic-policy:
+    description: 'External traffic policy (Cluster or Local, NodePort/LoadBalancer only)'
+    required: false
+    default: ''
   kubernetes-service-name-suffix:
     description: 'Optional suffix for Service name and filename'
     required: false
@@ -548,6 +564,10 @@ runs:
         KUBERNETES_SERVICE_PORT: ${{ inputs.kubernetes-service-port }}
         KUBERNETES_SERVICE_TARGET_PORT: ${{ inputs.kubernetes-service-target-port }}
         KUBERNETES_SERVICE_PROTOCOL: ${{ inputs.kubernetes-service-protocol }}
+        KUBERNETES_SERVICE_PORT_NAME: ${{ inputs.kubernetes-service-port-name }}
+        KUBERNETES_SERVICE_NODE_PORT: ${{ inputs.kubernetes-service-node-port }}
+        KUBERNETES_SERVICE_EXTERNAL_NAME: ${{ inputs.kubernetes-service-external-name }}
+        KUBERNETES_SERVICE_EXTERNAL_TRAFFIC_POLICY: ${{ inputs.kubernetes-service-external-traffic-policy }}
         KUBERNETES_SERVICE_NAME_SUFFIX: ${{ inputs.kubernetes-service-name-suffix }}
         KUBERNETES_SERVICE_COMBINED_SUB_PATH: ${{ inputs.kubernetes-service-combined-sub-path }}
         KUBERNETES_SERVICE_ADDITIONAL_LABELS: ${{ inputs.kubernetes-service-additional-labels }}
