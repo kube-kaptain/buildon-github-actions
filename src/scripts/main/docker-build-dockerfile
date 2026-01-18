@@ -54,7 +54,8 @@ VERSION="${VERSION:?VERSION is required}"
 PROJECT_NAME="${PROJECT_NAME:?PROJECT_NAME is required}"
 
 # Apply defaults for inputs used directly in this script
-OUTPUT_SUB_PATH="${OUTPUT_SUB_PATH:-target}"
+# shellcheck source=src/scripts/defaults/output-sub-path.bash
+source "$(dirname "${BASH_SOURCE[0]}")/../defaults/output-sub-path.bash"
 # shellcheck source=src/scripts/defaults/dockerfile.bash
 source "$(dirname "${BASH_SOURCE[0]}")/../defaults/dockerfile.bash"
 

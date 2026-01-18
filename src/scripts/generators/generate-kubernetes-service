@@ -81,7 +81,8 @@ if [[ "${KUBERNETES_SERVICE_GENERATION_ENABLED}" != "true" ]]; then
 fi
 
 # Inputs with defaults
-OUTPUT_SUB_PATH="${OUTPUT_SUB_PATH:-target}"
+# shellcheck source=src/scripts/defaults/output-sub-path.bash
+source "${SCRIPT_DIR}/../defaults/output-sub-path.bash"
 # shellcheck source=src/scripts/defaults/tokens.bash
 source "${SCRIPT_DIR}/../defaults/tokens.bash"
 # shellcheck source=src/scripts/defaults/kubernetes-service.bash

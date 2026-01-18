@@ -39,7 +39,8 @@ tag="${REPO_PROVIDER_VERSION:?REPO_PROVIDER_VERSION (tag) is required}"
 # =============================================================================
 MANIFESTS_ZIP_SUB_PATH="${MANIFESTS_ZIP_SUB_PATH:?MANIFESTS_ZIP_SUB_PATH is required}"
 MANIFESTS_ZIP_FILE_NAME="${MANIFESTS_ZIP_FILE_NAME:?MANIFESTS_ZIP_FILE_NAME is required}"
-OUTPUT_SUB_PATH="${OUTPUT_SUB_PATH:-target}"
+# shellcheck source=src/scripts/defaults/output-sub-path.bash
+source "$(dirname "${BASH_SOURCE[0]}")/../../defaults/output-sub-path.bash"
 
 # Base image for manifest packaging
 BASE_IMAGE="${MANIFESTS_PACKAGING_BASE_IMAGE:-scratch}"

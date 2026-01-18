@@ -32,8 +32,10 @@ set -euo pipefail
 # === User Project Inputs ===
 # Defaults and input conditioning sourced from defaults scripts - single source of truth
 
-# shellcheck source=src/scripts/defaults/common.bash
-source "$(dirname "${BASH_SOURCE[0]}")/../defaults/common.bash"
+# shellcheck source=src/scripts/defaults/output-sub-path.bash
+source "$(dirname "${BASH_SOURCE[0]}")/../defaults/output-sub-path.bash"
+# shellcheck source=src/scripts/defaults/manifests-sub-path.bash
+source "$(dirname "${BASH_SOURCE[0]}")/../defaults/manifests-sub-path.bash"
 # shellcheck source=src/scripts/defaults/dockerfile.bash
 source "$(dirname "${BASH_SOURCE[0]}")/../defaults/dockerfile.bash"
 # shellcheck source=src/scripts/defaults/tokens.bash
