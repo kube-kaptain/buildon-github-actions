@@ -67,8 +67,8 @@ source "$(dirname "${BASH_SOURCE[0]}")/../defaults/kubernetes-secret-template.ba
 # shellcheck source=src/scripts/defaults/kubernetes-service.bash
 source "$(dirname "${BASH_SOURCE[0]}")/../defaults/kubernetes-service.bash"
 
-# shellcheck source=src/scripts/defaults/hooks-leftovers.bash
-source "$(dirname "${BASH_SOURCE[0]}")/../defaults/hooks-leftovers.bash"
+# shellcheck source=src/scripts/defaults/manifests-repo-provider.bash
+source "$(dirname "${BASH_SOURCE[0]}")/../defaults/manifests-repo-provider.bash"
 
 # Export all workflow inputs
 export OUTPUT_SUB_PATH

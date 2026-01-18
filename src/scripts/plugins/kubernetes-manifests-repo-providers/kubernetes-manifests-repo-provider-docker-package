@@ -39,11 +39,11 @@ tag="${REPO_PROVIDER_VERSION:?REPO_PROVIDER_VERSION (tag) is required}"
 # =============================================================================
 MANIFESTS_ZIP_SUB_PATH="${MANIFESTS_ZIP_SUB_PATH:?MANIFESTS_ZIP_SUB_PATH is required}"
 MANIFESTS_ZIP_FILE_NAME="${MANIFESTS_ZIP_FILE_NAME:?MANIFESTS_ZIP_FILE_NAME is required}"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=src/scripts/defaults/output-sub-path.bash
-source "$(dirname "${BASH_SOURCE[0]}")/../../defaults/output-sub-path.bash"
-
-# Base image for manifest packaging
-BASE_IMAGE="${MANIFESTS_PACKAGING_BASE_IMAGE:-scratch}"
+source "${SCRIPT_DIR}/../../defaults/output-sub-path.bash"
+# shellcheck source=src/scripts/defaults/manifests-repo-provider.bash
+source "${SCRIPT_DIR}/../../defaults/manifests-repo-provider.bash"
 
 # Build output structure
 PUBLISH_SUB_PATH="${OUTPUT_SUB_PATH}/publish/docker"
