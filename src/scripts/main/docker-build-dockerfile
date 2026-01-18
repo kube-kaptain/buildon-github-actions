@@ -45,6 +45,14 @@ LOG_ERROR_SUFFIX="${LOG_ERROR_SUFFIX:-}"
 LOG_WARNING_PREFIX="${LOG_WARNING_PREFIX:-}"
 LOG_WARNING_SUFFIX="${LOG_WARNING_SUFFIX:-}"
 
+# Apply defaults for inputs used directly in this script
+# shellcheck source=src/scripts/defaults/output-sub-path.bash
+source "${SCRIPT_DIR}/../defaults/output-sub-path.bash"
+# shellcheck source=src/scripts/defaults/docker-build.bash
+source "${SCRIPT_DIR}/../defaults/docker-build.bash"
+# shellcheck source=src/scripts/defaults/docker-dockerfile.bash
+source "${SCRIPT_DIR}/../defaults/docker-dockerfile.bash"
+
 # === Shared target validation, URI assembly, and utilities ===
 # shellcheck source=src/scripts/lib/docker-build-shared.bash
 source "${SCRIPT_DIR}/../lib/docker-build-shared.bash"
@@ -52,12 +60,6 @@ source "${SCRIPT_DIR}/../lib/docker-build-shared.bash"
 # Required inputs (DOCKER_TAG validated in shared script)
 VERSION="${VERSION:?VERSION is required}"
 PROJECT_NAME="${PROJECT_NAME:?PROJECT_NAME is required}"
-
-# Apply defaults for inputs used directly in this script
-# shellcheck source=src/scripts/defaults/output-sub-path.bash
-source "$(dirname "${BASH_SOURCE[0]}")/../defaults/output-sub-path.bash"
-# shellcheck source=src/scripts/defaults/dockerfile.bash
-source "$(dirname "${BASH_SOURCE[0]}")/../defaults/dockerfile.bash"
 
 # Token substitution
 # shellcheck source=src/scripts/defaults/tokens.bash

@@ -56,8 +56,8 @@ fi
 set_defaults_for_type() {
   case "${TAG_VERSION_PATTERN_TYPE}" in
     dockerfile-env-kubectl)
-      # For dockerfile pattern: TAG_VERSION_SOURCE_SUB_PATH > DOCKERFILE_SUB_PATH > default
-      SOURCE_SUB_PATH="${TAG_VERSION_SOURCE_SUB_PATH:-${DOCKERFILE_SUB_PATH:-src/docker}}"
+      # For dockerfile pattern: TAG_VERSION_SOURCE_SUB_PATH > DOCKERFILE_SUB_PATH (default from caller)
+      SOURCE_SUB_PATH="${TAG_VERSION_SOURCE_SUB_PATH:-${DOCKERFILE_SUB_PATH}}"
       SOURCE_FILE_NAME="${TAG_VERSION_SOURCE_FILE_NAME:-Dockerfile}"
       VERSION_PATTERN='^ENV KUBECTL_VERSION=([0-9]+\.[0-9]+\.[0-9]+)$'
       ;;

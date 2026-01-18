@@ -41,8 +41,12 @@ source "$(dirname "${BASH_SOURCE[0]}")/../defaults/branch-inputs.bash"
 source "$(dirname "${BASH_SOURCE[0]}")/../defaults/output-sub-path.bash"
 # shellcheck source=src/scripts/defaults/manifests-sub-path.bash
 source "$(dirname "${BASH_SOURCE[0]}")/../defaults/manifests-sub-path.bash"
-# shellcheck source=src/scripts/defaults/dockerfile.bash
-source "$(dirname "${BASH_SOURCE[0]}")/../defaults/dockerfile.bash"
+# shellcheck source=src/scripts/defaults/docker-build.bash
+source "$(dirname "${BASH_SOURCE[0]}")/../defaults/docker-build.bash"
+# shellcheck source=src/scripts/defaults/docker-dockerfile.bash
+source "$(dirname "${BASH_SOURCE[0]}")/../defaults/docker-dockerfile.bash"
+# shellcheck source=src/scripts/defaults/docker-retag.bash
+source "$(dirname "${BASH_SOURCE[0]}")/../defaults/docker-retag.bash"
 # shellcheck source=src/scripts/defaults/tokens.bash
 source "$(dirname "${BASH_SOURCE[0]}")/../defaults/tokens.bash"
 # shellcheck source=src/scripts/defaults/tag-versioning.bash
@@ -68,10 +72,9 @@ source "$(dirname "${BASH_SOURCE[0]}")/../defaults/hooks-leftovers.bash"
 
 # Export all workflow inputs
 export OUTPUT_SUB_PATH
-export DOCKER_REGISTRY_LOGINS
+export DOCKER_REGISTRY_LOGINS DOCKER_TARGET_REGISTRY DOCKER_TARGET_BASE_PATH DOCKER_PUSH_TARGETS
 export DOCKERFILE_SUB_PATH DOCKERFILE_SQUASH DOCKERFILE_NO_CACHE
-export DOCKER_TARGET_REGISTRY DOCKER_TARGET_BASE_PATH
-export DOCKER_PUSH_TARGETS
+export DOCKER_SOURCE_REGISTRY DOCKER_SOURCE_BASE_PATH DOCKER_SOURCE_IMAGE_NAME DOCKER_SOURCE_TAG
 export MANIFESTS_SUB_PATH
 export MANIFESTS_REPO_PROVIDER_TYPE MANIFESTS_PACKAGING_BASE_IMAGE
 export KUBERNETES_GLOBAL_ADDITIONAL_LABELS KUBERNETES_GLOBAL_ADDITIONAL_ANNOTATIONS

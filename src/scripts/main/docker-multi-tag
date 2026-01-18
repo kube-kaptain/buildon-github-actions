@@ -19,11 +19,28 @@
 #
 set -euo pipefail
 
-# Required inputs
-DOCKER_IMAGE_FULL_URI="${DOCKER_IMAGE_FULL_URI:?DOCKER_IMAGE_FULL_URI is required}"
-DOCKER_IMAGE_NAME="${DOCKER_IMAGE_NAME:?DOCKER_IMAGE_NAME is required}"
-DOCKER_TAG="${DOCKER_TAG:?DOCKER_TAG is required}"
-DOCKER_PUSH_TARGETS="${DOCKER_PUSH_TARGETS:?DOCKER_PUSH_TARGETS is required}"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# shellcheck source=src/scripts/defaults/docker-build.bash
+source "${SCRIPT_DIR}/../defaults/docker-build.bash"
+
+# Validate required inputs
+if [[ -z "${DOCKER_IMAGE_FULL_URI:-}" ]]; then
+  echo "DOCKER_IMAGE_FULL_URI is required" >&2
+  exit 1
+fi
+if [[ -z "${DOCKER_IMAGE_NAME:-}" ]]; then
+  echo "DOCKER_IMAGE_NAME is required" >&2
+  exit 1
+fi
+if [[ -z "${DOCKER_TAG:-}" ]]; then
+  echo "DOCKER_TAG is required" >&2
+  exit 1
+fi
+if [[ -z "${DOCKER_PUSH_TARGETS}" ]]; then
+  echo "DOCKER_PUSH_TARGETS is required" >&2
+  exit 1
+fi
 
 # Output variable for GitHub Actions
 output_var() {
