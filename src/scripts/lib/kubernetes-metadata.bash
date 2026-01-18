@@ -166,7 +166,23 @@ merge_key_value_pairs() {
   local base="$1"
   local override="$2"
 
-  # Handle empty inputs
+  # Validate pairs contain '=' (helper for early returns)
+  local IFS=',' pair
+  validate_pairs() {
+    local pairs="$1"
+    for pair in $pairs; do
+      if [[ "$pair" != *"="* ]]; then
+        echo "Error: merge_key_value_pairs: pair '$pair' must contain '='" >&2
+        return 1
+      fi
+    done
+  }
+
+  # Validate all non-empty inputs upfront
+  [[ -n "$base" ]] && { validate_pairs "$base" || return 1; }
+  [[ -n "$override" ]] && { validate_pairs "$override" || return 1; }
+
+  # Handle empty inputs (already validated)
   if [[ -z "$base" && -z "$override" ]]; then
     echo ""
     return 0

@@ -129,6 +129,18 @@ setup() {
   [[ "$result" == *"app.kubernetes.io/version=1.0"* ]]
 }
 
+@test "merge_key_value_pairs: fails on malformed pair without equals sign" {
+  run merge_key_value_pairs "key: value" ""
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"must contain '='"* ]]
+}
+
+@test "merge_key_value_pairs: fails on malformed pair in override" {
+  run merge_key_value_pairs "valid=pair" "invalid: pair"
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"must contain '='"* ]]
+}
+
 # =============================================================================
 # generate_yaml_map
 # =============================================================================
