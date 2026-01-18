@@ -13,25 +13,21 @@ LOG_ERROR_SUFFIX="${LOG_ERROR_SUFFIX:-}"
 LOG_WARNING_PREFIX="${LOG_WARNING_PREFIX:-}"
 LOG_WARNING_SUFFIX="${LOG_WARNING_SUFFIX:-}"
 
-# Current branch (required by all consumers)
-CURRENT_BRANCH="${CURRENT_BRANCH:?Is required}"
+# Current branch validation
+if [[ -z "${CURRENT_BRANCH}" ]]; then
+  echo "${LOG_ERROR_PREFIX}CURRENT_BRANCH is required${LOG_ERROR_SUFFIX}" >&2
+  exit 1
+fi
 
-# Branch configuration (no defaults - warn and apply if not set)
-RELEASE_BRANCH="${RELEASE_BRANCH:-}"
-DEFAULT_BRANCH="${DEFAULT_BRANCH:-}"
-ADDITIONAL_RELEASE_BRANCHES="${ADDITIONAL_RELEASE_BRANCHES:-}"
-
-# Apply default for RELEASE_BRANCH if not set
-if [[ -z "${RELEASE_BRANCH}" ]]; then
-  RELEASE_BRANCH="main"
+# Warn if RELEASE_BRANCH was not provided (defaulted to main)
+if [[ -z "${RELEASE_BRANCH_INPUT}" ]]; then
   echo "${LOG_WARNING_PREFIX}RELEASE_BRANCH was not set! Using main...${LOG_WARNING_SUFFIX}" >&2
   echo "${LOG_WARNING_PREFIX}Setting RELEASE_BRANCH to: ${RELEASE_BRANCH}${LOG_WARNING_SUFFIX}" >&2
   echo >&2
 fi
 
-# Apply default for DEFAULT_BRANCH if not set
-if [[ -z "${DEFAULT_BRANCH}" ]]; then
-  DEFAULT_BRANCH="main"
+# Warn if DEFAULT_BRANCH was not provided (defaulted to main)
+if [[ -z "${DEFAULT_BRANCH_INPUT}" ]]; then
   echo "${LOG_WARNING_PREFIX}DEFAULT_BRANCH was not set! Using main...${LOG_WARNING_SUFFIX}" >&2
   echo "${LOG_WARNING_PREFIX}Setting DEFAULT_BRANCH to: ${DEFAULT_BRANCH}${LOG_WARNING_SUFFIX}" >&2
   echo >&2

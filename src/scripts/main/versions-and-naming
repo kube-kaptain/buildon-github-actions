@@ -35,6 +35,8 @@ REPOSITORY_NAME="${REPOSITORY_NAME:?Is required}"
 source "${SCRIPT_DIR}/../defaults/tag-versioning.bash"
 DOCKERFILE_SUB_PATH="${DOCKERFILE_SUB_PATH:-}"
 
+# shellcheck source=src/scripts/defaults/branch-inputs.bash
+source "${SCRIPT_DIR}/../defaults/branch-inputs.bash"
 # shellcheck source=src/scripts/lib/branch-setup-shared.bash
 source "${SCRIPT_DIR}/../lib/branch-setup-shared.bash"
 

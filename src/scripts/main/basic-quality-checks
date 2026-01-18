@@ -46,6 +46,8 @@ FLAG_BAD_COMMIT=4
 FLAG_BAD_CONTENTS=8
 FLAG_BAD_SETUP=16
 
+# shellcheck source=src/scripts/defaults/branch-inputs.bash
+source "${SCRIPT_DIR}/../defaults/branch-inputs.bash"
 # shellcheck source=src/scripts/lib/branch-setup-shared.bash
 source "${SCRIPT_DIR}/../lib/branch-setup-shared.bash"
 

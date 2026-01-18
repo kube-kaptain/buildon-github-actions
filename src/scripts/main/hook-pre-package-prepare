@@ -42,6 +42,8 @@ set -euo pipefail
 # === User Project Inputs ===
 # Defaults and input conditioning sourced from defaults scripts - single source of truth
 
+# shellcheck source=src/scripts/defaults/branch-inputs.bash
+source "$(dirname "${BASH_SOURCE[0]}")/../defaults/branch-inputs.bash"
 # shellcheck source=src/scripts/defaults/output-sub-path.bash
 source "$(dirname "${BASH_SOURCE[0]}")/../defaults/output-sub-path.bash"
 # shellcheck source=src/scripts/defaults/manifests-sub-path.bash
@@ -92,7 +94,7 @@ export KUBERNETES_SERVICE_GENERATION_ENABLED
 export KUBERNETES_SERVICE_ADDITIONAL_LABELS KUBERNETES_SERVICE_ADDITIONAL_ANNOTATIONS
 export TOKEN_DELIMITER_STYLE TOKEN_NAME_STYLE TOKEN_NAME_VALIDATION
 export ALLOW_BUILTIN_TOKEN_OVERRIDE CONFIG_SUB_PATH CONFIG_VALUE_TRAILING_NEWLINE
-export RELEASE_BRANCH ADDITIONAL_RELEASE_BRANCHES TAG_VERSION_MAX_PARTS
+export DEFAULT_BRANCH CURRENT_BRANCH RELEASE_BRANCH ADDITIONAL_RELEASE_BRANCHES TAG_VERSION_MAX_PARTS
 export TAG_VERSION_CALCULATION_STRATEGY TAG_VERSION_PATTERN_TYPE TAG_VERSION_PREFIX_PARTS
 export TAG_VERSION_SOURCE_SUB_PATH TAG_VERSION_SOURCE_FILE_NAME TAG_VERSION_SOURCE_CUSTOM_PATTERN
 export BLOCK_SLASHES QC_BLOCK_SLASH_CONTAINING_BRANCHES QC_BLOCK_DOUBLE_HYPHEN_CONTAINING_BRANCHES
