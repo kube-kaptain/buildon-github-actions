@@ -17,6 +17,9 @@
 # Apply defaults to long-form variables (collision-safe)
 # =============================================================================
 
+# Workload type (deployment, statefulset, daemonset, job, cronjob)
+KUBERNETES_WORKLOAD_TYPE="${KUBERNETES_WORKLOAD_TYPE:-deployment}"
+
 # Naming and paths
 KUBERNETES_WORKLOAD_NAME_SUFFIX="${KUBERNETES_WORKLOAD_NAME_SUFFIX:-}"
 KUBERNETES_WORKLOAD_COMBINED_SUB_PATH="${KUBERNETES_WORKLOAD_COMBINED_SUB_PATH:-}"
@@ -28,6 +31,9 @@ KUBERNETES_WORKLOAD_REVISION_HISTORY_LIMIT="${KUBERNETES_WORKLOAD_REVISION_HISTO
 # =============================================================================
 # Convenience short names (for single-purpose generator scripts only)
 # =============================================================================
+
+# Workload type
+WORKLOAD_TYPE="${KUBERNETES_WORKLOAD_TYPE}"
 
 # Naming and paths
 NAME_SUFFIX="${KUBERNETES_WORKLOAD_NAME_SUFFIX}"

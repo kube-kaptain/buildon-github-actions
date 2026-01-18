@@ -33,6 +33,10 @@ PLUGINS_DIR="${SCRIPT_DIR}/../plugins"
 LOG_ERROR_PREFIX="${LOG_ERROR_PREFIX:-}"
 LOG_ERROR_SUFFIX="${LOG_ERROR_SUFFIX:-}"
 
+# shellcheck source=src/scripts/defaults/tokens.bash
+source "${SCRIPT_DIR}/../defaults/tokens.bash"
+export CONFIG_VALUE_TRAILING_NEWLINE
+
 # Validate arguments
 if [[ $# -ne 3 ]]; then
   echo "${LOG_ERROR_PREFIX}Usage: substitute-tokens-from-dir <token-style> <tokens-dir> <target-file-or-dir>${LOG_ERROR_SUFFIX}" >&2
@@ -117,7 +121,6 @@ while IFS= read -r token_file; do
   token_file="${token_file#./}"
 
   # Call the style-specific substitution script
-  # Pass CONFIG_VALUE_TRAILING_NEWLINE to child
-  CONFIG_VALUE_TRAILING_NEWLINE="${CONFIG_VALUE_TRAILING_NEWLINE:-strip-for-single-line}" \
+  # CONFIG_VALUE_TRAILING_NEWLINE inherited from tokens.bash defaults
   "${PROVIDER_SCRIPT}" "${token_file}" "${TARGET_ABS}"
 done < <(find . -type f | LC_ALL=C sort)

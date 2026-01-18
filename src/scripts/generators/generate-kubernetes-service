@@ -60,8 +60,9 @@ LOG_ERROR_SUFFIX="${LOG_ERROR_SUFFIX:-}"
 # Resource kind
 kind="Service"
 
-# Default workload type
-KUBERNETES_WORKLOAD_TYPE="${KUBERNETES_WORKLOAD_TYPE:-deployment}"
+# Workload type needed for smart defaulting of service generation
+# shellcheck source=src/scripts/defaults/kubernetes-workload.bash
+source "${SCRIPT_DIR}/../defaults/kubernetes-workload.bash"
 
 # Smart default: enabled for deployments, disabled for others, unless explicitly set
 if [[ -z "${KUBERNETES_SERVICE_GENERATION_ENABLED:-}" ]]; then

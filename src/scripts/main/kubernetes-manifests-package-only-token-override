@@ -35,9 +35,8 @@ DOCKER_TAG_OVERRIDE="${DOCKER_TAG_OVERRIDE:-}"
 
 # shellcheck source=src/scripts/defaults/output-sub-path.bash
 source "$(dirname "${BASH_SOURCE[0]}")/../defaults/output-sub-path.bash"
-
-# Token name style default
-TOKEN_NAME_STYLE="${TOKEN_NAME_STYLE:-PascalCase}"
+# shellcheck source=src/scripts/defaults/tokens.bash
+source "$(dirname "${BASH_SOURCE[0]}")/../defaults/tokens.bash"
 
 # Config directory (where tokens are stored)
 MANIFESTS_CONFIG_SUB_PATH="${OUTPUT_SUB_PATH}/manifests/config"

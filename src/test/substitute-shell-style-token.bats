@@ -9,6 +9,8 @@ load helpers
 setup() {
   export TOKENS_DIR=$(create_test_dir "tokens")
   export TARGET_DIR=$(create_test_dir "target")
+  # Simulate what substitute-tokens-from-dir (the orchestrator) provides
+  export CONFIG_VALUE_TRAILING_NEWLINE="strip-for-single-line"
 }
 
 teardown() {
