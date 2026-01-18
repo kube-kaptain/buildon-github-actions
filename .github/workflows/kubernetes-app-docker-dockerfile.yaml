@@ -161,7 +161,7 @@ on:
         type: string
         default: ''
       kubernetes-workload-revision-history-limit:
-        description: 'Number of revisions to retain (ReplicaSets for Deployment, ControllerRevisions for StatefulSet)'
+        description: 'Number of revisions to retain (ReplicaSets for Deployment, ControllerRevisions for StatefulSet, etc.)'
         required: false
         type: string
         default: '10'
@@ -465,17 +465,17 @@ on:
         required: false
         type: boolean
       kubernetes-service-type:
-        description: 'Service type (ClusterIP, NodePort, LoadBalancer)'
+        description: 'Service type (ClusterIP, Headless, NoSelector, NodePort, LoadBalancer, ExternalName)'
         required: false
         type: string
         default: 'ClusterIP'
       kubernetes-service-port:
-        description: 'Service port'
+        description: 'Service port (not used for ExternalName)'
         required: false
         type: string
         default: '80'
       kubernetes-service-target-port:
-        description: 'Target port (defaults to container port)'
+        description: 'Target port (defaults to container port, not used for ExternalName)'
         required: false
         type: string
         default: ''
@@ -484,6 +484,26 @@ on:
         required: false
         type: string
         default: 'TCP'
+      kubernetes-service-port-name:
+        description: 'Named port identifier (optional)'
+        required: false
+        type: string
+        default: ''
+      kubernetes-service-node-port:
+        description: 'Node port number (NodePort type only, empty for auto-assign)'
+        required: false
+        type: string
+        default: ''
+      kubernetes-service-external-name:
+        description: 'External DNS name (required for ExternalName type)'
+        required: false
+        type: string
+        default: ''
+      kubernetes-service-external-traffic-policy:
+        description: 'External traffic policy (Cluster or Local, NodePort/LoadBalancer only)'
+        required: false
+        type: string
+        default: ''
       kubernetes-service-name-suffix:
         description: 'Optional suffix for Service name and filename'
         required: false
@@ -1704,6 +1724,10 @@ jobs:
           kubernetes-service-port: ${{ inputs.kubernetes-service-port }}
           kubernetes-service-target-port: ${{ inputs.kubernetes-service-target-port }}
           kubernetes-service-protocol: ${{ inputs.kubernetes-service-protocol }}
+          kubernetes-service-port-name: ${{ inputs.kubernetes-service-port-name }}
+          kubernetes-service-node-port: ${{ inputs.kubernetes-service-node-port }}
+          kubernetes-service-external-name: ${{ inputs.kubernetes-service-external-name }}
+          kubernetes-service-external-traffic-policy: ${{ inputs.kubernetes-service-external-traffic-policy }}
           kubernetes-service-name-suffix: ${{ inputs.kubernetes-service-name-suffix }}
           kubernetes-service-combined-sub-path: ${{ inputs.kubernetes-service-combined-sub-path }}
           kubernetes-service-additional-labels: ${{ inputs.kubernetes-service-additional-labels }}

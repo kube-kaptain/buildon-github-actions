@@ -33,7 +33,7 @@ Kubernetes App - Manifests Only
 | `kubernetes-serviceaccount-additional-annotations` | string | `""` | Additional annotations specific to ServiceAccount (comma-separated key=value) |
 | `kubernetes-workload-type` | string | `deployment` | Workload type to generate (deployment, none) |
 | `kubernetes-workload-replicas` | string | `""` | Replica count (empty for token, NO for HPA management, number for fixed) |
-| `kubernetes-workload-revision-history-limit` | string | `10` | Number of revisions to retain (ReplicaSets for Deployment, ControllerRevisions for StatefulSet) |
+| `kubernetes-workload-revision-history-limit` | string | `10` | Number of revisions to retain (ReplicaSets for Deployment, ControllerRevisions for StatefulSet, etc.) |
 | `kubernetes-workload-name-suffix` | string | `""` | Optional suffix for workload name and filename |
 | `kubernetes-workload-combined-sub-path` | string | `""` | Sub-path within combined/ for output |
 | `kubernetes-workload-env-sub-path` | string | `""` | Directory containing environment variable files (default per workload type) |
@@ -93,10 +93,14 @@ Kubernetes App - Manifests Only
 | `kubernetes-workload-probe-startup-failure-threshold` | string | `30` | Startup probe failure threshold |
 | `kubernetes-workload-probe-startup-termination-grace-period-seconds` | string | `""` | Startup probe termination grace period (empty for default) |
 | `kubernetes-service-generation-enabled` | boolean | `""` | Enable Service generation (default: auto based on workload type) |
-| `kubernetes-service-type` | string | `ClusterIP` | Service type (ClusterIP, NodePort, LoadBalancer) |
-| `kubernetes-service-port` | string | `80` | Service port |
-| `kubernetes-service-target-port` | string | `""` | Target port (defaults to container port) |
+| `kubernetes-service-type` | string | `ClusterIP` | Service type (ClusterIP, Headless, NoSelector, NodePort, LoadBalancer, ExternalName) |
+| `kubernetes-service-port` | string | `80` | Service port (not used for ExternalName) |
+| `kubernetes-service-target-port` | string | `""` | Target port (defaults to container port, not used for ExternalName) |
 | `kubernetes-service-protocol` | string | `TCP` | Protocol (TCP, UDP, SCTP) |
+| `kubernetes-service-port-name` | string | `""` | Named port identifier (optional) |
+| `kubernetes-service-node-port` | string | `""` | Node port number (NodePort type only, empty for auto-assign) |
+| `kubernetes-service-external-name` | string | `""` | External DNS name (required for ExternalName type) |
+| `kubernetes-service-external-traffic-policy` | string | `""` | External traffic policy (Cluster or Local, NodePort/LoadBalancer only) |
 | `kubernetes-service-name-suffix` | string | `""` | Optional suffix for Service name and filename |
 | `kubernetes-service-combined-sub-path` | string | `""` | Sub-path within combined/ for output |
 | `kubernetes-service-additional-labels` | string | `""` | Additional labels specific to Service (comma-separated key=value) |

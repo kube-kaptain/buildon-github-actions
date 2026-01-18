@@ -87,7 +87,6 @@ See [`examples/`](examples/) for more usage patterns.
 | `docker-multi-tag` | Tags a Docker image for multiple registries |
 | `docker-push` | Pushes a Docker image to registry |
 | `docker-registry-logins` | Authenticate to container registries (GHCR by default, configure others as needed) |
-| `download-artifacts` | Downloads and verifies external files for Docker builds |
 | `generate-kubernetes-configmap` | Generates a Kubernetes ConfigMap manifest from files in a directory |
 | `generate-kubernetes-secret-template` | Generates a Kubernetes Secret template manifest from files in a directory |
 | `generate-kubernetes-service` | Generates a Kubernetes Service manifest with tokenized values |
@@ -159,12 +158,16 @@ See [`examples/`](examples/) for more usage patterns.
 | `kubernetes-service-additional-annotations` | string | `""` | Additional annotations specific to Service (comma-separated key=value) |
 | `kubernetes-service-additional-labels` | string | `""` | Additional labels specific to Service (comma-separated key=value) |
 | `kubernetes-service-combined-sub-path` | string | `""` | Sub-path within combined/ for output |
+| `kubernetes-service-external-name` | string | `""` | External DNS name (required for ExternalName type) |
+| `kubernetes-service-external-traffic-policy` | string | `""` | External traffic policy (Cluster or Local, NodePort/LoadBalancer only) |
 | `kubernetes-service-generation-enabled` | boolean | `""` | Enable Service generation (default: auto based on workload type) |
 | `kubernetes-service-name-suffix` | string | `""` | Optional suffix for Service name and filename |
-| `kubernetes-service-port` | string | `80` | Service port |
+| `kubernetes-service-node-port` | string | `""` | Node port number (NodePort type only, empty for auto-assign) |
+| `kubernetes-service-port` | string | `80` | Service port (not used for ExternalName) |
+| `kubernetes-service-port-name` | string | `""` | Named port identifier (optional) |
 | `kubernetes-service-protocol` | string | `TCP` | Protocol (TCP, UDP, SCTP) |
-| `kubernetes-service-target-port` | string | `""` | Target port (defaults to container port) |
-| `kubernetes-service-type` | string | `ClusterIP` | Service type (ClusterIP, NodePort, LoadBalancer) |
+| `kubernetes-service-target-port` | string | `""` | Target port (defaults to container port, not used for ExternalName) |
+| `kubernetes-service-type` | string | `ClusterIP` | Service type (ClusterIP, Headless, NoSelector, NodePort, LoadBalancer, ExternalName) |
 | `kubernetes-serviceaccount-additional-annotations` | string | `""` | Additional annotations specific to ServiceAccount (comma-separated key=value) |
 | `kubernetes-serviceaccount-additional-labels` | string | `""` | Additional labels specific to ServiceAccount (comma-separated key=value) |
 | `kubernetes-serviceaccount-combined-sub-path` | string | `""` | Sub-path within combined/ for output |
@@ -225,7 +228,7 @@ See [`examples/`](examples/) for more usage patterns.
 | `kubernetes-workload-resources-cpu-request` | string | `100m` | CPU request (e.g., 100m, 1) |
 | `kubernetes-workload-resources-ephemeral-storage` | string | `10Mi` | Ephemeral storage request/limit (e.g., 10Mi, 100Mi, 1Gi) |
 | `kubernetes-workload-resources-memory` | string | `10Mi` | Memory limit (e.g., 128Mi, 1Gi) |
-| `kubernetes-workload-revision-history-limit` | string | `10` | Number of revisions to retain (ReplicaSets for Deployment, ControllerRevisions for StatefulSet) |
+| `kubernetes-workload-revision-history-limit` | string | `10` | Number of revisions to retain (ReplicaSets for Deployment, ControllerRevisions for StatefulSet, etc.) |
 | `kubernetes-workload-seccomp-profile` | string | `DISABLED` | Seccomp profile (DISABLED, RuntimeDefault, Localhost, Unconfined) |
 | `kubernetes-workload-secret-keys-for-env` | string | `""` | Comma/space-separated Secret keys to expose as env vars |
 | `kubernetes-workload-secret-mount-path` | string | `/secret` | Secret mount path in container |
