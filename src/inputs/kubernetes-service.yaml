@@ -3,9 +3,9 @@
 #
 # Kubernetes Service generation
 kubernetes-service-generation-enabled:
-  description: 'Enable Service generation (default: auto based on workload type)'
+  description: 'Enable Service generation (true, false, or empty for auto based on workload type)'
   required: false
-  type: boolean
+  type: string
 kubernetes-service-type:
   description: 'Service type (ClusterIP, Headless, NoSelector, NodePort, LoadBalancer, ExternalName)'
   required: false

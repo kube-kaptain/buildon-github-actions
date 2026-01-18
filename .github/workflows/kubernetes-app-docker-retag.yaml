@@ -530,9 +530,9 @@ on:
         default: '/data'
       # Kubernetes PodDisruptionBudget generation
       kubernetes-poddisruptionbudget-generation-enabled:
-        description: 'Enable PodDisruptionBudget generation (default: auto based on workload type)'
+        description: 'Enable PodDisruptionBudget generation (true, false, or empty for auto based on workload type)'
         required: false
-        type: boolean
+        type: string
       kubernetes-poddisruptionbudget-name-suffix:
         description: 'Optional suffix for PDB name and filename'
         required: false
@@ -565,9 +565,9 @@ on:
         default: ''
       # Kubernetes Service generation
       kubernetes-service-generation-enabled:
-        description: 'Enable Service generation (default: auto based on workload type)'
+        description: 'Enable Service generation (true, false, or empty for auto based on workload type)'
         required: false
-        type: boolean
+        type: string
       kubernetes-service-type:
         description: 'Service type (ClusterIP, Headless, NoSelector, NodePort, LoadBalancer, ExternalName)'
         required: false
@@ -1486,7 +1486,7 @@ jobs:
 
       # === Generate PodDisruptionBudget ===
       - name: Start check - Generate PodDisruptionBudget
-        if: inputs.kubernetes-poddisruptionbudget-generation-enabled != false && (inputs.kubernetes-poddisruptionbudget-generation-enabled == true || inputs.kubernetes-workload-type == 'deployment' || inputs.kubernetes-workload-type == 'statefulset') && success()
+        if: inputs.kubernetes-poddisruptionbudget-generation-enabled != 'false' && (inputs.kubernetes-poddisruptionbudget-generation-enabled == 'true' || inputs.kubernetes-workload-type == 'deployment' || inputs.kubernetes-workload-type == 'statefulset') && success()
         id: check-generate-poddisruptionbudget
         uses: ./.github/buildon-github-actions/src/actions/github-check-run
         with:
@@ -1494,7 +1494,7 @@ jobs:
           check-name: 'Build & Publish → Generate PodDisruptionBudget'
       - name: Generate PodDisruptionBudget manifest
         id: generate-poddisruptionbudget
-        if: inputs.kubernetes-poddisruptionbudget-generation-enabled != false && (inputs.kubernetes-poddisruptionbudget-generation-enabled == true || inputs.kubernetes-workload-type == 'deployment' || inputs.kubernetes-workload-type == 'statefulset') && success()
+        if: inputs.kubernetes-poddisruptionbudget-generation-enabled != 'false' && (inputs.kubernetes-poddisruptionbudget-generation-enabled == 'true' || inputs.kubernetes-workload-type == 'deployment' || inputs.kubernetes-workload-type == 'statefulset') && success()
         uses: ./.github/buildon-github-actions/src/actions/generate-kubernetes-poddisruptionbudget
         with:
           # PDB settings
@@ -1516,13 +1516,13 @@ jobs:
           kubernetes-global-additional-labels: ${{ inputs.kubernetes-global-additional-labels }}
           kubernetes-global-additional-annotations: ${{ inputs.kubernetes-global-additional-annotations }}
       - name: Pass check - Generate PodDisruptionBudget
-        if: inputs.kubernetes-poddisruptionbudget-generation-enabled != false && (inputs.kubernetes-poddisruptionbudget-generation-enabled == true || inputs.kubernetes-workload-type == 'deployment' || inputs.kubernetes-workload-type == 'statefulset') && success()
+        if: inputs.kubernetes-poddisruptionbudget-generation-enabled != 'false' && (inputs.kubernetes-poddisruptionbudget-generation-enabled == 'true' || inputs.kubernetes-workload-type == 'deployment' || inputs.kubernetes-workload-type == 'statefulset') && success()
         uses: ./.github/buildon-github-actions/src/actions/github-check-run
         with:
           action: pass
           check-run-id: ${{ steps.check-generate-poddisruptionbudget.outputs.check-run-id }}
       - name: Fail check - Generate PodDisruptionBudget
-        if: inputs.kubernetes-poddisruptionbudget-generation-enabled != false && (inputs.kubernetes-poddisruptionbudget-generation-enabled == true || inputs.kubernetes-workload-type == 'deployment' || inputs.kubernetes-workload-type == 'statefulset') && failure() && steps.check-generate-poddisruptionbudget.outputs.check-run-id != ''
+        if: inputs.kubernetes-poddisruptionbudget-generation-enabled != 'false' && (inputs.kubernetes-poddisruptionbudget-generation-enabled == 'true' || inputs.kubernetes-workload-type == 'deployment' || inputs.kubernetes-workload-type == 'statefulset') && failure() && steps.check-generate-poddisruptionbudget.outputs.check-run-id != ''
         uses: ./.github/buildon-github-actions/src/actions/github-check-run
         with:
           action: fail
@@ -1530,7 +1530,7 @@ jobs:
 
       # === Generate Service ===
       - name: Start check - Generate Service
-        if: inputs.kubernetes-service-generation-enabled != false && (inputs.kubernetes-service-generation-enabled == true || inputs.kubernetes-workload-type == 'deployment' || inputs.kubernetes-workload-type == 'statefulset') && success()
+        if: inputs.kubernetes-service-generation-enabled != 'false' && (inputs.kubernetes-service-generation-enabled == 'true' || inputs.kubernetes-workload-type == 'deployment' || inputs.kubernetes-workload-type == 'statefulset') && success()
         id: check-generate-service
         uses: ./.github/buildon-github-actions/src/actions/github-check-run
         with:
@@ -1538,7 +1538,7 @@ jobs:
           check-name: 'Build & Publish → Generate Service'
       - name: Generate Service manifest
         id: generate-service
-        if: inputs.kubernetes-service-generation-enabled != false && (inputs.kubernetes-service-generation-enabled == true || inputs.kubernetes-workload-type == 'deployment' || inputs.kubernetes-workload-type == 'statefulset') && success()
+        if: inputs.kubernetes-service-generation-enabled != 'false' && (inputs.kubernetes-service-generation-enabled == 'true' || inputs.kubernetes-workload-type == 'deployment' || inputs.kubernetes-workload-type == 'statefulset') && success()
         uses: ./.github/buildon-github-actions/src/actions/generate-kubernetes-service
         with:
           # Service settings
@@ -1567,13 +1567,13 @@ jobs:
           kubernetes-global-additional-labels: ${{ inputs.kubernetes-global-additional-labels }}
           kubernetes-global-additional-annotations: ${{ inputs.kubernetes-global-additional-annotations }}
       - name: Pass check - Generate Service
-        if: inputs.kubernetes-service-generation-enabled != false && (inputs.kubernetes-service-generation-enabled == true || inputs.kubernetes-workload-type == 'deployment' || inputs.kubernetes-workload-type == 'statefulset') && success()
+        if: inputs.kubernetes-service-generation-enabled != 'false' && (inputs.kubernetes-service-generation-enabled == 'true' || inputs.kubernetes-workload-type == 'deployment' || inputs.kubernetes-workload-type == 'statefulset') && success()
         uses: ./.github/buildon-github-actions/src/actions/github-check-run
         with:
           action: pass
           check-run-id: ${{ steps.check-generate-service.outputs.check-run-id }}
       - name: Fail check - Generate Service
-        if: inputs.kubernetes-service-generation-enabled != false && (inputs.kubernetes-service-generation-enabled == true || inputs.kubernetes-workload-type == 'deployment' || inputs.kubernetes-workload-type == 'statefulset') && failure() && steps.check-generate-service.outputs.check-run-id != ''
+        if: inputs.kubernetes-service-generation-enabled != 'false' && (inputs.kubernetes-service-generation-enabled == 'true' || inputs.kubernetes-workload-type == 'deployment' || inputs.kubernetes-workload-type == 'statefulset') && failure() && steps.check-generate-service.outputs.check-run-id != ''
         uses: ./.github/buildon-github-actions/src/actions/github-check-run
         with:
           action: fail

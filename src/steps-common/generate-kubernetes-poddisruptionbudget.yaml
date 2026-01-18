@@ -3,7 +3,7 @@
 
 - name: Generate PodDisruptionBudget manifest
   id: generate-poddisruptionbudget
-  if: inputs.kubernetes-poddisruptionbudget-generation-enabled != false && (inputs.kubernetes-poddisruptionbudget-generation-enabled == true || inputs.kubernetes-workload-type == 'deployment' || inputs.kubernetes-workload-type == 'statefulset')
+  if: inputs.kubernetes-poddisruptionbudget-generation-enabled != 'false' && (inputs.kubernetes-poddisruptionbudget-generation-enabled == 'true' || inputs.kubernetes-workload-type == 'deployment' || inputs.kubernetes-workload-type == 'statefulset')
   uses: ./.github/buildon-github-actions/src/actions/generate-kubernetes-poddisruptionbudget
   with:
     # PDB settings

@@ -107,14 +107,14 @@ Kubernetes App - Docker Retag
 | `kubernetes-statefulset-pvc-access-mode` | string | `ReadWriteOnce` | PVC access mode (ReadWriteOnce, ReadOnlyMany, ReadWriteMany) |
 | `kubernetes-statefulset-pvc-volume-name` | string | `data` | Volume name for the PVC template |
 | `kubernetes-statefulset-pvc-mount-path` | string | `/data` | Mount path for the persistent volume |
-| `kubernetes-poddisruptionbudget-generation-enabled` | boolean | `""` | Enable PodDisruptionBudget generation (default: auto based on workload type) |
+| `kubernetes-poddisruptionbudget-generation-enabled` | string | `""` | Enable PodDisruptionBudget generation (true, false, or empty for auto based on workload type) |
 | `kubernetes-poddisruptionbudget-name-suffix` | string | `""` | Optional suffix for PDB name and filename |
 | `kubernetes-poddisruptionbudget-combined-sub-path` | string | `""` | Sub-path within combined/ for output |
 | `kubernetes-poddisruptionbudget-strategy` | string | `max-unavailable` | PDB constraint strategy (min-available or max-unavailable) |
 | `kubernetes-poddisruptionbudget-value` | string | `1` | Value for the chosen strategy (integer or percentage, e.g., 1, 50%) |
 | `kubernetes-poddisruptionbudget-additional-labels` | string | `""` | Additional labels specific to PodDisruptionBudget (comma-separated key=value) |
 | `kubernetes-poddisruptionbudget-additional-annotations` | string | `""` | Additional annotations specific to PodDisruptionBudget (comma-separated key=value) |
-| `kubernetes-service-generation-enabled` | boolean | `""` | Enable Service generation (default: auto based on workload type) |
+| `kubernetes-service-generation-enabled` | string | `""` | Enable Service generation (true, false, or empty for auto based on workload type) |
 | `kubernetes-service-type` | string | `ClusterIP` | Service type (ClusterIP, Headless, NoSelector, NodePort, LoadBalancer, ExternalName) |
 | `kubernetes-service-port` | string | `80` | Service port (not used for ExternalName) |
 | `kubernetes-service-target-port` | string | `""` | Target port (defaults to container port, not used for ExternalName) |

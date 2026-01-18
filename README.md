@@ -158,7 +158,7 @@ See [`examples/`](examples/) for more usage patterns.
 | `kubernetes-poddisruptionbudget-additional-annotations` | string | `""` | Additional annotations specific to PodDisruptionBudget (comma-separated key=value) |
 | `kubernetes-poddisruptionbudget-additional-labels` | string | `""` | Additional labels specific to PodDisruptionBudget (comma-separated key=value) |
 | `kubernetes-poddisruptionbudget-combined-sub-path` | string | `""` | Sub-path within combined/ for output |
-| `kubernetes-poddisruptionbudget-generation-enabled` | boolean | `""` | Enable PodDisruptionBudget generation (default: auto based on workload type) |
+| `kubernetes-poddisruptionbudget-generation-enabled` | string | `""` | Enable PodDisruptionBudget generation (true, false, or empty for auto based on workload type) |
 | `kubernetes-poddisruptionbudget-name-suffix` | string | `""` | Optional suffix for PDB name and filename |
 | `kubernetes-poddisruptionbudget-strategy` | string | `max-unavailable` | PDB constraint strategy (min-available or max-unavailable) |
 | `kubernetes-poddisruptionbudget-value` | string | `1` | Value for the chosen strategy (integer or percentage, e.g., 1, 50%) |
@@ -171,7 +171,7 @@ See [`examples/`](examples/) for more usage patterns.
 | `kubernetes-service-combined-sub-path` | string | `""` | Sub-path within combined/ for output |
 | `kubernetes-service-external-name` | string | `""` | External DNS name (required for ExternalName type) |
 | `kubernetes-service-external-traffic-policy` | string | `""` | External traffic policy (Cluster or Local, NodePort/LoadBalancer only) |
-| `kubernetes-service-generation-enabled` | boolean | `""` | Enable Service generation (default: auto based on workload type) |
+| `kubernetes-service-generation-enabled` | string | `""` | Enable Service generation (true, false, or empty for auto based on workload type) |
 | `kubernetes-service-name-suffix` | string | `""` | Optional suffix for Service name and filename |
 | `kubernetes-service-node-port` | string | `""` | Node port number (NodePort type only, empty for auto-assign) |
 | `kubernetes-service-port` | string | `80` | Service port (not used for ExternalName) |

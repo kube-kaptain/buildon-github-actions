@@ -3,9 +3,9 @@
 #
 # Kubernetes PodDisruptionBudget generation
 kubernetes-poddisruptionbudget-generation-enabled:
-  description: 'Enable PodDisruptionBudget generation (default: auto based on workload type)'
+  description: 'Enable PodDisruptionBudget generation (true, false, or empty for auto based on workload type)'
   required: false
-  type: boolean
+  type: string
 kubernetes-poddisruptionbudget-name-suffix:
   description: 'Optional suffix for PDB name and filename'
   required: false
