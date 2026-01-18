@@ -59,6 +59,12 @@ source "$(dirname "${BASH_SOURCE[0]}")/../defaults/quality-checks.bash"
 # shellcheck source=src/scripts/defaults/vendor-github-release.bash
 source "$(dirname "${BASH_SOURCE[0]}")/../defaults/vendor-github-release.bash"
 
+# shellcheck source=src/scripts/defaults/kubernetes-manifest.bash
+source "$(dirname "${BASH_SOURCE[0]}")/../defaults/kubernetes-manifest.bash"
+# shellcheck source=src/scripts/defaults/kubernetes-configmap.bash
+source "$(dirname "${BASH_SOURCE[0]}")/../defaults/kubernetes-configmap.bash"
+# shellcheck source=src/scripts/defaults/kubernetes-secret-template.bash
+source "$(dirname "${BASH_SOURCE[0]}")/../defaults/kubernetes-secret-template.bash"
 # shellcheck source=src/scripts/defaults/kubernetes-service.bash
 source "$(dirname "${BASH_SOURCE[0]}")/../defaults/kubernetes-service.bash"
 
