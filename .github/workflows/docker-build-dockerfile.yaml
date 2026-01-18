@@ -18,22 +18,6 @@ on:
         required: false
         type: string
         default: ''
-      # Docker build options
-      dockerfile-sub-path:
-        description: 'Directory containing Dockerfile, relative to repo root.'
-        required: false
-        type: string
-        default: 'src/docker'
-      dockerfile-squash:
-        description: 'Enable --squash (requires experimental mode)'
-        required: false
-        type: boolean
-        default: true
-      dockerfile-no-cache:
-        description: 'Disable layer caching for reproducible builds'
-        required: false
-        type: boolean
-        default: true
       # Docker target config
       docker-target-registry:
         description: 'Target container registry'
@@ -51,6 +35,22 @@ on:
         required: false
         type: string
         default: ''
+      # Docker build options
+      dockerfile-sub-path:
+        description: 'Directory containing Dockerfile, relative to repo root.'
+        required: false
+        type: string
+        default: 'src/docker'
+      dockerfile-squash:
+        description: 'Enable --squash (requires experimental mode)'
+        required: false
+        type: boolean
+        default: true
+      dockerfile-no-cache:
+        description: 'Disable layer caching for reproducible builds'
+        required: false
+        type: boolean
+        default: true
 
       # Token substitution
       token-delimiter-style:
@@ -84,7 +84,7 @@ on:
         type: string
         default: 'strip-for-single-line'
 
-      # Naming, Versions, and Tags calculation
+      # Release branches
       release-branch:
         description: 'The release branch name'
         required: false
@@ -95,6 +95,7 @@ on:
         required: false
         type: string
         default: ''
+      # Tag version calculation
       tag-version-max-parts:
         description: 'Maximum allowed version parts (fail if exceeded)'
         required: false
@@ -131,7 +132,7 @@ on:
         type: string
         default: ''
 
-      # Quality check options
+      # Basic quality checks
       block-slashes:
         description: 'DEPRECATED: Use block-slash-containing-branches instead'
         required: false
@@ -163,12 +164,13 @@ on:
         type: boolean
         default: false
 
-      # Hook script paths
+      # Pre tagging hook script path
       hook-pre-tagging-tests-script-sub-path:
         description: 'Path to pre-tagging test script relative to .github/ (e.g., bin/pre-tagging.bash)'
         required: false
         type: string
         default: ''
+      # Docker related hook script paths
       hook-pre-docker-prepare-script-sub-path:
         description: 'Path to pre-docker prepare script relative to .github/ (e.g., bin/pre-docker-prepare.bash)'
         required: false
@@ -503,6 +505,7 @@ jobs:
           kubernetes-workload-readonly-root-filesystem: ${{ inputs.kubernetes-workload-readonly-root-filesystem }}
           kubernetes-workload-seccomp-profile: ${{ inputs.kubernetes-workload-seccomp-profile }}
           kubernetes-workload-automount-service-account-token: ${{ inputs.kubernetes-workload-automount-service-account-token }}
+          kubernetes-workload-image-pull-secrets: ${{ inputs.kubernetes-workload-image-pull-secrets }}
           kubernetes-workload-resources-memory: ${{ inputs.kubernetes-workload-resources-memory }}
           kubernetes-workload-resources-cpu-request: ${{ inputs.kubernetes-workload-resources-cpu-request }}
           kubernetes-workload-resources-cpu-limit: ${{ inputs.kubernetes-workload-resources-cpu-limit }}
@@ -517,8 +520,8 @@ jobs:
           kubernetes-workload-probe-liveness-http-path: ${{ inputs.kubernetes-workload-probe-liveness-http-path }}
           kubernetes-workload-probe-readiness-http-path: ${{ inputs.kubernetes-workload-probe-readiness-http-path }}
           kubernetes-workload-probe-startup-http-path: ${{ inputs.kubernetes-workload-probe-startup-http-path }}
-          kubernetes-deployment-replicas: ${{ inputs.kubernetes-deployment-replicas }}
-          kubernetes-deployment-revision-history-limit: ${{ inputs.kubernetes-deployment-revision-history-limit }}
+          kubernetes-workload-replicas: ${{ inputs.kubernetes-workload-replicas }}
+          kubernetes-workload-revision-history-limit: ${{ inputs.kubernetes-workload-revision-history-limit }}
           # Kubernetes Service generation
           kubernetes-service-generation-enabled: ${{ inputs.kubernetes-service-generation-enabled }}
           kubernetes-service-type: ${{ inputs.kubernetes-service-type }}
@@ -684,6 +687,7 @@ jobs:
           kubernetes-workload-readonly-root-filesystem: ${{ inputs.kubernetes-workload-readonly-root-filesystem }}
           kubernetes-workload-seccomp-profile: ${{ inputs.kubernetes-workload-seccomp-profile }}
           kubernetes-workload-automount-service-account-token: ${{ inputs.kubernetes-workload-automount-service-account-token }}
+          kubernetes-workload-image-pull-secrets: ${{ inputs.kubernetes-workload-image-pull-secrets }}
           kubernetes-workload-resources-memory: ${{ inputs.kubernetes-workload-resources-memory }}
           kubernetes-workload-resources-cpu-request: ${{ inputs.kubernetes-workload-resources-cpu-request }}
           kubernetes-workload-resources-cpu-limit: ${{ inputs.kubernetes-workload-resources-cpu-limit }}
@@ -698,8 +702,8 @@ jobs:
           kubernetes-workload-probe-liveness-http-path: ${{ inputs.kubernetes-workload-probe-liveness-http-path }}
           kubernetes-workload-probe-readiness-http-path: ${{ inputs.kubernetes-workload-probe-readiness-http-path }}
           kubernetes-workload-probe-startup-http-path: ${{ inputs.kubernetes-workload-probe-startup-http-path }}
-          kubernetes-deployment-replicas: ${{ inputs.kubernetes-deployment-replicas }}
-          kubernetes-deployment-revision-history-limit: ${{ inputs.kubernetes-deployment-revision-history-limit }}
+          kubernetes-workload-replicas: ${{ inputs.kubernetes-workload-replicas }}
+          kubernetes-workload-revision-history-limit: ${{ inputs.kubernetes-workload-revision-history-limit }}
           # Kubernetes Service generation
           kubernetes-service-generation-enabled: ${{ inputs.kubernetes-service-generation-enabled }}
           kubernetes-service-type: ${{ inputs.kubernetes-service-type }}
@@ -919,6 +923,7 @@ jobs:
           kubernetes-workload-readonly-root-filesystem: ${{ inputs.kubernetes-workload-readonly-root-filesystem }}
           kubernetes-workload-seccomp-profile: ${{ inputs.kubernetes-workload-seccomp-profile }}
           kubernetes-workload-automount-service-account-token: ${{ inputs.kubernetes-workload-automount-service-account-token }}
+          kubernetes-workload-image-pull-secrets: ${{ inputs.kubernetes-workload-image-pull-secrets }}
           kubernetes-workload-resources-memory: ${{ inputs.kubernetes-workload-resources-memory }}
           kubernetes-workload-resources-cpu-request: ${{ inputs.kubernetes-workload-resources-cpu-request }}
           kubernetes-workload-resources-cpu-limit: ${{ inputs.kubernetes-workload-resources-cpu-limit }}
@@ -933,8 +938,8 @@ jobs:
           kubernetes-workload-probe-liveness-http-path: ${{ inputs.kubernetes-workload-probe-liveness-http-path }}
           kubernetes-workload-probe-readiness-http-path: ${{ inputs.kubernetes-workload-probe-readiness-http-path }}
           kubernetes-workload-probe-startup-http-path: ${{ inputs.kubernetes-workload-probe-startup-http-path }}
-          kubernetes-deployment-replicas: ${{ inputs.kubernetes-deployment-replicas }}
-          kubernetes-deployment-revision-history-limit: ${{ inputs.kubernetes-deployment-revision-history-limit }}
+          kubernetes-workload-replicas: ${{ inputs.kubernetes-workload-replicas }}
+          kubernetes-workload-revision-history-limit: ${{ inputs.kubernetes-workload-revision-history-limit }}
           # Kubernetes Service generation
           kubernetes-service-generation-enabled: ${{ inputs.kubernetes-service-generation-enabled }}
           kubernetes-service-type: ${{ inputs.kubernetes-service-type }}

@@ -31,8 +31,8 @@ LOG_ERROR_SUFFIX="${LOG_ERROR_SUFFIX:-}"
 PROJECT_NAME="${PROJECT_NAME:?PROJECT_NAME is required}"
 VERSION="${VERSION:?VERSION is required}"
 
-# shellcheck source=src/scripts/defaults/common.bash
-source "$(dirname "${BASH_SOURCE[0]}")/../defaults/common.bash"
+# shellcheck source=src/scripts/defaults/output-sub-path.bash
+source "$(dirname "${BASH_SOURCE[0]}")/../defaults/output-sub-path.bash"
 
 # Token substitution defaults
 # shellcheck source=src/scripts/defaults/tokens.bash

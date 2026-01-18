@@ -1,0 +1,24 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
+#
+# Kubernetes ConfigMap generation
+kubernetes-configmap-sub-path:
+  description: 'Directory containing ConfigMap data files (relative)'
+  required: false
+  type: string
+  default: 'src/configmap'
+kubernetes-configmap-name-checksum-injection:
+  description: 'Enable checksum injection suffix in ConfigMap name'
+  required: false
+  type: boolean
+  default: true
+kubernetes-configmap-additional-labels:
+  description: 'Additional labels specific to ConfigMap (comma-separated key=value)'
+  required: false
+  type: string
+  default: ''
+kubernetes-configmap-additional-annotations:
+  description: 'Additional annotations specific to ConfigMap (comma-separated key=value)'
+  required: false
+  type: string
+  default: ''

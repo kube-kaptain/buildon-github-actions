@@ -42,10 +42,18 @@ set -euo pipefail
 # === User Project Inputs ===
 # Defaults and input conditioning sourced from defaults scripts - single source of truth
 
-# shellcheck source=src/scripts/defaults/common.bash
-source "$(dirname "${BASH_SOURCE[0]}")/../defaults/common.bash"
-# shellcheck source=src/scripts/defaults/dockerfile.bash
-source "$(dirname "${BASH_SOURCE[0]}")/../defaults/dockerfile.bash"
+# shellcheck source=src/scripts/defaults/branch-inputs.bash
+source "$(dirname "${BASH_SOURCE[0]}")/../defaults/branch-inputs.bash"
+# shellcheck source=src/scripts/defaults/output-sub-path.bash
+source "$(dirname "${BASH_SOURCE[0]}")/../defaults/output-sub-path.bash"
+# shellcheck source=src/scripts/defaults/manifests-sub-path.bash
+source "$(dirname "${BASH_SOURCE[0]}")/../defaults/manifests-sub-path.bash"
+# shellcheck source=src/scripts/defaults/docker-build.bash
+source "$(dirname "${BASH_SOURCE[0]}")/../defaults/docker-build.bash"
+# shellcheck source=src/scripts/defaults/docker-dockerfile.bash
+source "$(dirname "${BASH_SOURCE[0]}")/../defaults/docker-dockerfile.bash"
+# shellcheck source=src/scripts/defaults/docker-retag.bash
+source "$(dirname "${BASH_SOURCE[0]}")/../defaults/docker-retag.bash"
 # shellcheck source=src/scripts/defaults/tokens.bash
 source "$(dirname "${BASH_SOURCE[0]}")/../defaults/tokens.bash"
 # shellcheck source=src/scripts/defaults/tag-versioning.bash
@@ -57,15 +65,27 @@ source "$(dirname "${BASH_SOURCE[0]}")/../defaults/quality-checks.bash"
 # shellcheck source=src/scripts/defaults/vendor-github-release.bash
 source "$(dirname "${BASH_SOURCE[0]}")/../defaults/vendor-github-release.bash"
 
-# shellcheck source=src/scripts/defaults/hooks-leftovers.bash
-source "$(dirname "${BASH_SOURCE[0]}")/../defaults/hooks-leftovers.bash"
+# shellcheck source=src/scripts/defaults/kubernetes-manifest.bash
+source "$(dirname "${BASH_SOURCE[0]}")/../defaults/kubernetes-manifest.bash"
+# shellcheck source=src/scripts/defaults/kubernetes-configmap.bash
+source "$(dirname "${BASH_SOURCE[0]}")/../defaults/kubernetes-configmap.bash"
+# shellcheck source=src/scripts/defaults/kubernetes-secret-template.bash
+source "$(dirname "${BASH_SOURCE[0]}")/../defaults/kubernetes-secret-template.bash"
+# shellcheck source=src/scripts/defaults/kubernetes-workload-statefulset.bash
+source "$(dirname "${BASH_SOURCE[0]}")/../defaults/kubernetes-workload-statefulset.bash"
+# shellcheck source=src/scripts/defaults/kubernetes-poddisruptionbudget.bash
+source "$(dirname "${BASH_SOURCE[0]}")/../defaults/kubernetes-poddisruptionbudget.bash"
+# shellcheck source=src/scripts/defaults/kubernetes-service.bash
+source "$(dirname "${BASH_SOURCE[0]}")/../defaults/kubernetes-service.bash"
+
+# shellcheck source=src/scripts/defaults/manifests-repo-provider.bash
+source "$(dirname "${BASH_SOURCE[0]}")/../defaults/manifests-repo-provider.bash"
 
 # Export all workflow inputs
 export OUTPUT_SUB_PATH
-export DOCKER_REGISTRY_LOGINS
+export DOCKER_REGISTRY_LOGINS DOCKER_TARGET_REGISTRY DOCKER_TARGET_BASE_PATH DOCKER_PUSH_TARGETS
 export DOCKERFILE_SUB_PATH DOCKERFILE_SQUASH DOCKERFILE_NO_CACHE
-export DOCKER_TARGET_REGISTRY DOCKER_TARGET_BASE_PATH
-export DOCKER_PUSH_TARGETS
+export DOCKER_SOURCE_REGISTRY DOCKER_SOURCE_BASE_PATH DOCKER_SOURCE_IMAGE_NAME DOCKER_SOURCE_TAG
 export MANIFESTS_SUB_PATH
 export MANIFESTS_REPO_PROVIDER_TYPE MANIFESTS_PACKAGING_BASE_IMAGE
 export KUBERNETES_GLOBAL_ADDITIONAL_LABELS KUBERNETES_GLOBAL_ADDITIONAL_ANNOTATIONS
@@ -73,9 +93,19 @@ export KUBERNETES_CONFIGMAP_SUB_PATH KUBERNETES_CONFIGMAP_NAME_CHECKSUM_INJECTIO
 export KUBERNETES_CONFIGMAP_ADDITIONAL_LABELS KUBERNETES_CONFIGMAP_ADDITIONAL_ANNOTATIONS
 export KUBERNETES_SECRET_TEMPLATE_SUB_PATH KUBERNETES_SECRET_TEMPLATE_NAME_CHECKSUM_INJECTION
 export KUBERNETES_SECRET_TEMPLATE_ADDITIONAL_LABELS KUBERNETES_SECRET_TEMPLATE_ADDITIONAL_ANNOTATIONS
+export KUBERNETES_SERVICE_TYPE KUBERNETES_SERVICE_PORT KUBERNETES_SERVICE_TARGET_PORT
+export KUBERNETES_SERVICE_PROTOCOL KUBERNETES_SERVICE_PORT_NAME KUBERNETES_SERVICE_NODE_PORT
+export KUBERNETES_SERVICE_EXTERNAL_NAME KUBERNETES_SERVICE_EXTERNAL_TRAFFIC_POLICY
+export KUBERNETES_SERVICE_NAME_SUFFIX KUBERNETES_SERVICE_COMBINED_SUB_PATH
+export KUBERNETES_SERVICE_GENERATION_ENABLED
+export KUBERNETES_SERVICE_ADDITIONAL_LABELS KUBERNETES_SERVICE_ADDITIONAL_ANNOTATIONS
+export KUBERNETES_PODDISRUPTIONBUDGET_GENERATION_ENABLED
+export KUBERNETES_PODDISRUPTIONBUDGET_NAME_SUFFIX KUBERNETES_PODDISRUPTIONBUDGET_COMBINED_SUB_PATH
+export KUBERNETES_PODDISRUPTIONBUDGET_STRATEGY KUBERNETES_PODDISRUPTIONBUDGET_VALUE
+export KUBERNETES_PODDISRUPTIONBUDGET_ADDITIONAL_LABELS KUBERNETES_PODDISRUPTIONBUDGET_ADDITIONAL_ANNOTATIONS
 export TOKEN_DELIMITER_STYLE TOKEN_NAME_STYLE TOKEN_NAME_VALIDATION
 export ALLOW_BUILTIN_TOKEN_OVERRIDE CONFIG_SUB_PATH CONFIG_VALUE_TRAILING_NEWLINE
-export RELEASE_BRANCH ADDITIONAL_RELEASE_BRANCHES TAG_VERSION_MAX_PARTS
+export DEFAULT_BRANCH CURRENT_BRANCH RELEASE_BRANCH ADDITIONAL_RELEASE_BRANCHES TAG_VERSION_MAX_PARTS
 export TAG_VERSION_CALCULATION_STRATEGY TAG_VERSION_PATTERN_TYPE TAG_VERSION_PREFIX_PARTS
 export TAG_VERSION_SOURCE_SUB_PATH TAG_VERSION_SOURCE_FILE_NAME TAG_VERSION_SOURCE_CUSTOM_PATTERN
 export BLOCK_SLASHES QC_BLOCK_SLASH_CONTAINING_BRANCHES QC_BLOCK_DOUBLE_HYPHEN_CONTAINING_BRANCHES

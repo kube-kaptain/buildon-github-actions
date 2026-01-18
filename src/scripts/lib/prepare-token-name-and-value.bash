@@ -36,8 +36,7 @@ TOKEN_NAME="${TOKEN_FILE}"
 raw_content=$(cat "${TOKEN_FILE}" && echo x)
 raw_content="${raw_content%x}"
 
-# Apply trailing newline handling based on CONFIG_VALUE_TRAILING_NEWLINE
-CONFIG_VALUE_TRAILING_NEWLINE="${CONFIG_VALUE_TRAILING_NEWLINE:-strip-for-single-line}"
+# Apply trailing newline handling based on CONFIG_VALUE_TRAILING_NEWLINE (from tokens.bash)
 
 # shellcheck disable=SC2034 # TOKEN_VALUE is used by the sourcing script
 if [[ "${CONFIG_VALUE_TRAILING_NEWLINE}" == "preserve-all" ]]; then

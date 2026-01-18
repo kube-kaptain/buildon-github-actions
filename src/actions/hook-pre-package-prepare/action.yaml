@@ -131,7 +131,7 @@ inputs:
     default: ''
   # Kubernetes Workload generation
   kubernetes-workload-type:
-    description: 'Workload type to generate (deployment, none)'
+    description: 'Workload type to generate (deployment, statefulset, none)'
     required: false
     default: 'deployment'
   kubernetes-workload-name-suffix:
@@ -174,6 +174,10 @@ inputs:
     description: 'Automount service account token (true/false)'
     required: false
     default: 'false'
+  kubernetes-workload-image-pull-secrets:
+    description: 'Include imagePullSecrets in pod spec (ENABLED/DISABLED)'
+    required: false
+    default: 'ENABLED'
   kubernetes-workload-resources-memory:
     description: 'Memory limit (e.g., 128Mi, 1Gi)'
     required: false
@@ -230,21 +234,62 @@ inputs:
     description: 'Startup probe HTTP path'
     required: false
     default: '/startup'
-  kubernetes-deployment-replicas:
+  kubernetes-workload-replicas:
     description: 'Replica count (empty for token, NO for HPA management)'
     required: false
     default: ''
-  kubernetes-deployment-revision-history-limit:
+  kubernetes-workload-revision-history-limit:
     description: 'Number of old ReplicaSets to retain'
     required: false
     default: '10'
+  # StatefulSet unique inputs
+  kubernetes-statefulset-service-name:
+    description: 'Headless service name (empty for auto-derived from project name)'
+    required: false
+    default: ''
+  kubernetes-statefulset-pod-management-policy:
+    description: 'Pod management policy (OrderedReady or Parallel)'
+    required: false
+    default: 'OrderedReady'
+  kubernetes-statefulset-update-strategy-type:
+    description: 'Update strategy type (RollingUpdate or OnDelete)'
+    required: false
+    default: 'RollingUpdate'
+  kubernetes-statefulset-update-strategy-partition:
+    description: 'Partition for rolling updates (empty for none)'
+    required: false
+    default: ''
+  kubernetes-statefulset-pvc-enabled:
+    description: 'Enable persistent volume claim template (true/false)'
+    required: false
+    default: 'true'
+  kubernetes-statefulset-pvc-storage-class:
+    description: 'Storage class for PVC (empty for cluster default)'
+    required: false
+    default: ''
+  kubernetes-statefulset-pvc-storage-size:
+    description: 'Storage size for PVC (e.g., 1Gi, 10Gi)'
+    required: false
+    default: '1Gi'
+  kubernetes-statefulset-pvc-access-mode:
+    description: 'PVC access mode (ReadWriteOnce, ReadOnlyMany, ReadWriteMany)'
+    required: false
+    default: 'ReadWriteOnce'
+  kubernetes-statefulset-pvc-volume-name:
+    description: 'Volume name for the PVC template'
+    required: false
+    default: 'data'
+  kubernetes-statefulset-pvc-mount-path:
+    description: 'Mount path for the persistent volume'
+    required: false
+    default: '/data'
   # Kubernetes Service generation
   kubernetes-service-generation-enabled:
     description: 'Enable Service generation'
     required: false
     default: 'false'
   kubernetes-service-type:
-    description: 'Service type (ClusterIP, NodePort, LoadBalancer)'
+    description: 'Service type (ClusterIP, Headless, NoSelector, NodePort, LoadBalancer, ExternalName)'
     required: false
     default: 'ClusterIP'
   kubernetes-service-port:
@@ -259,6 +304,22 @@ inputs:
     description: 'Protocol (TCP, UDP, SCTP)'
     required: false
     default: 'TCP'
+  kubernetes-service-port-name:
+    description: 'Named port identifier (optional)'
+    required: false
+    default: ''
+  kubernetes-service-node-port:
+    description: 'Node port number (NodePort type only, empty for auto-assign)'
+    required: false
+    default: ''
+  kubernetes-service-external-name:
+    description: 'External DNS name (required for ExternalName type)'
+    required: false
+    default: ''
+  kubernetes-service-external-traffic-policy:
+    description: 'External traffic policy (Cluster or Local, NodePort/LoadBalancer only)'
+    required: false
+    default: ''
   kubernetes-service-name-suffix:
     description: 'Optional suffix for Service name and filename'
     required: false
@@ -521,6 +582,7 @@ runs:
         KUBERNETES_WORKLOAD_READONLY_ROOT_FILESYSTEM: ${{ inputs.kubernetes-workload-readonly-root-filesystem }}
         KUBERNETES_WORKLOAD_SECCOMP_PROFILE: ${{ inputs.kubernetes-workload-seccomp-profile }}
         KUBERNETES_WORKLOAD_AUTOMOUNT_SERVICE_ACCOUNT_TOKEN: ${{ inputs.kubernetes-workload-automount-service-account-token }}
+        KUBERNETES_WORKLOAD_IMAGE_PULL_SECRETS: ${{ inputs.kubernetes-workload-image-pull-secrets }}
         KUBERNETES_WORKLOAD_RESOURCES_MEMORY: ${{ inputs.kubernetes-workload-resources-memory }}
         KUBERNETES_WORKLOAD_RESOURCES_CPU_REQUEST: ${{ inputs.kubernetes-workload-resources-cpu-request }}
         KUBERNETES_WORKLOAD_RESOURCES_CPU_LIMIT: ${{ inputs.kubernetes-workload-resources-cpu-limit }}
@@ -535,14 +597,29 @@ runs:
         KUBERNETES_WORKLOAD_PROBE_LIVENESS_HTTP_PATH: ${{ inputs.kubernetes-workload-probe-liveness-http-path }}
         KUBERNETES_WORKLOAD_PROBE_READINESS_HTTP_PATH: ${{ inputs.kubernetes-workload-probe-readiness-http-path }}
         KUBERNETES_WORKLOAD_PROBE_STARTUP_HTTP_PATH: ${{ inputs.kubernetes-workload-probe-startup-http-path }}
-        KUBERNETES_DEPLOYMENT_REPLICAS: ${{ inputs.kubernetes-deployment-replicas }}
-        KUBERNETES_DEPLOYMENT_REVISION_HISTORY_LIMIT: ${{ inputs.kubernetes-deployment-revision-history-limit }}
+        KUBERNETES_WORKLOAD_REPLICAS: ${{ inputs.kubernetes-workload-replicas }}
+        KUBERNETES_WORKLOAD_REVISION_HISTORY_LIMIT: ${{ inputs.kubernetes-workload-revision-history-limit }}
+        # Workflow inputs - statefulset unique
+        KUBERNETES_STATEFULSET_SERVICE_NAME: ${{ inputs.kubernetes-statefulset-service-name }}
+        KUBERNETES_STATEFULSET_POD_MANAGEMENT_POLICY: ${{ inputs.kubernetes-statefulset-pod-management-policy }}
+        KUBERNETES_STATEFULSET_UPDATE_STRATEGY_TYPE: ${{ inputs.kubernetes-statefulset-update-strategy-type }}
+        KUBERNETES_STATEFULSET_UPDATE_STRATEGY_PARTITION: ${{ inputs.kubernetes-statefulset-update-strategy-partition }}
+        KUBERNETES_STATEFULSET_PVC_ENABLED: ${{ inputs.kubernetes-statefulset-pvc-enabled }}
+        KUBERNETES_STATEFULSET_PVC_STORAGE_CLASS: ${{ inputs.kubernetes-statefulset-pvc-storage-class }}
+        KUBERNETES_STATEFULSET_PVC_STORAGE_SIZE: ${{ inputs.kubernetes-statefulset-pvc-storage-size }}
+        KUBERNETES_STATEFULSET_PVC_ACCESS_MODE: ${{ inputs.kubernetes-statefulset-pvc-access-mode }}
+        KUBERNETES_STATEFULSET_PVC_VOLUME_NAME: ${{ inputs.kubernetes-statefulset-pvc-volume-name }}
+        KUBERNETES_STATEFULSET_PVC_MOUNT_PATH: ${{ inputs.kubernetes-statefulset-pvc-mount-path }}
         # Workflow inputs - kubernetes service generation
         KUBERNETES_SERVICE_GENERATION_ENABLED: ${{ inputs.kubernetes-service-generation-enabled }}
         KUBERNETES_SERVICE_TYPE: ${{ inputs.kubernetes-service-type }}
         KUBERNETES_SERVICE_PORT: ${{ inputs.kubernetes-service-port }}
         KUBERNETES_SERVICE_TARGET_PORT: ${{ inputs.kubernetes-service-target-port }}
         KUBERNETES_SERVICE_PROTOCOL: ${{ inputs.kubernetes-service-protocol }}
+        KUBERNETES_SERVICE_PORT_NAME: ${{ inputs.kubernetes-service-port-name }}
+        KUBERNETES_SERVICE_NODE_PORT: ${{ inputs.kubernetes-service-node-port }}
+        KUBERNETES_SERVICE_EXTERNAL_NAME: ${{ inputs.kubernetes-service-external-name }}
+        KUBERNETES_SERVICE_EXTERNAL_TRAFFIC_POLICY: ${{ inputs.kubernetes-service-external-traffic-policy }}
         KUBERNETES_SERVICE_NAME_SUFFIX: ${{ inputs.kubernetes-service-name-suffix }}
         KUBERNETES_SERVICE_COMBINED_SUB_PATH: ${{ inputs.kubernetes-service-combined-sub-path }}
         KUBERNETES_SERVICE_ADDITIONAL_LABELS: ${{ inputs.kubernetes-service-additional-labels }}

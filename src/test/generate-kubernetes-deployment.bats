@@ -17,7 +17,7 @@ setup() {
 
   # Create test directory structure
   mkdir -p "${TEST_DIR}/src/kubernetes"
-  mkdir -p "${TEST_DIR}/src/workload-env"
+  mkdir -p "${TEST_DIR}/src/deployment-env"
 
   cd "${TEST_DIR}"
 }
@@ -30,7 +30,7 @@ teardown() {
 create_env_file() {
   local filename="$1"
   local content="$2"
-  printf '%s' "$content" > "${TEST_DIR}/src/workload-env/$filename"
+  printf '%s' "$content" > "${TEST_DIR}/src/deployment-env/$filename"
 }
 
 # Helper to create suffixed env directory
@@ -77,7 +77,7 @@ read_manifest_with_suffix() {
   assert_contains "$manifest" 'app: ${ProjectName}'
   assert_contains "$manifest" 'app.kubernetes.io/name: ${ProjectName}'
   assert_contains "$manifest" 'app.kubernetes.io/version: ${Version}'
-  assert_contains "$manifest" "app.kubernetes.io/managed-by: kaptain"
+  assert_contains "$manifest" "app.kubernetes.io/managed-by: Kaptain"
 }
 
 @test "includes kaptain annotations" {
@@ -218,7 +218,7 @@ read_manifest_with_suffix() {
 }
 
 @test "omits replicas when set to NO" {
-  export KUBERNETES_DEPLOYMENT_REPLICAS="NO"
+  export KUBERNETES_WORKLOAD_REPLICAS="NO"
 
   run "$GENERATORS_DIR/generate-kubernetes-workload-deployment"
   [ "$status" -eq 0 ]
@@ -399,6 +399,85 @@ read_manifest_with_suffix() {
 }
 
 # =============================================================================
+# Labels and selectors with suffix/path
+# =============================================================================
+
+@test "labels use full resource name with suffix" {
+  export KUBERNETES_WORKLOAD_NAME_SUFFIX="cache"
+
+  run "$GENERATORS_DIR/generate-kubernetes-workload-deployment"
+  [ "$status" -eq 0 ]
+
+  manifest=$(read_manifest_with_suffix "cache")
+  # Labels should include the suffix
+  assert_contains "$manifest" 'app: ${ProjectName}-cache'
+  assert_contains "$manifest" 'app.kubernetes.io/name: ${ProjectName}-cache'
+}
+
+@test "labels use full resource name with combined sub-path" {
+  export KUBERNETES_WORKLOAD_COMBINED_SUB_PATH="backend/redis"
+
+  run "$GENERATORS_DIR/generate-kubernetes-workload-deployment"
+  [ "$status" -eq 0 ]
+
+  manifest=$(cat "$OUTPUT_SUB_PATH/manifests/combined/backend/redis/deployment.yaml")
+  # Labels should include the path
+  assert_contains "$manifest" 'app: ${ProjectName}-backend-redis'
+  assert_contains "$manifest" 'app.kubernetes.io/name: ${ProjectName}-backend-redis'
+}
+
+@test "labels use full resource name with suffix and combined sub-path" {
+  export KUBERNETES_WORKLOAD_NAME_SUFFIX="cache"
+  export KUBERNETES_WORKLOAD_COMBINED_SUB_PATH="backend/redis"
+
+  run "$GENERATORS_DIR/generate-kubernetes-workload-deployment"
+  [ "$status" -eq 0 ]
+
+  manifest=$(cat "$OUTPUT_SUB_PATH/manifests/combined/backend/redis/deployment-cache.yaml")
+  # Labels should include both path and suffix
+  assert_contains "$manifest" 'app: ${ProjectName}-backend-redis-cache'
+  assert_contains "$manifest" 'app.kubernetes.io/name: ${ProjectName}-backend-redis-cache'
+}
+
+@test "selector uses full resource name with suffix" {
+  export KUBERNETES_WORKLOAD_NAME_SUFFIX="cache"
+
+  run "$GENERATORS_DIR/generate-kubernetes-workload-deployment"
+  [ "$status" -eq 0 ]
+
+  manifest=$(read_manifest_with_suffix "cache")
+  # Selector matchLabels should use full name
+  assert_contains "$manifest" "matchLabels:"
+  [[ "$manifest" == *"selector:"*"matchLabels:"*'app: ${ProjectName}-cache'* ]]
+}
+
+@test "kaptain/project-name annotation uses only project name" {
+  export KUBERNETES_WORKLOAD_NAME_SUFFIX="cache"
+  export KUBERNETES_WORKLOAD_COMBINED_SUB_PATH="backend/redis"
+
+  run "$GENERATORS_DIR/generate-kubernetes-workload-deployment"
+  [ "$status" -eq 0 ]
+
+  manifest=$(cat "$OUTPUT_SUB_PATH/manifests/combined/backend/redis/deployment-cache.yaml")
+  # kaptain/project-name should NOT include suffix/path
+  assert_contains "$manifest" 'kaptain/project-name: ${ProjectName}'
+  # But should NOT contain the full path in this annotation
+  [[ "$manifest" != *'kaptain/project-name: ${ProjectName}-backend'* ]]
+}
+
+@test "affinity uses full resource name with suffix" {
+  export KUBERNETES_WORKLOAD_NAME_SUFFIX="cache"
+
+  run "$GENERATORS_DIR/generate-kubernetes-workload-deployment"
+  [ "$status" -eq 0 ]
+
+  manifest=$(read_manifest_with_suffix "cache")
+  # Affinity matchLabels should use full name
+  assert_contains "$manifest" "podAntiAffinity:"
+  [[ "$manifest" == *"affinity:"*"matchLabels:"*'app: ${ProjectName}-cache'* ]]
+}
+
+# =============================================================================
 # Volume mounts
 # =============================================================================
 
@@ -435,6 +514,86 @@ read_manifest_with_suffix() {
   assert_contains "$manifest" 'secretName: ${ProjectName}-secret-checksum'
 }
 
+@test "configmap name uses full resource name with suffix" {
+  export KUBERNETES_WORKLOAD_NAME_SUFFIX="cache"
+  mkdir -p "${TEST_DIR}/src/kubernetes"
+  touch "${TEST_DIR}/src/kubernetes/configmap-cache.yaml"
+
+  run "$GENERATORS_DIR/generate-kubernetes-workload-deployment"
+  [ "$status" -eq 0 ]
+
+  manifest=$(read_manifest_with_suffix "cache")
+  # ConfigMap reference should include the suffix in the resource name
+  assert_contains "$manifest" 'name: ${ProjectName}-cache-configmap-checksum'
+}
+
+@test "secret name uses full resource name with suffix" {
+  export KUBERNETES_WORKLOAD_NAME_SUFFIX="cache"
+  mkdir -p "${TEST_DIR}/src/kubernetes"
+  touch "${TEST_DIR}/src/kubernetes/secret-cache.template.yaml"
+
+  run "$GENERATORS_DIR/generate-kubernetes-workload-deployment"
+  [ "$status" -eq 0 ]
+
+  manifest=$(read_manifest_with_suffix "cache")
+  # Secret reference should include the suffix in the resource name
+  assert_contains "$manifest" 'secretName: ${ProjectName}-cache-secret-checksum'
+}
+
+@test "configmap name uses full resource name with combined sub-path" {
+  export KUBERNETES_WORKLOAD_COMBINED_SUB_PATH="backend/redis"
+  mkdir -p "${TEST_DIR}/src/kubernetes/backend/redis"
+  touch "${TEST_DIR}/src/kubernetes/backend/redis/configmap.yaml"
+
+  run "$GENERATORS_DIR/generate-kubernetes-workload-deployment"
+  [ "$status" -eq 0 ]
+
+  manifest=$(cat "$OUTPUT_SUB_PATH/manifests/combined/backend/redis/deployment.yaml")
+  # ConfigMap reference should include the path in the resource name
+  assert_contains "$manifest" 'name: ${ProjectName}-backend-redis-configmap-checksum'
+}
+
+@test "secret name uses full resource name with combined sub-path" {
+  export KUBERNETES_WORKLOAD_COMBINED_SUB_PATH="backend/redis"
+  mkdir -p "${TEST_DIR}/src/kubernetes/backend/redis"
+  touch "${TEST_DIR}/src/kubernetes/backend/redis/secret.template.yaml"
+
+  run "$GENERATORS_DIR/generate-kubernetes-workload-deployment"
+  [ "$status" -eq 0 ]
+
+  manifest=$(cat "$OUTPUT_SUB_PATH/manifests/combined/backend/redis/deployment.yaml")
+  # Secret reference should include the path in the resource name
+  assert_contains "$manifest" 'secretName: ${ProjectName}-backend-redis-secret-checksum'
+}
+
+@test "configmap name uses full resource name with suffix and combined sub-path" {
+  export KUBERNETES_WORKLOAD_NAME_SUFFIX="cache"
+  export KUBERNETES_WORKLOAD_COMBINED_SUB_PATH="backend/redis"
+  mkdir -p "${TEST_DIR}/src/kubernetes/backend/redis"
+  touch "${TEST_DIR}/src/kubernetes/backend/redis/configmap-cache.yaml"
+
+  run "$GENERATORS_DIR/generate-kubernetes-workload-deployment"
+  [ "$status" -eq 0 ]
+
+  manifest=$(cat "$OUTPUT_SUB_PATH/manifests/combined/backend/redis/deployment-cache.yaml")
+  # ConfigMap reference should include both path and suffix in the resource name
+  assert_contains "$manifest" 'name: ${ProjectName}-backend-redis-cache-configmap-checksum'
+}
+
+@test "secret name uses full resource name with suffix and combined sub-path" {
+  export KUBERNETES_WORKLOAD_NAME_SUFFIX="cache"
+  export KUBERNETES_WORKLOAD_COMBINED_SUB_PATH="backend/redis"
+  mkdir -p "${TEST_DIR}/src/kubernetes/backend/redis"
+  touch "${TEST_DIR}/src/kubernetes/backend/redis/secret-cache.template.yaml"
+
+  run "$GENERATORS_DIR/generate-kubernetes-workload-deployment"
+  [ "$status" -eq 0 ]
+
+  manifest=$(cat "$OUTPUT_SUB_PATH/manifests/combined/backend/redis/deployment-cache.yaml")
+  # Secret reference should include both path and suffix in the resource name
+  assert_contains "$manifest" 'secretName: ${ProjectName}-backend-redis-cache-secret-checksum'
+}
+
 @test "omits volumes when not detected" {
   # No configmap.yaml or secret.template.yaml files exist by default
   run "$GENERATORS_DIR/generate-kubernetes-workload-deployment"
@@ -449,7 +608,7 @@ read_manifest_with_suffix() {
 # Environment variables
 # =============================================================================
 
-@test "includes environment variables from workload-env" {
+@test "includes environment variables from deployment-env" {
   create_env_file "DATABASE_HOST" "db.example.com"
   create_env_file "LOG_LEVEL" "info"
 
@@ -464,9 +623,9 @@ read_manifest_with_suffix() {
   assert_contains "$manifest" 'value: "info"'
 }
 
-@test "omits env section when workload-env is empty" {
-  # Rename workload-env to simulate it not existing
-  mv "${TEST_DIR}/src/workload-env" "${TEST_DIR}/src/workload-env-hidden"
+@test "omits env section when deployment-env is empty" {
+  # Rename deployment-env to simulate it not existing
+  mv "${TEST_DIR}/src/deployment-env" "${TEST_DIR}/src/deployment-env-hidden"
 
   run "$GENERATORS_DIR/generate-kubernetes-workload-deployment"
   [ "$status" -eq 0 ]

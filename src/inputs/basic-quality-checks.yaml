@@ -1,0 +1,34 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
+#
+# Basic quality checks
+block-slashes:
+  description: 'DEPRECATED: Use block-slash-containing-branches instead'
+  required: false
+  type: boolean
+  default: false
+qc-block-slash-containing-branches:
+  description: 'Block branch names containing slashes'
+  required: false
+  type: boolean
+  default: false
+qc-block-double-hyphen-containing-branches:
+  description: 'Block branch names containing double hyphens (typo detection)'
+  required: false
+  type: boolean
+  default: true
+qc-require-conventional-branches:
+  description: 'Require branch names start with feature/, fix/, etc.'
+  required: false
+  type: boolean
+  default: false
+qc-require-conventional-commits:
+  description: 'Require commits use conventional commit format (feat:, fix:, etc.)'
+  required: false
+  type: boolean
+  default: false
+qc-block-conventional-commits:
+  description: 'Block commits that use conventional commit format'
+  required: false
+  type: boolean
+  default: false

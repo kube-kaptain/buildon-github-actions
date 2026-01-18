@@ -1,0 +1,21 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
+#
+# Docker source image configuration
+docker-source-registry:
+  description: 'Upstream registry (e.g., docker.io)'
+  required: true
+  type: string
+docker-source-base-path:
+  description: 'Path between registry and image name (e.g., library)'
+  required: false
+  type: string
+  default: ''
+docker-source-image-name:
+  description: 'Upstream image name (e.g., nginx)'
+  required: true
+  type: string
+docker-source-tag:
+  description: 'Upstream image tag (e.g., 1.25)'
+  required: true
+  type: string

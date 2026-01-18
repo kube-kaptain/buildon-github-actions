@@ -43,8 +43,10 @@ VERSION="${VERSION:?VERSION is required}"
 DOCKER_TAG="${DOCKER_TAG:?DOCKER_TAG is required}"
 DOCKER_IMAGE_NAME="${DOCKER_IMAGE_NAME:?DOCKER_IMAGE_NAME is required}"
 
-# shellcheck source=src/scripts/defaults/common.bash
-source "$(dirname "${BASH_SOURCE[0]}")/../defaults/common.bash"
+# shellcheck source=src/scripts/defaults/output-sub-path.bash
+source "$(dirname "${BASH_SOURCE[0]}")/../defaults/output-sub-path.bash"
+# shellcheck source=src/scripts/defaults/manifests-sub-path.bash
+source "$(dirname "${BASH_SOURCE[0]}")/../defaults/manifests-sub-path.bash"
 
 # Pass-through vars (called scripts default their own; these just satisfy set -u)
 DOCKER_IMAGE_FULL_URI="${DOCKER_IMAGE_FULL_URI:-}"

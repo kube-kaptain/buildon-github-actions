@@ -37,7 +37,7 @@ jobs:
       tag-version-calculation-strategy: 'file-pattern-match'
       tag-version-pattern-type: 'dockerfile-env-kubectl'
       tag-version-prefix-parts: '3'
-      max-version-parts: 4
+      tag-version-max-parts: 4
 
 # Your Dockerfile should contain a line like:
 #   ENV KUBECTL_VERSION=1.28.0
@@ -47,3 +47,18 @@ jobs:
 #   - Second build: tags 1.28.0.2
 #   - Update to 1.28.1: tags 1.28.1.1
 #   - Update to 1.29.0: tags 1.29.0.1
+
+# ┌─────────────────────────────────────────────────────────────────────────┐
+# │ Version & Tagging Configuration                                         │
+# └─────────────────────────────────────────────────────────────────────────┘
+# Default strategy: git-auto-closest-highest (finds closest tag, increments it)
+# Alternative: file-pattern-match (extracts version from a file)
+#
+#     with:
+#       tag-version-max-parts: 3                                # Max version parts allowed (fail if exceeded)
+#       tag-version-calculation-strategy: 'file-pattern-match'  # or 'git-auto-closest-highest' (default)
+#       tag-version-pattern-type: 'dockerfile-env-kubectl'      # 'retag-workflow-source-tag', 'custom'
+#       tag-version-prefix-parts: '2'                           # Parts from source as prefix (output = prefix + 1)
+#       tag-version-source-sub-path: 'src/docker'               # Override path to source directory
+#       tag-version-source-file-name: 'Dockerfile'              # Override source file name
+#       tag-version-source-custom-pattern: '^VERSION=(.+)$'     # Regex with capture group (for custom type)

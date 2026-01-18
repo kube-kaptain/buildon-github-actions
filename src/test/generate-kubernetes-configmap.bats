@@ -84,7 +84,7 @@ read_manifest() {
   assert_contains "$manifest" 'app: ${ProjectName}'
   assert_contains "$manifest" 'app.kubernetes.io/name: ${ProjectName}'
   assert_contains "$manifest" 'app.kubernetes.io/version: ${Version}'
-  assert_contains "$manifest" "app.kubernetes.io/managed-by: kaptain"
+  assert_contains "$manifest" "app.kubernetes.io/managed-by: Kaptain"
 }
 
 @test "includes kaptain annotations" {
@@ -402,7 +402,7 @@ line3=value3"
 
   manifest=$(read_manifest)
   [[ "$manifest" == *"app.kubernetes.io/managed-by: helm"* ]]
-  [[ "$manifest" != *"app.kubernetes.io/managed-by: kaptain"* ]]
+  [[ "$manifest" != *"app.kubernetes.io/managed-by: Kaptain"* ]]
 }
 
 @test "additional annotations can override builtin annotations" {

@@ -24,11 +24,19 @@
 
 # shellcheck disable=SC2034  # TARGET_IMAGE_FULL_URI used by caller
 
-# Map from DOCKER_TARGET_* to internal TARGET_*
-TARGET_REGISTRY="${DOCKER_TARGET_REGISTRY:?DOCKER_TARGET_REGISTRY is required}"
-INPUT_TARGET_BASE_PATH="${DOCKER_TARGET_BASE_PATH:-}"
-DOCKER_IMAGE_NAME="${DOCKER_IMAGE_NAME:?DOCKER_IMAGE_NAME is required}"
-DOCKER_TAG="${DOCKER_TAG:?DOCKER_TAG is required}"
+# Validate required inputs (caller must source docker-build.bash first)
+if [[ -z "${DOCKER_TARGET_REGISTRY}" ]]; then
+  echo "${LOG_ERROR_PREFIX:-}DOCKER_TARGET_REGISTRY is required${LOG_ERROR_SUFFIX:-}" >&2
+  exit 1
+fi
+if [[ -z "${DOCKER_IMAGE_NAME:-}" ]]; then
+  echo "${LOG_ERROR_PREFIX:-}DOCKER_IMAGE_NAME is required${LOG_ERROR_SUFFIX:-}" >&2
+  exit 1
+fi
+if [[ -z "${DOCKER_TAG:-}" ]]; then
+  echo "${LOG_ERROR_PREFIX:-}DOCKER_TAG is required${LOG_ERROR_SUFFIX:-}" >&2
+  exit 1
+fi
 
 # Registry cannot contain slashes
 if [[ "${TARGET_REGISTRY}" == */* ]]; then

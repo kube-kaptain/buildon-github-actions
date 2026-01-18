@@ -46,13 +46,23 @@ read_manifest_in_subpath() {
   [ ! -f "$OUTPUT_SUB_PATH/manifests/combined/service.yaml" ]
 }
 
-@test "skips generation when enabled not set" {
+@test "skips generation when enabled not set and workload is not deployment" {
   unset KUBERNETES_SERVICE_GENERATION_ENABLED
+  export KUBERNETES_WORKLOAD_TYPE="none"
 
   run "$GENERATORS_DIR/generate-kubernetes-service"
   [ "$status" -eq 0 ]
   [[ "$output" == *"not enabled"* ]]
   [ ! -f "$OUTPUT_SUB_PATH/manifests/combined/service.yaml" ]
+}
+
+@test "enables generation by default for deployment workload" {
+  unset KUBERNETES_SERVICE_GENERATION_ENABLED
+  export KUBERNETES_WORKLOAD_TYPE="deployment"
+
+  run "$GENERATORS_DIR/generate-kubernetes-service"
+  [ "$status" -eq 0 ]
+  [ -f "$OUTPUT_SUB_PATH/manifests/combined/service.yaml" ]
 }
 
 @test "generates when explicitly enabled" {
@@ -98,7 +108,7 @@ read_manifest_in_subpath() {
   [[ "$manifest" == *'app: ${ProjectName}'* ]]
   [[ "$manifest" == *'app.kubernetes.io/name: ${ProjectName}'* ]]
   [[ "$manifest" == *'app.kubernetes.io/version: ${Version}'* ]]
-  [[ "$manifest" == *"app.kubernetes.io/managed-by: kaptain"* ]]
+  [[ "$manifest" == *"app.kubernetes.io/managed-by: Kaptain"* ]]
 }
 
 @test "includes kaptain annotations" {
@@ -451,4 +461,215 @@ read_manifest_in_subpath() {
   manifest=$(read_manifest)
   [[ "$manifest" == *"selector:"* ]]
   [[ "$manifest" == *'app: ${ProjectName}'* ]]
+}
+
+# =============================================================================
+# Headless service type
+# =============================================================================
+
+@test "Headless type sets clusterIP: None" {
+  export KUBERNETES_SERVICE_TYPE="Headless"
+
+  run "$GENERATORS_DIR/generate-kubernetes-service"
+  [ "$status" -eq 0 ]
+
+  manifest=$(read_manifest)
+  [[ "$manifest" == *"type: ClusterIP"* ]]
+  [[ "$manifest" == *"clusterIP: None"* ]]
+}
+
+@test "Headless type includes selector" {
+  export KUBERNETES_SERVICE_TYPE="Headless"
+
+  run "$GENERATORS_DIR/generate-kubernetes-service"
+  [ "$status" -eq 0 ]
+
+  manifest=$(read_manifest)
+  [[ "$manifest" == *"selector:"* ]]
+  [[ "$manifest" == *'app: ${ProjectName}'* ]]
+}
+
+@test "Headless type includes ports" {
+  export KUBERNETES_SERVICE_TYPE="Headless"
+
+  run "$GENERATORS_DIR/generate-kubernetes-service"
+  [ "$status" -eq 0 ]
+
+  manifest=$(read_manifest)
+  [[ "$manifest" == *"ports:"* ]]
+  [[ "$manifest" == *"port: 80"* ]]
+}
+
+# =============================================================================
+# NoSelector service type
+# =============================================================================
+
+@test "NoSelector type omits selector" {
+  export KUBERNETES_SERVICE_TYPE="NoSelector"
+
+  run "$GENERATORS_DIR/generate-kubernetes-service"
+  [ "$status" -eq 0 ]
+
+  manifest=$(read_manifest)
+  [[ "$manifest" != *"selector:"* ]]
+}
+
+@test "NoSelector type includes ports" {
+  export KUBERNETES_SERVICE_TYPE="NoSelector"
+
+  run "$GENERATORS_DIR/generate-kubernetes-service"
+  [ "$status" -eq 0 ]
+
+  manifest=$(read_manifest)
+  [[ "$manifest" == *"ports:"* ]]
+  [[ "$manifest" == *"port: 80"* ]]
+}
+
+# =============================================================================
+# ExternalName service type
+# =============================================================================
+
+@test "ExternalName type requires external name" {
+  export KUBERNETES_SERVICE_TYPE="ExternalName"
+
+  run "$GENERATORS_DIR/generate-kubernetes-service"
+  [ "$status" -eq 4 ]
+  [[ "$output" == *"KUBERNETES_SERVICE_EXTERNAL_NAME is required"* ]]
+}
+
+@test "ExternalName type sets externalName" {
+  export KUBERNETES_SERVICE_TYPE="ExternalName"
+  export KUBERNETES_SERVICE_EXTERNAL_NAME="my.external.service.com"
+
+  run "$GENERATORS_DIR/generate-kubernetes-service"
+  [ "$status" -eq 0 ]
+
+  manifest=$(read_manifest)
+  [[ "$manifest" == *"type: ExternalName"* ]]
+  [[ "$manifest" == *"externalName: my.external.service.com"* ]]
+}
+
+@test "ExternalName type omits ports" {
+  export KUBERNETES_SERVICE_TYPE="ExternalName"
+  export KUBERNETES_SERVICE_EXTERNAL_NAME="my.external.service.com"
+
+  run "$GENERATORS_DIR/generate-kubernetes-service"
+  [ "$status" -eq 0 ]
+
+  manifest=$(read_manifest)
+  [[ "$manifest" != *"ports:"* ]]
+}
+
+@test "ExternalName type omits selector" {
+  export KUBERNETES_SERVICE_TYPE="ExternalName"
+  export KUBERNETES_SERVICE_EXTERNAL_NAME="my.external.service.com"
+
+  run "$GENERATORS_DIR/generate-kubernetes-service"
+  [ "$status" -eq 0 ]
+
+  manifest=$(read_manifest)
+  [[ "$manifest" != *"selector:"* ]]
+}
+
+@test "ExternalName type omits clusterIP" {
+  export KUBERNETES_SERVICE_TYPE="ExternalName"
+  export KUBERNETES_SERVICE_EXTERNAL_NAME="my.external.service.com"
+
+  run "$GENERATORS_DIR/generate-kubernetes-service"
+  [ "$status" -eq 0 ]
+
+  manifest=$(read_manifest)
+  [[ "$manifest" != *"clusterIP:"* ]]
+}
+
+# =============================================================================
+# NodePort specific features
+# =============================================================================
+
+@test "NodePort type allows nodePort specification" {
+  export KUBERNETES_SERVICE_TYPE="NodePort"
+  export KUBERNETES_SERVICE_NODE_PORT="30080"
+
+  run "$GENERATORS_DIR/generate-kubernetes-service"
+  [ "$status" -eq 0 ]
+
+  manifest=$(read_manifest)
+  [[ "$manifest" == *"type: NodePort"* ]]
+  [[ "$manifest" == *"nodePort: 30080"* ]]
+}
+
+@test "nodePort rejected for ClusterIP type" {
+  export KUBERNETES_SERVICE_TYPE="ClusterIP"
+  export KUBERNETES_SERVICE_NODE_PORT="30080"
+
+  run "$GENERATORS_DIR/generate-kubernetes-service"
+  [ "$status" -eq 4 ]
+  [[ "$output" == *"can only be used with NodePort"* ]]
+}
+
+# =============================================================================
+# External traffic policy
+# =============================================================================
+
+@test "NodePort allows external traffic policy" {
+  export KUBERNETES_SERVICE_TYPE="NodePort"
+  export KUBERNETES_SERVICE_EXTERNAL_TRAFFIC_POLICY="Local"
+
+  run "$GENERATORS_DIR/generate-kubernetes-service"
+  [ "$status" -eq 0 ]
+
+  manifest=$(read_manifest)
+  [[ "$manifest" == *"externalTrafficPolicy: Local"* ]]
+}
+
+@test "LoadBalancer allows external traffic policy" {
+  export KUBERNETES_SERVICE_TYPE="LoadBalancer"
+  export KUBERNETES_SERVICE_EXTERNAL_TRAFFIC_POLICY="Cluster"
+
+  run "$GENERATORS_DIR/generate-kubernetes-service"
+  [ "$status" -eq 0 ]
+
+  manifest=$(read_manifest)
+  [[ "$manifest" == *"externalTrafficPolicy: Cluster"* ]]
+}
+
+@test "external traffic policy rejected for ClusterIP type" {
+  export KUBERNETES_SERVICE_TYPE="ClusterIP"
+  export KUBERNETES_SERVICE_EXTERNAL_TRAFFIC_POLICY="Local"
+
+  run "$GENERATORS_DIR/generate-kubernetes-service"
+  [ "$status" -eq 4 ]
+  [[ "$output" == *"can only be used with NodePort or LoadBalancer"* ]]
+}
+
+@test "invalid external traffic policy rejected" {
+  export KUBERNETES_SERVICE_TYPE="NodePort"
+  export KUBERNETES_SERVICE_EXTERNAL_TRAFFIC_POLICY="invalid"
+
+  run "$GENERATORS_DIR/generate-kubernetes-service"
+  [ "$status" -eq 4 ]
+  [[ "$output" == *"Must be 'Cluster' or 'Local'"* ]]
+}
+
+# =============================================================================
+# Port name
+# =============================================================================
+
+@test "port name included when specified" {
+  export KUBERNETES_SERVICE_PORT_NAME="http"
+
+  run "$GENERATORS_DIR/generate-kubernetes-service"
+  [ "$status" -eq 0 ]
+
+  manifest=$(read_manifest)
+  [[ "$manifest" == *"name: http"* ]]
+}
+
+@test "port name omitted when not specified" {
+  run "$GENERATORS_DIR/generate-kubernetes-service"
+  [ "$status" -eq 0 ]
+
+  manifest=$(read_manifest)
+  # ports section should not have a name field (only port, targetPort, protocol)
+  [[ "$manifest" != *"ports:"*"name:"* ]]
 }

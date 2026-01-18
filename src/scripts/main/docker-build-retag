@@ -31,13 +31,24 @@ LOG_ERROR_SUFFIX="${LOG_ERROR_SUFFIX:-}"
 LOG_WARNING_PREFIX="${LOG_WARNING_PREFIX:-}"
 LOG_WARNING_SUFFIX="${LOG_WARNING_SUFFIX:-}"
 
-# === Source inputs ===
-SOURCE_REGISTRY="${DOCKER_SOURCE_REGISTRY:?DOCKER_SOURCE_REGISTRY is required}"
-INPUT_SOURCE_BASE_PATH="${DOCKER_SOURCE_BASE_PATH:-}"
-INPUT_SOURCE_IMAGE_NAME="${DOCKER_SOURCE_IMAGE_NAME:?DOCKER_SOURCE_IMAGE_NAME is required}"
-SOURCE_TAG="${DOCKER_SOURCE_TAG:?DOCKER_SOURCE_TAG is required}"
+# shellcheck source=src/scripts/defaults/docker-build.bash
+source "${SCRIPT_DIR}/../defaults/docker-build.bash"
+# shellcheck source=src/scripts/defaults/docker-retag.bash
+source "${SCRIPT_DIR}/../defaults/docker-retag.bash"
 
-# === Validate source inputs ===
+# Validate required inputs
+if [[ -z "${DOCKER_SOURCE_REGISTRY}" ]]; then
+  echo "${LOG_ERROR_PREFIX}DOCKER_SOURCE_REGISTRY is required${LOG_ERROR_SUFFIX}" >&2
+  exit 1
+fi
+if [[ -z "${DOCKER_SOURCE_IMAGE_NAME}" ]]; then
+  echo "${LOG_ERROR_PREFIX}DOCKER_SOURCE_IMAGE_NAME is required${LOG_ERROR_SUFFIX}" >&2
+  exit 1
+fi
+if [[ -z "${DOCKER_SOURCE_TAG}" ]]; then
+  echo "${LOG_ERROR_PREFIX}DOCKER_SOURCE_TAG is required${LOG_ERROR_SUFFIX}" >&2
+  exit 1
+fi
 
 # Source registry cannot contain slashes
 if [[ "${SOURCE_REGISTRY}" == */* ]]; then

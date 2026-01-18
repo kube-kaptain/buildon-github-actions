@@ -8,13 +8,13 @@ Docker Build Retag
 |-------|------|---------|-------------|
 | `output-sub-path` | string | `target` | Build output directory (relative) |
 | `docker-registry-logins` | string | `""` | YAML config for Docker registry logins (registry URL as key) |
+| `docker-target-registry` | string | `ghcr.io` | Target container registry |
+| `docker-target-base-path` | string | `""` | Path between registry and image name (auto-set for GHCR) |
+| `docker-push-targets` | string | `""` | JSON array of additional push targets [{registry, base-path?}] |
 | `docker-source-registry` | string | *required* | Upstream registry (e.g., docker.io) |
 | `docker-source-base-path` | string | `""` | Path between registry and image name (e.g., library) |
 | `docker-source-image-name` | string | *required* | Upstream image name (e.g., nginx) |
 | `docker-source-tag` | string | *required* | Upstream image tag (e.g., 1.25) |
-| `docker-target-registry` | string | `ghcr.io` | Target container registry |
-| `docker-target-base-path` | string | `""` | Path between registry and image name (auto-set for GHCR) |
-| `docker-push-targets` | string | `""` | JSON array of additional push targets [{registry, base-path?}] |
 | `token-delimiter-style` | string | `shell` | Token delimiter syntax for variables (shell, mustache, helm, erb, github-actions, blade, stringtemplate, ognl, t4, swift) |
 | `token-name-style` | string | `PascalCase` | Case style for token names (UPPER_SNAKE, lower_snake, lower-kebab, UPPER-KEBAB, camelCase, PascalCase, lower.dot, UPPER.DOT) |
 | `token-name-validation` | string | `MATCH` | How to validate user token names (MATCH = must match token-name-style, ALL = accept any valid name) |
@@ -27,7 +27,6 @@ Docker Build Retag
 | `tag-version-calculation-strategy` | string | `git-auto-closest-highest` | Strategy for calculating version (git-auto-closest-highest, file-pattern-match) |
 | `tag-version-pattern-type` | string | `dockerfile-env-kubectl` | Pattern type for file-pattern-match strategy (dockerfile-env-kubectl, retag-workflow-source-tag, custom) |
 | `tag-version-prefix-parts` | string | `""` | Number of parts from source version to use as prefix (default 2, output = prefix + 1 parts) |
-| `dockerfile-sub-path` | string | `src/docker` | Directory containing Dockerfile, relative to repo root. |
 | `tag-version-source-sub-path` | string | `""` | Override path to source directory (takes precedence over dockerfile-sub-path) |
 | `tag-version-source-file-name` | string | `""` | Override source file name (defaults based on pattern type) |
 | `tag-version-source-custom-pattern` | string | `""` | Regex with capture group for version extraction (required for custom pattern type) |

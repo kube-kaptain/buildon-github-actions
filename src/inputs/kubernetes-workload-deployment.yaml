@@ -1,0 +1,19 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
+#
+# Deployment unique inputs
+kubernetes-deployment-env-sub-path:
+  description: 'Path to deployment environment variables directory'
+  required: false
+  type: string
+  default: 'src/deployment-env'
+kubernetes-deployment-additional-labels:
+  description: 'Additional labels for Deployment resources (key=value,key=value)'
+  required: false
+  type: string
+  default: ''
+kubernetes-deployment-additional-annotations:
+  description: 'Additional annotations for Deployment resources (key=value,key=value)'
+  required: false
+  type: string
+  default: ''

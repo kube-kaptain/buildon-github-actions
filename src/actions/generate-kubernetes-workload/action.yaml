@@ -12,11 +12,19 @@ inputs:
 
   # Workload type selection
   kubernetes-workload-type:
-    description: 'Workload type to generate (deployment, none)'
+    description: 'Workload type to generate (deployment, statefulset, none)'
     required: false
     default: 'deployment'
 
   # Common workload settings
+  kubernetes-workload-replicas:
+    description: 'Replica count (empty for token, NO for HPA management)'
+    required: false
+    default: ''
+  kubernetes-workload-revision-history-limit:
+    description: 'Number of revisions to retain (ReplicaSets for Deployment, ControllerRevisions for StatefulSet)'
+    required: false
+    default: '10'
   kubernetes-workload-name-suffix:
     description: 'Optional suffix for workload name and filename'
     required: false
@@ -26,9 +34,9 @@ inputs:
     required: false
     default: ''
   kubernetes-workload-env-sub-path:
-    description: 'Directory containing environment variable files'
+    description: 'Directory containing environment variable files (default per workload type)'
     required: false
-    default: 'src/workload-env'
+    default: ''
   kubernetes-workload-additional-labels:
     description: 'Additional labels specific to workload (comma-separated key=value)'
     required: false
@@ -61,6 +69,10 @@ inputs:
     description: 'Automount service account token (true/false)'
     required: false
     default: 'false'
+  kubernetes-workload-image-pull-secrets:
+    description: 'Include imagePullSecrets in pod spec (ENABLED/DISABLED)'
+    required: false
+    default: 'ENABLED'
 
   # Resource limits
   kubernetes-workload-resources-memory:
@@ -75,6 +87,10 @@ inputs:
     description: 'CPU limit (empty for no limit)'
     required: false
     default: ''
+  kubernetes-workload-resources-ephemeral-storage:
+    description: 'Ephemeral storage request/limit for disk usage (e.g., 10Mi, 100Mi, 1Gi)'
+    required: false
+    default: '10Mi'
 
   # Mount paths
   kubernetes-workload-configmap-mount-path:
@@ -85,6 +101,16 @@ inputs:
     description: 'Secret mount path in container'
     required: false
     default: '/secret'
+
+  # Environment variable refs from ConfigMap/Secret keys
+  kubernetes-workload-configmap-keys-for-env:
+    description: 'Comma/space-separated ConfigMap keys to expose as env vars'
+    required: false
+    default: ''
+  kubernetes-workload-secret-keys-for-env:
+    description: 'Comma/space-separated Secret keys to expose as env vars'
+    required: false
+    default: ''
 
   # Lifecycle
   kubernetes-workload-termination-grace-period-seconds:
@@ -128,15 +154,47 @@ inputs:
     required: false
     default: '/startup'
 
-  # Deployment-specific settings
-  kubernetes-deployment-replicas:
-    description: 'Replica count (empty for token, NO for HPA management)'
+  # StatefulSet unique settings
+  kubernetes-statefulset-service-name:
+    description: 'Headless service name (empty for auto-derived from project name)'
     required: false
     default: ''
-  kubernetes-deployment-revision-history-limit:
-    description: 'Number of old ReplicaSets to retain'
+  kubernetes-statefulset-pod-management-policy:
+    description: 'Pod management policy (OrderedReady or Parallel)'
     required: false
-    default: '10'
+    default: 'OrderedReady'
+  kubernetes-statefulset-update-strategy-type:
+    description: 'Update strategy type (RollingUpdate or OnDelete)'
+    required: false
+    default: 'RollingUpdate'
+  kubernetes-statefulset-update-strategy-partition:
+    description: 'Partition for rolling updates (empty for none)'
+    required: false
+    default: ''
+  kubernetes-statefulset-pvc-enabled:
+    description: 'Enable persistent volume claim template (true/false)'
+    required: false
+    default: 'true'
+  kubernetes-statefulset-pvc-storage-class:
+    description: 'Storage class for PVC (empty for cluster default)'
+    required: false
+    default: ''
+  kubernetes-statefulset-pvc-storage-size:
+    description: 'Storage size for PVC (e.g., 1Gi, 10Gi)'
+    required: false
+    default: '1Gi'
+  kubernetes-statefulset-pvc-access-mode:
+    description: 'PVC access mode (ReadWriteOnce, ReadOnlyMany, ReadWriteMany)'
+    required: false
+    default: 'ReadWriteOnce'
+  kubernetes-statefulset-pvc-volume-name:
+    description: 'Volume name for the PVC template'
+    required: false
+    default: 'data'
+  kubernetes-statefulset-pvc-mount-path:
+    description: 'Mount path for the persistent volume'
+    required: false
+    default: '/data'
 
   # Global settings (passed through)
   output-sub-path:
@@ -144,19 +202,19 @@ inputs:
     required: false
     default: 'target'
   token-name-style:
-    description: 'Case style for token names'
+    description: 'Case style for token names (UPPER_SNAKE, lower_snake, lower-kebab, UPPER-KEBAB, camelCase, PascalCase, lower.dot, UPPER.DOT)'
     required: false
     default: 'PascalCase'
   token-delimiter-style:
-    description: 'Token delimiter syntax'
+    description: 'Token delimiter syntax for variables (shell, mustache, helm, erb, github-actions, blade, stringtemplate, ognl, t4, swift)'
     required: false
     default: 'shell'
   kubernetes-global-additional-labels:
-    description: 'Additional labels for all Kubernetes manifests'
+    description: 'Additional labels for all Kubernetes manifests (comma-separated key=value)'
     required: false
     default: ''
   kubernetes-global-additional-annotations:
-    description: 'Additional annotations for all Kubernetes manifests'
+    description: 'Additional annotations for all Kubernetes manifests (comma-separated key=value)'
     required: false
     default: ''
 
@@ -173,6 +231,8 @@ runs:
         # Workload type
         KUBERNETES_WORKLOAD_TYPE: ${{ inputs.kubernetes-workload-type }}
         # Common workload settings
+        KUBERNETES_WORKLOAD_REPLICAS: ${{ inputs.kubernetes-workload-replicas }}
+        KUBERNETES_WORKLOAD_REVISION_HISTORY_LIMIT: ${{ inputs.kubernetes-workload-revision-history-limit }}
         KUBERNETES_WORKLOAD_NAME_SUFFIX: ${{ inputs.kubernetes-workload-name-suffix }}
         KUBERNETES_WORKLOAD_COMBINED_SUB_PATH: ${{ inputs.kubernetes-workload-combined-sub-path }}
         KUBERNETES_WORKLOAD_ENV_SUB_PATH: ${{ inputs.kubernetes-workload-env-sub-path }}
@@ -185,13 +245,18 @@ runs:
         KUBERNETES_WORKLOAD_READONLY_ROOT_FILESYSTEM: ${{ inputs.kubernetes-workload-readonly-root-filesystem }}
         KUBERNETES_WORKLOAD_SECCOMP_PROFILE: ${{ inputs.kubernetes-workload-seccomp-profile }}
         KUBERNETES_WORKLOAD_AUTOMOUNT_SERVICE_ACCOUNT_TOKEN: ${{ inputs.kubernetes-workload-automount-service-account-token }}
+        KUBERNETES_WORKLOAD_IMAGE_PULL_SECRETS: ${{ inputs.kubernetes-workload-image-pull-secrets }}
         # Resource limits
         KUBERNETES_WORKLOAD_RESOURCES_MEMORY: ${{ inputs.kubernetes-workload-resources-memory }}
         KUBERNETES_WORKLOAD_RESOURCES_CPU_REQUEST: ${{ inputs.kubernetes-workload-resources-cpu-request }}
         KUBERNETES_WORKLOAD_RESOURCES_CPU_LIMIT: ${{ inputs.kubernetes-workload-resources-cpu-limit }}
+        KUBERNETES_WORKLOAD_RESOURCES_EPHEMERAL_STORAGE: ${{ inputs.kubernetes-workload-resources-ephemeral-storage }}
         # Mount paths
         KUBERNETES_WORKLOAD_CONFIGMAP_MOUNT_PATH: ${{ inputs.kubernetes-workload-configmap-mount-path }}
         KUBERNETES_WORKLOAD_SECRET_MOUNT_PATH: ${{ inputs.kubernetes-workload-secret-mount-path }}
+        # Environment variable refs from ConfigMap/Secret keys
+        KUBERNETES_WORKLOAD_CONFIGMAP_KEYS_FOR_ENV: ${{ inputs.kubernetes-workload-configmap-keys-for-env }}
+        KUBERNETES_WORKLOAD_SECRET_KEYS_FOR_ENV: ${{ inputs.kubernetes-workload-secret-keys-for-env }}
         # Lifecycle
         KUBERNETES_WORKLOAD_TERMINATION_GRACE_PERIOD_SECONDS: ${{ inputs.kubernetes-workload-termination-grace-period-seconds }}
         KUBERNETES_WORKLOAD_PRESTOP_COMMAND: ${{ inputs.kubernetes-workload-prestop-command }}
@@ -204,9 +269,17 @@ runs:
         KUBERNETES_WORKLOAD_PROBE_LIVENESS_HTTP_PATH: ${{ inputs.kubernetes-workload-probe-liveness-http-path }}
         KUBERNETES_WORKLOAD_PROBE_READINESS_HTTP_PATH: ${{ inputs.kubernetes-workload-probe-readiness-http-path }}
         KUBERNETES_WORKLOAD_PROBE_STARTUP_HTTP_PATH: ${{ inputs.kubernetes-workload-probe-startup-http-path }}
-        # Deployment-specific settings
-        KUBERNETES_DEPLOYMENT_REPLICAS: ${{ inputs.kubernetes-deployment-replicas }}
-        KUBERNETES_DEPLOYMENT_REVISION_HISTORY_LIMIT: ${{ inputs.kubernetes-deployment-revision-history-limit }}
+        # StatefulSet unique settings
+        KUBERNETES_STATEFULSET_SERVICE_NAME: ${{ inputs.kubernetes-statefulset-service-name }}
+        KUBERNETES_STATEFULSET_POD_MANAGEMENT_POLICY: ${{ inputs.kubernetes-statefulset-pod-management-policy }}
+        KUBERNETES_STATEFULSET_UPDATE_STRATEGY_TYPE: ${{ inputs.kubernetes-statefulset-update-strategy-type }}
+        KUBERNETES_STATEFULSET_UPDATE_STRATEGY_PARTITION: ${{ inputs.kubernetes-statefulset-update-strategy-partition }}
+        KUBERNETES_STATEFULSET_PVC_ENABLED: ${{ inputs.kubernetes-statefulset-pvc-enabled }}
+        KUBERNETES_STATEFULSET_PVC_STORAGE_CLASS: ${{ inputs.kubernetes-statefulset-pvc-storage-class }}
+        KUBERNETES_STATEFULSET_PVC_STORAGE_SIZE: ${{ inputs.kubernetes-statefulset-pvc-storage-size }}
+        KUBERNETES_STATEFULSET_PVC_ACCESS_MODE: ${{ inputs.kubernetes-statefulset-pvc-access-mode }}
+        KUBERNETES_STATEFULSET_PVC_VOLUME_NAME: ${{ inputs.kubernetes-statefulset-pvc-volume-name }}
+        KUBERNETES_STATEFULSET_PVC_MOUNT_PATH: ${{ inputs.kubernetes-statefulset-pvc-mount-path }}
         # Global settings
         OUTPUT_SUB_PATH: ${{ inputs.output-sub-path }}
         TOKEN_NAME_STYLE: ${{ inputs.token-name-style }}

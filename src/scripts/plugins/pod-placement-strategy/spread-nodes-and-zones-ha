@@ -11,39 +11,22 @@
 # host-level distribution first, then uses zone diversity as a tiebreaker.
 #
 # Inputs (environment variables):
-#   TOKEN_NAME_STYLE      - Name style (PascalCase, camelCase, etc.) [required]
-#   TOKEN_DELIMITER_STYLE - Delimiter style (shell, mustache, etc.) [required]
-#   POD_PLACEMENT_INDENT  - Base indentation spaces (default: 0)
+#   APP_LABEL_VALUE      - Value for the app label in selector [required]
+#   POD_PLACEMENT_INDENT - Base indentation spaces (default: 0)
 #
 # Output:
 #   YAML affinity block with podAntiAffinity preferring different nodes and zones
 #
 set -euo pipefail
 
-# Locate script directory for libraries
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-LIB_DIR="${SCRIPT_DIR}/../../lib"
-
-# Source libraries
-# shellcheck source=src/scripts/lib/token-format.bash
-source "${LIB_DIR}/token-format.bash"
-
 # Validate required inputs
-if [[ -z "${TOKEN_NAME_STYLE:-}" ]]; then
-  echo "Error: TOKEN_NAME_STYLE is required" >&2
-  exit 1
-fi
-
-if [[ -z "${TOKEN_DELIMITER_STYLE:-}" ]]; then
-  echo "Error: TOKEN_DELIMITER_STYLE is required" >&2
+if [[ -z "${APP_LABEL_VALUE:-}" ]]; then
+  echo "Error: APP_LABEL_VALUE is required" >&2
   exit 1
 fi
 
 # Defaults
 POD_PLACEMENT_INDENT="${POD_PLACEMENT_INDENT:-0}"
-
-# Generate token for project name
-project_name_token=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "PROJECT_NAME")
 
 # Build indentation
 indent=""
@@ -60,12 +43,12 @@ ${indent}      - weight: 100
 ${indent}        podAffinityTerm:
 ${indent}          labelSelector:
 ${indent}            matchLabels:
-${indent}              app: ${project_name_token}
+${indent}              app: ${APP_LABEL_VALUE}
 ${indent}          topologyKey: kubernetes.io/hostname
 ${indent}      - weight: 50
 ${indent}        podAffinityTerm:
 ${indent}          labelSelector:
 ${indent}            matchLabels:
-${indent}              app: ${project_name_token}
+${indent}              app: ${APP_LABEL_VALUE}
 ${indent}          topologyKey: topology.kubernetes.io/zone
 EOF

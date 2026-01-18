@@ -78,7 +78,7 @@ teardown() {
 
 @test "passes KUBERNETES_DEPLOYMENT_* variables to generator" {
   export KUBERNETES_WORKLOAD_TYPE="deployment"
-  export KUBERNETES_DEPLOYMENT_REPLICAS="3"
+  export KUBERNETES_WORKLOAD_REPLICAS="3"
 
   run "$GENERATORS_DIR/generate-kubernetes-workload"
   [ "$status" -eq 0 ]

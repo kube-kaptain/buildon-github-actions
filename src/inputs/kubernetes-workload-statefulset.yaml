@@ -1,0 +1,54 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
+#
+# StatefulSet unique inputs
+kubernetes-statefulset-service-name:
+  description: 'Headless service name (empty for auto-derived from project name)'
+  required: false
+  type: string
+  default: ''
+kubernetes-statefulset-pod-management-policy:
+  description: 'Pod management policy (OrderedReady or Parallel)'
+  required: false
+  type: string
+  default: 'OrderedReady'
+kubernetes-statefulset-update-strategy-type:
+  description: 'Update strategy type (RollingUpdate or OnDelete)'
+  required: false
+  type: string
+  default: 'RollingUpdate'
+kubernetes-statefulset-update-strategy-partition:
+  description: 'Partition for rolling updates (empty for none)'
+  required: false
+  type: string
+  default: ''
+kubernetes-statefulset-pvc-enabled:
+  description: 'Enable persistent volume claim template (true/false)'
+  required: false
+  type: string
+  default: 'true'
+kubernetes-statefulset-pvc-storage-class:
+  description: 'Storage class for PVC (empty for cluster default)'
+  required: false
+  type: string
+  default: ''
+kubernetes-statefulset-pvc-storage-size:
+  description: 'Storage size for PVC (e.g., 1Gi, 10Gi)'
+  required: false
+  type: string
+  default: '1Gi'
+kubernetes-statefulset-pvc-access-mode:
+  description: 'PVC access mode (ReadWriteOnce, ReadOnlyMany, ReadWriteMany)'
+  required: false
+  type: string
+  default: 'ReadWriteOnce'
+kubernetes-statefulset-pvc-volume-name:
+  description: 'Volume name for the PVC template'
+  required: false
+  type: string
+  default: 'data'
+kubernetes-statefulset-pvc-mount-path:
+  description: 'Mount path for the persistent volume'
+  required: false
+  type: string
+  default: '/data'

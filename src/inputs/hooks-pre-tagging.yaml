@@ -1,0 +1,9 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
+#
+# Pre tagging hook script path
+hook-pre-tagging-tests-script-sub-path:
+  description: 'Path to pre-tagging test script relative to .github/ (e.g., bin/pre-tagging.bash)'
+  required: false
+  type: string
+  default: ''

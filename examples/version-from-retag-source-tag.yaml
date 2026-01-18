@@ -41,3 +41,21 @@ jobs:
 
 # The pattern looks for 'docker-source-tag: x.y.z' in .github/workflows/build.yaml
 # When you update source-tag above, the version series changes automatically.
+
+# ┌─────────────────────────────────────────────────────────────────────────┐
+# │ Version & Tagging Configuration                                         │
+# └─────────────────────────────────────────────────────────────────────────┘
+# Default strategy: git-auto-closest-highest (finds closest tag, increments it)
+# Alternative: file-pattern-match (extracts version from a file)
+#
+# For retag workflows, use retag-workflow-source-tag to derive version from
+# the docker-source-tag input in this build.yaml file.
+#
+#     with:
+#       tag-version-max-parts: 3                                # Max version parts allowed (fail if exceeded)
+#       tag-version-calculation-strategy: 'file-pattern-match'  # or 'git-auto-closest-highest' (default)
+#       tag-version-pattern-type: 'retag-workflow-source-tag'   # 'dockerfile-env-kubectl', 'custom'
+#       tag-version-prefix-parts: '2'                           # Parts from source as prefix (output = prefix + 1)
+#       tag-version-source-sub-path: '.github/workflows'        # Override path to source directory
+#       tag-version-source-file-name: 'build.yaml'              # Override source file name
+#       tag-version-source-custom-pattern: '^VERSION=(.+)$'     # Regex with capture group (for custom type)

@@ -9,7 +9,7 @@
 #
 # Inputs (environment variables):
 #   KUBERNETES_WORKLOAD_TYPE - Workload type to generate (default: deployment)
-#                              Values: deployment, none
+#                              Values: none, deployment, statefulset, etc.
 #                              Additional types can be added by creating
 #                              generate-kubernetes-workload-<type> scripts.
 #
@@ -24,7 +24,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 LOG_ERROR_PREFIX="${LOG_ERROR_PREFIX:-}"
 LOG_ERROR_SUFFIX="${LOG_ERROR_SUFFIX:-}"
 
-WORKLOAD_TYPE="${KUBERNETES_WORKLOAD_TYPE:-deployment}"
+# shellcheck source=src/scripts/defaults/kubernetes-workload.bash
+source "${SCRIPT_DIR}/../defaults/kubernetes-workload.bash"
 
 # Handle disabled
 if [[ "${WORKLOAD_TYPE}" == "none" ]]; then

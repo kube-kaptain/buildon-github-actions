@@ -1,0 +1,14 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
+#
+# Release branches
+release-branch:
+  description: 'The release branch name'
+  required: false
+  type: string
+  default: 'main'
+additional-release-branches:
+  description: 'Comma-separated list of additional release branches'
+  required: false
+  type: string
+  default: ''

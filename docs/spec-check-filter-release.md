@@ -8,12 +8,12 @@ Spec Check Filter Release
 |-------|------|---------|-------------|
 | `output-sub-path` | string | `target` | Build output directory (relative) |
 | `docker-registry-logins` | string | `""` | YAML config for Docker registry logins (registry URL as key) |
-| `dockerfile-sub-path` | string | `src/docker` | Directory containing Dockerfile, relative to repo root. |
-| `dockerfile-squash` | boolean | `true` | Enable --squash (requires experimental mode) |
-| `dockerfile-no-cache` | boolean | `true` | Disable layer caching for reproducible builds |
 | `docker-target-registry` | string | `ghcr.io` | Target container registry |
 | `docker-target-base-path` | string | `""` | Path between registry and image name (auto-set for GHCR) |
 | `docker-push-targets` | string | `""` | JSON array of additional push targets [{registry, base-path?}] |
+| `dockerfile-sub-path` | string | `src/docker` | Directory containing Dockerfile, relative to repo root. |
+| `dockerfile-squash` | boolean | `true` | Enable --squash (requires experimental mode) |
+| `dockerfile-no-cache` | boolean | `true` | Disable layer caching for reproducible builds |
 | `spec-type` | string | *required* | Type of spec (schema or api) |
 | `spec-validation-type` | string | `basic` | Schema validator to use (basic, python3-jsonschema) |
 | `spec-packaging-base-image` | string | `scratch` | Base image for spec packaging |

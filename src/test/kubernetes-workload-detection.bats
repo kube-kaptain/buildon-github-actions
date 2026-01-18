@@ -195,10 +195,10 @@ teardown() {
   NAME_SUFFIX="db"
   build_detection_paths
   build_suffix_fragment
-  touch "$source_check_dir/secret.template-db.yaml"
+  touch "$source_check_dir/secret-db.template.yaml"
   detect_secret
   [ "$has_secret" = "true" ]
-  [ "$secret_source" = "$source_check_dir/secret.template-db.yaml" ]
+  [ "$secret_source" = "$source_check_dir/secret-db.template.yaml" ]
 }
 
 # =============================================================================
@@ -278,7 +278,7 @@ teardown() {
   ENV_SUB_PATH="$TEST_DIR/env"
   mkdir -p "$OUTPUT_SUB_PATH/manifests/combined/api"
   mkdir -p "$MANIFESTS_SUB_PATH/api"
-  touch "$OUTPUT_SUB_PATH/manifests/combined/api/secret.template-worker.yaml"
+  touch "$OUTPUT_SUB_PATH/manifests/combined/api/secret-worker.template.yaml"
 
   detect_all_resources
 

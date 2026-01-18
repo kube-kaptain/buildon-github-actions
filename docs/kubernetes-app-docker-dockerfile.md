@@ -8,34 +8,36 @@ Kubernetes App - Docker Dockerfile
 |-------|------|---------|-------------|
 | `output-sub-path` | string | `target` | Build output directory (relative) |
 | `docker-registry-logins` | string | `""` | YAML config for Docker registry logins (registry URL as key) |
-| `dockerfile-sub-path` | string | `src/docker` | Directory containing Dockerfile, relative to repo root. |
-| `dockerfile-squash` | boolean | `true` | Enable --squash (requires experimental mode) |
-| `dockerfile-no-cache` | boolean | `true` | Disable layer caching for reproducible builds |
 | `docker-target-registry` | string | `ghcr.io` | Target container registry |
 | `docker-target-base-path` | string | `""` | Path between registry and image name (auto-set for GHCR) |
 | `docker-push-targets` | string | `""` | JSON array of additional push targets [{registry, base-path?}] |
+| `dockerfile-sub-path` | string | `src/docker` | Directory containing Dockerfile, relative to repo root. |
+| `dockerfile-squash` | boolean | `true` | Enable --squash (requires experimental mode) |
+| `dockerfile-no-cache` | boolean | `true` | Disable layer caching for reproducible builds |
 | `manifests-sub-path` | string | `src/kubernetes` | Directory containing Kubernetes manifests (relative) |
 | `manifests-repo-provider-type` | string | `docker` | Repo provider type for manifest storage (default: docker, currently the only supported provider) |
 | `manifests-packaging-base-image` | string | `""` | Base image for manifest packaging (default: scratch) |
 | `kubernetes-global-additional-labels` | string | `""` | Additional labels for all Kubernetes manifests (comma-separated key=value) |
 | `kubernetes-global-additional-annotations` | string | `""` | Additional annotations for all Kubernetes manifests (comma-separated key=value) |
 | `kubernetes-configmap-sub-path` | string | `src/configmap` | Directory containing ConfigMap data files (relative) |
-| `kubernetes-configmap-name-checksum-injection` | boolean | `true` | Enable checksum injection suffix in ConfigMap name (true: ProjectName-configmap-checksum, false: ProjectName) |
+| `kubernetes-configmap-name-checksum-injection` | boolean | `true` | Enable checksum injection suffix in ConfigMap name |
 | `kubernetes-configmap-additional-labels` | string | `""` | Additional labels specific to ConfigMap (comma-separated key=value) |
 | `kubernetes-configmap-additional-annotations` | string | `""` | Additional annotations specific to ConfigMap (comma-separated key=value) |
 | `kubernetes-secret-template-sub-path` | string | `src/secret.template` | Directory containing Secret template data files (relative) |
-| `kubernetes-secret-template-name-checksum-injection` | boolean | `true` | Enable checksum injection suffix in Secret name (true: ProjectName-secret-checksum, false: ProjectName) |
+| `kubernetes-secret-template-name-checksum-injection` | boolean | `true` | Enable checksum injection suffix in Secret name |
 | `kubernetes-secret-template-additional-labels` | string | `""` | Additional labels specific to Secret template (comma-separated key=value) |
 | `kubernetes-secret-template-additional-annotations` | string | `""` | Additional annotations specific to Secret template (comma-separated key=value) |
-| `kubernetes-serviceaccount-generation-enabled` | boolean | `false` | Enable ServiceAccount generation (true/false) |
+| `kubernetes-serviceaccount-generation-enabled` | boolean | `false` | Enable ServiceAccount generation |
 | `kubernetes-serviceaccount-name-suffix` | string | `""` | Optional suffix for ServiceAccount name and filename |
 | `kubernetes-serviceaccount-combined-sub-path` | string | `""` | Sub-path within combined/ for output |
 | `kubernetes-serviceaccount-additional-labels` | string | `""` | Additional labels specific to ServiceAccount (comma-separated key=value) |
 | `kubernetes-serviceaccount-additional-annotations` | string | `""` | Additional annotations specific to ServiceAccount (comma-separated key=value) |
-| `kubernetes-workload-type` | string | `deployment` | Workload type to generate (deployment, none) |
+| `kubernetes-workload-type` | string | `deployment` | Workload type to generate (deployment, statefulset, none) |
+| `kubernetes-workload-replicas` | string | `""` | Replica count (empty for token, NO for HPA management, number for fixed) |
+| `kubernetes-workload-revision-history-limit` | string | `10` | Number of revisions to retain (ReplicaSets for Deployment, ControllerRevisions for StatefulSet) |
 | `kubernetes-workload-name-suffix` | string | `""` | Optional suffix for workload name and filename |
 | `kubernetes-workload-combined-sub-path` | string | `""` | Sub-path within combined/ for output |
-| `kubernetes-workload-env-sub-path` | string | `src/workload-env` | Directory containing environment variable files |
+| `kubernetes-workload-env-sub-path` | string | `""` | Directory containing environment variable files (default per workload type) |
 | `kubernetes-workload-additional-labels` | string | `""` | Additional labels specific to workload (comma-separated key=value) |
 | `kubernetes-workload-additional-annotations` | string | `""` | Additional annotations specific to workload (comma-separated key=value) |
 | `kubernetes-workload-container-port` | string | `1024` | Container port |
@@ -43,27 +45,83 @@ Kubernetes App - Docker Dockerfile
 | `kubernetes-workload-readonly-root-filesystem` | boolean | `true` | Enable read-only root filesystem |
 | `kubernetes-workload-seccomp-profile` | string | `DISABLED` | Seccomp profile (DISABLED, RuntimeDefault, Localhost, Unconfined) |
 | `kubernetes-workload-automount-service-account-token` | boolean | `false` | Automount service account token |
+| `kubernetes-workload-image-pull-secrets` | string | `ENABLED` | Include imagePullSecrets in pod spec (ENABLED/DISABLED) |
 | `kubernetes-workload-resources-memory` | string | `10Mi` | Memory limit (e.g., 128Mi, 1Gi) |
 | `kubernetes-workload-resources-cpu-request` | string | `100m` | CPU request (e.g., 100m, 1) |
 | `kubernetes-workload-resources-cpu-limit` | string | `""` | CPU limit (empty for no limit) |
+| `kubernetes-workload-resources-ephemeral-storage` | string | `10Mi` | Ephemeral storage request/limit (e.g., 10Mi, 100Mi, 1Gi) |
 | `kubernetes-workload-configmap-mount-path` | string | `/configmap` | ConfigMap mount path in container |
 | `kubernetes-workload-secret-mount-path` | string | `/secret` | Secret mount path in container |
+| `kubernetes-workload-configmap-keys-for-env` | string | `""` | Comma/space-separated ConfigMap keys to expose as env vars |
+| `kubernetes-workload-secret-keys-for-env` | string | `""` | Comma/space-separated Secret keys to expose as env vars |
 | `kubernetes-workload-termination-grace-period-seconds` | string | `10` | Termination grace period in seconds |
 | `kubernetes-workload-prestop-command` | string | `""` | PreStop hook command (empty for none) |
 | `kubernetes-workload-affinity-strategy` | string | `spread-nodes-and-zones-ha` | Pod affinity strategy plugin name |
 | `kubernetes-workload-probe-liveness-check-type` | string | `http-get` | Liveness probe type (http-get, tcp-socket, exec, grpc, none) |
-| `kubernetes-workload-probe-readiness-check-type` | string | `http-get` | Readiness probe type (http-get, tcp-socket, exec, grpc, none) |
-| `kubernetes-workload-probe-startup-check-type` | string | `http-get` | Startup probe type (http-get, tcp-socket, exec, grpc, none) |
 | `kubernetes-workload-probe-liveness-http-path` | string | `/liveness` | Liveness probe HTTP path |
+| `kubernetes-workload-probe-liveness-http-scheme` | string | `HTTP` | Liveness probe HTTP scheme (HTTP, HTTPS) |
+| `kubernetes-workload-probe-liveness-tcp-port` | string | `""` | Liveness probe TCP port (defaults to container port) |
+| `kubernetes-workload-probe-liveness-exec-command` | string | `""` | Liveness probe exec command |
+| `kubernetes-workload-probe-liveness-grpc-port` | string | `""` | Liveness probe gRPC port (defaults to container port) |
+| `kubernetes-workload-probe-liveness-grpc-service` | string | `""` | Liveness probe gRPC service name |
+| `kubernetes-workload-probe-liveness-initial-delay-seconds` | string | `10` | Liveness probe initial delay in seconds |
+| `kubernetes-workload-probe-liveness-period-seconds` | string | `10` | Liveness probe period in seconds |
+| `kubernetes-workload-probe-liveness-timeout-seconds` | string | `5` | Liveness probe timeout in seconds |
+| `kubernetes-workload-probe-liveness-failure-threshold` | string | `3` | Liveness probe failure threshold |
+| `kubernetes-workload-probe-liveness-termination-grace-period-seconds` | string | `""` | Liveness probe termination grace period (empty for default) |
+| `kubernetes-workload-probe-readiness-check-type` | string | `http-get` | Readiness probe type (http-get, tcp-socket, exec, grpc, none) |
 | `kubernetes-workload-probe-readiness-http-path` | string | `/readiness` | Readiness probe HTTP path |
+| `kubernetes-workload-probe-readiness-http-scheme` | string | `HTTP` | Readiness probe HTTP scheme (HTTP, HTTPS) |
+| `kubernetes-workload-probe-readiness-tcp-port` | string | `""` | Readiness probe TCP port (defaults to container port) |
+| `kubernetes-workload-probe-readiness-exec-command` | string | `""` | Readiness probe exec command |
+| `kubernetes-workload-probe-readiness-grpc-port` | string | `""` | Readiness probe gRPC port (defaults to container port) |
+| `kubernetes-workload-probe-readiness-grpc-service` | string | `""` | Readiness probe gRPC service name |
+| `kubernetes-workload-probe-readiness-initial-delay-seconds` | string | `5` | Readiness probe initial delay in seconds |
+| `kubernetes-workload-probe-readiness-period-seconds` | string | `5` | Readiness probe period in seconds |
+| `kubernetes-workload-probe-readiness-timeout-seconds` | string | `3` | Readiness probe timeout in seconds |
+| `kubernetes-workload-probe-readiness-failure-threshold` | string | `3` | Readiness probe failure threshold |
+| `kubernetes-workload-probe-readiness-success-threshold` | string | `1` | Readiness probe success threshold |
+| `kubernetes-workload-probe-startup-check-type` | string | `http-get` | Startup probe type (http-get, tcp-socket, exec, grpc, none) |
 | `kubernetes-workload-probe-startup-http-path` | string | `/startup` | Startup probe HTTP path |
-| `kubernetes-deployment-replicas` | string | `""` | Replica count (empty for token, NO for HPA management) |
-| `kubernetes-deployment-revision-history-limit` | string | `10` | Number of old ReplicaSets to retain |
-| `kubernetes-service-generation-enabled` | boolean | `false` | Enable Service generation |
-| `kubernetes-service-type` | string | `ClusterIP` | Service type (ClusterIP, NodePort, LoadBalancer) |
-| `kubernetes-service-port` | string | `80` | Service port |
-| `kubernetes-service-target-port` | string | `""` | Target port (defaults to service port) |
+| `kubernetes-workload-probe-startup-http-scheme` | string | `HTTP` | Startup probe HTTP scheme (HTTP, HTTPS) |
+| `kubernetes-workload-probe-startup-tcp-port` | string | `""` | Startup probe TCP port (defaults to container port) |
+| `kubernetes-workload-probe-startup-exec-command` | string | `""` | Startup probe exec command |
+| `kubernetes-workload-probe-startup-grpc-port` | string | `""` | Startup probe gRPC port (defaults to container port) |
+| `kubernetes-workload-probe-startup-grpc-service` | string | `""` | Startup probe gRPC service name |
+| `kubernetes-workload-probe-startup-initial-delay-seconds` | string | `0` | Startup probe initial delay in seconds |
+| `kubernetes-workload-probe-startup-period-seconds` | string | `5` | Startup probe period in seconds |
+| `kubernetes-workload-probe-startup-timeout-seconds` | string | `3` | Startup probe timeout in seconds |
+| `kubernetes-workload-probe-startup-failure-threshold` | string | `30` | Startup probe failure threshold |
+| `kubernetes-workload-probe-startup-termination-grace-period-seconds` | string | `""` | Startup probe termination grace period (empty for default) |
+| `kubernetes-deployment-env-sub-path` | string | `src/deployment-env` | Path to deployment environment variables directory |
+| `kubernetes-deployment-additional-labels` | string | `""` | Additional labels for Deployment resources (key=value,key=value) |
+| `kubernetes-deployment-additional-annotations` | string | `""` | Additional annotations for Deployment resources (key=value,key=value) |
+| `kubernetes-statefulset-service-name` | string | `""` | Headless service name (empty for auto-derived from project name) |
+| `kubernetes-statefulset-pod-management-policy` | string | `OrderedReady` | Pod management policy (OrderedReady or Parallel) |
+| `kubernetes-statefulset-update-strategy-type` | string | `RollingUpdate` | Update strategy type (RollingUpdate or OnDelete) |
+| `kubernetes-statefulset-update-strategy-partition` | string | `""` | Partition for rolling updates (empty for none) |
+| `kubernetes-statefulset-pvc-enabled` | string | `true` | Enable persistent volume claim template (true/false) |
+| `kubernetes-statefulset-pvc-storage-class` | string | `""` | Storage class for PVC (empty for cluster default) |
+| `kubernetes-statefulset-pvc-storage-size` | string | `1Gi` | Storage size for PVC (e.g., 1Gi, 10Gi) |
+| `kubernetes-statefulset-pvc-access-mode` | string | `ReadWriteOnce` | PVC access mode (ReadWriteOnce, ReadOnlyMany, ReadWriteMany) |
+| `kubernetes-statefulset-pvc-volume-name` | string | `data` | Volume name for the PVC template |
+| `kubernetes-statefulset-pvc-mount-path` | string | `/data` | Mount path for the persistent volume |
+| `kubernetes-poddisruptionbudget-generation-enabled` | string | `""` | Enable PodDisruptionBudget generation (true, false, or empty for auto based on workload type) |
+| `kubernetes-poddisruptionbudget-name-suffix` | string | `""` | Optional suffix for PDB name and filename |
+| `kubernetes-poddisruptionbudget-combined-sub-path` | string | `""` | Sub-path within combined/ for output |
+| `kubernetes-poddisruptionbudget-strategy` | string | `max-unavailable` | PDB constraint strategy (min-available or max-unavailable) |
+| `kubernetes-poddisruptionbudget-value` | string | `1` | Value for the chosen strategy (integer or percentage, e.g., 1, 50%) |
+| `kubernetes-poddisruptionbudget-additional-labels` | string | `""` | Additional labels specific to PodDisruptionBudget (comma-separated key=value) |
+| `kubernetes-poddisruptionbudget-additional-annotations` | string | `""` | Additional annotations specific to PodDisruptionBudget (comma-separated key=value) |
+| `kubernetes-service-generation-enabled` | string | `""` | Enable Service generation (true, false, or empty for auto based on workload type) |
+| `kubernetes-service-type` | string | `ClusterIP` | Service type (ClusterIP, Headless, NoSelector, NodePort, LoadBalancer, ExternalName) |
+| `kubernetes-service-port` | string | `80` | Service port (not used for ExternalName) |
+| `kubernetes-service-target-port` | string | `""` | Target port (defaults to container port, not used for ExternalName) |
 | `kubernetes-service-protocol` | string | `TCP` | Protocol (TCP, UDP, SCTP) |
+| `kubernetes-service-port-name` | string | `""` | Named port identifier (optional) |
+| `kubernetes-service-node-port` | string | `""` | Node port number (NodePort type only, empty for auto-assign) |
+| `kubernetes-service-external-name` | string | `""` | External DNS name (required for ExternalName type) |
+| `kubernetes-service-external-traffic-policy` | string | `""` | External traffic policy (Cluster or Local, NodePort/LoadBalancer only) |
 | `kubernetes-service-name-suffix` | string | `""` | Optional suffix for Service name and filename |
 | `kubernetes-service-combined-sub-path` | string | `""` | Sub-path within combined/ for output |
 | `kubernetes-service-additional-labels` | string | `""` | Additional labels specific to Service (comma-separated key=value) |

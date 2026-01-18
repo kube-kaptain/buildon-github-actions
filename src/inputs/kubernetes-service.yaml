@@ -1,0 +1,68 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
+#
+# Kubernetes Service generation
+kubernetes-service-generation-enabled:
+  description: 'Enable Service generation (true, false, or empty for auto based on workload type)'
+  required: false
+  type: string
+kubernetes-service-type:
+  description: 'Service type (ClusterIP, Headless, NoSelector, NodePort, LoadBalancer, ExternalName)'
+  required: false
+  type: string
+  default: 'ClusterIP'
+kubernetes-service-port:
+  description: 'Service port (not used for ExternalName)'
+  required: false
+  type: string
+  default: '80'
+kubernetes-service-target-port:
+  description: 'Target port (defaults to container port, not used for ExternalName)'
+  required: false
+  type: string
+  default: ''
+kubernetes-service-protocol:
+  description: 'Protocol (TCP, UDP, SCTP)'
+  required: false
+  type: string
+  default: 'TCP'
+kubernetes-service-port-name:
+  description: 'Named port identifier (optional)'
+  required: false
+  type: string
+  default: ''
+kubernetes-service-node-port:
+  description: 'Node port number (NodePort type only, empty for auto-assign)'
+  required: false
+  type: string
+  default: ''
+kubernetes-service-external-name:
+  description: 'External DNS name (required for ExternalName type)'
+  required: false
+  type: string
+  default: ''
+kubernetes-service-external-traffic-policy:
+  description: 'External traffic policy (Cluster or Local, NodePort/LoadBalancer only)'
+  required: false
+  type: string
+  default: ''
+kubernetes-service-name-suffix:
+  description: 'Optional suffix for Service name and filename'
+  required: false
+  type: string
+  default: ''
+kubernetes-service-combined-sub-path:
+  description: 'Sub-path within combined/ for output'
+  required: false
+  type: string
+  default: ''
+kubernetes-service-additional-labels:
+  description: 'Additional labels specific to Service (comma-separated key=value)'
+  required: false
+  type: string
+  default: ''
+kubernetes-service-additional-annotations:
+  description: 'Additional annotations specific to Service (comma-separated key=value)'
+  required: false
+  type: string
+  default: ''

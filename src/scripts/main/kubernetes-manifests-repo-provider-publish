@@ -23,6 +23,10 @@ LOG_ERROR_SUFFIX="${LOG_ERROR_SUFFIX:-}"
 
 # Locate script directory (where this selector lives)
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# shellcheck source=src/scripts/defaults/manifests-repo-provider.bash
+source "${SCRIPT_DIR}/../defaults/manifests-repo-provider.bash"
+
 PLUGINS_DIR="${SCRIPT_DIR}/../plugins"
 REPO_PROVIDERS_DIR="${PLUGINS_DIR}/kubernetes-manifests-repo-providers"
 SCRIPT_PREFIX="kubernetes-manifests-repo-provider-"
@@ -47,9 +51,6 @@ list_providers() {
 }
 
 main() {
-  # Default to docker if not specified
-  MANIFESTS_REPO_PROVIDER_TYPE="${MANIFESTS_REPO_PROVIDER_TYPE:-docker}"
-
   # Check repo provider script exists
   local provider_script="${REPO_PROVIDERS_DIR}/${SCRIPT_PREFIX}${MANIFESTS_REPO_PROVIDER_TYPE}${SCRIPT_SUFFIX}"
   if [[ ! -f "${provider_script}" ]]; then

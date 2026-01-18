@@ -18,22 +18,6 @@ on:
         required: false
         type: string
         default: ''
-      # Docker build options
-      dockerfile-sub-path:
-        description: 'Directory containing Dockerfile, relative to repo root.'
-        required: false
-        type: string
-        default: 'src/docker'
-      dockerfile-squash:
-        description: 'Enable --squash (requires experimental mode)'
-        required: false
-        type: boolean
-        default: true
-      dockerfile-no-cache:
-        description: 'Disable layer caching for reproducible builds'
-        required: false
-        type: boolean
-        default: true
       # Docker target config
       docker-target-registry:
         description: 'Target container registry'
@@ -51,6 +35,22 @@ on:
         required: false
         type: string
         default: ''
+      # Docker build options
+      dockerfile-sub-path:
+        description: 'Directory containing Dockerfile, relative to repo root.'
+        required: false
+        type: string
+        default: 'src/docker'
+      dockerfile-squash:
+        description: 'Enable --squash (requires experimental mode)'
+        required: false
+        type: boolean
+        default: true
+      dockerfile-no-cache:
+        description: 'Disable layer caching for reproducible builds'
+        required: false
+        type: boolean
+        default: true
 
       # Manifests source
       manifests-sub-path:
@@ -88,7 +88,7 @@ on:
         type: string
         default: 'src/configmap'
       kubernetes-configmap-name-checksum-injection:
-        description: 'Enable checksum injection suffix in ConfigMap name (true: ProjectName-configmap-checksum, false: ProjectName)'
+        description: 'Enable checksum injection suffix in ConfigMap name'
         required: false
         type: boolean
         default: true
@@ -109,7 +109,7 @@ on:
         type: string
         default: 'src/secret.template'
       kubernetes-secret-template-name-checksum-injection:
-        description: 'Enable checksum injection suffix in Secret name (true: ProjectName-secret-checksum, false: ProjectName)'
+        description: 'Enable checksum injection suffix in Secret name'
         required: false
         type: boolean
         default: true
@@ -125,7 +125,7 @@ on:
         default: ''
       # Kubernetes ServiceAccount generation
       kubernetes-serviceaccount-generation-enabled:
-        description: 'Enable ServiceAccount generation (true/false)'
+        description: 'Enable ServiceAccount generation'
         required: false
         type: boolean
         default: false
@@ -151,10 +151,20 @@ on:
         default: ''
       # Kubernetes Workload generation
       kubernetes-workload-type:
-        description: 'Workload type to generate (deployment, none)'
+        description: 'Workload type to generate (deployment, statefulset, none)'
         required: false
         type: string
         default: 'deployment'
+      kubernetes-workload-replicas:
+        description: 'Replica count (empty for token, NO for HPA management, number for fixed)'
+        required: false
+        type: string
+        default: ''
+      kubernetes-workload-revision-history-limit:
+        description: 'Number of revisions to retain (ReplicaSets for Deployment, ControllerRevisions for StatefulSet)'
+        required: false
+        type: string
+        default: '10'
       kubernetes-workload-name-suffix:
         description: 'Optional suffix for workload name and filename'
         required: false
@@ -166,10 +176,10 @@ on:
         type: string
         default: ''
       kubernetes-workload-env-sub-path:
-        description: 'Directory containing environment variable files'
+        description: 'Directory containing environment variable files (default per workload type)'
         required: false
         type: string
-        default: 'src/workload-env'
+        default: ''
       kubernetes-workload-additional-labels:
         description: 'Additional labels specific to workload (comma-separated key=value)'
         required: false
@@ -205,6 +215,12 @@ on:
         required: false
         type: boolean
         default: false
+      kubernetes-workload-image-pull-secrets:
+        description: 'Include imagePullSecrets in pod spec (ENABLED/DISABLED)'
+        required: false
+        type: string
+        default: 'ENABLED'
+      # Resource configuration inputs
       kubernetes-workload-resources-memory:
         description: 'Memory limit (e.g., 128Mi, 1Gi)'
         required: false
@@ -220,6 +236,11 @@ on:
         required: false
         type: string
         default: ''
+      kubernetes-workload-resources-ephemeral-storage:
+        description: 'Ephemeral storage request/limit (e.g., 10Mi, 100Mi, 1Gi)'
+        required: false
+        type: string
+        default: '10Mi'
       kubernetes-workload-configmap-mount-path:
         description: 'ConfigMap mount path in container'
         required: false
@@ -230,6 +251,16 @@ on:
         required: false
         type: string
         default: '/secret'
+      kubernetes-workload-configmap-keys-for-env:
+        description: 'Comma/space-separated ConfigMap keys to expose as env vars'
+        required: false
+        type: string
+        default: ''
+      kubernetes-workload-secret-keys-for-env:
+        description: 'Comma/space-separated Secret keys to expose as env vars'
+        required: false
+        type: string
+        default: ''
       kubernetes-workload-termination-grace-period-seconds:
         description: 'Termination grace period in seconds'
         required: false
@@ -245,18 +276,9 @@ on:
         required: false
         type: string
         default: 'spread-nodes-and-zones-ha'
+      # Liveness probe inputs
       kubernetes-workload-probe-liveness-check-type:
         description: 'Liveness probe type (http-get, tcp-socket, exec, grpc, none)'
-        required: false
-        type: string
-        default: 'http-get'
-      kubernetes-workload-probe-readiness-check-type:
-        description: 'Readiness probe type (http-get, tcp-socket, exec, grpc, none)'
-        required: false
-        type: string
-        default: 'http-get'
-      kubernetes-workload-probe-startup-check-type:
-        description: 'Startup probe type (http-get, tcp-socket, exec, grpc, none)'
         required: false
         type: string
         default: 'http-get'
@@ -265,44 +287,297 @@ on:
         required: false
         type: string
         default: '/liveness'
+      kubernetes-workload-probe-liveness-http-scheme:
+        description: 'Liveness probe HTTP scheme (HTTP, HTTPS)'
+        required: false
+        type: string
+        default: 'HTTP'
+      kubernetes-workload-probe-liveness-tcp-port:
+        description: 'Liveness probe TCP port (defaults to container port)'
+        required: false
+        type: string
+        default: ''
+      kubernetes-workload-probe-liveness-exec-command:
+        description: 'Liveness probe exec command'
+        required: false
+        type: string
+        default: ''
+      kubernetes-workload-probe-liveness-grpc-port:
+        description: 'Liveness probe gRPC port (defaults to container port)'
+        required: false
+        type: string
+        default: ''
+      kubernetes-workload-probe-liveness-grpc-service:
+        description: 'Liveness probe gRPC service name'
+        required: false
+        type: string
+        default: ''
+      kubernetes-workload-probe-liveness-initial-delay-seconds:
+        description: 'Liveness probe initial delay in seconds'
+        required: false
+        type: string
+        default: '10'
+      kubernetes-workload-probe-liveness-period-seconds:
+        description: 'Liveness probe period in seconds'
+        required: false
+        type: string
+        default: '10'
+      kubernetes-workload-probe-liveness-timeout-seconds:
+        description: 'Liveness probe timeout in seconds'
+        required: false
+        type: string
+        default: '5'
+      kubernetes-workload-probe-liveness-failure-threshold:
+        description: 'Liveness probe failure threshold'
+        required: false
+        type: string
+        default: '3'
+      kubernetes-workload-probe-liveness-termination-grace-period-seconds:
+        description: 'Liveness probe termination grace period (empty for default)'
+        required: false
+        type: string
+        default: ''
+      # Readiness probe inputs
+      kubernetes-workload-probe-readiness-check-type:
+        description: 'Readiness probe type (http-get, tcp-socket, exec, grpc, none)'
+        required: false
+        type: string
+        default: 'http-get'
       kubernetes-workload-probe-readiness-http-path:
         description: 'Readiness probe HTTP path'
         required: false
         type: string
         default: '/readiness'
+      kubernetes-workload-probe-readiness-http-scheme:
+        description: 'Readiness probe HTTP scheme (HTTP, HTTPS)'
+        required: false
+        type: string
+        default: 'HTTP'
+      kubernetes-workload-probe-readiness-tcp-port:
+        description: 'Readiness probe TCP port (defaults to container port)'
+        required: false
+        type: string
+        default: ''
+      kubernetes-workload-probe-readiness-exec-command:
+        description: 'Readiness probe exec command'
+        required: false
+        type: string
+        default: ''
+      kubernetes-workload-probe-readiness-grpc-port:
+        description: 'Readiness probe gRPC port (defaults to container port)'
+        required: false
+        type: string
+        default: ''
+      kubernetes-workload-probe-readiness-grpc-service:
+        description: 'Readiness probe gRPC service name'
+        required: false
+        type: string
+        default: ''
+      kubernetes-workload-probe-readiness-initial-delay-seconds:
+        description: 'Readiness probe initial delay in seconds'
+        required: false
+        type: string
+        default: '5'
+      kubernetes-workload-probe-readiness-period-seconds:
+        description: 'Readiness probe period in seconds'
+        required: false
+        type: string
+        default: '5'
+      kubernetes-workload-probe-readiness-timeout-seconds:
+        description: 'Readiness probe timeout in seconds'
+        required: false
+        type: string
+        default: '3'
+      kubernetes-workload-probe-readiness-failure-threshold:
+        description: 'Readiness probe failure threshold'
+        required: false
+        type: string
+        default: '3'
+      kubernetes-workload-probe-readiness-success-threshold:
+        description: 'Readiness probe success threshold'
+        required: false
+        type: string
+        default: '1'
+      # Startup probe inputs
+      kubernetes-workload-probe-startup-check-type:
+        description: 'Startup probe type (http-get, tcp-socket, exec, grpc, none)'
+        required: false
+        type: string
+        default: 'http-get'
       kubernetes-workload-probe-startup-http-path:
         description: 'Startup probe HTTP path'
         required: false
         type: string
         default: '/startup'
-      kubernetes-deployment-replicas:
-        description: 'Replica count (empty for token, NO for HPA management)'
+      kubernetes-workload-probe-startup-http-scheme:
+        description: 'Startup probe HTTP scheme (HTTP, HTTPS)'
+        required: false
+        type: string
+        default: 'HTTP'
+      kubernetes-workload-probe-startup-tcp-port:
+        description: 'Startup probe TCP port (defaults to container port)'
         required: false
         type: string
         default: ''
-      kubernetes-deployment-revision-history-limit:
-        description: 'Number of old ReplicaSets to retain'
+      kubernetes-workload-probe-startup-exec-command:
+        description: 'Startup probe exec command'
         required: false
         type: string
-        default: '10'
+        default: ''
+      kubernetes-workload-probe-startup-grpc-port:
+        description: 'Startup probe gRPC port (defaults to container port)'
+        required: false
+        type: string
+        default: ''
+      kubernetes-workload-probe-startup-grpc-service:
+        description: 'Startup probe gRPC service name'
+        required: false
+        type: string
+        default: ''
+      kubernetes-workload-probe-startup-initial-delay-seconds:
+        description: 'Startup probe initial delay in seconds'
+        required: false
+        type: string
+        default: '0'
+      kubernetes-workload-probe-startup-period-seconds:
+        description: 'Startup probe period in seconds'
+        required: false
+        type: string
+        default: '5'
+      kubernetes-workload-probe-startup-timeout-seconds:
+        description: 'Startup probe timeout in seconds'
+        required: false
+        type: string
+        default: '3'
+      kubernetes-workload-probe-startup-failure-threshold:
+        description: 'Startup probe failure threshold'
+        required: false
+        type: string
+        default: '30'
+      kubernetes-workload-probe-startup-termination-grace-period-seconds:
+        description: 'Startup probe termination grace period (empty for default)'
+        required: false
+        type: string
+        default: ''
+      # Deployment unique inputs
+      kubernetes-deployment-env-sub-path:
+        description: 'Path to deployment environment variables directory'
+        required: false
+        type: string
+        default: 'src/deployment-env'
+      kubernetes-deployment-additional-labels:
+        description: 'Additional labels for Deployment resources (key=value,key=value)'
+        required: false
+        type: string
+        default: ''
+      kubernetes-deployment-additional-annotations:
+        description: 'Additional annotations for Deployment resources (key=value,key=value)'
+        required: false
+        type: string
+        default: ''
+      # StatefulSet unique inputs
+      kubernetes-statefulset-service-name:
+        description: 'Headless service name (empty for auto-derived from project name)'
+        required: false
+        type: string
+        default: ''
+      kubernetes-statefulset-pod-management-policy:
+        description: 'Pod management policy (OrderedReady or Parallel)'
+        required: false
+        type: string
+        default: 'OrderedReady'
+      kubernetes-statefulset-update-strategy-type:
+        description: 'Update strategy type (RollingUpdate or OnDelete)'
+        required: false
+        type: string
+        default: 'RollingUpdate'
+      kubernetes-statefulset-update-strategy-partition:
+        description: 'Partition for rolling updates (empty for none)'
+        required: false
+        type: string
+        default: ''
+      kubernetes-statefulset-pvc-enabled:
+        description: 'Enable persistent volume claim template (true/false)'
+        required: false
+        type: string
+        default: 'true'
+      kubernetes-statefulset-pvc-storage-class:
+        description: 'Storage class for PVC (empty for cluster default)'
+        required: false
+        type: string
+        default: ''
+      kubernetes-statefulset-pvc-storage-size:
+        description: 'Storage size for PVC (e.g., 1Gi, 10Gi)'
+        required: false
+        type: string
+        default: '1Gi'
+      kubernetes-statefulset-pvc-access-mode:
+        description: 'PVC access mode (ReadWriteOnce, ReadOnlyMany, ReadWriteMany)'
+        required: false
+        type: string
+        default: 'ReadWriteOnce'
+      kubernetes-statefulset-pvc-volume-name:
+        description: 'Volume name for the PVC template'
+        required: false
+        type: string
+        default: 'data'
+      kubernetes-statefulset-pvc-mount-path:
+        description: 'Mount path for the persistent volume'
+        required: false
+        type: string
+        default: '/data'
+      # Kubernetes PodDisruptionBudget generation
+      kubernetes-poddisruptionbudget-generation-enabled:
+        description: 'Enable PodDisruptionBudget generation (true, false, or empty for auto based on workload type)'
+        required: false
+        type: string
+      kubernetes-poddisruptionbudget-name-suffix:
+        description: 'Optional suffix for PDB name and filename'
+        required: false
+        type: string
+        default: ''
+      kubernetes-poddisruptionbudget-combined-sub-path:
+        description: 'Sub-path within combined/ for output'
+        required: false
+        type: string
+        default: ''
+      kubernetes-poddisruptionbudget-strategy:
+        description: 'PDB constraint strategy (min-available or max-unavailable)'
+        required: false
+        type: string
+        default: 'max-unavailable'
+      kubernetes-poddisruptionbudget-value:
+        description: 'Value for the chosen strategy (integer or percentage, e.g., 1, 50%)'
+        required: false
+        type: string
+        default: '1'
+      kubernetes-poddisruptionbudget-additional-labels:
+        description: 'Additional labels specific to PodDisruptionBudget (comma-separated key=value)'
+        required: false
+        type: string
+        default: ''
+      kubernetes-poddisruptionbudget-additional-annotations:
+        description: 'Additional annotations specific to PodDisruptionBudget (comma-separated key=value)'
+        required: false
+        type: string
+        default: ''
       # Kubernetes Service generation
       kubernetes-service-generation-enabled:
-        description: 'Enable Service generation'
+        description: 'Enable Service generation (true, false, or empty for auto based on workload type)'
         required: false
-        type: boolean
-        default: false
+        type: string
       kubernetes-service-type:
-        description: 'Service type (ClusterIP, NodePort, LoadBalancer)'
+        description: 'Service type (ClusterIP, Headless, NoSelector, NodePort, LoadBalancer, ExternalName)'
         required: false
         type: string
         default: 'ClusterIP'
       kubernetes-service-port:
-        description: 'Service port'
+        description: 'Service port (not used for ExternalName)'
         required: false
         type: string
         default: '80'
       kubernetes-service-target-port:
-        description: 'Target port (defaults to service port)'
+        description: 'Target port (defaults to container port, not used for ExternalName)'
         required: false
         type: string
         default: ''
@@ -311,6 +586,26 @@ on:
         required: false
         type: string
         default: 'TCP'
+      kubernetes-service-port-name:
+        description: 'Named port identifier (optional)'
+        required: false
+        type: string
+        default: ''
+      kubernetes-service-node-port:
+        description: 'Node port number (NodePort type only, empty for auto-assign)'
+        required: false
+        type: string
+        default: ''
+      kubernetes-service-external-name:
+        description: 'External DNS name (required for ExternalName type)'
+        required: false
+        type: string
+        default: ''
+      kubernetes-service-external-traffic-policy:
+        description: 'External traffic policy (Cluster or Local, NodePort/LoadBalancer only)'
+        required: false
+        type: string
+        default: ''
       kubernetes-service-name-suffix:
         description: 'Optional suffix for Service name and filename'
         required: false
@@ -364,7 +659,7 @@ on:
         type: string
         default: 'strip-for-single-line'
 
-      # Naming, Versions, and Tags calculation
+      # Release branches
       release-branch:
         description: 'The release branch name'
         required: false
@@ -375,6 +670,7 @@ on:
         required: false
         type: string
         default: ''
+      # Tag version calculation
       tag-version-max-parts:
         description: 'Maximum allowed version parts (fail if exceeded)'
         required: false
@@ -411,7 +707,7 @@ on:
         type: string
         default: ''
 
-      # Quality check options
+      # Basic quality checks
       block-slashes:
         description: 'DEPRECATED: Use block-slash-containing-branches instead'
         required: false
@@ -443,12 +739,13 @@ on:
         type: boolean
         default: false
 
-      # Hook script paths
+      # Pre tagging hook script path
       hook-pre-tagging-tests-script-sub-path:
         description: 'Path to pre-tagging test script relative to .github/ (e.g., bin/pre-tagging.bash)'
         required: false
         type: string
         default: ''
+      # Docker related hook script paths
       hook-pre-docker-prepare-script-sub-path:
         description: 'Path to pre-docker prepare script relative to .github/ (e.g., bin/pre-docker-prepare.bash)'
         required: false
@@ -459,6 +756,7 @@ on:
         required: false
         type: string
         default: ''
+      # Manifest package hook script paths
       hook-pre-package-prepare-script-sub-path:
         description: 'Path to pre-package prepare script relative to .github/ (e.g., bin/pre-package-prepare.bash)'
         required: false
@@ -811,6 +1109,7 @@ jobs:
           kubernetes-workload-readonly-root-filesystem: ${{ inputs.kubernetes-workload-readonly-root-filesystem }}
           kubernetes-workload-seccomp-profile: ${{ inputs.kubernetes-workload-seccomp-profile }}
           kubernetes-workload-automount-service-account-token: ${{ inputs.kubernetes-workload-automount-service-account-token }}
+          kubernetes-workload-image-pull-secrets: ${{ inputs.kubernetes-workload-image-pull-secrets }}
           kubernetes-workload-resources-memory: ${{ inputs.kubernetes-workload-resources-memory }}
           kubernetes-workload-resources-cpu-request: ${{ inputs.kubernetes-workload-resources-cpu-request }}
           kubernetes-workload-resources-cpu-limit: ${{ inputs.kubernetes-workload-resources-cpu-limit }}
@@ -825,8 +1124,8 @@ jobs:
           kubernetes-workload-probe-liveness-http-path: ${{ inputs.kubernetes-workload-probe-liveness-http-path }}
           kubernetes-workload-probe-readiness-http-path: ${{ inputs.kubernetes-workload-probe-readiness-http-path }}
           kubernetes-workload-probe-startup-http-path: ${{ inputs.kubernetes-workload-probe-startup-http-path }}
-          kubernetes-deployment-replicas: ${{ inputs.kubernetes-deployment-replicas }}
-          kubernetes-deployment-revision-history-limit: ${{ inputs.kubernetes-deployment-revision-history-limit }}
+          kubernetes-workload-replicas: ${{ inputs.kubernetes-workload-replicas }}
+          kubernetes-workload-revision-history-limit: ${{ inputs.kubernetes-workload-revision-history-limit }}
           # Kubernetes Service generation
           kubernetes-service-generation-enabled: ${{ inputs.kubernetes-service-generation-enabled }}
           kubernetes-service-type: ${{ inputs.kubernetes-service-type }}
@@ -992,6 +1291,7 @@ jobs:
           kubernetes-workload-readonly-root-filesystem: ${{ inputs.kubernetes-workload-readonly-root-filesystem }}
           kubernetes-workload-seccomp-profile: ${{ inputs.kubernetes-workload-seccomp-profile }}
           kubernetes-workload-automount-service-account-token: ${{ inputs.kubernetes-workload-automount-service-account-token }}
+          kubernetes-workload-image-pull-secrets: ${{ inputs.kubernetes-workload-image-pull-secrets }}
           kubernetes-workload-resources-memory: ${{ inputs.kubernetes-workload-resources-memory }}
           kubernetes-workload-resources-cpu-request: ${{ inputs.kubernetes-workload-resources-cpu-request }}
           kubernetes-workload-resources-cpu-limit: ${{ inputs.kubernetes-workload-resources-cpu-limit }}
@@ -1006,8 +1306,8 @@ jobs:
           kubernetes-workload-probe-liveness-http-path: ${{ inputs.kubernetes-workload-probe-liveness-http-path }}
           kubernetes-workload-probe-readiness-http-path: ${{ inputs.kubernetes-workload-probe-readiness-http-path }}
           kubernetes-workload-probe-startup-http-path: ${{ inputs.kubernetes-workload-probe-startup-http-path }}
-          kubernetes-deployment-replicas: ${{ inputs.kubernetes-deployment-replicas }}
-          kubernetes-deployment-revision-history-limit: ${{ inputs.kubernetes-deployment-revision-history-limit }}
+          kubernetes-workload-replicas: ${{ inputs.kubernetes-workload-replicas }}
+          kubernetes-workload-revision-history-limit: ${{ inputs.kubernetes-workload-revision-history-limit }}
           # Kubernetes Service generation
           kubernetes-service-generation-enabled: ${{ inputs.kubernetes-service-generation-enabled }}
           kubernetes-service-type: ${{ inputs.kubernetes-service-type }}
@@ -1227,6 +1527,7 @@ jobs:
           kubernetes-workload-readonly-root-filesystem: ${{ inputs.kubernetes-workload-readonly-root-filesystem }}
           kubernetes-workload-seccomp-profile: ${{ inputs.kubernetes-workload-seccomp-profile }}
           kubernetes-workload-automount-service-account-token: ${{ inputs.kubernetes-workload-automount-service-account-token }}
+          kubernetes-workload-image-pull-secrets: ${{ inputs.kubernetes-workload-image-pull-secrets }}
           kubernetes-workload-resources-memory: ${{ inputs.kubernetes-workload-resources-memory }}
           kubernetes-workload-resources-cpu-request: ${{ inputs.kubernetes-workload-resources-cpu-request }}
           kubernetes-workload-resources-cpu-limit: ${{ inputs.kubernetes-workload-resources-cpu-limit }}
@@ -1241,8 +1542,8 @@ jobs:
           kubernetes-workload-probe-liveness-http-path: ${{ inputs.kubernetes-workload-probe-liveness-http-path }}
           kubernetes-workload-probe-readiness-http-path: ${{ inputs.kubernetes-workload-probe-readiness-http-path }}
           kubernetes-workload-probe-startup-http-path: ${{ inputs.kubernetes-workload-probe-startup-http-path }}
-          kubernetes-deployment-replicas: ${{ inputs.kubernetes-deployment-replicas }}
-          kubernetes-deployment-revision-history-limit: ${{ inputs.kubernetes-deployment-revision-history-limit }}
+          kubernetes-workload-replicas: ${{ inputs.kubernetes-workload-replicas }}
+          kubernetes-workload-revision-history-limit: ${{ inputs.kubernetes-workload-revision-history-limit }}
           # Kubernetes Service generation
           kubernetes-service-generation-enabled: ${{ inputs.kubernetes-service-generation-enabled }}
           kubernetes-service-type: ${{ inputs.kubernetes-service-type }}
@@ -1338,7 +1639,11 @@ jobs:
         if: inputs.kubernetes-configmap-sub-path != '' && success()
         uses: ./.github/buildon-github-actions/src/actions/generate-kubernetes-configmap
         with:
+          # Required context
+          project-name: ${{ steps.versions.outputs.project-name }}
+          # ConfigMap settings
           kubernetes-configmap-sub-path: ${{ inputs.kubernetes-configmap-sub-path }}
+          # Global settings
           output-sub-path: ${{ inputs.output-sub-path }}
           token-name-style: ${{ inputs.token-name-style }}
           token-delimiter-style: ${{ inputs.token-delimiter-style }}
@@ -1373,7 +1678,11 @@ jobs:
         if: inputs.kubernetes-secret-template-sub-path != '' && success()
         uses: ./.github/buildon-github-actions/src/actions/generate-kubernetes-secret-template
         with:
+          # Required context
+          project-name: ${{ steps.versions.outputs.project-name }}
+          # Secret template settings
           kubernetes-secret-template-sub-path: ${{ inputs.kubernetes-secret-template-sub-path }}
+          # Global settings
           output-sub-path: ${{ inputs.output-sub-path }}
           token-name-style: ${{ inputs.token-name-style }}
           token-delimiter-style: ${{ inputs.token-delimiter-style }}
@@ -1408,6 +1717,9 @@ jobs:
         if: inputs.kubernetes-serviceaccount-generation-enabled == true && success()
         uses: ./.github/buildon-github-actions/src/actions/generate-kubernetes-serviceaccount
         with:
+          # Required context
+          project-name: ${{ steps.versions.outputs.project-name }}
+          # ServiceAccount settings
           kubernetes-serviceaccount-generation-enabled: ${{ inputs.kubernetes-serviceaccount-generation-enabled }}
           kubernetes-serviceaccount-name-suffix: ${{ inputs.kubernetes-serviceaccount-name-suffix }}
           kubernetes-serviceaccount-combined-sub-path: ${{ inputs.kubernetes-serviceaccount-combined-sub-path }}
@@ -1432,13 +1744,13 @@ jobs:
           check-run-id: ${{ steps.check-generate-serviceaccount.outputs.check-run-id }}
 
       # === Generate Workload ===
-      - name: Start check - Generate Workload
+      - name: Start check - Generate Workload Manifest
         if: inputs.kubernetes-workload-type != 'none' && success()
         id: check-generate-workload
         uses: ./.github/buildon-github-actions/src/actions/github-check-run
         with:
           action: start
-          check-name: 'Build & Publish → Generate Workload'
+          check-name: 'Build & Publish → Generate Workload Manifest'
       - name: Generate workload manifest
         id: generate-workload
         if: inputs.kubernetes-workload-type != 'none' && success()
@@ -1449,6 +1761,8 @@ jobs:
           # Workload type
           kubernetes-workload-type: ${{ inputs.kubernetes-workload-type }}
           # Common workload settings
+          kubernetes-workload-replicas: ${{ inputs.kubernetes-workload-replicas }}
+          kubernetes-workload-revision-history-limit: ${{ inputs.kubernetes-workload-revision-history-limit }}
           kubernetes-workload-name-suffix: ${{ inputs.kubernetes-workload-name-suffix }}
           kubernetes-workload-combined-sub-path: ${{ inputs.kubernetes-workload-combined-sub-path }}
           kubernetes-workload-env-sub-path: ${{ inputs.kubernetes-workload-env-sub-path }}
@@ -1461,13 +1775,18 @@ jobs:
           kubernetes-workload-readonly-root-filesystem: ${{ inputs.kubernetes-workload-readonly-root-filesystem }}
           kubernetes-workload-seccomp-profile: ${{ inputs.kubernetes-workload-seccomp-profile }}
           kubernetes-workload-automount-service-account-token: ${{ inputs.kubernetes-workload-automount-service-account-token }}
+          kubernetes-workload-image-pull-secrets: ${{ inputs.kubernetes-workload-image-pull-secrets }}
           # Resource limits
           kubernetes-workload-resources-memory: ${{ inputs.kubernetes-workload-resources-memory }}
           kubernetes-workload-resources-cpu-request: ${{ inputs.kubernetes-workload-resources-cpu-request }}
           kubernetes-workload-resources-cpu-limit: ${{ inputs.kubernetes-workload-resources-cpu-limit }}
+          kubernetes-workload-resources-ephemeral-storage: ${{ inputs.kubernetes-workload-resources-ephemeral-storage }}
           # Mount paths
           kubernetes-workload-configmap-mount-path: ${{ inputs.kubernetes-workload-configmap-mount-path }}
           kubernetes-workload-secret-mount-path: ${{ inputs.kubernetes-workload-secret-mount-path }}
+          # Environment variable refs from ConfigMap/Secret keys
+          kubernetes-workload-configmap-keys-for-env: ${{ inputs.kubernetes-workload-configmap-keys-for-env }}
+          kubernetes-workload-secret-keys-for-env: ${{ inputs.kubernetes-workload-secret-keys-for-env }}
           # Lifecycle
           kubernetes-workload-termination-grace-period-seconds: ${{ inputs.kubernetes-workload-termination-grace-period-seconds }}
           kubernetes-workload-prestop-command: ${{ inputs.kubernetes-workload-prestop-command }}
@@ -1480,31 +1799,83 @@ jobs:
           kubernetes-workload-probe-liveness-http-path: ${{ inputs.kubernetes-workload-probe-liveness-http-path }}
           kubernetes-workload-probe-readiness-http-path: ${{ inputs.kubernetes-workload-probe-readiness-http-path }}
           kubernetes-workload-probe-startup-http-path: ${{ inputs.kubernetes-workload-probe-startup-http-path }}
-          # Deployment-specific settings
-          kubernetes-deployment-replicas: ${{ inputs.kubernetes-deployment-replicas }}
-          kubernetes-deployment-revision-history-limit: ${{ inputs.kubernetes-deployment-revision-history-limit }}
+          # StatefulSet-specific settings
+          kubernetes-statefulset-service-name: ${{ inputs.kubernetes-statefulset-service-name }}
+          kubernetes-statefulset-pod-management-policy: ${{ inputs.kubernetes-statefulset-pod-management-policy }}
+          kubernetes-statefulset-update-strategy-type: ${{ inputs.kubernetes-statefulset-update-strategy-type }}
+          kubernetes-statefulset-update-strategy-partition: ${{ inputs.kubernetes-statefulset-update-strategy-partition }}
+          kubernetes-statefulset-pvc-enabled: ${{ inputs.kubernetes-statefulset-pvc-enabled }}
+          kubernetes-statefulset-pvc-storage-class: ${{ inputs.kubernetes-statefulset-pvc-storage-class }}
+          kubernetes-statefulset-pvc-storage-size: ${{ inputs.kubernetes-statefulset-pvc-storage-size }}
+          kubernetes-statefulset-pvc-access-mode: ${{ inputs.kubernetes-statefulset-pvc-access-mode }}
+          kubernetes-statefulset-pvc-volume-name: ${{ inputs.kubernetes-statefulset-pvc-volume-name }}
+          kubernetes-statefulset-pvc-mount-path: ${{ inputs.kubernetes-statefulset-pvc-mount-path }}
           # Global settings
           output-sub-path: ${{ inputs.output-sub-path }}
           token-name-style: ${{ inputs.token-name-style }}
           token-delimiter-style: ${{ inputs.token-delimiter-style }}
           kubernetes-global-additional-labels: ${{ inputs.kubernetes-global-additional-labels }}
           kubernetes-global-additional-annotations: ${{ inputs.kubernetes-global-additional-annotations }}
-      - name: Pass check - Generate Workload
+      - name: Pass check - Generate Workload Manifest
         if: inputs.kubernetes-workload-type != 'none' && success()
         uses: ./.github/buildon-github-actions/src/actions/github-check-run
         with:
           action: pass
           check-run-id: ${{ steps.check-generate-workload.outputs.check-run-id }}
-      - name: Fail check - Generate Workload
+      - name: Fail check - Generate Workload Manifest
         if: inputs.kubernetes-workload-type != 'none' && failure() && steps.check-generate-workload.outputs.check-run-id != ''
         uses: ./.github/buildon-github-actions/src/actions/github-check-run
         with:
           action: fail
           check-run-id: ${{ steps.check-generate-workload.outputs.check-run-id }}
 
+      # === Generate PodDisruptionBudget ===
+      - name: Start check - Generate PodDisruptionBudget
+        if: inputs.kubernetes-poddisruptionbudget-generation-enabled != 'false' && (inputs.kubernetes-poddisruptionbudget-generation-enabled == 'true' || inputs.kubernetes-workload-type == 'deployment' || inputs.kubernetes-workload-type == 'statefulset') && success()
+        id: check-generate-poddisruptionbudget
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
+        with:
+          action: start
+          check-name: 'Build & Publish → Generate PodDisruptionBudget'
+      - name: Generate PodDisruptionBudget manifest
+        id: generate-poddisruptionbudget
+        if: inputs.kubernetes-poddisruptionbudget-generation-enabled != 'false' && (inputs.kubernetes-poddisruptionbudget-generation-enabled == 'true' || inputs.kubernetes-workload-type == 'deployment' || inputs.kubernetes-workload-type == 'statefulset') && success()
+        uses: ./.github/buildon-github-actions/src/actions/generate-kubernetes-poddisruptionbudget
+        with:
+          # PDB settings
+          kubernetes-poddisruptionbudget-generation-enabled: ${{ inputs.kubernetes-poddisruptionbudget-generation-enabled }}
+          kubernetes-poddisruptionbudget-strategy: ${{ inputs.kubernetes-poddisruptionbudget-strategy }}
+          kubernetes-poddisruptionbudget-value: ${{ inputs.kubernetes-poddisruptionbudget-value }}
+          kubernetes-poddisruptionbudget-name-suffix: ${{ inputs.kubernetes-poddisruptionbudget-name-suffix }}
+          kubernetes-poddisruptionbudget-combined-sub-path: ${{ inputs.kubernetes-poddisruptionbudget-combined-sub-path }}
+          kubernetes-poddisruptionbudget-additional-labels: ${{ inputs.kubernetes-poddisruptionbudget-additional-labels }}
+          kubernetes-poddisruptionbudget-additional-annotations: ${{ inputs.kubernetes-poddisruptionbudget-additional-annotations }}
+          # Workload settings (for smart defaulting)
+          kubernetes-workload-type: ${{ inputs.kubernetes-workload-type }}
+          # Required context
+          project-name: ${{ steps.versions.outputs.project-name }}
+          # Global settings
+          output-sub-path: ${{ inputs.output-sub-path }}
+          token-name-style: ${{ inputs.token-name-style }}
+          token-delimiter-style: ${{ inputs.token-delimiter-style }}
+          kubernetes-global-additional-labels: ${{ inputs.kubernetes-global-additional-labels }}
+          kubernetes-global-additional-annotations: ${{ inputs.kubernetes-global-additional-annotations }}
+      - name: Pass check - Generate PodDisruptionBudget
+        if: inputs.kubernetes-poddisruptionbudget-generation-enabled != 'false' && (inputs.kubernetes-poddisruptionbudget-generation-enabled == 'true' || inputs.kubernetes-workload-type == 'deployment' || inputs.kubernetes-workload-type == 'statefulset') && success()
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
+        with:
+          action: pass
+          check-run-id: ${{ steps.check-generate-poddisruptionbudget.outputs.check-run-id }}
+      - name: Fail check - Generate PodDisruptionBudget
+        if: inputs.kubernetes-poddisruptionbudget-generation-enabled != 'false' && (inputs.kubernetes-poddisruptionbudget-generation-enabled == 'true' || inputs.kubernetes-workload-type == 'deployment' || inputs.kubernetes-workload-type == 'statefulset') && failure() && steps.check-generate-poddisruptionbudget.outputs.check-run-id != ''
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
+        with:
+          action: fail
+          check-run-id: ${{ steps.check-generate-poddisruptionbudget.outputs.check-run-id }}
+
       # === Generate Service ===
       - name: Start check - Generate Service
-        if: inputs.kubernetes-service-generation-enabled == true && inputs.kubernetes-workload-type == 'deployment' && success()
+        if: inputs.kubernetes-service-generation-enabled != 'false' && (inputs.kubernetes-service-generation-enabled == 'true' || inputs.kubernetes-workload-type == 'deployment' || inputs.kubernetes-workload-type == 'statefulset') && success()
         id: check-generate-service
         uses: ./.github/buildon-github-actions/src/actions/github-check-run
         with:
@@ -1512,7 +1883,7 @@ jobs:
           check-name: 'Build & Publish → Generate Service'
       - name: Generate Service manifest
         id: generate-service
-        if: inputs.kubernetes-service-generation-enabled == true && inputs.kubernetes-workload-type == 'deployment' && success()
+        if: inputs.kubernetes-service-generation-enabled != 'false' && (inputs.kubernetes-service-generation-enabled == 'true' || inputs.kubernetes-workload-type == 'deployment' || inputs.kubernetes-workload-type == 'statefulset') && success()
         uses: ./.github/buildon-github-actions/src/actions/generate-kubernetes-service
         with:
           # Service settings
@@ -1521,12 +1892,19 @@ jobs:
           kubernetes-service-port: ${{ inputs.kubernetes-service-port }}
           kubernetes-service-target-port: ${{ inputs.kubernetes-service-target-port }}
           kubernetes-service-protocol: ${{ inputs.kubernetes-service-protocol }}
+          kubernetes-service-port-name: ${{ inputs.kubernetes-service-port-name }}
+          kubernetes-service-node-port: ${{ inputs.kubernetes-service-node-port }}
+          kubernetes-service-external-name: ${{ inputs.kubernetes-service-external-name }}
+          kubernetes-service-external-traffic-policy: ${{ inputs.kubernetes-service-external-traffic-policy }}
           kubernetes-service-name-suffix: ${{ inputs.kubernetes-service-name-suffix }}
           kubernetes-service-combined-sub-path: ${{ inputs.kubernetes-service-combined-sub-path }}
           kubernetes-service-additional-labels: ${{ inputs.kubernetes-service-additional-labels }}
           kubernetes-service-additional-annotations: ${{ inputs.kubernetes-service-additional-annotations }}
           # Workload settings (for defaults)
+          kubernetes-workload-type: ${{ inputs.kubernetes-workload-type }}
           kubernetes-workload-container-port: ${{ inputs.kubernetes-workload-container-port }}
+          # Required context
+          project-name: ${{ steps.versions.outputs.project-name }}
           # Global settings
           output-sub-path: ${{ inputs.output-sub-path }}
           token-name-style: ${{ inputs.token-name-style }}
@@ -1534,13 +1912,13 @@ jobs:
           kubernetes-global-additional-labels: ${{ inputs.kubernetes-global-additional-labels }}
           kubernetes-global-additional-annotations: ${{ inputs.kubernetes-global-additional-annotations }}
       - name: Pass check - Generate Service
-        if: inputs.kubernetes-service-generation-enabled == true && inputs.kubernetes-workload-type == 'deployment' && success()
+        if: inputs.kubernetes-service-generation-enabled != 'false' && (inputs.kubernetes-service-generation-enabled == 'true' || inputs.kubernetes-workload-type == 'deployment' || inputs.kubernetes-workload-type == 'statefulset') && success()
         uses: ./.github/buildon-github-actions/src/actions/github-check-run
         with:
           action: pass
           check-run-id: ${{ steps.check-generate-service.outputs.check-run-id }}
       - name: Fail check - Generate Service
-        if: inputs.kubernetes-service-generation-enabled == true && inputs.kubernetes-workload-type == 'deployment' && failure() && steps.check-generate-service.outputs.check-run-id != ''
+        if: inputs.kubernetes-service-generation-enabled != 'false' && (inputs.kubernetes-service-generation-enabled == 'true' || inputs.kubernetes-workload-type == 'deployment' || inputs.kubernetes-workload-type == 'statefulset') && failure() && steps.check-generate-service.outputs.check-run-id != ''
         uses: ./.github/buildon-github-actions/src/actions/github-check-run
         with:
           action: fail
@@ -1613,6 +1991,7 @@ jobs:
           kubernetes-workload-readonly-root-filesystem: ${{ inputs.kubernetes-workload-readonly-root-filesystem }}
           kubernetes-workload-seccomp-profile: ${{ inputs.kubernetes-workload-seccomp-profile }}
           kubernetes-workload-automount-service-account-token: ${{ inputs.kubernetes-workload-automount-service-account-token }}
+          kubernetes-workload-image-pull-secrets: ${{ inputs.kubernetes-workload-image-pull-secrets }}
           kubernetes-workload-resources-memory: ${{ inputs.kubernetes-workload-resources-memory }}
           kubernetes-workload-resources-cpu-request: ${{ inputs.kubernetes-workload-resources-cpu-request }}
           kubernetes-workload-resources-cpu-limit: ${{ inputs.kubernetes-workload-resources-cpu-limit }}
@@ -1627,8 +2006,8 @@ jobs:
           kubernetes-workload-probe-liveness-http-path: ${{ inputs.kubernetes-workload-probe-liveness-http-path }}
           kubernetes-workload-probe-readiness-http-path: ${{ inputs.kubernetes-workload-probe-readiness-http-path }}
           kubernetes-workload-probe-startup-http-path: ${{ inputs.kubernetes-workload-probe-startup-http-path }}
-          kubernetes-deployment-replicas: ${{ inputs.kubernetes-deployment-replicas }}
-          kubernetes-deployment-revision-history-limit: ${{ inputs.kubernetes-deployment-revision-history-limit }}
+          kubernetes-workload-replicas: ${{ inputs.kubernetes-workload-replicas }}
+          kubernetes-workload-revision-history-limit: ${{ inputs.kubernetes-workload-revision-history-limit }}
           # Kubernetes Service generation
           kubernetes-service-generation-enabled: ${{ inputs.kubernetes-service-generation-enabled }}
           kubernetes-service-type: ${{ inputs.kubernetes-service-type }}
@@ -1893,6 +2272,7 @@ jobs:
           kubernetes-workload-readonly-root-filesystem: ${{ inputs.kubernetes-workload-readonly-root-filesystem }}
           kubernetes-workload-seccomp-profile: ${{ inputs.kubernetes-workload-seccomp-profile }}
           kubernetes-workload-automount-service-account-token: ${{ inputs.kubernetes-workload-automount-service-account-token }}
+          kubernetes-workload-image-pull-secrets: ${{ inputs.kubernetes-workload-image-pull-secrets }}
           kubernetes-workload-resources-memory: ${{ inputs.kubernetes-workload-resources-memory }}
           kubernetes-workload-resources-cpu-request: ${{ inputs.kubernetes-workload-resources-cpu-request }}
           kubernetes-workload-resources-cpu-limit: ${{ inputs.kubernetes-workload-resources-cpu-limit }}
@@ -1907,8 +2287,8 @@ jobs:
           kubernetes-workload-probe-liveness-http-path: ${{ inputs.kubernetes-workload-probe-liveness-http-path }}
           kubernetes-workload-probe-readiness-http-path: ${{ inputs.kubernetes-workload-probe-readiness-http-path }}
           kubernetes-workload-probe-startup-http-path: ${{ inputs.kubernetes-workload-probe-startup-http-path }}
-          kubernetes-deployment-replicas: ${{ inputs.kubernetes-deployment-replicas }}
-          kubernetes-deployment-revision-history-limit: ${{ inputs.kubernetes-deployment-revision-history-limit }}
+          kubernetes-workload-replicas: ${{ inputs.kubernetes-workload-replicas }}
+          kubernetes-workload-revision-history-limit: ${{ inputs.kubernetes-workload-revision-history-limit }}
           # Kubernetes Service generation
           kubernetes-service-generation-enabled: ${{ inputs.kubernetes-service-generation-enabled }}
           kubernetes-service-type: ${{ inputs.kubernetes-service-type }}

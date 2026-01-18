@@ -46,6 +46,11 @@ inputs:
     required: false
     default: ''
 
+  # Required context
+  project-name:
+    description: 'Project name (required)'
+    required: true
+
 runs:
   using: 'composite'
   steps:
@@ -54,6 +59,9 @@ runs:
       shell: bash
       env:
         LOG_ERROR_PREFIX: '::error::'
+        # Required context
+        PROJECT_NAME: ${{ inputs.project-name }}
+        # ServiceAccount settings
         KUBERNETES_SERVICEACCOUNT_GENERATION_ENABLED: ${{ inputs.kubernetes-serviceaccount-generation-enabled }}
         KUBERNETES_SERVICEACCOUNT_NAME_SUFFIX: ${{ inputs.kubernetes-serviceaccount-name-suffix }}
         KUBERNETES_SERVICEACCOUNT_COMBINED_SUB_PATH: ${{ inputs.kubernetes-serviceaccount-combined-sub-path }}

@@ -7,204 +7,21 @@ kaptain-description: Everything from quality and version above, but also pulls, 
 on:
   workflow_call:
     inputs:
-      # Build output
-      output-sub-path:
-        description: 'Build output directory (relative)'
-        required: false
-        type: string
-        default: 'target'
+      # INJECT-INPUT: output-sub-path
 
-      # Docker registry logins
-      docker-registry-logins:
-        description: 'YAML config for Docker registry logins (registry URL as key)'
-        required: false
-        type: string
-        default: ''
-      # Docker source image configuration
-      docker-source-registry:
-        description: 'Upstream registry (e.g., docker.io)'
-        required: true
-        type: string
-      docker-source-base-path:
-        description: 'Path between registry and image name (e.g., library)'
-        required: false
-        type: string
-        default: ''
-      docker-source-image-name:
-        description: 'Upstream image name (e.g., nginx)'
-        required: true
-        type: string
-      docker-source-tag:
-        description: 'Upstream image tag (e.g., 1.25)'
-        required: true
-        type: string
-      # Docker target config
-      docker-target-registry:
-        description: 'Target container registry'
-        required: false
-        type: string
-        default: 'ghcr.io'
-      docker-target-base-path:
-        description: 'Path between registry and image name (auto-set for GHCR)'
-        required: false
-        type: string
-        default: ''
-      # Docker push targets
-      docker-push-targets:
-        description: 'JSON array of additional push targets [{registry, base-path?}]'
-        required: false
-        type: string
-        default: ''
+      # INJECT-INPUT: docker-build
+      # INJECT-INPUT: docker-retag
 
-      # Token substitution
-      token-delimiter-style:
-        description: 'Token delimiter syntax for variables (shell, mustache, helm, erb, github-actions, blade, stringtemplate, ognl, t4, swift)'
-        required: false
-        type: string
-        default: 'shell'
-      token-name-style:
-        description: 'Case style for token names (UPPER_SNAKE, lower_snake, lower-kebab, UPPER-KEBAB, camelCase, PascalCase, lower.dot, UPPER.DOT)'
-        required: false
-        type: string
-        default: 'PascalCase'
-      token-name-validation:
-        description: 'How to validate user token names (MATCH = must match token-name-style, ALL = accept any valid name)'
-        required: false
-        type: string
-        default: 'MATCH'
-      allow-builtin-token-override:
-        description: 'Allow user tokens to override built-in tokens (for template/reusable projects)'
-        required: false
-        type: boolean
-        default: false
-      config-sub-path:
-        description: 'Directory containing user-defined token files (relative)'
-        required: false
-        type: string
-        default: 'src/config'
-      config-value-trailing-newline:
-        description: 'How to handle trailing newlines in config values (strip-for-single-line, preserve-all, always-strip-one-newline)'
-        required: false
-        type: string
-        default: 'strip-for-single-line'
+      # INJECT-INPUT: token-substitution
 
-      # Naming, Versions, and Tags calculation
-      release-branch:
-        description: 'The release branch name'
-        required: false
-        type: string
-        default: 'main'
-      additional-release-branches:
-        description: 'Comma-separated list of additional release branches'
-        required: false
-        type: string
-        default: ''
-      tag-version-max-parts:
-        description: 'Maximum allowed version parts (fail if exceeded)'
-        required: false
-        type: number
-        default: 3
-      tag-version-calculation-strategy:
-        description: 'Strategy for calculating version (git-auto-closest-highest, file-pattern-match)'
-        required: false
-        type: string
-        default: 'git-auto-closest-highest'
-      tag-version-pattern-type:
-        description: 'Pattern type for file-pattern-match strategy (dockerfile-env-kubectl, retag-workflow-source-tag, custom)'
-        required: false
-        type: string
-        default: 'dockerfile-env-kubectl'
-      tag-version-prefix-parts:
-        description: 'Number of parts from source version to use as prefix (default 2, output = prefix + 1 parts)'
-        required: false
-        type: string
-        default: ''
-      dockerfile-sub-path:
-        description: 'Directory containing Dockerfile, relative to repo root.'
-        required: false
-        type: string
-        default: 'src/docker'
-      tag-version-source-sub-path:
-        description: 'Override path to source directory (takes precedence over dockerfile-sub-path)'
-        required: false
-        type: string
-        default: ''
-      tag-version-source-file-name:
-        description: 'Override source file name (defaults based on pattern type)'
-        required: false
-        type: string
-        default: ''
-      tag-version-source-custom-pattern:
-        description: 'Regex with capture group for version extraction (required for custom pattern type)'
-        required: false
-        type: string
-        default: ''
+      # INJECT-INPUT: release-branches
+      # INJECT-INPUT: tag-version
 
-      # Quality check options
-      block-slashes:
-        description: 'DEPRECATED: Use block-slash-containing-branches instead'
-        required: false
-        type: boolean
-        default: false
-      qc-block-slash-containing-branches:
-        description: 'Block branch names containing slashes'
-        required: false
-        type: boolean
-        default: false
-      qc-block-double-hyphen-containing-branches:
-        description: 'Block branch names containing double hyphens (typo detection)'
-        required: false
-        type: boolean
-        default: true
-      qc-require-conventional-branches:
-        description: 'Require branch names start with feature/, fix/, etc.'
-        required: false
-        type: boolean
-        default: false
-      qc-require-conventional-commits:
-        description: 'Require commits use conventional commit format (feat:, fix:, etc.)'
-        required: false
-        type: boolean
-        default: false
-      qc-block-conventional-commits:
-        description: 'Block commits that use conventional commit format'
-        required: false
-        type: boolean
-        default: false
+      # INJECT-INPUT: basic-quality-checks
 
-      # Hook script paths
-      hook-pre-tagging-tests-script-sub-path:
-        description: 'Path to pre-tagging test script relative to .github/ (e.g., bin/pre-tagging.bash)'
-        required: false
-        type: string
-        default: ''
+      # INJECT-INPUT: hooks-pre-tagging
 
-      # GitHub release
-      github-release-enabled:
-        description: 'Create a GitHub release on version tags'
-        required: false
-        type: boolean
-        default: true
-      github-release-substituted-files:
-        description: 'Files with token substitution and version suffix (space-separated)'
-        required: false
-        type: string
-        default: ''
-      github-release-verbatim-files:
-        description: 'Files copied as-is with version suffix only (space-separated)'
-        required: false
-        type: string
-        default: ''
-      github-release-notes:
-        description: 'Release notes (leave empty for auto-generated)'
-        required: false
-        type: string
-        default: ''
-      github-release-add-version-to-filenames:
-        description: 'Add version suffix to release filenames (e.g., file.yaml -> file-1.2.3.yaml)'
-        required: false
-        type: boolean
-        default: true
+      # INJECT-INPUT: github-release
     secrets:
       docker-registry-logins-secrets:
         description: 'JSON object of secrets for docker-registry-logins (e.g., {"DOCKER_USER": "x", "DOCKER_PASS": "y"})'
