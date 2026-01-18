@@ -58,6 +58,8 @@ OUTPUT_SUB_PATH="${OUTPUT_SUB_PATH:-target}"
 source "${SCRIPT_DIR}/../defaults/tokens.bash"
 # shellcheck source=src/scripts/defaults/kubernetes-configmap.bash
 source "${SCRIPT_DIR}/../defaults/kubernetes-configmap.bash"
+# shellcheck source=src/scripts/defaults/kubernetes-manifest.bash
+source "${SCRIPT_DIR}/../defaults/kubernetes-manifest.bash"
 FINAL_SUB_PATH=$(build_configuration_source_path "${BASE_SUB_PATH}" "${NAME_SUFFIX}" "")
 
 validate_common_inputs
@@ -90,12 +92,6 @@ output_file=$(build_output_filename "${output_dir}" "${kind}" "${NAME_SUFFIX}")
 # Get current timestamp and script name for annotations
 build_timestamp=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 script_name=$(basename "${BASH_SOURCE[0]}")
-
-# Additional labels/annotations from inputs
-global_labels="${KUBERNETES_GLOBAL_ADDITIONAL_LABELS:-}"
-specific_labels="${KUBERNETES_CONFIGMAP_ADDITIONAL_LABELS:-}"
-global_annotations="${KUBERNETES_GLOBAL_ADDITIONAL_ANNOTATIONS:-}"
-specific_annotations="${KUBERNETES_CONFIGMAP_ADDITIONAL_ANNOTATIONS:-}"
 
 {
   generate_manifest_header "v1" "${kind}" "${configmap_name}" "${environment_token}"

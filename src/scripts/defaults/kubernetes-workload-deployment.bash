@@ -21,9 +21,17 @@
 # Workload naming but unique per type
 KUBERNETES_DEPLOYMENT_ENV_SUB_PATH="${KUBERNETES_DEPLOYMENT_ENV_SUB_PATH:-src/deployment-env}"
 
+# Additional labels/annotations
+KUBERNETES_DEPLOYMENT_ADDITIONAL_LABELS="${KUBERNETES_DEPLOYMENT_ADDITIONAL_LABELS:-}"
+KUBERNETES_DEPLOYMENT_ADDITIONAL_ANNOTATIONS="${KUBERNETES_DEPLOYMENT_ADDITIONAL_ANNOTATIONS:-}"
+
 # =============================================================================
 # Convenience short names (for single-purpose generator scripts only)
 # =============================================================================
 
 # Workload naming but unique per type
 BASE_ENV_SUB_PATH="${KUBERNETES_DEPLOYMENT_ENV_SUB_PATH}"
+
+# Additional labels/annotations
+SPECIFIC_LABELS="${KUBERNETES_DEPLOYMENT_ADDITIONAL_LABELS}"
+SPECIFIC_ANNOTATIONS="${KUBERNETES_DEPLOYMENT_ADDITIONAL_ANNOTATIONS}"

@@ -86,6 +86,8 @@ OUTPUT_SUB_PATH="${OUTPUT_SUB_PATH:-target}"
 source "${SCRIPT_DIR}/../defaults/tokens.bash"
 # shellcheck source=src/scripts/defaults/kubernetes-service.bash
 source "${SCRIPT_DIR}/../defaults/kubernetes-service.bash"
+# shellcheck source=src/scripts/defaults/kubernetes-manifest.bash
+source "${SCRIPT_DIR}/../defaults/kubernetes-manifest.bash"
 
 # =============================================================================
 # Determine type behavior
@@ -256,11 +258,6 @@ fi
 
 build_timestamp=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 script_name=$(basename "${BASH_SOURCE[0]}")
-
-global_labels="${KUBERNETES_GLOBAL_ADDITIONAL_LABELS:-}"
-specific_labels="${KUBERNETES_SERVICE_ADDITIONAL_LABELS:-}"
-global_annotations="${KUBERNETES_GLOBAL_ADDITIONAL_ANNOTATIONS:-}"
-specific_annotations="${KUBERNETES_SERVICE_ADDITIONAL_ANNOTATIONS:-}"
 
 # =============================================================================
 # Generate Service YAML

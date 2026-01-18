@@ -61,6 +61,8 @@ source "${SCRIPT_DIR}/../defaults/tokens.bash"
 source "${SCRIPT_DIR}/../defaults/kubernetes-workload.bash"
 # shellcheck source=src/scripts/defaults/kubernetes-workload-deployment.bash
 source "${SCRIPT_DIR}/../defaults/kubernetes-workload-deployment.bash"
+# shellcheck source=src/scripts/defaults/kubernetes-manifest.bash
+source "${SCRIPT_DIR}/../defaults/kubernetes-manifest.bash"
 
 # Build final env sub path from base
 FINAL_ENV_SUB_PATH=$(build_configuration_source_path "${BASE_ENV_SUB_PATH}" "${NAME_SUFFIX}" "-env")
@@ -168,12 +170,6 @@ fi
 
 build_timestamp=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 script_name=$(basename "${BASH_SOURCE[0]}")
-
-# Additional labels/annotations from inputs (common workload settings)
-global_labels="${KUBERNETES_GLOBAL_ADDITIONAL_LABELS:-}"
-specific_labels="${KUBERNETES_WORKLOAD_ADDITIONAL_LABELS:-}"
-global_annotations="${KUBERNETES_GLOBAL_ADDITIONAL_ANNOTATIONS:-}"
-specific_annotations="${KUBERNETES_WORKLOAD_ADDITIONAL_ANNOTATIONS:-}"
 
 # =============================================================================
 # Generate Deployment YAML
