@@ -66,6 +66,8 @@ source "$(dirname "${BASH_SOURCE[0]}")/../defaults/kubernetes-configmap.bash"
 source "$(dirname "${BASH_SOURCE[0]}")/../defaults/kubernetes-secret-template.bash"
 # shellcheck source=src/scripts/defaults/kubernetes-workload-statefulset.bash
 source "$(dirname "${BASH_SOURCE[0]}")/../defaults/kubernetes-workload-statefulset.bash"
+# shellcheck source=src/scripts/defaults/kubernetes-poddisruptionbudget.bash
+source "$(dirname "${BASH_SOURCE[0]}")/../defaults/kubernetes-poddisruptionbudget.bash"
 # shellcheck source=src/scripts/defaults/kubernetes-service.bash
 source "$(dirname "${BASH_SOURCE[0]}")/../defaults/kubernetes-service.bash"
 
@@ -90,6 +92,10 @@ export KUBERNETES_SERVICE_EXTERNAL_NAME KUBERNETES_SERVICE_EXTERNAL_TRAFFIC_POLI
 export KUBERNETES_SERVICE_NAME_SUFFIX KUBERNETES_SERVICE_COMBINED_SUB_PATH
 export KUBERNETES_SERVICE_GENERATION_ENABLED
 export KUBERNETES_SERVICE_ADDITIONAL_LABELS KUBERNETES_SERVICE_ADDITIONAL_ANNOTATIONS
+export KUBERNETES_PODDISRUPTIONBUDGET_GENERATION_ENABLED
+export KUBERNETES_PODDISRUPTIONBUDGET_NAME_SUFFIX KUBERNETES_PODDISRUPTIONBUDGET_COMBINED_SUB_PATH
+export KUBERNETES_PODDISRUPTIONBUDGET_STRATEGY KUBERNETES_PODDISRUPTIONBUDGET_VALUE
+export KUBERNETES_PODDISRUPTIONBUDGET_ADDITIONAL_LABELS KUBERNETES_PODDISRUPTIONBUDGET_ADDITIONAL_ANNOTATIONS
 export TOKEN_DELIMITER_STYLE TOKEN_NAME_STYLE TOKEN_NAME_VALIDATION
 export ALLOW_BUILTIN_TOKEN_OVERRIDE CONFIG_SUB_PATH CONFIG_VALUE_TRAILING_NEWLINE
 export DEFAULT_BRANCH CURRENT_BRANCH RELEASE_BRANCH ADDITIONAL_RELEASE_BRANCHES TAG_VERSION_MAX_PARTS

@@ -526,6 +526,41 @@ on:
         required: false
         type: string
         default: '/data'
+      # Kubernetes PodDisruptionBudget generation
+      kubernetes-poddisruptionbudget-generation-enabled:
+        description: 'Enable PodDisruptionBudget generation (default: auto based on workload type)'
+        required: false
+        type: boolean
+      kubernetes-poddisruptionbudget-name-suffix:
+        description: 'Optional suffix for PDB name and filename'
+        required: false
+        type: string
+        default: ''
+      kubernetes-poddisruptionbudget-combined-sub-path:
+        description: 'Sub-path within combined/ for output'
+        required: false
+        type: string
+        default: ''
+      kubernetes-poddisruptionbudget-strategy:
+        description: 'PDB constraint strategy (min-available or max-unavailable)'
+        required: false
+        type: string
+        default: 'max-unavailable'
+      kubernetes-poddisruptionbudget-value:
+        description: 'Value for the chosen strategy (integer or percentage, e.g., 1, 50%)'
+        required: false
+        type: string
+        default: '1'
+      kubernetes-poddisruptionbudget-additional-labels:
+        description: 'Additional labels specific to PodDisruptionBudget (comma-separated key=value)'
+        required: false
+        type: string
+        default: ''
+      kubernetes-poddisruptionbudget-additional-annotations:
+        description: 'Additional annotations specific to PodDisruptionBudget (comma-separated key=value)'
+        required: false
+        type: string
+        default: ''
       # Kubernetes Service generation
       kubernetes-service-generation-enabled:
         description: 'Enable Service generation (default: auto based on workload type)'
@@ -1782,6 +1817,50 @@ jobs:
         with:
           action: fail
           check-run-id: ${{ steps.check-generate-workload.outputs.check-run-id }}
+
+      # === Generate PodDisruptionBudget ===
+      - name: Start check - Generate PodDisruptionBudget
+        if: inputs.kubernetes-poddisruptionbudget-generation-enabled != false && (inputs.kubernetes-poddisruptionbudget-generation-enabled == true || inputs.kubernetes-workload-type == 'deployment' || inputs.kubernetes-workload-type == 'statefulset') && success()
+        id: check-generate-poddisruptionbudget
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
+        with:
+          action: start
+          check-name: 'Build & Publish → Generate PodDisruptionBudget'
+      - name: Generate PodDisruptionBudget manifest
+        id: generate-poddisruptionbudget
+        if: inputs.kubernetes-poddisruptionbudget-generation-enabled != false && (inputs.kubernetes-poddisruptionbudget-generation-enabled == true || inputs.kubernetes-workload-type == 'deployment' || inputs.kubernetes-workload-type == 'statefulset') && success()
+        uses: ./.github/buildon-github-actions/src/actions/generate-kubernetes-poddisruptionbudget
+        with:
+          # PDB settings
+          kubernetes-poddisruptionbudget-generation-enabled: ${{ inputs.kubernetes-poddisruptionbudget-generation-enabled }}
+          kubernetes-poddisruptionbudget-strategy: ${{ inputs.kubernetes-poddisruptionbudget-strategy }}
+          kubernetes-poddisruptionbudget-value: ${{ inputs.kubernetes-poddisruptionbudget-value }}
+          kubernetes-poddisruptionbudget-name-suffix: ${{ inputs.kubernetes-poddisruptionbudget-name-suffix }}
+          kubernetes-poddisruptionbudget-combined-sub-path: ${{ inputs.kubernetes-poddisruptionbudget-combined-sub-path }}
+          kubernetes-poddisruptionbudget-additional-labels: ${{ inputs.kubernetes-poddisruptionbudget-additional-labels }}
+          kubernetes-poddisruptionbudget-additional-annotations: ${{ inputs.kubernetes-poddisruptionbudget-additional-annotations }}
+          # Workload settings (for smart defaulting)
+          kubernetes-workload-type: ${{ inputs.kubernetes-workload-type }}
+          # Required context
+          project-name: ${{ steps.versions.outputs.project-name }}
+          # Global settings
+          output-sub-path: ${{ inputs.output-sub-path }}
+          token-name-style: ${{ inputs.token-name-style }}
+          token-delimiter-style: ${{ inputs.token-delimiter-style }}
+          kubernetes-global-additional-labels: ${{ inputs.kubernetes-global-additional-labels }}
+          kubernetes-global-additional-annotations: ${{ inputs.kubernetes-global-additional-annotations }}
+      - name: Pass check - Generate PodDisruptionBudget
+        if: inputs.kubernetes-poddisruptionbudget-generation-enabled != false && (inputs.kubernetes-poddisruptionbudget-generation-enabled == true || inputs.kubernetes-workload-type == 'deployment' || inputs.kubernetes-workload-type == 'statefulset') && success()
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
+        with:
+          action: pass
+          check-run-id: ${{ steps.check-generate-poddisruptionbudget.outputs.check-run-id }}
+      - name: Fail check - Generate PodDisruptionBudget
+        if: inputs.kubernetes-poddisruptionbudget-generation-enabled != false && (inputs.kubernetes-poddisruptionbudget-generation-enabled == true || inputs.kubernetes-workload-type == 'deployment' || inputs.kubernetes-workload-type == 'statefulset') && failure() && steps.check-generate-poddisruptionbudget.outputs.check-run-id != ''
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
+        with:
+          action: fail
+          check-run-id: ${{ steps.check-generate-poddisruptionbudget.outputs.check-run-id }}
 
       # === Generate Service ===
       - name: Start check - Generate Service

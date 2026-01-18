@@ -21,6 +21,7 @@ on:
       # INJECT-INPUT: kubernetes-workload
       # INJECT-INPUT: kubernetes-workload-deployment
       # INJECT-INPUT: kubernetes-workload-statefulset
+      # INJECT-INPUT: kubernetes-poddisruptionbudget
       # INJECT-INPUT: kubernetes-service
 
       # INJECT-INPUT: token-substitution
@@ -187,6 +188,11 @@ jobs:
       # INJECT: github-check-start(name="Generate Workload Manifest", id="check-generate-workload", if="inputs.kubernetes-workload-type != 'none'")
       # INJECT: generate-kubernetes-workload
       # INJECT: github-check-end(name="Generate Workload Manifest", id="check-generate-workload", if="inputs.kubernetes-workload-type != 'none'")
+
+      # === Generate PodDisruptionBudget ===
+      # INJECT: github-check-start(name="Generate PodDisruptionBudget", id="check-generate-poddisruptionbudget", if="inputs.kubernetes-poddisruptionbudget-generation-enabled != false && (inputs.kubernetes-poddisruptionbudget-generation-enabled == true || inputs.kubernetes-workload-type == 'deployment' || inputs.kubernetes-workload-type == 'statefulset')")
+      # INJECT: generate-kubernetes-poddisruptionbudget
+      # INJECT: github-check-end(name="Generate PodDisruptionBudget", id="check-generate-poddisruptionbudget", if="inputs.kubernetes-poddisruptionbudget-generation-enabled != false && (inputs.kubernetes-poddisruptionbudget-generation-enabled == true || inputs.kubernetes-workload-type == 'deployment' || inputs.kubernetes-workload-type == 'statefulset')")
 
       # === Generate Service ===
       # INJECT: github-check-start(name="Generate Service", id="check-generate-service", if="inputs.kubernetes-service-generation-enabled != false && (inputs.kubernetes-service-generation-enabled == true || inputs.kubernetes-workload-type == 'deployment')")

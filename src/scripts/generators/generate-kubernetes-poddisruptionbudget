@@ -1,0 +1,165 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
+#
+# generate-kubernetes-poddisruptionbudget - Generates a Kubernetes PodDisruptionBudget manifest
+#
+# Creates a PodDisruptionBudget resource for controlling voluntary disruptions.
+# Protects pods during node drains, cluster upgrades, and other voluntary evictions.
+#
+# Inputs (environment variables):
+#   KUBERNETES_PODDISRUPTIONBUDGET_GENERATION_ENABLED - Set to "true" to enable (default: auto)
+#   KUBERNETES_PODDISRUPTIONBUDGET_STRATEGY - Constraint type: min-available or max-unavailable (default: max-unavailable)
+#   KUBERNETES_PODDISRUPTIONBUDGET_VALUE - Integer or percentage for the strategy (default: 1)
+#   KUBERNETES_PODDISRUPTIONBUDGET_NAME_SUFFIX - Optional suffix for name/filename
+#   KUBERNETES_PODDISRUPTIONBUDGET_COMBINED_SUB_PATH - Sub-path within combined/ for output
+#   OUTPUT_SUB_PATH            - Build output directory (default: target)
+#   PROJECT_NAME               - Used in selector and metadata.name (required)
+#   TOKEN_NAME_STYLE           - Style for token references (default: PascalCase)
+#   TOKEN_DELIMITER_STYLE      - Delimiter style for tokens (default: shell)
+#   KUBERNETES_GLOBAL_ADDITIONAL_LABELS      - Extra labels for all manifests
+#   KUBERNETES_GLOBAL_ADDITIONAL_ANNOTATIONS - Extra annotations for all manifests
+#   KUBERNETES_PODDISRUPTIONBUDGET_ADDITIONAL_LABELS   - PDB-specific extra labels
+#   KUBERNETES_PODDISRUPTIONBUDGET_ADDITIONAL_ANNOTATIONS - PDB-specific extra annotations
+#
+# Output:
+#   ${OUTPUT_SUB_PATH}/manifests/combined/[${combined-sub-path}/]poddisruptionbudget[-${suffix}].yaml
+#
+set -euo pipefail
+
+# Locate script directory for libraries
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+LIB_DIR="${SCRIPT_DIR}/../lib"
+
+# Source libraries
+# shellcheck source=src/scripts/lib/token-format.bash
+source "${LIB_DIR}/token-format.bash"
+# shellcheck source=src/scripts/lib/kubernetes-metadata.bash
+source "${LIB_DIR}/kubernetes-metadata.bash"
+# shellcheck source=src/scripts/lib/generator-input-validation.bash
+source "${LIB_DIR}/generator-input-validation.bash"
+
+# Logging configuration (CI-agnostic)
+LOG_ERROR_PREFIX="${LOG_ERROR_PREFIX:-}"
+LOG_ERROR_SUFFIX="${LOG_ERROR_SUFFIX:-}"
+
+# Resource kind
+kind="PodDisruptionBudget"
+
+# Workload type needed for smart defaulting of PDB generation
+# shellcheck source=src/scripts/defaults/kubernetes-workload.bash
+source "${SCRIPT_DIR}/../defaults/kubernetes-workload.bash"
+
+# Smart default: enabled for deployment/statefulset, disabled for others
+if [[ -z "${KUBERNETES_PODDISRUPTIONBUDGET_GENERATION_ENABLED:-}" ]]; then
+  case "${KUBERNETES_WORKLOAD_TYPE}" in
+    deployment|statefulset)
+      KUBERNETES_PODDISRUPTIONBUDGET_GENERATION_ENABLED="true"
+      ;;
+    *)
+      KUBERNETES_PODDISRUPTIONBUDGET_GENERATION_ENABLED="false"
+      ;;
+  esac
+fi
+
+if [[ "${KUBERNETES_PODDISRUPTIONBUDGET_GENERATION_ENABLED}" != "true" ]]; then
+  echo "PodDisruptionBudget generation not enabled (workload type: ${KUBERNETES_WORKLOAD_TYPE}), skipping" >&2
+  exit 0
+fi
+
+# Inputs with defaults
+# shellcheck source=src/scripts/defaults/output-sub-path.bash
+source "${SCRIPT_DIR}/../defaults/output-sub-path.bash"
+# shellcheck source=src/scripts/defaults/tokens.bash
+source "${SCRIPT_DIR}/../defaults/tokens.bash"
+# shellcheck source=src/scripts/defaults/kubernetes-poddisruptionbudget.bash
+source "${SCRIPT_DIR}/../defaults/kubernetes-poddisruptionbudget.bash"
+# shellcheck source=src/scripts/defaults/kubernetes-manifest.bash
+source "${SCRIPT_DIR}/../defaults/kubernetes-manifest.bash"
+
+# =============================================================================
+# Validation
+# =============================================================================
+
+# Validate strategy
+case "${STRATEGY}" in
+  min-available|max-unavailable)
+    ;;
+  *)
+    echo "${LOG_ERROR_PREFIX}Invalid KUBERNETES_PODDISRUPTIONBUDGET_STRATEGY: ${STRATEGY}. Must be 'min-available' or 'max-unavailable'${LOG_ERROR_SUFFIX}" >&2
+    exit 4
+    ;;
+esac
+
+# Value is required
+if [[ -z "${VALUE}" ]]; then
+  echo "${LOG_ERROR_PREFIX}KUBERNETES_PODDISRUPTIONBUDGET_VALUE is required${LOG_ERROR_SUFFIX}" >&2
+  exit 4
+fi
+
+validate_common_inputs
+
+# =============================================================================
+# Generate token references
+# =============================================================================
+
+project_name_token=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "PROJECT_NAME")
+environment_token=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "ENVIRONMENT")
+version_token=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "VERSION")
+
+# Build metadata.name: ${ProjectName}[-${combined}][-${suffix}]
+pdb_name=$(build_resource_name "${project_name_token}" "${COMBINED_SUB_PATH}" "${NAME_SUFFIX}")
+
+# Set app_name for generate_metadata library function
+app_name="${pdb_name}"
+
+# =============================================================================
+# Create output directory and file
+# =============================================================================
+
+output_dir=$(ensure_manifest_output_dir "${OUTPUT_SUB_PATH}" "${COMBINED_SUB_PATH}")
+
+output_file=$(build_output_filename "${output_dir}" "${kind}" "${NAME_SUFFIX}")
+
+# =============================================================================
+# Diagnostic output
+# =============================================================================
+
+echo "PodDisruptionBudget Configuration" >&2
+echo "  Workload type:            ${KUBERNETES_WORKLOAD_TYPE}" >&2
+echo "  Strategy:                 ${STRATEGY}" >&2
+echo "  Value:                    ${VALUE}" >&2
+
+# =============================================================================
+# Build labels and annotations
+# =============================================================================
+
+build_timestamp=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+script_name=$(basename "${BASH_SOURCE[0]}")
+
+# =============================================================================
+# Generate PodDisruptionBudget YAML
+# =============================================================================
+
+{
+  generate_manifest_header "policy/v1" "${kind}" "${pdb_name}" "${environment_token}"
+  generate_metadata 2 labels
+  generate_metadata 2 annotations
+
+  echo "spec:"
+
+  # Budget constraint based on strategy
+  if [[ "${STRATEGY}" == "min-available" ]]; then
+    echo "  minAvailable: ${VALUE}"
+  else
+    echo "  maxUnavailable: ${VALUE}"
+  fi
+
+  # Selector matches the workload's pod template labels
+  echo "  selector:"
+  echo "    matchLabels:"
+  echo "      app: ${project_name_token}"
+
+} > "${output_file}"
+
+echo "Generated PodDisruptionBudget manifest: ${output_file}" >&2

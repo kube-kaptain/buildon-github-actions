@@ -1,0 +1,26 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
+
+- name: Generate PodDisruptionBudget manifest
+  id: generate-poddisruptionbudget
+  if: inputs.kubernetes-poddisruptionbudget-generation-enabled != false && (inputs.kubernetes-poddisruptionbudget-generation-enabled == true || inputs.kubernetes-workload-type == 'deployment' || inputs.kubernetes-workload-type == 'statefulset')
+  uses: ./.github/buildon-github-actions/src/actions/generate-kubernetes-poddisruptionbudget
+  with:
+    # PDB settings
+    kubernetes-poddisruptionbudget-generation-enabled: ${{ inputs.kubernetes-poddisruptionbudget-generation-enabled }}
+    kubernetes-poddisruptionbudget-strategy: ${{ inputs.kubernetes-poddisruptionbudget-strategy }}
+    kubernetes-poddisruptionbudget-value: ${{ inputs.kubernetes-poddisruptionbudget-value }}
+    kubernetes-poddisruptionbudget-name-suffix: ${{ inputs.kubernetes-poddisruptionbudget-name-suffix }}
+    kubernetes-poddisruptionbudget-combined-sub-path: ${{ inputs.kubernetes-poddisruptionbudget-combined-sub-path }}
+    kubernetes-poddisruptionbudget-additional-labels: ${{ inputs.kubernetes-poddisruptionbudget-additional-labels }}
+    kubernetes-poddisruptionbudget-additional-annotations: ${{ inputs.kubernetes-poddisruptionbudget-additional-annotations }}
+    # Workload settings (for smart defaulting)
+    kubernetes-workload-type: ${{ inputs.kubernetes-workload-type }}
+    # Required context
+    project-name: ${{ steps.versions.outputs.project-name }}
+    # Global settings
+    output-sub-path: ${{ inputs.output-sub-path }}
+    token-name-style: ${{ inputs.token-name-style }}
+    token-delimiter-style: ${{ inputs.token-delimiter-style }}
+    kubernetes-global-additional-labels: ${{ inputs.kubernetes-global-additional-labels }}
+    kubernetes-global-additional-annotations: ${{ inputs.kubernetes-global-additional-annotations }}

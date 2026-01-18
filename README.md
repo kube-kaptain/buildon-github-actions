@@ -88,6 +88,7 @@ See [`examples/`](examples/) for more usage patterns.
 | `docker-push` | Pushes a Docker image to registry |
 | `docker-registry-logins` | Authenticate to container registries (GHCR by default, configure others as needed) |
 | `generate-kubernetes-configmap` | Generates a Kubernetes ConfigMap manifest from files in a directory |
+| `generate-kubernetes-poddisruptionbudget` | Generates a Kubernetes PodDisruptionBudget manifest for controlling voluntary disruptions |
 | `generate-kubernetes-secret-template` | Generates a Kubernetes Secret template manifest from files in a directory |
 | `generate-kubernetes-service` | Generates a Kubernetes Service manifest with tokenized values |
 | `generate-kubernetes-serviceaccount` | Generates a Kubernetes ServiceAccount manifest for pod identity and RBAC binding |
@@ -154,6 +155,13 @@ See [`examples/`](examples/) for more usage patterns.
 | `kubernetes-deployment-env-sub-path` | string | `src/deployment-env` | Path to deployment environment variables directory |
 | `kubernetes-global-additional-annotations` | string | `""` | Additional annotations for all Kubernetes manifests (comma-separated key=value) |
 | `kubernetes-global-additional-labels` | string | `""` | Additional labels for all Kubernetes manifests (comma-separated key=value) |
+| `kubernetes-poddisruptionbudget-additional-annotations` | string | `""` | Additional annotations specific to PodDisruptionBudget (comma-separated key=value) |
+| `kubernetes-poddisruptionbudget-additional-labels` | string | `""` | Additional labels specific to PodDisruptionBudget (comma-separated key=value) |
+| `kubernetes-poddisruptionbudget-combined-sub-path` | string | `""` | Sub-path within combined/ for output |
+| `kubernetes-poddisruptionbudget-generation-enabled` | boolean | `""` | Enable PodDisruptionBudget generation (default: auto based on workload type) |
+| `kubernetes-poddisruptionbudget-name-suffix` | string | `""` | Optional suffix for PDB name and filename |
+| `kubernetes-poddisruptionbudget-strategy` | string | `max-unavailable` | PDB constraint strategy (min-available or max-unavailable) |
+| `kubernetes-poddisruptionbudget-value` | string | `1` | Value for the chosen strategy (integer or percentage, e.g., 1, 50%) |
 | `kubernetes-secret-template-additional-annotations` | string | `""` | Additional annotations specific to Secret template (comma-separated key=value) |
 | `kubernetes-secret-template-additional-labels` | string | `""` | Additional labels specific to Secret template (comma-separated key=value) |
 | `kubernetes-secret-template-name-checksum-injection` | boolean | `true` | Enable checksum injection suffix in Secret name |

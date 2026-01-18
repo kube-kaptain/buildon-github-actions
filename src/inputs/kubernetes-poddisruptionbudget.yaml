@@ -1,0 +1,38 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
+#
+# Kubernetes PodDisruptionBudget generation
+kubernetes-poddisruptionbudget-generation-enabled:
+  description: 'Enable PodDisruptionBudget generation (default: auto based on workload type)'
+  required: false
+  type: boolean
+kubernetes-poddisruptionbudget-name-suffix:
+  description: 'Optional suffix for PDB name and filename'
+  required: false
+  type: string
+  default: ''
+kubernetes-poddisruptionbudget-combined-sub-path:
+  description: 'Sub-path within combined/ for output'
+  required: false
+  type: string
+  default: ''
+kubernetes-poddisruptionbudget-strategy:
+  description: 'PDB constraint strategy (min-available or max-unavailable)'
+  required: false
+  type: string
+  default: 'max-unavailable'
+kubernetes-poddisruptionbudget-value:
+  description: 'Value for the chosen strategy (integer or percentage, e.g., 1, 50%)'
+  required: false
+  type: string
+  default: '1'
+kubernetes-poddisruptionbudget-additional-labels:
+  description: 'Additional labels specific to PodDisruptionBudget (comma-separated key=value)'
+  required: false
+  type: string
+  default: ''
+kubernetes-poddisruptionbudget-additional-annotations:
+  description: 'Additional annotations specific to PodDisruptionBudget (comma-separated key=value)'
+  required: false
+  type: string
+  default: ''
