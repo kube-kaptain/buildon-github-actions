@@ -1639,7 +1639,11 @@ jobs:
         if: inputs.kubernetes-configmap-sub-path != '' && success()
         uses: ./.github/buildon-github-actions/src/actions/generate-kubernetes-configmap
         with:
+          # Required context
+          project-name: ${{ steps.versions.outputs.project-name }}
+          # ConfigMap settings
           kubernetes-configmap-sub-path: ${{ inputs.kubernetes-configmap-sub-path }}
+          # Global settings
           output-sub-path: ${{ inputs.output-sub-path }}
           token-name-style: ${{ inputs.token-name-style }}
           token-delimiter-style: ${{ inputs.token-delimiter-style }}
@@ -1674,7 +1678,11 @@ jobs:
         if: inputs.kubernetes-secret-template-sub-path != '' && success()
         uses: ./.github/buildon-github-actions/src/actions/generate-kubernetes-secret-template
         with:
+          # Required context
+          project-name: ${{ steps.versions.outputs.project-name }}
+          # Secret template settings
           kubernetes-secret-template-sub-path: ${{ inputs.kubernetes-secret-template-sub-path }}
+          # Global settings
           output-sub-path: ${{ inputs.output-sub-path }}
           token-name-style: ${{ inputs.token-name-style }}
           token-delimiter-style: ${{ inputs.token-delimiter-style }}
@@ -1709,6 +1717,9 @@ jobs:
         if: inputs.kubernetes-serviceaccount-generation-enabled == true && success()
         uses: ./.github/buildon-github-actions/src/actions/generate-kubernetes-serviceaccount
         with:
+          # Required context
+          project-name: ${{ steps.versions.outputs.project-name }}
+          # ServiceAccount settings
           kubernetes-serviceaccount-generation-enabled: ${{ inputs.kubernetes-serviceaccount-generation-enabled }}
           kubernetes-serviceaccount-name-suffix: ${{ inputs.kubernetes-serviceaccount-name-suffix }}
           kubernetes-serviceaccount-combined-sub-path: ${{ inputs.kubernetes-serviceaccount-combined-sub-path }}
@@ -1892,6 +1903,8 @@ jobs:
           # Workload settings (for defaults)
           kubernetes-workload-type: ${{ inputs.kubernetes-workload-type }}
           kubernetes-workload-container-port: ${{ inputs.kubernetes-workload-container-port }}
+          # Required context
+          project-name: ${{ steps.versions.outputs.project-name }}
           # Global settings
           output-sub-path: ${{ inputs.output-sub-path }}
           token-name-style: ${{ inputs.token-name-style }}

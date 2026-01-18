@@ -6,7 +6,11 @@
   if: inputs.kubernetes-configmap-sub-path != ''
   uses: ./.github/buildon-github-actions/src/actions/generate-kubernetes-configmap
   with:
+    # Required context
+    project-name: ${{ steps.versions.outputs.project-name }}
+    # ConfigMap settings
     kubernetes-configmap-sub-path: ${{ inputs.kubernetes-configmap-sub-path }}
+    # Global settings
     output-sub-path: ${{ inputs.output-sub-path }}
     token-name-style: ${{ inputs.token-name-style }}
     token-delimiter-style: ${{ inputs.token-delimiter-style }}

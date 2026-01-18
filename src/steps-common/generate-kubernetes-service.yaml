@@ -23,6 +23,8 @@
     # Workload settings (for defaults)
     kubernetes-workload-type: ${{ inputs.kubernetes-workload-type }}
     kubernetes-workload-container-port: ${{ inputs.kubernetes-workload-container-port }}
+    # Required context
+    project-name: ${{ steps.versions.outputs.project-name }}
     # Global settings
     output-sub-path: ${{ inputs.output-sub-path }}
     token-name-style: ${{ inputs.token-name-style }}

@@ -42,6 +42,11 @@ inputs:
     required: false
     default: ''
 
+  # Required context
+  project-name:
+    description: 'Project name (required)'
+    required: true
+
 runs:
   using: 'composite'
   steps:
@@ -50,6 +55,9 @@ runs:
       shell: bash
       env:
         LOG_ERROR_PREFIX: '::error::'
+        # Required context
+        PROJECT_NAME: ${{ inputs.project-name }}
+        # ConfigMap settings
         KUBERNETES_CONFIGMAP_SUB_PATH: ${{ inputs.kubernetes-configmap-sub-path }}
         OUTPUT_SUB_PATH: ${{ inputs.output-sub-path }}
         TOKEN_NAME_STYLE: ${{ inputs.token-name-style }}

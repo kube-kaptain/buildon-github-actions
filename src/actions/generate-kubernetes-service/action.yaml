@@ -68,6 +68,11 @@ inputs:
     required: false
     default: '1024'
 
+  # Required context
+  project-name:
+    description: 'Project name (required)'
+    required: true
+
   # Global settings (passed through)
   output-sub-path:
     description: 'Build output directory (relative)'
@@ -115,6 +120,8 @@ runs:
         # Workload settings (for defaults)
         KUBERNETES_WORKLOAD_TYPE: ${{ inputs.kubernetes-workload-type }}
         KUBERNETES_WORKLOAD_CONTAINER_PORT: ${{ inputs.kubernetes-workload-container-port }}
+        # Required context
+        PROJECT_NAME: ${{ inputs.project-name }}
         # Global settings
         OUTPUT_SUB_PATH: ${{ inputs.output-sub-path }}
         TOKEN_NAME_STYLE: ${{ inputs.token-name-style }}
