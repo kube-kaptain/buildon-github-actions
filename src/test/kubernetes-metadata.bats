@@ -206,3 +206,145 @@ setup() {
   [ -z "$result" ]
 }
 
+# =============================================================================
+# build_name_middle_fragment
+# =============================================================================
+
+@test "build_name_middle_fragment: path and suffix" {
+  result=$(build_name_middle_fragment "backend/redis" "cache")
+  [ "$result" = "-backend-redis-cache" ]
+}
+
+@test "build_name_middle_fragment: path only" {
+  result=$(build_name_middle_fragment "backend/redis" "")
+  [ "$result" = "-backend-redis" ]
+}
+
+@test "build_name_middle_fragment: suffix only" {
+  result=$(build_name_middle_fragment "" "worker")
+  [ "$result" = "-worker" ]
+}
+
+@test "build_name_middle_fragment: empty path and suffix" {
+  result=$(build_name_middle_fragment "" "")
+  [ "$result" = "" ]
+}
+
+@test "build_name_middle_fragment: deep path" {
+  result=$(build_name_middle_fragment "services/backend/api/v2" "main")
+  [ "$result" = "-services-backend-api-v2-main" ]
+}
+
+@test "build_name_middle_fragment: fails with wrong arg count" {
+  run build_name_middle_fragment "only-one"
+  [ "$status" -ne 0 ]
+}
+
+# =============================================================================
+# build_resource_name
+# =============================================================================
+
+@test "build_resource_name: all parts including final suffix" {
+  result=$(build_resource_name '${ProjectName}' "backend/redis" "cache" "configmap-checksum")
+  [ "$result" = '${ProjectName}-backend-redis-cache-configmap-checksum' ]
+}
+
+@test "build_resource_name: path and suffix without final" {
+  result=$(build_resource_name '${ProjectName}' "backend/redis" "cache" "")
+  [ "$result" = '${ProjectName}-backend-redis-cache' ]
+}
+
+@test "build_resource_name: path and suffix, 3 args" {
+  result=$(build_resource_name '${ProjectName}' "backend/redis" "cache")
+  [ "$result" = '${ProjectName}-backend-redis-cache' ]
+}
+
+@test "build_resource_name: suffix and final only" {
+  result=$(build_resource_name '${ProjectName}' "" "worker" "secret-checksum")
+  [ "$result" = '${ProjectName}-worker-secret-checksum' ]
+}
+
+@test "build_resource_name: final suffix only" {
+  result=$(build_resource_name '${ProjectName}' "" "" "headless")
+  [ "$result" = '${ProjectName}-headless' ]
+}
+
+@test "build_resource_name: project name only" {
+  result=$(build_resource_name '${ProjectName}' "" "" "")
+  [ "$result" = '${ProjectName}' ]
+}
+
+@test "build_resource_name: project name only, 3 args" {
+  result=$(build_resource_name '${ProjectName}' "" "")
+  [ "$result" = '${ProjectName}' ]
+}
+
+@test "build_resource_name: path only with final" {
+  result=$(build_resource_name '${ProjectName}' "services/api" "" "configmap-checksum")
+  [ "$result" = '${ProjectName}-services-api-configmap-checksum' ]
+}
+
+@test "build_resource_name: fails with 2 args" {
+  run build_resource_name '${ProjectName}' "path"
+  [ "$status" -ne 0 ]
+}
+
+@test "build_resource_name: fails with 5 args" {
+  run build_resource_name '${ProjectName}' "path" "suffix" "final" "extra"
+  [ "$status" -ne 0 ]
+}
+
+# =============================================================================
+# build_output_filename
+# =============================================================================
+
+@test "build_output_filename: with suffix" {
+  result=$(build_output_filename "target/manifests/combined" "deployment" "cache")
+  [ "$result" = "target/manifests/combined/deployment-cache.yaml" ]
+}
+
+@test "build_output_filename: without suffix" {
+  result=$(build_output_filename "target/manifests/combined" "deployment" "")
+  [ "$result" = "target/manifests/combined/deployment.yaml" ]
+}
+
+@test "build_output_filename: service headless" {
+  result=$(build_output_filename "target/manifests/combined" "service" "headless")
+  [ "$result" = "target/manifests/combined/service-headless.yaml" ]
+}
+
+@test "build_output_filename: statefulset with suffix" {
+  result=$(build_output_filename "target/manifests/combined/backend/redis" "statefulset" "db")
+  [ "$result" = "target/manifests/combined/backend/redis/statefulset-db.yaml" ]
+}
+
+@test "build_output_filename: uppercase kind is lowercased" {
+  result=$(build_output_filename "target/manifests/combined" "Deployment" "worker")
+  [ "$result" = "target/manifests/combined/deployment-worker.yaml" ]
+}
+
+@test "build_output_filename: mixed case StatefulSet" {
+  result=$(build_output_filename "target/manifests/combined" "StatefulSet" "")
+  [ "$result" = "target/manifests/combined/statefulset.yaml" ]
+}
+
+@test "build_output_filename: fails with 2 args" {
+  run build_output_filename "dir" "type"
+  [ "$status" -ne 0 ]
+}
+
+@test "build_output_filename: custom extension with suffix" {
+  result=$(build_output_filename "target/manifests/combined" "Secret" "db" "template.yaml")
+  [ "$result" = "target/manifests/combined/secret-db.template.yaml" ]
+}
+
+@test "build_output_filename: custom extension without suffix" {
+  result=$(build_output_filename "target/manifests/combined" "Secret" "" "template.yaml")
+  [ "$result" = "target/manifests/combined/secret.template.yaml" ]
+}
+
+@test "build_output_filename: fails with 5 args" {
+  run build_output_filename "dir" "type" "suffix" "ext" "extra"
+  [ "$status" -ne 0 ]
+}
+

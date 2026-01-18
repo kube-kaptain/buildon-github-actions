@@ -28,7 +28,6 @@ set -euo pipefail
 # Locate script directory for libraries
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 LIB_DIR="${SCRIPT_DIR}/../lib"
-PLUGIN_DIR="${SCRIPT_DIR}/../plugins"
 
 # Source libraries
 # shellcheck source=src/scripts/lib/token-format.bash
@@ -43,6 +42,8 @@ source "${LIB_DIR}/kubernetes-probes.bash"
 source "${LIB_DIR}/kubernetes-workload-detection.bash"
 # shellcheck source=src/scripts/lib/kubernetes-pod-spec.bash
 source "${LIB_DIR}/kubernetes-pod-spec.bash"
+# shellcheck source=src/scripts/lib/generator-input-validation.bash
+source "${LIB_DIR}/generator-input-validation.bash"
 
 # Logging configuration (CI-agnostic)
 LOG_ERROR_PREFIX="${LOG_ERROR_PREFIX:-}"
@@ -52,60 +53,24 @@ LOG_ERROR_SUFFIX="${LOG_ERROR_SUFFIX:-}"
 # Inputs with defaults
 # =============================================================================
 
-# Naming and paths (common workload settings)
-NAME_SUFFIX="${KUBERNETES_WORKLOAD_NAME_SUFFIX:-}"
-COMBINED_SUB_PATH="${KUBERNETES_WORKLOAD_COMBINED_SUB_PATH:-}"
-ENV_BASE_PATH="${KUBERNETES_WORKLOAD_ENV_SUB_PATH:-src/deployment-env}"
-ENV_SUB_PATH=$(build_configuration_source_path "${ENV_BASE_PATH}" "${NAME_SUFFIX}" "-env")
-
 # shellcheck source=src/scripts/defaults/common.bash
 source "${SCRIPT_DIR}/../defaults/common.bash"
 # shellcheck source=src/scripts/defaults/tokens.bash
 source "${SCRIPT_DIR}/../defaults/tokens.bash"
 # shellcheck source=src/scripts/defaults/kubernetes-workload.bash
 source "${SCRIPT_DIR}/../defaults/kubernetes-workload.bash"
+# shellcheck source=src/scripts/defaults/kubernetes-workload-deployment.bash
+source "${SCRIPT_DIR}/../defaults/kubernetes-workload-deployment.bash"
+
+# Build final env sub path from base
+FINAL_ENV_SUB_PATH=$(build_configuration_source_path "${BASE_ENV_SUB_PATH}" "${NAME_SUFFIX}" "-env")
 
 # =============================================================================
 # Validation
 # =============================================================================
 
-# Validate required inputs
-if [[ -z "${PROJECT_NAME:-}" ]]; then
-  echo "${LOG_ERROR_PREFIX}PROJECT_NAME is required${LOG_ERROR_SUFFIX}" >&2
-  exit 1
-fi
-
-# Validate styles
-validate_token_styles
-
-# Validate seccomp profile
-if [[ "${SECCOMP_PROFILE}" != "DISABLED" && "${SECCOMP_PROFILE}" != "RuntimeDefault" && "${SECCOMP_PROFILE}" != "Localhost" && "${SECCOMP_PROFILE}" != "Unconfined" ]]; then
-  echo "${LOG_ERROR_PREFIX}KUBERNETES_WORKLOAD_SECCOMP_PROFILE must be 'DISABLED', 'RuntimeDefault', 'Localhost', or 'Unconfined', got: ${SECCOMP_PROFILE}${LOG_ERROR_SUFFIX}" >&2
-  exit 4
-fi
-
-# Validate readonly root filesystem
-if [[ "${READONLY_ROOT_FILESYSTEM}" != "true" && "${READONLY_ROOT_FILESYSTEM}" != "false" ]]; then
-  echo "${LOG_ERROR_PREFIX}KUBERNETES_WORKLOAD_READONLY_ROOT_FILESYSTEM must be 'true' or 'false', got: ${READONLY_ROOT_FILESYSTEM}${LOG_ERROR_SUFFIX}" >&2
-  exit 4
-fi
-
-# Validate image reference style
-if [[ "${IMAGE_REFERENCE_STYLE}" != "combined" && "${IMAGE_REFERENCE_STYLE}" != "separate" && "${IMAGE_REFERENCE_STYLE}" != "project-name-prefixed-combined" && "${IMAGE_REFERENCE_STYLE}" != "project-name-prefixed-separate" ]]; then
-  echo "${LOG_ERROR_PREFIX}KUBERNETES_WORKLOAD_IMAGE_REFERENCE_STYLE must be 'combined', 'separate', 'project-name-prefixed-combined', or 'project-name-prefixed-separate', got: ${IMAGE_REFERENCE_STYLE}${LOG_ERROR_SUFFIX}" >&2
-  exit 4
-fi
-
-# Validate combined sub-path format
-validate_combined_sub_path "${COMBINED_SUB_PATH}"
-
-# Validate affinity strategy plugin exists
-affinity_strategy="${AFFINITY_STRATEGY}"
-affinity_plugin="${PLUGIN_DIR}/pod-placement-strategy/${affinity_strategy}"
-if [[ ! -x "${affinity_plugin}" ]]; then
-  echo "${LOG_ERROR_PREFIX}Unknown affinity strategy '${affinity_strategy}' - plugin not found at ${affinity_plugin}${LOG_ERROR_SUFFIX}" >&2
-  exit 5
-fi
+validate_common_inputs
+validate_workload_inputs
 
 # =============================================================================
 # Generate token references
@@ -117,61 +82,28 @@ version_token=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_
 docker_tag_token=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "DOCKER_TAG")
 docker_image_name_token=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "DOCKER_IMAGE_NAME")
 
-# Image reference tokens - depends on style
-# imagePullSecrets uses the registry token matching the style (what you auth against)
-case "${IMAGE_REFERENCE_STYLE}" in
-  combined)
-    registry_and_base_token=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "ENVIRONMENT_DOCKER_REGISTRY_AND_BASE_PATH")
-    image_reference="${registry_and_base_token}/${docker_image_name_token}:${docker_tag_token}"
-    image_pull_secret_token=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "ENVIRONMENT_DOCKER_REGISTRY")
-    ;;
-  separate)
-    docker_registry_token=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "ENVIRONMENT_DOCKER_REGISTRY")
-    docker_base_path_token=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "ENVIRONMENT_DOCKER_BASE_PATH")
-    image_reference="${docker_registry_token}/${docker_base_path_token}/${docker_image_name_token}:${docker_tag_token}"
-    image_pull_secret_token="${docker_registry_token}"
-    ;;
-  project-name-prefixed-combined)
-    registry_and_base_token=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "PROJECT_NAME_ENVIRONMENT_DOCKER_REGISTRY_AND_BASE_PATH")
-    image_reference="${registry_and_base_token}/${docker_image_name_token}:${docker_tag_token}"
-    image_pull_secret_token=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "PROJECT_NAME_ENVIRONMENT_DOCKER_REGISTRY")
-    ;;
-  project-name-prefixed-separate)
-    docker_registry_token=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "PROJECT_NAME_ENVIRONMENT_DOCKER_REGISTRY")
-    docker_base_path_token=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "PROJECT_NAME_ENVIRONMENT_DOCKER_BASE_PATH")
-    image_reference="${docker_registry_token}/${docker_base_path_token}/${docker_image_name_token}:${docker_tag_token}"
-    image_pull_secret_token="${docker_registry_token}"
-    ;;
-esac
-
-# Replicas: empty → default token, "NO" → omit for HPA, other → pass through (numeric or custom token)
-default_replicas_token=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "ENVIRONMENT_DEFAULT_REPLICA_COUNT")
-if [[ -z "${REPLICAS}" ]]; then
-  resolved_replicas="${default_replicas_token}"
-elif [[ "${REPLICAS}" == "NO" ]]; then
-  resolved_replicas="NO"
-else
-  resolved_replicas="${REPLICAS}"
-fi
+# Build image reference and resolve replicas (sets image_reference, image_pull_secret_token, resolved_replicas)
+build_image_reference
+resolve_replicas
 
 # =============================================================================
-# Build metadata.name
+# Build resource names
 # =============================================================================
 
-name_middle=$(build_name_middle_fragment "${COMBINED_SUB_PATH}" "${NAME_SUFFIX}")
-deployment_name="${project_name_token}${name_middle}"
+kind="Deployment"
+deployment_name=$(build_resource_name "${project_name_token}" "${COMBINED_SUB_PATH}" "${NAME_SUFFIX}")
+configmap_name=$(build_resource_name "${project_name_token}" "${COMBINED_SUB_PATH}" "${NAME_SUFFIX}" "configmap-checksum")
+secret_name=$(build_resource_name "${project_name_token}" "${COMBINED_SUB_PATH}" "${NAME_SUFFIX}" "secret-checksum")
+
+# Set app_name for generate_metadata library function
+app_name="${deployment_name}"
 
 # =============================================================================
 # Create output directory and file
 # =============================================================================
 
 output_dir=$(ensure_manifest_output_dir "${OUTPUT_SUB_PATH}" "${COMBINED_SUB_PATH}")
-
-if [[ -n "${NAME_SUFFIX}" ]]; then
-  output_file="${output_dir}/deployment-${NAME_SUFFIX}.yaml"
-else
-  output_file="${output_dir}/deployment.yaml"
-fi
+output_file=$(build_output_filename "${output_dir}" "${kind}" "${NAME_SUFFIX}")
 
 # =============================================================================
 # Detect optional resources
@@ -249,7 +181,7 @@ specific_annotations="${KUBERNETES_WORKLOAD_ADDITIONAL_ANNOTATIONS:-}"
 
 {
   # Header
-  generate_manifest_header "apps/v1" "Deployment" "${deployment_name}" "${environment_token}"
+  generate_manifest_header "apps/v1" "${kind}" "${deployment_name}" "${environment_token}"
   generate_metadata 2 labels
   generate_metadata 2 annotations default-app
 
@@ -266,7 +198,7 @@ specific_annotations="${KUBERNETES_WORKLOAD_ADDITIONAL_ANNOTATIONS:-}"
   # Selector
   echo "  selector:"
   echo "    matchLabels:"
-  echo "      app: ${project_name_token}"
+  echo "      app: ${deployment_name}"
 
   # Update strategy (fixed - zero downtime)
   echo "  strategy:"
@@ -293,11 +225,9 @@ specific_annotations="${KUBERNETES_WORKLOAD_ADDITIONAL_ANNOTATIONS:-}"
   generate_pod_security_context 6 "${SECCOMP_PROFILE}"
 
   # Affinity (via plugin)
-  if [[ "${affinity_strategy}" != "none" ]]; then
+  if [[ "${AFFINITY_STRATEGY}" != "none" ]]; then
     POD_PLACEMENT_INDENT=6 \
-    TOKEN_NAME_STYLE="${TOKEN_NAME_STYLE}" \
-    TOKEN_DELIMITER_STYLE="${TOKEN_DELIMITER_STYLE}" \
-    PROJECT_NAME="${PROJECT_NAME}" \
+    APP_LABEL_VALUE="${deployment_name}" \
     "${affinity_plugin}"
   fi
 
@@ -326,15 +256,15 @@ specific_annotations="${KUBERNETES_WORKLOAD_ADDITIONAL_ANNOTATIONS:-}"
   generate_workload_probes 10
 
   # Environment variables (plain KVs from directory + refs from configmap/secret keys)
-  generate_container_env_all 10 "${ENV_SUB_PATH}" \
-    "${configmap_source}" "${project_name_token}${suffix_fragment}-configmap-checksum" "${CONFIGMAP_KEYS_FOR_ENV}" \
-    "${secret_source}" "${project_name_token}${suffix_fragment}-secret-checksum" "${SECRET_KEYS_FOR_ENV}"
+  generate_container_env_all 10 "${FINAL_ENV_SUB_PATH}" \
+    "${configmap_source}" "${configmap_name}" "${CONFIGMAP_KEYS_FOR_ENV}" \
+    "${secret_source}" "${secret_name}" "${SECRET_KEYS_FOR_ENV}"
 
   # Volume mounts
   generate_configmap_secret_volume_mounts 10 "${has_configmap}" "${has_secret}" "${CONFIGMAP_MOUNT_PATH}" "${SECRET_MOUNT_PATH}"
 
   # Volumes
-  generate_configmap_secret_volumes 6 "${has_configmap}" "${has_secret}" "${project_name_token}${suffix_fragment}-configmap-checksum" "${project_name_token}${suffix_fragment}-secret-checksum"
+  generate_configmap_secret_volumes 6 "${has_configmap}" "${has_secret}" "${configmap_name}" "${secret_name}"
 
 } > "${output_file}"
 

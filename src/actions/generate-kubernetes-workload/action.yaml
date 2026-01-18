@@ -22,7 +22,7 @@ inputs:
     required: false
     default: ''
   kubernetes-workload-revision-history-limit:
-    description: 'Number of revisions to retain (ReplicaSets for Deployment, ControllerRevisions for StatefulSet)'
+    description: 'Number of revisions to retain (ReplicaSets for Deployment, ControllerRevisions for StatefulSet, etc.)'
     required: false
     default: '10'
   kubernetes-workload-name-suffix:

@@ -9,7 +9,7 @@
 #
 # Inputs (environment variables):
 #   KUBERNETES_WORKLOAD_TYPE - Workload type to generate (default: deployment)
-#                              Values: deployment, none
+#                              Values: none, deployment, statefulset, etc.
 #                              Additional types can be added by creating
 #                              generate-kubernetes-workload-<type> scripts.
 #

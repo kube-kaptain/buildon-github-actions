@@ -4,10 +4,11 @@
 #
 # kubernetes-pod-spec.bash - Pod spec generation for workload manifests
 #
-# Functions for generating pod spec YAML blocks used by Deployment, StatefulSet,
-# DaemonSet, Job, and CronJob generators.
+# Functions for generating pod spec YAML blocks used by Deployment, StatefulSet, etc.
 #
 # Functions:
+#   build_image_reference               - Build image reference and pull secret token from style
+#   resolve_replicas                    - Resolve replicas value (token, NO, or explicit)
 #   generate_pod_security_context       - Pod-level security context
 #   generate_container_security_context - Container-level security context
 #   generate_container_resources        - Resource requests and limits
@@ -21,6 +22,75 @@
 #   generate_image_pull_secrets         - Image pull secrets block
 #   generate_service_account_config     - ServiceAccount name and automount token
 #   generate_container_start            - Container name, image, imagePullPolicy
+
+# Build image reference and pull secret token based on image reference style
+# Usage: build_image_reference
+#
+# Reads from caller's scope:
+#   IMAGE_REFERENCE_STYLE   - combined, separate, project-name-prefixed-combined, or project-name-prefixed-separate
+#   TOKEN_DELIMITER_STYLE   - Token delimiter style
+#   TOKEN_NAME_STYLE        - Token name style
+#   docker_image_name_token - Token for docker image name
+#   docker_tag_token        - Token for docker tag
+#
+# Sets in caller's scope:
+#   image_reference         - Full image reference string
+#   image_pull_secret_token - Token for image pull secret name
+#
+build_image_reference() {
+  case "${IMAGE_REFERENCE_STYLE}" in
+    combined)
+      local registry_and_base_token
+      registry_and_base_token=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "ENVIRONMENT_DOCKER_REGISTRY_AND_BASE_PATH")
+      image_reference="${registry_and_base_token}/${docker_image_name_token}:${docker_tag_token}"
+      image_pull_secret_token=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "ENVIRONMENT_DOCKER_REGISTRY")
+      ;;
+    separate)
+      local docker_registry_token docker_base_path_token
+      docker_registry_token=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "ENVIRONMENT_DOCKER_REGISTRY")
+      docker_base_path_token=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "ENVIRONMENT_DOCKER_BASE_PATH")
+      image_reference="${docker_registry_token}/${docker_base_path_token}/${docker_image_name_token}:${docker_tag_token}"
+      image_pull_secret_token="${docker_registry_token}"
+      ;;
+    project-name-prefixed-combined)
+      local registry_and_base_token
+      registry_and_base_token=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "PROJECT_NAME_ENVIRONMENT_DOCKER_REGISTRY_AND_BASE_PATH")
+      image_reference="${registry_and_base_token}/${docker_image_name_token}:${docker_tag_token}"
+      image_pull_secret_token=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "PROJECT_NAME_ENVIRONMENT_DOCKER_REGISTRY")
+      ;;
+    project-name-prefixed-separate)
+      local docker_registry_token docker_base_path_token
+      docker_registry_token=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "PROJECT_NAME_ENVIRONMENT_DOCKER_REGISTRY")
+      docker_base_path_token=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "PROJECT_NAME_ENVIRONMENT_DOCKER_BASE_PATH")
+      image_reference="${docker_registry_token}/${docker_base_path_token}/${docker_image_name_token}:${docker_tag_token}"
+      image_pull_secret_token="${docker_registry_token}"
+      ;;
+  esac
+}
+
+# Resolve replicas value from input
+# Usage: resolve_replicas
+#
+# Reads from caller's scope:
+#   REPLICAS              - Empty (use default token), "NO" (omit for HPA), or explicit value
+#   TOKEN_DELIMITER_STYLE - Token delimiter style
+#   TOKEN_NAME_STYLE      - Token name style
+#
+# Sets in caller's scope:
+#   resolved_replicas     - Resolved replicas value (token, "NO", or explicit)
+#
+resolve_replicas() {
+  local default_replicas_token
+  default_replicas_token=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "ENVIRONMENT_DEFAULT_REPLICA_COUNT")
+
+  if [[ -z "${REPLICAS}" ]]; then
+    resolved_replicas="${default_replicas_token}"
+  elif [[ "${REPLICAS}" == "NO" ]]; then
+    resolved_replicas="NO"
+  else
+    resolved_replicas="${REPLICAS}"
+  fi
+}
 
 # Build indentation string
 # Usage: _pod_spec_indent <spaces>

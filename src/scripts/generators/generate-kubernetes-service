@@ -9,7 +9,7 @@
 #
 # Service Types:
 #   ClusterIP    - Standard internal load balancing with selector
-#   Headless     - clusterIP: None with selector (for StatefulSet DNS, pod discovery)
+#   Headless     - clusterIP: None with selector (for StatefulSet DNS, pod discovery, etc.)
 #   NoSelector   - No selector, for manual Endpoints (external DB, etc.)
 #   NodePort     - External access via node ports
 #   LoadBalancer - Cloud load balancer integration
@@ -50,10 +50,15 @@ LIB_DIR="${SCRIPT_DIR}/../lib"
 source "${LIB_DIR}/token-format.bash"
 # shellcheck source=src/scripts/lib/kubernetes-metadata.bash
 source "${LIB_DIR}/kubernetes-metadata.bash"
+# shellcheck source=src/scripts/lib/generator-input-validation.bash
+source "${LIB_DIR}/generator-input-validation.bash"
 
 # Logging configuration (CI-agnostic)
 LOG_ERROR_PREFIX="${LOG_ERROR_PREFIX:-}"
 LOG_ERROR_SUFFIX="${LOG_ERROR_SUFFIX:-}"
+
+# Resource kind
+kind="Service"
 
 # Default workload type
 KUBERNETES_WORKLOAD_TYPE="${KUBERNETES_WORKLOAD_TYPE:-deployment}"
@@ -192,11 +197,7 @@ if [[ -n "${EXTERNAL_TRAFFIC_POLICY}" ]]; then
   esac
 fi
 
-# Validate styles
-validate_token_styles
-
-# Validate combined sub-path format
-validate_combined_sub_path "${COMBINED_SUB_PATH}"
+validate_common_inputs
 
 # =============================================================================
 # Generate token references
@@ -207,8 +208,10 @@ environment_token=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_N
 version_token=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "VERSION")
 
 # Build metadata.name: ${ProjectName}[-${combined}][-${suffix}]
-name_middle=$(build_name_middle_fragment "${COMBINED_SUB_PATH}" "${NAME_SUFFIX}")
-service_name="${project_name_token}${name_middle}"
+service_name=$(build_resource_name "${project_name_token}" "${COMBINED_SUB_PATH}" "${NAME_SUFFIX}")
+
+# Set app_name for generate_metadata library function
+app_name="${service_name}"
 
 # =============================================================================
 # Create output directory and file
@@ -216,11 +219,7 @@ service_name="${project_name_token}${name_middle}"
 
 output_dir=$(ensure_manifest_output_dir "${OUTPUT_SUB_PATH}" "${COMBINED_SUB_PATH}")
 
-if [[ -n "${NAME_SUFFIX}" ]]; then
-  output_file="${output_dir}/service-${NAME_SUFFIX}.yaml"
-else
-  output_file="${output_dir}/service.yaml"
-fi
+output_file=$(build_output_filename "${output_dir}" "${kind}" "${NAME_SUFFIX}")
 
 # =============================================================================
 # Diagnostic output
@@ -268,7 +267,7 @@ specific_annotations="${KUBERNETES_SERVICE_ADDITIONAL_ANNOTATIONS:-}"
 # =============================================================================
 
 {
-  generate_manifest_header "v1" "Service" "${service_name}" "${environment_token}"
+  generate_manifest_header "v1" "${kind}" "${service_name}" "${environment_token}"
   generate_metadata 2 labels
   generate_metadata 2 annotations
 

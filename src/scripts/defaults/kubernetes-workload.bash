@@ -13,9 +13,29 @@
 
 # shellcheck disable=SC2034  # Variables used by sourcing scripts
 
+# =============================================================================
+# Apply defaults to long-form variables (collision-safe)
+# =============================================================================
+
+# Naming and paths
+KUBERNETES_WORKLOAD_NAME_SUFFIX="${KUBERNETES_WORKLOAD_NAME_SUFFIX:-}"
+KUBERNETES_WORKLOAD_COMBINED_SUB_PATH="${KUBERNETES_WORKLOAD_COMBINED_SUB_PATH:-}"
+
 # Replicas: empty → token, "NO" → omit for HPA, other → pass through (numeric or custom token)
-REPLICAS="${KUBERNETES_WORKLOAD_REPLICAS:-}"
-REVISION_HISTORY_LIMIT="${KUBERNETES_WORKLOAD_REVISION_HISTORY_LIMIT:-10}"
+KUBERNETES_WORKLOAD_REPLICAS="${KUBERNETES_WORKLOAD_REPLICAS:-}"
+KUBERNETES_WORKLOAD_REVISION_HISTORY_LIMIT="${KUBERNETES_WORKLOAD_REVISION_HISTORY_LIMIT:-10}"
+
+# =============================================================================
+# Convenience short names (for single-purpose generator scripts only)
+# =============================================================================
+
+# Naming and paths
+NAME_SUFFIX="${KUBERNETES_WORKLOAD_NAME_SUFFIX}"
+COMBINED_SUB_PATH="${KUBERNETES_WORKLOAD_COMBINED_SUB_PATH}"
+
+# Replicas
+REPLICAS="${KUBERNETES_WORKLOAD_REPLICAS}"
+REVISION_HISTORY_LIMIT="${KUBERNETES_WORKLOAD_REVISION_HISTORY_LIMIT}"
 
 # Image reference style
 IMAGE_REFERENCE_STYLE="${KUBERNETES_WORKLOAD_IMAGE_REFERENCE_STYLE:-combined}"

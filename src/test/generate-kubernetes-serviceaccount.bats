@@ -86,7 +86,7 @@ read_manifest_in_subpath() {
   [[ "$manifest" == *'app: ${ProjectName}'* ]]
   [[ "$manifest" == *'app.kubernetes.io/name: ${ProjectName}'* ]]
   [[ "$manifest" == *'app.kubernetes.io/version: ${Version}'* ]]
-  [[ "$manifest" == *"app.kubernetes.io/managed-by: kaptain"* ]]
+  [[ "$manifest" == *"app.kubernetes.io/managed-by: Kaptain"* ]]
 }
 
 @test "includes kaptain annotations" {

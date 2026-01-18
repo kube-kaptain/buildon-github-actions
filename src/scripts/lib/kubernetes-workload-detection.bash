@@ -82,7 +82,7 @@ detect_configmap() {
 detect_secret() {
   has_secret=false
   secret_source=""
-  local secret_filename="secret.template${suffix_fragment}.yaml"
+  local secret_filename="secret${suffix_fragment}.template.yaml"
   if [[ -f "${combined_check_dir}/${secret_filename}" ]]; then
     has_secret=true
     secret_source="${combined_check_dir}/${secret_filename}"

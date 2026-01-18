@@ -4,8 +4,8 @@
 #
 # Kubernetes probes library
 #
-# Functions for generating health probe YAML blocks for Deployment, StatefulSet,
-# DaemonSet resources. Supports HTTP GET, TCP socket, exec, and gRPC check types.
+# Functions for generating health probe YAML blocks for Deployment, StatefulSet, etc.
+# Supports HTTP GET, TCP socket, exec, and gRPC check types.
 #
 # Functions:
 #   generate_probe            - Generate complete probe block
