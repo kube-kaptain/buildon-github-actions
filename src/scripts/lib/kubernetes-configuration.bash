@@ -95,35 +95,48 @@ validate_configuration_entries_directory() {
 # Usage: generate_configuration_entries <directory>
 #
 # Outputs YAML entries suitable for ConfigMap data: or Secret stringData: sections.
-# Each file becomes a key-value entry (filename → content as block scalar).
+# Each file becomes a key-value entry.
 #
 # Arguments:
 #   directory - Path to the configuration entries directory
 #
 # Output format (to stdout):
-#   filename1: |
-#     content line 1
-#     content line 2
-#   filename2: |
-#     content line 1
+#   Single-line files:
+#     filename: value
+#   Multi-line files:
+#     filename: |
+#       content line 1
+#       content line 2
 #
 # Notes:
 #   - Files are sorted alphabetically for deterministic output
 #   - Dotfiles are excluded
-#   - Content is indented with 4 spaces (2 for key indent + 2 for block scalar content)
-#   - Each line of file content is output, preserving internal structure
+#   - Single-line content uses inline format for cleaner output
+#   - Multi-line content uses block scalar with 4-space indent
 #
 generate_configuration_entries() {
   local directory="$1"
 
   while IFS= read -r -d '' filepath; do
-    local filename
+    local filename content line_count
     filename=$(basename "${filepath}")
-    # Use block scalar for content to preserve formatting
-    echo "  ${filename}: |"
-    # Indent each line of content by 4 spaces
-    while IFS= read -r line || [[ -n "${line}" ]]; do
-      echo "    ${line}"
-    done < "${filepath}"
+    content=$(cat "${filepath}")
+
+    # Count actual lines (excluding trailing newline)
+    line_count=$(printf '%s' "${content}" | grep -c '' || true)
+
+    if [[ "${line_count}" -le 1 ]]; then
+      # Single line: use inline format
+      # Trim trailing newline if present
+      content="${content%$'\n'}"
+      echo "  ${filename}: ${content}"
+    else
+      # Multi-line: use block scalar format
+      echo "  ${filename}: |"
+      # Indent each line of content by 4 spaces
+      while IFS= read -r line || [[ -n "${line}" ]]; do
+        echo "    ${line}"
+      done <<< "${content}"
+    fi
   done < <(find "${directory}" -type f -not -name '.*' -print0 | sort -z)
 }
