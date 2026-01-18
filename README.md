@@ -173,6 +173,16 @@ See [`examples/`](examples/) for more usage patterns.
 | `kubernetes-serviceaccount-combined-sub-path` | string | `""` | Sub-path within combined/ for output |
 | `kubernetes-serviceaccount-generation-enabled` | boolean | `false` | Enable ServiceAccount generation |
 | `kubernetes-serviceaccount-name-suffix` | string | `""` | Optional suffix for ServiceAccount name and filename |
+| `kubernetes-statefulset-pod-management-policy` | string | `OrderedReady` | Pod management policy (OrderedReady or Parallel) |
+| `kubernetes-statefulset-pvc-access-mode` | string | `ReadWriteOnce` | PVC access mode (ReadWriteOnce, ReadOnlyMany, ReadWriteMany) |
+| `kubernetes-statefulset-pvc-enabled` | string | `true` | Enable persistent volume claim template (true/false) |
+| `kubernetes-statefulset-pvc-mount-path` | string | `/data` | Mount path for the persistent volume |
+| `kubernetes-statefulset-pvc-storage-class` | string | `""` | Storage class for PVC (empty for cluster default) |
+| `kubernetes-statefulset-pvc-storage-size` | string | `1Gi` | Storage size for PVC (e.g., 1Gi, 10Gi) |
+| `kubernetes-statefulset-pvc-volume-name` | string | `data` | Volume name for the PVC template |
+| `kubernetes-statefulset-service-name` | string | `""` | Headless service name (empty for auto-derived from project name) |
+| `kubernetes-statefulset-update-strategy-partition` | string | `""` | Partition for rolling updates (empty for none) |
+| `kubernetes-statefulset-update-strategy-type` | string | `RollingUpdate` | Update strategy type (RollingUpdate or OnDelete) |
 | `kubernetes-workload-additional-annotations` | string | `""` | Additional annotations specific to workload (comma-separated key=value) |
 | `kubernetes-workload-additional-labels` | string | `""` | Additional labels specific to workload (comma-separated key=value) |
 | `kubernetes-workload-affinity-strategy` | string | `spread-nodes-and-zones-ha` | Pod affinity strategy plugin name |
@@ -228,12 +238,12 @@ See [`examples/`](examples/) for more usage patterns.
 | `kubernetes-workload-resources-cpu-request` | string | `100m` | CPU request (e.g., 100m, 1) |
 | `kubernetes-workload-resources-ephemeral-storage` | string | `10Mi` | Ephemeral storage request/limit (e.g., 10Mi, 100Mi, 1Gi) |
 | `kubernetes-workload-resources-memory` | string | `10Mi` | Memory limit (e.g., 128Mi, 1Gi) |
-| `kubernetes-workload-revision-history-limit` | string | `10` | Number of revisions to retain (ReplicaSets for Deployment, ControllerRevisions for StatefulSet, etc.) |
+| `kubernetes-workload-revision-history-limit` | string | `10` | Number of revisions to retain (ReplicaSets for Deployment, ControllerRevisions for StatefulSet) |
 | `kubernetes-workload-seccomp-profile` | string | `DISABLED` | Seccomp profile (DISABLED, RuntimeDefault, Localhost, Unconfined) |
 | `kubernetes-workload-secret-keys-for-env` | string | `""` | Comma/space-separated Secret keys to expose as env vars |
 | `kubernetes-workload-secret-mount-path` | string | `/secret` | Secret mount path in container |
 | `kubernetes-workload-termination-grace-period-seconds` | string | `10` | Termination grace period in seconds |
-| `kubernetes-workload-type` | string | `deployment` | Workload type to generate (deployment, none) |
+| `kubernetes-workload-type` | string | `deployment` | Workload type to generate (deployment, statefulset, none) |
 | `manifests-packaging-base-image` | string | `""` | Base image for manifest packaging (default: scratch) |
 | `manifests-repo-provider-type` | string | `docker` | Repo provider type for manifest storage (default: docker, currently the only supported provider) |
 | `manifests-sub-path` | string | `src/kubernetes` | Directory containing Kubernetes manifests (relative) |

@@ -49,6 +49,17 @@
     kubernetes-workload-probe-liveness-http-path: ${{ inputs.kubernetes-workload-probe-liveness-http-path }}
     kubernetes-workload-probe-readiness-http-path: ${{ inputs.kubernetes-workload-probe-readiness-http-path }}
     kubernetes-workload-probe-startup-http-path: ${{ inputs.kubernetes-workload-probe-startup-http-path }}
+    # StatefulSet-specific settings
+    kubernetes-statefulset-service-name: ${{ inputs.kubernetes-statefulset-service-name }}
+    kubernetes-statefulset-pod-management-policy: ${{ inputs.kubernetes-statefulset-pod-management-policy }}
+    kubernetes-statefulset-update-strategy-type: ${{ inputs.kubernetes-statefulset-update-strategy-type }}
+    kubernetes-statefulset-update-strategy-partition: ${{ inputs.kubernetes-statefulset-update-strategy-partition }}
+    kubernetes-statefulset-pvc-enabled: ${{ inputs.kubernetes-statefulset-pvc-enabled }}
+    kubernetes-statefulset-pvc-storage-class: ${{ inputs.kubernetes-statefulset-pvc-storage-class }}
+    kubernetes-statefulset-pvc-storage-size: ${{ inputs.kubernetes-statefulset-pvc-storage-size }}
+    kubernetes-statefulset-pvc-access-mode: ${{ inputs.kubernetes-statefulset-pvc-access-mode }}
+    kubernetes-statefulset-pvc-volume-name: ${{ inputs.kubernetes-statefulset-pvc-volume-name }}
+    kubernetes-statefulset-pvc-mount-path: ${{ inputs.kubernetes-statefulset-pvc-mount-path }}
     # Global settings
     output-sub-path: ${{ inputs.output-sub-path }}
     token-name-style: ${{ inputs.token-name-style }}

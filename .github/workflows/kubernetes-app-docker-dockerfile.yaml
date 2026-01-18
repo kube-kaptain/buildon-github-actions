@@ -151,7 +151,7 @@ on:
         default: ''
       # Kubernetes Workload generation
       kubernetes-workload-type:
-        description: 'Workload type to generate (deployment, none)'
+        description: 'Workload type to generate (deployment, statefulset, none)'
         required: false
         type: string
         default: 'deployment'
@@ -161,7 +161,7 @@ on:
         type: string
         default: ''
       kubernetes-workload-revision-history-limit:
-        description: 'Number of revisions to retain (ReplicaSets for Deployment, ControllerRevisions for StatefulSet, etc.)'
+        description: 'Number of revisions to retain (ReplicaSets for Deployment, ControllerRevisions for StatefulSet)'
         required: false
         type: string
         default: '10'
@@ -459,6 +459,57 @@ on:
         required: false
         type: string
         default: ''
+      # StatefulSet unique inputs
+      kubernetes-statefulset-service-name:
+        description: 'Headless service name (empty for auto-derived from project name)'
+        required: false
+        type: string
+        default: ''
+      kubernetes-statefulset-pod-management-policy:
+        description: 'Pod management policy (OrderedReady or Parallel)'
+        required: false
+        type: string
+        default: 'OrderedReady'
+      kubernetes-statefulset-update-strategy-type:
+        description: 'Update strategy type (RollingUpdate or OnDelete)'
+        required: false
+        type: string
+        default: 'RollingUpdate'
+      kubernetes-statefulset-update-strategy-partition:
+        description: 'Partition for rolling updates (empty for none)'
+        required: false
+        type: string
+        default: ''
+      kubernetes-statefulset-pvc-enabled:
+        description: 'Enable persistent volume claim template (true/false)'
+        required: false
+        type: string
+        default: 'true'
+      kubernetes-statefulset-pvc-storage-class:
+        description: 'Storage class for PVC (empty for cluster default)'
+        required: false
+        type: string
+        default: ''
+      kubernetes-statefulset-pvc-storage-size:
+        description: 'Storage size for PVC (e.g., 1Gi, 10Gi)'
+        required: false
+        type: string
+        default: '1Gi'
+      kubernetes-statefulset-pvc-access-mode:
+        description: 'PVC access mode (ReadWriteOnce, ReadOnlyMany, ReadWriteMany)'
+        required: false
+        type: string
+        default: 'ReadWriteOnce'
+      kubernetes-statefulset-pvc-volume-name:
+        description: 'Volume name for the PVC template'
+        required: false
+        type: string
+        default: 'data'
+      kubernetes-statefulset-pvc-mount-path:
+        description: 'Mount path for the persistent volume'
+        required: false
+        type: string
+        default: '/data'
       # Kubernetes Service generation
       kubernetes-service-generation-enabled:
         description: 'Enable Service generation (default: auto based on workload type)'
@@ -1686,6 +1737,17 @@ jobs:
           kubernetes-workload-probe-liveness-http-path: ${{ inputs.kubernetes-workload-probe-liveness-http-path }}
           kubernetes-workload-probe-readiness-http-path: ${{ inputs.kubernetes-workload-probe-readiness-http-path }}
           kubernetes-workload-probe-startup-http-path: ${{ inputs.kubernetes-workload-probe-startup-http-path }}
+          # StatefulSet-specific settings
+          kubernetes-statefulset-service-name: ${{ inputs.kubernetes-statefulset-service-name }}
+          kubernetes-statefulset-pod-management-policy: ${{ inputs.kubernetes-statefulset-pod-management-policy }}
+          kubernetes-statefulset-update-strategy-type: ${{ inputs.kubernetes-statefulset-update-strategy-type }}
+          kubernetes-statefulset-update-strategy-partition: ${{ inputs.kubernetes-statefulset-update-strategy-partition }}
+          kubernetes-statefulset-pvc-enabled: ${{ inputs.kubernetes-statefulset-pvc-enabled }}
+          kubernetes-statefulset-pvc-storage-class: ${{ inputs.kubernetes-statefulset-pvc-storage-class }}
+          kubernetes-statefulset-pvc-storage-size: ${{ inputs.kubernetes-statefulset-pvc-storage-size }}
+          kubernetes-statefulset-pvc-access-mode: ${{ inputs.kubernetes-statefulset-pvc-access-mode }}
+          kubernetes-statefulset-pvc-volume-name: ${{ inputs.kubernetes-statefulset-pvc-volume-name }}
+          kubernetes-statefulset-pvc-mount-path: ${{ inputs.kubernetes-statefulset-pvc-mount-path }}
           # Global settings
           output-sub-path: ${{ inputs.output-sub-path }}
           token-name-style: ${{ inputs.token-name-style }}

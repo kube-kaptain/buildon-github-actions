@@ -1,0 +1,368 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
+#
+# generate-kubernetes-workload-statefulset - Generates a Kubernetes StatefulSet manifest
+#
+# Creates a complete StatefulSet resource with security contexts, health probes,
+# resource management, volume mounts, persistent volume claims, and pod placement strategies.
+#
+# Called via generate-kubernetes-workload router with KUBERNETES_WORKLOAD_TYPE=statefulset
+#
+# Inputs (environment variables):
+#   Required:
+#     PROJECT_NAME                          - Project identifier
+#
+#   Common workload settings (KUBERNETES_WORKLOAD_*):
+#     See generate-kubernetes-workload for the full list of common settings
+#     KUBERNETES_WORKLOAD_REPLICAS                     - Replica count (default: token, "NO" for HPA)
+#     KUBERNETES_WORKLOAD_REVISION_HISTORY_LIMIT       - Revision history (default: 10)
+#     KUBERNETES_WORKLOAD_CONFIGMAP_KEYS_FOR_ENV       - Comma/space-separated keys to expose as env refs
+#     KUBERNETES_WORKLOAD_SECRET_KEYS_FOR_ENV          - Comma/space-separated keys to expose as env refs
+#
+#   StatefulSet unique settings:
+#     KUBERNETES_STATEFULSET_SERVICE_NAME              - Headless service name (default: derived from project)
+#     KUBERNETES_STATEFULSET_POD_MANAGEMENT_POLICY     - OrderedReady or Parallel (default: OrderedReady)
+#     KUBERNETES_STATEFULSET_UPDATE_STRATEGY_TYPE      - RollingUpdate or OnDelete (default: RollingUpdate)
+#     KUBERNETES_STATEFULSET_UPDATE_STRATEGY_PARTITION - Partition for rolling updates (default: none)
+#     KUBERNETES_STATEFULSET_PVC_ENABLED               - Enable PVC template (default: true)
+#     KUBERNETES_STATEFULSET_PVC_STORAGE_CLASS         - Storage class (default: cluster default)
+#     KUBERNETES_STATEFULSET_PVC_STORAGE_SIZE          - Storage size (default: 1Gi)
+#     KUBERNETES_STATEFULSET_PVC_ACCESS_MODE           - Access mode (default: ReadWriteOnce)
+#     KUBERNETES_STATEFULSET_PVC_VOLUME_NAME           - Volume name (default: data)
+#     KUBERNETES_STATEFULSET_PVC_MOUNT_PATH            - Mount path (default: /data)
+#
+# Output:
+#   ${OUTPUT_SUB_PATH}/manifests/combined/[${combined-sub-path}/]statefulset[-${suffix}].yaml
+#
+set -euo pipefail
+
+# Locate script directory for libraries
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+LIB_DIR="${SCRIPT_DIR}/../lib"
+
+# Source libraries
+# shellcheck source=src/scripts/lib/token-format.bash
+source "${LIB_DIR}/token-format.bash"
+# shellcheck source=src/scripts/lib/kubernetes-metadata.bash
+source "${LIB_DIR}/kubernetes-metadata.bash"
+# shellcheck source=src/scripts/lib/kubernetes-configuration.bash
+source "${LIB_DIR}/kubernetes-configuration.bash"
+# shellcheck source=src/scripts/lib/kubernetes-probes.bash
+source "${LIB_DIR}/kubernetes-probes.bash"
+# shellcheck source=src/scripts/lib/kubernetes-workload-detection.bash
+source "${LIB_DIR}/kubernetes-workload-detection.bash"
+# shellcheck source=src/scripts/lib/kubernetes-pod-spec.bash
+source "${LIB_DIR}/kubernetes-pod-spec.bash"
+# shellcheck source=src/scripts/lib/generator-input-validation.bash
+source "${LIB_DIR}/generator-input-validation.bash"
+
+# Logging configuration (CI-agnostic)
+LOG_ERROR_PREFIX="${LOG_ERROR_PREFIX:-}"
+LOG_ERROR_SUFFIX="${LOG_ERROR_SUFFIX:-}"
+
+# =============================================================================
+# Inputs with defaults
+# =============================================================================
+
+# shellcheck source=src/scripts/defaults/output-sub-path.bash
+source "${SCRIPT_DIR}/../defaults/output-sub-path.bash"
+# shellcheck source=src/scripts/defaults/manifests-sub-path.bash
+source "${SCRIPT_DIR}/../defaults/manifests-sub-path.bash"
+# shellcheck source=src/scripts/defaults/tokens.bash
+source "${SCRIPT_DIR}/../defaults/tokens.bash"
+# shellcheck source=src/scripts/defaults/kubernetes-workload.bash
+source "${SCRIPT_DIR}/../defaults/kubernetes-workload.bash"
+# shellcheck source=src/scripts/defaults/kubernetes-workload-statefulset.bash
+source "${SCRIPT_DIR}/../defaults/kubernetes-workload-statefulset.bash"
+# shellcheck source=src/scripts/defaults/kubernetes-manifest.bash
+source "${SCRIPT_DIR}/../defaults/kubernetes-manifest.bash"
+
+# Build final env sub path from base
+FINAL_ENV_SUB_PATH=$(build_configuration_source_path "${BASE_ENV_SUB_PATH}" "${NAME_SUFFIX}" "-env")
+
+# =============================================================================
+# Validation
+# =============================================================================
+
+validate_common_inputs
+validate_workload_inputs
+
+# Validate StatefulSet-specific settings
+if [[ "${POD_MANAGEMENT_POLICY}" != "OrderedReady" && "${POD_MANAGEMENT_POLICY}" != "Parallel" ]]; then
+  echo "${LOG_ERROR_PREFIX}KUBERNETES_STATEFULSET_POD_MANAGEMENT_POLICY must be 'OrderedReady' or 'Parallel', got: ${POD_MANAGEMENT_POLICY}${LOG_ERROR_SUFFIX}" >&2
+  exit 4
+fi
+
+if [[ "${UPDATE_STRATEGY_TYPE}" != "RollingUpdate" && "${UPDATE_STRATEGY_TYPE}" != "OnDelete" ]]; then
+  echo "${LOG_ERROR_PREFIX}KUBERNETES_STATEFULSET_UPDATE_STRATEGY_TYPE must be 'RollingUpdate' or 'OnDelete', got: ${UPDATE_STRATEGY_TYPE}${LOG_ERROR_SUFFIX}" >&2
+  exit 4
+fi
+
+if [[ "${PVC_ENABLED}" != "true" && "${PVC_ENABLED}" != "false" ]]; then
+  echo "${LOG_ERROR_PREFIX}KUBERNETES_STATEFULSET_PVC_ENABLED must be 'true' or 'false', got: ${PVC_ENABLED}${LOG_ERROR_SUFFIX}" >&2
+  exit 4
+fi
+
+if [[ "${PVC_ACCESS_MODE}" != "ReadWriteOnce" && "${PVC_ACCESS_MODE}" != "ReadOnlyMany" && "${PVC_ACCESS_MODE}" != "ReadWriteMany" ]]; then
+  echo "${LOG_ERROR_PREFIX}KUBERNETES_STATEFULSET_PVC_ACCESS_MODE must be 'ReadWriteOnce', 'ReadOnlyMany', or 'ReadWriteMany', got: ${PVC_ACCESS_MODE}${LOG_ERROR_SUFFIX}" >&2
+  exit 4
+fi
+
+# =============================================================================
+# Generate token references
+# =============================================================================
+
+project_name_token=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "PROJECT_NAME")
+environment_token=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "ENVIRONMENT")
+version_token=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "VERSION")
+docker_tag_token=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "DOCKER_TAG")
+docker_image_name_token=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "DOCKER_IMAGE_NAME")
+
+# Build image reference and resolve replicas (sets image_reference, image_pull_secret_token, resolved_replicas)
+build_image_reference
+resolve_replicas
+
+# =============================================================================
+# Build resource names
+# =============================================================================
+
+kind="StatefulSet"
+statefulset_name=$(build_resource_name "${project_name_token}" "${COMBINED_SUB_PATH}" "${NAME_SUFFIX}")
+headless_service_name=$(build_resource_name "${project_name_token}" "${COMBINED_SUB_PATH}" "${NAME_SUFFIX}" "headless")
+configmap_name=$(build_resource_name "${project_name_token}" "${COMBINED_SUB_PATH}" "${NAME_SUFFIX}" "configmap-checksum")
+secret_name=$(build_resource_name "${project_name_token}" "${COMBINED_SUB_PATH}" "${NAME_SUFFIX}" "secret-checksum")
+
+# Set app_name for generate_metadata library function
+app_name="${statefulset_name}"
+
+# =============================================================================
+# Create output directory and file
+# =============================================================================
+
+output_dir=$(ensure_manifest_output_dir "${OUTPUT_SUB_PATH}" "${COMBINED_SUB_PATH}")
+output_file=$(build_output_filename "${output_dir}" "${kind}" "${NAME_SUFFIX}")
+
+# =============================================================================
+# Detect optional resources
+# =============================================================================
+
+detect_all_resources
+
+# =============================================================================
+# Diagnostic output
+# =============================================================================
+
+echo "Strategy/Mode Selections" >&2
+echo "  Affinity strategy:        ${AFFINITY_STRATEGY}" >&2
+echo "  Readonly root filesystem: ${READONLY_ROOT_FILESYSTEM}" >&2
+echo "  Seccomp profile:          ${SECCOMP_PROFILE}" >&2
+echo "  Liveness probe:           ${LIVENESS_CHECK_TYPE}" >&2
+echo "  Readiness probe:          ${READINESS_CHECK_TYPE}" >&2
+echo "  Startup probe:            ${STARTUP_CHECK_TYPE}" >&2
+echo "  Pod management policy:    ${POD_MANAGEMENT_POLICY}" >&2
+echo "  Update strategy:          ${UPDATE_STRATEGY_TYPE}" >&2
+echo "  PVC enabled:              ${PVC_ENABLED}" >&2
+
+echo "Detection Results" >&2
+if [[ "${has_configmap}" == "true" ]]; then
+  echo "  ConfigMap detected:       ${configmap_source}" >&2
+else
+  echo "  ConfigMap detected:       No, so won't be mounted" >&2
+fi
+if [[ "${has_secret}" == "true" ]]; then
+  echo "  Secret detected:          ${secret_source}" >&2
+else
+  echo "  Secret detected:          No, so won't be mounted" >&2
+fi
+if [[ "${has_serviceaccount}" == "true" ]]; then
+  echo "  ServiceAccount detected:  ${serviceaccount_source}" >&2
+else
+  echo "  ServiceAccount detected:  No, so implicit default used" >&2
+fi
+if [[ "${has_env_vars}" == "true" ]]; then
+  echo "  Environment variables:    ${env_file_count} found" >&2
+else
+  echo "  Environment variables:    None found, not configured" >&2
+fi
+
+echo "Conditional Fields" >&2
+if [[ "${resolved_replicas}" == "NO" ]]; then
+  echo "  Replicas:                 managed by HPA" >&2
+else
+  echo "  Replicas:                 ${resolved_replicas}" >&2
+fi
+if [[ -n "${CPU_LIMIT}" ]]; then
+  echo "  CPU limit:                ${CPU_LIMIT}" >&2
+else
+  echo "  CPU limit:                Not set, so no throttling" >&2
+fi
+if [[ -n "${PRESTOP_COMMAND}" ]]; then
+  echo "  PreStop hook:             configured" >&2
+else
+  echo "  PreStop hook:             not configured" >&2
+fi
+if [[ "${PVC_ENABLED}" == "true" ]]; then
+  echo "  PVC storage:              ${PVC_STORAGE_SIZE} (${PVC_ACCESS_MODE})" >&2
+fi
+
+# =============================================================================
+# Build labels and annotations
+# =============================================================================
+
+build_timestamp=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+script_name=$(basename "${BASH_SOURCE[0]}")
+
+# =============================================================================
+# Generate headless service (required for StatefulSet)
+# =============================================================================
+
+echo "Generating headless service for StatefulSet..." >&2
+
+# Build suffix for headless service filename
+# Service name must match headless_service_name (${statefulset_name}-headless)
+# If statefulset has a suffix, headless service is "${suffix}-headless", otherwise just "headless"
+if [[ -n "${NAME_SUFFIX}" ]]; then
+  headless_suffix="${NAME_SUFFIX}-headless"
+else
+  headless_suffix="headless"
+fi
+
+# Call service generator with headless configuration
+# Only pass overrides - PROJECT_NAME, OUTPUT_SUB_PATH, TOKEN_*, KUBERNETES_GLOBAL_* inherited from environment
+KUBERNETES_SERVICE_GENERATION_ENABLED="true" \
+KUBERNETES_SERVICE_TYPE="Headless" \
+KUBERNETES_SERVICE_NAME_SUFFIX="${headless_suffix}" \
+KUBERNETES_SERVICE_COMBINED_SUB_PATH="${COMBINED_SUB_PATH}" \
+KUBERNETES_SERVICE_PORT="${CONTAINER_PORT}" \
+KUBERNETES_SERVICE_TARGET_PORT="${CONTAINER_PORT}" \
+KUBERNETES_SERVICE_PROTOCOL="TCP" \
+KUBERNETES_SERVICE_ADDITIONAL_ANNOTATIONS="kaptain/generated-for=\"statefulset/${statefulset_name}\"" \
+"${SCRIPT_DIR}/generate-kubernetes-service"
+
+# =============================================================================
+# Generate StatefulSet YAML
+# =============================================================================
+
+{
+  # Header
+  generate_manifest_header "apps/v1" "${kind}" "${statefulset_name}" "${environment_token}"
+  generate_metadata 2 labels
+  generate_metadata 2 annotations default-app
+
+  # Spec
+  echo "spec:"
+
+  # Replicas (omit if NO for HPA)
+  if [[ "${resolved_replicas}" != "NO" ]]; then
+    echo "  replicas: ${resolved_replicas}"
+  fi
+
+  echo "  revisionHistoryLimit: ${REVISION_HISTORY_LIMIT}"
+
+  # Service name (required for StatefulSet)
+  echo "  serviceName: ${headless_service_name}"
+
+  # Pod management policy
+  echo "  podManagementPolicy: ${POD_MANAGEMENT_POLICY}"
+
+  # Selector
+  echo "  selector:"
+  echo "    matchLabels:"
+  echo "      app: ${statefulset_name}"
+
+  # Update strategy
+  echo "  updateStrategy:"
+  echo "    type: ${UPDATE_STRATEGY_TYPE}"
+  if [[ "${UPDATE_STRATEGY_TYPE}" == "RollingUpdate" && -n "${UPDATE_STRATEGY_PARTITION}" ]]; then
+    echo "    rollingUpdate:"
+    echo "      partition: ${UPDATE_STRATEGY_PARTITION}"
+  fi
+
+  # Pod template
+  echo "  template:"
+  echo "    metadata:"
+  generate_metadata 6 labels
+  generate_metadata 6 annotations
+
+  echo "    spec:"
+
+  # ServiceAccount
+  generate_service_account_config 6 "${has_serviceaccount}" "${project_name_token}${suffix_fragment}" "${AUTOMOUNT_SERVICE_ACCOUNT_TOKEN}"
+
+  # Termination grace period
+  echo "      terminationGracePeriodSeconds: ${TERMINATION_GRACE_PERIOD_SECONDS}"
+
+  # Pod security context
+  generate_pod_security_context 6 "${SECCOMP_PROFILE}"
+
+  # Affinity (via plugin)
+  if [[ "${AFFINITY_STRATEGY}" != "none" ]]; then
+    POD_PLACEMENT_INDENT=6 \
+    APP_LABEL_VALUE="${statefulset_name}" \
+    "${affinity_plugin}"
+  fi
+
+  # Image pull secrets (optional)
+  if [[ "${IMAGE_PULL_SECRETS}" != "DISABLED" ]]; then
+    generate_image_pull_secrets 6 "${image_pull_secret_token}"
+  fi
+
+  # Containers
+  echo "      containers:"
+  generate_container_start 8 "default-app" "${image_reference}"
+
+  # Ports
+  generate_container_ports 10 "${CONTAINER_PORT}"
+
+  # Container security context
+  generate_container_security_context 10 "${READONLY_ROOT_FILESYSTEM}"
+
+  # Resources
+  generate_container_resources 10 "${EPHEMERAL_STORAGE}" "${MEMORY}" "${CPU_REQUEST}" "${CPU_LIMIT}"
+
+  # Lifecycle (preStop hook)
+  generate_container_lifecycle 10 "${PRESTOP_COMMAND}"
+
+  # Probes
+  generate_workload_probes 10
+
+  # Environment variables (plain KVs from directory + refs from configmap/secret keys)
+  generate_container_env_all 10 "${FINAL_ENV_SUB_PATH}" \
+    "${configmap_source}" "${configmap_name}" "${CONFIGMAP_KEYS_FOR_ENV}" \
+    "${secret_source}" "${secret_name}" "${SECRET_KEYS_FOR_ENV}"
+
+  # Volume mounts (ConfigMap, Secret, and PVC)
+  # If no configmap/secret but PVC enabled, we need to output volumeMounts header ourselves
+  if [[ "${has_configmap}" != "true" ]] && [[ "${has_secret}" != "true" ]] && [[ "${PVC_ENABLED}" == "true" ]]; then
+    echo "          volumeMounts:"
+  else
+    generate_configmap_secret_volume_mounts 10 "${has_configmap}" "${has_secret}" "${CONFIGMAP_MOUNT_PATH}" "${SECRET_MOUNT_PATH}"
+  fi
+  if [[ "${PVC_ENABLED}" == "true" ]]; then
+    echo "            - name: ${project_name_token}-${PVC_VOLUME_NAME}"
+    echo "              mountPath: ${PVC_MOUNT_PATH}"
+  fi
+
+  # Volumes (ConfigMap and Secret only - PVC is in volumeClaimTemplates)
+  generate_configmap_secret_volumes 6 "${has_configmap}" "${has_secret}" "${configmap_name}" "${secret_name}"
+
+  # Volume claim templates (StatefulSet unique)
+  if [[ "${PVC_ENABLED}" == "true" ]]; then
+    echo "  volumeClaimTemplates:"
+    echo "    - metadata:"
+    echo "        name: ${project_name_token}-${PVC_VOLUME_NAME}"
+    echo "      spec:"
+    echo "        accessModes:"
+    echo "          - ${PVC_ACCESS_MODE}"
+    if [[ -n "${PVC_STORAGE_CLASS}" ]]; then
+      echo "        storageClassName: ${PVC_STORAGE_CLASS}"
+    fi
+    echo "        resources:"
+    echo "          requests:"
+    echo "            storage: ${PVC_STORAGE_SIZE}"
+  fi
+
+} > "${output_file}"
+
+echo "Generated StatefulSet manifest: ${output_file}" >&2

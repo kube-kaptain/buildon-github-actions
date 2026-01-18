@@ -31,9 +31,9 @@ Kubernetes App - Manifests Only
 | `kubernetes-serviceaccount-combined-sub-path` | string | `""` | Sub-path within combined/ for output |
 | `kubernetes-serviceaccount-additional-labels` | string | `""` | Additional labels specific to ServiceAccount (comma-separated key=value) |
 | `kubernetes-serviceaccount-additional-annotations` | string | `""` | Additional annotations specific to ServiceAccount (comma-separated key=value) |
-| `kubernetes-workload-type` | string | `deployment` | Workload type to generate (deployment, none) |
+| `kubernetes-workload-type` | string | `deployment` | Workload type to generate (deployment, statefulset, none) |
 | `kubernetes-workload-replicas` | string | `""` | Replica count (empty for token, NO for HPA management, number for fixed) |
-| `kubernetes-workload-revision-history-limit` | string | `10` | Number of revisions to retain (ReplicaSets for Deployment, ControllerRevisions for StatefulSet, etc.) |
+| `kubernetes-workload-revision-history-limit` | string | `10` | Number of revisions to retain (ReplicaSets for Deployment, ControllerRevisions for StatefulSet) |
 | `kubernetes-workload-name-suffix` | string | `""` | Optional suffix for workload name and filename |
 | `kubernetes-workload-combined-sub-path` | string | `""` | Sub-path within combined/ for output |
 | `kubernetes-workload-env-sub-path` | string | `""` | Directory containing environment variable files (default per workload type) |
@@ -92,6 +92,16 @@ Kubernetes App - Manifests Only
 | `kubernetes-workload-probe-startup-timeout-seconds` | string | `3` | Startup probe timeout in seconds |
 | `kubernetes-workload-probe-startup-failure-threshold` | string | `30` | Startup probe failure threshold |
 | `kubernetes-workload-probe-startup-termination-grace-period-seconds` | string | `""` | Startup probe termination grace period (empty for default) |
+| `kubernetes-statefulset-service-name` | string | `""` | Headless service name (empty for auto-derived from project name) |
+| `kubernetes-statefulset-pod-management-policy` | string | `OrderedReady` | Pod management policy (OrderedReady or Parallel) |
+| `kubernetes-statefulset-update-strategy-type` | string | `RollingUpdate` | Update strategy type (RollingUpdate or OnDelete) |
+| `kubernetes-statefulset-update-strategy-partition` | string | `""` | Partition for rolling updates (empty for none) |
+| `kubernetes-statefulset-pvc-enabled` | string | `true` | Enable persistent volume claim template (true/false) |
+| `kubernetes-statefulset-pvc-storage-class` | string | `""` | Storage class for PVC (empty for cluster default) |
+| `kubernetes-statefulset-pvc-storage-size` | string | `1Gi` | Storage size for PVC (e.g., 1Gi, 10Gi) |
+| `kubernetes-statefulset-pvc-access-mode` | string | `ReadWriteOnce` | PVC access mode (ReadWriteOnce, ReadOnlyMany, ReadWriteMany) |
+| `kubernetes-statefulset-pvc-volume-name` | string | `data` | Volume name for the PVC template |
+| `kubernetes-statefulset-pvc-mount-path` | string | `/data` | Mount path for the persistent volume |
 | `kubernetes-service-generation-enabled` | boolean | `""` | Enable Service generation (default: auto based on workload type) |
 | `kubernetes-service-type` | string | `ClusterIP` | Service type (ClusterIP, Headless, NoSelector, NodePort, LoadBalancer, ExternalName) |
 | `kubernetes-service-port` | string | `80` | Service port (not used for ExternalName) |

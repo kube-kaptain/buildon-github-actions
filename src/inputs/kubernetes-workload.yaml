@@ -3,7 +3,7 @@
 #
 # Kubernetes Workload generation
 kubernetes-workload-type:
-  description: 'Workload type to generate (deployment, none)'
+  description: 'Workload type to generate (deployment, statefulset, none)'
   required: false
   type: string
   default: 'deployment'
@@ -13,7 +13,7 @@ kubernetes-workload-replicas:
   type: string
   default: ''
 kubernetes-workload-revision-history-limit:
-  description: 'Number of revisions to retain (ReplicaSets for Deployment, ControllerRevisions for StatefulSet, etc.)'
+  description: 'Number of revisions to retain (ReplicaSets for Deployment, ControllerRevisions for StatefulSet)'
   required: false
   type: string
   default: '10'

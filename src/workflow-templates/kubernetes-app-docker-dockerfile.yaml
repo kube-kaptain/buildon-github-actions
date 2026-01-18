@@ -19,6 +19,7 @@ on:
       # INJECT-INPUT: kubernetes-secret-template
       # INJECT-INPUT: kubernetes-serviceaccount
       # INJECT-INPUT: kubernetes-workload
+      # INJECT-INPUT: kubernetes-workload-statefulset
       # INJECT-INPUT: kubernetes-service
 
       # INJECT-INPUT: token-substitution
