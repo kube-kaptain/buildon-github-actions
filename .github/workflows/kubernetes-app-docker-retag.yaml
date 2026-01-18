@@ -1519,7 +1519,7 @@ jobs:
 
       # === Generate Service ===
       - name: Start check - Generate Service
-        if: inputs.kubernetes-service-generation-enabled != false && (inputs.kubernetes-service-generation-enabled == true || inputs.kubernetes-workload-type == 'deployment') && success()
+        if: inputs.kubernetes-service-generation-enabled != false && (inputs.kubernetes-service-generation-enabled == true || inputs.kubernetes-workload-type == 'deployment' || inputs.kubernetes-workload-type == 'statefulset') && success()
         id: check-generate-service
         uses: ./.github/buildon-github-actions/src/actions/github-check-run
         with:
@@ -1527,7 +1527,7 @@ jobs:
           check-name: 'Build & Publish → Generate Service'
       - name: Generate Service manifest
         id: generate-service
-        if: inputs.kubernetes-service-generation-enabled != false && (inputs.kubernetes-service-generation-enabled == true || inputs.kubernetes-workload-type == 'deployment') && success()
+        if: inputs.kubernetes-service-generation-enabled != false && (inputs.kubernetes-service-generation-enabled == true || inputs.kubernetes-workload-type == 'deployment' || inputs.kubernetes-workload-type == 'statefulset') && success()
         uses: ./.github/buildon-github-actions/src/actions/generate-kubernetes-service
         with:
           # Service settings
@@ -1545,6 +1545,7 @@ jobs:
           kubernetes-service-additional-labels: ${{ inputs.kubernetes-service-additional-labels }}
           kubernetes-service-additional-annotations: ${{ inputs.kubernetes-service-additional-annotations }}
           # Workload settings (for defaults)
+          kubernetes-workload-type: ${{ inputs.kubernetes-workload-type }}
           kubernetes-workload-container-port: ${{ inputs.kubernetes-workload-container-port }}
           # Global settings
           output-sub-path: ${{ inputs.output-sub-path }}
@@ -1553,13 +1554,13 @@ jobs:
           kubernetes-global-additional-labels: ${{ inputs.kubernetes-global-additional-labels }}
           kubernetes-global-additional-annotations: ${{ inputs.kubernetes-global-additional-annotations }}
       - name: Pass check - Generate Service
-        if: inputs.kubernetes-service-generation-enabled != false && (inputs.kubernetes-service-generation-enabled == true || inputs.kubernetes-workload-type == 'deployment') && success()
+        if: inputs.kubernetes-service-generation-enabled != false && (inputs.kubernetes-service-generation-enabled == true || inputs.kubernetes-workload-type == 'deployment' || inputs.kubernetes-workload-type == 'statefulset') && success()
         uses: ./.github/buildon-github-actions/src/actions/github-check-run
         with:
           action: pass
           check-run-id: ${{ steps.check-generate-service.outputs.check-run-id }}
       - name: Fail check - Generate Service
-        if: inputs.kubernetes-service-generation-enabled != false && (inputs.kubernetes-service-generation-enabled == true || inputs.kubernetes-workload-type == 'deployment') && failure() && steps.check-generate-service.outputs.check-run-id != ''
+        if: inputs.kubernetes-service-generation-enabled != false && (inputs.kubernetes-service-generation-enabled == true || inputs.kubernetes-workload-type == 'deployment' || inputs.kubernetes-workload-type == 'statefulset') && failure() && steps.check-generate-service.outputs.check-run-id != ''
         uses: ./.github/buildon-github-actions/src/actions/github-check-run
         with:
           action: fail

@@ -59,6 +59,10 @@ inputs:
     default: ''
 
   # Workload settings (for defaults)
+  kubernetes-workload-type:
+    description: 'Workload type for smart defaulting (deployment, statefulset, etc.)'
+    required: false
+    default: 'deployment'
   kubernetes-workload-container-port:
     description: 'Container port (used as default for target-port)'
     required: false
@@ -109,6 +113,7 @@ runs:
         KUBERNETES_SERVICE_ADDITIONAL_LABELS: ${{ inputs.kubernetes-service-additional-labels }}
         KUBERNETES_SERVICE_ADDITIONAL_ANNOTATIONS: ${{ inputs.kubernetes-service-additional-annotations }}
         # Workload settings (for defaults)
+        KUBERNETES_WORKLOAD_TYPE: ${{ inputs.kubernetes-workload-type }}
         KUBERNETES_WORKLOAD_CONTAINER_PORT: ${{ inputs.kubernetes-workload-container-port }}
         # Global settings
         OUTPUT_SUB_PATH: ${{ inputs.output-sub-path }}

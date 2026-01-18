@@ -64,10 +64,10 @@ kind="Service"
 # shellcheck source=src/scripts/defaults/kubernetes-workload.bash
 source "${SCRIPT_DIR}/../defaults/kubernetes-workload.bash"
 
-# Smart default: enabled for deployments, disabled for others, unless explicitly set
+# Smart default: enabled for deployment/statefulset, disabled for others, unless explicitly set
 if [[ -z "${KUBERNETES_SERVICE_GENERATION_ENABLED:-}" ]]; then
   case "${KUBERNETES_WORKLOAD_TYPE}" in
-    deployment)
+    deployment|statefulset)
       KUBERNETES_SERVICE_GENERATION_ENABLED="true"
       ;;
     *)
