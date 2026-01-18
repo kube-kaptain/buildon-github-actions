@@ -7,9 +7,8 @@ description: 'Generates a Kubernetes Service manifest with tokenized values'
 inputs:
   # Service generation
   kubernetes-service-generation-enabled:
-    description: 'Enable Service generation'
+    description: 'Enable Service generation (default: auto based on workload type)'
     required: false
-    default: 'false'
   kubernetes-service-type:
     description: 'Service type (ClusterIP, Headless, NoSelector, NodePort, LoadBalancer, ExternalName)'
     required: false
