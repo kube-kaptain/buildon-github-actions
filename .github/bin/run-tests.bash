@@ -8,6 +8,14 @@
 #
 set -euo pipefail
 
+# This script runs the FULL test suite (~10 minutes). For specific tests, use local bats.
+if [[ $# -gt 0 ]]; then
+  echo "ERROR: This script runs the full suite and takes 10 minutes."
+  echo "Please run the suite you want with local bats instead:"
+  echo "  bats $*"
+  exit 1
+fi
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 TEST_DIR="$PROJECT_ROOT/src/test"
