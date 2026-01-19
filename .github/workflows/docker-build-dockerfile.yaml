@@ -36,6 +36,11 @@ on:
         type: string
         default: ''
       # Docker build options
+      dockerfile-substitution-files:
+        description: 'Comma-separated list of files to perform token substitution on (relative to dockerfile-sub-path)'
+        required: false
+        type: string
+        default: 'Dockerfile'
       dockerfile-sub-path:
         description: 'Directory containing Dockerfile, relative to repo root.'
         required: false
@@ -804,6 +809,7 @@ jobs:
           project-name: ${{ steps.versions.outputs.project-name }}
           is-release: ${{ steps.versions.outputs.is-release }}
           dockerfile-sub-path: ${{ inputs.dockerfile-sub-path }}
+          dockerfile-substitution-files: ${{ inputs.dockerfile-substitution-files }}
           output-sub-path: ${{ inputs.output-sub-path }}
           dockerfile-squash: ${{ inputs.dockerfile-squash }}
           dockerfile-no-cache: ${{ inputs.dockerfile-no-cache }}

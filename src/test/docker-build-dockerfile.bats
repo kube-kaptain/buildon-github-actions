@@ -245,9 +245,10 @@ exit 0' > "$MOCK_BIN_DIR/docker"
   [ -f "$OUTPUT_DIR/docker/substituted/config.txt" ]
 }
 
-@test "substitutes tokens in all docker files" {
+@test "substitutes tokens in specified files" {
   set_required_env
   export DOCKER_TARGET_BASE_PATH="my-org"
+  export DOCKERFILE_SUBSTITUTION_FILES="Dockerfile,config.sh"
   # Create files with tokens
   echo 'FROM alpine:3.21' > "$TEST_DIR/Dockerfile"
   echo 'REGISTRY=${TargetRegistry}' > "$TEST_DIR/config.sh"
@@ -258,6 +259,22 @@ exit 0' > "$MOCK_BIN_DIR/docker"
   run cat "$OUTPUT_DIR/docker/substituted/config.sh"
   [ "$status" -eq 0 ]
   [[ "$output" == *"REGISTRY=ghcr.io"* ]]
+}
+
+@test "only substitutes files in substitution list" {
+  set_required_env
+  export DOCKER_TARGET_BASE_PATH="my-org"
+  # Default DOCKERFILE_SUBSTITUTION_FILES is just Dockerfile
+  # Create files with tokens
+  echo 'FROM alpine:3.21' > "$TEST_DIR/Dockerfile"
+  echo 'REGISTRY=${TargetRegistry}' > "$TEST_DIR/config.sh"
+
+  run "$SCRIPTS_DIR/docker-build-dockerfile"
+  [ "$status" -eq 0 ]
+  # config.sh should NOT be substituted (not in list)
+  run cat "$OUTPUT_DIR/docker/substituted/config.sh"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *'REGISTRY=${TargetRegistry}'* ]]
 }
 
 @test "uses user config tokens from src/config" {

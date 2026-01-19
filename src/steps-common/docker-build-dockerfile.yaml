@@ -13,6 +13,7 @@
     project-name: ${{ steps.versions.outputs.project-name }}
     is-release: ${{ steps.versions.outputs.is-release }}
     dockerfile-sub-path: ${{ inputs.dockerfile-sub-path }}
+    dockerfile-substitution-files: ${{ inputs.dockerfile-substitution-files }}
     output-sub-path: ${{ inputs.output-sub-path }}
     dockerfile-squash: ${{ inputs.dockerfile-squash }}
     dockerfile-no-cache: ${{ inputs.dockerfile-no-cache }}

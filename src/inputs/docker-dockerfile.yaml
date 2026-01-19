@@ -2,6 +2,11 @@
 # Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
 #
 # Docker build options
+dockerfile-substitution-files:
+  description: 'Comma-separated list of files to perform token substitution on (relative to dockerfile-sub-path)'
+  required: false
+  type: string
+  default: 'Dockerfile'
 dockerfile-sub-path:
   description: 'Directory containing Dockerfile, relative to repo root.'
   required: false

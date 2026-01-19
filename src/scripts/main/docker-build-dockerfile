@@ -160,14 +160,26 @@ main() {
   TARGET_BASE_PATH="${TARGET_BASE_PATH}" \
   "${SCRIPT_DIR}/../util/prepare-substitution-tokens"
 
-  # Perform variable substitution on copied docker directory
+  # Perform variable substitution on specific files only
   echo "" >&2
-  echo "Performing variable substitution..." >&2
-  CONFIG_VALUE_TRAILING_NEWLINE="${CONFIG_VALUE_TRAILING_NEWLINE}" \
-  "${SCRIPT_DIR}/../util/substitute-tokens-from-dir" \
-    "${TOKEN_DELIMITER_STYLE}" \
-    "${DOCKER_CONFIG_SUB_PATH}" \
-    "${DOCKER_SUBSTITUTED_SUB_PATH}"
+  if [[ -n "${DOCKERFILE_SUBSTITUTION_FILES}" ]]; then
+    echo "Performing variable substitution on: ${DOCKERFILE_SUBSTITUTION_FILES}" >&2
+    IFS=',' read -ra sub_files <<< "${DOCKERFILE_SUBSTITUTION_FILES}"
+    for sub_file in "${sub_files[@]}"; do
+      local target_file="${DOCKER_SUBSTITUTED_SUB_PATH}/${sub_file}"
+      if [[ -f "${target_file}" ]]; then
+        CONFIG_VALUE_TRAILING_NEWLINE="${CONFIG_VALUE_TRAILING_NEWLINE}" \
+        "${SCRIPT_DIR}/../util/substitute-tokens-from-dir" \
+          "${TOKEN_DELIMITER_STYLE}" \
+          "${DOCKER_CONFIG_SUB_PATH}" \
+          "${target_file}"
+      else
+        echo "${LOG_WARNING_PREFIX}Substitution target not found, skipping: ${sub_file}${LOG_WARNING_SUFFIX}" >&2
+      fi
+    done
+  else
+    echo "No substitution files specified, skipping token substitution" >&2
+  fi
 
   # Build from substituted directory
   local dockerfile="${DOCKER_SUBSTITUTED_SUB_PATH}/Dockerfile"

@@ -11,6 +11,10 @@ inputs:
     required: false
     default: 'target'
   # Docker build options
+  dockerfile-substitution-files:
+    description: 'Comma-separated list of files to perform token substitution on (relative to dockerfile-sub-path)'
+    required: false
+    default: 'Dockerfile'
   dockerfile-sub-path:
     description: 'Directory containing Dockerfile, relative to repo root.'
     required: false
@@ -112,6 +116,7 @@ runs:
         PROJECT_NAME: ${{ inputs.project-name }}
         IS_RELEASE: ${{ inputs.is-release }}
         DOCKERFILE_SUB_PATH: ${{ inputs.dockerfile-sub-path }}
+        DOCKERFILE_SUBSTITUTION_FILES: ${{ inputs.dockerfile-substitution-files }}
         OUTPUT_SUB_PATH: ${{ inputs.output-sub-path }}
         DOCKERFILE_SQUASH: ${{ inputs.dockerfile-squash }}
         DOCKERFILE_NO_CACHE: ${{ inputs.dockerfile-no-cache }}

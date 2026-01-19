@@ -72,6 +72,7 @@ runs:
         PROJECT_NAME: ${{ inputs.project-name }}
         IS_RELEASE: ${{ inputs.is-release }}
         DOCKERFILE_SUB_PATH: ${{ inputs.dockerfile-sub-path }}
+        DOCKERFILE_SUBSTITUTION_FILES: ${{ inputs.dockerfile-substitution-files }}
         OUTPUT_SUB_PATH: ${{ inputs.output-sub-path }}
         DOCKERFILE_SQUASH: ${{ inputs.dockerfile-squash }}
         DOCKERFILE_NO_CACHE: ${{ inputs.dockerfile-no-cache }}
