@@ -1,0 +1,87 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
+
+name: 'Generate Kubernetes ConfigMap'
+description: 'Generates a Kubernetes ConfigMap manifest from files in a directory'
+
+inputs:
+  # Required context
+  project-name:
+    description: 'Project name (required)'
+    required: true
+
+  # Global settings
+  output-sub-path:
+    description: 'Build output directory (relative)'
+    required: false
+    default: 'target'
+  kubernetes-global-additional-labels:
+    description: 'Additional labels for all Kubernetes manifests (comma-separated key=value)'
+    required: false
+    default: ''
+  kubernetes-global-additional-annotations:
+    description: 'Additional annotations for all Kubernetes manifests (comma-separated key=value)'
+    required: false
+    default: ''
+
+  # ConfigMap settings
+  kubernetes-configmap-sub-path:
+    description: 'Directory containing ConfigMap data files (relative)'
+    required: false
+    default: 'src/configmap'
+  kubernetes-configmap-name-suffix:
+    description: 'Optional suffix for ConfigMap name and filename'
+    required: false
+    default: ''
+  kubernetes-configmap-combined-sub-path:
+    description: 'Sub-path within combined/ for output'
+    required: false
+    default: ''
+  kubernetes-configmap-name-checksum-injection:
+    description: 'Enable checksum injection suffix in ConfigMap name (true: ProjectName-configmap-checksum, false: ProjectName)'
+    required: false
+    default: 'true'
+  kubernetes-configmap-additional-labels:
+    description: 'Additional labels specific to ConfigMap (comma-separated key=value)'
+    required: false
+    default: ''
+  kubernetes-configmap-additional-annotations:
+    description: 'Additional annotations specific to ConfigMap (comma-separated key=value)'
+    required: false
+    default: ''
+
+  # Token substitution
+  token-delimiter-style:
+    description: 'Token delimiter syntax for variables (shell, mustache, helm, erb, github-actions, blade, stringtemplate, ognl, t4, swift)'
+    required: false
+    default: 'shell'
+  token-name-style:
+    description: 'Case style for token names (UPPER_SNAKE, lower_snake, lower-kebab, UPPER-KEBAB, camelCase, PascalCase, lower.dot, UPPER.DOT)'
+    required: false
+    default: 'PascalCase'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Generate ConfigMap manifest
+      id: generate
+      shell: bash
+      env:
+        LOG_ERROR_PREFIX: '::error::'
+        # Required context
+        PROJECT_NAME: ${{ inputs.project-name }}
+        # Global settings
+        OUTPUT_SUB_PATH: ${{ inputs.output-sub-path }}
+        KUBERNETES_GLOBAL_ADDITIONAL_LABELS: ${{ inputs.kubernetes-global-additional-labels }}
+        KUBERNETES_GLOBAL_ADDITIONAL_ANNOTATIONS: ${{ inputs.kubernetes-global-additional-annotations }}
+        # ConfigMap settings
+        KUBERNETES_CONFIGMAP_SUB_PATH: ${{ inputs.kubernetes-configmap-sub-path }}
+        KUBERNETES_CONFIGMAP_NAME_SUFFIX: ${{ inputs.kubernetes-configmap-name-suffix }}
+        KUBERNETES_CONFIGMAP_COMBINED_SUB_PATH: ${{ inputs.kubernetes-configmap-combined-sub-path }}
+        KUBERNETES_CONFIGMAP_NAME_CHECKSUM_INJECTION: ${{ inputs.kubernetes-configmap-name-checksum-injection }}
+        KUBERNETES_CONFIGMAP_ADDITIONAL_LABELS: ${{ inputs.kubernetes-configmap-additional-labels }}
+        KUBERNETES_CONFIGMAP_ADDITIONAL_ANNOTATIONS: ${{ inputs.kubernetes-configmap-additional-annotations }}
+        # Token substitution
+        TOKEN_DELIMITER_STYLE: ${{ inputs.token-delimiter-style }}
+        TOKEN_NAME_STYLE: ${{ inputs.token-name-style }}
+      run: "${{ github.action_path }}/../../scripts/generators/generate-kubernetes-configmap"

@@ -1,0 +1,228 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
+name: GitHub Release Prepare
+description: Prepares files for GitHub release with optional substitution and version suffix
+
+inputs:
+  github-release-substituted-files:
+    description: 'Files with token substitution and version suffix (space-separated)'
+    required: false
+    default: ''
+  github-release-verbatim-files:
+    description: 'Files copied as-is with version suffix only (space-separated)'
+    required: false
+    default: ''
+  output-sub-path:
+    description: 'Build output directory'
+    required: false
+    default: 'target'
+  version:
+    description: 'Version for filename suffix'
+    required: true
+  project-name:
+    description: 'Project name for token substitution'
+    required: true
+  docker-tag:
+    description: 'Docker tag for token substitution'
+    required: true
+  docker-image-name:
+    description: 'Docker image name for token substitution'
+    required: true
+  is-release:
+    description: 'Whether this is a release build'
+    required: true
+  github-release-add-version-to-filenames:
+    description: 'Add version suffix to filenames'
+    required: false
+    default: 'true'
+  token-delimiter-style:
+    description: 'Token delimiter syntax'
+    required: false
+  token-name-style:
+    description: 'Case style for token names'
+    required: false
+  token-name-validation:
+    description: 'How to validate token names'
+    required: false
+  config-sub-path:
+    description: 'User config directory'
+    required: false
+  allow-builtin-token-override:
+    description: 'Allow user tokens to override built-ins'
+    required: false
+  config-value-trailing-newline:
+    description: 'Trailing newline handling'
+    required: false
+  docker-image-full-uri:
+    description: 'Full Docker image URI (optional built-in token)'
+    required: false
+    default: ''
+  target-registry:
+    description: 'Target registry (optional built-in token)'
+    required: false
+    default: ''
+  target-base-path:
+    description: 'Target base path (optional built-in token)'
+    required: false
+    default: ''
+  manifests-zip-file-name:
+    description: 'Manifests zip filename (optional built-in token)'
+    required: false
+    default: ''
+
+runs:
+  using: composite
+  steps:
+    - name: Prepare release files
+      shell: bash
+      env:
+        GITHUB_RELEASE_SUBSTITUTED_FILES: ${{ inputs.github-release-substituted-files }}
+        GITHUB_RELEASE_VERBATIM_FILES: ${{ inputs.github-release-verbatim-files }}
+        OUTPUT_SUB_PATH: ${{ inputs.output-sub-path }}
+        VERSION: ${{ inputs.version }}
+        PROJECT_NAME: ${{ inputs.project-name }}
+        DOCKER_TAG: ${{ inputs.docker-tag }}
+        DOCKER_IMAGE_NAME: ${{ inputs.docker-image-name }}
+        IS_RELEASE: ${{ inputs.is-release }}
+        ADD_VERSION_TO_FILENAMES: ${{ inputs.github-release-add-version-to-filenames }}
+        TOKEN_DELIMITER_STYLE: ${{ inputs.token-delimiter-style }}
+        TOKEN_NAME_STYLE: ${{ inputs.token-name-style }}
+        TOKEN_NAME_VALIDATION: ${{ inputs.token-name-validation }}
+        CONFIG_SUB_PATH: ${{ inputs.config-sub-path }}
+        ALLOW_BUILTIN_TOKEN_OVERRIDE: ${{ inputs.allow-builtin-token-override }}
+        CONFIG_VALUE_TRAILING_NEWLINE: ${{ inputs.config-value-trailing-newline }}
+        DOCKER_IMAGE_FULL_URI: ${{ inputs.docker-image-full-uri }}
+        TARGET_REGISTRY: ${{ inputs.target-registry }}
+        TARGET_BASE_PATH: ${{ inputs.target-base-path }}
+        MANIFESTS_ZIP_FILE_NAME: ${{ inputs.manifests-zip-file-name }}
+        UTIL_DIR: ${{ github.action_path }}/../../scripts/util
+      run: |
+        set -euo pipefail
+
+        # Apply defaults for inputs used directly in this script
+        OUTPUT_SUB_PATH="${OUTPUT_SUB_PATH:-target}"
+        ADD_VERSION_TO_FILENAMES="${ADD_VERSION_TO_FILENAMES:-true}"
+
+        # Pass-through vars (called scripts default their own; these just satisfy set -u)
+        TOKEN_DELIMITER_STYLE="${TOKEN_DELIMITER_STYLE:-}"
+        TOKEN_NAME_STYLE="${TOKEN_NAME_STYLE:-}"
+        TOKEN_NAME_VALIDATION="${TOKEN_NAME_VALIDATION:-}"
+        ALLOW_BUILTIN_TOKEN_OVERRIDE="${ALLOW_BUILTIN_TOKEN_OVERRIDE:-}"
+        CONFIG_SUB_PATH="${CONFIG_SUB_PATH:-}"
+        CONFIG_VALUE_TRAILING_NEWLINE="${CONFIG_VALUE_TRAILING_NEWLINE:-}"
+
+        # Fixed output subdirectory (shared knowledge with github-release action)
+        RELEASE_OUTPUT_DIR="${OUTPUT_SUB_PATH}/github-release"
+
+        # Add version suffix to filename before extension
+        # e.g., template.yaml -> template-1.2.3.yaml
+        add_version_suffix() {
+          local filename="$1"
+          local version="$2"
+          local base ext
+
+          if [[ "${filename}" == *.* ]]; then
+            base="${filename%.*}"
+            ext="${filename##*.}"
+            echo "${base}-${version}.${ext}"
+          else
+            echo "${filename}-${version}"
+          fi
+        }
+
+        echo "Preparing GitHub release files..."
+        echo "  Output: ${RELEASE_OUTPUT_DIR}"
+        echo "  Add version to filenames: ${ADD_VERSION_TO_FILENAMES}"
+
+        # Create output directory
+        mkdir -p "${RELEASE_OUTPUT_DIR}"
+
+        # If no files specified in either list, we're done
+        if [[ -z "${GITHUB_RELEASE_SUBSTITUTED_FILES}" ]] && [[ -z "${GITHUB_RELEASE_VERBATIM_FILES}" ]]; then
+          echo "No files specified for release"
+          exit 0
+        fi
+
+        # Prepare tokens if we have substituted files
+        tokens_dir=""
+        if [[ -n "${GITHUB_RELEASE_SUBSTITUTED_FILES}" ]]; then
+          tokens_dir="${OUTPUT_SUB_PATH}/github-release-tokens"
+          echo "Preparing substitution tokens..."
+
+          TOKENS_OUTPUT_SUB_PATH="${tokens_dir}" \
+          CONFIG_SUB_PATH="${CONFIG_SUB_PATH}" \
+          TOKEN_NAME_STYLE="${TOKEN_NAME_STYLE}" \
+          TOKEN_NAME_VALIDATION="${TOKEN_NAME_VALIDATION}" \
+          ALLOW_BUILTIN_TOKEN_OVERRIDE="${ALLOW_BUILTIN_TOKEN_OVERRIDE}" \
+          CONFIG_VALUE_TRAILING_NEWLINE="${CONFIG_VALUE_TRAILING_NEWLINE}" \
+          PROJECT_NAME="${PROJECT_NAME}" \
+          VERSION="${VERSION}" \
+          IS_RELEASE="${IS_RELEASE}" \
+          DOCKER_TAG="${DOCKER_TAG}" \
+          DOCKER_IMAGE_NAME="${DOCKER_IMAGE_NAME}" \
+          DOCKER_IMAGE_FULL_URI="${DOCKER_IMAGE_FULL_URI:-}" \
+          TARGET_REGISTRY="${TARGET_REGISTRY:-}" \
+          TARGET_BASE_PATH="${TARGET_BASE_PATH:-}" \
+          MANIFESTS_ZIP_FILE_NAME="${MANIFESTS_ZIP_FILE_NAME:-}" \
+            "${UTIL_DIR}/prepare-substitution-tokens"
+        fi
+
+        # Process substituted files (token replacement + version suffix)
+        if [[ -n "${GITHUB_RELEASE_SUBSTITUTED_FILES}" ]]; then
+          echo "Processing substituted files..."
+          # shellcheck disable=SC2086 # Intentional word splitting
+          for source_file in ${GITHUB_RELEASE_SUBSTITUTED_FILES}; do
+            if [[ ! -f "${source_file}" ]]; then
+              echo "::error::Source file not found: ${source_file}"
+              exit 1
+            fi
+
+            filename=$(basename "${source_file}")
+            if [[ "${ADD_VERSION_TO_FILENAMES}" == "true" ]]; then
+              target_filename=$(add_version_suffix "${filename}" "${VERSION}")
+            else
+              target_filename="${filename}"
+            fi
+            target_path="${RELEASE_OUTPUT_DIR}/${target_filename}"
+            echo "  ${source_file} -> ${target_filename} (substituted)"
+
+            cp "${source_file}" "${target_path}"
+
+            CONFIG_VALUE_TRAILING_NEWLINE="${CONFIG_VALUE_TRAILING_NEWLINE}" \
+              "${UTIL_DIR}/substitute-tokens-from-dir" \
+              "${TOKEN_DELIMITER_STYLE}" \
+              "${tokens_dir}" \
+              "${target_path}"
+          done
+        fi
+
+        # Process verbatim files (version suffix only, no substitution)
+        if [[ -n "${GITHUB_RELEASE_VERBATIM_FILES}" ]]; then
+          echo "Processing verbatim files..."
+          # shellcheck disable=SC2086 # Intentional word splitting
+          for source_file in ${GITHUB_RELEASE_VERBATIM_FILES}; do
+            if [[ ! -f "${source_file}" ]]; then
+              echo "::error::Source file not found: ${source_file}"
+              exit 1
+            fi
+
+            filename=$(basename "${source_file}")
+            if [[ "${ADD_VERSION_TO_FILENAMES}" == "true" ]]; then
+              target_filename=$(add_version_suffix "${filename}" "${VERSION}")
+            else
+              target_filename="${filename}"
+            fi
+            target_path="${RELEASE_OUTPUT_DIR}/${target_filename}"
+            echo "  ${source_file} -> ${target_filename} (verbatim)"
+
+            cp "${source_file}" "${target_path}"
+          done
+        fi
+
+        # Clean up tokens dir
+        if [[ -n "${tokens_dir}" ]] && [[ -d "${tokens_dir}" ]]; then
+          rm -rf "${tokens_dir}"
+        fi
+
+        echo "GitHub release preparation complete"
+        echo "  Output directory: ${RELEASE_OUTPUT_DIR}"

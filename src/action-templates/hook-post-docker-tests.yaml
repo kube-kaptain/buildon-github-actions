@@ -1,0 +1,679 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
+
+name: Hook - Post-Docker Tests
+description: Runs user's hook script after Docker image is built for integration tests, security scans, or validation
+
+inputs:
+  # Hook script path
+  script-sub-path:
+    description: 'Path to script relative to .github/ (e.g., bin/post-docker.bash)'
+    required: true
+
+  # === Workflow Inputs ===
+  # Build output
+  output-sub-path:
+    description: 'Build output directory (relative)'
+    required: false
+    default: 'target'
+
+  # Docker registry logins
+  docker-registry-logins:
+    description: 'YAML config for Docker registry logins'
+    required: false
+    default: ''
+  # Docker build options
+  dockerfile-sub-path:
+    description: 'Directory containing Dockerfile, relative to repo root'
+    required: false
+    default: 'src/docker'
+  dockerfile-squash:
+    description: 'Enable --squash (requires experimental mode)'
+    required: false
+    default: 'true'
+  dockerfile-no-cache:
+    description: 'Disable layer caching for reproducible builds'
+    required: false
+    default: 'true'
+  # Docker target config
+  docker-target-registry:
+    description: 'Target container registry'
+    required: false
+    default: 'ghcr.io'
+  docker-target-base-path:
+    description: 'Path between registry and image name'
+    required: false
+    default: ''
+  # Docker push targets
+  docker-push-targets:
+    description: 'JSON array of additional push targets'
+    required: false
+    default: ''
+
+  # Manifests source
+  manifests-sub-path:
+    description: 'Directory containing Kubernetes manifests (relative)'
+    required: false
+    default: 'src/kubernetes'
+  # Manifests packaging
+  manifests-repo-provider-type:
+    description: 'Repo provider type for manifest storage'
+    required: false
+    default: 'docker'
+  manifests-packaging-base-image:
+    description: 'Base image for manifest packaging'
+    required: false
+    default: ''
+
+  # Kubernetes Generation
+  kubernetes-global-additional-labels:
+    description: 'Additional labels for all Kubernetes manifests (comma-separated key=value)'
+    required: false
+    default: ''
+  kubernetes-global-additional-annotations:
+    description: 'Additional annotations for all Kubernetes manifests (comma-separated key=value)'
+    required: false
+    default: ''
+  # Kubernetes ConfigMap Generation
+  kubernetes-configmap-sub-path:
+    description: 'Directory containing ConfigMap data files (relative)'
+    required: false
+    default: 'src/configmap'
+  kubernetes-configmap-name-checksum-injection:
+    description: 'Enable checksum injection suffix in ConfigMap name'
+    required: false
+    default: 'true'
+  kubernetes-configmap-additional-labels:
+    description: 'Additional labels specific to ConfigMap (comma-separated key=value)'
+    required: false
+    default: ''
+  kubernetes-configmap-additional-annotations:
+    description: 'Additional annotations specific to ConfigMap (comma-separated key=value)'
+    required: false
+    default: ''
+  # Kubernetes Secret template generation
+  kubernetes-secret-template-sub-path:
+    description: 'Directory containing Secret template data files (relative)'
+    required: false
+    default: 'src/secret.template'
+  kubernetes-secret-template-name-checksum-injection:
+    description: 'Enable checksum injection suffix in Secret name'
+    required: false
+    default: 'true'
+  kubernetes-secret-template-additional-labels:
+    description: 'Additional labels specific to Secret template (comma-separated key=value)'
+    required: false
+    default: ''
+  kubernetes-secret-template-additional-annotations:
+    description: 'Additional annotations specific to Secret template (comma-separated key=value)'
+    required: false
+    default: ''
+  # Kubernetes ServiceAccount generation
+  kubernetes-serviceaccount-generation-enabled:
+    description: 'Enable ServiceAccount generation (true/false)'
+    required: false
+    default: 'false'
+  kubernetes-serviceaccount-name-suffix:
+    description: 'Optional suffix for ServiceAccount name and filename'
+    required: false
+    default: ''
+  kubernetes-serviceaccount-combined-sub-path:
+    description: 'Sub-path within combined/ for output'
+    required: false
+    default: ''
+  kubernetes-serviceaccount-additional-labels:
+    description: 'Additional labels specific to ServiceAccount (comma-separated key=value)'
+    required: false
+    default: ''
+  kubernetes-serviceaccount-additional-annotations:
+    description: 'Additional annotations specific to ServiceAccount (comma-separated key=value)'
+    required: false
+    default: ''
+  # Kubernetes Workload generation
+  kubernetes-workload-type:
+    description: 'Workload type to generate (deployment, statefulset, none)'
+    required: false
+    default: 'deployment'
+  kubernetes-workload-name-suffix:
+    description: 'Optional suffix for workload name and filename'
+    required: false
+    default: ''
+  kubernetes-workload-combined-sub-path:
+    description: 'Sub-path within combined/ for output'
+    required: false
+    default: ''
+  kubernetes-workload-env-sub-path:
+    description: 'Directory containing environment variable files'
+    required: false
+    default: 'src/workload-env'
+  kubernetes-workload-additional-labels:
+    description: 'Additional labels specific to workload (comma-separated key=value)'
+    required: false
+    default: ''
+  kubernetes-workload-additional-annotations:
+    description: 'Additional annotations specific to workload (comma-separated key=value)'
+    required: false
+    default: ''
+  kubernetes-workload-container-port:
+    description: 'Container port (default: 1024)'
+    required: false
+    default: '1024'
+  kubernetes-workload-image-reference-style:
+    description: 'Image reference style (combined, separate, project-name-prefixed-combined, project-name-prefixed-separate)'
+    required: false
+    default: 'combined'
+  kubernetes-workload-readonly-root-filesystem:
+    description: 'Enable read-only root filesystem (true/false)'
+    required: false
+    default: 'true'
+  kubernetes-workload-seccomp-profile:
+    description: 'Seccomp profile (DISABLED, RuntimeDefault, Localhost, Unconfined)'
+    required: false
+    default: 'DISABLED'
+  kubernetes-workload-automount-service-account-token:
+    description: 'Automount service account token (true/false)'
+    required: false
+    default: 'false'
+  kubernetes-workload-image-pull-secrets:
+    description: 'Include imagePullSecrets in pod spec (ENABLED/DISABLED)'
+    required: false
+    default: 'ENABLED'
+  kubernetes-workload-resources-memory:
+    description: 'Memory limit (e.g., 128Mi, 1Gi)'
+    required: false
+    default: '10Mi'
+  kubernetes-workload-resources-cpu-request:
+    description: 'CPU request (e.g., 100m, 1)'
+    required: false
+    default: '100m'
+  kubernetes-workload-resources-cpu-limit:
+    description: 'CPU limit (empty for no limit)'
+    required: false
+    default: ''
+  kubernetes-workload-configmap-mount-path:
+    description: 'ConfigMap mount path in container'
+    required: false
+    default: '/configmap'
+  kubernetes-workload-secret-mount-path:
+    description: 'Secret mount path in container'
+    required: false
+    default: '/secret'
+  kubernetes-workload-termination-grace-period-seconds:
+    description: 'Termination grace period in seconds'
+    required: false
+    default: '10'
+  kubernetes-workload-prestop-command:
+    description: 'PreStop hook command (empty for none)'
+    required: false
+    default: ''
+  kubernetes-workload-affinity-strategy:
+    description: 'Pod affinity strategy plugin name'
+    required: false
+    default: 'spread-nodes-and-zones-ha'
+  kubernetes-workload-probe-liveness-check-type:
+    description: 'Liveness probe type (http-get, tcp-socket, exec, grpc, none)'
+    required: false
+    default: 'http-get'
+  kubernetes-workload-probe-readiness-check-type:
+    description: 'Readiness probe type (http-get, tcp-socket, exec, grpc, none)'
+    required: false
+    default: 'http-get'
+  kubernetes-workload-probe-startup-check-type:
+    description: 'Startup probe type (http-get, tcp-socket, exec, grpc, none)'
+    required: false
+    default: 'http-get'
+  kubernetes-workload-probe-liveness-http-path:
+    description: 'Liveness probe HTTP path'
+    required: false
+    default: '/liveness'
+  kubernetes-workload-probe-readiness-http-path:
+    description: 'Readiness probe HTTP path'
+    required: false
+    default: '/readiness'
+  kubernetes-workload-probe-startup-http-path:
+    description: 'Startup probe HTTP path'
+    required: false
+    default: '/startup'
+  kubernetes-workload-replicas:
+    description: 'Replica count (empty for token, NO for HPA management)'
+    required: false
+    default: ''
+  kubernetes-workload-revision-history-limit:
+    description: 'Number of old ReplicaSets to retain'
+    required: false
+    default: '10'
+  # StatefulSet unique inputs
+  kubernetes-statefulset-service-name:
+    description: 'Headless service name (empty for auto-derived from project name)'
+    required: false
+    default: ''
+  kubernetes-statefulset-pod-management-policy:
+    description: 'Pod management policy (OrderedReady or Parallel)'
+    required: false
+    default: 'OrderedReady'
+  kubernetes-statefulset-update-strategy-type:
+    description: 'Update strategy type (RollingUpdate or OnDelete)'
+    required: false
+    default: 'RollingUpdate'
+  kubernetes-statefulset-update-strategy-partition:
+    description: 'Partition for rolling updates (empty for none)'
+    required: false
+    default: ''
+  kubernetes-statefulset-pvc-enabled:
+    description: 'Enable persistent volume claim template (true/false)'
+    required: false
+    default: 'true'
+  kubernetes-statefulset-pvc-storage-class:
+    description: 'Storage class for PVC (empty for cluster default)'
+    required: false
+    default: ''
+  kubernetes-statefulset-pvc-storage-size:
+    description: 'Storage size for PVC (e.g., 1Gi, 10Gi)'
+    required: false
+    default: '1Gi'
+  kubernetes-statefulset-pvc-access-mode:
+    description: 'PVC access mode (ReadWriteOnce, ReadOnlyMany, ReadWriteMany)'
+    required: false
+    default: 'ReadWriteOnce'
+  kubernetes-statefulset-pvc-volume-name:
+    description: 'Volume name for the PVC template'
+    required: false
+    default: 'data'
+  kubernetes-statefulset-pvc-mount-path:
+    description: 'Mount path for the persistent volume'
+    required: false
+    default: '/data'
+  # Kubernetes Service generation
+  kubernetes-service-generation-enabled:
+    description: 'Enable Service generation'
+    required: false
+    default: 'false'
+  kubernetes-service-type:
+    description: 'Service type (ClusterIP, Headless, NoSelector, NodePort, LoadBalancer, ExternalName)'
+    required: false
+    default: 'ClusterIP'
+  kubernetes-service-port:
+    description: 'Service port'
+    required: false
+    default: '80'
+  kubernetes-service-target-port:
+    description: 'Target port (defaults to service port)'
+    required: false
+    default: ''
+  kubernetes-service-protocol:
+    description: 'Protocol (TCP, UDP, SCTP)'
+    required: false
+    default: 'TCP'
+  kubernetes-service-port-name:
+    description: 'Named port identifier (optional)'
+    required: false
+    default: ''
+  kubernetes-service-node-port:
+    description: 'Node port number (NodePort type only, empty for auto-assign)'
+    required: false
+    default: ''
+  kubernetes-service-external-name:
+    description: 'External DNS name (required for ExternalName type)'
+    required: false
+    default: ''
+  kubernetes-service-external-traffic-policy:
+    description: 'External traffic policy (Cluster or Local, NodePort/LoadBalancer only)'
+    required: false
+    default: ''
+  kubernetes-service-name-suffix:
+    description: 'Optional suffix for Service name and filename'
+    required: false
+    default: ''
+  kubernetes-service-combined-sub-path:
+    description: 'Sub-path within combined/ for output'
+    required: false
+    default: ''
+  kubernetes-service-additional-labels:
+    description: 'Additional labels specific to Service (comma-separated key=value)'
+    required: false
+    default: ''
+  kubernetes-service-additional-annotations:
+    description: 'Additional annotations specific to Service (comma-separated key=value)'
+    required: false
+    default: ''
+
+  # Token substitution
+  token-delimiter-style:
+    description: 'Token delimiter syntax (shell, mustache, helm, erb, etc.)'
+    required: false
+    default: 'shell'
+  token-name-style:
+    description: 'Case style for token names (UPPER_SNAKE, PascalCase, etc.)'
+    required: false
+    default: 'PascalCase'
+  token-name-validation:
+    description: 'How to validate user token names (MATCH, ALL)'
+    required: false
+    default: 'MATCH'
+  allow-builtin-token-override:
+    description: 'Allow user tokens to override built-in tokens'
+    required: false
+    default: 'false'
+  config-sub-path:
+    description: 'Directory containing user-defined token files (relative)'
+    required: false
+    default: 'src/config'
+  config-value-trailing-newline:
+    description: 'How to handle trailing newlines in config values'
+    required: false
+    default: 'strip-for-single-line'
+
+  # Naming, Versions, and Tags calculation
+  release-branch:
+    description: 'The release branch name'
+    required: false
+    default: 'main'
+  additional-release-branches:
+    description: 'Comma-separated list of additional release branches'
+    required: false
+    default: ''
+  tag-version-max-parts:
+    description: 'Maximum allowed version parts'
+    required: false
+    default: '3'
+  tag-version-calculation-strategy:
+    description: 'Strategy for calculating version'
+    required: false
+    default: 'git-auto-closest-highest'
+  tag-version-pattern-type:
+    description: 'Pattern type for file-pattern-match strategy'
+    required: false
+    default: 'dockerfile-env-kubectl'
+  tag-version-prefix-parts:
+    description: 'Number of parts from source version to use as prefix'
+    required: false
+    default: ''
+  tag-version-source-sub-path:
+    description: 'Override path to source directory'
+    required: false
+    default: ''
+  tag-version-source-file-name:
+    description: 'Override source file name'
+    required: false
+    default: ''
+  tag-version-source-custom-pattern:
+    description: 'Regex with capture group for version extraction'
+    required: false
+    default: ''
+
+  # Quality check options
+  block-slashes:
+    description: 'DEPRECATED: Use block-slash-containing-branches instead'
+    required: false
+    default: 'false'
+  qc-block-slash-containing-branches:
+    description: 'Block branch names containing slashes'
+    required: false
+    default: 'false'
+  qc-block-double-hyphen-containing-branches:
+    description: 'Block branch names containing double hyphens'
+    required: false
+    default: 'true'
+  qc-require-conventional-branches:
+    description: 'Require branch names start with feature/, fix/, etc.'
+    required: false
+    default: 'false'
+  qc-require-conventional-commits:
+    description: 'Require commits use conventional commit format'
+    required: false
+    default: 'false'
+  qc-block-conventional-commits:
+    description: 'Block commits that use conventional commit format'
+    required: false
+    default: 'false'
+
+  # Hook script paths
+  hook-pre-tagging-tests-script-sub-path:
+    description: 'Path to pre-tagging test script'
+    required: false
+    default: ''
+  hook-pre-docker-prepare-script-sub-path:
+    description: 'Path to pre-docker prepare script'
+    required: false
+    default: ''
+  hook-post-docker-tests-script-sub-path:
+    description: 'Path to post-docker test script'
+    required: false
+    default: ''
+  hook-pre-package-prepare-script-sub-path:
+    description: 'Path to pre-package prepare script'
+    required: false
+    default: ''
+  hook-post-package-tests-script-sub-path:
+    description: 'Path to post-package test script'
+    required: false
+    default: ''
+
+  # GitHub release
+  github-release-enabled:
+    description: 'Create a GitHub release on version tags'
+    required: false
+    default: 'true'
+  github-release-substituted-files:
+    description: 'Files with token substitution and version suffix'
+    required: false
+    default: ''
+  github-release-verbatim-files:
+    description: 'Files copied as-is with version suffix only'
+    required: false
+    default: ''
+  github-release-notes:
+    description: 'Release notes (leave empty for auto-generated)'
+    required: false
+    default: ''
+  github-release-add-version-to-filenames:
+    description: 'Add version suffix to release filenames'
+    required: false
+    default: 'true'
+
+  # === Step Outputs ===
+  # Version outputs (from versions-and-naming)
+  version:
+    description: 'Version string'
+    required: true
+  version-major:
+    description: 'Major version number'
+    required: true
+  version-minor:
+    description: 'Minor version number'
+    required: true
+  version-patch:
+    description: 'Patch version number'
+    required: true
+  version-2-part:
+    description: 'Version padded/truncated to 2 parts'
+    required: true
+  version-3-part:
+    description: 'Version padded/truncated to 3 parts'
+    required: true
+  version-4-part:
+    description: 'Version padded/truncated to 4 parts'
+    required: true
+  docker-tag:
+    description: 'Docker tag'
+    required: true
+  docker-image-name:
+    description: 'Docker image name'
+    required: true
+  git-tag:
+    description: 'Git tag'
+    required: true
+  project-name:
+    description: 'Project name'
+    required: true
+  is-release:
+    description: 'Whether this is a release build'
+    required: true
+  # Docker outputs (from docker-build)
+  docker-substituted-sub-path:
+    description: 'Docker substituted files directory'
+    required: true
+  target-image-full-uri:
+    description: 'Full target image URI (registry/name:tag)'
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Run post-docker tests hook
+      shell: bash
+      env:
+        HOOK_SCRIPT_SUB_PATH: .github/${{ inputs.script-sub-path }}
+        # Workflow inputs - build output
+        OUTPUT_SUB_PATH: ${{ inputs.output-sub-path }}
+
+        # Workflow inputs - docker registry logins
+        DOCKER_REGISTRY_LOGINS: ${{ inputs.docker-registry-logins }}
+        # Workflow inputs - docker build options
+        DOCKERFILE_SUB_PATH: ${{ inputs.dockerfile-sub-path }}
+        DOCKERFILE_SQUASH: ${{ inputs.dockerfile-squash }}
+        DOCKERFILE_NO_CACHE: ${{ inputs.dockerfile-no-cache }}
+        # Workflow inputs - docker target config
+        DOCKER_TARGET_REGISTRY: ${{ inputs.docker-target-registry }}
+        DOCKER_TARGET_BASE_PATH: ${{ inputs.docker-target-base-path }}
+        # Workflow inputs - docker push targets
+        DOCKER_PUSH_TARGETS: ${{ inputs.docker-push-targets }}
+
+        # Workflow inputs - manifests source
+        MANIFESTS_SUB_PATH: ${{ inputs.manifests-sub-path }}
+        # Workflow inputs - manifests packaging
+        MANIFESTS_REPO_PROVIDER_TYPE: ${{ inputs.manifests-repo-provider-type }}
+        MANIFESTS_PACKAGING_BASE_IMAGE: ${{ inputs.manifests-packaging-base-image }}
+
+        # Workflow inputs - kubernetes generation
+        KUBERNETES_GLOBAL_ADDITIONAL_LABELS: ${{ inputs.kubernetes-global-additional-labels }}
+        KUBERNETES_GLOBAL_ADDITIONAL_ANNOTATIONS: ${{ inputs.kubernetes-global-additional-annotations }}
+        # Workflow inputs - kubernetes configmap generation
+        KUBERNETES_CONFIGMAP_SUB_PATH: ${{ inputs.kubernetes-configmap-sub-path }}
+        KUBERNETES_CONFIGMAP_NAME_CHECKSUM_INJECTION: ${{ inputs.kubernetes-configmap-name-checksum-injection }}
+        KUBERNETES_CONFIGMAP_ADDITIONAL_LABELS: ${{ inputs.kubernetes-configmap-additional-labels }}
+        KUBERNETES_CONFIGMAP_ADDITIONAL_ANNOTATIONS: ${{ inputs.kubernetes-configmap-additional-annotations }}
+        # Workflow inputs - kubernetes secret template generation
+        KUBERNETES_SECRET_TEMPLATE_SUB_PATH: ${{ inputs.kubernetes-secret-template-sub-path }}
+        KUBERNETES_SECRET_TEMPLATE_NAME_CHECKSUM_INJECTION: ${{ inputs.kubernetes-secret-template-name-checksum-injection }}
+        KUBERNETES_SECRET_TEMPLATE_ADDITIONAL_LABELS: ${{ inputs.kubernetes-secret-template-additional-labels }}
+        KUBERNETES_SECRET_TEMPLATE_ADDITIONAL_ANNOTATIONS: ${{ inputs.kubernetes-secret-template-additional-annotations }}
+        # Workflow inputs - kubernetes serviceaccount generation
+        KUBERNETES_SERVICEACCOUNT_GENERATION_ENABLED: ${{ inputs.kubernetes-serviceaccount-generation-enabled }}
+        KUBERNETES_SERVICEACCOUNT_NAME_SUFFIX: ${{ inputs.kubernetes-serviceaccount-name-suffix }}
+        KUBERNETES_SERVICEACCOUNT_COMBINED_SUB_PATH: ${{ inputs.kubernetes-serviceaccount-combined-sub-path }}
+        KUBERNETES_SERVICEACCOUNT_ADDITIONAL_LABELS: ${{ inputs.kubernetes-serviceaccount-additional-labels }}
+        KUBERNETES_SERVICEACCOUNT_ADDITIONAL_ANNOTATIONS: ${{ inputs.kubernetes-serviceaccount-additional-annotations }}
+        # Workflow inputs - kubernetes workload generation
+        KUBERNETES_WORKLOAD_TYPE: ${{ inputs.kubernetes-workload-type }}
+        KUBERNETES_WORKLOAD_NAME_SUFFIX: ${{ inputs.kubernetes-workload-name-suffix }}
+        KUBERNETES_WORKLOAD_COMBINED_SUB_PATH: ${{ inputs.kubernetes-workload-combined-sub-path }}
+        KUBERNETES_WORKLOAD_ENV_SUB_PATH: ${{ inputs.kubernetes-workload-env-sub-path }}
+        KUBERNETES_WORKLOAD_ADDITIONAL_LABELS: ${{ inputs.kubernetes-workload-additional-labels }}
+        KUBERNETES_WORKLOAD_ADDITIONAL_ANNOTATIONS: ${{ inputs.kubernetes-workload-additional-annotations }}
+        KUBERNETES_WORKLOAD_CONTAINER_PORT: ${{ inputs.kubernetes-workload-container-port }}
+        KUBERNETES_WORKLOAD_IMAGE_REFERENCE_STYLE: ${{ inputs.kubernetes-workload-image-reference-style }}
+        KUBERNETES_WORKLOAD_READONLY_ROOT_FILESYSTEM: ${{ inputs.kubernetes-workload-readonly-root-filesystem }}
+        KUBERNETES_WORKLOAD_SECCOMP_PROFILE: ${{ inputs.kubernetes-workload-seccomp-profile }}
+        KUBERNETES_WORKLOAD_AUTOMOUNT_SERVICE_ACCOUNT_TOKEN: ${{ inputs.kubernetes-workload-automount-service-account-token }}
+        KUBERNETES_WORKLOAD_IMAGE_PULL_SECRETS: ${{ inputs.kubernetes-workload-image-pull-secrets }}
+        KUBERNETES_WORKLOAD_RESOURCES_MEMORY: ${{ inputs.kubernetes-workload-resources-memory }}
+        KUBERNETES_WORKLOAD_RESOURCES_CPU_REQUEST: ${{ inputs.kubernetes-workload-resources-cpu-request }}
+        KUBERNETES_WORKLOAD_RESOURCES_CPU_LIMIT: ${{ inputs.kubernetes-workload-resources-cpu-limit }}
+        KUBERNETES_WORKLOAD_CONFIGMAP_MOUNT_PATH: ${{ inputs.kubernetes-workload-configmap-mount-path }}
+        KUBERNETES_WORKLOAD_SECRET_MOUNT_PATH: ${{ inputs.kubernetes-workload-secret-mount-path }}
+        KUBERNETES_WORKLOAD_TERMINATION_GRACE_PERIOD_SECONDS: ${{ inputs.kubernetes-workload-termination-grace-period-seconds }}
+        KUBERNETES_WORKLOAD_PRESTOP_COMMAND: ${{ inputs.kubernetes-workload-prestop-command }}
+        KUBERNETES_WORKLOAD_AFFINITY_STRATEGY: ${{ inputs.kubernetes-workload-affinity-strategy }}
+        KUBERNETES_WORKLOAD_PROBE_LIVENESS_CHECK_TYPE: ${{ inputs.kubernetes-workload-probe-liveness-check-type }}
+        KUBERNETES_WORKLOAD_PROBE_READINESS_CHECK_TYPE: ${{ inputs.kubernetes-workload-probe-readiness-check-type }}
+        KUBERNETES_WORKLOAD_PROBE_STARTUP_CHECK_TYPE: ${{ inputs.kubernetes-workload-probe-startup-check-type }}
+        KUBERNETES_WORKLOAD_PROBE_LIVENESS_HTTP_PATH: ${{ inputs.kubernetes-workload-probe-liveness-http-path }}
+        KUBERNETES_WORKLOAD_PROBE_READINESS_HTTP_PATH: ${{ inputs.kubernetes-workload-probe-readiness-http-path }}
+        KUBERNETES_WORKLOAD_PROBE_STARTUP_HTTP_PATH: ${{ inputs.kubernetes-workload-probe-startup-http-path }}
+        KUBERNETES_WORKLOAD_REPLICAS: ${{ inputs.kubernetes-workload-replicas }}
+        KUBERNETES_WORKLOAD_REVISION_HISTORY_LIMIT: ${{ inputs.kubernetes-workload-revision-history-limit }}
+        # Workflow inputs - statefulset unique
+        KUBERNETES_STATEFULSET_SERVICE_NAME: ${{ inputs.kubernetes-statefulset-service-name }}
+        KUBERNETES_STATEFULSET_POD_MANAGEMENT_POLICY: ${{ inputs.kubernetes-statefulset-pod-management-policy }}
+        KUBERNETES_STATEFULSET_UPDATE_STRATEGY_TYPE: ${{ inputs.kubernetes-statefulset-update-strategy-type }}
+        KUBERNETES_STATEFULSET_UPDATE_STRATEGY_PARTITION: ${{ inputs.kubernetes-statefulset-update-strategy-partition }}
+        KUBERNETES_STATEFULSET_PVC_ENABLED: ${{ inputs.kubernetes-statefulset-pvc-enabled }}
+        KUBERNETES_STATEFULSET_PVC_STORAGE_CLASS: ${{ inputs.kubernetes-statefulset-pvc-storage-class }}
+        KUBERNETES_STATEFULSET_PVC_STORAGE_SIZE: ${{ inputs.kubernetes-statefulset-pvc-storage-size }}
+        KUBERNETES_STATEFULSET_PVC_ACCESS_MODE: ${{ inputs.kubernetes-statefulset-pvc-access-mode }}
+        KUBERNETES_STATEFULSET_PVC_VOLUME_NAME: ${{ inputs.kubernetes-statefulset-pvc-volume-name }}
+        KUBERNETES_STATEFULSET_PVC_MOUNT_PATH: ${{ inputs.kubernetes-statefulset-pvc-mount-path }}
+        # Workflow inputs - kubernetes service generation
+        KUBERNETES_SERVICE_GENERATION_ENABLED: ${{ inputs.kubernetes-service-generation-enabled }}
+        KUBERNETES_SERVICE_TYPE: ${{ inputs.kubernetes-service-type }}
+        KUBERNETES_SERVICE_PORT: ${{ inputs.kubernetes-service-port }}
+        KUBERNETES_SERVICE_TARGET_PORT: ${{ inputs.kubernetes-service-target-port }}
+        KUBERNETES_SERVICE_PROTOCOL: ${{ inputs.kubernetes-service-protocol }}
+        KUBERNETES_SERVICE_PORT_NAME: ${{ inputs.kubernetes-service-port-name }}
+        KUBERNETES_SERVICE_NODE_PORT: ${{ inputs.kubernetes-service-node-port }}
+        KUBERNETES_SERVICE_EXTERNAL_NAME: ${{ inputs.kubernetes-service-external-name }}
+        KUBERNETES_SERVICE_EXTERNAL_TRAFFIC_POLICY: ${{ inputs.kubernetes-service-external-traffic-policy }}
+        KUBERNETES_SERVICE_NAME_SUFFIX: ${{ inputs.kubernetes-service-name-suffix }}
+        KUBERNETES_SERVICE_COMBINED_SUB_PATH: ${{ inputs.kubernetes-service-combined-sub-path }}
+        KUBERNETES_SERVICE_ADDITIONAL_LABELS: ${{ inputs.kubernetes-service-additional-labels }}
+        KUBERNETES_SERVICE_ADDITIONAL_ANNOTATIONS: ${{ inputs.kubernetes-service-additional-annotations }}
+
+        # Workflow inputs - token substitution
+        TOKEN_DELIMITER_STYLE: ${{ inputs.token-delimiter-style }}
+        TOKEN_NAME_STYLE: ${{ inputs.token-name-style }}
+        TOKEN_NAME_VALIDATION: ${{ inputs.token-name-validation }}
+        ALLOW_BUILTIN_TOKEN_OVERRIDE: ${{ inputs.allow-builtin-token-override }}
+        CONFIG_SUB_PATH: ${{ inputs.config-sub-path }}
+        CONFIG_VALUE_TRAILING_NEWLINE: ${{ inputs.config-value-trailing-newline }}
+
+        # Workflow inputs - naming, versions, and tags calculation
+        RELEASE_BRANCH: ${{ inputs.release-branch }}
+        ADDITIONAL_RELEASE_BRANCHES: ${{ inputs.additional-release-branches }}
+        TAG_VERSION_MAX_PARTS: ${{ inputs.tag-version-max-parts }}
+        TAG_VERSION_CALCULATION_STRATEGY: ${{ inputs.tag-version-calculation-strategy }}
+        TAG_VERSION_PATTERN_TYPE: ${{ inputs.tag-version-pattern-type }}
+        TAG_VERSION_PREFIX_PARTS: ${{ inputs.tag-version-prefix-parts }}
+        TAG_VERSION_SOURCE_SUB_PATH: ${{ inputs.tag-version-source-sub-path }}
+        TAG_VERSION_SOURCE_FILE_NAME: ${{ inputs.tag-version-source-file-name }}
+        TAG_VERSION_SOURCE_CUSTOM_PATTERN: ${{ inputs.tag-version-source-custom-pattern }}
+
+        # Workflow inputs - quality check options
+        BLOCK_SLASHES: ${{ inputs.block-slashes }}
+        QC_BLOCK_SLASH_CONTAINING_BRANCHES: ${{ inputs.qc-block-slash-containing-branches }}
+        QC_BLOCK_DOUBLE_HYPHEN_CONTAINING_BRANCHES: ${{ inputs.qc-block-double-hyphen-containing-branches }}
+        QC_REQUIRE_CONVENTIONAL_BRANCHES: ${{ inputs.qc-require-conventional-branches }}
+        QC_REQUIRE_CONVENTIONAL_COMMITS: ${{ inputs.qc-require-conventional-commits }}
+        QC_BLOCK_CONVENTIONAL_COMMITS: ${{ inputs.qc-block-conventional-commits }}
+
+        # Workflow inputs - hook script paths
+        HOOK_PRE_TAGGING_TESTS_SCRIPT_SUB_PATH: ${{ inputs.hook-pre-tagging-tests-script-sub-path }}
+        HOOK_PRE_DOCKER_PREPARE_SCRIPT_SUB_PATH: ${{ inputs.hook-pre-docker-prepare-script-sub-path }}
+        HOOK_POST_DOCKER_TESTS_SCRIPT_SUB_PATH: ${{ inputs.hook-post-docker-tests-script-sub-path }}
+        HOOK_PRE_PACKAGE_PREPARE_SCRIPT_SUB_PATH: ${{ inputs.hook-pre-package-prepare-script-sub-path }}
+        HOOK_POST_PACKAGE_TESTS_SCRIPT_SUB_PATH: ${{ inputs.hook-post-package-tests-script-sub-path }}
+
+        # Workflow inputs - github release
+        GITHUB_RELEASE_ENABLED: ${{ inputs.github-release-enabled }}
+        GITHUB_RELEASE_SUBSTITUTED_FILES: ${{ inputs.github-release-substituted-files }}
+        GITHUB_RELEASE_VERBATIM_FILES: ${{ inputs.github-release-verbatim-files }}
+        GITHUB_RELEASE_NOTES: ${{ inputs.github-release-notes }}
+        GITHUB_RELEASE_ADD_VERSION_TO_FILENAMES: ${{ inputs.github-release-add-version-to-filenames }}
+
+        # Step outputs - version outputs
+        VERSION: ${{ inputs.version }}
+        VERSION_MAJOR: ${{ inputs.version-major }}
+        VERSION_MINOR: ${{ inputs.version-minor }}
+        VERSION_PATCH: ${{ inputs.version-patch }}
+        VERSION_2_PART: ${{ inputs.version-2-part }}
+        VERSION_3_PART: ${{ inputs.version-3-part }}
+        VERSION_4_PART: ${{ inputs.version-4-part }}
+        DOCKER_TAG: ${{ inputs.docker-tag }}
+        DOCKER_IMAGE_NAME: ${{ inputs.docker-image-name }}
+        GIT_TAG: ${{ inputs.git-tag }}
+        PROJECT_NAME: ${{ inputs.project-name }}
+        IS_RELEASE: ${{ inputs.is-release }}
+        # Step outputs - docker outputs
+        DOCKER_SUBSTITUTED_SUB_PATH: ${{ inputs.docker-substituted-sub-path }}
+        TARGET_IMAGE_FULL_URI: ${{ inputs.target-image-full-uri }}
+      run: .github/buildon-github-actions/src/scripts/main/hook-post-docker-tests

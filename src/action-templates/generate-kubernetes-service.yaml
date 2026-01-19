@@ -1,0 +1,134 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
+
+name: 'Generate Kubernetes Service'
+description: 'Generates a Kubernetes Service manifest with tokenized values'
+
+inputs:
+  # Required context
+  project-name:
+    description: 'Project name (required)'
+    required: true
+
+  # Global settings
+  output-sub-path:
+    description: 'Build output directory (relative)'
+    required: false
+    default: 'target'
+  kubernetes-global-additional-labels:
+    description: 'Additional labels for all Kubernetes manifests (comma-separated key=value)'
+    required: false
+    default: ''
+  kubernetes-global-additional-annotations:
+    description: 'Additional annotations for all Kubernetes manifests (comma-separated key=value)'
+    required: false
+    default: ''
+
+  # Workload settings (for defaults)
+  kubernetes-workload-type:
+    description: 'Workload type for smart defaulting (deployment, statefulset, etc.)'
+    required: false
+    default: 'deployment'
+  kubernetes-workload-container-port:
+    description: 'Container port (used as default for target-port)'
+    required: false
+    default: '1024'
+
+  # Service settings
+  kubernetes-service-generation-enabled:
+    description: 'Enable Service generation (default: auto based on workload type)'
+    required: false
+  kubernetes-service-type:
+    description: 'Service type (ClusterIP, Headless, NoSelector, NodePort, LoadBalancer, ExternalName)'
+    required: false
+    default: 'ClusterIP'
+  kubernetes-service-port:
+    description: 'Service port (not used for ExternalName)'
+    required: false
+    default: '80'
+  kubernetes-service-target-port:
+    description: 'Target port (defaults to container port, not used for ExternalName)'
+    required: false
+    default: ''
+  kubernetes-service-protocol:
+    description: 'Protocol (TCP, UDP, SCTP)'
+    required: false
+    default: 'TCP'
+  kubernetes-service-port-name:
+    description: 'Named port identifier (optional)'
+    required: false
+    default: ''
+  kubernetes-service-node-port:
+    description: 'Node port number (NodePort type only, empty for auto-assign)'
+    required: false
+    default: ''
+  kubernetes-service-external-name:
+    description: 'External DNS name (required for ExternalName type)'
+    required: false
+    default: ''
+  kubernetes-service-external-traffic-policy:
+    description: 'External traffic policy (Cluster or Local, NodePort/LoadBalancer only)'
+    required: false
+    default: ''
+  kubernetes-service-name-suffix:
+    description: 'Optional suffix for Service name and filename'
+    required: false
+    default: ''
+  kubernetes-service-combined-sub-path:
+    description: 'Sub-path within combined/ for output'
+    required: false
+    default: ''
+  kubernetes-service-additional-labels:
+    description: 'Additional labels specific to Service (comma-separated key=value)'
+    required: false
+    default: ''
+  kubernetes-service-additional-annotations:
+    description: 'Additional annotations specific to Service (comma-separated key=value)'
+    required: false
+    default: ''
+
+  # Token substitution
+  token-delimiter-style:
+    description: 'Token delimiter syntax for variables (shell, mustache, helm, erb, github-actions, blade, stringtemplate, ognl, t4, swift)'
+    required: false
+    default: 'shell'
+  token-name-style:
+    description: 'Case style for token names (UPPER_SNAKE, lower_snake, lower-kebab, UPPER-KEBAB, camelCase, PascalCase, lower.dot, UPPER.DOT)'
+    required: false
+    default: 'PascalCase'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Generate Service manifest
+      id: generate
+      shell: bash
+      env:
+        LOG_ERROR_PREFIX: '::error::'
+        # Required context
+        PROJECT_NAME: ${{ inputs.project-name }}
+        # Global settings
+        OUTPUT_SUB_PATH: ${{ inputs.output-sub-path }}
+        KUBERNETES_GLOBAL_ADDITIONAL_LABELS: ${{ inputs.kubernetes-global-additional-labels }}
+        KUBERNETES_GLOBAL_ADDITIONAL_ANNOTATIONS: ${{ inputs.kubernetes-global-additional-annotations }}
+        # Workload settings (for defaults)
+        KUBERNETES_WORKLOAD_TYPE: ${{ inputs.kubernetes-workload-type }}
+        KUBERNETES_WORKLOAD_CONTAINER_PORT: ${{ inputs.kubernetes-workload-container-port }}
+        # Service settings
+        KUBERNETES_SERVICE_GENERATION_ENABLED: ${{ inputs.kubernetes-service-generation-enabled }}
+        KUBERNETES_SERVICE_TYPE: ${{ inputs.kubernetes-service-type }}
+        KUBERNETES_SERVICE_PORT: ${{ inputs.kubernetes-service-port }}
+        KUBERNETES_SERVICE_TARGET_PORT: ${{ inputs.kubernetes-service-target-port }}
+        KUBERNETES_SERVICE_PROTOCOL: ${{ inputs.kubernetes-service-protocol }}
+        KUBERNETES_SERVICE_PORT_NAME: ${{ inputs.kubernetes-service-port-name }}
+        KUBERNETES_SERVICE_NODE_PORT: ${{ inputs.kubernetes-service-node-port }}
+        KUBERNETES_SERVICE_EXTERNAL_NAME: ${{ inputs.kubernetes-service-external-name }}
+        KUBERNETES_SERVICE_EXTERNAL_TRAFFIC_POLICY: ${{ inputs.kubernetes-service-external-traffic-policy }}
+        KUBERNETES_SERVICE_NAME_SUFFIX: ${{ inputs.kubernetes-service-name-suffix }}
+        KUBERNETES_SERVICE_COMBINED_SUB_PATH: ${{ inputs.kubernetes-service-combined-sub-path }}
+        KUBERNETES_SERVICE_ADDITIONAL_LABELS: ${{ inputs.kubernetes-service-additional-labels }}
+        KUBERNETES_SERVICE_ADDITIONAL_ANNOTATIONS: ${{ inputs.kubernetes-service-additional-annotations }}
+        # Token substitution
+        TOKEN_DELIMITER_STYLE: ${{ inputs.token-delimiter-style }}
+        TOKEN_NAME_STYLE: ${{ inputs.token-name-style }}
+      run: "${{ github.action_path }}/../../scripts/generators/generate-kubernetes-service"
