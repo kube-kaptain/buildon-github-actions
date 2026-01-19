@@ -128,7 +128,7 @@ inputs:
     default: ''
   # Kubernetes Workload generation
   kubernetes-workload-type:
-    description: 'Workload type to generate (deployment, statefulset, none)'
+    description: 'Workload type to generate (deployment, statefulset, daemonset, none)'
     required: false
     default: 'deployment'
   kubernetes-workload-replicas:

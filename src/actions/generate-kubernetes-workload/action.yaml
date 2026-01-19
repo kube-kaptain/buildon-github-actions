@@ -26,7 +26,7 @@ inputs:
     default: ''
   # Kubernetes Workload generation
   kubernetes-workload-type:
-    description: 'Workload type to generate (deployment, statefulset, none)'
+    description: 'Workload type to generate (deployment, statefulset, daemonset, none)'
     required: false
     default: 'deployment'
   kubernetes-workload-replicas:
@@ -339,6 +339,51 @@ inputs:
     description: 'Mount path for the persistent volume'
     required: false
     default: '/data'
+  # DaemonSet unique inputs
+  kubernetes-daemonset-update-strategy-type:
+    description: 'Update strategy type (RollingUpdate or OnDelete)'
+    required: false
+    default: 'RollingUpdate'
+  kubernetes-daemonset-max-unavailable:
+    description: 'Max unavailable pods during rolling update (number or percentage)'
+    required: false
+    default: '1'
+  kubernetes-daemonset-min-ready-seconds:
+    description: 'Minimum seconds a pod must be ready before considered available'
+    required: false
+    default: '0'
+  kubernetes-daemonset-host-network:
+    description: 'Use host network namespace (true/false)'
+    required: false
+    default: 'false'
+  kubernetes-daemonset-host-pid:
+    description: 'Use host PID namespace (true/false)'
+    required: false
+    default: 'false'
+  kubernetes-daemonset-host-ipc:
+    description: 'Use host IPC namespace (true/false)'
+    required: false
+    default: 'false'
+  kubernetes-daemonset-run-as-non-root:
+    description: 'Require non-root user (true/false, set false for system-level DaemonSets that need root)'
+    required: false
+    default: 'true'
+  kubernetes-daemonset-privileged:
+    description: 'Run container in privileged mode (true/false)'
+    required: false
+    default: 'false'
+  kubernetes-daemonset-dns-policy:
+    description: 'DNS policy (ClusterFirst, ClusterFirstWithHostNet, Default, None)'
+    required: false
+    default: ''
+  kubernetes-daemonset-tolerations:
+    description: 'Tolerations as JSON array (e.g., [{"operator":"Exists"}] or [{"key":"node-role.kubernetes.io/control-plane","operator":"Exists","effect":"NoSchedule"}])'
+    required: false
+    default: ''
+  kubernetes-daemonset-node-selector:
+    description: 'Node selector labels (comma-separated key=value)'
+    required: false
+    default: ''
   # Token substitution
   token-delimiter-style:
     description: 'Token delimiter syntax for variables (shell, mustache, helm, erb, github-actions, blade, stringtemplate, ognl, t4, swift)'
@@ -462,6 +507,18 @@ runs:
         KUBERNETES_STATEFULSET_PVC_ACCESS_MODE: ${{ inputs.kubernetes-statefulset-pvc-access-mode }}
         KUBERNETES_STATEFULSET_PVC_VOLUME_NAME: ${{ inputs.kubernetes-statefulset-pvc-volume-name }}
         KUBERNETES_STATEFULSET_PVC_MOUNT_PATH: ${{ inputs.kubernetes-statefulset-pvc-mount-path }}
+        # DaemonSet unique settings
+        KUBERNETES_DAEMONSET_UPDATE_STRATEGY_TYPE: ${{ inputs.kubernetes-daemonset-update-strategy-type }}
+        KUBERNETES_DAEMONSET_MAX_UNAVAILABLE: ${{ inputs.kubernetes-daemonset-max-unavailable }}
+        KUBERNETES_DAEMONSET_MIN_READY_SECONDS: ${{ inputs.kubernetes-daemonset-min-ready-seconds }}
+        KUBERNETES_DAEMONSET_HOST_NETWORK: ${{ inputs.kubernetes-daemonset-host-network }}
+        KUBERNETES_DAEMONSET_HOST_PID: ${{ inputs.kubernetes-daemonset-host-pid }}
+        KUBERNETES_DAEMONSET_HOST_IPC: ${{ inputs.kubernetes-daemonset-host-ipc }}
+        KUBERNETES_DAEMONSET_RUN_AS_NON_ROOT: ${{ inputs.kubernetes-daemonset-run-as-non-root }}
+        KUBERNETES_DAEMONSET_PRIVILEGED: ${{ inputs.kubernetes-daemonset-privileged }}
+        KUBERNETES_DAEMONSET_DNS_POLICY: ${{ inputs.kubernetes-daemonset-dns-policy }}
+        KUBERNETES_DAEMONSET_TOLERATIONS: ${{ inputs.kubernetes-daemonset-tolerations }}
+        KUBERNETES_DAEMONSET_NODE_SELECTOR: ${{ inputs.kubernetes-daemonset-node-selector }}
         # Token substitution
         TOKEN_NAME_STYLE: ${{ inputs.token-name-style }}
         TOKEN_DELIMITER_STYLE: ${{ inputs.token-delimiter-style }}

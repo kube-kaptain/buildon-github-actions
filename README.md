@@ -36,6 +36,7 @@ See [`examples/`](examples/) for more usage patterns.
 |---------|-------------|
 | [`additional-release-branches.yaml`](examples/additional-release-branches.yaml) | Support hotfix workflows by building on branches other than the default and still getting releases published |
 | [`basic-quality-and-versioning.yaml`](examples/basic-quality-and-versioning.yaml) | Standard build setup |
+| [`daemonset-privileged-and-tolerations.yaml`](examples/daemonset-privileged-and-tolerations.yaml) | This example demonstrates a DaemonSet configured for system-level agents that |
 | [`docker-build-dockerfile-no-squash.yaml`](examples/docker-build-dockerfile-no-squash.yaml) | Build a Docker image without --squash, preserving layer history |
 | [`docker-build-dockerfile.yaml`](examples/docker-build-dockerfile.yaml) | Build a Docker image from a Dockerfile with --squash (default) to flatten |
 | [`docker-build-retag-base-path.yaml`](examples/docker-build-retag-base-path.yaml) | Many registries use base paths in addition to the normal image name for projects or teams |
@@ -150,6 +151,17 @@ See [`examples/`](examples/) for more usage patterns.
 | `kubernetes-configmap-additional-labels` | string | `""` | Additional labels specific to ConfigMap (comma-separated key=value) |
 | `kubernetes-configmap-name-checksum-injection` | boolean | `true` | Enable checksum injection suffix in ConfigMap name |
 | `kubernetes-configmap-sub-path` | string | `src/configmap` | Directory containing ConfigMap data files (relative) |
+| `kubernetes-daemonset-dns-policy` | string | `""` | DNS policy (ClusterFirst, ClusterFirstWithHostNet, Default, None) |
+| `kubernetes-daemonset-host-ipc` | string | `false` | Use host IPC namespace (true/false) |
+| `kubernetes-daemonset-host-network` | string | `false` | Use host network namespace (true/false) |
+| `kubernetes-daemonset-host-pid` | string | `false` | Use host PID namespace (true/false) |
+| `kubernetes-daemonset-max-unavailable` | string | `1` | Max unavailable pods during rolling update (number or percentage) |
+| `kubernetes-daemonset-min-ready-seconds` | string | `0` | Minimum seconds a pod must be ready before considered available |
+| `kubernetes-daemonset-node-selector` | string | `""` | Node selector labels (comma-separated key=value) |
+| `kubernetes-daemonset-privileged` | string | `false` | Run container in privileged mode (true/false) |
+| `kubernetes-daemonset-run-as-non-root` | boolean | `true` | Require non-root user (true/false, set false for system-level DaemonSets that need root) |
+| `kubernetes-daemonset-tolerations` | string | `""` | Tolerations as JSON array (e.g., [{"operator":"Exists"}] or [{"key":"node-role.kubernetes.io/control-plane","operator":"Exists","effect":"NoSchedule"}]) |
+| `kubernetes-daemonset-update-strategy-type` | string | `RollingUpdate` | Update strategy type (RollingUpdate or OnDelete) |
 | `kubernetes-deployment-additional-annotations` | string | `""` | Additional annotations for Deployment resources (key=value,key=value) |
 | `kubernetes-deployment-additional-labels` | string | `""` | Additional labels for Deployment resources (key=value,key=value) |
 | `kubernetes-deployment-env-sub-path` | string | `src/deployment-env` | Path to deployment environment variables directory |
@@ -257,7 +269,7 @@ See [`examples/`](examples/) for more usage patterns.
 | `kubernetes-workload-secret-keys-for-env` | string | `""` | Comma/space-separated Secret keys to expose as env vars |
 | `kubernetes-workload-secret-mount-path` | string | `/secret` | Secret mount path in container |
 | `kubernetes-workload-termination-grace-period-seconds` | string | `10` | Termination grace period in seconds |
-| `kubernetes-workload-type` | string | `deployment` | Workload type to generate (deployment, statefulset, none) |
+| `kubernetes-workload-type` | string | `deployment` | Workload type to generate (deployment, statefulset, daemonset, none) |
 | `manifests-packaging-base-image` | string | `""` | Base image for manifest packaging (default: scratch) |
 | `manifests-repo-provider-type` | string | `docker` | Repo provider type for manifest storage (default: docker, currently the only supported provider) |
 | `manifests-sub-path` | string | `src/kubernetes` | Directory containing Kubernetes manifests (relative) |

@@ -15,6 +15,7 @@ inputs:
   # INJECT-INPUT: kubernetes-workload
   # INJECT-INPUT: kubernetes-workload-deployment
   # INJECT-INPUT: kubernetes-workload-statefulset
+  # INJECT-INPUT: kubernetes-workload-daemonset
   # INJECT-INPUT: token-substitution
 
 runs:
@@ -114,6 +115,18 @@ runs:
         KUBERNETES_STATEFULSET_PVC_ACCESS_MODE: ${{ inputs.kubernetes-statefulset-pvc-access-mode }}
         KUBERNETES_STATEFULSET_PVC_VOLUME_NAME: ${{ inputs.kubernetes-statefulset-pvc-volume-name }}
         KUBERNETES_STATEFULSET_PVC_MOUNT_PATH: ${{ inputs.kubernetes-statefulset-pvc-mount-path }}
+        # DaemonSet unique settings
+        KUBERNETES_DAEMONSET_UPDATE_STRATEGY_TYPE: ${{ inputs.kubernetes-daemonset-update-strategy-type }}
+        KUBERNETES_DAEMONSET_MAX_UNAVAILABLE: ${{ inputs.kubernetes-daemonset-max-unavailable }}
+        KUBERNETES_DAEMONSET_MIN_READY_SECONDS: ${{ inputs.kubernetes-daemonset-min-ready-seconds }}
+        KUBERNETES_DAEMONSET_HOST_NETWORK: ${{ inputs.kubernetes-daemonset-host-network }}
+        KUBERNETES_DAEMONSET_HOST_PID: ${{ inputs.kubernetes-daemonset-host-pid }}
+        KUBERNETES_DAEMONSET_HOST_IPC: ${{ inputs.kubernetes-daemonset-host-ipc }}
+        KUBERNETES_DAEMONSET_RUN_AS_NON_ROOT: ${{ inputs.kubernetes-daemonset-run-as-non-root }}
+        KUBERNETES_DAEMONSET_PRIVILEGED: ${{ inputs.kubernetes-daemonset-privileged }}
+        KUBERNETES_DAEMONSET_DNS_POLICY: ${{ inputs.kubernetes-daemonset-dns-policy }}
+        KUBERNETES_DAEMONSET_TOLERATIONS: ${{ inputs.kubernetes-daemonset-tolerations }}
+        KUBERNETES_DAEMONSET_NODE_SELECTOR: ${{ inputs.kubernetes-daemonset-node-selector }}
         # Token substitution
         TOKEN_NAME_STYLE: ${{ inputs.token-name-style }}
         TOKEN_DELIMITER_STYLE: ${{ inputs.token-delimiter-style }}
