@@ -10,13 +10,25 @@ inputs:
     description: 'Project name for workload naming and labels'
     required: true
 
-  # Workload type selection
+  # Global settings
+  output-sub-path:
+    description: 'Build output directory (relative)'
+    required: false
+    default: 'target'
+  kubernetes-global-additional-labels:
+    description: 'Additional labels for all Kubernetes manifests (comma-separated key=value)'
+    required: false
+    default: ''
+  kubernetes-global-additional-annotations:
+    description: 'Additional annotations for all Kubernetes manifests (comma-separated key=value)'
+    required: false
+    default: ''
+
+  # Workload settings
   kubernetes-workload-type:
     description: 'Workload type to generate (deployment, statefulset, none)'
     required: false
     default: 'deployment'
-
-  # Common workload settings
   kubernetes-workload-replicas:
     description: 'Replica count (empty for token, NO for HPA management)'
     required: false
@@ -45,8 +57,6 @@ inputs:
     description: 'Additional annotations specific to workload (comma-separated key=value)'
     required: false
     default: ''
-
-  # Container configuration
   kubernetes-workload-container-port:
     description: 'Container port (default: 1024)'
     required: false
@@ -55,8 +65,6 @@ inputs:
     description: 'Image reference style (combined, separate, project-name-prefixed-combined, project-name-prefixed-separate)'
     required: false
     default: 'combined'
-
-  # Security settings
   kubernetes-workload-readonly-root-filesystem:
     description: 'Enable read-only root filesystem (true/false)'
     required: false
@@ -73,8 +81,6 @@ inputs:
     description: 'Include imagePullSecrets in pod spec (ENABLED/DISABLED)'
     required: false
     default: 'ENABLED'
-
-  # Resource limits
   kubernetes-workload-resources-memory:
     description: 'Memory limit (e.g., 128Mi, 1Gi)'
     required: false
@@ -91,8 +97,6 @@ inputs:
     description: 'Ephemeral storage request/limit for disk usage (e.g., 10Mi, 100Mi, 1Gi)'
     required: false
     default: '10Mi'
-
-  # Mount paths
   kubernetes-workload-configmap-mount-path:
     description: 'ConfigMap mount path in container'
     required: false
@@ -101,8 +105,6 @@ inputs:
     description: 'Secret mount path in container'
     required: false
     default: '/secret'
-
-  # Environment variable refs from ConfigMap/Secret keys
   kubernetes-workload-configmap-keys-for-env:
     description: 'Comma/space-separated ConfigMap keys to expose as env vars'
     required: false
@@ -111,8 +113,6 @@ inputs:
     description: 'Comma/space-separated Secret keys to expose as env vars'
     required: false
     default: ''
-
-  # Lifecycle
   kubernetes-workload-termination-grace-period-seconds:
     description: 'Termination grace period in seconds'
     required: false
@@ -126,29 +126,31 @@ inputs:
     required: false
     default: 'spread-nodes-and-zones-ha'
 
-  # Probe check types
+  # Liveness probe
   kubernetes-workload-probe-liveness-check-type:
     description: 'Liveness probe type (http-get, tcp-socket, exec, grpc, none)'
     required: false
     default: 'http-get'
-  kubernetes-workload-probe-readiness-check-type:
-    description: 'Readiness probe type (http-get, tcp-socket, exec, grpc, none)'
-    required: false
-    default: 'http-get'
-  kubernetes-workload-probe-startup-check-type:
-    description: 'Startup probe type (http-get, tcp-socket, exec, grpc, none)'
-    required: false
-    default: 'http-get'
-
-  # Probe HTTP paths
   kubernetes-workload-probe-liveness-http-path:
     description: 'Liveness probe HTTP path'
     required: false
     default: '/liveness'
+
+  # Readiness probe
+  kubernetes-workload-probe-readiness-check-type:
+    description: 'Readiness probe type (http-get, tcp-socket, exec, grpc, none)'
+    required: false
+    default: 'http-get'
   kubernetes-workload-probe-readiness-http-path:
     description: 'Readiness probe HTTP path'
     required: false
     default: '/readiness'
+
+  # Startup probe
+  kubernetes-workload-probe-startup-check-type:
+    description: 'Startup probe type (http-get, tcp-socket, exec, grpc, none)'
+    required: false
+    default: 'http-get'
   kubernetes-workload-probe-startup-http-path:
     description: 'Startup probe HTTP path'
     required: false
@@ -196,11 +198,7 @@ inputs:
     required: false
     default: '/data'
 
-  # Global settings (passed through)
-  output-sub-path:
-    description: 'Build output directory (relative)'
-    required: false
-    default: 'target'
+  # Token substitution
   token-name-style:
     description: 'Case style for token names (UPPER_SNAKE, lower_snake, lower-kebab, UPPER-KEBAB, camelCase, PascalCase, lower.dot, UPPER.DOT)'
     required: false
@@ -209,14 +207,6 @@ inputs:
     description: 'Token delimiter syntax for variables (shell, mustache, helm, erb, github-actions, blade, stringtemplate, ognl, t4, swift)'
     required: false
     default: 'shell'
-  kubernetes-global-additional-labels:
-    description: 'Additional labels for all Kubernetes manifests (comma-separated key=value)'
-    required: false
-    default: ''
-  kubernetes-global-additional-annotations:
-    description: 'Additional annotations for all Kubernetes manifests (comma-separated key=value)'
-    required: false
-    default: ''
 
 runs:
   using: 'composite'
@@ -228,9 +218,12 @@ runs:
         LOG_ERROR_PREFIX: '::error::'
         # Required context
         PROJECT_NAME: ${{ inputs.project-name }}
-        # Workload type
+        # Global settings
+        OUTPUT_SUB_PATH: ${{ inputs.output-sub-path }}
+        KUBERNETES_GLOBAL_ADDITIONAL_LABELS: ${{ inputs.kubernetes-global-additional-labels }}
+        KUBERNETES_GLOBAL_ADDITIONAL_ANNOTATIONS: ${{ inputs.kubernetes-global-additional-annotations }}
+        # Workload settings
         KUBERNETES_WORKLOAD_TYPE: ${{ inputs.kubernetes-workload-type }}
-        # Common workload settings
         KUBERNETES_WORKLOAD_REPLICAS: ${{ inputs.kubernetes-workload-replicas }}
         KUBERNETES_WORKLOAD_REVISION_HISTORY_LIMIT: ${{ inputs.kubernetes-workload-revision-history-limit }}
         KUBERNETES_WORKLOAD_NAME_SUFFIX: ${{ inputs.kubernetes-workload-name-suffix }}
@@ -238,36 +231,31 @@ runs:
         KUBERNETES_WORKLOAD_ENV_SUB_PATH: ${{ inputs.kubernetes-workload-env-sub-path }}
         KUBERNETES_WORKLOAD_ADDITIONAL_LABELS: ${{ inputs.kubernetes-workload-additional-labels }}
         KUBERNETES_WORKLOAD_ADDITIONAL_ANNOTATIONS: ${{ inputs.kubernetes-workload-additional-annotations }}
-        # Container configuration
         KUBERNETES_WORKLOAD_CONTAINER_PORT: ${{ inputs.kubernetes-workload-container-port }}
         KUBERNETES_WORKLOAD_IMAGE_REFERENCE_STYLE: ${{ inputs.kubernetes-workload-image-reference-style }}
-        # Security settings
         KUBERNETES_WORKLOAD_READONLY_ROOT_FILESYSTEM: ${{ inputs.kubernetes-workload-readonly-root-filesystem }}
         KUBERNETES_WORKLOAD_SECCOMP_PROFILE: ${{ inputs.kubernetes-workload-seccomp-profile }}
         KUBERNETES_WORKLOAD_AUTOMOUNT_SERVICE_ACCOUNT_TOKEN: ${{ inputs.kubernetes-workload-automount-service-account-token }}
         KUBERNETES_WORKLOAD_IMAGE_PULL_SECRETS: ${{ inputs.kubernetes-workload-image-pull-secrets }}
-        # Resource limits
         KUBERNETES_WORKLOAD_RESOURCES_MEMORY: ${{ inputs.kubernetes-workload-resources-memory }}
         KUBERNETES_WORKLOAD_RESOURCES_CPU_REQUEST: ${{ inputs.kubernetes-workload-resources-cpu-request }}
         KUBERNETES_WORKLOAD_RESOURCES_CPU_LIMIT: ${{ inputs.kubernetes-workload-resources-cpu-limit }}
         KUBERNETES_WORKLOAD_RESOURCES_EPHEMERAL_STORAGE: ${{ inputs.kubernetes-workload-resources-ephemeral-storage }}
-        # Mount paths
         KUBERNETES_WORKLOAD_CONFIGMAP_MOUNT_PATH: ${{ inputs.kubernetes-workload-configmap-mount-path }}
         KUBERNETES_WORKLOAD_SECRET_MOUNT_PATH: ${{ inputs.kubernetes-workload-secret-mount-path }}
-        # Environment variable refs from ConfigMap/Secret keys
         KUBERNETES_WORKLOAD_CONFIGMAP_KEYS_FOR_ENV: ${{ inputs.kubernetes-workload-configmap-keys-for-env }}
         KUBERNETES_WORKLOAD_SECRET_KEYS_FOR_ENV: ${{ inputs.kubernetes-workload-secret-keys-for-env }}
-        # Lifecycle
         KUBERNETES_WORKLOAD_TERMINATION_GRACE_PERIOD_SECONDS: ${{ inputs.kubernetes-workload-termination-grace-period-seconds }}
         KUBERNETES_WORKLOAD_PRESTOP_COMMAND: ${{ inputs.kubernetes-workload-prestop-command }}
         KUBERNETES_WORKLOAD_AFFINITY_STRATEGY: ${{ inputs.kubernetes-workload-affinity-strategy }}
-        # Probe check types
+        # Liveness probe
         KUBERNETES_WORKLOAD_PROBE_LIVENESS_CHECK_TYPE: ${{ inputs.kubernetes-workload-probe-liveness-check-type }}
-        KUBERNETES_WORKLOAD_PROBE_READINESS_CHECK_TYPE: ${{ inputs.kubernetes-workload-probe-readiness-check-type }}
-        KUBERNETES_WORKLOAD_PROBE_STARTUP_CHECK_TYPE: ${{ inputs.kubernetes-workload-probe-startup-check-type }}
-        # Probe HTTP paths
         KUBERNETES_WORKLOAD_PROBE_LIVENESS_HTTP_PATH: ${{ inputs.kubernetes-workload-probe-liveness-http-path }}
+        # Readiness probe
+        KUBERNETES_WORKLOAD_PROBE_READINESS_CHECK_TYPE: ${{ inputs.kubernetes-workload-probe-readiness-check-type }}
         KUBERNETES_WORKLOAD_PROBE_READINESS_HTTP_PATH: ${{ inputs.kubernetes-workload-probe-readiness-http-path }}
+        # Startup probe
+        KUBERNETES_WORKLOAD_PROBE_STARTUP_CHECK_TYPE: ${{ inputs.kubernetes-workload-probe-startup-check-type }}
         KUBERNETES_WORKLOAD_PROBE_STARTUP_HTTP_PATH: ${{ inputs.kubernetes-workload-probe-startup-http-path }}
         # StatefulSet unique settings
         KUBERNETES_STATEFULSET_SERVICE_NAME: ${{ inputs.kubernetes-statefulset-service-name }}
@@ -280,10 +268,7 @@ runs:
         KUBERNETES_STATEFULSET_PVC_ACCESS_MODE: ${{ inputs.kubernetes-statefulset-pvc-access-mode }}
         KUBERNETES_STATEFULSET_PVC_VOLUME_NAME: ${{ inputs.kubernetes-statefulset-pvc-volume-name }}
         KUBERNETES_STATEFULSET_PVC_MOUNT_PATH: ${{ inputs.kubernetes-statefulset-pvc-mount-path }}
-        # Global settings
-        OUTPUT_SUB_PATH: ${{ inputs.output-sub-path }}
+        # Token substitution
         TOKEN_NAME_STYLE: ${{ inputs.token-name-style }}
         TOKEN_DELIMITER_STYLE: ${{ inputs.token-delimiter-style }}
-        KUBERNETES_GLOBAL_ADDITIONAL_LABELS: ${{ inputs.kubernetes-global-additional-labels }}
-        KUBERNETES_GLOBAL_ADDITIONAL_ANNOTATIONS: ${{ inputs.kubernetes-global-additional-annotations }}
       run: "${{ github.action_path }}/../../scripts/generators/generate-kubernetes-workload"
