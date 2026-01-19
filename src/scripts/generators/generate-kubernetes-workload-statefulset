@@ -54,6 +54,8 @@ source "${LIB_DIR}/kubernetes-probes.bash"
 source "${LIB_DIR}/kubernetes-workload-detection.bash"
 # shellcheck source=src/scripts/lib/kubernetes-pod-spec.bash
 source "${LIB_DIR}/kubernetes-pod-spec.bash"
+# shellcheck source=src/scripts/lib/kubernetes-pod-placement.bash
+source "${LIB_DIR}/kubernetes-pod-placement.bash"
 # shellcheck source=src/scripts/lib/generator-input-validation.bash
 source "${LIB_DIR}/generator-input-validation.bash"
 
@@ -302,6 +304,9 @@ KUBERNETES_SERVICE_ADDITIONAL_ANNOTATIONS="kaptain/generated-for=\"statefulset/$
     APP_LABEL_VALUE="${statefulset_name}" \
     "${affinity_plugin}"
   fi
+
+  # Tolerations
+  generate_tolerations 6 "${TOLERATIONS}"
 
   # Image pull secrets (optional)
   if [[ "${IMAGE_PULL_SECRETS}" != "DISABLED" ]]; then

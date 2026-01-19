@@ -126,6 +126,10 @@ inputs:
     description: 'Pod affinity strategy plugin name'
     required: false
     default: 'spread-nodes-and-zones-ha'
+  kubernetes-workload-tolerations:
+    description: 'Tolerations as JSON array (e.g., [{"key":"dedicated","operator":"Equal","value":"app","effect":"NoSchedule"}])'
+    required: false
+    default: ''
   # Liveness probe inputs
   kubernetes-workload-probe-liveness-check-type:
     description: 'Liveness probe type (http-get, tcp-socket, exec, grpc, none)'
@@ -450,6 +454,7 @@ runs:
         KUBERNETES_WORKLOAD_TERMINATION_GRACE_PERIOD_SECONDS: ${{ inputs.kubernetes-workload-termination-grace-period-seconds }}
         KUBERNETES_WORKLOAD_PRESTOP_COMMAND: ${{ inputs.kubernetes-workload-prestop-command }}
         KUBERNETES_WORKLOAD_AFFINITY_STRATEGY: ${{ inputs.kubernetes-workload-affinity-strategy }}
+        KUBERNETES_WORKLOAD_TOLERATIONS: ${{ inputs.kubernetes-workload-tolerations }}
         # Liveness probe
         KUBERNETES_WORKLOAD_PROBE_LIVENESS_CHECK_TYPE: ${{ inputs.kubernetes-workload-probe-liveness-check-type }}
         KUBERNETES_WORKLOAD_PROBE_LIVENESS_HTTP_PATH: ${{ inputs.kubernetes-workload-probe-liveness-http-path }}

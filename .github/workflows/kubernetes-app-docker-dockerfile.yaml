@@ -276,6 +276,11 @@ on:
         required: false
         type: string
         default: 'spread-nodes-and-zones-ha'
+      kubernetes-workload-tolerations:
+        description: 'Tolerations as JSON array (e.g., [{"key":"dedicated","operator":"Equal","value":"app","effect":"NoSchedule"}])'
+        required: false
+        type: string
+        default: ''
       # Liveness probe inputs
       kubernetes-workload-probe-liveness-check-type:
         description: 'Liveness probe type (http-get, tcp-socket, exec, grpc, none)'
@@ -1862,6 +1867,7 @@ jobs:
           kubernetes-workload-termination-grace-period-seconds: ${{ inputs.kubernetes-workload-termination-grace-period-seconds }}
           kubernetes-workload-prestop-command: ${{ inputs.kubernetes-workload-prestop-command }}
           kubernetes-workload-affinity-strategy: ${{ inputs.kubernetes-workload-affinity-strategy }}
+          kubernetes-workload-tolerations: ${{ inputs.kubernetes-workload-tolerations }}
           # Probe check types
           kubernetes-workload-probe-liveness-check-type: ${{ inputs.kubernetes-workload-probe-liveness-check-type }}
           kubernetes-workload-probe-readiness-check-type: ${{ inputs.kubernetes-workload-probe-readiness-check-type }}
