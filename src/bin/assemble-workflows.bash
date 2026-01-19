@@ -21,6 +21,8 @@ INPUTS_DIR="$REPO_ROOT/src/inputs"
 OUTPUT_DIR="$REPO_ROOT/.github/workflows"
 DOCS_DIR="$REPO_ROOT/docs"
 README="$REPO_ROOT/README.md"
+ACTION_TEMPLATES_DIR="$REPO_ROOT/src/action-templates"
+ACTIONS_DIR="$REPO_ROOT/src/actions"
 
 # Strip SPDX header (first 3 lines: SPDX, Copyright, blank) from chunk content
 strip_spdx_header() {
@@ -307,6 +309,54 @@ process_template() {
   done < "$template"
 
   # Write output (remove trailing newline duplication)
+  printf '%s' "$result" > "$output"
+  echo "  Written: $output"
+}
+
+# Process a single action template file
+process_action_template() {
+  local template="$1"
+  local basename
+  basename=$(basename "$template" .yaml)
+  local output_dir="$ACTIONS_DIR/$basename"
+  local output="$output_dir/action.yaml"
+
+  echo "Processing action: $basename"
+
+  mkdir -p "$output_dir"
+
+  local result=""
+
+  # Process line by line to handle INJECT-INPUT markers
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    # Input injection: # INJECT-INPUT: name
+    if [[ "$line" =~ ^([[:space:]]*)#\ INJECT-INPUT:\ ([a-zA-Z0-9_-]+)$ ]]; then
+      local indent="${BASH_REMATCH[1]}"
+      local input_name="${BASH_REMATCH[2]}"
+      local input_file="$INPUTS_DIR/${input_name}.yaml"
+
+      if [[ ! -f "$input_file" ]]; then
+        echo "  ERROR: Input file not found: $input_file" >&2
+        exit 1
+      fi
+
+      # Read input file, strip SPDX header, remove 'type' field, quote unquoted booleans/numbers, and apply indentation
+      local chunk
+      chunk=$(cat "$input_file" | strip_spdx_header | grep -v '^[[:space:]]*type:' | sed -E "s/^([[:space:]]*default:[[:space:]]*)(true|false|[0-9]+)$/\1'\2'/")
+
+      # Apply indentation to chunk
+      local indented_chunk
+      indented_chunk=$(echo "$chunk" | indent_chunk "$indent")
+
+      result+="${indent}${indented_chunk}"
+      echo "  Injected input: $input_name (indent: ${#indent} spaces)"
+    else
+      result+="$line"
+    fi
+    result+=$'\n'
+  done < "$template"
+
+  # Write output
   printf '%s' "$result" > "$output"
   echo "  Written: $output"
 }
@@ -726,6 +776,31 @@ generate_docs() {
 main() {
   local start_time=$SECONDS
   local section_start
+
+  # Process action templates first
+  echo "Assembling actions..."
+  echo "  Templates: $ACTION_TEMPLATES_DIR"
+  echo "  Output: $ACTIONS_DIR"
+  echo
+
+  # Clean and recreate actions directory
+  section_start=$SECONDS
+  rm -r "$ACTIONS_DIR"
+  echo "  Removed existing actions directory"
+  mkdir -p "$ACTIONS_DIR"
+
+  # Process all action templates
+  local action_count=0
+  for template in "$ACTION_TEMPLATES_DIR"/*.yaml; do
+    if [[ -f "$template" ]]; then
+      process_action_template "$template"
+      action_count=$((action_count + 1))
+      echo
+    fi
+  done
+
+  echo "Processed $action_count action(s) in $((SECONDS - section_start)) seconds."
+  echo
 
   echo "Assembling workflows..."
   echo "  Templates: $TEMPLATES_DIR"

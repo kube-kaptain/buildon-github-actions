@@ -4,22 +4,14 @@ name: GitHub Release
 description: Create GitHub release with assets from prepared directory
 
 inputs:
-  github-release-enabled:
-    description: Whether to create a GitHub release
-    required: false
-    default: "true"
-  output-sub-path:
-    description: Build output directory (files read from {output-sub-path}/github-release/)
-    required: false
-    default: "target"
+  # INJECT-INPUT: output-sub-path
+  # INJECT-INPUT: github-release
+
+  # Action-specific inputs
   github-release-tag:
     description: Release tag
     required: false
     default: ${{ github.ref_name }}
-  github-release-notes:
-    description: Release notes
-    required: false
-    default: ""
   github-release-title:
     description: Release title
     required: false

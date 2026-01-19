@@ -4,6 +4,7 @@ name: GitHub Release Prepare
 description: Prepares files for GitHub release with optional substitution and version suffix
 
 inputs:
+  # Release file inputs (subset of github-release - doesn't need enabled/notes)
   github-release-substituted-files:
     description: 'Files with token substitution and version suffix (space-separated)'
     required: false
@@ -12,10 +13,14 @@ inputs:
     description: 'Files copied as-is with version suffix only (space-separated)'
     required: false
     default: ''
-  output-sub-path:
-    description: 'Build output directory'
+  github-release-add-version-to-filenames:
+    description: 'Add version suffix to filenames'
     required: false
-    default: 'target'
+    default: 'true'
+
+  # INJECT-INPUT: output-sub-path
+
+  # Action-specific inputs (passed from version generator)
   version:
     description: 'Version for filename suffix'
     required: true
@@ -31,28 +36,10 @@ inputs:
   is-release:
     description: 'Whether this is a release build'
     required: true
-  github-release-add-version-to-filenames:
-    description: 'Add version suffix to filenames'
-    required: false
-    default: 'true'
-  token-delimiter-style:
-    description: 'Token delimiter syntax'
-    required: false
-  token-name-style:
-    description: 'Case style for token names'
-    required: false
-  token-name-validation:
-    description: 'How to validate token names'
-    required: false
-  config-sub-path:
-    description: 'User config directory'
-    required: false
-  allow-builtin-token-override:
-    description: 'Allow user tokens to override built-ins'
-    required: false
-  config-value-trailing-newline:
-    description: 'Trailing newline handling'
-    required: false
+
+  # INJECT-INPUT: token-substitution
+
+  # Optional built-in token values (action-specific)
   docker-image-full-uri:
     description: 'Full Docker image URI (optional built-in token)'
     required: false

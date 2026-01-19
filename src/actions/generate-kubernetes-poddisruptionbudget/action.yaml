@@ -10,11 +10,12 @@ inputs:
     description: 'Project name (required)'
     required: true
 
-  # Global settings
+  # Build output
   output-sub-path:
     description: 'Build output directory (relative)'
     required: false
     default: 'target'
+  # Kubernetes generation
   kubernetes-global-additional-labels:
     description: 'Additional labels for all Kubernetes manifests (comma-separated key=value)'
     required: false
@@ -30,9 +31,9 @@ inputs:
     required: false
     default: 'deployment'
 
-  # PodDisruptionBudget settings
+  # Kubernetes PodDisruptionBudget generation
   kubernetes-poddisruptionbudget-generation-enabled:
-    description: 'Enable PDB generation (default: auto based on workload type)'
+    description: 'Enable PodDisruptionBudget generation (true, false, or empty for auto based on workload type)'
     required: false
   kubernetes-poddisruptionbudget-name-suffix:
     description: 'Optional suffix for PDB name and filename'
@@ -51,14 +52,13 @@ inputs:
     required: false
     default: '1'
   kubernetes-poddisruptionbudget-additional-labels:
-    description: 'Additional labels specific to PDB (comma-separated key=value)'
+    description: 'Additional labels specific to PodDisruptionBudget (comma-separated key=value)'
     required: false
     default: ''
   kubernetes-poddisruptionbudget-additional-annotations:
-    description: 'Additional annotations specific to PDB (comma-separated key=value)'
+    description: 'Additional annotations specific to PodDisruptionBudget (comma-separated key=value)'
     required: false
     default: ''
-
   # Token substitution
   token-delimiter-style:
     description: 'Token delimiter syntax for variables (shell, mustache, helm, erb, github-actions, blade, stringtemplate, ognl, t4, swift)'
@@ -68,6 +68,22 @@ inputs:
     description: 'Case style for token names (UPPER_SNAKE, lower_snake, lower-kebab, UPPER-KEBAB, camelCase, PascalCase, lower.dot, UPPER.DOT)'
     required: false
     default: 'PascalCase'
+  token-name-validation:
+    description: 'How to validate user token names (MATCH = must match token-name-style, ALL = accept any valid name)'
+    required: false
+    default: 'MATCH'
+  allow-builtin-token-override:
+    description: 'Allow user tokens to override built-in tokens (for template/reusable projects)'
+    required: false
+    default: 'false'
+  config-sub-path:
+    description: 'Directory containing user-defined token files (relative)'
+    required: false
+    default: 'src/config'
+  config-value-trailing-newline:
+    description: 'How to handle trailing newlines in config values (strip-for-single-line, preserve-all, always-strip-one-newline)'
+    required: false
+    default: 'strip-for-single-line'
 
 runs:
   using: 'composite'

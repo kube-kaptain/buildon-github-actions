@@ -10,11 +10,12 @@ inputs:
     description: 'Project name for workload naming and labels'
     required: true
 
-  # Global settings
+  # Build output
   output-sub-path:
     description: 'Build output directory (relative)'
     required: false
     default: 'target'
+  # Kubernetes generation
   kubernetes-global-additional-labels:
     description: 'Additional labels for all Kubernetes manifests (comma-separated key=value)'
     required: false
@@ -23,14 +24,13 @@ inputs:
     description: 'Additional annotations for all Kubernetes manifests (comma-separated key=value)'
     required: false
     default: ''
-
-  # Workload settings
+  # Kubernetes Workload generation
   kubernetes-workload-type:
     description: 'Workload type to generate (deployment, statefulset, none)'
     required: false
     default: 'deployment'
   kubernetes-workload-replicas:
-    description: 'Replica count (empty for token, NO for HPA management)'
+    description: 'Replica count (empty for token, NO for HPA management, number for fixed)'
     required: false
     default: ''
   kubernetes-workload-revision-history-limit:
@@ -58,7 +58,7 @@ inputs:
     required: false
     default: ''
   kubernetes-workload-container-port:
-    description: 'Container port (default: 1024)'
+    description: 'Container port'
     required: false
     default: '1024'
   kubernetes-workload-image-reference-style:
@@ -66,7 +66,7 @@ inputs:
     required: false
     default: 'combined'
   kubernetes-workload-readonly-root-filesystem:
-    description: 'Enable read-only root filesystem (true/false)'
+    description: 'Enable read-only root filesystem'
     required: false
     default: 'true'
   kubernetes-workload-seccomp-profile:
@@ -74,13 +74,14 @@ inputs:
     required: false
     default: 'DISABLED'
   kubernetes-workload-automount-service-account-token:
-    description: 'Automount service account token (true/false)'
+    description: 'Automount service account token'
     required: false
     default: 'false'
   kubernetes-workload-image-pull-secrets:
     description: 'Include imagePullSecrets in pod spec (ENABLED/DISABLED)'
     required: false
     default: 'ENABLED'
+  # Resource configuration inputs
   kubernetes-workload-resources-memory:
     description: 'Memory limit (e.g., 128Mi, 1Gi)'
     required: false
@@ -94,7 +95,7 @@ inputs:
     required: false
     default: ''
   kubernetes-workload-resources-ephemeral-storage:
-    description: 'Ephemeral storage request/limit for disk usage (e.g., 10Mi, 100Mi, 1Gi)'
+    description: 'Ephemeral storage request/limit (e.g., 10Mi, 100Mi, 1Gi)'
     required: false
     default: '10Mi'
   kubernetes-workload-configmap-mount-path:
@@ -125,8 +126,7 @@ inputs:
     description: 'Pod affinity strategy plugin name'
     required: false
     default: 'spread-nodes-and-zones-ha'
-
-  # Liveness probe
+  # Liveness probe inputs
   kubernetes-workload-probe-liveness-check-type:
     description: 'Liveness probe type (http-get, tcp-socket, exec, grpc, none)'
     required: false
@@ -175,8 +175,7 @@ inputs:
     description: 'Liveness probe termination grace period (empty for default)'
     required: false
     default: ''
-
-  # Readiness probe
+  # Readiness probe inputs
   kubernetes-workload-probe-readiness-check-type:
     description: 'Readiness probe type (http-get, tcp-socket, exec, grpc, none)'
     required: false
@@ -225,8 +224,7 @@ inputs:
     description: 'Readiness probe success threshold'
     required: false
     default: '1'
-
-  # Startup probe
+  # Startup probe inputs
   kubernetes-workload-probe-startup-check-type:
     description: 'Startup probe type (http-get, tcp-socket, exec, grpc, none)'
     required: false
@@ -275,8 +273,7 @@ inputs:
     description: 'Startup probe termination grace period (empty for default)'
     required: false
     default: ''
-
-  # Deployment unique settings
+  # Deployment unique inputs
   kubernetes-deployment-env-sub-path:
     description: 'Path to deployment environment variables directory'
     required: false
@@ -289,8 +286,7 @@ inputs:
     description: 'Additional annotations for Deployment resources (key=value,key=value)'
     required: false
     default: ''
-
-  # StatefulSet unique settings
+  # StatefulSet unique inputs
   kubernetes-statefulset-env-sub-path:
     description: 'Path to statefulset environment variables directory'
     required: false
@@ -343,16 +339,31 @@ inputs:
     description: 'Mount path for the persistent volume'
     required: false
     default: '/data'
-
   # Token substitution
-  token-name-style:
-    description: 'Case style for token names (UPPER_SNAKE, lower_snake, lower-kebab, UPPER-KEBAB, camelCase, PascalCase, lower.dot, UPPER.DOT)'
-    required: false
-    default: 'PascalCase'
   token-delimiter-style:
     description: 'Token delimiter syntax for variables (shell, mustache, helm, erb, github-actions, blade, stringtemplate, ognl, t4, swift)'
     required: false
     default: 'shell'
+  token-name-style:
+    description: 'Case style for token names (UPPER_SNAKE, lower_snake, lower-kebab, UPPER-KEBAB, camelCase, PascalCase, lower.dot, UPPER.DOT)'
+    required: false
+    default: 'PascalCase'
+  token-name-validation:
+    description: 'How to validate user token names (MATCH = must match token-name-style, ALL = accept any valid name)'
+    required: false
+    default: 'MATCH'
+  allow-builtin-token-override:
+    description: 'Allow user tokens to override built-in tokens (for template/reusable projects)'
+    required: false
+    default: 'false'
+  config-sub-path:
+    description: 'Directory containing user-defined token files (relative)'
+    required: false
+    default: 'src/config'
+  config-value-trailing-newline:
+    description: 'How to handle trailing newlines in config values (strip-for-single-line, preserve-all, always-strip-one-newline)'
+    required: false
+    default: 'strip-for-single-line'
 
 runs:
   using: 'composite'

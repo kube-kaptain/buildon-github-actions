@@ -5,14 +5,7 @@ name: 'Resolve Target Registry and Base Path'
 description: 'Resolves target registry (defaults to ghcr.io) and computes base path (auto-detects org for GHCR)'
 
 inputs:
-  target-registry:
-    description: 'Target container registry (defaults to ghcr.io if empty)'
-    required: false
-    default: ''
-  target-base-path:
-    description: 'Path between registry and image name (auto-set to org for GHCR if empty)'
-    required: false
-    default: ''
+  # INJECT-INPUT: docker-build
 
 outputs:
   docker-target-registry:

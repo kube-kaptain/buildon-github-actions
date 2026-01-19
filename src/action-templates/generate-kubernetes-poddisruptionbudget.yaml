@@ -10,19 +10,8 @@ inputs:
     description: 'Project name (required)'
     required: true
 
-  # Global settings
-  output-sub-path:
-    description: 'Build output directory (relative)'
-    required: false
-    default: 'target'
-  kubernetes-global-additional-labels:
-    description: 'Additional labels for all Kubernetes manifests (comma-separated key=value)'
-    required: false
-    default: ''
-  kubernetes-global-additional-annotations:
-    description: 'Additional annotations for all Kubernetes manifests (comma-separated key=value)'
-    required: false
-    default: ''
+  # INJECT-INPUT: output-sub-path
+  # INJECT-INPUT: kubernetes-global
 
   # Workload settings (for smart defaulting)
   kubernetes-workload-type:
@@ -30,44 +19,8 @@ inputs:
     required: false
     default: 'deployment'
 
-  # PodDisruptionBudget settings
-  kubernetes-poddisruptionbudget-generation-enabled:
-    description: 'Enable PDB generation (default: auto based on workload type)'
-    required: false
-  kubernetes-poddisruptionbudget-name-suffix:
-    description: 'Optional suffix for PDB name and filename'
-    required: false
-    default: ''
-  kubernetes-poddisruptionbudget-combined-sub-path:
-    description: 'Sub-path within combined/ for output'
-    required: false
-    default: ''
-  kubernetes-poddisruptionbudget-strategy:
-    description: 'PDB constraint strategy (min-available or max-unavailable)'
-    required: false
-    default: 'max-unavailable'
-  kubernetes-poddisruptionbudget-value:
-    description: 'Value for the chosen strategy (integer or percentage, e.g., 1, 50%)'
-    required: false
-    default: '1'
-  kubernetes-poddisruptionbudget-additional-labels:
-    description: 'Additional labels specific to PDB (comma-separated key=value)'
-    required: false
-    default: ''
-  kubernetes-poddisruptionbudget-additional-annotations:
-    description: 'Additional annotations specific to PDB (comma-separated key=value)'
-    required: false
-    default: ''
-
-  # Token substitution
-  token-delimiter-style:
-    description: 'Token delimiter syntax for variables (shell, mustache, helm, erb, github-actions, blade, stringtemplate, ognl, t4, swift)'
-    required: false
-    default: 'shell'
-  token-name-style:
-    description: 'Case style for token names (UPPER_SNAKE, lower_snake, lower-kebab, UPPER-KEBAB, camelCase, PascalCase, lower.dot, UPPER.DOT)'
-    required: false
-    default: 'PascalCase'
+  # INJECT-INPUT: kubernetes-poddisruptionbudget
+  # INJECT-INPUT: token-substitution
 
 runs:
   using: 'composite'

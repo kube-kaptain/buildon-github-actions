@@ -5,6 +5,9 @@ name: 'Docker Multi-Tag'
 description: 'Tags a Docker image for multiple registries'
 
 inputs:
+  # INJECT-INPUT: docker-build
+
+  # Action-specific inputs
   docker-image-full-uri:
     description: 'Full URI of the image to tag from'
     required: true
@@ -13,9 +16,6 @@ inputs:
     required: true
   docker-tag:
     description: 'Tag for images'
-    required: true
-  docker-push-targets:
-    description: 'JSON array of targets [{registry, base-path?}]'
     required: true
 
 outputs:

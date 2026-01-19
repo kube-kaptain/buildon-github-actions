@@ -4,6 +4,7 @@ name: GitHub Release Prepare
 description: Prepares files for GitHub release with optional substitution and version suffix
 
 inputs:
+  # Release file inputs (subset of github-release - doesn't need enabled/notes)
   github-release-substituted-files:
     description: 'Files with token substitution and version suffix (space-separated)'
     required: false
@@ -12,10 +13,18 @@ inputs:
     description: 'Files copied as-is with version suffix only (space-separated)'
     required: false
     default: ''
+  github-release-add-version-to-filenames:
+    description: 'Add version suffix to filenames'
+    required: false
+    default: 'true'
+
+  # Build output
   output-sub-path:
-    description: 'Build output directory'
+    description: 'Build output directory (relative)'
     required: false
     default: 'target'
+
+  # Action-specific inputs (passed from version generator)
   version:
     description: 'Version for filename suffix'
     required: true
@@ -31,28 +40,34 @@ inputs:
   is-release:
     description: 'Whether this is a release build'
     required: true
-  github-release-add-version-to-filenames:
-    description: 'Add version suffix to filenames'
-    required: false
-    default: 'true'
+
+  # Token substitution
   token-delimiter-style:
-    description: 'Token delimiter syntax'
+    description: 'Token delimiter syntax for variables (shell, mustache, helm, erb, github-actions, blade, stringtemplate, ognl, t4, swift)'
     required: false
+    default: 'shell'
   token-name-style:
-    description: 'Case style for token names'
+    description: 'Case style for token names (UPPER_SNAKE, lower_snake, lower-kebab, UPPER-KEBAB, camelCase, PascalCase, lower.dot, UPPER.DOT)'
     required: false
+    default: 'PascalCase'
   token-name-validation:
-    description: 'How to validate token names'
+    description: 'How to validate user token names (MATCH = must match token-name-style, ALL = accept any valid name)'
     required: false
-  config-sub-path:
-    description: 'User config directory'
-    required: false
+    default: 'MATCH'
   allow-builtin-token-override:
-    description: 'Allow user tokens to override built-ins'
+    description: 'Allow user tokens to override built-in tokens (for template/reusable projects)'
     required: false
+    default: 'false'
+  config-sub-path:
+    description: 'Directory containing user-defined token files (relative)'
+    required: false
+    default: 'src/config'
   config-value-trailing-newline:
-    description: 'Trailing newline handling'
+    description: 'How to handle trailing newlines in config values (strip-for-single-line, preserve-all, always-strip-one-newline)'
     required: false
+    default: 'strip-for-single-line'
+
+  # Optional built-in token values (action-specific)
   docker-image-full-uri:
     description: 'Full Docker image URI (optional built-in token)'
     required: false

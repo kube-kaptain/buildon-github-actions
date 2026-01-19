@@ -4,22 +4,38 @@ name: GitHub Release
 description: Create GitHub release with assets from prepared directory
 
 inputs:
-  github-release-enabled:
-    description: Whether to create a GitHub release
-    required: false
-    default: "true"
+  # Build output
   output-sub-path:
-    description: Build output directory (files read from {output-sub-path}/github-release/)
+    description: 'Build output directory (relative)'
     required: false
-    default: "target"
+    default: 'target'
+  # GitHub release
+  github-release-enabled:
+    description: 'Create a GitHub release on version tags'
+    required: false
+    default: 'true'
+  github-release-substituted-files:
+    description: 'Files with token substitution and version suffix (space-separated)'
+    required: false
+    default: ''
+  github-release-verbatim-files:
+    description: 'Files copied as-is with version suffix only (space-separated)'
+    required: false
+    default: ''
+  github-release-notes:
+    description: 'Release notes (leave empty for auto-generated)'
+    required: false
+    default: ''
+  github-release-add-version-to-filenames:
+    description: 'Add version suffix to release filenames (e.g., file.yaml -> file-1.2.3.yaml)'
+    required: false
+    default: 'true'
+
+  # Action-specific inputs
   github-release-tag:
     description: Release tag
     required: false
     default: ${{ github.ref_name }}
-  github-release-notes:
-    description: Release notes
-    required: false
-    default: ""
   github-release-title:
     description: Release title
     required: false

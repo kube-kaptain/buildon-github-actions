@@ -5,10 +5,9 @@ name: 'Kubernetes Manifests Repo Provider Publish'
 description: 'Publishes manifests via pluggable repo provider. Requires package step to run first.'
 
 inputs:
-  manifests-repo-provider-type:
-    description: 'Manifests repo provider type (default: docker, currently the only supported provider)'
-    required: false
-    default: 'docker'
+  # INJECT-INPUT: kubernetes-app-manifests
+
+  # Action-specific inputs
   is-release:
     description: 'Whether to push/upload (false skips actual publish)'
     required: true

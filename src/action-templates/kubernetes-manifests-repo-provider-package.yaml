@@ -5,40 +5,17 @@ name: 'Kubernetes Manifests Repo Provider Package'
 description: 'Packages manifests for repo provider (builds docker image). Does NOT publish.'
 
 inputs:
-  manifests-repo-provider-type:
-    description: 'Manifests repo provider type (default: docker, currently the only supported provider)'
-    required: false
-    default: 'docker'
+  # INJECT-INPUT: output-sub-path
+  # INJECT-INPUT: kubernetes-app-manifests
+  # INJECT-INPUT: docker-build
 
-  # ============================================================================
-  # Common inputs (all providers)
-  # ============================================================================
+  # Action-specific inputs
   manifests-zip-sub-path:
     description: 'Relative path to the directory containing the manifests zip'
     required: true
   manifests-zip-file-name:
     description: 'Filename of the manifests zip'
     required: true
-  output-sub-path:
-    description: 'Build output sub-path (relative)'
-    required: false
-    default: 'target'
-
-  # ============================================================================
-  # Docker-specific inputs
-  # ============================================================================
-  manifests-packaging-base-image:
-    description: 'Base image for manifest packaging (default: scratch)'
-    required: false
-    default: ''
-  docker-target-registry:
-    description: 'Target container registry (defaults to ghcr.io)'
-    required: false
-    default: ''
-  docker-target-base-path:
-    description: 'Path between registry and image name'
-    required: false
-    default: ''
   docker-image-name:
     description: 'Image name (from version generator)'
     required: false
@@ -47,10 +24,6 @@ inputs:
     description: 'Tag for target image (includes prerelease suffix if applicable)'
     required: false
     default: ''
-
-  # ============================================================================
-  # Future provider inputs (not currently used, reserved for extensibility)
-  # ============================================================================
   project-name:
     description: 'Project name (for future non-docker providers)'
     required: false

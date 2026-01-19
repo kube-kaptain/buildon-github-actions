@@ -5,19 +5,9 @@ name: 'Docker Build Retag'
 description: 'Pulls and retags Docker images (no push)'
 
 inputs:
-  docker-source-registry:
-    description: 'Upstream registry (e.g., docker.io)'
-    required: true
-  docker-source-base-path:
-    description: 'Path between registry and image name (e.g., library)'
-    required: false
-    default: ''
-  docker-source-image-name:
-    description: 'Upstream image name (e.g., nginx)'
-    required: true
-  docker-source-tag:
-    description: 'Upstream image tag (e.g., 1.25)'
-    required: true
+  # INJECT-INPUT: docker-retag
+
+  # Target image configuration (action-specific)
   docker-target-registry:
     description: 'Target container registry (defaults to ghcr.io)'
     required: false
