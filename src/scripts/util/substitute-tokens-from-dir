@@ -102,12 +102,18 @@ if [[ ${#binary_files_found[@]} -gt 0 ]]; then
   exit 1
 fi
 
-# Convert target to absolute path for the provider script
+# Build list of target files (absolute paths)
+# Router handles file iteration - providers only receive single files
+TARGET_FILES=()
 if [[ "${TARGET_MODE}" == "dir" ]]; then
   TARGET_ABS="$(cd "${TARGET}" && pwd)"
+  while IFS= read -r -d '' file; do
+    TARGET_FILES+=("${file}")
+  done < <(find "${TARGET_ABS}" -type f -print0)
 else
   # For files, get absolute path
   TARGET_ABS="$(cd "$(dirname "${TARGET}")" && pwd)/$(basename "${TARGET}")"
+  TARGET_FILES=("${TARGET_ABS}")
 fi
 
 # Process tokens from tokens directory
@@ -120,7 +126,9 @@ while IFS= read -r token_file; do
   # Strip ./ prefix from find output
   token_file="${token_file#./}"
 
-  # Call the style-specific substitution script
+  # Call the style-specific substitution script for each target file
   # CONFIG_VALUE_TRAILING_NEWLINE inherited from tokens.bash defaults
-  "${PROVIDER_SCRIPT}" "${token_file}" "${TARGET_ABS}"
+  for target_file in "${TARGET_FILES[@]}"; do
+    "${PROVIDER_SCRIPT}" "${token_file}" "${target_file}"
+  done
 done < <(find . -type f | LC_ALL=C sort)
