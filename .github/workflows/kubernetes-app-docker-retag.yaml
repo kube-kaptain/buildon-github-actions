@@ -1523,14 +1523,45 @@ jobs:
           kubernetes-workload-prestop-command: ${{ inputs.kubernetes-workload-prestop-command }}
           kubernetes-workload-affinity-strategy: ${{ inputs.kubernetes-workload-affinity-strategy }}
           kubernetes-workload-tolerations: ${{ inputs.kubernetes-workload-tolerations }}
-          # Probe check types
+          # Liveness probe settings
           kubernetes-workload-probe-liveness-check-type: ${{ inputs.kubernetes-workload-probe-liveness-check-type }}
-          kubernetes-workload-probe-readiness-check-type: ${{ inputs.kubernetes-workload-probe-readiness-check-type }}
-          kubernetes-workload-probe-startup-check-type: ${{ inputs.kubernetes-workload-probe-startup-check-type }}
-          # Probe HTTP paths
           kubernetes-workload-probe-liveness-http-path: ${{ inputs.kubernetes-workload-probe-liveness-http-path }}
+          kubernetes-workload-probe-liveness-http-scheme: ${{ inputs.kubernetes-workload-probe-liveness-http-scheme }}
+          kubernetes-workload-probe-liveness-tcp-port: ${{ inputs.kubernetes-workload-probe-liveness-tcp-port }}
+          kubernetes-workload-probe-liveness-exec-command: ${{ inputs.kubernetes-workload-probe-liveness-exec-command }}
+          kubernetes-workload-probe-liveness-grpc-port: ${{ inputs.kubernetes-workload-probe-liveness-grpc-port }}
+          kubernetes-workload-probe-liveness-grpc-service: ${{ inputs.kubernetes-workload-probe-liveness-grpc-service }}
+          kubernetes-workload-probe-liveness-initial-delay-seconds: ${{ inputs.kubernetes-workload-probe-liveness-initial-delay-seconds }}
+          kubernetes-workload-probe-liveness-period-seconds: ${{ inputs.kubernetes-workload-probe-liveness-period-seconds }}
+          kubernetes-workload-probe-liveness-timeout-seconds: ${{ inputs.kubernetes-workload-probe-liveness-timeout-seconds }}
+          kubernetes-workload-probe-liveness-failure-threshold: ${{ inputs.kubernetes-workload-probe-liveness-failure-threshold }}
+          kubernetes-workload-probe-liveness-termination-grace-period-seconds: ${{ inputs.kubernetes-workload-probe-liveness-termination-grace-period-seconds }}
+          # Readiness probe settings
+          kubernetes-workload-probe-readiness-check-type: ${{ inputs.kubernetes-workload-probe-readiness-check-type }}
           kubernetes-workload-probe-readiness-http-path: ${{ inputs.kubernetes-workload-probe-readiness-http-path }}
+          kubernetes-workload-probe-readiness-http-scheme: ${{ inputs.kubernetes-workload-probe-readiness-http-scheme }}
+          kubernetes-workload-probe-readiness-tcp-port: ${{ inputs.kubernetes-workload-probe-readiness-tcp-port }}
+          kubernetes-workload-probe-readiness-exec-command: ${{ inputs.kubernetes-workload-probe-readiness-exec-command }}
+          kubernetes-workload-probe-readiness-grpc-port: ${{ inputs.kubernetes-workload-probe-readiness-grpc-port }}
+          kubernetes-workload-probe-readiness-grpc-service: ${{ inputs.kubernetes-workload-probe-readiness-grpc-service }}
+          kubernetes-workload-probe-readiness-initial-delay-seconds: ${{ inputs.kubernetes-workload-probe-readiness-initial-delay-seconds }}
+          kubernetes-workload-probe-readiness-period-seconds: ${{ inputs.kubernetes-workload-probe-readiness-period-seconds }}
+          kubernetes-workload-probe-readiness-timeout-seconds: ${{ inputs.kubernetes-workload-probe-readiness-timeout-seconds }}
+          kubernetes-workload-probe-readiness-failure-threshold: ${{ inputs.kubernetes-workload-probe-readiness-failure-threshold }}
+          kubernetes-workload-probe-readiness-success-threshold: ${{ inputs.kubernetes-workload-probe-readiness-success-threshold }}
+          # Startup probe settings
+          kubernetes-workload-probe-startup-check-type: ${{ inputs.kubernetes-workload-probe-startup-check-type }}
           kubernetes-workload-probe-startup-http-path: ${{ inputs.kubernetes-workload-probe-startup-http-path }}
+          kubernetes-workload-probe-startup-http-scheme: ${{ inputs.kubernetes-workload-probe-startup-http-scheme }}
+          kubernetes-workload-probe-startup-tcp-port: ${{ inputs.kubernetes-workload-probe-startup-tcp-port }}
+          kubernetes-workload-probe-startup-exec-command: ${{ inputs.kubernetes-workload-probe-startup-exec-command }}
+          kubernetes-workload-probe-startup-grpc-port: ${{ inputs.kubernetes-workload-probe-startup-grpc-port }}
+          kubernetes-workload-probe-startup-grpc-service: ${{ inputs.kubernetes-workload-probe-startup-grpc-service }}
+          kubernetes-workload-probe-startup-initial-delay-seconds: ${{ inputs.kubernetes-workload-probe-startup-initial-delay-seconds }}
+          kubernetes-workload-probe-startup-period-seconds: ${{ inputs.kubernetes-workload-probe-startup-period-seconds }}
+          kubernetes-workload-probe-startup-timeout-seconds: ${{ inputs.kubernetes-workload-probe-startup-timeout-seconds }}
+          kubernetes-workload-probe-startup-failure-threshold: ${{ inputs.kubernetes-workload-probe-startup-failure-threshold }}
+          kubernetes-workload-probe-startup-termination-grace-period-seconds: ${{ inputs.kubernetes-workload-probe-startup-termination-grace-period-seconds }}
           # StatefulSet-specific settings
           kubernetes-statefulset-service-name: ${{ inputs.kubernetes-statefulset-service-name }}
           kubernetes-statefulset-pod-management-policy: ${{ inputs.kubernetes-statefulset-pod-management-policy }}
