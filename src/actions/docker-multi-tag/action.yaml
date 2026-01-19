@@ -5,6 +5,27 @@ name: 'Docker Multi-Tag'
 description: 'Tags a Docker image for multiple registries'
 
 inputs:
+  # Docker registry logins
+  docker-registry-logins:
+    description: 'YAML config for Docker registry logins (registry URL as key)'
+    required: false
+    default: ''
+  # Docker target config
+  docker-target-registry:
+    description: 'Target container registry'
+    required: false
+    default: 'ghcr.io'
+  docker-target-base-path:
+    description: 'Path between registry and image name (auto-set for GHCR)'
+    required: false
+    default: ''
+  # Docker push targets
+  docker-push-targets:
+    description: 'JSON array of additional push targets [{registry, base-path?}]'
+    required: false
+    default: ''
+
+  # Action-specific inputs
   docker-image-full-uri:
     description: 'Full URI of the image to tag from'
     required: true
@@ -13,9 +34,6 @@ inputs:
     required: true
   docker-tag:
     description: 'Tag for images'
-    required: true
-  docker-push-targets:
-    description: 'JSON array of targets [{registry, base-path?}]'
     required: true
 
 outputs:

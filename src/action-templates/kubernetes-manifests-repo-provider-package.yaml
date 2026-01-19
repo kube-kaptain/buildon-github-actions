@@ -1,0 +1,143 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
+
+name: 'Kubernetes Manifests Repo Provider Package'
+description: 'Packages manifests for repo provider (builds docker image). Does NOT publish.'
+
+inputs:
+  # INJECT-INPUT: output-sub-path
+  # INJECT-INPUT: kubernetes-app-manifests
+  # INJECT-INPUT: docker-build
+
+  # Action-specific inputs
+  manifests-zip-sub-path:
+    description: 'Relative path to the directory containing the manifests zip'
+    required: true
+  manifests-zip-file-name:
+    description: 'Filename of the manifests zip'
+    required: true
+  docker-image-name:
+    description: 'Image name (from version generator)'
+    required: false
+    default: ''
+  docker-tag:
+    description: 'Tag for target image (includes prerelease suffix if applicable)'
+    required: false
+    default: ''
+  project-name:
+    description: 'Project name (for future non-docker providers)'
+    required: false
+    default: ''
+  version:
+    description: 'Version tag (for future non-docker providers)'
+    required: false
+    default: ''
+
+outputs:
+  # --- Pass-through for publish step ---
+  manifests-uri:
+    description: 'Manifests location (for publish step)'
+    value: ${{ steps.package.outputs.MANIFESTS_URI }}
+  manifests-artifact-sub-path:
+    description: 'Relative path to packaged artifact (for publish step)'
+    value: ${{ steps.package.outputs.MANIFESTS_ARTIFACT_SUB_PATH }}
+  manifests-zip-sub-path:
+    description: 'Relative path to directory containing manifests zip (pass through for publish step)'
+    value: ${{ steps.package.outputs.MANIFESTS_ZIP_SUB_PATH }}
+  manifests-zip-file-name:
+    description: 'Filename for manifests zip (pass through for publish step)'
+    value: ${{ steps.package.outputs.MANIFESTS_ZIP_FILE_NAME }}
+  version:
+    description: 'Version/tag (pass through for publish step, for future non-docker providers)'
+    value: ${{ steps.computed.outputs.version }}
+
+  # --- REPO_PROVIDER_* outputs (for publish step) ---
+  repo-provider-url:
+    description: 'Computed REPO_PROVIDER_URL (for publish step)'
+    value: ${{ steps.computed.outputs.url }}
+  repo-provider-namespace:
+    description: 'Computed REPO_PROVIDER_NAMESPACE (for publish step)'
+    value: ${{ steps.computed.outputs.namespace }}
+  repo-provider-name:
+    description: 'Computed REPO_PROVIDER_NAME (for publish step)'
+    value: ${{ steps.computed.outputs.name }}
+  repo-provider-version:
+    description: 'Computed REPO_PROVIDER_VERSION (for publish step)'
+    value: ${{ steps.computed.outputs.version }}
+
+runs:
+  using: 'composite'
+  steps:
+    # ==========================================================================
+    # Resolve target registry and base path (handles GHCR defaults)
+    # ==========================================================================
+    - name: Resolve target registry and base path
+      id: resolve
+      uses: ./.github/buildon-github-actions/src/actions/resolve-target-registry-and-base-path
+      with:
+        target-registry: ${{ inputs.docker-target-registry }}
+        target-base-path: ${{ inputs.docker-target-base-path }}
+
+    # ==========================================================================
+    # Compute REPO_PROVIDER_* values from user-friendly inputs
+    # ==========================================================================
+    - name: Compute repo provider values
+      id: computed
+      shell: bash
+      run: |
+        PROVIDER="${{ inputs.manifests-repo-provider-type }}"
+
+        # =====================================================================
+        # REPO_PROVIDER_URL (from resolver)
+        # =====================================================================
+        echo "url=${{ steps.resolve.outputs.docker-target-registry }}" >> "$GITHUB_OUTPUT"
+
+        # =====================================================================
+        # REPO_PROVIDER_NAMESPACE (from resolver)
+        # =====================================================================
+        echo "namespace=${{ steps.resolve.outputs.docker-target-base-path }}" >> "$GITHUB_OUTPUT"
+
+        # =====================================================================
+        # REPO_PROVIDER_NAME
+        # =====================================================================
+        if [[ "$PROVIDER" == "docker" ]]; then
+          NAME="${{ inputs.docker-image-name }}"
+        else
+          NAME="${{ inputs.project-name }}"
+        fi
+        echo "name=${NAME}" >> "$GITHUB_OUTPUT"
+
+        # =====================================================================
+        # REPO_PROVIDER_VERSION
+        # =====================================================================
+        if [[ "$PROVIDER" == "docker" ]]; then
+          VERSION="${{ inputs.docker-tag }}"
+        else
+          VERSION="${{ inputs.version }}"
+        fi
+        echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+
+    # ==========================================================================
+    # Package manifests for repo provider
+    # ==========================================================================
+    - name: Package manifests for repo provider
+      id: package
+      shell: bash
+      env:
+        LOG_ERROR_PREFIX: '::error::'
+        MANIFESTS_REPO_PROVIDER_TYPE: ${{ inputs.manifests-repo-provider-type }}
+        OUTPUT_SUB_PATH: ${{ inputs.output-sub-path }}
+        MANIFESTS_PACKAGING_BASE_IMAGE: ${{ inputs.manifests-packaging-base-image }}
+
+        # --- Pass-through inputs ---
+        MANIFESTS_ZIP_SUB_PATH: ${{ inputs.manifests-zip-sub-path }}
+        MANIFESTS_ZIP_FILE_NAME: ${{ inputs.manifests-zip-file-name }}
+
+        # --- REPO_PROVIDER_* API (generic contract) ---
+        REPO_PROVIDER_URL: ${{ steps.computed.outputs.url }}
+        REPO_PROVIDER_NAMESPACE: ${{ steps.computed.outputs.namespace }}
+        REPO_PROVIDER_NAME: ${{ steps.computed.outputs.name }}
+        REPO_PROVIDER_VERSION: ${{ steps.computed.outputs.version }}
+        REPO_PROVIDER_AUTH_TOKEN: ${{ github.token }}
+        REPO_PROVIDER_AUTH_USER: ${{ github.actor }}
+      run: "${{ github.action_path }}/../../scripts/main/kubernetes-manifests-repo-provider-package"

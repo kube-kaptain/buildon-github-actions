@@ -1,0 +1,134 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
+
+name: 'Generate Kubernetes Workload'
+description: 'Routes to appropriate workload generator (Deployment, StatefulSet, etc.)'
+
+inputs:
+  # Required context
+  project-name:
+    description: 'Project name for workload naming and labels'
+    required: true
+
+  # INJECT-INPUT: output-sub-path
+  # INJECT-INPUT: kubernetes-global
+  # INJECT-INPUT: kubernetes-workload
+  # INJECT-INPUT: kubernetes-workload-deployment
+  # INJECT-INPUT: kubernetes-workload-statefulset
+  # INJECT-INPUT: kubernetes-workload-daemonset
+  # INJECT-INPUT: token-substitution
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Generate workload manifest
+      id: generate
+      shell: bash
+      env:
+        LOG_ERROR_PREFIX: '::error::'
+        # Required context
+        PROJECT_NAME: ${{ inputs.project-name }}
+        # Global settings
+        OUTPUT_SUB_PATH: ${{ inputs.output-sub-path }}
+        KUBERNETES_GLOBAL_ADDITIONAL_LABELS: ${{ inputs.kubernetes-global-additional-labels }}
+        KUBERNETES_GLOBAL_ADDITIONAL_ANNOTATIONS: ${{ inputs.kubernetes-global-additional-annotations }}
+        # Workload settings
+        KUBERNETES_WORKLOAD_TYPE: ${{ inputs.kubernetes-workload-type }}
+        KUBERNETES_WORKLOAD_REPLICAS: ${{ inputs.kubernetes-workload-replicas }}
+        KUBERNETES_WORKLOAD_REVISION_HISTORY_LIMIT: ${{ inputs.kubernetes-workload-revision-history-limit }}
+        KUBERNETES_WORKLOAD_NAME_SUFFIX: ${{ inputs.kubernetes-workload-name-suffix }}
+        KUBERNETES_WORKLOAD_COMBINED_SUB_PATH: ${{ inputs.kubernetes-workload-combined-sub-path }}
+        KUBERNETES_WORKLOAD_ENV_SUB_PATH: ${{ inputs.kubernetes-workload-env-sub-path }}
+        KUBERNETES_WORKLOAD_ADDITIONAL_LABELS: ${{ inputs.kubernetes-workload-additional-labels }}
+        KUBERNETES_WORKLOAD_ADDITIONAL_ANNOTATIONS: ${{ inputs.kubernetes-workload-additional-annotations }}
+        KUBERNETES_WORKLOAD_CONTAINER_PORT: ${{ inputs.kubernetes-workload-container-port }}
+        KUBERNETES_WORKLOAD_IMAGE_REFERENCE_STYLE: ${{ inputs.kubernetes-workload-image-reference-style }}
+        KUBERNETES_WORKLOAD_READONLY_ROOT_FILESYSTEM: ${{ inputs.kubernetes-workload-readonly-root-filesystem }}
+        KUBERNETES_WORKLOAD_SECCOMP_PROFILE: ${{ inputs.kubernetes-workload-seccomp-profile }}
+        KUBERNETES_WORKLOAD_AUTOMOUNT_SERVICE_ACCOUNT_TOKEN: ${{ inputs.kubernetes-workload-automount-service-account-token }}
+        KUBERNETES_WORKLOAD_IMAGE_PULL_SECRETS: ${{ inputs.kubernetes-workload-image-pull-secrets }}
+        KUBERNETES_WORKLOAD_RESOURCES_MEMORY: ${{ inputs.kubernetes-workload-resources-memory }}
+        KUBERNETES_WORKLOAD_RESOURCES_CPU_REQUEST: ${{ inputs.kubernetes-workload-resources-cpu-request }}
+        KUBERNETES_WORKLOAD_RESOURCES_CPU_LIMIT: ${{ inputs.kubernetes-workload-resources-cpu-limit }}
+        KUBERNETES_WORKLOAD_RESOURCES_EPHEMERAL_STORAGE: ${{ inputs.kubernetes-workload-resources-ephemeral-storage }}
+        KUBERNETES_WORKLOAD_CONFIGMAP_MOUNT_PATH: ${{ inputs.kubernetes-workload-configmap-mount-path }}
+        KUBERNETES_WORKLOAD_SECRET_MOUNT_PATH: ${{ inputs.kubernetes-workload-secret-mount-path }}
+        KUBERNETES_WORKLOAD_CONFIGMAP_KEYS_FOR_ENV: ${{ inputs.kubernetes-workload-configmap-keys-for-env }}
+        KUBERNETES_WORKLOAD_SECRET_KEYS_FOR_ENV: ${{ inputs.kubernetes-workload-secret-keys-for-env }}
+        KUBERNETES_WORKLOAD_TERMINATION_GRACE_PERIOD_SECONDS: ${{ inputs.kubernetes-workload-termination-grace-period-seconds }}
+        KUBERNETES_WORKLOAD_PRESTOP_COMMAND: ${{ inputs.kubernetes-workload-prestop-command }}
+        KUBERNETES_WORKLOAD_AFFINITY_STRATEGY: ${{ inputs.kubernetes-workload-affinity-strategy }}
+        KUBERNETES_WORKLOAD_TOLERATIONS: ${{ inputs.kubernetes-workload-tolerations }}
+        # Liveness probe
+        KUBERNETES_WORKLOAD_PROBE_LIVENESS_CHECK_TYPE: ${{ inputs.kubernetes-workload-probe-liveness-check-type }}
+        KUBERNETES_WORKLOAD_PROBE_LIVENESS_HTTP_PATH: ${{ inputs.kubernetes-workload-probe-liveness-http-path }}
+        KUBERNETES_WORKLOAD_PROBE_LIVENESS_HTTP_SCHEME: ${{ inputs.kubernetes-workload-probe-liveness-http-scheme }}
+        KUBERNETES_WORKLOAD_PROBE_LIVENESS_TCP_PORT: ${{ inputs.kubernetes-workload-probe-liveness-tcp-port }}
+        KUBERNETES_WORKLOAD_PROBE_LIVENESS_EXEC_COMMAND: ${{ inputs.kubernetes-workload-probe-liveness-exec-command }}
+        KUBERNETES_WORKLOAD_PROBE_LIVENESS_GRPC_PORT: ${{ inputs.kubernetes-workload-probe-liveness-grpc-port }}
+        KUBERNETES_WORKLOAD_PROBE_LIVENESS_GRPC_SERVICE: ${{ inputs.kubernetes-workload-probe-liveness-grpc-service }}
+        KUBERNETES_WORKLOAD_PROBE_LIVENESS_INITIAL_DELAY_SECONDS: ${{ inputs.kubernetes-workload-probe-liveness-initial-delay-seconds }}
+        KUBERNETES_WORKLOAD_PROBE_LIVENESS_PERIOD_SECONDS: ${{ inputs.kubernetes-workload-probe-liveness-period-seconds }}
+        KUBERNETES_WORKLOAD_PROBE_LIVENESS_TIMEOUT_SECONDS: ${{ inputs.kubernetes-workload-probe-liveness-timeout-seconds }}
+        KUBERNETES_WORKLOAD_PROBE_LIVENESS_FAILURE_THRESHOLD: ${{ inputs.kubernetes-workload-probe-liveness-failure-threshold }}
+        KUBERNETES_WORKLOAD_PROBE_LIVENESS_TERMINATION_GRACE_PERIOD_SECONDS: ${{ inputs.kubernetes-workload-probe-liveness-termination-grace-period-seconds }}
+        # Readiness probe
+        KUBERNETES_WORKLOAD_PROBE_READINESS_CHECK_TYPE: ${{ inputs.kubernetes-workload-probe-readiness-check-type }}
+        KUBERNETES_WORKLOAD_PROBE_READINESS_HTTP_PATH: ${{ inputs.kubernetes-workload-probe-readiness-http-path }}
+        KUBERNETES_WORKLOAD_PROBE_READINESS_HTTP_SCHEME: ${{ inputs.kubernetes-workload-probe-readiness-http-scheme }}
+        KUBERNETES_WORKLOAD_PROBE_READINESS_TCP_PORT: ${{ inputs.kubernetes-workload-probe-readiness-tcp-port }}
+        KUBERNETES_WORKLOAD_PROBE_READINESS_EXEC_COMMAND: ${{ inputs.kubernetes-workload-probe-readiness-exec-command }}
+        KUBERNETES_WORKLOAD_PROBE_READINESS_GRPC_PORT: ${{ inputs.kubernetes-workload-probe-readiness-grpc-port }}
+        KUBERNETES_WORKLOAD_PROBE_READINESS_GRPC_SERVICE: ${{ inputs.kubernetes-workload-probe-readiness-grpc-service }}
+        KUBERNETES_WORKLOAD_PROBE_READINESS_INITIAL_DELAY_SECONDS: ${{ inputs.kubernetes-workload-probe-readiness-initial-delay-seconds }}
+        KUBERNETES_WORKLOAD_PROBE_READINESS_PERIOD_SECONDS: ${{ inputs.kubernetes-workload-probe-readiness-period-seconds }}
+        KUBERNETES_WORKLOAD_PROBE_READINESS_TIMEOUT_SECONDS: ${{ inputs.kubernetes-workload-probe-readiness-timeout-seconds }}
+        KUBERNETES_WORKLOAD_PROBE_READINESS_FAILURE_THRESHOLD: ${{ inputs.kubernetes-workload-probe-readiness-failure-threshold }}
+        KUBERNETES_WORKLOAD_PROBE_READINESS_SUCCESS_THRESHOLD: ${{ inputs.kubernetes-workload-probe-readiness-success-threshold }}
+        # Startup probe
+        KUBERNETES_WORKLOAD_PROBE_STARTUP_CHECK_TYPE: ${{ inputs.kubernetes-workload-probe-startup-check-type }}
+        KUBERNETES_WORKLOAD_PROBE_STARTUP_HTTP_PATH: ${{ inputs.kubernetes-workload-probe-startup-http-path }}
+        KUBERNETES_WORKLOAD_PROBE_STARTUP_HTTP_SCHEME: ${{ inputs.kubernetes-workload-probe-startup-http-scheme }}
+        KUBERNETES_WORKLOAD_PROBE_STARTUP_TCP_PORT: ${{ inputs.kubernetes-workload-probe-startup-tcp-port }}
+        KUBERNETES_WORKLOAD_PROBE_STARTUP_EXEC_COMMAND: ${{ inputs.kubernetes-workload-probe-startup-exec-command }}
+        KUBERNETES_WORKLOAD_PROBE_STARTUP_GRPC_PORT: ${{ inputs.kubernetes-workload-probe-startup-grpc-port }}
+        KUBERNETES_WORKLOAD_PROBE_STARTUP_GRPC_SERVICE: ${{ inputs.kubernetes-workload-probe-startup-grpc-service }}
+        KUBERNETES_WORKLOAD_PROBE_STARTUP_INITIAL_DELAY_SECONDS: ${{ inputs.kubernetes-workload-probe-startup-initial-delay-seconds }}
+        KUBERNETES_WORKLOAD_PROBE_STARTUP_PERIOD_SECONDS: ${{ inputs.kubernetes-workload-probe-startup-period-seconds }}
+        KUBERNETES_WORKLOAD_PROBE_STARTUP_TIMEOUT_SECONDS: ${{ inputs.kubernetes-workload-probe-startup-timeout-seconds }}
+        KUBERNETES_WORKLOAD_PROBE_STARTUP_FAILURE_THRESHOLD: ${{ inputs.kubernetes-workload-probe-startup-failure-threshold }}
+        KUBERNETES_WORKLOAD_PROBE_STARTUP_TERMINATION_GRACE_PERIOD_SECONDS: ${{ inputs.kubernetes-workload-probe-startup-termination-grace-period-seconds }}
+        # Deployment unique settings
+        KUBERNETES_DEPLOYMENT_ENV_SUB_PATH: ${{ inputs.kubernetes-deployment-env-sub-path }}
+        KUBERNETES_DEPLOYMENT_ADDITIONAL_LABELS: ${{ inputs.kubernetes-deployment-additional-labels }}
+        KUBERNETES_DEPLOYMENT_ADDITIONAL_ANNOTATIONS: ${{ inputs.kubernetes-deployment-additional-annotations }}
+        # StatefulSet unique settings
+        KUBERNETES_STATEFULSET_ENV_SUB_PATH: ${{ inputs.kubernetes-statefulset-env-sub-path }}
+        KUBERNETES_STATEFULSET_ADDITIONAL_LABELS: ${{ inputs.kubernetes-statefulset-additional-labels }}
+        KUBERNETES_STATEFULSET_ADDITIONAL_ANNOTATIONS: ${{ inputs.kubernetes-statefulset-additional-annotations }}
+        KUBERNETES_STATEFULSET_SERVICE_NAME: ${{ inputs.kubernetes-statefulset-service-name }}
+        KUBERNETES_STATEFULSET_POD_MANAGEMENT_POLICY: ${{ inputs.kubernetes-statefulset-pod-management-policy }}
+        KUBERNETES_STATEFULSET_UPDATE_STRATEGY_TYPE: ${{ inputs.kubernetes-statefulset-update-strategy-type }}
+        KUBERNETES_STATEFULSET_UPDATE_STRATEGY_PARTITION: ${{ inputs.kubernetes-statefulset-update-strategy-partition }}
+        KUBERNETES_STATEFULSET_PVC_ENABLED: ${{ inputs.kubernetes-statefulset-pvc-enabled }}
+        KUBERNETES_STATEFULSET_PVC_STORAGE_CLASS: ${{ inputs.kubernetes-statefulset-pvc-storage-class }}
+        KUBERNETES_STATEFULSET_PVC_STORAGE_SIZE: ${{ inputs.kubernetes-statefulset-pvc-storage-size }}
+        KUBERNETES_STATEFULSET_PVC_ACCESS_MODE: ${{ inputs.kubernetes-statefulset-pvc-access-mode }}
+        KUBERNETES_STATEFULSET_PVC_VOLUME_NAME: ${{ inputs.kubernetes-statefulset-pvc-volume-name }}
+        KUBERNETES_STATEFULSET_PVC_MOUNT_PATH: ${{ inputs.kubernetes-statefulset-pvc-mount-path }}
+        # DaemonSet unique settings
+        KUBERNETES_DAEMONSET_UPDATE_STRATEGY_TYPE: ${{ inputs.kubernetes-daemonset-update-strategy-type }}
+        KUBERNETES_DAEMONSET_MAX_UNAVAILABLE: ${{ inputs.kubernetes-daemonset-max-unavailable }}
+        KUBERNETES_DAEMONSET_MIN_READY_SECONDS: ${{ inputs.kubernetes-daemonset-min-ready-seconds }}
+        KUBERNETES_DAEMONSET_HOST_NETWORK: ${{ inputs.kubernetes-daemonset-host-network }}
+        KUBERNETES_DAEMONSET_HOST_PID: ${{ inputs.kubernetes-daemonset-host-pid }}
+        KUBERNETES_DAEMONSET_HOST_IPC: ${{ inputs.kubernetes-daemonset-host-ipc }}
+        KUBERNETES_DAEMONSET_RUN_AS_NON_ROOT: ${{ inputs.kubernetes-daemonset-run-as-non-root }}
+        KUBERNETES_DAEMONSET_PRIVILEGED: ${{ inputs.kubernetes-daemonset-privileged }}
+        KUBERNETES_DAEMONSET_DNS_POLICY: ${{ inputs.kubernetes-daemonset-dns-policy }}
+        KUBERNETES_DAEMONSET_TOLERATIONS: ${{ inputs.kubernetes-daemonset-tolerations }}
+        KUBERNETES_DAEMONSET_NODE_SELECTOR: ${{ inputs.kubernetes-daemonset-node-selector }}
+        # Token substitution
+        TOKEN_NAME_STYLE: ${{ inputs.token-name-style }}
+        TOKEN_DELIMITER_STYLE: ${{ inputs.token-delimiter-style }}
+      run: "${{ github.action_path }}/../../scripts/generators/generate-kubernetes-workload"

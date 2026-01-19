@@ -1,0 +1,37 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
+
+name: 'Docker Multi-Push'
+description: 'Pushes Docker image to multiple registries'
+
+inputs:
+  # INJECT-INPUT: docker-build
+
+  # Action-specific inputs
+  docker-image-name:
+    description: 'Image name portion'
+    required: true
+  docker-tag:
+    description: 'Tag for images'
+    required: true
+  is-release:
+    description: 'Whether to push (true) or skip (false)'
+    required: true
+
+outputs:
+  images-pushed:
+    description: 'Number of images pushed'
+    value: ${{ steps.push.outputs.IMAGES_PUSHED }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Push images
+      id: push
+      shell: bash
+      env:
+        DOCKER_IMAGE_NAME: ${{ inputs.docker-image-name }}
+        DOCKER_TAG: ${{ inputs.docker-tag }}
+        DOCKER_PUSH_TARGETS: ${{ inputs.docker-push-targets }}
+        IS_RELEASE: ${{ inputs.is-release }}
+      run: "${{ github.action_path }}/../../scripts/main/docker-multi-push"

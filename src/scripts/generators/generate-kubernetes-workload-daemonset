@@ -1,0 +1,406 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
+#
+# generate-kubernetes-workload-daemonset - Generates a Kubernetes DaemonSet manifest
+#
+# Creates a complete DaemonSet resource for running system-level components
+# (log collectors, monitoring agents, network plugins, etc.) on every node.
+#
+# Unlike Deployment/StatefulSet, DaemonSets:
+# - Have no replicas (one pod per matching node)
+# - Support host namespace access (network, PID, IPC)
+# - Can be configured to run as root (when needed for system-level access)
+# - Support tolerations for running on tainted nodes
+#
+# Called via generate-kubernetes-workload router with KUBERNETES_WORKLOAD_TYPE=daemonset
+#
+# Inputs (environment variables):
+#   Required:
+#     PROJECT_NAME                          - Project identifier
+#
+#   Common workload settings (KUBERNETES_WORKLOAD_*):
+#     See generate-kubernetes-workload for the full list of common settings
+#     Note: REPLICAS and REVISION_HISTORY_LIMIT are not applicable to DaemonSets
+#
+#   DaemonSet unique settings:
+#     KUBERNETES_DAEMONSET_UPDATE_STRATEGY_TYPE    - RollingUpdate or OnDelete (default: RollingUpdate)
+#     KUBERNETES_DAEMONSET_MAX_UNAVAILABLE         - Max unavailable during update (default: 1)
+#     KUBERNETES_DAEMONSET_MIN_READY_SECONDS       - Min ready seconds (default: 0)
+#     KUBERNETES_DAEMONSET_HOST_NETWORK            - Use host network (default: false)
+#     KUBERNETES_DAEMONSET_HOST_PID                - Use host PID namespace (default: false)
+#     KUBERNETES_DAEMONSET_HOST_IPC                - Use host IPC namespace (default: false)
+#     KUBERNETES_DAEMONSET_RUN_AS_NON_ROOT             - Require non-root (default: true)
+#     KUBERNETES_DAEMONSET_PRIVILEGED              - Privileged mode (default: false)
+#     KUBERNETES_DAEMONSET_DNS_POLICY              - DNS policy (default: auto)
+#     KUBERNETES_DAEMONSET_TOLERATIONS             - Tolerations as JSON array
+#     KUBERNETES_DAEMONSET_NODE_SELECTOR           - Node selector (comma-separated key=value)
+#
+# Output:
+#   ${OUTPUT_SUB_PATH}/manifests/combined/[${combined-sub-path}/]daemonset[-${suffix}].yaml
+#
+set -euo pipefail
+
+# Locate script directory for libraries
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+LIB_DIR="${SCRIPT_DIR}/../lib"
+
+# Source libraries
+# shellcheck source=src/scripts/lib/token-format.bash
+source "${LIB_DIR}/token-format.bash"
+# shellcheck source=src/scripts/lib/kubernetes-metadata.bash
+source "${LIB_DIR}/kubernetes-metadata.bash"
+# shellcheck source=src/scripts/lib/kubernetes-configuration.bash
+source "${LIB_DIR}/kubernetes-configuration.bash"
+# shellcheck source=src/scripts/lib/kubernetes-probes.bash
+source "${LIB_DIR}/kubernetes-probes.bash"
+# shellcheck source=src/scripts/lib/kubernetes-workload-detection.bash
+source "${LIB_DIR}/kubernetes-workload-detection.bash"
+# shellcheck source=src/scripts/lib/kubernetes-pod-spec.bash
+source "${LIB_DIR}/kubernetes-pod-spec.bash"
+# shellcheck source=src/scripts/lib/kubernetes-pod-placement.bash
+source "${LIB_DIR}/kubernetes-pod-placement.bash"
+# shellcheck source=src/scripts/lib/generator-input-validation.bash
+source "${LIB_DIR}/generator-input-validation.bash"
+
+# Logging configuration (CI-agnostic)
+LOG_ERROR_PREFIX="${LOG_ERROR_PREFIX:-}"
+LOG_ERROR_SUFFIX="${LOG_ERROR_SUFFIX:-}"
+
+# =============================================================================
+# Inputs with defaults
+# =============================================================================
+
+# shellcheck source=src/scripts/defaults/output-sub-path.bash
+source "${SCRIPT_DIR}/../defaults/output-sub-path.bash"
+# shellcheck source=src/scripts/defaults/manifests-sub-path.bash
+source "${SCRIPT_DIR}/../defaults/manifests-sub-path.bash"
+# shellcheck source=src/scripts/defaults/tokens.bash
+source "${SCRIPT_DIR}/../defaults/tokens.bash"
+# shellcheck source=src/scripts/defaults/kubernetes-workload.bash
+source "${SCRIPT_DIR}/../defaults/kubernetes-workload.bash"
+# shellcheck source=src/scripts/defaults/kubernetes-workload-daemonset.bash
+source "${SCRIPT_DIR}/../defaults/kubernetes-workload-daemonset.bash"
+# shellcheck source=src/scripts/defaults/kubernetes-manifest.bash
+source "${SCRIPT_DIR}/../defaults/kubernetes-manifest.bash"
+
+# Build final env sub path from base
+FINAL_ENV_SUB_PATH=$(build_configuration_source_path "${BASE_ENV_SUB_PATH}" "${NAME_SUFFIX}" "-env")
+
+# =============================================================================
+# Validation
+# =============================================================================
+
+validate_common_inputs
+validate_workload_inputs
+
+# Validate DaemonSet-specific settings
+if [[ "${UPDATE_STRATEGY_TYPE}" != "RollingUpdate" && "${UPDATE_STRATEGY_TYPE}" != "OnDelete" ]]; then
+  echo "${LOG_ERROR_PREFIX}KUBERNETES_DAEMONSET_UPDATE_STRATEGY_TYPE must be 'RollingUpdate' or 'OnDelete', got: ${UPDATE_STRATEGY_TYPE}${LOG_ERROR_SUFFIX}" >&2
+  exit 4
+fi
+
+for bool_var in HOST_NETWORK HOST_PID HOST_IPC RUN_AS_NON_ROOT PRIVILEGED; do
+  var_value="${!bool_var}"
+  if [[ "${var_value}" != "true" && "${var_value}" != "false" ]]; then
+    echo "${LOG_ERROR_PREFIX}KUBERNETES_DAEMONSET_${bool_var} must be 'true' or 'false', got: ${var_value}${LOG_ERROR_SUFFIX}" >&2
+    exit 4
+  fi
+done
+
+# Validate DNS policy if set
+if [[ -n "${DNS_POLICY}" ]]; then
+  case "${DNS_POLICY}" in
+    ClusterFirst|ClusterFirstWithHostNet|Default|None) ;;
+    *)
+      echo "${LOG_ERROR_PREFIX}KUBERNETES_DAEMONSET_DNS_POLICY must be 'ClusterFirst', 'ClusterFirstWithHostNet', 'Default', or 'None', got: ${DNS_POLICY}${LOG_ERROR_SUFFIX}" >&2
+      exit 4
+      ;;
+  esac
+fi
+
+# =============================================================================
+# Generate token references
+# =============================================================================
+
+project_name_token=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "PROJECT_NAME")
+environment_token=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "ENVIRONMENT")
+version_token=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "VERSION")
+docker_tag_token=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "DOCKER_TAG")
+docker_image_name_token=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "DOCKER_IMAGE_NAME")
+
+# Build image reference (sets image_reference, image_pull_secret_token)
+build_image_reference
+
+# =============================================================================
+# Build resource names
+# =============================================================================
+
+kind="DaemonSet"
+daemonset_name=$(build_resource_name "${project_name_token}" "${COMBINED_SUB_PATH}" "${NAME_SUFFIX}")
+configmap_name=$(build_resource_name "${project_name_token}" "${COMBINED_SUB_PATH}" "${NAME_SUFFIX}" "configmap-checksum")
+secret_name=$(build_resource_name "${project_name_token}" "${COMBINED_SUB_PATH}" "${NAME_SUFFIX}" "secret-checksum")
+
+# Set app_name for generate_metadata library function
+app_name="${daemonset_name}"
+
+# =============================================================================
+# Create output directory and file
+# =============================================================================
+
+output_dir=$(ensure_manifest_output_dir "${OUTPUT_SUB_PATH}" "${COMBINED_SUB_PATH}")
+output_file=$(build_output_filename "${output_dir}" "${kind}" "${NAME_SUFFIX}")
+
+# =============================================================================
+# Detect optional resources
+# =============================================================================
+
+detect_all_resources
+
+# =============================================================================
+# Diagnostic output
+# =============================================================================
+
+echo "Strategy/Mode Selections" >&2
+echo "  Update strategy:          ${UPDATE_STRATEGY_TYPE}" >&2
+if [[ "${UPDATE_STRATEGY_TYPE}" == "RollingUpdate" ]]; then
+  echo "  Max unavailable:          ${MAX_UNAVAILABLE}" >&2
+fi
+echo "  Affinity strategy:        ${AFFINITY_STRATEGY}" >&2
+echo "  Readonly root filesystem: ${READONLY_ROOT_FILESYSTEM}" >&2
+echo "  Seccomp profile:          ${SECCOMP_PROFILE}" >&2
+echo "  Run as non-root:          ${RUN_AS_NON_ROOT}" >&2
+echo "  Privileged:               ${PRIVILEGED}" >&2
+echo "  Liveness probe:           ${LIVENESS_CHECK_TYPE}" >&2
+echo "  Readiness probe:          ${READINESS_CHECK_TYPE}" >&2
+echo "  Startup probe:            ${STARTUP_CHECK_TYPE}" >&2
+
+echo "Host Namespace Access" >&2
+echo "  Host network:             ${HOST_NETWORK}" >&2
+echo "  Host PID:                 ${HOST_PID}" >&2
+echo "  Host IPC:                 ${HOST_IPC}" >&2
+
+echo "Detection Results" >&2
+if [[ "${has_configmap}" == "true" ]]; then
+  echo "  ConfigMap detected:       ${configmap_source}" >&2
+else
+  echo "  ConfigMap detected:       No, so won't be mounted" >&2
+fi
+if [[ "${has_secret}" == "true" ]]; then
+  echo "  Secret detected:          ${secret_source}" >&2
+else
+  echo "  Secret detected:          No, so won't be mounted" >&2
+fi
+if [[ "${has_serviceaccount}" == "true" ]]; then
+  echo "  ServiceAccount detected:  ${serviceaccount_source}" >&2
+else
+  echo "  ServiceAccount detected:  No, so implicit default used" >&2
+fi
+if [[ "${has_env_vars}" == "true" ]]; then
+  echo "  Environment variables:    ${env_file_count} found" >&2
+else
+  echo "  Environment variables:    None found, not configured" >&2
+fi
+
+echo "Conditional Fields" >&2
+if [[ -n "${CPU_LIMIT}" ]]; then
+  echo "  CPU limit:                ${CPU_LIMIT}" >&2
+else
+  echo "  CPU limit:                Not set, so no throttling" >&2
+fi
+if [[ -n "${PRESTOP_COMMAND}" ]]; then
+  echo "  PreStop hook:             configured" >&2
+else
+  echo "  PreStop hook:             not configured" >&2
+fi
+if [[ -n "${NODE_SELECTOR}" ]]; then
+  echo "  Node selector:            ${NODE_SELECTOR}" >&2
+fi
+if [[ -n "${TOLERATIONS}" ]]; then
+  echo "  Tolerations:              configured" >&2
+fi
+
+# =============================================================================
+# Build labels and annotations
+# =============================================================================
+
+build_timestamp=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+script_name=$(basename "${BASH_SOURCE[0]}")
+
+# =============================================================================
+# Helper function: Generate DaemonSet-specific pod security context
+# =============================================================================
+
+generate_daemonset_pod_security_context() {
+  local indent_count="$1"
+  local run_as_non_root="$2"
+  local seccomp_profile="$3"
+
+  local indent=""
+  for ((i = 0; i < indent_count; i++)); do
+    indent+=" "
+  done
+
+  echo "${indent}securityContext:"
+  echo "${indent}  runAsNonRoot: ${run_as_non_root}"
+  if [[ "${seccomp_profile}" != "DISABLED" ]]; then
+    echo "${indent}  seccompProfile:"
+    echo "${indent}    type: ${seccomp_profile}"
+  fi
+}
+
+# =============================================================================
+# Helper function: Generate DaemonSet-specific container security context
+# =============================================================================
+
+generate_daemonset_container_security_context() {
+  local indent_count="$1"
+  local readonly_root_filesystem="$2"
+  local privileged="$3"
+  local run_as_non_root="$4"
+
+  local indent=""
+  for ((i = 0; i < indent_count; i++)); do
+    indent+=" "
+  done
+
+  echo "${indent}securityContext:"
+  if [[ "${privileged}" == "true" ]]; then
+    echo "${indent}  privileged: true"
+  else
+    echo "${indent}  allowPrivilegeEscalation: false"
+    if [[ "${run_as_non_root}" == "true" ]]; then
+      echo "${indent}  capabilities:"
+      echo "${indent}    drop:"
+      echo "${indent}      - ALL"
+    fi
+  fi
+  echo "${indent}  readOnlyRootFilesystem: ${readonly_root_filesystem}"
+}
+
+# =============================================================================
+# Generate DaemonSet YAML
+# =============================================================================
+
+{
+  # Header
+  generate_manifest_header "apps/v1" "${kind}" "${daemonset_name}" "${environment_token}"
+  generate_metadata 2 labels
+  generate_metadata 2 annotations default-app
+
+  # Spec
+  echo "spec:"
+
+  # Selector
+  echo "  selector:"
+  echo "    matchLabels:"
+  echo "      app: ${daemonset_name}"
+
+  # Update strategy
+  echo "  updateStrategy:"
+  echo "    type: ${UPDATE_STRATEGY_TYPE}"
+  if [[ "${UPDATE_STRATEGY_TYPE}" == "RollingUpdate" ]]; then
+    echo "    rollingUpdate:"
+    echo "      maxUnavailable: ${MAX_UNAVAILABLE}"
+  fi
+
+  # Min ready seconds
+  if [[ "${MIN_READY_SECONDS}" != "0" ]]; then
+    echo "  minReadySeconds: ${MIN_READY_SECONDS}"
+  fi
+
+  # Pod template
+  echo "  template:"
+  echo "    metadata:"
+  generate_metadata 6 labels
+  generate_metadata 6 annotations
+
+  echo "    spec:"
+
+  # Host namespace settings
+  if [[ "${HOST_NETWORK}" == "true" ]]; then
+    echo "      hostNetwork: true"
+  fi
+  if [[ "${HOST_PID}" == "true" ]]; then
+    echo "      hostPID: true"
+  fi
+  if [[ "${HOST_IPC}" == "true" ]]; then
+    echo "      hostIPC: true"
+  fi
+
+  # DNS policy
+  if [[ -n "${DNS_POLICY}" ]]; then
+    echo "      dnsPolicy: ${DNS_POLICY}"
+  elif [[ "${HOST_NETWORK}" == "true" ]]; then
+    # Auto-set DNS policy when using host network
+    echo "      dnsPolicy: ClusterFirstWithHostNet"
+  fi
+
+  # ServiceAccount
+  generate_service_account_config 6 "${has_serviceaccount}" "${project_name_token}${suffix_fragment}" "${AUTOMOUNT_SERVICE_ACCOUNT_TOKEN}"
+
+  # Termination grace period
+  echo "      terminationGracePeriodSeconds: ${TERMINATION_GRACE_PERIOD_SECONDS}"
+
+  # Pod security context (DaemonSet-specific: allows root)
+  generate_daemonset_pod_security_context 6 "${RUN_AS_NON_ROOT}" "${SECCOMP_PROFILE}"
+
+  # Affinity (via plugin)
+  if [[ "${AFFINITY_STRATEGY}" != "none" ]]; then
+    POD_PLACEMENT_INDENT=6 \
+    APP_LABEL_VALUE="${daemonset_name}" \
+    "${affinity_plugin}"
+  fi
+
+  # Node selector
+  if [[ -n "${NODE_SELECTOR}" ]]; then
+    echo "      nodeSelector:"
+    IFS=',' read -ra selectors <<< "${NODE_SELECTOR}"
+    for selector in "${selectors[@]}"; do
+      key="${selector%%=*}"
+      value="${selector#*=}"
+      echo "        ${key}: \"${value}\""
+    done
+  fi
+
+  # Tolerations
+  generate_tolerations 6 "${TOLERATIONS}"
+
+  # Image pull secrets (optional)
+  if [[ "${IMAGE_PULL_SECRETS}" != "DISABLED" ]]; then
+    generate_image_pull_secrets 6 "${image_pull_secret_token}"
+  fi
+
+  # Containers
+  echo "      containers:"
+  generate_container_start 8 "default-app" "${image_reference}"
+
+  # Ports
+  generate_container_ports 10 "${CONTAINER_PORT}"
+
+  # Container security context (DaemonSet-specific: allows privileged/root)
+  generate_daemonset_container_security_context 10 "${READONLY_ROOT_FILESYSTEM}" "${PRIVILEGED}" "${RUN_AS_NON_ROOT}"
+
+  # Resources
+  generate_container_resources 10 "${EPHEMERAL_STORAGE}" "${MEMORY}" "${CPU_REQUEST}" "${CPU_LIMIT}"
+
+  # Lifecycle (preStop hook)
+  generate_container_lifecycle 10 "${PRESTOP_COMMAND}"
+
+  # Probes
+  generate_workload_probes 10
+
+  # Environment variables (plain KVs from directory + refs from configmap/secret keys)
+  generate_container_env_all 10 "${FINAL_ENV_SUB_PATH}" \
+    "${configmap_source}" "${configmap_name}" "${CONFIGMAP_KEYS_FOR_ENV}" \
+    "${secret_source}" "${secret_name}" "${SECRET_KEYS_FOR_ENV}"
+
+  # Volume mounts
+  generate_configmap_secret_volume_mounts 10 "${has_configmap}" "${has_secret}" "${CONFIGMAP_MOUNT_PATH}" "${SECRET_MOUNT_PATH}"
+
+  # Volumes
+  generate_configmap_secret_volumes 6 "${has_configmap}" "${has_secret}" "${configmap_name}" "${secret_name}"
+
+} > "${output_file}"
+
+echo "Generated DaemonSet manifest: ${output_file}" >&2

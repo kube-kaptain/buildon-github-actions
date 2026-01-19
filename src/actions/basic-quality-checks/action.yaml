@@ -5,17 +5,20 @@ name: 'Basic Quality Checks'
 description: 'Basic quality checks for commits and branches'
 
 inputs:
+  # Release branches
   release-branch:
     description: 'The release branch name'
     required: false
+    default: 'main'
   additional-release-branches:
     description: 'Comma-separated list of additional release branches'
     required: false
     default: ''
+  # Basic quality checks
   block-slashes:
     description: 'DEPRECATED: Use block-slash-containing-branches instead'
     required: false
-    default: ''
+    default: 'false'
   qc-block-slash-containing-branches:
     description: 'Block branch names containing slashes'
     required: false

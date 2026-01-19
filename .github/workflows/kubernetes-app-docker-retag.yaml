@@ -153,7 +153,7 @@ on:
         default: ''
       # Kubernetes Workload generation
       kubernetes-workload-type:
-        description: 'Workload type to generate (deployment, statefulset, none)'
+        description: 'Workload type to generate (deployment, statefulset, daemonset, none)'
         required: false
         type: string
         default: 'deployment'
@@ -278,6 +278,11 @@ on:
         required: false
         type: string
         default: 'spread-nodes-and-zones-ha'
+      kubernetes-workload-tolerations:
+        description: 'Tolerations as JSON array (e.g., [{"key":"dedicated","operator":"Equal","value":"app","effect":"NoSchedule"}])'
+        required: false
+        type: string
+        default: ''
       # Liveness probe inputs
       kubernetes-workload-probe-liveness-check-type:
         description: 'Liveness probe type (http-get, tcp-socket, exec, grpc, none)'
@@ -478,6 +483,21 @@ on:
         type: string
         default: ''
       # StatefulSet unique inputs
+      kubernetes-statefulset-env-sub-path:
+        description: 'Path to statefulset environment variables directory'
+        required: false
+        type: string
+        default: 'src/statefulset-env'
+      kubernetes-statefulset-additional-labels:
+        description: 'Additional labels for StatefulSet resources (key=value,key=value)'
+        required: false
+        type: string
+        default: ''
+      kubernetes-statefulset-additional-annotations:
+        description: 'Additional annotations for StatefulSet resources (key=value,key=value)'
+        required: false
+        type: string
+        default: ''
       kubernetes-statefulset-service-name:
         description: 'Headless service name (empty for auto-derived from project name)'
         required: false
@@ -528,6 +548,62 @@ on:
         required: false
         type: string
         default: '/data'
+      # DaemonSet unique inputs
+      kubernetes-daemonset-update-strategy-type:
+        description: 'Update strategy type (RollingUpdate or OnDelete)'
+        required: false
+        type: string
+        default: 'RollingUpdate'
+      kubernetes-daemonset-max-unavailable:
+        description: 'Max unavailable pods during rolling update (number or percentage)'
+        required: false
+        type: string
+        default: '1'
+      kubernetes-daemonset-min-ready-seconds:
+        description: 'Minimum seconds a pod must be ready before considered available'
+        required: false
+        type: string
+        default: '0'
+      kubernetes-daemonset-host-network:
+        description: 'Use host network namespace (true/false)'
+        required: false
+        type: string
+        default: 'false'
+      kubernetes-daemonset-host-pid:
+        description: 'Use host PID namespace (true/false)'
+        required: false
+        type: string
+        default: 'false'
+      kubernetes-daemonset-host-ipc:
+        description: 'Use host IPC namespace (true/false)'
+        required: false
+        type: string
+        default: 'false'
+      kubernetes-daemonset-run-as-non-root:
+        description: 'Require non-root user (true/false, set false for system-level DaemonSets that need root)'
+        required: false
+        type: boolean
+        default: true
+      kubernetes-daemonset-privileged:
+        description: 'Run container in privileged mode (true/false)'
+        required: false
+        type: string
+        default: 'false'
+      kubernetes-daemonset-dns-policy:
+        description: 'DNS policy (ClusterFirst, ClusterFirstWithHostNet, Default, None)'
+        required: false
+        type: string
+        default: ''
+      kubernetes-daemonset-tolerations:
+        description: 'Tolerations as JSON array (e.g., [{"operator":"Exists"}] or [{"key":"node-role.kubernetes.io/control-plane","operator":"Exists","effect":"NoSchedule"}])'
+        required: false
+        type: string
+        default: ''
+      kubernetes-daemonset-node-selector:
+        description: 'Node selector labels (comma-separated key=value)'
+        required: false
+        type: string
+        default: ''
       # Kubernetes PodDisruptionBudget generation
       kubernetes-poddisruptionbudget-generation-enabled:
         description: 'Enable PodDisruptionBudget generation (true, false, or empty for auto based on workload type)'
@@ -1446,6 +1522,7 @@ jobs:
           kubernetes-workload-termination-grace-period-seconds: ${{ inputs.kubernetes-workload-termination-grace-period-seconds }}
           kubernetes-workload-prestop-command: ${{ inputs.kubernetes-workload-prestop-command }}
           kubernetes-workload-affinity-strategy: ${{ inputs.kubernetes-workload-affinity-strategy }}
+          kubernetes-workload-tolerations: ${{ inputs.kubernetes-workload-tolerations }}
           # Probe check types
           kubernetes-workload-probe-liveness-check-type: ${{ inputs.kubernetes-workload-probe-liveness-check-type }}
           kubernetes-workload-probe-readiness-check-type: ${{ inputs.kubernetes-workload-probe-readiness-check-type }}
@@ -1465,6 +1542,18 @@ jobs:
           kubernetes-statefulset-pvc-access-mode: ${{ inputs.kubernetes-statefulset-pvc-access-mode }}
           kubernetes-statefulset-pvc-volume-name: ${{ inputs.kubernetes-statefulset-pvc-volume-name }}
           kubernetes-statefulset-pvc-mount-path: ${{ inputs.kubernetes-statefulset-pvc-mount-path }}
+          # DaemonSet-specific settings
+          kubernetes-daemonset-update-strategy-type: ${{ inputs.kubernetes-daemonset-update-strategy-type }}
+          kubernetes-daemonset-max-unavailable: ${{ inputs.kubernetes-daemonset-max-unavailable }}
+          kubernetes-daemonset-min-ready-seconds: ${{ inputs.kubernetes-daemonset-min-ready-seconds }}
+          kubernetes-daemonset-host-network: ${{ inputs.kubernetes-daemonset-host-network }}
+          kubernetes-daemonset-host-pid: ${{ inputs.kubernetes-daemonset-host-pid }}
+          kubernetes-daemonset-host-ipc: ${{ inputs.kubernetes-daemonset-host-ipc }}
+          kubernetes-daemonset-run-as-non-root: ${{ inputs.kubernetes-daemonset-run-as-non-root }}
+          kubernetes-daemonset-privileged: ${{ inputs.kubernetes-daemonset-privileged }}
+          kubernetes-daemonset-dns-policy: ${{ inputs.kubernetes-daemonset-dns-policy }}
+          kubernetes-daemonset-tolerations: ${{ inputs.kubernetes-daemonset-tolerations }}
+          kubernetes-daemonset-node-selector: ${{ inputs.kubernetes-daemonset-node-selector }}
           # Global settings
           output-sub-path: ${{ inputs.output-sub-path }}
           token-name-style: ${{ inputs.token-name-style }}
@@ -1530,7 +1619,7 @@ jobs:
 
       # === Generate Service ===
       - name: Start check - Generate Service
-        if: inputs.kubernetes-service-generation-enabled != 'false' && (inputs.kubernetes-service-generation-enabled == 'true' || inputs.kubernetes-workload-type == 'deployment' || inputs.kubernetes-workload-type == 'statefulset') && success()
+        if: inputs.kubernetes-service-generation-enabled != 'false' && (inputs.kubernetes-service-generation-enabled == 'true' || inputs.kubernetes-workload-type == 'deployment' || inputs.kubernetes-workload-type == 'statefulset' || inputs.kubernetes-workload-type == 'daemonset') && success()
         id: check-generate-service
         uses: ./.github/buildon-github-actions/src/actions/github-check-run
         with:
@@ -1538,7 +1627,7 @@ jobs:
           check-name: 'Build & Publish → Generate Service'
       - name: Generate Service manifest
         id: generate-service
-        if: inputs.kubernetes-service-generation-enabled != 'false' && (inputs.kubernetes-service-generation-enabled == 'true' || inputs.kubernetes-workload-type == 'deployment' || inputs.kubernetes-workload-type == 'statefulset') && success()
+        if: inputs.kubernetes-service-generation-enabled != 'false' && (inputs.kubernetes-service-generation-enabled == 'true' || inputs.kubernetes-workload-type == 'deployment' || inputs.kubernetes-workload-type == 'statefulset' || inputs.kubernetes-workload-type == 'daemonset') && success()
         uses: ./.github/buildon-github-actions/src/actions/generate-kubernetes-service
         with:
           # Service settings
@@ -1567,13 +1656,13 @@ jobs:
           kubernetes-global-additional-labels: ${{ inputs.kubernetes-global-additional-labels }}
           kubernetes-global-additional-annotations: ${{ inputs.kubernetes-global-additional-annotations }}
       - name: Pass check - Generate Service
-        if: inputs.kubernetes-service-generation-enabled != 'false' && (inputs.kubernetes-service-generation-enabled == 'true' || inputs.kubernetes-workload-type == 'deployment' || inputs.kubernetes-workload-type == 'statefulset') && success()
+        if: inputs.kubernetes-service-generation-enabled != 'false' && (inputs.kubernetes-service-generation-enabled == 'true' || inputs.kubernetes-workload-type == 'deployment' || inputs.kubernetes-workload-type == 'statefulset' || inputs.kubernetes-workload-type == 'daemonset') && success()
         uses: ./.github/buildon-github-actions/src/actions/github-check-run
         with:
           action: pass
           check-run-id: ${{ steps.check-generate-service.outputs.check-run-id }}
       - name: Fail check - Generate Service
-        if: inputs.kubernetes-service-generation-enabled != 'false' && (inputs.kubernetes-service-generation-enabled == 'true' || inputs.kubernetes-workload-type == 'deployment' || inputs.kubernetes-workload-type == 'statefulset') && failure() && steps.check-generate-service.outputs.check-run-id != ''
+        if: inputs.kubernetes-service-generation-enabled != 'false' && (inputs.kubernetes-service-generation-enabled == 'true' || inputs.kubernetes-workload-type == 'deployment' || inputs.kubernetes-workload-type == 'statefulset' || inputs.kubernetes-workload-type == 'daemonset') && failure() && steps.check-generate-service.outputs.check-run-id != ''
         uses: ./.github/buildon-github-actions/src/actions/github-check-run
         with:
           action: fail

@@ -1,0 +1,112 @@
+# SPDX-License-Identifier: CC0-1.0
+# This example is released to the public domain. Use freely without attribution.
+#
+# DaemonSet with Privileged Mode and Tolerations
+#
+# This example demonstrates a DaemonSet configured for system-level agents that
+# need elevated privileges and must run on all nodes including tainted ones.
+#
+# Typical use cases:
+#   - Log collectors (Fluentd, Filebeat, Promtail)
+#   - Monitoring agents (node-exporter, Datadog agent)
+#   - Network plugins (CNI, service mesh sidecars)
+#   - Security agents (Falco, Sysdig)
+#
+# WARNING: These settings weaken security. Only use when required for your
+# workload's functionality. Always prefer the most restrictive settings possible.
+#
+# Copy this to .github/workflows/build.yaml in your repo.
+
+name: DaemonSet with Privileged Mode
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    uses: kube-kaptain/buildon-github-actions/.github/workflows/kubernetes-app-docker-dockerfile.yaml@1.0.40
+    permissions:
+      contents: write
+      packages: write
+      checks: write
+    with:
+      # ┌─────────────────────────────────────────────────────────────────────┐
+      # │ DaemonSet Configuration                                             │
+      # └─────────────────────────────────────────────────────────────────────┘
+      kubernetes-workload-type: 'daemonset'
+
+      # Container configuration
+      kubernetes-workload-container-port: '9100'  # e.g., metrics port
+      kubernetes-workload-resources-memory: '256Mi'
+      kubernetes-workload-resources-cpu-request: '100m'
+      kubernetes-workload-resources-cpu-limit: '500m'
+
+      # ┌─────────────────────────────────────────────────────────────────────┐
+      # │ Security Relaxation (use only when required)                        │
+      # └─────────────────────────────────────────────────────────────────────┘
+      # Allow running as root (default: true = non-root required)
+      # Required for: accessing host files owned by root, binding privileged ports
+      kubernetes-daemonset-run-as-non-root: false
+
+      # Privileged mode (default: false)
+      # Required for: kernel module loading, eBPF, raw network access
+      kubernetes-daemonset-privileged: 'true'
+
+      # ┌─────────────────────────────────────────────────────────────────────┐
+      # │ Host Namespace Access                                               │
+      # └─────────────────────────────────────────────────────────────────────┘
+      # Access host PID namespace (default: false)
+      # Required for: seeing all host processes, /proc access
+      kubernetes-daemonset-host-pid: 'true'
+
+      # Access host network namespace (default: false)
+      # Required for: capturing host network traffic, binding to host ports
+      kubernetes-daemonset-host-network: 'true'
+
+      # Access host IPC namespace (default: false)
+      # Required for: shared memory access with host processes
+      # kubernetes-daemonset-host-ipc: 'true'
+
+      # DNS policy (auto-set to ClusterFirstWithHostNet when host-network is true)
+      # kubernetes-daemonset-dns-policy: 'ClusterFirstWithHostNet'
+
+      # ┌─────────────────────────────────────────────────────────────────────┐
+      # │ Tolerations - Run on All Nodes                                      │
+      # └─────────────────────────────────────────────────────────────────────┘
+      # Tolerations are specified as JSON and converted to YAML.
+      # This tolerates ALL taints, allowing the DaemonSet to run on every node.
+      kubernetes-daemonset-tolerations: '[{"operator":"Exists"}]'
+
+      # More specific tolerations examples:
+      # Tolerate control-plane nodes:
+      #   kubernetes-daemonset-tolerations: '[{"key":"node-role.kubernetes.io/control-plane","operator":"Exists","effect":"NoSchedule"}]'
+      #
+      # Tolerate multiple specific taints:
+      #   kubernetes-daemonset-tolerations: '[{"key":"node-role.kubernetes.io/control-plane","operator":"Exists"},{"key":"node.kubernetes.io/disk-pressure","operator":"Exists"}]'
+      #
+      # Tolerate with specific value:
+      #   kubernetes-daemonset-tolerations: '[{"key":"dedicated","operator":"Equal","value":"monitoring","effect":"NoSchedule"}]'
+
+      # ┌─────────────────────────────────────────────────────────────────────┐
+      # │ Node Selector (optional)                                            │
+      # └─────────────────────────────────────────────────────────────────────┘
+      # Restrict to specific nodes (comma-separated key=value)
+      # kubernetes-daemonset-node-selector: 'node-role.kubernetes.io/worker=true'
+
+      # ┌─────────────────────────────────────────────────────────────────────┐
+      # │ Update Strategy                                                     │
+      # └─────────────────────────────────────────────────────────────────────┘
+      kubernetes-daemonset-update-strategy-type: 'RollingUpdate'
+      kubernetes-daemonset-max-unavailable: '10%'
+      kubernetes-daemonset-min-ready-seconds: '5'
+
+      # ┌─────────────────────────────────────────────────────────────────────┐
+      # │ Health Probes                                                       │
+      # └─────────────────────────────────────────────────────────────────────┘
+      kubernetes-workload-probe-liveness-check-type: 'http-get'
+      kubernetes-workload-probe-liveness-http-path: '/healthz'
+      kubernetes-workload-probe-readiness-check-type: 'http-get'
+      kubernetes-workload-probe-readiness-http-path: '/ready'

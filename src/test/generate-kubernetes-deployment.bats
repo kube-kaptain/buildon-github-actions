@@ -741,6 +741,44 @@ read_manifest_with_suffix() {
 }
 
 # =============================================================================
+# Tolerations
+# =============================================================================
+
+@test "no tolerations by default" {
+  run "$GENERATORS_DIR/generate-kubernetes-workload-deployment"
+  [ "$status" -eq 0 ]
+
+  manifest=$(read_manifest)
+  [[ "$manifest" != *"tolerations:"* ]]
+}
+
+@test "supports tolerations JSON" {
+  export KUBERNETES_WORKLOAD_TOLERATIONS='[{"key":"dedicated","operator":"Equal","value":"app-tier","effect":"NoSchedule"}]'
+
+  run "$GENERATORS_DIR/generate-kubernetes-workload-deployment"
+  [ "$status" -eq 0 ]
+
+  manifest=$(read_manifest)
+  assert_contains "$manifest" "tolerations:"
+  assert_contains "$manifest" "key: dedicated"
+  assert_contains "$manifest" "operator: Equal"
+  assert_contains "$manifest" "value: app-tier"
+  assert_contains "$manifest" "effect: NoSchedule"
+}
+
+@test "supports multiple tolerations" {
+  export KUBERNETES_WORKLOAD_TOLERATIONS='[{"key":"dedicated","operator":"Equal","value":"app","effect":"NoSchedule"},{"key":"spot-instance","operator":"Exists"}]'
+
+  run "$GENERATORS_DIR/generate-kubernetes-workload-deployment"
+  [ "$status" -eq 0 ]
+
+  manifest=$(read_manifest)
+  assert_contains "$manifest" "tolerations:"
+  assert_contains "$manifest" "key: dedicated"
+  assert_contains "$manifest" "key: spot-instance"
+}
+
+# =============================================================================
 # Validation
 # =============================================================================
 

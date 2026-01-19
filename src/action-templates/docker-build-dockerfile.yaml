@@ -1,0 +1,85 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
+
+name: 'Docker Build Dockerfile'
+description: 'Builds a Docker image from a Dockerfile with token substitution (build only, use docker-push to push)'
+
+inputs:
+  # INJECT-INPUT: output-sub-path
+  # INJECT-INPUT: docker-dockerfile
+  # INJECT-INPUT: token-substitution
+
+  # Action-specific inputs (passed from workflow/version generator)
+  docker-target-registry:
+    description: 'Target container registry (defaults to ghcr.io)'
+    required: false
+    default: ''
+  docker-target-base-path:
+    description: 'Path between registry and image name (leave empty for GHCR auto-detect)'
+    required: false
+    default: ''
+  docker-image-name:
+    description: 'Image name (from version generator docker-image-name)'
+    required: true
+  docker-tag:
+    description: 'Tag for target image (from version generator docker-tag)'
+    required: true
+  version:
+    description: 'Version number (from version generator, passed as build arg)'
+    required: true
+  project-name:
+    description: 'Project name (from version generator, passed as build arg)'
+    required: true
+  is-release:
+    description: 'Whether this is a release build (from version generator)'
+    required: true
+
+outputs:
+  docker-target-image-full-uri:
+    description: 'Full target image reference (for passing to docker-push)'
+    value: ${{ steps.build.outputs.DOCKER_TARGET_IMAGE_FULL_URI }}
+  docker-substituted-sub-path:
+    description: 'Directory containing substituted files (for downstream use)'
+    value: ${{ steps.build.outputs.DOCKER_SUBSTITUTED_SUB_PATH }}
+  docker-target-registry:
+    description: 'Resolved target registry (for passing to manifest-package)'
+    value: ${{ steps.resolve.outputs.docker-target-registry }}
+  docker-target-base-path:
+    description: 'Computed target base path (for passing to manifest-package)'
+    value: ${{ steps.resolve.outputs.docker-target-base-path }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Resolve target registry and base path
+      id: resolve
+      uses: ./.github/buildon-github-actions/src/actions/resolve-target-registry-and-base-path
+      with:
+        target-registry: ${{ inputs.docker-target-registry }}
+        target-base-path: ${{ inputs.docker-target-base-path }}
+
+    - name: Build image
+      id: build
+      shell: bash
+      env:
+        LOG_ERROR_PREFIX: '::error::'
+        LOG_WARNING_PREFIX: '::warning::'
+        DOCKER_TARGET_REGISTRY: ${{ steps.resolve.outputs.docker-target-registry }}
+        DOCKER_TARGET_BASE_PATH: ${{ steps.resolve.outputs.docker-target-base-path }}
+        DOCKER_IMAGE_NAME: ${{ inputs.docker-image-name }}
+        DOCKER_TAG: ${{ inputs.docker-tag }}
+        VERSION: ${{ inputs.version }}
+        PROJECT_NAME: ${{ inputs.project-name }}
+        IS_RELEASE: ${{ inputs.is-release }}
+        DOCKERFILE_SUB_PATH: ${{ inputs.dockerfile-sub-path }}
+        DOCKERFILE_SUBSTITUTION_FILES: ${{ inputs.dockerfile-substitution-files }}
+        OUTPUT_SUB_PATH: ${{ inputs.output-sub-path }}
+        DOCKERFILE_SQUASH: ${{ inputs.dockerfile-squash }}
+        DOCKERFILE_NO_CACHE: ${{ inputs.dockerfile-no-cache }}
+        TOKEN_DELIMITER_STYLE: ${{ inputs.token-delimiter-style }}
+        TOKEN_NAME_STYLE: ${{ inputs.token-name-style }}
+        TOKEN_NAME_VALIDATION: ${{ inputs.token-name-validation }}
+        CONFIG_SUB_PATH: ${{ inputs.config-sub-path }}
+        ALLOW_BUILTIN_TOKEN_OVERRIDE: ${{ inputs.allow-builtin-token-override }}
+        CONFIG_VALUE_TRAILING_NEWLINE: ${{ inputs.config-value-trailing-newline }}
+      run: "${{ github.action_path }}/../../scripts/main/docker-build-dockerfile"

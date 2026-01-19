@@ -1,0 +1,42 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
+
+name: 'Generate Kubernetes ConfigMap'
+description: 'Generates a Kubernetes ConfigMap manifest from files in a directory'
+
+inputs:
+  # Required context
+  project-name:
+    description: 'Project name (required)'
+    required: true
+
+  # INJECT-INPUT: output-sub-path
+  # INJECT-INPUT: kubernetes-global
+  # INJECT-INPUT: kubernetes-configmap
+  # INJECT-INPUT: token-substitution
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Generate ConfigMap manifest
+      id: generate
+      shell: bash
+      env:
+        LOG_ERROR_PREFIX: '::error::'
+        # Required context
+        PROJECT_NAME: ${{ inputs.project-name }}
+        # Global settings
+        OUTPUT_SUB_PATH: ${{ inputs.output-sub-path }}
+        KUBERNETES_GLOBAL_ADDITIONAL_LABELS: ${{ inputs.kubernetes-global-additional-labels }}
+        KUBERNETES_GLOBAL_ADDITIONAL_ANNOTATIONS: ${{ inputs.kubernetes-global-additional-annotations }}
+        # ConfigMap settings
+        KUBERNETES_CONFIGMAP_SUB_PATH: ${{ inputs.kubernetes-configmap-sub-path }}
+        KUBERNETES_CONFIGMAP_NAME_SUFFIX: ${{ inputs.kubernetes-configmap-name-suffix }}
+        KUBERNETES_CONFIGMAP_COMBINED_SUB_PATH: ${{ inputs.kubernetes-configmap-combined-sub-path }}
+        KUBERNETES_CONFIGMAP_NAME_CHECKSUM_INJECTION: ${{ inputs.kubernetes-configmap-name-checksum-injection }}
+        KUBERNETES_CONFIGMAP_ADDITIONAL_LABELS: ${{ inputs.kubernetes-configmap-additional-labels }}
+        KUBERNETES_CONFIGMAP_ADDITIONAL_ANNOTATIONS: ${{ inputs.kubernetes-configmap-additional-annotations }}
+        # Token substitution
+        TOKEN_DELIMITER_STYLE: ${{ inputs.token-delimiter-style }}
+        TOKEN_NAME_STYLE: ${{ inputs.token-name-style }}
+      run: "${{ github.action_path }}/../../scripts/generators/generate-kubernetes-configmap"

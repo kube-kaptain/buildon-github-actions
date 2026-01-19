@@ -5,6 +5,38 @@ name: 'Kubernetes Manifests Package Only Token Override'
 description: 'Overrides docker image tokens for manifests-only workflow'
 
 inputs:
+  # Build output
+  output-sub-path:
+    description: 'Build output directory (relative)'
+    required: false
+    default: 'target'
+  # Token substitution
+  token-delimiter-style:
+    description: 'Token delimiter syntax for variables (shell, mustache, helm, erb, github-actions, blade, stringtemplate, ognl, t4, swift)'
+    required: false
+    default: 'shell'
+  token-name-style:
+    description: 'Case style for token names (UPPER_SNAKE, lower_snake, lower-kebab, UPPER-KEBAB, camelCase, PascalCase, lower.dot, UPPER.DOT)'
+    required: false
+    default: 'PascalCase'
+  token-name-validation:
+    description: 'How to validate user token names (MATCH = must match token-name-style, ALL = accept any valid name)'
+    required: false
+    default: 'MATCH'
+  allow-builtin-token-override:
+    description: 'Allow user tokens to override built-in tokens (for template/reusable projects)'
+    required: false
+    default: 'false'
+  config-sub-path:
+    description: 'Directory containing user-defined token files (relative)'
+    required: false
+    default: 'src/config'
+  config-value-trailing-newline:
+    description: 'How to handle trailing newlines in config values (strip-for-single-line, preserve-all, always-strip-one-newline)'
+    required: false
+    default: 'strip-for-single-line'
+
+  # Action-specific inputs
   docker-image-name-override:
     description: 'Override value for docker image name (if empty, removes token so variable remains in output)'
     required: false
@@ -13,13 +45,6 @@ inputs:
     description: 'Override value for docker tag (if empty, removes token so variable remains in output)'
     required: false
     default: ''
-  output-sub-path:
-    description: 'Build output directory (relative)'
-    required: false
-    default: 'target'
-  token-name-style:
-    description: 'Case style for token names (must match prepare step)'
-    required: false
 
 runs:
   using: 'composite'

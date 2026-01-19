@@ -1,0 +1,52 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
+
+name: 'Generate Kubernetes PodDisruptionBudget'
+description: 'Generates a Kubernetes PodDisruptionBudget manifest for controlling voluntary disruptions'
+
+inputs:
+  # Required context
+  project-name:
+    description: 'Project name (required)'
+    required: true
+
+  # INJECT-INPUT: output-sub-path
+  # INJECT-INPUT: kubernetes-global
+
+  # Workload settings (for smart defaulting)
+  kubernetes-workload-type:
+    description: 'Workload type for smart defaulting (deployment, statefulset, etc.)'
+    required: false
+    default: 'deployment'
+
+  # INJECT-INPUT: kubernetes-poddisruptionbudget
+  # INJECT-INPUT: token-substitution
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Generate PodDisruptionBudget manifest
+      id: generate
+      shell: bash
+      env:
+        LOG_ERROR_PREFIX: '::error::'
+        # Required context
+        PROJECT_NAME: ${{ inputs.project-name }}
+        # Global settings
+        OUTPUT_SUB_PATH: ${{ inputs.output-sub-path }}
+        KUBERNETES_GLOBAL_ADDITIONAL_LABELS: ${{ inputs.kubernetes-global-additional-labels }}
+        KUBERNETES_GLOBAL_ADDITIONAL_ANNOTATIONS: ${{ inputs.kubernetes-global-additional-annotations }}
+        # Workload settings (for smart defaulting)
+        KUBERNETES_WORKLOAD_TYPE: ${{ inputs.kubernetes-workload-type }}
+        # PodDisruptionBudget settings
+        KUBERNETES_PODDISRUPTIONBUDGET_GENERATION_ENABLED: ${{ inputs.kubernetes-poddisruptionbudget-generation-enabled }}
+        KUBERNETES_PODDISRUPTIONBUDGET_NAME_SUFFIX: ${{ inputs.kubernetes-poddisruptionbudget-name-suffix }}
+        KUBERNETES_PODDISRUPTIONBUDGET_COMBINED_SUB_PATH: ${{ inputs.kubernetes-poddisruptionbudget-combined-sub-path }}
+        KUBERNETES_PODDISRUPTIONBUDGET_STRATEGY: ${{ inputs.kubernetes-poddisruptionbudget-strategy }}
+        KUBERNETES_PODDISRUPTIONBUDGET_VALUE: ${{ inputs.kubernetes-poddisruptionbudget-value }}
+        KUBERNETES_PODDISRUPTIONBUDGET_ADDITIONAL_LABELS: ${{ inputs.kubernetes-poddisruptionbudget-additional-labels }}
+        KUBERNETES_PODDISRUPTIONBUDGET_ADDITIONAL_ANNOTATIONS: ${{ inputs.kubernetes-poddisruptionbudget-additional-annotations }}
+        # Token substitution
+        TOKEN_DELIMITER_STYLE: ${{ inputs.token-delimiter-style }}
+        TOKEN_NAME_STYLE: ${{ inputs.token-name-style }}
+      run: "${{ github.action_path }}/../../scripts/generators/generate-kubernetes-poddisruptionbudget"

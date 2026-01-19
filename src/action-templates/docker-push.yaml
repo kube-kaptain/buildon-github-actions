@@ -1,0 +1,29 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
+
+name: 'Docker Push'
+description: 'Pushes a Docker image to registry'
+
+inputs:
+  docker-image-full-uri:
+    description: 'Full image reference to push'
+    required: true
+  is-release:
+    description: 'Whether to push (true) or skip (false)'
+    required: true
+
+outputs:
+  image-pushed:
+    description: 'Whether image was pushed'
+    value: ${{ steps.push.outputs.IMAGE_PUSHED }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Push image
+      id: push
+      shell: bash
+      env:
+        DOCKER_IMAGE_FULL_URI: ${{ inputs.docker-image-full-uri }}
+        IS_RELEASE: ${{ inputs.is-release }}
+      run: "${{ github.action_path }}/../../scripts/main/docker-push"

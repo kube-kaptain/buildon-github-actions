@@ -361,3 +361,68 @@ setup() {
   assert_output_contains "successThreshold: 1"
   assert_output_contains "terminationGracePeriodSeconds: 20"
 }
+
+# =============================================================================
+# generate_workload_probes: required field validation
+# =============================================================================
+
+@test "generate_workload_probes: liveness exec without command fails" {
+  source "$PROJECT_ROOT/src/scripts/defaults/kubernetes-workload.bash"
+  LIVENESS_CHECK_TYPE="exec"
+  LIVENESS_EXEC_COMMAND=""
+
+  run generate_workload_probes 0
+  [ "$status" -eq 4 ]
+  assert_output_contains "Liveness probe type 'exec' requires"
+}
+
+@test "generate_workload_probes: readiness exec without command fails" {
+  source "$PROJECT_ROOT/src/scripts/defaults/kubernetes-workload.bash"
+  READINESS_CHECK_TYPE="exec"
+  READINESS_EXEC_COMMAND=""
+
+  run generate_workload_probes 0
+  [ "$status" -eq 4 ]
+  assert_output_contains "Readiness probe type 'exec' requires"
+}
+
+@test "generate_workload_probes: startup exec without command fails" {
+  source "$PROJECT_ROOT/src/scripts/defaults/kubernetes-workload.bash"
+  STARTUP_CHECK_TYPE="exec"
+  STARTUP_EXEC_COMMAND=""
+
+  run generate_workload_probes 0
+  [ "$status" -eq 4 ]
+  assert_output_contains "Startup probe type 'exec' requires"
+}
+
+@test "generate_workload_probes: liveness tcp-socket without port fails" {
+  source "$PROJECT_ROOT/src/scripts/defaults/kubernetes-workload.bash"
+  LIVENESS_CHECK_TYPE="tcp-socket"
+  LIVENESS_TCP_PORT=""
+
+  run generate_workload_probes 0
+  [ "$status" -eq 4 ]
+  assert_output_contains "Liveness probe type 'tcp-socket' requires"
+}
+
+@test "generate_workload_probes: liveness grpc without port fails" {
+  source "$PROJECT_ROOT/src/scripts/defaults/kubernetes-workload.bash"
+  LIVENESS_CHECK_TYPE="grpc"
+  LIVENESS_GRPC_PORT=""
+
+  run generate_workload_probes 0
+  [ "$status" -eq 4 ]
+  assert_output_contains "Liveness probe type 'grpc' requires"
+}
+
+@test "generate_workload_probes: exec with command succeeds" {
+  source "$PROJECT_ROOT/src/scripts/defaults/kubernetes-workload.bash"
+  LIVENESS_CHECK_TYPE="exec"
+  LIVENESS_EXEC_COMMAND="/bin/check-health"
+
+  run generate_workload_probes 0
+  [ "$status" -eq 0 ]
+  assert_output_contains "exec:"
+  assert_output_contains "/bin/check-health"
+}

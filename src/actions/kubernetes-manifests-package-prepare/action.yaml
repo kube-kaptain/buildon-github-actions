@@ -5,6 +5,7 @@ name: 'Kubernetes Manifests Package Prepare'
 description: 'Prepares manifests and tokens for packaging'
 
 inputs:
+  # Action-specific inputs
   manifests-sub-path:
     description: 'Directory containing Kubernetes manifests (relative)'
     required: false
@@ -15,10 +16,14 @@ inputs:
   version:
     description: 'Version for variable substitution and naming'
     required: true
+
+  # Build output
   output-sub-path:
     description: 'Build output directory (relative)'
     required: false
     default: 'target'
+
+  # Action-specific inputs (passed from version generator/docker build)
   docker-tag:
     description: 'Docker tag for variable substitution'
     required: true
@@ -41,24 +46,32 @@ inputs:
     description: 'Release flag for variable substitution (optional)'
     required: false
     default: ''
+
+  # Token substitution
   token-delimiter-style:
     description: 'Token delimiter syntax for variables (shell, mustache, helm, erb, github-actions, blade, stringtemplate, ognl, t4, swift)'
     required: false
+    default: 'shell'
   token-name-style:
-    description: 'Case style for token names in manifests (UPPER_SNAKE, lower_snake, lower-kebab, UPPER-KEBAB, camelCase, PascalCase, lower.dot, UPPER.DOT)'
+    description: 'Case style for token names (UPPER_SNAKE, lower_snake, lower-kebab, UPPER-KEBAB, camelCase, PascalCase, lower.dot, UPPER.DOT)'
     required: false
+    default: 'PascalCase'
   token-name-validation:
     description: 'How to validate user token names (MATCH = must match token-name-style, ALL = accept any valid name)'
     required: false
+    default: 'MATCH'
   allow-builtin-token-override:
     description: 'Allow user tokens to override built-in tokens (for template/reusable projects)'
     required: false
+    default: 'false'
   config-sub-path:
     description: 'Directory containing user-defined token files (relative)'
     required: false
+    default: 'src/config'
   config-value-trailing-newline:
     description: 'How to handle trailing newlines in config values (strip-for-single-line, preserve-all, always-strip-one-newline)'
     required: false
+    default: 'strip-for-single-line'
 
 outputs:
   manifests-zip-file-name:

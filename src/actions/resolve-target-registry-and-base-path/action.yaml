@@ -5,12 +5,23 @@ name: 'Resolve Target Registry and Base Path'
 description: 'Resolves target registry (defaults to ghcr.io) and computes base path (auto-detects org for GHCR)'
 
 inputs:
-  target-registry:
-    description: 'Target container registry (defaults to ghcr.io if empty)'
+  # Docker registry logins
+  docker-registry-logins:
+    description: 'YAML config for Docker registry logins (registry URL as key)'
     required: false
     default: ''
-  target-base-path:
-    description: 'Path between registry and image name (auto-set to org for GHCR if empty)'
+  # Docker target config
+  docker-target-registry:
+    description: 'Target container registry'
+    required: false
+    default: 'ghcr.io'
+  docker-target-base-path:
+    description: 'Path between registry and image name (auto-set for GHCR)'
+    required: false
+    default: ''
+  # Docker push targets
+  docker-push-targets:
+    description: 'JSON array of additional push targets [{registry, base-path?}]'
     required: false
     default: ''
 

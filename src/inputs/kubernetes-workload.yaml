@@ -3,7 +3,7 @@
 #
 # Kubernetes Workload generation
 kubernetes-workload-type:
-  description: 'Workload type to generate (deployment, statefulset, none)'
+  description: 'Workload type to generate (deployment, statefulset, daemonset, none)'
   required: false
   type: string
   default: 'deployment'
@@ -128,6 +128,11 @@ kubernetes-workload-affinity-strategy:
   required: false
   type: string
   default: 'spread-nodes-and-zones-ha'
+kubernetes-workload-tolerations:
+  description: 'Tolerations as JSON array (e.g., [{"key":"dedicated","operator":"Equal","value":"app","effect":"NoSchedule"}])'
+  required: false
+  type: string
+  default: ''
 # Liveness probe inputs
 kubernetes-workload-probe-liveness-check-type:
   description: 'Liveness probe type (http-get, tcp-socket, exec, grpc, none)'

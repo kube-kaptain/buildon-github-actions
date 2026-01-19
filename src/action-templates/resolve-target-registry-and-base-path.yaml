@@ -1,0 +1,40 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
+
+name: 'Resolve Target Registry and Base Path'
+description: 'Resolves target registry (defaults to ghcr.io) and computes base path (auto-detects org for GHCR)'
+
+inputs:
+  # INJECT-INPUT: docker-build
+
+outputs:
+  docker-target-registry:
+    description: 'Resolved target registry'
+    value: ${{ steps.resolve.outputs.docker-target-registry }}
+  docker-target-base-path:
+    description: 'Computed target base path'
+    value: ${{ steps.resolve.outputs.docker-target-base-path }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Resolve target registry and base path
+      id: resolve
+      shell: bash
+      run: |
+        # Use provided registry or default to ghcr.io
+        if [[ -n "${{ inputs.target-registry }}" ]]; then
+          RESOLVED_REGISTRY="${{ inputs.target-registry }}"
+        else
+          RESOLVED_REGISTRY="ghcr.io"
+        fi
+        echo "docker-target-registry=$RESOLVED_REGISTRY" >> "$GITHUB_OUTPUT"
+
+        # Auto-set base path for GHCR if not explicitly provided
+        # Note: GHCR requires lowercase paths, so we lowercase the org name
+        if [[ "$RESOLVED_REGISTRY" == "ghcr.io" && -z "${{ inputs.target-base-path }}" ]]; then
+          OWNER="${{ github.repository_owner }}"
+          echo "docker-target-base-path=${OWNER,,}" >> "$GITHUB_OUTPUT"
+        else
+          echo "docker-target-base-path=${{ inputs.target-base-path }}" >> "$GITHUB_OUTPUT"
+        fi

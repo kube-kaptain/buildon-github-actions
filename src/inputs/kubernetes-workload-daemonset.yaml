@@ -1,0 +1,59 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
+#
+# DaemonSet unique inputs
+kubernetes-daemonset-update-strategy-type:
+  description: 'Update strategy type (RollingUpdate or OnDelete)'
+  required: false
+  type: string
+  default: 'RollingUpdate'
+kubernetes-daemonset-max-unavailable:
+  description: 'Max unavailable pods during rolling update (number or percentage)'
+  required: false
+  type: string
+  default: '1'
+kubernetes-daemonset-min-ready-seconds:
+  description: 'Minimum seconds a pod must be ready before considered available'
+  required: false
+  type: string
+  default: '0'
+kubernetes-daemonset-host-network:
+  description: 'Use host network namespace (true/false)'
+  required: false
+  type: string
+  default: 'false'
+kubernetes-daemonset-host-pid:
+  description: 'Use host PID namespace (true/false)'
+  required: false
+  type: string
+  default: 'false'
+kubernetes-daemonset-host-ipc:
+  description: 'Use host IPC namespace (true/false)'
+  required: false
+  type: string
+  default: 'false'
+kubernetes-daemonset-run-as-non-root:
+  description: 'Require non-root user (true/false, set false for system-level DaemonSets that need root)'
+  required: false
+  type: boolean
+  default: true
+kubernetes-daemonset-privileged:
+  description: 'Run container in privileged mode (true/false)'
+  required: false
+  type: string
+  default: 'false'
+kubernetes-daemonset-dns-policy:
+  description: 'DNS policy (ClusterFirst, ClusterFirstWithHostNet, Default, None)'
+  required: false
+  type: string
+  default: ''
+kubernetes-daemonset-tolerations:
+  description: 'Tolerations as JSON array (e.g., [{"operator":"Exists"}] or [{"key":"node-role.kubernetes.io/control-plane","operator":"Exists","effect":"NoSchedule"}])'
+  required: false
+  type: string
+  default: ''
+kubernetes-daemonset-node-selector:
+  description: 'Node selector labels (comma-separated key=value)'
+  required: false
+  type: string
+  default: ''

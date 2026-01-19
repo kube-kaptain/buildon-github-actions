@@ -5,26 +5,17 @@ name: 'Generate Kubernetes ConfigMap'
 description: 'Generates a Kubernetes ConfigMap manifest from files in a directory'
 
 inputs:
-  kubernetes-configmap-sub-path:
-    description: 'Directory containing ConfigMap data files (relative)'
-    required: false
-    default: 'src/configmap'
+  # Required context
+  project-name:
+    description: 'Project name (required)'
+    required: true
+
+  # Build output
   output-sub-path:
     description: 'Build output directory (relative)'
     required: false
     default: 'target'
-  token-name-style:
-    description: 'Case style for token names (UPPER_SNAKE, lower_snake, lower-kebab, UPPER-KEBAB, camelCase, PascalCase, lower.dot, UPPER.DOT)'
-    required: false
-    default: 'PascalCase'
-  token-delimiter-style:
-    description: 'Token delimiter syntax for variables (shell, mustache, helm, erb, github-actions, blade, stringtemplate, ognl, t4, swift)'
-    required: false
-    default: 'shell'
-  kubernetes-configmap-name-checksum-injection:
-    description: 'Enable checksum injection suffix in ConfigMap name (true: ProjectName-configmap-checksum, false: ProjectName)'
-    required: false
-    default: 'true'
+  # Kubernetes generation
   kubernetes-global-additional-labels:
     description: 'Additional labels for all Kubernetes manifests (comma-separated key=value)'
     required: false
@@ -33,6 +24,15 @@ inputs:
     description: 'Additional annotations for all Kubernetes manifests (comma-separated key=value)'
     required: false
     default: ''
+  # Kubernetes ConfigMap generation
+  kubernetes-configmap-sub-path:
+    description: 'Directory containing ConfigMap data files (relative)'
+    required: false
+    default: 'src/configmap'
+  kubernetes-configmap-name-checksum-injection:
+    description: 'Enable checksum injection suffix in ConfigMap name'
+    required: false
+    default: 'true'
   kubernetes-configmap-additional-labels:
     description: 'Additional labels specific to ConfigMap (comma-separated key=value)'
     required: false
@@ -41,11 +41,31 @@ inputs:
     description: 'Additional annotations specific to ConfigMap (comma-separated key=value)'
     required: false
     default: ''
-
-  # Required context
-  project-name:
-    description: 'Project name (required)'
-    required: true
+  # Token substitution
+  token-delimiter-style:
+    description: 'Token delimiter syntax for variables (shell, mustache, helm, erb, github-actions, blade, stringtemplate, ognl, t4, swift)'
+    required: false
+    default: 'shell'
+  token-name-style:
+    description: 'Case style for token names (UPPER_SNAKE, lower_snake, lower-kebab, UPPER-KEBAB, camelCase, PascalCase, lower.dot, UPPER.DOT)'
+    required: false
+    default: 'PascalCase'
+  token-name-validation:
+    description: 'How to validate user token names (MATCH = must match token-name-style, ALL = accept any valid name)'
+    required: false
+    default: 'MATCH'
+  allow-builtin-token-override:
+    description: 'Allow user tokens to override built-in tokens (for template/reusable projects)'
+    required: false
+    default: 'false'
+  config-sub-path:
+    description: 'Directory containing user-defined token files (relative)'
+    required: false
+    default: 'src/config'
+  config-value-trailing-newline:
+    description: 'How to handle trailing newlines in config values (strip-for-single-line, preserve-all, always-strip-one-newline)'
+    required: false
+    default: 'strip-for-single-line'
 
 runs:
   using: 'composite'
@@ -57,14 +77,18 @@ runs:
         LOG_ERROR_PREFIX: '::error::'
         # Required context
         PROJECT_NAME: ${{ inputs.project-name }}
-        # ConfigMap settings
-        KUBERNETES_CONFIGMAP_SUB_PATH: ${{ inputs.kubernetes-configmap-sub-path }}
+        # Global settings
         OUTPUT_SUB_PATH: ${{ inputs.output-sub-path }}
-        TOKEN_NAME_STYLE: ${{ inputs.token-name-style }}
-        TOKEN_DELIMITER_STYLE: ${{ inputs.token-delimiter-style }}
-        KUBERNETES_CONFIGMAP_NAME_CHECKSUM_INJECTION: ${{ inputs.kubernetes-configmap-name-checksum-injection }}
         KUBERNETES_GLOBAL_ADDITIONAL_LABELS: ${{ inputs.kubernetes-global-additional-labels }}
         KUBERNETES_GLOBAL_ADDITIONAL_ANNOTATIONS: ${{ inputs.kubernetes-global-additional-annotations }}
+        # ConfigMap settings
+        KUBERNETES_CONFIGMAP_SUB_PATH: ${{ inputs.kubernetes-configmap-sub-path }}
+        KUBERNETES_CONFIGMAP_NAME_SUFFIX: ${{ inputs.kubernetes-configmap-name-suffix }}
+        KUBERNETES_CONFIGMAP_COMBINED_SUB_PATH: ${{ inputs.kubernetes-configmap-combined-sub-path }}
+        KUBERNETES_CONFIGMAP_NAME_CHECKSUM_INJECTION: ${{ inputs.kubernetes-configmap-name-checksum-injection }}
         KUBERNETES_CONFIGMAP_ADDITIONAL_LABELS: ${{ inputs.kubernetes-configmap-additional-labels }}
         KUBERNETES_CONFIGMAP_ADDITIONAL_ANNOTATIONS: ${{ inputs.kubernetes-configmap-additional-annotations }}
+        # Token substitution
+        TOKEN_DELIMITER_STYLE: ${{ inputs.token-delimiter-style }}
+        TOKEN_NAME_STYLE: ${{ inputs.token-name-style }}
       run: "${{ github.action_path }}/../../scripts/generators/generate-kubernetes-configmap"

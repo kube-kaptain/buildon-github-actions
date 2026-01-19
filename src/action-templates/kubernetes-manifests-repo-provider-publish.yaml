@@ -1,0 +1,96 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
+
+name: 'Kubernetes Manifests Repo Provider Publish'
+description: 'Publishes manifests via pluggable repo provider. Requires package step to run first.'
+
+inputs:
+  # INJECT-INPUT: kubernetes-app-manifests
+
+  # Action-specific inputs
+  is-release:
+    description: 'Whether to push/upload (false skips actual publish)'
+    required: true
+
+  # ============================================================================
+  # Inputs from package step outputs (pass-through)
+  # ============================================================================
+  manifests-uri:
+    description: 'Manifests location from package step'
+    required: false
+    default: ''
+  manifests-artifact-sub-path:
+    description: 'Relative path to packaged artifact from package step'
+    required: false
+    default: ''
+  manifests-zip-sub-path:
+    description: 'Relative path to directory containing manifests zip from package step'
+    required: false
+    default: ''
+  manifests-zip-file-name:
+    description: 'Filename for manifests zip from package step'
+    required: false
+    default: ''
+  version:
+    description: 'Version from package step (for future non-docker providers)'
+    required: false
+    default: ''
+
+  # ============================================================================
+  # REPO_PROVIDER_* inputs from package step outputs
+  # ============================================================================
+  repo-provider-url:
+    description: 'REPO_PROVIDER_URL from package step'
+    required: false
+    default: ''
+  repo-provider-namespace:
+    description: 'REPO_PROVIDER_NAMESPACE from package step'
+    required: false
+    default: ''
+  repo-provider-name:
+    description: 'REPO_PROVIDER_NAME from package step'
+    required: false
+    default: ''
+  repo-provider-version:
+    description: 'REPO_PROVIDER_VERSION from package step'
+    required: false
+    default: ''
+
+outputs:
+  manifests-uri:
+    description: 'Reference to published manifests (format depends on repo provider)'
+    value: ${{ steps.publish.outputs.MANIFESTS_URI }}
+  manifests-published:
+    description: 'Whether manifests were published'
+    value: ${{ steps.publish.outputs.MANIFESTS_PUBLISHED }}
+
+runs:
+  using: 'composite'
+  steps:
+    # ==========================================================================
+    # Publish manifests via repo provider
+    # All values come from package step - no computation needed
+    # ==========================================================================
+    - name: Publish manifests via repo provider
+      id: publish
+      shell: bash
+      env:
+        LOG_ERROR_PREFIX: '::error::'
+        LOG_ERROR_SUFFIX: ''
+        MANIFESTS_REPO_PROVIDER_TYPE: ${{ inputs.manifests-repo-provider-type }}
+        IS_RELEASE: ${{ inputs.is-release }}
+
+        # --- From manifests package step (zip creation process) ---
+        MANIFESTS_URI: ${{ inputs.manifests-uri }}
+        MANIFESTS_ARTIFACT_SUB_PATH: ${{ inputs.manifests-artifact-sub-path }}
+        MANIFESTS_ZIP_SUB_PATH: ${{ inputs.manifests-zip-sub-path }}
+        MANIFESTS_ZIP_FILE_NAME: ${{ inputs.manifests-zip-file-name }}
+
+        # --- REPO_PROVIDER_* API (from repo provider package step) ---
+        REPO_PROVIDER_URL: ${{ inputs.repo-provider-url }}
+        REPO_PROVIDER_NAMESPACE: ${{ inputs.repo-provider-namespace }}
+        REPO_PROVIDER_NAME: ${{ inputs.repo-provider-name }}
+        REPO_PROVIDER_VERSION: ${{ inputs.repo-provider-version }}
+        REPO_PROVIDER_AUTH_TOKEN: ${{ github.token }}
+        REPO_PROVIDER_AUTH_USER: ${{ github.actor }}
+      run: "${{ github.action_path }}/../../scripts/main/kubernetes-manifests-repo-provider-publish"

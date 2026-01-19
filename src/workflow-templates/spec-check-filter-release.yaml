@@ -176,6 +176,7 @@ jobs:
           project-name: ${{ steps.versions.outputs.project-name }}
           is-release: ${{ steps.versions.outputs.is-release }}
           dockerfile-sub-path: ${{ steps.spec-package-prepare.outputs.DOCKERFILE_SUB_PATH }}
+          dockerfile-substitution-files: Dockerfile,${{ steps.spec-package-prepare.outputs.SPEC_YAML }},${{ steps.spec-package-prepare.outputs.SPEC_JSON }}
           dockerfile-squash: ${{ inputs.dockerfile-squash }}
           dockerfile-no-cache: ${{ inputs.dockerfile-no-cache }}
           output-sub-path: ${{ inputs.output-sub-path }}

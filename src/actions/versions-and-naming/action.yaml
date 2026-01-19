@@ -5,13 +5,16 @@ name: 'Versions & Naming'
 description: 'Generates version numbers, tags, and naming for releases'
 
 inputs:
+  # Release branches
   release-branch:
     description: 'The release branch name'
     required: false
+    default: 'main'
   additional-release-branches:
     description: 'Comma-separated list of additional release branches'
     required: false
     default: ''
+  # Tag version calculation
   tag-version-max-parts:
     description: 'Maximum allowed version parts (fail if exceeded)'
     required: false
@@ -28,20 +31,22 @@ inputs:
     description: 'Number of parts from source version to use as prefix (default 2, output = prefix + 1 parts)'
     required: false
     default: ''
-  dockerfile-sub-path:
-    description: 'Directory containing Dockerfile, relative to repo root.'
-    required: false
-    default: ''
   tag-version-source-sub-path:
-    description: 'Override path to source directory (optional, takes precedence over dockerfile-sub-path, which provides the default)'
+    description: 'Override path to source directory (takes precedence over dockerfile-sub-path)'
     required: false
     default: ''
   tag-version-source-file-name:
-    description: 'Override source file name (optional, defaults based on pattern type)'
+    description: 'Override source file name (defaults based on pattern type)'
     required: false
     default: ''
   tag-version-source-custom-pattern:
     description: 'Regex with capture group for version extraction (required for custom pattern type)'
+    required: false
+    default: ''
+
+  # Docker dockerfile path (for pattern matching)
+  dockerfile-sub-path:
+    description: 'Directory containing Dockerfile, relative to repo root.'
     required: false
     default: ''
 

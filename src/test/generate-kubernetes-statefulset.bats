@@ -333,3 +333,41 @@ EOF
   # Secret reference should include both path and suffix in the resource name
   assert_contains "$manifest" 'secretName: ${ProjectName}-backend-redis-cache-secret-checksum'
 }
+
+# =============================================================================
+# Tolerations
+# =============================================================================
+
+@test "no tolerations by default" {
+  run "$GENERATORS_DIR/generate-kubernetes-workload-statefulset"
+  [ "$status" -eq 0 ]
+
+  manifest=$(read_manifest)
+  [[ "$manifest" != *"tolerations:"* ]]
+}
+
+@test "supports tolerations JSON" {
+  export KUBERNETES_WORKLOAD_TOLERATIONS='[{"key":"dedicated","operator":"Equal","value":"database","effect":"NoSchedule"}]'
+
+  run "$GENERATORS_DIR/generate-kubernetes-workload-statefulset"
+  [ "$status" -eq 0 ]
+
+  manifest=$(read_manifest)
+  assert_contains "$manifest" "tolerations:"
+  assert_contains "$manifest" "key: dedicated"
+  assert_contains "$manifest" "operator: Equal"
+  assert_contains "$manifest" "value: database"
+  assert_contains "$manifest" "effect: NoSchedule"
+}
+
+@test "supports multiple tolerations" {
+  export KUBERNETES_WORKLOAD_TOLERATIONS='[{"key":"dedicated","operator":"Equal","value":"db","effect":"NoSchedule"},{"key":"high-memory","operator":"Exists"}]'
+
+  run "$GENERATORS_DIR/generate-kubernetes-workload-statefulset"
+  [ "$status" -eq 0 ]
+
+  manifest=$(read_manifest)
+  assert_contains "$manifest" "tolerations:"
+  assert_contains "$manifest" "key: dedicated"
+  assert_contains "$manifest" "key: high-memory"
+}

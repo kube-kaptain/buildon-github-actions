@@ -318,6 +318,70 @@ generate_probe() {
 generate_workload_probes() {
   local indent_count="$1"
 
+  # === Validate required fields based on check type ===
+  case "${LIVENESS_CHECK_TYPE}" in
+    exec)
+      if [[ -z "${LIVENESS_EXEC_COMMAND:-}" ]]; then
+        echo "Error: Liveness probe type 'exec' requires LIVENESS_EXEC_COMMAND" >&2
+        return 4
+      fi
+      ;;
+    tcp-socket)
+      if [[ -z "${LIVENESS_TCP_PORT:-}" ]]; then
+        echo "Error: Liveness probe type 'tcp-socket' requires LIVENESS_TCP_PORT" >&2
+        return 4
+      fi
+      ;;
+    grpc)
+      if [[ -z "${LIVENESS_GRPC_PORT:-}" ]]; then
+        echo "Error: Liveness probe type 'grpc' requires LIVENESS_GRPC_PORT" >&2
+        return 4
+      fi
+      ;;
+  esac
+
+  case "${READINESS_CHECK_TYPE}" in
+    exec)
+      if [[ -z "${READINESS_EXEC_COMMAND:-}" ]]; then
+        echo "Error: Readiness probe type 'exec' requires READINESS_EXEC_COMMAND" >&2
+        return 4
+      fi
+      ;;
+    tcp-socket)
+      if [[ -z "${READINESS_TCP_PORT:-}" ]]; then
+        echo "Error: Readiness probe type 'tcp-socket' requires READINESS_TCP_PORT" >&2
+        return 4
+      fi
+      ;;
+    grpc)
+      if [[ -z "${READINESS_GRPC_PORT:-}" ]]; then
+        echo "Error: Readiness probe type 'grpc' requires READINESS_GRPC_PORT" >&2
+        return 4
+      fi
+      ;;
+  esac
+
+  case "${STARTUP_CHECK_TYPE}" in
+    exec)
+      if [[ -z "${STARTUP_EXEC_COMMAND:-}" ]]; then
+        echo "Error: Startup probe type 'exec' requires STARTUP_EXEC_COMMAND" >&2
+        return 4
+      fi
+      ;;
+    tcp-socket)
+      if [[ -z "${STARTUP_TCP_PORT:-}" ]]; then
+        echo "Error: Startup probe type 'tcp-socket' requires STARTUP_TCP_PORT" >&2
+        return 4
+      fi
+      ;;
+    grpc)
+      if [[ -z "${STARTUP_GRPC_PORT:-}" ]]; then
+        echo "Error: Startup probe type 'grpc' requires STARTUP_GRPC_PORT" >&2
+        return 4
+      fi
+      ;;
+  esac
+
   # === Liveness probe ===
   local liveness_timing_args=(
     "${LIVENESS_INITIAL_DELAY_SECONDS}"

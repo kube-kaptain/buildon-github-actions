@@ -2,13 +2,13 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
 #
-# substitute-erb-style-token - Substitutes <%= TOKEN %> tokens in files
+# substitute-erb-style-token - Substitutes <%= TOKEN %> tokens in a file
 #
 # Called from tokens directory as working directory.
-# Substitutes <%= TOKEN_NAME %> with TOKEN_VALUE in-place across all files in target-dir.
+# Substitutes <%= TOKEN_NAME %> with TOKEN_VALUE in-place in target file.
 #
 # Usage:
-#   substitute-erb-style-token <token-file> <target-file-or-dir>
+#   substitute-erb-style-token <token-file> <target-file>
 #
 set -euo pipefail
 
@@ -17,7 +17,7 @@ LOG_ERROR_PREFIX="${LOG_ERROR_PREFIX:-}"
 LOG_ERROR_SUFFIX="${LOG_ERROR_SUFFIX:-}"
 
 if [[ ${#} -ne 2 ]]; then
-  echo "${LOG_ERROR_PREFIX}Usage: substitute-erb-style-token <token-file> <target-file-or-dir>${LOG_ERROR_SUFFIX}" >&2
+  echo "${LOG_ERROR_PREFIX}Usage: substitute-erb-style-token <token-file> <target-file>${LOG_ERROR_SUFFIX}" >&2
   exit 1
 fi
 
@@ -29,12 +29,8 @@ if [[ ! -f "${TOKEN_FILE}" ]]; then
   exit 1
 fi
 
-if [[ -d "${TARGET}" ]]; then
-  TARGET_MODE="dir"
-elif [[ -f "${TARGET}" ]]; then
-  TARGET_MODE="file"
-else
-  echo "${LOG_ERROR_PREFIX}Target not found: ${TARGET}${LOG_ERROR_SUFFIX}" >&2
+if [[ ! -f "${TARGET}" ]]; then
+  echo "${LOG_ERROR_PREFIX}Target file not found: ${TARGET}${LOG_ERROR_SUFFIX}" >&2
   exit 1
 fi
 
@@ -46,6 +42,7 @@ substitute_in_file() {
   local file="${1}"
   local token_name="${2}"
   local value="${3}"
+  local count=0
 
   local content
   content=$(cat "${file}" && echo x)
@@ -55,6 +52,7 @@ substitute_in_file() {
   local pattern="<%= ${token_name} %>"
 
   if [[ "${content}" != *"${pattern}"* ]]; then
+    echo "${count}"
     return 0
   fi
 
@@ -68,17 +66,13 @@ substitute_in_file() {
     local suffix="${remainder#*<%= ${token_name} %>}"
     result="${result}${prefix}${value}"
     remainder="${suffix}"
+    count=$((count + 1))
   done
   result="${result}${remainder}"
 
   printf '%s' "${result}" > "${file}"
+  echo "${count}"
 }
 
 # shellcheck disable=SC2153,SC2154 # TOKEN_NAME/TOKEN_VALUE set by sourced prepare-token-name-and-value.bash
-if [[ "${TARGET_MODE}" == "file" ]]; then
-  substitute_in_file "${TARGET}" "${TOKEN_NAME}" "${TOKEN_VALUE}"
-else
-  while IFS= read -r -d '' file; do
-  substitute_in_file "${file}" "${TOKEN_NAME}" "${TOKEN_VALUE}"
-  done < <(find "${TARGET}" -type f -print0)
-fi
+substitute_in_file "${TARGET}" "${TOKEN_NAME}" "${TOKEN_VALUE}"

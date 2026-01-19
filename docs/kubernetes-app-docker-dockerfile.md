@@ -11,6 +11,7 @@ Kubernetes App - Docker Dockerfile
 | `docker-target-registry` | string | `ghcr.io` | Target container registry |
 | `docker-target-base-path` | string | `""` | Path between registry and image name (auto-set for GHCR) |
 | `docker-push-targets` | string | `""` | JSON array of additional push targets [{registry, base-path?}] |
+| `dockerfile-substitution-files` | string | `Dockerfile` | Comma-separated list of files to perform token substitution on (relative to dockerfile-sub-path) |
 | `dockerfile-sub-path` | string | `src/docker` | Directory containing Dockerfile, relative to repo root. |
 | `dockerfile-squash` | boolean | `true` | Enable --squash (requires experimental mode) |
 | `dockerfile-no-cache` | boolean | `true` | Disable layer caching for reproducible builds |
@@ -32,7 +33,7 @@ Kubernetes App - Docker Dockerfile
 | `kubernetes-serviceaccount-combined-sub-path` | string | `""` | Sub-path within combined/ for output |
 | `kubernetes-serviceaccount-additional-labels` | string | `""` | Additional labels specific to ServiceAccount (comma-separated key=value) |
 | `kubernetes-serviceaccount-additional-annotations` | string | `""` | Additional annotations specific to ServiceAccount (comma-separated key=value) |
-| `kubernetes-workload-type` | string | `deployment` | Workload type to generate (deployment, statefulset, none) |
+| `kubernetes-workload-type` | string | `deployment` | Workload type to generate (deployment, statefulset, daemonset, none) |
 | `kubernetes-workload-replicas` | string | `""` | Replica count (empty for token, NO for HPA management, number for fixed) |
 | `kubernetes-workload-revision-history-limit` | string | `10` | Number of revisions to retain (ReplicaSets for Deployment, ControllerRevisions for StatefulSet) |
 | `kubernetes-workload-name-suffix` | string | `""` | Optional suffix for workload name and filename |
@@ -57,6 +58,7 @@ Kubernetes App - Docker Dockerfile
 | `kubernetes-workload-termination-grace-period-seconds` | string | `10` | Termination grace period in seconds |
 | `kubernetes-workload-prestop-command` | string | `""` | PreStop hook command (empty for none) |
 | `kubernetes-workload-affinity-strategy` | string | `spread-nodes-and-zones-ha` | Pod affinity strategy plugin name |
+| `kubernetes-workload-tolerations` | string | `""` | Tolerations as JSON array (e.g., [{"key":"dedicated","operator":"Equal","value":"app","effect":"NoSchedule"}]) |
 | `kubernetes-workload-probe-liveness-check-type` | string | `http-get` | Liveness probe type (http-get, tcp-socket, exec, grpc, none) |
 | `kubernetes-workload-probe-liveness-http-path` | string | `/liveness` | Liveness probe HTTP path |
 | `kubernetes-workload-probe-liveness-http-scheme` | string | `HTTP` | Liveness probe HTTP scheme (HTTP, HTTPS) |
@@ -96,6 +98,9 @@ Kubernetes App - Docker Dockerfile
 | `kubernetes-deployment-env-sub-path` | string | `src/deployment-env` | Path to deployment environment variables directory |
 | `kubernetes-deployment-additional-labels` | string | `""` | Additional labels for Deployment resources (key=value,key=value) |
 | `kubernetes-deployment-additional-annotations` | string | `""` | Additional annotations for Deployment resources (key=value,key=value) |
+| `kubernetes-statefulset-env-sub-path` | string | `src/statefulset-env` | Path to statefulset environment variables directory |
+| `kubernetes-statefulset-additional-labels` | string | `""` | Additional labels for StatefulSet resources (key=value,key=value) |
+| `kubernetes-statefulset-additional-annotations` | string | `""` | Additional annotations for StatefulSet resources (key=value,key=value) |
 | `kubernetes-statefulset-service-name` | string | `""` | Headless service name (empty for auto-derived from project name) |
 | `kubernetes-statefulset-pod-management-policy` | string | `OrderedReady` | Pod management policy (OrderedReady or Parallel) |
 | `kubernetes-statefulset-update-strategy-type` | string | `RollingUpdate` | Update strategy type (RollingUpdate or OnDelete) |
@@ -106,6 +111,17 @@ Kubernetes App - Docker Dockerfile
 | `kubernetes-statefulset-pvc-access-mode` | string | `ReadWriteOnce` | PVC access mode (ReadWriteOnce, ReadOnlyMany, ReadWriteMany) |
 | `kubernetes-statefulset-pvc-volume-name` | string | `data` | Volume name for the PVC template |
 | `kubernetes-statefulset-pvc-mount-path` | string | `/data` | Mount path for the persistent volume |
+| `kubernetes-daemonset-update-strategy-type` | string | `RollingUpdate` | Update strategy type (RollingUpdate or OnDelete) |
+| `kubernetes-daemonset-max-unavailable` | string | `1` | Max unavailable pods during rolling update (number or percentage) |
+| `kubernetes-daemonset-min-ready-seconds` | string | `0` | Minimum seconds a pod must be ready before considered available |
+| `kubernetes-daemonset-host-network` | string | `false` | Use host network namespace (true/false) |
+| `kubernetes-daemonset-host-pid` | string | `false` | Use host PID namespace (true/false) |
+| `kubernetes-daemonset-host-ipc` | string | `false` | Use host IPC namespace (true/false) |
+| `kubernetes-daemonset-run-as-non-root` | boolean | `true` | Require non-root user (true/false, set false for system-level DaemonSets that need root) |
+| `kubernetes-daemonset-privileged` | string | `false` | Run container in privileged mode (true/false) |
+| `kubernetes-daemonset-dns-policy` | string | `""` | DNS policy (ClusterFirst, ClusterFirstWithHostNet, Default, None) |
+| `kubernetes-daemonset-tolerations` | string | `""` | Tolerations as JSON array (e.g., [{"operator":"Exists"}] or [{"key":"node-role.kubernetes.io/control-plane","operator":"Exists","effect":"NoSchedule"}]) |
+| `kubernetes-daemonset-node-selector` | string | `""` | Node selector labels (comma-separated key=value) |
 | `kubernetes-poddisruptionbudget-generation-enabled` | string | `""` | Enable PodDisruptionBudget generation (true, false, or empty for auto based on workload type) |
 | `kubernetes-poddisruptionbudget-name-suffix` | string | `""` | Optional suffix for PDB name and filename |
 | `kubernetes-poddisruptionbudget-combined-sub-path` | string | `""` | Sub-path within combined/ for output |
