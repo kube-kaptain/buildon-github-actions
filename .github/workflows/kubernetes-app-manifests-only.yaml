@@ -472,6 +472,21 @@ on:
         type: string
         default: ''
       # StatefulSet unique inputs
+      kubernetes-statefulset-env-sub-path:
+        description: 'Path to statefulset environment variables directory'
+        required: false
+        type: string
+        default: 'src/statefulset-env'
+      kubernetes-statefulset-additional-labels:
+        description: 'Additional labels for StatefulSet resources (key=value,key=value)'
+        required: false
+        type: string
+        default: ''
+      kubernetes-statefulset-additional-annotations:
+        description: 'Additional annotations for StatefulSet resources (key=value,key=value)'
+        required: false
+        type: string
+        default: ''
       kubernetes-statefulset-service-name:
         description: 'Headless service name (empty for auto-derived from project name)'
         required: false
