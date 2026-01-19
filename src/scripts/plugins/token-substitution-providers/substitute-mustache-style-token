@@ -42,6 +42,7 @@ substitute_in_file() {
   local file="${1}"
   local token_name="${2}"
   local value="${3}"
+  local count=0
 
   local content
   content=$(cat "${file}" && echo x)
@@ -51,6 +52,7 @@ substitute_in_file() {
   local pattern="{{ ${token_name} }}"
 
   if [[ "${content}" != *"${pattern}"* ]]; then
+    echo "${count}"
     return 0
   fi
 
@@ -64,10 +66,12 @@ substitute_in_file() {
     local suffix="${remainder#*\{\{ ${token_name} \}\}}"
     result="${result}${prefix}${value}"
     remainder="${suffix}"
+    count=$((count + 1))
   done
   result="${result}${remainder}"
 
   printf '%s' "${result}" > "${file}"
+  echo "${count}"
 }
 
 # shellcheck disable=SC2153,SC2154 # TOKEN_NAME/TOKEN_VALUE set by sourced prepare-token-name-and-value.bash

@@ -161,3 +161,75 @@ version: ${Version}'
   assert_output_contains "Binary1"
   assert_output_contains "Binary2"
 }
+
+@test "outputs header with target path" {
+  create_token "Var" "value"
+  create_target "test.yaml" 'key: ${Var}'
+
+  run "$UTIL_DIR/substitute-tokens-from-dir" shell "$TOKENS_DIR" "$TARGET_DIR"
+  [ "$status" -eq 0 ]
+  assert_output_contains "Substituting tokens in $TARGET_DIR:"
+}
+
+@test "outputs per-file substitution count" {
+  create_token "Var" "value"
+  create_target "test.yaml" 'key: ${Var}'
+
+  run "$UTIL_DIR/substitute-tokens-from-dir" shell "$TOKENS_DIR" "$TARGET_DIR"
+  [ "$status" -eq 0 ]
+  assert_output_contains "Substituted 1 tokens in test.yaml"
+}
+
+@test "outputs count for multiple substitutions in same file" {
+  create_token "Var" "value"
+  create_target "test.yaml" 'first: ${Var}
+second: ${Var}
+third: ${Var}'
+
+  run "$UTIL_DIR/substitute-tokens-from-dir" shell "$TOKENS_DIR" "$TARGET_DIR"
+  [ "$status" -eq 0 ]
+  assert_output_contains "Substituted 3 tokens in test.yaml"
+}
+
+@test "outputs separate counts for multiple files" {
+  create_token "Var" "value"
+  create_target "file1.yaml" 'key: ${Var}'
+  create_target "file2.yaml" 'a: ${Var}
+b: ${Var}'
+
+  run "$UTIL_DIR/substitute-tokens-from-dir" shell "$TOKENS_DIR" "$TARGET_DIR"
+  [ "$status" -eq 0 ]
+  assert_output_contains "Substituted 1 tokens in file1.yaml"
+  assert_output_contains "Substituted 2 tokens in file2.yaml"
+}
+
+@test "outputs zero count for files with no matches" {
+  create_token "Var" "value"
+  create_target "with-match.yaml" 'key: ${Var}'
+  create_target "no-match.yaml" 'key: literal'
+
+  run "$UTIL_DIR/substitute-tokens-from-dir" shell "$TOKENS_DIR" "$TARGET_DIR"
+  [ "$status" -eq 0 ]
+  assert_output_contains "Substituted 1 tokens in with-match.yaml"
+  assert_output_contains "Substituted no tokens in no-match.yaml"
+}
+
+@test "outputs relative path for nested files in directory" {
+  create_token "Var" "value"
+  create_target "sub/nested/file.yaml" 'key: ${Var}'
+
+  run "$UTIL_DIR/substitute-tokens-from-dir" shell "$TOKENS_DIR" "$TARGET_DIR"
+  [ "$status" -eq 0 ]
+  assert_output_contains "Substituted 1 tokens in sub/nested/file.yaml"
+}
+
+@test "counts substitutions from multiple tokens" {
+  create_token "Var1" "value1"
+  create_token "Var2" "value2"
+  create_target "test.yaml" 'a: ${Var1}
+b: ${Var2}'
+
+  run "$UTIL_DIR/substitute-tokens-from-dir" shell "$TOKENS_DIR" "$TARGET_DIR"
+  [ "$status" -eq 0 ]
+  assert_output_contains "Substituted 2 tokens in test.yaml"
+}

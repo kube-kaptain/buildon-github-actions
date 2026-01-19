@@ -120,15 +120,39 @@ fi
 # cd to tokens-dir so token paths are relative (become token names)
 cd "${TOKENS_DIR}"
 
-# Find all token files, sorted for predictable order
+# Build list of token files (sorted for predictable order)
 # LC_ALL=C ensures consistent sorting across locales
+TOKEN_FILES=()
 while IFS= read -r token_file; do
   # Strip ./ prefix from find output
-  token_file="${token_file#./}"
-
-  # Call the style-specific substitution script for each target file
-  # CONFIG_VALUE_TRAILING_NEWLINE inherited from tokens.bash defaults
-  for target_file in "${TARGET_FILES[@]}"; do
-    "${PROVIDER_SCRIPT}" "${token_file}" "${target_file}"
-  done
+  TOKEN_FILES+=("${token_file#./}")
 done < <(find . -type f | LC_ALL=C sort)
+
+# Output header first (real-time output for debugging)
+echo "Substituting tokens in ${TARGET}:"
+
+# Process each target file, outputting count as we go
+# Outer loop: files, Inner loop: tokens - enables real-time per-file output
+for target_file in "${TARGET_FILES[@]}"; do
+  file_count=0
+
+  # Apply all tokens to this file (skip if no tokens)
+  if [[ ${#TOKEN_FILES[@]} -gt 0 ]]; then
+    for token_file in "${TOKEN_FILES[@]}"; do
+      count=$("${PROVIDER_SCRIPT}" "${token_file}" "${target_file}")
+      file_count=$((file_count + count))
+    done
+  fi
+
+  # Output immediately after processing each file
+  if [[ "${TARGET_MODE}" == "dir" ]]; then
+    relative_path="${target_file#"${TARGET_ABS}"/}"
+  else
+    relative_path="$(basename "${target_file}")"
+  fi
+  if [[ ${file_count} -eq 0 ]]; then
+    echo "  Substituted no tokens in ${relative_path}"
+  else
+    echo "  Substituted ${file_count} tokens in ${relative_path}"
+  fi
+done
