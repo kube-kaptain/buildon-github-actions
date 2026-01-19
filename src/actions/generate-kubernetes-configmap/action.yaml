@@ -29,6 +29,14 @@ inputs:
     description: 'Directory containing ConfigMap data files (relative)'
     required: false
     default: 'src/configmap'
+  kubernetes-configmap-name-suffix:
+    description: 'Optional suffix for ConfigMap name and filename'
+    required: false
+    default: ''
+  kubernetes-configmap-combined-sub-path:
+    description: 'Sub-path within combined/ for output'
+    required: false
+    default: ''
   kubernetes-configmap-name-checksum-injection:
     description: 'Enable checksum injection suffix in ConfigMap name (true: ProjectName-configmap-checksum, false: ProjectName)'
     required: false
@@ -68,6 +76,8 @@ runs:
         KUBERNETES_GLOBAL_ADDITIONAL_ANNOTATIONS: ${{ inputs.kubernetes-global-additional-annotations }}
         # ConfigMap settings
         KUBERNETES_CONFIGMAP_SUB_PATH: ${{ inputs.kubernetes-configmap-sub-path }}
+        KUBERNETES_CONFIGMAP_NAME_SUFFIX: ${{ inputs.kubernetes-configmap-name-suffix }}
+        KUBERNETES_CONFIGMAP_COMBINED_SUB_PATH: ${{ inputs.kubernetes-configmap-combined-sub-path }}
         KUBERNETES_CONFIGMAP_NAME_CHECKSUM_INJECTION: ${{ inputs.kubernetes-configmap-name-checksum-injection }}
         KUBERNETES_CONFIGMAP_ADDITIONAL_LABELS: ${{ inputs.kubernetes-configmap-additional-labels }}
         KUBERNETES_CONFIGMAP_ADDITIONAL_ANNOTATIONS: ${{ inputs.kubernetes-configmap-additional-annotations }}

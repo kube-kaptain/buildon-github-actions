@@ -29,6 +29,14 @@ inputs:
     description: 'Directory containing Secret template data files (relative)'
     required: false
     default: 'src/secret.template'
+  kubernetes-secret-template-name-suffix:
+    description: 'Optional suffix for Secret name and filename'
+    required: false
+    default: ''
+  kubernetes-secret-template-combined-sub-path:
+    description: 'Sub-path within combined/ for output'
+    required: false
+    default: ''
   kubernetes-secret-template-name-checksum-injection:
     description: 'Enable checksum injection suffix in Secret name (true: ProjectName-secret-checksum, false: ProjectName)'
     required: false
@@ -68,6 +76,8 @@ runs:
         KUBERNETES_GLOBAL_ADDITIONAL_ANNOTATIONS: ${{ inputs.kubernetes-global-additional-annotations }}
         # Secret template settings
         KUBERNETES_SECRET_TEMPLATE_SUB_PATH: ${{ inputs.kubernetes-secret-template-sub-path }}
+        KUBERNETES_SECRET_TEMPLATE_NAME_SUFFIX: ${{ inputs.kubernetes-secret-template-name-suffix }}
+        KUBERNETES_SECRET_TEMPLATE_COMBINED_SUB_PATH: ${{ inputs.kubernetes-secret-template-combined-sub-path }}
         KUBERNETES_SECRET_TEMPLATE_NAME_CHECKSUM_INJECTION: ${{ inputs.kubernetes-secret-template-name-checksum-injection }}
         KUBERNETES_SECRET_TEMPLATE_ADDITIONAL_LABELS: ${{ inputs.kubernetes-secret-template-additional-labels }}
         KUBERNETES_SECRET_TEMPLATE_ADDITIONAL_ANNOTATIONS: ${{ inputs.kubernetes-secret-template-additional-annotations }}

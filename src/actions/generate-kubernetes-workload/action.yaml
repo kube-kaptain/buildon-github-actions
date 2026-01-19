@@ -135,6 +135,46 @@ inputs:
     description: 'Liveness probe HTTP path'
     required: false
     default: '/liveness'
+  kubernetes-workload-probe-liveness-http-scheme:
+    description: 'Liveness probe HTTP scheme (HTTP, HTTPS)'
+    required: false
+    default: 'HTTP'
+  kubernetes-workload-probe-liveness-tcp-port:
+    description: 'Liveness probe TCP port (defaults to container port)'
+    required: false
+    default: ''
+  kubernetes-workload-probe-liveness-exec-command:
+    description: 'Liveness probe exec command'
+    required: false
+    default: ''
+  kubernetes-workload-probe-liveness-grpc-port:
+    description: 'Liveness probe gRPC port (defaults to container port)'
+    required: false
+    default: ''
+  kubernetes-workload-probe-liveness-grpc-service:
+    description: 'Liveness probe gRPC service name'
+    required: false
+    default: ''
+  kubernetes-workload-probe-liveness-initial-delay-seconds:
+    description: 'Liveness probe initial delay in seconds'
+    required: false
+    default: '10'
+  kubernetes-workload-probe-liveness-period-seconds:
+    description: 'Liveness probe period in seconds'
+    required: false
+    default: '10'
+  kubernetes-workload-probe-liveness-timeout-seconds:
+    description: 'Liveness probe timeout in seconds'
+    required: false
+    default: '5'
+  kubernetes-workload-probe-liveness-failure-threshold:
+    description: 'Liveness probe failure threshold'
+    required: false
+    default: '3'
+  kubernetes-workload-probe-liveness-termination-grace-period-seconds:
+    description: 'Liveness probe termination grace period (empty for default)'
+    required: false
+    default: ''
 
   # Readiness probe
   kubernetes-workload-probe-readiness-check-type:
@@ -145,6 +185,46 @@ inputs:
     description: 'Readiness probe HTTP path'
     required: false
     default: '/readiness'
+  kubernetes-workload-probe-readiness-http-scheme:
+    description: 'Readiness probe HTTP scheme (HTTP, HTTPS)'
+    required: false
+    default: 'HTTP'
+  kubernetes-workload-probe-readiness-tcp-port:
+    description: 'Readiness probe TCP port (defaults to container port)'
+    required: false
+    default: ''
+  kubernetes-workload-probe-readiness-exec-command:
+    description: 'Readiness probe exec command'
+    required: false
+    default: ''
+  kubernetes-workload-probe-readiness-grpc-port:
+    description: 'Readiness probe gRPC port (defaults to container port)'
+    required: false
+    default: ''
+  kubernetes-workload-probe-readiness-grpc-service:
+    description: 'Readiness probe gRPC service name'
+    required: false
+    default: ''
+  kubernetes-workload-probe-readiness-initial-delay-seconds:
+    description: 'Readiness probe initial delay in seconds'
+    required: false
+    default: '5'
+  kubernetes-workload-probe-readiness-period-seconds:
+    description: 'Readiness probe period in seconds'
+    required: false
+    default: '5'
+  kubernetes-workload-probe-readiness-timeout-seconds:
+    description: 'Readiness probe timeout in seconds'
+    required: false
+    default: '3'
+  kubernetes-workload-probe-readiness-failure-threshold:
+    description: 'Readiness probe failure threshold'
+    required: false
+    default: '3'
+  kubernetes-workload-probe-readiness-success-threshold:
+    description: 'Readiness probe success threshold'
+    required: false
+    default: '1'
 
   # Startup probe
   kubernetes-workload-probe-startup-check-type:
@@ -155,8 +235,74 @@ inputs:
     description: 'Startup probe HTTP path'
     required: false
     default: '/startup'
+  kubernetes-workload-probe-startup-http-scheme:
+    description: 'Startup probe HTTP scheme (HTTP, HTTPS)'
+    required: false
+    default: 'HTTP'
+  kubernetes-workload-probe-startup-tcp-port:
+    description: 'Startup probe TCP port (defaults to container port)'
+    required: false
+    default: ''
+  kubernetes-workload-probe-startup-exec-command:
+    description: 'Startup probe exec command'
+    required: false
+    default: ''
+  kubernetes-workload-probe-startup-grpc-port:
+    description: 'Startup probe gRPC port (defaults to container port)'
+    required: false
+    default: ''
+  kubernetes-workload-probe-startup-grpc-service:
+    description: 'Startup probe gRPC service name'
+    required: false
+    default: ''
+  kubernetes-workload-probe-startup-initial-delay-seconds:
+    description: 'Startup probe initial delay in seconds'
+    required: false
+    default: '0'
+  kubernetes-workload-probe-startup-period-seconds:
+    description: 'Startup probe period in seconds'
+    required: false
+    default: '5'
+  kubernetes-workload-probe-startup-timeout-seconds:
+    description: 'Startup probe timeout in seconds'
+    required: false
+    default: '3'
+  kubernetes-workload-probe-startup-failure-threshold:
+    description: 'Startup probe failure threshold'
+    required: false
+    default: '30'
+  kubernetes-workload-probe-startup-termination-grace-period-seconds:
+    description: 'Startup probe termination grace period (empty for default)'
+    required: false
+    default: ''
+
+  # Deployment unique settings
+  kubernetes-deployment-env-sub-path:
+    description: 'Path to deployment environment variables directory'
+    required: false
+    default: 'src/deployment-env'
+  kubernetes-deployment-additional-labels:
+    description: 'Additional labels for Deployment resources (key=value,key=value)'
+    required: false
+    default: ''
+  kubernetes-deployment-additional-annotations:
+    description: 'Additional annotations for Deployment resources (key=value,key=value)'
+    required: false
+    default: ''
 
   # StatefulSet unique settings
+  kubernetes-statefulset-env-sub-path:
+    description: 'Path to statefulset environment variables directory'
+    required: false
+    default: 'src/statefulset-env'
+  kubernetes-statefulset-additional-labels:
+    description: 'Additional labels for StatefulSet resources (key=value,key=value)'
+    required: false
+    default: ''
+  kubernetes-statefulset-additional-annotations:
+    description: 'Additional annotations for StatefulSet resources (key=value,key=value)'
+    required: false
+    default: ''
   kubernetes-statefulset-service-name:
     description: 'Headless service name (empty for auto-derived from project name)'
     required: false
@@ -251,13 +397,50 @@ runs:
         # Liveness probe
         KUBERNETES_WORKLOAD_PROBE_LIVENESS_CHECK_TYPE: ${{ inputs.kubernetes-workload-probe-liveness-check-type }}
         KUBERNETES_WORKLOAD_PROBE_LIVENESS_HTTP_PATH: ${{ inputs.kubernetes-workload-probe-liveness-http-path }}
+        KUBERNETES_WORKLOAD_PROBE_LIVENESS_HTTP_SCHEME: ${{ inputs.kubernetes-workload-probe-liveness-http-scheme }}
+        KUBERNETES_WORKLOAD_PROBE_LIVENESS_TCP_PORT: ${{ inputs.kubernetes-workload-probe-liveness-tcp-port }}
+        KUBERNETES_WORKLOAD_PROBE_LIVENESS_EXEC_COMMAND: ${{ inputs.kubernetes-workload-probe-liveness-exec-command }}
+        KUBERNETES_WORKLOAD_PROBE_LIVENESS_GRPC_PORT: ${{ inputs.kubernetes-workload-probe-liveness-grpc-port }}
+        KUBERNETES_WORKLOAD_PROBE_LIVENESS_GRPC_SERVICE: ${{ inputs.kubernetes-workload-probe-liveness-grpc-service }}
+        KUBERNETES_WORKLOAD_PROBE_LIVENESS_INITIAL_DELAY_SECONDS: ${{ inputs.kubernetes-workload-probe-liveness-initial-delay-seconds }}
+        KUBERNETES_WORKLOAD_PROBE_LIVENESS_PERIOD_SECONDS: ${{ inputs.kubernetes-workload-probe-liveness-period-seconds }}
+        KUBERNETES_WORKLOAD_PROBE_LIVENESS_TIMEOUT_SECONDS: ${{ inputs.kubernetes-workload-probe-liveness-timeout-seconds }}
+        KUBERNETES_WORKLOAD_PROBE_LIVENESS_FAILURE_THRESHOLD: ${{ inputs.kubernetes-workload-probe-liveness-failure-threshold }}
+        KUBERNETES_WORKLOAD_PROBE_LIVENESS_TERMINATION_GRACE_PERIOD_SECONDS: ${{ inputs.kubernetes-workload-probe-liveness-termination-grace-period-seconds }}
         # Readiness probe
         KUBERNETES_WORKLOAD_PROBE_READINESS_CHECK_TYPE: ${{ inputs.kubernetes-workload-probe-readiness-check-type }}
         KUBERNETES_WORKLOAD_PROBE_READINESS_HTTP_PATH: ${{ inputs.kubernetes-workload-probe-readiness-http-path }}
+        KUBERNETES_WORKLOAD_PROBE_READINESS_HTTP_SCHEME: ${{ inputs.kubernetes-workload-probe-readiness-http-scheme }}
+        KUBERNETES_WORKLOAD_PROBE_READINESS_TCP_PORT: ${{ inputs.kubernetes-workload-probe-readiness-tcp-port }}
+        KUBERNETES_WORKLOAD_PROBE_READINESS_EXEC_COMMAND: ${{ inputs.kubernetes-workload-probe-readiness-exec-command }}
+        KUBERNETES_WORKLOAD_PROBE_READINESS_GRPC_PORT: ${{ inputs.kubernetes-workload-probe-readiness-grpc-port }}
+        KUBERNETES_WORKLOAD_PROBE_READINESS_GRPC_SERVICE: ${{ inputs.kubernetes-workload-probe-readiness-grpc-service }}
+        KUBERNETES_WORKLOAD_PROBE_READINESS_INITIAL_DELAY_SECONDS: ${{ inputs.kubernetes-workload-probe-readiness-initial-delay-seconds }}
+        KUBERNETES_WORKLOAD_PROBE_READINESS_PERIOD_SECONDS: ${{ inputs.kubernetes-workload-probe-readiness-period-seconds }}
+        KUBERNETES_WORKLOAD_PROBE_READINESS_TIMEOUT_SECONDS: ${{ inputs.kubernetes-workload-probe-readiness-timeout-seconds }}
+        KUBERNETES_WORKLOAD_PROBE_READINESS_FAILURE_THRESHOLD: ${{ inputs.kubernetes-workload-probe-readiness-failure-threshold }}
+        KUBERNETES_WORKLOAD_PROBE_READINESS_SUCCESS_THRESHOLD: ${{ inputs.kubernetes-workload-probe-readiness-success-threshold }}
         # Startup probe
         KUBERNETES_WORKLOAD_PROBE_STARTUP_CHECK_TYPE: ${{ inputs.kubernetes-workload-probe-startup-check-type }}
         KUBERNETES_WORKLOAD_PROBE_STARTUP_HTTP_PATH: ${{ inputs.kubernetes-workload-probe-startup-http-path }}
+        KUBERNETES_WORKLOAD_PROBE_STARTUP_HTTP_SCHEME: ${{ inputs.kubernetes-workload-probe-startup-http-scheme }}
+        KUBERNETES_WORKLOAD_PROBE_STARTUP_TCP_PORT: ${{ inputs.kubernetes-workload-probe-startup-tcp-port }}
+        KUBERNETES_WORKLOAD_PROBE_STARTUP_EXEC_COMMAND: ${{ inputs.kubernetes-workload-probe-startup-exec-command }}
+        KUBERNETES_WORKLOAD_PROBE_STARTUP_GRPC_PORT: ${{ inputs.kubernetes-workload-probe-startup-grpc-port }}
+        KUBERNETES_WORKLOAD_PROBE_STARTUP_GRPC_SERVICE: ${{ inputs.kubernetes-workload-probe-startup-grpc-service }}
+        KUBERNETES_WORKLOAD_PROBE_STARTUP_INITIAL_DELAY_SECONDS: ${{ inputs.kubernetes-workload-probe-startup-initial-delay-seconds }}
+        KUBERNETES_WORKLOAD_PROBE_STARTUP_PERIOD_SECONDS: ${{ inputs.kubernetes-workload-probe-startup-period-seconds }}
+        KUBERNETES_WORKLOAD_PROBE_STARTUP_TIMEOUT_SECONDS: ${{ inputs.kubernetes-workload-probe-startup-timeout-seconds }}
+        KUBERNETES_WORKLOAD_PROBE_STARTUP_FAILURE_THRESHOLD: ${{ inputs.kubernetes-workload-probe-startup-failure-threshold }}
+        KUBERNETES_WORKLOAD_PROBE_STARTUP_TERMINATION_GRACE_PERIOD_SECONDS: ${{ inputs.kubernetes-workload-probe-startup-termination-grace-period-seconds }}
+        # Deployment unique settings
+        KUBERNETES_DEPLOYMENT_ENV_SUB_PATH: ${{ inputs.kubernetes-deployment-env-sub-path }}
+        KUBERNETES_DEPLOYMENT_ADDITIONAL_LABELS: ${{ inputs.kubernetes-deployment-additional-labels }}
+        KUBERNETES_DEPLOYMENT_ADDITIONAL_ANNOTATIONS: ${{ inputs.kubernetes-deployment-additional-annotations }}
         # StatefulSet unique settings
+        KUBERNETES_STATEFULSET_ENV_SUB_PATH: ${{ inputs.kubernetes-statefulset-env-sub-path }}
+        KUBERNETES_STATEFULSET_ADDITIONAL_LABELS: ${{ inputs.kubernetes-statefulset-additional-labels }}
+        KUBERNETES_STATEFULSET_ADDITIONAL_ANNOTATIONS: ${{ inputs.kubernetes-statefulset-additional-annotations }}
         KUBERNETES_STATEFULSET_SERVICE_NAME: ${{ inputs.kubernetes-statefulset-service-name }}
         KUBERNETES_STATEFULSET_POD_MANAGEMENT_POLICY: ${{ inputs.kubernetes-statefulset-pod-management-policy }}
         KUBERNETES_STATEFULSET_UPDATE_STRATEGY_TYPE: ${{ inputs.kubernetes-statefulset-update-strategy-type }}
