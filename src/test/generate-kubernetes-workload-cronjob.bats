@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
 #
-# Tests for generate-kubernetes-cronjob
+# Tests for generate-kubernetes-workload-cronjob
 
 load helpers
 
@@ -40,7 +40,7 @@ read_manifest_in_subpath() {
 @test "skips generation when not enabled" {
   export KUBERNETES_CRONJOB_GENERATION_ENABLED="false"
 
-  run "$GENERATORS_DIR/generate-kubernetes-cronjob"
+  run "$GENERATORS_DIR/generate-kubernetes-workload-cronjob"
   [ "$status" -eq 0 ]
   [[ "$output" == *"not enabled"* ]]
   [ ! -f "$OUTPUT_SUB_PATH/manifests/combined/cronjob.yaml" ]
@@ -49,14 +49,14 @@ read_manifest_in_subpath() {
 @test "skips generation when enabled not set" {
   unset KUBERNETES_CRONJOB_GENERATION_ENABLED
 
-  run "$GENERATORS_DIR/generate-kubernetes-cronjob"
+  run "$GENERATORS_DIR/generate-kubernetes-workload-cronjob"
   [ "$status" -eq 0 ]
   [[ "$output" == *"not enabled"* ]]
   [ ! -f "$OUTPUT_SUB_PATH/manifests/combined/cronjob.yaml" ]
 }
 
 @test "generates when explicitly enabled" {
-  run "$GENERATORS_DIR/generate-kubernetes-cronjob"
+  run "$GENERATORS_DIR/generate-kubernetes-workload-cronjob"
   [ "$status" -eq 0 ]
   [ -f "$OUTPUT_SUB_PATH/manifests/combined/cronjob.yaml" ]
 }
@@ -66,7 +66,7 @@ read_manifest_in_subpath() {
 # =============================================================================
 
 @test "generates valid CronJob structure" {
-  run "$GENERATORS_DIR/generate-kubernetes-cronjob"
+  run "$GENERATORS_DIR/generate-kubernetes-workload-cronjob"
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
@@ -78,7 +78,7 @@ read_manifest_in_subpath() {
 }
 
 @test "cronjob name does not include version (not versioned like Job)" {
-  run "$GENERATORS_DIR/generate-kubernetes-cronjob"
+  run "$GENERATORS_DIR/generate-kubernetes-workload-cronjob"
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
@@ -91,7 +91,7 @@ read_manifest_in_subpath() {
 @test "cronjob name with suffix" {
   export KUBERNETES_CRONJOB_NAME_SUFFIX="backup"
 
-  run "$GENERATORS_DIR/generate-kubernetes-cronjob"
+  run "$GENERATORS_DIR/generate-kubernetes-workload-cronjob"
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest_with_suffix "backup")
@@ -101,7 +101,7 @@ read_manifest_in_subpath() {
 @test "cronjob name with combined-sub-path" {
   export KUBERNETES_CRONJOB_COMBINED_SUB_PATH="db"
 
-  run "$GENERATORS_DIR/generate-kubernetes-cronjob"
+  run "$GENERATORS_DIR/generate-kubernetes-workload-cronjob"
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest_in_subpath "db")
@@ -109,7 +109,7 @@ read_manifest_in_subpath() {
 }
 
 @test "includes namespace token" {
-  run "$GENERATORS_DIR/generate-kubernetes-cronjob"
+  run "$GENERATORS_DIR/generate-kubernetes-workload-cronjob"
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
@@ -121,7 +121,7 @@ read_manifest_in_subpath() {
 # =============================================================================
 
 @test "schedule is a token with project name prefix" {
-  run "$GENERATORS_DIR/generate-kubernetes-cronjob"
+  run "$GENERATORS_DIR/generate-kubernetes-workload-cronjob"
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
@@ -129,7 +129,7 @@ read_manifest_in_subpath() {
 }
 
 @test "suspend is a token with project name prefix" {
-  run "$GENERATORS_DIR/generate-kubernetes-cronjob"
+  run "$GENERATORS_DIR/generate-kubernetes-workload-cronjob"
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
@@ -139,7 +139,7 @@ read_manifest_in_subpath() {
 @test "schedule token includes project name and suffix" {
   export KUBERNETES_CRONJOB_NAME_SUFFIX="backup"
 
-  run "$GENERATORS_DIR/generate-kubernetes-cronjob"
+  run "$GENERATORS_DIR/generate-kubernetes-workload-cronjob"
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest_with_suffix "backup")
@@ -150,7 +150,7 @@ read_manifest_in_subpath() {
 @test "schedule token includes project name and path" {
   export KUBERNETES_CRONJOB_COMBINED_SUB_PATH="db/primary"
 
-  run "$GENERATORS_DIR/generate-kubernetes-cronjob"
+  run "$GENERATORS_DIR/generate-kubernetes-workload-cronjob"
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest_in_subpath "db/primary")
@@ -162,7 +162,7 @@ read_manifest_in_subpath() {
   export KUBERNETES_CRONJOB_COMBINED_SUB_PATH="db"
   export KUBERNETES_CRONJOB_NAME_SUFFIX="migrate"
 
-  run "$GENERATORS_DIR/generate-kubernetes-cronjob"
+  run "$GENERATORS_DIR/generate-kubernetes-workload-cronjob"
   [ "$status" -eq 0 ]
 
   [ -f "$OUTPUT_SUB_PATH/manifests/combined/db/cronjob-migrate.yaml" ]
@@ -176,7 +176,7 @@ read_manifest_in_subpath() {
 # =============================================================================
 
 @test "default concurrency policy is Forbid" {
-  run "$GENERATORS_DIR/generate-kubernetes-cronjob"
+  run "$GENERATORS_DIR/generate-kubernetes-workload-cronjob"
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
@@ -186,7 +186,7 @@ read_manifest_in_subpath() {
 @test "respects custom concurrency policy Allow" {
   export KUBERNETES_CRONJOB_CONCURRENCY_POLICY="Allow"
 
-  run "$GENERATORS_DIR/generate-kubernetes-cronjob"
+  run "$GENERATORS_DIR/generate-kubernetes-workload-cronjob"
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
@@ -196,7 +196,7 @@ read_manifest_in_subpath() {
 @test "respects custom concurrency policy Replace" {
   export KUBERNETES_CRONJOB_CONCURRENCY_POLICY="Replace"
 
-  run "$GENERATORS_DIR/generate-kubernetes-cronjob"
+  run "$GENERATORS_DIR/generate-kubernetes-workload-cronjob"
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
@@ -206,13 +206,13 @@ read_manifest_in_subpath() {
 @test "rejects invalid concurrency policy" {
   export KUBERNETES_CRONJOB_CONCURRENCY_POLICY="invalid"
 
-  run "$GENERATORS_DIR/generate-kubernetes-cronjob"
+  run "$GENERATORS_DIR/generate-kubernetes-workload-cronjob"
   [ "$status" -ne 0 ]
   [[ "$output" == *"must be 'Allow', 'Forbid', or 'Replace'"* ]]
 }
 
 @test "omits startingDeadlineSeconds when not set" {
-  run "$GENERATORS_DIR/generate-kubernetes-cronjob"
+  run "$GENERATORS_DIR/generate-kubernetes-workload-cronjob"
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
@@ -222,7 +222,7 @@ read_manifest_in_subpath() {
 @test "includes startingDeadlineSeconds when set" {
   export KUBERNETES_CRONJOB_STARTING_DEADLINE_SECONDS="300"
 
-  run "$GENERATORS_DIR/generate-kubernetes-cronjob"
+  run "$GENERATORS_DIR/generate-kubernetes-workload-cronjob"
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
@@ -234,7 +234,7 @@ read_manifest_in_subpath() {
 # =============================================================================
 
 @test "default successfulJobsHistoryLimit is 1" {
-  run "$GENERATORS_DIR/generate-kubernetes-cronjob"
+  run "$GENERATORS_DIR/generate-kubernetes-workload-cronjob"
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
@@ -242,7 +242,7 @@ read_manifest_in_subpath() {
 }
 
 @test "default failedJobsHistoryLimit is 5" {
-  run "$GENERATORS_DIR/generate-kubernetes-cronjob"
+  run "$GENERATORS_DIR/generate-kubernetes-workload-cronjob"
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
@@ -252,7 +252,7 @@ read_manifest_in_subpath() {
 @test "respects custom successfulJobsHistoryLimit" {
   export KUBERNETES_CRONJOB_SUCCESSFUL_JOBS_HISTORY_LIMIT="3"
 
-  run "$GENERATORS_DIR/generate-kubernetes-cronjob"
+  run "$GENERATORS_DIR/generate-kubernetes-workload-cronjob"
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
@@ -262,7 +262,7 @@ read_manifest_in_subpath() {
 @test "respects custom failedJobsHistoryLimit" {
   export KUBERNETES_CRONJOB_FAILED_JOBS_HISTORY_LIMIT="10"
 
-  run "$GENERATORS_DIR/generate-kubernetes-cronjob"
+  run "$GENERATORS_DIR/generate-kubernetes-workload-cronjob"
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
@@ -274,7 +274,7 @@ read_manifest_in_subpath() {
 # =============================================================================
 
 @test "includes default backoffLimit in job template" {
-  run "$GENERATORS_DIR/generate-kubernetes-cronjob"
+  run "$GENERATORS_DIR/generate-kubernetes-workload-cronjob"
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
@@ -282,7 +282,7 @@ read_manifest_in_subpath() {
 }
 
 @test "includes default completions in job template" {
-  run "$GENERATORS_DIR/generate-kubernetes-cronjob"
+  run "$GENERATORS_DIR/generate-kubernetes-workload-cronjob"
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
@@ -290,7 +290,7 @@ read_manifest_in_subpath() {
 }
 
 @test "includes default parallelism in job template" {
-  run "$GENERATORS_DIR/generate-kubernetes-cronjob"
+  run "$GENERATORS_DIR/generate-kubernetes-workload-cronjob"
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
@@ -298,7 +298,7 @@ read_manifest_in_subpath() {
 }
 
 @test "omits ttlSecondsAfterFinished by default (keep forever)" {
-  run "$GENERATORS_DIR/generate-kubernetes-cronjob"
+  run "$GENERATORS_DIR/generate-kubernetes-workload-cronjob"
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
@@ -306,7 +306,7 @@ read_manifest_in_subpath() {
 }
 
 @test "omits activeDeadlineSeconds when not set" {
-  run "$GENERATORS_DIR/generate-kubernetes-cronjob"
+  run "$GENERATORS_DIR/generate-kubernetes-workload-cronjob"
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
@@ -316,7 +316,7 @@ read_manifest_in_subpath() {
 @test "includes activeDeadlineSeconds when set" {
   export KUBERNETES_CRONJOB_ACTIVE_DEADLINE_SECONDS="600"
 
-  run "$GENERATORS_DIR/generate-kubernetes-cronjob"
+  run "$GENERATORS_DIR/generate-kubernetes-workload-cronjob"
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
@@ -328,7 +328,7 @@ read_manifest_in_subpath() {
 # =============================================================================
 
 @test "default restart policy is Never" {
-  run "$GENERATORS_DIR/generate-kubernetes-cronjob"
+  run "$GENERATORS_DIR/generate-kubernetes-workload-cronjob"
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
@@ -338,7 +338,7 @@ read_manifest_in_subpath() {
 @test "allows OnFailure restart policy" {
   export KUBERNETES_CRONJOB_RESTART_POLICY="OnFailure"
 
-  run "$GENERATORS_DIR/generate-kubernetes-cronjob"
+  run "$GENERATORS_DIR/generate-kubernetes-workload-cronjob"
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
@@ -348,7 +348,7 @@ read_manifest_in_subpath() {
 @test "rejects Always restart policy" {
   export KUBERNETES_CRONJOB_RESTART_POLICY="Always"
 
-  run "$GENERATORS_DIR/generate-kubernetes-cronjob"
+  run "$GENERATORS_DIR/generate-kubernetes-workload-cronjob"
   [ "$status" -ne 0 ]
   [[ "$output" == *"must be 'Never' or 'OnFailure'"* ]]
 }
@@ -358,7 +358,7 @@ read_manifest_in_subpath() {
 # =============================================================================
 
 @test "omits command when not set" {
-  run "$GENERATORS_DIR/generate-kubernetes-cronjob"
+  run "$GENERATORS_DIR/generate-kubernetes-workload-cronjob"
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
@@ -368,7 +368,7 @@ read_manifest_in_subpath() {
 @test "includes command when set" {
   export KUBERNETES_WORKLOAD_CONTAINER_COMMAND='/bin/sh -c'
 
-  run "$GENERATORS_DIR/generate-kubernetes-cronjob"
+  run "$GENERATORS_DIR/generate-kubernetes-workload-cronjob"
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
@@ -378,7 +378,7 @@ read_manifest_in_subpath() {
 }
 
 @test "omits args when not set" {
-  run "$GENERATORS_DIR/generate-kubernetes-cronjob"
+  run "$GENERATORS_DIR/generate-kubernetes-workload-cronjob"
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
@@ -389,7 +389,7 @@ read_manifest_in_subpath() {
   export KUBERNETES_WORKLOAD_CONTAINER_COMMAND='/bin/sh -c'
   export KUBERNETES_WORKLOAD_CONTAINER_ARGS='"echo hello"'
 
-  run "$GENERATORS_DIR/generate-kubernetes-cronjob"
+  run "$GENERATORS_DIR/generate-kubernetes-workload-cronjob"
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
@@ -402,7 +402,7 @@ read_manifest_in_subpath() {
 # =============================================================================
 
 @test "includes standard labels" {
-  run "$GENERATORS_DIR/generate-kubernetes-cronjob"
+  run "$GENERATORS_DIR/generate-kubernetes-workload-cronjob"
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
@@ -413,7 +413,7 @@ read_manifest_in_subpath() {
 }
 
 @test "includes kaptain annotations" {
-  run "$GENERATORS_DIR/generate-kubernetes-cronjob"
+  run "$GENERATORS_DIR/generate-kubernetes-workload-cronjob"
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
@@ -421,7 +421,7 @@ read_manifest_in_subpath() {
   [[ "$manifest" == *'kaptain/project-name: ${ProjectName}'* ]]
   [[ "$manifest" == *'kaptain/version: ${Version}'* ]]
   [[ "$manifest" == *"kaptain/build-timestamp:"* ]]
-  [[ "$manifest" == *'kaptain/generated-by: "Generated by Kaptain generate-kubernetes-cronjob"'* ]]
+  [[ "$manifest" == *'kaptain/generated-by: "Generated by Kaptain generate-kubernetes-workload-cronjob"'* ]]
 }
 
 # =============================================================================
@@ -431,7 +431,7 @@ read_manifest_in_subpath() {
 @test "respects PascalCase token name style" {
   export TOKEN_NAME_STYLE="PascalCase"
 
-  run "$GENERATORS_DIR/generate-kubernetes-cronjob"
+  run "$GENERATORS_DIR/generate-kubernetes-workload-cronjob"
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
@@ -443,7 +443,7 @@ read_manifest_in_subpath() {
 @test "respects lower-kebab token name style" {
   export TOKEN_NAME_STYLE="lower-kebab"
 
-  run "$GENERATORS_DIR/generate-kubernetes-cronjob"
+  run "$GENERATORS_DIR/generate-kubernetes-workload-cronjob"
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
@@ -455,7 +455,7 @@ read_manifest_in_subpath() {
 @test "respects mustache substitution style" {
   export TOKEN_DELIMITER_STYLE="mustache"
 
-  run "$GENERATORS_DIR/generate-kubernetes-cronjob"
+  run "$GENERATORS_DIR/generate-kubernetes-workload-cronjob"
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
@@ -469,7 +469,7 @@ read_manifest_in_subpath() {
 # =============================================================================
 
 @test "includes container section" {
-  run "$GENERATORS_DIR/generate-kubernetes-cronjob"
+  run "$GENERATORS_DIR/generate-kubernetes-workload-cronjob"
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
@@ -480,7 +480,7 @@ read_manifest_in_subpath() {
 }
 
 @test "includes termination grace period" {
-  run "$GENERATORS_DIR/generate-kubernetes-cronjob"
+  run "$GENERATORS_DIR/generate-kubernetes-workload-cronjob"
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
@@ -488,7 +488,7 @@ read_manifest_in_subpath() {
 }
 
 @test "includes resource requests and limits" {
-  run "$GENERATORS_DIR/generate-kubernetes-cronjob"
+  run "$GENERATORS_DIR/generate-kubernetes-workload-cronjob"
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
@@ -498,7 +498,7 @@ read_manifest_in_subpath() {
 }
 
 @test "includes security context" {
-  run "$GENERATORS_DIR/generate-kubernetes-cronjob"
+  run "$GENERATORS_DIR/generate-kubernetes-workload-cronjob"
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
@@ -512,7 +512,7 @@ read_manifest_in_subpath() {
 @test "creates output directory if missing" {
   export OUTPUT_SUB_PATH="${OUTPUT_SUB_PATH}/fresh-subdir"
 
-  run "$GENERATORS_DIR/generate-kubernetes-cronjob"
+  run "$GENERATORS_DIR/generate-kubernetes-workload-cronjob"
   [ "$status" -eq 0 ]
   [ -f "$OUTPUT_SUB_PATH/manifests/combined/cronjob.yaml" ]
 }
@@ -520,7 +520,7 @@ read_manifest_in_subpath() {
 @test "suffix affects output filename" {
   export KUBERNETES_CRONJOB_NAME_SUFFIX="cleanup"
 
-  run "$GENERATORS_DIR/generate-kubernetes-cronjob"
+  run "$GENERATORS_DIR/generate-kubernetes-workload-cronjob"
   [ "$status" -eq 0 ]
   [ -f "$OUTPUT_SUB_PATH/manifests/combined/cronjob-cleanup.yaml" ]
 }
@@ -528,7 +528,7 @@ read_manifest_in_subpath() {
 @test "combined sub-path creates subdirectory" {
   export KUBERNETES_CRONJOB_COMBINED_SUB_PATH="scheduled"
 
-  run "$GENERATORS_DIR/generate-kubernetes-cronjob"
+  run "$GENERATORS_DIR/generate-kubernetes-workload-cronjob"
   [ "$status" -eq 0 ]
   [ -f "$OUTPUT_SUB_PATH/manifests/combined/scheduled/cronjob.yaml" ]
 }
@@ -540,7 +540,7 @@ read_manifest_in_subpath() {
 @test "adds global additional labels" {
   export KUBERNETES_GLOBAL_ADDITIONAL_LABELS="team=platform,cost-center=123"
 
-  run "$GENERATORS_DIR/generate-kubernetes-cronjob"
+  run "$GENERATORS_DIR/generate-kubernetes-workload-cronjob"
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
@@ -551,7 +551,7 @@ read_manifest_in_subpath() {
 @test "adds cronjob-specific additional labels" {
   export KUBERNETES_CRONJOB_ADDITIONAL_LABELS="schedule-type=nightly"
 
-  run "$GENERATORS_DIR/generate-kubernetes-cronjob"
+  run "$GENERATORS_DIR/generate-kubernetes-workload-cronjob"
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
@@ -562,7 +562,7 @@ read_manifest_in_subpath() {
   export KUBERNETES_GLOBAL_ADDITIONAL_LABELS="team=platform"
   export KUBERNETES_CRONJOB_ADDITIONAL_LABELS="team=override"
 
-  run "$GENERATORS_DIR/generate-kubernetes-cronjob"
+  run "$GENERATORS_DIR/generate-kubernetes-workload-cronjob"
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
@@ -575,7 +575,7 @@ read_manifest_in_subpath() {
 # =============================================================================
 
 @test "probes disabled by default" {
-  run "$GENERATORS_DIR/generate-kubernetes-cronjob"
+  run "$GENERATORS_DIR/generate-kubernetes-workload-cronjob"
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
@@ -587,7 +587,7 @@ read_manifest_in_subpath() {
 @test "enables liveness probe when requested" {
   export KUBERNETES_CRONJOB_LIVENESS_PROBE_ENABLED="true"
 
-  run "$GENERATORS_DIR/generate-kubernetes-cronjob"
+  run "$GENERATORS_DIR/generate-kubernetes-workload-cronjob"
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
@@ -601,7 +601,7 @@ read_manifest_in_subpath() {
 @test "enables readiness probe when requested" {
   export KUBERNETES_CRONJOB_READINESS_PROBE_ENABLED="true"
 
-  run "$GENERATORS_DIR/generate-kubernetes-cronjob"
+  run "$GENERATORS_DIR/generate-kubernetes-workload-cronjob"
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
@@ -615,7 +615,7 @@ read_manifest_in_subpath() {
 @test "enables startup probe when requested" {
   export KUBERNETES_CRONJOB_STARTUP_PROBE_ENABLED="true"
 
-  run "$GENERATORS_DIR/generate-kubernetes-cronjob"
+  run "$GENERATORS_DIR/generate-kubernetes-workload-cronjob"
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
@@ -631,7 +631,7 @@ read_manifest_in_subpath() {
   export KUBERNETES_CRONJOB_READINESS_PROBE_ENABLED="true"
   export KUBERNETES_CRONJOB_STARTUP_PROBE_ENABLED="true"
 
-  run "$GENERATORS_DIR/generate-kubernetes-cronjob"
+  run "$GENERATORS_DIR/generate-kubernetes-workload-cronjob"
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
@@ -646,7 +646,7 @@ read_manifest_in_subpath() {
   export KUBERNETES_WORKLOAD_PROBE_LIVENESS_TCP_PORT="5432"
   export KUBERNETES_WORKLOAD_PROBE_LIVENESS_INITIAL_DELAY_SECONDS="15"
 
-  run "$GENERATORS_DIR/generate-kubernetes-cronjob"
+  run "$GENERATORS_DIR/generate-kubernetes-workload-cronjob"
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
@@ -661,7 +661,7 @@ read_manifest_in_subpath() {
 # =============================================================================
 
 @test "default affinity strategy generates affinity block" {
-  run "$GENERATORS_DIR/generate-kubernetes-cronjob"
+  run "$GENERATORS_DIR/generate-kubernetes-workload-cronjob"
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
@@ -672,7 +672,7 @@ read_manifest_in_subpath() {
 @test "affinity strategy none omits affinity block" {
   export KUBERNETES_WORKLOAD_AFFINITY_STRATEGY="none"
 
-  run "$GENERATORS_DIR/generate-kubernetes-cronjob"
+  run "$GENERATORS_DIR/generate-kubernetes-workload-cronjob"
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
@@ -682,7 +682,7 @@ read_manifest_in_subpath() {
 @test "affinity strategy spread-nodes generates node spread" {
   export KUBERNETES_WORKLOAD_AFFINITY_STRATEGY="spread-nodes"
 
-  run "$GENERATORS_DIR/generate-kubernetes-cronjob"
+  run "$GENERATORS_DIR/generate-kubernetes-workload-cronjob"
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
@@ -694,7 +694,7 @@ read_manifest_in_subpath() {
   export KUBERNETES_WORKLOAD_AFFINITY_STRATEGY="colocate-app"
   export COLOCATE_WITH_APP="database"
 
-  run "$GENERATORS_DIR/generate-kubernetes-cronjob"
+  run "$GENERATORS_DIR/generate-kubernetes-workload-cronjob"
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
@@ -707,7 +707,7 @@ read_manifest_in_subpath() {
 # =============================================================================
 
 @test "ports disabled by default" {
-  run "$GENERATORS_DIR/generate-kubernetes-cronjob"
+  run "$GENERATORS_DIR/generate-kubernetes-workload-cronjob"
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
@@ -718,7 +718,7 @@ read_manifest_in_subpath() {
 @test "enables ports when requested" {
   export KUBERNETES_CRONJOB_PORTS_ENABLED="true"
 
-  run "$GENERATORS_DIR/generate-kubernetes-cronjob"
+  run "$GENERATORS_DIR/generate-kubernetes-workload-cronjob"
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
@@ -730,7 +730,7 @@ read_manifest_in_subpath() {
   export KUBERNETES_CRONJOB_PORTS_ENABLED="true"
   export KUBERNETES_WORKLOAD_CONTAINER_PORT="9090"
 
-  run "$GENERATORS_DIR/generate-kubernetes-cronjob"
+  run "$GENERATORS_DIR/generate-kubernetes-workload-cronjob"
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
@@ -742,7 +742,7 @@ read_manifest_in_subpath() {
 # =============================================================================
 
 @test "lifecycle hook omitted by default" {
-  run "$GENERATORS_DIR/generate-kubernetes-cronjob"
+  run "$GENERATORS_DIR/generate-kubernetes-workload-cronjob"
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
@@ -753,7 +753,7 @@ read_manifest_in_subpath() {
 @test "includes lifecycle hook when prestop command set" {
   export KUBERNETES_WORKLOAD_PRESTOP_COMMAND="echo cleanup"
 
-  run "$GENERATORS_DIR/generate-kubernetes-cronjob"
+  run "$GENERATORS_DIR/generate-kubernetes-workload-cronjob"
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
@@ -767,7 +767,7 @@ read_manifest_in_subpath() {
 # =============================================================================
 
 @test "node selector omitted by default" {
-  run "$GENERATORS_DIR/generate-kubernetes-cronjob"
+  run "$GENERATORS_DIR/generate-kubernetes-workload-cronjob"
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
@@ -777,7 +777,7 @@ read_manifest_in_subpath() {
 @test "includes node selector when set" {
   export KUBERNETES_WORKLOAD_NODE_SELECTOR="disktype=ssd"
 
-  run "$GENERATORS_DIR/generate-kubernetes-cronjob"
+  run "$GENERATORS_DIR/generate-kubernetes-workload-cronjob"
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
@@ -788,7 +788,7 @@ read_manifest_in_subpath() {
 @test "node selector supports multiple values" {
   export KUBERNETES_WORKLOAD_NODE_SELECTOR="disktype=ssd,zone=us-east-1a"
 
-  run "$GENERATORS_DIR/generate-kubernetes-cronjob"
+  run "$GENERATORS_DIR/generate-kubernetes-workload-cronjob"
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
@@ -801,7 +801,7 @@ read_manifest_in_subpath() {
 # =============================================================================
 
 @test "dns policy omitted by default" {
-  run "$GENERATORS_DIR/generate-kubernetes-cronjob"
+  run "$GENERATORS_DIR/generate-kubernetes-workload-cronjob"
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
@@ -811,7 +811,7 @@ read_manifest_in_subpath() {
 @test "includes dns policy when set" {
   export KUBERNETES_WORKLOAD_DNS_POLICY="ClusterFirst"
 
-  run "$GENERATORS_DIR/generate-kubernetes-cronjob"
+  run "$GENERATORS_DIR/generate-kubernetes-workload-cronjob"
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
@@ -821,7 +821,7 @@ read_manifest_in_subpath() {
 @test "rejects invalid dns policy" {
   export KUBERNETES_WORKLOAD_DNS_POLICY="InvalidPolicy"
 
-  run "$GENERATORS_DIR/generate-kubernetes-cronjob"
+  run "$GENERATORS_DIR/generate-kubernetes-workload-cronjob"
   [ "$status" -eq 4 ]
   [[ "$output" == *"must be"* ]]
 }
