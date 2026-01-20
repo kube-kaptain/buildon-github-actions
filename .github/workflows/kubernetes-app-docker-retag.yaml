@@ -640,11 +640,6 @@ on:
         type: string
         default: ''
       # Kubernetes Job generation inputs
-      kubernetes-job-generation-enabled:
-        description: 'Enable Job generation (true or false)'
-        required: false
-        type: string
-        default: 'false'
       kubernetes-job-name-suffix:
         description: 'Optional suffix for Job name and filename'
         required: false
@@ -716,11 +711,6 @@ on:
         type: string
         default: 'false'
       # Kubernetes CronJob generation inputs
-      kubernetes-cronjob-generation-enabled:
-        description: 'Enable CronJob generation (true or false)'
-        required: false
-        type: string
-        default: 'false'
       kubernetes-cronjob-name-suffix:
         description: 'Optional suffix for CronJob name and filename'
         required: false

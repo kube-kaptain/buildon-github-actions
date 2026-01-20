@@ -129,7 +129,6 @@ Kubernetes App - Docker Retag
 | `kubernetes-daemonset-dns-policy` | string | `""` | DNS policy (ClusterFirst, ClusterFirstWithHostNet, Default, None) |
 | `kubernetes-daemonset-tolerations` | string | `""` | Tolerations as JSON array (e.g., [{"operator":"Exists"}] or [{"key":"node-role.kubernetes.io/control-plane","operator":"Exists","effect":"NoSchedule"}]) |
 | `kubernetes-daemonset-node-selector` | string | `""` | Node selector labels (comma-separated key=value) |
-| `kubernetes-job-generation-enabled` | string | `false` | Enable Job generation (true or false) |
 | `kubernetes-job-name-suffix` | string | `""` | Optional suffix for Job name and filename |
 | `kubernetes-job-combined-sub-path` | string | `""` | Sub-path within combined/ for output |
 | `kubernetes-job-backoff-limit` | string | `6` | Number of retries before marking Job as failed |
@@ -144,7 +143,6 @@ Kubernetes App - Docker Retag
 | `kubernetes-job-liveness-probe-enabled` | string | `false` | Enable liveness probe (uses workload probe settings when true) |
 | `kubernetes-job-readiness-probe-enabled` | string | `false` | Enable readiness probe (uses workload probe settings when true) |
 | `kubernetes-job-startup-probe-enabled` | string | `false` | Enable startup probe (uses workload probe settings when true) |
-| `kubernetes-cronjob-generation-enabled` | string | `false` | Enable CronJob generation (true or false) |
 | `kubernetes-cronjob-name-suffix` | string | `""` | Optional suffix for CronJob name and filename |
 | `kubernetes-cronjob-combined-sub-path` | string | `""` | Sub-path within combined/ for output |
 | `kubernetes-cronjob-concurrency-policy` | string | `Forbid` | How to handle concurrent job runs (Allow, Forbid, Replace) |

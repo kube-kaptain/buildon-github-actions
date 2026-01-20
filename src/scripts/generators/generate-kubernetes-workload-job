@@ -11,7 +11,6 @@
 # Name pattern: ${ProjectName}[-${combined-sub-path}][-${suffix}]-${Version}-job-checksum
 #
 # Inputs (environment variables):
-#   KUBERNETES_JOB_GENERATION_ENABLED - Set to "true" to enable (default: false)
 #   KUBERNETES_JOB_NAME_SUFFIX        - Optional suffix for name/filename
 #   KUBERNETES_JOB_COMBINED_SUB_PATH  - Sub-path within combined/ for output
 #   KUBERNETES_JOB_BACKOFF_LIMIT      - Number of retries before marking failed (default: 6)
@@ -60,12 +59,6 @@ LOG_ERROR_SUFFIX="${LOG_ERROR_SUFFIX:-}"
 
 # Resource kind
 kind="Job"
-
-# Check if generation is enabled (default: false)
-if [[ "${KUBERNETES_JOB_GENERATION_ENABLED:-false}" != "true" ]]; then
-  echo "Job generation not enabled (KUBERNETES_JOB_GENERATION_ENABLED != true), skipping" >&2
-  exit 0
-fi
 
 # =============================================================================
 # Inputs with defaults

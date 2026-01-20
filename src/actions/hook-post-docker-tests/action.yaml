@@ -523,10 +523,6 @@ inputs:
     required: false
     default: ''
   # Kubernetes Job generation inputs
-  kubernetes-job-generation-enabled:
-    description: 'Enable Job generation (true or false)'
-    required: false
-    default: 'false'
   kubernetes-job-name-suffix:
     description: 'Optional suffix for Job name and filename'
     required: false
@@ -584,10 +580,6 @@ inputs:
     required: false
     default: 'false'
   # Kubernetes CronJob generation inputs
-  kubernetes-cronjob-generation-enabled:
-    description: 'Enable CronJob generation (true or false)'
-    required: false
-    default: 'false'
   kubernetes-cronjob-name-suffix:
     description: 'Optional suffix for CronJob name and filename'
     required: false

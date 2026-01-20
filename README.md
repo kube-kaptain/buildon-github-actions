@@ -163,7 +163,6 @@ See [`examples/`](examples/) for more usage patterns.
 | `kubernetes-cronjob-concurrency-policy` | string | `Forbid` | How to handle concurrent job runs (Allow, Forbid, Replace) |
 | `kubernetes-cronjob-env-sub-path` | string | `""` | Path to CronJob environment variables directory |
 | `kubernetes-cronjob-failed-jobs-history-limit` | string | `5` | Number of failed jobs to retain to show failure patterns |
-| `kubernetes-cronjob-generation-enabled` | string | `false` | Enable CronJob generation (true or false) |
 | `kubernetes-cronjob-liveness-probe-enabled` | string | `false` | Enable liveness probe (uses workload probe settings when true) |
 | `kubernetes-cronjob-name-suffix` | string | `""` | Optional suffix for CronJob name and filename |
 | `kubernetes-cronjob-parallelism` | string | `1` | Number of pods running at any time |
@@ -197,7 +196,6 @@ See [`examples/`](examples/) for more usage patterns.
 | `kubernetes-job-combined-sub-path` | string | `""` | Sub-path within combined/ for output |
 | `kubernetes-job-completions` | string | `1` | Number of successful completions needed |
 | `kubernetes-job-env-sub-path` | string | `""` | Path to Job environment variables directory |
-| `kubernetes-job-generation-enabled` | string | `false` | Enable Job generation (true or false) |
 | `kubernetes-job-liveness-probe-enabled` | string | `false` | Enable liveness probe (uses workload probe settings when true) |
 | `kubernetes-job-name-suffix` | string | `""` | Optional suffix for Job name and filename |
 | `kubernetes-job-parallelism` | string | `1` | Number of pods running at any time |

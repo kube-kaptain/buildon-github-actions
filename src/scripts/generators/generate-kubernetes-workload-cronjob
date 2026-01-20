@@ -12,7 +12,6 @@
 # Name pattern: ${ProjectName}[-${combined-sub-path}][-${suffix}]
 #
 # Inputs (environment variables):
-#   KUBERNETES_CRONJOB_GENERATION_ENABLED - Set to "true" to enable (default: false)
 #   KUBERNETES_CRONJOB_NAME_SUFFIX        - Optional suffix for name/filename
 #   KUBERNETES_CRONJOB_COMBINED_SUB_PATH  - Sub-path within combined/ for output
 #   KUBERNETES_CRONJOB_CONCURRENCY_POLICY - Allow, Forbid, Replace (default: Forbid)
@@ -64,12 +63,6 @@ LOG_ERROR_SUFFIX="${LOG_ERROR_SUFFIX:-}"
 
 # Resource kind
 kind="CronJob"
-
-# Check if generation is enabled (default: false)
-if [[ "${KUBERNETES_CRONJOB_GENERATION_ENABLED:-false}" != "true" ]]; then
-  echo "CronJob generation not enabled (KUBERNETES_CRONJOB_GENERATION_ENABLED != true), skipping" >&2
-  exit 0
-fi
 
 # =============================================================================
 # Inputs with defaults

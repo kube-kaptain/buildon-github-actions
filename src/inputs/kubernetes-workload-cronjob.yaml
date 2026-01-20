@@ -2,11 +2,6 @@
 # Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
 #
 # Kubernetes CronJob generation inputs
-kubernetes-cronjob-generation-enabled:
-  description: 'Enable CronJob generation (true or false)'
-  required: false
-  type: string
-  default: 'false'
 kubernetes-cronjob-name-suffix:
   description: 'Optional suffix for CronJob name and filename'
   required: false
