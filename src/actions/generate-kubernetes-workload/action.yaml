@@ -335,6 +335,10 @@ inputs:
     description: 'Pod management policy (OrderedReady or Parallel)'
     required: false
     default: 'OrderedReady'
+  kubernetes-statefulset-allow-unreliable-pod-management-policy:
+    description: 'Required acknowledgment to use Parallel pod management (must be I_LIKE_DOWNTIME)'
+    required: false
+    default: ''
   kubernetes-statefulset-update-strategy-type:
     description: 'Update strategy type (RollingUpdate or OnDelete)'
     required: false
@@ -668,6 +672,7 @@ runs:
         KUBERNETES_STATEFULSET_ADDITIONAL_ANNOTATIONS: ${{ inputs.kubernetes-statefulset-additional-annotations }}
         KUBERNETES_STATEFULSET_SERVICE_NAME: ${{ inputs.kubernetes-statefulset-service-name }}
         KUBERNETES_STATEFULSET_POD_MANAGEMENT_POLICY: ${{ inputs.kubernetes-statefulset-pod-management-policy }}
+        KUBERNETES_STATEFULSET_ALLOW_UNRELIABLE_POD_MANAGEMENT_POLICY: ${{ inputs.kubernetes-statefulset-allow-unreliable-pod-management-policy }}
         KUBERNETES_STATEFULSET_UPDATE_STRATEGY_TYPE: ${{ inputs.kubernetes-statefulset-update-strategy-type }}
         KUBERNETES_STATEFULSET_UPDATE_STRATEGY_PARTITION: ${{ inputs.kubernetes-statefulset-update-strategy-partition }}
         KUBERNETES_STATEFULSET_PVC_ENABLED: ${{ inputs.kubernetes-statefulset-pvc-enabled }}

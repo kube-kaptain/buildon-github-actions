@@ -236,6 +236,7 @@ See [`examples/`](examples/) for more usage patterns.
 | `kubernetes-serviceaccount-name-suffix` | string | `""` | Optional suffix for ServiceAccount name and filename |
 | `kubernetes-statefulset-additional-annotations` | string | `""` | Additional annotations for StatefulSet resources (key=value,key=value) |
 | `kubernetes-statefulset-additional-labels` | string | `""` | Additional labels for StatefulSet resources (key=value,key=value) |
+| `kubernetes-statefulset-allow-unreliable-pod-management-policy` | string | `""` | Required acknowledgment to use Parallel pod management (must be I_LIKE_DOWNTIME) |
 | `kubernetes-statefulset-env-sub-path` | string | `src/statefulset-env` | Path to statefulset environment variables directory |
 | `kubernetes-statefulset-pod-management-policy` | string | `OrderedReady` | Pod management policy (OrderedReady or Parallel) |
 | `kubernetes-statefulset-pvc-access-mode` | string | `ReadWriteOnce` | PVC access mode (ReadWriteOnce, ReadOnlyMany, ReadWriteMany) |

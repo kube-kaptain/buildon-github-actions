@@ -538,6 +538,11 @@ on:
         required: false
         type: string
         default: 'OrderedReady'
+      kubernetes-statefulset-allow-unreliable-pod-management-policy:
+        description: 'Required acknowledgment to use Parallel pod management (must be I_LIKE_DOWNTIME)'
+        required: false
+        type: string
+        default: ''
       kubernetes-statefulset-update-strategy-type:
         description: 'Update strategy type (RollingUpdate or OnDelete)'
         required: false

@@ -107,6 +107,7 @@ Kubernetes App - Manifests Only
 | `kubernetes-statefulset-additional-annotations` | string | `""` | Additional annotations for StatefulSet resources (key=value,key=value) |
 | `kubernetes-statefulset-service-name` | string | `""` | Headless service name (empty for auto-derived from project name) |
 | `kubernetes-statefulset-pod-management-policy` | string | `OrderedReady` | Pod management policy (OrderedReady or Parallel) |
+| `kubernetes-statefulset-allow-unreliable-pod-management-policy` | string | `""` | Required acknowledgment to use Parallel pod management (must be I_LIKE_DOWNTIME) |
 | `kubernetes-statefulset-update-strategy-type` | string | `RollingUpdate` | Update strategy type (RollingUpdate or OnDelete) |
 | `kubernetes-statefulset-update-strategy-partition` | string | `""` | Partition for rolling updates (empty for none) |
 | `kubernetes-statefulset-pvc-enabled` | string | `true` | Enable persistent volume claim template (true/false) |
