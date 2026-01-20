@@ -207,6 +207,12 @@ fi
 if [[ "${PVC_ENABLED}" == "true" ]]; then
   echo "  PVC storage:              ${PVC_STORAGE_SIZE} (${PVC_ACCESS_MODE})" >&2
 fi
+if [[ -n "${NODE_SELECTOR}" ]]; then
+  echo "  Node selector:            ${NODE_SELECTOR}" >&2
+fi
+if [[ -n "${DNS_POLICY}" ]]; then
+  echo "  DNS policy:               ${DNS_POLICY}" >&2
+fi
 
 # =============================================================================
 # Build labels and annotations
@@ -307,6 +313,12 @@ KUBERNETES_SERVICE_ADDITIONAL_ANNOTATIONS="kaptain/generated-for=\"statefulset/$
 
   # Tolerations
   generate_tolerations 6 "${TOLERATIONS}"
+
+  # Node selector
+  generate_node_selector 6 "${NODE_SELECTOR}"
+
+  # DNS policy
+  generate_dns_policy 6 "${DNS_POLICY}"
 
   # Image pull secrets (optional)
   if [[ "${IMAGE_PULL_SECRETS}" != "DISABLED" ]]; then
