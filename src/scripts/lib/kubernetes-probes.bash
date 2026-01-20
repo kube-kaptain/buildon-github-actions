@@ -458,3 +458,166 @@ generate_workload_probes() {
       ;;
   esac
 }
+
+# Generate a single liveness probe using workload variables
+# Usage: generate_liveness_probe <indent>
+#
+# Reads from caller's scope: CONTAINER_PORT, LIVENESS_* variables
+generate_liveness_probe() {
+  local indent_count="$1"
+
+  # Validate required fields based on check type
+  case "${LIVENESS_CHECK_TYPE}" in
+    exec)
+      if [[ -z "${LIVENESS_EXEC_COMMAND:-}" ]]; then
+        echo "Error: Liveness probe type 'exec' requires LIVENESS_EXEC_COMMAND" >&2
+        return 4
+      fi
+      ;;
+    tcp-socket)
+      if [[ -z "${LIVENESS_TCP_PORT:-}" ]]; then
+        echo "Error: Liveness probe type 'tcp-socket' requires LIVENESS_TCP_PORT" >&2
+        return 4
+      fi
+      ;;
+    grpc)
+      if [[ -z "${LIVENESS_GRPC_PORT:-}" ]]; then
+        echo "Error: Liveness probe type 'grpc' requires LIVENESS_GRPC_PORT" >&2
+        return 4
+      fi
+      ;;
+  esac
+
+  local liveness_timing_args=(
+    "${LIVENESS_INITIAL_DELAY_SECONDS}"
+    "${LIVENESS_PERIOD_SECONDS}"
+    "${LIVENESS_TIMEOUT_SECONDS}"
+    "${LIVENESS_FAILURE_THRESHOLD}"
+  )
+  if [[ -n "${LIVENESS_TERMINATION_GRACE_PERIOD_SECONDS:-}" ]]; then
+    liveness_timing_args+=("${LIVENESS_TERMINATION_GRACE_PERIOD_SECONDS}")
+  fi
+
+  case "${LIVENESS_CHECK_TYPE}" in
+    http-get)
+      generate_probe liveness http-get "$indent_count" "${LIVENESS_HTTP_PATH}" "${CONTAINER_PORT}" "${LIVENESS_HTTP_SCHEME}" -- "${liveness_timing_args[@]}"
+      ;;
+    tcp-socket)
+      generate_probe liveness tcp-socket "$indent_count" "${LIVENESS_TCP_PORT}" -- "${liveness_timing_args[@]}"
+      ;;
+    exec)
+      generate_probe liveness exec "$indent_count" "${LIVENESS_EXEC_COMMAND}" -- "${liveness_timing_args[@]}"
+      ;;
+    grpc)
+      generate_probe liveness grpc "$indent_count" "${LIVENESS_GRPC_PORT}" "${LIVENESS_GRPC_SERVICE}" -- "${liveness_timing_args[@]}"
+      ;;
+  esac
+}
+
+# Generate a single readiness probe using workload variables
+# Usage: generate_readiness_probe <indent>
+#
+# Reads from caller's scope: CONTAINER_PORT, READINESS_* variables
+generate_readiness_probe() {
+  local indent_count="$1"
+
+  # Validate required fields based on check type
+  case "${READINESS_CHECK_TYPE}" in
+    exec)
+      if [[ -z "${READINESS_EXEC_COMMAND:-}" ]]; then
+        echo "Error: Readiness probe type 'exec' requires READINESS_EXEC_COMMAND" >&2
+        return 4
+      fi
+      ;;
+    tcp-socket)
+      if [[ -z "${READINESS_TCP_PORT:-}" ]]; then
+        echo "Error: Readiness probe type 'tcp-socket' requires READINESS_TCP_PORT" >&2
+        return 4
+      fi
+      ;;
+    grpc)
+      if [[ -z "${READINESS_GRPC_PORT:-}" ]]; then
+        echo "Error: Readiness probe type 'grpc' requires READINESS_GRPC_PORT" >&2
+        return 4
+      fi
+      ;;
+  esac
+
+  local readiness_timing_args=(
+    "${READINESS_INITIAL_DELAY_SECONDS}"
+    "${READINESS_PERIOD_SECONDS}"
+    "${READINESS_TIMEOUT_SECONDS}"
+    "${READINESS_FAILURE_THRESHOLD}"
+    "${READINESS_SUCCESS_THRESHOLD}"
+  )
+
+  case "${READINESS_CHECK_TYPE}" in
+    http-get)
+      generate_probe readiness http-get "$indent_count" "${READINESS_HTTP_PATH}" "${CONTAINER_PORT}" "${READINESS_HTTP_SCHEME}" -- "${readiness_timing_args[@]}"
+      ;;
+    tcp-socket)
+      generate_probe readiness tcp-socket "$indent_count" "${READINESS_TCP_PORT}" -- "${readiness_timing_args[@]}"
+      ;;
+    exec)
+      generate_probe readiness exec "$indent_count" "${READINESS_EXEC_COMMAND}" -- "${readiness_timing_args[@]}"
+      ;;
+    grpc)
+      generate_probe readiness grpc "$indent_count" "${READINESS_GRPC_PORT}" "${READINESS_GRPC_SERVICE}" -- "${readiness_timing_args[@]}"
+      ;;
+  esac
+}
+
+# Generate a single startup probe using workload variables
+# Usage: generate_startup_probe <indent>
+#
+# Reads from caller's scope: CONTAINER_PORT, STARTUP_* variables
+generate_startup_probe() {
+  local indent_count="$1"
+
+  # Validate required fields based on check type
+  case "${STARTUP_CHECK_TYPE}" in
+    exec)
+      if [[ -z "${STARTUP_EXEC_COMMAND:-}" ]]; then
+        echo "Error: Startup probe type 'exec' requires STARTUP_EXEC_COMMAND" >&2
+        return 4
+      fi
+      ;;
+    tcp-socket)
+      if [[ -z "${STARTUP_TCP_PORT:-}" ]]; then
+        echo "Error: Startup probe type 'tcp-socket' requires STARTUP_TCP_PORT" >&2
+        return 4
+      fi
+      ;;
+    grpc)
+      if [[ -z "${STARTUP_GRPC_PORT:-}" ]]; then
+        echo "Error: Startup probe type 'grpc' requires STARTUP_GRPC_PORT" >&2
+        return 4
+      fi
+      ;;
+  esac
+
+  local startup_timing_args=(
+    "${STARTUP_INITIAL_DELAY_SECONDS}"
+    "${STARTUP_PERIOD_SECONDS}"
+    "${STARTUP_TIMEOUT_SECONDS}"
+    "${STARTUP_FAILURE_THRESHOLD}"
+  )
+  if [[ -n "${STARTUP_TERMINATION_GRACE_PERIOD_SECONDS:-}" ]]; then
+    startup_timing_args+=("${STARTUP_TERMINATION_GRACE_PERIOD_SECONDS}")
+  fi
+
+  case "${STARTUP_CHECK_TYPE}" in
+    http-get)
+      generate_probe startup http-get "$indent_count" "${STARTUP_HTTP_PATH}" "${CONTAINER_PORT}" "${STARTUP_HTTP_SCHEME}" -- "${startup_timing_args[@]}"
+      ;;
+    tcp-socket)
+      generate_probe startup tcp-socket "$indent_count" "${STARTUP_TCP_PORT}" -- "${startup_timing_args[@]}"
+      ;;
+    exec)
+      generate_probe startup exec "$indent_count" "${STARTUP_EXEC_COMMAND}" -- "${startup_timing_args[@]}"
+      ;;
+    grpc)
+      generate_probe startup grpc "$indent_count" "${STARTUP_GRPC_PORT}" "${STARTUP_GRPC_SERVICE}" -- "${startup_timing_args[@]}"
+      ;;
+  esac
+}

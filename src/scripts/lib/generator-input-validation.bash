@@ -131,6 +131,7 @@ validate_common_inputs() {
 #   READONLY_ROOT_FILESYSTEM - Boolean for filesystem access
 #   IMAGE_REFERENCE_STYLE   - How to build image references
 #   AFFINITY_STRATEGY       - Pod placement strategy name
+#   DNS_POLICY              - Optional DNS policy
 #
 # Sets in caller's scope:
 #   affinity_plugin         - Path to validated affinity strategy plugin
@@ -147,6 +148,12 @@ validate_workload_inputs() {
 
   validate_enum "KUBERNETES_WORKLOAD_IMAGE_REFERENCE_STYLE" "${IMAGE_REFERENCE_STYLE}" \
     combined separate project-name-prefixed-combined project-name-prefixed-separate
+
+  # Validate DNS policy if set
+  if [[ -n "${DNS_POLICY:-}" ]]; then
+    validate_enum "KUBERNETES_WORKLOAD_DNS_POLICY" "${DNS_POLICY}" \
+      ClusterFirst ClusterFirstWithHostNet Default None
+  fi
 
   # Validate affinity strategy plugin exists (sets affinity_plugin for caller)
   local lib_dir

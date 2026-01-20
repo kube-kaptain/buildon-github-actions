@@ -244,3 +244,110 @@ PLUGIN_DIR="$PROJECT_ROOT/src/scripts/plugins/pod-placement-strategy"
   first_line=$(echo "$output" | head -n1)
   [ "$first_line" = "      affinity:" ]
 }
+
+# =============================================================================
+# Library functions (kubernetes-pod-placement.bash)
+# =============================================================================
+
+LIB_DIR="$PROJECT_ROOT/src/scripts/lib"
+
+# Helper to source the library
+source_lib() {
+  source "$LIB_DIR/kubernetes-pod-placement.bash"
+}
+
+# --- generate_tolerations ---
+
+@test "generate_tolerations: empty input produces no output" {
+  source_lib
+  run generate_tolerations 6 ""
+  [ "$status" -eq 0 ]
+  [ -z "$output" ]
+}
+
+@test "generate_tolerations: basic toleration" {
+  source_lib
+  run generate_tolerations 6 '[{"operator":"Exists"}]'
+  [ "$status" -eq 0 ]
+  assert_output_contains "tolerations:"
+  assert_output_contains "operator: Exists"
+}
+
+@test "generate_tolerations: respects indent" {
+  source_lib
+  run generate_tolerations 4 '[{"operator":"Exists"}]'
+  [ "$status" -eq 0 ]
+  first_line=$(echo "$output" | head -n1)
+  [ "$first_line" = "    tolerations:" ]
+}
+
+# --- generate_node_selector ---
+
+@test "generate_node_selector: empty input produces no output" {
+  source_lib
+  run generate_node_selector 6 ""
+  [ "$status" -eq 0 ]
+  [ -z "$output" ]
+}
+
+@test "generate_node_selector: single selector" {
+  source_lib
+  run generate_node_selector 6 "disktype=ssd"
+  [ "$status" -eq 0 ]
+  assert_output_contains "nodeSelector:"
+  assert_output_contains 'disktype: "ssd"'
+}
+
+@test "generate_node_selector: multiple selectors" {
+  source_lib
+  run generate_node_selector 6 "disktype=ssd,zone=us-east-1a"
+  [ "$status" -eq 0 ]
+  assert_output_contains "nodeSelector:"
+  assert_output_contains 'disktype: "ssd"'
+  assert_output_contains 'zone: "us-east-1a"'
+}
+
+@test "generate_node_selector: respects indent" {
+  source_lib
+  run generate_node_selector 4 "disktype=ssd"
+  [ "$status" -eq 0 ]
+  first_line=$(echo "$output" | head -n1)
+  [ "$first_line" = "    nodeSelector:" ]
+}
+
+@test "generate_node_selector: handles dots in key" {
+  source_lib
+  run generate_node_selector 6 "node.kubernetes.io/instance-type=m5.large"
+  [ "$status" -eq 0 ]
+  assert_output_contains 'node.kubernetes.io/instance-type: "m5.large"'
+}
+
+# --- generate_dns_policy ---
+
+@test "generate_dns_policy: empty input produces no output" {
+  source_lib
+  run generate_dns_policy 6 ""
+  [ "$status" -eq 0 ]
+  [ -z "$output" ]
+}
+
+@test "generate_dns_policy: ClusterFirst" {
+  source_lib
+  run generate_dns_policy 6 "ClusterFirst"
+  [ "$status" -eq 0 ]
+  assert_output_contains "dnsPolicy: ClusterFirst"
+}
+
+@test "generate_dns_policy: ClusterFirstWithHostNet" {
+  source_lib
+  run generate_dns_policy 6 "ClusterFirstWithHostNet"
+  [ "$status" -eq 0 ]
+  assert_output_contains "dnsPolicy: ClusterFirstWithHostNet"
+}
+
+@test "generate_dns_policy: respects indent" {
+  source_lib
+  run generate_dns_policy 4 "None"
+  [ "$status" -eq 0 ]
+  [ "$output" = "    dnsPolicy: None" ]
+}

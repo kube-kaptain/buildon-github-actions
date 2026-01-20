@@ -22,6 +22,9 @@ inputs:
   # INJECT-INPUT: kubernetes-workload
   # INJECT-INPUT: kubernetes-workload-deployment
   # INJECT-INPUT: kubernetes-workload-statefulset
+  # INJECT-INPUT: kubernetes-workload-daemonset
+  # INJECT-INPUT: kubernetes-workload-job
+  # INJECT-INPUT: kubernetes-workload-cronjob
   # INJECT-INPUT: kubernetes-service
   # INJECT-INPUT: token-substitution
   # INJECT-INPUT: release-branches
@@ -163,6 +166,11 @@ runs:
         KUBERNETES_WORKLOAD_TERMINATION_GRACE_PERIOD_SECONDS: ${{ inputs.kubernetes-workload-termination-grace-period-seconds }}
         KUBERNETES_WORKLOAD_PRESTOP_COMMAND: ${{ inputs.kubernetes-workload-prestop-command }}
         KUBERNETES_WORKLOAD_AFFINITY_STRATEGY: ${{ inputs.kubernetes-workload-affinity-strategy }}
+        KUBERNETES_WORKLOAD_TOLERATIONS: ${{ inputs.kubernetes-workload-tolerations }}
+        KUBERNETES_WORKLOAD_NODE_SELECTOR: ${{ inputs.kubernetes-workload-node-selector }}
+        KUBERNETES_WORKLOAD_DNS_POLICY: ${{ inputs.kubernetes-workload-dns-policy }}
+        KUBERNETES_WORKLOAD_CONTAINER_COMMAND: ${{ inputs.kubernetes-workload-container-command }}
+        KUBERNETES_WORKLOAD_CONTAINER_ARGS: ${{ inputs.kubernetes-workload-container-args }}
         KUBERNETES_WORKLOAD_PROBE_LIVENESS_CHECK_TYPE: ${{ inputs.kubernetes-workload-probe-liveness-check-type }}
         KUBERNETES_WORKLOAD_PROBE_READINESS_CHECK_TYPE: ${{ inputs.kubernetes-workload-probe-readiness-check-type }}
         KUBERNETES_WORKLOAD_PROBE_STARTUP_CHECK_TYPE: ${{ inputs.kubernetes-workload-probe-startup-check-type }}

@@ -33,6 +33,12 @@ KUBERNETES_WORKLOAD_REVISION_HISTORY_LIMIT="${KUBERNETES_WORKLOAD_REVISION_HISTO
 KUBERNETES_WORKLOAD_CONTAINER_COMMAND="${KUBERNETES_WORKLOAD_CONTAINER_COMMAND:-}"
 KUBERNETES_WORKLOAD_CONTAINER_ARGS="${KUBERNETES_WORKLOAD_CONTAINER_ARGS:-}"
 
+# Node selector (comma-separated key=value pairs)
+KUBERNETES_WORKLOAD_NODE_SELECTOR="${KUBERNETES_WORKLOAD_NODE_SELECTOR:-}"
+
+# DNS policy (ClusterFirst, ClusterFirstWithHostNet, Default, None)
+KUBERNETES_WORKLOAD_DNS_POLICY="${KUBERNETES_WORKLOAD_DNS_POLICY:-}"
+
 # =============================================================================
 # Convenience short names (for single-purpose generator scripts only)
 # =============================================================================
@@ -88,6 +94,12 @@ AFFINITY_STRATEGY="${KUBERNETES_WORKLOAD_AFFINITY_STRATEGY:-spread-nodes-and-zon
 
 # Tolerations (JSON array)
 TOLERATIONS="${KUBERNETES_WORKLOAD_TOLERATIONS:-}"
+
+# Node selector (comma-separated key=value pairs)
+NODE_SELECTOR="${KUBERNETES_WORKLOAD_NODE_SELECTOR}"
+
+# DNS policy (ClusterFirst, ClusterFirstWithHostNet, Default, None)
+DNS_POLICY="${KUBERNETES_WORKLOAD_DNS_POLICY}"
 
 # Liveness probe
 LIVENESS_CHECK_TYPE="${KUBERNETES_WORKLOAD_PROBE_LIVENESS_CHECK_TYPE:-http-get}"

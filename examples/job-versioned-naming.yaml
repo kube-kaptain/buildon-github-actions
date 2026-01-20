@@ -1,0 +1,120 @@
+# SPDX-License-Identifier: CC0-1.0
+# This example is released to the public domain. Use freely without attribution.
+#
+# Kubernetes Job with Versioned Naming Strategy
+#
+# Jobs in Kaptain use a unique naming strategy designed for "run once per version"
+# semantics with content-based change detection:
+#
+#   Name pattern: ${ProjectName}[-dir][-suffix]-${Version}-job-checksum
+#
+# How it works:
+#
+#   1. VERSION IN NAME: Each version creates a distinct Job resource. When you
+#      deploy v1.2.3, the Job is named "myapp-1.2.3-job-checksum". Deploying
+#      v1.2.4 creates a NEW Job "myapp-1.2.4-job-checksum" rather than updating.
+#
+#   2. CHECKSUM SUFFIX: The "-job-checksum" suffix is replaced at deploy time
+#      with a hash of the Job's configuration. If you change the Job spec
+#      (command, resources, env vars, etc.) within the same version, the
+#      checksum changes, creating a new Job instance.
+#
+#   3. NEVER AUTO-DELETE: Jobs are intentionally kept forever (ttlSecondsAfterFinished
+#      is omitted). This prevents non-idempotent jobs from accidentally re-running
+#      if the same Job object would be recreated on deploy. The deployment system
+#      can manage cleanup when a new version supersedes an old one.
+#
+# Why this matters:
+#
+#   - Database migrations run exactly once per version
+#   - Initialization tasks don't repeat on every deploy
+#   - Config changes (env vars, secrets) trigger fresh runs when needed
+#   - Old Job logs remain available for debugging until explicitly cleaned up
+#
+# Typical use cases:
+#   - Database migrations
+#   - One-time setup/initialization
+#   - Data import/export tasks
+#   - Version-specific cleanup jobs
+#
+# Copy this to .github/workflows/build.yaml in your repo.
+
+name: Job with Versioned Naming
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    uses: kube-kaptain/buildon-github-actions/.github/workflows/kubernetes-app-docker-dockerfile.yaml@1.0.40
+    permissions:
+      contents: write
+      packages: write
+      checks: write
+    with:
+      # ┌─────────────────────────────────────────────────────────────────────┐
+      # │ Job Generation                                                       │
+      # └─────────────────────────────────────────────────────────────────────┘
+      # Enable Job generation (disabled by default)
+      kubernetes-job-generation-enabled: 'true'
+
+      # ┌─────────────────────────────────────────────────────────────────────┐
+      # │ Job Naming                                                           │
+      # └─────────────────────────────────────────────────────────────────────┘
+      # Optional suffix for multiple jobs in the same project
+      # e.g., "migrate" → myapp-migrate-1.2.3-job-checksum
+      kubernetes-job-name-suffix: 'migrate'
+
+      # ┌─────────────────────────────────────────────────────────────────────┐
+      # │ Execution Settings                                                   │
+      # └─────────────────────────────────────────────────────────────────────┘
+      # How many times to retry on failure (default: 6)
+      kubernetes-job-backoff-limit: '3'
+
+      # How many pods must complete successfully (default: 1)
+      kubernetes-job-completions: '1'
+
+      # Max pods running simultaneously (default: 1)
+      kubernetes-job-parallelism: '1'
+
+      # Maximum runtime before killing the job (optional, no default)
+      # kubernetes-job-active-deadline-seconds: '3600'
+
+      # ┌─────────────────────────────────────────────────────────────────────┐
+      # │ TTL Cleanup Strategy: INTENTIONALLY DISABLED                         │
+      # └─────────────────────────────────────────────────────────────────────┘
+      # ttlSecondsAfterFinished is NOT SET by default. This is intentional:
+      #
+      #   - Prevents non-idempotent jobs from re-running if the same Job
+      #     object is recreated during a deploy
+      #   - Keeps completed Job pods around for log inspection
+      #   - Lets the deployment system manage cleanup when versions change
+      #
+      # If you MUST enable auto-cleanup (e.g., disk space constraints):
+      # kubernetes-job-ttl-seconds-after-finished: '86400'  # 24 hours
+      #
+      # WARNING: With TTL enabled, if a Job completes and is cleaned up,
+      # redeploying the same version will create and run the Job again!
+
+      # ┌─────────────────────────────────────────────────────────────────────┐
+      # │ Restart Policy                                                       │
+      # └─────────────────────────────────────────────────────────────────────┘
+      # 'Never' (default) - don't restart failed containers, let backoffLimit handle it
+      # 'OnFailure' - restart containers on failure within the same pod
+      kubernetes-job-restart-policy: 'Never'
+
+      # ┌─────────────────────────────────────────────────────────────────────┐
+      # │ Container Command                                                    │
+      # └─────────────────────────────────────────────────────────────────────┘
+      # Command and args use shell-style space separation (quotes respected)
+      kubernetes-workload-container-command: '/bin/sh -c'
+      kubernetes-workload-container-args: '"./run-migrations.sh && echo Done"'
+
+      # ┌─────────────────────────────────────────────────────────────────────┐
+      # │ Resources                                                            │
+      # └─────────────────────────────────────────────────────────────────────┘
+      kubernetes-workload-resources-memory: '256Mi'
+      kubernetes-workload-resources-cpu-request: '100m'

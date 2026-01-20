@@ -138,6 +138,14 @@ inputs:
     description: 'Tolerations as JSON array (e.g., [{"key":"dedicated","operator":"Equal","value":"app","effect":"NoSchedule"}])'
     required: false
     default: ''
+  kubernetes-workload-node-selector:
+    description: 'Node selector (comma-separated key=value pairs, e.g., disktype=ssd,zone=us-east-1a)'
+    required: false
+    default: ''
+  kubernetes-workload-dns-policy:
+    description: 'DNS policy (ClusterFirst, ClusterFirstWithHostNet, Default, None)'
+    required: false
+    default: ''
   # Liveness probe inputs
   kubernetes-workload-probe-liveness-check-type:
     description: 'Liveness probe type (http-get, tcp-socket, exec, grpc, none)'
@@ -396,6 +404,140 @@ inputs:
     description: 'Node selector labels (comma-separated key=value)'
     required: false
     default: ''
+  # Kubernetes Job generation inputs
+  kubernetes-job-generation-enabled:
+    description: 'Enable Job generation (true or false)'
+    required: false
+    default: 'false'
+  kubernetes-job-name-suffix:
+    description: 'Optional suffix for Job name and filename'
+    required: false
+    default: ''
+  kubernetes-job-combined-sub-path:
+    description: 'Sub-path within combined/ for output'
+    required: false
+    default: ''
+  kubernetes-job-backoff-limit:
+    description: 'Number of retries before marking Job as failed'
+    required: false
+    default: '6'
+  kubernetes-job-completions:
+    description: 'Number of successful completions needed'
+    required: false
+    default: '1'
+  kubernetes-job-parallelism:
+    description: 'Number of pods running at any time'
+    required: false
+    default: '1'
+  kubernetes-job-active-deadline-seconds:
+    description: 'Maximum time in seconds the Job can run (optional)'
+    required: false
+    default: ''
+  kubernetes-job-ttl-seconds-after-finished:
+    description: 'Cleanup time after Job completion in seconds'
+    required: false
+    default: '86400'
+  kubernetes-job-restart-policy:
+    description: 'Pod restart policy (Never or OnFailure)'
+    required: false
+    default: 'Never'
+  kubernetes-job-env-sub-path:
+    description: 'Path to Job environment variables directory'
+    required: false
+    default: ''
+  kubernetes-job-additional-labels:
+    description: 'Additional labels for Job resources (key=value,key=value)'
+    required: false
+    default: ''
+  kubernetes-job-additional-annotations:
+    description: 'Additional annotations for Job resources (key=value,key=value)'
+    required: false
+    default: ''
+  kubernetes-job-liveness-probe-enabled:
+    description: 'Enable liveness probe (uses workload probe settings when true)'
+    required: false
+    default: 'false'
+  kubernetes-job-readiness-probe-enabled:
+    description: 'Enable readiness probe (uses workload probe settings when true)'
+    required: false
+    default: 'false'
+  kubernetes-job-startup-probe-enabled:
+    description: 'Enable startup probe (uses workload probe settings when true)'
+    required: false
+    default: 'false'
+  # Kubernetes CronJob generation inputs
+  kubernetes-cronjob-generation-enabled:
+    description: 'Enable CronJob generation (true or false)'
+    required: false
+    default: 'false'
+  kubernetes-cronjob-name-suffix:
+    description: 'Optional suffix for CronJob name and filename'
+    required: false
+    default: ''
+  kubernetes-cronjob-combined-sub-path:
+    description: 'Sub-path within combined/ for output'
+    required: false
+    default: ''
+  kubernetes-cronjob-concurrency-policy:
+    description: 'How to handle concurrent job runs (Allow, Forbid, Replace)'
+    required: false
+    default: 'Forbid'
+  kubernetes-cronjob-starting-deadline-seconds:
+    description: 'Deadline for starting job if missed scheduled time (optional)'
+    required: false
+    default: ''
+  kubernetes-cronjob-successful-jobs-history-limit:
+    description: 'Number of successful jobs to retain for log collection'
+    required: false
+    default: '1'
+  kubernetes-cronjob-failed-jobs-history-limit:
+    description: 'Number of failed jobs to retain to show failure patterns'
+    required: false
+    default: '5'
+  kubernetes-cronjob-backoff-limit:
+    description: 'Number of retries before marking job as failed'
+    required: false
+    default: '6'
+  kubernetes-cronjob-completions:
+    description: 'Number of successful completions needed'
+    required: false
+    default: '1'
+  kubernetes-cronjob-parallelism:
+    description: 'Number of pods running at any time'
+    required: false
+    default: '1'
+  kubernetes-cronjob-active-deadline-seconds:
+    description: 'Maximum time in seconds the job can run (optional)'
+    required: false
+    default: ''
+  kubernetes-cronjob-restart-policy:
+    description: 'Pod restart policy (Never or OnFailure)'
+    required: false
+    default: 'Never'
+  kubernetes-cronjob-env-sub-path:
+    description: 'Path to CronJob environment variables directory'
+    required: false
+    default: ''
+  kubernetes-cronjob-additional-labels:
+    description: 'Additional labels for CronJob resources (key=value,key=value)'
+    required: false
+    default: ''
+  kubernetes-cronjob-additional-annotations:
+    description: 'Additional annotations for CronJob resources (key=value,key=value)'
+    required: false
+    default: ''
+  kubernetes-cronjob-liveness-probe-enabled:
+    description: 'Enable liveness probe (uses workload probe settings when true)'
+    required: false
+    default: 'false'
+  kubernetes-cronjob-readiness-probe-enabled:
+    description: 'Enable readiness probe (uses workload probe settings when true)'
+    required: false
+    default: 'false'
+  kubernetes-cronjob-startup-probe-enabled:
+    description: 'Enable startup probe (uses workload probe settings when true)'
+    required: false
+    default: 'false'
   # Token substitution
   token-delimiter-style:
     description: 'Token delimiter syntax for variables (shell, mustache, helm, erb, github-actions, blade, stringtemplate, ognl, t4, swift)'
@@ -463,6 +605,10 @@ runs:
         KUBERNETES_WORKLOAD_PRESTOP_COMMAND: ${{ inputs.kubernetes-workload-prestop-command }}
         KUBERNETES_WORKLOAD_AFFINITY_STRATEGY: ${{ inputs.kubernetes-workload-affinity-strategy }}
         KUBERNETES_WORKLOAD_TOLERATIONS: ${{ inputs.kubernetes-workload-tolerations }}
+        KUBERNETES_WORKLOAD_NODE_SELECTOR: ${{ inputs.kubernetes-workload-node-selector }}
+        KUBERNETES_WORKLOAD_DNS_POLICY: ${{ inputs.kubernetes-workload-dns-policy }}
+        KUBERNETES_WORKLOAD_CONTAINER_COMMAND: ${{ inputs.kubernetes-workload-container-command }}
+        KUBERNETES_WORKLOAD_CONTAINER_ARGS: ${{ inputs.kubernetes-workload-container-args }}
         # Liveness probe
         KUBERNETES_WORKLOAD_PROBE_LIVENESS_CHECK_TYPE: ${{ inputs.kubernetes-workload-probe-liveness-check-type }}
         KUBERNETES_WORKLOAD_PROBE_LIVENESS_HTTP_PATH: ${{ inputs.kubernetes-workload-probe-liveness-http-path }}

@@ -143,6 +143,16 @@ kubernetes-workload-tolerations:
   required: false
   type: string
   default: ''
+kubernetes-workload-node-selector:
+  description: 'Node selector (comma-separated key=value pairs, e.g., disktype=ssd,zone=us-east-1a)'
+  required: false
+  type: string
+  default: ''
+kubernetes-workload-dns-policy:
+  description: 'DNS policy (ClusterFirst, ClusterFirstWithHostNet, Default, None)'
+  required: false
+  type: string
+  default: ''
 # Liveness probe inputs
 kubernetes-workload-probe-liveness-check-type:
   description: 'Liveness probe type (http-get, tcp-socket, exec, grpc, none)'

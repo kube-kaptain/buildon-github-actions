@@ -1,0 +1,94 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
+#
+# Kubernetes CronJob generation inputs
+kubernetes-cronjob-generation-enabled:
+  description: 'Enable CronJob generation (true or false)'
+  required: false
+  type: string
+  default: 'false'
+kubernetes-cronjob-name-suffix:
+  description: 'Optional suffix for CronJob name and filename'
+  required: false
+  type: string
+  default: ''
+kubernetes-cronjob-combined-sub-path:
+  description: 'Sub-path within combined/ for output'
+  required: false
+  type: string
+  default: ''
+kubernetes-cronjob-concurrency-policy:
+  description: 'How to handle concurrent job runs (Allow, Forbid, Replace)'
+  required: false
+  type: string
+  default: 'Forbid'
+kubernetes-cronjob-starting-deadline-seconds:
+  description: 'Deadline for starting job if missed scheduled time (optional)'
+  required: false
+  type: string
+  default: ''
+kubernetes-cronjob-successful-jobs-history-limit:
+  description: 'Number of successful jobs to retain for log collection'
+  required: false
+  type: string
+  default: '1'
+kubernetes-cronjob-failed-jobs-history-limit:
+  description: 'Number of failed jobs to retain to show failure patterns'
+  required: false
+  type: string
+  default: '5'
+kubernetes-cronjob-backoff-limit:
+  description: 'Number of retries before marking job as failed'
+  required: false
+  type: string
+  default: '6'
+kubernetes-cronjob-completions:
+  description: 'Number of successful completions needed'
+  required: false
+  type: string
+  default: '1'
+kubernetes-cronjob-parallelism:
+  description: 'Number of pods running at any time'
+  required: false
+  type: string
+  default: '1'
+kubernetes-cronjob-active-deadline-seconds:
+  description: 'Maximum time in seconds the job can run (optional)'
+  required: false
+  type: string
+  default: ''
+kubernetes-cronjob-restart-policy:
+  description: 'Pod restart policy (Never or OnFailure)'
+  required: false
+  type: string
+  default: 'Never'
+kubernetes-cronjob-env-sub-path:
+  description: 'Path to CronJob environment variables directory'
+  required: false
+  type: string
+  default: ''
+kubernetes-cronjob-additional-labels:
+  description: 'Additional labels for CronJob resources (key=value,key=value)'
+  required: false
+  type: string
+  default: ''
+kubernetes-cronjob-additional-annotations:
+  description: 'Additional annotations for CronJob resources (key=value,key=value)'
+  required: false
+  type: string
+  default: ''
+kubernetes-cronjob-liveness-probe-enabled:
+  description: 'Enable liveness probe (uses workload probe settings when true)'
+  required: false
+  type: string
+  default: 'false'
+kubernetes-cronjob-readiness-probe-enabled:
+  description: 'Enable readiness probe (uses workload probe settings when true)'
+  required: false
+  type: string
+  default: 'false'
+kubernetes-cronjob-startup-probe-enabled:
+  description: 'Enable startup probe (uses workload probe settings when true)'
+  required: false
+  type: string
+  default: 'false'
