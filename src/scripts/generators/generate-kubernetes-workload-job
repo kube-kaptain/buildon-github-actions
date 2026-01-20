@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
 #
-# generate-kubernetes-job - Generates a Kubernetes Job manifest
+# generate-kubernetes-workload-job - Generates a Kubernetes Job manifest
 #
 # Creates a Job resource with versioned naming. The metadata.name includes
 # the version token, ensuring each version creates a new Job. Combined with

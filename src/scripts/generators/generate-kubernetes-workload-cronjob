@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
 #
-# generate-kubernetes-cronjob - Generates a Kubernetes CronJob manifest
+# generate-kubernetes-workload-cronjob - Generates a Kubernetes CronJob manifest
 #
 # Creates a CronJob resource for scheduled job execution. Unlike Jobs,
 # CronJobs are NOT versioned - they run repeatedly on schedule.

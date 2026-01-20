@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
 #
-# Tests for generate-kubernetes-job
+# Tests for generate-kubernetes-workload-job
 
 load helpers
 
@@ -40,7 +40,7 @@ read_manifest_in_subpath() {
 @test "skips generation when not enabled" {
   export KUBERNETES_JOB_GENERATION_ENABLED="false"
 
-  run "$GENERATORS_DIR/generate-kubernetes-job"
+  run "$GENERATORS_DIR/generate-kubernetes-workload-job"
   [ "$status" -eq 0 ]
   [[ "$output" == *"not enabled"* ]]
   [ ! -f "$OUTPUT_SUB_PATH/manifests/combined/job.yaml" ]
@@ -49,14 +49,14 @@ read_manifest_in_subpath() {
 @test "skips generation when enabled not set" {
   unset KUBERNETES_JOB_GENERATION_ENABLED
 
-  run "$GENERATORS_DIR/generate-kubernetes-job"
+  run "$GENERATORS_DIR/generate-kubernetes-workload-job"
   [ "$status" -eq 0 ]
   [[ "$output" == *"not enabled"* ]]
   [ ! -f "$OUTPUT_SUB_PATH/manifests/combined/job.yaml" ]
 }
 
 @test "generates when explicitly enabled" {
-  run "$GENERATORS_DIR/generate-kubernetes-job"
+  run "$GENERATORS_DIR/generate-kubernetes-workload-job"
   [ "$status" -eq 0 ]
   [ -f "$OUTPUT_SUB_PATH/manifests/combined/job.yaml" ]
 }
@@ -66,7 +66,7 @@ read_manifest_in_subpath() {
 # =============================================================================
 
 @test "generates valid Job structure" {
-  run "$GENERATORS_DIR/generate-kubernetes-job"
+  run "$GENERATORS_DIR/generate-kubernetes-workload-job"
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
@@ -78,7 +78,7 @@ read_manifest_in_subpath() {
 }
 
 @test "job name includes version token and job-checksum suffix" {
-  run "$GENERATORS_DIR/generate-kubernetes-job"
+  run "$GENERATORS_DIR/generate-kubernetes-workload-job"
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
@@ -89,7 +89,7 @@ read_manifest_in_subpath() {
 @test "job name with suffix includes version before job-checksum" {
   export KUBERNETES_JOB_NAME_SUFFIX="migrate"
 
-  run "$GENERATORS_DIR/generate-kubernetes-job"
+  run "$GENERATORS_DIR/generate-kubernetes-workload-job"
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest_with_suffix "migrate")
@@ -100,7 +100,7 @@ read_manifest_in_subpath() {
 @test "job name with combined-sub-path includes version before job-checksum" {
   export KUBERNETES_JOB_COMBINED_SUB_PATH="db"
 
-  run "$GENERATORS_DIR/generate-kubernetes-job"
+  run "$GENERATORS_DIR/generate-kubernetes-workload-job"
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest_in_subpath "db")
@@ -112,7 +112,7 @@ read_manifest_in_subpath() {
   export KUBERNETES_JOB_COMBINED_SUB_PATH="db"
   export KUBERNETES_JOB_NAME_SUFFIX="migrate"
 
-  run "$GENERATORS_DIR/generate-kubernetes-job"
+  run "$GENERATORS_DIR/generate-kubernetes-workload-job"
   [ "$status" -eq 0 ]
 
   [ -f "$OUTPUT_SUB_PATH/manifests/combined/db/job-migrate.yaml" ]
@@ -122,7 +122,7 @@ read_manifest_in_subpath() {
 }
 
 @test "includes namespace token" {
-  run "$GENERATORS_DIR/generate-kubernetes-job"
+  run "$GENERATORS_DIR/generate-kubernetes-workload-job"
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
@@ -134,7 +134,7 @@ read_manifest_in_subpath() {
 # =============================================================================
 
 @test "includes default backoffLimit" {
-  run "$GENERATORS_DIR/generate-kubernetes-job"
+  run "$GENERATORS_DIR/generate-kubernetes-workload-job"
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
@@ -144,7 +144,7 @@ read_manifest_in_subpath() {
 @test "respects custom backoffLimit" {
   export KUBERNETES_JOB_BACKOFF_LIMIT="3"
 
-  run "$GENERATORS_DIR/generate-kubernetes-job"
+  run "$GENERATORS_DIR/generate-kubernetes-workload-job"
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
@@ -152,7 +152,7 @@ read_manifest_in_subpath() {
 }
 
 @test "includes default completions" {
-  run "$GENERATORS_DIR/generate-kubernetes-job"
+  run "$GENERATORS_DIR/generate-kubernetes-workload-job"
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
@@ -162,7 +162,7 @@ read_manifest_in_subpath() {
 @test "respects custom completions" {
   export KUBERNETES_JOB_COMPLETIONS="5"
 
-  run "$GENERATORS_DIR/generate-kubernetes-job"
+  run "$GENERATORS_DIR/generate-kubernetes-workload-job"
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
@@ -170,7 +170,7 @@ read_manifest_in_subpath() {
 }
 
 @test "includes default parallelism" {
-  run "$GENERATORS_DIR/generate-kubernetes-job"
+  run "$GENERATORS_DIR/generate-kubernetes-workload-job"
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
@@ -180,7 +180,7 @@ read_manifest_in_subpath() {
 @test "respects custom parallelism" {
   export KUBERNETES_JOB_PARALLELISM="3"
 
-  run "$GENERATORS_DIR/generate-kubernetes-job"
+  run "$GENERATORS_DIR/generate-kubernetes-workload-job"
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
@@ -188,7 +188,7 @@ read_manifest_in_subpath() {
 }
 
 @test "includes ttlSecondsAfterFinished by default" {
-  run "$GENERATORS_DIR/generate-kubernetes-job"
+  run "$GENERATORS_DIR/generate-kubernetes-workload-job"
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
@@ -198,7 +198,7 @@ read_manifest_in_subpath() {
 @test "respects custom ttlSecondsAfterFinished" {
   export KUBERNETES_JOB_TTL_SECONDS_AFTER_FINISHED="3600"
 
-  run "$GENERATORS_DIR/generate-kubernetes-job"
+  run "$GENERATORS_DIR/generate-kubernetes-workload-job"
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
@@ -206,7 +206,7 @@ read_manifest_in_subpath() {
 }
 
 @test "omits activeDeadlineSeconds when not set" {
-  run "$GENERATORS_DIR/generate-kubernetes-job"
+  run "$GENERATORS_DIR/generate-kubernetes-workload-job"
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
@@ -216,7 +216,7 @@ read_manifest_in_subpath() {
 @test "includes activeDeadlineSeconds when set" {
   export KUBERNETES_JOB_ACTIVE_DEADLINE_SECONDS="600"
 
-  run "$GENERATORS_DIR/generate-kubernetes-job"
+  run "$GENERATORS_DIR/generate-kubernetes-workload-job"
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
@@ -228,7 +228,7 @@ read_manifest_in_subpath() {
 # =============================================================================
 
 @test "default restart policy is Never" {
-  run "$GENERATORS_DIR/generate-kubernetes-job"
+  run "$GENERATORS_DIR/generate-kubernetes-workload-job"
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
@@ -238,7 +238,7 @@ read_manifest_in_subpath() {
 @test "allows OnFailure restart policy" {
   export KUBERNETES_JOB_RESTART_POLICY="OnFailure"
 
-  run "$GENERATORS_DIR/generate-kubernetes-job"
+  run "$GENERATORS_DIR/generate-kubernetes-workload-job"
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
@@ -248,7 +248,7 @@ read_manifest_in_subpath() {
 @test "rejects Always restart policy" {
   export KUBERNETES_JOB_RESTART_POLICY="Always"
 
-  run "$GENERATORS_DIR/generate-kubernetes-job"
+  run "$GENERATORS_DIR/generate-kubernetes-workload-job"
   [ "$status" -ne 0 ]
   [[ "$output" == *"must be 'Never' or 'OnFailure'"* ]]
 }
@@ -256,7 +256,7 @@ read_manifest_in_subpath() {
 @test "rejects invalid restart policy" {
   export KUBERNETES_JOB_RESTART_POLICY="invalid"
 
-  run "$GENERATORS_DIR/generate-kubernetes-job"
+  run "$GENERATORS_DIR/generate-kubernetes-workload-job"
   [ "$status" -ne 0 ]
   [[ "$output" == *"must be 'Never' or 'OnFailure'"* ]]
 }
@@ -266,7 +266,7 @@ read_manifest_in_subpath() {
 # =============================================================================
 
 @test "omits command when not set" {
-  run "$GENERATORS_DIR/generate-kubernetes-job"
+  run "$GENERATORS_DIR/generate-kubernetes-workload-job"
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
@@ -276,7 +276,7 @@ read_manifest_in_subpath() {
 @test "includes command when set" {
   export KUBERNETES_WORKLOAD_CONTAINER_COMMAND='/bin/sh -c'
 
-  run "$GENERATORS_DIR/generate-kubernetes-job"
+  run "$GENERATORS_DIR/generate-kubernetes-workload-job"
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
@@ -286,7 +286,7 @@ read_manifest_in_subpath() {
 }
 
 @test "omits args when not set" {
-  run "$GENERATORS_DIR/generate-kubernetes-job"
+  run "$GENERATORS_DIR/generate-kubernetes-workload-job"
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
@@ -297,7 +297,7 @@ read_manifest_in_subpath() {
   export KUBERNETES_WORKLOAD_CONTAINER_COMMAND='/bin/sh -c'
   export KUBERNETES_WORKLOAD_CONTAINER_ARGS='"echo hello"'
 
-  run "$GENERATORS_DIR/generate-kubernetes-job"
+  run "$GENERATORS_DIR/generate-kubernetes-workload-job"
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
@@ -310,7 +310,7 @@ read_manifest_in_subpath() {
 # =============================================================================
 
 @test "includes standard labels" {
-  run "$GENERATORS_DIR/generate-kubernetes-job"
+  run "$GENERATORS_DIR/generate-kubernetes-workload-job"
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
@@ -322,7 +322,7 @@ read_manifest_in_subpath() {
 }
 
 @test "includes kaptain annotations" {
-  run "$GENERATORS_DIR/generate-kubernetes-job"
+  run "$GENERATORS_DIR/generate-kubernetes-workload-job"
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
@@ -330,7 +330,7 @@ read_manifest_in_subpath() {
   [[ "$manifest" == *'kaptain/project-name: ${ProjectName}'* ]]
   [[ "$manifest" == *'kaptain/version: ${Version}'* ]]
   [[ "$manifest" == *"kaptain/build-timestamp:"* ]]
-  [[ "$manifest" == *'kaptain/generated-by: "Generated by Kaptain generate-kubernetes-job"'* ]]
+  [[ "$manifest" == *'kaptain/generated-by: "Generated by Kaptain generate-kubernetes-workload-job"'* ]]
 }
 
 # =============================================================================
@@ -340,7 +340,7 @@ read_manifest_in_subpath() {
 @test "respects PascalCase token name style" {
   export TOKEN_NAME_STYLE="PascalCase"
 
-  run "$GENERATORS_DIR/generate-kubernetes-job"
+  run "$GENERATORS_DIR/generate-kubernetes-workload-job"
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
@@ -352,7 +352,7 @@ read_manifest_in_subpath() {
 @test "respects lower-kebab token name style" {
   export TOKEN_NAME_STYLE="lower-kebab"
 
-  run "$GENERATORS_DIR/generate-kubernetes-job"
+  run "$GENERATORS_DIR/generate-kubernetes-workload-job"
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
@@ -364,7 +364,7 @@ read_manifest_in_subpath() {
 @test "respects mustache substitution style" {
   export TOKEN_DELIMITER_STYLE="mustache"
 
-  run "$GENERATORS_DIR/generate-kubernetes-job"
+  run "$GENERATORS_DIR/generate-kubernetes-workload-job"
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
@@ -378,7 +378,7 @@ read_manifest_in_subpath() {
 # =============================================================================
 
 @test "includes container section" {
-  run "$GENERATORS_DIR/generate-kubernetes-job"
+  run "$GENERATORS_DIR/generate-kubernetes-workload-job"
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
@@ -389,7 +389,7 @@ read_manifest_in_subpath() {
 }
 
 @test "includes termination grace period" {
-  run "$GENERATORS_DIR/generate-kubernetes-job"
+  run "$GENERATORS_DIR/generate-kubernetes-workload-job"
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
@@ -397,7 +397,7 @@ read_manifest_in_subpath() {
 }
 
 @test "includes resource requests and limits" {
-  run "$GENERATORS_DIR/generate-kubernetes-job"
+  run "$GENERATORS_DIR/generate-kubernetes-workload-job"
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
@@ -407,7 +407,7 @@ read_manifest_in_subpath() {
 }
 
 @test "includes security context" {
-  run "$GENERATORS_DIR/generate-kubernetes-job"
+  run "$GENERATORS_DIR/generate-kubernetes-workload-job"
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
@@ -421,7 +421,7 @@ read_manifest_in_subpath() {
 @test "creates output directory if missing" {
   export OUTPUT_SUB_PATH="${OUTPUT_SUB_PATH}/fresh-subdir"
 
-  run "$GENERATORS_DIR/generate-kubernetes-job"
+  run "$GENERATORS_DIR/generate-kubernetes-workload-job"
   [ "$status" -eq 0 ]
   [ -f "$OUTPUT_SUB_PATH/manifests/combined/job.yaml" ]
 }
@@ -429,7 +429,7 @@ read_manifest_in_subpath() {
 @test "suffix affects output filename" {
   export KUBERNETES_JOB_NAME_SUFFIX="migrate"
 
-  run "$GENERATORS_DIR/generate-kubernetes-job"
+  run "$GENERATORS_DIR/generate-kubernetes-workload-job"
   [ "$status" -eq 0 ]
   [ -f "$OUTPUT_SUB_PATH/manifests/combined/job-migrate.yaml" ]
 }
@@ -437,7 +437,7 @@ read_manifest_in_subpath() {
 @test "combined sub-path creates subdirectory" {
   export KUBERNETES_JOB_COMBINED_SUB_PATH="migrations"
 
-  run "$GENERATORS_DIR/generate-kubernetes-job"
+  run "$GENERATORS_DIR/generate-kubernetes-workload-job"
   [ "$status" -eq 0 ]
   [ -f "$OUTPUT_SUB_PATH/manifests/combined/migrations/job.yaml" ]
 }
@@ -449,7 +449,7 @@ read_manifest_in_subpath() {
 @test "adds global additional labels" {
   export KUBERNETES_GLOBAL_ADDITIONAL_LABELS="team=platform,cost-center=123"
 
-  run "$GENERATORS_DIR/generate-kubernetes-job"
+  run "$GENERATORS_DIR/generate-kubernetes-workload-job"
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
@@ -460,7 +460,7 @@ read_manifest_in_subpath() {
 @test "adds job-specific additional labels" {
   export KUBERNETES_JOB_ADDITIONAL_LABELS="job-type=migration"
 
-  run "$GENERATORS_DIR/generate-kubernetes-job"
+  run "$GENERATORS_DIR/generate-kubernetes-workload-job"
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
@@ -471,7 +471,7 @@ read_manifest_in_subpath() {
   export KUBERNETES_GLOBAL_ADDITIONAL_LABELS="team=platform"
   export KUBERNETES_JOB_ADDITIONAL_LABELS="team=override"
 
-  run "$GENERATORS_DIR/generate-kubernetes-job"
+  run "$GENERATORS_DIR/generate-kubernetes-workload-job"
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
@@ -484,7 +484,7 @@ read_manifest_in_subpath() {
 # =============================================================================
 
 @test "probes disabled by default" {
-  run "$GENERATORS_DIR/generate-kubernetes-job"
+  run "$GENERATORS_DIR/generate-kubernetes-workload-job"
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
@@ -496,7 +496,7 @@ read_manifest_in_subpath() {
 @test "enables liveness probe when requested" {
   export KUBERNETES_JOB_LIVENESS_PROBE_ENABLED="true"
 
-  run "$GENERATORS_DIR/generate-kubernetes-job"
+  run "$GENERATORS_DIR/generate-kubernetes-workload-job"
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
@@ -510,7 +510,7 @@ read_manifest_in_subpath() {
 @test "enables readiness probe when requested" {
   export KUBERNETES_JOB_READINESS_PROBE_ENABLED="true"
 
-  run "$GENERATORS_DIR/generate-kubernetes-job"
+  run "$GENERATORS_DIR/generate-kubernetes-workload-job"
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
@@ -524,7 +524,7 @@ read_manifest_in_subpath() {
 @test "enables startup probe when requested" {
   export KUBERNETES_JOB_STARTUP_PROBE_ENABLED="true"
 
-  run "$GENERATORS_DIR/generate-kubernetes-job"
+  run "$GENERATORS_DIR/generate-kubernetes-workload-job"
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
@@ -540,7 +540,7 @@ read_manifest_in_subpath() {
   export KUBERNETES_JOB_READINESS_PROBE_ENABLED="true"
   export KUBERNETES_JOB_STARTUP_PROBE_ENABLED="true"
 
-  run "$GENERATORS_DIR/generate-kubernetes-job"
+  run "$GENERATORS_DIR/generate-kubernetes-workload-job"
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
@@ -555,7 +555,7 @@ read_manifest_in_subpath() {
   export KUBERNETES_WORKLOAD_PROBE_LIVENESS_TCP_PORT="5432"
   export KUBERNETES_WORKLOAD_PROBE_LIVENESS_INITIAL_DELAY_SECONDS="15"
 
-  run "$GENERATORS_DIR/generate-kubernetes-job"
+  run "$GENERATORS_DIR/generate-kubernetes-workload-job"
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
@@ -570,7 +570,7 @@ read_manifest_in_subpath() {
 # =============================================================================
 
 @test "default affinity strategy generates affinity block" {
-  run "$GENERATORS_DIR/generate-kubernetes-job"
+  run "$GENERATORS_DIR/generate-kubernetes-workload-job"
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
@@ -581,7 +581,7 @@ read_manifest_in_subpath() {
 @test "affinity strategy none omits affinity block" {
   export KUBERNETES_WORKLOAD_AFFINITY_STRATEGY="none"
 
-  run "$GENERATORS_DIR/generate-kubernetes-job"
+  run "$GENERATORS_DIR/generate-kubernetes-workload-job"
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
@@ -591,7 +591,7 @@ read_manifest_in_subpath() {
 @test "affinity strategy spread-nodes generates node spread" {
   export KUBERNETES_WORKLOAD_AFFINITY_STRATEGY="spread-nodes"
 
-  run "$GENERATORS_DIR/generate-kubernetes-job"
+  run "$GENERATORS_DIR/generate-kubernetes-workload-job"
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
@@ -603,7 +603,7 @@ read_manifest_in_subpath() {
   export KUBERNETES_WORKLOAD_AFFINITY_STRATEGY="colocate-app"
   export COLOCATE_WITH_APP="database"
 
-  run "$GENERATORS_DIR/generate-kubernetes-job"
+  run "$GENERATORS_DIR/generate-kubernetes-workload-job"
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
@@ -616,7 +616,7 @@ read_manifest_in_subpath() {
 # =============================================================================
 
 @test "ports disabled by default" {
-  run "$GENERATORS_DIR/generate-kubernetes-job"
+  run "$GENERATORS_DIR/generate-kubernetes-workload-job"
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
@@ -627,7 +627,7 @@ read_manifest_in_subpath() {
 @test "enables ports when requested" {
   export KUBERNETES_JOB_PORTS_ENABLED="true"
 
-  run "$GENERATORS_DIR/generate-kubernetes-job"
+  run "$GENERATORS_DIR/generate-kubernetes-workload-job"
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
@@ -639,7 +639,7 @@ read_manifest_in_subpath() {
   export KUBERNETES_JOB_PORTS_ENABLED="true"
   export KUBERNETES_WORKLOAD_CONTAINER_PORT="9090"
 
-  run "$GENERATORS_DIR/generate-kubernetes-job"
+  run "$GENERATORS_DIR/generate-kubernetes-workload-job"
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
@@ -651,7 +651,7 @@ read_manifest_in_subpath() {
 # =============================================================================
 
 @test "lifecycle hook omitted by default" {
-  run "$GENERATORS_DIR/generate-kubernetes-job"
+  run "$GENERATORS_DIR/generate-kubernetes-workload-job"
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
@@ -662,7 +662,7 @@ read_manifest_in_subpath() {
 @test "includes lifecycle hook when prestop command set" {
   export KUBERNETES_WORKLOAD_PRESTOP_COMMAND="echo cleanup"
 
-  run "$GENERATORS_DIR/generate-kubernetes-job"
+  run "$GENERATORS_DIR/generate-kubernetes-workload-job"
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
@@ -676,7 +676,7 @@ read_manifest_in_subpath() {
 # =============================================================================
 
 @test "node selector omitted by default" {
-  run "$GENERATORS_DIR/generate-kubernetes-job"
+  run "$GENERATORS_DIR/generate-kubernetes-workload-job"
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
@@ -686,7 +686,7 @@ read_manifest_in_subpath() {
 @test "includes node selector when set" {
   export KUBERNETES_WORKLOAD_NODE_SELECTOR="disktype=ssd"
 
-  run "$GENERATORS_DIR/generate-kubernetes-job"
+  run "$GENERATORS_DIR/generate-kubernetes-workload-job"
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
@@ -697,7 +697,7 @@ read_manifest_in_subpath() {
 @test "node selector supports multiple values" {
   export KUBERNETES_WORKLOAD_NODE_SELECTOR="disktype=ssd,zone=us-east-1a"
 
-  run "$GENERATORS_DIR/generate-kubernetes-job"
+  run "$GENERATORS_DIR/generate-kubernetes-workload-job"
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
@@ -710,7 +710,7 @@ read_manifest_in_subpath() {
 # =============================================================================
 
 @test "dns policy omitted by default" {
-  run "$GENERATORS_DIR/generate-kubernetes-job"
+  run "$GENERATORS_DIR/generate-kubernetes-workload-job"
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
@@ -720,7 +720,7 @@ read_manifest_in_subpath() {
 @test "includes dns policy when set" {
   export KUBERNETES_WORKLOAD_DNS_POLICY="ClusterFirst"
 
-  run "$GENERATORS_DIR/generate-kubernetes-job"
+  run "$GENERATORS_DIR/generate-kubernetes-workload-job"
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
@@ -730,7 +730,7 @@ read_manifest_in_subpath() {
 @test "rejects invalid dns policy" {
   export KUBERNETES_WORKLOAD_DNS_POLICY="InvalidPolicy"
 
-  run "$GENERATORS_DIR/generate-kubernetes-job"
+  run "$GENERATORS_DIR/generate-kubernetes-workload-job"
   [ "$status" -eq 4 ]
   [[ "$output" == *"must be"* ]]
 }
