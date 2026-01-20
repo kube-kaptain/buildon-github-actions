@@ -11,7 +11,6 @@ setup() {
   export PROJECT_NAME="my-project"
   export TOKEN_NAME_STYLE="PascalCase"
   export TOKEN_DELIMITER_STYLE="shell"
-  export KUBERNETES_CRONJOB_GENERATION_ENABLED="true"
 }
 
 teardown() {
@@ -31,34 +30,6 @@ read_manifest_with_suffix() {
 read_manifest_in_subpath() {
   local subpath="$1"
   cat "$OUTPUT_SUB_PATH/manifests/combined/${subpath}/cronjob.yaml"
-}
-
-# =============================================================================
-# Generation enabled/disabled
-# =============================================================================
-
-@test "skips generation when not enabled" {
-  export KUBERNETES_CRONJOB_GENERATION_ENABLED="false"
-
-  run "$GENERATORS_DIR/generate-kubernetes-workload-cronjob"
-  [ "$status" -eq 0 ]
-  [[ "$output" == *"not enabled"* ]]
-  [ ! -f "$OUTPUT_SUB_PATH/manifests/combined/cronjob.yaml" ]
-}
-
-@test "skips generation when enabled not set" {
-  unset KUBERNETES_CRONJOB_GENERATION_ENABLED
-
-  run "$GENERATORS_DIR/generate-kubernetes-workload-cronjob"
-  [ "$status" -eq 0 ]
-  [[ "$output" == *"not enabled"* ]]
-  [ ! -f "$OUTPUT_SUB_PATH/manifests/combined/cronjob.yaml" ]
-}
-
-@test "generates when explicitly enabled" {
-  run "$GENERATORS_DIR/generate-kubernetes-workload-cronjob"
-  [ "$status" -eq 0 ]
-  [ -f "$OUTPUT_SUB_PATH/manifests/combined/cronjob.yaml" ]
 }
 
 # =============================================================================

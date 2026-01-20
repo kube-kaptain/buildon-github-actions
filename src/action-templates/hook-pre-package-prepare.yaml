@@ -186,6 +186,39 @@ runs:
         KUBERNETES_STATEFULSET_PVC_ACCESS_MODE: ${{ inputs.kubernetes-statefulset-pvc-access-mode }}
         KUBERNETES_STATEFULSET_PVC_VOLUME_NAME: ${{ inputs.kubernetes-statefulset-pvc-volume-name }}
         KUBERNETES_STATEFULSET_PVC_MOUNT_PATH: ${{ inputs.kubernetes-statefulset-pvc-mount-path }}
+        # Workflow inputs - job unique
+        KUBERNETES_JOB_NAME_SUFFIX: ${{ inputs.kubernetes-job-name-suffix }}
+        KUBERNETES_JOB_COMBINED_SUB_PATH: ${{ inputs.kubernetes-job-combined-sub-path }}
+        KUBERNETES_JOB_BACKOFF_LIMIT: ${{ inputs.kubernetes-job-backoff-limit }}
+        KUBERNETES_JOB_COMPLETIONS: ${{ inputs.kubernetes-job-completions }}
+        KUBERNETES_JOB_PARALLELISM: ${{ inputs.kubernetes-job-parallelism }}
+        KUBERNETES_JOB_ACTIVE_DEADLINE_SECONDS: ${{ inputs.kubernetes-job-active-deadline-seconds }}
+        KUBERNETES_JOB_TTL_SECONDS_AFTER_FINISHED: ${{ inputs.kubernetes-job-ttl-seconds-after-finished }}
+        KUBERNETES_JOB_RESTART_POLICY: ${{ inputs.kubernetes-job-restart-policy }}
+        KUBERNETES_JOB_ENV_SUB_PATH: ${{ inputs.kubernetes-job-env-sub-path }}
+        KUBERNETES_JOB_ADDITIONAL_LABELS: ${{ inputs.kubernetes-job-additional-labels }}
+        KUBERNETES_JOB_ADDITIONAL_ANNOTATIONS: ${{ inputs.kubernetes-job-additional-annotations }}
+        KUBERNETES_JOB_LIVENESS_PROBE_ENABLED: ${{ inputs.kubernetes-job-liveness-probe-enabled }}
+        KUBERNETES_JOB_READINESS_PROBE_ENABLED: ${{ inputs.kubernetes-job-readiness-probe-enabled }}
+        KUBERNETES_JOB_STARTUP_PROBE_ENABLED: ${{ inputs.kubernetes-job-startup-probe-enabled }}
+        # Workflow inputs - cronjob unique
+        KUBERNETES_CRONJOB_NAME_SUFFIX: ${{ inputs.kubernetes-cronjob-name-suffix }}
+        KUBERNETES_CRONJOB_COMBINED_SUB_PATH: ${{ inputs.kubernetes-cronjob-combined-sub-path }}
+        KUBERNETES_CRONJOB_CONCURRENCY_POLICY: ${{ inputs.kubernetes-cronjob-concurrency-policy }}
+        KUBERNETES_CRONJOB_STARTING_DEADLINE_SECONDS: ${{ inputs.kubernetes-cronjob-starting-deadline-seconds }}
+        KUBERNETES_CRONJOB_SUCCESSFUL_JOBS_HISTORY_LIMIT: ${{ inputs.kubernetes-cronjob-successful-jobs-history-limit }}
+        KUBERNETES_CRONJOB_FAILED_JOBS_HISTORY_LIMIT: ${{ inputs.kubernetes-cronjob-failed-jobs-history-limit }}
+        KUBERNETES_CRONJOB_BACKOFF_LIMIT: ${{ inputs.kubernetes-cronjob-backoff-limit }}
+        KUBERNETES_CRONJOB_COMPLETIONS: ${{ inputs.kubernetes-cronjob-completions }}
+        KUBERNETES_CRONJOB_PARALLELISM: ${{ inputs.kubernetes-cronjob-parallelism }}
+        KUBERNETES_CRONJOB_ACTIVE_DEADLINE_SECONDS: ${{ inputs.kubernetes-cronjob-active-deadline-seconds }}
+        KUBERNETES_CRONJOB_RESTART_POLICY: ${{ inputs.kubernetes-cronjob-restart-policy }}
+        KUBERNETES_CRONJOB_ENV_SUB_PATH: ${{ inputs.kubernetes-cronjob-env-sub-path }}
+        KUBERNETES_CRONJOB_ADDITIONAL_LABELS: ${{ inputs.kubernetes-cronjob-additional-labels }}
+        KUBERNETES_CRONJOB_ADDITIONAL_ANNOTATIONS: ${{ inputs.kubernetes-cronjob-additional-annotations }}
+        KUBERNETES_CRONJOB_LIVENESS_PROBE_ENABLED: ${{ inputs.kubernetes-cronjob-liveness-probe-enabled }}
+        KUBERNETES_CRONJOB_READINESS_PROBE_ENABLED: ${{ inputs.kubernetes-cronjob-readiness-probe-enabled }}
+        KUBERNETES_CRONJOB_STARTUP_PROBE_ENABLED: ${{ inputs.kubernetes-cronjob-startup-probe-enabled }}
         # Workflow inputs - kubernetes service generation
         KUBERNETES_SERVICE_GENERATION_ENABLED: ${{ inputs.kubernetes-service-generation-enabled }}
         KUBERNETES_SERVICE_TYPE: ${{ inputs.kubernetes-service-type }}
