@@ -81,6 +81,10 @@ jobs:
       # kubernetes-workload-prestop-command: 'sleep 5'  # PreStop hook for graceful shutdown
       # kubernetes-workload-affinity-strategy: 'spread-nodes-and-zones-ha'  # Pod affinity plugin
 
+      # Container command override (shell-style, quotes respected)
+      # kubernetes-workload-container-command: '/bin/sh -c'
+      # kubernetes-workload-container-args: '"./entrypoint.sh && exec app"'
+
       # Replica management
       # kubernetes-deployment-replicas: ''  # Empty = tokenized ${Replicas} for deploy-time config
       # kubernetes-deployment-replicas: 'NO'  # Omit replicas field entirely (for HPA management)

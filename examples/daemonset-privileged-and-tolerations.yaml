@@ -104,6 +104,13 @@ jobs:
       kubernetes-daemonset-min-ready-seconds: '5'
 
       # ┌─────────────────────────────────────────────────────────────────────┐
+      # │ Container Command Override                                          │
+      # └─────────────────────────────────────────────────────────────────────┘
+      # Override entrypoint and args (shell-style, quotes respected)
+      # kubernetes-workload-container-command: '/bin/sh -c'
+      # kubernetes-workload-container-args: '"./agent.sh --privileged"'
+
+      # ┌─────────────────────────────────────────────────────────────────────┐
       # │ Health Probes                                                       │
       # └─────────────────────────────────────────────────────────────────────┘
       kubernetes-workload-probe-liveness-check-type: 'http-get'

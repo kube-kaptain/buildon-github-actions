@@ -217,6 +217,8 @@ See [`examples/`](examples/) for more usage patterns.
 | `kubernetes-workload-combined-sub-path` | string | `""` | Sub-path within combined/ for output |
 | `kubernetes-workload-configmap-keys-for-env` | string | `""` | Comma/space-separated ConfigMap keys to expose as env vars |
 | `kubernetes-workload-configmap-mount-path` | string | `/configmap` | ConfigMap mount path in container |
+| `kubernetes-workload-container-args` | string | `""` | Container args override (space-separated, respects quotes like shell) |
+| `kubernetes-workload-container-command` | string | `""` | Container command override (space-separated, respects quotes like shell) |
 | `kubernetes-workload-container-port` | string | `1024` | Container port |
 | `kubernetes-workload-env-sub-path` | string | `""` | Directory containing environment variable files (default per workload type) |
 | `kubernetes-workload-image-pull-secrets` | string | `ENABLED` | Include imagePullSecrets in pod spec (ENABLED/DISABLED) |

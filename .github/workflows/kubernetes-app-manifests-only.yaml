@@ -191,6 +191,16 @@ on:
         required: false
         type: string
         default: '1024'
+      kubernetes-workload-container-command:
+        description: 'Container command override (space-separated, respects quotes like shell)'
+        required: false
+        type: string
+        default: ''
+      kubernetes-workload-container-args:
+        description: 'Container args override (space-separated, respects quotes like shell)'
+        required: false
+        type: string
+        default: ''
       kubernetes-workload-image-reference-style:
         description: 'Image reference style (combined, separate, project-name-prefixed-combined, project-name-prefixed-separate)'
         required: false

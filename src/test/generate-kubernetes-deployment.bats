@@ -779,6 +779,50 @@ read_manifest_with_suffix() {
 }
 
 # =============================================================================
+# Container command and args
+# =============================================================================
+
+@test "omits command when not set" {
+  run "$GENERATORS_DIR/generate-kubernetes-workload-deployment"
+  [ "$status" -eq 0 ]
+
+  manifest=$(read_manifest)
+  [[ "$manifest" != *"command:"* ]]
+}
+
+@test "includes command when set" {
+  export KUBERNETES_WORKLOAD_CONTAINER_COMMAND='/bin/sh -c'
+
+  run "$GENERATORS_DIR/generate-kubernetes-workload-deployment"
+  [ "$status" -eq 0 ]
+
+  manifest=$(read_manifest)
+  assert_contains "$manifest" "command:"
+  assert_contains "$manifest" "- /bin/sh"
+  assert_contains "$manifest" "- -c"
+}
+
+@test "omits args when not set" {
+  run "$GENERATORS_DIR/generate-kubernetes-workload-deployment"
+  [ "$status" -eq 0 ]
+
+  manifest=$(read_manifest)
+  [[ "$manifest" != *"args:"* ]]
+}
+
+@test "includes args when set" {
+  export KUBERNETES_WORKLOAD_CONTAINER_COMMAND='/bin/sh -c'
+  export KUBERNETES_WORKLOAD_CONTAINER_ARGS='"echo hello && sleep 10"'
+
+  run "$GENERATORS_DIR/generate-kubernetes-workload-deployment"
+  [ "$status" -eq 0 ]
+
+  manifest=$(read_manifest)
+  assert_contains "$manifest" "args:"
+  assert_contains "$manifest" "echo hello && sleep 10"
+}
+
+# =============================================================================
 # Validation
 # =============================================================================
 

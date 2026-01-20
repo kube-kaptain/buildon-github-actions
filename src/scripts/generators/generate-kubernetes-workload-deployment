@@ -243,6 +243,10 @@ script_name=$(basename "${BASH_SOURCE[0]}")
   echo "      containers:"
   generate_container_start 8 "default-app" "${image_reference}"
 
+  # Command and args (optional overrides)
+  generate_container_command 10 "${CONTAINER_COMMAND}"
+  generate_container_args 10 "${CONTAINER_ARGS}"
+
   # Ports
   generate_container_ports 10 "${CONTAINER_PORT}"
 

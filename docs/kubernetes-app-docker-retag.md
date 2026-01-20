@@ -42,6 +42,8 @@ Kubernetes App - Docker Retag
 | `kubernetes-workload-additional-labels` | string | `""` | Additional labels specific to workload (comma-separated key=value) |
 | `kubernetes-workload-additional-annotations` | string | `""` | Additional annotations specific to workload (comma-separated key=value) |
 | `kubernetes-workload-container-port` | string | `1024` | Container port |
+| `kubernetes-workload-container-command` | string | `""` | Container command override (space-separated, respects quotes like shell) |
+| `kubernetes-workload-container-args` | string | `""` | Container args override (space-separated, respects quotes like shell) |
 | `kubernetes-workload-image-reference-style` | string | `combined` | Image reference style (combined, separate, project-name-prefixed-combined, project-name-prefixed-separate) |
 | `kubernetes-workload-readonly-root-filesystem` | boolean | `true` | Enable read-only root filesystem |
 | `kubernetes-workload-seccomp-profile` | string | `DISABLED` | Seccomp profile (DISABLED, RuntimeDefault, Localhost, Unconfined) |
