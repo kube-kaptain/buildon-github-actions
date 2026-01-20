@@ -122,6 +122,9 @@ detect_all_resources
 # =============================================================================
 
 echo "Strategy/Mode Selections" >&2
+echo "  Deployment strategy:      RollingUpdate" >&2
+echo "    maxSurge:               ${MAX_SURGE}" >&2
+echo "    maxUnavailable:         ${MAX_UNAVAILABLE}" >&2
 echo "  Affinity strategy:        ${AFFINITY_STRATEGY}" >&2
 echo "  Readonly root filesystem: ${READONLY_ROOT_FILESYSTEM}" >&2
 echo "  Seccomp profile:          ${SECCOMP_PROFILE}" >&2
@@ -200,12 +203,12 @@ script_name=$(basename "${BASH_SOURCE[0]}")
   echo "    matchLabels:"
   echo "      app: ${deployment_name}"
 
-  # Update strategy (fixed - zero downtime)
+  # Update strategy (always RollingUpdate - Recreate causes downtime)
   echo "  strategy:"
   echo "    type: RollingUpdate"
   echo "    rollingUpdate:"
-  echo "      maxSurge: 1"
-  echo "      maxUnavailable: 0"
+  echo "      maxSurge: ${MAX_SURGE}"
+  echo "      maxUnavailable: ${MAX_UNAVAILABLE}"
 
   # Pod template
   echo "  template:"

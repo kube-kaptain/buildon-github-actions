@@ -100,6 +100,8 @@ Kubernetes App - Manifests Only
 | `kubernetes-deployment-env-sub-path` | string | `src/deployment-env` | Path to deployment environment variables directory |
 | `kubernetes-deployment-additional-labels` | string | `""` | Additional labels for Deployment resources (key=value,key=value) |
 | `kubernetes-deployment-additional-annotations` | string | `""` | Additional annotations for Deployment resources (key=value,key=value) |
+| `kubernetes-deployment-max-surge` | string | `1` | Max surge during rolling update (integer or percentage, e.g., 1 or 25%) |
+| `kubernetes-deployment-max-unavailable` | string | `0` | Max unavailable during rolling update (integer or percentage, e.g., 0 or 25%) |
 | `kubernetes-statefulset-env-sub-path` | string | `src/statefulset-env` | Path to statefulset environment variables directory |
 | `kubernetes-statefulset-additional-labels` | string | `""` | Additional labels for StatefulSet resources (key=value,key=value) |
 | `kubernetes-statefulset-additional-annotations` | string | `""` | Additional annotations for StatefulSet resources (key=value,key=value) |

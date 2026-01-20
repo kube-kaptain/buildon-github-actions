@@ -17,3 +17,13 @@ kubernetes-deployment-additional-annotations:
   required: false
   type: string
   default: ''
+kubernetes-deployment-max-surge:
+  description: 'Max surge during rolling update (integer or percentage, e.g., 1 or 25%)'
+  required: false
+  type: string
+  default: '1'
+kubernetes-deployment-max-unavailable:
+  description: 'Max unavailable during rolling update (integer or percentage, e.g., 0 or 25%)'
+  required: false
+  type: string
+  default: '0'
