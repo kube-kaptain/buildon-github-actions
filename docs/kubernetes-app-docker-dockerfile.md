@@ -42,6 +42,8 @@ Kubernetes App - Docker Dockerfile
 | `kubernetes-workload-additional-labels` | string | `""` | Additional labels specific to workload (comma-separated key=value) |
 | `kubernetes-workload-additional-annotations` | string | `""` | Additional annotations specific to workload (comma-separated key=value) |
 | `kubernetes-workload-container-port` | string | `1024` | Container port |
+| `kubernetes-workload-container-command` | string | `""` | Container command override (space-separated, respects quotes like shell) |
+| `kubernetes-workload-container-args` | string | `""` | Container args override (space-separated, respects quotes like shell) |
 | `kubernetes-workload-image-reference-style` | string | `combined` | Image reference style (combined, separate, project-name-prefixed-combined, project-name-prefixed-separate) |
 | `kubernetes-workload-readonly-root-filesystem` | boolean | `true` | Enable read-only root filesystem |
 | `kubernetes-workload-seccomp-profile` | string | `DISABLED` | Seccomp profile (DISABLED, RuntimeDefault, Localhost, Unconfined) |
@@ -59,6 +61,8 @@ Kubernetes App - Docker Dockerfile
 | `kubernetes-workload-prestop-command` | string | `""` | PreStop hook command (empty for none) |
 | `kubernetes-workload-affinity-strategy` | string | `spread-nodes-and-zones-ha` | Pod affinity strategy plugin name |
 | `kubernetes-workload-tolerations` | string | `""` | Tolerations as JSON array (e.g., [{"key":"dedicated","operator":"Equal","value":"app","effect":"NoSchedule"}]) |
+| `kubernetes-workload-node-selector` | string | `""` | Node selector (comma-separated key=value pairs, e.g., disktype=ssd,zone=us-east-1a) |
+| `kubernetes-workload-dns-policy` | string | `""` | DNS policy (ClusterFirst, ClusterFirstWithHostNet, Default, None) |
 | `kubernetes-workload-probe-liveness-check-type` | string | `http-get` | Liveness probe type (http-get, tcp-socket, exec, grpc, none) |
 | `kubernetes-workload-probe-liveness-http-path` | string | `/liveness` | Liveness probe HTTP path |
 | `kubernetes-workload-probe-liveness-http-scheme` | string | `HTTP` | Liveness probe HTTP scheme (HTTP, HTTPS) |
@@ -98,11 +102,14 @@ Kubernetes App - Docker Dockerfile
 | `kubernetes-deployment-env-sub-path` | string | `src/deployment-env` | Path to deployment environment variables directory |
 | `kubernetes-deployment-additional-labels` | string | `""` | Additional labels for Deployment resources (key=value,key=value) |
 | `kubernetes-deployment-additional-annotations` | string | `""` | Additional annotations for Deployment resources (key=value,key=value) |
+| `kubernetes-deployment-max-surge` | string | `1` | Max surge during rolling update (integer or percentage, e.g., 1 or 25%) |
+| `kubernetes-deployment-max-unavailable` | string | `0` | Max unavailable during rolling update (integer or percentage, e.g., 0 or 25%) |
 | `kubernetes-statefulset-env-sub-path` | string | `src/statefulset-env` | Path to statefulset environment variables directory |
 | `kubernetes-statefulset-additional-labels` | string | `""` | Additional labels for StatefulSet resources (key=value,key=value) |
 | `kubernetes-statefulset-additional-annotations` | string | `""` | Additional annotations for StatefulSet resources (key=value,key=value) |
 | `kubernetes-statefulset-service-name` | string | `""` | Headless service name (empty for auto-derived from project name) |
 | `kubernetes-statefulset-pod-management-policy` | string | `OrderedReady` | Pod management policy (OrderedReady or Parallel) |
+| `kubernetes-statefulset-allow-unreliable-pod-management-policy` | string | `""` | Required acknowledgment to use Parallel pod management (must be I_LIKE_DOWNTIME) |
 | `kubernetes-statefulset-update-strategy-type` | string | `RollingUpdate` | Update strategy type (RollingUpdate or OnDelete) |
 | `kubernetes-statefulset-update-strategy-partition` | string | `""` | Partition for rolling updates (empty for none) |
 | `kubernetes-statefulset-pvc-enabled` | string | `true` | Enable persistent volume claim template (true/false) |
@@ -122,6 +129,39 @@ Kubernetes App - Docker Dockerfile
 | `kubernetes-daemonset-dns-policy` | string | `""` | DNS policy (ClusterFirst, ClusterFirstWithHostNet, Default, None) |
 | `kubernetes-daemonset-tolerations` | string | `""` | Tolerations as JSON array (e.g., [{"operator":"Exists"}] or [{"key":"node-role.kubernetes.io/control-plane","operator":"Exists","effect":"NoSchedule"}]) |
 | `kubernetes-daemonset-node-selector` | string | `""` | Node selector labels (comma-separated key=value) |
+| `kubernetes-job-generation-enabled` | string | `false` | Enable Job generation (true or false) |
+| `kubernetes-job-name-suffix` | string | `""` | Optional suffix for Job name and filename |
+| `kubernetes-job-combined-sub-path` | string | `""` | Sub-path within combined/ for output |
+| `kubernetes-job-backoff-limit` | string | `6` | Number of retries before marking Job as failed |
+| `kubernetes-job-completions` | string | `1` | Number of successful completions needed |
+| `kubernetes-job-parallelism` | string | `1` | Number of pods running at any time |
+| `kubernetes-job-active-deadline-seconds` | string | `""` | Maximum time in seconds the Job can run (optional) |
+| `kubernetes-job-ttl-seconds-after-finished` | string | `86400` | Cleanup time after Job completion in seconds |
+| `kubernetes-job-restart-policy` | string | `Never` | Pod restart policy (Never or OnFailure) |
+| `kubernetes-job-env-sub-path` | string | `""` | Path to Job environment variables directory |
+| `kubernetes-job-additional-labels` | string | `""` | Additional labels for Job resources (key=value,key=value) |
+| `kubernetes-job-additional-annotations` | string | `""` | Additional annotations for Job resources (key=value,key=value) |
+| `kubernetes-job-liveness-probe-enabled` | string | `false` | Enable liveness probe (uses workload probe settings when true) |
+| `kubernetes-job-readiness-probe-enabled` | string | `false` | Enable readiness probe (uses workload probe settings when true) |
+| `kubernetes-job-startup-probe-enabled` | string | `false` | Enable startup probe (uses workload probe settings when true) |
+| `kubernetes-cronjob-generation-enabled` | string | `false` | Enable CronJob generation (true or false) |
+| `kubernetes-cronjob-name-suffix` | string | `""` | Optional suffix for CronJob name and filename |
+| `kubernetes-cronjob-combined-sub-path` | string | `""` | Sub-path within combined/ for output |
+| `kubernetes-cronjob-concurrency-policy` | string | `Forbid` | How to handle concurrent job runs (Allow, Forbid, Replace) |
+| `kubernetes-cronjob-starting-deadline-seconds` | string | `""` | Deadline for starting job if missed scheduled time (optional) |
+| `kubernetes-cronjob-successful-jobs-history-limit` | string | `1` | Number of successful jobs to retain for log collection |
+| `kubernetes-cronjob-failed-jobs-history-limit` | string | `5` | Number of failed jobs to retain to show failure patterns |
+| `kubernetes-cronjob-backoff-limit` | string | `6` | Number of retries before marking job as failed |
+| `kubernetes-cronjob-completions` | string | `1` | Number of successful completions needed |
+| `kubernetes-cronjob-parallelism` | string | `1` | Number of pods running at any time |
+| `kubernetes-cronjob-active-deadline-seconds` | string | `""` | Maximum time in seconds the job can run (optional) |
+| `kubernetes-cronjob-restart-policy` | string | `Never` | Pod restart policy (Never or OnFailure) |
+| `kubernetes-cronjob-env-sub-path` | string | `""` | Path to CronJob environment variables directory |
+| `kubernetes-cronjob-additional-labels` | string | `""` | Additional labels for CronJob resources (key=value,key=value) |
+| `kubernetes-cronjob-additional-annotations` | string | `""` | Additional annotations for CronJob resources (key=value,key=value) |
+| `kubernetes-cronjob-liveness-probe-enabled` | string | `false` | Enable liveness probe (uses workload probe settings when true) |
+| `kubernetes-cronjob-readiness-probe-enabled` | string | `false` | Enable readiness probe (uses workload probe settings when true) |
+| `kubernetes-cronjob-startup-probe-enabled` | string | `false` | Enable startup probe (uses workload probe settings when true) |
 | `kubernetes-poddisruptionbudget-generation-enabled` | string | `""` | Enable PodDisruptionBudget generation (true, false, or empty for auto based on workload type) |
 | `kubernetes-poddisruptionbudget-name-suffix` | string | `""` | Optional suffix for PDB name and filename |
 | `kubernetes-poddisruptionbudget-combined-sub-path` | string | `""` | Sub-path within combined/ for output |

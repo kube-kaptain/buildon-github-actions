@@ -96,6 +96,11 @@ if [[ "${POD_MANAGEMENT_POLICY}" != "OrderedReady" && "${POD_MANAGEMENT_POLICY}"
   exit 4
 fi
 
+if [[ "${POD_MANAGEMENT_POLICY}" == "Parallel" && "${ALLOW_UNRELIABLE_POD_MANAGEMENT_POLICY}" != "I_LIKE_DOWNTIME" ]]; then
+  echo "${LOG_ERROR_PREFIX}Parallel pod management policy can cause data loss and downtime. To use it, set KUBERNETES_STATEFULSET_ALLOW_UNRELIABLE_POD_MANAGEMENT_POLICY=I_LIKE_DOWNTIME${LOG_ERROR_SUFFIX}" >&2
+  exit 4
+fi
+
 if [[ "${UPDATE_STRATEGY_TYPE}" != "RollingUpdate" && "${UPDATE_STRATEGY_TYPE}" != "OnDelete" ]]; then
   echo "${LOG_ERROR_PREFIX}KUBERNETES_STATEFULSET_UPDATE_STRATEGY_TYPE must be 'RollingUpdate' or 'OnDelete', got: ${UPDATE_STRATEGY_TYPE}${LOG_ERROR_SUFFIX}" >&2
   exit 4
@@ -207,6 +212,12 @@ fi
 if [[ "${PVC_ENABLED}" == "true" ]]; then
   echo "  PVC storage:              ${PVC_STORAGE_SIZE} (${PVC_ACCESS_MODE})" >&2
 fi
+if [[ -n "${NODE_SELECTOR}" ]]; then
+  echo "  Node selector:            ${NODE_SELECTOR}" >&2
+fi
+if [[ -n "${DNS_POLICY}" ]]; then
+  echo "  DNS policy:               ${DNS_POLICY}" >&2
+fi
 
 # =============================================================================
 # Build labels and annotations
@@ -308,6 +319,12 @@ KUBERNETES_SERVICE_ADDITIONAL_ANNOTATIONS="kaptain/generated-for=\"statefulset/$
   # Tolerations
   generate_tolerations 6 "${TOLERATIONS}"
 
+  # Node selector
+  generate_node_selector 6 "${NODE_SELECTOR}"
+
+  # DNS policy
+  generate_dns_policy 6 "${DNS_POLICY}"
+
   # Image pull secrets (optional)
   if [[ "${IMAGE_PULL_SECRETS}" != "DISABLED" ]]; then
     generate_image_pull_secrets 6 "${image_pull_secret_token}"
@@ -316,6 +333,10 @@ KUBERNETES_SERVICE_ADDITIONAL_ANNOTATIONS="kaptain/generated-for=\"statefulset/$
   # Containers
   echo "      containers:"
   generate_container_start 8 "default-app" "${image_reference}"
+
+  # Command and args (optional overrides)
+  generate_container_command 10 "${CONTAINER_COMMAND}"
+  generate_container_args 10 "${CONTAINER_ARGS}"
 
   # Ports
   generate_container_ports 10 "${CONTAINER_PORT}"

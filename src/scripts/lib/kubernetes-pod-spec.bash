@@ -22,6 +22,8 @@
 #   generate_image_pull_secrets         - Image pull secrets block
 #   generate_service_account_config     - ServiceAccount name and automount token
 #   generate_container_start            - Container name, image, imagePullPolicy
+#   generate_container_command          - Container command override (shell-style tokenization)
+#   generate_container_args             - Container args override (shell-style tokenization)
 
 # Build image reference and pull secret token based on image reference style
 # Usage: build_image_reference
@@ -544,4 +546,60 @@ generate_container_start() {
   echo "${indent}- name: ${container_name}"
   echo "${indent}  image: ${image_reference}"
   echo "${indent}  imagePullPolicy: ${image_pull_policy}"
+}
+
+# Generate container command override
+# Usage: generate_container_command <indent> <command_string>
+#   command_string: space-separated tokens, respects "double" and 'single' quotes
+#   Example: '/bin/sh -c' becomes command: ["/bin/sh", "-c"]
+#   Only generates output if command_string is non-empty
+generate_container_command() {
+  if [[ $# -ne 2 ]]; then
+    echo "Error: generate_container_command requires 2 arguments, got $#" >&2
+    return 1
+  fi
+
+  local indent_count="$1"
+  local command_string="$2"
+
+  # Only output if there's a command
+  if [[ -z "${command_string}" ]]; then
+    return 0
+  fi
+
+  local indent
+  indent=$(_pod_spec_indent "$indent_count")
+
+  echo "${indent}command:"
+  while IFS= read -r token; do
+    echo "${indent}  - ${token}"
+  done < <(echo "${command_string}" | xargs -n1)
+}
+
+# Generate container args override
+# Usage: generate_container_args <indent> <args_string>
+#   args_string: space-separated tokens, respects "double" and 'single' quotes
+#   Example: '"echo hello && sleep 10"' becomes args: ["echo hello && sleep 10"]
+#   Only generates output if args_string is non-empty
+generate_container_args() {
+  if [[ $# -ne 2 ]]; then
+    echo "Error: generate_container_args requires 2 arguments, got $#" >&2
+    return 1
+  fi
+
+  local indent_count="$1"
+  local args_string="$2"
+
+  # Only output if there are args
+  if [[ -z "${args_string}" ]]; then
+    return 0
+  fi
+
+  local indent
+  indent=$(_pod_spec_indent "$indent_count")
+
+  echo "${indent}args:"
+  while IFS= read -r token; do
+    echo "${indent}  - ${token}"
+  done < <(echo "${args_string}" | xargs -n1)
 }

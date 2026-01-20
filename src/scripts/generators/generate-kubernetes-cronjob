@@ -1,0 +1,365 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
+#
+# generate-kubernetes-cronjob - Generates a Kubernetes CronJob manifest
+#
+# Creates a CronJob resource for scheduled job execution. Unlike Jobs,
+# CronJobs are NOT versioned - they run repeatedly on schedule.
+#
+# Schedule and suspend are deferred to environment tokens, not build-time values.
+#
+# Name pattern: ${ProjectName}[-${combined-sub-path}][-${suffix}]
+#
+# Inputs (environment variables):
+#   KUBERNETES_CRONJOB_GENERATION_ENABLED - Set to "true" to enable (default: false)
+#   KUBERNETES_CRONJOB_NAME_SUFFIX        - Optional suffix for name/filename
+#   KUBERNETES_CRONJOB_COMBINED_SUB_PATH  - Sub-path within combined/ for output
+#   KUBERNETES_CRONJOB_CONCURRENCY_POLICY - Allow, Forbid, Replace (default: Forbid)
+#   KUBERNETES_CRONJOB_STARTING_DEADLINE_SECONDS - Missed start window (optional)
+#   KUBERNETES_CRONJOB_SUCCESSFUL_JOBS_HISTORY_LIMIT - Completed jobs to keep (default: 1)
+#   KUBERNETES_CRONJOB_FAILED_JOBS_HISTORY_LIMIT - Failed jobs to keep (default: 5)
+#   KUBERNETES_CRONJOB_BACKOFF_LIMIT      - Number of retries (default: 6)
+#   KUBERNETES_CRONJOB_COMPLETIONS        - Successful completions needed (default: 1)
+#   KUBERNETES_CRONJOB_PARALLELISM        - Pods running at any time (default: 1)
+#   KUBERNETES_CRONJOB_ACTIVE_DEADLINE_SECONDS - Max job runtime (optional)
+#   KUBERNETES_CRONJOB_RESTART_POLICY     - Never or OnFailure (default: Never)
+#   KUBERNETES_WORKLOAD_CONTAINER_COMMAND      - Container command (shell-style, optional)
+#   KUBERNETES_WORKLOAD_CONTAINER_ARGS         - Container args (shell-style, optional)
+#   KUBERNETES_WORKLOAD_NODE_SELECTOR          - Node selector (comma-separated key=value, optional)
+#   KUBERNETES_WORKLOAD_DNS_POLICY             - DNS policy (ClusterFirst, etc., optional)
+#   PROJECT_NAME                          - Used in metadata.name (required)
+#   OUTPUT_SUB_PATH                       - Build output directory (default: target)
+#
+# Output:
+#   ${OUTPUT_SUB_PATH}/manifests/combined/[${combined-sub-path}/]cronjob[-${suffix}].yaml
+#
+set -euo pipefail
+
+# Locate script directory for libraries
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+LIB_DIR="${SCRIPT_DIR}/../lib"
+
+# Source libraries
+# shellcheck source=src/scripts/lib/token-format.bash
+source "${LIB_DIR}/token-format.bash"
+# shellcheck source=src/scripts/lib/kubernetes-metadata.bash
+source "${LIB_DIR}/kubernetes-metadata.bash"
+# shellcheck source=src/scripts/lib/kubernetes-configuration.bash
+source "${LIB_DIR}/kubernetes-configuration.bash"
+# shellcheck source=src/scripts/lib/kubernetes-workload-detection.bash
+source "${LIB_DIR}/kubernetes-workload-detection.bash"
+# shellcheck source=src/scripts/lib/kubernetes-pod-spec.bash
+source "${LIB_DIR}/kubernetes-pod-spec.bash"
+# shellcheck source=src/scripts/lib/kubernetes-pod-placement.bash
+source "${LIB_DIR}/kubernetes-pod-placement.bash"
+# shellcheck source=src/scripts/lib/kubernetes-probes.bash
+source "${LIB_DIR}/kubernetes-probes.bash"
+# shellcheck source=src/scripts/lib/generator-input-validation.bash
+source "${LIB_DIR}/generator-input-validation.bash"
+
+# Logging configuration (CI-agnostic)
+LOG_ERROR_PREFIX="${LOG_ERROR_PREFIX:-}"
+LOG_ERROR_SUFFIX="${LOG_ERROR_SUFFIX:-}"
+
+# Resource kind
+kind="CronJob"
+
+# Check if generation is enabled (default: false)
+if [[ "${KUBERNETES_CRONJOB_GENERATION_ENABLED:-false}" != "true" ]]; then
+  echo "CronJob generation not enabled (KUBERNETES_CRONJOB_GENERATION_ENABLED != true), skipping" >&2
+  exit 0
+fi
+
+# =============================================================================
+# Inputs with defaults
+# =============================================================================
+
+# shellcheck source=src/scripts/defaults/output-sub-path.bash
+source "${SCRIPT_DIR}/../defaults/output-sub-path.bash"
+# shellcheck source=src/scripts/defaults/manifests-sub-path.bash
+source "${SCRIPT_DIR}/../defaults/manifests-sub-path.bash"
+# shellcheck source=src/scripts/defaults/tokens.bash
+source "${SCRIPT_DIR}/../defaults/tokens.bash"
+# shellcheck source=src/scripts/defaults/kubernetes-workload.bash
+source "${SCRIPT_DIR}/../defaults/kubernetes-workload.bash"
+# shellcheck source=src/scripts/defaults/kubernetes-cronjob.bash
+source "${SCRIPT_DIR}/../defaults/kubernetes-cronjob.bash"
+# shellcheck source=src/scripts/defaults/kubernetes-manifest.bash
+source "${SCRIPT_DIR}/../defaults/kubernetes-manifest.bash"
+
+# Build final env sub path from base
+FINAL_ENV_SUB_PATH=$(build_configuration_source_path "${BASE_ENV_SUB_PATH}" "${NAME_SUFFIX}" "-env")
+
+# =============================================================================
+# Validation
+# =============================================================================
+
+validate_common_inputs
+validate_workload_inputs
+
+# Validate concurrency policy
+if [[ "${CONCURRENCY_POLICY}" != "Allow" && "${CONCURRENCY_POLICY}" != "Forbid" && "${CONCURRENCY_POLICY}" != "Replace" ]]; then
+  echo "${LOG_ERROR_PREFIX}CronJob concurrencyPolicy must be 'Allow', 'Forbid', or 'Replace', got: ${CONCURRENCY_POLICY}${LOG_ERROR_SUFFIX}" >&2
+  exit 1
+fi
+
+# Validate restart policy
+if [[ "${RESTART_POLICY}" != "Never" && "${RESTART_POLICY}" != "OnFailure" ]]; then
+  echo "${LOG_ERROR_PREFIX}CronJob restartPolicy must be 'Never' or 'OnFailure', got: ${RESTART_POLICY}${LOG_ERROR_SUFFIX}" >&2
+  exit 1
+fi
+
+# =============================================================================
+# Generate token references
+# =============================================================================
+
+project_name_token=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "PROJECT_NAME")
+environment_token=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "ENVIRONMENT")
+version_token=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "VERSION")
+docker_tag_token=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "DOCKER_TAG")
+docker_image_name_token=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "DOCKER_IMAGE_NAME")
+
+# Build environment-specific token names for schedule and suspend
+# Token name includes project name and resource name parts so each cronjob instance has unique tokens
+# E.g., project="my-app" → MY_APP_CRONJOB_SCHEDULE → ${MyAppCronjobSchedule}
+# E.g., project="db-backup" suffix="nightly" → DB_BACKUP_NIGHTLY_CRONJOB_SCHEDULE → ${DbBackupNightlyCronjobSchedule}
+# Convert project name (kebab-case) to UPPER_SNAKE for token prefix
+token_prefix="${PROJECT_NAME//-/_}"
+token_prefix=$(echo "${token_prefix}" | tr '[:lower:]' '[:upper:]')
+token_prefix="${token_prefix}_"
+if [[ -n "${COMBINED_SUB_PATH}" ]]; then
+  # Convert path/to/dir → PATH_TO_DIR
+  path_part="${COMBINED_SUB_PATH//\//_}"
+  path_part="${path_part//-/_}"
+  path_part=$(echo "${path_part}" | tr '[:lower:]' '[:upper:]')
+  token_prefix="${token_prefix}${path_part}_"
+fi
+if [[ -n "${NAME_SUFFIX}" ]]; then
+  suffix_upper=$(echo "${NAME_SUFFIX}" | tr '[:lower:]-' '[:upper:]_')
+  token_prefix="${token_prefix}${suffix_upper}_"
+fi
+cronjob_schedule_token=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "${token_prefix}CRONJOB_SCHEDULE")
+cronjob_suspend_token=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "${token_prefix}CRONJOB_SUSPEND")
+
+# Build image reference (sets image_reference, image_pull_secret_token)
+build_image_reference
+
+# =============================================================================
+# Build resource names
+# =============================================================================
+
+# CronJob name pattern: ${ProjectName}[-dir][-suffix]
+# NOT versioned (unlike Jobs) - CronJobs run repeatedly on schedule
+cronjob_name=$(build_resource_name "${project_name_token}" "${COMBINED_SUB_PATH}" "${NAME_SUFFIX}")
+
+# ConfigMap/Secret names (standard pattern)
+configmap_name=$(build_resource_name "${project_name_token}" "${COMBINED_SUB_PATH}" "${NAME_SUFFIX}" "configmap-checksum")
+secret_name=$(build_resource_name "${project_name_token}" "${COMBINED_SUB_PATH}" "${NAME_SUFFIX}" "secret-checksum")
+
+# Set app_name for generate_metadata library function
+app_name="${cronjob_name}"
+
+# =============================================================================
+# Create output directory and file
+# =============================================================================
+
+output_dir=$(ensure_manifest_output_dir "${OUTPUT_SUB_PATH}" "${COMBINED_SUB_PATH}")
+output_file=$(build_output_filename "${output_dir}" "${kind}" "${NAME_SUFFIX}")
+
+# =============================================================================
+# Detect optional resources
+# =============================================================================
+
+detect_all_resources
+
+# =============================================================================
+# Diagnostic output
+# =============================================================================
+
+echo "CronJob Configuration" >&2
+echo "  Name:                  ${cronjob_name}" >&2
+echo "  Schedule:              ${cronjob_schedule_token} (environment token)" >&2
+echo "  Suspend:               ${cronjob_suspend_token} (environment token)" >&2
+echo "  Concurrency policy:    ${CONCURRENCY_POLICY}" >&2
+if [[ -n "${STARTING_DEADLINE_SECONDS}" ]]; then
+  echo "  Starting deadline:     ${STARTING_DEADLINE_SECONDS}s" >&2
+fi
+echo "  Success history limit: ${SUCCESSFUL_JOBS_HISTORY_LIMIT}" >&2
+echo "  Failed history limit:  ${FAILED_JOBS_HISTORY_LIMIT}" >&2
+
+echo "Job Template Settings" >&2
+echo "  Backoff limit:         ${BACKOFF_LIMIT}" >&2
+echo "  Completions:           ${COMPLETIONS}" >&2
+echo "  Parallelism:           ${PARALLELISM}" >&2
+echo "  Restart policy:        ${RESTART_POLICY}" >&2
+echo "  Affinity strategy:     ${AFFINITY_STRATEGY}" >&2
+if [[ -n "${ACTIVE_DEADLINE_SECONDS}" ]]; then
+  echo "  Active deadline:       ${ACTIVE_DEADLINE_SECONDS}s" >&2
+fi
+
+echo "Detection Results" >&2
+if [[ "${has_configmap}" == "true" ]]; then
+  echo "  ConfigMap detected:       ${configmap_source}" >&2
+else
+  echo "  ConfigMap detected:       No, so won't be mounted" >&2
+fi
+if [[ "${has_secret}" == "true" ]]; then
+  echo "  Secret detected:          ${secret_source}" >&2
+else
+  echo "  Secret detected:          No, so won't be mounted" >&2
+fi
+if [[ "${has_serviceaccount}" == "true" ]]; then
+  echo "  ServiceAccount detected:  ${serviceaccount_source}" >&2
+else
+  echo "  ServiceAccount detected:  No, so implicit default used" >&2
+fi
+if [[ "${has_env_vars}" == "true" ]]; then
+  echo "  Environment variables:    ${env_file_count} found" >&2
+else
+  echo "  Environment variables:    None found, not configured" >&2
+fi
+
+# =============================================================================
+# Build labels and annotations
+# =============================================================================
+
+build_timestamp=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+script_name=$(basename "${BASH_SOURCE[0]}")
+
+# =============================================================================
+# Generate CronJob YAML
+# =============================================================================
+
+{
+  # Header
+  generate_manifest_header "batch/v1" "${kind}" "${cronjob_name}" "${environment_token}"
+  generate_metadata 2 labels
+  generate_metadata 2 annotations default-app
+
+  # Spec
+  echo "spec:"
+
+  # Schedule and suspend (environment tokens)
+  echo "  schedule: ${cronjob_schedule_token}"
+  echo "  suspend: ${cronjob_suspend_token}"
+
+  # Concurrency policy
+  echo "  concurrencyPolicy: ${CONCURRENCY_POLICY}"
+
+  # Starting deadline (optional)
+  if [[ -n "${STARTING_DEADLINE_SECONDS}" ]]; then
+    echo "  startingDeadlineSeconds: ${STARTING_DEADLINE_SECONDS}"
+  fi
+
+  # History limits
+  echo "  successfulJobsHistoryLimit: ${SUCCESSFUL_JOBS_HISTORY_LIMIT}"
+  echo "  failedJobsHistoryLimit: ${FAILED_JOBS_HISTORY_LIMIT}"
+
+  # Job template
+  echo "  jobTemplate:"
+  echo "    metadata:"
+  generate_metadata 6 labels
+  generate_metadata 6 annotations
+
+  echo "    spec:"
+
+  # Job execution settings
+  echo "      backoffLimit: ${BACKOFF_LIMIT}"
+  echo "      completions: ${COMPLETIONS}"
+  echo "      parallelism: ${PARALLELISM}"
+
+  if [[ -n "${ACTIVE_DEADLINE_SECONDS}" ]]; then
+    echo "      activeDeadlineSeconds: ${ACTIVE_DEADLINE_SECONDS}"
+  fi
+
+  # TTL deliberately omitted - keep jobs forever, let history limits handle cleanup
+
+  # Pod template
+  echo "      template:"
+  echo "        metadata:"
+  generate_metadata 10 labels
+  generate_metadata 10 annotations
+
+  echo "        spec:"
+
+  # Restart policy (required for Jobs, must be Never or OnFailure)
+  echo "          restartPolicy: ${RESTART_POLICY}"
+
+  # ServiceAccount
+  generate_service_account_config 10 "${has_serviceaccount}" "${project_name_token}${suffix_fragment}" "${AUTOMOUNT_SERVICE_ACCOUNT_TOKEN}"
+
+  # Termination grace period
+  echo "          terminationGracePeriodSeconds: ${TERMINATION_GRACE_PERIOD_SECONDS}"
+
+  # Pod security context
+  generate_pod_security_context 10 "${SECCOMP_PROFILE}"
+
+  # Affinity (via plugin)
+  if [[ "${AFFINITY_STRATEGY}" != "none" ]]; then
+    POD_PLACEMENT_INDENT=10 \
+    APP_LABEL_VALUE="${cronjob_name}" \
+    "${affinity_plugin}"
+  fi
+
+  # Tolerations
+  generate_tolerations 10 "${TOLERATIONS}"
+
+  # Node selector
+  generate_node_selector 10 "${NODE_SELECTOR}"
+
+  # DNS policy
+  generate_dns_policy 10 "${DNS_POLICY}"
+
+  # Image pull secrets (optional)
+  if [[ "${IMAGE_PULL_SECRETS}" != "DISABLED" ]]; then
+    generate_image_pull_secrets 10 "${image_pull_secret_token}"
+  fi
+
+  # Containers
+  echo "          containers:"
+  generate_container_start 12 "default-app" "${image_reference}"
+
+  # Command and args (optional overrides)
+  generate_container_command 14 "${CONTAINER_COMMAND}"
+  generate_container_args 14 "${CONTAINER_ARGS}"
+
+  # Ports (optional, useful for sidecars or debugging)
+  if [[ "${CRONJOB_PORTS_ENABLED}" == "true" ]]; then
+    generate_container_ports 14 "${CONTAINER_PORT}"
+  fi
+
+  # Container security context
+  generate_container_security_context 14 "${READONLY_ROOT_FILESYSTEM}"
+
+  # Resources
+  generate_container_resources 14 "${EPHEMERAL_STORAGE}" "${MEMORY}" "${CPU_REQUEST}" "${CPU_LIMIT}"
+
+  # Lifecycle (preStop hook for cleanup)
+  generate_container_lifecycle 14 "${PRESTOP_COMMAND}"
+
+  # Probes (optional, disabled by default for batch workloads)
+  if [[ "${CRONJOB_LIVENESS_PROBE_ENABLED}" == "true" ]]; then
+    generate_liveness_probe 14
+  fi
+  if [[ "${CRONJOB_READINESS_PROBE_ENABLED}" == "true" ]]; then
+    generate_readiness_probe 14
+  fi
+  if [[ "${CRONJOB_STARTUP_PROBE_ENABLED}" == "true" ]]; then
+    generate_startup_probe 14
+  fi
+
+  # Environment variables (plain KVs from directory + refs from configmap/secret keys)
+  generate_container_env_all 14 "${FINAL_ENV_SUB_PATH}" \
+    "${configmap_source}" "${configmap_name}" "${CONFIGMAP_KEYS_FOR_ENV}" \
+    "${secret_source}" "${secret_name}" "${SECRET_KEYS_FOR_ENV}"
+
+  # Volume mounts
+  generate_configmap_secret_volume_mounts 14 "${has_configmap}" "${has_secret}" "${CONFIGMAP_MOUNT_PATH}" "${SECRET_MOUNT_PATH}"
+
+  # Volumes
+  generate_configmap_secret_volumes 10 "${has_configmap}" "${has_secret}" "${configmap_name}" "${secret_name}"
+
+} > "${output_file}"
+
+echo "Generated CronJob manifest: ${output_file}" >&2

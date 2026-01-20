@@ -1,0 +1,158 @@
+# SPDX-License-Identifier: CC0-1.0
+# This example is released to the public domain. Use freely without attribution.
+#
+# Kubernetes CronJob with History Management
+#
+# CronJobs in Kaptain use sensible defaults for history retention and cleanup:
+#
+#   - successfulJobsHistoryLimit: 1 (just enough for log collection)
+#   - failedJobsHistoryLimit: 5 (show patterns, make a mess, get attention)
+#   - ttlSecondsAfterFinished: omitted (history limits handle cleanup)
+#   - concurrencyPolicy: Forbid (don't overlap runs)
+#
+# Schedule and Suspend are ENVIRONMENT TOKENS:
+#
+#   The schedule and suspend fields are NOT set at build time. Instead, they
+#   become tokens like ${CronjobSchedule} and ${CronjobSuspend} that are
+#   substituted at deploy time. This allows:
+#
+#     - Different schedules per environment (dev: hourly, prod: daily)
+#     - Pausing jobs in specific environments without rebuilding
+#     - Environment-specific maintenance windows
+#
+#   For suffixed cronjobs, tokens include the suffix:
+#     - kubernetes-cronjob-name-suffix: 'backup' → ${BackupCronjobSchedule}
+#
+# History Limit Tuning:
+#
+#   The default successfulJobsHistoryLimit of 1 keeps one completed pod around
+#   for log collection. Once you're confident the job works correctly, you can
+#   reduce this to 0 to clean up immediately. BUT if you do:
+#
+#     TIP: Add a sleep at the end of your job command to allow log collection!
+#
+#     kubernetes-workload-container-args: '"./backup.sh && sleep 60"'
+#
+#   This gives your log collector time to grab the output before the pod is
+#   removed. Adjust the sleep duration based on your log collection interval.
+#
+# Typical use cases:
+#   - Database backups
+#   - Report generation
+#   - Cache warming
+#   - Cleanup/maintenance tasks
+#   - Scheduled data sync
+#
+# Copy this to .github/workflows/build.yaml in your repo.
+
+name: CronJob with History Management
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    uses: kube-kaptain/buildon-github-actions/.github/workflows/kubernetes-app-docker-dockerfile.yaml@1.0.40
+    permissions:
+      contents: write
+      packages: write
+      checks: write
+    with:
+      # ┌─────────────────────────────────────────────────────────────────────┐
+      # │ CronJob Generation                                                   │
+      # └─────────────────────────────────────────────────────────────────────┘
+      # Enable CronJob generation (disabled by default)
+      kubernetes-cronjob-generation-enabled: 'true'
+
+      # ┌─────────────────────────────────────────────────────────────────────┐
+      # │ CronJob Naming                                                       │
+      # └─────────────────────────────────────────────────────────────────────┘
+      # Optional suffix - affects both name AND schedule/suspend token names
+      # e.g., "backup" → name: myapp-backup
+      #                → tokens: ${BackupCronjobSchedule}, ${BackupCronjobSuspend}
+      kubernetes-cronjob-name-suffix: 'backup'
+
+      # ┌─────────────────────────────────────────────────────────────────────┐
+      # │ Schedule and Suspend (Environment Tokens)                            │
+      # └─────────────────────────────────────────────────────────────────────┘
+      # These are NOT configured here! They become tokens in the manifest:
+      #
+      #   schedule: ${BackupCronjobSchedule}
+      #   suspend: ${BackupCronjobSuspend}
+      #
+      # Set these values in your environment configuration:
+      #
+      #   dev:
+      #     BackupCronjobSchedule: "0 * * * *"    # Every hour for testing
+      #     BackupCronjobSuspend: "false"
+      #
+      #   prod:
+      #     BackupCronjobSchedule: "0 2 * * *"    # 2 AM daily
+      #     BackupCronjobSuspend: "false"
+      #
+      #   staging:
+      #     BackupCronjobSchedule: "0 3 * * 0"    # 3 AM Sundays only
+      #     BackupCronjobSuspend: "true"          # Paused until needed
+
+      # ┌─────────────────────────────────────────────────────────────────────┐
+      # │ Concurrency Policy                                                   │
+      # └─────────────────────────────────────────────────────────────────────┘
+      # 'Forbid' (default) - Skip new run if previous still running
+      # 'Allow' - Allow concurrent runs (dangerous!)
+      # 'Replace' - Kill existing run, start new one
+      kubernetes-cronjob-concurrency-policy: 'Forbid'
+
+      # ┌─────────────────────────────────────────────────────────────────────┐
+      # │ History Limits                                                       │
+      # └─────────────────────────────────────────────────────────────────────┘
+      # How many successful job pods to keep (default: 1)
+      # - 1 = Keep one for log collection (recommended during development)
+      # - 0 = Clean up immediately (use with sleep in command, see below)
+      kubernetes-cronjob-successful-jobs-history-limit: '1'
+
+      # How many failed job pods to keep (default: 5)
+      # Keep more failures visible so patterns are obvious and get attention!
+      kubernetes-cronjob-failed-jobs-history-limit: '5'
+
+      # ┌─────────────────────────────────────────────────────────────────────┐
+      # │ ADVANCED: Zero Success History with Log Collection                   │
+      # └─────────────────────────────────────────────────────────────────────┘
+      # Once confident in your job, you might want to clean up immediately:
+      #
+      # kubernetes-cronjob-successful-jobs-history-limit: '0'
+      #
+      # BUT this removes the pod before logs can be collected! Solution:
+      # Add a sleep at the end of your command to give log collectors time:
+      #
+      # kubernetes-workload-container-args: '"./backup.sh && sleep 60"'
+      #
+      # The 60-second sleep allows Fluentd/Promtail/etc to grab the logs
+      # before the pod is removed. Adjust based on your collection interval.
+
+      # ┌─────────────────────────────────────────────────────────────────────┐
+      # │ Job Template Settings                                                │
+      # └─────────────────────────────────────────────────────────────────────┘
+      # These apply to each Job created by the CronJob
+
+      # Retries before marking failed (default: 6)
+      kubernetes-cronjob-backoff-limit: '3'
+
+      # Maximum runtime (optional)
+      # kubernetes-cronjob-active-deadline-seconds: '3600'
+
+      # ┌─────────────────────────────────────────────────────────────────────┐
+      # │ Container Command                                                    │
+      # └─────────────────────────────────────────────────────────────────────┘
+      kubernetes-workload-container-command: '/bin/sh -c'
+      kubernetes-workload-container-args: '"./backup.sh"'
+      # Or with sleep for zero-history mode:
+      # kubernetes-workload-container-args: '"./backup.sh && sleep 60"'
+
+      # ┌─────────────────────────────────────────────────────────────────────┐
+      # │ Resources                                                            │
+      # └─────────────────────────────────────────────────────────────────────┘
+      kubernetes-workload-resources-memory: '512Mi'
+      kubernetes-workload-resources-cpu-request: '100m'

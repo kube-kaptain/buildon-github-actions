@@ -47,6 +47,16 @@ kubernetes-workload-container-port:
   required: false
   type: string
   default: '1024'
+kubernetes-workload-container-command:
+  description: 'Container command override (space-separated, respects quotes like shell)'
+  required: false
+  type: string
+  default: ''
+kubernetes-workload-container-args:
+  description: 'Container args override (space-separated, respects quotes like shell)'
+  required: false
+  type: string
+  default: ''
 kubernetes-workload-image-reference-style:
   description: 'Image reference style (combined, separate, project-name-prefixed-combined, project-name-prefixed-separate)'
   required: false
@@ -130,6 +140,16 @@ kubernetes-workload-affinity-strategy:
   default: 'spread-nodes-and-zones-ha'
 kubernetes-workload-tolerations:
   description: 'Tolerations as JSON array (e.g., [{"key":"dedicated","operator":"Equal","value":"app","effect":"NoSchedule"}])'
+  required: false
+  type: string
+  default: ''
+kubernetes-workload-node-selector:
+  description: 'Node selector (comma-separated key=value pairs, e.g., disktype=ssd,zone=us-east-1a)'
+  required: false
+  type: string
+  default: ''
+kubernetes-workload-dns-policy:
+  description: 'DNS policy (ClusterFirst, ClusterFirstWithHostNet, Default, None)'
   required: false
   type: string
   default: ''

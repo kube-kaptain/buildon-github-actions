@@ -2,26 +2,33 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
 #
-# generate-kubernetes-workload-deployment - Generates a Kubernetes Deployment manifest
+# generate-kubernetes-job - Generates a Kubernetes Job manifest
 #
-# Creates a complete Deployment resource with security contexts, health probes,
-# resource management, volume mounts, and pod placement strategies.
+# Creates a Job resource with versioned naming. The metadata.name includes
+# the version token, ensuring each version creates a new Job. Combined with
+# job-checksum suffix, config changes within a version also trigger new Jobs.
 #
-# Called via generate-kubernetes-workload router with KUBERNETES_WORKLOAD_TYPE=deployment
+# Name pattern: ${ProjectName}[-${combined-sub-path}][-${suffix}]-${Version}-job-checksum
 #
 # Inputs (environment variables):
-#   Required:
-#     PROJECT_NAME                          - Project identifier
-#
-#   Common workload settings (KUBERNETES_WORKLOAD_*):
-#     See generate-kubernetes-workload for the full list of common settings
-#     KUBERNETES_WORKLOAD_REPLICAS                - Replica count (default: token, "NO" for HPA)
-#     KUBERNETES_WORKLOAD_REVISION_HISTORY_LIMIT  - Revision history (default: 10)
-#     KUBERNETES_WORKLOAD_CONFIGMAP_KEYS_FOR_ENV  - Comma/space-separated keys to expose as env refs
-#     KUBERNETES_WORKLOAD_SECRET_KEYS_FOR_ENV     - Comma/space-separated keys to expose as env refs
+#   KUBERNETES_JOB_GENERATION_ENABLED - Set to "true" to enable (default: false)
+#   KUBERNETES_JOB_NAME_SUFFIX        - Optional suffix for name/filename
+#   KUBERNETES_JOB_COMBINED_SUB_PATH  - Sub-path within combined/ for output
+#   KUBERNETES_JOB_BACKOFF_LIMIT      - Number of retries before marking failed (default: 6)
+#   KUBERNETES_JOB_COMPLETIONS        - Number of successful completions needed (default: 1)
+#   KUBERNETES_JOB_PARALLELISM        - Number of pods running at any time (default: 1)
+#   KUBERNETES_JOB_ACTIVE_DEADLINE_SECONDS - Max time job can run (optional)
+#   KUBERNETES_JOB_TTL_SECONDS_AFTER_FINISHED - Cleanup after completion (default: 86400)
+#   KUBERNETES_JOB_RESTART_POLICY     - Never or OnFailure (default: Never)
+#   KUBERNETES_WORKLOAD_CONTAINER_COMMAND  - Container command (shell-style, optional)
+#   KUBERNETES_WORKLOAD_CONTAINER_ARGS     - Container args (shell-style, optional)
+#   KUBERNETES_WORKLOAD_NODE_SELECTOR      - Node selector (comma-separated key=value, optional)
+#   KUBERNETES_WORKLOAD_DNS_POLICY         - DNS policy (ClusterFirst, etc., optional)
+#   PROJECT_NAME                      - Used in metadata.name (required)
+#   OUTPUT_SUB_PATH                   - Build output directory (default: target)
 #
 # Output:
-#   ${OUTPUT_SUB_PATH}/manifests/combined/[${combined-sub-path}/]deployment[-${suffix}].yaml
+#   ${OUTPUT_SUB_PATH}/manifests/combined/[${combined-sub-path}/]job[-${suffix}].yaml
 #
 set -euo pipefail
 
@@ -36,20 +43,29 @@ source "${LIB_DIR}/token-format.bash"
 source "${LIB_DIR}/kubernetes-metadata.bash"
 # shellcheck source=src/scripts/lib/kubernetes-configuration.bash
 source "${LIB_DIR}/kubernetes-configuration.bash"
-# shellcheck source=src/scripts/lib/kubernetes-probes.bash
-source "${LIB_DIR}/kubernetes-probes.bash"
 # shellcheck source=src/scripts/lib/kubernetes-workload-detection.bash
 source "${LIB_DIR}/kubernetes-workload-detection.bash"
 # shellcheck source=src/scripts/lib/kubernetes-pod-spec.bash
 source "${LIB_DIR}/kubernetes-pod-spec.bash"
 # shellcheck source=src/scripts/lib/kubernetes-pod-placement.bash
 source "${LIB_DIR}/kubernetes-pod-placement.bash"
+# shellcheck source=src/scripts/lib/kubernetes-probes.bash
+source "${LIB_DIR}/kubernetes-probes.bash"
 # shellcheck source=src/scripts/lib/generator-input-validation.bash
 source "${LIB_DIR}/generator-input-validation.bash"
 
 # Logging configuration (CI-agnostic)
 LOG_ERROR_PREFIX="${LOG_ERROR_PREFIX:-}"
 LOG_ERROR_SUFFIX="${LOG_ERROR_SUFFIX:-}"
+
+# Resource kind
+kind="Job"
+
+# Check if generation is enabled (default: false)
+if [[ "${KUBERNETES_JOB_GENERATION_ENABLED:-false}" != "true" ]]; then
+  echo "Job generation not enabled (KUBERNETES_JOB_GENERATION_ENABLED != true), skipping" >&2
+  exit 0
+fi
 
 # =============================================================================
 # Inputs with defaults
@@ -63,8 +79,8 @@ source "${SCRIPT_DIR}/../defaults/manifests-sub-path.bash"
 source "${SCRIPT_DIR}/../defaults/tokens.bash"
 # shellcheck source=src/scripts/defaults/kubernetes-workload.bash
 source "${SCRIPT_DIR}/../defaults/kubernetes-workload.bash"
-# shellcheck source=src/scripts/defaults/kubernetes-workload-deployment.bash
-source "${SCRIPT_DIR}/../defaults/kubernetes-workload-deployment.bash"
+# shellcheck source=src/scripts/defaults/kubernetes-job.bash
+source "${SCRIPT_DIR}/../defaults/kubernetes-job.bash"
 # shellcheck source=src/scripts/defaults/kubernetes-manifest.bash
 source "${SCRIPT_DIR}/../defaults/kubernetes-manifest.bash"
 
@@ -78,6 +94,12 @@ FINAL_ENV_SUB_PATH=$(build_configuration_source_path "${BASE_ENV_SUB_PATH}" "${N
 validate_common_inputs
 validate_workload_inputs
 
+# Validate restart policy
+if [[ "${RESTART_POLICY}" != "Never" && "${RESTART_POLICY}" != "OnFailure" ]]; then
+  echo "${LOG_ERROR_PREFIX}Job restartPolicy must be 'Never' or 'OnFailure', got: ${RESTART_POLICY}${LOG_ERROR_SUFFIX}" >&2
+  exit 1
+fi
+
 # =============================================================================
 # Generate token references
 # =============================================================================
@@ -88,21 +110,27 @@ version_token=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_
 docker_tag_token=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "DOCKER_TAG")
 docker_image_name_token=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "DOCKER_IMAGE_NAME")
 
-# Build image reference and resolve replicas (sets image_reference, image_pull_secret_token, resolved_replicas)
+# Build image reference (sets image_reference, image_pull_secret_token)
 build_image_reference
-resolve_replicas
 
 # =============================================================================
 # Build resource names
 # =============================================================================
 
-kind="Deployment"
-deployment_name=$(build_resource_name "${project_name_token}" "${COMBINED_SUB_PATH}" "${NAME_SUFFIX}")
+# Build name middle fragment: [-dir][-suffix]
+name_middle=$(build_name_middle_fragment "${COMBINED_SUB_PATH}" "${NAME_SUFFIX}")
+
+# Job name pattern: ${ProjectName}[-dir][-suffix]-${Version}-job-checksum
+# The version ensures each version creates a new Job
+# The job-checksum suffix allows config changes to trigger new Jobs within same version
+job_name="${project_name_token}${name_middle}-${version_token}-job-checksum"
+
+# ConfigMap/Secret names (standard pattern without version)
 configmap_name=$(build_resource_name "${project_name_token}" "${COMBINED_SUB_PATH}" "${NAME_SUFFIX}" "configmap-checksum")
 secret_name=$(build_resource_name "${project_name_token}" "${COMBINED_SUB_PATH}" "${NAME_SUFFIX}" "secret-checksum")
 
 # Set app_name for generate_metadata library function
-app_name="${deployment_name}"
+app_name="${job_name}"
 
 # =============================================================================
 # Create output directory and file
@@ -121,16 +149,19 @@ detect_all_resources
 # Diagnostic output
 # =============================================================================
 
-echo "Strategy/Mode Selections" >&2
-echo "  Deployment strategy:      RollingUpdate" >&2
-echo "    maxSurge:               ${MAX_SURGE}" >&2
-echo "    maxUnavailable:         ${MAX_UNAVAILABLE}" >&2
-echo "  Affinity strategy:        ${AFFINITY_STRATEGY}" >&2
-echo "  Readonly root filesystem: ${READONLY_ROOT_FILESYSTEM}" >&2
-echo "  Seccomp profile:          ${SECCOMP_PROFILE}" >&2
-echo "  Liveness probe:           ${LIVENESS_CHECK_TYPE}" >&2
-echo "  Readiness probe:          ${READINESS_CHECK_TYPE}" >&2
-echo "  Startup probe:            ${STARTUP_CHECK_TYPE}" >&2
+echo "Job Configuration" >&2
+echo "  Name pattern:      ${job_name}" >&2
+echo "  Backoff limit:     ${BACKOFF_LIMIT}" >&2
+echo "  Completions:       ${COMPLETIONS}" >&2
+echo "  Parallelism:       ${PARALLELISM}" >&2
+echo "  Restart policy:    ${RESTART_POLICY}" >&2
+echo "  Affinity strategy: ${AFFINITY_STRATEGY}" >&2
+if [[ -n "${ACTIVE_DEADLINE_SECONDS}" ]]; then
+  echo "  Active deadline:   ${ACTIVE_DEADLINE_SECONDS}s" >&2
+fi
+if [[ -n "${TTL_SECONDS_AFTER_FINISHED}" ]]; then
+  echo "  TTL after finish:  ${TTL_SECONDS_AFTER_FINISHED}s" >&2
+fi
 
 echo "Detection Results" >&2
 if [[ "${has_configmap}" == "true" ]]; then
@@ -154,29 +185,6 @@ else
   echo "  Environment variables:    None found, not configured" >&2
 fi
 
-echo "Conditional Fields" >&2
-if [[ "${resolved_replicas}" == "NO" ]]; then
-  echo "  Replicas:                 managed by HPA" >&2
-else
-  echo "  Replicas:                 ${resolved_replicas}" >&2
-fi
-if [[ -n "${CPU_LIMIT}" ]]; then
-  echo "  CPU limit:                ${CPU_LIMIT}" >&2
-else
-  echo "  CPU limit:                Not set, so no throttling" >&2
-fi
-if [[ -n "${PRESTOP_COMMAND}" ]]; then
-  echo "  PreStop hook:             configured" >&2
-else
-  echo "  PreStop hook:             not configured" >&2
-fi
-if [[ -n "${NODE_SELECTOR}" ]]; then
-  echo "  Node selector:            ${NODE_SELECTOR}" >&2
-fi
-if [[ -n "${DNS_POLICY}" ]]; then
-  echo "  DNS policy:               ${DNS_POLICY}" >&2
-fi
-
 # =============================================================================
 # Build labels and annotations
 # =============================================================================
@@ -185,36 +193,30 @@ build_timestamp=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 script_name=$(basename "${BASH_SOURCE[0]}")
 
 # =============================================================================
-# Generate Deployment YAML
+# Generate Job YAML
 # =============================================================================
 
 {
   # Header
-  generate_manifest_header "apps/v1" "${kind}" "${deployment_name}" "${environment_token}"
+  generate_manifest_header "batch/v1" "${kind}" "${job_name}" "${environment_token}"
   generate_metadata 2 labels
   generate_metadata 2 annotations default-app
 
   # Spec
   echo "spec:"
 
-  # Replicas (omit if NO for HPA)
-  if [[ "${resolved_replicas}" != "NO" ]]; then
-    echo "  replicas: ${resolved_replicas}"
+  # Job execution settings
+  echo "  backoffLimit: ${BACKOFF_LIMIT}"
+  echo "  completions: ${COMPLETIONS}"
+  echo "  parallelism: ${PARALLELISM}"
+
+  if [[ -n "${ACTIVE_DEADLINE_SECONDS}" ]]; then
+    echo "  activeDeadlineSeconds: ${ACTIVE_DEADLINE_SECONDS}"
   fi
 
-  echo "  revisionHistoryLimit: ${REVISION_HISTORY_LIMIT}"
-
-  # Selector
-  echo "  selector:"
-  echo "    matchLabels:"
-  echo "      app: ${deployment_name}"
-
-  # Update strategy (always RollingUpdate - Recreate causes downtime)
-  echo "  strategy:"
-  echo "    type: RollingUpdate"
-  echo "    rollingUpdate:"
-  echo "      maxSurge: ${MAX_SURGE}"
-  echo "      maxUnavailable: ${MAX_UNAVAILABLE}"
+  if [[ -n "${TTL_SECONDS_AFTER_FINISHED}" ]]; then
+    echo "  ttlSecondsAfterFinished: ${TTL_SECONDS_AFTER_FINISHED}"
+  fi
 
   # Pod template
   echo "  template:"
@@ -223,6 +225,9 @@ script_name=$(basename "${BASH_SOURCE[0]}")
   generate_metadata 6 annotations
 
   echo "    spec:"
+
+  # Restart policy (required for Jobs, must be Never or OnFailure)
+  echo "      restartPolicy: ${RESTART_POLICY}"
 
   # ServiceAccount
   generate_service_account_config 6 "${has_serviceaccount}" "${project_name_token}${suffix_fragment}" "${AUTOMOUNT_SERVICE_ACCOUNT_TOKEN}"
@@ -236,7 +241,7 @@ script_name=$(basename "${BASH_SOURCE[0]}")
   # Affinity (via plugin)
   if [[ "${AFFINITY_STRATEGY}" != "none" ]]; then
     POD_PLACEMENT_INDENT=6 \
-    APP_LABEL_VALUE="${deployment_name}" \
+    APP_LABEL_VALUE="${job_name}" \
     "${affinity_plugin}"
   fi
 
@@ -258,12 +263,14 @@ script_name=$(basename "${BASH_SOURCE[0]}")
   echo "      containers:"
   generate_container_start 8 "default-app" "${image_reference}"
 
-  # Command and args (optional overrides)
+  # Command and args (optional overrides, typically needed for jobs)
   generate_container_command 10 "${CONTAINER_COMMAND}"
   generate_container_args 10 "${CONTAINER_ARGS}"
 
-  # Ports
-  generate_container_ports 10 "${CONTAINER_PORT}"
+  # Ports (optional, useful for sidecars or debugging)
+  if [[ "${JOB_PORTS_ENABLED}" == "true" ]]; then
+    generate_container_ports 10 "${CONTAINER_PORT}"
+  fi
 
   # Container security context
   generate_container_security_context 10 "${READONLY_ROOT_FILESYSTEM}"
@@ -271,11 +278,19 @@ script_name=$(basename "${BASH_SOURCE[0]}")
   # Resources
   generate_container_resources 10 "${EPHEMERAL_STORAGE}" "${MEMORY}" "${CPU_REQUEST}" "${CPU_LIMIT}"
 
-  # Lifecycle (preStop hook)
+  # Lifecycle (preStop hook for cleanup)
   generate_container_lifecycle 10 "${PRESTOP_COMMAND}"
 
-  # Probes
-  generate_workload_probes 10
+  # Probes (optional, disabled by default for batch workloads)
+  if [[ "${JOB_LIVENESS_PROBE_ENABLED}" == "true" ]]; then
+    generate_liveness_probe 10
+  fi
+  if [[ "${JOB_READINESS_PROBE_ENABLED}" == "true" ]]; then
+    generate_readiness_probe 10
+  fi
+  if [[ "${JOB_STARTUP_PROBE_ENABLED}" == "true" ]]; then
+    generate_startup_probe 10
+  fi
 
   # Environment variables (plain KVs from directory + refs from configmap/secret keys)
   generate_container_env_all 10 "${FINAL_ENV_SUB_PATH}" \
@@ -290,4 +305,4 @@ script_name=$(basename "${BASH_SOURCE[0]}")
 
 } > "${output_file}"
 
-echo "Generated Deployment manifest: ${output_file}" >&2
+echo "Generated Job manifest: ${output_file}" >&2

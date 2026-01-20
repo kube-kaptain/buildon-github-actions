@@ -33,6 +33,8 @@ on:
       # INJECT-INPUT: kubernetes-workload-deployment
       # INJECT-INPUT: kubernetes-workload-statefulset
       # INJECT-INPUT: kubernetes-workload-daemonset
+      # INJECT-INPUT: kubernetes-workload-job
+      # INJECT-INPUT: kubernetes-workload-cronjob
       # INJECT-INPUT: kubernetes-poddisruptionbudget
       # INJECT-INPUT: kubernetes-service
 

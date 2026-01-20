@@ -36,6 +36,7 @@ See [`examples/`](examples/) for more usage patterns.
 |---------|-------------|
 | [`additional-release-branches.yaml`](examples/additional-release-branches.yaml) | Support hotfix workflows by building on branches other than the default and still getting releases published |
 | [`basic-quality-and-versioning.yaml`](examples/basic-quality-and-versioning.yaml) | Standard build setup |
+| [`cronjob-history-and-cleanup.yaml`](examples/cronjob-history-and-cleanup.yaml) | CronJobs in Kaptain use sensible defaults for history retention and cleanup |
 | [`daemonset-privileged-and-tolerations.yaml`](examples/daemonset-privileged-and-tolerations.yaml) | This example demonstrates a DaemonSet configured for system-level agents that |
 | [`docker-build-dockerfile-no-squash.yaml`](examples/docker-build-dockerfile-no-squash.yaml) | Build a Docker image without --squash, preserving layer history |
 | [`docker-build-dockerfile.yaml`](examples/docker-build-dockerfile.yaml) | Build a Docker image from a Dockerfile with --squash (default) to flatten |
@@ -47,6 +48,7 @@ See [`examples/`](examples/) for more usage patterns.
 | [`docker-registry-logins-ghcr-pat.yaml`](examples/docker-registry-logins-ghcr-pat.yaml) |   - Push to packages in a different repo or org (GITHUB_TOKEN is scoped to current repo) |
 | [`docker-registry-logins-inherit.yaml`](examples/docker-registry-logins-inherit.yaml) | Secret values are looked up by the names specified in the config |
 | [`github-release-options.yaml`](examples/github-release-options.yaml) | All workflows that include versions-and-naming create GitHub releases by default |
+| [`job-versioned-naming.yaml`](examples/job-versioned-naming.yaml) | Jobs in Kaptain use a unique naming strategy designed for "run once per version" |
 | [`kube-app-generators.yaml`](examples/kube-app-generators.yaml) | This example demonstrates how to use the Kubernetes manifest generators with |
 | [`optional-test-scripts.yaml`](examples/optional-test-scripts.yaml) | Shows how to add custom test scripts to workflows that support them |
 | [`quality-only.yaml`](examples/quality-only.yaml) | Enforce quality standards on PRs without automatic tagging |
@@ -152,6 +154,24 @@ See [`examples/`](examples/) for more usage patterns.
 | `kubernetes-configmap-additional-labels` | string | `""` | Additional labels specific to ConfigMap (comma-separated key=value) |
 | `kubernetes-configmap-name-checksum-injection` | boolean | `true` | Enable checksum injection suffix in ConfigMap name |
 | `kubernetes-configmap-sub-path` | string | `src/configmap` | Directory containing ConfigMap data files (relative) |
+| `kubernetes-cronjob-active-deadline-seconds` | string | `""` | Maximum time in seconds the job can run (optional) |
+| `kubernetes-cronjob-additional-annotations` | string | `""` | Additional annotations for CronJob resources (key=value,key=value) |
+| `kubernetes-cronjob-additional-labels` | string | `""` | Additional labels for CronJob resources (key=value,key=value) |
+| `kubernetes-cronjob-backoff-limit` | string | `6` | Number of retries before marking job as failed |
+| `kubernetes-cronjob-combined-sub-path` | string | `""` | Sub-path within combined/ for output |
+| `kubernetes-cronjob-completions` | string | `1` | Number of successful completions needed |
+| `kubernetes-cronjob-concurrency-policy` | string | `Forbid` | How to handle concurrent job runs (Allow, Forbid, Replace) |
+| `kubernetes-cronjob-env-sub-path` | string | `""` | Path to CronJob environment variables directory |
+| `kubernetes-cronjob-failed-jobs-history-limit` | string | `5` | Number of failed jobs to retain to show failure patterns |
+| `kubernetes-cronjob-generation-enabled` | string | `false` | Enable CronJob generation (true or false) |
+| `kubernetes-cronjob-liveness-probe-enabled` | string | `false` | Enable liveness probe (uses workload probe settings when true) |
+| `kubernetes-cronjob-name-suffix` | string | `""` | Optional suffix for CronJob name and filename |
+| `kubernetes-cronjob-parallelism` | string | `1` | Number of pods running at any time |
+| `kubernetes-cronjob-readiness-probe-enabled` | string | `false` | Enable readiness probe (uses workload probe settings when true) |
+| `kubernetes-cronjob-restart-policy` | string | `Never` | Pod restart policy (Never or OnFailure) |
+| `kubernetes-cronjob-starting-deadline-seconds` | string | `""` | Deadline for starting job if missed scheduled time (optional) |
+| `kubernetes-cronjob-startup-probe-enabled` | string | `false` | Enable startup probe (uses workload probe settings when true) |
+| `kubernetes-cronjob-successful-jobs-history-limit` | string | `1` | Number of successful jobs to retain for log collection |
 | `kubernetes-daemonset-dns-policy` | string | `""` | DNS policy (ClusterFirst, ClusterFirstWithHostNet, Default, None) |
 | `kubernetes-daemonset-host-ipc` | string | `false` | Use host IPC namespace (true/false) |
 | `kubernetes-daemonset-host-network` | string | `false` | Use host network namespace (true/false) |
@@ -166,8 +186,25 @@ See [`examples/`](examples/) for more usage patterns.
 | `kubernetes-deployment-additional-annotations` | string | `""` | Additional annotations for Deployment resources (key=value,key=value) |
 | `kubernetes-deployment-additional-labels` | string | `""` | Additional labels for Deployment resources (key=value,key=value) |
 | `kubernetes-deployment-env-sub-path` | string | `src/deployment-env` | Path to deployment environment variables directory |
+| `kubernetes-deployment-max-surge` | string | `1` | Max surge during rolling update (integer or percentage, e.g., 1 or 25%) |
+| `kubernetes-deployment-max-unavailable` | string | `0` | Max unavailable during rolling update (integer or percentage, e.g., 0 or 25%) |
 | `kubernetes-global-additional-annotations` | string | `""` | Additional annotations for all Kubernetes manifests (comma-separated key=value) |
 | `kubernetes-global-additional-labels` | string | `""` | Additional labels for all Kubernetes manifests (comma-separated key=value) |
+| `kubernetes-job-active-deadline-seconds` | string | `""` | Maximum time in seconds the Job can run (optional) |
+| `kubernetes-job-additional-annotations` | string | `""` | Additional annotations for Job resources (key=value,key=value) |
+| `kubernetes-job-additional-labels` | string | `""` | Additional labels for Job resources (key=value,key=value) |
+| `kubernetes-job-backoff-limit` | string | `6` | Number of retries before marking Job as failed |
+| `kubernetes-job-combined-sub-path` | string | `""` | Sub-path within combined/ for output |
+| `kubernetes-job-completions` | string | `1` | Number of successful completions needed |
+| `kubernetes-job-env-sub-path` | string | `""` | Path to Job environment variables directory |
+| `kubernetes-job-generation-enabled` | string | `false` | Enable Job generation (true or false) |
+| `kubernetes-job-liveness-probe-enabled` | string | `false` | Enable liveness probe (uses workload probe settings when true) |
+| `kubernetes-job-name-suffix` | string | `""` | Optional suffix for Job name and filename |
+| `kubernetes-job-parallelism` | string | `1` | Number of pods running at any time |
+| `kubernetes-job-readiness-probe-enabled` | string | `false` | Enable readiness probe (uses workload probe settings when true) |
+| `kubernetes-job-restart-policy` | string | `Never` | Pod restart policy (Never or OnFailure) |
+| `kubernetes-job-startup-probe-enabled` | string | `false` | Enable startup probe (uses workload probe settings when true) |
+| `kubernetes-job-ttl-seconds-after-finished` | string | `86400` | Cleanup time after Job completion in seconds |
 | `kubernetes-poddisruptionbudget-additional-annotations` | string | `""` | Additional annotations specific to PodDisruptionBudget (comma-separated key=value) |
 | `kubernetes-poddisruptionbudget-additional-labels` | string | `""` | Additional labels specific to PodDisruptionBudget (comma-separated key=value) |
 | `kubernetes-poddisruptionbudget-combined-sub-path` | string | `""` | Sub-path within combined/ for output |
@@ -199,6 +236,7 @@ See [`examples/`](examples/) for more usage patterns.
 | `kubernetes-serviceaccount-name-suffix` | string | `""` | Optional suffix for ServiceAccount name and filename |
 | `kubernetes-statefulset-additional-annotations` | string | `""` | Additional annotations for StatefulSet resources (key=value,key=value) |
 | `kubernetes-statefulset-additional-labels` | string | `""` | Additional labels for StatefulSet resources (key=value,key=value) |
+| `kubernetes-statefulset-allow-unreliable-pod-management-policy` | string | `""` | Required acknowledgment to use Parallel pod management (must be I_LIKE_DOWNTIME) |
 | `kubernetes-statefulset-env-sub-path` | string | `src/statefulset-env` | Path to statefulset environment variables directory |
 | `kubernetes-statefulset-pod-management-policy` | string | `OrderedReady` | Pod management policy (OrderedReady or Parallel) |
 | `kubernetes-statefulset-pvc-access-mode` | string | `ReadWriteOnce` | PVC access mode (ReadWriteOnce, ReadOnlyMany, ReadWriteMany) |
@@ -217,11 +255,15 @@ See [`examples/`](examples/) for more usage patterns.
 | `kubernetes-workload-combined-sub-path` | string | `""` | Sub-path within combined/ for output |
 | `kubernetes-workload-configmap-keys-for-env` | string | `""` | Comma/space-separated ConfigMap keys to expose as env vars |
 | `kubernetes-workload-configmap-mount-path` | string | `/configmap` | ConfigMap mount path in container |
+| `kubernetes-workload-container-args` | string | `""` | Container args override (space-separated, respects quotes like shell) |
+| `kubernetes-workload-container-command` | string | `""` | Container command override (space-separated, respects quotes like shell) |
 | `kubernetes-workload-container-port` | string | `1024` | Container port |
+| `kubernetes-workload-dns-policy` | string | `""` | DNS policy (ClusterFirst, ClusterFirstWithHostNet, Default, None) |
 | `kubernetes-workload-env-sub-path` | string | `""` | Directory containing environment variable files (default per workload type) |
 | `kubernetes-workload-image-pull-secrets` | string | `ENABLED` | Include imagePullSecrets in pod spec (ENABLED/DISABLED) |
 | `kubernetes-workload-image-reference-style` | string | `combined` | Image reference style (combined, separate, project-name-prefixed-combined, project-name-prefixed-separate) |
 | `kubernetes-workload-name-suffix` | string | `""` | Optional suffix for workload name and filename |
+| `kubernetes-workload-node-selector` | string | `""` | Node selector (comma-separated key=value pairs, e.g., disktype=ssd,zone=us-east-1a) |
 | `kubernetes-workload-prestop-command` | string | `""` | PreStop hook command (empty for none) |
 | `kubernetes-workload-probe-liveness-check-type` | string | `http-get` | Liveness probe type (http-get, tcp-socket, exec, grpc, none) |
 | `kubernetes-workload-probe-liveness-exec-command` | string | `""` | Liveness probe exec command |

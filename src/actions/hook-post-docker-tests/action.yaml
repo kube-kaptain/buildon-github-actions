@@ -167,6 +167,14 @@ inputs:
     description: 'Container port'
     required: false
     default: '1024'
+  kubernetes-workload-container-command:
+    description: 'Container command override (space-separated, respects quotes like shell)'
+    required: false
+    default: ''
+  kubernetes-workload-container-args:
+    description: 'Container args override (space-separated, respects quotes like shell)'
+    required: false
+    default: ''
   kubernetes-workload-image-reference-style:
     description: 'Image reference style (combined, separate, project-name-prefixed-combined, project-name-prefixed-separate)'
     required: false
@@ -234,6 +242,14 @@ inputs:
     default: 'spread-nodes-and-zones-ha'
   kubernetes-workload-tolerations:
     description: 'Tolerations as JSON array (e.g., [{"key":"dedicated","operator":"Equal","value":"app","effect":"NoSchedule"}])'
+    required: false
+    default: ''
+  kubernetes-workload-node-selector:
+    description: 'Node selector (comma-separated key=value pairs, e.g., disktype=ssd,zone=us-east-1a)'
+    required: false
+    default: ''
+  kubernetes-workload-dns-policy:
+    description: 'DNS policy (ClusterFirst, ClusterFirstWithHostNet, Default, None)'
     required: false
     default: ''
   # Liveness probe inputs
@@ -396,6 +412,14 @@ inputs:
     description: 'Additional annotations for Deployment resources (key=value,key=value)'
     required: false
     default: ''
+  kubernetes-deployment-max-surge:
+    description: 'Max surge during rolling update (integer or percentage, e.g., 1 or 25%)'
+    required: false
+    default: '1'
+  kubernetes-deployment-max-unavailable:
+    description: 'Max unavailable during rolling update (integer or percentage, e.g., 0 or 25%)'
+    required: false
+    default: '0'
   # StatefulSet unique inputs
   kubernetes-statefulset-env-sub-path:
     description: 'Path to statefulset environment variables directory'
@@ -417,6 +441,10 @@ inputs:
     description: 'Pod management policy (OrderedReady or Parallel)'
     required: false
     default: 'OrderedReady'
+  kubernetes-statefulset-allow-unreliable-pod-management-policy:
+    description: 'Required acknowledgment to use Parallel pod management (must be I_LIKE_DOWNTIME)'
+    required: false
+    default: ''
   kubernetes-statefulset-update-strategy-type:
     description: 'Update strategy type (RollingUpdate or OnDelete)'
     required: false
@@ -449,6 +477,185 @@ inputs:
     description: 'Mount path for the persistent volume'
     required: false
     default: '/data'
+  # DaemonSet unique inputs
+  kubernetes-daemonset-update-strategy-type:
+    description: 'Update strategy type (RollingUpdate or OnDelete)'
+    required: false
+    default: 'RollingUpdate'
+  kubernetes-daemonset-max-unavailable:
+    description: 'Max unavailable pods during rolling update (number or percentage)'
+    required: false
+    default: '1'
+  kubernetes-daemonset-min-ready-seconds:
+    description: 'Minimum seconds a pod must be ready before considered available'
+    required: false
+    default: '0'
+  kubernetes-daemonset-host-network:
+    description: 'Use host network namespace (true/false)'
+    required: false
+    default: 'false'
+  kubernetes-daemonset-host-pid:
+    description: 'Use host PID namespace (true/false)'
+    required: false
+    default: 'false'
+  kubernetes-daemonset-host-ipc:
+    description: 'Use host IPC namespace (true/false)'
+    required: false
+    default: 'false'
+  kubernetes-daemonset-run-as-non-root:
+    description: 'Require non-root user (true/false, set false for system-level DaemonSets that need root)'
+    required: false
+    default: 'true'
+  kubernetes-daemonset-privileged:
+    description: 'Run container in privileged mode (true/false)'
+    required: false
+    default: 'false'
+  kubernetes-daemonset-dns-policy:
+    description: 'DNS policy (ClusterFirst, ClusterFirstWithHostNet, Default, None)'
+    required: false
+    default: ''
+  kubernetes-daemonset-tolerations:
+    description: 'Tolerations as JSON array (e.g., [{"operator":"Exists"}] or [{"key":"node-role.kubernetes.io/control-plane","operator":"Exists","effect":"NoSchedule"}])'
+    required: false
+    default: ''
+  kubernetes-daemonset-node-selector:
+    description: 'Node selector labels (comma-separated key=value)'
+    required: false
+    default: ''
+  # Kubernetes Job generation inputs
+  kubernetes-job-generation-enabled:
+    description: 'Enable Job generation (true or false)'
+    required: false
+    default: 'false'
+  kubernetes-job-name-suffix:
+    description: 'Optional suffix for Job name and filename'
+    required: false
+    default: ''
+  kubernetes-job-combined-sub-path:
+    description: 'Sub-path within combined/ for output'
+    required: false
+    default: ''
+  kubernetes-job-backoff-limit:
+    description: 'Number of retries before marking Job as failed'
+    required: false
+    default: '6'
+  kubernetes-job-completions:
+    description: 'Number of successful completions needed'
+    required: false
+    default: '1'
+  kubernetes-job-parallelism:
+    description: 'Number of pods running at any time'
+    required: false
+    default: '1'
+  kubernetes-job-active-deadline-seconds:
+    description: 'Maximum time in seconds the Job can run (optional)'
+    required: false
+    default: ''
+  kubernetes-job-ttl-seconds-after-finished:
+    description: 'Cleanup time after Job completion in seconds'
+    required: false
+    default: '86400'
+  kubernetes-job-restart-policy:
+    description: 'Pod restart policy (Never or OnFailure)'
+    required: false
+    default: 'Never'
+  kubernetes-job-env-sub-path:
+    description: 'Path to Job environment variables directory'
+    required: false
+    default: ''
+  kubernetes-job-additional-labels:
+    description: 'Additional labels for Job resources (key=value,key=value)'
+    required: false
+    default: ''
+  kubernetes-job-additional-annotations:
+    description: 'Additional annotations for Job resources (key=value,key=value)'
+    required: false
+    default: ''
+  kubernetes-job-liveness-probe-enabled:
+    description: 'Enable liveness probe (uses workload probe settings when true)'
+    required: false
+    default: 'false'
+  kubernetes-job-readiness-probe-enabled:
+    description: 'Enable readiness probe (uses workload probe settings when true)'
+    required: false
+    default: 'false'
+  kubernetes-job-startup-probe-enabled:
+    description: 'Enable startup probe (uses workload probe settings when true)'
+    required: false
+    default: 'false'
+  # Kubernetes CronJob generation inputs
+  kubernetes-cronjob-generation-enabled:
+    description: 'Enable CronJob generation (true or false)'
+    required: false
+    default: 'false'
+  kubernetes-cronjob-name-suffix:
+    description: 'Optional suffix for CronJob name and filename'
+    required: false
+    default: ''
+  kubernetes-cronjob-combined-sub-path:
+    description: 'Sub-path within combined/ for output'
+    required: false
+    default: ''
+  kubernetes-cronjob-concurrency-policy:
+    description: 'How to handle concurrent job runs (Allow, Forbid, Replace)'
+    required: false
+    default: 'Forbid'
+  kubernetes-cronjob-starting-deadline-seconds:
+    description: 'Deadline for starting job if missed scheduled time (optional)'
+    required: false
+    default: ''
+  kubernetes-cronjob-successful-jobs-history-limit:
+    description: 'Number of successful jobs to retain for log collection'
+    required: false
+    default: '1'
+  kubernetes-cronjob-failed-jobs-history-limit:
+    description: 'Number of failed jobs to retain to show failure patterns'
+    required: false
+    default: '5'
+  kubernetes-cronjob-backoff-limit:
+    description: 'Number of retries before marking job as failed'
+    required: false
+    default: '6'
+  kubernetes-cronjob-completions:
+    description: 'Number of successful completions needed'
+    required: false
+    default: '1'
+  kubernetes-cronjob-parallelism:
+    description: 'Number of pods running at any time'
+    required: false
+    default: '1'
+  kubernetes-cronjob-active-deadline-seconds:
+    description: 'Maximum time in seconds the job can run (optional)'
+    required: false
+    default: ''
+  kubernetes-cronjob-restart-policy:
+    description: 'Pod restart policy (Never or OnFailure)'
+    required: false
+    default: 'Never'
+  kubernetes-cronjob-env-sub-path:
+    description: 'Path to CronJob environment variables directory'
+    required: false
+    default: ''
+  kubernetes-cronjob-additional-labels:
+    description: 'Additional labels for CronJob resources (key=value,key=value)'
+    required: false
+    default: ''
+  kubernetes-cronjob-additional-annotations:
+    description: 'Additional annotations for CronJob resources (key=value,key=value)'
+    required: false
+    default: ''
+  kubernetes-cronjob-liveness-probe-enabled:
+    description: 'Enable liveness probe (uses workload probe settings when true)'
+    required: false
+    default: 'false'
+  kubernetes-cronjob-readiness-probe-enabled:
+    description: 'Enable readiness probe (uses workload probe settings when true)'
+    required: false
+    default: 'false'
+  kubernetes-cronjob-startup-probe-enabled:
+    description: 'Enable startup probe (uses workload probe settings when true)'
+    required: false
+    default: 'false'
   # Kubernetes Service generation
   kubernetes-service-generation-enabled:
     description: 'Enable Service generation (true, false, or empty for auto based on workload type)'
@@ -748,6 +955,11 @@ runs:
         KUBERNETES_WORKLOAD_TERMINATION_GRACE_PERIOD_SECONDS: ${{ inputs.kubernetes-workload-termination-grace-period-seconds }}
         KUBERNETES_WORKLOAD_PRESTOP_COMMAND: ${{ inputs.kubernetes-workload-prestop-command }}
         KUBERNETES_WORKLOAD_AFFINITY_STRATEGY: ${{ inputs.kubernetes-workload-affinity-strategy }}
+        KUBERNETES_WORKLOAD_TOLERATIONS: ${{ inputs.kubernetes-workload-tolerations }}
+        KUBERNETES_WORKLOAD_NODE_SELECTOR: ${{ inputs.kubernetes-workload-node-selector }}
+        KUBERNETES_WORKLOAD_DNS_POLICY: ${{ inputs.kubernetes-workload-dns-policy }}
+        KUBERNETES_WORKLOAD_CONTAINER_COMMAND: ${{ inputs.kubernetes-workload-container-command }}
+        KUBERNETES_WORKLOAD_CONTAINER_ARGS: ${{ inputs.kubernetes-workload-container-args }}
         KUBERNETES_WORKLOAD_PROBE_LIVENESS_CHECK_TYPE: ${{ inputs.kubernetes-workload-probe-liveness-check-type }}
         KUBERNETES_WORKLOAD_PROBE_READINESS_CHECK_TYPE: ${{ inputs.kubernetes-workload-probe-readiness-check-type }}
         KUBERNETES_WORKLOAD_PROBE_STARTUP_CHECK_TYPE: ${{ inputs.kubernetes-workload-probe-startup-check-type }}
@@ -756,9 +968,16 @@ runs:
         KUBERNETES_WORKLOAD_PROBE_STARTUP_HTTP_PATH: ${{ inputs.kubernetes-workload-probe-startup-http-path }}
         KUBERNETES_WORKLOAD_REPLICAS: ${{ inputs.kubernetes-workload-replicas }}
         KUBERNETES_WORKLOAD_REVISION_HISTORY_LIMIT: ${{ inputs.kubernetes-workload-revision-history-limit }}
+        # Workflow inputs - deployment unique
+        KUBERNETES_DEPLOYMENT_ENV_SUB_PATH: ${{ inputs.kubernetes-deployment-env-sub-path }}
+        KUBERNETES_DEPLOYMENT_ADDITIONAL_LABELS: ${{ inputs.kubernetes-deployment-additional-labels }}
+        KUBERNETES_DEPLOYMENT_ADDITIONAL_ANNOTATIONS: ${{ inputs.kubernetes-deployment-additional-annotations }}
+        KUBERNETES_DEPLOYMENT_MAX_SURGE: ${{ inputs.kubernetes-deployment-max-surge }}
+        KUBERNETES_DEPLOYMENT_MAX_UNAVAILABLE: ${{ inputs.kubernetes-deployment-max-unavailable }}
         # Workflow inputs - statefulset unique
         KUBERNETES_STATEFULSET_SERVICE_NAME: ${{ inputs.kubernetes-statefulset-service-name }}
         KUBERNETES_STATEFULSET_POD_MANAGEMENT_POLICY: ${{ inputs.kubernetes-statefulset-pod-management-policy }}
+        KUBERNETES_STATEFULSET_ALLOW_UNRELIABLE_POD_MANAGEMENT_POLICY: ${{ inputs.kubernetes-statefulset-allow-unreliable-pod-management-policy }}
         KUBERNETES_STATEFULSET_UPDATE_STRATEGY_TYPE: ${{ inputs.kubernetes-statefulset-update-strategy-type }}
         KUBERNETES_STATEFULSET_UPDATE_STRATEGY_PARTITION: ${{ inputs.kubernetes-statefulset-update-strategy-partition }}
         KUBERNETES_STATEFULSET_PVC_ENABLED: ${{ inputs.kubernetes-statefulset-pvc-enabled }}

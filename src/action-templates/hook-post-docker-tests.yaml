@@ -22,6 +22,9 @@ inputs:
   # INJECT-INPUT: kubernetes-workload
   # INJECT-INPUT: kubernetes-workload-deployment
   # INJECT-INPUT: kubernetes-workload-statefulset
+  # INJECT-INPUT: kubernetes-workload-daemonset
+  # INJECT-INPUT: kubernetes-workload-job
+  # INJECT-INPUT: kubernetes-workload-cronjob
   # INJECT-INPUT: kubernetes-service
   # INJECT-INPUT: token-substitution
   # INJECT-INPUT: release-branches
@@ -146,6 +149,11 @@ runs:
         KUBERNETES_WORKLOAD_TERMINATION_GRACE_PERIOD_SECONDS: ${{ inputs.kubernetes-workload-termination-grace-period-seconds }}
         KUBERNETES_WORKLOAD_PRESTOP_COMMAND: ${{ inputs.kubernetes-workload-prestop-command }}
         KUBERNETES_WORKLOAD_AFFINITY_STRATEGY: ${{ inputs.kubernetes-workload-affinity-strategy }}
+        KUBERNETES_WORKLOAD_TOLERATIONS: ${{ inputs.kubernetes-workload-tolerations }}
+        KUBERNETES_WORKLOAD_NODE_SELECTOR: ${{ inputs.kubernetes-workload-node-selector }}
+        KUBERNETES_WORKLOAD_DNS_POLICY: ${{ inputs.kubernetes-workload-dns-policy }}
+        KUBERNETES_WORKLOAD_CONTAINER_COMMAND: ${{ inputs.kubernetes-workload-container-command }}
+        KUBERNETES_WORKLOAD_CONTAINER_ARGS: ${{ inputs.kubernetes-workload-container-args }}
         KUBERNETES_WORKLOAD_PROBE_LIVENESS_CHECK_TYPE: ${{ inputs.kubernetes-workload-probe-liveness-check-type }}
         KUBERNETES_WORKLOAD_PROBE_READINESS_CHECK_TYPE: ${{ inputs.kubernetes-workload-probe-readiness-check-type }}
         KUBERNETES_WORKLOAD_PROBE_STARTUP_CHECK_TYPE: ${{ inputs.kubernetes-workload-probe-startup-check-type }}
@@ -154,9 +162,16 @@ runs:
         KUBERNETES_WORKLOAD_PROBE_STARTUP_HTTP_PATH: ${{ inputs.kubernetes-workload-probe-startup-http-path }}
         KUBERNETES_WORKLOAD_REPLICAS: ${{ inputs.kubernetes-workload-replicas }}
         KUBERNETES_WORKLOAD_REVISION_HISTORY_LIMIT: ${{ inputs.kubernetes-workload-revision-history-limit }}
+        # Workflow inputs - deployment unique
+        KUBERNETES_DEPLOYMENT_ENV_SUB_PATH: ${{ inputs.kubernetes-deployment-env-sub-path }}
+        KUBERNETES_DEPLOYMENT_ADDITIONAL_LABELS: ${{ inputs.kubernetes-deployment-additional-labels }}
+        KUBERNETES_DEPLOYMENT_ADDITIONAL_ANNOTATIONS: ${{ inputs.kubernetes-deployment-additional-annotations }}
+        KUBERNETES_DEPLOYMENT_MAX_SURGE: ${{ inputs.kubernetes-deployment-max-surge }}
+        KUBERNETES_DEPLOYMENT_MAX_UNAVAILABLE: ${{ inputs.kubernetes-deployment-max-unavailable }}
         # Workflow inputs - statefulset unique
         KUBERNETES_STATEFULSET_SERVICE_NAME: ${{ inputs.kubernetes-statefulset-service-name }}
         KUBERNETES_STATEFULSET_POD_MANAGEMENT_POLICY: ${{ inputs.kubernetes-statefulset-pod-management-policy }}
+        KUBERNETES_STATEFULSET_ALLOW_UNRELIABLE_POD_MANAGEMENT_POLICY: ${{ inputs.kubernetes-statefulset-allow-unreliable-pod-management-policy }}
         KUBERNETES_STATEFULSET_UPDATE_STRATEGY_TYPE: ${{ inputs.kubernetes-statefulset-update-strategy-type }}
         KUBERNETES_STATEFULSET_UPDATE_STRATEGY_PARTITION: ${{ inputs.kubernetes-statefulset-update-strategy-partition }}
         KUBERNETES_STATEFULSET_PVC_ENABLED: ${{ inputs.kubernetes-statefulset-pvc-enabled }}

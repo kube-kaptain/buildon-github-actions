@@ -28,6 +28,17 @@ KUBERNETES_WORKLOAD_COMBINED_SUB_PATH="${KUBERNETES_WORKLOAD_COMBINED_SUB_PATH:-
 KUBERNETES_WORKLOAD_REPLICAS="${KUBERNETES_WORKLOAD_REPLICAS:-}"
 KUBERNETES_WORKLOAD_REVISION_HISTORY_LIMIT="${KUBERNETES_WORKLOAD_REVISION_HISTORY_LIMIT:-10}"
 
+# Container command and args (space-separated, respects quotes like shell)
+# Example: '/bin/sh -c' and '"echo hello && sleep 10"'
+KUBERNETES_WORKLOAD_CONTAINER_COMMAND="${KUBERNETES_WORKLOAD_CONTAINER_COMMAND:-}"
+KUBERNETES_WORKLOAD_CONTAINER_ARGS="${KUBERNETES_WORKLOAD_CONTAINER_ARGS:-}"
+
+# Node selector (comma-separated key=value pairs)
+KUBERNETES_WORKLOAD_NODE_SELECTOR="${KUBERNETES_WORKLOAD_NODE_SELECTOR:-}"
+
+# DNS policy (ClusterFirst, ClusterFirstWithHostNet, Default, None)
+KUBERNETES_WORKLOAD_DNS_POLICY="${KUBERNETES_WORKLOAD_DNS_POLICY:-}"
+
 # =============================================================================
 # Convenience short names (for single-purpose generator scripts only)
 # =============================================================================
@@ -48,6 +59,11 @@ IMAGE_REFERENCE_STYLE="${KUBERNETES_WORKLOAD_IMAGE_REFERENCE_STYLE:-combined}"
 
 # Container configuration
 CONTAINER_PORT="${KUBERNETES_WORKLOAD_CONTAINER_PORT:-1024}"
+
+# Container command and args (space-separated, respects quotes like shell)
+# Example: '/bin/sh -c' and '"echo hello && sleep 10"'
+CONTAINER_COMMAND="${KUBERNETES_WORKLOAD_CONTAINER_COMMAND}"
+CONTAINER_ARGS="${KUBERNETES_WORKLOAD_CONTAINER_ARGS}"
 
 # Security
 READONLY_ROOT_FILESYSTEM="${KUBERNETES_WORKLOAD_READONLY_ROOT_FILESYSTEM:-true}"
@@ -78,6 +94,12 @@ AFFINITY_STRATEGY="${KUBERNETES_WORKLOAD_AFFINITY_STRATEGY:-spread-nodes-and-zon
 
 # Tolerations (JSON array)
 TOLERATIONS="${KUBERNETES_WORKLOAD_TOLERATIONS:-}"
+
+# Node selector (comma-separated key=value pairs)
+NODE_SELECTOR="${KUBERNETES_WORKLOAD_NODE_SELECTOR}"
+
+# DNS policy (ClusterFirst, ClusterFirstWithHostNet, Default, None)
+DNS_POLICY="${KUBERNETES_WORKLOAD_DNS_POLICY}"
 
 # Liveness probe
 LIVENESS_CHECK_TYPE="${KUBERNETES_WORKLOAD_PROBE_LIVENESS_CHECK_TYPE:-http-get}"
