@@ -91,6 +91,11 @@ jobs:
       # === Resolve Registry ===
       # INJECT: resolve-registry-and-namespace
 
+      # === Docker Registry Logins ===
+      # INJECT: github-check-start(name="Docker Registry Logins", id="check-docker-registry-logins")
+      # INJECT: docker-registry-logins
+      # INJECT: github-check-end(name="Docker Registry Logins", id="check-docker-registry-logins")
+
       # INJECT: github-check-start(name="Pre-tagging Tests", id="check-pre-tagging", if="inputs.hook-pre-tagging-tests-script-sub-path != ''")
       # INJECT: hook-pre-tagging-tests
       # INJECT: github-check-end(name="Pre-tagging Tests", id="check-pre-tagging", if="inputs.hook-pre-tagging-tests-script-sub-path != ''")

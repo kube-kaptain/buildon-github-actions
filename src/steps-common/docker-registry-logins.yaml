@@ -1,7 +1,9 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
 
+# Only run if a registry was resolved (skip if not configured)
 - name: Docker registry logins
+  if: steps.resolve-registry.outputs.docker-target-registry != ''
   uses: ./.github/buildon-github-actions/src/actions/docker-registry-logins
   with:
     config: ${{ inputs.docker-registry-logins }}

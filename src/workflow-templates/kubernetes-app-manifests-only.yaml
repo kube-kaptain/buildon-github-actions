@@ -147,6 +147,11 @@ jobs:
       # === Resolve Registry ===
       # INJECT: resolve-registry-and-namespace
 
+      # === Docker Registry Logins ===
+      # INJECT: github-check-start(name="Docker Registry Logins", id="check-docker-registry-logins")
+      # INJECT: docker-registry-logins
+      # INJECT: github-check-end(name="Docker Registry Logins", id="check-docker-registry-logins")
+
       # === Pre-tagging Tests ===
       # INJECT: github-check-start(name="Pre-tagging Tests", id="check-pre-tagging", if="inputs.hook-pre-tagging-tests-script-sub-path != ''")
       # INJECT: hook-pre-tagging-tests
@@ -201,7 +206,6 @@ jobs:
 
       # === Manifest Repo Provider Package ===
       # INJECT: github-check-start(name="Package Manifests for Repo Provider", id="check-manifest-repo-provider-package")
-      # INJECT: docker-registry-logins
       # INJECT: manifest-repo-provider-package
       # INJECT: github-check-end(name="Package Manifests for Repo Provider", id="check-manifest-repo-provider-package")
 

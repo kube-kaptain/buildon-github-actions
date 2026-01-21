@@ -1286,6 +1286,34 @@ jobs:
           target-registry: ${{ inputs.docker-target-registry }}
           target-base-path: ${{ inputs.docker-target-base-path }}
 
+      # === Docker Registry Logins ===
+      - name: Start check - Docker Registry Logins
+        id: check-docker-registry-logins
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
+        with:
+          action: start
+          check-name: 'Build & Publish → Docker Registry Logins'
+      # Only run if a registry was resolved (skip if not configured)
+      - name: Docker registry logins
+        if: steps.resolve-registry.outputs.docker-target-registry != '' && success()
+        uses: ./.github/buildon-github-actions/src/actions/docker-registry-logins
+        with:
+          config: ${{ inputs.docker-registry-logins }}
+          secrets-json: ${{ secrets.docker-registry-logins-secrets || toJSON(secrets) }}
+          docker-target-registry: ${{ steps.resolve-registry.outputs.docker-target-registry }}
+      - name: Pass check - Docker Registry Logins
+        if: success()
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
+        with:
+          action: pass
+          check-run-id: ${{ steps.check-docker-registry-logins.outputs.check-run-id }}
+      - name: Fail check - Docker Registry Logins
+        if: failure() && steps.check-docker-registry-logins.outputs.check-run-id != ''
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
+        with:
+          action: fail
+          check-run-id: ${{ steps.check-docker-registry-logins.outputs.check-run-id }}
+
       # === Pre-tagging Tests ===
       - name: Start check - Pre-tagging Tests
         if: inputs.hook-pre-tagging-tests-script-sub-path != '' && success()
@@ -2042,12 +2070,6 @@ jobs:
         with:
           action: start
           check-name: 'Build & Publish → Package Manifests for Repo Provider'
-      - name: Docker registry logins
-        uses: ./.github/buildon-github-actions/src/actions/docker-registry-logins
-        with:
-          config: ${{ inputs.docker-registry-logins }}
-          secrets-json: ${{ secrets.docker-registry-logins-secrets || toJSON(secrets) }}
-          docker-target-registry: ${{ steps.resolve-registry.outputs.docker-target-registry }}
       - name: Package manifests for repo provider
         id: manifest-repo-provider-package
         uses: ./.github/buildon-github-actions/src/actions/kubernetes-manifests-repo-provider-package
