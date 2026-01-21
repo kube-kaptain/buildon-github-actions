@@ -5,8 +5,8 @@
   id: docker-build
   uses: ./.github/buildon-github-actions/src/actions/docker-build-dockerfile
   with:
-    docker-target-registry: ${{ inputs.docker-target-registry }}
-    docker-target-base-path: ${{ inputs.docker-target-base-path }}
+    docker-target-registry: ${{ steps.resolve-registry.outputs.docker-target-registry }}
+    docker-target-base-path: ${{ steps.resolve-registry.outputs.docker-target-base-path }}
     docker-image-name: ${{ steps.versions.outputs.docker-image-name }}
     docker-tag: ${{ steps.versions.outputs.docker-tag }}
     version: ${{ steps.versions.outputs.version }}

@@ -1,10 +1,11 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
 
-# Compute target registry and base path for manifests-only workflows (no docker build step)
-# Uses same step id as docker-build so manifest-package can use consistent output reference
-- name: Resolve target registry and base path
-  id: docker-build
+# Resolve target registry and namespace (base path) early in workflow
+# Must run before any hooks or docker operations that need these values
+# All downstream steps should reference steps.resolve-registry.outputs.*
+- name: Resolve target registry and namespace
+  id: resolve-registry
   uses: ./.github/buildon-github-actions/src/actions/resolve-target-registry-and-base-path
   with:
     target-registry: ${{ inputs.docker-target-registry }}

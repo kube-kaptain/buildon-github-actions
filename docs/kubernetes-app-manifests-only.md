@@ -10,8 +10,8 @@ Kubernetes App - Manifests Only
 | `docker-image-name-override` | string | `""` | Docker image name (if provided, substitutes into manifests; if empty, token remains for later substitution) |
 | `docker-image-tag-override` | string | `""` | Docker image tag (if provided, substitutes into manifests; if empty, token remains for later substitution) |
 | `docker-registry-logins` | string | `""` | YAML config for Docker registry logins (registry URL as key) |
-| `docker-target-registry` | string | `ghcr.io` | Target container registry |
-| `docker-target-base-path` | string | `""` | Path between registry and image name (auto-set for GHCR) |
+| `docker-target-registry` | string | `""` | Target container registry domain (defaults to ghcr.io on gh actions) |
+| `docker-target-base-path` | string | `""` | Path between registry and image name (defaults to lower cased org name on gh actions) |
 | `docker-push-targets` | string | `""` | JSON array of additional push targets [{registry, base-path?}] |
 | `manifests-sub-path` | string | `src/kubernetes` | Directory containing Kubernetes manifests (relative) |
 | `manifests-repo-provider-type` | string | `docker` | Repo provider type for manifest storage (default: docker, currently the only supported provider) |
@@ -129,7 +129,7 @@ Kubernetes App - Manifests Only
 | `kubernetes-daemonset-node-selector` | string | `""` | Node selector labels (comma-separated key=value) |
 | `kubernetes-job-name-suffix` | string | `""` | Optional suffix for Job name and filename |
 | `kubernetes-job-combined-sub-path` | string | `""` | Sub-path within combined/ for output |
-| `kubernetes-job-backoff-limit` | string | `6` | Number of retries before marking Job as failed |
+| `kubernetes-job-backoff-limit` | string | `0` | Number of retries before marking Job as failed (0 = fail immediately) |
 | `kubernetes-job-completions` | string | `1` | Number of successful completions needed |
 | `kubernetes-job-parallelism` | string | `1` | Number of pods running at any time |
 | `kubernetes-job-active-deadline-seconds` | string | `""` | Maximum time in seconds the Job can run (optional) |
@@ -147,7 +147,7 @@ Kubernetes App - Manifests Only
 | `kubernetes-cronjob-starting-deadline-seconds` | string | `""` | Deadline for starting job if missed scheduled time (optional) |
 | `kubernetes-cronjob-successful-jobs-history-limit` | string | `1` | Number of successful jobs to retain for log collection |
 | `kubernetes-cronjob-failed-jobs-history-limit` | string | `5` | Number of failed jobs to retain to show failure patterns |
-| `kubernetes-cronjob-backoff-limit` | string | `6` | Number of retries before marking job as failed |
+| `kubernetes-cronjob-backoff-limit` | string | `0` | Number of retries before marking job as failed (0 = fail immediately) |
 | `kubernetes-cronjob-completions` | string | `1` | Number of successful completions needed |
 | `kubernetes-cronjob-parallelism` | string | `1` | Number of pods running at any time |
 | `kubernetes-cronjob-active-deadline-seconds` | string | `""` | Maximum time in seconds the job can run (optional) |

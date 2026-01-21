@@ -87,6 +87,10 @@ jobs:
       project-name: ${{ steps.versions.outputs.project-name }}
     steps:
       # INJECT: parse-workflow-ref-and-checkout
+
+      # === Resolve Registry ===
+      # INJECT: resolve-registry-and-namespace
+
       # INJECT: github-check-start(name="Pre-tagging Tests", id="check-pre-tagging", if="inputs.hook-pre-tagging-tests-script-sub-path != ''")
       # INJECT: hook-pre-tagging-tests
       # INJECT: github-check-end(name="Pre-tagging Tests", id="check-pre-tagging", if="inputs.hook-pre-tagging-tests-script-sub-path != ''")

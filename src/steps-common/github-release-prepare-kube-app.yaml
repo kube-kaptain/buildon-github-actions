@@ -31,6 +31,6 @@
     allow-builtin-token-override: ${{ inputs.allow-builtin-token-override }}
     config-value-trailing-newline: ${{ inputs.config-value-trailing-newline }}
     docker-image-full-uri: ${{ steps.docker-build.outputs.docker-target-image-full-uri }}
-    target-registry: ${{ inputs.docker-target-registry }}
-    target-base-path: ${{ inputs.docker-target-base-path }}
+    target-registry: ${{ steps.resolve-registry.outputs.docker-target-registry }}
+    target-base-path: ${{ steps.resolve-registry.outputs.docker-target-base-path }}
     manifests-zip-file-name: ${{ steps.manifest-package.outputs.manifests-zip-file-name }}

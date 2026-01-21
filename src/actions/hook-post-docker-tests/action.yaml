@@ -23,11 +23,11 @@ inputs:
     default: ''
   # Docker target config
   docker-target-registry:
-    description: 'Target container registry'
+    description: 'Target container registry domain (defaults to ghcr.io on gh actions)'
     required: false
-    default: 'ghcr.io'
+    default: ''
   docker-target-base-path:
-    description: 'Path between registry and image name (auto-set for GHCR)'
+    description: 'Path between registry and image name (defaults to lower cased org name on gh actions)'
     required: false
     default: ''
   # Docker push targets
@@ -532,9 +532,9 @@ inputs:
     required: false
     default: ''
   kubernetes-job-backoff-limit:
-    description: 'Number of retries before marking Job as failed'
+    description: 'Number of retries before marking Job as failed (0 = fail immediately)'
     required: false
-    default: '6'
+    default: '0'
   kubernetes-job-completions:
     description: 'Number of successful completions needed'
     required: false
@@ -605,9 +605,9 @@ inputs:
     required: false
     default: '5'
   kubernetes-cronjob-backoff-limit:
-    description: 'Number of retries before marking job as failed'
+    description: 'Number of retries before marking job as failed (0 = fail immediately)'
     required: false
-    default: '6'
+    default: '0'
   kubernetes-cronjob-completions:
     description: 'Number of successful completions needed'
     required: false

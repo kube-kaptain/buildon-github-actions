@@ -7,15 +7,13 @@ description: 'Pulls and retags Docker images (no push)'
 inputs:
   # INJECT-INPUT: docker-retag
 
-  # Target image configuration (action-specific)
+  # Target image configuration (action-specific, pre-resolved by workflow)
   docker-target-registry:
-    description: 'Target container registry (defaults to ghcr.io)'
-    required: false
-    default: ''
+    description: 'Target container registry (pre-resolved by workflow)'
+    required: true
   docker-target-base-path:
-    description: 'Path between registry and image name (leave empty for GHCR auto-detect)'
-    required: false
-    default: ''
+    description: 'Path between registry and image name (pre-resolved by workflow)'
+    required: true
   docker-image-name:
     description: 'Image name (from version generator docker-image-name)'
     required: true
@@ -31,22 +29,15 @@ outputs:
     description: 'Full target image reference'
     value: ${{ steps.retag.outputs.DOCKER_TARGET_IMAGE_FULL_URI }}
   docker-target-registry:
-    description: 'Resolved target registry (for passing to manifest-package)'
-    value: ${{ steps.resolve.outputs.docker-target-registry }}
+    description: 'Target registry (pass-through for downstream)'
+    value: ${{ inputs.docker-target-registry }}
   docker-target-base-path:
-    description: 'Computed target base path (for passing to manifest-package)'
-    value: ${{ steps.resolve.outputs.docker-target-base-path }}
+    description: 'Target base path (pass-through for downstream)'
+    value: ${{ inputs.docker-target-base-path }}
 
 runs:
   using: 'composite'
   steps:
-    - name: Resolve target registry and base path
-      id: resolve
-      uses: ./.github/buildon-github-actions/src/actions/resolve-target-registry-and-base-path
-      with:
-        target-registry: ${{ inputs.docker-target-registry }}
-        target-base-path: ${{ inputs.docker-target-base-path }}
-
     - name: Pull and retag
       id: retag
       shell: bash
@@ -57,8 +48,8 @@ runs:
         DOCKER_SOURCE_BASE_PATH: ${{ inputs.docker-source-base-path }}
         DOCKER_SOURCE_IMAGE_NAME: ${{ inputs.docker-source-image-name }}
         DOCKER_SOURCE_TAG: ${{ inputs.docker-source-tag }}
-        DOCKER_TARGET_REGISTRY: ${{ steps.resolve.outputs.docker-target-registry }}
-        DOCKER_TARGET_BASE_PATH: ${{ steps.resolve.outputs.docker-target-base-path }}
+        DOCKER_TARGET_REGISTRY: ${{ inputs.docker-target-registry }}
+        DOCKER_TARGET_BASE_PATH: ${{ inputs.docker-target-base-path }}
         DOCKER_IMAGE_NAME: ${{ inputs.docker-image-name }}
         DOCKER_TAG: ${{ inputs.docker-tag }}
       run: "${{ github.action_path }}/../../scripts/main/docker-build-retag"

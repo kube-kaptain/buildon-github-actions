@@ -146,6 +146,9 @@ jobs:
     steps:
       # INJECT: parse-workflow-ref-and-checkout
 
+      # === Resolve Registry ===
+      # INJECT: resolve-registry-and-namespace
+
       # === Docker Registry Logins ===
       # INJECT: docker-registry-logins
 
