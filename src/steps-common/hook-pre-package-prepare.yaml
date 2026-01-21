@@ -17,9 +17,9 @@
     dockerfile-sub-path: ${{ inputs.dockerfile-sub-path }}
     dockerfile-squash: ${{ inputs.dockerfile-squash }}
     dockerfile-no-cache: ${{ inputs.dockerfile-no-cache }}
-    # Docker target config
-    docker-target-registry: ${{ inputs.docker-target-registry }}
-    docker-target-base-path: ${{ inputs.docker-target-base-path }}
+    # Docker target config (from early resolver)
+    docker-target-registry: ${{ steps.resolve-registry.outputs.docker-target-registry }}
+    docker-target-base-path: ${{ steps.resolve-registry.outputs.docker-target-base-path }}
     # Docker push targets
     docker-push-targets: ${{ inputs.docker-push-targets }}
 

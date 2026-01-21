@@ -20,12 +20,12 @@ on:
         default: ''
       # Docker target config
       docker-target-registry:
-        description: 'Target container registry'
+        description: 'Target container registry domain (defaults to ghcr.io on gh actions)'
         required: false
         type: string
-        default: 'ghcr.io'
+        default: ''
       docker-target-base-path:
-        description: 'Path between registry and image name (auto-set for GHCR)'
+        description: 'Path between registry and image name (defaults to lower cased org name on gh actions)'
         required: false
         type: string
         default: ''
@@ -449,13 +449,24 @@ jobs:
           echo "Linking local actions for dogfooding"
           ln -s "$(pwd)" .github/buildon-github-actions
 
+      # === Resolve Registry ===
+      # Resolve target registry and namespace (base path) early in workflow
+      # Must run before any hooks or docker operations that need these values
+      # All downstream steps should reference steps.resolve-registry.outputs.*
+      - name: Resolve target registry and namespace
+        id: resolve-registry
+        uses: ./.github/buildon-github-actions/src/actions/resolve-target-registry-and-base-path
+        with:
+          target-registry: ${{ inputs.docker-target-registry }}
+          target-base-path: ${{ inputs.docker-target-base-path }}
+
       # === Docker Registry Logins ===
       - name: Docker registry logins
         uses: ./.github/buildon-github-actions/src/actions/docker-registry-logins
         with:
           config: ${{ inputs.docker-registry-logins }}
           secrets-json: ${{ secrets.docker-registry-logins-secrets || toJSON(secrets) }}
-          docker-target-registry: ${{ inputs.docker-target-registry }}
+          docker-target-registry: ${{ steps.resolve-registry.outputs.docker-target-registry }}
 
       # === Pre-tagging Tests ===
       - name: Start check - Pre-tagging Tests
@@ -481,9 +492,9 @@ jobs:
           dockerfile-sub-path: ${{ inputs.dockerfile-sub-path }}
           dockerfile-squash: ${{ inputs.dockerfile-squash }}
           dockerfile-no-cache: ${{ inputs.dockerfile-no-cache }}
-          # Docker target config
-          docker-target-registry: ${{ inputs.docker-target-registry }}
-          docker-target-base-path: ${{ inputs.docker-target-base-path }}
+          # Docker target config (from early resolver)
+          docker-target-registry: ${{ steps.resolve-registry.outputs.docker-target-registry }}
+          docker-target-base-path: ${{ steps.resolve-registry.outputs.docker-target-base-path }}
           # Docker push targets
           docker-push-targets: ${{ inputs.docker-push-targets }}
 
@@ -679,8 +690,8 @@ jobs:
         id: docker-build
         uses: ./.github/buildon-github-actions/src/actions/docker-build-dockerfile
         with:
-          docker-target-registry: ${{ inputs.docker-target-registry }}
-          docker-target-base-path: ${{ inputs.docker-target-base-path }}
+          docker-target-registry: ${{ steps.resolve-registry.outputs.docker-target-registry }}
+          docker-target-base-path: ${{ steps.resolve-registry.outputs.docker-target-base-path }}
           docker-image-name: ${{ steps.versions.outputs.docker-image-name }}
           docker-tag: ${{ steps.versions.outputs.docker-tag }}
           version: ${{ steps.versions.outputs.version }}
@@ -861,8 +872,8 @@ jobs:
           allow-builtin-token-override: ${{ inputs.allow-builtin-token-override }}
           config-value-trailing-newline: ${{ inputs.config-value-trailing-newline }}
           docker-image-full-uri: ${{ steps.docker-build.outputs.docker-target-image-full-uri }}
-          target-registry: ${{ inputs.docker-target-registry }}
-          target-base-path: ${{ inputs.docker-target-base-path }}
+          target-registry: ${{ steps.resolve-registry.outputs.docker-target-registry }}
+          target-base-path: ${{ steps.resolve-registry.outputs.docker-target-base-path }}
       - name: Pass check - GitHub Release Prepare
         if: inputs.github-release-enabled == true && success()
         uses: ./.github/buildon-github-actions/src/actions/github-check-run

@@ -33,10 +33,10 @@ kubernetes-cronjob-failed-jobs-history-limit:
   type: string
   default: '5'
 kubernetes-cronjob-backoff-limit:
-  description: 'Number of retries before marking job as failed'
+  description: 'Number of retries before marking job as failed (0 = fail immediately)'
   required: false
   type: string
-  default: '6'
+  default: '0'
 kubernetes-cronjob-completions:
   description: 'Number of successful completions needed'
   required: false

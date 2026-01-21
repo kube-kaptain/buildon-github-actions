@@ -31,11 +31,11 @@ inputs:
     default: ''
   # Docker target config
   docker-target-registry:
-    description: 'Target container registry'
+    description: 'Target container registry domain (defaults to ghcr.io on gh actions)'
     required: false
-    default: 'ghcr.io'
+    default: ''
   docker-target-base-path:
-    description: 'Path between registry and image name (auto-set for GHCR)'
+    description: 'Path between registry and image name (defaults to lower cased org name on gh actions)'
     required: false
     default: ''
   # Docker push targets
@@ -104,17 +104,8 @@ runs:
   using: 'composite'
   steps:
     # ==========================================================================
-    # Resolve target registry and base path (handles GHCR defaults)
-    # ==========================================================================
-    - name: Resolve target registry and base path
-      id: resolve
-      uses: ./.github/buildon-github-actions/src/actions/resolve-target-registry-and-base-path
-      with:
-        target-registry: ${{ inputs.docker-target-registry }}
-        target-base-path: ${{ inputs.docker-target-base-path }}
-
-    # ==========================================================================
     # Compute REPO_PROVIDER_* values from user-friendly inputs
+    # Registry and base path are pre-resolved by workflow before calling this action
     # ==========================================================================
     - name: Compute repo provider values
       id: computed
@@ -123,14 +114,14 @@ runs:
         PROVIDER="${{ inputs.manifests-repo-provider-type }}"
 
         # =====================================================================
-        # REPO_PROVIDER_URL (from resolver)
+        # REPO_PROVIDER_URL (pre-resolved by workflow)
         # =====================================================================
-        echo "url=${{ steps.resolve.outputs.docker-target-registry }}" >> "$GITHUB_OUTPUT"
+        echo "url=${{ inputs.docker-target-registry }}" >> "$GITHUB_OUTPUT"
 
         # =====================================================================
-        # REPO_PROVIDER_NAMESPACE (from resolver)
+        # REPO_PROVIDER_NAMESPACE (pre-resolved by workflow)
         # =====================================================================
-        echo "namespace=${{ steps.resolve.outputs.docker-target-base-path }}" >> "$GITHUB_OUTPUT"
+        echo "namespace=${{ inputs.docker-target-base-path }}" >> "$GITHUB_OUTPUT"
 
         # =====================================================================
         # REPO_PROVIDER_NAME

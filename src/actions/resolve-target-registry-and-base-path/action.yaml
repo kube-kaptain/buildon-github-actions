@@ -12,11 +12,11 @@ inputs:
     default: ''
   # Docker target config
   docker-target-registry:
-    description: 'Target container registry'
+    description: 'Target container registry domain (defaults to ghcr.io on gh actions)'
     required: false
-    default: 'ghcr.io'
+    default: ''
   docker-target-base-path:
-    description: 'Path between registry and image name (auto-set for GHCR)'
+    description: 'Path between registry and image name (defaults to lower cased org name on gh actions)'
     required: false
     default: ''
   # Docker push targets

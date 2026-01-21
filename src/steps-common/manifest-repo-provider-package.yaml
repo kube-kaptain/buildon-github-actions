@@ -9,8 +9,8 @@
     manifests-packaging-base-image: ${{ inputs.manifests-packaging-base-image }}
     manifests-zip-sub-path: ${{ steps.manifest-package.outputs.manifests-zip-sub-path }}
     manifests-zip-file-name: ${{ steps.manifest-package.outputs.manifests-zip-file-name }}
-    docker-target-registry: ${{ steps.docker-build.outputs.docker-target-registry }}
-    docker-target-base-path: ${{ steps.docker-build.outputs.docker-target-base-path }}
+    docker-target-registry: ${{ steps.resolve-registry.outputs.docker-target-registry }}
+    docker-target-base-path: ${{ steps.resolve-registry.outputs.docker-target-base-path }}
     docker-image-name: ${{ steps.versions.outputs.docker-image-name }}
     docker-tag: ${{ steps.versions.outputs.docker-tag }}-manifests
     version: ${{ steps.versions.outputs.version }}

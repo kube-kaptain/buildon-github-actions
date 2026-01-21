@@ -20,12 +20,12 @@ on:
         default: ''
       # Docker target config
       docker-target-registry:
-        description: 'Target container registry'
+        description: 'Target container registry domain (defaults to ghcr.io on gh actions)'
         required: false
         type: string
-        default: 'ghcr.io'
+        default: ''
       docker-target-base-path:
-        description: 'Path between registry and image name (auto-set for GHCR)'
+        description: 'Path between registry and image name (defaults to lower cased org name on gh actions)'
         required: false
         type: string
         default: ''
@@ -654,10 +654,10 @@ on:
         type: string
         default: ''
       kubernetes-job-backoff-limit:
-        description: 'Number of retries before marking Job as failed'
+        description: 'Number of retries before marking Job as failed (0 = fail immediately)'
         required: false
         type: string
-        default: '6'
+        default: '0'
       kubernetes-job-completions:
         description: 'Number of successful completions needed'
         required: false
@@ -745,10 +745,10 @@ on:
         type: string
         default: '5'
       kubernetes-cronjob-backoff-limit:
-        description: 'Number of retries before marking job as failed'
+        description: 'Number of retries before marking job as failed (0 = fail immediately)'
         required: false
         type: string
-        default: '6'
+        default: '0'
       kubernetes-cronjob-completions:
         description: 'Number of successful completions needed'
         required: false
@@ -1307,13 +1307,24 @@ jobs:
           echo "Linking local actions for dogfooding"
           ln -s "$(pwd)" .github/buildon-github-actions
 
+      # === Resolve Registry ===
+      # Resolve target registry and namespace (base path) early in workflow
+      # Must run before any hooks or docker operations that need these values
+      # All downstream steps should reference steps.resolve-registry.outputs.*
+      - name: Resolve target registry and namespace
+        id: resolve-registry
+        uses: ./.github/buildon-github-actions/src/actions/resolve-target-registry-and-base-path
+        with:
+          target-registry: ${{ inputs.docker-target-registry }}
+          target-base-path: ${{ inputs.docker-target-base-path }}
+
       # === Docker Registry Logins ===
       - name: Docker registry logins
         uses: ./.github/buildon-github-actions/src/actions/docker-registry-logins
         with:
           config: ${{ inputs.docker-registry-logins }}
           secrets-json: ${{ secrets.docker-registry-logins-secrets || toJSON(secrets) }}
-          docker-target-registry: ${{ inputs.docker-target-registry }}
+          docker-target-registry: ${{ steps.resolve-registry.outputs.docker-target-registry }}
 
       # === Pre-tagging Tests ===
       - name: Start check - Pre-tagging Tests
@@ -1339,9 +1350,9 @@ jobs:
           dockerfile-sub-path: ${{ inputs.dockerfile-sub-path }}
           dockerfile-squash: ${{ inputs.dockerfile-squash }}
           dockerfile-no-cache: ${{ inputs.dockerfile-no-cache }}
-          # Docker target config
-          docker-target-registry: ${{ inputs.docker-target-registry }}
-          docker-target-base-path: ${{ inputs.docker-target-base-path }}
+          # Docker target config (from early resolver)
+          docker-target-registry: ${{ steps.resolve-registry.outputs.docker-target-registry }}
+          docker-target-base-path: ${{ steps.resolve-registry.outputs.docker-target-base-path }}
           # Docker push targets
           docker-push-targets: ${{ inputs.docker-push-targets }}
 
@@ -1521,9 +1532,9 @@ jobs:
           dockerfile-sub-path: ${{ inputs.dockerfile-sub-path }}
           dockerfile-squash: ${{ inputs.dockerfile-squash }}
           dockerfile-no-cache: ${{ inputs.dockerfile-no-cache }}
-          # Docker target config
-          docker-target-registry: ${{ inputs.docker-target-registry }}
-          docker-target-base-path: ${{ inputs.docker-target-base-path }}
+          # Docker target config (from early resolver)
+          docker-target-registry: ${{ steps.resolve-registry.outputs.docker-target-registry }}
+          docker-target-base-path: ${{ steps.resolve-registry.outputs.docker-target-base-path }}
           # Docker push targets
           docker-push-targets: ${{ inputs.docker-push-targets }}
 
@@ -1673,8 +1684,8 @@ jobs:
         id: docker-build
         uses: ./.github/buildon-github-actions/src/actions/docker-build-dockerfile
         with:
-          docker-target-registry: ${{ inputs.docker-target-registry }}
-          docker-target-base-path: ${{ inputs.docker-target-base-path }}
+          docker-target-registry: ${{ steps.resolve-registry.outputs.docker-target-registry }}
+          docker-target-base-path: ${{ steps.resolve-registry.outputs.docker-target-base-path }}
           docker-image-name: ${{ steps.versions.outputs.docker-image-name }}
           docker-tag: ${{ steps.versions.outputs.docker-tag }}
           version: ${{ steps.versions.outputs.version }}
@@ -1758,9 +1769,9 @@ jobs:
           dockerfile-sub-path: ${{ inputs.dockerfile-sub-path }}
           dockerfile-squash: ${{ inputs.dockerfile-squash }}
           dockerfile-no-cache: ${{ inputs.dockerfile-no-cache }}
-          # Docker target config
-          docker-target-registry: ${{ inputs.docker-target-registry }}
-          docker-target-base-path: ${{ inputs.docker-target-base-path }}
+          # Docker target config (from early resolver)
+          docker-target-registry: ${{ steps.resolve-registry.outputs.docker-target-registry }}
+          docker-target-base-path: ${{ steps.resolve-registry.outputs.docker-target-base-path }}
           # Docker push targets
           docker-push-targets: ${{ inputs.docker-push-targets }}
 
@@ -2266,9 +2277,9 @@ jobs:
           dockerfile-sub-path: ${{ inputs.dockerfile-sub-path }}
           dockerfile-squash: ${{ inputs.dockerfile-squash }}
           dockerfile-no-cache: ${{ inputs.dockerfile-no-cache }}
-          # Docker target config
-          docker-target-registry: ${{ inputs.docker-target-registry }}
-          docker-target-base-path: ${{ inputs.docker-target-base-path }}
+          # Docker target config (from early resolver)
+          docker-target-registry: ${{ steps.resolve-registry.outputs.docker-target-registry }}
+          docker-target-base-path: ${{ steps.resolve-registry.outputs.docker-target-base-path }}
           # Docker push targets
           docker-push-targets: ${{ inputs.docker-push-targets }}
 
@@ -2427,8 +2438,8 @@ jobs:
           docker-tag: ${{ steps.versions.outputs.docker-tag }}
           docker-image-name: ${{ steps.versions.outputs.docker-image-name }}
           docker-image-full-uri: ${{ steps.docker-build.outputs.docker-target-image-full-uri }}
-          docker-target-registry: ${{ steps.docker-build.outputs.docker-target-registry }}
-          docker-target-base-path: ${{ steps.docker-build.outputs.docker-target-base-path }}
+          docker-target-registry: ${{ steps.resolve-registry.outputs.docker-target-registry }}
+          docker-target-base-path: ${{ steps.resolve-registry.outputs.docker-target-base-path }}
           is-release: ${{ steps.versions.outputs.is-release }}
           token-delimiter-style: ${{ inputs.token-delimiter-style }}
           token-name-style: ${{ inputs.token-name-style }}
@@ -2474,8 +2485,8 @@ jobs:
           manifests-packaging-base-image: ${{ inputs.manifests-packaging-base-image }}
           manifests-zip-sub-path: ${{ steps.manifest-package.outputs.manifests-zip-sub-path }}
           manifests-zip-file-name: ${{ steps.manifest-package.outputs.manifests-zip-file-name }}
-          docker-target-registry: ${{ steps.docker-build.outputs.docker-target-registry }}
-          docker-target-base-path: ${{ steps.docker-build.outputs.docker-target-base-path }}
+          docker-target-registry: ${{ steps.resolve-registry.outputs.docker-target-registry }}
+          docker-target-base-path: ${{ steps.resolve-registry.outputs.docker-target-base-path }}
           docker-image-name: ${{ steps.versions.outputs.docker-image-name }}
           docker-tag: ${{ steps.versions.outputs.docker-tag }}-manifests
           version: ${{ steps.versions.outputs.version }}
@@ -2547,9 +2558,9 @@ jobs:
           dockerfile-sub-path: ${{ inputs.dockerfile-sub-path }}
           dockerfile-squash: ${{ inputs.dockerfile-squash }}
           dockerfile-no-cache: ${{ inputs.dockerfile-no-cache }}
-          # Docker target config
-          docker-target-registry: ${{ inputs.docker-target-registry }}
-          docker-target-base-path: ${{ inputs.docker-target-base-path }}
+          # Docker target config (from early resolver)
+          docker-target-registry: ${{ steps.resolve-registry.outputs.docker-target-registry }}
+          docker-target-base-path: ${{ steps.resolve-registry.outputs.docker-target-base-path }}
           # Docker push targets
           docker-push-targets: ${{ inputs.docker-push-targets }}
 
@@ -2733,8 +2744,8 @@ jobs:
           allow-builtin-token-override: ${{ inputs.allow-builtin-token-override }}
           config-value-trailing-newline: ${{ inputs.config-value-trailing-newline }}
           docker-image-full-uri: ${{ steps.docker-build.outputs.docker-target-image-full-uri }}
-          target-registry: ${{ inputs.docker-target-registry }}
-          target-base-path: ${{ inputs.docker-target-base-path }}
+          target-registry: ${{ steps.resolve-registry.outputs.docker-target-registry }}
+          target-base-path: ${{ steps.resolve-registry.outputs.docker-target-base-path }}
           manifests-zip-file-name: ${{ steps.manifest-package.outputs.manifests-zip-file-name }}
       - name: Pass check - GitHub Release Prepare
         if: inputs.github-release-enabled == true && success()

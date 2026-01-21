@@ -144,6 +144,9 @@ jobs:
     steps:
       # INJECT: parse-workflow-ref-and-checkout
 
+      # === Resolve Registry ===
+      # INJECT: resolve-registry-and-namespace
+
       # === Pre-tagging Tests ===
       # INJECT: github-check-start(name="Pre-tagging Tests", id="check-pre-tagging", if="inputs.hook-pre-tagging-tests-script-sub-path != ''")
       # INJECT: hook-pre-tagging-tests
@@ -190,7 +193,6 @@ jobs:
       # INJECT: github-check-end(name="Pre-package Prepare", id="check-pre-package-prepare", if="inputs.hook-pre-package-prepare-script-sub-path != ''")
 
       # === Manifest Package ===
-      # INJECT: compute-target-base-path
       # INJECT: github-check-start(name="Package Manifests", id="check-manifest-package")
       # INJECT: manifest-package-prepare
       # INJECT: manifest-package-only-token-override

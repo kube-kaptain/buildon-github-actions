@@ -134,8 +134,8 @@ See [`examples/`](examples/) for more usage patterns.
 | `docker-source-image-name` | string | *required* | Upstream image name (e.g., nginx) |
 | `docker-source-registry` | string | *required* | Upstream registry (e.g., docker.io) |
 | `docker-source-tag` | string | *required* | Upstream image tag (e.g., 1.25) |
-| `docker-target-base-path` | string | `""` | Path between registry and image name (auto-set for GHCR) |
-| `docker-target-registry` | string | `ghcr.io` | Target container registry |
+| `docker-target-base-path` | string | `""` | Path between registry and image name (defaults to lower cased org name on gh actions) |
+| `docker-target-registry` | string | `""` | Target container registry domain (defaults to ghcr.io on gh actions) |
 | `dockerfile-no-cache` | boolean | `true` | Disable layer caching for reproducible builds |
 | `dockerfile-squash` | boolean | `true` | Enable --squash (requires experimental mode) |
 | `dockerfile-sub-path` | string | `src/docker` | Directory containing Dockerfile, relative to repo root. |
@@ -157,7 +157,7 @@ See [`examples/`](examples/) for more usage patterns.
 | `kubernetes-cronjob-active-deadline-seconds` | string | `""` | Maximum time in seconds the job can run (optional) |
 | `kubernetes-cronjob-additional-annotations` | string | `""` | Additional annotations for CronJob resources (key=value,key=value) |
 | `kubernetes-cronjob-additional-labels` | string | `""` | Additional labels for CronJob resources (key=value,key=value) |
-| `kubernetes-cronjob-backoff-limit` | string | `6` | Number of retries before marking job as failed |
+| `kubernetes-cronjob-backoff-limit` | string | `0` | Number of retries before marking job as failed (0 = fail immediately) |
 | `kubernetes-cronjob-combined-sub-path` | string | `""` | Sub-path within combined/ for output |
 | `kubernetes-cronjob-completions` | string | `1` | Number of successful completions needed |
 | `kubernetes-cronjob-concurrency-policy` | string | `Forbid` | How to handle concurrent job runs (Allow, Forbid, Replace) |
@@ -192,7 +192,7 @@ See [`examples/`](examples/) for more usage patterns.
 | `kubernetes-job-active-deadline-seconds` | string | `""` | Maximum time in seconds the Job can run (optional) |
 | `kubernetes-job-additional-annotations` | string | `""` | Additional annotations for Job resources (key=value,key=value) |
 | `kubernetes-job-additional-labels` | string | `""` | Additional labels for Job resources (key=value,key=value) |
-| `kubernetes-job-backoff-limit` | string | `6` | Number of retries before marking Job as failed |
+| `kubernetes-job-backoff-limit` | string | `0` | Number of retries before marking Job as failed (0 = fail immediately) |
 | `kubernetes-job-combined-sub-path` | string | `""` | Sub-path within combined/ for output |
 | `kubernetes-job-completions` | string | `1` | Number of successful completions needed |
 | `kubernetes-job-env-sub-path` | string | `""` | Path to Job environment variables directory |

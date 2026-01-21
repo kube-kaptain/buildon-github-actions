@@ -6,4 +6,4 @@
   with:
     config: ${{ inputs.docker-registry-logins }}
     secrets-json: ${{ secrets.docker-registry-logins-secrets || toJSON(secrets) }}
-    docker-target-registry: ${{ inputs.docker-target-registry }}
+    docker-target-registry: ${{ steps.resolve-registry.outputs.docker-target-registry }}
