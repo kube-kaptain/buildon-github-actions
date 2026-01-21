@@ -13,10 +13,10 @@ kubernetes-job-combined-sub-path:
   type: string
   default: ''
 kubernetes-job-backoff-limit:
-  description: 'Number of retries before marking Job as failed'
+  description: 'Number of retries before marking Job as failed (0 = fail immediately)'
   required: false
   type: string
-  default: '6'
+  default: '0'
 kubernetes-job-completions:
   description: 'Number of successful completions needed'
   required: false

@@ -249,7 +249,7 @@ read_manifest_in_subpath() {
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
-  [[ "$manifest" == *"backoffLimit: 6"* ]]
+  [[ "$manifest" == *"backoffLimit: 0"* ]]
 }
 
 @test "includes default completions in job template" {
