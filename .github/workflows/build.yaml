@@ -1,4 +1,4 @@
-name: Basic Quality Checks
+name: Dog Food & All Tests
 
 on:
   push:
