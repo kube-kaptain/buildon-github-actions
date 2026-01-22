@@ -170,6 +170,11 @@ on:
         required: false
         type: string
         default: '10'
+      kubernetes-workload-min-ready-seconds:
+        description: 'Minimum seconds a pod must be ready before considered available (0 to disable)'
+        required: false
+        type: string
+        default: '0'
       kubernetes-workload-name-suffix:
         description: 'Optional suffix for workload name and filename'
         required: false
@@ -597,11 +602,6 @@ on:
         required: false
         type: string
         default: '1'
-      kubernetes-daemonset-min-ready-seconds:
-        description: 'Minimum seconds a pod must be ready before considered available'
-        required: false
-        type: string
-        default: '0'
       kubernetes-daemonset-host-network:
         description: 'Use host network namespace (true/false)'
         required: false
@@ -2019,6 +2019,7 @@ jobs:
           # Common workload settings
           kubernetes-workload-replicas: ${{ inputs.kubernetes-workload-replicas }}
           kubernetes-workload-revision-history-limit: ${{ inputs.kubernetes-workload-revision-history-limit }}
+          kubernetes-workload-min-ready-seconds: ${{ inputs.kubernetes-workload-min-ready-seconds }}
           kubernetes-workload-name-suffix: ${{ inputs.kubernetes-workload-name-suffix }}
           kubernetes-workload-combined-sub-path: ${{ inputs.kubernetes-workload-combined-sub-path }}
           kubernetes-workload-env-sub-path: ${{ inputs.kubernetes-workload-env-sub-path }}
@@ -2101,7 +2102,6 @@ jobs:
           # DaemonSet-specific settings
           kubernetes-daemonset-update-strategy-type: ${{ inputs.kubernetes-daemonset-update-strategy-type }}
           kubernetes-daemonset-max-unavailable: ${{ inputs.kubernetes-daemonset-max-unavailable }}
-          kubernetes-daemonset-min-ready-seconds: ${{ inputs.kubernetes-daemonset-min-ready-seconds }}
           kubernetes-daemonset-host-network: ${{ inputs.kubernetes-daemonset-host-network }}
           kubernetes-daemonset-host-pid: ${{ inputs.kubernetes-daemonset-host-pid }}
           kubernetes-daemonset-host-ipc: ${{ inputs.kubernetes-daemonset-host-ipc }}

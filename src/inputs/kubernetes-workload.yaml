@@ -17,6 +17,11 @@ kubernetes-workload-revision-history-limit:
   required: false
   type: string
   default: '10'
+kubernetes-workload-min-ready-seconds:
+  description: 'Minimum seconds a pod must be ready before considered available (0 to disable)'
+  required: false
+  type: string
+  default: '0'
 kubernetes-workload-name-suffix:
   description: 'Optional suffix for workload name and filename'
   required: false

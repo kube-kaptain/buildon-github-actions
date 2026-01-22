@@ -176,7 +176,6 @@ See [`examples/`](examples/) for more usage patterns.
 | `kubernetes-daemonset-host-network` | string | `false` | Use host network namespace (true/false) |
 | `kubernetes-daemonset-host-pid` | string | `false` | Use host PID namespace (true/false) |
 | `kubernetes-daemonset-max-unavailable` | string | `1` | Max unavailable pods during rolling update (number or percentage) |
-| `kubernetes-daemonset-min-ready-seconds` | string | `0` | Minimum seconds a pod must be ready before considered available |
 | `kubernetes-daemonset-node-selector` | string | `""` | Node selector labels (comma-separated key=value) |
 | `kubernetes-daemonset-privileged` | string | `false` | Run container in privileged mode (true/false) |
 | `kubernetes-daemonset-run-as-non-root` | boolean | `true` | Require non-root user (true/false, set false for system-level DaemonSets that need root) |
@@ -260,6 +259,7 @@ See [`examples/`](examples/) for more usage patterns.
 | `kubernetes-workload-env-sub-path` | string | `""` | Directory containing environment variable files (default per workload type) |
 | `kubernetes-workload-image-pull-secrets` | string | `ENABLED` | Include imagePullSecrets in pod spec (ENABLED/DISABLED) |
 | `kubernetes-workload-image-reference-style` | string | `combined` | Image reference style (combined, separate, project-name-prefixed-combined, project-name-prefixed-separate) |
+| `kubernetes-workload-min-ready-seconds` | string | `0` | Minimum seconds a pod must be ready before considered available (0 to disable) |
 | `kubernetes-workload-name-suffix` | string | `""` | Optional suffix for workload name and filename |
 | `kubernetes-workload-node-selector` | string | `""` | Node selector (comma-separated key=value pairs, e.g., disktype=ssd,zone=us-east-1a) |
 | `kubernetes-workload-prestop-command` | string | `""` | PreStop hook command (empty for none) |

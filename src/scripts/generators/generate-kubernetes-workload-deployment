@@ -204,6 +204,11 @@ script_name=$(basename "${BASH_SOURCE[0]}")
 
   echo "  revisionHistoryLimit: ${REVISION_HISTORY_LIMIT}"
 
+  # minReadySeconds (omit if 0, which is the default)
+  if [[ "${MIN_READY_SECONDS}" != "0" ]]; then
+    echo "  minReadySeconds: ${MIN_READY_SECONDS}"
+  fi
+
   # Selector
   echo "  selector:"
   echo "    matchLabels:"

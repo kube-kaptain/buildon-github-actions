@@ -26,7 +26,6 @@
 #   DaemonSet unique settings:
 #     KUBERNETES_DAEMONSET_UPDATE_STRATEGY_TYPE    - RollingUpdate or OnDelete (default: RollingUpdate)
 #     KUBERNETES_DAEMONSET_MAX_UNAVAILABLE         - Max unavailable during update (default: 1)
-#     KUBERNETES_DAEMONSET_MIN_READY_SECONDS       - Min ready seconds (default: 0)
 #     KUBERNETES_DAEMONSET_HOST_NETWORK            - Use host network (default: false)
 #     KUBERNETES_DAEMONSET_HOST_PID                - Use host PID namespace (default: false)
 #     KUBERNETES_DAEMONSET_HOST_IPC                - Use host IPC namespace (default: false)
