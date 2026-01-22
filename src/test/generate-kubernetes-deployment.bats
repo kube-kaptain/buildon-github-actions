@@ -235,6 +235,24 @@ read_manifest_with_suffix() {
   assert_contains "$manifest" "revisionHistoryLimit: 10"
 }
 
+@test "does not include minReadySeconds when 0" {
+  run "$GENERATORS_DIR/generate-kubernetes-workload-deployment"
+  [ "$status" -eq 0 ]
+
+  manifest=$(read_manifest)
+  [[ "$manifest" != *"minReadySeconds:"* ]]
+}
+
+@test "includes minReadySeconds when non-zero" {
+  export KUBERNETES_WORKLOAD_MIN_READY_SECONDS="30"
+
+  run "$GENERATORS_DIR/generate-kubernetes-workload-deployment"
+  [ "$status" -eq 0 ]
+
+  manifest=$(read_manifest)
+  assert_contains "$manifest" "minReadySeconds: 30"
+}
+
 # =============================================================================
 # Update strategy
 # =============================================================================
