@@ -44,11 +44,11 @@ inputs:
     description: 'Full Docker image URI (optional built-in token)'
     required: false
     default: ''
-  target-registry:
+  docker-target-registry:
     description: 'Target registry (optional built-in token)'
     required: false
     default: ''
-  target-base-path:
+  docker-target-base-path:
     description: 'Target base path (optional built-in token)'
     required: false
     default: ''
@@ -79,8 +79,8 @@ runs:
         ALLOW_BUILTIN_TOKEN_OVERRIDE: ${{ inputs.allow-builtin-token-override }}
         CONFIG_VALUE_TRAILING_NEWLINE: ${{ inputs.config-value-trailing-newline }}
         DOCKER_IMAGE_FULL_URI: ${{ inputs.docker-image-full-uri }}
-        TARGET_REGISTRY: ${{ inputs.target-registry }}
-        TARGET_BASE_PATH: ${{ inputs.target-base-path }}
+        TARGET_REGISTRY: ${{ inputs.docker-target-registry }}
+        TARGET_BASE_PATH: ${{ inputs.docker-target-base-path }}
         MANIFESTS_ZIP_FILE_NAME: ${{ inputs.manifests-zip-file-name }}
         UTIL_DIR: ${{ github.action_path }}/../../scripts/util
       run: |

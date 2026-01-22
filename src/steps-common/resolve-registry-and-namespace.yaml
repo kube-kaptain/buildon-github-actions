@@ -8,5 +8,5 @@
   id: resolve-registry
   uses: ./.github/buildon-github-actions/src/actions/resolve-target-registry-and-base-path
   with:
-    target-registry: ${{ inputs.docker-target-registry }}
-    target-base-path: ${{ inputs.docker-target-base-path }}
+    docker-target-registry: ${{ inputs.docker-target-registry }}
+    docker-target-base-path: ${{ inputs.docker-target-base-path }}

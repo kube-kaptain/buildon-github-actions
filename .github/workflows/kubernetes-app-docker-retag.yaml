@@ -1305,8 +1305,8 @@ jobs:
         id: resolve-registry
         uses: ./.github/buildon-github-actions/src/actions/resolve-target-registry-and-base-path
         with:
-          target-registry: ${{ inputs.docker-target-registry }}
-          target-base-path: ${{ inputs.docker-target-base-path }}
+          docker-target-registry: ${{ inputs.docker-target-registry }}
+          docker-target-base-path: ${{ inputs.docker-target-base-path }}
 
       # === Docker Registry Logins ===
       - name: Start check - Docker Registry Logins
@@ -2413,8 +2413,8 @@ jobs:
           allow-builtin-token-override: ${{ inputs.allow-builtin-token-override }}
           config-value-trailing-newline: ${{ inputs.config-value-trailing-newline }}
           docker-image-full-uri: ${{ steps.docker-build.outputs.docker-target-image-full-uri }}
-          target-registry: ${{ steps.resolve-registry.outputs.docker-target-registry }}
-          target-base-path: ${{ steps.resolve-registry.outputs.docker-target-base-path }}
+          docker-target-registry: ${{ steps.resolve-registry.outputs.docker-target-registry }}
+          docker-target-base-path: ${{ steps.resolve-registry.outputs.docker-target-base-path }}
           manifests-zip-file-name: ${{ steps.manifest-package.outputs.manifests-zip-file-name }}
       - name: Pass check - GitHub Release Prepare
         if: inputs.github-release-enabled == true && success()
