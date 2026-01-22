@@ -263,6 +263,7 @@ See [`examples/`](examples/) for more usage patterns.
 | `kubernetes-workload-name-suffix` | string | `""` | Optional suffix for workload name and filename |
 | `kubernetes-workload-node-selector` | string | `""` | Node selector (comma-separated key=value pairs, e.g., disktype=ssd,zone=us-east-1a) |
 | `kubernetes-workload-prestop-command` | string | `""` | PreStop hook command (empty for none) |
+| `kubernetes-workload-priority-class-name` | string | `""` | Priority class name for pod scheduling priority |
 | `kubernetes-workload-probe-liveness-check-type` | string | `http-get` | Liveness probe type (http-get, tcp-socket, exec, grpc, none) |
 | `kubernetes-workload-probe-liveness-exec-command` | string | `""` | Liveness probe exec command |
 | `kubernetes-workload-probe-liveness-failure-threshold` | string | `3` | Liveness probe failure threshold |

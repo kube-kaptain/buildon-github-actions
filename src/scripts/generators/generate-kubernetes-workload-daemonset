@@ -335,6 +335,11 @@ generate_daemonset_container_security_context() {
     echo "      dnsPolicy: ClusterFirstWithHostNet"
   fi
 
+  # Priority class
+  if [[ -n "${PRIORITY_CLASS_NAME}" ]]; then
+    echo "      priorityClassName: ${PRIORITY_CLASS_NAME}"
+  fi
+
   # ServiceAccount
   generate_service_account_config 6 "${has_serviceaccount}" "${project_name_token}${suffix_fragment}" "${AUTOMOUNT_SERVICE_ACCOUNT_TOKEN}"
 

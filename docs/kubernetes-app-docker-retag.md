@@ -64,6 +64,7 @@ Kubernetes App - Docker Retag
 | `kubernetes-workload-tolerations` | string | `""` | Tolerations as JSON array (e.g., [{"key":"dedicated","operator":"Equal","value":"app","effect":"NoSchedule"}]) |
 | `kubernetes-workload-node-selector` | string | `""` | Node selector (comma-separated key=value pairs, e.g., disktype=ssd,zone=us-east-1a) |
 | `kubernetes-workload-dns-policy` | string | `""` | DNS policy (ClusterFirst, ClusterFirstWithHostNet, Default, None) |
+| `kubernetes-workload-priority-class-name` | string | `""` | Priority class name for pod scheduling priority |
 | `kubernetes-workload-probe-liveness-check-type` | string | `http-get` | Liveness probe type (http-get, tcp-socket, exec, grpc, none) |
 | `kubernetes-workload-probe-liveness-http-path` | string | `/liveness` | Liveness probe HTTP path |
 | `kubernetes-workload-probe-liveness-http-scheme` | string | `HTTP` | Liveness probe HTTP scheme (HTTP, HTTPS) |

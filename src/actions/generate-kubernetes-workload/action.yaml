@@ -150,6 +150,10 @@ inputs:
     description: 'DNS policy (ClusterFirst, ClusterFirstWithHostNet, Default, None)'
     required: false
     default: ''
+  kubernetes-workload-priority-class-name:
+    description: 'Priority class name for pod scheduling priority'
+    required: false
+    default: ''
   # Liveness probe inputs
   kubernetes-workload-probe-liveness-check-type:
     description: 'Liveness probe type (http-get, tcp-socket, exec, grpc, none)'
@@ -612,6 +616,7 @@ runs:
         KUBERNETES_WORKLOAD_TOLERATIONS: ${{ inputs.kubernetes-workload-tolerations }}
         KUBERNETES_WORKLOAD_NODE_SELECTOR: ${{ inputs.kubernetes-workload-node-selector }}
         KUBERNETES_WORKLOAD_DNS_POLICY: ${{ inputs.kubernetes-workload-dns-policy }}
+        KUBERNETES_WORKLOAD_PRIORITY_CLASS_NAME: ${{ inputs.kubernetes-workload-priority-class-name }}
         KUBERNETES_WORKLOAD_CONTAINER_COMMAND: ${{ inputs.kubernetes-workload-container-command }}
         KUBERNETES_WORKLOAD_CONTAINER_ARGS: ${{ inputs.kubernetes-workload-container-args }}
         # Liveness probe

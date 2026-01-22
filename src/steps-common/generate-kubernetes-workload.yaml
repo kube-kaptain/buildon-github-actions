@@ -43,6 +43,7 @@
     kubernetes-workload-prestop-command: ${{ inputs.kubernetes-workload-prestop-command }}
     kubernetes-workload-affinity-strategy: ${{ inputs.kubernetes-workload-affinity-strategy }}
     kubernetes-workload-tolerations: ${{ inputs.kubernetes-workload-tolerations }}
+    kubernetes-workload-priority-class-name: ${{ inputs.kubernetes-workload-priority-class-name }}
     # Liveness probe settings
     kubernetes-workload-probe-liveness-check-type: ${{ inputs.kubernetes-workload-probe-liveness-check-type }}
     kubernetes-workload-probe-liveness-http-path: ${{ inputs.kubernetes-workload-probe-liveness-http-path }}

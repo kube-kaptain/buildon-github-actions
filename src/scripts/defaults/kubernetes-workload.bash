@@ -40,6 +40,9 @@ KUBERNETES_WORKLOAD_NODE_SELECTOR="${KUBERNETES_WORKLOAD_NODE_SELECTOR:-}"
 # DNS policy (ClusterFirst, ClusterFirstWithHostNet, Default, None)
 KUBERNETES_WORKLOAD_DNS_POLICY="${KUBERNETES_WORKLOAD_DNS_POLICY:-}"
 
+# Priority class name
+KUBERNETES_WORKLOAD_PRIORITY_CLASS_NAME="${KUBERNETES_WORKLOAD_PRIORITY_CLASS_NAME:-}"
+
 # =============================================================================
 # Convenience short names (for single-purpose generator scripts only)
 # =============================================================================
@@ -102,6 +105,9 @@ NODE_SELECTOR="${KUBERNETES_WORKLOAD_NODE_SELECTOR}"
 
 # DNS policy (ClusterFirst, ClusterFirstWithHostNet, Default, None)
 DNS_POLICY="${KUBERNETES_WORKLOAD_DNS_POLICY}"
+
+# Priority class name
+PRIORITY_CLASS_NAME="${KUBERNETES_WORKLOAD_PRIORITY_CLASS_NAME}"
 
 # Liveness probe
 LIVENESS_CHECK_TYPE="${KUBERNETES_WORKLOAD_PROBE_LIVENESS_CHECK_TYPE:-http-get}"

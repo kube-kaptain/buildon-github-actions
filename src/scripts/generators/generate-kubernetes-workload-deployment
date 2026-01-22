@@ -254,6 +254,11 @@ script_name=$(basename "${BASH_SOURCE[0]}")
   # DNS policy
   generate_dns_policy 6 "${DNS_POLICY}"
 
+  # Priority class
+  if [[ -n "${PRIORITY_CLASS_NAME}" ]]; then
+    echo "      priorityClassName: ${PRIORITY_CLASS_NAME}"
+  fi
+
   # Image pull secrets (optional)
   if [[ "${IMAGE_PULL_SECRETS}" != "DISABLED" ]]; then
     generate_image_pull_secrets 6 "${image_pull_secret_token}"

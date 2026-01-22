@@ -308,6 +308,11 @@ on:
         required: false
         type: string
         default: ''
+      kubernetes-workload-priority-class-name:
+        description: 'Priority class name for pod scheduling priority'
+        required: false
+        type: string
+        default: ''
       # Liveness probe inputs
       kubernetes-workload-probe-liveness-check-type:
         description: 'Liveness probe type (http-get, tcp-socket, exec, grpc, none)'
@@ -1698,6 +1703,7 @@ jobs:
           kubernetes-workload-prestop-command: ${{ inputs.kubernetes-workload-prestop-command }}
           kubernetes-workload-affinity-strategy: ${{ inputs.kubernetes-workload-affinity-strategy }}
           kubernetes-workload-tolerations: ${{ inputs.kubernetes-workload-tolerations }}
+          kubernetes-workload-priority-class-name: ${{ inputs.kubernetes-workload-priority-class-name }}
           # Liveness probe settings
           kubernetes-workload-probe-liveness-check-type: ${{ inputs.kubernetes-workload-probe-liveness-check-type }}
           kubernetes-workload-probe-liveness-http-path: ${{ inputs.kubernetes-workload-probe-liveness-http-path }}

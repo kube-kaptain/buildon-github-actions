@@ -158,6 +158,7 @@ runs:
         KUBERNETES_WORKLOAD_TOLERATIONS: ${{ inputs.kubernetes-workload-tolerations }}
         KUBERNETES_WORKLOAD_NODE_SELECTOR: ${{ inputs.kubernetes-workload-node-selector }}
         KUBERNETES_WORKLOAD_DNS_POLICY: ${{ inputs.kubernetes-workload-dns-policy }}
+        KUBERNETES_WORKLOAD_PRIORITY_CLASS_NAME: ${{ inputs.kubernetes-workload-priority-class-name }}
         KUBERNETES_WORKLOAD_CONTAINER_COMMAND: ${{ inputs.kubernetes-workload-container-command }}
         KUBERNETES_WORKLOAD_CONTAINER_ARGS: ${{ inputs.kubernetes-workload-container-args }}
         KUBERNETES_WORKLOAD_PROBE_LIVENESS_CHECK_TYPE: ${{ inputs.kubernetes-workload-probe-liveness-check-type }}
