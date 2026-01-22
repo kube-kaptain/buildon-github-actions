@@ -97,19 +97,8 @@ on:
         description: 'File name of spec JSON file'
         value: ${{ jobs.build.outputs.spec-json }}
 jobs:
-  basic-quality-checks:
-    name: Basic Quality Checks
-    if: github.event_name == 'pull_request'
-    runs-on: ubuntu-24.04
-    permissions:
-      contents: read
-    steps:
-      # INJECT: parse-workflow-ref-and-checkout
-      # INJECT: basic-quality-checks
   build:
     name: Build & Push
-    needs: basic-quality-checks
-    if: always() && (needs.basic-quality-checks.result == 'success' || needs.basic-quality-checks.result == 'skipped')
     runs-on: ubuntu-24.04
     permissions:
       contents: write
@@ -135,6 +124,11 @@ jobs:
       spec-json: ${{ steps.spec-package-prepare.outputs.SPEC_JSON }}
     steps:
       # INJECT: parse-workflow-ref-and-checkout
+
+      # === Basic Quality Checks ===
+      # INJECT: github-check-start(name="Basic Quality Checks", id="check-basic-quality", if="github.event_name == 'pull_request'")
+      # INJECT: basic-quality-checks
+      # INJECT: github-check-end(name="Basic Quality Checks", id="check-basic-quality", if="github.event_name == 'pull_request'")
 
       # === Resolve Registry ===
       # INJECT: resolve-registry-and-namespace

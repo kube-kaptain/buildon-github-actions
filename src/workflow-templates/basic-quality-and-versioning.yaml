@@ -57,17 +57,8 @@ on:
         description: 'The repository/project name'
         value: ${{ jobs.versions-and-naming.outputs.project-name }}
 jobs:
-  basic-quality-checks:
-    name: Basic Quality Checks
-    if: github.event_name == 'pull_request'
-    runs-on: ubuntu-24.04
-    steps:
-      # INJECT: parse-workflow-ref-and-checkout
-      # INJECT: basic-quality-checks
   versions-and-naming:
     name: Versions & Naming
-    needs: basic-quality-checks
-    if: always() && (needs.basic-quality-checks.result == 'success' || needs.basic-quality-checks.result == 'skipped')
     runs-on: ubuntu-24.04
     permissions:
       contents: write
@@ -87,6 +78,11 @@ jobs:
       project-name: ${{ steps.versions.outputs.project-name }}
     steps:
       # INJECT: parse-workflow-ref-and-checkout
+
+      # === Basic Quality Checks ===
+      # INJECT: github-check-start(name="Basic Quality Checks", id="check-basic-quality", if="github.event_name == 'pull_request'")
+      # INJECT: basic-quality-checks
+      # INJECT: github-check-end(name="Basic Quality Checks", id="check-basic-quality", if="github.event_name == 'pull_request'")
 
       # === Resolve Registry ===
       # INJECT: resolve-registry-and-namespace

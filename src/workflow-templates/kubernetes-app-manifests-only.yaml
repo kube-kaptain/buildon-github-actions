@@ -106,19 +106,8 @@ on:
         description: 'Whether manifests were published'
         value: ${{ jobs.build.outputs.manifests-published }}
 jobs:
-  basic-quality-checks:
-    name: Basic Quality Checks
-    if: github.event_name == 'pull_request'
-    runs-on: ubuntu-24.04
-    permissions:
-      contents: read
-    steps:
-      # INJECT: parse-workflow-ref-and-checkout
-      # INJECT: basic-quality-checks
   build:
     name: Build & Publish
-    needs: basic-quality-checks
-    if: always() && (needs.basic-quality-checks.result == 'success' || needs.basic-quality-checks.result == 'skipped')
     runs-on: ubuntu-24.04
     permissions:
       contents: write
@@ -143,6 +132,11 @@ jobs:
       manifests-published: ${{ steps.manifest-repo-provider-publish.outputs.manifests-published }}
     steps:
       # INJECT: parse-workflow-ref-and-checkout
+
+      # === Basic Quality Checks ===
+      # INJECT: github-check-start(name="Basic Quality Checks", id="check-basic-quality", if="github.event_name == 'pull_request'")
+      # INJECT: basic-quality-checks
+      # INJECT: github-check-end(name="Basic Quality Checks", id="check-basic-quality", if="github.event_name == 'pull_request'")
 
       # === Resolve Registry ===
       # INJECT: resolve-registry-and-namespace
