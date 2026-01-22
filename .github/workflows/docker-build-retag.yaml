@@ -255,91 +255,8 @@ on:
         description: 'Whether docker image was pushed'
         value: ${{ jobs.build.outputs.docker-image-pushed }}
 jobs:
-  basic-quality-checks:
-    name: Basic Quality Checks
-    if: github.event_name == 'pull_request'
-    runs-on: ubuntu-24.04
-    permissions:
-      contents: read
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4.2.2
-        with:
-          fetch-depth: 0
-          fetch-tags: true
-          ref: ${{ github.event.pull_request.head.sha }}
-
-      - name: Parse workflow ref
-        id: parse
-        run: |
-          # Extract caller's workflow file path from github.workflow_ref
-          # Format: owner/repo/.github/workflows/file.yaml@ref
-          workflow_path="${GITHUB_WORKFLOW_REF%%@*}"
-          workflow_file=".github/workflows/${workflow_path##*/}"
-
-          echo "Resolving ref for reusable workflow: docker-build-retag.yaml"
-          echo "Caller workflow: $workflow_file"
-
-          # Check for local call (dogfooding) - uses: ./.github/workflows/...
-          if grep -q 'uses:[[:space:]]*\./.github/workflows/docker-build-retag\.yaml[[:space:]]*$' "$workflow_file" || \
-             grep -q 'uses:[[:space:]]*\./.github/workflows/docker-build-retag\.yaml[[:space:]]*#' "$workflow_file"; then
-            echo "Local workflow call detected (dogfooding)"
-            echo "ref=LOCAL" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-
-          # Find all uses lines that call this workflow and extract refs
-          refs=$(grep -o 'buildon-github-actions/.github/workflows/docker-build-retag\.yaml@[^[:space:]"'"'"']*' "$workflow_file" | sed 's/.*@//')
-
-          if [ -z "$refs" ]; then
-            echo "::error::Could not find buildon-github-actions ref in $workflow_file"
-            exit 1
-          fi
-
-          # Check all refs are identical
-          unique_refs=$(echo "$refs" | sort -u)
-          ref_count=$(echo "$unique_refs" | wc -l | tr -d ' ')
-          echo "Found $ref_count unique ref(s): $(echo "$unique_refs" | tr '\n' ' ')"
-
-          if [ "$ref_count" -gt 1 ]; then
-            echo "::error::Multiple different refs found in $workflow_file: $(echo "$unique_refs" | tr '\n' ' ')"
-            exit 1
-          fi
-
-          echo "Resolved ref: $unique_refs"
-          echo "ref=$unique_refs" >> "$GITHUB_OUTPUT"
-        env:
-          GITHUB_WORKFLOW_REF: ${{ github.workflow_ref }}
-
-      - name: Checkout actions
-        if: steps.parse.outputs.ref != 'LOCAL' && success()
-        uses: actions/checkout@v4.2.2
-        with:
-          repository: kube-kaptain/buildon-github-actions
-          ref: ${{ steps.parse.outputs.ref }}
-          path: .github/buildon-github-actions
-
-      - name: Link local actions
-        if: steps.parse.outputs.ref == 'LOCAL' && success()
-        run: |
-          echo "Linking local actions for dogfooding"
-          ln -s "$(pwd)" .github/buildon-github-actions
-      - name: Basic quality checks
-        id: quality
-        uses: ./.github/buildon-github-actions/src/actions/basic-quality-checks
-        with:
-          release-branch: ${{ inputs.release-branch }}
-          additional-release-branches: ${{ inputs.additional-release-branches }}
-          block-slashes: ${{ inputs.block-slashes }}
-          qc-block-slash-containing-branches: ${{ inputs.qc-block-slash-containing-branches }}
-          qc-block-double-hyphen-containing-branches: ${{ inputs.qc-block-double-hyphen-containing-branches }}
-          qc-require-conventional-branches: ${{ inputs.qc-require-conventional-branches }}
-          qc-require-conventional-commits: ${{ inputs.qc-require-conventional-commits }}
-          qc-block-conventional-commits: ${{ inputs.qc-block-conventional-commits }}
   build:
     name: Build & Push
-    needs: basic-quality-checks
-    if: always() && (needs.basic-quality-checks.result == 'success' || needs.basic-quality-checks.result == 'skipped')
     runs-on: ubuntu-24.04
     permissions:
       contents: write
@@ -425,6 +342,40 @@ jobs:
           echo "Linking local actions for dogfooding"
           ln -s "$(pwd)" .github/buildon-github-actions
 
+      # === Basic Quality Checks ===
+      - name: Start check - Basic Quality Checks
+        if: github.event_name == 'pull_request' && success()
+        id: check-basic-quality
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
+        with:
+          action: start
+          check-name: 'Build & Push → Basic Quality Checks'
+      - name: Basic quality checks
+        if: github.event_name == 'pull_request' && success()
+        id: quality
+        uses: ./.github/buildon-github-actions/src/actions/basic-quality-checks
+        with:
+          release-branch: ${{ inputs.release-branch }}
+          additional-release-branches: ${{ inputs.additional-release-branches }}
+          block-slashes: ${{ inputs.block-slashes }}
+          qc-block-slash-containing-branches: ${{ inputs.qc-block-slash-containing-branches }}
+          qc-block-double-hyphen-containing-branches: ${{ inputs.qc-block-double-hyphen-containing-branches }}
+          qc-require-conventional-branches: ${{ inputs.qc-require-conventional-branches }}
+          qc-require-conventional-commits: ${{ inputs.qc-require-conventional-commits }}
+          qc-block-conventional-commits: ${{ inputs.qc-block-conventional-commits }}
+      - name: Pass check - Basic Quality Checks
+        if: github.event_name == 'pull_request' && success()
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
+        with:
+          action: pass
+          check-run-id: ${{ steps.check-basic-quality.outputs.check-run-id }}
+      - name: Fail check - Basic Quality Checks
+        if: github.event_name == 'pull_request' && failure() && steps.check-basic-quality.outputs.check-run-id != ''
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
+        with:
+          action: fail
+          check-run-id: ${{ steps.check-basic-quality.outputs.check-run-id }}
+
       # === Resolve Registry ===
       # Resolve target registry and namespace (base path) early in workflow
       # Must run before any hooks or docker operations that need these values
@@ -433,8 +384,8 @@ jobs:
         id: resolve-registry
         uses: ./.github/buildon-github-actions/src/actions/resolve-target-registry-and-base-path
         with:
-          target-registry: ${{ inputs.docker-target-registry }}
-          target-base-path: ${{ inputs.docker-target-base-path }}
+          docker-target-registry: ${{ inputs.docker-target-registry }}
+          docker-target-base-path: ${{ inputs.docker-target-base-path }}
 
       # === Docker Registry Logins ===
       - name: Start check - Docker Registry Logins
@@ -737,8 +688,8 @@ jobs:
           allow-builtin-token-override: ${{ inputs.allow-builtin-token-override }}
           config-value-trailing-newline: ${{ inputs.config-value-trailing-newline }}
           docker-image-full-uri: ${{ steps.docker-build.outputs.docker-target-image-full-uri }}
-          target-registry: ${{ steps.resolve-registry.outputs.docker-target-registry }}
-          target-base-path: ${{ steps.resolve-registry.outputs.docker-target-base-path }}
+          docker-target-registry: ${{ steps.resolve-registry.outputs.docker-target-registry }}
+          docker-target-base-path: ${{ steps.resolve-registry.outputs.docker-target-base-path }}
       - name: Pass check - GitHub Release Prepare
         if: inputs.github-release-enabled == true && success()
         uses: ./.github/buildon-github-actions/src/actions/github-check-run

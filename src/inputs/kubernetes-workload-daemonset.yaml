@@ -12,11 +12,6 @@ kubernetes-daemonset-max-unavailable:
   required: false
   type: string
   default: '1'
-kubernetes-daemonset-min-ready-seconds:
-  description: 'Minimum seconds a pod must be ready before considered available'
-  required: false
-  type: string
-  default: '0'
 kubernetes-daemonset-host-network:
   description: 'Use host network namespace (true/false)'
   required: false

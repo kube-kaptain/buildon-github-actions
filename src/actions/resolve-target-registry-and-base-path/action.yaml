@@ -41,8 +41,8 @@ runs:
       shell: bash
       run: |
         # Use provided registry or default to ghcr.io
-        if [[ -n "${{ inputs.target-registry }}" ]]; then
-          RESOLVED_REGISTRY="${{ inputs.target-registry }}"
+        if [[ -n "${{ inputs.docker-target-registry }}" ]]; then
+          RESOLVED_REGISTRY="${{ inputs.docker-target-registry }}"
         else
           RESOLVED_REGISTRY="ghcr.io"
         fi
@@ -50,9 +50,9 @@ runs:
 
         # Auto-set base path for GHCR if not explicitly provided
         # Note: GHCR requires lowercase paths, so we lowercase the org name
-        if [[ "$RESOLVED_REGISTRY" == "ghcr.io" && -z "${{ inputs.target-base-path }}" ]]; then
+        if [[ "$RESOLVED_REGISTRY" == "ghcr.io" && -z "${{ inputs.docker-target-base-path }}" ]]; then
           OWNER="${{ github.repository_owner }}"
           echo "docker-target-base-path=${OWNER,,}" >> "$GITHUB_OUTPUT"
         else
-          echo "docker-target-base-path=${{ inputs.target-base-path }}" >> "$GITHUB_OUTPUT"
+          echo "docker-target-base-path=${{ inputs.docker-target-base-path }}" >> "$GITHUB_OUTPUT"
         fi

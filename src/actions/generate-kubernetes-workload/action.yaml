@@ -37,6 +37,10 @@ inputs:
     description: 'Number of revisions to retain (ReplicaSets for Deployment, ControllerRevisions for StatefulSet)'
     required: false
     default: '10'
+  kubernetes-workload-min-ready-seconds:
+    description: 'Minimum seconds a pod must be ready before considered available (0 to disable)'
+    required: false
+    default: '0'
   kubernetes-workload-name-suffix:
     description: 'Optional suffix for workload name and filename'
     required: false
@@ -144,6 +148,10 @@ inputs:
     default: ''
   kubernetes-workload-dns-policy:
     description: 'DNS policy (ClusterFirst, ClusterFirstWithHostNet, Default, None)'
+    required: false
+    default: ''
+  kubernetes-workload-priority-class-name:
+    description: 'Priority class name for pod scheduling priority'
     required: false
     default: ''
   # Liveness probe inputs
@@ -380,10 +388,6 @@ inputs:
     description: 'Max unavailable pods during rolling update (number or percentage)'
     required: false
     default: '1'
-  kubernetes-daemonset-min-ready-seconds:
-    description: 'Minimum seconds a pod must be ready before considered available'
-    required: false
-    default: '0'
   kubernetes-daemonset-host-network:
     description: 'Use host network namespace (true/false)'
     required: false
@@ -586,6 +590,7 @@ runs:
         KUBERNETES_WORKLOAD_TYPE: ${{ inputs.kubernetes-workload-type }}
         KUBERNETES_WORKLOAD_REPLICAS: ${{ inputs.kubernetes-workload-replicas }}
         KUBERNETES_WORKLOAD_REVISION_HISTORY_LIMIT: ${{ inputs.kubernetes-workload-revision-history-limit }}
+        KUBERNETES_WORKLOAD_MIN_READY_SECONDS: ${{ inputs.kubernetes-workload-min-ready-seconds }}
         KUBERNETES_WORKLOAD_NAME_SUFFIX: ${{ inputs.kubernetes-workload-name-suffix }}
         KUBERNETES_WORKLOAD_COMBINED_SUB_PATH: ${{ inputs.kubernetes-workload-combined-sub-path }}
         KUBERNETES_WORKLOAD_ENV_SUB_PATH: ${{ inputs.kubernetes-workload-env-sub-path }}
@@ -611,6 +616,7 @@ runs:
         KUBERNETES_WORKLOAD_TOLERATIONS: ${{ inputs.kubernetes-workload-tolerations }}
         KUBERNETES_WORKLOAD_NODE_SELECTOR: ${{ inputs.kubernetes-workload-node-selector }}
         KUBERNETES_WORKLOAD_DNS_POLICY: ${{ inputs.kubernetes-workload-dns-policy }}
+        KUBERNETES_WORKLOAD_PRIORITY_CLASS_NAME: ${{ inputs.kubernetes-workload-priority-class-name }}
         KUBERNETES_WORKLOAD_CONTAINER_COMMAND: ${{ inputs.kubernetes-workload-container-command }}
         KUBERNETES_WORKLOAD_CONTAINER_ARGS: ${{ inputs.kubernetes-workload-container-args }}
         # Liveness probe
@@ -676,7 +682,6 @@ runs:
         # DaemonSet unique settings
         KUBERNETES_DAEMONSET_UPDATE_STRATEGY_TYPE: ${{ inputs.kubernetes-daemonset-update-strategy-type }}
         KUBERNETES_DAEMONSET_MAX_UNAVAILABLE: ${{ inputs.kubernetes-daemonset-max-unavailable }}
-        KUBERNETES_DAEMONSET_MIN_READY_SECONDS: ${{ inputs.kubernetes-daemonset-min-ready-seconds }}
         KUBERNETES_DAEMONSET_HOST_NETWORK: ${{ inputs.kubernetes-daemonset-host-network }}
         KUBERNETES_DAEMONSET_HOST_PID: ${{ inputs.kubernetes-daemonset-host-pid }}
         KUBERNETES_DAEMONSET_HOST_IPC: ${{ inputs.kubernetes-daemonset-host-ipc }}

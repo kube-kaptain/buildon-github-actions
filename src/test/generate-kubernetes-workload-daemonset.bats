@@ -368,7 +368,7 @@ read_combined_manifest() {
 }
 
 @test "includes minReadySeconds when non-zero" {
-  export KUBERNETES_DAEMONSET_MIN_READY_SECONDS="30"
+  export KUBERNETES_WORKLOAD_MIN_READY_SECONDS="30"
 
   run "$GENERATORS_DIR/generate-kubernetes-workload-daemonset"
   [ "$status" -eq 0 ]

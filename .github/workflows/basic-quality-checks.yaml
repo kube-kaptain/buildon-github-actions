@@ -117,6 +117,7 @@ jobs:
           echo "Linking local actions for dogfooding"
           ln -s "$(pwd)" .github/buildon-github-actions
       - name: Basic quality checks
+        if: github.event_name == 'pull_request' && success()
         id: quality
         uses: ./.github/buildon-github-actions/src/actions/basic-quality-checks
         with:

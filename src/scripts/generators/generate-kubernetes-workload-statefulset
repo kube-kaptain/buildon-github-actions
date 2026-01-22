@@ -273,6 +273,11 @@ KUBERNETES_SERVICE_ADDITIONAL_ANNOTATIONS="kaptain/generated-for=\"statefulset/$
 
   echo "  revisionHistoryLimit: ${REVISION_HISTORY_LIMIT}"
 
+  # minReadySeconds (omit if 0, which is the default)
+  if [[ "${MIN_READY_SECONDS}" != "0" ]]; then
+    echo "  minReadySeconds: ${MIN_READY_SECONDS}"
+  fi
+
   # Service name (required for StatefulSet)
   echo "  serviceName: ${headless_service_name}"
 
@@ -324,6 +329,11 @@ KUBERNETES_SERVICE_ADDITIONAL_ANNOTATIONS="kaptain/generated-for=\"statefulset/$
 
   # DNS policy
   generate_dns_policy 6 "${DNS_POLICY}"
+
+  # Priority class
+  if [[ -n "${PRIORITY_CLASS_NAME}" ]]; then
+    echo "      priorityClassName: ${PRIORITY_CLASS_NAME}"
+  fi
 
   # Image pull secrets (optional)
   if [[ "${IMAGE_PULL_SECRETS}" != "DISABLED" ]]; then

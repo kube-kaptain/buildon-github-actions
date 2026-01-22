@@ -36,6 +36,7 @@ Kubernetes App - Docker Dockerfile
 | `kubernetes-workload-type` | string | `deployment` | Workload type to generate (deployment, statefulset, daemonset, none) |
 | `kubernetes-workload-replicas` | string | `""` | Replica count (empty for token, NO for HPA management, number for fixed) |
 | `kubernetes-workload-revision-history-limit` | string | `10` | Number of revisions to retain (ReplicaSets for Deployment, ControllerRevisions for StatefulSet) |
+| `kubernetes-workload-min-ready-seconds` | string | `0` | Minimum seconds a pod must be ready before considered available (0 to disable) |
 | `kubernetes-workload-name-suffix` | string | `""` | Optional suffix for workload name and filename |
 | `kubernetes-workload-combined-sub-path` | string | `""` | Sub-path within combined/ for output |
 | `kubernetes-workload-env-sub-path` | string | `""` | Directory containing environment variable files (default per workload type) |
@@ -63,6 +64,7 @@ Kubernetes App - Docker Dockerfile
 | `kubernetes-workload-tolerations` | string | `""` | Tolerations as JSON array (e.g., [{"key":"dedicated","operator":"Equal","value":"app","effect":"NoSchedule"}]) |
 | `kubernetes-workload-node-selector` | string | `""` | Node selector (comma-separated key=value pairs, e.g., disktype=ssd,zone=us-east-1a) |
 | `kubernetes-workload-dns-policy` | string | `""` | DNS policy (ClusterFirst, ClusterFirstWithHostNet, Default, None) |
+| `kubernetes-workload-priority-class-name` | string | `""` | Priority class name for pod scheduling priority |
 | `kubernetes-workload-probe-liveness-check-type` | string | `http-get` | Liveness probe type (http-get, tcp-socket, exec, grpc, none) |
 | `kubernetes-workload-probe-liveness-http-path` | string | `/liveness` | Liveness probe HTTP path |
 | `kubernetes-workload-probe-liveness-http-scheme` | string | `HTTP` | Liveness probe HTTP scheme (HTTP, HTTPS) |
@@ -120,7 +122,6 @@ Kubernetes App - Docker Dockerfile
 | `kubernetes-statefulset-pvc-mount-path` | string | `/data` | Mount path for the persistent volume |
 | `kubernetes-daemonset-update-strategy-type` | string | `RollingUpdate` | Update strategy type (RollingUpdate or OnDelete) |
 | `kubernetes-daemonset-max-unavailable` | string | `1` | Max unavailable pods during rolling update (number or percentage) |
-| `kubernetes-daemonset-min-ready-seconds` | string | `0` | Minimum seconds a pod must be ready before considered available |
 | `kubernetes-daemonset-host-network` | string | `false` | Use host network namespace (true/false) |
 | `kubernetes-daemonset-host-pid` | string | `false` | Use host PID namespace (true/false) |
 | `kubernetes-daemonset-host-ipc` | string | `false` | Use host IPC namespace (true/false) |
