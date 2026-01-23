@@ -33,6 +33,8 @@ REPOSITORY_NAME="${REPOSITORY_NAME:?Is required}"
 # Version calculation configuration
 # shellcheck source=src/scripts/defaults/tag-versioning.bash
 source "${SCRIPT_DIR}/../defaults/tag-versioning.bash"
+# shellcheck source=src/scripts/defaults/output-sub-path.bash
+source "${SCRIPT_DIR}/../defaults/output-sub-path.bash"
 # shellcheck source=src/scripts/defaults/docker-dockerfile.bash
 source "${SCRIPT_DIR}/../defaults/docker-dockerfile.bash"
 
