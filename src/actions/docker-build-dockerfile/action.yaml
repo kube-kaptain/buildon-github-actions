@@ -80,9 +80,6 @@ outputs:
   docker-target-image-full-uri:
     description: 'Full target image reference (for passing to docker-push)'
     value: ${{ steps.build.outputs.DOCKER_TARGET_IMAGE_FULL_URI }}
-  docker-substituted-sub-path:
-    description: 'Directory containing substituted files (for downstream use)'
-    value: ${{ steps.build.outputs.DOCKER_SUBSTITUTED_SUB_PATH }}
   docker-target-registry:
     description: 'Target registry (pass-through for downstream)'
     value: ${{ inputs.docker-target-registry }}
