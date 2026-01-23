@@ -63,6 +63,8 @@ runs:
         DOCKERFILE_SUBSTITUTION_FILES: ${{ inputs.dockerfile-substitution-files }}
         OUTPUT_SUB_PATH: ${{ inputs.output-sub-path }}
         DOCKERFILE_SQUASH: ${{ inputs.dockerfile-squash }}
+        DOCKERFILE_SQUASH_ALLOW_UNAVAILABLE: ${{ inputs.dockerfile-squash-allow-unavailable }}
+        BUILD_MODE: build_server
         DOCKERFILE_NO_CACHE: ${{ inputs.dockerfile-no-cache }}
         TOKEN_DELIMITER_STYLE: ${{ inputs.token-delimiter-style }}
         TOKEN_NAME_STYLE: ${{ inputs.token-name-style }}

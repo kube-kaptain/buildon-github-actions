@@ -51,6 +51,11 @@ on:
         required: false
         type: boolean
         default: true
+      dockerfile-squash-allow-unavailable:
+        description: 'Allow build without squash if unavailable (default: false - fail if squash unavailable)'
+        required: false
+        type: boolean
+        default: false
       dockerfile-no-cache:
         description: 'Disable layer caching for reproducible builds'
         required: false
