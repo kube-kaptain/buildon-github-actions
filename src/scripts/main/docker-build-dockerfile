@@ -67,7 +67,6 @@ source "$(dirname "${BASH_SOURCE[0]}")/../defaults/tokens.bash"
 
 # Build output structure (sub-paths, relative to working directory)
 DOCKER_CONFIG_SUB_PATH="${OUTPUT_SUB_PATH}/docker/config"
-DOCKER_SUBSTITUTED_SUB_PATH="${OUTPUT_SUB_PATH}/docker/substituted"
 
 enable_experimental() {
   # Enable Docker experimental features for --squash
@@ -135,13 +134,13 @@ main() {
   # Copy docker directory to build output for substitution
   echo "" >&2
   echo "Copying docker directory for substitution..." >&2
-  mkdir -p "${DOCKER_SUBSTITUTED_SUB_PATH}"
-  cp -R "${DOCKERFILE_SUB_PATH}"/* "${DOCKER_SUBSTITUTED_SUB_PATH}/"
+  mkdir -p "${DOCKER_CONTEXT_SUB_PATH}"
+  cp -R "${DOCKERFILE_SUB_PATH}"/* "${DOCKER_CONTEXT_SUB_PATH}/"
 
   # Count files copied
   local file_count
-  file_count=$(find "${DOCKER_SUBSTITUTED_SUB_PATH}" -type f | wc -l | tr -d ' ')
-  echo "Copied ${file_count} file(s) to ${DOCKER_SUBSTITUTED_SUB_PATH}" >&2
+  file_count=$(find "${DOCKER_CONTEXT_SUB_PATH}" -type f | wc -l | tr -d ' ')
+  echo "Copied ${file_count} file(s) to ${DOCKER_CONTEXT_SUB_PATH}" >&2
 
   # Prepare substitution tokens (built-ins + user config)
   echo "" >&2
@@ -166,7 +165,7 @@ main() {
     echo "Performing variable substitution on: ${DOCKERFILE_SUBSTITUTION_FILES}" >&2
     IFS=',' read -ra sub_files <<< "${DOCKERFILE_SUBSTITUTION_FILES}"
     for sub_file in "${sub_files[@]}"; do
-      local target_file="${DOCKER_SUBSTITUTED_SUB_PATH}/${sub_file}"
+      local target_file="${DOCKER_CONTEXT_SUB_PATH}/${sub_file}"
       if [[ -f "${target_file}" ]]; then
         CONFIG_VALUE_TRAILING_NEWLINE="${CONFIG_VALUE_TRAILING_NEWLINE}" \
         "${SCRIPT_DIR}/../util/substitute-tokens-from-dir" \
@@ -182,8 +181,7 @@ main() {
   fi
 
   # Build from substituted directory
-  local dockerfile="${DOCKER_SUBSTITUTED_SUB_PATH}/Dockerfile"
-  local context="${DOCKER_SUBSTITUTED_SUB_PATH}"
+  local dockerfile="${DOCKER_CONTEXT_SUB_PATH}/Dockerfile"
 
   # Enable experimental mode if squash requested
   if [[ "${DOCKERFILE_SQUASH}" == "true" ]]; then
@@ -217,14 +215,13 @@ main() {
   fi
 
   # Add context
-  cmd+=("${context}")
+  cmd+=("${DOCKER_CONTEXT_SUB_PATH}")
 
   echo "" >&2
   echo "Building: ${cmd[*]}" >&2
   "${cmd[@]}"
 
   output_var "DOCKER_TARGET_IMAGE_FULL_URI" "${TARGET_IMAGE_FULL_URI}"
-  output_var "DOCKER_SUBSTITUTED_SUB_PATH" "${DOCKER_SUBSTITUTED_SUB_PATH}"
 
   echo "" >&2
   echo "Docker Build Dockerfile complete" >&2
