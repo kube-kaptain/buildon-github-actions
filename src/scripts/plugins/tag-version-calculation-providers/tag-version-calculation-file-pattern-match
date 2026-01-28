@@ -102,26 +102,26 @@ validate_version_format() {
   fi
 }
 
-# Extract version from file using pattern
-extract_version() {
-  local source_file="${SOURCE_SUB_PATH}/${SOURCE_FILE_NAME}"
+# Extract version from a file using a regex pattern
+extract_version_from_file() {
+  local source_file="${1}"
+  local pattern="${2}"
+  local label="${3:-}"
 
   if [[ ! -f "${source_file}" ]]; then
     echo "${LOG_ERROR_PREFIX}Source file not found: ${source_file}${LOG_ERROR_SUFFIX}" >&2
     exit 1
   fi
 
-  # Extract version using pattern - capture group 1
   local version
-  version=$(grep -E "${VERSION_PATTERN}" "${source_file}" | head -1 | sed -E "s/${VERSION_PATTERN}/\\1/")
+  version=$(grep -E "${pattern}" "${source_file}" | head -1 | sed -E "s/${pattern}/\\1/")
 
   if [[ -z "${version}" ]]; then
     echo "${LOG_ERROR_PREFIX}Could not find version matching pattern in ${source_file}${LOG_ERROR_SUFFIX}" >&2
-    echo "Pattern: ${VERSION_PATTERN}" >&2
+    echo "Pattern: ${pattern}" >&2
     exit 1
   fi
 
-  # Validate the captured value is actually a version
   validate_version_format "${version}"
 
   echo "${version}"
@@ -194,7 +194,7 @@ main() {
 
   # Step 1: Extract version from file
   local source_version
-  source_version=$(extract_version)
+  source_version=$(extract_version_from_file "${SOURCE_SUB_PATH}/${SOURCE_FILE_NAME}" "${VERSION_PATTERN}")
   echo "Found version: ${source_version}" >&2
 
   # Step 1.5: Validate source version has enough parts for PREFIX_PARTS
