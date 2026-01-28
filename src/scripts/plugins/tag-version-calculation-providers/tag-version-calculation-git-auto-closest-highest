@@ -20,6 +20,9 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${0}")" && pwd)"
 
+# shellcheck source=../../lib/tag-version-calculation.bash
+source "${SCRIPT_DIR}/../../lib/tag-version-calculation.bash"
+
 # Logging configuration (CI-agnostic)
 LOG_ERROR_PREFIX="${LOG_ERROR_PREFIX:-}"
 LOG_ERROR_SUFFIX="${LOG_ERROR_SUFFIX:-}"
@@ -76,63 +79,6 @@ find_recent_tag() {
   if [[ -n "${best_tag}" ]]; then
     echo "${best_tag}"
   fi
-}
-
-# Get N-part prefix from version
-get_prefix() {
-  local version="${1}"
-  local num_parts="${2}"
-
-  IFS='.' read -ra parts <<< "${version}"
-  local result=""
-  for ((i=0; i<num_parts && i<${#parts[@]}; i++)); do
-    if [[ ${i} -gt 0 ]]; then
-      result+="."
-    fi
-    result+="${parts[${i}]}"
-  done
-  echo "${result}"
-}
-
-# Find highest tag matching prefix
-find_highest_in_series() {
-  local prefix="${1}"
-
-  # Get ALL tags in repo matching our prefix with pure numeric versions only
-  # The regex ensures: starts with prefix, followed by dot and digits only, no suffixes
-  local highest
-  highest=$(git tag --list | while read -r tag; do
-    if [[ "${tag}" =~ ^${prefix}\.[0-9]+$ ]]; then
-      echo "${tag}"
-    fi
-  done | "${SCRIPT_DIR}/../../util/version-sort" | tail -n1)
-
-  echo "${highest}"
-}
-
-# Count parts in a version string
-count_version_parts() {
-  local version="${1}"
-  local dot_count
-  dot_count=$(echo "${version}" | tr -cd '.' | wc -c | tr -d ' ')
-  echo $((dot_count + 1))
-}
-
-# Increment last version component
-increment_version() {
-  local prefix="${1}"
-  local previous_version="${2}"
-
-  if [[ -z "${previous_version}" ]]; then
-    echo "${prefix}.1"
-    return
-  fi
-
-  IFS='.' read -ra parts <<< "${previous_version}"
-  local last_idx=$((${#parts[@]} - 1))
-  parts[last_idx]=$((parts[last_idx] + 1))
-  local IFS='.'
-  echo "${parts[*]}"
 }
 
 main() {
