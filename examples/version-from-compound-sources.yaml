@@ -1,0 +1,77 @@
+# SPDX-License-Identifier: CC0-1.0
+# This example is released to the public domain. Use freely without attribution.
+#
+# Version From Compound Sources
+#
+# Combine versions from TWO source files to create a compound version.
+# Useful when your image depends on multiple upstream versions (e.g., base image + tool).
+#
+# The algorithm:
+#   1. Extract version from source ONE (e.g., your deploy version)
+#   2. Extract version from source TWO (e.g., upstream tool version)
+#   3. Combine as ONE.TWO to form the series prefix
+#   4. Auto-increment the patch based on existing tags
+#
+# Example: DEPLOY_VERSION=1.0.0 + KUBECTL_VERSION=1.32.4 (using 2 parts from TWO)
+#   - First build: tags 1.0.0.1.32.1
+#   - Second build: tags 1.0.0.1.32.2
+#   - Update kubectl to 1.33.0: tags 1.0.0.1.33.1
+#
+# Copy this to .github/workflows/build.yaml in your repo.
+
+name: Docker Build with Compound Version
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    uses: kube-kaptain/buildon-github-actions/.github/workflows/docker-build-dockerfile.yaml@1.0.53
+    permissions:
+      contents: write
+      packages: write
+      checks: write
+    with:
+      tag-version-calculation-strategy: 'compound-file-pattern-match'
+      tag-version-max-parts: 7
+      # Source ONE: your deploy version from a config file
+      tag-version-pattern-type: 'custom'
+      tag-version-source-sub-path: 'src/config'
+      tag-version-source-file-name: 'version.txt'
+      tag-version-source-custom-pattern: '^DEPLOY_VERSION=([0-9]+\.[0-9]+\.[0-9]+)$'
+      # Source TWO: upstream tool version from Dockerfile
+      tag-version-source-two-sub-path: 'src/docker'
+      tag-version-source-two-file-name: 'Dockerfile'
+      tag-version-source-two-pattern: '^ENV KUBECTL_VERSION=([0-9]+\.[0-9]+\.[0-9]+)$'
+      tag-version-source-two-prefix-parts: '2'  # Use major.minor from kubectl
+
+# Example files:
+#
+# src/config/version.txt:
+#   DEPLOY_VERSION=1.0.0
+#
+# src/docker/Dockerfile:
+#   FROM alpine:3.19
+#   ENV KUBECTL_VERSION=1.32.4
+#   ...
+
+# ┌─────────────────────────────────────────────────────────────────────────┐
+# │ Compound Version Configuration                                          │
+# └─────────────────────────────────────────────────────────────────────────┘
+# Source ONE uses existing file-pattern-match inputs:
+#   tag-version-pattern-type: 'custom'              # or 'dockerfile-env-kubectl', 'retag-workflow-source-tag'
+#   tag-version-source-sub-path: 'path/to/dir'      # Directory containing source ONE file
+#   tag-version-source-file-name: 'filename'        # Source ONE file name
+#   tag-version-source-custom-pattern: '^...$'      # Regex for custom type
+#   tag-version-prefix-parts: '3'                   # Parts to take from ONE (default: all)
+#
+# Source TWO has dedicated inputs:
+#   tag-version-source-two-sub-path: 'path'         # Directory (defaults to ONE's path)
+#   tag-version-source-two-file-name: 'file'        # File name (defaults to ONE's file)
+#   tag-version-source-two-pattern: '^...$'         # Regex (required if same file as ONE)
+#   tag-version-source-two-prefix-parts: '2'        # Parts to take from TWO (default: 2)
+#
+# When TWO uses the same file as ONE, TWO's pattern MUST differ to extract a different value.

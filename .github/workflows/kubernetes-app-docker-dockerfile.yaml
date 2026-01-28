@@ -960,7 +960,7 @@ on:
         type: number
         default: 3
       tag-version-calculation-strategy:
-        description: 'Strategy for calculating version (git-auto-closest-highest, file-pattern-match)'
+        description: 'Strategy for calculating version (git-auto-closest-highest, file-pattern-match, compound-file-pattern-match)'
         required: false
         type: string
         default: 'git-auto-closest-highest'
@@ -986,6 +986,27 @@ on:
         default: ''
       tag-version-source-custom-pattern:
         description: 'Regex with capture group for version extraction (required for custom pattern type)'
+        required: false
+        type: string
+        default: ''
+      # Compound file-pattern-match source TWO inputs
+      tag-version-source-two-sub-path:
+        description: 'Path to source TWO directory (defaults to source ONE path)'
+        required: false
+        type: string
+        default: ''
+      tag-version-source-two-file-name:
+        description: 'Source TWO file name (defaults to source ONE file name)'
+        required: false
+        type: string
+        default: ''
+      tag-version-source-two-pattern:
+        description: 'Regex with capture group for source TWO (required if same file as source ONE)'
+        required: false
+        type: string
+        default: ''
+      tag-version-source-two-prefix-parts:
+        description: 'Number of parts from source TWO version to use in prefix (default 2)'
         required: false
         type: string
         default: ''
@@ -1420,6 +1441,10 @@ jobs:
           tag-version-source-sub-path: ${{ inputs.tag-version-source-sub-path }}
           tag-version-source-file-name: ${{ inputs.tag-version-source-file-name }}
           tag-version-source-custom-pattern: ${{ inputs.tag-version-source-custom-pattern }}
+          tag-version-source-two-sub-path: ${{ inputs.tag-version-source-two-sub-path }}
+          tag-version-source-two-file-name: ${{ inputs.tag-version-source-two-file-name }}
+          tag-version-source-two-pattern: ${{ inputs.tag-version-source-two-pattern }}
+          tag-version-source-two-prefix-parts: ${{ inputs.tag-version-source-two-prefix-parts }}
 
           # Quality check options
           block-slashes: ${{ inputs.block-slashes }}
@@ -1476,6 +1501,10 @@ jobs:
           tag-version-source-sub-path: ${{ inputs.tag-version-source-sub-path }}
           tag-version-source-file-name: ${{ inputs.tag-version-source-file-name }}
           tag-version-source-custom-pattern: ${{ inputs.tag-version-source-custom-pattern }}
+          tag-version-source-two-sub-path: ${{ inputs.tag-version-source-two-sub-path }}
+          tag-version-source-two-file-name: ${{ inputs.tag-version-source-two-file-name }}
+          tag-version-source-two-pattern: ${{ inputs.tag-version-source-two-pattern }}
+          tag-version-source-two-prefix-parts: ${{ inputs.tag-version-source-two-prefix-parts }}
       - name: Pass check - Versions & Naming
         if: success()
         uses: ./.github/buildon-github-actions/src/actions/github-check-run
@@ -1602,6 +1631,10 @@ jobs:
           tag-version-source-sub-path: ${{ inputs.tag-version-source-sub-path }}
           tag-version-source-file-name: ${{ inputs.tag-version-source-file-name }}
           tag-version-source-custom-pattern: ${{ inputs.tag-version-source-custom-pattern }}
+          tag-version-source-two-sub-path: ${{ inputs.tag-version-source-two-sub-path }}
+          tag-version-source-two-file-name: ${{ inputs.tag-version-source-two-file-name }}
+          tag-version-source-two-pattern: ${{ inputs.tag-version-source-two-pattern }}
+          tag-version-source-two-prefix-parts: ${{ inputs.tag-version-source-two-prefix-parts }}
 
           # Quality check options
           block-slashes: ${{ inputs.block-slashes }}
@@ -1839,6 +1872,10 @@ jobs:
           tag-version-source-sub-path: ${{ inputs.tag-version-source-sub-path }}
           tag-version-source-file-name: ${{ inputs.tag-version-source-file-name }}
           tag-version-source-custom-pattern: ${{ inputs.tag-version-source-custom-pattern }}
+          tag-version-source-two-sub-path: ${{ inputs.tag-version-source-two-sub-path }}
+          tag-version-source-two-file-name: ${{ inputs.tag-version-source-two-file-name }}
+          tag-version-source-two-pattern: ${{ inputs.tag-version-source-two-pattern }}
+          tag-version-source-two-prefix-parts: ${{ inputs.tag-version-source-two-prefix-parts }}
 
           # Quality check options
           block-slashes: ${{ inputs.block-slashes }}
@@ -2348,6 +2385,10 @@ jobs:
           tag-version-source-sub-path: ${{ inputs.tag-version-source-sub-path }}
           tag-version-source-file-name: ${{ inputs.tag-version-source-file-name }}
           tag-version-source-custom-pattern: ${{ inputs.tag-version-source-custom-pattern }}
+          tag-version-source-two-sub-path: ${{ inputs.tag-version-source-two-sub-path }}
+          tag-version-source-two-file-name: ${{ inputs.tag-version-source-two-file-name }}
+          tag-version-source-two-pattern: ${{ inputs.tag-version-source-two-pattern }}
+          tag-version-source-two-prefix-parts: ${{ inputs.tag-version-source-two-prefix-parts }}
 
           # Quality check options
           block-slashes: ${{ inputs.block-slashes }}
@@ -2629,6 +2670,10 @@ jobs:
           tag-version-source-sub-path: ${{ inputs.tag-version-source-sub-path }}
           tag-version-source-file-name: ${{ inputs.tag-version-source-file-name }}
           tag-version-source-custom-pattern: ${{ inputs.tag-version-source-custom-pattern }}
+          tag-version-source-two-sub-path: ${{ inputs.tag-version-source-two-sub-path }}
+          tag-version-source-two-file-name: ${{ inputs.tag-version-source-two-file-name }}
+          tag-version-source-two-pattern: ${{ inputs.tag-version-source-two-pattern }}
+          tag-version-source-two-prefix-parts: ${{ inputs.tag-version-source-two-prefix-parts }}
 
           # Quality check options
           block-slashes: ${{ inputs.block-slashes }}

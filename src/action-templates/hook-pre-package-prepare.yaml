@@ -254,6 +254,10 @@ runs:
         TAG_VERSION_SOURCE_SUB_PATH: ${{ inputs.tag-version-source-sub-path }}
         TAG_VERSION_SOURCE_FILE_NAME: ${{ inputs.tag-version-source-file-name }}
         TAG_VERSION_SOURCE_CUSTOM_PATTERN: ${{ inputs.tag-version-source-custom-pattern }}
+        TAG_VERSION_SOURCE_TWO_SUB_PATH: ${{ inputs.tag-version-source-two-sub-path }}
+        TAG_VERSION_SOURCE_TWO_FILE_NAME: ${{ inputs.tag-version-source-two-file-name }}
+        TAG_VERSION_SOURCE_TWO_PATTERN: ${{ inputs.tag-version-source-two-pattern }}
+        TAG_VERSION_SOURCE_TWO_PREFIX_PARTS: ${{ inputs.tag-version-source-two-prefix-parts }}
 
         # Workflow inputs - quality check options
         BLOCK_SLASHES: ${{ inputs.block-slashes }}

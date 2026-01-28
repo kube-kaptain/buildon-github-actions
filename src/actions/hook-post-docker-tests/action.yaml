@@ -748,7 +748,7 @@ inputs:
     required: false
     default: '3'
   tag-version-calculation-strategy:
-    description: 'Strategy for calculating version (git-auto-closest-highest, file-pattern-match)'
+    description: 'Strategy for calculating version (git-auto-closest-highest, file-pattern-match, compound-file-pattern-match)'
     required: false
     default: 'git-auto-closest-highest'
   tag-version-pattern-type:
@@ -769,6 +769,23 @@ inputs:
     default: ''
   tag-version-source-custom-pattern:
     description: 'Regex with capture group for version extraction (required for custom pattern type)'
+    required: false
+    default: ''
+  # Compound file-pattern-match source TWO inputs
+  tag-version-source-two-sub-path:
+    description: 'Path to source TWO directory (defaults to source ONE path)'
+    required: false
+    default: ''
+  tag-version-source-two-file-name:
+    description: 'Source TWO file name (defaults to source ONE file name)'
+    required: false
+    default: ''
+  tag-version-source-two-pattern:
+    description: 'Regex with capture group for source TWO (required if same file as source ONE)'
+    required: false
+    default: ''
+  tag-version-source-two-prefix-parts:
+    description: 'Number of parts from source TWO version to use in prefix (default 2)'
     required: false
     default: ''
   # Basic quality checks
@@ -1054,6 +1071,10 @@ runs:
         TAG_VERSION_SOURCE_SUB_PATH: ${{ inputs.tag-version-source-sub-path }}
         TAG_VERSION_SOURCE_FILE_NAME: ${{ inputs.tag-version-source-file-name }}
         TAG_VERSION_SOURCE_CUSTOM_PATTERN: ${{ inputs.tag-version-source-custom-pattern }}
+        TAG_VERSION_SOURCE_TWO_SUB_PATH: ${{ inputs.tag-version-source-two-sub-path }}
+        TAG_VERSION_SOURCE_TWO_FILE_NAME: ${{ inputs.tag-version-source-two-file-name }}
+        TAG_VERSION_SOURCE_TWO_PATTERN: ${{ inputs.tag-version-source-two-pattern }}
+        TAG_VERSION_SOURCE_TWO_PREFIX_PARTS: ${{ inputs.tag-version-source-two-prefix-parts }}
 
         # Workflow inputs - quality check options
         BLOCK_SLASHES: ${{ inputs.block-slashes }}

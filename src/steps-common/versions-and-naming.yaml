@@ -15,3 +15,7 @@
     tag-version-source-sub-path: ${{ inputs.tag-version-source-sub-path }}
     tag-version-source-file-name: ${{ inputs.tag-version-source-file-name }}
     tag-version-source-custom-pattern: ${{ inputs.tag-version-source-custom-pattern }}
+    tag-version-source-two-sub-path: ${{ inputs.tag-version-source-two-sub-path }}
+    tag-version-source-two-file-name: ${{ inputs.tag-version-source-two-file-name }}
+    tag-version-source-two-pattern: ${{ inputs.tag-version-source-two-pattern }}
+    tag-version-source-two-prefix-parts: ${{ inputs.tag-version-source-two-prefix-parts }}

@@ -1,0 +1,162 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
+#
+# tag-version-calculation-compound-file-match - Compound version from two file sources
+#
+# Algorithm:
+#   1. Extract version ONE from first source file using existing file-pattern-match inputs
+#   2. Extract version TWO from second source file using TAG_VERSION_SOURCE_TWO_* inputs
+#   3. Combine as ONE.TWO to form the series prefix
+#   4. Find highest existing tag matching that prefix
+#   5. Increment the PATCH (last component), or start at prefix.1 if no tags exist
+#
+# Example: source ONE = 1.0.0, source TWO has 1.32.4, TWO_PREFIX_PARTS = 2
+#   → prefix = 1.0.0.1.32, first tag = 1.0.0.1.32.1, next = 1.0.0.1.32.2, etc.
+#
+# Inputs (environment variables):
+#   Source ONE (reuses existing file-pattern-match inputs):
+#     TAG_VERSION_PATTERN_TYPE - Pattern type for source ONE (required)
+#     TAG_VERSION_SOURCE_SUB_PATH - Path override for source ONE
+#     TAG_VERSION_SOURCE_FILE_NAME - File name override for source ONE
+#     TAG_VERSION_SOURCE_CUSTOM_PATTERN - Custom regex for source ONE
+#     TAG_VERSION_PREFIX_PARTS - Parts to take from source ONE (default: all)
+#
+#   Source TWO:
+#     TAG_VERSION_SOURCE_TWO_SUB_PATH - Path to directory (default: same as source ONE)
+#     TAG_VERSION_SOURCE_TWO_FILE_NAME - File name (default: same as source ONE)
+#     TAG_VERSION_SOURCE_TWO_PATTERN - Regex with capture group
+#       Required if TWO resolves to the same file as ONE, otherwise defaults to ONE's pattern
+#     TAG_VERSION_SOURCE_TWO_PREFIX_PARTS - Parts to take from source TWO (default 2)
+#
+#   General:
+#     TAG_VERSION_MAX_PARTS - Fail if version exceeds this depth (required)
+#
+# Outputs (stdout):
+#   VERSION=x.y.z.a.b.c
+#
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${0}")" && pwd)"
+
+# shellcheck source=../../lib/tag-version-calculation.bash
+source "${SCRIPT_DIR}/../../lib/tag-version-calculation.bash"
+
+# Logging configuration (CI-agnostic)
+LOG_ERROR_PREFIX="${LOG_ERROR_PREFIX:-}"
+LOG_ERROR_SUFFIX="${LOG_ERROR_SUFFIX:-}"
+
+# Required inputs
+if [[ -z "${TAG_VERSION_PATTERN_TYPE:-}" ]]; then
+  echo "${LOG_ERROR_PREFIX}TAG_VERSION_PATTERN_TYPE is required for source ONE${LOG_ERROR_SUFFIX}" >&2
+  exit 1
+fi
+
+if [[ -z "${TAG_VERSION_MAX_PARTS:-}" ]]; then
+  echo "${LOG_ERROR_PREFIX}TAG_VERSION_MAX_PARTS is required${LOG_ERROR_SUFFIX}" >&2
+  exit 1
+fi
+
+TAG_VERSION_SOURCE_TWO_PREFIX_PARTS="${TAG_VERSION_SOURCE_TWO_PREFIX_PARTS:-2}"
+
+# shellcheck disable=SC2154 # SOURCE_SUB_PATH/SOURCE_FILE_NAME/VERSION_PATTERN set by sourced tag-version-calculation.bash
+main() {
+  # Step 0a: Set defaults for source ONE
+  set_defaults_for_type
+
+  # Step 0b: Resolve source TWO defaults from source ONE
+  TAG_VERSION_SOURCE_TWO_SUB_PATH="${TAG_VERSION_SOURCE_TWO_SUB_PATH:-${SOURCE_SUB_PATH}}"
+  TAG_VERSION_SOURCE_TWO_FILE_NAME="${TAG_VERSION_SOURCE_TWO_FILE_NAME:-${SOURCE_FILE_NAME}}"
+
+  local two_file="${TAG_VERSION_SOURCE_TWO_SUB_PATH}/${TAG_VERSION_SOURCE_TWO_FILE_NAME}"
+  local one_file="${SOURCE_SUB_PATH}/${SOURCE_FILE_NAME}"
+
+  if [[ "${two_file}" == "${one_file}" ]]; then
+    # Same file: TWO pattern is required (must differ to extract a different value)
+    if [[ -z "${TAG_VERSION_SOURCE_TWO_PATTERN:-}" ]]; then
+      echo "${LOG_ERROR_PREFIX}TAG_VERSION_SOURCE_TWO_PATTERN is required when source TWO uses the same file as source ONE${LOG_ERROR_SUFFIX}" >&2
+      exit 1
+    fi
+    if [[ "${TAG_VERSION_SOURCE_TWO_PATTERN}" == "${VERSION_PATTERN}" ]]; then
+      echo "${LOG_ERROR_PREFIX}TAG_VERSION_SOURCE_TWO_PATTERN must differ from source ONE pattern when using the same file${LOG_ERROR_SUFFIX}" >&2
+      exit 1
+    fi
+  else
+    # Different file: TWO pattern defaults to ONE's pattern
+    TAG_VERSION_SOURCE_TWO_PATTERN="${TAG_VERSION_SOURCE_TWO_PATTERN:-${VERSION_PATTERN}}"
+  fi
+
+  echo "Source ONE pattern type: ${TAG_VERSION_PATTERN_TYPE}" >&2
+  echo "Source ONE file: ${one_file}" >&2
+  echo "Source TWO file: ${two_file}" >&2
+
+  # Step 1: Extract version from source ONE
+  local source_one_version
+  source_one_version=$(extract_version_from_file "${SOURCE_SUB_PATH}/${SOURCE_FILE_NAME}" "${VERSION_PATTERN}" "source ONE")
+  echo "Source ONE version: ${source_one_version}" >&2
+
+  # Step 2: Get prefix from source ONE
+  local one_prefix_parts="${TAG_VERSION_PREFIX_PARTS:-}"
+  local one_prefix
+  if [[ -n "${one_prefix_parts}" ]]; then
+    local one_part_count
+    one_part_count=$(count_version_parts "${source_one_version}")
+    if [[ ${one_prefix_parts} -gt ${one_part_count} ]]; then
+      echo "${LOG_ERROR_PREFIX}TAG_VERSION_PREFIX_PARTS (${one_prefix_parts}) exceeds source ONE version parts (${one_part_count} in '${source_one_version}')${LOG_ERROR_SUFFIX}" >&2
+      exit 1
+    fi
+    one_prefix=$(get_prefix "${source_one_version}" "${one_prefix_parts}")
+  else
+    one_prefix="${source_one_version}"
+  fi
+  echo "Source ONE prefix: ${one_prefix}" >&2
+
+  # Step 3: Extract version from source TWO
+  local source_two_version
+  source_two_version=$(extract_version_from_file \
+    "${TAG_VERSION_SOURCE_TWO_SUB_PATH}/${TAG_VERSION_SOURCE_TWO_FILE_NAME}" \
+    "${TAG_VERSION_SOURCE_TWO_PATTERN}" \
+    "source TWO")
+  echo "Source TWO version: ${source_two_version}" >&2
+
+  # Step 4: Get prefix from source TWO
+  local two_part_count
+  two_part_count=$(count_version_parts "${source_two_version}")
+  if [[ ${TAG_VERSION_SOURCE_TWO_PREFIX_PARTS} -gt ${two_part_count} ]]; then
+    echo "${LOG_ERROR_PREFIX}TAG_VERSION_SOURCE_TWO_PREFIX_PARTS (${TAG_VERSION_SOURCE_TWO_PREFIX_PARTS}) exceeds source TWO version parts (${two_part_count} in '${source_two_version}')${LOG_ERROR_SUFFIX}" >&2
+    exit 1
+  fi
+  local two_prefix
+  two_prefix=$(get_prefix "${source_two_version}" "${TAG_VERSION_SOURCE_TWO_PREFIX_PARTS}")
+  echo "Source TWO prefix: ${two_prefix}" >&2
+
+  # Step 5: Combine into compound prefix
+  local compound_prefix="${one_prefix}.${two_prefix}"
+  echo "Compound prefix: ${compound_prefix}.x" >&2
+
+  # Step 6: Find highest existing tag in series
+  local highest_tag
+  highest_tag=$(find_highest_in_series "${compound_prefix}")
+  if [[ -n "${highest_tag}" ]]; then
+    echo "Highest existing tag in series: ${highest_tag}" >&2
+  else
+    echo "No existing tags in ${compound_prefix}.x series" >&2
+  fi
+
+  # Step 7: Increment version
+  local version
+  version=$(increment_version "${compound_prefix}" "${highest_tag}")
+
+  # Step 8: Validate against TAG_VERSION_MAX_PARTS
+  local part_count
+  part_count=$(count_version_parts "${version}")
+  if [[ ${part_count} -gt ${TAG_VERSION_MAX_PARTS} ]]; then
+    echo "${LOG_ERROR_PREFIX}Version '${version}' has ${part_count} parts, exceeds TAG_VERSION_MAX_PARTS=${TAG_VERSION_MAX_PARTS}${LOG_ERROR_SUFFIX}" >&2
+    exit 1
+  fi
+
+  # Output the version
+  echo "VERSION=${version}"
+}
+
+main "$@"
