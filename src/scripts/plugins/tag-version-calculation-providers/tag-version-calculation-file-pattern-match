@@ -95,8 +95,13 @@ set_defaults_for_type() {
 # Validate that a string looks like a version (digits separated by dots)
 validate_version_format() {
   local value="${1}"
+  local label="${2:-}"
   if [[ ! "${value}" =~ ^[0-9]+(\.[0-9]+)*$ ]]; then
-    echo "${LOG_ERROR_PREFIX}Captured value '${value}' is not a valid version format${LOG_ERROR_SUFFIX}" >&2
+    if [[ -n "${label}" ]]; then
+      echo "${LOG_ERROR_PREFIX}Captured value '${value}' from ${label} is not a valid version format${LOG_ERROR_SUFFIX}" >&2
+    else
+      echo "${LOG_ERROR_PREFIX}Captured value '${value}' is not a valid version format${LOG_ERROR_SUFFIX}" >&2
+    fi
     echo "Expected: digits separated by dots (e.g., 1, 1.28, 1.28.0)" >&2
     exit 1
   fi
@@ -117,13 +122,12 @@ extract_version_from_file() {
   version=$(grep -E "${pattern}" "${source_file}" | head -1 | sed -E "s/${pattern}/\\1/")
 
   if [[ -z "${version}" ]]; then
-    echo "${LOG_ERROR_PREFIX}Could not find version matching pattern in ${source_file}${LOG_ERROR_SUFFIX}" >&2
+    echo "${LOG_ERROR_PREFIX}Could not find version matching pattern in ${source_file} (${label})${LOG_ERROR_SUFFIX}" >&2
     echo "Pattern: ${pattern}" >&2
     exit 1
   fi
 
-  validate_version_format "${version}"
-
+  validate_version_format "${version}" "${label}"
   echo "${version}"
 }
 
@@ -194,7 +198,7 @@ main() {
 
   # Step 1: Extract version from file
   local source_version
-  source_version=$(extract_version_from_file "${SOURCE_SUB_PATH}/${SOURCE_FILE_NAME}" "${VERSION_PATTERN}")
+  source_version=$(extract_version_from_file "${SOURCE_SUB_PATH}/${SOURCE_FILE_NAME}" "${VERSION_PATTERN}" "source file")
   echo "Found version: ${source_version}" >&2
 
   # Step 1.5: Validate source version has enough parts for PREFIX_PARTS
