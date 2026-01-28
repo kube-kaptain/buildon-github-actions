@@ -91,41 +91,20 @@ get_version_prefix() {
   fi
 }
 
-# Find highest tag in a series across entire repo
+# Find highest tag matching prefix
 find_highest_in_series() {
-  local recent_tag="${1}"
+  local prefix="${1}"
 
-  if [[ -z "${recent_tag}" ]]; then
-    echo ""
-    return
-  fi
-
-  local prefix
-  prefix=$(get_version_prefix "${recent_tag}")
-
-  if [[ -z "${prefix}" ]]; then
-    # Single component version, just return the recent tag
-    echo "${recent_tag}"
-    return
-  fi
-
-  # Get ALL tags in repo (not just reachable from HEAD)
-  # Filter to those matching our prefix with pure numeric versions only
-  # This excludes tags like 1.2.3-rc1, 1.2.3-beta, v1.2.3, etc
+  # Get ALL tags in repo matching our prefix with pure numeric versions only
+  # The regex ensures: starts with prefix, followed by dot and digits only, no suffixes
   local highest
   highest=$(git tag --list | while read -r tag; do
-    # Must start with our prefix, followed by dot and digits only
-    if [[ "${tag}" =~ ^${prefix}\.[0-9]+$ ]] && is_numeric_version "${tag}"; then
+    if [[ "${tag}" =~ ^${prefix}\.[0-9]+$ ]]; then
       echo "${tag}"
     fi
   done | "${SCRIPT_DIR}/../../util/version-sort" | tail -n1)
 
-  if [[ -z "${highest}" ]]; then
-    # No matching tags found, use the recent tag
-    echo "${recent_tag}"
-  else
-    echo "${highest}"
-  fi
+  echo "${highest}"
 }
 
 # Count parts in a version string
@@ -160,8 +139,14 @@ main() {
   recent_tag=$(find_recent_tag)
 
   # Step 2: Find highest tag in that series across entire repo
+  local prefix
+  prefix=$(get_version_prefix "${recent_tag}")
   local highest_tag
-  highest_tag=$(find_highest_in_series "${recent_tag}")
+  if [[ -n "${prefix}" ]]; then
+    highest_tag=$(find_highest_in_series "${prefix}")
+  else
+    highest_tag="${recent_tag}"
+  fi
 
   # Step 3: Increment the highest
   local version

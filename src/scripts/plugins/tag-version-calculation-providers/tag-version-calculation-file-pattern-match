@@ -143,7 +143,7 @@ get_prefix() {
   echo "${result}"
 }
 
-# Find highest tag matching major.minor prefix
+# Find highest tag matching prefix
 find_highest_in_series() {
   local prefix="${1}"
 
