@@ -1,0 +1,190 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
+#
+# docker-squash-setup - Detect and optionally enable docker squash capability
+#
+# Usage:
+#   docker-squash-setup              # Check and attempt to enable if needed
+#   docker-squash-setup --check-only # Just check, don't try to enable
+#
+# Exit codes:
+#   0 = squash available
+#   1 = squash not available (docker running but experimental disabled)
+#   2 = docker/podman not available or not running
+#
+set -euo pipefail
+
+CHECK_ONLY=false
+if [[ "${1:-}" == "--check-only" ]]; then
+  CHECK_ONLY=true
+fi
+
+# Logging configuration (CI-agnostic)
+LOG_ERROR_PREFIX="${LOG_ERROR_PREFIX:-}"
+LOG_ERROR_SUFFIX="${LOG_ERROR_SUFFIX:-}"
+LOG_WARNING_PREFIX="${LOG_WARNING_PREFIX:-}"
+LOG_WARNING_SUFFIX="${LOG_WARNING_SUFFIX:-}"
+
+detect_container_runtime() {
+  if command -v docker &>/dev/null; then
+    # Check if it's actually podman masquerading as docker
+    if docker --version 2>/dev/null | grep -qi podman; then
+      echo "podman"
+    else
+      echo "docker"
+    fi
+  elif command -v podman &>/dev/null; then
+    echo "podman"
+  else
+    echo "none"
+  fi
+}
+
+check_squash_available() {
+  local runtime
+  runtime=$(detect_container_runtime)
+
+  case "${runtime}" in
+    podman)
+      # Podman always supports squash
+      echo "Podman detected - squash always available" >&2
+      return 0
+      ;;
+    docker)
+      # Single command checks both availability and experimental mode
+      local experimental
+      experimental=$(docker info --format '{{.ExperimentalBuild}}' 2>/dev/null) || {
+        echo "${LOG_ERROR_PREFIX}Docker not available or daemon not running${LOG_ERROR_SUFFIX}" >&2
+        return 2
+      }
+
+      if [[ "${experimental}" == "true" ]]; then
+        echo "Docker experimental mode enabled - squash available" >&2
+        return 0
+      else
+        echo "Docker experimental mode not enabled - squash not available" >&2
+        return 1
+      fi
+      ;;
+    none)
+      echo "${LOG_ERROR_PREFIX}No container runtime (docker/podman) found${LOG_ERROR_SUFFIX}" >&2
+      return 2
+      ;;
+  esac
+}
+
+detect_os() {
+  case "$(uname -s)" in
+    Darwin)  echo "macos" ;;
+    Linux)   echo "linux" ;;
+    MINGW*|CYGWIN*|MSYS*) echo "windows" ;;
+    *)       echo "unknown" ;;
+  esac
+}
+
+attempt_enable_experimental() {
+  local os
+  os=$(detect_os)
+
+  echo "Attempting to enable Docker experimental mode..." >&2
+
+  case "${os}" in
+    linux)
+      if command -v systemctl &>/dev/null; then
+        # Linux with systemd
+        if sudo -n true 2>/dev/null; then
+          echo "Configuring experimental mode with passwordless sudo" >&2
+          sudo mkdir -p /etc/docker
+          if [[ -f /etc/docker/daemon.json ]]; then
+            # Merge with existing config if jq available
+            if command -v jq &>/dev/null; then
+              sudo jq '. + {"experimental": true}' /etc/docker/daemon.json | sudo tee /etc/docker/daemon.json.tmp > /dev/null
+              sudo mv /etc/docker/daemon.json.tmp /etc/docker/daemon.json
+            else
+              echo '{"experimental": true}' | sudo tee /etc/docker/daemon.json > /dev/null
+            fi
+          else
+            echo '{"experimental": true}' | sudo tee /etc/docker/daemon.json > /dev/null
+          fi
+          sudo systemctl restart docker
+        else
+          echo "${LOG_ERROR_PREFIX}Cannot enable experimental mode - sudo requires password${LOG_ERROR_SUFFIX}" >&2
+          echo "Manually add {\"experimental\": true} to /etc/docker/daemon.json and restart docker" >&2
+          return 1
+        fi
+      else
+        echo "${LOG_ERROR_PREFIX}Cannot enable experimental mode - systemctl not available${LOG_ERROR_SUFFIX}" >&2
+        return 1
+      fi
+
+      # Wait for docker to be ready
+      local retries=10
+      while ! docker info &>/dev/null && [[ ${retries} -gt 0 ]]; do
+        sleep 1
+        retries=$((retries - 1))
+      done
+
+      if ! docker info &>/dev/null; then
+        echo "${LOG_ERROR_PREFIX}Docker failed to restart after enabling experimental mode${LOG_ERROR_SUFFIX}" >&2
+        return 1
+      fi
+
+      echo "Docker experimental mode enabled" >&2
+      return 0
+      ;;
+
+    macos)
+      echo "${LOG_ERROR_PREFIX}Cannot automatically enable experimental mode on macOS${LOG_ERROR_SUFFIX}" >&2
+      echo "Manually enable in: Docker Desktop -> Settings -> Docker Engine" >&2
+      echo "Add: \"experimental\": true" >&2
+      return 1
+      ;;
+
+    windows)
+      echo "${LOG_ERROR_PREFIX}Cannot automatically enable experimental mode on Windows${LOG_ERROR_SUFFIX}" >&2
+      echo "Manually enable in: Docker Desktop -> Settings -> Docker Engine" >&2
+      echo "Add: \"experimental\": true" >&2
+      return 1
+      ;;
+
+    *)
+      echo "${LOG_ERROR_PREFIX}Cannot enable experimental mode on ${os}${LOG_ERROR_SUFFIX}" >&2
+      return 1
+      ;;
+  esac
+}
+
+main() {
+  # Check if squash is already available
+  if check_squash_available; then
+    exit 0
+  fi
+
+  local check_result=$?
+
+  # Exit code 2 means docker not available - fatal
+  if [[ ${check_result} -eq 2 ]]; then
+    exit 2
+  fi
+
+  # If check-only mode, don't try to enable
+  if [[ "${CHECK_ONLY}" == "true" ]]; then
+    exit 1
+  fi
+
+  # Attempt to enable experimental mode
+  if ! attempt_enable_experimental; then
+    exit 1
+  fi
+
+  # Re-check after enabling
+  if check_squash_available; then
+    exit 0
+  else
+    echo "${LOG_ERROR_PREFIX}Experimental mode still not enabled after setup attempt${LOG_ERROR_SUFFIX}" >&2
+    exit 1
+  fi
+}
+
+main "$@"

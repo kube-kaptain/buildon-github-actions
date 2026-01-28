@@ -26,22 +26,23 @@ set -euo pipefail
 SCRIPT_DIR="$(dirname "${0}")"
 PLUGINS_DIR="${SCRIPT_DIR}/../plugins"
 
-# Script-specific inputs
-BUILD_MODE="${BUILD_MODE:-local}"
-REPOSITORY_NAME="${REPOSITORY_NAME:?Is required}"
-
-# Version calculation configuration
-# shellcheck source=src/scripts/defaults/tag-versioning.bash
-source "${SCRIPT_DIR}/../defaults/tag-versioning.bash"
+# Apply defaults for inputs used directly in this script
 # shellcheck source=src/scripts/defaults/output-sub-path.bash
 source "${SCRIPT_DIR}/../defaults/output-sub-path.bash"
+# shellcheck source=src/scripts/defaults/build-mode.bash
+source "${SCRIPT_DIR}/../defaults/build-mode.bash"
+# shellcheck source=src/scripts/defaults/tag-versioning.bash
+source "${SCRIPT_DIR}/../defaults/tag-versioning.bash"
 # shellcheck source=src/scripts/defaults/docker-dockerfile.bash
 source "${SCRIPT_DIR}/../defaults/docker-dockerfile.bash"
-
 # shellcheck source=src/scripts/defaults/branch-inputs.bash
 source "${SCRIPT_DIR}/../defaults/branch-inputs.bash"
+
 # shellcheck source=src/scripts/lib/branch-setup-shared.bash
 source "${SCRIPT_DIR}/../lib/branch-setup-shared.bash"
+
+# Required inputs
+REPOSITORY_NAME="${REPOSITORY_NAME:?Is required}"
 
 echo "Critical inputs:" >&2
 echo "  Repository name: ${REPOSITORY_NAME}" >&2

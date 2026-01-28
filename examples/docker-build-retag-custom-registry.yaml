@@ -20,7 +20,7 @@ on:
 
 jobs:
   retag:
-    uses: kube-kaptain/buildon-github-actions/.github/workflows/docker-build-retag.yaml@1.0.40
+    uses: kube-kaptain/buildon-github-actions/.github/workflows/docker-build-retag.yaml@1.0.53
     permissions:
       contents: write
       packages: write
@@ -87,7 +87,7 @@ jobs:
 #
 #     with:
 #       tag-version-max-parts: 3                                # Max version parts allowed (fail if exceeded)
-#       tag-version-calculation-strategy: 'file-pattern-match'  # or 'git-auto-closest-highest' (default)
+#       tag-version-calculation-strategy: 'file-pattern-match'  # or 'git-auto-closest-highest' (default), 'compound-file-pattern-match'
 #       tag-version-pattern-type: 'retag-workflow-source-tag'   # 'dockerfile-env-kubectl', 'custom'
 #       tag-version-prefix-parts: '2'                           # Parts from source as prefix (output = prefix + 1)
 #       tag-version-source-sub-path: '.github/workflows'        # Override path to source directory

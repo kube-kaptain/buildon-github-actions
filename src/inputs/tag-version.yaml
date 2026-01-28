@@ -8,7 +8,7 @@ tag-version-max-parts:
   type: number
   default: 3
 tag-version-calculation-strategy:
-  description: 'Strategy for calculating version (git-auto-closest-highest, file-pattern-match)'
+  description: 'Strategy for calculating version (git-auto-closest-highest, file-pattern-match, compound-file-pattern-match)'
   required: false
   type: string
   default: 'git-auto-closest-highest'
@@ -34,6 +34,27 @@ tag-version-source-file-name:
   default: ''
 tag-version-source-custom-pattern:
   description: 'Regex with capture group for version extraction (required for custom pattern type)'
+  required: false
+  type: string
+  default: ''
+# Compound file-pattern-match source TWO inputs
+tag-version-source-two-sub-path:
+  description: 'Path to source TWO directory (defaults to source ONE path)'
+  required: false
+  type: string
+  default: ''
+tag-version-source-two-file-name:
+  description: 'Source TWO file name (defaults to source ONE file name)'
+  required: false
+  type: string
+  default: ''
+tag-version-source-two-pattern:
+  description: 'Regex with capture group for source TWO (required if same file as source ONE)'
+  required: false
+  type: string
+  default: ''
+tag-version-source-two-prefix-parts:
+  description: 'Number of parts from source TWO version to use in prefix (default 2)'
   required: false
   type: string
   default: ''
