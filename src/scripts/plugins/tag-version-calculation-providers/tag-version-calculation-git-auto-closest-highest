@@ -118,17 +118,16 @@ count_version_parts() {
   echo $((dot_count + 1))
 }
 
-# Increment version - always increments last component
+# Increment last version component
 increment_version() {
-  local previous_version="${1}"
+  local prefix="${1}"
+  local previous_version="${2}"
 
   if [[ -z "${previous_version}" ]]; then
-    # No existing tag, start at 1.0.0
-    echo "1.0.0"
+    echo "${prefix}.1"
     return
   fi
 
-  # Split version into array and increment last part
   IFS='.' read -ra parts <<< "${previous_version}"
   local last_idx=$((${#parts[@]} - 1))
   parts[last_idx]=$((parts[last_idx] + 1))
@@ -142,20 +141,25 @@ main() {
   recent_tag=$(find_recent_tag)
 
   # Step 2: Find highest tag in that series across entire repo
-  local part_count
-  part_count=$(count_version_parts "${recent_tag}")
-  local prefix
-  prefix=$(get_prefix "${recent_tag}" $((part_count - 1)))
-  local highest_tag
-  if [[ -n "${prefix}" ]]; then
-    highest_tag=$(find_highest_in_series "${prefix}")
-  else
-    highest_tag="${recent_tag}"
-  fi
-
-  # Step 3: Increment the highest
   local version
-  version=$(increment_version "${highest_tag}")
+  if [[ -z "${recent_tag}" ]]; then
+    # No tags at all, start at 1.0.0
+    version="1.0.0"
+  else
+    local part_count
+    part_count=$(count_version_parts "${recent_tag}")
+    local prefix
+    prefix=$(get_prefix "${recent_tag}" $((part_count - 1)))
+    local highest_tag
+    if [[ -n "${prefix}" ]]; then
+      highest_tag=$(find_highest_in_series "${prefix}")
+    else
+      highest_tag="${recent_tag}"
+    fi
+
+    # Step 3: Increment the highest
+    version=$(increment_version "${prefix}" "${highest_tag}")
+  fi
 
   # Step 4: Validate against TAG_VERSION_MAX_PARTS
   local part_count
