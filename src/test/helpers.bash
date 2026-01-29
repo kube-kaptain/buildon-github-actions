@@ -172,6 +172,9 @@ assert_var_equals() {
 }
 
 # Set up mock docker that logs calls
+# Control behavior with environment variables:
+#   MOCK_DOCKER_MANIFEST_EXISTS=true  - manifest inspect returns success
+#   MOCK_DOCKER_EXPERIMENTAL=true     - info --format returns "true" for experimental
 setup_mock_docker() {
   export MOCK_DOCKER_CALLS=$(create_test_dir "mock-docker")/calls.log
   mkdir -p "$MOCK_BIN_DIR"
@@ -184,6 +187,15 @@ if [[ "$1" == "manifest" && "$2" == "inspect" ]]; then
   else
     exit 1
   fi
+fi
+# Handle docker info --format for experimental mode check
+if [[ "$1" == "info" && "$2" == "--format" ]]; then
+  if [[ "${MOCK_DOCKER_EXPERIMENTAL:-false}" == "true" ]]; then
+    echo "true"
+  else
+    echo "false"
+  fi
+  exit 0
 fi
 exit 0
 MOCKDOCKER
