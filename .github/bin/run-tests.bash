@@ -75,6 +75,7 @@ check_executables() {
     "$PROJECT_ROOT/src/scripts/main/*"
     "$PROJECT_ROOT/src/scripts/generators/*"
     "$PROJECT_ROOT/src/scripts/plugins/*/*"
+    "$PROJECT_ROOT/src/scripts/util/*"
     "$PROJECT_ROOT/src/test/*.bash"
     "$PROJECT_ROOT/src/test/repo-gen/*.bash"
     "$PROJECT_ROOT/.github/bin/*.bash"
@@ -109,6 +110,45 @@ check_executables() {
   fi
 
   log_info "All scripts executable"
+}
+
+# Check sourced files are NOT executable (they should only be sourced, not run directly)
+check_sourced_not_executable() {
+  log_info "Checking sourced files are not executable"
+  local sourced_files=()
+  local globs=(
+    "$PROJECT_ROOT/src/scripts/lib/*"
+    "$PROJECT_ROOT/src/scripts/defaults/*"
+  )
+
+  for glob in "${globs[@]}"; do
+    for file in $glob; do
+      [[ -f "$file" ]] && sourced_files+=("$file")
+    done
+  done
+
+  local wrongly_executable=()
+  local scanned=0
+
+  for script in "${sourced_files[@]}"; do
+    scanned=$((scanned + 1))
+    if [[ -x "$script" ]]; then
+      wrongly_executable+=("$script")
+    fi
+  done
+
+  log_info "Scanned $scanned sourced files"
+
+  if [[ ${#wrongly_executable[@]} -gt 0 ]]; then
+    log_error "${#wrongly_executable[@]} sourced file(s) should NOT be executable (they are sourced, not run directly):"
+    for f in "${wrongly_executable[@]}"; do
+      log_error "  - ${f#$PROJECT_ROOT/}"
+    done
+    log_error "Fix with: chmod -x <file>"
+    exit 1
+  fi
+
+  log_info "All sourced files correctly not executable"
 }
 
 # Check generated files are up to date
@@ -172,6 +212,9 @@ run_shellcheck() {
     "${PROJECT_ROOT}/src/scripts/main/*"
     "${PROJECT_ROOT}/src/scripts/generators/*"
     "${PROJECT_ROOT}/src/scripts/plugins/*/*"
+    "${PROJECT_ROOT}/src/scripts/lib/*"
+    "${PROJECT_ROOT}/src/scripts/util/*"
+    "${PROJECT_ROOT}/src/scripts/defaults/*"
   )
 
   # Style checks to enable (in addition to defaults)
@@ -225,6 +268,9 @@ main() {
 
   # Check scripts are executable
   check_executables
+
+  # Check sourced files are NOT executable
+  check_sourced_not_executable
 
   # Run shellcheck
   run_shellcheck
