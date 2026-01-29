@@ -25,6 +25,7 @@
 #   PROJECT_NAME - Project name
 #   IS_RELEASE - Whether this is a release build (true/false)
 #   TARGET_IMAGE_FULL_URI - Full image URI (empty in manifests-only workflows)
+#   DOCKER_IMAGE_FULL_URI - Alias for TARGET_IMAGE_FULL_URI
 #   MANIFESTS_SUBSTITUTED_SUB_PATH - Where substituted manifests go
 #   ... and all workflow inputs
 #
@@ -161,18 +162,34 @@ export GITHUB_RELEASE_ENABLED GITHUB_RELEASE_SUBSTITUTED_FILES GITHUB_RELEASE_VE
 export GITHUB_RELEASE_NOTES GITHUB_RELEASE_ADD_VERSION_TO_FILENAMES
 
 # === Step Outputs ===
-# Required vars - version outputs from versions-and-naming step
+# Version outputs from versions-and-naming step
 : "${VERSION:?VERSION is required}"
+: "${VERSION_MAJOR:?VERSION_MAJOR is required}"
+: "${VERSION_MINOR:?VERSION_MINOR is required}"
+: "${VERSION_PATCH:?VERSION_PATCH is required}"
+: "${VERSION_2_PART:?VERSION_2_PART is required}"
+: "${VERSION_3_PART:?VERSION_3_PART is required}"
+: "${VERSION_4_PART:?VERSION_4_PART is required}"
 : "${DOCKER_TAG:?DOCKER_TAG is required}"
 : "${DOCKER_IMAGE_NAME:?DOCKER_IMAGE_NAME is required}"
 : "${GIT_TAG:?GIT_TAG is required}"
 : "${PROJECT_NAME:?PROJECT_NAME is required}"
 : "${IS_RELEASE:?IS_RELEASE is required}"
-# Docker outputs (from docker-build - empty in manifests-only workflows)
+# Docker outputs (optional - empty in manifests-only workflows)
 TARGET_IMAGE_FULL_URI="${TARGET_IMAGE_FULL_URI:-}"
-export TARGET_IMAGE_FULL_URI
-# Manifest outputs (computed path for this position)
+DOCKER_SUBSTITUTED_SUB_PATH="${DOCKER_SUBSTITUTED_SUB_PATH:-}"
+# Manifest outputs from substitution step
 : "${MANIFESTS_SUBSTITUTED_SUB_PATH:?MANIFESTS_SUBSTITUTED_SUB_PATH is required}"
+
+# Export step outputs for hook script
+export VERSION VERSION_MAJOR VERSION_MINOR VERSION_PATCH
+export VERSION_2_PART VERSION_3_PART VERSION_4_PART
+export DOCKER_TAG DOCKER_IMAGE_NAME GIT_TAG PROJECT_NAME IS_RELEASE
+export TARGET_IMAGE_FULL_URI DOCKER_SUBSTITUTED_SUB_PATH
+export MANIFESTS_SUBSTITUTED_SUB_PATH
+# User-friendly alias for TARGET_IMAGE_FULL_URI
+DOCKER_IMAGE_FULL_URI="${TARGET_IMAGE_FULL_URI}"
+export DOCKER_IMAGE_FULL_URI
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=src/scripts/lib/hook-runner.bash

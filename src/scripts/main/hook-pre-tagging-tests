@@ -7,13 +7,13 @@
 # Runs user's hook script before tagging/versioning occurs.
 # Use this hook for custom validation or preparation before version is determined.
 #
-# IMPORTANT: This hook runs BEFORE versions-and-naming, so version information
-# is NOT available. Only workflow inputs (paths, config) are available here.
+# This hook runs BEFORE versions-and-naming - no step outputs are available.
+# Only workflow inputs (paths, config) are available at this lifecycle point.
 #
 # Inputs (environment variables):
 #   HOOK_SCRIPT_SUB_PATH - Path to user's hook script (set by CI wrapper)
 #
-# Available context (set by CI wrapper - all workflow inputs):
+# Available context (set by CI wrapper - workflow inputs only):
 #   OUTPUT_SUB_PATH - Build output directory (default: target)
 #   DOCKERFILE_SUB_PATH - Docker source directory (default: src/docker)
 #   MANIFESTS_SUB_PATH - Manifests source directory (default: src/kubernetes)
@@ -23,9 +23,7 @@
 #   ... and all other workflow inputs
 #
 # NOT available at this lifecycle point:
-#   VERSION, VERSION_MAJOR, VERSION_MINOR, VERSION_PATCH
-#   VERSION_2_PART, VERSION_3_PART, VERSION_4_PART
-#   DOCKER_TAG, DOCKER_IMAGE_NAME, GIT_TAG, PROJECT_NAME, IS_RELEASE
+#   VERSION, DOCKER_TAG, PROJECT_NAME, TARGET_IMAGE_FULL_URI, MANIFESTS_*
 #
 set -euo pipefail
 
@@ -149,6 +147,10 @@ export BLOCK_SLASHES QC_BLOCK_SLASH_CONTAINING_BRANCHES QC_BLOCK_DOUBLE_HYPHEN_C
 export QC_REQUIRE_CONVENTIONAL_BRANCHES QC_REQUIRE_CONVENTIONAL_COMMITS QC_BLOCK_CONVENTIONAL_COMMITS
 export GITHUB_RELEASE_ENABLED GITHUB_RELEASE_SUBSTITUTED_FILES GITHUB_RELEASE_VERBATIM_FILES
 export GITHUB_RELEASE_NOTES GITHUB_RELEASE_ADD_VERSION_TO_FILENAMES
+
+# === Step Outputs ===
+# This hook runs BEFORE versions-and-naming - no step outputs available yet.
+# Only workflow inputs are available at this lifecycle point.
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=src/scripts/lib/hook-runner.bash
