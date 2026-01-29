@@ -27,6 +27,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 LIB_DIR="${SCRIPT_DIR}/../lib"
 PLUGINS_DIR="${SCRIPT_DIR}/../plugins"
 
+# shellcheck disable=SC1091 # path not resolvable at static analysis time
 # Source the token formatting library
 source "${LIB_DIR}/token-format.bash"
 

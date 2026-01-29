@@ -130,15 +130,8 @@ set_required_env() {
 @test "adds --squash when DOCKERFILE_SQUASH=true" {
   set_required_env
   export DOCKERFILE_SQUASH="true"
-  # Mock systemctl to avoid actual daemon restart
-  mkdir -p "$MOCK_BIN_DIR"
-  echo '#!/bin/bash' > "$MOCK_BIN_DIR/systemctl"
-  echo 'exit 0' >> "$MOCK_BIN_DIR/systemctl"
-  chmod +x "$MOCK_BIN_DIR/systemctl"
-  # Mock sudo to just succeed (no-op, don't run real commands)
-  echo '#!/bin/bash' > "$MOCK_BIN_DIR/sudo"
-  echo 'exit 0' >> "$MOCK_BIN_DIR/sudo"
-  chmod +x "$MOCK_BIN_DIR/sudo"
+  # Mock docker experimental mode as enabled
+  export MOCK_DOCKER_EXPERIMENTAL="true"
 
   run "$SCRIPTS_DIR/docker-build-dockerfile"
   [ "$status" -eq 0 ]
@@ -148,14 +141,8 @@ set_required_env() {
 @test "defaults DOCKERFILE_SQUASH to true" {
   set_required_env
   unset DOCKERFILE_SQUASH
-  # Mock systemctl and sudo for experimental mode
-  mkdir -p "$MOCK_BIN_DIR"
-  echo '#!/bin/bash' > "$MOCK_BIN_DIR/systemctl"
-  echo 'exit 0' >> "$MOCK_BIN_DIR/systemctl"
-  chmod +x "$MOCK_BIN_DIR/systemctl"
-  echo '#!/bin/bash' > "$MOCK_BIN_DIR/sudo"
-  echo 'exit 0' >> "$MOCK_BIN_DIR/sudo"
-  chmod +x "$MOCK_BIN_DIR/sudo"
+  # Mock docker experimental mode as enabled
+  export MOCK_DOCKER_EXPERIMENTAL="true"
 
   run "$SCRIPTS_DIR/docker-build-dockerfile"
   [ "$status" -eq 0 ]

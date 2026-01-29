@@ -23,6 +23,8 @@
 #   DOCKERFILE_SUB_PATH - Directory containing Dockerfile, relative (default: src/docker)
 #   OUTPUT_SUB_PATH     - Build output directory, relative (default: target)
 #   DOCKERFILE_SQUASH   - "false" to disable --squash (default: true, always squash for clean D files)
+#   DOCKERFILE_SQUASH_ALLOW_UNAVAILABLE - "true" to allow build without squash (default: false)
+#   BUILD_MODE          - "local" for lenient dev builds, "build_server" for strict (default: build_server)
 #   DOCKERFILE_NO_CACHE - "false" to enable layer caching (default: true, always build fresh)
 #   TOKEN_DELIMITER_STYLE - Token delimiter syntax (default: shell)
 #   TOKEN_NAME_STYLE    - Case style for token names (default: PascalCase)
@@ -48,10 +50,14 @@ LOG_WARNING_SUFFIX="${LOG_WARNING_SUFFIX:-}"
 # Apply defaults for inputs used directly in this script
 # shellcheck source=src/scripts/defaults/output-sub-path.bash
 source "${SCRIPT_DIR}/../defaults/output-sub-path.bash"
+# shellcheck source=src/scripts/defaults/build-mode.bash
+source "${SCRIPT_DIR}/../defaults/build-mode.bash"
 # shellcheck source=src/scripts/defaults/docker-build.bash
 source "${SCRIPT_DIR}/../defaults/docker-build.bash"
 # shellcheck source=src/scripts/defaults/docker-dockerfile.bash
 source "${SCRIPT_DIR}/../defaults/docker-dockerfile.bash"
+# shellcheck source=src/scripts/defaults/tokens.bash
+source "${SCRIPT_DIR}/../defaults/tokens.bash"
 
 # === Shared target validation, URI assembly, and utilities ===
 # shellcheck source=src/scripts/lib/docker-build-shared.bash
@@ -61,31 +67,8 @@ source "${SCRIPT_DIR}/../lib/docker-build-shared.bash"
 VERSION="${VERSION:?VERSION is required}"
 PROJECT_NAME="${PROJECT_NAME:?PROJECT_NAME is required}"
 
-# Token substitution
-# shellcheck source=src/scripts/defaults/tokens.bash
-source "$(dirname "${BASH_SOURCE[0]}")/../defaults/tokens.bash"
-
 # Build output structure (sub-paths, relative to working directory)
 DOCKER_CONFIG_SUB_PATH="${OUTPUT_SUB_PATH}/docker/config"
-
-enable_experimental() {
-  # Enable Docker experimental features for --squash
-  echo "Enabling Docker experimental mode for --squash" >&2
-  sudo mkdir -p /etc/docker
-  echo '{"experimental": true}' | sudo tee /etc/docker/daemon.json > /dev/null
-  sudo systemctl restart docker
-  # Wait for Docker to be ready
-  local retries=10
-  while ! docker info &>/dev/null && [[ ${retries} -gt 0 ]]; do
-    sleep 1
-    ((retries--))
-  done
-  if ! docker info &>/dev/null; then
-    echo "${LOG_ERROR_PREFIX}Docker failed to restart after enabling experimental mode${LOG_ERROR_SUFFIX}" >&2
-    return 1
-  fi
-  echo "Docker experimental mode enabled" >&2
-}
 
 main() {
   echo "=== Docker Build Dockerfile ===" >&2
@@ -183,11 +166,26 @@ main() {
   # Build from substituted directory
   local dockerfile="${DOCKER_CONTEXT_SUB_PATH}/Dockerfile"
 
-  # Enable experimental mode if squash requested
-  if [[ "${DOCKERFILE_SQUASH}" == "true" ]]; then
-    enable_experimental
-    # Disable BuildKit - it doesn't support --squash (just warns and builds fat images)
+  # Determine squash flag based on availability and mode
+  local SQUASH_FLAG=""
+  if [[ "${DOCKERFILE_SQUASH}" != "true" ]]; then
+    echo "Squash not requested" >&2
+  elif "${SCRIPT_DIR}/../util/docker-squash-setup" --check-only; then
+    echo "Squash was already enabled :-)"
+    SQUASH_FLAG="--squash"
     export DOCKER_BUILDKIT=0
+  elif [[ "${BUILD_MODE}" == "local" ]]; then
+    echo "${LOG_WARNING_PREFIX}Squash unavailable, skipping (local mode)${LOG_WARNING_SUFFIX}" >&2
+  elif "${SCRIPT_DIR}/../util/docker-squash-setup"; then
+    echo "Squash was enabled successfully! :-D"
+    SQUASH_FLAG="--squash"
+    export DOCKER_BUILDKIT=0
+  elif [[ "${DOCKERFILE_SQUASH_ALLOW_UNAVAILABLE}" == "true" ]]; then
+    echo "${LOG_WARNING_PREFIX}Squash unavailable, skipping (allow-unavailable=true)${LOG_WARNING_SUFFIX}" >&2
+  else
+    echo "${LOG_ERROR_PREFIX}Squash unavailable and not allowed to skip - see errors above${LOG_ERROR_SUFFIX}" >&2
+    echo "To fix: enable Docker experimental mode, or set DOCKERFILE_SQUASH_ALLOW_UNAVAILABLE=true" >&2
+    exit 1
   fi
 
   # Build command
@@ -204,8 +202,8 @@ main() {
   cmd+=(--label "image.name=${DOCKER_IMAGE_NAME}")
   cmd+=(--label "build.datetime=${build_datetime}")
 
-  # Add squash if enabled
-  if [[ "${DOCKERFILE_SQUASH}" == "true" ]]; then
+  # Add squash if available
+  if [[ -n "${SQUASH_FLAG}" ]]; then
     cmd+=(--squash)
   fi
 
@@ -219,7 +217,25 @@ main() {
 
   echo "" >&2
   echo "Building: ${cmd[*]}" >&2
-  "${cmd[@]}"
+
+  # Capture build output for post-build validation
+  local BUILD_OUTPUT="${OUTPUT_SUB_PATH}/docker-build-output.log"
+  local BUILD_EXIT=0
+  "${cmd[@]}" 2>&1 | tee "${BUILD_OUTPUT}" || BUILD_EXIT=${PIPESTATUS[0]}
+
+  # Post-build validation: check for squash warnings (BuildKit warns but continues)
+  if [[ -n "${SQUASH_FLAG}" ]]; then
+    if grep -qiE "warn.*squash|squash.*warn|squash.*(removed|ignored|unavailable|experimental)" "${BUILD_OUTPUT}"; then
+      echo "${LOG_ERROR_PREFIX}Squash was requested but docker indicates it may not have been applied${LOG_ERROR_SUFFIX}" >&2
+      echo "Image may be bloated. Check docker output above." >&2
+      exit 1
+    fi
+  fi
+
+  if [[ ${BUILD_EXIT} -ne 0 ]]; then
+    echo "${LOG_ERROR_PREFIX}Docker build failed (exit ${BUILD_EXIT})${LOG_ERROR_SUFFIX}" >&2
+    exit "${BUILD_EXIT}"
+  fi
 
   output_var "DOCKER_TARGET_IMAGE_FULL_URI" "${TARGET_IMAGE_FULL_URI}"
 

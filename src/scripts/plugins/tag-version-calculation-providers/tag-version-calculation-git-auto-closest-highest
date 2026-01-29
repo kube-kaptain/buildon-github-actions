@@ -20,6 +20,10 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${0}")" && pwd)"
 
+# shellcheck disable=SC1091 # path not resolvable at static analysis time
+# shellcheck source=../../lib/tag-version-calculation.bash
+source "${SCRIPT_DIR}/../../lib/tag-version-calculation.bash"
+
 # Logging configuration (CI-agnostic)
 LOG_ERROR_PREFIX="${LOG_ERROR_PREFIX:-}"
 LOG_ERROR_SUFFIX="${LOG_ERROR_SUFFIX:-}"
@@ -78,94 +82,31 @@ find_recent_tag() {
   fi
 }
 
-# Get version prefix (all but last component)
-get_version_prefix() {
-  local version="${1}"
-
-  # Remove last component to get prefix
-  if [[ "${version}" == *.* ]]; then
-    echo "${version%.*}"
-  else
-    # Single component version, no prefix
-    echo ""
-  fi
-}
-
-# Find highest tag in a series across entire repo
-find_highest_in_series() {
-  local recent_tag="${1}"
-
-  if [[ -z "${recent_tag}" ]]; then
-    echo ""
-    return
-  fi
-
-  local prefix
-  prefix=$(get_version_prefix "${recent_tag}")
-
-  if [[ -z "${prefix}" ]]; then
-    # Single component version, just return the recent tag
-    echo "${recent_tag}"
-    return
-  fi
-
-  # Get ALL tags in repo (not just reachable from HEAD)
-  # Filter to those matching our prefix with pure numeric versions only
-  # This excludes tags like 1.2.3-rc1, 1.2.3-beta, v1.2.3, etc
-  local highest
-  highest=$(git tag --list | while read -r tag; do
-    # Must start with our prefix, followed by dot and digits only
-    if [[ "${tag}" =~ ^${prefix}\.[0-9]+$ ]] && is_numeric_version "${tag}"; then
-      echo "${tag}"
-    fi
-  done | "${SCRIPT_DIR}/../../util/version-sort" | tail -n1)
-
-  if [[ -z "${highest}" ]]; then
-    # No matching tags found, use the recent tag
-    echo "${recent_tag}"
-  else
-    echo "${highest}"
-  fi
-}
-
-# Count parts in a version string
-count_version_parts() {
-  local version="${1}"
-  local dot_count
-  dot_count=$(echo "${version}" | tr -cd '.' | wc -c | tr -d ' ')
-  echo $((dot_count + 1))
-}
-
-# Increment version - always increments last component
-increment_version() {
-  local previous_version="${1}"
-
-  if [[ -z "${previous_version}" ]]; then
-    # No existing tag, start at 1.0.0
-    echo "1.0.0"
-    return
-  fi
-
-  # Split version into array and increment last part
-  IFS='.' read -ra parts <<< "${previous_version}"
-  local last_idx=$((${#parts[@]} - 1))
-  parts[last_idx]=$((parts[last_idx] + 1))
-  local IFS='.'
-  echo "${parts[*]}"
-}
-
 main() {
   # Step 1: Find most recent tag to determine our series
   local recent_tag
   recent_tag=$(find_recent_tag)
 
   # Step 2: Find highest tag in that series across entire repo
-  local highest_tag
-  highest_tag=$(find_highest_in_series "${recent_tag}")
-
-  # Step 3: Increment the highest
   local version
-  version=$(increment_version "${highest_tag}")
+  if [[ -z "${recent_tag}" ]]; then
+    # No tags at all, start at 1.0.0
+    version="1.0.0"
+  else
+    local part_count
+    part_count=$(count_version_parts "${recent_tag}")
+    local prefix
+    prefix=$(get_prefix "${recent_tag}" $((part_count - 1)))
+    local highest_tag
+    if [[ -n "${prefix}" ]]; then
+      highest_tag=$(find_highest_in_series "${prefix}")
+    else
+      highest_tag="${recent_tag}"
+    fi
+
+    # Step 3: Increment the highest
+    version=$(increment_version "${prefix}" "${highest_tag}")
+  fi
 
   # Step 4: Validate against TAG_VERSION_MAX_PARTS
   local part_count

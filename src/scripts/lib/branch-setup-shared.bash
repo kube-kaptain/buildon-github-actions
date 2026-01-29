@@ -6,6 +6,7 @@
 #
 # Sourced by scripts that need release branch handling.
 #
+# shellcheck disable=SC2154 # RELEASE_BRANCH, DEFAULT_BRANCH set by defaults before sourcing
 
 # Logging configuration (CI-agnostic)
 LOG_ERROR_PREFIX="${LOG_ERROR_PREFIX:-}"

@@ -23,6 +23,9 @@
 #   has_configmap, configmap_source - ConfigMap detection results
 #   has_secret, secret_source - Secret detection results
 #   has_env_vars, env_file_count - Environment variables detection results
+#
+# shellcheck disable=SC2034 # has_* and *_source variables used by caller
+# shellcheck disable=SC2154 # OUTPUT_SUB_PATH, MANIFESTS_SUB_PATH set by caller
 
 # Build detection paths with sub-path support
 # Sets: combined_check_dir, source_check_dir

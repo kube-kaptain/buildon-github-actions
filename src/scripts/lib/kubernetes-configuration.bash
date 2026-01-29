@@ -39,7 +39,7 @@ build_configuration_source_path() {
   local suffix="$2"
   local static_suffix="$3"
 
-  local core_path="$base_path"
+  local core_path="${base_path}"
 
   # If static_suffix is non-empty and base_path ends with it, strip it
   if [[ -n "${static_suffix}" && "${base_path}" == *"${static_suffix}" ]]; then

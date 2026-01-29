@@ -53,11 +53,11 @@ See [`examples/`](examples/) for more usage patterns.
 | [`optional-test-scripts.yaml`](examples/optional-test-scripts.yaml) | Shows how to add custom test scripts to workflows that support them |
 | [`quality-only.yaml`](examples/quality-only.yaml) | Enforce quality standards on PRs without automatic tagging |
 | [`spec-check-filter-release.yaml`](examples/spec-check-filter-release.yaml) | Build and release JSON Schema or API spec files |
+| [`version-from-compound-sources.yaml`](examples/version-from-compound-sources.yaml) | Combine versions from TWO source files to create a compound version |
 | [`version-from-custom-pattern.yaml`](examples/version-from-custom-pattern.yaml) | Extract version from any file using a custom regex pattern |
 | [`version-from-dockerfile.yaml`](examples/version-from-dockerfile.yaml) | Extract version from an ENV variable in your Dockerfile rather than using git tags |
 | [`version-from-retag-source-tag.yaml`](examples/version-from-retag-source-tag.yaml) | Extract version from the source-tag input in a retag workflow file |
 | [`version-prefix-parts.yaml`](examples/version-prefix-parts.yaml) | Control how many parts of the source version become the prefix for auto-incrementing |
-| [`versions-and-naming.yaml`](examples/versions-and-naming.yaml) | Automatic version tagging without PR quality checks |
 <!-- EXAMPLES-END -->
 
 ## Components
@@ -68,7 +68,6 @@ See [`examples/`](examples/) for more usage patterns.
 | Workflow | Description |
 |----------|-------------|
 | `basic-quality-checks.yaml` | Enforces basic quality - blocks bad branch names, bad commit messages, and bad branch structure |
-| `versions-and-naming.yaml` | Calculates and sets all critical artifact naming and version/tag information, and performs a GitHub release |
 | `basic-quality-and-versioning.yaml` | Quality checks and naming/versioning combined - the standard foundation for most projects |
 | `docker-build-dockerfile.yaml` | Everything from quality and versions above, but also builds a docker image from a Dockerfile |
 | `docker-build-retag.yaml` | Everything from quality and version above, but also pulls, retags, and republishes a docker image |
@@ -138,6 +137,7 @@ See [`examples/`](examples/) for more usage patterns.
 | `docker-target-registry` | string | `""` | Target container registry domain (defaults to ghcr.io on gh actions) |
 | `dockerfile-no-cache` | boolean | `true` | Disable layer caching for reproducible builds |
 | `dockerfile-squash` | boolean | `true` | Enable --squash (requires experimental mode) |
+| `dockerfile-squash-allow-unavailable` | boolean | `false` | Allow build without squash if unavailable (default: false - fail if squash unavailable) |
 | `dockerfile-sub-path` | string | `src/docker` | Directory containing Dockerfile, relative to repo root. |
 | `dockerfile-substitution-files` | string | `Dockerfile` | Comma-separated list of files to perform token substitution on (relative to dockerfile-sub-path) |
 | `github-release-add-version-to-filenames` | boolean | `true` | Add version suffix to release filenames (e.g., file.yaml -> file-1.2.3.yaml) |
@@ -326,13 +326,17 @@ See [`examples/`](examples/) for more usage patterns.
 | `spec-packaging-base-image` | string | `scratch` | Base image for spec packaging |
 | `spec-type` | string | *required* | Type of spec (schema or api) |
 | `spec-validation-type` | string | `basic` | Schema validator to use (basic, python3-jsonschema) |
-| `tag-version-calculation-strategy` | string | `git-auto-closest-highest` | Strategy for calculating version (git-auto-closest-highest, file-pattern-match) |
+| `tag-version-calculation-strategy` | string | `git-auto-closest-highest` | Strategy for calculating version (git-auto-closest-highest, file-pattern-match, compound-file-pattern-match) |
 | `tag-version-max-parts` | number | `3` | Maximum allowed version parts (fail if exceeded) |
 | `tag-version-pattern-type` | string | `dockerfile-env-kubectl` | Pattern type for file-pattern-match strategy (dockerfile-env-kubectl, retag-workflow-source-tag, custom) |
 | `tag-version-prefix-parts` | string | `""` | Number of parts from source version to use as prefix (default 2, output = prefix + 1 parts) |
 | `tag-version-source-custom-pattern` | string | `""` | Regex with capture group for version extraction (required for custom pattern type) |
 | `tag-version-source-file-name` | string | `""` | Override source file name (defaults based on pattern type) |
 | `tag-version-source-sub-path` | string | `""` | Override path to source directory (takes precedence over dockerfile-sub-path) |
+| `tag-version-source-two-file-name` | string | `""` | Source TWO file name (defaults to source ONE file name) |
+| `tag-version-source-two-pattern` | string | `""` | Regex with capture group for source TWO (required if same file as source ONE) |
+| `tag-version-source-two-prefix-parts` | string | `""` | Number of parts from source TWO version to use in prefix (default 2) |
+| `tag-version-source-two-sub-path` | string | `""` | Path to source TWO directory (defaults to source ONE path) |
 | `token-delimiter-style` | string | `shell` | Token delimiter syntax for variables (shell, mustache, helm, erb, github-actions, blade, stringtemplate, ognl, t4, swift) |
 | `token-name-style` | string | `PascalCase` | Case style for token names (UPPER_SNAKE, lower_snake, lower-kebab, UPPER-KEBAB, camelCase, PascalCase, lower.dot, UPPER.DOT) |
 | `token-name-validation` | string | `MATCH` | How to validate user token names (MATCH = must match token-name-style, ALL = accept any valid name) |
@@ -359,7 +363,6 @@ See [`examples/`](examples/) for more usage patterns.
 | `kubernetes-app-docker-retag.yaml` | Kubernetes App - Docker Retag | [docs/kubernetes-app-docker-retag.md](docs/kubernetes-app-docker-retag.md) |
 | `kubernetes-app-manifests-only.yaml` | Kubernetes App - Manifests Only | [docs/kubernetes-app-manifests-only.md](docs/kubernetes-app-manifests-only.md) |
 | `spec-check-filter-release.yaml` | Spec Check Filter Release | [docs/spec-check-filter-release.md](docs/spec-check-filter-release.md) |
-| `versions-and-naming.yaml` | Versions & Naming | [docs/versions-and-naming.md](docs/versions-and-naming.md) |
 <!-- WORKFLOW-DOCS-END -->
 
 ## Versioning
