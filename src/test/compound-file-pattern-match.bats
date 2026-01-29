@@ -121,6 +121,29 @@ ENV KUBECTL_VERSION=1.35.4' > src/docker/Dockerfile
   assert_var_equals "VERSION" "1.35.2.1.0.1"
 }
 
+@test "compound-file-pattern-match dockerfile-env-kubectl allows custom pattern override" {
+  TEST_REPO=$(clone_fixture "tag-none")
+  cd "$TEST_REPO"
+  mkdir -p src/docker
+  # No ENV KUBECTL_VERSION - use custom FROM pattern instead
+  echo 'FROM ghcr.io/example/deploy-scripts:1.0.1 AS SCRIPTS
+FROM ghcr.io/example/base-image:1.32.4' > src/docker/Dockerfile
+
+  export TAG_VERSION_CALCULATION_STRATEGY=compound-file-pattern-match
+  export TAG_VERSION_PATTERN_TYPE=dockerfile-env-kubectl
+  # Override the default KUBECTL pattern with a FROM pattern (must match whole line with .*)
+  export TAG_VERSION_SOURCE_CUSTOM_PATTERN='^FROM .*deploy-scripts:([0-9]+\.[0-9]+\.[0-9]+).*'
+  export TAG_VERSION_PREFIX_PARTS=3
+  export TAG_VERSION_SOURCE_TWO_PATTERN='^FROM .*base-image:([0-9]+\.[0-9]+\.[0-9]+).*'
+  export TAG_VERSION_SOURCE_TWO_PREFIX_PARTS=2
+  export TAG_VERSION_MAX_PARTS=7
+
+  run "$SCRIPTS_DIR/versions-and-naming"
+  [ "$status" -eq 0 ]
+  # ONE=1.0.1 (3 parts), TWO=1.32 (2 parts from 1.32.4)
+  assert_var_equals "VERSION" "1.0.1.1.32.1"
+}
+
 @test "compound-file-pattern-match TAG_VERSION_PREFIX_PARTS trims source ONE" {
   TEST_REPO=$(clone_fixture "tag-none")
   cd "$TEST_REPO"

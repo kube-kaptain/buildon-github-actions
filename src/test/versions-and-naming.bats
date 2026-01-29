@@ -368,6 +368,46 @@ ENV KUBECTL_VERSION=1.29.0' > custom/path/Dockerfile
   assert_var_equals "VERSION" "1.29.1"
 }
 
+@test "file-pattern-match dockerfile-env-kubectl allows custom pattern override" {
+  TEST_REPO=$(clone_fixture "tag-none")
+  cd "$TEST_REPO"
+  mkdir -p src/docker
+  # No ENV KUBECTL_VERSION - use custom FROM pattern with dockerfile-env-kubectl defaults
+  echo 'FROM ghcr.io/example/base-image:2.5.0' > src/docker/Dockerfile
+
+  export TAG_VERSION_CALCULATION_STRATEGY=file-pattern-match
+  export TAG_VERSION_PATTERN_TYPE=dockerfile-env-kubectl
+  # Override the default KUBECTL pattern while keeping dockerfile-env-kubectl path defaults
+  export TAG_VERSION_SOURCE_CUSTOM_PATTERN='^FROM .*base-image:([0-9]+\.[0-9]+\.[0-9]+)'
+
+  run "$SCRIPTS_DIR/versions-and-naming"
+  [ "$status" -eq 0 ]
+  assert_var_equals "VERSION" "2.5.1"
+}
+
+@test "file-pattern-match retag-workflow-source-tag allows custom pattern override" {
+  TEST_REPO=$(clone_fixture "tag-none")
+  cd "$TEST_REPO"
+  mkdir -p .github/workflows
+  # No docker-source-tag - use custom pattern with retag-workflow-source-tag defaults
+  echo 'name: Build
+on: push
+jobs:
+  build:
+    uses: example/workflow@v1
+    with:
+      image-version: 4.2.0' > .github/workflows/build.yaml
+
+  export TAG_VERSION_CALCULATION_STRATEGY=file-pattern-match
+  export TAG_VERSION_PATTERN_TYPE=retag-workflow-source-tag
+  # Override the default source-tag pattern while keeping workflow path defaults
+  export TAG_VERSION_SOURCE_CUSTOM_PATTERN='^[[:space:]]*image-version:[[:space:]]*([0-9]+\.[0-9]+\.[0-9]+)'
+
+  run "$SCRIPTS_DIR/versions-and-naming"
+  [ "$status" -eq 0 ]
+  assert_var_equals "VERSION" "4.2.1"
+}
+
 @test "file-pattern-match fails if source file not found" {
   TEST_REPO=$(clone_fixture "tag-none")
   cd "$TEST_REPO"
