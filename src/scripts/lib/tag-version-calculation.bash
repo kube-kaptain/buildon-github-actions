@@ -9,6 +9,8 @@
 #
 # Requires LOG_ERROR_PREFIX and LOG_ERROR_SUFFIX to be set (may be empty).
 #
+# shellcheck disable=SC2034 # SOURCE_SUB_PATH, SOURCE_FILE_NAME, VERSION_PATTERN used by callers
+# shellcheck disable=SC2154 # TAG_VERSION_PATTERN_TYPE, LOG_ERROR_PREFIX/SUFFIX set by callers
 
 TAG_VERSION_LIB_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 

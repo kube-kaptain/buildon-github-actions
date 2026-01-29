@@ -23,6 +23,7 @@
 # Errors/warnings go to stderr using LOG_ERROR_PREFIX/SUFFIX, LOG_WARNING_PREFIX/SUFFIX.
 
 # shellcheck disable=SC2034  # TARGET_IMAGE_FULL_URI used by caller
+# shellcheck disable=SC2154 # TARGET_REGISTRY, INPUT_TARGET_BASE_PATH set by docker-build.bash before sourcing
 
 # Validate required inputs (caller must source docker-build.bash first)
 if [[ -z "${DOCKER_TARGET_REGISTRY}" ]]; then

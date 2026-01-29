@@ -25,20 +25,20 @@ LOG_ERROR_SUFFIX="${LOG_ERROR_SUFFIX:-}"
 
 script_path="${HOOK_SCRIPT_SUB_PATH:-}"
 
-if [[ -z "$script_path" ]]; then
+if [[ -z "${script_path}" ]]; then
   echo "No hook script configured, skipping" >&2
   exit 0
 fi
 
-if [[ ! -f "$script_path" ]]; then
-  echo "${LOG_ERROR_PREFIX}Hook script not found: $script_path${LOG_ERROR_SUFFIX}" >&2
+if [[ ! -f "${script_path}" ]]; then
+  echo "${LOG_ERROR_PREFIX}Hook script not found: ${script_path}${LOG_ERROR_SUFFIX}" >&2
   exit 2
 fi
 
-if [[ ! -x "$script_path" ]]; then
-  echo "${LOG_ERROR_PREFIX}Hook script not executable: $script_path (run: chmod +x $script_path)${LOG_ERROR_SUFFIX}" >&2
+if [[ ! -x "${script_path}" ]]; then
+  echo "${LOG_ERROR_PREFIX}Hook script not executable: ${script_path} (run: chmod +x ${script_path})${LOG_ERROR_SUFFIX}" >&2
   exit 3
 fi
 
-echo "Running hook: $script_path" >&2
-exec "$script_path"
+echo "Running hook: ${script_path}" >&2
+exec "${script_path}"

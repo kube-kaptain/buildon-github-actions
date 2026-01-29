@@ -94,42 +94,42 @@ convert_token_name() {
   local name="${2:-}"
 
   # Validate inputs
-  if [[ -z "$style" ]]; then
+  if [[ -z "${style}" ]]; then
     echo "Error: name style is required" >&2
     return 1
   fi
-  if [[ -z "$name" || "$name" =~ ^[[:space:]]+$ ]]; then
+  if [[ -z "${name}" || "${name}" =~ ^[[:space:]]+$ ]]; then
     echo "Error: canonical name is required and cannot be whitespace-only" >&2
     return 1
   fi
 
-  case "$style" in
+  case "${style}" in
     PascalCase)
-      _to_pascal_case "$name"
+      _to_pascal_case "${name}"
       ;;
     camelCase)
-      _to_camel_case "$name"
+      _to_camel_case "${name}"
       ;;
     UPPER_SNAKE)
-      echo "$name"
+      echo "${name}"
       ;;
     lower_snake)
-      _lowercase "$name"
+      _lowercase "${name}"
       ;;
     lower-kebab)
-      _lowercase "$name" | tr '_' '-'
+      _lowercase "${name}" | tr '_' '-'
       ;;
     UPPER-KEBAB)
-      echo "$name" | tr '_' '-'
+      echo "${name}" | tr '_' '-'
       ;;
     lower.dot)
-      _lowercase "$name" | tr '_' '.'
+      _lowercase "${name}" | tr '_' '.'
       ;;
     UPPER.DOT)
-      echo "$name" | tr '_' '.'
+      echo "${name}" | tr '_' '.'
       ;;
     *)
-      echo "Error: Unknown name style: $style" >&2
+      echo "Error: Unknown name style: ${style}" >&2
       return 1
       ;;
   esac
@@ -148,48 +148,48 @@ format_token_reference() {
   local name="${2:-}"
 
   # Validate inputs
-  if [[ -z "$style" ]]; then
+  if [[ -z "${style}" ]]; then
     echo "Error: substitution style is required" >&2
     return 1
   fi
-  if [[ -z "$name" ]]; then
+  if [[ -z "${name}" ]]; then
     echo "Error: name is required" >&2
     return 1
   fi
 
-  case "$style" in
+  case "${style}" in
     shell)
-      echo "\${$name}"
+      echo "\${${name}}"
       ;;
     mustache)
-      echo "{{ $name }}"
+      echo "{{ ${name} }}"
       ;;
     helm)
-      echo "{{ .Values.$name }}"
+      echo "{{ .Values.${name} }}"
       ;;
     erb)
-      echo "<%= $name %>"
+      echo "<%= ${name} %>"
       ;;
     github-actions)
-      echo "\${{ $name }}"
+      echo "\${{ ${name} }}"
       ;;
     blade)
-      echo "{{ \$$name }}"
+      echo "{{ \$${name} }}"
       ;;
     stringtemplate)
-      echo "\$$name\$"
+      echo "\$${name}\$"
       ;;
     ognl)
-      echo "%{$name}"
+      echo "%{${name}}"
       ;;
     t4)
-      echo "<#= $name #>"
+      echo "<#= ${name} #>"
       ;;
     swift)
-      echo "\\($name)"
+      echo "\\(${name})"
       ;;
     *)
-      echo "Error: Unknown substitution style: $style" >&2
+      echo "Error: Unknown substitution style: ${style}" >&2
       return 1
       ;;
   esac
@@ -208,22 +208,22 @@ format_canonical_token() {
   local canonical_name="${3:-}"
 
   # Validate inputs
-  if [[ -z "$subst_style" ]]; then
+  if [[ -z "${subst_style}" ]]; then
     echo "Error: substitution style is required" >&2
     return 1
   fi
-  if [[ -z "$name_style" ]]; then
+  if [[ -z "${name_style}" ]]; then
     echo "Error: name style is required" >&2
     return 1
   fi
-  if [[ -z "$canonical_name" ]]; then
+  if [[ -z "${canonical_name}" ]]; then
     echo "Error: canonical name is required" >&2
     return 1
   fi
 
   local converted_name
-  converted_name=$(convert_token_name "$name_style" "$canonical_name") || return 1
-  format_token_reference "$subst_style" "$converted_name"
+  converted_name=$(convert_token_name "${name_style}" "${canonical_name}") || return 1
+  format_token_reference "${subst_style}" "${converted_name}"
 }
 
 # Convert lower-kebab-case name to target style
@@ -240,19 +240,19 @@ convert_kebab_name() {
   local kebab_name="${2:-}"
 
   # Validate inputs
-  if [[ -z "$style" ]]; then
+  if [[ -z "${style}" ]]; then
     echo "Error: name style is required" >&2
     return 1
   fi
-  if [[ -z "$kebab_name" || "$kebab_name" =~ ^[[:space:]]+$ ]]; then
+  if [[ -z "${kebab_name}" || "${kebab_name}" =~ ^[[:space:]]+$ ]]; then
     echo "Error: kebab name is required and cannot be whitespace-only" >&2
     return 1
   fi
 
   # Convert lower-kebab to UPPER_SNAKE, then use existing converter
   local upper_snake
-  upper_snake=$(echo "$kebab_name" | tr '-' '_' | tr '[:lower:]' '[:upper:]')
-  convert_token_name "$style" "$upper_snake"
+  upper_snake=$(echo "${kebab_name}" | tr '-' '_' | tr '[:lower:]' '[:upper:]')
+  convert_token_name "${style}" "${upper_snake}"
 }
 
 # Combine project name with suffix into a formatted, delimited token
@@ -272,31 +272,31 @@ format_project_suffixed_token() {
   local suffix_upper_snake="${4:-}"
 
   # Validate inputs
-  if [[ -z "$delim_style" ]]; then
+  if [[ -z "${delim_style}" ]]; then
     echo "Error: delimiter style is required" >&2
     return 1
   fi
-  if [[ -z "$name_style" ]]; then
+  if [[ -z "${name_style}" ]]; then
     echo "Error: name style is required" >&2
     return 1
   fi
-  if [[ -z "$project_kebab" ]]; then
+  if [[ -z "${project_kebab}" ]]; then
     echo "Error: project name (kebab) is required" >&2
     return 1
   fi
-  if [[ -z "$suffix_upper_snake" ]]; then
+  if [[ -z "${suffix_upper_snake}" ]]; then
     echo "Error: suffix (UPPER_SNAKE) is required" >&2
     return 1
   fi
 
   local project_converted suffix_converted combined
-  project_converted=$(convert_kebab_name "$name_style" "$project_kebab") || return 1
+  project_converted=$(convert_kebab_name "${name_style}" "${project_kebab}") || return 1
   # Suffix is always PascalCase when joining - ensures proper compound identifier
   # e.g., myProject + AffinityColocateApp = myProjectAffinityColocateApp
-  suffix_converted=$(convert_token_name "PascalCase" "$suffix_upper_snake") || return 1
+  suffix_converted=$(convert_token_name "PascalCase" "${suffix_upper_snake}") || return 1
   combined="${project_converted}${suffix_converted}"
 
-  format_token_reference "$delim_style" "$combined"
+  format_token_reference "${delim_style}" "${combined}"
 }
 
 # Internal: Convert UPPER_SNAKE to PascalCase
@@ -306,13 +306,13 @@ _to_pascal_case() {
   local IFS='_'
   local word
 
-  for word in $input; do
-    if [[ -n "$word" ]]; then
-      result+=$(_capitalize "$word")
+  for word in ${input}; do
+    if [[ -n "${word}" ]]; then
+      result+=$(_capitalize "${word}")
     fi
   done
 
-  echo "$result"
+  echo "${result}"
 }
 
 # Internal: Convert UPPER_SNAKE to camelCase
@@ -323,18 +323,18 @@ _to_camel_case() {
   local word
   local first=true
 
-  for word in $input; do
-    if [[ -n "$word" ]]; then
-      if $first; then
+  for word in ${input}; do
+    if [[ -n "${word}" ]]; then
+      if ${first}; then
         # First word: all lowercase
-        result+=$(_lowercase "$word")
+        result+=$(_lowercase "${word}")
         first=false
       else
         # Subsequent words: capitalize first letter, lowercase rest
-        result+=$(_capitalize "$word")
+        result+=$(_capitalize "${word}")
       fi
     fi
   done
 
-  echo "$result"
+  echo "${result}"
 }

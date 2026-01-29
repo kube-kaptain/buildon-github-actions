@@ -24,6 +24,9 @@
 #   generate_container_start            - Container name, image, imagePullPolicy
 #   generate_container_command          - Container command override (shell-style tokenization)
 #   generate_container_args             - Container args override (shell-style tokenization)
+#
+# shellcheck disable=SC2034 # image_pull_secret_token, resolved_replicas used by caller
+# shellcheck disable=SC2154 # IMAGE_REFERENCE_STYLE, TOKEN_*, docker_*_token set by caller
 
 # Build image reference and pull secret token based on image reference style
 # Usage: build_image_reference
@@ -102,7 +105,7 @@ _pod_spec_indent() {
   for ((i = 0; i < count; i++)); do
     indent+=" "
   done
-  echo "$indent"
+  echo "${indent}"
 }
 
 # Generate pod-level security context
@@ -118,7 +121,7 @@ generate_pod_security_context() {
   local seccomp_profile="$2"
 
   local indent
-  indent=$(_pod_spec_indent "$indent_count")
+  indent=$(_pod_spec_indent "${indent}_count")
 
   echo "${indent}securityContext:"
   echo "${indent}  runAsNonRoot: true"
@@ -140,7 +143,7 @@ generate_container_security_context() {
   local readonly_root_filesystem="$2"
 
   local indent
-  indent=$(_pod_spec_indent "$indent_count")
+  indent=$(_pod_spec_indent "${indent}_count")
 
   echo "${indent}securityContext:"
   echo "${indent}  allowPrivilegeEscalation: false"
@@ -166,7 +169,7 @@ generate_container_resources() {
   local cpu_limit="${5:-}"
 
   local indent
-  indent=$(_pod_spec_indent "$indent_count")
+  indent=$(_pod_spec_indent "${indent}_count")
 
   echo "${indent}resources:"
   echo "${indent}  requests:"
@@ -195,7 +198,7 @@ generate_container_ports() {
   local protocol="${3:-TCP}"
 
   local indent
-  indent=$(_pod_spec_indent "$indent_count")
+  indent=$(_pod_spec_indent "${indent}_count")
 
   echo "${indent}ports:"
   echo "${indent}  - containerPort: ${port}"
@@ -220,7 +223,7 @@ generate_container_lifecycle() {
   fi
 
   local indent
-  indent=$(_pod_spec_indent "$indent_count")
+  indent=$(_pod_spec_indent "${indent}_count")
 
   echo "${indent}lifecycle:"
   echo "${indent}  preStop:"
@@ -258,7 +261,7 @@ generate_container_env_from_directory() {
   fi
 
   local indent
-  indent=$(_pod_spec_indent "$indent_count")
+  indent=$(_pod_spec_indent "${indent}_count")
 
   if [[ "${skip_header}" != "true" ]]; then
     echo "${indent}env:"
@@ -321,7 +324,7 @@ generate_container_env_refs() {
   fi
 
   local indent
-  indent=$(_pod_spec_indent "$indent_count")
+  indent=$(_pod_spec_indent "${indent}_count")
 
   # Split keys on comma or space and process each
   local key
@@ -393,24 +396,24 @@ generate_container_env_all() {
   fi
 
   local indent
-  indent=$(_pod_spec_indent "$indent_count")
+  indent=$(_pod_spec_indent "${indent}_count")
 
   # Emit header once
   echo "${indent}env:"
 
   # Plain KVs (skip header since we emitted it)
   if [[ "${has_plain_env}" == "true" ]]; then
-    generate_container_env_from_directory "$indent_count" "${env_directory}" true
+    generate_container_env_from_directory "${indent}_count" "${env_directory}" true
   fi
 
   # ConfigMap refs
   if [[ "${has_configmap_keys}" == "true" ]]; then
-    generate_container_env_refs "$indent_count" "configmap" "${configmap_file}" "${configmap_name}" "${configmap_keys}" || return 1
+    generate_container_env_refs "${indent}_count" "configmap" "${configmap_file}" "${configmap_name}" "${configmap_keys}" || return 1
   fi
 
   # Secret refs
   if [[ "${has_secret_keys}" == "true" ]]; then
-    generate_container_env_refs "$indent_count" "secret" "${secret_file}" "${secret_name}" "${secret_keys}" || return 1
+    generate_container_env_refs "${indent}_count" "secret" "${secret_file}" "${secret_name}" "${secret_keys}" || return 1
   fi
 }
 
@@ -435,7 +438,7 @@ generate_configmap_secret_volume_mounts() {
   fi
 
   local indent
-  indent=$(_pod_spec_indent "$indent_count")
+  indent=$(_pod_spec_indent "${indent}_count")
 
   echo "${indent}volumeMounts:"
   if [[ "${has_configmap}" == "true" ]]; then
@@ -471,7 +474,7 @@ generate_configmap_secret_volumes() {
   fi
 
   local indent
-  indent=$(_pod_spec_indent "$indent_count")
+  indent=$(_pod_spec_indent "${indent}_count")
 
   echo "${indent}volumes:"
   if [[ "${has_configmap}" == "true" ]]; then
@@ -498,7 +501,7 @@ generate_image_pull_secrets() {
   local secret_name="$2"
 
   local indent
-  indent=$(_pod_spec_indent "$indent_count")
+  indent=$(_pod_spec_indent "${indent}_count")
 
   echo "${indent}imagePullSecrets:"
   echo "${indent}  - name: ${secret_name}"
@@ -518,7 +521,7 @@ generate_service_account_config() {
   local automount_token="$4"
 
   local indent
-  indent=$(_pod_spec_indent "$indent_count")
+  indent=$(_pod_spec_indent "${indent}_count")
 
   if [[ "${has_serviceaccount}" == "true" ]]; then
     echo "${indent}serviceAccountName: ${serviceaccount_name}"
@@ -541,7 +544,7 @@ generate_container_start() {
   local image_pull_policy="${4:-IfNotPresent}"
 
   local indent
-  indent=$(_pod_spec_indent "$indent_count")
+  indent=$(_pod_spec_indent "${indent}_count")
 
   echo "${indent}- name: ${container_name}"
   echo "${indent}  image: ${image_reference}"
@@ -568,7 +571,7 @@ generate_container_command() {
   fi
 
   local indent
-  indent=$(_pod_spec_indent "$indent_count")
+  indent=$(_pod_spec_indent "${indent}_count")
 
   echo "${indent}command:"
   while IFS= read -r token; do
@@ -596,7 +599,7 @@ generate_container_args() {
   fi
 
   local indent
-  indent=$(_pod_spec_indent "$indent_count")
+  indent=$(_pod_spec_indent "${indent}_count")
 
   echo "${indent}args:"
   while IFS= read -r token; do

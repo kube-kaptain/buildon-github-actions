@@ -38,12 +38,12 @@ validate_enum() {
   local quoted_opts=""
   local last_idx=$((${#options[@]} - 1))
   for i in "${!options[@]}"; do
-    if [[ $i -eq 0 ]]; then
-      quoted_opts="'${options[$i]}'"
-    elif [[ $i -eq $last_idx ]]; then
-      quoted_opts="${quoted_opts}, or '${options[$i]}'"
+    if [[ ${i} -eq 0 ]]; then
+      quoted_opts="'${options[${i}]}'"
+    elif [[ ${i} -eq ${last_idx} ]]; then
+      quoted_opts="${quoted_opts}, or '${options[${i}]}'"
     else
-      quoted_opts="${quoted_opts}, '${options[$i]}'"
+      quoted_opts="${quoted_opts}, '${options[${i}]}'"
     fi
   done
 
@@ -140,6 +140,7 @@ validate_common_inputs() {
 #   4 - Invalid value for any input
 #   5 - Affinity strategy plugin not found
 #
+# shellcheck disable=SC2154 # SECCOMP_PROFILE, READONLY_ROOT_FILESYSTEM, IMAGE_REFERENCE_STYLE, AFFINITY_STRATEGY set by caller
 validate_workload_inputs() {
   validate_enum "KUBERNETES_WORKLOAD_SECCOMP_PROFILE" "${SECCOMP_PROFILE}" \
     DISABLED RuntimeDefault Localhost Unconfined
