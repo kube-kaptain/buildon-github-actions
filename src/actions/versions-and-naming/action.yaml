@@ -116,7 +116,7 @@ runs:
         LOG_WARNING_PREFIX: '::warning::'
         BUILD_MODE: build_server
         REPOSITORY_NAME: ${{ github.event.repository.name }}
-        CURRENT_BRANCH: ${{ github.ref_name }}
+        CURRENT_BRANCH: ${{ github.head_ref || github.ref_name }}
         RELEASE_BRANCH: ${{ inputs.release-branch }}
         DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
         ADDITIONAL_RELEASE_BRANCHES: ${{ inputs.additional-release-branches }}
