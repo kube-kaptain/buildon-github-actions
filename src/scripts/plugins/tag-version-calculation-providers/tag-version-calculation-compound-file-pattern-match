@@ -39,6 +39,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${0}")" && pwd)"
 
+# shellcheck disable=SC1091 # path not resolvable at static analysis time
 # shellcheck source=../../lib/tag-version-calculation.bash
 source "${SCRIPT_DIR}/../../lib/tag-version-calculation.bash"
 

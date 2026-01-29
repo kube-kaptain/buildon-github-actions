@@ -234,7 +234,7 @@ main() {
 
   if [[ ${BUILD_EXIT} -ne 0 ]]; then
     echo "${LOG_ERROR_PREFIX}Docker build failed (exit ${BUILD_EXIT})${LOG_ERROR_SUFFIX}" >&2
-    exit ${BUILD_EXIT}
+    exit "${BUILD_EXIT}"
   fi
 
   output_var "DOCKER_TARGET_IMAGE_FULL_URI" "${TARGET_IMAGE_FULL_URI}"
