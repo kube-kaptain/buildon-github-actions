@@ -39,11 +39,11 @@ validate_enum() {
   local last_idx=$((${#options[@]} - 1))
   for i in "${!options[@]}"; do
     if [[ ${i} -eq 0 ]]; then
-      quoted_opts="'${options[${i}]}'"
+      quoted_opts="'${options[i]}'"
     elif [[ ${i} -eq ${last_idx} ]]; then
-      quoted_opts="${quoted_opts}, or '${options[${i}]}'"
+      quoted_opts="${quoted_opts}, or '${options[i]}'"
     else
-      quoted_opts="${quoted_opts}, '${options[${i}]}'"
+      quoted_opts="${quoted_opts}, '${options[i]}'"
     fi
   done
 

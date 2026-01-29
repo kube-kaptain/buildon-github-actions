@@ -16,7 +16,6 @@
 #   generate_metadata           - Build and output labels or annotations with standard kaptain values
 #
 # shellcheck disable=SC2154 # app_name, version_token, build_timestamp, script_name, project_name_token, default_container set by caller
-# shellcheck disable=SC2004 # Prefer ${i} for consistency with require-variable-braces
 
 # Build hyphen-prefixed name fragment from combined sub-path and suffix
 # Usage: build_name_middle_fragment <combined_sub_path> <suffix>
@@ -223,8 +222,8 @@ merge_key_value_pairs() {
     # Check if key exists in base
     local found=false
     for i in "${!keys[@]}"; do
-      if [[ "${keys[${i}]}" == "${key}" ]]; then
-        values[${i}]="${value}"
+      if [[ "${keys[i]}" == "${key}" ]]; then
+        values[i]="${value}"
         found=true
         break
       fi
@@ -243,7 +242,7 @@ merge_key_value_pairs() {
     if [[ -n "${result}" ]]; then
       result="${result},"
     fi
-    result="${result}${keys[${i}]}=${values[${i}]}"
+    result="${result}${keys[i]}=${values[i]}"
   done
 
   echo "${result}"

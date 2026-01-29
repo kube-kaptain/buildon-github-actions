@@ -89,7 +89,7 @@ version_to_n_parts() {
       result+="."
     fi
     if [[ ${i} -lt ${current_parts} ]]; then
-      result+="${parts[${i}]}"
+      result+="${parts[i]}"
     else
       result+="0"
     fi

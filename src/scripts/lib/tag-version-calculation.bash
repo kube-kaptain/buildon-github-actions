@@ -103,7 +103,7 @@ get_prefix() {
     if [[ ${i} -gt 0 ]]; then
       result+="."
     fi
-    result+="${parts[${i}]}"
+    result+="${parts[i]}"
   done
   echo "${result}"
 }
