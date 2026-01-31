@@ -376,6 +376,69 @@ FOOTER
   chmod +x "$hook_script"
 }
 
+# Extract all env variable names from an action template's env section
+# Usage: vars=$(extract_action_template_env_vars "$ACTION_TEMPLATES_DIR/hook-post-docker-tests.yaml")
+extract_action_template_env_vars() {
+  local action_template="$1"
+  # Match lines like:         KUBERNETES_FOO: ${{ inputs.kubernetes-foo }}
+  # Extract the variable name (before the colon)
+  grep -E '^[[:space:]]+[A-Z][A-Z0-9_]+:' "$action_template" 2>/dev/null \
+    | sed 's/^[[:space:]]*//' \
+    | cut -d: -f1 \
+    | sort -u
+}
+
+# Extract all input names from an action template (from inputs: section)
+# Usage: inputs=$(extract_action_template_inputs "$ACTION_TEMPLATES_DIR/hook-post-docker-tests.yaml")
+extract_action_template_inputs() {
+  local action_template="$1"
+  # Match lines in inputs section like: kubernetes-foo-bar:
+  # This is a simplified extraction - just gets kebab-case input names
+  sed -n '/^inputs:/,/^runs:/p' "$action_template" 2>/dev/null \
+    | grep -E '^  [a-z][a-z0-9-]+:' \
+    | sed -E 's/^\s+([a-z][a-z0-9-]+):.*/\1/' \
+    | sort -u
+}
+
+# Verify action template has env mappings for all exports in the corresponding hook script
+# Usage: verify_action_template_env_mappings "$ACTION_TEMPLATES_DIR/hook-post-docker-tests.yaml" "$SCRIPTS_DIR/hook-post-docker-tests"
+verify_action_template_env_mappings() {
+  local action_template="$1"
+  local hook_script="$2"
+
+  # Get all exports from the hook script
+  local hook_exports
+  hook_exports=$(extract_hook_exports "$hook_script")
+
+  # Get all env mappings from the action template
+  local action_env_vars
+  action_env_vars=$(extract_action_template_env_vars "$action_template")
+
+  # Find exports not in action env (excluding step outputs which come from inputs)
+  # Step outputs like VERSION, DOCKER_TAG, etc. are passed via action inputs, not defaults
+  local step_outputs="VERSION VERSION_MAJOR VERSION_MINOR VERSION_PATCH VERSION_2_PART VERSION_3_PART VERSION_4_PART"
+  step_outputs="$step_outputs DOCKER_TAG DOCKER_IMAGE_NAME GIT_TAG PROJECT_NAME IS_RELEASE"
+  step_outputs="$step_outputs TARGET_IMAGE_FULL_URI DOCKER_IMAGE_FULL_URI DOCKER_SUBSTITUTED_SUB_PATH"
+  step_outputs="$step_outputs MANIFESTS_SUBSTITUTED_SUB_PATH MANIFESTS_ZIP_SUB_PATH MANIFESTS_ZIP_FILE_NAME"
+
+  local missing=""
+  while IFS= read -r export_var; do
+    [[ -z "$export_var" ]] && continue
+    # Skip step outputs - they're wired differently
+    if echo "$step_outputs" | grep -qw "$export_var"; then
+      continue
+    fi
+    if ! echo "$action_env_vars" | grep -q "^${export_var}$"; then
+      missing="${missing} ${export_var}"
+    fi
+  done < <(echo "$hook_exports")
+
+  if [[ -n "$missing" ]]; then
+    echo "Action template missing env mappings for hook exports:${missing}" >&3
+    return 1
+  fi
+}
+
 # Verify all exported variables are accessible in hook output
 # Usage: verify_all_exports_accessible "$output_file" VAR1 VAR2 ...
 verify_all_exports_accessible() {
