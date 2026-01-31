@@ -931,6 +931,12 @@ runs:
         DOCKER_TARGET_BASE_PATH: ${{ inputs.docker-target-base-path }}
         # Workflow inputs - docker push targets
         DOCKER_PUSH_TARGETS: ${{ inputs.docker-push-targets }}
+        # Workflow inputs - docker context and source (for multi-stage/source images)
+        DOCKER_CONTEXT_SUB_PATH: ${{ inputs.docker-context-sub-path }}
+        DOCKER_SOURCE_REGISTRY: ${{ inputs.docker-source-registry }}
+        DOCKER_SOURCE_BASE_PATH: ${{ inputs.docker-source-base-path }}
+        DOCKER_SOURCE_IMAGE_NAME: ${{ inputs.docker-source-image-name }}
+        DOCKER_SOURCE_TAG: ${{ inputs.docker-source-tag }}
 
         # Workflow inputs - manifests source
         MANIFESTS_SUB_PATH: ${{ inputs.manifests-sub-path }}
@@ -946,11 +952,15 @@ runs:
         KUBERNETES_CONFIGMAP_NAME_CHECKSUM_INJECTION: ${{ inputs.kubernetes-configmap-name-checksum-injection }}
         KUBERNETES_CONFIGMAP_ADDITIONAL_LABELS: ${{ inputs.kubernetes-configmap-additional-labels }}
         KUBERNETES_CONFIGMAP_ADDITIONAL_ANNOTATIONS: ${{ inputs.kubernetes-configmap-additional-annotations }}
+        KUBERNETES_CONFIGMAP_NAME_SUFFIX: ${{ inputs.kubernetes-configmap-name-suffix }}
+        KUBERNETES_CONFIGMAP_COMBINED_SUB_PATH: ${{ inputs.kubernetes-configmap-combined-sub-path }}
         # Workflow inputs - kubernetes secret template generation
         KUBERNETES_SECRET_TEMPLATE_SUB_PATH: ${{ inputs.kubernetes-secret-template-sub-path }}
         KUBERNETES_SECRET_TEMPLATE_NAME_CHECKSUM_INJECTION: ${{ inputs.kubernetes-secret-template-name-checksum-injection }}
         KUBERNETES_SECRET_TEMPLATE_ADDITIONAL_LABELS: ${{ inputs.kubernetes-secret-template-additional-labels }}
         KUBERNETES_SECRET_TEMPLATE_ADDITIONAL_ANNOTATIONS: ${{ inputs.kubernetes-secret-template-additional-annotations }}
+        KUBERNETES_SECRET_TEMPLATE_NAME_SUFFIX: ${{ inputs.kubernetes-secret-template-name-suffix }}
+        KUBERNETES_SECRET_TEMPLATE_COMBINED_SUB_PATH: ${{ inputs.kubernetes-secret-template-combined-sub-path }}
         # Workflow inputs - kubernetes serviceaccount generation
         KUBERNETES_SERVICEACCOUNT_GENERATION_ENABLED: ${{ inputs.kubernetes-serviceaccount-generation-enabled }}
         KUBERNETES_SERVICEACCOUNT_NAME_SUFFIX: ${{ inputs.kubernetes-serviceaccount-name-suffix }}
@@ -1011,6 +1021,23 @@ runs:
         KUBERNETES_STATEFULSET_PVC_ACCESS_MODE: ${{ inputs.kubernetes-statefulset-pvc-access-mode }}
         KUBERNETES_STATEFULSET_PVC_VOLUME_NAME: ${{ inputs.kubernetes-statefulset-pvc-volume-name }}
         KUBERNETES_STATEFULSET_PVC_MOUNT_PATH: ${{ inputs.kubernetes-statefulset-pvc-mount-path }}
+        KUBERNETES_STATEFULSET_ENV_SUB_PATH: ${{ inputs.kubernetes-statefulset-env-sub-path }}
+        KUBERNETES_STATEFULSET_ADDITIONAL_LABELS: ${{ inputs.kubernetes-statefulset-additional-labels }}
+        KUBERNETES_STATEFULSET_ADDITIONAL_ANNOTATIONS: ${{ inputs.kubernetes-statefulset-additional-annotations }}
+        # Workflow inputs - daemonset unique
+        KUBERNETES_DAEMONSET_ENV_SUB_PATH: ${{ inputs.kubernetes-daemonset-env-sub-path }}
+        KUBERNETES_DAEMONSET_UPDATE_STRATEGY_TYPE: ${{ inputs.kubernetes-daemonset-update-strategy-type }}
+        KUBERNETES_DAEMONSET_MAX_UNAVAILABLE: ${{ inputs.kubernetes-daemonset-max-unavailable }}
+        KUBERNETES_DAEMONSET_HOST_NETWORK: ${{ inputs.kubernetes-daemonset-host-network }}
+        KUBERNETES_DAEMONSET_HOST_PID: ${{ inputs.kubernetes-daemonset-host-pid }}
+        KUBERNETES_DAEMONSET_HOST_IPC: ${{ inputs.kubernetes-daemonset-host-ipc }}
+        KUBERNETES_DAEMONSET_RUN_AS_NON_ROOT: ${{ inputs.kubernetes-daemonset-run-as-non-root }}
+        KUBERNETES_DAEMONSET_PRIVILEGED: ${{ inputs.kubernetes-daemonset-privileged }}
+        KUBERNETES_DAEMONSET_DNS_POLICY: ${{ inputs.kubernetes-daemonset-dns-policy }}
+        KUBERNETES_DAEMONSET_TOLERATIONS: ${{ inputs.kubernetes-daemonset-tolerations }}
+        KUBERNETES_DAEMONSET_NODE_SELECTOR: ${{ inputs.kubernetes-daemonset-node-selector }}
+        KUBERNETES_DAEMONSET_ADDITIONAL_LABELS: ${{ inputs.kubernetes-daemonset-additional-labels }}
+        KUBERNETES_DAEMONSET_ADDITIONAL_ANNOTATIONS: ${{ inputs.kubernetes-daemonset-additional-annotations }}
         # Workflow inputs - job unique
         KUBERNETES_JOB_NAME_SUFFIX: ${{ inputs.kubernetes-job-name-suffix }}
         KUBERNETES_JOB_COMBINED_SUB_PATH: ${{ inputs.kubernetes-job-combined-sub-path }}
@@ -1026,6 +1053,7 @@ runs:
         KUBERNETES_JOB_LIVENESS_PROBE_ENABLED: ${{ inputs.kubernetes-job-liveness-probe-enabled }}
         KUBERNETES_JOB_READINESS_PROBE_ENABLED: ${{ inputs.kubernetes-job-readiness-probe-enabled }}
         KUBERNETES_JOB_STARTUP_PROBE_ENABLED: ${{ inputs.kubernetes-job-startup-probe-enabled }}
+        KUBERNETES_JOB_PORTS_ENABLED: ${{ inputs.kubernetes-job-ports-enabled }}
         # Workflow inputs - cronjob unique
         KUBERNETES_CRONJOB_NAME_SUFFIX: ${{ inputs.kubernetes-cronjob-name-suffix }}
         KUBERNETES_CRONJOB_COMBINED_SUB_PATH: ${{ inputs.kubernetes-cronjob-combined-sub-path }}
@@ -1044,6 +1072,8 @@ runs:
         KUBERNETES_CRONJOB_LIVENESS_PROBE_ENABLED: ${{ inputs.kubernetes-cronjob-liveness-probe-enabled }}
         KUBERNETES_CRONJOB_READINESS_PROBE_ENABLED: ${{ inputs.kubernetes-cronjob-readiness-probe-enabled }}
         KUBERNETES_CRONJOB_STARTUP_PROBE_ENABLED: ${{ inputs.kubernetes-cronjob-startup-probe-enabled }}
+        KUBERNETES_CRONJOB_PORTS_ENABLED: ${{ inputs.kubernetes-cronjob-ports-enabled }}
+        KUBERNETES_CRONJOB_TTL_SECONDS_AFTER_FINISHED: ${{ inputs.kubernetes-cronjob-ttl-seconds-after-finished }}
         # Workflow inputs - kubernetes service generation
         KUBERNETES_SERVICE_GENERATION_ENABLED: ${{ inputs.kubernetes-service-generation-enabled }}
         KUBERNETES_SERVICE_TYPE: ${{ inputs.kubernetes-service-type }}
@@ -1058,6 +1088,14 @@ runs:
         KUBERNETES_SERVICE_COMBINED_SUB_PATH: ${{ inputs.kubernetes-service-combined-sub-path }}
         KUBERNETES_SERVICE_ADDITIONAL_LABELS: ${{ inputs.kubernetes-service-additional-labels }}
         KUBERNETES_SERVICE_ADDITIONAL_ANNOTATIONS: ${{ inputs.kubernetes-service-additional-annotations }}
+        # Workflow inputs - kubernetes poddisruptionbudget generation
+        KUBERNETES_PODDISRUPTIONBUDGET_GENERATION_ENABLED: ${{ inputs.kubernetes-poddisruptionbudget-generation-enabled }}
+        KUBERNETES_PODDISRUPTIONBUDGET_NAME_SUFFIX: ${{ inputs.kubernetes-poddisruptionbudget-name-suffix }}
+        KUBERNETES_PODDISRUPTIONBUDGET_COMBINED_SUB_PATH: ${{ inputs.kubernetes-poddisruptionbudget-combined-sub-path }}
+        KUBERNETES_PODDISRUPTIONBUDGET_STRATEGY: ${{ inputs.kubernetes-poddisruptionbudget-strategy }}
+        KUBERNETES_PODDISRUPTIONBUDGET_VALUE: ${{ inputs.kubernetes-poddisruptionbudget-value }}
+        KUBERNETES_PODDISRUPTIONBUDGET_ADDITIONAL_LABELS: ${{ inputs.kubernetes-poddisruptionbudget-additional-labels }}
+        KUBERNETES_PODDISRUPTIONBUDGET_ADDITIONAL_ANNOTATIONS: ${{ inputs.kubernetes-poddisruptionbudget-additional-annotations }}
 
         # Workflow inputs - token substitution
         TOKEN_DELIMITER_STYLE: ${{ inputs.token-delimiter-style }}
@@ -1068,6 +1106,8 @@ runs:
         CONFIG_VALUE_TRAILING_NEWLINE: ${{ inputs.config-value-trailing-newline }}
 
         # Workflow inputs - naming, versions, and tags calculation
+        DEFAULT_BRANCH: ${{ inputs.default-branch }}
+        CURRENT_BRANCH: ${{ inputs.current-branch }}
         RELEASE_BRANCH: ${{ inputs.release-branch }}
         ADDITIONAL_RELEASE_BRANCHES: ${{ inputs.additional-release-branches }}
         TAG_VERSION_MAX_PARTS: ${{ inputs.tag-version-max-parts }}

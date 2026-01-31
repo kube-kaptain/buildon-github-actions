@@ -79,6 +79,11 @@ jobs:
     steps:
       # INJECT: parse-workflow-ref-and-checkout
 
+      # === Validate Tooling ===
+      # INJECT: github-check-start(name="Validate Tooling", id="check-validate-tooling")
+      # INJECT: validate-tooling
+      # INJECT: github-check-end(name="Validate Tooling", id="check-validate-tooling")
+
       # === Basic Quality Checks ===
       # INJECT: github-check-start(name="Basic Quality Checks", id="check-basic-quality", if="github.event_name == 'pull_request'")
       # INJECT: basic-quality-checks

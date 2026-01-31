@@ -257,6 +257,52 @@ run_shellcheck() {
   log_info "shellcheck passed"
 }
 
+# Check for Bash 4+ features (scripts must be Bash 3.2 compatible for macOS)
+check_bash_portability() {
+  log_info "Checking for Bash 4+ features (must be 3.2 compatible)"
+  local scripts=()
+
+  while IFS= read -r file; do
+    # Skip markdown files - they're documentation, not scripts
+    [[ "${file}" == *.md ]] && continue
+    scripts+=("${file}")
+  done < <(find "${PROJECT_ROOT}/src/scripts" -type f)
+
+  local failed=()
+
+  # Patterns that indicate Bash 4+ features
+  # - declare -A: associative arrays
+  # - mapfile/readarray: array reading builtin
+  # - ${var,,} ${var^^}: case modification
+  # - |&: pipe stderr shorthand
+  # - coproc: coprocesses
+  # - shopt -s globstar: recursive glob
+  # - &>>: append stdout+stderr (distinct from &>/dev/null which is 3.2 compatible)
+  local bash4_pattern='declare[[:space:]]+-A|mapfile|readarray|\$\{[^}]+,,\}|\$\{[^}]+\^\^\}|\|&|^[[:space:]]*coproc[[:space:]]|shopt[[:space:]]+-s[[:space:]]+globstar|&>>'
+
+  for script in "${scripts[@]}"; do
+    if grep -qE "${bash4_pattern}" "${script}" 2>/dev/null; then
+      # Get matching lines for error output
+      local matches
+      matches=$(grep -nE "${bash4_pattern}" "${script}" 2>/dev/null || true)
+      if [[ -n "${matches}" ]]; then
+        failed+=("${script}")
+        log_error "Bash 4+ feature in ${script#${PROJECT_ROOT}/}:"
+        echo "${matches}" | while IFS= read -r line; do
+          log_error "  ${line}"
+        done
+      fi
+    fi
+  done
+
+  if [[ ${#failed[@]} -gt 0 ]]; then
+    log_error "${#failed[@]} script(s) use Bash 4+ features (must be 3.2 compatible for macOS)"
+    exit 1
+  fi
+
+  log_info "All scripts are Bash 3.2 compatible"
+}
+
 main() {
   log_info "Starting test suite"
   log_info "Project root: ${PROJECT_ROOT}"
@@ -271,6 +317,9 @@ main() {
 
   # Check sourced files are NOT executable
   check_sourced_not_executable
+
+  # Check for Bash 4+ features
+  check_bash_portability
 
   # Run shellcheck
   run_shellcheck
