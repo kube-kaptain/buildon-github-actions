@@ -1,0 +1,101 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
+#
+# validate-tooling - Validates required tools are available before build
+#
+# Checks for required command-line tools:
+# - Core tools: Always required, fails if missing (git, docker, awk, etc.)
+# - Build server tools: Warns if missing (some have fallbacks)
+# - Cloud CLIs: Warns if missing (only needed for specific registry logins)
+#
+set -euo pipefail
+
+SCRIPT_DIR="$(dirname "${0}")"
+
+# shellcheck source=src/scripts/defaults/build-mode.bash
+source "${SCRIPT_DIR}/../defaults/build-mode.bash"
+
+# Logging prefixes (match other scripts)
+LOG_ERROR_PREFIX="${LOG_ERROR_PREFIX:-ERROR: }"
+LOG_ERROR_SUFFIX="${LOG_ERROR_SUFFIX:-}"
+LOG_WARNING_PREFIX="${LOG_WARNING_PREFIX:-WARNING: }"
+LOG_WARNING_SUFFIX="${LOG_WARNING_SUFFIX:-}"
+
+# Tool categories
+CORE_TOOLS="git docker awk grep find tr wc cmp cp mkdir basename zip date uname"
+BUILD_SERVER_TOOLS="sudo systemctl jq"
+CLOUD_TOOLS="aws az gcloud"
+
+# Track missing tools
+MISSING_CORE=""
+MISSING_BUILD_SERVER=""
+MISSING_CLOUD=""
+
+check_tool() {
+  local tool="${1}"
+  command -v "${tool}" &>/dev/null
+}
+
+echo "Validating tooling for BUILD_MODE=${BUILD_MODE}" >&2
+echo >&2
+
+# Check core tools (always required)
+echo "Checking core tools..." >&2
+for tool in ${CORE_TOOLS}; do
+  if check_tool "${tool}"; then
+    echo "  ✓ ${tool}" >&2
+  else
+    echo "  ✗ ${tool}" >&2
+    MISSING_CORE="${MISSING_CORE} ${tool}"
+  fi
+done
+echo >&2
+
+# Check build server tools (warn only - some have fallbacks)
+echo "Checking build server tools..." >&2
+for tool in ${BUILD_SERVER_TOOLS}; do
+  if check_tool "${tool}"; then
+    echo "  ✓ ${tool}" >&2
+  else
+    echo "  - ${tool} (not found)" >&2
+    MISSING_BUILD_SERVER="${MISSING_BUILD_SERVER} ${tool}"
+  fi
+done
+echo >&2
+
+# Check cloud CLIs (warn only)
+echo "Checking cloud CLIs (optional)..." >&2
+for tool in ${CLOUD_TOOLS}; do
+  if check_tool "${tool}"; then
+    echo "  ✓ ${tool}" >&2
+  else
+    echo "  - ${tool} (not found)" >&2
+    MISSING_CLOUD="${MISSING_CLOUD} ${tool}"
+  fi
+done
+echo >&2
+
+# Report results
+EXIT_CODE=0
+
+if [[ -n "${MISSING_CORE}" ]]; then
+  echo "${LOG_ERROR_PREFIX}Missing required core tools:${MISSING_CORE}${LOG_ERROR_SUFFIX}" >&2
+  EXIT_CODE=1
+fi
+
+if [[ -n "${MISSING_BUILD_SERVER}" ]]; then
+  echo "${LOG_WARNING_PREFIX}Missing build server tools (some have fallbacks):${MISSING_BUILD_SERVER}${LOG_WARNING_SUFFIX}" >&2
+  # Not a failure - these tools have fallbacks or are only needed for specific features
+fi
+
+if [[ -n "${MISSING_CLOUD}" ]]; then
+  echo "${LOG_WARNING_PREFIX}Missing cloud CLIs (needed for specific registry logins):${MISSING_CLOUD}${LOG_WARNING_SUFFIX}" >&2
+  # Not a failure - cloud tools are optional
+fi
+
+if [[ ${EXIT_CODE} -eq 0 ]]; then
+  echo "All required tools available!" >&2
+fi
+
+exit ${EXIT_CODE}

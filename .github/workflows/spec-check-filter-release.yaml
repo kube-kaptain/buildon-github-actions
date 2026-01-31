@@ -392,6 +392,29 @@ jobs:
           echo "Linking local actions for dogfooding"
           ln -s "$(pwd)" .github/buildon-github-actions
 
+      # === Validate Tooling ===
+      - name: Start check - Validate Tooling
+        id: check-validate-tooling
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
+        with:
+          action: start
+          check-name: 'Build & Push → Validate Tooling'
+      - name: Validate tooling
+        id: validate-tooling
+        uses: ./.github/buildon-github-actions/src/actions/validate-tooling
+      - name: Pass check - Validate Tooling
+        if: success()
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
+        with:
+          action: pass
+          check-run-id: ${{ steps.check-validate-tooling.outputs.check-run-id }}
+      - name: Fail check - Validate Tooling
+        if: failure() && steps.check-validate-tooling.outputs.check-run-id != ''
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
+        with:
+          action: fail
+          check-run-id: ${{ steps.check-validate-tooling.outputs.check-run-id }}
+
       # === Basic Quality Checks ===
       - name: Start check - Basic Quality Checks
         if: github.event_name == 'pull_request' && success()
