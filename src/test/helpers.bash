@@ -244,3 +244,160 @@ assert_contains() {
     return 1
   fi
 }
+
+# Extract all exported variable names from a hook script
+# Usage: vars=$(extract_hook_exports "$SCRIPTS_DIR/hook-post-docker-tests")
+extract_hook_exports() {
+  local script_path="$1"
+  grep "^export " "$script_path" \
+    | sed 's/^export //' \
+    | tr ' ' '\n' \
+    | grep -v '^$' \
+    | sort -u
+}
+
+# Extract all defaults files sourced by a script
+# Usage: files=$(extract_sourced_defaults "$SCRIPTS_DIR/hook-post-docker-tests")
+extract_sourced_defaults() {
+  local script_path="$1"
+  local script_dir
+  script_dir=$(dirname "$script_path")
+
+  grep 'source.*defaults/' "$script_path" \
+    | sed -E 's|.*source[[:space:]]+"?\$\{?[^}]*\}?/\.\./(defaults/[^"]+)"?|\1|' \
+    | sed -E 's|.*source[[:space:]]+"?\$\([^)]+\)/\.\./(defaults/[^"]+)"?|\1|' \
+    | while read -r rel_path; do
+        echo "${script_dir}/../${rel_path}"
+      done
+}
+
+# Extract all input variables defined in defaults files (long-form with known prefixes)
+# Only catches variables that should be exported: KUBERNETES_*, DOCKER_*, TOKEN_*, etc.
+# Excludes convenience aliases like *_INPUT which are internal to defaults files
+# Usage: vars=$(extract_defaults_inputs "$SCRIPTS_DIR/../defaults/docker-build.bash")
+extract_defaults_inputs() {
+  local defaults_file="$1"
+  # Match: VAR_NAME="${VAR_NAME:-...}" pattern for known input prefixes
+  # These are the workflow input variables that hooks should export
+  local prefixes="KUBERNETES_|DOCKER_|MANIFESTS_|TOKEN_|TAG_VERSION_|GITHUB_RELEASE_|QC_|BLOCK_|OUTPUT_|CONFIG_|ALLOW_BUILTIN_TOKEN|ADDITIONAL_RELEASE_BRANCHES|DEFAULT_BRANCH|CURRENT_BRANCH|RELEASE_BRANCH|BUILD_MODE"
+  grep -E "^(${prefixes})[A-Z0-9_]*=\"\\\$\\{" "$defaults_file" 2>/dev/null \
+    | sed -E 's/^([A-Z][A-Z0-9_]*)=.*/\1/' \
+    | grep -v '_INPUT$' \
+    | sort -u
+}
+
+# Extract all input variables from all defaults files sourced by a hook
+# Usage: vars=$(extract_all_hook_inputs "$SCRIPTS_DIR/hook-post-docker-tests")
+extract_all_hook_inputs() {
+  local hook_script="$1"
+  local script_dir
+  script_dir=$(dirname "$hook_script")
+
+  # Find all sourced defaults files and extract their inputs
+  grep 'source.*defaults/' "$hook_script" \
+    | sed -E 's|.*"([^"]+)".*|\1|' \
+    | sed 's|\${BASH_SOURCE\[0\]}|'"$hook_script"'|g' \
+    | sed "s|\$(dirname[^)]*)|${script_dir}|g" \
+    | while read -r path; do
+        # Resolve the path
+        local resolved
+        resolved=$(cd "$(dirname "$path")" 2>/dev/null && pwd)/$(basename "$path")
+        if [[ -f "$resolved" ]]; then
+          extract_defaults_inputs "$resolved"
+        fi
+      done \
+    | sort -u
+}
+
+# Verify hook exports all inputs from its sourced defaults files
+# Usage: verify_hook_exports_all_inputs "$SCRIPTS_DIR/hook-post-docker-tests"
+verify_hook_exports_all_inputs() {
+  local hook_script="$1"
+  local script_dir
+  script_dir=$(dirname "$hook_script")
+  local defaults_dir="${script_dir}/../defaults"
+
+  # Get all exports from the hook
+  local hook_exports
+  hook_exports=$(extract_hook_exports "$hook_script")
+
+  # Get all inputs from sourced defaults files
+  local all_inputs=""
+  while IFS= read -r line; do
+    [[ -z "$line" ]] && continue
+    # Extract the defaults file path from the source line
+    local defaults_file
+    defaults_file=$(echo "$line" | sed -E 's|.*/(defaults/[^"]+)"?|\1|')
+    if [[ -f "${script_dir}/../${defaults_file}" ]]; then
+      local inputs
+      inputs=$(extract_defaults_inputs "${script_dir}/../${defaults_file}")
+      all_inputs="${all_inputs}${inputs}"$'\n'
+    fi
+  done < <(grep 'source.*defaults/' "$hook_script")
+
+  # Find inputs not in exports
+  local missing=""
+  while IFS= read -r input; do
+    [[ -z "$input" ]] && continue
+    if ! echo "$hook_exports" | grep -q "^${input}$"; then
+      missing="${missing} ${input}"
+    fi
+  done < <(echo "$all_inputs" | sort -u)
+
+  if [[ -n "$missing" ]]; then
+    echo "Hook script missing exports for inputs from defaults:${missing}" >&3
+    return 1
+  fi
+}
+
+# Generate a hook script that dumps all specified variables
+# Usage: generate_export_dump_hook "$hook_script_path" "$output_file" VAR1 VAR2 ...
+generate_export_dump_hook() {
+  local hook_script="$1"
+  local output_file="$2"
+  shift 2
+
+  cat > "$hook_script" << 'HEADER'
+#!/usr/bin/env bash
+set -uo pipefail
+{
+HEADER
+
+  # Use ${VAR+__SET__} to check if variable is set (even if empty)
+  # Then output either the value or __UNSET__
+  for var in "$@"; do
+    echo "  if [[ \"\${${var}+__SET__}\" == \"__SET__\" ]]; then echo \"${var}=\${${var}}\"; else echo \"${var}=__UNSET__\"; fi" >> "$hook_script"
+  done
+
+  cat >> "$hook_script" << FOOTER
+} > "$output_file"
+FOOTER
+
+  chmod +x "$hook_script"
+}
+
+# Verify all exported variables are accessible in hook output
+# Usage: verify_all_exports_accessible "$output_file" VAR1 VAR2 ...
+verify_all_exports_accessible() {
+  local output_file="$1"
+  shift
+  local failed=0
+  local missing_vars=""
+
+  for var in "$@"; do
+    if grep -q "^${var}=__UNSET__$" "$output_file"; then
+      missing_vars="${missing_vars} ${var}"
+      failed=1
+    elif ! grep -q "^${var}=" "$output_file"; then
+      missing_vars="${missing_vars} ${var}(not-in-output)"
+      failed=1
+    fi
+  done
+
+  if [[ $failed -eq 1 ]]; then
+    echo "Missing or unset exports:${missing_vars}" >&3
+    echo "Output file contents:" >&3
+    cat "$output_file" >&3
+    return 1
+  fi
+}
