@@ -12,7 +12,7 @@ inputs:
     default: 'target'
   # Docker build options
   dockerfile-substitution-files:
-    description: 'Comma-separated list of files to perform token substitution on (relative to dockerfile-sub-path)'
+    description: 'Comma-separated list of files to perform token substitution on (relative to dockerfile-sub-path and docker-context-sub-path)'
     required: false
     default: 'Dockerfile'
   dockerfile-sub-path:

@@ -140,7 +140,7 @@ See [`examples/`](examples/) for more usage patterns.
 | `dockerfile-squash` | boolean | `true` | Enable --squash (requires experimental mode) |
 | `dockerfile-squash-allow-unavailable` | boolean | `false` | Allow build without squash if unavailable (default: false - fail if squash unavailable) |
 | `dockerfile-sub-path` | string | `src/docker` | Directory containing Dockerfile, relative to repo root. |
-| `dockerfile-substitution-files` | string | `Dockerfile` | Comma-separated list of files to perform token substitution on (relative to dockerfile-sub-path) |
+| `dockerfile-substitution-files` | string | `Dockerfile` | Comma-separated list of files to perform token substitution on (relative to dockerfile-sub-path and docker-context-sub-path) |
 | `github-release-add-version-to-filenames` | boolean | `true` | Add version suffix to release filenames (e.g., file.yaml -> file-1.2.3.yaml) |
 | `github-release-enabled` | boolean | `true` | Create a GitHub release on version tags |
 | `github-release-notes` | string | `""` | Release notes (leave empty for auto-generated) |

@@ -11,7 +11,7 @@ Spec Check Filter Release
 | `docker-target-registry` | string | `""` | Target container registry domain (defaults to ghcr.io on gh actions) |
 | `docker-target-base-path` | string | `""` | Path between registry and image name (defaults to lower cased org name on gh actions) |
 | `docker-push-targets` | string | `""` | JSON array of additional push targets [{registry, base-path?}] |
-| `dockerfile-substitution-files` | string | `Dockerfile` | Comma-separated list of files to perform token substitution on (relative to dockerfile-sub-path) |
+| `dockerfile-substitution-files` | string | `Dockerfile` | Comma-separated list of files to perform token substitution on (relative to dockerfile-sub-path and docker-context-sub-path) |
 | `dockerfile-sub-path` | string | `src/docker` | Directory containing Dockerfile, relative to repo root. |
 | `dockerfile-squash` | boolean | `true` | Enable --squash (requires experimental mode) |
 | `dockerfile-squash-allow-unavailable` | boolean | `false` | Allow build without squash if unavailable (default: false - fail if squash unavailable) |
