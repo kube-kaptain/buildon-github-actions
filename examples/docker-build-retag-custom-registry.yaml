@@ -25,7 +25,12 @@ jobs:
       contents: write
       packages: write
       checks: write
-    secrets: inherit
+    secrets:
+      docker-registry-logins-secrets: |
+        {
+          "MYREGISTRY_USER": "${{ secrets.MYREGISTRY_USER }}",
+          "MYREGISTRY_TOKEN": "${{ secrets.MYREGISTRY_TOKEN }}"
+        }
     with:
       docker-source-registry: docker.io
       docker-source-base-path: library

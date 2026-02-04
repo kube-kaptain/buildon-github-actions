@@ -24,7 +24,14 @@ jobs:
       contents: write
       packages: write
       checks: write
-    secrets: inherit
+    secrets:
+      docker-registry-logins-secrets: |
+        {
+          "GHCR_USERNAME": "${{ secrets.GHCR_USERNAME }}",
+          "GHCR_PAT": "${{ secrets.GHCR_PAT }}",
+          "DOCKERHUB_USERNAME": "${{ secrets.DOCKERHUB_USERNAME }}",
+          "DOCKERHUB_PASSWORD": "${{ secrets.DOCKERHUB_PASSWORD }}"
+        }
     with:
       docker-registry-logins: |
         # Override GHCR with PAT for cross-repo/org access
