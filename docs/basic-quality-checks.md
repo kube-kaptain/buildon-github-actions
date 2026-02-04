@@ -14,3 +14,4 @@ Basic Quality Checks
 | `qc-require-conventional-branches` | boolean | `false` | Require branch names start with feature/, fix/, etc. |
 | `qc-require-conventional-commits` | boolean | `false` | Require commits use conventional commit format (feat:, fix:, etc.) |
 | `qc-block-conventional-commits` | boolean | `false` | Block commits that use conventional commit format |
+| `qc-block-duplicate-commit-messages` | boolean | `true` | Block PRs where two or more commits have identical messages |

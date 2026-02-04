@@ -319,6 +319,7 @@ See [`examples/`](examples/) for more usage patterns.
 | `output-sub-path` | string | `target` | Build output directory (relative) |
 | `qc-block-conventional-commits` | boolean | `false` | Block commits that use conventional commit format |
 | `qc-block-double-hyphen-containing-branches` | boolean | `true` | Block branch names containing double hyphens (typo detection) |
+| `qc-block-duplicate-commit-messages` | boolean | `true` | Block PRs where two or more commits have identical messages |
 | `qc-block-slash-containing-branches` | boolean | `false` | Block branch names containing slashes |
 | `qc-require-conventional-branches` | boolean | `false` | Require branch names start with feature/, fix/, etc. |
 | `qc-require-conventional-commits` | boolean | `false` | Require commits use conventional commit format (feat:, fix:, etc.) |

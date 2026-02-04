@@ -186,6 +186,11 @@ on:
         required: false
         type: boolean
         default: false
+      qc-block-duplicate-commit-messages:
+        description: 'Block PRs where two or more commits have identical messages'
+        required: false
+        type: boolean
+        default: true
 
       # Pre tagging hook script path
       hook-pre-tagging-tests-script-sub-path:

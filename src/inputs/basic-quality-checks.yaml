@@ -32,3 +32,8 @@ qc-block-conventional-commits:
   required: false
   type: boolean
   default: false
+qc-block-duplicate-commit-messages:
+  description: 'Block PRs where two or more commits have identical messages'
+  required: false
+  type: boolean
+  default: true
