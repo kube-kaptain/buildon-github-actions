@@ -80,50 +80,46 @@ main() {
   echo "Name style: ${TOKEN_NAME_STYLE}" >&2
   echo "===============================" >&2
 
-  # Validate source directory exists
+  # Copy source directory to build context (if it exists)
+  mkdir -p "${DOCKER_CONTEXT_SUB_PATH}"
   if [[ ! -d "${DOCKERFILE_SUB_PATH}" ]]; then
-    echo "${LOG_ERROR_PREFIX}Dockerfile directory not found: ${DOCKERFILE_SUB_PATH}${LOG_ERROR_SUFFIX}" >&2
-    exit 1
-  fi
-
-  # Validate Dockerfile exists with exact name (case-sensitive check)
-  # Loop through files to verify exact case (works on case-insensitive filesystems)
-  local exact_match=false
-  local wrong_case=""
-  for f in "${DOCKERFILE_SUB_PATH}"/*; do
-    [[ -f "${f}" ]] || continue
-    local name
-    name=$(basename "${f}")
-    if [[ "${name}" == "Dockerfile" ]]; then
-      exact_match=true
-      break
-    elif [[ "$(echo "${name}" | tr '[:upper:]' '[:lower:]')" == "dockerfile" ]]; then
-      wrong_case="${name}"
-    fi
-  done
-
-  if [[ "${exact_match}" != "true" ]]; then
+    echo "${LOG_WARNING_PREFIX}Dockerfile directory not found: ${DOCKERFILE_SUB_PATH} (final context dir may be populated by hook)${LOG_WARNING_SUFFIX}" >&2
+  else
+    # Validate Dockerfile case in source (case-sensitive check for case-insensitive filesystems)
+    local wrong_case=""
+    for f in "${DOCKERFILE_SUB_PATH}"/*; do
+      [[ -f "${f}" ]] || continue
+      local name
+      name=$(basename "${f}")
+      if [[ "${name}" != "Dockerfile" ]] && [[ "$(echo "${name}" | tr '[:upper:]' '[:lower:]')" == "dockerfile" ]]; then
+        wrong_case="${name}"
+      fi
+    done
     if [[ -n "${wrong_case}" ]]; then
       echo "${LOG_ERROR_PREFIX}Dockerfile has wrong case: found '${wrong_case}' but must be exactly 'Dockerfile'${LOG_ERROR_SUFFIX}" >&2
-    else
-      echo "${LOG_ERROR_PREFIX}Dockerfile not found in: ${DOCKERFILE_SUB_PATH}${LOG_ERROR_SUFFIX}" >&2
+      exit 1
     fi
-    exit 1
+
+    echo "" >&2
+    echo "Copying docker directory for substitution..." >&2
+    local file_count
+    file_count=$(find "${DOCKERFILE_SUB_PATH}" -type f | wc -l | tr -d ' ')
+    if [[ "${file_count}" -gt 0 ]]; then
+      cp -R "${DOCKERFILE_SUB_PATH}"/* "${DOCKER_CONTEXT_SUB_PATH}/"
+      echo "Copied ${file_count} file(s) to ${DOCKER_CONTEXT_SUB_PATH}" >&2
+    else
+      echo "${LOG_WARNING_PREFIX}No files in ${DOCKERFILE_SUB_PATH} (final context dir may be populated by hook)${LOG_WARNING_SUFFIX}" >&2
+    fi
   fi
 
   # Confirm target doesn't exist before building (fail fast)
   confirm_target_image_doesnt_exist || exit 1
 
-  # Copy docker directory to build output for substitution
-  echo "" >&2
-  echo "Copying docker directory for substitution..." >&2
-  mkdir -p "${DOCKER_CONTEXT_SUB_PATH}"
-  cp -R "${DOCKERFILE_SUB_PATH}"/* "${DOCKER_CONTEXT_SUB_PATH}/"
-
-  # Count files copied
-  local file_count
-  file_count=$(find "${DOCKER_CONTEXT_SUB_PATH}" -type f | wc -l | tr -d ' ')
-  echo "Copied ${file_count} file(s) to ${DOCKER_CONTEXT_SUB_PATH}" >&2
+  # Fail if no Dockerfile in context dir (neither from source nor from hook)
+  if [[ ! -f "${DOCKER_CONTEXT_SUB_PATH}/Dockerfile" ]]; then
+    echo "${LOG_ERROR_PREFIX}Dockerfile not found in build context: ${DOCKER_CONTEXT_SUB_PATH} (not in ${DOCKERFILE_SUB_PATH} and not provided by hook)${LOG_ERROR_SUFFIX}" >&2
+    exit 1
+  fi
 
   # Prepare substitution tokens (built-ins + user config)
   echo "" >&2
