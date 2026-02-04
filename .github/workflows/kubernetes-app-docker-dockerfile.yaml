@@ -37,7 +37,7 @@ on:
         default: ''
       # Docker build options
       dockerfile-substitution-files:
-        description: 'Comma-separated list of files to perform token substitution on (relative to dockerfile-sub-path)'
+        description: 'Comma-separated list of files to perform token substitution on (relative to dockerfile-sub-path and docker-context-sub-path)'
         required: false
         type: string
         default: 'Dockerfile'
@@ -1042,6 +1042,11 @@ on:
         required: false
         type: boolean
         default: false
+      qc-block-duplicate-commit-messages:
+        description: 'Block PRs where two or more commits have identical messages'
+        required: false
+        type: boolean
+        default: true
 
       # Pre tagging hook script path
       hook-pre-tagging-tests-script-sub-path:
@@ -1336,7 +1341,7 @@ jobs:
         uses: ./.github/buildon-github-actions/src/actions/docker-registry-logins
         with:
           config: ${{ inputs.docker-registry-logins }}
-          secrets-json: ${{ secrets.docker-registry-logins-secrets || toJSON(secrets) }}
+          secrets-json: ${{ secrets.docker-registry-logins-secrets }}
           docker-target-registry: ${{ steps.resolve-registry.outputs.docker-target-registry }}
       - name: Pass check - Docker Registry Logins
         if: success()

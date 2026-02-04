@@ -206,6 +206,7 @@ Kubernetes App - Docker Retag
 | `qc-require-conventional-branches` | boolean | `false` | Require branch names start with feature/, fix/, etc. |
 | `qc-require-conventional-commits` | boolean | `false` | Require commits use conventional commit format (feat:, fix:, etc.) |
 | `qc-block-conventional-commits` | boolean | `false` | Block commits that use conventional commit format |
+| `qc-block-duplicate-commit-messages` | boolean | `true` | Block PRs where two or more commits have identical messages |
 | `hook-pre-tagging-tests-script-sub-path` | string | `""` | Path to pre-tagging test script relative to .github/ (e.g., bin/pre-tagging.bash) |
 | `hook-pre-package-prepare-script-sub-path` | string | `""` | Path to pre-package prepare script relative to .github/ (e.g., bin/pre-package-prepare.bash) |
 | `hook-post-package-tests-script-sub-path` | string | `""` | Path to post-package test script relative to .github/ (e.g., bin/post-package.bash) |

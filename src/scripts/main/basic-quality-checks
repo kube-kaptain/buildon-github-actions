@@ -19,6 +19,7 @@
 #   8  = Bad branch contents. Checks:
 #        - Merge commit detected: always-on (no matter how they got there, eg back-merge from main)
 #        - Not rebased onto target: always-on (must be up to date to guarantee correctness after merge)
+#        - Duplicate commit messages: default on (turn off with QC_BLOCK_DUPLICATE_COMMIT_MESSAGES=false)
 #   16 = Bad merge candidate setup. Checks:
 #        - Invalid target branch: always-on (controlled by RELEASE_BRANCH and ADDITIONAL_RELEASE_BRANCHES)
 #        - Target branch not found: always-on
@@ -323,9 +324,45 @@ main() {
         pass "No commits use conventional commit format"
       fi
     fi
+
+    # Check 10: Block duplicate commit messages (default: on)
+    if [[ "${QC_BLOCK_DUPLICATE_COMMIT_MESSAGES}" == "true" ]]; then
+      local messages=()
+      for commit in ${commits}; do
+        messages+=("$(git log -1 --format="%s" "${commit}")")
+      done
+      local duplicates_found=false
+      local seen=()
+      for msg in "${messages[@]}"; do
+        local count=0
+        for other in "${messages[@]}"; do
+          if [[ "${msg}" == "${other}" ]]; then
+            count=$((count + 1))
+          fi
+        done
+        if [[ ${count} -gt 1 ]]; then
+          # Only report each duplicate message once
+          local already_reported=false
+          for s in "${seen[@]+"${seen[@]}"}"; do
+            if [[ "${s}" == "${msg}" ]]; then
+              already_reported=true
+              break
+            fi
+          done
+          if [[ "${already_reported}" == "false" ]]; then
+            error ${FLAG_BAD_CONTENTS} "Duplicate commit message found ${count} times: '${msg}'"
+            seen+=("${msg}")
+            duplicates_found=true
+          fi
+        fi
+      done
+      if [[ "${duplicates_found}" == "false" ]]; then
+        pass "No duplicate commit messages from ${commit_count} commits checked"
+      fi
+    fi
   fi
 
-  # Check 10: Branch is fast-forward from target
+  # Check 11: Branch is fast-forward from target
   if ! is_ff_from_target "${TARGET_BRANCH}"; then
     error ${FLAG_BAD_CONTENTS} "Branch is not up to date with '${TARGET_BRANCH}'. Please rebase your branch."
   else

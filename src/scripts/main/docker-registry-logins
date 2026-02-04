@@ -120,26 +120,23 @@ validate_all_secrets() {
   done <<< "${registries}"
 
   # Report results
+  echo "Analysis found ${#found_secrets[@]} secrets with ${#missing_secrets[@]} missing secrets." >&2
+  echo "" >&2
+  echo "Missing secrets:" >&2
+  for s in "${missing_secrets[@]}"; do
+    echo "  - ${s}" >&2
+  done
+  echo "" >&2
+  echo "Available secrets:" >&2
+  for s in "${found_secrets[@]}"; do
+    echo "  - ${s}" >&2
+  done
+  echo "" >&2
+
+  # Bail if anything we wanted isn't there.
   if [[ ${#missing_secrets[@]} -gt 0 ]]; then
     echo "${LOG_ERROR_PREFIX}Secret validation failed${LOG_ERROR_SUFFIX}" >&2
-    echo "" >&2
-    echo "Missing secrets:" >&2
-    for s in "${missing_secrets[@]}"; do
-      echo "  - ${s}" >&2
-    done
-    echo "" >&2
-    if [[ ${#found_secrets[@]} -gt 0 ]]; then
-      echo "Available secrets:" >&2
-      for s in "${found_secrets[@]}"; do
-        echo "  - ${s}" >&2
-      done
-      echo "" >&2
-    fi
     return 1
-  fi
-
-  if [[ ${#found_secrets[@]} -gt 0 ]]; then
-    echo "All ${#found_secrets[@]} required secrets validated" >&2
   fi
   return 0
 }
@@ -227,6 +224,23 @@ main() {
 
   # Validate secret method first
   validate_secret_method "${SECRET_METHOD}" || exit 1
+  echo "Secret provider: get-secret-${SECRET_METHOD}" >&2
+
+  # Report available secrets (names only, never values)
+  local secret_keys
+  secret_keys=$(echo "${SECRETS_JSON}" | yq -r 'keys | .[]' 2>/dev/null || true)
+  if [[ -z "${secret_keys}" ]]; then
+    echo "SECRETS_JSON contains 0 keys (empty or invalid JSON)" >&2
+    echo "Raw SECRETS_JSON value:" >&2
+    echo "${SECRETS_JSON}" >&2
+  else
+    local key_count
+    key_count=$(echo "${secret_keys}" | wc -l | tr -d ' ')
+    echo "SECRETS_JSON contains ${key_count} keys:" >&2
+    while IFS= read -r key; do
+      echo "  - ${key}" >&2
+    done <<< "${secret_keys}"
+  fi
 
   # Validate all secrets exist before attempting any logins
   validate_all_secrets || exit 1

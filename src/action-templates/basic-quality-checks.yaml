@@ -29,4 +29,5 @@ runs:
         QC_REQUIRE_CONVENTIONAL_BRANCHES: ${{ inputs.qc-require-conventional-branches }}
         QC_BLOCK_CONVENTIONAL_COMMITS: ${{ inputs.qc-block-conventional-commits }}
         QC_REQUIRE_CONVENTIONAL_COMMITS: ${{ inputs.qc-require-conventional-commits }}
+        QC_BLOCK_DUPLICATE_COMMIT_MESSAGES: ${{ inputs.qc-block-duplicate-commit-messages }}
       run: "${{ github.action_path }}/../../scripts/main/basic-quality-checks"

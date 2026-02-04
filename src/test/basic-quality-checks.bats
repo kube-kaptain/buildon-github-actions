@@ -241,3 +241,31 @@ teardown() {
   [ "$status" -eq 4 ]
   assert_output_contains "conventional commit format which is not allowed"
 }
+
+@test "blocks duplicate commit messages by default" {
+  TEST_REPO=$(clone_fixture "qc-duplicate-commits")
+  cd "$TEST_REPO"
+
+  run "$SCRIPTS_DIR/basic-quality-checks"
+  [ "$status" -eq 8 ]
+  assert_output_contains "Duplicate commit message found 2 times"
+  assert_output_contains "Fix the thing"
+}
+
+@test "allows duplicate commit messages when disabled" {
+  TEST_REPO=$(clone_fixture "qc-duplicate-commits")
+  cd "$TEST_REPO"
+
+  export QC_BLOCK_DUPLICATE_COMMIT_MESSAGES=false
+  run "$SCRIPTS_DIR/basic-quality-checks"
+  [ "$status" -eq 0 ]
+}
+
+@test "passes when no duplicate commit messages" {
+  TEST_REPO=$(clone_fixture "qc-clean")
+  cd "$TEST_REPO"
+
+  run "$SCRIPTS_DIR/basic-quality-checks"
+  [ "$status" -eq 0 ]
+  assert_output_contains "No duplicate commit messages"
+}

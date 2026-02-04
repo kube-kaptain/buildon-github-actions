@@ -2,8 +2,9 @@
 #
 # Docker Registry Logins - Explicit JSON secrets
 #
-# Verbose approach: explicitly list which secrets are passed.
-# More typing, but shows exactly what the workflow receives.
+# Alternative approach: construct the JSON object yourself and pass it as
+# docker-registry-logins-secrets. More verbose than declaring secret names,
+# but works without secrets: inherit and shows exactly what gets passed.
 
 name: Build with Registry Logins (Explicit)
 on:

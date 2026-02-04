@@ -44,9 +44,8 @@ See [`examples/`](examples/) for more usage patterns.
 | [`docker-build-retag-custom-registry.yaml`](examples/docker-build-retag-custom-registry.yaml) | Push to a registry other than GHCR (Nexus, ECR, GCR, Harbor, etc) |
 | [`docker-build-retag.yaml`](examples/docker-build-retag.yaml) | Pull an upstream image, retag with your name and new version, push to your registry |
 | [`docker-push-targets.yaml`](examples/docker-push-targets.yaml) | Push the same Docker image to multiple registries |
-| [`docker-registry-logins-explicit.yaml`](examples/docker-registry-logins-explicit.yaml) | More typing, but shows exactly what the workflow receives |
+| [`docker-registry-logins-explicit.yaml`](examples/docker-registry-logins-explicit.yaml) | docker-registry-logins-secrets |
 | [`docker-registry-logins-ghcr-pat.yaml`](examples/docker-registry-logins-ghcr-pat.yaml) |   - Push to packages in a different repo or org (GITHUB_TOKEN is scoped to current repo) |
-| [`docker-registry-logins-inherit.yaml`](examples/docker-registry-logins-inherit.yaml) | Secret values are looked up by the names specified in the config |
 | [`github-release-options.yaml`](examples/github-release-options.yaml) | All workflows that include versions-and-naming create GitHub releases by default |
 | [`job-versioned-naming.yaml`](examples/job-versioned-naming.yaml) | Jobs in Kaptain use a unique naming strategy designed for "run once per version" |
 | [`kube-app-generators.yaml`](examples/kube-app-generators.yaml) | This example demonstrates how to use the Kubernetes manifest generators with |
@@ -140,7 +139,7 @@ See [`examples/`](examples/) for more usage patterns.
 | `dockerfile-squash` | boolean | `true` | Enable --squash (requires experimental mode) |
 | `dockerfile-squash-allow-unavailable` | boolean | `false` | Allow build without squash if unavailable (default: false - fail if squash unavailable) |
 | `dockerfile-sub-path` | string | `src/docker` | Directory containing Dockerfile, relative to repo root. |
-| `dockerfile-substitution-files` | string | `Dockerfile` | Comma-separated list of files to perform token substitution on (relative to dockerfile-sub-path) |
+| `dockerfile-substitution-files` | string | `Dockerfile` | Comma-separated list of files to perform token substitution on (relative to dockerfile-sub-path and docker-context-sub-path) |
 | `github-release-add-version-to-filenames` | boolean | `true` | Add version suffix to release filenames (e.g., file.yaml -> file-1.2.3.yaml) |
 | `github-release-enabled` | boolean | `true` | Create a GitHub release on version tags |
 | `github-release-notes` | string | `""` | Release notes (leave empty for auto-generated) |
@@ -320,6 +319,7 @@ See [`examples/`](examples/) for more usage patterns.
 | `output-sub-path` | string | `target` | Build output directory (relative) |
 | `qc-block-conventional-commits` | boolean | `false` | Block commits that use conventional commit format |
 | `qc-block-double-hyphen-containing-branches` | boolean | `true` | Block branch names containing double hyphens (typo detection) |
+| `qc-block-duplicate-commit-messages` | boolean | `true` | Block PRs where two or more commits have identical messages |
 | `qc-block-slash-containing-branches` | boolean | `false` | Block branch names containing slashes |
 | `qc-require-conventional-branches` | boolean | `false` | Require branch names start with feature/, fix/, etc. |
 | `qc-require-conventional-commits` | boolean | `false` | Require commits use conventional commit format (feat:, fix:, etc.) |

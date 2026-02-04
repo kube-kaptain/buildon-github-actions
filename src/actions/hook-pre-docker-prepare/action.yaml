@@ -37,7 +37,7 @@ inputs:
     default: ''
   # Docker build options
   dockerfile-substitution-files:
-    description: 'Comma-separated list of files to perform token substitution on (relative to dockerfile-sub-path)'
+    description: 'Comma-separated list of files to perform token substitution on (relative to dockerfile-sub-path and docker-context-sub-path)'
     required: false
     default: 'Dockerfile'
   dockerfile-sub-path:
@@ -813,6 +813,10 @@ inputs:
     description: 'Block commits that use conventional commit format'
     required: false
     default: 'false'
+  qc-block-duplicate-commit-messages:
+    description: 'Block PRs where two or more commits have identical messages'
+    required: false
+    default: 'true'
   # Pre tagging hook script path
   hook-pre-tagging-tests-script-sub-path:
     description: 'Path to pre-tagging test script relative to .github/ (e.g., bin/pre-tagging.bash)'
@@ -1121,6 +1125,7 @@ runs:
         QC_REQUIRE_CONVENTIONAL_BRANCHES: ${{ inputs.qc-require-conventional-branches }}
         QC_REQUIRE_CONVENTIONAL_COMMITS: ${{ inputs.qc-require-conventional-commits }}
         QC_BLOCK_CONVENTIONAL_COMMITS: ${{ inputs.qc-block-conventional-commits }}
+        QC_BLOCK_DUPLICATE_COMMIT_MESSAGES: ${{ inputs.qc-block-duplicate-commit-messages }}
 
         # Workflow inputs - hook script paths
         HOOK_PRE_TAGGING_TESTS_SCRIPT_SUB_PATH: ${{ inputs.hook-pre-tagging-tests-script-sub-path }}

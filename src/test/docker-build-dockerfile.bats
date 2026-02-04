@@ -94,7 +94,7 @@ set_required_env() {
 
   run "$SCRIPTS_DIR/docker-build-dockerfile"
   [ "$status" -ne 0 ]
-  assert_output_contains "Dockerfile not found"
+  assert_output_contains "Dockerfile not found in build context"
 }
 
 @test "fails when Dockerfile has wrong case" {

@@ -114,5 +114,14 @@ git checkout -b add-feature --quiet
 commit_file "feature.txt" "feature" "feat: add new feature"
 bundle_repo "qc-conventional-commit" "$SCRIPT_DIR/../fixtures"
 
+# Scenario: Duplicate commit messages
+log "Creating: qc-duplicate-commits (two commits with same message)"
+init_repo "$OUTPUT_DIR/qc-duplicate-commits"
+commit_file "README.md" "# Test repo" "Initial commit"
+git checkout -b fix-things --quiet
+commit_file "file1.txt" "first" "Fix the thing"
+commit_file "file2.txt" "second" "Fix the thing"
+bundle_repo "qc-duplicate-commits" "$SCRIPT_DIR/../fixtures"
+
 log "Done. Repos created in $OUTPUT_DIR"
 log "Bundles created in $SCRIPT_DIR/../fixtures"

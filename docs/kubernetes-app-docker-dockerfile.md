@@ -11,7 +11,7 @@ Kubernetes App - Docker Dockerfile
 | `docker-target-registry` | string | `""` | Target container registry domain (defaults to ghcr.io on gh actions) |
 | `docker-target-base-path` | string | `""` | Path between registry and image name (defaults to lower cased org name on gh actions) |
 | `docker-push-targets` | string | `""` | JSON array of additional push targets [{registry, base-path?}] |
-| `dockerfile-substitution-files` | string | `Dockerfile` | Comma-separated list of files to perform token substitution on (relative to dockerfile-sub-path) |
+| `dockerfile-substitution-files` | string | `Dockerfile` | Comma-separated list of files to perform token substitution on (relative to dockerfile-sub-path and docker-context-sub-path) |
 | `dockerfile-sub-path` | string | `src/docker` | Directory containing Dockerfile, relative to repo root. |
 | `dockerfile-squash` | boolean | `true` | Enable --squash (requires experimental mode) |
 | `dockerfile-squash-allow-unavailable` | boolean | `false` | Allow build without squash if unavailable (default: false - fail if squash unavailable) |
@@ -207,6 +207,7 @@ Kubernetes App - Docker Dockerfile
 | `qc-require-conventional-branches` | boolean | `false` | Require branch names start with feature/, fix/, etc. |
 | `qc-require-conventional-commits` | boolean | `false` | Require commits use conventional commit format (feat:, fix:, etc.) |
 | `qc-block-conventional-commits` | boolean | `false` | Block commits that use conventional commit format |
+| `qc-block-duplicate-commit-messages` | boolean | `true` | Block PRs where two or more commits have identical messages |
 | `hook-pre-tagging-tests-script-sub-path` | string | `""` | Path to pre-tagging test script relative to .github/ (e.g., bin/pre-tagging.bash) |
 | `hook-pre-docker-prepare-script-sub-path` | string | `""` | Path to pre-docker prepare script relative to .github/ (e.g., bin/pre-docker-prepare.bash) |
 | `hook-post-docker-tests-script-sub-path` | string | `""` | Path to post-docker test script relative to .github/ (e.g., bin/post-docker.bash) |
