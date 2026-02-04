@@ -1133,6 +1133,7 @@ runs:
         QC_REQUIRE_CONVENTIONAL_BRANCHES: ${{ inputs.qc-require-conventional-branches }}
         QC_REQUIRE_CONVENTIONAL_COMMITS: ${{ inputs.qc-require-conventional-commits }}
         QC_BLOCK_CONVENTIONAL_COMMITS: ${{ inputs.qc-block-conventional-commits }}
+        QC_BLOCK_DUPLICATE_COMMIT_MESSAGES: ${{ inputs.qc-block-duplicate-commit-messages }}
 
         # Workflow inputs - hook script paths
         HOOK_PRE_TAGGING_TESTS_SCRIPT_SUB_PATH: ${{ inputs.hook-pre-tagging-tests-script-sub-path }}
