@@ -1074,7 +1074,12 @@ on:
         type: string
         default: ''
       github-release-notes:
-        description: 'Release notes (leave empty for auto-generated)'
+        description: 'Inline release notes string (mutually exclusive with github-release-notes-file)'
+        required: false
+        type: string
+        default: ''
+      github-release-notes-file:
+        description: 'Path to release notes file relative to output-sub-path (mutually exclusive with github-release-notes)'
         required: false
         type: string
         default: ''
