@@ -767,3 +767,89 @@ ENV KUBECTL_VERSION=1.28.5' > src/docker/Dockerfile
   run "$SCRIPTS_DIR/versions-and-naming"
   [ "$status" -eq 0 ]
 }
+
+# Exact source version mode tests
+
+@test "file-pattern-match exact mode uses source version directly" {
+  TEST_REPO=$(clone_fixture "tag-none")
+  cd "$TEST_REPO"
+  mkdir -p src/docker
+  echo 'FROM alpine:3.19
+ENV KUBECTL_VERSION=1.28.3' > src/docker/Dockerfile
+
+  export TAG_VERSION_CALCULATION_STRATEGY=file-pattern-match
+  export TAG_VERSION_PATTERN_TYPE=dockerfile-env-kubectl
+  export TAG_VERSION_USE_SOURCE_VERSION_EXACT=true
+
+  run "$SCRIPTS_DIR/versions-and-naming"
+  [ "$status" -eq 0 ]
+  assert_var_equals "VERSION" "1.28.3"
+}
+
+@test "file-pattern-match exact mode ignores existing tags in series" {
+  TEST_REPO=$(clone_fixture "tag-none")
+  cd "$TEST_REPO"
+  mkdir -p src/docker
+  echo 'FROM alpine:3.19
+ENV KUBECTL_VERSION=1.28.3' > src/docker/Dockerfile
+  git tag -m "test" 1.28.1
+  git tag -m "test" 1.28.5
+
+  export TAG_VERSION_CALCULATION_STRATEGY=file-pattern-match
+  export TAG_VERSION_PATTERN_TYPE=dockerfile-env-kubectl
+  export TAG_VERSION_USE_SOURCE_VERSION_EXACT=true
+
+  run "$SCRIPTS_DIR/versions-and-naming"
+  [ "$status" -eq 0 ]
+  # Uses exact source version, not incremented from highest
+  assert_var_equals "VERSION" "1.28.3"
+}
+
+@test "file-pattern-match exact mode respects TAG_VERSION_MAX_PARTS" {
+  TEST_REPO=$(clone_fixture "tag-none")
+  cd "$TEST_REPO"
+  mkdir -p src/config
+  echo 'VERSION=1.2.3.4' > src/config/version.txt
+
+  export TAG_VERSION_CALCULATION_STRATEGY=file-pattern-match
+  export TAG_VERSION_PATTERN_TYPE=custom
+  export TAG_VERSION_SOURCE_SUB_PATH=src/config
+  export TAG_VERSION_SOURCE_FILE_NAME=version.txt
+  export TAG_VERSION_SOURCE_CUSTOM_PATTERN='^VERSION=([0-9]+\.[0-9]+\.[0-9]+\.[0-9]+)$'
+  export TAG_VERSION_USE_SOURCE_VERSION_EXACT=true
+  export TAG_VERSION_MAX_PARTS=3
+
+  run "$SCRIPTS_DIR/versions-and-naming"
+  [ "$status" -eq 1 ]
+  assert_output_contains "exceeds TAG_VERSION_MAX_PARTS"
+}
+
+@test "file-pattern-match exact mode fails with duplicate tag on release branch" {
+  TEST_REPO=$(clone_fixture "tag-none")
+  cd "$TEST_REPO"
+  mkdir -p src/docker
+  echo 'FROM alpine:3.19
+ENV KUBECTL_VERSION=1.28.3' > src/docker/Dockerfile
+  git tag -m "existing" 1.28.3
+
+  export TAG_VERSION_CALCULATION_STRATEGY=file-pattern-match
+  export TAG_VERSION_PATTERN_TYPE=dockerfile-env-kubectl
+  export TAG_VERSION_USE_SOURCE_VERSION_EXACT=true
+
+  run "$SCRIPTS_DIR/versions-and-naming"
+  [ "$status" -ne 0 ]
+  assert_output_contains "Tag '1.28.3' already exists"
+  assert_output_contains "Change the regex matched version in src/docker/Dockerfile to get a new build working"
+}
+
+@test "exact mode fails when used with git-auto-closest-highest" {
+  TEST_REPO=$(clone_fixture "tag-none")
+  cd "$TEST_REPO"
+
+  export TAG_VERSION_CALCULATION_STRATEGY=git-auto-closest-highest
+  export TAG_VERSION_USE_SOURCE_VERSION_EXACT=true
+
+  run "$SCRIPTS_DIR/versions-and-naming"
+  [ "$status" -eq 1 ]
+  assert_output_contains "TAG_VERSION_USE_SOURCE_VERSION_EXACT is only supported with file-based strategies"
+}

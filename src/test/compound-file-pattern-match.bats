@@ -321,6 +321,119 @@ ENV KUBECTL_VERSION=1.32.4' > src/docker/Dockerfile
   assert_output_contains "exceeds TAG_VERSION_MAX_PARTS"
 }
 
+# Exact source version mode tests
+
+@test "compound-file-pattern-match exact mode uses full combined source versions" {
+  TEST_REPO=$(clone_fixture "tag-none")
+  cd "$TEST_REPO"
+  mkdir -p src/config
+  echo 'DEPLOY_VERSION=1.0.0' > src/config/version.txt
+  mkdir -p src/docker
+  echo 'FROM alpine:3.19
+ENV KUBECTL_VERSION=1.32.4' > src/docker/Dockerfile
+
+  export TAG_VERSION_CALCULATION_STRATEGY=compound-file-pattern-match
+  export TAG_VERSION_PATTERN_TYPE=custom
+  export TAG_VERSION_SOURCE_SUB_PATH=src/config
+  export TAG_VERSION_SOURCE_FILE_NAME=version.txt
+  export TAG_VERSION_SOURCE_CUSTOM_PATTERN='^DEPLOY_VERSION=([0-9]+\.[0-9]+\.[0-9]+)$'
+  export TAG_VERSION_SOURCE_TWO_SUB_PATH=src/docker
+  export TAG_VERSION_SOURCE_TWO_FILE_NAME=Dockerfile
+  export TAG_VERSION_SOURCE_TWO_PATTERN='^ENV KUBECTL_VERSION=([0-9]+\.[0-9]+\.[0-9]+)$'
+  export TAG_VERSION_SOURCE_TWO_PREFIX_PARTS=2
+  export TAG_VERSION_MAX_PARTS=7
+  export TAG_VERSION_USE_SOURCE_VERSION_EXACT=true
+
+  run "$SCRIPTS_DIR/versions-and-naming"
+  [ "$status" -eq 0 ]
+  # Full source ONE (1.0.0) + full source TWO (1.32.4), no increment
+  assert_var_equals "VERSION" "1.0.0.1.32.4"
+}
+
+@test "compound-file-pattern-match exact mode ignores existing tags" {
+  TEST_REPO=$(clone_fixture "tag-none")
+  cd "$TEST_REPO"
+  mkdir -p src/config
+  echo 'DEPLOY_VERSION=1.0.0' > src/config/version.txt
+  mkdir -p src/docker
+  echo 'FROM alpine:3.19
+ENV KUBECTL_VERSION=1.32.4' > src/docker/Dockerfile
+  git tag -m "test" 1.0.0.1.32.1
+  git tag -m "test" 1.0.0.1.32.5
+
+  export TAG_VERSION_CALCULATION_STRATEGY=compound-file-pattern-match
+  export TAG_VERSION_PATTERN_TYPE=custom
+  export TAG_VERSION_SOURCE_SUB_PATH=src/config
+  export TAG_VERSION_SOURCE_FILE_NAME=version.txt
+  export TAG_VERSION_SOURCE_CUSTOM_PATTERN='^DEPLOY_VERSION=([0-9]+\.[0-9]+\.[0-9]+)$'
+  export TAG_VERSION_SOURCE_TWO_SUB_PATH=src/docker
+  export TAG_VERSION_SOURCE_TWO_FILE_NAME=Dockerfile
+  export TAG_VERSION_SOURCE_TWO_PATTERN='^ENV KUBECTL_VERSION=([0-9]+\.[0-9]+\.[0-9]+)$'
+  export TAG_VERSION_SOURCE_TWO_PREFIX_PARTS=2
+  export TAG_VERSION_MAX_PARTS=7
+  export TAG_VERSION_USE_SOURCE_VERSION_EXACT=true
+
+  run "$SCRIPTS_DIR/versions-and-naming"
+  [ "$status" -eq 0 ]
+  # Uses exact combined version, ignores existing tags
+  assert_var_equals "VERSION" "1.0.0.1.32.4"
+}
+
+@test "compound-file-pattern-match exact mode fails with duplicate tag" {
+  TEST_REPO=$(clone_fixture "tag-none")
+  cd "$TEST_REPO"
+  mkdir -p src/config
+  echo 'DEPLOY_VERSION=1.0.0' > src/config/version.txt
+  mkdir -p src/docker
+  echo 'FROM alpine:3.19
+ENV KUBECTL_VERSION=1.32.4' > src/docker/Dockerfile
+  git tag -m "existing" 1.0.0.1.32.4
+
+  export TAG_VERSION_CALCULATION_STRATEGY=compound-file-pattern-match
+  export TAG_VERSION_PATTERN_TYPE=custom
+  export TAG_VERSION_SOURCE_SUB_PATH=src/config
+  export TAG_VERSION_SOURCE_FILE_NAME=version.txt
+  export TAG_VERSION_SOURCE_CUSTOM_PATTERN='^DEPLOY_VERSION=([0-9]+\.[0-9]+\.[0-9]+)$'
+  export TAG_VERSION_SOURCE_TWO_SUB_PATH=src/docker
+  export TAG_VERSION_SOURCE_TWO_FILE_NAME=Dockerfile
+  export TAG_VERSION_SOURCE_TWO_PATTERN='^ENV KUBECTL_VERSION=([0-9]+\.[0-9]+\.[0-9]+)$'
+  export TAG_VERSION_SOURCE_TWO_PREFIX_PARTS=2
+  export TAG_VERSION_MAX_PARTS=7
+  export TAG_VERSION_USE_SOURCE_VERSION_EXACT=true
+
+  run "$SCRIPTS_DIR/versions-and-naming"
+  [ "$status" -ne 0 ]
+  assert_output_contains "Tag '1.0.0.1.32.4' already exists"
+  assert_output_contains "Change the regex matched version in either src/config/version.txt or src/docker/Dockerfile"
+}
+
+@test "compound-file-pattern-match exact mode respects TAG_VERSION_MAX_PARTS" {
+  TEST_REPO=$(clone_fixture "tag-none")
+  cd "$TEST_REPO"
+  mkdir -p src/config
+  echo 'DEPLOY_VERSION=1.0.0' > src/config/version.txt
+  mkdir -p src/docker
+  echo 'FROM alpine:3.19
+ENV KUBECTL_VERSION=1.32.4' > src/docker/Dockerfile
+
+  export TAG_VERSION_CALCULATION_STRATEGY=compound-file-pattern-match
+  export TAG_VERSION_PATTERN_TYPE=custom
+  export TAG_VERSION_SOURCE_SUB_PATH=src/config
+  export TAG_VERSION_SOURCE_FILE_NAME=version.txt
+  export TAG_VERSION_SOURCE_CUSTOM_PATTERN='^DEPLOY_VERSION=([0-9]+\.[0-9]+\.[0-9]+)$'
+  export TAG_VERSION_SOURCE_TWO_SUB_PATH=src/docker
+  export TAG_VERSION_SOURCE_TWO_FILE_NAME=Dockerfile
+  export TAG_VERSION_SOURCE_TWO_PATTERN='^ENV KUBECTL_VERSION=([0-9]+\.[0-9]+\.[0-9]+)$'
+  export TAG_VERSION_SOURCE_TWO_PREFIX_PARTS=2
+  export TAG_VERSION_MAX_PARTS=5
+  export TAG_VERSION_USE_SOURCE_VERSION_EXACT=true
+
+  run "$SCRIPTS_DIR/versions-and-naming"
+  [ "$status" -eq 1 ]
+  # 1.0.0.1.32.4 = 6 parts, exceeds max of 5
+  assert_output_contains "exceeds TAG_VERSION_MAX_PARTS"
+}
+
 @test "compound-file-pattern-match fails when TWO_PREFIX_PARTS exceeds source TWO parts" {
   TEST_REPO=$(clone_fixture "tag-none")
   cd "$TEST_REPO"

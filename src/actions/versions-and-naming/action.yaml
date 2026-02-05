@@ -28,7 +28,7 @@ inputs:
     required: false
     default: 'dockerfile-env-kubectl'
   tag-version-prefix-parts:
-    description: 'Number of parts from source version to use as prefix (default 2, output = prefix + 1 parts)'
+    description: 'Number of parts from source version to use as prefix (default 2, output = prefix + 1 parts). Ignored when tag-version-use-source-version-exact is true.'
     required: false
     default: ''
   tag-version-source-sub-path:
@@ -57,9 +57,13 @@ inputs:
     required: false
     default: ''
   tag-version-source-two-prefix-parts:
-    description: 'Number of parts from source TWO version to use in prefix (default 2)'
+    description: 'Number of parts from source TWO version to use in prefix (default 2). Ignored when tag-version-use-source-version-exact is true.'
     required: false
     default: ''
+  tag-version-use-source-version-exact:
+    description: 'Use the exact version found in source file(s) without incrementing (file-based strategies only)'
+    required: false
+    default: 'false'
 
   # Docker dockerfile path (for pattern matching)
   dockerfile-sub-path:
@@ -132,4 +136,5 @@ runs:
         TAG_VERSION_SOURCE_TWO_FILE_NAME: ${{ inputs.tag-version-source-two-file-name }}
         TAG_VERSION_SOURCE_TWO_PATTERN: ${{ inputs.tag-version-source-two-pattern }}
         TAG_VERSION_SOURCE_TWO_PREFIX_PARTS: ${{ inputs.tag-version-source-two-prefix-parts }}
+        TAG_VERSION_USE_SOURCE_VERSION_EXACT: ${{ inputs.tag-version-use-source-version-exact }}
       run: "${{ github.action_path }}/../../scripts/main/versions-and-naming"

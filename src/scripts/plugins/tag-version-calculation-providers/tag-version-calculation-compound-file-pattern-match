@@ -7,12 +7,17 @@
 # Algorithm:
 #   1. Extract version ONE from first source file using existing file-pattern-match inputs
 #   2. Extract version TWO from second source file using TAG_VERSION_SOURCE_TWO_* inputs
-#   3. Combine as ONE.TWO to form the series prefix
-#   4. Find highest existing tag matching that prefix
-#   5. Increment the PATCH (last component), or start at prefix.1 if no tags exist
+#   If TAG_VERSION_USE_SOURCE_VERSION_EXACT=true:
+#     Combine full ONE.TWO as the version (steps 3-5 skipped, PREFIX_PARTS ignored)
+#   Otherwise:
+#     3. Combine as ONE.TWO to form the series prefix (trimmed by PREFIX_PARTS)
+#     4. Find highest existing tag matching that prefix
+#     5. Increment the PATCH (last component), or start at prefix.1 if no tags exist
 #
 # Example: source ONE = 1.0.0, source TWO has 1.32.4, TWO_PREFIX_PARTS = 2
 #   → prefix = 1.0.0.1.32, first tag = 1.0.0.1.32.1, next = 1.0.0.1.32.2, etc.
+# Example (exact mode): source ONE = 1.0.0, source TWO = 1.32.4
+#   → version = 1.0.0.1.32.4 (all parts, no increment)
 #
 # Inputs (environment variables):
 #   Source ONE (reuses existing file-pattern-match inputs):
@@ -20,16 +25,17 @@
 #     TAG_VERSION_SOURCE_SUB_PATH - Path override for source ONE
 #     TAG_VERSION_SOURCE_FILE_NAME - File name override for source ONE
 #     TAG_VERSION_SOURCE_CUSTOM_PATTERN - Custom regex for source ONE
-#     TAG_VERSION_PREFIX_PARTS - Parts to take from source ONE (default: all)
+#     TAG_VERSION_PREFIX_PARTS - Parts to take from source ONE (default: all, ignored if exact)
 #
 #   Source TWO:
 #     TAG_VERSION_SOURCE_TWO_SUB_PATH - Path to directory (default: same as source ONE)
 #     TAG_VERSION_SOURCE_TWO_FILE_NAME - File name (default: same as source ONE)
 #     TAG_VERSION_SOURCE_TWO_PATTERN - Regex with capture group
 #       Required if TWO resolves to the same file as ONE, otherwise defaults to ONE's pattern
-#     TAG_VERSION_SOURCE_TWO_PREFIX_PARTS - Parts to take from source TWO (default 2)
+#     TAG_VERSION_SOURCE_TWO_PREFIX_PARTS - Parts to take from source TWO (default 2, ignored if exact)
 #
 #   General:
+#     TAG_VERSION_USE_SOURCE_VERSION_EXACT - Use combined full versions as-is without incrementing (default false)
 #     TAG_VERSION_MAX_PARTS - Fail if version exceeds this depth (required)
 #
 # Outputs (stdout):
@@ -131,22 +137,34 @@ main() {
   two_prefix=$(get_prefix "${source_two_version}" "${TAG_VERSION_SOURCE_TWO_PREFIX_PARTS}")
   echo "Source TWO prefix: ${two_prefix}" >&2
 
-  # Step 5: Combine into compound prefix
-  local compound_prefix="${one_prefix}.${two_prefix}"
-  echo "Compound prefix: ${compound_prefix}.x" >&2
-
-  # Step 6: Find highest existing tag in series
-  local highest_tag
-  highest_tag=$(find_highest_in_series "${compound_prefix}")
-  if [[ -n "${highest_tag}" ]]; then
-    echo "Highest existing tag in series: ${highest_tag}" >&2
-  else
-    echo "No existing tags in ${compound_prefix}.x series" >&2
-  fi
-
-  # Step 7: Increment version
   local version
-  version=$(increment_version "${compound_prefix}" "${highest_tag}")
+
+  if [[ "${TAG_VERSION_USE_SOURCE_VERSION_EXACT:-false}" == "true" ]]; then
+    # Exact mode: combine full source versions without incrementing
+    version="${source_one_version}.${source_two_version}"
+    echo "Exact mode: using combined source versions directly: ${version}" >&2
+    if git tag --list | grep -qx "${version}"; then
+      echo "${LOG_ERROR_PREFIX}Tag '${version}' already exists. In exact mode that means you need to change your source files.${LOG_ERROR_SUFFIX}" >&2
+      echo "${LOG_ERROR_PREFIX}Change the regex matched version in either ${one_file} or ${two_file} to get a new build working.${LOG_ERROR_SUFFIX}" >&2
+      exit 1
+    fi
+  else
+    # Step 5: Combine into compound prefix
+    local compound_prefix="${one_prefix}.${two_prefix}"
+    echo "Compound prefix: ${compound_prefix}.x" >&2
+
+    # Step 6: Find highest existing tag in series
+    local highest_tag
+    highest_tag=$(find_highest_in_series "${compound_prefix}")
+    if [[ -n "${highest_tag}" ]]; then
+      echo "Highest existing tag in series: ${highest_tag}" >&2
+    else
+      echo "No existing tags in ${compound_prefix}.x series" >&2
+    fi
+
+    # Step 7: Increment version
+    version=$(increment_version "${compound_prefix}" "${highest_tag}")
+  fi
 
   # Step 8: Validate against TAG_VERSION_MAX_PARTS
   local part_count

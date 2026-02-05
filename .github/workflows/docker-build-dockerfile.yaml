@@ -122,7 +122,7 @@ on:
         type: string
         default: 'dockerfile-env-kubectl'
       tag-version-prefix-parts:
-        description: 'Number of parts from source version to use as prefix (default 2, output = prefix + 1 parts)'
+        description: 'Number of parts from source version to use as prefix (default 2, output = prefix + 1 parts). Ignored when tag-version-use-source-version-exact is true.'
         required: false
         type: string
         default: ''
@@ -158,10 +158,15 @@ on:
         type: string
         default: ''
       tag-version-source-two-prefix-parts:
-        description: 'Number of parts from source TWO version to use in prefix (default 2)'
+        description: 'Number of parts from source TWO version to use in prefix (default 2). Ignored when tag-version-use-source-version-exact is true.'
         required: false
         type: string
         default: ''
+      tag-version-use-source-version-exact:
+        description: 'Use the exact version found in source file(s) without incrementing (file-based strategies only)'
+        required: false
+        type: boolean
+        default: false
 
       # Basic quality checks
       block-slashes:

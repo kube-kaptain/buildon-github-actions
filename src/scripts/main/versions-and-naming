@@ -133,6 +133,12 @@ main() {
     is_release="true"
   fi
 
+  # Validate exact mode is only used with file-based strategies
+  if [[ "${TAG_VERSION_USE_SOURCE_VERSION_EXACT}" == "true" ]] && [[ "${TAG_VERSION_CALCULATION_STRATEGY}" == "git-auto-closest-highest" ]]; then
+    echo "${LOG_ERROR_PREFIX}TAG_VERSION_USE_SOURCE_VERSION_EXACT is only supported with file-based strategies (file-pattern-match, compound-file-pattern-match)${LOG_ERROR_SUFFIX}" >&2
+    exit 1
+  fi
+
   # Validate strategy plugin exists
   local strategy_script="${PLUGINS_DIR}/tag-version-calculation-providers/tag-version-calculation-${TAG_VERSION_CALCULATION_STRATEGY}"
   if [[ ! -x "${strategy_script}" ]]; then
@@ -159,6 +165,7 @@ main() {
     TAG_VERSION_SOURCE_SUB_PATH="${TAG_VERSION_SOURCE_SUB_PATH}" \
     TAG_VERSION_SOURCE_FILE_NAME="${TAG_VERSION_SOURCE_FILE_NAME}" \
     TAG_VERSION_SOURCE_CUSTOM_PATTERN="${TAG_VERSION_SOURCE_CUSTOM_PATTERN}" \
+    TAG_VERSION_USE_SOURCE_VERSION_EXACT="${TAG_VERSION_USE_SOURCE_VERSION_EXACT}" \
     LOG_ERROR_PREFIX="${LOG_ERROR_PREFIX}" \
     LOG_ERROR_SUFFIX="${LOG_ERROR_SUFFIX}" \
     "${strategy_script}"
