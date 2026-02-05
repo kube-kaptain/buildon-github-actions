@@ -31,3 +31,6 @@ TAG_VERSION_SOURCE_FILE_NAME="${TAG_VERSION_SOURCE_FILE_NAME:-}"
 
 # Custom regex pattern for version extraction
 TAG_VERSION_SOURCE_CUSTOM_PATTERN="${TAG_VERSION_SOURCE_CUSTOM_PATTERN:-}"
+
+# Use the exact version from source file(s) without incrementing
+TAG_VERSION_USE_SOURCE_VERSION_EXACT="${TAG_VERSION_USE_SOURCE_VERSION_EXACT:-false}"

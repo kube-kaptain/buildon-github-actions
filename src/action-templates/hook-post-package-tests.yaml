@@ -309,6 +309,7 @@ runs:
         TAG_VERSION_SOURCE_TWO_FILE_NAME: ${{ inputs.tag-version-source-two-file-name }}
         TAG_VERSION_SOURCE_TWO_PATTERN: ${{ inputs.tag-version-source-two-pattern }}
         TAG_VERSION_SOURCE_TWO_PREFIX_PARTS: ${{ inputs.tag-version-source-two-prefix-parts }}
+        TAG_VERSION_USE_SOURCE_VERSION_EXACT: ${{ inputs.tag-version-use-source-version-exact }}
 
         # Workflow inputs - quality check options
         BLOCK_SLASHES: ${{ inputs.block-slashes }}

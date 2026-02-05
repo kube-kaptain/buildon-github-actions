@@ -6,9 +6,12 @@
 #
 # Algorithm:
 #   1. Read file and extract version using pattern type or custom regex
-#   2. Use first N parts as the series prefix (configurable, default 2)
-#   3. Find highest existing tag matching that series
-#   4. Increment the last component, or start at prefix.1 if no tags exist in series
+#   If TAG_VERSION_USE_SOURCE_VERSION_EXACT=true:
+#     Use the extracted version as-is (steps 2-4 skipped)
+#   Otherwise:
+#     2. Use first N parts as the series prefix (configurable, default 2)
+#     3. Find highest existing tag matching that series
+#     4. Increment the last component, or start at prefix.1 if no tags exist in series
 #
 # Inputs (environment variables):
 #   TAG_VERSION_PATTERN_TYPE - Pattern type (required):
@@ -18,7 +21,8 @@
 #   TAG_VERSION_SOURCE_SUB_PATH - Override path to directory (required for custom)
 #   TAG_VERSION_SOURCE_FILE_NAME - Override file name (required for custom)
 #   TAG_VERSION_SOURCE_CUSTOM_PATTERN - Regex with capture group (required for custom)
-#   TAG_VERSION_PREFIX_PARTS - Number of parts from source version to use as prefix (default 2)
+#   TAG_VERSION_PREFIX_PARTS - Number of parts from source version to use as prefix (default 2, ignored if exact)
+#   TAG_VERSION_USE_SOURCE_VERSION_EXACT - Use extracted version as-is without incrementing (default false)
 #   TAG_VERSION_MAX_PARTS - Fail if version exceeds this depth (required)
 #
 # Outputs (stdout):
@@ -50,8 +54,8 @@ fi
 # Optional config with default
 TAG_VERSION_PREFIX_PARTS="${TAG_VERSION_PREFIX_PARTS:-2}"
 
-# Validate PREFIX_PARTS + 1 doesn't exceed TAG_VERSION_MAX_PARTS
-if [[ $((TAG_VERSION_PREFIX_PARTS + 1)) -gt ${TAG_VERSION_MAX_PARTS} ]]; then
+# Validate PREFIX_PARTS + 1 doesn't exceed TAG_VERSION_MAX_PARTS (not relevant in exact mode)
+if [[ "${TAG_VERSION_USE_SOURCE_VERSION_EXACT:-false}" != "true" ]] && [[ $((TAG_VERSION_PREFIX_PARTS + 1)) -gt ${TAG_VERSION_MAX_PARTS} ]]; then
   echo "${LOG_ERROR_PREFIX}TAG_VERSION_PREFIX_PARTS (${TAG_VERSION_PREFIX_PARTS}) + 1 exceeds TAG_VERSION_MAX_PARTS (${TAG_VERSION_MAX_PARTS})${LOG_ERROR_SUFFIX}" >&2
   exit 1
 fi
@@ -68,31 +72,43 @@ main() {
   source_version=$(extract_version_from_file "${SOURCE_SUB_PATH}/${SOURCE_FILE_NAME}" "${VERSION_PATTERN}" "source file")
   echo "Found version: ${source_version}" >&2
 
-  # Step 1.5: Validate source version has enough parts for PREFIX_PARTS
-  local source_part_count
-  source_part_count=$(count_version_parts "${source_version}")
-  if [[ ${TAG_VERSION_PREFIX_PARTS} -gt ${source_part_count} ]]; then
-    echo "${LOG_ERROR_PREFIX}TAG_VERSION_PREFIX_PARTS (${TAG_VERSION_PREFIX_PARTS}) exceeds source version parts (${source_part_count} in '${source_version}')${LOG_ERROR_SUFFIX}" >&2
-    exit 1
-  fi
-
-  # Step 2: Get N-part prefix from source version
-  local prefix
-  prefix=$(get_prefix "${source_version}" "${TAG_VERSION_PREFIX_PARTS}")
-  echo "Using version series: ${prefix}.x" >&2
-
-  # Step 3: Find highest existing tag in series
-  local highest_tag
-  highest_tag=$(find_highest_in_series "${prefix}")
-  if [[ -n "${highest_tag}" ]]; then
-    echo "Highest existing tag in series: ${highest_tag}" >&2
-  else
-    echo "No existing tags in ${prefix}.x series" >&2
-  fi
-
-  # Step 4: Increment version
   local version
-  version=$(increment_version "${prefix}" "${highest_tag}")
+
+  if [[ "${TAG_VERSION_USE_SOURCE_VERSION_EXACT:-false}" == "true" ]]; then
+    # Exact mode: use the source version as-is, no prefix extraction or incrementing
+    echo "Exact mode: using source version directly" >&2
+    version="${source_version}"
+    if git tag --list | grep -qx "${version}"; then
+      echo "${LOG_ERROR_PREFIX}Tag '${version}' already exists. In exact mode that means you need to change your source files.${LOG_ERROR_SUFFIX}" >&2
+      echo "${LOG_ERROR_PREFIX}Change the regex matched version in ${SOURCE_SUB_PATH}/${SOURCE_FILE_NAME} to get a new build working.${LOG_ERROR_SUFFIX}" >&2
+      exit 1
+    fi
+  else
+    # Step 1.5: Validate source version has enough parts for PREFIX_PARTS
+    local source_part_count
+    source_part_count=$(count_version_parts "${source_version}")
+    if [[ ${TAG_VERSION_PREFIX_PARTS} -gt ${source_part_count} ]]; then
+      echo "${LOG_ERROR_PREFIX}TAG_VERSION_PREFIX_PARTS (${TAG_VERSION_PREFIX_PARTS}) exceeds source version parts (${source_part_count} in '${source_version}')${LOG_ERROR_SUFFIX}" >&2
+      exit 1
+    fi
+
+    # Step 2: Get N-part prefix from source version
+    local prefix
+    prefix=$(get_prefix "${source_version}" "${TAG_VERSION_PREFIX_PARTS}")
+    echo "Using version series: ${prefix}.x" >&2
+
+    # Step 3: Find highest existing tag in series
+    local highest_tag
+    highest_tag=$(find_highest_in_series "${prefix}")
+    if [[ -n "${highest_tag}" ]]; then
+      echo "Highest existing tag in series: ${highest_tag}" >&2
+    else
+      echo "No existing tags in ${prefix}.x series" >&2
+    fi
+
+    # Step 4: Increment version
+    version=$(increment_version "${prefix}" "${highest_tag}")
+  fi
 
   # Step 5: Validate against TAG_VERSION_MAX_PARTS
   local part_count
