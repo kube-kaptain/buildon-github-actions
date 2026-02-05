@@ -303,6 +303,48 @@ check_bash_portability() {
   log_info "All scripts are Bash 3.2 compatible"
 }
 
+# Check example files reference the expected next version tag
+check_example_versions() {
+  log_info "Checking example version references"
+
+  # Find highest existing tag (this repo uses simple x.y.z tags)
+  local highest
+  highest=$(git -C "${PROJECT_ROOT}" tag --list '[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname | head -1)
+
+  if [[ -z "${highest}" ]]; then
+    log_warn "No version tags found, skipping example version check"
+    return 0
+  fi
+
+  # Parse and increment patch
+  local major minor patch
+  IFS='.' read -r major minor patch <<< "${highest}"
+  local expected="${major}.${minor}.$((patch + 1))"
+
+  log_info "Highest tag: ${highest}, expected in examples: @${expected}"
+
+  # Find all version references in examples that don't match
+  local mismatched=()
+  for file in "${PROJECT_ROOT}"/examples/*.yaml; do
+    [[ -f "${file}" ]] || continue
+    local bad_lines
+    bad_lines=$(grep -n '@[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*' "${file}" | grep -v "@${expected}" || true)
+    if [[ -n "${bad_lines}" ]]; then
+      mismatched+=("${file#${PROJECT_ROOT}/}")
+      echo "${bad_lines}" | while IFS= read -r line; do
+        log_error "  ${file#${PROJECT_ROOT}/}:${line}"
+      done
+    fi
+  done
+
+  if [[ ${#mismatched[@]} -gt 0 ]]; then
+    log_error "${#mismatched[@]} example file(s) have wrong version (expected @${expected})"
+    exit 1
+  fi
+
+  log_info "All examples reference @${expected}"
+}
+
 main() {
   log_info "Starting test suite"
   log_info "Project root: ${PROJECT_ROOT}"
@@ -334,8 +376,11 @@ main() {
     exit 1
   fi
 
-  # Check generated files are up to date (last, so real tests run first)
+  # Check generated files are up to date (last-ish, so real tests run first)
   check_generated_files
+
+  # Check examples reference the next version (last - useful to get a full run before this fails)
+  check_example_versions
 
   log_info "All tests passed!"
 }
