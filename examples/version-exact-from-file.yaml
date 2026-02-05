@@ -1,0 +1,59 @@
+# SPDX-License-Identifier: CC0-1.0
+# This example is released to the public domain. Use freely without attribution.
+#
+# Exact Version From File
+#
+# Use the version found in a source file as-is, without incrementing.
+# No prefix extraction, no series lookup, no patch bump - the version
+# in your file IS the version that gets tagged.
+#
+# Useful when your repo tracks an upstream version exactly and the value
+# added is in packaging, not version changes (e.g., building an index
+# of upstream binaries with checksums).
+#
+# The build will fail if the tag already exists - update the version in
+# your source file to get a new build.
+#
+# Example: AWS_CLI_VERSION="2.15.30" in a VERSION file
+#   - Build tags: 2.15.30
+#   - Same file, rebuild: FAILS (tag exists)
+#   - Update to 2.16.0: tags 2.16.0
+#
+# Copy this to .github/workflows/build.yaml in your repo.
+
+name: Build with Exact Source Version
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    uses: kube-kaptain/buildon-github-actions/.github/workflows/basic-quality-and-versioning.yaml@1.0.57
+    permissions:
+      contents: write
+      checks: write
+    with:
+      tag-version-calculation-strategy: 'file-pattern-match'
+      tag-version-pattern-type: 'custom'
+      tag-version-source-sub-path: '.'
+      tag-version-source-file-name: 'VERSION'
+      tag-version-source-custom-pattern: '^AWS_CLI_VERSION=\"([0-9]+\.[0-9]+\.[0-9]+)\"$'
+      tag-version-use-source-version-exact: true
+
+# Example VERSION file:
+#   AWS_CLI_VERSION="2.15.30"
+#
+# The pattern captures '2.15.30' and uses it directly as the tag.
+# tag-version-prefix-parts is ignored in exact mode.
+
+# ┌─────────────────────────────────────────────────────────────────────────┐
+# │ Exact Mode Notes                                                        │
+# └─────────────────────────────────────────────────────────────────────────┘
+# - Works with file-pattern-match and compound-file-pattern-match only
+# - tag-version-prefix-parts and tag-version-source-two-prefix-parts are ignored
+# - tag-version-max-parts still applies (version must not exceed it)
+# - Fails if the resulting tag already exists in the repo
+# - For compound: combines full versions from both sources (ONE.TWO)

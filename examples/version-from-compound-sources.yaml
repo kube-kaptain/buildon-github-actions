@@ -29,7 +29,7 @@ on:
 
 jobs:
   build:
-    uses: kube-kaptain/buildon-github-actions/.github/workflows/docker-build-dockerfile.yaml@1.0.53
+    uses: kube-kaptain/buildon-github-actions/.github/workflows/docker-build-dockerfile.yaml@1.0.57
     permissions:
       contents: write
       packages: write
@@ -73,5 +73,8 @@ jobs:
 #   tag-version-source-two-file-name: 'file'        # File name (defaults to ONE's file)
 #   tag-version-source-two-pattern: '^...$'         # Regex (required if same file as ONE)
 #   tag-version-source-two-prefix-parts: '2'        # Parts to take from TWO (default: 2)
+#
+# Exact mode (no incrementing):
+#   tag-version-use-source-version-exact: true       # Use combined ONE.TWO as-is, no incrementing
 #
 # When TWO uses the same file as ONE, TWO's pattern MUST differ to extract a different value.

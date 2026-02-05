@@ -858,7 +858,11 @@ inputs:
     required: false
     default: ''
   github-release-notes:
-    description: 'Release notes (leave empty for auto-generated)'
+    description: 'Inline release notes string (mutually exclusive with github-release-notes-file)'
+    required: false
+    default: ''
+  github-release-notes-file:
+    description: 'Path to release notes file relative to output-sub-path (mutually exclusive with github-release-notes)'
     required: false
     default: ''
   github-release-add-version-to-filenames:
@@ -1147,6 +1151,7 @@ runs:
         GITHUB_RELEASE_SUBSTITUTED_FILES: ${{ inputs.github-release-substituted-files }}
         GITHUB_RELEASE_VERBATIM_FILES: ${{ inputs.github-release-verbatim-files }}
         GITHUB_RELEASE_NOTES: ${{ inputs.github-release-notes }}
+        GITHUB_RELEASE_NOTES_FILE: ${{ inputs.github-release-notes-file }}
         GITHUB_RELEASE_ADD_VERSION_TO_FILENAMES: ${{ inputs.github-release-add-version-to-filenames }}
 
         # Step outputs - version outputs

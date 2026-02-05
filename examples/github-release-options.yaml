@@ -25,7 +25,7 @@ on:
 
 jobs:
   build:
-    uses: kube-kaptain/buildon-github-actions/.github/workflows/docker-build-dockerfile.yaml@1.0.53
+    uses: kube-kaptain/buildon-github-actions/.github/workflows/docker-build-dockerfile.yaml@1.0.57
     permissions:
       contents: write
       packages: write
@@ -41,6 +41,7 @@ jobs:
 #   "Automatic {type} release for version {version} of {project} by Kaptain build script."
 #   followed by relevant URIs (Docker Image, Manifests Image, etc.)
 #
+# Option 1: Inline string (short notes)
 #   with:
 #     github-release-notes: |
 #       ## What's New
@@ -49,6 +50,13 @@ jobs:
 #
 #       ## Breaking Changes
 #       - Changed Z
+#
+# Option 2: Notes from a file (longer or generated notes)
+#   with:
+#     github-release-notes-file: 'RELEASE_NOTES.md'  # Relative to output-sub-path
+#
+# These two options are mutually exclusive - set one or the other, not both.
+# If neither is set, GitHub auto-generates notes from commit history.
 
 # ┌───────────────────────────────────────────────────────────────────────────┐
 # │ Additional Release Files                                                  │
@@ -72,12 +80,11 @@ jobs:
 #
 # jobs:
 #   build:
-#     uses: kube-kaptain/buildon-github-actions/.github/workflows/kubernetes-app-docker-dockerfile.yaml@1.0.53
+#     uses: kube-kaptain/buildon-github-actions/.github/workflows/kubernetes-app-docker-dockerfile.yaml@1.0.57
 #     permissions:
 #       contents: write
 #       packages: write
 #       checks: write
 #     with:
-#       github-release-notes: |
-#         Production-ready release with updated dependencies.
+#       github-release-notes-file: 'RELEASE_NOTES.md'
 #       github-release-substituted-files: 'docs/MIGRATION.md'
