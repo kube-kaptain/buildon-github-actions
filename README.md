@@ -52,6 +52,7 @@ See [`examples/`](examples/) for more usage patterns.
 | [`optional-test-scripts.yaml`](examples/optional-test-scripts.yaml) | Shows how to add custom test scripts to workflows that support them |
 | [`quality-only.yaml`](examples/quality-only.yaml) | Enforce quality standards on PRs without automatic tagging |
 | [`spec-check-filter-release.yaml`](examples/spec-check-filter-release.yaml) | Build and release JSON Schema or API spec files |
+| [`version-exact-from-file.yaml`](examples/version-exact-from-file.yaml) | Use the version found in a source file as-is, without incrementing |
 | [`version-from-compound-sources.yaml`](examples/version-from-compound-sources.yaml) | Combine versions from TWO source files to create a compound version |
 | [`version-from-custom-pattern.yaml`](examples/version-from-custom-pattern.yaml) | Extract version from any file using a custom regex pattern |
 | [`version-from-dockerfile.yaml`](examples/version-from-dockerfile.yaml) | Extract version from an ENV variable in your Dockerfile rather than using git tags |

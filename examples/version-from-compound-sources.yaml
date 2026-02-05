@@ -74,4 +74,7 @@ jobs:
 #   tag-version-source-two-pattern: '^...$'         # Regex (required if same file as ONE)
 #   tag-version-source-two-prefix-parts: '2'        # Parts to take from TWO (default: 2)
 #
+# Exact mode (no incrementing):
+#   tag-version-use-source-version-exact: true       # Use combined ONE.TWO as-is, no incrementing
+#
 # When TWO uses the same file as ONE, TWO's pattern MUST differ to extract a different value.

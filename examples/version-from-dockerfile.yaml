@@ -55,3 +55,4 @@ jobs:
 #       tag-version-source-sub-path: 'src/docker'               # Override path to source directory
 #       tag-version-source-file-name: 'Dockerfile'              # Override source file name
 #       tag-version-source-custom-pattern: '^VERSION=(.+)$'     # Regex with capture group (for custom type)
+#       tag-version-use-source-version-exact: true              # Use extracted version as-is, no incrementing
