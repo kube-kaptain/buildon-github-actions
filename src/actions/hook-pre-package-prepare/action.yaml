@@ -862,7 +862,7 @@ inputs:
     required: false
     default: ''
   github-release-notes-file:
-    description: 'Path to release notes file relative to output-sub-path (mutually exclusive with github-release-notes)'
+    description: 'Path to release notes file (mutually exclusive with github-release-notes)'
     required: false
     default: ''
   github-release-add-version-to-filenames:
