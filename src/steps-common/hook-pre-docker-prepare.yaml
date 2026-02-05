@@ -131,6 +131,7 @@
     github-release-substituted-files: ${{ inputs.github-release-substituted-files }}
     github-release-verbatim-files: ${{ inputs.github-release-verbatim-files }}
     github-release-notes: ${{ inputs.github-release-notes }}
+    github-release-notes-file: ${{ inputs.github-release-notes-file }}
     github-release-add-version-to-filenames: ${{ inputs.github-release-add-version-to-filenames }}
 
     # === Step Outputs ===

@@ -1489,6 +1489,7 @@ jobs:
           github-release-substituted-files: ${{ inputs.github-release-substituted-files }}
           github-release-verbatim-files: ${{ inputs.github-release-verbatim-files }}
           github-release-notes: ${{ inputs.github-release-notes }}
+          github-release-notes-file: ${{ inputs.github-release-notes-file }}
           github-release-add-version-to-filenames: ${{ inputs.github-release-add-version-to-filenames }}
       - name: Pass check - Pre-tagging Tests
         if: inputs.hook-pre-tagging-tests-script-sub-path != '' && success()
@@ -2084,6 +2085,7 @@ jobs:
           github-release-substituted-files: ${{ inputs.github-release-substituted-files }}
           github-release-verbatim-files: ${{ inputs.github-release-verbatim-files }}
           github-release-notes: ${{ inputs.github-release-notes }}
+          github-release-notes-file: ${{ inputs.github-release-notes-file }}
           github-release-add-version-to-filenames: ${{ inputs.github-release-add-version-to-filenames }}
 
           # === Step Outputs ===
@@ -2369,6 +2371,7 @@ jobs:
           github-release-substituted-files: ${{ inputs.github-release-substituted-files }}
           github-release-verbatim-files: ${{ inputs.github-release-verbatim-files }}
           github-release-notes: ${{ inputs.github-release-notes }}
+          github-release-notes-file: ${{ inputs.github-release-notes-file }}
           github-release-add-version-to-filenames: ${{ inputs.github-release-add-version-to-filenames }}
 
           # === Step Outputs ===
@@ -2626,6 +2629,7 @@ jobs:
         shell: bash
         env:
           USER_NOTES: ${{ inputs.github-release-notes }}
+          USER_NOTES_FILE: ${{ inputs.github-release-notes-file }}
           VERSION: ${{ steps.versions.outputs.version }}
           PROJECT_NAME: ${{ steps.versions.outputs.project-name }}
           DOCKER_URI: ${{ steps.docker-build.outputs.docker-target-image-full-uri }}
@@ -2637,7 +2641,10 @@ jobs:
           display_name=$(./.github/buildon-github-actions/src/scripts/util/format-project-title "${PROJECT_NAME}")
           echo "title=${VERSION} — ${display_name}" >> "${GITHUB_OUTPUT}"
 
-          if [[ -n "${USER_NOTES}" ]]; then
+          if [[ -n "${USER_NOTES_FILE}" ]]; then
+            # Notes come from file, skip inline notes computation
+            echo "notes=" >> "${GITHUB_OUTPUT}"
+          elif [[ -n "${USER_NOTES}" ]]; then
             # User provided notes override entirely
             {
               echo "notes<<NOTES_EOF"
@@ -2667,6 +2674,7 @@ jobs:
           output-sub-path: ${{ inputs.output-sub-path }}
           github-release-tag: ${{ steps.versions.outputs.version }}
           github-release-notes: ${{ steps.release-notes.outputs.notes }}
+          github-release-notes-file: ${{ inputs.github-release-notes-file }}
           github-release-title: ${{ steps.release-notes.outputs.title }}
       - name: Pass check - GitHub Release
         if: inputs.github-release-enabled == true && steps.versions.outputs.is-release == 'true' && success()
