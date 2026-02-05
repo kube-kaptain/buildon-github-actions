@@ -19,3 +19,4 @@
     tag-version-source-two-file-name: ${{ inputs.tag-version-source-two-file-name }}
     tag-version-source-two-pattern: ${{ inputs.tag-version-source-two-pattern }}
     tag-version-source-two-prefix-parts: ${{ inputs.tag-version-source-two-prefix-parts }}
+    tag-version-use-source-version-exact: ${{ inputs.tag-version-use-source-version-exact }}
