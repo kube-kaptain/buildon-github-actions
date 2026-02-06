@@ -158,13 +158,13 @@ generate_check_end() {
   safe_full_name=$(escape_sed_replacement "$full_check_name")
   safe_id=$(escape_sed_replacement "$check_id")
 
-  # Guard: fail condition also checks that start step ran (prevents cascade failures)
+  # Guard: pass/fail conditions check that start step ran (prevents cascade failures from API issues)
   local check_ran_guard="steps.${check_id}.outputs.check-run-id != ''"
   if [[ -n "$condition" ]]; then
-    safe_pass="$(escape_sed_replacement "$condition") \&\& success()"
+    safe_pass="$(escape_sed_replacement "$condition") \&\& success() \&\& ${check_ran_guard}"
     safe_fail="$(escape_sed_replacement "$condition") \&\& failure() \&\& ${check_ran_guard}"
   else
-    safe_pass="success()"
+    safe_pass="success() \&\& ${check_ran_guard}"
     safe_fail="failure() \&\& ${check_ran_guard}"
   fi
 
@@ -851,6 +851,12 @@ main() {
   section_start=$SECONDS
   generate_docs
   echo "Docs generated in $((SECONDS - section_start)) seconds."
+  echo
+
+  # Update example version references
+  section_start=$SECONDS
+  "${SCRIPT_DIR}/updateExampleVersions.bash"
+  echo "Examples updated in $((SECONDS - section_start)) seconds."
 
   echo
   echo "Done in $((SECONDS - start_time)) seconds."

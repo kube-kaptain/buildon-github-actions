@@ -39,5 +39,3 @@ for file in "${EXAMPLES_DIR}"/*.yaml; do
 done
 
 echo "Updated ${updated} example file(s)"
-
-"${SCRIPT_DIR}/assemble-workflows.bash"

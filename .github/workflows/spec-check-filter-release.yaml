@@ -410,6 +410,7 @@ jobs:
       # === Validate Tooling ===
       - name: Start check - Validate Tooling
         id: check-validate-tooling
+        continue-on-error: true
         uses: ./.github/buildon-github-actions/src/actions/github-check-run
         with:
           action: start
@@ -418,7 +419,8 @@ jobs:
         id: validate-tooling
         uses: ./.github/buildon-github-actions/src/actions/validate-tooling
       - name: Pass check - Validate Tooling
-        if: success()
+        if: success() && steps.check-validate-tooling.outputs.check-run-id != ''
+        continue-on-error: true
         uses: ./.github/buildon-github-actions/src/actions/github-check-run
         with:
           action: pass
@@ -434,6 +436,7 @@ jobs:
       - name: Start check - Basic Quality Checks
         if: github.event_name == 'pull_request' && success()
         id: check-basic-quality
+        continue-on-error: true
         uses: ./.github/buildon-github-actions/src/actions/github-check-run
         with:
           action: start
@@ -452,7 +455,8 @@ jobs:
           qc-require-conventional-commits: ${{ inputs.qc-require-conventional-commits }}
           qc-block-conventional-commits: ${{ inputs.qc-block-conventional-commits }}
       - name: Pass check - Basic Quality Checks
-        if: github.event_name == 'pull_request' && success()
+        if: github.event_name == 'pull_request' && success() && steps.check-basic-quality.outputs.check-run-id != ''
+        continue-on-error: true
         uses: ./.github/buildon-github-actions/src/actions/github-check-run
         with:
           action: pass
@@ -478,6 +482,7 @@ jobs:
       # === Docker Registry Logins ===
       - name: Start check - Docker Registry Logins
         id: check-docker-registry-logins
+        continue-on-error: true
         uses: ./.github/buildon-github-actions/src/actions/github-check-run
         with:
           action: start
@@ -491,7 +496,8 @@ jobs:
           secrets-json: ${{ secrets.docker-registry-logins-secrets }}
           docker-target-registry: ${{ steps.resolve-registry.outputs.docker-target-registry }}
       - name: Pass check - Docker Registry Logins
-        if: success()
+        if: success() && steps.check-docker-registry-logins.outputs.check-run-id != ''
+        continue-on-error: true
         uses: ./.github/buildon-github-actions/src/actions/github-check-run
         with:
           action: pass
@@ -507,6 +513,7 @@ jobs:
       - name: Start check - Pre-tagging Tests
         if: inputs.hook-pre-tagging-tests-script-sub-path != '' && success()
         id: check-pre-tagging
+        continue-on-error: true
         uses: ./.github/buildon-github-actions/src/actions/github-check-run
         with:
           action: start
@@ -644,7 +651,8 @@ jobs:
           github-release-notes-file: ${{ inputs.github-release-notes-file }}
           github-release-add-version-to-filenames: ${{ inputs.github-release-add-version-to-filenames }}
       - name: Pass check - Pre-tagging Tests
-        if: inputs.hook-pre-tagging-tests-script-sub-path != '' && success()
+        if: inputs.hook-pre-tagging-tests-script-sub-path != '' && success() && steps.check-pre-tagging.outputs.check-run-id != ''
+        continue-on-error: true
         uses: ./.github/buildon-github-actions/src/actions/github-check-run
         with:
           action: pass
@@ -659,6 +667,7 @@ jobs:
       # === Versions & Naming ===
       - name: Start check - Versions & Naming
         id: check-versions
+        continue-on-error: true
         uses: ./.github/buildon-github-actions/src/actions/github-check-run
         with:
           action: start
@@ -683,7 +692,8 @@ jobs:
           tag-version-source-two-prefix-parts: ${{ inputs.tag-version-source-two-prefix-parts }}
           tag-version-use-source-version-exact: ${{ inputs.tag-version-use-source-version-exact }}
       - name: Pass check - Versions & Naming
-        if: success()
+        if: success() && steps.check-versions.outputs.check-run-id != ''
+        continue-on-error: true
         uses: ./.github/buildon-github-actions/src/actions/github-check-run
         with:
           action: pass
@@ -698,6 +708,7 @@ jobs:
       # === Spec Package Prepare ===
       - name: Start check - Spec Package Prepare
         id: check-spec-prepare
+        continue-on-error: true
         uses: ./.github/buildon-github-actions/src/actions/github-check-run
         with:
           action: start
@@ -712,7 +723,8 @@ jobs:
           SPEC_PACKAGING_BASE_IMAGE: ${{ inputs.spec-packaging-base-image }}
         run: ./.github/buildon-github-actions/src/scripts/main/spec-package-prepare
       - name: Pass check - Spec Package Prepare
-        if: success()
+        if: success() && steps.check-spec-prepare.outputs.check-run-id != ''
+        continue-on-error: true
         uses: ./.github/buildon-github-actions/src/actions/github-check-run
         with:
           action: pass
@@ -727,6 +739,7 @@ jobs:
       # === Docker Build ===
       - name: Start check - Docker Build
         id: check-docker-build
+        continue-on-error: true
         uses: ./.github/buildon-github-actions/src/actions/github-check-run
         with:
           action: start
@@ -754,7 +767,8 @@ jobs:
           allow-builtin-token-override: ${{ inputs.allow-builtin-token-override }}
           config-value-trailing-newline: ${{ inputs.config-value-trailing-newline }}
       - name: Pass check - Docker Build
-        if: success()
+        if: success() && steps.check-docker-build.outputs.check-run-id != ''
+        continue-on-error: true
         uses: ./.github/buildon-github-actions/src/actions/github-check-run
         with:
           action: pass
@@ -770,6 +784,7 @@ jobs:
       - name: Start check - Docker Multi-Tag
         if: inputs.docker-push-targets != '' && steps.versions.outputs.is-release == 'true' && success()
         id: check-docker-multi-tag
+        continue-on-error: true
         uses: ./.github/buildon-github-actions/src/actions/github-check-run
         with:
           action: start
@@ -784,7 +799,8 @@ jobs:
           docker-tag: ${{ steps.versions.outputs.docker-tag }}
           docker-push-targets: ${{ inputs.docker-push-targets }}
       - name: Pass check - Docker Multi-Tag
-        if: inputs.docker-push-targets != '' && steps.versions.outputs.is-release == 'true' && success()
+        if: inputs.docker-push-targets != '' && steps.versions.outputs.is-release == 'true' && success() && steps.check-docker-multi-tag.outputs.check-run-id != ''
+        continue-on-error: true
         uses: ./.github/buildon-github-actions/src/actions/github-check-run
         with:
           action: pass
@@ -799,6 +815,7 @@ jobs:
       # === Spec Validate ===
       - name: Start check - Spec Validate
         id: check-spec-validate
+        continue-on-error: true
         uses: ./.github/buildon-github-actions/src/actions/github-check-run
         with:
           action: start
@@ -813,7 +830,8 @@ jobs:
           SPEC_JSON: ${{ steps.spec-package-prepare.outputs.SPEC_JSON }}
         run: ./.github/buildon-github-actions/src/scripts/main/spec-validate
       - name: Pass check - Spec Validate
-        if: success()
+        if: success() && steps.check-spec-validate.outputs.check-run-id != ''
+        continue-on-error: true
         uses: ./.github/buildon-github-actions/src/actions/github-check-run
         with:
           action: pass
@@ -829,6 +847,7 @@ jobs:
       - name: Start check - Spec GitHub Release Prepare
         if: inputs.github-release-enabled == true && success()
         id: check-spec-github-release-prepare
+        continue-on-error: true
         uses: ./.github/buildon-github-actions/src/actions/github-check-run
         with:
           action: start
@@ -876,7 +895,8 @@ jobs:
           echo "spec-yaml-versioned=${SPEC_YAML_VERSIONED}" >> "${GITHUB_OUTPUT}"
           echo "spec-json-versioned=${SPEC_JSON_VERSIONED}" >> "${GITHUB_OUTPUT}"
       - name: Pass check - Spec GitHub Release Prepare
-        if: inputs.github-release-enabled == true && success()
+        if: inputs.github-release-enabled == true && success() && steps.check-spec-github-release-prepare.outputs.check-run-id != ''
+        continue-on-error: true
         uses: ./.github/buildon-github-actions/src/actions/github-check-run
         with:
           action: pass
@@ -892,6 +912,7 @@ jobs:
       - name: Start check - GitHub Release Prepare
         if: inputs.github-release-enabled == true && success()
         id: check-github-release-prepare
+        continue-on-error: true
         uses: ./.github/buildon-github-actions/src/actions/github-check-run
         with:
           action: start
@@ -920,7 +941,8 @@ jobs:
           docker-target-registry: ${{ steps.resolve-registry.outputs.docker-target-registry }}
           docker-target-base-path: ${{ steps.resolve-registry.outputs.docker-target-base-path }}
       - name: Pass check - GitHub Release Prepare
-        if: inputs.github-release-enabled == true && success()
+        if: inputs.github-release-enabled == true && success() && steps.check-github-release-prepare.outputs.check-run-id != ''
+        continue-on-error: true
         uses: ./.github/buildon-github-actions/src/actions/github-check-run
         with:
           action: pass
@@ -936,6 +958,7 @@ jobs:
       - name: Start check - Git Tag Push
         if: steps.versions.outputs.is-release == 'true' && success()
         id: check-git-push-tag
+        continue-on-error: true
         uses: ./.github/buildon-github-actions/src/actions/github-check-run
         with:
           action: start
@@ -947,7 +970,8 @@ jobs:
           git-tag: ${{ steps.versions.outputs.git-tag }}
           is-release: ${{ steps.versions.outputs.is-release }}
       - name: Pass check - Git Tag Push
-        if: steps.versions.outputs.is-release == 'true' && success()
+        if: steps.versions.outputs.is-release == 'true' && success() && steps.check-git-push-tag.outputs.check-run-id != ''
+        continue-on-error: true
         uses: ./.github/buildon-github-actions/src/actions/github-check-run
         with:
           action: pass
@@ -963,6 +987,7 @@ jobs:
       - name: Start check - Docker Push
         if: steps.versions.outputs.is-release == 'true' && success()
         id: check-docker-push
+        continue-on-error: true
         uses: ./.github/buildon-github-actions/src/actions/github-check-run
         with:
           action: start
@@ -975,7 +1000,8 @@ jobs:
           docker-image-full-uri: ${{ steps.docker-build.outputs.docker-target-image-full-uri }}
           is-release: ${{ steps.versions.outputs.is-release }}
       - name: Pass check - Docker Push
-        if: steps.versions.outputs.is-release == 'true' && success()
+        if: steps.versions.outputs.is-release == 'true' && success() && steps.check-docker-push.outputs.check-run-id != ''
+        continue-on-error: true
         uses: ./.github/buildon-github-actions/src/actions/github-check-run
         with:
           action: pass
@@ -991,6 +1017,7 @@ jobs:
       - name: Start check - Docker Multi-Push
         if: inputs.docker-push-targets != '' && steps.versions.outputs.is-release == 'true' && success()
         id: check-docker-multi-push
+        continue-on-error: true
         uses: ./.github/buildon-github-actions/src/actions/github-check-run
         with:
           action: start
@@ -1005,7 +1032,8 @@ jobs:
           docker-push-targets: ${{ inputs.docker-push-targets }}
           is-release: ${{ steps.versions.outputs.is-release }}
       - name: Pass check - Docker Multi-Push
-        if: inputs.docker-push-targets != '' && steps.versions.outputs.is-release == 'true' && success()
+        if: inputs.docker-push-targets != '' && steps.versions.outputs.is-release == 'true' && success() && steps.check-docker-multi-push.outputs.check-run-id != ''
+        continue-on-error: true
         uses: ./.github/buildon-github-actions/src/actions/github-check-run
         with:
           action: pass
@@ -1021,6 +1049,7 @@ jobs:
       - name: Start check - GitHub Release
         if: inputs.github-release-enabled == true && steps.versions.outputs.is-release == 'true' && success()
         id: check-github-release
+        continue-on-error: true
         uses: ./.github/buildon-github-actions/src/actions/github-check-run
         with:
           action: start
@@ -1084,7 +1113,8 @@ jobs:
           github-release-notes-file: ${{ inputs.github-release-notes-file }}
           github-release-title: ${{ steps.release-notes.outputs.title }}
       - name: Pass check - GitHub Release
-        if: inputs.github-release-enabled == true && steps.versions.outputs.is-release == 'true' && success()
+        if: inputs.github-release-enabled == true && steps.versions.outputs.is-release == 'true' && success() && steps.check-github-release.outputs.check-run-id != ''
+        continue-on-error: true
         uses: ./.github/buildon-github-actions/src/actions/github-check-run
         with:
           action: pass

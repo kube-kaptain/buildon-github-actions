@@ -4,6 +4,7 @@
 - name: Start check - ${CHECK_NAME}
 ${CHECK_IF_LINE}
   id: ${CHECK_ID}
+  continue-on-error: true
   uses: ./.github/buildon-github-actions/src/actions/github-check-run
   with:
     action: start

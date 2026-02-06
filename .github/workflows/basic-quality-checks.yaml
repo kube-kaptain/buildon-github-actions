@@ -125,6 +125,7 @@ jobs:
       # === Validate Tooling ===
       - name: Start check - Validate Tooling
         id: check-validate-tooling
+        continue-on-error: true
         uses: ./.github/buildon-github-actions/src/actions/github-check-run
         with:
           action: start
@@ -133,7 +134,8 @@ jobs:
         id: validate-tooling
         uses: ./.github/buildon-github-actions/src/actions/validate-tooling
       - name: Pass check - Validate Tooling
-        if: success()
+        if: success() && steps.check-validate-tooling.outputs.check-run-id != ''
+        continue-on-error: true
         uses: ./.github/buildon-github-actions/src/actions/github-check-run
         with:
           action: pass
