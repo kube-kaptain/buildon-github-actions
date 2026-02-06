@@ -3,6 +3,7 @@
 
 - name: Pass check - ${CHECK_NAME}
   if: ${CHECK_PASS_CONDITION}
+  continue-on-error: true
   uses: ./.github/buildon-github-actions/src/actions/github-check-run
   with:
     action: pass
