@@ -851,6 +851,12 @@ main() {
   section_start=$SECONDS
   generate_docs
   echo "Docs generated in $((SECONDS - section_start)) seconds."
+  echo
+
+  # Update example version references
+  section_start=$SECONDS
+  "${SCRIPT_DIR}/updateExampleVersions.bash"
+  echo "Examples updated in $((SECONDS - section_start)) seconds."
 
   echo
   echo "Done in $((SECONDS - start_time)) seconds."
