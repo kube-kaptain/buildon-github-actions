@@ -76,7 +76,7 @@ read_manifest_with_suffix() {
   assert_contains "$manifest" "labels:"
   assert_contains "$manifest" 'app: ${ProjectName}'
   assert_contains "$manifest" 'app.kubernetes.io/name: ${ProjectName}'
-  assert_contains "$manifest" 'app.kubernetes.io/version: ${Version}'
+  assert_contains "$manifest" 'app.kubernetes.io/version: "${Version}"'
   assert_contains "$manifest" "app.kubernetes.io/managed-by: Kaptain"
 }
 
@@ -87,7 +87,7 @@ read_manifest_with_suffix() {
   manifest=$(read_manifest)
   assert_contains "$manifest" "annotations:"
   assert_contains "$manifest" 'kaptain/project-name: ${ProjectName}'
-  assert_contains "$manifest" 'kaptain/version: ${Version}'
+  assert_contains "$manifest" 'kaptain/version: "${Version}"'
   assert_contains "$manifest" "kaptain/build-timestamp:"
   assert_contains "$manifest" "kubectl.kubernetes.io/default-container: default-app"
 }
