@@ -1,0 +1,301 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
+#
+# Load KaptainPM.yaml and export values as environment variables.
+# Run from repo root. Outputs export commands to be eval'd by caller.
+#
+# Usage: eval "$(load-kaptain-pm-yaml)"
+set -euo pipefail
+
+PM_FILE="KaptainPM.yaml"
+
+if [[ ! -f "${PM_FILE}" ]]; then
+  echo "ERROR: Project manifest not found: ${PM_FILE}" >&2
+  echo "ERROR: Must be run from repo root containing KaptainPM.yaml" >&2
+  exit 1
+fi
+
+if ! command -v yq &> /dev/null; then
+  echo "ERROR: yq is required but not installed" >&2
+  exit 1
+fi
+
+# Validate YAML syntax before reading
+if ! yq eval '.' "${PM_FILE}" > /dev/null 2>&1; then
+  echo "ERROR: Invalid YAML syntax in ${PM_FILE}" >&2
+  yq eval '.' "${PM_FILE}" 2>&1 | head -5 >&2
+  exit 1
+fi
+
+# Mapping from YAML path to env var name
+# Format: "yaml.path:ENV_VAR_NAME"
+MAPPINGS=(
+  # Global
+  "spec.global.outputSubPath:OUTPUT_SUB_PATH"
+  "spec.global.tokens.delimiterStyle:TOKEN_DELIMITER_STYLE"
+  "spec.global.tokens.nameStyle:TOKEN_NAME_STYLE"
+  "spec.global.tokens.nameValidation:TOKEN_NAME_VALIDATION"
+  "spec.global.tokens.allowBuiltinOverride:ALLOW_BUILTIN_TOKEN_OVERRIDE"
+  "spec.global.tokens.configSubPath:CONFIG_SUB_PATH"
+  "spec.global.tokens.valueTrailingNewline:CONFIG_VALUE_TRAILING_NEWLINE"
+  "spec.global.release.branch:RELEASE_BRANCH"
+  "spec.global.release.additionalBranches:ADDITIONAL_RELEASE_BRANCHES"
+  "spec.global.release.versioning.maxParts:TAG_VERSION_MAX_PARTS"
+  "spec.global.release.versioning.strategy:TAG_VERSION_CALCULATION_STRATEGY"
+  "spec.global.release.versioning.patternType:TAG_VERSION_PATTERN_TYPE"
+  "spec.global.release.versioning.prefixParts:TAG_VERSION_PREFIX_PARTS"
+  "spec.global.release.versioning.source.subPath:TAG_VERSION_SOURCE_SUB_PATH"
+  "spec.global.release.versioning.source.fileName:TAG_VERSION_SOURCE_FILE_NAME"
+  "spec.global.release.versioning.source.customPattern:TAG_VERSION_SOURCE_CUSTOM_PATTERN"
+
+  # Quality checks
+  "spec.main.quality.branches.blockSlashes:QC_BLOCK_SLASH_CONTAINING_BRANCHES"
+  "spec.main.quality.branches.blockDoubleHyphens:QC_BLOCK_DOUBLE_HYPHEN_CONTAINING_BRANCHES"
+  "spec.main.quality.branches.requireConventional:QC_REQUIRE_CONVENTIONAL_BRANCHES"
+  "spec.main.quality.commits.requireConventional:QC_REQUIRE_CONVENTIONAL_COMMITS"
+  "spec.main.quality.commits.blockConventional:QC_BLOCK_CONVENTIONAL_COMMITS"
+  "spec.main.quality.commits.blockDuplicateMessages:QC_BLOCK_DUPLICATE_COMMIT_MESSAGES"
+
+  # Docker
+  "spec.main.docker.registry.targetRegistry:DOCKER_TARGET_REGISTRY"
+  "spec.main.docker.registry.targetBasePath:DOCKER_TARGET_BASE_PATH"
+  "spec.main.docker.dockerfile.substitutionFiles:DOCKERFILE_SUBSTITUTION_FILES"
+  "spec.main.docker.dockerfile.subPath:DOCKERFILE_SUB_PATH"
+  "spec.main.docker.dockerfile.squash:DOCKERFILE_SQUASH"
+  "spec.main.docker.dockerfile.squashAllowUnavailable:DOCKERFILE_SQUASH_ALLOW_UNAVAILABLE"
+  "spec.main.docker.dockerfile.noCache:DOCKERFILE_NO_CACHE"
+  "spec.main.docker.retag.sourceRegistry:DOCKER_SOURCE_REGISTRY"
+  "spec.main.docker.retag.sourceBasePath:DOCKER_SOURCE_BASE_PATH"
+  "spec.main.docker.retag.sourceImageName:DOCKER_SOURCE_IMAGE_NAME"
+  "spec.main.docker.retag.sourceTag:DOCKER_SOURCE_TAG"
+
+  # Generators - common
+  "spec.main.generators.common.additionalLabels:KUBERNETES_GLOBAL_ADDITIONAL_LABELS"
+  "spec.main.generators.common.additionalAnnotations:KUBERNETES_GLOBAL_ADDITIONAL_ANNOTATIONS"
+
+  # Generators - workload
+  "spec.main.generators.workload.type:KUBERNETES_WORKLOAD_TYPE"
+  "spec.main.generators.workload.replicas:KUBERNETES_WORKLOAD_REPLICAS"
+  "spec.main.generators.workload.revisionHistoryLimit:KUBERNETES_WORKLOAD_REVISION_HISTORY_LIMIT"
+  "spec.main.generators.workload.minReadySeconds:KUBERNETES_WORKLOAD_MIN_READY_SECONDS"
+  "spec.main.generators.workload.nameSuffix:KUBERNETES_WORKLOAD_NAME_SUFFIX"
+  "spec.main.generators.workload.combinedSubPath:KUBERNETES_WORKLOAD_COMBINED_SUB_PATH"
+  "spec.main.generators.workload.envSubPath:KUBERNETES_WORKLOAD_ENV_SUB_PATH"
+  "spec.main.generators.workload.additionalLabels:KUBERNETES_WORKLOAD_ADDITIONAL_LABELS"
+  "spec.main.generators.workload.additionalAnnotations:KUBERNETES_WORKLOAD_ADDITIONAL_ANNOTATIONS"
+  "spec.main.generators.workload.container.port:KUBERNETES_WORKLOAD_CONTAINER_PORT"
+  "spec.main.generators.workload.container.command:KUBERNETES_WORKLOAD_CONTAINER_COMMAND"
+  "spec.main.generators.workload.container.args:KUBERNETES_WORKLOAD_CONTAINER_ARGS"
+  "spec.main.generators.workload.container.imageReferenceStyle:KUBERNETES_WORKLOAD_IMAGE_REFERENCE_STYLE"
+  "spec.main.generators.workload.container.readonlyRootFilesystem:KUBERNETES_WORKLOAD_READONLY_ROOT_FILESYSTEM"
+  "spec.main.generators.workload.container.resources.memory:KUBERNETES_WORKLOAD_RESOURCES_MEMORY"
+  "spec.main.generators.workload.container.resources.cpuRequest:KUBERNETES_WORKLOAD_RESOURCES_CPU_REQUEST"
+  "spec.main.generators.workload.container.resources.cpuLimit:KUBERNETES_WORKLOAD_RESOURCES_CPU_LIMIT"
+  "spec.main.generators.workload.container.resources.ephemeralStorage:KUBERNETES_WORKLOAD_RESOURCES_EPHEMERAL_STORAGE"
+  "spec.main.generators.workload.container.mounts.configmap.path:KUBERNETES_WORKLOAD_CONFIGMAP_MOUNT_PATH"
+  "spec.main.generators.workload.container.mounts.configmap.keysForEnv:KUBERNETES_WORKLOAD_CONFIGMAP_KEYS_FOR_ENV"
+  "spec.main.generators.workload.container.mounts.secret.path:KUBERNETES_WORKLOAD_SECRET_MOUNT_PATH"
+  "spec.main.generators.workload.container.mounts.secret.keysForEnv:KUBERNETES_WORKLOAD_SECRET_KEYS_FOR_ENV"
+  "spec.main.generators.workload.security.seccompProfile:KUBERNETES_WORKLOAD_SECCOMP_PROFILE"
+  "spec.main.generators.workload.security.automountServiceAccountToken:KUBERNETES_WORKLOAD_AUTOMOUNT_SERVICE_ACCOUNT_TOKEN"
+  "spec.main.generators.workload.security.imagePullSecrets:KUBERNETES_WORKLOAD_IMAGE_PULL_SECRETS"
+  "spec.main.generators.workload.terminationGracePeriodSeconds:KUBERNETES_WORKLOAD_TERMINATION_GRACE_PERIOD_SECONDS"
+  "spec.main.generators.workload.prestopCommand:KUBERNETES_WORKLOAD_PRESTOP_COMMAND"
+  "spec.main.generators.workload.scheduling.affinityStrategy:KUBERNETES_WORKLOAD_AFFINITY_STRATEGY"
+  "spec.main.generators.workload.scheduling.dnsPolicy:KUBERNETES_WORKLOAD_DNS_POLICY"
+  "spec.main.generators.workload.scheduling.priorityClassName:KUBERNETES_WORKLOAD_PRIORITY_CLASS_NAME"
+
+  # Probes - liveness
+  "spec.main.generators.workload.probes.liveness.checkType:KUBERNETES_WORKLOAD_PROBE_LIVENESS_CHECK_TYPE"
+  "spec.main.generators.workload.probes.liveness.httpPath:KUBERNETES_WORKLOAD_PROBE_LIVENESS_HTTP_PATH"
+  "spec.main.generators.workload.probes.liveness.httpScheme:KUBERNETES_WORKLOAD_PROBE_LIVENESS_HTTP_SCHEME"
+  "spec.main.generators.workload.probes.liveness.tcpPort:KUBERNETES_WORKLOAD_PROBE_LIVENESS_TCP_PORT"
+  "spec.main.generators.workload.probes.liveness.execCommand:KUBERNETES_WORKLOAD_PROBE_LIVENESS_EXEC_COMMAND"
+  "spec.main.generators.workload.probes.liveness.grpcPort:KUBERNETES_WORKLOAD_PROBE_LIVENESS_GRPC_PORT"
+  "spec.main.generators.workload.probes.liveness.grpcService:KUBERNETES_WORKLOAD_PROBE_LIVENESS_GRPC_SERVICE"
+  "spec.main.generators.workload.probes.liveness.initialDelaySeconds:KUBERNETES_WORKLOAD_PROBE_LIVENESS_INITIAL_DELAY_SECONDS"
+  "spec.main.generators.workload.probes.liveness.periodSeconds:KUBERNETES_WORKLOAD_PROBE_LIVENESS_PERIOD_SECONDS"
+  "spec.main.generators.workload.probes.liveness.timeoutSeconds:KUBERNETES_WORKLOAD_PROBE_LIVENESS_TIMEOUT_SECONDS"
+  "spec.main.generators.workload.probes.liveness.failureThreshold:KUBERNETES_WORKLOAD_PROBE_LIVENESS_FAILURE_THRESHOLD"
+  "spec.main.generators.workload.probes.liveness.terminationGracePeriodSeconds:KUBERNETES_WORKLOAD_PROBE_LIVENESS_TERMINATION_GRACE_PERIOD_SECONDS"
+
+  # Probes - readiness
+  "spec.main.generators.workload.probes.readiness.checkType:KUBERNETES_WORKLOAD_PROBE_READINESS_CHECK_TYPE"
+  "spec.main.generators.workload.probes.readiness.httpPath:KUBERNETES_WORKLOAD_PROBE_READINESS_HTTP_PATH"
+  "spec.main.generators.workload.probes.readiness.httpScheme:KUBERNETES_WORKLOAD_PROBE_READINESS_HTTP_SCHEME"
+  "spec.main.generators.workload.probes.readiness.tcpPort:KUBERNETES_WORKLOAD_PROBE_READINESS_TCP_PORT"
+  "spec.main.generators.workload.probes.readiness.execCommand:KUBERNETES_WORKLOAD_PROBE_READINESS_EXEC_COMMAND"
+  "spec.main.generators.workload.probes.readiness.grpcPort:KUBERNETES_WORKLOAD_PROBE_READINESS_GRPC_PORT"
+  "spec.main.generators.workload.probes.readiness.grpcService:KUBERNETES_WORKLOAD_PROBE_READINESS_GRPC_SERVICE"
+  "spec.main.generators.workload.probes.readiness.initialDelaySeconds:KUBERNETES_WORKLOAD_PROBE_READINESS_INITIAL_DELAY_SECONDS"
+  "spec.main.generators.workload.probes.readiness.periodSeconds:KUBERNETES_WORKLOAD_PROBE_READINESS_PERIOD_SECONDS"
+  "spec.main.generators.workload.probes.readiness.timeoutSeconds:KUBERNETES_WORKLOAD_PROBE_READINESS_TIMEOUT_SECONDS"
+  "spec.main.generators.workload.probes.readiness.failureThreshold:KUBERNETES_WORKLOAD_PROBE_READINESS_FAILURE_THRESHOLD"
+  "spec.main.generators.workload.probes.readiness.successThreshold:KUBERNETES_WORKLOAD_PROBE_READINESS_SUCCESS_THRESHOLD"
+
+  # Probes - startup
+  "spec.main.generators.workload.probes.startup.checkType:KUBERNETES_WORKLOAD_PROBE_STARTUP_CHECK_TYPE"
+  "spec.main.generators.workload.probes.startup.httpPath:KUBERNETES_WORKLOAD_PROBE_STARTUP_HTTP_PATH"
+  "spec.main.generators.workload.probes.startup.httpScheme:KUBERNETES_WORKLOAD_PROBE_STARTUP_HTTP_SCHEME"
+  "spec.main.generators.workload.probes.startup.tcpPort:KUBERNETES_WORKLOAD_PROBE_STARTUP_TCP_PORT"
+  "spec.main.generators.workload.probes.startup.execCommand:KUBERNETES_WORKLOAD_PROBE_STARTUP_EXEC_COMMAND"
+  "spec.main.generators.workload.probes.startup.grpcPort:KUBERNETES_WORKLOAD_PROBE_STARTUP_GRPC_PORT"
+  "spec.main.generators.workload.probes.startup.grpcService:KUBERNETES_WORKLOAD_PROBE_STARTUP_GRPC_SERVICE"
+  "spec.main.generators.workload.probes.startup.initialDelaySeconds:KUBERNETES_WORKLOAD_PROBE_STARTUP_INITIAL_DELAY_SECONDS"
+  "spec.main.generators.workload.probes.startup.periodSeconds:KUBERNETES_WORKLOAD_PROBE_STARTUP_PERIOD_SECONDS"
+  "spec.main.generators.workload.probes.startup.timeoutSeconds:KUBERNETES_WORKLOAD_PROBE_STARTUP_TIMEOUT_SECONDS"
+  "spec.main.generators.workload.probes.startup.failureThreshold:KUBERNETES_WORKLOAD_PROBE_STARTUP_FAILURE_THRESHOLD"
+  "spec.main.generators.workload.probes.startup.terminationGracePeriodSeconds:KUBERNETES_WORKLOAD_PROBE_STARTUP_TERMINATION_GRACE_PERIOD_SECONDS"
+
+  # Generators - deployment
+  "spec.main.generators.deployment.envSubPath:KUBERNETES_DEPLOYMENT_ENV_SUB_PATH"
+  "spec.main.generators.deployment.additionalLabels:KUBERNETES_DEPLOYMENT_ADDITIONAL_LABELS"
+  "spec.main.generators.deployment.additionalAnnotations:KUBERNETES_DEPLOYMENT_ADDITIONAL_ANNOTATIONS"
+  "spec.main.generators.deployment.rollingUpdate.maxSurge:KUBERNETES_DEPLOYMENT_MAX_SURGE"
+  "spec.main.generators.deployment.rollingUpdate.maxUnavailable:KUBERNETES_DEPLOYMENT_MAX_UNAVAILABLE"
+
+  # Generators - statefulset
+  "spec.main.generators.statefulset.envSubPath:KUBERNETES_STATEFULSET_ENV_SUB_PATH"
+  "spec.main.generators.statefulset.additionalLabels:KUBERNETES_STATEFULSET_ADDITIONAL_LABELS"
+  "spec.main.generators.statefulset.additionalAnnotations:KUBERNETES_STATEFULSET_ADDITIONAL_ANNOTATIONS"
+  "spec.main.generators.statefulset.serviceName:KUBERNETES_STATEFULSET_SERVICE_NAME"
+  "spec.main.generators.statefulset.podManagementPolicy:KUBERNETES_STATEFULSET_POD_MANAGEMENT_POLICY"
+  "spec.main.generators.statefulset.allowUnreliablePodManagementPolicy:KUBERNETES_STATEFULSET_ALLOW_UNRELIABLE_POD_MANAGEMENT_POLICY"
+  "spec.main.generators.statefulset.updateStrategy.type:KUBERNETES_STATEFULSET_UPDATE_STRATEGY_TYPE"
+  "spec.main.generators.statefulset.updateStrategy.partition:KUBERNETES_STATEFULSET_UPDATE_STRATEGY_PARTITION"
+  "spec.main.generators.statefulset.pvc.enabled:KUBERNETES_STATEFULSET_PVC_ENABLED"
+  "spec.main.generators.statefulset.pvc.storageClass:KUBERNETES_STATEFULSET_PVC_STORAGE_CLASS"
+  "spec.main.generators.statefulset.pvc.storageSize:KUBERNETES_STATEFULSET_PVC_STORAGE_SIZE"
+  "spec.main.generators.statefulset.pvc.accessMode:KUBERNETES_STATEFULSET_PVC_ACCESS_MODE"
+  "spec.main.generators.statefulset.pvc.volumeName:KUBERNETES_STATEFULSET_PVC_VOLUME_NAME"
+  "spec.main.generators.statefulset.pvc.mountPath:KUBERNETES_STATEFULSET_PVC_MOUNT_PATH"
+
+  # Generators - daemonset
+  "spec.main.generators.daemonset.updateStrategy.type:KUBERNETES_DAEMONSET_UPDATE_STRATEGY_TYPE"
+  "spec.main.generators.daemonset.updateStrategy.maxUnavailable:KUBERNETES_DAEMONSET_MAX_UNAVAILABLE"
+  "spec.main.generators.daemonset.hostNetwork:KUBERNETES_DAEMONSET_HOST_NETWORK"
+  "spec.main.generators.daemonset.hostPid:KUBERNETES_DAEMONSET_HOST_PID"
+  "spec.main.generators.daemonset.hostIpc:KUBERNETES_DAEMONSET_HOST_IPC"
+  "spec.main.generators.daemonset.runAsNonRoot:KUBERNETES_DAEMONSET_RUN_AS_NON_ROOT"
+  "spec.main.generators.daemonset.privileged:KUBERNETES_DAEMONSET_PRIVILEGED"
+  "spec.main.generators.daemonset.dnsPolicy:KUBERNETES_DAEMONSET_DNS_POLICY"
+  "spec.main.generators.daemonset.tolerations:KUBERNETES_DAEMONSET_TOLERATIONS"
+  "spec.main.generators.daemonset.nodeSelector:KUBERNETES_DAEMONSET_NODE_SELECTOR"
+
+  # Generators - cronjob
+  "spec.main.generators.cronjob.nameSuffix:KUBERNETES_CRONJOB_NAME_SUFFIX"
+  "spec.main.generators.cronjob.combinedSubPath:KUBERNETES_CRONJOB_COMBINED_SUB_PATH"
+  "spec.main.generators.cronjob.concurrencyPolicy:KUBERNETES_CRONJOB_CONCURRENCY_POLICY"
+  "spec.main.generators.cronjob.startingDeadlineSeconds:KUBERNETES_CRONJOB_STARTING_DEADLINE_SECONDS"
+  "spec.main.generators.cronjob.successfulJobsHistoryLimit:KUBERNETES_CRONJOB_SUCCESSFUL_JOBS_HISTORY_LIMIT"
+  "spec.main.generators.cronjob.failedJobsHistoryLimit:KUBERNETES_CRONJOB_FAILED_JOBS_HISTORY_LIMIT"
+  "spec.main.generators.cronjob.backoffLimit:KUBERNETES_CRONJOB_BACKOFF_LIMIT"
+  "spec.main.generators.cronjob.completions:KUBERNETES_CRONJOB_COMPLETIONS"
+  "spec.main.generators.cronjob.parallelism:KUBERNETES_CRONJOB_PARALLELISM"
+  "spec.main.generators.cronjob.activeDeadlineSeconds:KUBERNETES_CRONJOB_ACTIVE_DEADLINE_SECONDS"
+  "spec.main.generators.cronjob.restartPolicy:KUBERNETES_CRONJOB_RESTART_POLICY"
+  "spec.main.generators.cronjob.envSubPath:KUBERNETES_CRONJOB_ENV_SUB_PATH"
+  "spec.main.generators.cronjob.additionalLabels:KUBERNETES_CRONJOB_ADDITIONAL_LABELS"
+  "spec.main.generators.cronjob.additionalAnnotations:KUBERNETES_CRONJOB_ADDITIONAL_ANNOTATIONS"
+  "spec.main.generators.cronjob.probes.livenessEnabled:KUBERNETES_CRONJOB_LIVENESS_PROBE_ENABLED"
+  "spec.main.generators.cronjob.probes.readinessEnabled:KUBERNETES_CRONJOB_READINESS_PROBE_ENABLED"
+  "spec.main.generators.cronjob.probes.startupEnabled:KUBERNETES_CRONJOB_STARTUP_PROBE_ENABLED"
+
+  # Generators - job
+  "spec.main.generators.job.nameSuffix:KUBERNETES_JOB_NAME_SUFFIX"
+  "spec.main.generators.job.combinedSubPath:KUBERNETES_JOB_COMBINED_SUB_PATH"
+  "spec.main.generators.job.backoffLimit:KUBERNETES_JOB_BACKOFF_LIMIT"
+  "spec.main.generators.job.completions:KUBERNETES_JOB_COMPLETIONS"
+  "spec.main.generators.job.parallelism:KUBERNETES_JOB_PARALLELISM"
+  "spec.main.generators.job.activeDeadlineSeconds:KUBERNETES_JOB_ACTIVE_DEADLINE_SECONDS"
+  "spec.main.generators.job.ttlSecondsAfterFinished:KUBERNETES_JOB_TTL_SECONDS_AFTER_FINISHED"
+  "spec.main.generators.job.restartPolicy:KUBERNETES_JOB_RESTART_POLICY"
+  "spec.main.generators.job.envSubPath:KUBERNETES_JOB_ENV_SUB_PATH"
+  "spec.main.generators.job.additionalLabels:KUBERNETES_JOB_ADDITIONAL_LABELS"
+  "spec.main.generators.job.additionalAnnotations:KUBERNETES_JOB_ADDITIONAL_ANNOTATIONS"
+  "spec.main.generators.job.probes.livenessEnabled:KUBERNETES_JOB_LIVENESS_PROBE_ENABLED"
+  "spec.main.generators.job.probes.readinessEnabled:KUBERNETES_JOB_READINESS_PROBE_ENABLED"
+  "spec.main.generators.job.probes.startupEnabled:KUBERNETES_JOB_STARTUP_PROBE_ENABLED"
+
+  # Generators - service
+  "spec.main.generators.service.enabled:KUBERNETES_SERVICE_GENERATION_ENABLED"
+  "spec.main.generators.service.type:KUBERNETES_SERVICE_TYPE"
+  "spec.main.generators.service.port:KUBERNETES_SERVICE_PORT"
+  "spec.main.generators.service.targetPort:KUBERNETES_SERVICE_TARGET_PORT"
+  "spec.main.generators.service.protocol:KUBERNETES_SERVICE_PROTOCOL"
+  "spec.main.generators.service.portName:KUBERNETES_SERVICE_PORT_NAME"
+  "spec.main.generators.service.nodePort:KUBERNETES_SERVICE_NODE_PORT"
+  "spec.main.generators.service.externalName:KUBERNETES_SERVICE_EXTERNAL_NAME"
+  "spec.main.generators.service.externalTrafficPolicy:KUBERNETES_SERVICE_EXTERNAL_TRAFFIC_POLICY"
+  "spec.main.generators.service.nameSuffix:KUBERNETES_SERVICE_NAME_SUFFIX"
+  "spec.main.generators.service.combinedSubPath:KUBERNETES_SERVICE_COMBINED_SUB_PATH"
+  "spec.main.generators.service.additionalLabels:KUBERNETES_SERVICE_ADDITIONAL_LABELS"
+  "spec.main.generators.service.additionalAnnotations:KUBERNETES_SERVICE_ADDITIONAL_ANNOTATIONS"
+
+  # Generators - configmap
+  "spec.main.generators.configmap.subPath:KUBERNETES_CONFIGMAP_SUB_PATH"
+  "spec.main.generators.configmap.nameChecksumInjection:KUBERNETES_CONFIGMAP_NAME_CHECKSUM_INJECTION"
+  "spec.main.generators.configmap.additionalLabels:KUBERNETES_CONFIGMAP_ADDITIONAL_LABELS"
+  "spec.main.generators.configmap.additionalAnnotations:KUBERNETES_CONFIGMAP_ADDITIONAL_ANNOTATIONS"
+
+  # Generators - secretTemplate
+  "spec.main.generators.secretTemplate.subPath:KUBERNETES_SECRET_TEMPLATE_SUB_PATH"
+  "spec.main.generators.secretTemplate.nameChecksumInjection:KUBERNETES_SECRET_TEMPLATE_NAME_CHECKSUM_INJECTION"
+  "spec.main.generators.secretTemplate.additionalLabels:KUBERNETES_SECRET_TEMPLATE_ADDITIONAL_LABELS"
+  "spec.main.generators.secretTemplate.additionalAnnotations:KUBERNETES_SECRET_TEMPLATE_ADDITIONAL_ANNOTATIONS"
+
+  # Generators - serviceAccount
+  "spec.main.generators.serviceAccount.enabled:KUBERNETES_SERVICEACCOUNT_GENERATION_ENABLED"
+  "spec.main.generators.serviceAccount.nameSuffix:KUBERNETES_SERVICEACCOUNT_NAME_SUFFIX"
+  "spec.main.generators.serviceAccount.combinedSubPath:KUBERNETES_SERVICEACCOUNT_COMBINED_SUB_PATH"
+  "spec.main.generators.serviceAccount.additionalLabels:KUBERNETES_SERVICEACCOUNT_ADDITIONAL_LABELS"
+  "spec.main.generators.serviceAccount.additionalAnnotations:KUBERNETES_SERVICEACCOUNT_ADDITIONAL_ANNOTATIONS"
+
+  # Generators - podDisruptionBudget
+  "spec.main.generators.podDisruptionBudget.enabled:KUBERNETES_PODDISRUPTIONBUDGET_GENERATION_ENABLED"
+  "spec.main.generators.podDisruptionBudget.nameSuffix:KUBERNETES_PODDISRUPTIONBUDGET_NAME_SUFFIX"
+  "spec.main.generators.podDisruptionBudget.combinedSubPath:KUBERNETES_PODDISRUPTIONBUDGET_COMBINED_SUB_PATH"
+  "spec.main.generators.podDisruptionBudget.strategy:KUBERNETES_PODDISRUPTIONBUDGET_STRATEGY"
+  "spec.main.generators.podDisruptionBudget.value:KUBERNETES_PODDISRUPTIONBUDGET_VALUE"
+  "spec.main.generators.podDisruptionBudget.additionalLabels:KUBERNETES_PODDISRUPTIONBUDGET_ADDITIONAL_LABELS"
+  "spec.main.generators.podDisruptionBudget.additionalAnnotations:KUBERNETES_PODDISRUPTIONBUDGET_ADDITIONAL_ANNOTATIONS"
+
+  # Manifests
+  "spec.main.manifests.subPath:MANIFESTS_SUB_PATH"
+  "spec.main.manifests.repoProvider.type:MANIFESTS_REPO_PROVIDER_TYPE"
+  "spec.main.manifests.repoProvider.packagingBaseImage:MANIFESTS_PACKAGING_BASE_IMAGE"
+
+  # Hooks
+  "spec.main.hooks.preDockerPrepare:HOOK_PRE_DOCKER_PREPARE_SCRIPT_SUB_PATH"
+  "spec.main.hooks.postDockerTests:HOOK_POST_DOCKER_TESTS_SCRIPT_SUB_PATH"
+  "spec.main.hooks.prePackagePrepare:HOOK_PRE_PACKAGE_PREPARE_SCRIPT_SUB_PATH"
+  "spec.main.hooks.postPackageTests:HOOK_POST_PACKAGE_TESTS_SCRIPT_SUB_PATH"
+  "spec.main.hooks.preTaggingTests:HOOK_PRE_TAGGING_TESTS_SCRIPT_SUB_PATH"
+)
+
+echo "# Loading KaptainPM.yaml" >&2
+
+found_count=0
+for mapping in "${MAPPINGS[@]}"; do
+  yaml_path="${mapping%%:*}"
+  env_var="${mapping##*:}"
+
+  # Extract value using yq (returns null for missing keys)
+  value=$(yq -r ".${yaml_path} // \"\"" "${PM_FILE}" 2>/dev/null)
+
+  # Skip if value is empty, null, or an object/array marker
+  if [[ -z "${value}" || "${value}" == "null" || "${value}" == "{}" || "${value}" == "[]" ]]; then
+    continue
+  fi
+
+  # Output export command
+  echo "export ${env_var}='${value}'"
+
+  # Log to stderr
+  echo "Found ${yaml_path} with value '${value}' and exported as ${env_var}" >&2
+
+  found_count=$((found_count + 1))
+done
+
+echo "# Loaded ${found_count} value(s) from KaptainPM.yaml" >&2

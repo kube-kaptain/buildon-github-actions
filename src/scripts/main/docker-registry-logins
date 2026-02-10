@@ -123,12 +123,12 @@ validate_all_secrets() {
   echo "Analysis found ${#found_secrets[@]} secrets with ${#missing_secrets[@]} missing secrets." >&2
   echo "" >&2
   echo "Missing secrets:" >&2
-  for s in "${missing_secrets[@]}"; do
+  for s in ${missing_secrets[@]+"${missing_secrets[@]}"}; do
     echo "  - ${s}" >&2
   done
   echo "" >&2
   echo "Available secrets:" >&2
-  for s in "${found_secrets[@]}"; do
+  for s in ${found_secrets[@]+"${found_secrets[@]}"}; do
     echo "  - ${s}" >&2
   done
   echo "" >&2
