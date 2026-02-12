@@ -24,7 +24,7 @@ LOG_WARNING_SUFFIX="${LOG_WARNING_SUFFIX:-}"
 
 # Tool categories
 CORE_TOOLS="git docker awk grep find tr wc cmp cp mkdir basename zip date uname"
-BUILD_SERVER_TOOLS="sudo systemctl jq"
+BUILD_SERVER_TOOLS="sudo systemctl jq yq"
 CLOUD_TOOLS="aws az gcloud"
 
 # Track missing tools
