@@ -1,10 +1,10 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
 
-- name: Push image
-  id: docker-push
+- name: Push all images
+  id: docker-push-all
   if: steps.versions.outputs.is-release == 'true'
-  uses: ./.github/buildon-github-actions/src/actions/docker-push
+  uses: ./.github/buildon-github-actions/src/actions/docker-push-all
   with:
-    docker-image-full-uri: ${{ steps.docker-build.outputs.docker-target-image-full-uri }}
+    output-sub-path: ${{ inputs.output-sub-path }}
     is-release: ${{ steps.versions.outputs.is-release }}

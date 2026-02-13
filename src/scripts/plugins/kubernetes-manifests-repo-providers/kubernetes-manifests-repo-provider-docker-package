@@ -116,6 +116,10 @@ EOF
 
   output_var "MANIFESTS_URI" "${image_uri}"
 
+  # Register image for consolidated push
+  mkdir -p "${OUTPUT_SUB_PATH}/docker-push-all"
+  echo "${image_uri}" >> "${OUTPUT_SUB_PATH}/docker-push-all/image-uris"
+
   echo "Kubernetes Manifests Repo Provider Package: Docker complete" >&2
 }
 

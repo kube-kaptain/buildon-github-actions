@@ -6,6 +6,7 @@
   if: inputs.docker-push-targets != '' && steps.versions.outputs.is-release == 'true'
   uses: ./.github/buildon-github-actions/src/actions/docker-multi-tag
   with:
+    output-sub-path: ${{ inputs.output-sub-path }}
     docker-image-full-uri: ${{ steps.docker-build.outputs.docker-target-image-full-uri }}
     docker-image-name: ${{ steps.versions.outputs.docker-image-name }}
     docker-tag: ${{ steps.versions.outputs.docker-tag }}

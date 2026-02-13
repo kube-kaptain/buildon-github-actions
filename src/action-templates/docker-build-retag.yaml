@@ -5,6 +5,7 @@ name: 'Docker Build Retag'
 description: 'Pulls and retags Docker images (no push)'
 
 inputs:
+  # INJECT-INPUT: output-sub-path
   # INJECT-INPUT: docker-retag
 
   # Target image configuration (action-specific, pre-resolved by workflow)
@@ -44,6 +45,7 @@ runs:
       env:
         LOG_ERROR_PREFIX: '::error::'
         LOG_WARNING_PREFIX: '::warning::'
+        OUTPUT_SUB_PATH: ${{ inputs.output-sub-path }}
         DOCKER_SOURCE_REGISTRY: ${{ inputs.docker-source-registry }}
         DOCKER_SOURCE_BASE_PATH: ${{ inputs.docker-source-base-path }}
         DOCKER_SOURCE_IMAGE_NAME: ${{ inputs.docker-source-image-name }}

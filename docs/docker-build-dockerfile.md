@@ -77,4 +77,4 @@ Docker Build Dockerfile
 | `is-release` | Whether this is a release build |
 | `target-image-full-uri` | Full target image reference (action output name) |
 | `docker-image-full-uri` | Full docker image reference (alias for target-image-full-uri) |
-| `docker-image-pushed` | Whether docker image was pushed |
+| `images-pushed` | Number of images pushed |

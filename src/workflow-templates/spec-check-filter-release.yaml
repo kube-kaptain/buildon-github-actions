@@ -84,9 +84,9 @@ on:
       docker-target-image-full-uri:
         description: 'Full target image reference'
         value: ${{ jobs.build.outputs.docker-target-image-full-uri }}
-      docker-image-pushed:
-        description: 'Whether docker image was pushed'
-        value: ${{ jobs.build.outputs.docker-image-pushed }}
+      images-pushed:
+        description: 'Number of images pushed'
+        value: ${{ jobs.build.outputs.images-pushed }}
       docker-substituted-sub-path:
         description: 'Directory containing substituted files (relative)'
         value: ${{ jobs.build.outputs.docker-substituted-sub-path }}
@@ -118,7 +118,7 @@ jobs:
       project-name: ${{ steps.versions.outputs.project-name }}
       is-release: ${{ steps.versions.outputs.is-release }}
       docker-target-image-full-uri: ${{ steps.docker-build.outputs.docker-target-image-full-uri }}
-      docker-image-pushed: ${{ steps.docker-push.outputs.image-pushed }}
+      images-pushed: ${{ steps.docker-push-all.outputs.images-pushed }}
       docker-substituted-sub-path: ${{ steps.docker-build.outputs.docker-substituted-sub-path }}
       spec-yaml: ${{ steps.spec-package-prepare.outputs.SPEC_YAML }}
       spec-json: ${{ steps.spec-package-prepare.outputs.SPEC_JSON }}
@@ -266,15 +266,10 @@ jobs:
       # INJECT: git-push-tag
       # INJECT: github-check-end(name="Git Tag Push", id="check-git-push-tag", if="steps.versions.outputs.is-release == 'true'")
 
-      # === Docker Push ===
-      # INJECT: github-check-start(name="Docker Push", id="check-docker-push", if="steps.versions.outputs.is-release == 'true'")
-      # INJECT: docker-push
-      # INJECT: github-check-end(name="Docker Push", id="check-docker-push", if="steps.versions.outputs.is-release == 'true'")
-
-      # === Docker Multi-Push ===
-      # INJECT: github-check-start(name="Docker Multi-Push", id="check-docker-multi-push", if="inputs.docker-push-targets != '' && steps.versions.outputs.is-release == 'true'")
-      # INJECT: docker-multi-push
-      # INJECT: github-check-end(name="Docker Multi-Push", id="check-docker-multi-push", if="inputs.docker-push-targets != '' && steps.versions.outputs.is-release == 'true'")
+      # === Docker Push All ===
+      # INJECT: github-check-start(name="Docker Push All", id="check-docker-push-all", if="steps.versions.outputs.is-release == 'true'")
+      # INJECT: docker-push-all
+      # INJECT: github-check-end(name="Docker Push All", id="check-docker-push-all", if="steps.versions.outputs.is-release == 'true'")
 
       # === GitHub Release ===
       # INJECT: github-check-start(name="GitHub Release", id="check-github-release", if="inputs.github-release-enabled == true && steps.versions.outputs.is-release == 'true'")

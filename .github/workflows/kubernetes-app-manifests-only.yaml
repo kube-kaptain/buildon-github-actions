@@ -2170,6 +2170,7 @@ jobs:
         if: inputs.docker-push-targets != '' && steps.versions.outputs.is-release == 'true' && inputs.manifests-repo-provider-type == 'docker' && success()
         uses: ./.github/buildon-github-actions/src/actions/docker-multi-tag
         with:
+          output-sub-path: ${{ inputs.output-sub-path }}
           docker-image-full-uri: ${{ steps.manifest-repo-provider-package.outputs.manifests-uri }}
           docker-image-name: ${{ steps.versions.outputs.docker-image-name }}
           docker-tag: ${{ steps.versions.outputs.docker-tag }}-manifests
@@ -2490,37 +2491,35 @@ jobs:
           action: fail
           check-run-id: ${{ steps.check-manifest-repo-provider-publish.outputs.check-run-id }}
 
-      # === Manifest Multi-Push ===
-      - name: Start check - Manifest Multi-Push
-        if: inputs.docker-push-targets != '' && steps.versions.outputs.is-release == 'true' && inputs.manifests-repo-provider-type == 'docker' && success()
-        id: check-manifest-multi-push
+      # === Docker Push All ===
+      - name: Start check - Docker Push All
+        if: steps.versions.outputs.is-release == 'true' && success()
+        id: check-docker-push-all
         continue-on-error: true
         uses: ./.github/buildon-github-actions/src/actions/github-check-run
         with:
           action: start
-          check-name: 'Build & Publish → Manifest Multi-Push'
-      - name: Push manifest images to additional registries
-        id: manifest-multi-push
-        if: inputs.docker-push-targets != '' && steps.versions.outputs.is-release == 'true' && inputs.manifests-repo-provider-type == 'docker' && success()
-        uses: ./.github/buildon-github-actions/src/actions/docker-multi-push
+          check-name: 'Build & Publish → Docker Push All'
+      - name: Push all images
+        id: docker-push-all
+        if: steps.versions.outputs.is-release == 'true' && success()
+        uses: ./.github/buildon-github-actions/src/actions/docker-push-all
         with:
-          docker-image-name: ${{ steps.versions.outputs.docker-image-name }}
-          docker-tag: ${{ steps.versions.outputs.docker-tag }}-manifests
-          docker-push-targets: ${{ inputs.docker-push-targets }}
+          output-sub-path: ${{ inputs.output-sub-path }}
           is-release: ${{ steps.versions.outputs.is-release }}
-      - name: Pass check - Manifest Multi-Push
-        if: inputs.docker-push-targets != '' && steps.versions.outputs.is-release == 'true' && inputs.manifests-repo-provider-type == 'docker' && success() && steps.check-manifest-multi-push.outputs.check-run-id != ''
+      - name: Pass check - Docker Push All
+        if: steps.versions.outputs.is-release == 'true' && success() && steps.check-docker-push-all.outputs.check-run-id != ''
         continue-on-error: true
         uses: ./.github/buildon-github-actions/src/actions/github-check-run
         with:
           action: pass
-          check-run-id: ${{ steps.check-manifest-multi-push.outputs.check-run-id }}
-      - name: Fail check - Manifest Multi-Push
-        if: inputs.docker-push-targets != '' && steps.versions.outputs.is-release == 'true' && inputs.manifests-repo-provider-type == 'docker' && failure() && steps.check-manifest-multi-push.outputs.check-run-id != ''
+          check-run-id: ${{ steps.check-docker-push-all.outputs.check-run-id }}
+      - name: Fail check - Docker Push All
+        if: steps.versions.outputs.is-release == 'true' && failure() && steps.check-docker-push-all.outputs.check-run-id != ''
         uses: ./.github/buildon-github-actions/src/actions/github-check-run
         with:
           action: fail
-          check-run-id: ${{ steps.check-manifest-multi-push.outputs.check-run-id }}
+          check-run-id: ${{ steps.check-docker-push-all.outputs.check-run-id }}
 
       # === GitHub Release ===
       - name: Start check - GitHub Release

@@ -5,6 +5,7 @@
   id: docker-build
   uses: ./.github/buildon-github-actions/src/actions/docker-build-retag
   with:
+    output-sub-path: ${{ inputs.output-sub-path }}
     docker-source-registry: ${{ inputs.docker-source-registry }}
     docker-source-base-path: ${{ inputs.docker-source-base-path }}
     docker-source-image-name: ${{ inputs.docker-source-image-name }}

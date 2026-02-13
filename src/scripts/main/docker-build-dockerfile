@@ -235,6 +235,10 @@ main() {
 
   output_var "DOCKER_TARGET_IMAGE_FULL_URI" "${TARGET_IMAGE_FULL_URI}"
 
+  # Register image for consolidated push
+  mkdir -p "${OUTPUT_SUB_PATH}/docker-push-all"
+  echo "${TARGET_IMAGE_FULL_URI}" >> "${OUTPUT_SUB_PATH}/docker-push-all/image-uris"
+
   echo "" >&2
   echo "Docker Build Dockerfile complete" >&2
 }

@@ -305,9 +305,9 @@ on:
       docker-target-image-full-uri:
         description: 'Full target image reference'
         value: ${{ jobs.build.outputs.docker-target-image-full-uri }}
-      docker-image-pushed:
-        description: 'Whether docker image was pushed'
-        value: ${{ jobs.build.outputs.docker-image-pushed }}
+      images-pushed:
+        description: 'Number of images pushed'
+        value: ${{ jobs.build.outputs.images-pushed }}
       docker-substituted-sub-path:
         description: 'Directory containing substituted files (relative)'
         value: ${{ jobs.build.outputs.docker-substituted-sub-path }}
@@ -339,7 +339,7 @@ jobs:
       project-name: ${{ steps.versions.outputs.project-name }}
       is-release: ${{ steps.versions.outputs.is-release }}
       docker-target-image-full-uri: ${{ steps.docker-build.outputs.docker-target-image-full-uri }}
-      docker-image-pushed: ${{ steps.docker-push.outputs.image-pushed }}
+      images-pushed: ${{ steps.docker-push-all.outputs.images-pushed }}
       docker-substituted-sub-path: ${{ steps.docker-build.outputs.docker-substituted-sub-path }}
       spec-yaml: ${{ steps.spec-package-prepare.outputs.SPEC_YAML }}
       spec-json: ${{ steps.spec-package-prepare.outputs.SPEC_JSON }}
@@ -794,6 +794,7 @@ jobs:
         if: inputs.docker-push-targets != '' && steps.versions.outputs.is-release == 'true' && success()
         uses: ./.github/buildon-github-actions/src/actions/docker-multi-tag
         with:
+          output-sub-path: ${{ inputs.output-sub-path }}
           docker-image-full-uri: ${{ steps.docker-build.outputs.docker-target-image-full-uri }}
           docker-image-name: ${{ steps.versions.outputs.docker-image-name }}
           docker-tag: ${{ steps.versions.outputs.docker-tag }}
@@ -983,67 +984,35 @@ jobs:
           action: fail
           check-run-id: ${{ steps.check-git-push-tag.outputs.check-run-id }}
 
-      # === Docker Push ===
-      - name: Start check - Docker Push
+      # === Docker Push All ===
+      - name: Start check - Docker Push All
         if: steps.versions.outputs.is-release == 'true' && success()
-        id: check-docker-push
+        id: check-docker-push-all
         continue-on-error: true
         uses: ./.github/buildon-github-actions/src/actions/github-check-run
         with:
           action: start
-          check-name: 'Build & Push → Docker Push'
-      - name: Push image
-        id: docker-push
+          check-name: 'Build & Push → Docker Push All'
+      - name: Push all images
+        id: docker-push-all
         if: steps.versions.outputs.is-release == 'true' && success()
-        uses: ./.github/buildon-github-actions/src/actions/docker-push
+        uses: ./.github/buildon-github-actions/src/actions/docker-push-all
         with:
-          docker-image-full-uri: ${{ steps.docker-build.outputs.docker-target-image-full-uri }}
+          output-sub-path: ${{ inputs.output-sub-path }}
           is-release: ${{ steps.versions.outputs.is-release }}
-      - name: Pass check - Docker Push
-        if: steps.versions.outputs.is-release == 'true' && success() && steps.check-docker-push.outputs.check-run-id != ''
+      - name: Pass check - Docker Push All
+        if: steps.versions.outputs.is-release == 'true' && success() && steps.check-docker-push-all.outputs.check-run-id != ''
         continue-on-error: true
         uses: ./.github/buildon-github-actions/src/actions/github-check-run
         with:
           action: pass
-          check-run-id: ${{ steps.check-docker-push.outputs.check-run-id }}
-      - name: Fail check - Docker Push
-        if: steps.versions.outputs.is-release == 'true' && failure() && steps.check-docker-push.outputs.check-run-id != ''
+          check-run-id: ${{ steps.check-docker-push-all.outputs.check-run-id }}
+      - name: Fail check - Docker Push All
+        if: steps.versions.outputs.is-release == 'true' && failure() && steps.check-docker-push-all.outputs.check-run-id != ''
         uses: ./.github/buildon-github-actions/src/actions/github-check-run
         with:
           action: fail
-          check-run-id: ${{ steps.check-docker-push.outputs.check-run-id }}
-
-      # === Docker Multi-Push ===
-      - name: Start check - Docker Multi-Push
-        if: inputs.docker-push-targets != '' && steps.versions.outputs.is-release == 'true' && success()
-        id: check-docker-multi-push
-        continue-on-error: true
-        uses: ./.github/buildon-github-actions/src/actions/github-check-run
-        with:
-          action: start
-          check-name: 'Build & Push → Docker Multi-Push'
-      - name: Push images to additional registries
-        id: docker-multi-push
-        if: inputs.docker-push-targets != '' && steps.versions.outputs.is-release == 'true' && success()
-        uses: ./.github/buildon-github-actions/src/actions/docker-multi-push
-        with:
-          docker-image-name: ${{ steps.versions.outputs.docker-image-name }}
-          docker-tag: ${{ steps.versions.outputs.docker-tag }}
-          docker-push-targets: ${{ inputs.docker-push-targets }}
-          is-release: ${{ steps.versions.outputs.is-release }}
-      - name: Pass check - Docker Multi-Push
-        if: inputs.docker-push-targets != '' && steps.versions.outputs.is-release == 'true' && success() && steps.check-docker-multi-push.outputs.check-run-id != ''
-        continue-on-error: true
-        uses: ./.github/buildon-github-actions/src/actions/github-check-run
-        with:
-          action: pass
-          check-run-id: ${{ steps.check-docker-multi-push.outputs.check-run-id }}
-      - name: Fail check - Docker Multi-Push
-        if: inputs.docker-push-targets != '' && steps.versions.outputs.is-release == 'true' && failure() && steps.check-docker-multi-push.outputs.check-run-id != ''
-        uses: ./.github/buildon-github-actions/src/actions/github-check-run
-        with:
-          action: fail
-          check-run-id: ${{ steps.check-docker-multi-push.outputs.check-run-id }}
+          check-run-id: ${{ steps.check-docker-push-all.outputs.check-run-id }}
 
       # === GitHub Release ===
       - name: Start check - GitHub Release
