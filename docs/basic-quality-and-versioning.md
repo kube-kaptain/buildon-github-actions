@@ -42,6 +42,12 @@ Basic Quality and Versioning
 | `github-release-notes-file` | string | `""` | Path to release notes file (mutually exclusive with github-release-notes) |
 | `github-release-add-version-to-filenames` | boolean | `true` | Add version suffix to release filenames (e.g., file.yaml -> file-1.2.3.yaml) |
 
+## Secrets
+
+| Secret | Description |
+|--------|-------------|
+| `docker-registry-logins-secrets` | JSON object of secrets for docker-registry-logins (e.g., {"DOCKER_USER": "x", "DOCKER_PASS": "y"}) |
+
 ## Outputs
 
 | Output | Description |
@@ -58,3 +64,4 @@ Basic Quality and Versioning
 | `git-tag` | Tag for git |
 | `is-release` | Whether this is a release build |
 | `project-name` | The repository/project name |
+| `images-pushed` | Number of images pushed |

@@ -193,6 +193,10 @@ on:
         required: false
         type: boolean
         default: true
+    secrets:
+      docker-registry-logins-secrets:
+        description: 'JSON object of secrets for docker-registry-logins (e.g., {"DOCKER_USER": "x", "DOCKER_PASS": "y"})'
+        required: false
     outputs:
       version:
         description: 'The generated version'
@@ -230,12 +234,16 @@ on:
       project-name:
         description: 'The repository/project name'
         value: ${{ jobs.versions-and-naming.outputs.project-name }}
+      images-pushed:
+        description: 'Number of images pushed'
+        value: ${{ jobs.versions-and-naming.outputs.images-pushed }}
 jobs:
   versions-and-naming:
     name: Versions & Naming
     runs-on: ubuntu-24.04
     permissions:
       contents: write
+      packages: write
       checks: write
     outputs:
       version: ${{ steps.versions.outputs.version }}
@@ -250,6 +258,7 @@ jobs:
       git-tag: ${{ steps.versions.outputs.git-tag }}
       is-release: ${{ steps.versions.outputs.is-release }}
       project-name: ${{ steps.versions.outputs.project-name }}
+      images-pushed: ${{ steps.docker-push-all.outputs.images-pushed }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4.2.2
@@ -684,6 +693,37 @@ jobs:
         with:
           action: fail
           check-run-id: ${{ steps.check-git-push-tag.outputs.check-run-id }}
+
+      # === Docker Push All ===
+      - name: Start check - Docker Push All
+        if: steps.versions.outputs.is-release == 'true' && success()
+        id: check-docker-push-all
+        continue-on-error: true
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
+        with:
+          action: start
+          check-name: 'Versions & Naming → Docker Push All'
+      - name: Push all images
+        id: docker-push-all
+        if: steps.versions.outputs.is-release == 'true' && success()
+        uses: ./.github/buildon-github-actions/src/actions/docker-push-all
+        with:
+          output-sub-path: ${{ inputs.output-sub-path }}
+          is-release: ${{ steps.versions.outputs.is-release }}
+          image-build-command: ${{ steps.validate-tooling.outputs.IMAGE_BUILD_COMMAND }}
+      - name: Pass check - Docker Push All
+        if: steps.versions.outputs.is-release == 'true' && success() && steps.check-docker-push-all.outputs.check-run-id != ''
+        continue-on-error: true
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
+        with:
+          action: pass
+          check-run-id: ${{ steps.check-docker-push-all.outputs.check-run-id }}
+      - name: Fail check - Docker Push All
+        if: steps.versions.outputs.is-release == 'true' && failure() && steps.check-docker-push-all.outputs.check-run-id != ''
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
+        with:
+          action: fail
+          check-run-id: ${{ steps.check-docker-push-all.outputs.check-run-id }}
 
       # === GitHub Release ===
       - name: Start check - GitHub Release
