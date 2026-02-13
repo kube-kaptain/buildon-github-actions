@@ -15,6 +15,9 @@
 #
 set -euo pipefail
 
+# shellcheck source=src/scripts/defaults/image-build-command.bash
+source "$(dirname "${BASH_SOURCE[0]}")/../../defaults/image-build-command.bash"
+
 SCRIPT_DIR="$(dirname "${0}")"
 PLUGINS_DIR="${SCRIPT_DIR}/.."
 
@@ -32,4 +35,4 @@ client_secret=$("${get_secret}" "${client_secret_secret}") || exit 1
 "${get_secret}" "${tenant_id_secret}" > /dev/null || exit 1
 
 echo "Logging in to Azure ACR ${registry}..." >&2
-echo "${client_secret}" | docker login "${registry}" -u "${client_id}" --password-stdin
+echo "${client_secret}" | ${IMAGE_BUILD_COMMAND} login "${registry}" -u "${client_id}" --password-stdin

@@ -1,0 +1,8 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
+#
+# Container runtime
+image-build-command:
+  description: 'Container runtime command (podman or docker)'
+  required: true
+  type: string

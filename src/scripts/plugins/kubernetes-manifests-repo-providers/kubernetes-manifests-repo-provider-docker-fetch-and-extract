@@ -29,6 +29,9 @@
 #
 set -euo pipefail
 
+# shellcheck source=src/scripts/defaults/image-build-command.bash
+source "$(dirname "${BASH_SOURCE[0]}")/../../defaults/image-build-command.bash"
+
 # Logging configuration (CI-agnostic)
 LOG_ERROR_PREFIX="${LOG_ERROR_PREFIX:-}"
 LOG_ERROR_SUFFIX="${LOG_ERROR_SUFFIX:-}"
@@ -71,7 +74,7 @@ main() {
 
   # Pull the image
   echo "Pulling image..." >&2
-  if ! docker pull "${manifests_image_uri}"; then
+  if ! ${IMAGE_BUILD_COMMAND} pull "${manifests_image_uri}"; then
     echo "${LOG_ERROR_PREFIX}Failed to pull image: ${manifests_image_uri}${LOG_ERROR_SUFFIX}" >&2
     exit 1
   fi
@@ -79,16 +82,16 @@ main() {
   # Create container (without starting it) to access filesystem
   echo "Creating container..." >&2
   local container_id
-  container_id=$(docker create "${manifests_image_uri}")
+  container_id=$(${IMAGE_BUILD_COMMAND} create "${manifests_image_uri}")
 
   # Ensure cleanup on exit (shellcheck: we intentionally expand now to capture current container_id)
   # shellcheck disable=SC2064
-  trap "docker rm '${container_id}' >/dev/null 2>&1 || true" EXIT
+  trap "${IMAGE_BUILD_COMMAND} rm '${container_id}' >/dev/null 2>&1 || true" EXIT
 
   # Find zip file in image root
   echo "Finding manifest zip in image..." >&2
   local zip_file
-  zip_file=$(docker run --rm --entrypoint="" "${manifests_image_uri}" ls -1 / 2>/dev/null | grep '\.zip$' | head -n1 || true)
+  zip_file=$(${IMAGE_BUILD_COMMAND} run --rm --entrypoint="" "${manifests_image_uri}" ls -1 / 2>/dev/null | grep '\.zip$' | head -n1 || true)
 
   if [[ -z "${zip_file}" ]]; then
     echo "${LOG_ERROR_PREFIX}No zip file found in image root${LOG_ERROR_SUFFIX}" >&2
@@ -103,7 +106,7 @@ main() {
 
   # Copy zip from container
   echo "Copying zip from container..." >&2
-  if ! docker cp "${container_id}:/${zip_file}" "${fetched_manifests_sub_path}/${zip_file}"; then
+  if ! ${IMAGE_BUILD_COMMAND} cp "${container_id}:/${zip_file}" "${fetched_manifests_sub_path}/${zip_file}"; then
     echo "${LOG_ERROR_PREFIX}Failed to copy zip from container${LOG_ERROR_SUFFIX}" >&2
     exit 1
   fi

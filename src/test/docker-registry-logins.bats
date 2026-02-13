@@ -10,6 +10,7 @@ setup() {
   TEST_DIR="$(cd "$(dirname "$BATS_TEST_FILENAME")" && pwd)"
   SCRIPT="$TEST_DIR/../scripts/main/docker-registry-logins"
   setup_mock_docker
+  export IMAGE_BUILD_COMMAND="docker"
   export SECRET_METHOD="github"
 }
 

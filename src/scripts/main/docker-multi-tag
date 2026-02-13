@@ -25,6 +25,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/../defaults/output-sub-path.bash"
 # shellcheck source=src/scripts/defaults/docker-build.bash
 source "${SCRIPT_DIR}/../defaults/docker-build.bash"
+# shellcheck source=src/scripts/defaults/image-build-command.bash
+source "${SCRIPT_DIR}/../defaults/image-build-command.bash"
 
 # Validate required inputs
 if [[ -z "${DOCKER_IMAGE_FULL_URI:-}" ]]; then
@@ -101,7 +103,7 @@ main() {
     target_uri=$(build_image_uri "${registry}" "${base_path}" "${DOCKER_IMAGE_NAME}" "${DOCKER_TAG}")
 
     echo "Tagging: ${DOCKER_IMAGE_FULL_URI} -> ${target_uri}" >&2
-    docker tag "${DOCKER_IMAGE_FULL_URI}" "${target_uri}"
+    ${IMAGE_BUILD_COMMAND} tag "${DOCKER_IMAGE_FULL_URI}" "${target_uri}"
 
     # Register image for consolidated push
     mkdir -p "${OUTPUT_SUB_PATH}/docker-push-all"

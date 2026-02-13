@@ -9,6 +9,7 @@ load helpers
 
 setup() {
   local base_dir=$(create_test_dir "k8s-repo-docker-fetch")
+  export IMAGE_BUILD_COMMAND="docker"
   export MOCK_DOCKER_CALLS="$base_dir/docker-calls.log"
   mkdir -p "$MOCK_BIN_DIR"
 

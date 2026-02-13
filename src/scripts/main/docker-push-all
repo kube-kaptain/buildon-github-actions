@@ -25,6 +25,8 @@ LOG_ERROR_SUFFIX="${LOG_ERROR_SUFFIX:-}"
 
 # shellcheck source=src/scripts/defaults/output-sub-path.bash
 source "${SCRIPT_DIR}/../defaults/output-sub-path.bash"
+# shellcheck source=src/scripts/defaults/image-build-command.bash
+source "${SCRIPT_DIR}/../defaults/image-build-command.bash"
 
 # Optional inputs with defaults
 IS_RELEASE="${IS_RELEASE:-false}"
@@ -78,7 +80,7 @@ main() {
     [[ -z "${image_uri}" ]] && continue
 
     # Verify image exists locally before pushing
-    if ! docker image inspect "${image_uri}" &>/dev/null; then
+    if ! ${IMAGE_BUILD_COMMAND} image inspect "${image_uri}" &>/dev/null; then
       echo "${LOG_ERROR_PREFIX}Image not found locally: ${image_uri}${LOG_ERROR_SUFFIX}" >&2
       failed=$((failed + 1))
       failed_uris="${failed_uris}  ${image_uri} (not found locally)"$'\n'
@@ -86,7 +88,7 @@ main() {
     fi
 
     echo "Pushing: ${image_uri}" >&2
-    if docker push "${image_uri}"; then
+    if ${IMAGE_BUILD_COMMAND} push "${image_uri}"; then
       pushed=$((pushed + 1))
     else
       echo "${LOG_ERROR_PREFIX}Failed to push: ${image_uri}${LOG_ERROR_SUFFIX}" >&2

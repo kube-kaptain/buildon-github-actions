@@ -14,6 +14,9 @@
 #
 set -euo pipefail
 
+# shellcheck source=src/scripts/defaults/image-build-command.bash
+source "$(dirname "${BASH_SOURCE[0]}")/../../defaults/image-build-command.bash"
+
 # secret_method=$1 - unused, values passed directly
 registry="${2}"
 token="${3}"
@@ -30,4 +33,4 @@ if [[ -z "${actor}" ]]; then
 fi
 
 echo "Logging in to ${registry} with GITHUB_TOKEN..." >&2
-echo "${token}" | docker login "${registry}" -u "${actor}" --password-stdin
+echo "${token}" | ${IMAGE_BUILD_COMMAND} login "${registry}" -u "${actor}" --password-stdin

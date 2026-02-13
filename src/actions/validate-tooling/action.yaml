@@ -4,6 +4,11 @@
 name: 'Validate Tooling'
 description: 'Validates required tools are available before build'
 
+outputs:
+  IMAGE_BUILD_COMMAND:
+    description: 'Container runtime command to use (podman or docker)'
+    value: ${{ steps.validate.outputs.IMAGE_BUILD_COMMAND }}
+
 runs:
   using: 'composite'
   steps:

@@ -15,3 +15,4 @@
     docker-tag: ${{ steps.versions.outputs.docker-tag }}-manifests
     version: ${{ steps.versions.outputs.version }}
     output-sub-path: ${{ inputs.output-sub-path }}
+    image-build-command: ${{ steps.validate-tooling.outputs.IMAGE_BUILD_COMMAND }}

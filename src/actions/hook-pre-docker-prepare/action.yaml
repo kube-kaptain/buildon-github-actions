@@ -9,6 +9,10 @@ inputs:
   script-sub-path:
     description: 'Path to script relative to .github/ (e.g., bin/pre-docker.bash)'
     required: true
+  # Container runtime
+  image-build-command:
+    description: 'Container runtime command (podman or docker)'
+    required: true
 
   # === Workflow Inputs ===
   # Build output
@@ -45,13 +49,9 @@ inputs:
     required: false
     default: 'src/docker'
   dockerfile-squash:
-    description: 'Enable --squash (requires experimental mode)'
+    description: 'Squash mode: squash, squash-all, or no'
     required: false
-    default: 'true'
-  dockerfile-squash-allow-unavailable:
-    description: 'Allow build without squash if unavailable (default: false - fail if squash unavailable)'
-    required: false
-    default: 'false'
+    default: 'squash'
   dockerfile-no-cache:
     description: 'Disable layer caching for reproducible builds'
     required: false
@@ -920,6 +920,7 @@ runs:
       shell: bash
       env:
         HOOK_SCRIPT_SUB_PATH: .github/${{ inputs.script-sub-path }}
+        IMAGE_BUILD_COMMAND: ${{ inputs.image-build-command }}
         # Workflow inputs - build output
         OUTPUT_SUB_PATH: ${{ inputs.output-sub-path }}
 

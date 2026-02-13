@@ -15,6 +15,10 @@ inputs:
   is-release:
     description: 'Whether to push (true) or skip (false)'
     required: true
+  # Container runtime
+  image-build-command:
+    description: 'Container runtime command (podman or docker)'
+    required: true
 
 outputs:
   images-pushed:
@@ -31,4 +35,5 @@ runs:
         LOG_ERROR_PREFIX: '::error::'
         OUTPUT_SUB_PATH: ${{ inputs.output-sub-path }}
         IS_RELEASE: ${{ inputs.is-release }}
+        IMAGE_BUILD_COMMAND: ${{ inputs.image-build-command }}
       run: "${{ github.action_path }}/../../scripts/main/docker-push-all"

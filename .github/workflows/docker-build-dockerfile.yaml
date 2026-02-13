@@ -47,15 +47,10 @@ on:
         type: string
         default: 'src/docker'
       dockerfile-squash:
-        description: 'Enable --squash (requires experimental mode)'
+        description: 'Squash mode: squash, squash-all, or no'
         required: false
-        type: boolean
-        default: true
-      dockerfile-squash-allow-unavailable:
-        description: 'Allow build without squash if unavailable (default: false - fail if squash unavailable)'
-        required: false
-        type: boolean
-        default: false
+        type: string
+        default: 'squash'
       dockerfile-no-cache:
         description: 'Disable layer caching for reproducible builds'
         required: false
@@ -481,6 +476,7 @@ jobs:
           config: ${{ inputs.docker-registry-logins }}
           secrets-json: ${{ secrets.docker-registry-logins-secrets }}
           docker-target-registry: ${{ steps.resolve-registry.outputs.docker-target-registry }}
+          image-build-command: ${{ steps.validate-tooling.outputs.IMAGE_BUILD_COMMAND }}
       - name: Pass check - Docker Registry Logins
         if: success() && steps.check-docker-registry-logins.outputs.check-run-id != ''
         continue-on-error: true
@@ -510,6 +506,7 @@ jobs:
         uses: ./.github/buildon-github-actions/src/actions/hook-pre-tagging-tests
         with:
           script-sub-path: ${{ inputs.hook-pre-tagging-tests-script-sub-path }}
+          image-build-command: ${{ steps.validate-tooling.outputs.IMAGE_BUILD_COMMAND }}
           # === Workflow Inputs ===
           # Build output
           output-sub-path: ${{ inputs.output-sub-path }}
@@ -706,6 +703,7 @@ jobs:
         uses: ./.github/buildon-github-actions/src/actions/hook-pre-docker-prepare
         with:
           script-sub-path: ${{ inputs.hook-pre-docker-prepare-script-sub-path }}
+          image-build-command: ${{ steps.validate-tooling.outputs.IMAGE_BUILD_COMMAND }}
           # === Workflow Inputs ===
           # Build output
           output-sub-path: ${{ inputs.output-sub-path }}
@@ -893,6 +891,7 @@ jobs:
           config-sub-path: ${{ inputs.config-sub-path }}
           allow-builtin-token-override: ${{ inputs.allow-builtin-token-override }}
           config-value-trailing-newline: ${{ inputs.config-value-trailing-newline }}
+          image-build-command: ${{ steps.validate-tooling.outputs.IMAGE_BUILD_COMMAND }}
       - name: Pass check - Docker Build
         if: success() && steps.check-docker-build.outputs.check-run-id != ''
         continue-on-error: true
@@ -926,6 +925,7 @@ jobs:
           docker-image-name: ${{ steps.versions.outputs.docker-image-name }}
           docker-tag: ${{ steps.versions.outputs.docker-tag }}
           docker-push-targets: ${{ inputs.docker-push-targets }}
+          image-build-command: ${{ steps.validate-tooling.outputs.IMAGE_BUILD_COMMAND }}
       - name: Pass check - Docker Multi-Tag
         if: inputs.docker-push-targets != '' && steps.versions.outputs.is-release == 'true' && success() && steps.check-docker-multi-tag.outputs.check-run-id != ''
         continue-on-error: true
@@ -955,6 +955,7 @@ jobs:
         uses: ./.github/buildon-github-actions/src/actions/hook-post-docker-tests
         with:
           script-sub-path: ${{ inputs.hook-post-docker-tests-script-sub-path }}
+          image-build-command: ${{ steps.validate-tooling.outputs.IMAGE_BUILD_COMMAND }}
           # === Workflow Inputs ===
           # Build output
           output-sub-path: ${{ inputs.output-sub-path }}
@@ -1204,6 +1205,7 @@ jobs:
         with:
           output-sub-path: ${{ inputs.output-sub-path }}
           is-release: ${{ steps.versions.outputs.is-release }}
+          image-build-command: ${{ steps.validate-tooling.outputs.IMAGE_BUILD_COMMAND }}
       - name: Pass check - Docker Push All
         if: steps.versions.outputs.is-release == 'true' && success() && steps.check-docker-push-all.outputs.check-run-id != ''
         continue-on-error: true

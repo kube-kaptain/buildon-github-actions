@@ -37,6 +37,8 @@ source "${SCRIPT_DIR}/../defaults/output-sub-path.bash"
 source "${SCRIPT_DIR}/../defaults/docker-build.bash"
 # shellcheck source=src/scripts/defaults/docker-retag.bash
 source "${SCRIPT_DIR}/../defaults/docker-retag.bash"
+# shellcheck source=src/scripts/defaults/image-build-command.bash
+source "${SCRIPT_DIR}/../defaults/image-build-command.bash"
 
 # Validate required inputs
 if [[ -z "${DOCKER_SOURCE_REGISTRY}" ]]; then
@@ -90,13 +92,13 @@ main() {
   echo "====================" >&2
 
   echo "Pulling source image: ${SOURCE_IMAGE_FULL_URI}" >&2
-  docker pull "${SOURCE_IMAGE_FULL_URI}"
+  ${IMAGE_BUILD_COMMAND} pull "${SOURCE_IMAGE_FULL_URI}"
 
   # Confirm target doesn't exist (fail fast)
   confirm_target_image_doesnt_exist || exit 1
 
   echo "Tagging: ${SOURCE_IMAGE_FULL_URI} -> ${TARGET_IMAGE_FULL_URI}" >&2
-  docker tag "${SOURCE_IMAGE_FULL_URI}" "${TARGET_IMAGE_FULL_URI}"
+  ${IMAGE_BUILD_COMMAND} tag "${SOURCE_IMAGE_FULL_URI}" "${TARGET_IMAGE_FULL_URI}"
 
   # === Map internal names back to external DOCKER_* outputs ===
   output_var "DOCKER_SOURCE_IMAGE_FULL_URI" "${SOURCE_IMAGE_FULL_URI}"

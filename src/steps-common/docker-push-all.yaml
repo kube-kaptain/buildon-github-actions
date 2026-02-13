@@ -8,3 +8,4 @@
   with:
     output-sub-path: ${{ inputs.output-sub-path }}
     is-release: ${{ steps.versions.outputs.is-release }}
+    image-build-command: ${{ steps.validate-tooling.outputs.IMAGE_BUILD_COMMAND }}

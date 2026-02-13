@@ -30,7 +30,8 @@ set_required_env() {
   export PROJECT_NAME="my-repo"
   export DOCKERFILE_SUB_PATH="$TEST_DIR"
   export OUTPUT_SUB_PATH="$OUTPUT_DIR"
-  export DOCKERFILE_SQUASH="false"
+  export DOCKERFILE_SQUASH="no"
+  export IMAGE_BUILD_COMMAND="docker"
   export IS_RELEASE="true"
 }
 
@@ -70,6 +71,7 @@ set_required_env() {
 }
 
 @test "fails when DOCKER_TARGET_REGISTRY missing" {
+  export IMAGE_BUILD_COMMAND="docker"
   export DOCKER_IMAGE_NAME="test/my-repo"
   export DOCKER_TAG="1.0.0"
   export DOCKERFILE_SUB_PATH="$TEST_DIR"
@@ -127,26 +129,55 @@ set_required_env() {
   assert_docker_called "--label build.datetime="
 }
 
-@test "adds --squash when DOCKERFILE_SQUASH=true" {
+@test "adds --squash when DOCKERFILE_SQUASH=squash with podman" {
   set_required_env
-  export DOCKERFILE_SQUASH="true"
-  # Mock docker experimental mode as enabled
-  export MOCK_DOCKER_EXPERIMENTAL="true"
+  export DOCKERFILE_SQUASH="squash"
+  export IMAGE_BUILD_COMMAND="podman"
 
   run "$SCRIPTS_DIR/docker-build-dockerfile"
   [ "$status" -eq 0 ]
   assert_docker_called "--squash"
 }
 
-@test "defaults DOCKERFILE_SQUASH to true" {
+@test "adds --squash-all when DOCKERFILE_SQUASH=squash-all with podman" {
+  set_required_env
+  export DOCKERFILE_SQUASH="squash-all"
+  export IMAGE_BUILD_COMMAND="podman"
+
+  run "$SCRIPTS_DIR/docker-build-dockerfile"
+  [ "$status" -eq 0 ]
+  assert_docker_called "--squash-all"
+}
+
+@test "defaults DOCKERFILE_SQUASH to squash" {
   set_required_env
   unset DOCKERFILE_SQUASH
-  # Mock docker experimental mode as enabled
-  export MOCK_DOCKER_EXPERIMENTAL="true"
+  export IMAGE_BUILD_COMMAND="podman"
 
   run "$SCRIPTS_DIR/docker-build-dockerfile"
   [ "$status" -eq 0 ]
   assert_docker_called "--squash"
+}
+
+@test "forces no squash with warning when IMAGE_BUILD_COMMAND=docker" {
+  set_required_env
+  export DOCKERFILE_SQUASH="squash"
+  export IMAGE_BUILD_COMMAND="docker"
+
+  run "$SCRIPTS_DIR/docker-build-dockerfile"
+  [ "$status" -eq 0 ]
+  assert_docker_not_called "--squash"
+  assert_output_contains "docker 29+ does not support it"
+}
+
+@test "no squash flag when DOCKERFILE_SQUASH=no" {
+  set_required_env
+  export DOCKERFILE_SQUASH="no"
+  export IMAGE_BUILD_COMMAND="podman"
+
+  run "$SCRIPTS_DIR/docker-build-dockerfile"
+  [ "$status" -eq 0 ]
+  assert_docker_not_called "--squash"
 }
 
 @test "uses substituted directory as context" {
@@ -160,17 +191,8 @@ set_required_env() {
 
 @test "fails when image already exists" {
   set_required_env
-  # Make docker manifest inspect succeed (image exists)
-  echo '#!/bin/bash
-if [[ "$1" == "manifest" && "$2" == "inspect" ]]; then
-  exit 0
-fi
-if [[ "$1" == "info" ]]; then
-  exit 0
-fi
-echo "$@" >> "$MOCK_DOCKER_CALLS"
-exit 0' > "$MOCK_BIN_DIR/docker"
-  chmod +x "$MOCK_BIN_DIR/docker"
+  # Make manifest inspect succeed (image exists)
+  export MOCK_DOCKER_MANIFEST_EXISTS="true"
 
   run "$SCRIPTS_DIR/docker-build-dockerfile"
   [ "$status" -ne 0 ]

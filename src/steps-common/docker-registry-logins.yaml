@@ -9,3 +9,4 @@
     config: ${{ inputs.docker-registry-logins }}
     secrets-json: ${{ secrets.docker-registry-logins-secrets }}
     docker-target-registry: ${{ steps.resolve-registry.outputs.docker-target-registry }}
+    image-build-command: ${{ steps.validate-tooling.outputs.IMAGE_BUILD_COMMAND }}

@@ -6,6 +6,7 @@ load helpers
 
 setup() {
   setup_mock_docker
+  export IMAGE_BUILD_COMMAND="docker"
   export GITHUB_OUTPUT=$(create_test_dir "docker-retag")/output
 }
 

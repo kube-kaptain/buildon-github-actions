@@ -40,6 +40,10 @@ inputs:
   docker-tag:
     description: 'Tag for images'
     required: true
+  # Container runtime
+  image-build-command:
+    description: 'Container runtime command (podman or docker)'
+    required: true
 
 outputs:
   images-tagged:
@@ -58,4 +62,5 @@ runs:
         DOCKER_IMAGE_NAME: ${{ inputs.docker-image-name }}
         DOCKER_TAG: ${{ inputs.docker-tag }}
         DOCKER_PUSH_TARGETS: ${{ inputs.docker-push-targets }}
+        IMAGE_BUILD_COMMAND: ${{ inputs.image-build-command }}
       run: "${{ github.action_path }}/../../scripts/main/docker-multi-tag"

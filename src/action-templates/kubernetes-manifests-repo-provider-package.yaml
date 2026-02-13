@@ -32,6 +32,7 @@ inputs:
     description: 'Version tag (for future non-docker providers)'
     required: false
     default: ''
+  # INJECT-INPUT: image-build-command
 
 outputs:
   # --- Pass-through for publish step ---
@@ -131,4 +132,5 @@ runs:
         REPO_PROVIDER_VERSION: ${{ steps.computed.outputs.version }}
         REPO_PROVIDER_AUTH_TOKEN: ${{ github.token }}
         REPO_PROVIDER_AUTH_USER: ${{ github.actor }}
+        IMAGE_BUILD_COMMAND: ${{ inputs.image-build-command }}
       run: "${{ github.action_path }}/../../scripts/main/kubernetes-manifests-repo-provider-package"

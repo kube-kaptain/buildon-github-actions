@@ -67,6 +67,10 @@ inputs:
     description: 'Version tag (for future non-docker providers)'
     required: false
     default: ''
+  # Container runtime
+  image-build-command:
+    description: 'Container runtime command (podman or docker)'
+    required: true
 
 outputs:
   # --- Pass-through for publish step ---
@@ -166,4 +170,5 @@ runs:
         REPO_PROVIDER_VERSION: ${{ steps.computed.outputs.version }}
         REPO_PROVIDER_AUTH_TOKEN: ${{ github.token }}
         REPO_PROVIDER_AUTH_USER: ${{ github.actor }}
+        IMAGE_BUILD_COMMAND: ${{ inputs.image-build-command }}
       run: "${{ github.action_path }}/../../scripts/main/kubernetes-manifests-repo-provider-package"

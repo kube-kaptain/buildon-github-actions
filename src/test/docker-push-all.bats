@@ -6,6 +6,7 @@ load helpers
 
 setup() {
   setup_mock_docker
+  export IMAGE_BUILD_COMMAND="docker"
   TEST_DIR=$(create_test_dir "docker-push-all")
   export GITHUB_OUTPUT="${TEST_DIR}/output"
   export OUTPUT_SUB_PATH="${TEST_DIR}/target"

@@ -21,6 +21,10 @@ inputs:
     description: 'Target registry to validate is configured (optional, but recommended for push workflows)'
     required: false
     default: ''
+  # Container runtime
+  image-build-command:
+    description: 'Container runtime command (podman or docker)'
+    required: true
 
 runs:
   using: composite
@@ -80,4 +84,5 @@ runs:
         LOG_ERROR_PREFIX: '::error::'
         LOG_ERROR_SUFFIX: ''
         LOG_GROUP_START: '::group::'
+        IMAGE_BUILD_COMMAND: ${{ inputs.image-build-command }}
         LOG_GROUP_END: ''

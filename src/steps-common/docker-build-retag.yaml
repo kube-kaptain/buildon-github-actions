@@ -14,3 +14,4 @@
     docker-target-base-path: ${{ steps.resolve-registry.outputs.docker-target-base-path }}
     docker-image-name: ${{ steps.versions.outputs.docker-image-name }}
     docker-tag: ${{ steps.versions.outputs.docker-tag }}
+    image-build-command: ${{ steps.validate-tooling.outputs.IMAGE_BUILD_COMMAND }}

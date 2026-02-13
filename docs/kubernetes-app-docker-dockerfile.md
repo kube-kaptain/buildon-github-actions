@@ -13,8 +13,7 @@ Kubernetes App - Docker Dockerfile
 | `docker-push-targets` | string | `""` | JSON array of additional push targets [{registry, base-path?}] |
 | `dockerfile-substitution-files` | string | `Dockerfile` | Comma-separated list of files to perform token substitution on (relative to dockerfile-sub-path and docker-context-sub-path) |
 | `dockerfile-sub-path` | string | `src/docker` | Directory containing Dockerfile, relative to repo root. |
-| `dockerfile-squash` | boolean | `true` | Enable --squash (requires experimental mode) |
-| `dockerfile-squash-allow-unavailable` | boolean | `false` | Allow build without squash if unavailable (default: false - fail if squash unavailable) |
+| `dockerfile-squash` | string | `squash` | Squash mode: squash, squash-all, or no |
 | `dockerfile-no-cache` | boolean | `true` | Disable layer caching for reproducible builds |
 | `manifests-sub-path` | string | `src/kubernetes` | Directory containing Kubernetes manifests (relative) |
 | `manifests-repo-provider-type` | string | `docker` | Repo provider type for manifest storage (default: docker, currently the only supported provider) |

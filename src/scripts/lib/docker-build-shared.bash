@@ -60,7 +60,7 @@ else
 fi
 
 confirm_target_image_doesnt_exist() {
-  if docker manifest inspect "${TARGET_IMAGE_FULL_URI}" &>/dev/null; then
+  if ${IMAGE_BUILD_COMMAND} manifest inspect "${TARGET_IMAGE_FULL_URI}" &>/dev/null; then
     echo "${LOG_ERROR_PREFIX:-}Target image already exists in registry: ${TARGET_IMAGE_FULL_URI}${LOG_ERROR_SUFFIX:-}" >&2
     return 1
   fi

@@ -22,6 +22,9 @@
 #
 set -euo pipefail
 
+# shellcheck source=src/scripts/defaults/image-build-command.bash
+source "$(dirname "${BASH_SOURCE[0]}")/../../defaults/image-build-command.bash"
+
 # Logging configuration (CI-agnostic)
 LOG_ERROR_PREFIX="${LOG_ERROR_PREFIX:-}"
 LOG_ERROR_SUFFIX="${LOG_ERROR_SUFFIX:-}"
@@ -58,7 +61,7 @@ fi
 confirm_image_doesnt_exist() {
   local image="${1}"
 
-  if docker manifest inspect "${image}" &>/dev/null; then
+  if ${IMAGE_BUILD_COMMAND} manifest inspect "${image}" &>/dev/null; then
     echo "${LOG_ERROR_PREFIX}Target image already exists in registry: ${image}${LOG_ERROR_SUFFIX}" >&2
     return 1
   fi
@@ -112,7 +115,7 @@ COPY ${MANIFESTS_ZIP_FILE_NAME} /${MANIFESTS_ZIP_FILE_NAME}
 EOF
 
   echo "Building manifest image..." >&2
-  docker build -t "${image_uri}" "${PUBLISH_SUB_PATH}"
+  ${IMAGE_BUILD_COMMAND} build -t "${image_uri}" "${PUBLISH_SUB_PATH}"
 
   output_var "MANIFESTS_URI" "${image_uri}"
 
