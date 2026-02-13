@@ -19,6 +19,9 @@
 #
 set -euo pipefail
 
+# shellcheck source=src/scripts/defaults/image-build-command.bash
+source "$(dirname "${BASH_SOURCE[0]}")/../../defaults/image-build-command.bash"
+
 # secret_method=$1 - unused for OIDC
 registry="${2}"
 role_arn="${3}"
@@ -47,4 +50,4 @@ AWS_SESSION_TOKEN=$(echo "${creds}" | yq -r '.Credentials.SessionToken')
 export AWS_DEFAULT_REGION="${region}"
 
 echo "Logging in to AWS ECR ${registry}..." >&2
-aws ecr get-login-password --region "${region}" | docker login --username AWS --password-stdin "${registry}"
+aws ecr get-login-password --region "${region}" | ${IMAGE_BUILD_COMMAND} login --username AWS --password-stdin "${registry}"

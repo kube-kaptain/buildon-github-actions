@@ -243,7 +243,7 @@ Kubernetes App - Docker Retag
 | `docker-source-image-full-uri` | Full source image reference |
 | `docker-target-image-full-uri` | Full target image reference |
 | `docker-image-full-uri` | Full docker image reference (alias for docker-target-image-full-uri) |
-| `docker-image-pushed` | Whether docker image was pushed |
+| `images-pushed` | Number of images pushed |
 | `manifests-zip-sub-path` | Directory containing manifests zip file (relative) |
 | `manifests-zip-file-name` | Name of manifests zip file |
 | `manifests-uri` | Reference to published manifests (format depends on repo provider) |

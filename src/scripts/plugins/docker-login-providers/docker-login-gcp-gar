@@ -13,6 +13,9 @@
 #
 set -euo pipefail
 
+# shellcheck source=src/scripts/defaults/image-build-command.bash
+source "$(dirname "${BASH_SOURCE[0]}")/../../defaults/image-build-command.bash"
+
 SCRIPT_DIR="$(dirname "${0}")"
 PLUGINS_DIR="${SCRIPT_DIR}/.."
 
@@ -23,4 +26,4 @@ service_account_key_secret="${3}"
 key_json=$("${PLUGINS_DIR}/secret-value-providers/get-secret-${secret_method}" "${service_account_key_secret}") || exit 1
 
 echo "Logging in to Google Artifact Registry ${registry}..." >&2
-echo "${key_json}" | docker login -u _json_key --password-stdin "https://${registry}"
+echo "${key_json}" | ${IMAGE_BUILD_COMMAND} login -u _json_key --password-stdin "https://${registry}"

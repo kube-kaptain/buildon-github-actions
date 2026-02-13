@@ -2,7 +2,7 @@
 # Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
 
 name: 'Docker Build Dockerfile'
-description: 'Builds a Docker image from a Dockerfile with token substitution (build only, use docker-push to push)'
+description: 'Builds a Docker image from a Dockerfile with token substitution (build only, push handled by docker-push-all)'
 
 inputs:
   # INJECT-INPUT: output-sub-path
@@ -31,10 +31,11 @@ inputs:
   is-release:
     description: 'Whether this is a release build (from version generator)'
     required: true
+  # INJECT-INPUT: image-build-command
 
 outputs:
   docker-target-image-full-uri:
-    description: 'Full target image reference (for passing to docker-push)'
+    description: 'Full target image reference'
     value: ${{ steps.build.outputs.DOCKER_TARGET_IMAGE_FULL_URI }}
   docker-target-registry:
     description: 'Target registry (pass-through for downstream)'
@@ -63,7 +64,7 @@ runs:
         DOCKERFILE_SUBSTITUTION_FILES: ${{ inputs.dockerfile-substitution-files }}
         OUTPUT_SUB_PATH: ${{ inputs.output-sub-path }}
         DOCKERFILE_SQUASH: ${{ inputs.dockerfile-squash }}
-        DOCKERFILE_SQUASH_ALLOW_UNAVAILABLE: ${{ inputs.dockerfile-squash-allow-unavailable }}
+        IMAGE_BUILD_COMMAND: ${{ inputs.image-build-command }}
         BUILD_MODE: build_server
         DOCKERFILE_NO_CACHE: ${{ inputs.dockerfile-no-cache }}
         TOKEN_DELIMITER_STYLE: ${{ inputs.token-delimiter-style }}

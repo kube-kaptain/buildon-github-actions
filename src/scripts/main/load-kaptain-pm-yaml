@@ -63,7 +63,6 @@ MAPPINGS=(
   "spec.main.docker.dockerfile.substitutionFiles:DOCKERFILE_SUBSTITUTION_FILES"
   "spec.main.docker.dockerfile.subPath:DOCKERFILE_SUB_PATH"
   "spec.main.docker.dockerfile.squash:DOCKERFILE_SQUASH"
-  "spec.main.docker.dockerfile.squashAllowUnavailable:DOCKERFILE_SQUASH_ALLOW_UNAVAILABLE"
   "spec.main.docker.dockerfile.noCache:DOCKERFILE_NO_CACHE"
   "spec.main.docker.retag.sourceRegistry:DOCKER_SOURCE_REGISTRY"
   "spec.main.docker.retag.sourceBasePath:DOCKER_SOURCE_BASE_PATH"

@@ -83,11 +83,10 @@ See [`examples/`](examples/) for more usage patterns.
 | Action | Description |
 |--------|-------------|
 | `basic-quality-checks` | Basic quality checks for commits and branches |
-| `docker-build-dockerfile` | Builds a Docker image from a Dockerfile with token substitution (build only, use docker-push to push) |
+| `docker-build-dockerfile` | Builds a Docker image from a Dockerfile with token substitution (build only, push handled by docker-push-all) |
 | `docker-build-retag` | Pulls and retags Docker images (no push) |
-| `docker-multi-push` | Pushes Docker image to multiple registries |
 | `docker-multi-tag` | Tags a Docker image for multiple registries |
-| `docker-push` | Pushes a Docker image to registry |
+| `docker-push-all` | Pushes all Docker images registered during build/tag steps |
 | `docker-registry-logins` | Authenticate to container registries (GHCR by default, configure others as needed) |
 | `generate-kubernetes-configmap` | Generates a Kubernetes ConfigMap manifest from files in a directory |
 | `generate-kubernetes-poddisruptionbudget` | Generates a Kubernetes PodDisruptionBudget manifest for controlling voluntary disruptions |
@@ -137,8 +136,7 @@ See [`examples/`](examples/) for more usage patterns.
 | `docker-target-base-path` | string | `""` | Path between registry and image name (defaults to lower cased org name on gh actions) |
 | `docker-target-registry` | string | `""` | Target container registry domain (defaults to ghcr.io on gh actions) |
 | `dockerfile-no-cache` | boolean | `true` | Disable layer caching for reproducible builds |
-| `dockerfile-squash` | boolean | `true` | Enable --squash (requires experimental mode) |
-| `dockerfile-squash-allow-unavailable` | boolean | `false` | Allow build without squash if unavailable (default: false - fail if squash unavailable) |
+| `dockerfile-squash` | string | `squash` | Squash mode: squash, squash-all, or no |
 | `dockerfile-sub-path` | string | `src/docker` | Directory containing Dockerfile, relative to repo root. |
 | `dockerfile-substitution-files` | string | `Dockerfile` | Comma-separated list of files to perform token substitution on (relative to dockerfile-sub-path and docker-context-sub-path) |
 | `github-release-add-version-to-filenames` | boolean | `true` | Add version suffix to release filenames (e.g., file.yaml -> file-1.2.3.yaml) |

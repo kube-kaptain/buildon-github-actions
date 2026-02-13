@@ -75,4 +75,4 @@ Docker Build Retag
 | `docker-source-image-full-uri` | Full source image reference |
 | `docker-target-image-full-uri` | Full target image reference |
 | `docker-image-full-uri` | Full docker image reference (alias for docker-target-image-full-uri) |
-| `docker-image-pushed` | Whether docker image was pushed |
+| `images-pushed` | Number of images pushed |

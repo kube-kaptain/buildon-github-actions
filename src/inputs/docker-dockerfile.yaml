@@ -13,15 +13,10 @@ dockerfile-sub-path:
   type: string
   default: 'src/docker'
 dockerfile-squash:
-  description: 'Enable --squash (requires experimental mode)'
+  description: 'Squash mode: squash, squash-all, or no'
   required: false
-  type: boolean
-  default: true
-dockerfile-squash-allow-unavailable:
-  description: 'Allow build without squash if unavailable (default: false - fail if squash unavailable)'
-  required: false
-  type: boolean
-  default: false
+  type: string
+  default: 'squash'
 dockerfile-no-cache:
   description: 'Disable layer caching for reproducible builds'
   required: false

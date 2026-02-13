@@ -18,6 +18,9 @@
 #
 set -euo pipefail
 
+# shellcheck source=src/scripts/defaults/image-build-command.bash
+source "$(dirname "${BASH_SOURCE[0]}")/../../defaults/image-build-command.bash"
+
 # secret_method=$1 - unused for OIDC
 registry="${2}"
 workload_identity_provider="${3}"
@@ -48,4 +51,4 @@ sa_token=$(curl -s -X POST \
   -d '{"scope": ["https://www.googleapis.com/auth/cloud-platform"]}' | yq -r '.accessToken')
 
 echo "Logging in to Google Artifact Registry ${registry}..." >&2
-echo "${sa_token}" | docker login -u oauth2accesstoken --password-stdin "https://${registry}"
+echo "${sa_token}" | ${IMAGE_BUILD_COMMAND} login -u oauth2accesstoken --password-stdin "https://${registry}"

@@ -5,6 +5,7 @@ name: 'Docker Multi-Tag'
 description: 'Tags a Docker image for multiple registries'
 
 inputs:
+  # INJECT-INPUT: output-sub-path
   # INJECT-INPUT: docker-build
 
   # Action-specific inputs
@@ -17,6 +18,7 @@ inputs:
   docker-tag:
     description: 'Tag for images'
     required: true
+  # INJECT-INPUT: image-build-command
 
 outputs:
   images-tagged:
@@ -30,8 +32,10 @@ runs:
       id: tag
       shell: bash
       env:
+        OUTPUT_SUB_PATH: ${{ inputs.output-sub-path }}
         DOCKER_IMAGE_FULL_URI: ${{ inputs.docker-image-full-uri }}
         DOCKER_IMAGE_NAME: ${{ inputs.docker-image-name }}
         DOCKER_TAG: ${{ inputs.docker-tag }}
         DOCKER_PUSH_TARGETS: ${{ inputs.docker-push-targets }}
+        IMAGE_BUILD_COMMAND: ${{ inputs.image-build-command }}
       run: "${{ github.action_path }}/../../scripts/main/docker-multi-tag"

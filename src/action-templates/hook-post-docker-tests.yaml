@@ -9,6 +9,7 @@ inputs:
   script-sub-path:
     description: 'Path to script relative to .github/ (e.g., bin/post-docker.bash)'
     required: true
+  # INJECT-INPUT: image-build-command
 
   # === Workflow Inputs ===
   # INJECT-INPUT: output-sub-path
@@ -88,6 +89,7 @@ runs:
       shell: bash
       env:
         HOOK_SCRIPT_SUB_PATH: .github/${{ inputs.script-sub-path }}
+        IMAGE_BUILD_COMMAND: ${{ inputs.image-build-command }}
         # Workflow inputs - build output
         OUTPUT_SUB_PATH: ${{ inputs.output-sub-path }}
 

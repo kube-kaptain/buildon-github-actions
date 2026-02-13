@@ -171,10 +171,9 @@ assert_var_equals() {
   fi
 }
 
-# Set up mock docker that logs calls
+# Set up mock docker/podman that logs calls
 # Control behavior with environment variables:
 #   MOCK_DOCKER_MANIFEST_EXISTS=true  - manifest inspect returns success
-#   MOCK_DOCKER_EXPERIMENTAL=true     - info --format returns "true" for experimental
 setup_mock_docker() {
   export MOCK_DOCKER_CALLS=$(create_test_dir "mock-docker")/calls.log
   mkdir -p "$MOCK_BIN_DIR"
@@ -188,18 +187,12 @@ if [[ "$1" == "manifest" && "$2" == "inspect" ]]; then
     exit 1
   fi
 fi
-# Handle docker info --format for experimental mode check
-if [[ "$1" == "info" && "$2" == "--format" ]]; then
-  if [[ "${MOCK_DOCKER_EXPERIMENTAL:-false}" == "true" ]]; then
-    echo "true"
-  else
-    echo "false"
-  fi
-  exit 0
-fi
 exit 0
 MOCKDOCKER
   chmod +x "$MOCK_BIN_DIR/docker"
+  # Also create podman mock (same behavior) for IMAGE_BUILD_COMMAND=podman tests
+  cp "$MOCK_BIN_DIR/docker" "$MOCK_BIN_DIR/podman"
+  chmod +x "$MOCK_BIN_DIR/podman"
   export PATH="$MOCK_BIN_DIR:$PATH"
 }
 
@@ -279,7 +272,7 @@ extract_defaults_inputs() {
   local defaults_file="$1"
   # Match: VAR_NAME="${VAR_NAME:-...}" pattern for known input prefixes
   # These are the workflow input variables that hooks should export
-  local prefixes="KUBERNETES_|DOCKER_|MANIFESTS_|TOKEN_|TAG_VERSION_|GITHUB_RELEASE_|QC_|BLOCK_|OUTPUT_|CONFIG_|ALLOW_BUILTIN_TOKEN|ADDITIONAL_RELEASE_BRANCHES|DEFAULT_BRANCH|CURRENT_BRANCH|RELEASE_BRANCH|BUILD_MODE"
+  local prefixes="KUBERNETES_|DOCKER_|MANIFESTS_|TOKEN_|TAG_VERSION_|GITHUB_RELEASE_|QC_|BLOCK_|OUTPUT_|CONFIG_|ALLOW_BUILTIN_TOKEN|ADDITIONAL_RELEASE_BRANCHES|DEFAULT_BRANCH|CURRENT_BRANCH|RELEASE_BRANCH|BUILD_MODE|IMAGE_BUILD_COMMAND"
   grep -E "^(${prefixes})[A-Z0-9_]*=\"\\\$\\{" "$defaults_file" 2>/dev/null \
     | sed -E 's/^([A-Z][A-Z0-9_]*)=.*/\1/' \
     | grep -v '_INPUT$' \

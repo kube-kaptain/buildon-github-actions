@@ -23,3 +23,4 @@
     config-sub-path: ${{ inputs.config-sub-path }}
     allow-builtin-token-override: ${{ inputs.allow-builtin-token-override }}
     config-value-trailing-newline: ${{ inputs.config-value-trailing-newline }}
+    image-build-command: ${{ steps.validate-tooling.outputs.IMAGE_BUILD_COMMAND }}

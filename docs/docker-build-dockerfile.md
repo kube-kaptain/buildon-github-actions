@@ -13,8 +13,7 @@ Docker Build Dockerfile
 | `docker-push-targets` | string | `""` | JSON array of additional push targets [{registry, base-path?}] |
 | `dockerfile-substitution-files` | string | `Dockerfile` | Comma-separated list of files to perform token substitution on (relative to dockerfile-sub-path and docker-context-sub-path) |
 | `dockerfile-sub-path` | string | `src/docker` | Directory containing Dockerfile, relative to repo root. |
-| `dockerfile-squash` | boolean | `true` | Enable --squash (requires experimental mode) |
-| `dockerfile-squash-allow-unavailable` | boolean | `false` | Allow build without squash if unavailable (default: false - fail if squash unavailable) |
+| `dockerfile-squash` | string | `squash` | Squash mode: squash, squash-all, or no |
 | `dockerfile-no-cache` | boolean | `true` | Disable layer caching for reproducible builds |
 | `token-delimiter-style` | string | `shell` | Token delimiter syntax for variables (shell, mustache, helm, erb, github-actions, blade, stringtemplate, ognl, t4, swift) |
 | `token-name-style` | string | `PascalCase` | Case style for token names (UPPER_SNAKE, lower_snake, lower-kebab, UPPER-KEBAB, camelCase, PascalCase, lower.dot, UPPER.DOT) |
@@ -77,4 +76,4 @@ Docker Build Dockerfile
 | `is-release` | Whether this is a release build |
 | `target-image-full-uri` | Full target image reference (action output name) |
 | `docker-image-full-uri` | Full docker image reference (alias for target-image-full-uri) |
-| `docker-image-pushed` | Whether docker image was pushed |
+| `images-pushed` | Number of images pushed |

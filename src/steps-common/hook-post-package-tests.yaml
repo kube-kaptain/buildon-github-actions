@@ -7,6 +7,7 @@
   uses: ./.github/buildon-github-actions/src/actions/hook-post-package-tests
   with:
     script-sub-path: ${{ inputs.hook-post-package-tests-script-sub-path }}
+    image-build-command: ${{ steps.validate-tooling.outputs.IMAGE_BUILD_COMMAND }}
     # === Workflow Inputs ===
     # Build output
     output-sub-path: ${{ inputs.output-sub-path }}

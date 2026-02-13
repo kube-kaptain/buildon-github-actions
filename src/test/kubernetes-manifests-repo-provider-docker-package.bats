@@ -9,6 +9,7 @@ load helpers
 
 setup() {
   setup_mock_docker
+  export IMAGE_BUILD_COMMAND="docker"
   local base_dir=$(create_test_dir "k8s-repo-docker-pkg")
   export GITHUB_OUTPUT="$base_dir/output"
   # Create a test zip in a directory

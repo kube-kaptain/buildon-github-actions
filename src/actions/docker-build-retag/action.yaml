@@ -5,6 +5,11 @@ name: 'Docker Build Retag'
 description: 'Pulls and retags Docker images (no push)'
 
 inputs:
+  # Build output
+  output-sub-path:
+    description: 'Build output directory (relative)'
+    required: false
+    default: 'target'
   # Docker source image configuration
   docker-source-registry:
     description: 'Upstream registry (e.g., docker.io)'
@@ -33,6 +38,10 @@ inputs:
   docker-tag:
     description: 'Tag for target image (from version generator docker-tag)'
     required: true
+  # Container runtime
+  image-build-command:
+    description: 'Container runtime command (podman or docker)'
+    required: true
 
 outputs:
   docker-source-image-full-uri:
@@ -57,6 +66,7 @@ runs:
       env:
         LOG_ERROR_PREFIX: '::error::'
         LOG_WARNING_PREFIX: '::warning::'
+        OUTPUT_SUB_PATH: ${{ inputs.output-sub-path }}
         DOCKER_SOURCE_REGISTRY: ${{ inputs.docker-source-registry }}
         DOCKER_SOURCE_BASE_PATH: ${{ inputs.docker-source-base-path }}
         DOCKER_SOURCE_IMAGE_NAME: ${{ inputs.docker-source-image-name }}
@@ -65,4 +75,5 @@ runs:
         DOCKER_TARGET_BASE_PATH: ${{ inputs.docker-target-base-path }}
         DOCKER_IMAGE_NAME: ${{ inputs.docker-image-name }}
         DOCKER_TAG: ${{ inputs.docker-tag }}
+        IMAGE_BUILD_COMMAND: ${{ inputs.image-build-command }}
       run: "${{ github.action_path }}/../../scripts/main/docker-build-retag"

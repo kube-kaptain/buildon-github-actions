@@ -5,7 +5,8 @@
 # validate-tooling - Validates required tools are available before build
 #
 # Checks for required command-line tools:
-# - Core tools: Always required, fails if missing (git, docker, awk, etc.)
+# - Core tools: Always required, fails if missing (git, awk, etc.)
+# - Container runtime: podman required on build_server (symlink created), docker or podman locally
 # - Build server tools: Warns if missing (some have fallbacks)
 # - Cloud CLIs: Warns if missing (only needed for specific registry logins)
 #
@@ -23,8 +24,8 @@ LOG_WARNING_PREFIX="${LOG_WARNING_PREFIX:-WARNING: }"
 LOG_WARNING_SUFFIX="${LOG_WARNING_SUFFIX:-}"
 
 # Tool categories
-CORE_TOOLS="git docker awk grep find tr wc cmp cp mkdir basename zip date uname"
-BUILD_SERVER_TOOLS="sudo systemctl jq"
+CORE_TOOLS="git awk grep find tr wc cmp cp mkdir basename zip date uname"
+BUILD_SERVER_TOOLS="sudo systemctl jq yq"
 CLOUD_TOOLS="aws az gcloud"
 
 # Track missing tools
@@ -50,6 +51,58 @@ for tool in ${CORE_TOOLS}; do
     MISSING_CORE="${MISSING_CORE} ${tool}"
   fi
 done
+echo >&2
+
+# Check container runtime
+echo "Checking container runtime..." >&2
+IMAGE_BUILD_COMMAND=""
+HAS_PODMAN=false
+HAS_DOCKER=false
+if check_tool "podman"; then
+  HAS_PODMAN=true
+  echo "  ✓ podman" >&2
+else
+  echo "  - podman (not found)" >&2
+fi
+if check_tool "docker"; then
+  HAS_DOCKER=true
+  echo "  ✓ docker" >&2
+else
+  echo "  - docker (not found)" >&2
+fi
+
+if [[ "${BUILD_MODE}" == "build_server" ]]; then
+  if [[ "${HAS_PODMAN}" != "true" ]]; then
+    echo "${LOG_ERROR_PREFIX}podman is required on build server but not found${LOG_ERROR_SUFFIX}" >&2
+    MISSING_CORE="${MISSING_CORE} podman"
+  else
+    IMAGE_BUILD_COMMAND="podman"
+    echo "  Creating docker -> podman symlink for hook script compatibility" >&2
+    sudo ln -sf "$(command -v podman)" /usr/local/bin/docker
+    if ! check_tool "docker"; then
+      echo "${LOG_ERROR_PREFIX}docker symlink creation failed${LOG_ERROR_SUFFIX}" >&2
+      MISSING_CORE="${MISSING_CORE} docker-symlink"
+    else
+      echo "  ✓ docker symlink verified" >&2
+    fi
+  fi
+else
+  # Local mode - accept either, no symlink
+  if [[ "${HAS_PODMAN}" == "true" ]]; then
+    IMAGE_BUILD_COMMAND="podman"
+    echo "${LOG_WARNING_PREFIX}Using podman locally - hook scripts targeting 'docker' command will not work, use 'podman' in hook scripts${LOG_WARNING_SUFFIX}" >&2
+  elif [[ "${HAS_DOCKER}" == "true" ]]; then
+    IMAGE_BUILD_COMMAND="docker"
+    echo "${LOG_WARNING_PREFIX}Using docker locally - squash will be disabled (podman required for squash support)${LOG_WARNING_SUFFIX}" >&2
+  else
+    echo "${LOG_ERROR_PREFIX}No container runtime found - install podman or docker${LOG_ERROR_SUFFIX}" >&2
+    MISSING_CORE="${MISSING_CORE} podman/docker"
+  fi
+fi
+
+if [[ -n "${IMAGE_BUILD_COMMAND}" ]]; then
+  echo "  → IMAGE_BUILD_COMMAND=${IMAGE_BUILD_COMMAND}" >&2
+fi
 echo >&2
 
 # Check build server tools (warn only - some have fallbacks)
@@ -96,6 +149,22 @@ fi
 
 if [[ ${EXIT_CODE} -eq 0 ]]; then
   echo "All required tools available!" >&2
+fi
+
+# Output container runtime command for downstream scripts
+output_var() {
+  local name="${1}"
+  local value="${2}"
+
+  echo "${name}=${value}"
+
+  if [[ -n "${GITHUB_OUTPUT:-}" ]]; then
+    echo "${name}=${value}" >> "${GITHUB_OUTPUT}"
+  fi
+}
+
+if [[ -n "${IMAGE_BUILD_COMMAND}" ]]; then
+  output_var "IMAGE_BUILD_COMMAND" "${IMAGE_BUILD_COMMAND}"
 fi
 
 exit ${EXIT_CODE}

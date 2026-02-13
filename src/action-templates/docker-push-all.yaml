@@ -1,0 +1,32 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
+
+name: 'Docker Push All'
+description: 'Pushes all Docker images registered during build/tag steps'
+
+inputs:
+  # INJECT-INPUT: output-sub-path
+
+  # Action-specific inputs
+  is-release:
+    description: 'Whether to push (true) or skip (false)'
+    required: true
+  # INJECT-INPUT: image-build-command
+
+outputs:
+  images-pushed:
+    description: 'Number of images pushed'
+    value: ${{ steps.push.outputs.IMAGES_PUSHED }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Push all images
+      id: push
+      shell: bash
+      env:
+        LOG_ERROR_PREFIX: '::error::'
+        OUTPUT_SUB_PATH: ${{ inputs.output-sub-path }}
+        IS_RELEASE: ${{ inputs.is-release }}
+        IMAGE_BUILD_COMMAND: ${{ inputs.image-build-command }}
+      run: "${{ github.action_path }}/../../scripts/main/docker-push-all"

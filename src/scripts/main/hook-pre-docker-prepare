@@ -50,6 +50,8 @@ source "$(dirname "${BASH_SOURCE[0]}")/../defaults/tokens.bash"
 source "$(dirname "${BASH_SOURCE[0]}")/../defaults/tag-versioning.bash"
 # shellcheck source=src/scripts/defaults/quality-checks.bash
 source "$(dirname "${BASH_SOURCE[0]}")/../defaults/quality-checks.bash"
+# shellcheck source=src/scripts/defaults/image-build-command.bash
+source "$(dirname "${BASH_SOURCE[0]}")/../defaults/image-build-command.bash"
 
 # === Vendor Specific ===
 # shellcheck source=src/scripts/defaults/vendor-github-release.bash
@@ -86,7 +88,7 @@ source "$(dirname "${BASH_SOURCE[0]}")/../defaults/manifests-repo-provider.bash"
 # Export all workflow inputs
 export OUTPUT_SUB_PATH
 export DOCKER_REGISTRY_LOGINS DOCKER_TARGET_REGISTRY DOCKER_TARGET_BASE_PATH DOCKER_PUSH_TARGETS
-export DOCKERFILE_SUB_PATH DOCKERFILE_SQUASH DOCKERFILE_NO_CACHE
+export DOCKERFILE_SUB_PATH DOCKERFILE_SQUASH DOCKERFILE_NO_CACHE IMAGE_BUILD_COMMAND
 export DOCKER_CONTEXT_SUB_PATH
 export DOCKER_SOURCE_REGISTRY DOCKER_SOURCE_BASE_PATH DOCKER_SOURCE_IMAGE_NAME DOCKER_SOURCE_TAG
 export MANIFESTS_SUB_PATH

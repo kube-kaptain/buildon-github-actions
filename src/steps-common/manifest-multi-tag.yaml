@@ -6,7 +6,9 @@
   if: inputs.docker-push-targets != '' && steps.versions.outputs.is-release == 'true' && inputs.manifests-repo-provider-type == 'docker'
   uses: ./.github/buildon-github-actions/src/actions/docker-multi-tag
   with:
+    output-sub-path: ${{ inputs.output-sub-path }}
     docker-image-full-uri: ${{ steps.manifest-repo-provider-package.outputs.manifests-uri }}
     docker-image-name: ${{ steps.versions.outputs.docker-image-name }}
     docker-tag: ${{ steps.versions.outputs.docker-tag }}-manifests
     docker-push-targets: ${{ inputs.docker-push-targets }}
+    image-build-command: ${{ steps.validate-tooling.outputs.IMAGE_BUILD_COMMAND }}
