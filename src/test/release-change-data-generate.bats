@@ -201,10 +201,10 @@ create_rcd_repo() {
 
   local yaml_file="$TEST_REPO/target/release-change-data/release-change-data.yaml"
 
-  # previous-tag should be empty
+  # previous-tag should be absent
   local prev_tag
   prev_tag=$(yq '.change.previous-tag' "$yaml_file")
-  [ "$prev_tag" = "" ]
+  [ "$prev_tag" = "null" ]
 
   # Should include all commits (initial + second)
   local count
@@ -266,10 +266,10 @@ create_rcd_repo() {
 
   local yaml_file="$TEST_REPO/target/release-change-data/release-change-data.yaml"
 
-  # previous-tag should be empty (seed tag filtered out)
+  # previous-tag should be absent (seed tag filtered out)
   local prev_tag
   prev_tag=$(yq '.change.previous-tag' "$yaml_file")
-  [ "$prev_tag" = "" ]
+  [ "$prev_tag" = "null" ]
 
   # Should include ALL commits since there's no valid previous Kaptain tag
   local count
@@ -302,10 +302,10 @@ create_rcd_repo() {
 
   local yaml_file="$TEST_REPO/target/release-change-data/release-change-data.yaml"
 
-  # previous-tag should be empty (lightweight tag filtered out)
+  # previous-tag should be absent (lightweight tag filtered out)
   local prev_tag
   prev_tag=$(yq '.change.previous-tag' "$yaml_file")
-  [ "$prev_tag" = "" ]
+  [ "$prev_tag" = "null" ]
 }
 
 @test "handles merge commits with multiple parents" {
@@ -597,7 +597,7 @@ create_rcd_repo_with_head_message() {
   local yaml_file="$TEST_REPO/target/release-change-data/release-change-data.yaml"
 
   [ "$(yq '.change.change-source-type' "$yaml_file")" = "direct" ]
-  [ "$(yq '.change.change-source-ref-data' "$yaml_file")" = "" ]
+  [ "$(yq '.change.change-source-ref-data' "$yaml_file")" = "null" ]
 }
 
 @test "detects GitLab MR as change source" {
@@ -699,7 +699,7 @@ merge-candidate-creator: featuredev" HEAD
   local yaml_file="$TEST_REPO/target/release-change-data/release-change-data.yaml"
 
   [ "$(yq '.change.change-source-note-found' "$yaml_file")" = "false" ]
-  [ "$(yq '.change.change-source-merge-candidate-creator' "$yaml_file")" = "" ]
+  [ "$(yq '.change.change-source-merge-candidate-creator' "$yaml_file")" = "null" ]
 }
 
 @test "pattern matching still runs when note is present" {

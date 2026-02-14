@@ -367,37 +367,50 @@ main() {
     echo "Branch overridden by note: ${CHANGE_SOURCE_BRANCH}" >&2
   fi
 
-  # Create base YAML document
+  # Create base YAML document (required fields only)
   export YQ_VERSION="${VERSION}"
   export YQ_PROJECT_NAME="${PROJECT_NAME}"
   export YQ_TAG="${GIT_TAG}"
   export YQ_GIT_SHA1="${head_sha}"
-  export YQ_PREVIOUS_TAG="${previous_tag}"
-  export YQ_PREVIOUS_GIT_SHA1="${previous_sha}"
   export YQ_GENERATED="${generated}"
   export YQ_COMMIT_COUNT="${commit_count}"
   export YQ_CHANGE_SOURCE_TYPE="${CHANGE_SOURCE_TYPE}"
-  export YQ_CHANGE_SOURCE_REF_DATA="${CHANGE_SOURCE_REF_DATA}"
-  export YQ_CHANGE_SOURCE_BRANCH="${CHANGE_SOURCE_BRANCH}"
   export YQ_CHANGE_SOURCE_NOTE_FOUND="${CHANGE_SOURCE_NOTE_FOUND}"
-  export YQ_CHANGE_SOURCE_MERGE_CANDIDATE_CREATOR="${CHANGE_SOURCE_NOTE_CREATOR}"
 
   yq -n '
     .change.version = strenv(YQ_VERSION) |
     .change.project-name = strenv(YQ_PROJECT_NAME) |
     .change.tag = strenv(YQ_TAG) |
     .change.git-sha1 = strenv(YQ_GIT_SHA1) |
-    .change.previous-tag = strenv(YQ_PREVIOUS_TAG) |
-    .change.previous-git-sha1 = strenv(YQ_PREVIOUS_GIT_SHA1) |
     .change.generated = strenv(YQ_GENERATED) |
-    .change.commit-count = (strenv(YQ_COMMIT_COUNT) | to_number) |
-    .change.change-source-type = strenv(YQ_CHANGE_SOURCE_TYPE) |
-    .change.change-source-ref-data = strenv(YQ_CHANGE_SOURCE_REF_DATA) |
-    .change.change-source-branch = strenv(YQ_CHANGE_SOURCE_BRANCH) |
-    .change.change-source-note-found = (strenv(YQ_CHANGE_SOURCE_NOTE_FOUND) == "true") |
-    .change.change-source-merge-candidate-creator = strenv(YQ_CHANGE_SOURCE_MERGE_CANDIDATE_CREATOR) |
-    .change.commits = []
+    .change.commit-count = (strenv(YQ_COMMIT_COUNT) | to_number)
   ' > "${OUTPUT_FILE}"
+
+  # Add optional fields only when non-empty
+  if [[ -n "${previous_tag}" ]]; then
+    export YQ_PREVIOUS_TAG="${previous_tag}"
+    export YQ_PREVIOUS_GIT_SHA1="${previous_sha}"
+    yq -i '.change.previous-tag = strenv(YQ_PREVIOUS_TAG) | .change.previous-git-sha1 = strenv(YQ_PREVIOUS_GIT_SHA1)' "${OUTPUT_FILE}"
+  fi
+
+  # Change source fields
+  yq -i '.change.change-source-type = strenv(YQ_CHANGE_SOURCE_TYPE)' "${OUTPUT_FILE}"
+  if [[ -n "${CHANGE_SOURCE_REF_DATA}" ]]; then
+    export YQ_CHANGE_SOURCE_REF_DATA="${CHANGE_SOURCE_REF_DATA}"
+    yq -i '.change.change-source-ref-data = strenv(YQ_CHANGE_SOURCE_REF_DATA)' "${OUTPUT_FILE}"
+  fi
+  if [[ -n "${CHANGE_SOURCE_BRANCH}" ]]; then
+    export YQ_CHANGE_SOURCE_BRANCH="${CHANGE_SOURCE_BRANCH}"
+    yq -i '.change.change-source-branch = strenv(YQ_CHANGE_SOURCE_BRANCH)' "${OUTPUT_FILE}"
+  fi
+  yq -i '.change.change-source-note-found = (strenv(YQ_CHANGE_SOURCE_NOTE_FOUND) == "true")' "${OUTPUT_FILE}"
+  if [[ -n "${CHANGE_SOURCE_NOTE_CREATOR}" ]]; then
+    export YQ_CHANGE_SOURCE_MERGE_CANDIDATE_CREATOR="${CHANGE_SOURCE_NOTE_CREATOR}"
+    yq -i '.change.change-source-merge-candidate-creator = strenv(YQ_CHANGE_SOURCE_MERGE_CANDIDATE_CREATOR)' "${OUTPUT_FILE}"
+  fi
+
+  # Commits array last
+  yq -i '.change.commits = []' "${OUTPUT_FILE}"
 
   # Add commits (oldest first)
   if [[ "${commit_count}" -gt 0 ]]; then
