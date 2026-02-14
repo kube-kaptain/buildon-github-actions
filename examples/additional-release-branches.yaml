@@ -39,6 +39,7 @@ jobs:
     uses: kube-kaptain/buildon-github-actions/.github/workflows/basic-quality-and-versioning.yaml@1.0.63
     permissions:
       contents: write
+      packages: write
       checks: write
     with:
       additional-release-branches: 'main-1.2.X' # Use branches like main-1.2.X for a 1.2 original version superseded by 1.3 1.4 etc
@@ -85,6 +86,15 @@ jobs:
 # └─────────────────────────────────────────────────────────────────────────┘
 #     with:
 #       hook-pre-tagging-tests-script-sub-path: 'bin/run-tests.bash'
+
+# ┌─────────────────────────────────────────────────────────────────────────┐
+# │ Change Source Tracking                                                  │
+# └─────────────────────────────────────────────────────────────────────────┘
+# Writes build provenance (source branch, PR author) as git notes during PR
+# builds, read back during release builds and included in release metadata.
+#
+#     with:
+#       change-source-note-enabled: false  # Default is true
 
 # ┌─────────────────────────────────────────────────────────────────────────┐
 # │ Token Substitution                                                      │

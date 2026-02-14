@@ -123,6 +123,15 @@ jobs:
 #       hook-pre-tagging-tests-script-sub-path: 'bin/run-tests.bash'
 
 # ┌─────────────────────────────────────────────────────────────────────────┐
+# │ Change Source Tracking                                                  │
+# └─────────────────────────────────────────────────────────────────────────┘
+# Writes build provenance (source branch, PR author) as git notes during PR
+# builds, read back during release builds and included in release metadata.
+#
+#     with:
+#       change-source-note-enabled: false  # Default is true
+
+# ┌─────────────────────────────────────────────────────────────────────────┐
 # │ Output Configuration                                                    │
 # └─────────────────────────────────────────────────────────────────────────┘
 #     with:

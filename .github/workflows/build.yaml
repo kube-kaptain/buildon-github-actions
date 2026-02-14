@@ -16,4 +16,5 @@ jobs:
       github-release-substituted-files: .github/token-substitution-and-gh-release-test.yaml
     permissions:
       contents: write
+      packages: write
       checks: write
