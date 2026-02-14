@@ -1,0 +1,9 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
+#
+# Change source note
+change-source-note-enabled:
+  description: 'Write a git note with merge candidate metadata for release tracking'
+  required: false
+  type: boolean
+  default: true

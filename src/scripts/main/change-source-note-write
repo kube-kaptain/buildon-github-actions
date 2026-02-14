@@ -1,0 +1,62 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
+#
+# change-source-note-write - Writes a git note with merge candidate metadata
+#
+# Records the source branch and creator as a git note on HEAD.
+# Pushes to refs/notes/kaptain-change-source for later retrieval by
+# release-change-data-generate during release builds.
+#
+# Non-fatal: if the push fails (permissions, forks, etc.), warns and continues.
+#
+# Inputs (environment variables):
+#   CURRENT_BRANCH           - The branch being built
+#   MERGE_CANDIDATE_CREATOR  - Who created the merge candidate (optional)
+#
+set -euo pipefail
+
+# Logging
+LOG_ERROR_PREFIX="${LOG_ERROR_PREFIX:-ERROR: }"
+LOG_ERROR_SUFFIX="${LOG_ERROR_SUFFIX:-}"
+LOG_WARNING_PREFIX="${LOG_WARNING_PREFIX:-WARNING: }"
+
+CURRENT_BRANCH="${CURRENT_BRANCH:?CURRENT_BRANCH is required}"
+MERGE_CANDIDATE_CREATOR="${MERGE_CANDIDATE_CREATOR:-}"
+
+NOTES_REF="kaptain-change-source"
+
+main() {
+  echo "=== Change Source Note Write ===" >&2
+  echo "Branch: ${CURRENT_BRANCH}" >&2
+  echo "Creator: ${MERGE_CANDIDATE_CREATOR:-<not set>}" >&2
+  echo "================================" >&2
+
+  local note_content="merge-candidate-branch: ${CURRENT_BRANCH}"
+  if [[ -n "${MERGE_CANDIDATE_CREATOR}" ]]; then
+    note_content="${note_content}
+merge-candidate-creator: ${MERGE_CANDIDATE_CREATOR}"
+  fi
+
+  local head_sha
+  head_sha=$(git rev-parse HEAD)
+
+  # Fetch existing notes so push is fast-forward
+  git fetch origin "refs/notes/${NOTES_REF}:refs/notes/${NOTES_REF}" 2>/dev/null || true
+
+  # Write the note
+  if ! git notes --ref="${NOTES_REF}" add -f -m "${note_content}" HEAD; then
+    echo "${LOG_WARNING_PREFIX}Failed to write change source note to ${head_sha}${LOG_ERROR_SUFFIX}" >&2
+    return 0
+  fi
+  echo "Note written to ${head_sha}" >&2
+
+  # Push the note (non-fatal)
+  if git push origin "refs/notes/${NOTES_REF}" 2>&1; then
+    echo "Note pushed to origin" >&2
+  else
+    echo "${LOG_WARNING_PREFIX}Failed to push change source note - this is non-fatal (permissions may not allow it)${LOG_ERROR_SUFFIX}" >&2
+  fi
+}
+
+main "$@"

@@ -37,6 +37,8 @@ on:
       # INJECT-INPUT: hooks-pre-tagging
       # INJECT-INPUT: hooks-package
 
+      # INJECT-INPUT: change-source-note
+
       # INJECT-INPUT: github-release
     secrets:
       docker-registry-logins-secrets:
@@ -166,15 +168,25 @@ jobs:
       # INJECT: versions-and-naming
       # INJECT: github-check-end(name="Versions & Naming", id="check-versions")
 
+      # === Change Source Note ===
+      # INJECT: github-check-start(name="Change Source Note", id="check-change-source-note", if="steps.versions.outputs.is-release != 'true'")
+      # INJECT: change-source-note-write
+      # INJECT: github-check-end(name="Change Source Note", id="check-change-source-note", if="steps.versions.outputs.is-release != 'true'")
+
+      # === Release Change Data Generate ===
+      # INJECT: github-check-start(name="Release Change Data Generate", id="check-release-change-data-generate")
+      # INJECT: release-change-data-generate
+      # INJECT: github-check-end(name="Release Change Data Generate", id="check-release-change-data-generate")
+
+      # === Release Change Data OCI Package ===
+      # INJECT: github-check-start(name="Release Change Data OCI Package", id="check-release-change-data-oci-package")
+      # INJECT: release-change-data-oci-package
+      # INJECT: github-check-end(name="Release Change Data OCI Package", id="check-release-change-data-oci-package")
+
       # === Docker Retag ===
       # INJECT: github-check-start(name="Docker Retag", id="check-docker-retag")
       # INJECT: docker-build-retag
       # INJECT: github-check-end(name="Docker Retag", id="check-docker-retag")
-
-      # === Docker Multi-Tag ===
-      # INJECT: github-check-start(name="Docker Multi-Tag", id="check-docker-multi-tag", if="inputs.docker-push-targets != '' && steps.versions.outputs.is-release == 'true'")
-      # INJECT: docker-multi-tag
-      # INJECT: github-check-end(name="Docker Multi-Tag", id="check-docker-multi-tag", if="inputs.docker-push-targets != '' && steps.versions.outputs.is-release == 'true'")
 
       # === Generate ConfigMap ===
       # INJECT: github-check-start(name="Generate ConfigMap", id="check-generate-configmap", if="inputs.kubernetes-configmap-sub-path != ''")
@@ -222,15 +234,15 @@ jobs:
       # INJECT: manifest-repo-provider-package
       # INJECT: github-check-end(name="Package Manifests for Repo Provider", id="check-manifest-repo-provider-package")
 
-      # === Manifest Multi-Tag ===
-      # INJECT: github-check-start(name="Manifest Multi-Tag", id="check-manifest-multi-tag", if="inputs.docker-push-targets != '' && steps.versions.outputs.is-release == 'true' && inputs.manifests-repo-provider-type == 'docker'")
-      # INJECT: manifest-multi-tag
-      # INJECT: github-check-end(name="Manifest Multi-Tag", id="check-manifest-multi-tag", if="inputs.docker-push-targets != '' && steps.versions.outputs.is-release == 'true' && inputs.manifests-repo-provider-type == 'docker'")
-
       # === Post-package Tests ===
       # INJECT: github-check-start(name="Post-package Tests", id="check-post-package", if="inputs.hook-post-package-tests-script-sub-path != ''")
       # INJECT: hook-post-package-tests
       # INJECT: github-check-end(name="Post-package Tests", id="check-post-package", if="inputs.hook-post-package-tests-script-sub-path != ''")
+
+      # === Docker Multi-Tag ===
+      # INJECT: github-check-start(name="Docker Multi-Tag", id="check-docker-multi-tag", if="inputs.docker-push-targets != '' && steps.versions.outputs.is-release == 'true'")
+      # INJECT: docker-multi-tag
+      # INJECT: github-check-end(name="Docker Multi-Tag", id="check-docker-multi-tag", if="inputs.docker-push-targets != '' && steps.versions.outputs.is-release == 'true'")
 
       # === GitHub Release Prepare ===
       # INJECT: github-check-start(name="GitHub Release Prepare", id="check-github-release-prepare", if="inputs.github-release-enabled == true")

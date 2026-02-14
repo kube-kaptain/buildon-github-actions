@@ -5,7 +5,7 @@ name: 'Docker Push All'
 description: 'Pushes all Docker images registered during build/tag steps'
 
 inputs:
-  # INJECT-INPUT: output-sub-path
+  # INJECT-INPUT: docker-push-image-list
 
   # Action-specific inputs
   is-release:
@@ -26,7 +26,7 @@ runs:
       shell: bash
       env:
         LOG_ERROR_PREFIX: '::error::'
-        OUTPUT_SUB_PATH: ${{ inputs.output-sub-path }}
+        DOCKER_PUSH_IMAGE_LIST_FILE: ${{ inputs.docker-push-image-list-file }}
         IS_RELEASE: ${{ inputs.is-release }}
         IMAGE_BUILD_COMMAND: ${{ inputs.image-build-command }}
       run: "${{ github.action_path }}/../../scripts/main/docker-push-all"

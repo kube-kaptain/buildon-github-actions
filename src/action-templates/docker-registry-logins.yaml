@@ -21,7 +21,13 @@ inputs:
     description: 'Target registry to validate is configured (optional, but recommended for push workflows)'
     required: false
     default: ''
+  # INJECT-INPUT: output-sub-path
   # INJECT-INPUT: image-build-command
+
+outputs:
+  docker-push-image-list-file:
+    description: 'Path to file listing image URIs for docker-push-all'
+    value: ${{ steps.logins.outputs.DOCKER_PUSH_IMAGE_LIST_FILE }}
 
 runs:
   using: composite
@@ -72,12 +78,14 @@ runs:
         } >> "$GITHUB_OUTPUT"
 
     - name: Run docker-registry-logins
+      id: logins
       shell: bash
       run: ${{ github.action_path }}/../../scripts/main/docker-registry-logins
       env:
         SECRET_METHOD: ${{ inputs.secret-method }}
         CONFIG: ${{ steps.config.outputs.FINAL_CONFIG }}
         SECRETS_JSON: ${{ inputs.secrets-json }}
+        OUTPUT_SUB_PATH: ${{ inputs.output-sub-path }}
         LOG_ERROR_PREFIX: '::error::'
         LOG_ERROR_SUFFIX: ''
         LOG_GROUP_START: '::group::'

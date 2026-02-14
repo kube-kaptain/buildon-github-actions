@@ -160,7 +160,7 @@ check_generated_files() {
 
   # Check for modified files in generated locations
   local modified_generated
-  modified_generated=$(git -C "$PROJECT_ROOT" diff --name-only .github/workflows/ docs/ README.md 2>/dev/null || true)
+  modified_generated=$(git -C "$PROJECT_ROOT" diff --name-only .github/workflows/ src/actions/ docs/ README.md 2>/dev/null || true)
 
   if [[ -z "$modified_generated" ]]; then
     log_info "Generated files are up to date"
@@ -168,12 +168,13 @@ check_generated_files() {
   fi
 
   # Check for any dirty source files that affect generation (staged or unstaged)
-  # Workflow templates, step fragments, and actions all contribute to generated output
+  # Workflow templates, step fragments, action templates, and inputs all contribute to generated output
   local dirty_sources
   dirty_sources=$(git -C "$PROJECT_ROOT" status --porcelain \
     src/workflow-templates/ \
     src/steps-common/ \
-    src/actions/ \
+    src/action-templates/ \
+    src/inputs/ \
     2>/dev/null | grep -v '^?' || true)
 
   # If ANY source is dirty, generated file changes are local work in progress
@@ -196,7 +197,7 @@ check_generated_files() {
 
   # Show the actual diff so CI logs reveal what's different
   log_error "Diff of generated files:"
-  git -C "$PROJECT_ROOT" diff .github/workflows/ docs/ README.md || true
+  git -C "$PROJECT_ROOT" diff .github/workflows/ src/actions/ docs/ README.md || true
   if [[ "${WARN_ONLY_FRESHNESS:-}" == "true" ]]; then
     log_warn "Continuing despite stale files (WARN_ONLY_FRESHNESS=true)"
   else

@@ -2,14 +2,13 @@
 # Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
 
 name: 'Docker Multi-Tag'
-description: 'Tags a Docker image for multiple registries'
+description: 'Discovers and tags all matching images for additional registries'
 
 inputs:
-  # Build output
-  output-sub-path:
-    description: 'Build output directory (relative)'
-    required: false
-    default: 'target'
+  # Docker push image list file path
+  docker-push-image-list-file:
+    description: 'Path to file listing image URIs for docker-push-all (set by docker-registry-logins)'
+    required: true
   # Docker registry logins
   docker-registry-logins:
     description: 'YAML config for Docker registry logins (registry URL as key)'
@@ -31,15 +30,19 @@ inputs:
     default: ''
 
   # Action-specific inputs
-  docker-image-full-uri:
-    description: 'Full URI of the image to tag from'
-    required: true
   docker-image-name:
     description: 'Image name portion'
     required: true
   docker-tag:
-    description: 'Tag for images'
+    description: 'Base tag for images'
     required: true
+  docker-target-registry:
+    description: 'Primary registry to filter source images'
+    required: true
+  docker-target-base-path:
+    description: 'Primary base path within registry'
+    required: false
+    default: ''
   # Container runtime
   image-build-command:
     description: 'Container runtime command (podman or docker)'
@@ -57,10 +60,11 @@ runs:
       id: tag
       shell: bash
       env:
-        OUTPUT_SUB_PATH: ${{ inputs.output-sub-path }}
-        DOCKER_IMAGE_FULL_URI: ${{ inputs.docker-image-full-uri }}
+        DOCKER_PUSH_IMAGE_LIST_FILE: ${{ inputs.docker-push-image-list-file }}
         DOCKER_IMAGE_NAME: ${{ inputs.docker-image-name }}
         DOCKER_TAG: ${{ inputs.docker-tag }}
         DOCKER_PUSH_TARGETS: ${{ inputs.docker-push-targets }}
+        DOCKER_TARGET_REGISTRY: ${{ inputs.docker-target-registry }}
+        DOCKER_TARGET_BASE_PATH: ${{ inputs.docker-target-base-path }}
         IMAGE_BUILD_COMMAND: ${{ inputs.image-build-command }}
       run: "${{ github.action_path }}/../../scripts/main/docker-multi-tag"

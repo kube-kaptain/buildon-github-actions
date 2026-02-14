@@ -20,6 +20,10 @@ inputs:
     description: 'Build output directory (relative)'
     required: false
     default: 'target'
+  # Docker push image list file path
+  docker-push-image-list-file:
+    description: 'Path to file listing image URIs for docker-push-all (set by docker-registry-logins)'
+    required: true
   # Docker registry logins
   docker-registry-logins:
     description: 'YAML config for Docker registry logins (registry URL as key)'
@@ -883,6 +887,7 @@ runs:
         IMAGE_BUILD_COMMAND: ${{ inputs.image-build-command }}
         # Workflow inputs - build output
         OUTPUT_SUB_PATH: ${{ inputs.output-sub-path }}
+        DOCKER_PUSH_IMAGE_LIST_FILE: ${{ inputs.docker-push-image-list-file }}
 
         # Workflow inputs - docker registry logins
         DOCKER_REGISTRY_LOGINS: ${{ inputs.docker-registry-logins }}

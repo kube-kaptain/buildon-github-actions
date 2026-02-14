@@ -6,6 +6,7 @@ description: 'Builds a Docker image from a Dockerfile with token substitution (b
 
 inputs:
   # INJECT-INPUT: output-sub-path
+  # INJECT-INPUT: docker-push-image-list
   # INJECT-INPUT: docker-dockerfile
   # INJECT-INPUT: token-substitution
 
@@ -63,6 +64,7 @@ runs:
         DOCKERFILE_SUB_PATH: ${{ inputs.dockerfile-sub-path }}
         DOCKERFILE_SUBSTITUTION_FILES: ${{ inputs.dockerfile-substitution-files }}
         OUTPUT_SUB_PATH: ${{ inputs.output-sub-path }}
+        DOCKER_PUSH_IMAGE_LIST_FILE: ${{ inputs.docker-push-image-list-file }}
         DOCKERFILE_SQUASH: ${{ inputs.dockerfile-squash }}
         IMAGE_BUILD_COMMAND: ${{ inputs.image-build-command }}
         BUILD_MODE: build_server

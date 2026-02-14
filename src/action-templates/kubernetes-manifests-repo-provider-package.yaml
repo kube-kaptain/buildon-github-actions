@@ -6,6 +6,7 @@ description: 'Packages manifests for repo provider (builds docker image). Does N
 
 inputs:
   # INJECT-INPUT: output-sub-path
+  # INJECT-INPUT: docker-push-image-list
   # INJECT-INPUT: kubernetes-app-manifests
   # INJECT-INPUT: docker-build
 
@@ -119,6 +120,7 @@ runs:
         LOG_ERROR_PREFIX: '::error::'
         MANIFESTS_REPO_PROVIDER_TYPE: ${{ inputs.manifests-repo-provider-type }}
         OUTPUT_SUB_PATH: ${{ inputs.output-sub-path }}
+        DOCKER_PUSH_IMAGE_LIST_FILE: ${{ inputs.docker-push-image-list-file }}
         MANIFESTS_PACKAGING_BASE_IMAGE: ${{ inputs.manifests-packaging-base-image }}
 
         # --- Pass-through inputs ---

@@ -16,7 +16,9 @@ setup() {
   export TEST_ZIP_NAME="test-manifests.zip"
   echo "test content" > "$TEST_ZIP_DIR/$TEST_ZIP_NAME"
   export OUTPUT_SUB_PATH="$base_dir/target"
+  export DOCKER_PUSH_IMAGE_LIST_FILE="${OUTPUT_SUB_PATH}/docker-push-all/image-uris"
   mkdir -p "$OUTPUT_SUB_PATH"
+  mkdir -p "$(dirname "$DOCKER_PUSH_IMAGE_LIST_FILE")"
 }
 
 teardown() {

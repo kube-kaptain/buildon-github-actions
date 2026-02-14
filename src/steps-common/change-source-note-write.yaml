@@ -1,0 +1,7 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
+
+- name: Write change source note
+  id: change-source-note-write
+  if: steps.versions.outputs.is-release != 'true' && inputs.change-source-note-enabled == true
+  uses: ./.github/buildon-github-actions/src/actions/change-source-note-write

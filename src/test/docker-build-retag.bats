@@ -7,7 +7,10 @@ load helpers
 setup() {
   setup_mock_docker
   export IMAGE_BUILD_COMMAND="docker"
-  export GITHUB_OUTPUT=$(create_test_dir "docker-retag")/output
+  local base_dir=$(create_test_dir "docker-retag")
+  export GITHUB_OUTPUT="$base_dir/output"
+  export DOCKER_PUSH_IMAGE_LIST_FILE="$base_dir/target/docker-push-all/image-uris"
+  mkdir -p "$(dirname "$DOCKER_PUSH_IMAGE_LIST_FILE")"
 }
 
 teardown() {

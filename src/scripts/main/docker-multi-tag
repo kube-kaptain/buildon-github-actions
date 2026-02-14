@@ -2,13 +2,20 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
 #
-# docker-multi-tag - Tags a Docker image for multiple registries
+# docker-multi-tag - Discovers and tags all matching images for additional registries
+#
+# Discovers all local images matching the primary registry/image-name/tag pattern
+# and retags each one for every configured push target. This handles all image
+# types (main build, manifests, release-change-data, etc.) automatically.
 #
 # Inputs (environment variables):
-#   DOCKER_IMAGE_FULL_URI - Full URI of image to tag from (required)
-#   DOCKER_IMAGE_NAME     - Image name portion (required)
-#   DOCKER_TAG            - Tag for images (required)
-#   DOCKER_PUSH_TARGETS   - JSON array of targets [{registry, base-path?}] (required)
+#   DOCKER_IMAGE_NAME        - Image name portion (required)
+#   DOCKER_TAG               - Base tag for images (required)
+#   DOCKER_PUSH_TARGETS      - JSON array of targets [{registry, base-path?}] (required)
+#   DOCKER_TARGET_REGISTRY   - Primary registry to filter source images (required)
+#   DOCKER_TARGET_BASE_PATH  - Primary base path (optional, from defaults)
+#   DOCKER_PUSH_IMAGE_LIST_FILE - Path to image URIs file (required, from docker-registry-logins)
+#   IMAGE_BUILD_COMMAND      - Container runtime command (default: docker)
 #
 # Each target in the JSON array:
 #   registry  - Target registry (required)
@@ -21,18 +28,14 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-# shellcheck source=src/scripts/defaults/output-sub-path.bash
-source "${SCRIPT_DIR}/../defaults/output-sub-path.bash"
+# shellcheck source=src/scripts/defaults/docker-push-image-list.bash
+source "${SCRIPT_DIR}/../defaults/docker-push-image-list.bash"
 # shellcheck source=src/scripts/defaults/docker-build.bash
 source "${SCRIPT_DIR}/../defaults/docker-build.bash"
 # shellcheck source=src/scripts/defaults/image-build-command.bash
 source "${SCRIPT_DIR}/../defaults/image-build-command.bash"
 
 # Validate required inputs
-if [[ -z "${DOCKER_IMAGE_FULL_URI:-}" ]]; then
-  echo "DOCKER_IMAGE_FULL_URI is required" >&2
-  exit 1
-fi
 if [[ -z "${DOCKER_IMAGE_NAME:-}" ]]; then
   echo "DOCKER_IMAGE_NAME is required" >&2
   exit 1
@@ -43,6 +46,10 @@ if [[ -z "${DOCKER_TAG:-}" ]]; then
 fi
 if [[ -z "${DOCKER_PUSH_TARGETS}" ]]; then
   echo "DOCKER_PUSH_TARGETS is required" >&2
+  exit 1
+fi
+if [[ -z "${DOCKER_TARGET_REGISTRY:-}" ]]; then
+  echo "DOCKER_TARGET_REGISTRY is required" >&2
   exit 1
 fi
 
@@ -74,9 +81,10 @@ build_image_uri() {
 
 main() {
   echo "=== Docker Multi-Tag ===" >&2
-  echo "Source image: ${DOCKER_IMAGE_FULL_URI}" >&2
   echo "Image name: ${DOCKER_IMAGE_NAME}" >&2
-  echo "Tag: ${DOCKER_TAG}" >&2
+  echo "Base tag: ${DOCKER_TAG}" >&2
+  echo "Source registry: ${DOCKER_TARGET_REGISTRY}" >&2
+  echo "Source base path: ${DOCKER_TARGET_BASE_PATH:-<none>}" >&2
   echo "========================" >&2
 
   # Validate JSON before processing
@@ -85,32 +93,61 @@ main() {
     exit 1
   fi
 
+  # Build source reference filter
+  local source_prefix
+  source_prefix=$(build_image_uri "${DOCKER_TARGET_REGISTRY}" "${DOCKER_TARGET_BASE_PATH:-}" "${DOCKER_IMAGE_NAME}" "")
+  # Remove trailing colon for the filter prefix
+  source_prefix="${source_prefix%:}"
+
+  local filter_reference="${source_prefix}:${DOCKER_TAG}*"
+  echo "Filter: ${filter_reference}" >&2
+
+  # Discover all matching tags
+  local tags
+  tags=$(${IMAGE_BUILD_COMMAND} images --filter "reference=${filter_reference}" --format '{{.Tag}}' 2>/dev/null || true)
+
+  if [[ -z "${tags}" ]]; then
+    echo "No images found matching filter - nothing to tag" >&2
+    output_var "IMAGES_TAGGED" "0"
+    return 0
+  fi
+
+  echo "Discovered tags:" >&2
+  echo "${tags}" | while IFS= read -r tag; do
+    echo "  ${tag}" >&2
+  done
+
   local count=0
 
-  # Parse JSON and iterate over targets
-  while IFS= read -r target; do
-    local registry base_path target_uri
+  # For each discovered tag, retag for each push target
+  while IFS= read -r tag; do
+    [[ -z "${tag}" ]] && continue
 
-    registry=$(echo "${target}" | jq -r '.registry')
-    base_path=$(echo "${target}" | jq -r '.["base-path"] // ""')
+    local source_uri="${source_prefix}:${tag}"
 
-    # Validate registry is present
-    if [[ -z "${registry}" ]] || [[ "${registry}" == "null" ]]; then
-      echo "${LOG_ERROR_PREFIX:-}Push target missing required 'registry' field${LOG_ERROR_SUFFIX:-}" >&2
-      exit 1
-    fi
+    while IFS= read -r target; do
+      local registry base_path target_uri
 
-    target_uri=$(build_image_uri "${registry}" "${base_path}" "${DOCKER_IMAGE_NAME}" "${DOCKER_TAG}")
+      registry=$(echo "${target}" | jq -r '.registry')
+      base_path=$(echo "${target}" | jq -r '.["base-path"] // ""')
 
-    echo "Tagging: ${DOCKER_IMAGE_FULL_URI} -> ${target_uri}" >&2
-    ${IMAGE_BUILD_COMMAND} tag "${DOCKER_IMAGE_FULL_URI}" "${target_uri}"
+      # Validate registry is present
+      if [[ -z "${registry}" ]] || [[ "${registry}" == "null" ]]; then
+        echo "${LOG_ERROR_PREFIX:-}Push target missing required 'registry' field${LOG_ERROR_SUFFIX:-}" >&2
+        exit 1
+      fi
 
-    # Register image for consolidated push
-    mkdir -p "${OUTPUT_SUB_PATH}/docker-push-all"
-    echo "${target_uri}" >> "${OUTPUT_SUB_PATH}/docker-push-all/image-uris"
+      target_uri=$(build_image_uri "${registry}" "${base_path}" "${DOCKER_IMAGE_NAME}" "${tag}")
 
-    count=$((count + 1))
-  done < <(echo "${DOCKER_PUSH_TARGETS}" | jq -c '.[]')
+      echo "Tagging: ${source_uri} -> ${target_uri}" >&2
+      ${IMAGE_BUILD_COMMAND} tag "${source_uri}" "${target_uri}"
+
+      # Register image for consolidated push
+      echo "${target_uri}" >> "${DOCKER_PUSH_IMAGE_LIST_FILE}"
+
+      count=$((count + 1))
+    done < <(echo "${DOCKER_PUSH_TARGETS}" | jq -c '.[]')
+  done <<< "${tags}"
 
   output_var "IMAGES_TAGGED" "${count}"
 

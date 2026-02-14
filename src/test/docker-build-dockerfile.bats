@@ -30,6 +30,8 @@ set_required_env() {
   export PROJECT_NAME="my-repo"
   export DOCKERFILE_SUB_PATH="$TEST_DIR"
   export OUTPUT_SUB_PATH="$OUTPUT_DIR"
+  export DOCKER_PUSH_IMAGE_LIST_FILE="${OUTPUT_SUB_PATH}/docker-push-all/image-uris"
+  mkdir -p "$(dirname "$DOCKER_PUSH_IMAGE_LIST_FILE")"
   export DOCKERFILE_SQUASH="no"
   export IMAGE_BUILD_COMMAND="docker"
   export IS_RELEASE="true"
@@ -75,6 +77,8 @@ set_required_env() {
   export DOCKER_IMAGE_NAME="test/my-repo"
   export DOCKER_TAG="1.0.0"
   export DOCKERFILE_SUB_PATH="$TEST_DIR"
+  export DOCKER_PUSH_IMAGE_LIST_FILE="$OUTPUT_DIR/docker-push-all/image-uris"
+  mkdir -p "$(dirname "$DOCKER_PUSH_IMAGE_LIST_FILE")"
 
   run "$SCRIPTS_DIR/docker-build-dockerfile"
   [ "$status" -ne 0 ]

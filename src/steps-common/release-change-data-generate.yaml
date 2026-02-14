@@ -1,0 +1,12 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
+
+- name: Generate release change data
+  id: release-change-data-generate
+  uses: ./.github/buildon-github-actions/src/actions/release-change-data-generate
+  with:
+    version: ${{ steps.versions.outputs.version }}
+    project-name: ${{ steps.versions.outputs.project-name }}
+    git-tag: ${{ steps.versions.outputs.git-tag }}
+    output-sub-path: ${{ inputs.output-sub-path }}
+    change-source-note-enabled: ${{ inputs.change-source-note-enabled }}

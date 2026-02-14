@@ -10,6 +10,10 @@ inputs:
     description: 'Build output directory (relative)'
     required: false
     default: 'target'
+  # Docker push image list file path
+  docker-push-image-list-file:
+    description: 'Path to file listing image URIs for docker-push-all (set by docker-registry-logins)'
+    required: true
   # Manifests source
   manifests-sub-path:
     description: 'Directory containing Kubernetes manifests (relative)'
@@ -157,6 +161,7 @@ runs:
         LOG_ERROR_PREFIX: '::error::'
         MANIFESTS_REPO_PROVIDER_TYPE: ${{ inputs.manifests-repo-provider-type }}
         OUTPUT_SUB_PATH: ${{ inputs.output-sub-path }}
+        DOCKER_PUSH_IMAGE_LIST_FILE: ${{ inputs.docker-push-image-list-file }}
         MANIFESTS_PACKAGING_BASE_IMAGE: ${{ inputs.manifests-packaging-base-image }}
 
         # --- Pass-through inputs ---

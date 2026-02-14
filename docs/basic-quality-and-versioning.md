@@ -7,6 +7,10 @@ Basic Quality and Versioning
 | Input | Type | Default | Description |
 |-------|------|---------|-------------|
 | `output-sub-path` | string | `target` | Build output directory (relative) |
+| `docker-registry-logins` | string | `""` | YAML config for Docker registry logins (registry URL as key) |
+| `docker-target-registry` | string | `""` | Target container registry domain (defaults to ghcr.io on gh actions) |
+| `docker-target-base-path` | string | `""` | Path between registry and image name (defaults to lower cased org name on gh actions) |
+| `docker-push-targets` | string | `""` | JSON array of additional push targets [{registry, base-path?}] |
 | `token-delimiter-style` | string | `shell` | Token delimiter syntax for variables (shell, mustache, helm, erb, github-actions, blade, stringtemplate, ognl, t4, swift) |
 | `token-name-style` | string | `PascalCase` | Case style for token names (UPPER_SNAKE, lower_snake, lower-kebab, UPPER-KEBAB, camelCase, PascalCase, lower.dot, UPPER.DOT) |
 | `token-name-validation` | string | `MATCH` | How to validate user token names (MATCH = must match token-name-style, ALL = accept any valid name) |
@@ -35,12 +39,19 @@ Basic Quality and Versioning
 | `qc-block-conventional-commits` | boolean | `false` | Block commits that use conventional commit format |
 | `qc-block-duplicate-commit-messages` | boolean | `true` | Block PRs where two or more commits have identical messages |
 | `hook-pre-tagging-tests-script-sub-path` | string | `""` | Path to pre-tagging test script relative to .github/ (e.g., bin/pre-tagging.bash) |
+| `change-source-note-enabled` | boolean | `true` | Write a git note with merge candidate metadata for release tracking |
 | `github-release-enabled` | boolean | `true` | Create a GitHub release on version tags |
 | `github-release-substituted-files` | string | `""` | Files with token substitution and version suffix (space-separated) |
 | `github-release-verbatim-files` | string | `""` | Files copied as-is with version suffix only (space-separated) |
 | `github-release-notes` | string | `""` | Inline release notes string (mutually exclusive with github-release-notes-file) |
 | `github-release-notes-file` | string | `""` | Path to release notes file (mutually exclusive with github-release-notes) |
 | `github-release-add-version-to-filenames` | boolean | `true` | Add version suffix to release filenames (e.g., file.yaml -> file-1.2.3.yaml) |
+
+## Secrets
+
+| Secret | Description |
+|--------|-------------|
+| `docker-registry-logins-secrets` | JSON object of secrets for docker-registry-logins (e.g., {"DOCKER_USER": "x", "DOCKER_PASS": "y"}) |
 
 ## Outputs
 
@@ -58,3 +69,4 @@ Basic Quality and Versioning
 | `git-tag` | Tag for git |
 | `is-release` | Whether this is a release build |
 | `project-name` | The repository/project name |
+| `images-pushed` | Number of images pushed |

@@ -43,6 +43,12 @@ runs:
           done
         fi
 
+        # Always include release change data if it exists
+        RCD_FILE="${OUTPUT_SUB_PATH}/release-change-data/release-change-data.yaml"
+        if [[ -f "${RCD_FILE}" ]]; then
+          FILES="${FILES} ${RCD_FILE}"
+        fi
+
         # Fail if both notes and notes-file are set - pick one
         if [[ -n "${NOTES_FILE}" ]] && [[ -n "${NOTES}" ]]; then
           echo "::error::Both github-release-notes and github-release-notes-file are set. Use one or the other, not both."

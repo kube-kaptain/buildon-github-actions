@@ -1,0 +1,442 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
+#
+# release-change-data-generate - Generates structured release change data YAML
+#
+# Captures lossless commit metadata for the commits that constitute a release.
+# Finds the previous Kaptain-created tag independently by annotation message,
+# then generates a YAML file with all commits between that tag and HEAD.
+#
+# Inputs (environment variables):
+#   VERSION           - Release version (from versions-and-naming)
+#   PROJECT_NAME      - Project name (from versions-and-naming)
+#   GIT_TAG           - Tag just created (from versions-and-naming)
+#   OUTPUT_SUB_PATH   - Build output directory (default: target)
+#
+# Outputs:
+#   ${OUTPUT_SUB_PATH}/release-change-data/release-change-data.yaml
+#   ${OUTPUT_SUB_PATH}/release-change-data/docker-context/release-change-data-${VERSION}.yaml
+#
+set -euo pipefail
+
+SCRIPT_DIR="$(dirname "${0}")"
+
+# shellcheck source=src/scripts/defaults/output-sub-path.bash
+source "${SCRIPT_DIR}/../defaults/output-sub-path.bash"
+# shellcheck source=src/scripts/defaults/release-change-data.bash
+source "${SCRIPT_DIR}/../defaults/release-change-data.bash"
+
+# Logging
+LOG_ERROR_PREFIX="${LOG_ERROR_PREFIX:-ERROR: }"
+LOG_ERROR_SUFFIX="${LOG_ERROR_SUFFIX:-}"
+
+# Output paths
+RELEASE_CHANGE_DATA_DIR="${OUTPUT_SUB_PATH}/release-change-data"
+DOCKER_CONTEXT_DIR="${RELEASE_CHANGE_DATA_DIR}/docker-context"
+OUTPUT_FILE="${RELEASE_CHANGE_DATA_DIR}/release-change-data.yaml"
+VERSIONED_OUTPUT_FILE="${DOCKER_CONTEXT_DIR}/release-change-data-${VERSION}.yaml"
+
+# Pattern matching Kaptain build system tag annotations
+KAPTAIN_TAG_PATTERN="Automatic release tag for version .* by Kaptain build script\."
+
+output_var() {
+  local name="${1}"
+  local value="${2}"
+
+  echo "${name}=${value}"
+
+  if [[ -n "${GITHUB_OUTPUT:-}" ]]; then
+    echo "${name}=${value}" >> "${GITHUB_OUTPUT}"
+  fi
+}
+
+# Find the previous Kaptain-created tag by:
+# 1. All annotated tags merged into HEAD
+# 2. Excluding the tag just created
+# 3. Filtering by Kaptain annotation message
+# 4. Picking closest by commit distance (newest date breaks ties)
+find_previous_kaptain_tag() {
+  local current_tag="${1}"
+  local best_tag=""
+  local best_distance=-1
+  local best_date=""
+
+  while IFS= read -r tag; do
+    [[ -z "${tag}" ]] && continue
+    [[ "${tag}" == "${current_tag}" ]] && continue
+
+    # Only consider annotated tags
+    local tag_type
+    tag_type=$(git cat-file -t "refs/tags/${tag}" 2>/dev/null || echo "unknown")
+    [[ "${tag_type}" != "tag" ]] && continue
+
+    # Check annotation message matches Kaptain pattern
+    local tag_message
+    tag_message=$(git tag -l --format='%(contents:subject)' "${tag}" 2>/dev/null || true)
+    if ! echo "${tag_message}" | grep -qE "${KAPTAIN_TAG_PATTERN}"; then
+      continue
+    fi
+
+    # Calculate commit distance
+    local distance
+    distance=$(git rev-list --count "${tag}..HEAD" 2>/dev/null || echo "-1")
+    [[ "${distance}" == "-1" ]] && continue
+
+    # Get creation date for tie-breaking
+    local tag_date
+    tag_date=$(git tag -l --format='%(creatordate:iso-strict)' "${tag}" 2>/dev/null || echo "")
+
+    # Pick closest, break ties by newest date
+    if [[ "${best_distance}" == "-1" ]] || [[ "${distance}" -lt "${best_distance}" ]] || \
+       { [[ "${distance}" -eq "${best_distance}" ]] && [[ "${tag_date}" > "${best_date}" ]]; }; then
+      best_tag="${tag}"
+      best_distance="${distance}"
+      best_date="${tag_date}"
+    fi
+  done < <(git tag --merged HEAD 2>/dev/null)
+
+  echo "${best_tag}"
+}
+
+# Add a single commit's metadata to the YAML file
+add_commit_to_yaml() {
+  local sha="${1}"
+  local output_file="${2}"
+
+  export YQ_HASH
+  YQ_HASH=$(git log -1 --format='%H' "${sha}")
+  export YQ_ABBREV_HASH
+  YQ_ABBREV_HASH=$(git log -1 --format='%h' "${sha}")
+  export YQ_TREE
+  YQ_TREE=$(git log -1 --format='%T' "${sha}")
+
+  export YQ_AUTHOR_NAME
+  YQ_AUTHOR_NAME=$(git log -1 --format='%an' "${sha}")
+  export YQ_AUTHOR_EMAIL
+  YQ_AUTHOR_EMAIL=$(git log -1 --format='%ae' "${sha}")
+  export YQ_AUTHOR_DATE
+  YQ_AUTHOR_DATE=$(git log -1 --format='%aI' "${sha}")
+
+  export YQ_COMMITTER_NAME
+  YQ_COMMITTER_NAME=$(git log -1 --format='%cn' "${sha}")
+  export YQ_COMMITTER_EMAIL
+  YQ_COMMITTER_EMAIL=$(git log -1 --format='%ce' "${sha}")
+  export YQ_COMMITTER_DATE
+  YQ_COMMITTER_DATE=$(git log -1 --format='%cI' "${sha}")
+
+  export YQ_MESSAGE
+  YQ_MESSAGE=$(git log -1 --format='%B' "${sha}")
+  # Remove trailing newline from message
+  YQ_MESSAGE="${YQ_MESSAGE%$'\n'}"
+
+  # Build parents array - git hashes are hex-only, safe to embed directly
+  local parents_str
+  parents_str=$(git log -1 --format='%P' "${sha}")
+  local parents_yq="[]"
+  if [[ -n "${parents_str}" ]]; then
+    parents_yq="["
+    local first=true
+    for parent in ${parents_str}; do
+      if [[ "${first}" == "true" ]]; then
+        first=false
+      else
+        parents_yq+=", "
+      fi
+      parents_yq+="\"${parent}\""
+    done
+    parents_yq+="]"
+  fi
+
+  # Signature status
+  local sig_status
+  sig_status=$(git log -1 --format='%G?' "${sha}" 2>/dev/null || echo "N")
+
+  export YQ_SIG_VERIFICATION="${sig_status}"
+
+  if [[ "${sig_status}" != "N" ]]; then
+    export YQ_SIG_SIGNER
+    YQ_SIG_SIGNER=$(git log -1 --format='%GS' "${sha}" 2>/dev/null || true)
+    export YQ_SIG_KEY
+    YQ_SIG_KEY=$(git log -1 --format='%GK' "${sha}" 2>/dev/null || true)
+    export YQ_SIG_FINGERPRINT
+    YQ_SIG_FINGERPRINT=$(git log -1 --format='%GF' "${sha}" 2>/dev/null || true)
+    export YQ_SIG_PRIMARY_KEY
+    YQ_SIG_PRIMARY_KEY=$(git log -1 --format='%GP' "${sha}" 2>/dev/null || true)
+    export YQ_SIG_TRUST
+    YQ_SIG_TRUST=$(git log -1 --format='%GT' "${sha}" 2>/dev/null || true)
+
+    yq -i ".change.commits += [{
+      \"hash\": strenv(YQ_HASH),
+      \"abbreviated-hash\": strenv(YQ_ABBREV_HASH),
+      \"tree\": strenv(YQ_TREE),
+      \"parents\": ${parents_yq},
+      \"author\": {\"name\": strenv(YQ_AUTHOR_NAME), \"email\": strenv(YQ_AUTHOR_EMAIL), \"date\": strenv(YQ_AUTHOR_DATE)},
+      \"committer\": {\"name\": strenv(YQ_COMMITTER_NAME), \"email\": strenv(YQ_COMMITTER_EMAIL), \"date\": strenv(YQ_COMMITTER_DATE)},
+      \"message\": strenv(YQ_MESSAGE),
+      \"signature\": {\"status\": \"Present\", \"verification\": strenv(YQ_SIG_VERIFICATION), \"signer\": strenv(YQ_SIG_SIGNER), \"key\": strenv(YQ_SIG_KEY), \"fingerprint\": strenv(YQ_SIG_FINGERPRINT), \"primary-key-fingerprint\": strenv(YQ_SIG_PRIMARY_KEY), \"trust-level\": strenv(YQ_SIG_TRUST)}
+    }]" "${output_file}"
+  else
+    yq -i ".change.commits += [{
+      \"hash\": strenv(YQ_HASH),
+      \"abbreviated-hash\": strenv(YQ_ABBREV_HASH),
+      \"tree\": strenv(YQ_TREE),
+      \"parents\": ${parents_yq},
+      \"author\": {\"name\": strenv(YQ_AUTHOR_NAME), \"email\": strenv(YQ_AUTHOR_EMAIL), \"date\": strenv(YQ_AUTHOR_DATE)},
+      \"committer\": {\"name\": strenv(YQ_COMMITTER_NAME), \"email\": strenv(YQ_COMMITTER_EMAIL), \"date\": strenv(YQ_COMMITTER_DATE)},
+      \"message\": strenv(YQ_MESSAGE),
+      \"signature\": {\"status\": \"No\", \"verification\": strenv(YQ_SIG_VERIFICATION)}
+    }]" "${output_file}"
+  fi
+}
+
+# Read change source note from git notes
+# Sets: CHANGE_SOURCE_NOTE_FOUND, CHANGE_SOURCE_NOTE_BRANCH, CHANGE_SOURCE_NOTE_CREATOR
+read_change_source_note() {
+  CHANGE_SOURCE_NOTE_FOUND="false"
+  CHANGE_SOURCE_NOTE_BRANCH=""
+  CHANGE_SOURCE_NOTE_CREATOR=""
+
+  if [[ "${CHANGE_SOURCE_NOTE_ENABLED:-true}" == "false" ]]; then
+    echo "Change source notes disabled" >&2
+    return
+  fi
+
+  local notes_ref="kaptain-change-source"
+
+  # Fetch notes from origin (non-fatal)
+  git fetch origin "refs/notes/${notes_ref}:refs/notes/${notes_ref}" 2>/dev/null || true
+
+  # Check HEAD first (direct push), then HEAD^2 (merge commit - PR branch tip is second parent)
+  local note_content=""
+  note_content=$(git notes --ref="${notes_ref}" show HEAD 2>/dev/null || true)
+  if [[ -z "${note_content}" ]]; then
+    note_content=$(git notes --ref="${notes_ref}" show HEAD^2 2>/dev/null || true)
+  fi
+
+  if [[ -z "${note_content}" ]]; then
+    echo "No change source note found" >&2
+    return
+  fi
+
+  CHANGE_SOURCE_NOTE_FOUND="true"
+  echo "Change source note found" >&2
+
+  # Parse key-value pairs from note
+  while IFS= read -r line; do
+    if [[ "${line}" =~ ^merge-candidate-branch:\ (.+)$ ]]; then
+      CHANGE_SOURCE_NOTE_BRANCH="${BASH_REMATCH[1]}"
+    elif [[ "${line}" =~ ^merge-candidate-creator:\ (.+)$ ]]; then
+      CHANGE_SOURCE_NOTE_CREATOR="${BASH_REMATCH[1]}"
+    fi
+  done <<< "${note_content}"
+
+  echo "  Branch: ${CHANGE_SOURCE_NOTE_BRANCH}" >&2
+  echo "  Creator: ${CHANGE_SOURCE_NOTE_CREATOR}" >&2
+}
+
+# Detect the source of this build from the HEAD commit message
+# Sets: CHANGE_SOURCE_TYPE, CHANGE_SOURCE_REF_DATA, CHANGE_SOURCE_BRANCH
+detect_change_source() {
+  local subject
+  subject=$(git log -1 --format='%s' HEAD)
+  local body
+  body=$(git log -1 --format='%b' HEAD)
+  local parent_count
+  parent_count=$(git log -1 --format='%P' HEAD | wc -w | tr -d ' ')
+
+  CHANGE_SOURCE_TYPE="unknown"
+  CHANGE_SOURCE_REF_DATA=""
+  CHANGE_SOURCE_BRANCH=""
+
+  # GitHub PR merge: "Merge pull request #123 from org/branch-name"
+  if [[ "${subject}" =~ ^Merge\ pull\ request\ \#([0-9]+)\ from\ (.+)$ ]]; then
+    CHANGE_SOURCE_TYPE="github-pull-request"
+    local pr_num="${BASH_REMATCH[1]}"
+    local from_ref="${BASH_REMATCH[2]}"
+    CHANGE_SOURCE_REF_DATA="PR #${pr_num} from ${from_ref}"
+    # Branch is after the last / in org/branch-name, or the whole thing if no /
+    if [[ "${from_ref}" == */* ]]; then
+      CHANGE_SOURCE_BRANCH="${from_ref#*/}"
+    else
+      CHANGE_SOURCE_BRANCH="${from_ref}"
+    fi
+    return
+  fi
+
+  # Azure DevOps: "Merged PR 123: Description"
+  if [[ "${subject}" =~ ^Merged\ PR\ ([0-9]+):\ (.+)$ ]]; then
+    CHANGE_SOURCE_TYPE="azure-pull-request"
+    CHANGE_SOURCE_REF_DATA="PR ${BASH_REMATCH[1]}: ${BASH_REMATCH[2]}"
+    return
+  fi
+
+  # Bitbucket: "Merged in branch-name (pull request #123)"
+  if [[ "${subject}" =~ ^Merged\ in\ ([^ ]+)\ \(pull\ request\ \#([0-9]+)\)$ ]]; then
+    CHANGE_SOURCE_TYPE="bitbucket-pull-request"
+    CHANGE_SOURCE_BRANCH="${BASH_REMATCH[1]}"
+    CHANGE_SOURCE_REF_DATA="PR #${BASH_REMATCH[2]} from ${BASH_REMATCH[1]}"
+    return
+  fi
+
+  # GitLab MR: body contains "See merge request group/project!123"
+  if [[ "${body}" =~ See\ merge\ request\ (.+\!([0-9]+)) ]]; then
+    CHANGE_SOURCE_TYPE="gitlab-merge-request"
+    CHANGE_SOURCE_REF_DATA="MR ${BASH_REMATCH[1]}"
+    # GitLab merge commits also have the branch in the subject
+    if [[ "${subject}" =~ ^Merge\ branch\ \'([^\']+)\' ]]; then
+      CHANGE_SOURCE_BRANCH="${BASH_REMATCH[1]}"
+    fi
+    return
+  fi
+
+  # Git/GitLab branch merge: "Merge branch 'feature'" or "Merge branch 'feature' into 'main'"
+  if [[ "${subject}" =~ ^Merge\ branch\ \'([^\']+)\' ]]; then
+    CHANGE_SOURCE_TYPE="git-branch-merge"
+    CHANGE_SOURCE_BRANCH="${BASH_REMATCH[1]}"
+    if [[ "${subject}" =~ into\ \'([^\']+)\' ]]; then
+      CHANGE_SOURCE_REF_DATA="${CHANGE_SOURCE_BRANCH} into ${BASH_REMATCH[1]}"
+    else
+      CHANGE_SOURCE_REF_DATA="${CHANGE_SOURCE_BRANCH}"
+    fi
+    return
+  fi
+
+  # GitHub squash merge: "Title (#123)" - check last as it's the most ambiguous
+  if [[ "${subject}" =~ \(\#([0-9]+)\)$ ]]; then
+    CHANGE_SOURCE_TYPE="github-pull-request"
+    CHANGE_SOURCE_REF_DATA="PR #${BASH_REMATCH[1]}"
+    return
+  fi
+
+  # No pattern matched
+  if [[ "${parent_count}" -gt 1 ]]; then
+    CHANGE_SOURCE_TYPE="merge"
+  else
+    CHANGE_SOURCE_TYPE="direct"
+  fi
+}
+
+main() {
+  echo "=== Release Change Data Generate ===" >&2
+  echo "Version: ${VERSION}" >&2
+  echo "Project: ${PROJECT_NAME}" >&2
+  echo "Tag: ${GIT_TAG}" >&2
+  echo "=====================================" >&2
+
+  # Create output directories
+  mkdir -p "${RELEASE_CHANGE_DATA_DIR}"
+  mkdir -p "${DOCKER_CONTEXT_DIR}"
+  # Find previous Kaptain tag
+  local previous_tag
+  previous_tag=$(find_previous_kaptain_tag "${GIT_TAG}")
+
+  local previous_sha=""
+  if [[ -n "${previous_tag}" ]]; then
+    previous_sha=$(git rev-parse "${previous_tag}^{commit}" 2>/dev/null || true)
+    echo "Previous tag: ${previous_tag} (${previous_sha})" >&2
+  else
+    echo "No previous Kaptain tag found - including all commits" >&2
+  fi
+
+  # Count commits
+  local commit_count
+  if [[ -n "${previous_tag}" ]]; then
+    commit_count=$(git rev-list --count "${previous_tag}..HEAD" 2>/dev/null || echo "0")
+  else
+    commit_count=$(git rev-list --count HEAD 2>/dev/null || echo "0")
+  fi
+  echo "Commit count: ${commit_count}" >&2
+
+  # Get HEAD sha and timestamp
+  local head_sha
+  head_sha=$(git rev-parse HEAD)
+  local generated
+  generated=$(date -u +"%Y-%m-%dT%H:%M:%S+00:00")
+
+  # Read change source note (from PR build)
+  read_change_source_note
+
+  # Detect build source from HEAD commit message (pattern matching)
+  detect_change_source
+  echo "Change source: ${CHANGE_SOURCE_TYPE} ${CHANGE_SOURCE_REF_DATA:+(${CHANGE_SOURCE_REF_DATA})} ${CHANGE_SOURCE_BRANCH:+[${CHANGE_SOURCE_BRANCH}]}" >&2
+
+  # Note branch overrides pattern-matched branch when available
+  if [[ "${CHANGE_SOURCE_NOTE_FOUND}" == "true" && -n "${CHANGE_SOURCE_NOTE_BRANCH}" ]]; then
+    CHANGE_SOURCE_BRANCH="${CHANGE_SOURCE_NOTE_BRANCH}"
+    echo "Branch overridden by note: ${CHANGE_SOURCE_BRANCH}" >&2
+  fi
+
+  # Create base YAML document (required fields only)
+  export YQ_VERSION="${VERSION}"
+  export YQ_PROJECT_NAME="${PROJECT_NAME}"
+  export YQ_TAG="${GIT_TAG}"
+  export YQ_GIT_SHA1="${head_sha}"
+  export YQ_GENERATED="${generated}"
+  export YQ_COMMIT_COUNT="${commit_count}"
+  export YQ_CHANGE_SOURCE_TYPE="${CHANGE_SOURCE_TYPE}"
+  export YQ_CHANGE_SOURCE_NOTE_FOUND="${CHANGE_SOURCE_NOTE_FOUND}"
+
+  yq -n '
+    .change.version = strenv(YQ_VERSION) |
+    .change.project-name = strenv(YQ_PROJECT_NAME) |
+    .change.tag = strenv(YQ_TAG) |
+    .change.git-sha1 = strenv(YQ_GIT_SHA1) |
+    .change.generated = strenv(YQ_GENERATED) |
+    .change.commit-count = (strenv(YQ_COMMIT_COUNT) | to_number)
+  ' > "${OUTPUT_FILE}"
+
+  # Add optional fields only when non-empty
+  if [[ -n "${previous_tag}" ]]; then
+    export YQ_PREVIOUS_TAG="${previous_tag}"
+    export YQ_PREVIOUS_GIT_SHA1="${previous_sha}"
+    yq -i '.change.previous-tag = strenv(YQ_PREVIOUS_TAG) | .change.previous-git-sha1 = strenv(YQ_PREVIOUS_GIT_SHA1)' "${OUTPUT_FILE}"
+  fi
+
+  # Change source fields
+  yq -i '.change.change-source-type = strenv(YQ_CHANGE_SOURCE_TYPE)' "${OUTPUT_FILE}"
+  if [[ -n "${CHANGE_SOURCE_REF_DATA}" ]]; then
+    export YQ_CHANGE_SOURCE_REF_DATA="${CHANGE_SOURCE_REF_DATA}"
+    yq -i '.change.change-source-ref-data = strenv(YQ_CHANGE_SOURCE_REF_DATA)' "${OUTPUT_FILE}"
+  fi
+  if [[ -n "${CHANGE_SOURCE_BRANCH}" ]]; then
+    export YQ_CHANGE_SOURCE_BRANCH="${CHANGE_SOURCE_BRANCH}"
+    yq -i '.change.change-source-branch = strenv(YQ_CHANGE_SOURCE_BRANCH)' "${OUTPUT_FILE}"
+  fi
+  yq -i '.change.change-source-note-found = (strenv(YQ_CHANGE_SOURCE_NOTE_FOUND) == "true")' "${OUTPUT_FILE}"
+  if [[ -n "${CHANGE_SOURCE_NOTE_CREATOR}" ]]; then
+    export YQ_CHANGE_SOURCE_MERGE_CANDIDATE_CREATOR="${CHANGE_SOURCE_NOTE_CREATOR}"
+    yq -i '.change.change-source-merge-candidate-creator = strenv(YQ_CHANGE_SOURCE_MERGE_CANDIDATE_CREATOR)' "${OUTPUT_FILE}"
+  fi
+
+  # Commits array last
+  yq -i '.change.commits = []' "${OUTPUT_FILE}"
+
+  # Add commits (oldest first)
+  if [[ "${commit_count}" -gt 0 ]]; then
+    local shas
+    if [[ -n "${previous_tag}" ]]; then
+      shas=$(git rev-list --reverse "${previous_tag}..HEAD")
+    else
+      shas=$(git rev-list --reverse HEAD)
+    fi
+
+    while IFS= read -r sha; do
+      [[ -z "${sha}" ]] && continue
+      add_commit_to_yaml "${sha}" "${OUTPUT_FILE}"
+    done <<< "${shas}"
+  fi
+
+  # Copy to docker context (versioned name)
+  cp "${OUTPUT_FILE}" "${VERSIONED_OUTPUT_FILE}"
+
+  # Output paths for downstream steps
+  output_var "RELEASE_CHANGE_DATA_FILE" "${OUTPUT_FILE}"
+  output_var "RELEASE_CHANGE_DATA_DOCKER_CONTEXT" "${DOCKER_CONTEXT_DIR}"
+
+  echo "Release change data generated:" >&2
+  echo "  Plain: ${OUTPUT_FILE}" >&2
+  echo "  Versioned: ${VERSIONED_OUTPUT_FILE}" >&2
+}
+
+main "$@"

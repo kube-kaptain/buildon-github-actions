@@ -1,0 +1,61 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
+
+name: 'Release Change Data OCI Package'
+description: 'Packages release change data as OCI image for consolidated push'
+
+inputs:
+  # Build output
+  output-sub-path:
+    description: 'Build output directory (relative)'
+    required: false
+    default: 'target'
+  # Docker push image list file path
+  docker-push-image-list-file:
+    description: 'Path to file listing image URIs for docker-push-all (set by docker-registry-logins)'
+    required: true
+
+  # Action-specific inputs (passed from workflow/version generator)
+  version:
+    description: 'Release version (from version generator)'
+    required: true
+  docker-tag:
+    description: 'Docker tag (from version generator)'
+    required: true
+  docker-image-name:
+    description: 'Docker image name (from version generator)'
+    required: true
+  docker-target-registry:
+    description: 'Target container registry (pre-resolved by workflow)'
+    required: true
+  docker-target-base-path:
+    description: 'Path between registry and image name (pre-resolved by workflow)'
+    required: false
+    default: ''
+  # Container runtime
+  image-build-command:
+    description: 'Container runtime command (podman or docker)'
+    required: true
+
+outputs:
+  release-change-data-image-uri:
+    description: 'Full image URI of the release change data OCI package'
+    value: ${{ steps.package.outputs.RELEASE_CHANGE_DATA_IMAGE_URI }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Package release change data as OCI image
+      id: package
+      shell: bash
+      env:
+        LOG_ERROR_PREFIX: '::error::'
+        VERSION: ${{ inputs.version }}
+        DOCKER_TAG: ${{ inputs.docker-tag }}
+        DOCKER_IMAGE_NAME: ${{ inputs.docker-image-name }}
+        DOCKER_TARGET_REGISTRY: ${{ inputs.docker-target-registry }}
+        DOCKER_TARGET_BASE_PATH: ${{ inputs.docker-target-base-path }}
+        OUTPUT_SUB_PATH: ${{ inputs.output-sub-path }}
+        DOCKER_PUSH_IMAGE_LIST_FILE: ${{ inputs.docker-push-image-list-file }}
+        IMAGE_BUILD_COMMAND: ${{ inputs.image-build-command }}
+      run: "${{ github.action_path }}/../../scripts/main/release-change-data-oci-package"

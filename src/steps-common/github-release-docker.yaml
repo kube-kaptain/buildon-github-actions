@@ -11,6 +11,9 @@
     VERSION: ${{ steps.versions.outputs.version }}
     PROJECT_NAME: ${{ steps.versions.outputs.project-name }}
     DOCKER_URI: ${{ steps.docker-build.outputs.docker-target-image-full-uri }}
+    RELEASE_CHANGE_DATA_URI: ${{ steps.release-change-data-oci-package.outputs.release-change-data-image-uri }}
+    GITHUB_SERVER_URL: ${{ github.server_url }}
+    GITHUB_REPOSITORY: ${{ github.repository }}
   run: |
     display_name=$(./.github/buildon-github-actions/src/scripts/util/format-project-title "${PROJECT_NAME}")
     echo "title=${VERSION} — ${display_name}" >> "${GITHUB_OUTPUT}"
@@ -27,12 +30,15 @@
       } >> "${GITHUB_OUTPUT}"
     else
       # Default format
+      release_url="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/releases/download/${VERSION}"
       {
         echo "notes<<NOTES_EOF"
         echo "Automatic Docker release for version ${VERSION} of ${PROJECT_NAME} by Kaptain build script."
         echo ""
         echo "### Release Assets"
         echo "* Docker Image: [${DOCKER_URI}](https://${DOCKER_URI})"
+        echo "* Release Change Data: [release-change-data.yaml](${release_url}/release-change-data.yaml)"
+        echo "* Release Change Data Image: [${RELEASE_CHANGE_DATA_URI}](https://${RELEASE_CHANGE_DATA_URI})"
         echo "NOTES_EOF"
       } >> "${GITHUB_OUTPUT}"
     fi

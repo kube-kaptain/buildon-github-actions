@@ -11,6 +11,7 @@
     # === Workflow Inputs ===
     # Build output
     output-sub-path: ${{ inputs.output-sub-path }}
+    docker-push-image-list-file: ${{ steps.docker-registry-logins.outputs.docker-push-image-list-file }}
 
     # Docker registry logins
     docker-registry-logins: ${{ inputs.docker-registry-logins }}

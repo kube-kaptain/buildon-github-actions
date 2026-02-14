@@ -1,0 +1,8 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
+#
+# Docker push image list file path
+docker-push-image-list-file:
+  description: 'Path to file listing image URIs for docker-push-all (set by docker-registry-logins)'
+  required: true
+  type: string

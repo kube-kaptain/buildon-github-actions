@@ -1063,6 +1063,13 @@ on:
         type: string
         default: ''
 
+      # Change source note
+      change-source-note-enabled:
+        description: 'Write a git note with merge candidate metadata for release tracking'
+        required: false
+        type: boolean
+        default: true
+
       # GitHub release
       github-release-enabled:
         description: 'Create a GitHub release on version tags'
@@ -1337,12 +1344,14 @@ jobs:
           check-name: 'Build & Publish → Docker Registry Logins'
       # Only run if a registry was resolved (skip if not configured)
       - name: Docker registry logins
+        id: docker-registry-logins
         if: steps.resolve-registry.outputs.docker-target-registry != '' && success()
         uses: ./.github/buildon-github-actions/src/actions/docker-registry-logins
         with:
           config: ${{ inputs.docker-registry-logins }}
           secrets-json: ${{ secrets.docker-registry-logins-secrets }}
           docker-target-registry: ${{ steps.resolve-registry.outputs.docker-target-registry }}
+          output-sub-path: ${{ inputs.output-sub-path }}
           image-build-command: ${{ steps.validate-tooling.outputs.IMAGE_BUILD_COMMAND }}
       - name: Pass check - Docker Registry Logins
         if: success() && steps.check-docker-registry-logins.outputs.check-run-id != ''
@@ -1377,6 +1386,7 @@ jobs:
           # === Workflow Inputs ===
           # Build output
           output-sub-path: ${{ inputs.output-sub-path }}
+          docker-push-image-list-file: ${{ steps.docker-registry-logins.outputs.docker-push-image-list-file }}
 
           # Docker registry logins
           docker-registry-logins: ${{ inputs.docker-registry-logins }}
@@ -1555,6 +1565,98 @@ jobs:
           action: fail
           check-run-id: ${{ steps.check-versions.outputs.check-run-id }}
 
+      # === Change Source Note ===
+      - name: Start check - Change Source Note
+        if: steps.versions.outputs.is-release != 'true' && success()
+        id: check-change-source-note
+        continue-on-error: true
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
+        with:
+          action: start
+          check-name: 'Build & Publish → Change Source Note'
+      - name: Write change source note
+        id: change-source-note-write
+        if: steps.versions.outputs.is-release != 'true' && inputs.change-source-note-enabled == true && success()
+        uses: ./.github/buildon-github-actions/src/actions/change-source-note-write
+      - name: Pass check - Change Source Note
+        if: steps.versions.outputs.is-release != 'true' && success() && steps.check-change-source-note.outputs.check-run-id != ''
+        continue-on-error: true
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
+        with:
+          action: pass
+          check-run-id: ${{ steps.check-change-source-note.outputs.check-run-id }}
+      - name: Fail check - Change Source Note
+        if: steps.versions.outputs.is-release != 'true' && failure() && steps.check-change-source-note.outputs.check-run-id != ''
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
+        with:
+          action: fail
+          check-run-id: ${{ steps.check-change-source-note.outputs.check-run-id }}
+
+      # === Release Change Data Generate ===
+      - name: Start check - Release Change Data Generate
+        id: check-release-change-data-generate
+        continue-on-error: true
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
+        with:
+          action: start
+          check-name: 'Build & Publish → Release Change Data Generate'
+      - name: Generate release change data
+        id: release-change-data-generate
+        uses: ./.github/buildon-github-actions/src/actions/release-change-data-generate
+        with:
+          version: ${{ steps.versions.outputs.version }}
+          project-name: ${{ steps.versions.outputs.project-name }}
+          git-tag: ${{ steps.versions.outputs.git-tag }}
+          output-sub-path: ${{ inputs.output-sub-path }}
+          change-source-note-enabled: ${{ inputs.change-source-note-enabled }}
+      - name: Pass check - Release Change Data Generate
+        if: success() && steps.check-release-change-data-generate.outputs.check-run-id != ''
+        continue-on-error: true
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
+        with:
+          action: pass
+          check-run-id: ${{ steps.check-release-change-data-generate.outputs.check-run-id }}
+      - name: Fail check - Release Change Data Generate
+        if: failure() && steps.check-release-change-data-generate.outputs.check-run-id != ''
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
+        with:
+          action: fail
+          check-run-id: ${{ steps.check-release-change-data-generate.outputs.check-run-id }}
+
+      # === Release Change Data OCI Package ===
+      - name: Start check - Release Change Data OCI Package
+        id: check-release-change-data-oci-package
+        continue-on-error: true
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
+        with:
+          action: start
+          check-name: 'Build & Publish → Release Change Data OCI Package'
+      - name: Package release change data as OCI image
+        id: release-change-data-oci-package
+        uses: ./.github/buildon-github-actions/src/actions/release-change-data-oci-package
+        with:
+          version: ${{ steps.versions.outputs.version }}
+          docker-tag: ${{ steps.versions.outputs.docker-tag }}
+          docker-image-name: ${{ steps.versions.outputs.docker-image-name }}
+          docker-target-registry: ${{ steps.resolve-registry.outputs.docker-target-registry }}
+          docker-target-base-path: ${{ steps.resolve-registry.outputs.docker-target-base-path }}
+          output-sub-path: ${{ inputs.output-sub-path }}
+          docker-push-image-list-file: ${{ steps.docker-registry-logins.outputs.docker-push-image-list-file }}
+          image-build-command: ${{ steps.validate-tooling.outputs.IMAGE_BUILD_COMMAND }}
+      - name: Pass check - Release Change Data OCI Package
+        if: success() && steps.check-release-change-data-oci-package.outputs.check-run-id != ''
+        continue-on-error: true
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
+        with:
+          action: pass
+          check-run-id: ${{ steps.check-release-change-data-oci-package.outputs.check-run-id }}
+      - name: Fail check - Release Change Data OCI Package
+        if: failure() && steps.check-release-change-data-oci-package.outputs.check-run-id != ''
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
+        with:
+          action: fail
+          check-run-id: ${{ steps.check-release-change-data-oci-package.outputs.check-run-id }}
+
       # === Docker Retag ===
       - name: Start check - Docker Retag
         id: check-docker-retag
@@ -1567,7 +1669,7 @@ jobs:
         id: docker-build
         uses: ./.github/buildon-github-actions/src/actions/docker-build-retag
         with:
-          output-sub-path: ${{ inputs.output-sub-path }}
+          docker-push-image-list-file: ${{ steps.docker-registry-logins.outputs.docker-push-image-list-file }}
           docker-source-registry: ${{ inputs.docker-source-registry }}
           docker-source-base-path: ${{ inputs.docker-source-base-path }}
           docker-source-image-name: ${{ inputs.docker-source-image-name }}
@@ -1590,40 +1692,6 @@ jobs:
         with:
           action: fail
           check-run-id: ${{ steps.check-docker-retag.outputs.check-run-id }}
-
-      # === Docker Multi-Tag ===
-      - name: Start check - Docker Multi-Tag
-        if: inputs.docker-push-targets != '' && steps.versions.outputs.is-release == 'true' && success()
-        id: check-docker-multi-tag
-        continue-on-error: true
-        uses: ./.github/buildon-github-actions/src/actions/github-check-run
-        with:
-          action: start
-          check-name: 'Build & Publish → Docker Multi-Tag'
-      - name: Tag images for additional registries
-        id: docker-multi-tag
-        if: inputs.docker-push-targets != '' && steps.versions.outputs.is-release == 'true' && success()
-        uses: ./.github/buildon-github-actions/src/actions/docker-multi-tag
-        with:
-          output-sub-path: ${{ inputs.output-sub-path }}
-          docker-image-full-uri: ${{ steps.docker-build.outputs.docker-target-image-full-uri }}
-          docker-image-name: ${{ steps.versions.outputs.docker-image-name }}
-          docker-tag: ${{ steps.versions.outputs.docker-tag }}
-          docker-push-targets: ${{ inputs.docker-push-targets }}
-          image-build-command: ${{ steps.validate-tooling.outputs.IMAGE_BUILD_COMMAND }}
-      - name: Pass check - Docker Multi-Tag
-        if: inputs.docker-push-targets != '' && steps.versions.outputs.is-release == 'true' && success() && steps.check-docker-multi-tag.outputs.check-run-id != ''
-        continue-on-error: true
-        uses: ./.github/buildon-github-actions/src/actions/github-check-run
-        with:
-          action: pass
-          check-run-id: ${{ steps.check-docker-multi-tag.outputs.check-run-id }}
-      - name: Fail check - Docker Multi-Tag
-        if: inputs.docker-push-targets != '' && steps.versions.outputs.is-release == 'true' && failure() && steps.check-docker-multi-tag.outputs.check-run-id != ''
-        uses: ./.github/buildon-github-actions/src/actions/github-check-run
-        with:
-          action: fail
-          check-run-id: ${{ steps.check-docker-multi-tag.outputs.check-run-id }}
 
       # === Generate ConfigMap ===
       - name: Start check - Generate ConfigMap
@@ -1999,6 +2067,7 @@ jobs:
           # === Workflow Inputs ===
           # Build output
           output-sub-path: ${{ inputs.output-sub-path }}
+          docker-push-image-list-file: ${{ steps.docker-registry-logins.outputs.docker-push-image-list-file }}
 
           # Docker registry logins
           docker-registry-logins: ${{ inputs.docker-registry-logins }}
@@ -2229,6 +2298,7 @@ jobs:
           docker-tag: ${{ steps.versions.outputs.docker-tag }}-manifests
           version: ${{ steps.versions.outputs.version }}
           output-sub-path: ${{ inputs.output-sub-path }}
+          docker-push-image-list-file: ${{ steps.docker-registry-logins.outputs.docker-push-image-list-file }}
           image-build-command: ${{ steps.validate-tooling.outputs.IMAGE_BUILD_COMMAND }}
       - name: Pass check - Package Manifests for Repo Provider
         if: success() && steps.check-manifest-repo-provider-package.outputs.check-run-id != ''
@@ -2243,40 +2313,6 @@ jobs:
         with:
           action: fail
           check-run-id: ${{ steps.check-manifest-repo-provider-package.outputs.check-run-id }}
-
-      # === Manifest Multi-Tag ===
-      - name: Start check - Manifest Multi-Tag
-        if: inputs.docker-push-targets != '' && steps.versions.outputs.is-release == 'true' && inputs.manifests-repo-provider-type == 'docker' && success()
-        id: check-manifest-multi-tag
-        continue-on-error: true
-        uses: ./.github/buildon-github-actions/src/actions/github-check-run
-        with:
-          action: start
-          check-name: 'Build & Publish → Manifest Multi-Tag'
-      - name: Tag manifest images for additional registries
-        id: manifest-multi-tag
-        if: inputs.docker-push-targets != '' && steps.versions.outputs.is-release == 'true' && inputs.manifests-repo-provider-type == 'docker' && success()
-        uses: ./.github/buildon-github-actions/src/actions/docker-multi-tag
-        with:
-          output-sub-path: ${{ inputs.output-sub-path }}
-          docker-image-full-uri: ${{ steps.manifest-repo-provider-package.outputs.manifests-uri }}
-          docker-image-name: ${{ steps.versions.outputs.docker-image-name }}
-          docker-tag: ${{ steps.versions.outputs.docker-tag }}-manifests
-          docker-push-targets: ${{ inputs.docker-push-targets }}
-          image-build-command: ${{ steps.validate-tooling.outputs.IMAGE_BUILD_COMMAND }}
-      - name: Pass check - Manifest Multi-Tag
-        if: inputs.docker-push-targets != '' && steps.versions.outputs.is-release == 'true' && inputs.manifests-repo-provider-type == 'docker' && success() && steps.check-manifest-multi-tag.outputs.check-run-id != ''
-        continue-on-error: true
-        uses: ./.github/buildon-github-actions/src/actions/github-check-run
-        with:
-          action: pass
-          check-run-id: ${{ steps.check-manifest-multi-tag.outputs.check-run-id }}
-      - name: Fail check - Manifest Multi-Tag
-        if: inputs.docker-push-targets != '' && steps.versions.outputs.is-release == 'true' && inputs.manifests-repo-provider-type == 'docker' && failure() && steps.check-manifest-multi-tag.outputs.check-run-id != ''
-        uses: ./.github/buildon-github-actions/src/actions/github-check-run
-        with:
-          action: fail
-          check-run-id: ${{ steps.check-manifest-multi-tag.outputs.check-run-id }}
 
       # === Post-package Tests ===
       - name: Start check - Post-package Tests
@@ -2297,6 +2333,7 @@ jobs:
           # === Workflow Inputs ===
           # Build output
           output-sub-path: ${{ inputs.output-sub-path }}
+          docker-push-image-list-file: ${{ steps.docker-registry-logins.outputs.docker-push-image-list-file }}
 
           # Docker registry logins
           docker-registry-logins: ${{ inputs.docker-registry-logins }}
@@ -2458,6 +2495,41 @@ jobs:
           action: fail
           check-run-id: ${{ steps.check-post-package.outputs.check-run-id }}
 
+      # === Docker Multi-Tag ===
+      - name: Start check - Docker Multi-Tag
+        if: inputs.docker-push-targets != '' && steps.versions.outputs.is-release == 'true' && success()
+        id: check-docker-multi-tag
+        continue-on-error: true
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
+        with:
+          action: start
+          check-name: 'Build & Publish → Docker Multi-Tag'
+      - name: Tag images for additional registries
+        id: docker-multi-tag
+        if: inputs.docker-push-targets != '' && steps.versions.outputs.is-release == 'true' && success()
+        uses: ./.github/buildon-github-actions/src/actions/docker-multi-tag
+        with:
+          docker-push-image-list-file: ${{ steps.docker-registry-logins.outputs.docker-push-image-list-file }}
+          docker-image-name: ${{ steps.versions.outputs.docker-image-name }}
+          docker-tag: ${{ steps.versions.outputs.docker-tag }}
+          docker-push-targets: ${{ inputs.docker-push-targets }}
+          docker-target-registry: ${{ steps.resolve-registry.outputs.docker-target-registry }}
+          docker-target-base-path: ${{ steps.resolve-registry.outputs.docker-target-base-path }}
+          image-build-command: ${{ steps.validate-tooling.outputs.IMAGE_BUILD_COMMAND }}
+      - name: Pass check - Docker Multi-Tag
+        if: inputs.docker-push-targets != '' && steps.versions.outputs.is-release == 'true' && success() && steps.check-docker-multi-tag.outputs.check-run-id != ''
+        continue-on-error: true
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
+        with:
+          action: pass
+          check-run-id: ${{ steps.check-docker-multi-tag.outputs.check-run-id }}
+      - name: Fail check - Docker Multi-Tag
+        if: inputs.docker-push-targets != '' && steps.versions.outputs.is-release == 'true' && failure() && steps.check-docker-multi-tag.outputs.check-run-id != ''
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
+        with:
+          action: fail
+          check-run-id: ${{ steps.check-docker-multi-tag.outputs.check-run-id }}
+
       # === GitHub Release Prepare ===
       - name: Start check - GitHub Release Prepare
         if: inputs.github-release-enabled == true && success()
@@ -2595,7 +2667,7 @@ jobs:
         if: steps.versions.outputs.is-release == 'true' && success()
         uses: ./.github/buildon-github-actions/src/actions/docker-push-all
         with:
-          output-sub-path: ${{ inputs.output-sub-path }}
+          docker-push-image-list-file: ${{ steps.docker-registry-logins.outputs.docker-push-image-list-file }}
           is-release: ${{ steps.versions.outputs.is-release }}
           image-build-command: ${{ steps.validate-tooling.outputs.IMAGE_BUILD_COMMAND }}
       - name: Pass check - Docker Push All
@@ -2633,6 +2705,7 @@ jobs:
           DOCKER_URI: ${{ steps.docker-build.outputs.docker-target-image-full-uri }}
           MANIFESTS_URI: ${{ steps.manifest-repo-provider-publish.outputs.manifests-uri }}
           MANIFESTS_ZIP_FILE_NAME: ${{ steps.manifest-package.outputs.manifests-zip-file-name }}
+          RELEASE_CHANGE_DATA_URI: ${{ steps.release-change-data-oci-package.outputs.release-change-data-image-uri }}
           GITHUB_SERVER_URL: ${{ github.server_url }}
           GITHUB_REPOSITORY: ${{ github.repository }}
         run: |
@@ -2660,6 +2733,8 @@ jobs:
               echo "* Kube Manifests: [${MANIFESTS_ZIP_FILE_NAME}](${release_url}/${MANIFESTS_ZIP_FILE_NAME})"
               echo "* Docker Image: [${DOCKER_URI}](https://${DOCKER_URI})"
               echo "* Manifests Image: [${MANIFESTS_URI}](https://${MANIFESTS_URI})"
+              echo "* Release Change Data: [release-change-data.yaml](${release_url}/release-change-data.yaml)"
+              echo "* Release Change Data Image: [${RELEASE_CHANGE_DATA_URI}](https://${RELEASE_CHANGE_DATA_URI})"
               echo "NOTES_EOF"
             } >> "${GITHUB_OUTPUT}"
           fi

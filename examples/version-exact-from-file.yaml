@@ -31,9 +31,10 @@ on:
 
 jobs:
   build:
-    uses: kube-kaptain/buildon-github-actions/.github/workflows/basic-quality-and-versioning.yaml@1.0.62
+    uses: kube-kaptain/buildon-github-actions/.github/workflows/basic-quality-and-versioning.yaml@1.0.63
     permissions:
       contents: write
+      packages: write
       checks: write
     with:
       tag-version-calculation-strategy: 'file-pattern-match'
