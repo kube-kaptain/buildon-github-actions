@@ -2539,6 +2539,17 @@ jobs:
         with:
           action: start
           check-name: 'Build & Publish → GitHub Release Prepare'
+      # Copy release change data with version suffix
+      - name: Copy release change data to release directory
+        if: inputs.github-release-enabled == true && success()
+        shell: bash
+        run: |
+          RCD_FILE="${{ inputs.output-sub-path }}/release-change-data/release-change-data.yaml"
+          if [[ -f "${RCD_FILE}" ]]; then
+            mkdir -p "${{ inputs.output-sub-path }}/github-release"
+            cp "${RCD_FILE}" "${{ inputs.output-sub-path }}/github-release/release-change-data-${{ steps.versions.outputs.version }}.yaml"
+          fi
+
       # Copy manifests zip directly (already has version in filename, binary file)
       - name: Copy manifests zip to release directory
         if: inputs.github-release-enabled == true && success()
@@ -2733,7 +2744,7 @@ jobs:
               echo "* Kube Manifests: [${MANIFESTS_ZIP_FILE_NAME}](${release_url}/${MANIFESTS_ZIP_FILE_NAME})"
               echo "* Docker Image: [${DOCKER_URI}](https://${DOCKER_URI})"
               echo "* Manifests Image: [${MANIFESTS_URI}](https://${MANIFESTS_URI})"
-              echo "* Release Change Data: [release-change-data.yaml](${release_url}/release-change-data.yaml)"
+              echo "* Release Change Data: [release-change-data-${VERSION}.yaml](${release_url}/release-change-data-${VERSION}.yaml)"
               echo "* Release Change Data Image: [${RELEASE_CHANGE_DATA_URI}](https://${RELEASE_CHANGE_DATA_URI})"
               echo "NOTES_EOF"
             } >> "${GITHUB_OUTPUT}"

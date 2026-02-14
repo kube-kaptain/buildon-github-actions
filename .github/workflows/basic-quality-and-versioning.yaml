@@ -793,6 +793,17 @@ jobs:
         with:
           action: start
           check-name: 'Versions & Naming → GitHub Release Prepare'
+      # Copy release change data with version suffix
+      - name: Copy release change data to release directory
+        if: inputs.github-release-enabled == true && success()
+        shell: bash
+        run: |
+          RCD_FILE="${{ inputs.output-sub-path }}/release-change-data/release-change-data.yaml"
+          if [[ -f "${RCD_FILE}" ]]; then
+            mkdir -p "${{ inputs.output-sub-path }}/github-release"
+            cp "${RCD_FILE}" "${{ inputs.output-sub-path }}/github-release/release-change-data-${{ steps.versions.outputs.version }}.yaml"
+          fi
+
       - name: Prepare release files
         id: github-release-prepare
         if: inputs.github-release-enabled == true && success()
@@ -930,7 +941,7 @@ jobs:
               echo "Automatic release for version ${VERSION} of ${PROJECT_NAME} by Kaptain build script."
               echo ""
               echo "### Release Assets"
-              echo "* Release Change Data: [release-change-data.yaml](${release_url}/release-change-data.yaml)"
+              echo "* Release Change Data: [release-change-data-${VERSION}.yaml](${release_url}/release-change-data-${VERSION}.yaml)"
               echo "* Release Change Data Image: [${RELEASE_CHANGE_DATA_URI}](https://${RELEASE_CHANGE_DATA_URI})"
               echo "NOTES_EOF"
             } >> "${GITHUB_OUTPUT}"
