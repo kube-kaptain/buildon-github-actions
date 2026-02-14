@@ -47,6 +47,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/../../defaults/output-sub-path.bash"
 # shellcheck source=src/scripts/defaults/manifests-repo-provider.bash
 source "${SCRIPT_DIR}/../../defaults/manifests-repo-provider.bash"
+# shellcheck source=src/scripts/defaults/docker-push-image-list.bash
+source "${SCRIPT_DIR}/../../defaults/docker-push-image-list.bash"
 
 # Build output structure
 PUBLISH_SUB_PATH="${OUTPUT_SUB_PATH}/publish/docker"
@@ -120,8 +122,7 @@ EOF
   output_var "MANIFESTS_URI" "${image_uri}"
 
   # Register image for consolidated push
-  mkdir -p "${OUTPUT_SUB_PATH}/docker-push-all"
-  echo "${image_uri}" >> "${OUTPUT_SUB_PATH}/docker-push-all/image-uris"
+  echo "${image_uri}" >> "${DOCKER_PUSH_IMAGE_LIST_FILE}"
 
   echo "Kubernetes Manifests Repo Provider Package: Docker complete" >&2
 }

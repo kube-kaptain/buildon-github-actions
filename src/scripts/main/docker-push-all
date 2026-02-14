@@ -9,7 +9,7 @@
 # one fails, then reports failures and exits non-zero.
 #
 # Inputs (environment variables):
-#   OUTPUT_SUB_PATH - Build output directory, relative (default: target)
+#   DOCKER_PUSH_IMAGE_LIST_FILE - Path to image URIs file (required, from docker-registry-logins)
 #   IS_RELEASE      - "true" to push, "false" to skip (default: false)
 #
 # Outputs:
@@ -23,16 +23,15 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 LOG_ERROR_PREFIX="${LOG_ERROR_PREFIX:-}"
 LOG_ERROR_SUFFIX="${LOG_ERROR_SUFFIX:-}"
 
-# shellcheck source=src/scripts/defaults/output-sub-path.bash
-source "${SCRIPT_DIR}/../defaults/output-sub-path.bash"
+# shellcheck source=src/scripts/defaults/docker-push-image-list.bash
+source "${SCRIPT_DIR}/../defaults/docker-push-image-list.bash"
 # shellcheck source=src/scripts/defaults/image-build-command.bash
 source "${SCRIPT_DIR}/../defaults/image-build-command.bash"
 
 # Optional inputs with defaults
 IS_RELEASE="${IS_RELEASE:-false}"
 
-# Hardcoded relative to OUTPUT_SUB_PATH
-IMAGES_TO_PUSH_FILE="${OUTPUT_SUB_PATH}/docker-push-all/image-uris"
+IMAGES_TO_PUSH_FILE="${DOCKER_PUSH_IMAGE_LIST_FILE}"
 
 output_var() {
   local name="${1}"

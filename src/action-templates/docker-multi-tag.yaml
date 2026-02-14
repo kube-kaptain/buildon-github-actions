@@ -5,7 +5,7 @@ name: 'Docker Multi-Tag'
 description: 'Discovers and tags all matching images for additional registries'
 
 inputs:
-  # INJECT-INPUT: output-sub-path
+  # INJECT-INPUT: docker-push-image-list
   # INJECT-INPUT: docker-build
 
   # Action-specific inputs
@@ -36,7 +36,7 @@ runs:
       id: tag
       shell: bash
       env:
-        OUTPUT_SUB_PATH: ${{ inputs.output-sub-path }}
+        DOCKER_PUSH_IMAGE_LIST_FILE: ${{ inputs.docker-push-image-list-file }}
         DOCKER_IMAGE_NAME: ${{ inputs.docker-image-name }}
         DOCKER_TAG: ${{ inputs.docker-tag }}
         DOCKER_PUSH_TARGETS: ${{ inputs.docker-push-targets }}

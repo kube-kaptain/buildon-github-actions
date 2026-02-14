@@ -5,11 +5,10 @@ name: 'Docker Multi-Tag'
 description: 'Discovers and tags all matching images for additional registries'
 
 inputs:
-  # Build output
-  output-sub-path:
-    description: 'Build output directory (relative)'
-    required: false
-    default: 'target'
+  # Docker push image list file path
+  docker-push-image-list-file:
+    description: 'Path to file listing image URIs for docker-push-all (set by docker-registry-logins)'
+    required: true
   # Docker registry logins
   docker-registry-logins:
     description: 'YAML config for Docker registry logins (registry URL as key)'
@@ -61,7 +60,7 @@ runs:
       id: tag
       shell: bash
       env:
-        OUTPUT_SUB_PATH: ${{ inputs.output-sub-path }}
+        DOCKER_PUSH_IMAGE_LIST_FILE: ${{ inputs.docker-push-image-list-file }}
         DOCKER_IMAGE_NAME: ${{ inputs.docker-image-name }}
         DOCKER_TAG: ${{ inputs.docker-tag }}
         DOCKER_PUSH_TARGETS: ${{ inputs.docker-push-targets }}

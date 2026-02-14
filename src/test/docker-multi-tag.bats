@@ -9,7 +9,8 @@ setup() {
   export IMAGE_BUILD_COMMAND="docker"
   local base_dir=$(create_test_dir "docker-multi-tag")
   export GITHUB_OUTPUT="$base_dir/output"
-  export OUTPUT_SUB_PATH="$base_dir/target"
+  export DOCKER_PUSH_IMAGE_LIST_FILE="$base_dir/target/docker-push-all/image-uris"
+  mkdir -p "$(dirname "$DOCKER_PUSH_IMAGE_LIST_FILE")"
   export DOCKER_TARGET_REGISTRY="ghcr.io"
   export DOCKER_TARGET_BASE_PATH=""
 }
@@ -180,7 +181,7 @@ MOCKDOCKER
   run "$SCRIPTS_DIR/docker-multi-tag"
   [ "$status" -eq 0 ]
 
-  local push_file="$OUTPUT_SUB_PATH/docker-push-all/image-uris"
+  local push_file="$DOCKER_PUSH_IMAGE_LIST_FILE"
   [ -f "$push_file" ]
   run cat "$push_file"
   [[ "$output" == *"docker.io/test/my-repo:1.0.0"* ]]

@@ -17,11 +17,29 @@
 #   CONFIG - YAML config with registry logins (registry URL as key) - required
 #   SECRET_METHOD - Secret retrieval method (github, env) - required
 #   SECRETS_JSON - JSON object containing secret values keyed by secret name
+#   OUTPUT_SUB_PATH - Build output directory (default: target)
+#
+# Outputs:
+#   DOCKER_PUSH_IMAGE_LIST_FILE - Path to file listing image URIs for docker-push-all
 #
 set -euo pipefail
 
 SCRIPT_DIR="$(dirname "${0}")"
 PLUGINS_DIR="${SCRIPT_DIR}/../plugins"
+
+# shellcheck source=src/scripts/defaults/output-sub-path.bash
+source "${SCRIPT_DIR}/../defaults/output-sub-path.bash"
+
+output_var() {
+  local name="${1}"
+  local value="${2}"
+
+  echo "${name}=${value}"
+
+  if [[ -n "${GITHUB_OUTPUT:-}" ]]; then
+    echo "${name}=${value}" >> "${GITHUB_OUTPUT}"
+  fi
+}
 
 # Logging configuration (CI-agnostic)
 LOG_ERROR_PREFIX="${LOG_ERROR_PREFIX:-}"
@@ -262,6 +280,11 @@ main() {
   done <<< "${registries}"
 
   echo "Docker Logins complete - authenticated to ${count} registry/registries" >&2
+
+  # Set up the push image list file for all downstream build/tag steps
+  DOCKER_PUSH_IMAGE_LIST_FILE="${OUTPUT_SUB_PATH}/docker-push-all/image-uris"
+  mkdir -p "$(dirname "${DOCKER_PUSH_IMAGE_LIST_FILE}")"
+  output_var "DOCKER_PUSH_IMAGE_LIST_FILE" "${DOCKER_PUSH_IMAGE_LIST_FILE}"
 }
 
 main "$@"

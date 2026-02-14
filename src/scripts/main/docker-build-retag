@@ -31,8 +31,8 @@ LOG_ERROR_SUFFIX="${LOG_ERROR_SUFFIX:-}"
 LOG_WARNING_PREFIX="${LOG_WARNING_PREFIX:-}"
 LOG_WARNING_SUFFIX="${LOG_WARNING_SUFFIX:-}"
 
-# shellcheck source=src/scripts/defaults/output-sub-path.bash
-source "${SCRIPT_DIR}/../defaults/output-sub-path.bash"
+# shellcheck source=src/scripts/defaults/docker-push-image-list.bash
+source "${SCRIPT_DIR}/../defaults/docker-push-image-list.bash"
 # shellcheck source=src/scripts/defaults/docker-build.bash
 source "${SCRIPT_DIR}/../defaults/docker-build.bash"
 # shellcheck source=src/scripts/defaults/docker-retag.bash
@@ -105,8 +105,7 @@ main() {
   output_var "DOCKER_TARGET_IMAGE_FULL_URI" "${TARGET_IMAGE_FULL_URI}"
 
   # Register image for consolidated push
-  mkdir -p "${OUTPUT_SUB_PATH}/docker-push-all"
-  echo "${TARGET_IMAGE_FULL_URI}" >> "${OUTPUT_SUB_PATH}/docker-push-all/image-uris"
+  echo "${TARGET_IMAGE_FULL_URI}" >> "${DOCKER_PUSH_IMAGE_LIST_FILE}"
 
   echo "Docker Retag complete" >&2
 }

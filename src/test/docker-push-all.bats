@@ -10,6 +10,7 @@ setup() {
   TEST_DIR=$(create_test_dir "docker-push-all")
   export GITHUB_OUTPUT="${TEST_DIR}/output"
   export OUTPUT_SUB_PATH="${TEST_DIR}/target"
+  export DOCKER_PUSH_IMAGE_LIST_FILE="${OUTPUT_SUB_PATH}/docker-push-all/image-uris"
   mkdir -p "${OUTPUT_SUB_PATH}/docker-push-all"
 }
 

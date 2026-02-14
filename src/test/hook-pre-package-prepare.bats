@@ -40,6 +40,7 @@ setup() {
   export DOCKER_PUSH_TARGETS=""
   export DOCKER_REGISTRY_LOGINS=""
   export OUTPUT_SUB_PATH="target"
+  export DOCKER_PUSH_IMAGE_LIST_FILE="target/docker-push-all/image-uris"
   export DOCKERFILE_SUB_PATH="src/docker"
   export DOCKERFILE_SQUASH="squash"
   export DOCKERFILE_NO_CACHE="true"

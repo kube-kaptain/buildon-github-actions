@@ -58,6 +58,8 @@ source "${SCRIPT_DIR}/../defaults/image-build-command.bash"
 source "${SCRIPT_DIR}/../defaults/docker-build.bash"
 # shellcheck source=src/scripts/defaults/docker-dockerfile.bash
 source "${SCRIPT_DIR}/../defaults/docker-dockerfile.bash"
+# shellcheck source=src/scripts/defaults/docker-push-image-list.bash
+source "${SCRIPT_DIR}/../defaults/docker-push-image-list.bash"
 # shellcheck source=src/scripts/defaults/tokens.bash
 source "${SCRIPT_DIR}/../defaults/tokens.bash"
 
@@ -220,8 +222,7 @@ main() {
   output_var "DOCKER_TARGET_IMAGE_FULL_URI" "${TARGET_IMAGE_FULL_URI}"
 
   # Register image for consolidated push
-  mkdir -p "${OUTPUT_SUB_PATH}/docker-push-all"
-  echo "${TARGET_IMAGE_FULL_URI}" >> "${OUTPUT_SUB_PATH}/docker-push-all/image-uris"
+  echo "${TARGET_IMAGE_FULL_URI}" >> "${DOCKER_PUSH_IMAGE_LIST_FILE}"
 
   echo "" >&2
   echo "Docker Build Dockerfile complete" >&2

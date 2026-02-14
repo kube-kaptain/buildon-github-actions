@@ -15,6 +15,7 @@
     dockerfile-sub-path: ${{ inputs.dockerfile-sub-path }}
     dockerfile-substitution-files: ${{ inputs.dockerfile-substitution-files }}
     output-sub-path: ${{ inputs.output-sub-path }}
+    docker-push-image-list-file: ${{ steps.docker-registry-logins.outputs.docker-push-image-list-file }}
     dockerfile-squash: ${{ inputs.dockerfile-squash }}
     dockerfile-no-cache: ${{ inputs.dockerfile-no-cache }}
     token-delimiter-style: ${{ inputs.token-delimiter-style }}

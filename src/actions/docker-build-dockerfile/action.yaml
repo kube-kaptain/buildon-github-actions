@@ -10,6 +10,10 @@ inputs:
     description: 'Build output directory (relative)'
     required: false
     default: 'target'
+  # Docker push image list file path
+  docker-push-image-list-file:
+    description: 'Path to file listing image URIs for docker-push-all (set by docker-registry-logins)'
+    required: true
   # Docker build options
   dockerfile-substitution-files:
     description: 'Comma-separated list of files to perform token substitution on (relative to dockerfile-sub-path and docker-context-sub-path)'
@@ -110,6 +114,7 @@ runs:
         DOCKERFILE_SUB_PATH: ${{ inputs.dockerfile-sub-path }}
         DOCKERFILE_SUBSTITUTION_FILES: ${{ inputs.dockerfile-substitution-files }}
         OUTPUT_SUB_PATH: ${{ inputs.output-sub-path }}
+        DOCKER_PUSH_IMAGE_LIST_FILE: ${{ inputs.docker-push-image-list-file }}
         DOCKERFILE_SQUASH: ${{ inputs.dockerfile-squash }}
         IMAGE_BUILD_COMMAND: ${{ inputs.image-build-command }}
         BUILD_MODE: build_server

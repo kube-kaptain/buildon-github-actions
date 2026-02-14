@@ -1347,12 +1347,14 @@ jobs:
           check-name: 'Build & Publish → Docker Registry Logins'
       # Only run if a registry was resolved (skip if not configured)
       - name: Docker registry logins
+        id: docker-registry-logins
         if: steps.resolve-registry.outputs.docker-target-registry != '' && success()
         uses: ./.github/buildon-github-actions/src/actions/docker-registry-logins
         with:
           config: ${{ inputs.docker-registry-logins }}
           secrets-json: ${{ secrets.docker-registry-logins-secrets }}
           docker-target-registry: ${{ steps.resolve-registry.outputs.docker-target-registry }}
+          output-sub-path: ${{ inputs.output-sub-path }}
           image-build-command: ${{ steps.validate-tooling.outputs.IMAGE_BUILD_COMMAND }}
       - name: Pass check - Docker Registry Logins
         if: success() && steps.check-docker-registry-logins.outputs.check-run-id != ''
@@ -1387,6 +1389,7 @@ jobs:
           # === Workflow Inputs ===
           # Build output
           output-sub-path: ${{ inputs.output-sub-path }}
+          docker-push-image-list-file: ${{ steps.docker-registry-logins.outputs.docker-push-image-list-file }}
 
           # Docker registry logins
           docker-registry-logins: ${{ inputs.docker-registry-logins }}
@@ -1584,6 +1587,7 @@ jobs:
           # === Workflow Inputs ===
           # Build output
           output-sub-path: ${{ inputs.output-sub-path }}
+          docker-push-image-list-file: ${{ steps.docker-registry-logins.outputs.docker-push-image-list-file }}
 
           # Docker registry logins
           docker-registry-logins: ${{ inputs.docker-registry-logins }}
@@ -1760,6 +1764,7 @@ jobs:
           dockerfile-sub-path: ${{ inputs.dockerfile-sub-path }}
           dockerfile-substitution-files: ${{ inputs.dockerfile-substitution-files }}
           output-sub-path: ${{ inputs.output-sub-path }}
+          docker-push-image-list-file: ${{ steps.docker-registry-logins.outputs.docker-push-image-list-file }}
           dockerfile-squash: ${{ inputs.dockerfile-squash }}
           dockerfile-no-cache: ${{ inputs.dockerfile-no-cache }}
           token-delimiter-style: ${{ inputs.token-delimiter-style }}
@@ -1802,6 +1807,7 @@ jobs:
           # === Workflow Inputs ===
           # Build output
           output-sub-path: ${{ inputs.output-sub-path }}
+          docker-push-image-list-file: ${{ steps.docker-registry-logins.outputs.docker-push-image-list-file }}
 
           # Docker registry logins
           docker-registry-logins: ${{ inputs.docker-registry-logins }}
@@ -2331,6 +2337,7 @@ jobs:
           # === Workflow Inputs ===
           # Build output
           output-sub-path: ${{ inputs.output-sub-path }}
+          docker-push-image-list-file: ${{ steps.docker-registry-logins.outputs.docker-push-image-list-file }}
 
           # Docker registry logins
           docker-registry-logins: ${{ inputs.docker-registry-logins }}
@@ -2561,6 +2568,7 @@ jobs:
           docker-tag: ${{ steps.versions.outputs.docker-tag }}-manifests
           version: ${{ steps.versions.outputs.version }}
           output-sub-path: ${{ inputs.output-sub-path }}
+          docker-push-image-list-file: ${{ steps.docker-registry-logins.outputs.docker-push-image-list-file }}
           image-build-command: ${{ steps.validate-tooling.outputs.IMAGE_BUILD_COMMAND }}
       - name: Pass check - Package Manifests for Repo Provider
         if: success() && steps.check-manifest-repo-provider-package.outputs.check-run-id != ''
@@ -2595,6 +2603,7 @@ jobs:
           # === Workflow Inputs ===
           # Build output
           output-sub-path: ${{ inputs.output-sub-path }}
+          docker-push-image-list-file: ${{ steps.docker-registry-logins.outputs.docker-push-image-list-file }}
 
           # Docker registry logins
           docker-registry-logins: ${{ inputs.docker-registry-logins }}
@@ -2770,7 +2779,7 @@ jobs:
         if: inputs.docker-push-targets != '' && steps.versions.outputs.is-release == 'true' && success()
         uses: ./.github/buildon-github-actions/src/actions/docker-multi-tag
         with:
-          output-sub-path: ${{ inputs.output-sub-path }}
+          docker-push-image-list-file: ${{ steps.docker-registry-logins.outputs.docker-push-image-list-file }}
           docker-image-name: ${{ steps.versions.outputs.docker-image-name }}
           docker-tag: ${{ steps.versions.outputs.docker-tag }}
           docker-push-targets: ${{ inputs.docker-push-targets }}
@@ -2928,7 +2937,7 @@ jobs:
         if: steps.versions.outputs.is-release == 'true' && success()
         uses: ./.github/buildon-github-actions/src/actions/docker-push-all
         with:
-          output-sub-path: ${{ inputs.output-sub-path }}
+          docker-push-image-list-file: ${{ steps.docker-registry-logins.outputs.docker-push-image-list-file }}
           is-release: ${{ steps.versions.outputs.is-release }}
           image-build-command: ${{ steps.validate-tooling.outputs.IMAGE_BUILD_COMMAND }}
       - name: Pass check - Docker Push All

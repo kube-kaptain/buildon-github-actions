@@ -14,7 +14,7 @@
 #   DOCKER_PUSH_TARGETS      - JSON array of targets [{registry, base-path?}] (required)
 #   DOCKER_TARGET_REGISTRY   - Primary registry to filter source images (required)
 #   DOCKER_TARGET_BASE_PATH  - Primary base path (optional, from defaults)
-#   OUTPUT_SUB_PATH          - Build output directory (default: target)
+#   DOCKER_PUSH_IMAGE_LIST_FILE - Path to image URIs file (required, from docker-registry-logins)
 #   IMAGE_BUILD_COMMAND      - Container runtime command (default: docker)
 #
 # Each target in the JSON array:
@@ -28,8 +28,8 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-# shellcheck source=src/scripts/defaults/output-sub-path.bash
-source "${SCRIPT_DIR}/../defaults/output-sub-path.bash"
+# shellcheck source=src/scripts/defaults/docker-push-image-list.bash
+source "${SCRIPT_DIR}/../defaults/docker-push-image-list.bash"
 # shellcheck source=src/scripts/defaults/docker-build.bash
 source "${SCRIPT_DIR}/../defaults/docker-build.bash"
 # shellcheck source=src/scripts/defaults/image-build-command.bash
@@ -143,8 +143,7 @@ main() {
       ${IMAGE_BUILD_COMMAND} tag "${source_uri}" "${target_uri}"
 
       # Register image for consolidated push
-      mkdir -p "${OUTPUT_SUB_PATH}/docker-push-all"
-      echo "${target_uri}" >> "${OUTPUT_SUB_PATH}/docker-push-all/image-uris"
+      echo "${target_uri}" >> "${DOCKER_PUSH_IMAGE_LIST_FILE}"
 
       count=$((count + 1))
     done < <(echo "${DOCKER_PUSH_TARGETS}" | jq -c '.[]')
