@@ -1,6 +1,17 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
 
+# Copy release change data with version suffix
+- name: Copy release change data to release directory
+  if: inputs.github-release-enabled == true
+  shell: bash
+  run: |
+    RCD_FILE="${{ inputs.output-sub-path }}/release-change-data/release-change-data.yaml"
+    if [[ -f "${RCD_FILE}" ]]; then
+      mkdir -p "${{ inputs.output-sub-path }}/github-release"
+      cp "${RCD_FILE}" "${{ inputs.output-sub-path }}/github-release/release-change-data-${{ steps.versions.outputs.version }}.yaml"
+    fi
+
 # Copy manifests zip directly (already has version in filename, binary file)
 - name: Copy manifests zip to release directory
   if: inputs.github-release-enabled == true
