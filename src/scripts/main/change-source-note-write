@@ -41,6 +41,9 @@ merge-candidate-creator: ${MERGE_CANDIDATE_CREATOR}"
   local head_sha
   head_sha=$(git rev-parse HEAD)
 
+  # Fetch existing notes so push is fast-forward
+  git fetch origin "refs/notes/${NOTES_REF}:refs/notes/${NOTES_REF}" 2>/dev/null || true
+
   # Write the note
   if ! git notes --ref="${NOTES_REF}" add -f -m "${note_content}" HEAD; then
     echo "${LOG_WARNING_PREFIX}Failed to write change source note to ${head_sha}${LOG_ERROR_SUFFIX}" >&2
