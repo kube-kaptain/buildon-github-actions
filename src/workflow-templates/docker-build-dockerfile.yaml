@@ -22,6 +22,8 @@ on:
       # INJECT-INPUT: hooks-pre-tagging
       # INJECT-INPUT: hooks-docker
 
+      # INJECT-INPUT: change-source-note
+
       # INJECT-INPUT: github-release
     secrets:
       docker-registry-logins-secrets:
@@ -128,6 +130,21 @@ jobs:
       # INJECT: github-check-start(name="Versions & Naming", id="check-versions")
       # INJECT: versions-and-naming
       # INJECT: github-check-end(name="Versions & Naming", id="check-versions")
+
+      # === Change Source Note ===
+      # INJECT: github-check-start(name="Change Source Note", id="check-change-source-note", if="steps.versions.outputs.is-release != 'true'")
+      # INJECT: change-source-note-write
+      # INJECT: github-check-end(name="Change Source Note", id="check-change-source-note", if="steps.versions.outputs.is-release != 'true'")
+
+      # === Release Change Data Generate ===
+      # INJECT: github-check-start(name="Release Change Data Generate", id="check-release-change-data-generate")
+      # INJECT: release-change-data-generate
+      # INJECT: github-check-end(name="Release Change Data Generate", id="check-release-change-data-generate")
+
+      # === Release Change Data OCI Package ===
+      # INJECT: github-check-start(name="Release Change Data OCI Package", id="check-release-change-data-oci-package")
+      # INJECT: release-change-data-oci-package
+      # INJECT: github-check-end(name="Release Change Data OCI Package", id="check-release-change-data-oci-package")
 
       # === Pre-docker Prepare ===
       # INJECT: github-check-start(name="Pre-docker Prepare", id="check-pre-docker-prepare", if="inputs.hook-pre-docker-prepare-script-sub-path != ''")

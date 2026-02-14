@@ -83,6 +83,7 @@ See [`examples/`](examples/) for more usage patterns.
 | Action | Description |
 |--------|-------------|
 | `basic-quality-checks` | Basic quality checks for commits and branches |
+| `change-source-note-write` | Writes merge candidate metadata as a git note for release tracking |
 | `docker-build-dockerfile` | Builds a Docker image from a Dockerfile with token substitution (build only, push handled by docker-push-all) |
 | `docker-build-retag` | Pulls and retags Docker images (no push) |
 | `docker-multi-tag` | Discovers and tags all matching images for additional registries |
@@ -108,6 +109,8 @@ See [`examples/`](examples/) for more usage patterns.
 | `kubernetes-manifests-package` | Packages Kubernetes manifests into a zip with variable substitution |
 | `kubernetes-manifests-repo-provider-package` | Packages manifests for repo provider (builds docker image). Does NOT publish. |
 | `kubernetes-manifests-repo-provider-publish` | Publishes manifests via pluggable repo provider. Requires package step to run first. |
+| `release-change-data-generate` | Generates structured release change data YAML from commit history |
+| `release-change-data-oci-package` | Packages release change data as OCI image for consolidated push |
 | `resolve-target-registry-and-base-path` | Resolves target registry (defaults to ghcr.io) and computes base path (auto-detects org for GHCR) |
 | `validate-tooling` | Validates required tools are available before build |
 | `versions-and-naming` | Generates version numbers, tags, and naming for releases |
@@ -123,6 +126,7 @@ See [`examples/`](examples/) for more usage patterns.
 | `additional-release-branches` | string | `""` | Comma-separated list of additional release branches |
 | `allow-builtin-token-override` | boolean | `false` | Allow user tokens to override built-in tokens (for template/reusable projects) |
 | `block-slashes` | boolean | `false` | DEPRECATED: Use block-slash-containing-branches instead |
+| `change-source-note-enabled` | boolean | `true` | Write a git note with merge candidate metadata for release tracking |
 | `config-sub-path` | string | `src/config` | Directory containing user-defined token files (relative) |
 | `config-value-trailing-newline` | string | `strip-for-single-line` | How to handle trailing newlines in config values (strip-for-single-line, preserve-all, always-strip-one-newline) |
 | `docker-image-name-override` | string | `""` | Docker image name (if provided, substitutes into manifests; if empty, token remains for later substitution) |

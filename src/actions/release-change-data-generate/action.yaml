@@ -1,0 +1,45 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
+
+name: 'Release Change Data Generate'
+description: 'Generates structured release change data YAML from commit history'
+
+inputs:
+  # Build output
+  output-sub-path:
+    description: 'Build output directory (relative)'
+    required: false
+    default: 'target'
+
+  # Action-specific inputs (passed from workflow/version generator)
+  version:
+    description: 'Release version (from version generator)'
+    required: true
+  project-name:
+    description: 'Project name (from version generator)'
+    required: true
+  git-tag:
+    description: 'Git tag (from version generator)'
+    required: true
+
+outputs:
+  release-change-data-file:
+    description: 'Path to generated release change data YAML'
+    value: ${{ steps.generate.outputs.RELEASE_CHANGE_DATA_FILE }}
+  release-change-data-docker-context:
+    description: 'Path to docker context directory with versioned YAML'
+    value: ${{ steps.generate.outputs.RELEASE_CHANGE_DATA_DOCKER_CONTEXT }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Generate release change data
+      id: generate
+      shell: bash
+      env:
+        LOG_ERROR_PREFIX: '::error::'
+        VERSION: ${{ inputs.version }}
+        PROJECT_NAME: ${{ inputs.project-name }}
+        GIT_TAG: ${{ inputs.git-tag }}
+        OUTPUT_SUB_PATH: ${{ inputs.output-sub-path }}
+      run: "${{ github.action_path }}/../../scripts/main/release-change-data-generate"

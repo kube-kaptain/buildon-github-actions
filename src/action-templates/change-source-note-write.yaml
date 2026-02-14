@@ -1,0 +1,20 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
+
+name: 'Change Source Note Write'
+description: 'Writes merge candidate metadata as a git note for release tracking'
+
+inputs:
+  # INJECT-INPUT: change-source-note
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Write change source note
+      id: write
+      shell: bash
+      env:
+        LOG_WARNING_PREFIX: '::warning::'
+        CURRENT_BRANCH: ${{ github.head_ref || github.ref_name }}
+        MERGE_CANDIDATE_CREATOR: ${{ github.event.pull_request.user.login }}
+      run: "${{ github.action_path }}/../../scripts/main/change-source-note-write"
