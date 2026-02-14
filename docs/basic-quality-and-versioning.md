@@ -7,6 +7,10 @@ Basic Quality and Versioning
 | Input | Type | Default | Description |
 |-------|------|---------|-------------|
 | `output-sub-path` | string | `target` | Build output directory (relative) |
+| `docker-registry-logins` | string | `""` | YAML config for Docker registry logins (registry URL as key) |
+| `docker-target-registry` | string | `""` | Target container registry domain (defaults to ghcr.io on gh actions) |
+| `docker-target-base-path` | string | `""` | Path between registry and image name (defaults to lower cased org name on gh actions) |
+| `docker-push-targets` | string | `""` | JSON array of additional push targets [{registry, base-path?}] |
 | `token-delimiter-style` | string | `shell` | Token delimiter syntax for variables (shell, mustache, helm, erb, github-actions, blade, stringtemplate, ognl, t4, swift) |
 | `token-name-style` | string | `PascalCase` | Case style for token names (UPPER_SNAKE, lower_snake, lower-kebab, UPPER-KEBAB, camelCase, PascalCase, lower.dot, UPPER.DOT) |
 | `token-name-validation` | string | `MATCH` | How to validate user token names (MATCH = must match token-name-style, ALL = accept any valid name) |
