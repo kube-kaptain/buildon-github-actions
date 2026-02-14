@@ -1586,6 +1586,7 @@ jobs:
           project-name: ${{ steps.versions.outputs.project-name }}
           git-tag: ${{ steps.versions.outputs.git-tag }}
           output-sub-path: ${{ inputs.output-sub-path }}
+          change-source-note-enabled: ${{ inputs.change-source-note-enabled }}
       - name: Pass check - Release Change Data Generate
         if: success() && steps.check-release-change-data-generate.outputs.check-run-id != ''
         continue-on-error: true
@@ -2653,6 +2654,7 @@ jobs:
           PROJECT_NAME: ${{ steps.versions.outputs.project-name }}
           MANIFESTS_URI: ${{ steps.manifest-repo-provider-publish.outputs.manifests-uri }}
           MANIFESTS_ZIP_FILE_NAME: ${{ steps.manifest-package.outputs.manifests-zip-file-name }}
+          RELEASE_CHANGE_DATA_URI: ${{ steps.release-change-data-oci-package.outputs.release-change-data-image-uri }}
           GITHUB_SERVER_URL: ${{ github.server_url }}
           GITHUB_REPOSITORY: ${{ github.repository }}
         run: |
@@ -2679,6 +2681,8 @@ jobs:
               echo "### Release Assets"
               echo "* Kube Manifests: [${MANIFESTS_ZIP_FILE_NAME}](${release_url}/${MANIFESTS_ZIP_FILE_NAME})"
               echo "* Manifests Image: [${MANIFESTS_URI}](https://${MANIFESTS_URI})"
+              echo "* Release Change Data: [release-change-data.yaml](${release_url}/release-change-data.yaml)"
+              echo "* Release Change Data Image: [${RELEASE_CHANGE_DATA_URI}](https://${RELEASE_CHANGE_DATA_URI})"
               echo "NOTES_EOF"
             } >> "${GITHUB_OUTPUT}"
           fi

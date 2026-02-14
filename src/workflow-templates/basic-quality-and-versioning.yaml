@@ -142,7 +142,7 @@ jobs:
 
       # === GitHub Release Prepare ===
       # INJECT: github-check-start(name="GitHub Release Prepare", id="check-github-release-prepare", if="inputs.github-release-enabled == true")
-      # INJECT: github-release-prepare-no-files
+      # INJECT: github-release-prepare-basic-versioning
       # INJECT: github-check-end(name="GitHub Release Prepare", id="check-github-release-prepare", if="inputs.github-release-enabled == true")
 
       # === Git Tag Push ===
@@ -157,5 +157,5 @@ jobs:
 
       # === GitHub Release ===
       # INJECT: github-check-start(name="GitHub Release", id="check-github-release", if="inputs.github-release-enabled == true && steps.versions.outputs.is-release == 'true'")
-      # INJECT: github-release-no-files
+      # INJECT: github-release-basic-versioning
       # INJECT: github-check-end(name="GitHub Release", id="check-github-release", if="inputs.github-release-enabled == true && steps.versions.outputs.is-release == 'true'")
