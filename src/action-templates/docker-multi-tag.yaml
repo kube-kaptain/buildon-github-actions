@@ -2,22 +2,26 @@
 # Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
 
 name: 'Docker Multi-Tag'
-description: 'Tags a Docker image for multiple registries'
+description: 'Discovers and tags all matching images for additional registries'
 
 inputs:
   # INJECT-INPUT: output-sub-path
   # INJECT-INPUT: docker-build
 
   # Action-specific inputs
-  docker-image-full-uri:
-    description: 'Full URI of the image to tag from'
-    required: true
   docker-image-name:
     description: 'Image name portion'
     required: true
   docker-tag:
-    description: 'Tag for images'
+    description: 'Base tag for images'
     required: true
+  docker-target-registry:
+    description: 'Primary registry to filter source images'
+    required: true
+  docker-target-base-path:
+    description: 'Primary base path within registry'
+    required: false
+    default: ''
   # INJECT-INPUT: image-build-command
 
 outputs:
@@ -33,9 +37,10 @@ runs:
       shell: bash
       env:
         OUTPUT_SUB_PATH: ${{ inputs.output-sub-path }}
-        DOCKER_IMAGE_FULL_URI: ${{ inputs.docker-image-full-uri }}
         DOCKER_IMAGE_NAME: ${{ inputs.docker-image-name }}
         DOCKER_TAG: ${{ inputs.docker-tag }}
         DOCKER_PUSH_TARGETS: ${{ inputs.docker-push-targets }}
+        DOCKER_TARGET_REGISTRY: ${{ inputs.docker-target-registry }}
+        DOCKER_TARGET_BASE_PATH: ${{ inputs.docker-target-base-path }}
         IMAGE_BUILD_COMMAND: ${{ inputs.image-build-command }}
       run: "${{ github.action_path }}/../../scripts/main/docker-multi-tag"

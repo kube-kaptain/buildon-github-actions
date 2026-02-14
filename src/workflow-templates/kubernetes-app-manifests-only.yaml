@@ -208,15 +208,15 @@ jobs:
       # INJECT: manifest-repo-provider-package
       # INJECT: github-check-end(name="Package Manifests for Repo Provider", id="check-manifest-repo-provider-package")
 
-      # === Manifest Multi-Tag ===
-      # INJECT: github-check-start(name="Manifest Multi-Tag", id="check-manifest-multi-tag", if="inputs.docker-push-targets != '' && steps.versions.outputs.is-release == 'true' && inputs.manifests-repo-provider-type == 'docker'")
-      # INJECT: manifest-multi-tag
-      # INJECT: github-check-end(name="Manifest Multi-Tag", id="check-manifest-multi-tag", if="inputs.docker-push-targets != '' && steps.versions.outputs.is-release == 'true' && inputs.manifests-repo-provider-type == 'docker'")
-
       # === Post-package Tests ===
       # INJECT: github-check-start(name="Post-package Tests", id="check-post-package", if="inputs.hook-post-package-tests-script-sub-path != ''")
       # INJECT: hook-post-package-tests
       # INJECT: github-check-end(name="Post-package Tests", id="check-post-package", if="inputs.hook-post-package-tests-script-sub-path != ''")
+
+      # === Docker Multi-Tag ===
+      # INJECT: github-check-start(name="Docker Multi-Tag", id="check-docker-multi-tag", if="inputs.docker-push-targets != '' && steps.versions.outputs.is-release == 'true'")
+      # INJECT: docker-multi-tag
+      # INJECT: github-check-end(name="Docker Multi-Tag", id="check-docker-multi-tag", if="inputs.docker-push-targets != '' && steps.versions.outputs.is-release == 'true'")
 
       # === GitHub Release Prepare ===
       # INJECT: github-check-start(name="GitHub Release Prepare", id="check-github-release-prepare", if="inputs.github-release-enabled == true")

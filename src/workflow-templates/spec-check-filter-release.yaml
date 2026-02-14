@@ -192,11 +192,6 @@ jobs:
           config-value-trailing-newline: ${{ inputs.config-value-trailing-newline }}
       # INJECT: github-check-end(name="Docker Build", id="check-docker-build")
 
-      # === Docker Multi-Tag ===
-      # INJECT: github-check-start(name="Docker Multi-Tag", id="check-docker-multi-tag", if="inputs.docker-push-targets != '' && steps.versions.outputs.is-release == 'true'")
-      # INJECT: docker-multi-tag
-      # INJECT: github-check-end(name="Docker Multi-Tag", id="check-docker-multi-tag", if="inputs.docker-push-targets != '' && steps.versions.outputs.is-release == 'true'")
-
       # === Spec Validate ===
       # INJECT: github-check-start(name="Spec Validate", id="check-spec-validate")
       - name: Spec validate
@@ -255,6 +250,11 @@ jobs:
           echo "spec-yaml-versioned=${SPEC_YAML_VERSIONED}" >> "${GITHUB_OUTPUT}"
           echo "spec-json-versioned=${SPEC_JSON_VERSIONED}" >> "${GITHUB_OUTPUT}"
       # INJECT: github-check-end(name="Spec GitHub Release Prepare", id="check-spec-github-release-prepare", if="inputs.github-release-enabled == true")
+
+      # === Docker Multi-Tag ===
+      # INJECT: github-check-start(name="Docker Multi-Tag", id="check-docker-multi-tag", if="inputs.docker-push-targets != '' && steps.versions.outputs.is-release == 'true'")
+      # INJECT: docker-multi-tag
+      # INJECT: github-check-end(name="Docker Multi-Tag", id="check-docker-multi-tag", if="inputs.docker-push-targets != '' && steps.versions.outputs.is-release == 'true'")
 
       # === GitHub Release Prepare ===
       # INJECT: github-check-start(name="GitHub Release Prepare", id="check-github-release-prepare", if="inputs.github-release-enabled == true")

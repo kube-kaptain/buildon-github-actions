@@ -85,7 +85,7 @@ See [`examples/`](examples/) for more usage patterns.
 | `basic-quality-checks` | Basic quality checks for commits and branches |
 | `docker-build-dockerfile` | Builds a Docker image from a Dockerfile with token substitution (build only, push handled by docker-push-all) |
 | `docker-build-retag` | Pulls and retags Docker images (no push) |
-| `docker-multi-tag` | Tags a Docker image for multiple registries |
+| `docker-multi-tag` | Discovers and tags all matching images for additional registries |
 | `docker-push-all` | Pushes all Docker images registered during build/tag steps |
 | `docker-registry-logins` | Authenticate to container registries (GHCR by default, configure others as needed) |
 | `generate-kubernetes-configmap` | Generates a Kubernetes ConfigMap manifest from files in a directory |
