@@ -316,12 +316,14 @@ create_rcd_repo() {
   git tag -a "1.0.0" -m "Automatic release tag for version 1.0.0 of test-repo by Kaptain build script."
 
   # Create a feature branch and merge it
+  local default_branch
+  default_branch=$(git rev-parse --abbrev-ref HEAD)
   git checkout -b feature --quiet
   echo "feature work" >> feature.txt
   git add feature.txt
   git commit --quiet -m "Feature work"
 
-  git checkout main --quiet
+  git checkout "$default_branch" --quiet
   git merge --no-ff --quiet -m "Merge feature branch" feature
 
   # Create next tag
@@ -653,6 +655,8 @@ merge-candidate-creator: noteuser" HEAD
   git tag -a "1.0.0" -m "Automatic release tag for version 1.0.0 of test-repo by Kaptain build script."
 
   # Create a feature branch with a note on its tip
+  local default_branch
+  default_branch=$(git rev-parse --abbrev-ref HEAD)
   git checkout -b feature-noted --quiet
   echo "feature work" >> feature.txt
   git add feature.txt
@@ -662,8 +666,8 @@ merge-candidate-creator: noteuser" HEAD
   git notes --ref=kaptain-change-source add -m "merge-candidate-branch: feature-noted
 merge-candidate-creator: featuredev" HEAD
 
-  # Merge back to main (creates merge commit where HEAD^2 = feature tip)
-  git checkout main --quiet
+  # Merge back to default branch (creates merge commit where HEAD^2 = feature tip)
+  git checkout "$default_branch" --quiet
   git merge --no-ff --quiet -m "Merge pull request #55 from org/feature-noted" feature-noted
 
   git tag -a "1.0.1" -m "Automatic release tag for version 1.0.1 of test-repo by Kaptain build script."
