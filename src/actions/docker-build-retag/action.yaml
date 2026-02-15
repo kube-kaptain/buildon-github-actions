@@ -13,8 +13,8 @@ inputs:
   docker-source-registry:
     description: 'Upstream registry (e.g., docker.io)'
     required: true
-  docker-source-base-path:
-    description: 'Path between registry and image name (e.g., library)'
+  docker-source-namespace:
+    description: 'Path segment between registry and image name (e.g., library)'
     required: false
     default: ''
   docker-source-image-name:
@@ -28,8 +28,8 @@ inputs:
   docker-target-registry:
     description: 'Target container registry (pre-resolved by workflow)'
     required: true
-  docker-target-base-path:
-    description: 'Path between registry and image name (pre-resolved by workflow)'
+  docker-target-namespace:
+    description: 'Namespace between registry and image name (pre-resolved by workflow)'
     required: true
   docker-image-name:
     description: 'Image name (from version generator docker-image-name)'
@@ -52,9 +52,9 @@ outputs:
   docker-target-registry:
     description: 'Target registry (pass-through for downstream)'
     value: ${{ inputs.docker-target-registry }}
-  docker-target-base-path:
-    description: 'Target base path (pass-through for downstream)'
-    value: ${{ inputs.docker-target-base-path }}
+  docker-target-namespace:
+    description: 'Target namespace (pass-through for downstream)'
+    value: ${{ inputs.docker-target-namespace }}
 
 runs:
   using: 'composite'
@@ -67,11 +67,11 @@ runs:
         LOG_WARNING_PREFIX: '::warning::'
         DOCKER_PUSH_IMAGE_LIST_FILE: ${{ inputs.docker-push-image-list-file }}
         DOCKER_SOURCE_REGISTRY: ${{ inputs.docker-source-registry }}
-        DOCKER_SOURCE_BASE_PATH: ${{ inputs.docker-source-base-path }}
+        DOCKER_SOURCE_NAMESPACE: ${{ inputs.docker-source-namespace }}
         DOCKER_SOURCE_IMAGE_NAME: ${{ inputs.docker-source-image-name }}
         DOCKER_SOURCE_TAG: ${{ inputs.docker-source-tag }}
         DOCKER_TARGET_REGISTRY: ${{ inputs.docker-target-registry }}
-        DOCKER_TARGET_BASE_PATH: ${{ inputs.docker-target-base-path }}
+        DOCKER_TARGET_NAMESPACE: ${{ inputs.docker-target-namespace }}
         DOCKER_IMAGE_NAME: ${{ inputs.docker-image-name }}
         DOCKER_TAG: ${{ inputs.docker-tag }}
         IMAGE_BUILD_COMMAND: ${{ inputs.image-build-command }}

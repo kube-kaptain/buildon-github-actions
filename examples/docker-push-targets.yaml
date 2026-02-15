@@ -30,11 +30,11 @@ jobs:
       checks: write
     with:
       # JSON array of additional push targets
-      # Each target needs: registry (required), base-path (optional)
+      # Each target needs: registry (required), namespace (optional)
       docker-push-targets: |
         [
           {"registry": "123456789012.dkr.ecr.us-east-1.amazonaws.com"},
-          {"registry": "987654321098.dkr.ecr.us-west-2.amazonaws.com", "base-path": "my-team"}
+          {"registry": "987654321098.dkr.ecr.us-west-2.amazonaws.com", "namespace": "my-team"}
         ]
       # Configure registry credentials for the additional targets
       docker-registry-logins: |
@@ -68,10 +68,10 @@ jobs:
 #
 # Each target in the JSON array:
 #   registry   - Required. The registry URL (e.g., "ecr.aws/123456789012")
-#   base-path  - Optional. Path between registry and image name
+#   namespace  - Optional. Path segment between registry and image name
 #
 # Examples:
-#   {"registry": "docker.io", "base-path": "myorg"}
+#   {"registry": "docker.io", "namespace": "myorg"}
 #     -> docker.io/myorg/image-name:tag
 #
 #   {"registry": "123456789012.dkr.ecr.us-east-1.amazonaws.com"}

@@ -33,7 +33,7 @@ jobs:
       checks: write
     with:
       docker-source-registry: docker.io
-      docker-source-base-path: library
+      docker-source-namespace: library
       docker-source-image-name: alpine
       docker-source-tag: '3.21'
       tag-version-calculation-strategy: 'file-pattern-match'

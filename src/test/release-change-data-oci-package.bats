@@ -44,9 +44,9 @@ set_required_env() {
   assert_var_equals "RELEASE_CHANGE_DATA_IMAGE_URI" "ghcr.io/test/my-repo:1.0.1-release-change-data"
 }
 
-@test "includes base path in URI when set" {
+@test "includes namespace in URI when set" {
   set_required_env
-  export DOCKER_TARGET_BASE_PATH="kube-kaptain"
+  export DOCKER_TARGET_NAMESPACE="kube-kaptain"
 
   run "$SCRIPTS_DIR/release-change-data-oci-package"
   [ "$status" -eq 0 ]

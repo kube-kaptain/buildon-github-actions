@@ -35,16 +35,16 @@ inputs:
     default: ''
   # Docker target config
   docker-target-registry:
-    description: 'Target container registry domain (defaults to ghcr.io on gh actions)'
+    description: 'Target container registry domain (defaults to ghcr.io on GH Actions)'
     required: false
     default: ''
-  docker-target-base-path:
-    description: 'Path between registry and image name (defaults to lower cased org name on gh actions)'
+  docker-target-namespace:
+    description: 'Path segment between registry and image name (defaults to lower cased org name or user ID on GH Actions)'
     required: false
     default: ''
   # Docker push targets
   docker-push-targets:
-    description: 'JSON array of additional push targets [{registry, base-path?}]'
+    description: 'JSON array of additional push targets [{registry, namespace?}]'
     required: false
     default: ''
 
@@ -113,7 +113,7 @@ runs:
   steps:
     # ==========================================================================
     # Compute REPO_PROVIDER_* values from user-friendly inputs
-    # Registry and base path are pre-resolved by workflow before calling this action
+    # Registry and namespace are pre-resolved by workflow before calling this action
     # ==========================================================================
     - name: Compute repo provider values
       id: computed
@@ -129,7 +129,7 @@ runs:
         # =====================================================================
         # REPO_PROVIDER_NAMESPACE (pre-resolved by workflow)
         # =====================================================================
-        echo "namespace=${{ inputs.docker-target-base-path }}" >> "$GITHUB_OUTPUT"
+        echo "namespace=${{ inputs.docker-target-namespace }}" >> "$GITHUB_OUTPUT"
 
         # =====================================================================
         # REPO_PROVIDER_NAME

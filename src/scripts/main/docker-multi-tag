@@ -11,15 +11,15 @@
 # Inputs (environment variables):
 #   DOCKER_IMAGE_NAME        - Image name portion (required)
 #   DOCKER_TAG               - Base tag for images (required)
-#   DOCKER_PUSH_TARGETS      - JSON array of targets [{registry, base-path?}] (required)
+#   DOCKER_PUSH_TARGETS      - JSON array of targets [{registry, namespace?}] (required)
 #   DOCKER_TARGET_REGISTRY   - Primary registry to filter source images (required)
-#   DOCKER_TARGET_BASE_PATH  - Primary base path (optional, from defaults)
+#   DOCKER_TARGET_NAMESPACE   - Primary namespace (optional, from defaults)
 #   DOCKER_PUSH_IMAGE_LIST_FILE - Path to image URIs file (required, from docker-registry-logins)
 #   IMAGE_BUILD_COMMAND      - Container runtime command (default: docker)
 #
 # Each target in the JSON array:
 #   registry  - Target registry (required)
-#   base-path - Optional base path within registry
+#   namespace - Optional namespace within registry
 #
 # Outputs:
 #   IMAGES_TAGGED - Number of images tagged
@@ -68,12 +68,12 @@ output_var() {
 # Build full image URI from components
 build_image_uri() {
   local registry="${1}"
-  local base_path="${2}"
+  local namespace="${2}"
   local image_name="${3}"
   local tag="${4}"
 
-  if [[ -n "${base_path}" ]]; then
-    echo "${registry}/${base_path}/${image_name}:${tag}"
+  if [[ -n "${namespace}" ]]; then
+    echo "${registry}/${namespace}/${image_name}:${tag}"
   else
     echo "${registry}/${image_name}:${tag}"
   fi
@@ -84,7 +84,7 @@ main() {
   echo "Image name: ${DOCKER_IMAGE_NAME}" >&2
   echo "Base tag: ${DOCKER_TAG}" >&2
   echo "Source registry: ${DOCKER_TARGET_REGISTRY}" >&2
-  echo "Source base path: ${DOCKER_TARGET_BASE_PATH:-<none>}" >&2
+  echo "Source namespace: ${DOCKER_TARGET_NAMESPACE:-<none>}" >&2
   echo "========================" >&2
 
   # Validate JSON before processing
@@ -95,7 +95,7 @@ main() {
 
   # Build source reference filter
   local source_prefix
-  source_prefix=$(build_image_uri "${DOCKER_TARGET_REGISTRY}" "${DOCKER_TARGET_BASE_PATH:-}" "${DOCKER_IMAGE_NAME}" "")
+  source_prefix=$(build_image_uri "${DOCKER_TARGET_REGISTRY}" "${DOCKER_TARGET_NAMESPACE:-}" "${DOCKER_IMAGE_NAME}" "")
   # Remove trailing colon for the filter prefix
   source_prefix="${source_prefix%:}"
 
@@ -126,10 +126,10 @@ main() {
     local source_uri="${source_prefix}:${tag}"
 
     while IFS= read -r target; do
-      local registry base_path target_uri
+      local registry namespace target_uri
 
       registry=$(echo "${target}" | jq -r '.registry')
-      base_path=$(echo "${target}" | jq -r '.["base-path"] // ""')
+      namespace=$(echo "${target}" | jq -r '.["namespace"] // ""')
 
       # Validate registry is present
       if [[ -z "${registry}" ]] || [[ "${registry}" == "null" ]]; then
@@ -137,7 +137,7 @@ main() {
         exit 1
       fi
 
-      target_uri=$(build_image_uri "${registry}" "${base_path}" "${DOCKER_IMAGE_NAME}" "${tag}")
+      target_uri=$(build_image_uri "${registry}" "${namespace}" "${DOCKER_IMAGE_NAME}" "${tag}")
 
       echo "Tagging: ${source_uri} -> ${target_uri}" >&2
       ${IMAGE_BUILD_COMMAND} tag "${source_uri}" "${target_uri}"

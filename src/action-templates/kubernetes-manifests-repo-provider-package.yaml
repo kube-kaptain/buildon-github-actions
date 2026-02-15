@@ -72,7 +72,7 @@ runs:
   steps:
     # ==========================================================================
     # Compute REPO_PROVIDER_* values from user-friendly inputs
-    # Registry and base path are pre-resolved by workflow before calling this action
+    # Registry and namespace are pre-resolved by workflow before calling this action
     # ==========================================================================
     - name: Compute repo provider values
       id: computed
@@ -88,7 +88,7 @@ runs:
         # =====================================================================
         # REPO_PROVIDER_NAMESPACE (pre-resolved by workflow)
         # =====================================================================
-        echo "namespace=${{ inputs.docker-target-base-path }}" >> "$GITHUB_OUTPUT"
+        echo "namespace=${{ inputs.docker-target-namespace }}" >> "$GITHUB_OUTPUT"
 
         # =====================================================================
         # REPO_PROVIDER_NAME

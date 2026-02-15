@@ -103,7 +103,7 @@ read_manifest_with_suffix() {
   manifest=$(read_manifest)
   assert_contains "$manifest" "name: default-app"
   # Default is combined style: registry+base in one token
-  assert_contains "$manifest" 'image: ${EnvironmentDockerRegistryAndBasePath}/${DockerImageName}:${DockerTag}'
+  assert_contains "$manifest" 'image: ${EnvironmentDockerRegistryAndNamespace}/${DockerImageName}:${DockerTag}'
   assert_contains "$manifest" "imagePullPolicy: IfNotPresent"
 }
 

@@ -33,7 +33,7 @@ LOG_ERROR_SUFFIX="${LOG_ERROR_SUFFIX:-}"
 # Map REPO_PROVIDER_* → Docker terminology
 # =============================================================================
 registry="${REPO_PROVIDER_URL:?REPO_PROVIDER_URL (registry) is required}"
-base_path="${REPO_PROVIDER_NAMESPACE:-}"
+namespace="${REPO_PROVIDER_NAMESPACE:-}"
 image_name="${REPO_PROVIDER_NAME:?REPO_PROVIDER_NAME (image name) is required}"
 tag="${REPO_PROVIDER_VERSION:?REPO_PROVIDER_VERSION (tag) is required}"
 
@@ -54,8 +54,8 @@ source "${SCRIPT_DIR}/../../defaults/docker-push-image-list.bash"
 PUBLISH_SUB_PATH="${OUTPUT_SUB_PATH}/publish/docker"
 
 # Assemble full image URI
-if [[ -n "${base_path}" ]]; then
-  image_uri="${registry}/${base_path}/${image_name}:${tag}"
+if [[ -n "${namespace}" ]]; then
+  image_uri="${registry}/${namespace}/${image_name}:${tag}"
 else
   image_uri="${registry}/${image_name}:${tag}"
 fi

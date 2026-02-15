@@ -1,12 +1,12 @@
 # SPDX-License-Identifier: CC0-1.0
 # This example is released to the public domain. Use freely without attribution.
 #
-# Docker Build Retag - Base Path
+# Docker Build Retag - Namespace
 #
-# Many registries use base paths in addition to the normal image name for projects or teams.
-# Use target-base-path to add a prefix between the registry and image name.
+# Many registries use namespaces in addition to the normal image name for projects or teams.
+# Use target-namespace to add a prefix between the registry and image name.
 #
-# Result: <registry>/<base-path>/<docker-image-name>:<tag>
+# Result: <registry>/<namespace>/<docker-image-name>:<tag>
 #
 # Copy this to .github/workflows/build.yaml in your repo.
 
@@ -27,10 +27,10 @@ jobs:
       checks: write
     with:
       docker-source-registry: docker.io
-      docker-source-base-path: library
+      docker-source-namespace: library
       docker-source-image-name: redis
       docker-source-tag: '7.4'
-      docker-target-base-path: my-team/vendored  # This is what you set how you need it
+      docker-target-namespace: my-team/vendored  # This is what you set how you need it
 
 # ┌───────────────────────────────────────────────────────────────────────────┐
 # │ All Available Options                                                     │
@@ -42,7 +42,7 @@ jobs:
 # └─────────────────────────────────────────────────────────────────────────┘
 #     with:
 #       docker-source-registry: docker.io
-#       docker-source-base-path: library      # Optional, if upstream uses a base path
+#       docker-source-namespace: library      # Optional, if upstream uses a namespace
 #       docker-source-image-name: alpine
 #       docker-source-tag: '3.21'
 
@@ -51,7 +51,7 @@ jobs:
 # └─────────────────────────────────────────────────────────────────────────┘
 #     with:
 #       docker-target-registry: 'myregistry.example.com'  # ecr, gcr, harbor, nexus
-#       docker-target-base-path: 'my-org/base-images'
+#       docker-target-namespace: 'my-org/base-images'
 
 # ┌─────────────────────────────────────────────────────────────────────────┐
 # │ Branch Configuration                                                    │
@@ -143,7 +143,7 @@ jobs:
 #       docker-push-targets: |
 #         [
 #           {"registry": "123456789012.dkr.ecr.us-east-1.amazonaws.com"},
-#           {"registry": "other.registry.com", "base-path": "my-team"}
+#           {"registry": "other.registry.com", "namespace": "my-team"}
 #         ]
 
 # ┌─────────────────────────────────────────────────────────────────────────┐

@@ -1,8 +1,8 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
 
-name: 'Resolve Target Registry and Base Path'
-description: 'Resolves target registry (defaults to ghcr.io) and computes base path (auto-detects org for GHCR)'
+name: 'Resolve Target Registry and Namespace'
+description: 'Resolves target registry (defaults to ghcr.io) and computes namespace (auto-detects org/user for GHCR)'
 
 inputs:
   # Docker registry logins
@@ -12,16 +12,16 @@ inputs:
     default: ''
   # Docker target config
   docker-target-registry:
-    description: 'Target container registry domain (defaults to ghcr.io on gh actions)'
+    description: 'Target container registry domain (defaults to ghcr.io on GH Actions)'
     required: false
     default: ''
-  docker-target-base-path:
-    description: 'Path between registry and image name (defaults to lower cased org name on gh actions)'
+  docker-target-namespace:
+    description: 'Path segment between registry and image name (defaults to lower cased org name or user ID on GH Actions)'
     required: false
     default: ''
   # Docker push targets
   docker-push-targets:
-    description: 'JSON array of additional push targets [{registry, base-path?}]'
+    description: 'JSON array of additional push targets [{registry, namespace?}]'
     required: false
     default: ''
 
@@ -29,14 +29,14 @@ outputs:
   docker-target-registry:
     description: 'Resolved target registry'
     value: ${{ steps.resolve.outputs.docker-target-registry }}
-  docker-target-base-path:
-    description: 'Computed target base path'
-    value: ${{ steps.resolve.outputs.docker-target-base-path }}
+  docker-target-namespace:
+    description: 'Computed target namespace'
+    value: ${{ steps.resolve.outputs.docker-target-namespace }}
 
 runs:
   using: 'composite'
   steps:
-    - name: Resolve target registry and base path
+    - name: Resolve target registry and namespace
       id: resolve
       shell: bash
       run: |
@@ -48,11 +48,11 @@ runs:
         fi
         echo "docker-target-registry=$RESOLVED_REGISTRY" >> "$GITHUB_OUTPUT"
 
-        # Auto-set base path for GHCR if not explicitly provided
+        # Auto-set namespace for GHCR if not explicitly provided
         # Note: GHCR requires lowercase paths, so we lowercase the org name
-        if [[ "$RESOLVED_REGISTRY" == "ghcr.io" && -z "${{ inputs.docker-target-base-path }}" ]]; then
+        if [[ "$RESOLVED_REGISTRY" == "ghcr.io" && -z "${{ inputs.docker-target-namespace }}" ]]; then
           OWNER="${{ github.repository_owner }}"
-          echo "docker-target-base-path=${OWNER,,}" >> "$GITHUB_OUTPUT"
+          echo "docker-target-namespace=${OWNER,,}" >> "$GITHUB_OUTPUT"
         else
-          echo "docker-target-base-path=${{ inputs.docker-target-base-path }}" >> "$GITHUB_OUTPUT"
+          echo "docker-target-namespace=${{ inputs.docker-target-namespace }}" >> "$GITHUB_OUTPUT"
         fi
