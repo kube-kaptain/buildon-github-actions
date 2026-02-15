@@ -8,11 +8,11 @@ Docker Build Retag
 |-------|------|---------|-------------|
 | `output-sub-path` | string | `target` | Build output directory (relative) |
 | `docker-registry-logins` | string | `""` | YAML config for Docker registry logins (registry URL as key) |
-| `docker-target-registry` | string | `""` | Target container registry domain (defaults to ghcr.io on gh actions) |
-| `docker-target-base-path` | string | `""` | Path between registry and image name (defaults to lower cased org name on gh actions) |
-| `docker-push-targets` | string | `""` | JSON array of additional push targets [{registry, base-path?}] |
+| `docker-target-registry` | string | `""` | Target container registry domain (defaults to ghcr.io on GH Actions) |
+| `docker-target-namespace` | string | `""` | Path segment between registry and image name (defaults to lower cased org name or user ID on GH Actions) |
+| `docker-push-targets` | string | `""` | JSON array of additional push targets [{registry, namespace?}] |
 | `docker-source-registry` | string | *required* | Upstream registry (e.g., docker.io) |
-| `docker-source-base-path` | string | `""` | Path between registry and image name (e.g., library) |
+| `docker-source-namespace` | string | `""` | Path segment between registry and image name (e.g., library) |
 | `docker-source-image-name` | string | *required* | Upstream image name (e.g., nginx) |
 | `docker-source-tag` | string | *required* | Upstream image tag (e.g., 1.25) |
 | `token-delimiter-style` | string | `shell` | Token delimiter syntax for variables (shell, mustache, helm, erb, github-actions, blade, stringtemplate, ognl, t4, swift) |

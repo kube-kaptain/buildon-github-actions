@@ -43,5 +43,5 @@
     config-value-trailing-newline: ${{ inputs.config-value-trailing-newline }}
     docker-image-full-uri: ${{ steps.docker-build.outputs.docker-target-image-full-uri }}
     docker-target-registry: ${{ steps.resolve-registry.outputs.docker-target-registry }}
-    docker-target-base-path: ${{ steps.resolve-registry.outputs.docker-target-base-path }}
+    docker-target-namespace: ${{ steps.resolve-registry.outputs.docker-target-namespace }}
     manifests-zip-file-name: ${{ steps.manifest-package.outputs.manifests-zip-file-name }}

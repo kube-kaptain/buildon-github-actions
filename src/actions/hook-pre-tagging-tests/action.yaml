@@ -31,16 +31,16 @@ inputs:
     default: ''
   # Docker target config
   docker-target-registry:
-    description: 'Target container registry domain (defaults to ghcr.io on gh actions)'
+    description: 'Target container registry domain (defaults to ghcr.io on GH Actions)'
     required: false
     default: ''
-  docker-target-base-path:
-    description: 'Path between registry and image name (defaults to lower cased org name on gh actions)'
+  docker-target-namespace:
+    description: 'Path segment between registry and image name (defaults to lower cased org name or user ID on GH Actions)'
     required: false
     default: ''
   # Docker push targets
   docker-push-targets:
-    description: 'JSON array of additional push targets [{registry, base-path?}]'
+    description: 'JSON array of additional push targets [{registry, namespace?}]'
     required: false
     default: ''
   # Docker build options
@@ -897,13 +897,13 @@ runs:
         DOCKERFILE_NO_CACHE: ${{ inputs.dockerfile-no-cache }}
         # Workflow inputs - docker target config
         DOCKER_TARGET_REGISTRY: ${{ inputs.docker-target-registry }}
-        DOCKER_TARGET_BASE_PATH: ${{ inputs.docker-target-base-path }}
+        DOCKER_TARGET_NAMESPACE: ${{ inputs.docker-target-namespace }}
         # Workflow inputs - docker push targets
         DOCKER_PUSH_TARGETS: ${{ inputs.docker-push-targets }}
         # Workflow inputs - docker context and source (for multi-stage/source images)
         DOCKER_CONTEXT_SUB_PATH: ${{ inputs.docker-context-sub-path }}
         DOCKER_SOURCE_REGISTRY: ${{ inputs.docker-source-registry }}
-        DOCKER_SOURCE_BASE_PATH: ${{ inputs.docker-source-base-path }}
+        DOCKER_SOURCE_NAMESPACE: ${{ inputs.docker-source-namespace }}
         DOCKER_SOURCE_IMAGE_NAME: ${{ inputs.docker-source-image-name }}
         DOCKER_SOURCE_TAG: ${{ inputs.docker-source-tag }}
 

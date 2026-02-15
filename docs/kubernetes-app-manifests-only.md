@@ -10,9 +10,9 @@ Kubernetes App - Manifests Only
 | `docker-image-name-override` | string | `""` | Docker image name (if provided, substitutes into manifests; if empty, token remains for later substitution) |
 | `docker-image-tag-override` | string | `""` | Docker image tag (if provided, substitutes into manifests; if empty, token remains for later substitution) |
 | `docker-registry-logins` | string | `""` | YAML config for Docker registry logins (registry URL as key) |
-| `docker-target-registry` | string | `""` | Target container registry domain (defaults to ghcr.io on gh actions) |
-| `docker-target-base-path` | string | `""` | Path between registry and image name (defaults to lower cased org name on gh actions) |
-| `docker-push-targets` | string | `""` | JSON array of additional push targets [{registry, base-path?}] |
+| `docker-target-registry` | string | `""` | Target container registry domain (defaults to ghcr.io on GH Actions) |
+| `docker-target-namespace` | string | `""` | Path segment between registry and image name (defaults to lower cased org name or user ID on GH Actions) |
+| `docker-push-targets` | string | `""` | JSON array of additional push targets [{registry, namespace?}] |
 | `manifests-sub-path` | string | `src/kubernetes` | Directory containing Kubernetes manifests (relative) |
 | `manifests-repo-provider-type` | string | `docker` | Repo provider type for manifest storage (default: docker, currently the only supported provider) |
 | `manifests-packaging-base-image` | string | `""` | Base image for manifest packaging (default: scratch) |

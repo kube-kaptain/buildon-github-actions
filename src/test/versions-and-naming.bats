@@ -8,6 +8,7 @@ setup() {
   export DEFAULT_BRANCH=main
   export CURRENT_BRANCH=main
   export REPOSITORY_NAME=test-repo
+  export REPOSITORY_OWNER=kube-kaptain
   setup_mock_git
 }
 

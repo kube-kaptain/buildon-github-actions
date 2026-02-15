@@ -20,7 +20,7 @@ on:
 
 jobs:
   retag:
-    uses: kube-kaptain/buildon-github-actions/.github/workflows/docker-build-retag.yaml@1.0.64
+    uses: kube-kaptain/buildon-github-actions/.github/workflows/docker-build-retag.yaml@1.0.65
     permissions:
       contents: write
       packages: write
@@ -33,7 +33,7 @@ jobs:
         }
     with:
       docker-source-registry: docker.io
-      docker-source-base-path: library
+      docker-source-namespace: library
       docker-source-image-name: nginx
       docker-source-tag: '1.27'
       docker-target-registry: myregistry.example.com
@@ -53,7 +53,7 @@ jobs:
 # └─────────────────────────────────────────────────────────────────────────┘
 #     with:
 #       docker-source-registry: docker.io
-#       docker-source-base-path: library      # Optional, if upstream uses a base path
+#       docker-source-namespace: library      # Optional, if upstream uses a namespace
 #       docker-source-image-name: alpine
 #       docker-source-tag: '3.21'
 
@@ -62,7 +62,7 @@ jobs:
 # └─────────────────────────────────────────────────────────────────────────┘
 #     with:
 #       docker-target-registry: 'myregistry.example.com'  # ecr, gcr, harbor, nexus
-#       docker-target-base-path: 'my-team/vendored'
+#       docker-target-namespace: 'my-team/vendored'
 
 # ┌─────────────────────────────────────────────────────────────────────────┐
 # │ Branch Configuration                                                    │
@@ -154,7 +154,7 @@ jobs:
 #       docker-push-targets: |
 #         [
 #           {"registry": "123456789012.dkr.ecr.us-east-1.amazonaws.com"},
-#           {"registry": "other.registry.com", "base-path": "my-team"}
+#           {"registry": "other.registry.com", "namespace": "my-team"}
 #         ]
 
 # ┌─────────────────────────────────────────────────────────────────────────┐

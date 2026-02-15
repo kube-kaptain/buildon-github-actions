@@ -37,7 +37,7 @@ set_required_env() {
   export IS_RELEASE="true"
 }
 
-@test "assembles target URI without base path" {
+@test "assembles target URI without namespace" {
   set_required_env
 
   run "$SCRIPTS_DIR/docker-build-dockerfile"
@@ -45,9 +45,9 @@ set_required_env() {
   assert_var_equals "DOCKER_TARGET_IMAGE_FULL_URI" "ghcr.io/test/my-repo:1.0.0"
 }
 
-@test "assembles target URI with base path" {
+@test "assembles target URI with namespace" {
   set_required_env
-  export DOCKER_TARGET_BASE_PATH="kube-kaptain"
+  export DOCKER_TARGET_NAMESPACE="kube-kaptain"
 
   run "$SCRIPTS_DIR/docker-build-dockerfile"
   [ "$status" -eq 0 ]
@@ -233,8 +233,8 @@ set_required_env() {
 @test "substitutes tokens in Dockerfile" {
   set_required_env
   # Create Dockerfile with token
-  echo 'FROM ${TargetRegistry}/${TargetBasePath}/base:1.0' > "$TEST_DIR/Dockerfile"
-  export DOCKER_TARGET_BASE_PATH="my-org"
+  echo 'FROM ${TargetRegistry}/${TargetNamespace}/base:1.0' > "$TEST_DIR/Dockerfile"
+  export DOCKER_TARGET_NAMESPACE="my-org"
 
   run "$SCRIPTS_DIR/docker-build-dockerfile"
   [ "$status" -eq 0 ]
@@ -260,7 +260,7 @@ set_required_env() {
 
 @test "substitutes tokens in specified files" {
   set_required_env
-  export DOCKER_TARGET_BASE_PATH="my-org"
+  export DOCKER_TARGET_NAMESPACE="my-org"
   export DOCKERFILE_SUBSTITUTION_FILES="Dockerfile,config.sh"
   # Create files with tokens
   echo 'FROM alpine:3.21' > "$TEST_DIR/Dockerfile"
@@ -276,7 +276,7 @@ set_required_env() {
 
 @test "only substitutes files in substitution list" {
   set_required_env
-  export DOCKER_TARGET_BASE_PATH="my-org"
+  export DOCKER_TARGET_NAMESPACE="my-org"
   # Default DOCKERFILE_SUBSTITUTION_FILES is just Dockerfile
   # Create files with tokens
   echo 'FROM alpine:3.21' > "$TEST_DIR/Dockerfile"

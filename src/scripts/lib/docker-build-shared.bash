@@ -7,13 +7,13 @@
 # Sourced by docker build scripts. Reads from environment:
 # User set inputs (validated):
 #   DOCKER_TARGET_REGISTRY   - Container registry (required)
-#   DOCKER_TARGET_BASE_PATH  - Base path (optional)
+#   DOCKER_TARGET_NAMESPACE  - Namespace (optional)
 # System generated:
 #   DOCKER_IMAGE_NAME        - Image name (required)
 #   DOCKER_TAG               - Tag for image (required)
 #
 # Sets these variables after validation:
-#   TARGET_REGISTRY, TARGET_BASE_PATH - Cleaned values
+#   TARGET_REGISTRY, TARGET_NAMESPACE - Cleaned values
 #   TARGET_IMAGE_FULL_URI - Assembled full image reference
 #
 # Provides functions:
@@ -23,7 +23,7 @@
 # Errors/warnings go to stderr using LOG_ERROR_PREFIX/SUFFIX, LOG_WARNING_PREFIX/SUFFIX.
 
 # shellcheck disable=SC2034  # TARGET_IMAGE_FULL_URI used by caller
-# shellcheck disable=SC2154 # TARGET_REGISTRY, INPUT_TARGET_BASE_PATH set by docker-build.bash before sourcing
+# shellcheck disable=SC2154 # TARGET_REGISTRY, INPUT_TARGET_NAMESPACE set by docker-build.bash before sourcing
 
 # Validate required inputs (caller must source docker-build.bash first)
 if [[ -z "${DOCKER_TARGET_REGISTRY}" ]]; then
@@ -41,20 +41,20 @@ fi
 
 # Registry cannot contain slashes
 if [[ "${TARGET_REGISTRY}" == */* ]]; then
-  echo "${LOG_ERROR_PREFIX:-}DOCKER_TARGET_REGISTRY cannot contain slashes - use DOCKER_TARGET_BASE_PATH for paths${LOG_ERROR_SUFFIX:-}" >&2
+  echo "${LOG_ERROR_PREFIX:-}DOCKER_TARGET_REGISTRY cannot contain slashes - use DOCKER_TARGET_NAMESPACE for paths${LOG_ERROR_SUFFIX:-}" >&2
   exit 1
 fi
 
-# Strip leading/trailing slashes from base path (internal slashes are valid)
-TARGET_BASE_PATH="${INPUT_TARGET_BASE_PATH#/}"
-TARGET_BASE_PATH="${TARGET_BASE_PATH%/}"
-if [[ "${INPUT_TARGET_BASE_PATH}" != "${TARGET_BASE_PATH}" ]]; then
-  echo "${LOG_WARNING_PREFIX:-}DOCKER_TARGET_BASE_PATH has leading/trailing slashes. Stripping.${LOG_WARNING_SUFFIX:-}" >&2
+# Strip leading/trailing slashes from namespace (internal slashes are valid)
+TARGET_NAMESPACE="${INPUT_TARGET_NAMESPACE#/}"
+TARGET_NAMESPACE="${TARGET_NAMESPACE%/}"
+if [[ "${INPUT_TARGET_NAMESPACE}" != "${TARGET_NAMESPACE}" ]]; then
+  echo "${LOG_WARNING_PREFIX:-}DOCKER_TARGET_NAMESPACE has leading/trailing slashes. Stripping.${LOG_WARNING_SUFFIX:-}" >&2
 fi
 
 # Assemble full image URI
-if [[ -n "${TARGET_BASE_PATH}" ]]; then
-  TARGET_IMAGE_FULL_URI="${TARGET_REGISTRY}/${TARGET_BASE_PATH}/${DOCKER_IMAGE_NAME}:${DOCKER_TAG}"
+if [[ -n "${TARGET_NAMESPACE}" ]]; then
+  TARGET_IMAGE_FULL_URI="${TARGET_REGISTRY}/${TARGET_NAMESPACE}/${DOCKER_IMAGE_NAME}:${DOCKER_TAG}"
 else
   TARGET_IMAGE_FULL_URI="${TARGET_REGISTRY}/${DOCKER_IMAGE_NAME}:${DOCKER_TAG}"
 fi

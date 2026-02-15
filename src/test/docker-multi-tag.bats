@@ -12,7 +12,7 @@ setup() {
   export DOCKER_PUSH_IMAGE_LIST_FILE="$base_dir/target/docker-push-all/image-uris"
   mkdir -p "$(dirname "$DOCKER_PUSH_IMAGE_LIST_FILE")"
   export DOCKER_TARGET_REGISTRY="ghcr.io"
-  export DOCKER_TARGET_BASE_PATH=""
+  export DOCKER_TARGET_NAMESPACE=""
 }
 
 teardown() {
@@ -24,7 +24,7 @@ set_required_env() {
   export DOCKER_IMAGE_NAME="test/my-repo"
   export DOCKER_TAG="1.0.0"
   export DOCKER_TARGET_REGISTRY="ghcr.io"
-  export DOCKER_TARGET_BASE_PATH=""
+  export DOCKER_TARGET_NAMESPACE=""
 }
 
 # Set up mock docker to return specific tags from images --filter
@@ -109,12 +109,12 @@ MOCKDOCKER
   assert_output_contains "No images found"
 }
 
-# === Base path handling ===
+# === Namespace handling ===
 
-@test "includes target base-path when specified" {
+@test "includes target namespace when specified" {
   set_required_env
   mock_image_tags "1.0.0"
-  export DOCKER_PUSH_TARGETS='[{"registry": "docker.io", "base-path": "library"}]'
+  export DOCKER_PUSH_TARGETS='[{"registry": "docker.io", "namespace": "library"}]'
 
   run "$SCRIPTS_DIR/docker-multi-tag"
   [ "$status" -eq 0 ]
@@ -122,9 +122,9 @@ MOCKDOCKER
   assert_var_equals "IMAGES_TAGGED" "1"
 }
 
-@test "handles source base-path in filter" {
+@test "handles source namespace in filter" {
   set_required_env
-  export DOCKER_TARGET_BASE_PATH="kube-kaptain"
+  export DOCKER_TARGET_NAMESPACE="kube-kaptain"
   mock_image_tags "1.0.0"
   export DOCKER_PUSH_TARGETS='[{"registry": "docker.io"}]'
 
@@ -134,12 +134,12 @@ MOCKDOCKER
   assert_docker_called "tag ghcr.io/kube-kaptain/test/my-repo:1.0.0 docker.io/test/my-repo:1.0.0"
 }
 
-@test "handles mix of targets with and without base-path" {
+@test "handles mix of targets with and without namespace" {
   set_required_env
   mock_image_tags "1.0.0"
   export DOCKER_PUSH_TARGETS='[
     {"registry": "docker.io"},
-    {"registry": "quay.io", "base-path": "myorg"}
+    {"registry": "quay.io", "namespace": "myorg"}
   ]'
 
   run "$SCRIPTS_DIR/docker-multi-tag"
@@ -149,10 +149,10 @@ MOCKDOCKER
   assert_var_equals "IMAGES_TAGGED" "2"
 }
 
-@test "handles nested base-path" {
+@test "handles nested namespace" {
   set_required_env
   mock_image_tags "1.0.0"
-  export DOCKER_PUSH_TARGETS='[{"registry": "myregistry.example.com", "base-path": "team/project"}]'
+  export DOCKER_PUSH_TARGETS='[{"registry": "myregistry.example.com", "namespace": "team/project"}]'
 
   run "$SCRIPTS_DIR/docker-multi-tag"
   [ "$status" -eq 0 ]
@@ -231,7 +231,7 @@ MOCKDOCKER
 @test "fails when target missing registry field" {
   set_required_env
   mock_image_tags "1.0.0"
-  export DOCKER_PUSH_TARGETS='[{"base-path": "myorg"}]'
+  export DOCKER_PUSH_TARGETS='[{"namespace": "myorg"}]'
 
   run "$SCRIPTS_DIR/docker-multi-tag"
   [ "$status" -ne 0 ]
@@ -285,7 +285,7 @@ MOCKDOCKER
 
 # === Filter construction ===
 
-@test "constructs correct filter without base path" {
+@test "constructs correct filter without namespace" {
   set_required_env
   mock_image_tags "1.0.0"
   export DOCKER_PUSH_TARGETS='[{"registry": "docker.io"}]'
@@ -295,9 +295,9 @@ MOCKDOCKER
   assert_docker_called "images --filter reference=ghcr.io/test/my-repo:1.0.0*"
 }
 
-@test "constructs correct filter with base path" {
+@test "constructs correct filter with namespace" {
   set_required_env
-  export DOCKER_TARGET_BASE_PATH="myorg"
+  export DOCKER_TARGET_NAMESPACE="myorg"
   mock_image_tags "1.0.0"
   export DOCKER_PUSH_TARGETS='[{"registry": "docker.io"}]'
 

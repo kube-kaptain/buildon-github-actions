@@ -10,3 +10,4 @@
 VERSION="${VERSION:?VERSION is required - run versions-and-naming first}"
 PROJECT_NAME="${PROJECT_NAME:?PROJECT_NAME is required - run versions-and-naming first}"
 GIT_TAG="${GIT_TAG:?GIT_TAG is required - run versions-and-naming first}"
+REPOSITORY_OWNER="${REPOSITORY_OWNER:?REPOSITORY_OWNER is required - run versions-and-naming first}"

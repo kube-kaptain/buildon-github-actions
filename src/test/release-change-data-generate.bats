@@ -35,6 +35,7 @@ create_rcd_repo() {
 
   export VERSION="1.0.1"
   export PROJECT_NAME="test-repo"
+  export REPOSITORY_OWNER="kube-kaptain"
   export GIT_TAG="1.0.1"
   export OUTPUT_SUB_PATH="$TEST_REPO/target"
 }
@@ -56,6 +57,14 @@ create_rcd_repo() {
   local project_name
   project_name=$(yq '.change.project-name' "$yaml_file")
   [ "$project_name" = "test-repo" ]
+
+  local repo_name
+  repo_name=$(yq '.change.repository-name' "$yaml_file")
+  [ "$repo_name" = "test-repo" ]
+
+  local repo_owner
+  repo_owner=$(yq '.change.repository-owner' "$yaml_file")
+  [ "$repo_owner" = "kube-kaptain" ]
 
   local tag
   tag=$(yq '.change.tag' "$yaml_file")
@@ -193,6 +202,7 @@ create_rcd_repo() {
 
   export VERSION="1.0.0"
   export PROJECT_NAME="test-repo"
+  export REPOSITORY_OWNER="kube-kaptain"
   export GIT_TAG="1.0.0"
   export OUTPUT_SUB_PATH="$TEST_REPO/target"
 
@@ -224,6 +234,7 @@ create_rcd_repo() {
 
   export VERSION="1.0.1"
   export PROJECT_NAME="test-repo"
+  export REPOSITORY_OWNER="kube-kaptain"
   export GIT_TAG="1.0.1"
   export OUTPUT_SUB_PATH="$TEST_REPO/target"
 
@@ -258,6 +269,7 @@ create_rcd_repo() {
 
   export VERSION="1.0.0"
   export PROJECT_NAME="test-repo"
+  export REPOSITORY_OWNER="kube-kaptain"
   export GIT_TAG="1.0.0"
   export OUTPUT_SUB_PATH="$TEST_REPO/target"
 
@@ -294,6 +306,7 @@ create_rcd_repo() {
 
   export VERSION="1.0.0"
   export PROJECT_NAME="test-repo"
+  export REPOSITORY_OWNER="kube-kaptain"
   export GIT_TAG="1.0.0"
   export OUTPUT_SUB_PATH="$TEST_REPO/target"
 
@@ -331,6 +344,7 @@ create_rcd_repo() {
 
   export VERSION="1.0.1"
   export PROJECT_NAME="test-repo"
+  export REPOSITORY_OWNER="kube-kaptain"
   export GIT_TAG="1.0.1"
   export OUTPUT_SUB_PATH="$TEST_REPO/target"
 
@@ -378,6 +392,7 @@ create_rcd_repo() {
   TEST_REPO=$(create_test_repo)
   cd "$TEST_REPO"
   export PROJECT_NAME="test-repo"
+  export REPOSITORY_OWNER="kube-kaptain"
   export GIT_TAG="1.0.0"
   export OUTPUT_SUB_PATH="$TEST_REPO/target"
   unset VERSION
@@ -391,6 +406,7 @@ create_rcd_repo() {
   TEST_REPO=$(create_test_repo)
   cd "$TEST_REPO"
   export VERSION="1.0.0"
+  export REPOSITORY_OWNER="kube-kaptain"
   export GIT_TAG="1.0.0"
   export OUTPUT_SUB_PATH="$TEST_REPO/target"
   unset PROJECT_NAME
@@ -405,12 +421,27 @@ create_rcd_repo() {
   cd "$TEST_REPO"
   export VERSION="1.0.0"
   export PROJECT_NAME="test-repo"
+  export REPOSITORY_OWNER="kube-kaptain"
   export OUTPUT_SUB_PATH="$TEST_REPO/target"
   unset GIT_TAG
 
   run "$SCRIPTS_DIR/release-change-data-generate"
   [ "$status" -ne 0 ]
   assert_output_contains "GIT_TAG"
+}
+
+@test "fails when REPOSITORY_OWNER not set" {
+  TEST_REPO=$(create_test_repo)
+  cd "$TEST_REPO"
+  export VERSION="1.0.0"
+  export PROJECT_NAME="test-repo"
+  export GIT_TAG="1.0.0"
+  export OUTPUT_SUB_PATH="$TEST_REPO/target"
+  unset REPOSITORY_OWNER
+
+  run "$SCRIPTS_DIR/release-change-data-generate"
+  [ "$status" -ne 0 ]
+  assert_output_contains "REPOSITORY_OWNER"
 }
 
 @test "unsigned commits have signature status No and verification N" {
@@ -471,6 +502,7 @@ create_rcd_repo() {
 
   export VERSION="1.0.2"
   export PROJECT_NAME="test-repo"
+  export REPOSITORY_OWNER="kube-kaptain"
   export GIT_TAG="1.0.2"
   export OUTPUT_SUB_PATH="$TEST_REPO/target"
 
@@ -508,6 +540,7 @@ create_rcd_repo_with_head_message() {
 
   export VERSION="1.0.1"
   export PROJECT_NAME="test-repo"
+  export REPOSITORY_OWNER="kube-kaptain"
   export GIT_TAG="1.0.1"
   export OUTPUT_SUB_PATH="$TEST_REPO/target"
 }
@@ -615,6 +648,7 @@ create_rcd_repo_with_head_message() {
 
   export VERSION="1.0.1"
   export PROJECT_NAME="test-repo"
+  export REPOSITORY_OWNER="kube-kaptain"
   export GIT_TAG="1.0.1"
   export OUTPUT_SUB_PATH="$TEST_REPO/target"
 
@@ -674,6 +708,7 @@ merge-candidate-creator: featuredev" HEAD
 
   export VERSION="1.0.1"
   export PROJECT_NAME="test-repo"
+  export REPOSITORY_OWNER="kube-kaptain"
   export GIT_TAG="1.0.1"
   export OUTPUT_SUB_PATH="$TEST_REPO/target"
 
