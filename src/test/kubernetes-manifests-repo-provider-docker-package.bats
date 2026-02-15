@@ -37,7 +37,7 @@ set_required_env() {
   export REPO_PROVIDER_VERSION="1.0.0-manifests"
 }
 
-@test "assembles target URI without base path" {
+@test "assembles target URI without namespace" {
   set_required_env
 
   run "$REPO_PROVIDERS_DIR/kubernetes-manifests-repo-provider-docker-package"
@@ -45,7 +45,7 @@ set_required_env() {
   assert_var_equals "MANIFESTS_URI" "ghcr.io/test/my-repo:1.0.0-manifests"
 }
 
-@test "assembles target URI with base path" {
+@test "assembles target URI with namespace" {
   set_required_env
   export REPO_PROVIDER_NAMESPACE="kube-kaptain"
 

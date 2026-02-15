@@ -20,6 +20,7 @@
 #   GIT_TAG           - Tag for git (same as DOCKER_TAG)
 #   IS_RELEASE        - "true" if on release branch, "false" otherwise
 #   PROJECT_NAME      - Repository name
+#   REPOSITORY_OWNER  - Repository owner (org or user)
 #
 set -euo pipefail
 
@@ -43,6 +44,7 @@ source "${SCRIPT_DIR}/../lib/branch-setup-shared.bash"
 
 # Required inputs
 REPOSITORY_NAME="${REPOSITORY_NAME:?Is required}"
+REPOSITORY_OWNER="${REPOSITORY_OWNER:?Is required}"
 
 echo "Critical inputs:" >&2
 echo "  Repository name: ${REPOSITORY_NAME}" >&2
@@ -225,6 +227,7 @@ main() {
   output_var "GIT_TAG" "${git_tag}"
   output_var "IS_RELEASE" "${is_release}"
   output_var "PROJECT_NAME" "${project_name}"
+  output_var "REPOSITORY_OWNER" "${REPOSITORY_OWNER}"
 }
 
 main "$@"

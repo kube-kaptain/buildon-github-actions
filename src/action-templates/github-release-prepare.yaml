@@ -48,8 +48,8 @@ inputs:
     description: 'Target registry (optional built-in token)'
     required: false
     default: ''
-  docker-target-base-path:
-    description: 'Target base path (optional built-in token)'
+  docker-target-namespace:
+    description: 'Target namespace (optional built-in token)'
     required: false
     default: ''
   manifests-zip-file-name:
@@ -80,7 +80,7 @@ runs:
         CONFIG_VALUE_TRAILING_NEWLINE: ${{ inputs.config-value-trailing-newline }}
         DOCKER_IMAGE_FULL_URI: ${{ inputs.docker-image-full-uri }}
         TARGET_REGISTRY: ${{ inputs.docker-target-registry }}
-        TARGET_BASE_PATH: ${{ inputs.docker-target-base-path }}
+        TARGET_NAMESPACE: ${{ inputs.docker-target-namespace }}
         MANIFESTS_ZIP_FILE_NAME: ${{ inputs.manifests-zip-file-name }}
         UTIL_DIR: ${{ github.action_path }}/../../scripts/util
       run: |
@@ -149,7 +149,7 @@ runs:
           DOCKER_IMAGE_NAME="${DOCKER_IMAGE_NAME}" \
           DOCKER_IMAGE_FULL_URI="${DOCKER_IMAGE_FULL_URI:-}" \
           TARGET_REGISTRY="${TARGET_REGISTRY:-}" \
-          TARGET_BASE_PATH="${TARGET_BASE_PATH:-}" \
+          TARGET_NAMESPACE="${TARGET_NAMESPACE:-}" \
           MANIFESTS_ZIP_FILE_NAME="${MANIFESTS_ZIP_FILE_NAME:-}" \
             "${UTIL_DIR}/prepare-substitution-tokens"
         fi

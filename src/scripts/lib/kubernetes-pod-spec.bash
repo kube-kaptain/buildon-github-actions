@@ -45,29 +45,29 @@
 build_image_reference() {
   case "${IMAGE_REFERENCE_STYLE}" in
     combined)
-      local registry_and_base_token
-      registry_and_base_token=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "ENVIRONMENT_DOCKER_REGISTRY_AND_BASE_PATH")
-      image_reference="${registry_and_base_token}/${docker_image_name_token}:${docker_tag_token}"
+      local registry_and_namespace_token
+      registry_and_namespace_token=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "ENVIRONMENT_DOCKER_REGISTRY_AND_NAMESPACE")
+      image_reference="${registry_and_namespace_token}/${docker_image_name_token}:${docker_tag_token}"
       image_pull_secret_token=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "ENVIRONMENT_DOCKER_REGISTRY")
       ;;
     separate)
-      local docker_registry_token docker_base_path_token
+      local docker_registry_token docker_namespace_token
       docker_registry_token=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "ENVIRONMENT_DOCKER_REGISTRY")
-      docker_base_path_token=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "ENVIRONMENT_DOCKER_BASE_PATH")
-      image_reference="${docker_registry_token}/${docker_base_path_token}/${docker_image_name_token}:${docker_tag_token}"
+      docker_namespace_token=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "ENVIRONMENT_DOCKER_NAMESPACE")
+      image_reference="${docker_registry_token}/${docker_namespace_token}/${docker_image_name_token}:${docker_tag_token}"
       image_pull_secret_token="${docker_registry_token}"
       ;;
     project-name-prefixed-combined)
-      local registry_and_base_token
-      registry_and_base_token=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "PROJECT_NAME_ENVIRONMENT_DOCKER_REGISTRY_AND_BASE_PATH")
-      image_reference="${registry_and_base_token}/${docker_image_name_token}:${docker_tag_token}"
+      local registry_and_namespace_token
+      registry_and_namespace_token=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "PROJECT_NAME_ENVIRONMENT_DOCKER_REGISTRY_AND_NAMESPACE")
+      image_reference="${registry_and_namespace_token}/${docker_image_name_token}:${docker_tag_token}"
       image_pull_secret_token=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "PROJECT_NAME_ENVIRONMENT_DOCKER_REGISTRY")
       ;;
     project-name-prefixed-separate)
-      local docker_registry_token docker_base_path_token
+      local docker_registry_token docker_namespace_token
       docker_registry_token=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "PROJECT_NAME_ENVIRONMENT_DOCKER_REGISTRY")
-      docker_base_path_token=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "PROJECT_NAME_ENVIRONMENT_DOCKER_BASE_PATH")
-      image_reference="${docker_registry_token}/${docker_base_path_token}/${docker_image_name_token}:${docker_tag_token}"
+      docker_namespace_token=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "PROJECT_NAME_ENVIRONMENT_DOCKER_NAMESPACE")
+      image_reference="${docker_registry_token}/${docker_namespace_token}/${docker_image_name_token}:${docker_tag_token}"
       image_pull_secret_token="${docker_registry_token}"
       ;;
   esac

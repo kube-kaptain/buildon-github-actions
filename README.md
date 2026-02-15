@@ -40,8 +40,8 @@ See [`examples/`](examples/) for more usage patterns.
 | [`daemonset-privileged-and-tolerations.yaml`](examples/daemonset-privileged-and-tolerations.yaml) | This example demonstrates a DaemonSet configured for system-level agents that |
 | [`docker-build-dockerfile-no-squash.yaml`](examples/docker-build-dockerfile-no-squash.yaml) | Build a Docker image without --squash, preserving layer history |
 | [`docker-build-dockerfile.yaml`](examples/docker-build-dockerfile.yaml) | Build a Docker image from a Dockerfile with --squash (default) to flatten |
-| [`docker-build-retag-base-path.yaml`](examples/docker-build-retag-base-path.yaml) | Many registries use base paths in addition to the normal image name for projects or teams |
 | [`docker-build-retag-custom-registry.yaml`](examples/docker-build-retag-custom-registry.yaml) | Push to a registry other than GHCR (Nexus, ECR, GCR, Harbor, etc) |
+| [`docker-build-retag-namespace.yaml`](examples/docker-build-retag-namespace.yaml) | Many registries use namespaces in addition to the normal image name for projects or teams |
 | [`docker-build-retag.yaml`](examples/docker-build-retag.yaml) | Pull an upstream image, retag with your name and new version, push to your registry |
 | [`docker-push-targets.yaml`](examples/docker-push-targets.yaml) | Push the same Docker image to multiple registries |
 | [`docker-registry-logins-explicit.yaml`](examples/docker-registry-logins-explicit.yaml) | docker-registry-logins-secrets |
@@ -111,7 +111,7 @@ See [`examples/`](examples/) for more usage patterns.
 | `kubernetes-manifests-repo-provider-publish` | Publishes manifests via pluggable repo provider. Requires package step to run first. |
 | `release-change-data-generate` | Generates structured release change data YAML from commit history |
 | `release-change-data-oci-package` | Packages release change data as OCI image for consolidated push |
-| `resolve-target-registry-and-base-path` | Resolves target registry (defaults to ghcr.io) and computes base path (auto-detects org for GHCR) |
+| `resolve-target-registry-and-namespace` | Resolves target registry (defaults to ghcr.io) and computes namespace (auto-detects org/user for GHCR) |
 | `validate-tooling` | Validates required tools are available before build |
 | `versions-and-naming` | Generates version numbers, tags, and naming for releases |
 <!-- ACTIONS-END -->
@@ -131,14 +131,14 @@ See [`examples/`](examples/) for more usage patterns.
 | `config-value-trailing-newline` | string | `strip-for-single-line` | How to handle trailing newlines in config values (strip-for-single-line, preserve-all, always-strip-one-newline) |
 | `docker-image-name-override` | string | `""` | Docker image name (if provided, substitutes into manifests; if empty, token remains for later substitution) |
 | `docker-image-tag-override` | string | `""` | Docker image tag (if provided, substitutes into manifests; if empty, token remains for later substitution) |
-| `docker-push-targets` | string | `""` | JSON array of additional push targets [{registry, base-path?}] |
+| `docker-push-targets` | string | `""` | JSON array of additional push targets [{registry, namespace?}] |
 | `docker-registry-logins` | string | `""` | YAML config for Docker registry logins (registry URL as key) |
-| `docker-source-base-path` | string | `""` | Path between registry and image name (e.g., library) |
 | `docker-source-image-name` | string | *required* | Upstream image name (e.g., nginx) |
+| `docker-source-namespace` | string | `""` | Path segment between registry and image name (e.g., library) |
 | `docker-source-registry` | string | *required* | Upstream registry (e.g., docker.io) |
 | `docker-source-tag` | string | *required* | Upstream image tag (e.g., 1.25) |
-| `docker-target-base-path` | string | `""` | Path between registry and image name (defaults to lower cased org name on gh actions) |
-| `docker-target-registry` | string | `""` | Target container registry domain (defaults to ghcr.io on gh actions) |
+| `docker-target-namespace` | string | `""` | Path segment between registry and image name (defaults to lower cased org name or user ID on GH Actions) |
+| `docker-target-registry` | string | `""` | Target container registry domain (defaults to ghcr.io on GH Actions) |
 | `dockerfile-no-cache` | boolean | `true` | Disable layer caching for reproducible builds |
 | `dockerfile-squash` | string | `squash` | Squash mode: squash, squash-all, or no |
 | `dockerfile-sub-path` | string | `src/docker` | Directory containing Dockerfile, relative to repo root. |

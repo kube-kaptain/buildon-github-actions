@@ -6,7 +6,7 @@
 #
 # Copies Dockerfile directory to build output, applies token substitution,
 # then builds from the substituted copy. This allows using variables like
-# ${TargetRegistry}/${TargetBasePath}/base-image:1.0.0 in Dockerfiles.
+# ${TargetRegistry}/${TargetNamespace}/base-image:1.0.0 in Dockerfiles.
 #
 # Build only - does not push. Workflow handles push after optional test step.
 # This separation allows injecting test steps between build and push.
@@ -19,7 +19,7 @@
 #   PROJECT_NAME        - Project name (from version generator, passed as build arg)
 # User set inputs (validate):
 #   DOCKER_TARGET_REGISTRY   - Container registry (e.g., ghcr.io)
-#   DOCKER_TARGET_BASE_PATH  - Path between registry and image name (optional)
+#   DOCKER_TARGET_NAMESPACE   - Namespace between registry and image name (optional)
 #   DOCKERFILE_SUB_PATH - Directory containing Dockerfile, relative (default: src/docker)
 #   OUTPUT_SUB_PATH     - Build output directory, relative (default: target)
 #   DOCKERFILE_SQUASH   - Squash mode: squash, squash-all, or no (default: squash)
@@ -139,7 +139,7 @@ main() {
   DOCKER_IMAGE_NAME="${DOCKER_IMAGE_NAME}" \
   DOCKER_IMAGE_FULL_URI="${TARGET_IMAGE_FULL_URI}" \
   TARGET_REGISTRY="${TARGET_REGISTRY}" \
-  TARGET_BASE_PATH="${TARGET_BASE_PATH}" \
+  TARGET_NAMESPACE="${TARGET_NAMESPACE}" \
   "${SCRIPT_DIR}/../util/prepare-substitution-tokens"
 
   # Perform variable substitution on specific files only

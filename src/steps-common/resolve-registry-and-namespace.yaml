@@ -1,12 +1,12 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
 
-# Resolve target registry and namespace (base path) early in workflow
+# Resolve target registry and namespace early in workflow
 # Must run before any hooks or docker operations that need these values
 # All downstream steps should reference steps.resolve-registry.outputs.*
 - name: Resolve target registry and namespace
   id: resolve-registry
-  uses: ./.github/buildon-github-actions/src/actions/resolve-target-registry-and-base-path
+  uses: ./.github/buildon-github-actions/src/actions/resolve-target-registry-and-namespace
   with:
     docker-target-registry: ${{ inputs.docker-target-registry }}
-    docker-target-base-path: ${{ inputs.docker-target-base-path }}
+    docker-target-namespace: ${{ inputs.docker-target-namespace }}

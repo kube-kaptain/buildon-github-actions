@@ -7,11 +7,11 @@
 # Inputs (environment variables):
 # User set inputs (validate):
 #   DOCKER_SOURCE_REGISTRY       - Source registry (e.g., docker.io)
-#   DOCKER_SOURCE_BASE_PATH      - Path between registry and image name (optional, e.g., library)
+#   DOCKER_SOURCE_NAMESPACE      - Namespace between registry and image name (optional, e.g., library)
 #   DOCKER_SOURCE_IMAGE_NAME     - Source image name (e.g., nginx)
 #   DOCKER_SOURCE_TAG            - Source image tag (e.g., 1.25)
 #   DOCKER_TARGET_REGISTRY       - Target registry (e.g., ghcr.io)
-#   DOCKER_TARGET_BASE_PATH      - Path between registry and image name (optional)
+#   DOCKER_TARGET_NAMESPACE      - Namespace between registry and image name (optional)
 # System generated:
 #   DOCKER_IMAGE_NAME            - Target image name (from version generator)
 #   DOCKER_TAG                   - Target tag (from version generator)
@@ -56,7 +56,7 @@ fi
 
 # Source registry cannot contain slashes
 if [[ "${SOURCE_REGISTRY}" == */* ]]; then
-  echo "${LOG_ERROR_PREFIX}DOCKER_SOURCE_REGISTRY cannot contain slashes - use DOCKER_SOURCE_BASE_PATH for paths${LOG_ERROR_SUFFIX}" >&2
+  echo "${LOG_ERROR_PREFIX}DOCKER_SOURCE_REGISTRY cannot contain slashes - use DOCKER_SOURCE_NAMESPACE for paths${LOG_ERROR_SUFFIX}" >&2
   exit 1
 fi
 
@@ -67,16 +67,16 @@ if [[ "${INPUT_SOURCE_IMAGE_NAME}" != "${SOURCE_IMAGE_NAME}" ]]; then
   echo "${LOG_WARNING_PREFIX}DOCKER_SOURCE_IMAGE_NAME has leading/trailing slashes. Stripping.${LOG_WARNING_SUFFIX}" >&2
 fi
 
-# Strip leading/trailing slashes from source base path
-SOURCE_BASE_PATH="${INPUT_SOURCE_BASE_PATH#/}"
-SOURCE_BASE_PATH="${SOURCE_BASE_PATH%/}"
-if [[ "${INPUT_SOURCE_BASE_PATH}" != "${SOURCE_BASE_PATH}" ]]; then
-  echo "${LOG_WARNING_PREFIX}DOCKER_SOURCE_BASE_PATH has leading/trailing slashes. Stripping.${LOG_WARNING_SUFFIX}" >&2
+# Strip leading/trailing slashes from source namespace
+SOURCE_NAMESPACE="${INPUT_SOURCE_NAMESPACE#/}"
+SOURCE_NAMESPACE="${SOURCE_NAMESPACE%/}"
+if [[ "${INPUT_SOURCE_NAMESPACE}" != "${SOURCE_NAMESPACE}" ]]; then
+  echo "${LOG_WARNING_PREFIX}DOCKER_SOURCE_NAMESPACE has leading/trailing slashes. Stripping.${LOG_WARNING_SUFFIX}" >&2
 fi
 
 # === Assemble source image URI ===
-if [[ -n "${SOURCE_BASE_PATH}" ]]; then
-  SOURCE_IMAGE_FULL_URI="${SOURCE_REGISTRY}/${SOURCE_BASE_PATH}/${SOURCE_IMAGE_NAME}:${SOURCE_TAG}"
+if [[ -n "${SOURCE_NAMESPACE}" ]]; then
+  SOURCE_IMAGE_FULL_URI="${SOURCE_REGISTRY}/${SOURCE_NAMESPACE}/${SOURCE_IMAGE_NAME}:${SOURCE_TAG}"
 else
   SOURCE_IMAGE_FULL_URI="${SOURCE_REGISTRY}/${SOURCE_IMAGE_NAME}:${SOURCE_TAG}"
 fi

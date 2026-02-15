@@ -18,8 +18,8 @@ inputs:
   docker-target-registry:
     description: 'Primary registry to filter source images'
     required: true
-  docker-target-base-path:
-    description: 'Primary base path within registry'
+  docker-target-namespace:
+    description: 'Primary namespace within registry'
     required: false
     default: ''
   # INJECT-INPUT: image-build-command
@@ -41,6 +41,6 @@ runs:
         DOCKER_TAG: ${{ inputs.docker-tag }}
         DOCKER_PUSH_TARGETS: ${{ inputs.docker-push-targets }}
         DOCKER_TARGET_REGISTRY: ${{ inputs.docker-target-registry }}
-        DOCKER_TARGET_BASE_PATH: ${{ inputs.docker-target-base-path }}
+        DOCKER_TARGET_NAMESPACE: ${{ inputs.docker-target-namespace }}
         IMAGE_BUILD_COMMAND: ${{ inputs.image-build-command }}
       run: "${{ github.action_path }}/../../scripts/main/docker-multi-tag"

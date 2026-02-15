@@ -12,7 +12,7 @@
     docker-image-name: ${{ steps.versions.outputs.docker-image-name }}
     docker-image-full-uri: ${{ steps.docker-build.outputs.docker-target-image-full-uri }}
     docker-target-registry: ${{ steps.resolve-registry.outputs.docker-target-registry }}
-    docker-target-base-path: ${{ steps.resolve-registry.outputs.docker-target-base-path }}
+    docker-target-namespace: ${{ steps.resolve-registry.outputs.docker-target-namespace }}
     is-release: ${{ steps.versions.outputs.is-release }}
     token-delimiter-style: ${{ inputs.token-delimiter-style }}
     token-name-style: ${{ inputs.token-name-style }}

@@ -20,11 +20,11 @@ teardown() {
 # Required env vars for most tests
 set_required_env() {
   export DOCKER_SOURCE_REGISTRY="docker.io"
-  export DOCKER_SOURCE_BASE_PATH="library"
+  export DOCKER_SOURCE_NAMESPACE="library"
   export DOCKER_SOURCE_IMAGE_NAME="alpine"
   export DOCKER_SOURCE_TAG="3.21"
   export DOCKER_TARGET_REGISTRY="ghcr.io"
-  export DOCKER_TARGET_BASE_PATH="test"
+  export DOCKER_TARGET_NAMESPACE="test"
   export DOCKER_IMAGE_NAME="my-repo"
   export DOCKER_TAG="1.0.0"
 }
@@ -37,16 +37,16 @@ set_required_env() {
   assert_var_equals "DOCKER_SOURCE_IMAGE_FULL_URI" "docker.io/library/alpine:3.21"
 }
 
-@test "assembles target URI without base path" {
+@test "assembles target URI without namespace" {
   set_required_env
-  unset DOCKER_TARGET_BASE_PATH
+  unset DOCKER_TARGET_NAMESPACE
 
   run "$SCRIPTS_DIR/docker-build-retag"
   [ "$status" -eq 0 ]
   assert_var_equals "DOCKER_TARGET_IMAGE_FULL_URI" "ghcr.io/my-repo:1.0.0"
 }
 
-@test "assembles target URI with base path" {
+@test "assembles target URI with namespace" {
   set_required_env
 
   run "$SCRIPTS_DIR/docker-build-retag"
@@ -54,9 +54,9 @@ set_required_env() {
   assert_var_equals "DOCKER_TARGET_IMAGE_FULL_URI" "ghcr.io/test/my-repo:1.0.0"
 }
 
-@test "assembles source URI without base path" {
+@test "assembles source URI without namespace" {
   set_required_env
-  unset DOCKER_SOURCE_BASE_PATH
+  unset DOCKER_SOURCE_NAMESPACE
 
   run "$SCRIPTS_DIR/docker-build-retag"
   [ "$status" -eq 0 ]
@@ -84,7 +84,7 @@ set_required_env() {
 @test "fails when source registry contains path" {
   set_required_env
   export DOCKER_SOURCE_REGISTRY="docker.io/library"
-  unset DOCKER_SOURCE_BASE_PATH
+  unset DOCKER_SOURCE_NAMESPACE
 
   run "$SCRIPTS_DIR/docker-build-retag"
   [ "$status" -ne 0 ]
@@ -103,7 +103,7 @@ set_required_env() {
 @test "warns and strips leading slash from image name" {
   set_required_env
   export DOCKER_SOURCE_IMAGE_NAME="/alpine"
-  unset DOCKER_SOURCE_BASE_PATH
+  unset DOCKER_SOURCE_NAMESPACE
 
   run "$SCRIPTS_DIR/docker-build-retag"
   [ "$status" -eq 0 ]
@@ -115,7 +115,7 @@ set_required_env() {
 @test "allows internal slashes in image name" {
   set_required_env
   export DOCKER_SOURCE_IMAGE_NAME="library/alpine"
-  unset DOCKER_SOURCE_BASE_PATH
+  unset DOCKER_SOURCE_NAMESPACE
 
   run "$SCRIPTS_DIR/docker-build-retag"
   [ "$status" -eq 0 ]
@@ -123,23 +123,23 @@ set_required_env() {
   assert_var_equals "DOCKER_SOURCE_IMAGE_FULL_URI" "docker.io/library/alpine:3.21"
 }
 
-@test "warns and strips leading slash from base path" {
+@test "warns and strips leading slash from namespace" {
   set_required_env
-  export DOCKER_SOURCE_BASE_PATH="/library"
+  export DOCKER_SOURCE_NAMESPACE="/library"
 
   run "$SCRIPTS_DIR/docker-build-retag"
   [ "$status" -eq 0 ]
-  assert_output_contains "DOCKER_SOURCE_BASE_PATH has leading/trailing slashes"
+  assert_output_contains "DOCKER_SOURCE_NAMESPACE has leading/trailing slashes"
   assert_var_equals "DOCKER_SOURCE_IMAGE_FULL_URI" "docker.io/library/alpine:3.21"
 }
 
-@test "warns and strips trailing slash from base path" {
+@test "warns and strips trailing slash from namespace" {
   set_required_env
-  export DOCKER_TARGET_BASE_PATH="test/"
+  export DOCKER_TARGET_NAMESPACE="test/"
 
   run "$SCRIPTS_DIR/docker-build-retag"
   [ "$status" -eq 0 ]
-  assert_output_contains "DOCKER_TARGET_BASE_PATH has leading/trailing slashes"
+  assert_output_contains "DOCKER_TARGET_NAMESPACE has leading/trailing slashes"
   assert_var_equals "DOCKER_TARGET_IMAGE_FULL_URI" "ghcr.io/test/my-repo:1.0.0"
 }
 
@@ -147,7 +147,7 @@ set_required_env() {
   set_required_env
   export DOCKER_SOURCE_IMAGE_NAME="/alpine"
   export LOG_WARNING_PREFIX="::warning::"
-  unset DOCKER_SOURCE_BASE_PATH
+  unset DOCKER_SOURCE_NAMESPACE
 
   run "$SCRIPTS_DIR/docker-build-retag"
   [ "$status" -eq 0 ]
@@ -163,11 +163,11 @@ set_required_env() {
 }
 
 @test "fails when DOCKER_SOURCE_REGISTRY missing" {
-  export DOCKER_SOURCE_BASE_PATH="library"
+  export DOCKER_SOURCE_NAMESPACE="library"
   export DOCKER_SOURCE_IMAGE_NAME="alpine"
   export DOCKER_SOURCE_TAG="3.21"
   export DOCKER_TARGET_REGISTRY="ghcr.io"
-  export DOCKER_TARGET_BASE_PATH="test"
+  export DOCKER_TARGET_NAMESPACE="test"
   export DOCKER_IMAGE_NAME="my-repo"
   export DOCKER_TAG="1.0.0"
 
@@ -178,7 +178,7 @@ set_required_env() {
 
 @test "fails when DOCKER_IMAGE_NAME missing" {
   export DOCKER_SOURCE_REGISTRY="docker.io"
-  export DOCKER_SOURCE_BASE_PATH="library"
+  export DOCKER_SOURCE_NAMESPACE="library"
   export DOCKER_SOURCE_IMAGE_NAME="alpine"
   export DOCKER_SOURCE_TAG="3.21"
   export DOCKER_TARGET_REGISTRY="ghcr.io"
@@ -208,10 +208,10 @@ set_required_env() {
   assert_docker_called "manifest inspect"
 }
 
-@test "works with custom registry and base path" {
+@test "works with custom registry and namespace" {
   set_required_env
   export DOCKER_TARGET_REGISTRY="myregistry.example.com"
-  export DOCKER_TARGET_BASE_PATH="docker-local"
+  export DOCKER_TARGET_NAMESPACE="docker-local"
 
   run "$SCRIPTS_DIR/docker-build-retag"
   [ "$status" -eq 0 ]

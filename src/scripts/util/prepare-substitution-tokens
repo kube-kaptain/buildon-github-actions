@@ -17,7 +17,7 @@
 #
 # Built-in tokens (read from env, written if set):
 #   PROJECT_NAME, VERSION, DOCKER_TAG, DOCKER_IMAGE_NAME
-#   TARGET_REGISTRY, TARGET_BASE_PATH, IS_RELEASE
+#   TARGET_REGISTRY, TARGET_NAMESPACE, IS_RELEASE
 #   DOCKER_IMAGE_FULL_URI, MANIFESTS_ZIP_FILE_NAME
 #
 set -euo pipefail
@@ -93,8 +93,8 @@ main() {
   if [[ -n "${TARGET_REGISTRY:-}" ]]; then
     write_builtin_token "TARGET_REGISTRY" "${TARGET_REGISTRY}"
   fi
-  if [[ -n "${TARGET_BASE_PATH:-}" ]]; then
-    write_builtin_token "TARGET_BASE_PATH" "${TARGET_BASE_PATH}"
+  if [[ -n "${TARGET_NAMESPACE:-}" ]]; then
+    write_builtin_token "TARGET_NAMESPACE" "${TARGET_NAMESPACE}"
   fi
 
   # Optional manifest packaging tokens (not available in docker-build-dockerfile)

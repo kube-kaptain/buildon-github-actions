@@ -11,5 +11,5 @@
     docker-tag: ${{ steps.versions.outputs.docker-tag }}
     docker-push-targets: ${{ inputs.docker-push-targets }}
     docker-target-registry: ${{ steps.resolve-registry.outputs.docker-target-registry }}
-    docker-target-base-path: ${{ steps.resolve-registry.outputs.docker-target-base-path }}
+    docker-target-namespace: ${{ steps.resolve-registry.outputs.docker-target-namespace }}
     image-build-command: ${{ steps.validate-tooling.outputs.IMAGE_BUILD_COMMAND }}

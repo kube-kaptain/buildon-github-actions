@@ -6,8 +6,8 @@ docker-source-registry:
   description: 'Upstream registry (e.g., docker.io)'
   required: true
   type: string
-docker-source-base-path:
-  description: 'Path between registry and image name (e.g., library)'
+docker-source-namespace:
+  description: 'Path segment between registry and image name (e.g., library)'
   required: false
   type: string
   default: ''

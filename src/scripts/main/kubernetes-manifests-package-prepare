@@ -16,7 +16,7 @@
 #   DOCKER_IMAGE_NAME - Docker image name for substitution (required)
 #   DOCKER_IMAGE_FULL_URI - Full Docker image URI for substitution (optional)
 #   TARGET_REGISTRY - Target registry for substitution (optional)
-#   TARGET_BASE_PATH - Target base path for substitution (optional)
+#   TARGET_NAMESPACE - Target namespace for substitution (optional)
 #   IS_RELEASE      - Release flag for substitution (optional)
 #   TOKEN_DELIMITER_STYLE - Token delimiter syntax (default: shell)
 #   TOKEN_NAME_STYLE - Case style for token names (default: PascalCase)
@@ -51,7 +51,7 @@ source "$(dirname "${BASH_SOURCE[0]}")/../defaults/manifests-sub-path.bash"
 # Pass-through vars (called scripts default their own; these just satisfy set -u)
 DOCKER_IMAGE_FULL_URI="${DOCKER_IMAGE_FULL_URI:-}"
 TARGET_REGISTRY="${TARGET_REGISTRY:-}"
-TARGET_BASE_PATH="${TARGET_BASE_PATH:-}"
+TARGET_NAMESPACE="${TARGET_NAMESPACE:-}"
 IS_RELEASE="${IS_RELEASE:-}"
 # Token substitution
 # shellcheck source=src/scripts/defaults/tokens.bash
@@ -149,7 +149,7 @@ main() {
   DOCKER_IMAGE_NAME="${DOCKER_IMAGE_NAME}" \
   DOCKER_IMAGE_FULL_URI="${DOCKER_IMAGE_FULL_URI}" \
   TARGET_REGISTRY="${TARGET_REGISTRY}" \
-  TARGET_BASE_PATH="${TARGET_BASE_PATH}" \
+  TARGET_NAMESPACE="${TARGET_NAMESPACE}" \
   IS_RELEASE="${IS_RELEASE}" \
   MANIFESTS_ZIP_FILE_NAME="${zip_name}" \
   "${SCRIPT_DIR}/../util/prepare-substitution-tokens"

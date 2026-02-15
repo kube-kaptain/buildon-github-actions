@@ -58,14 +58,16 @@ MAPPINGS=(
   "spec.main.quality.commits.blockDuplicateMessages:QC_BLOCK_DUPLICATE_COMMIT_MESSAGES"
 
   # Docker
+  # Note: registry.logins (DOCKER_REGISTRY_LOGINS) - scripts read KaptainPM.yaml directly
+  # Note: registry.pushTargets (DOCKER_PUSH_TARGETS) - scripts read KaptainPM.yaml directly
   "spec.main.docker.registry.targetRegistry:DOCKER_TARGET_REGISTRY"
-  "spec.main.docker.registry.targetBasePath:DOCKER_TARGET_BASE_PATH"
+  "spec.main.docker.registry.targetNamespace:DOCKER_TARGET_NAMESPACE"
   "spec.main.docker.dockerfile.substitutionFiles:DOCKERFILE_SUBSTITUTION_FILES"
   "spec.main.docker.dockerfile.subPath:DOCKERFILE_SUB_PATH"
   "spec.main.docker.dockerfile.squash:DOCKERFILE_SQUASH"
   "spec.main.docker.dockerfile.noCache:DOCKERFILE_NO_CACHE"
   "spec.main.docker.retag.sourceRegistry:DOCKER_SOURCE_REGISTRY"
-  "spec.main.docker.retag.sourceBasePath:DOCKER_SOURCE_BASE_PATH"
+  "spec.main.docker.retag.sourceNamespace:DOCKER_SOURCE_NAMESPACE"
   "spec.main.docker.retag.sourceImageName:DOCKER_SOURCE_IMAGE_NAME"
   "spec.main.docker.retag.sourceTag:DOCKER_SOURCE_TAG"
 
@@ -102,6 +104,8 @@ MAPPINGS=(
   "spec.main.generators.workload.terminationGracePeriodSeconds:KUBERNETES_WORKLOAD_TERMINATION_GRACE_PERIOD_SECONDS"
   "spec.main.generators.workload.prestopCommand:KUBERNETES_WORKLOAD_PRESTOP_COMMAND"
   "spec.main.generators.workload.scheduling.affinityStrategy:KUBERNETES_WORKLOAD_AFFINITY_STRATEGY"
+  # Note: scheduling.tolerations (KUBERNETES_WORKLOAD_TOLERATIONS) - scripts read KaptainPM.yaml directly
+  # Note: scheduling.nodeSelector (KUBERNETES_WORKLOAD_NODE_SELECTOR) - scripts read KaptainPM.yaml directly
   "spec.main.generators.workload.scheduling.dnsPolicy:KUBERNETES_WORKLOAD_DNS_POLICY"
   "spec.main.generators.workload.scheduling.priorityClassName:KUBERNETES_WORKLOAD_PRIORITY_CLASS_NAME"
 

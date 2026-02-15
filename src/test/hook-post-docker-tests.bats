@@ -32,7 +32,7 @@ setup() {
   # Set required workflow inputs - these get defaults from sourced scripts
   # but we set explicit values to verify they're exported correctly
   export DOCKER_TARGET_REGISTRY="ghcr.io"
-  export DOCKER_TARGET_BASE_PATH="test"
+  export DOCKER_TARGET_NAMESPACE="test"
   export DOCKER_PUSH_TARGETS=""
   export DOCKER_REGISTRY_LOGINS=""
   export OUTPUT_SUB_PATH="target"
@@ -43,7 +43,7 @@ setup() {
   export IMAGE_BUILD_COMMAND="docker"
   export DOCKER_CONTEXT_SUB_PATH=""
   export DOCKER_SOURCE_REGISTRY=""
-  export DOCKER_SOURCE_BASE_PATH=""
+  export DOCKER_SOURCE_NAMESPACE=""
   export DOCKER_SOURCE_IMAGE_NAME=""
   export DOCKER_SOURCE_TAG=""
   export MANIFESTS_SUB_PATH="src/kubernetes"

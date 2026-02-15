@@ -12,7 +12,7 @@
 #   DOCKER_TAG                 - Docker tag (from versions-and-naming)
 #   DOCKER_IMAGE_NAME          - Docker image name (from versions-and-naming)
 #   DOCKER_TARGET_REGISTRY     - Target registry (from resolve-registry)
-#   DOCKER_TARGET_BASE_PATH    - Target base path (from resolve-registry, optional)
+#   DOCKER_TARGET_NAMESPACE     - Target namespace (from resolve-registry, optional)
 #   OUTPUT_SUB_PATH            - Build output directory (default: target)
 #   DOCKER_PUSH_IMAGE_LIST_FILE - Path to push list file (from docker-registry-logins)
 #   IMAGE_BUILD_COMMAND        - Container runtime (podman or docker)
@@ -37,7 +37,7 @@ VERSION="${VERSION:?VERSION is required}"
 DOCKER_TAG="${DOCKER_TAG:?DOCKER_TAG is required}"
 DOCKER_IMAGE_NAME="${DOCKER_IMAGE_NAME:?DOCKER_IMAGE_NAME is required}"
 DOCKER_TARGET_REGISTRY="${DOCKER_TARGET_REGISTRY:?DOCKER_TARGET_REGISTRY is required}"
-DOCKER_TARGET_BASE_PATH="${DOCKER_TARGET_BASE_PATH:-}"
+DOCKER_TARGET_NAMESPACE="${DOCKER_TARGET_NAMESPACE:-}"
 
 # Paths
 DOCKER_CONTEXT_DIR="${OUTPUT_SUB_PATH}/release-change-data/docker-context"
@@ -45,8 +45,8 @@ VERSIONED_YAML="release-change-data-${VERSION}.yaml"
 
 # Assemble image URI with -release-change-data tag suffix
 IMAGE_TAG="${DOCKER_TAG}-release-change-data"
-if [[ -n "${DOCKER_TARGET_BASE_PATH}" ]]; then
-  IMAGE_URI="${DOCKER_TARGET_REGISTRY}/${DOCKER_TARGET_BASE_PATH}/${DOCKER_IMAGE_NAME}:${IMAGE_TAG}"
+if [[ -n "${DOCKER_TARGET_NAMESPACE}" ]]; then
+  IMAGE_URI="${DOCKER_TARGET_REGISTRY}/${DOCKER_TARGET_NAMESPACE}/${DOCKER_IMAGE_NAME}:${IMAGE_TAG}"
 else
   IMAGE_URI="${DOCKER_TARGET_REGISTRY}/${DOCKER_IMAGE_NAME}:${IMAGE_TAG}"
 fi

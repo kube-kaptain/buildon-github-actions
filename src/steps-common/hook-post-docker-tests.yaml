@@ -21,7 +21,7 @@
     dockerfile-no-cache: ${{ inputs.dockerfile-no-cache }}
     # Docker target config (from early resolver)
     docker-target-registry: ${{ steps.resolve-registry.outputs.docker-target-registry }}
-    docker-target-base-path: ${{ steps.resolve-registry.outputs.docker-target-base-path }}
+    docker-target-namespace: ${{ steps.resolve-registry.outputs.docker-target-namespace }}
     # Docker push targets
     docker-push-targets: ${{ inputs.docker-push-targets }}
 

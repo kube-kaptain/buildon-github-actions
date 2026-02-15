@@ -38,8 +38,8 @@ inputs:
     description: 'Target registry for variable substitution (optional)'
     required: false
     default: ''
-  docker-target-base-path:
-    description: 'Target base path for variable substitution (optional)'
+  docker-target-namespace:
+    description: 'Target namespace for variable substitution (optional)'
     required: false
     default: ''
   is-release:
@@ -94,7 +94,7 @@ runs:
         DOCKER_IMAGE_NAME: ${{ inputs.docker-image-name }}
         DOCKER_IMAGE_FULL_URI: ${{ inputs.docker-image-full-uri }}
         TARGET_REGISTRY: ${{ inputs.docker-target-registry }}
-        TARGET_BASE_PATH: ${{ inputs.docker-target-base-path }}
+        TARGET_NAMESPACE: ${{ inputs.docker-target-namespace }}
         IS_RELEASE: ${{ inputs.is-release }}
         TOKEN_DELIMITER_STYLE: ${{ inputs.token-delimiter-style }}
         TOKEN_NAME_STYLE: ${{ inputs.token-name-style }}

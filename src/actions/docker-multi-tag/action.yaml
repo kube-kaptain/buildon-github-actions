@@ -16,16 +16,16 @@ inputs:
     default: ''
   # Docker target config
   docker-target-registry:
-    description: 'Target container registry domain (defaults to ghcr.io on gh actions)'
+    description: 'Target container registry domain (defaults to ghcr.io on GH Actions)'
     required: false
     default: ''
-  docker-target-base-path:
-    description: 'Path between registry and image name (defaults to lower cased org name on gh actions)'
+  docker-target-namespace:
+    description: 'Path segment between registry and image name (defaults to lower cased org name or user ID on GH Actions)'
     required: false
     default: ''
   # Docker push targets
   docker-push-targets:
-    description: 'JSON array of additional push targets [{registry, base-path?}]'
+    description: 'JSON array of additional push targets [{registry, namespace?}]'
     required: false
     default: ''
 
@@ -39,8 +39,8 @@ inputs:
   docker-target-registry:
     description: 'Primary registry to filter source images'
     required: true
-  docker-target-base-path:
-    description: 'Primary base path within registry'
+  docker-target-namespace:
+    description: 'Primary namespace within registry'
     required: false
     default: ''
   # Container runtime
@@ -65,6 +65,6 @@ runs:
         DOCKER_TAG: ${{ inputs.docker-tag }}
         DOCKER_PUSH_TARGETS: ${{ inputs.docker-push-targets }}
         DOCKER_TARGET_REGISTRY: ${{ inputs.docker-target-registry }}
-        DOCKER_TARGET_BASE_PATH: ${{ inputs.docker-target-base-path }}
+        DOCKER_TARGET_NAMESPACE: ${{ inputs.docker-target-namespace }}
         IMAGE_BUILD_COMMAND: ${{ inputs.image-build-command }}
       run: "${{ github.action_path }}/../../scripts/main/docker-multi-tag"
