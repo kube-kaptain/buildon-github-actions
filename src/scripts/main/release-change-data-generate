@@ -11,6 +11,7 @@
 # Inputs (environment variables):
 #   VERSION           - Release version (from versions-and-naming)
 #   PROJECT_NAME      - Project name (from versions-and-naming)
+#   REPOSITORY_OWNER  - Repository owner (from versions-and-naming)
 #   GIT_TAG           - Tag just created (from versions-and-naming)
 #   OUTPUT_SUB_PATH   - Build output directory (default: target)
 #
@@ -370,6 +371,7 @@ main() {
   # Create base YAML document (required fields only)
   export YQ_VERSION="${VERSION}"
   export YQ_PROJECT_NAME="${PROJECT_NAME}"
+  export YQ_REPOSITORY_OWNER="${REPOSITORY_OWNER}"
   export YQ_TAG="${GIT_TAG}"
   export YQ_GIT_SHA1="${head_sha}"
   export YQ_GENERATED="${generated}"
@@ -380,6 +382,8 @@ main() {
   yq -n '
     .change.version = strenv(YQ_VERSION) |
     .change.project-name = strenv(YQ_PROJECT_NAME) |
+    .change.repository-name = strenv(YQ_PROJECT_NAME) |
+    .change.repository-owner = strenv(YQ_REPOSITORY_OWNER) |
     .change.tag = strenv(YQ_TAG) |
     .change.git-sha1 = strenv(YQ_GIT_SHA1) |
     .change.generated = strenv(YQ_GENERATED) |

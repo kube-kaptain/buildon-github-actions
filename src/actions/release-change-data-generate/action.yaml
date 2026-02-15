@@ -26,6 +26,9 @@ inputs:
   git-tag:
     description: 'Git tag (from version generator)'
     required: true
+  repository-owner:
+    description: 'Repository owner (from version generator)'
+    required: true
 
 outputs:
   release-change-data-file:
@@ -45,6 +48,7 @@ runs:
         LOG_ERROR_PREFIX: '::error::'
         VERSION: ${{ inputs.version }}
         PROJECT_NAME: ${{ inputs.project-name }}
+        REPOSITORY_OWNER: ${{ inputs.repository-owner }}
         GIT_TAG: ${{ inputs.git-tag }}
         OUTPUT_SUB_PATH: ${{ inputs.output-sub-path }}
         CHANGE_SOURCE_NOTE_ENABLED: ${{ inputs.change-source-note-enabled }}

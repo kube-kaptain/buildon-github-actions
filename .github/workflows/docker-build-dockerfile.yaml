@@ -740,6 +740,7 @@ jobs:
           version: ${{ steps.versions.outputs.version }}
           project-name: ${{ steps.versions.outputs.project-name }}
           git-tag: ${{ steps.versions.outputs.git-tag }}
+          repository-owner: ${{ steps.versions.outputs.repository-owner }}
           output-sub-path: ${{ inputs.output-sub-path }}
           change-source-note-enabled: ${{ inputs.change-source-note-enabled }}
       - name: Pass check - Release Change Data Generate
