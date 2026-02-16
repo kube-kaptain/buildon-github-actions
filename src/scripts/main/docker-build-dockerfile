@@ -166,6 +166,15 @@ main() {
   # Build from substituted directory
   local dockerfile="${DOCKER_CONTEXT_SUB_PATH}/Dockerfile"
 
+  # Validate squash value
+  case "${DOCKERFILE_SQUASH}" in
+    squash|squash-all|no) ;;
+    *)
+      echo "${LOG_ERROR_PREFIX}Invalid DOCKERFILE_SQUASH value '${DOCKERFILE_SQUASH}' - must be: squash, squash-all, or no${LOG_ERROR_SUFFIX}" >&2
+      exit 1
+      ;;
+  esac
+
   # Squash handling
   if [[ "${DOCKERFILE_SQUASH}" != "no" ]]; then
     if [[ "${IMAGE_BUILD_COMMAND}" == "docker" ]]; then
