@@ -184,6 +184,16 @@ set_required_env() {
   assert_docker_not_called "--squash"
 }
 
+@test "fails when DOCKERFILE_SQUASH has invalid value" {
+  set_required_env
+  export DOCKERFILE_SQUASH="false"
+
+  run "$SCRIPTS_DIR/docker-build-dockerfile"
+  [ "$status" -ne 0 ]
+  assert_output_contains "Invalid DOCKERFILE_SQUASH value 'false'"
+  assert_output_contains "must be: squash, squash-all, or no"
+}
+
 @test "uses substituted directory as context" {
   set_required_env
 
