@@ -27,22 +27,13 @@ LOG_ERROR_SUFFIX="${LOG_ERROR_SUFFIX:-}"
 source "${SCRIPT_DIR}/../defaults/docker-push-image-list.bash"
 # shellcheck source=src/scripts/defaults/image-build-command.bash
 source "${SCRIPT_DIR}/../defaults/image-build-command.bash"
+# shellcheck source=src/scripts/lib/output-var.bash
+source "${SCRIPT_DIR}/../lib/output-var.bash"
 
 # Optional inputs with defaults
 IS_RELEASE="${IS_RELEASE:-false}"
 
 IMAGES_TO_PUSH_FILE="${DOCKER_PUSH_IMAGE_LIST_FILE}"
-
-output_var() {
-  local name="${1}"
-  local value="${2}"
-
-  echo "${name}=${value}"
-
-  if [[ -n "${GITHUB_OUTPUT:-}" ]]; then
-    echo "${name}=${value}" >> "${GITHUB_OUTPUT}"
-  fi
-}
 
 main() {
   echo "=== Docker Push All ===" >&2

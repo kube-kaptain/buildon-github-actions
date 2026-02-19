@@ -27,6 +27,8 @@ source "${SCRIPT_DIR}/../defaults/output-sub-path.bash"
 source "${SCRIPT_DIR}/../defaults/docker-push-image-list.bash"
 # shellcheck source=src/scripts/defaults/image-build-command.bash
 source "${SCRIPT_DIR}/../defaults/image-build-command.bash"
+# shellcheck source=src/scripts/lib/output-var.bash
+source "${SCRIPT_DIR}/../lib/output-var.bash"
 
 # Logging
 LOG_ERROR_PREFIX="${LOG_ERROR_PREFIX:-ERROR: }"
@@ -50,17 +52,6 @@ if [[ -n "${DOCKER_TARGET_NAMESPACE}" ]]; then
 else
   IMAGE_URI="${DOCKER_TARGET_REGISTRY}/${DOCKER_IMAGE_NAME}:${IMAGE_TAG}"
 fi
-
-output_var() {
-  local name="${1}"
-  local value="${2}"
-
-  echo "${name}=${value}"
-
-  if [[ -n "${GITHUB_OUTPUT:-}" ]]; then
-    echo "${name}=${value}" >> "${GITHUB_OUTPUT}"
-  fi
-}
 
 main() {
   echo "=== Release Change Data OCI Package ===" >&2

@@ -62,6 +62,8 @@ source "${SCRIPT_DIR}/../defaults/docker-dockerfile.bash"
 source "${SCRIPT_DIR}/../defaults/docker-push-image-list.bash"
 # shellcheck source=src/scripts/defaults/tokens.bash
 source "${SCRIPT_DIR}/../defaults/tokens.bash"
+# shellcheck source=src/scripts/lib/output-var.bash
+source "${SCRIPT_DIR}/../lib/output-var.bash"
 
 # === Shared target validation, URI assembly, and utilities ===
 # shellcheck source=src/scripts/lib/docker-build-shared.bash

@@ -49,6 +49,8 @@ source "${SCRIPT_DIR}/../../defaults/output-sub-path.bash"
 source "${SCRIPT_DIR}/../../defaults/manifests-repo-provider.bash"
 # shellcheck source=src/scripts/defaults/docker-push-image-list.bash
 source "${SCRIPT_DIR}/../../defaults/docker-push-image-list.bash"
+# shellcheck source=src/scripts/lib/output-var.bash
+source "${SCRIPT_DIR}/../../lib/output-var.bash"
 
 # Build output structure
 PUBLISH_SUB_PATH="${OUTPUT_SUB_PATH}/publish/docker"
@@ -70,17 +72,6 @@ confirm_image_doesnt_exist() {
 
   echo "Confirmed image does not exist in registry (safe to push)" >&2
   return 0
-}
-
-output_var() {
-  local name="${1}"
-  local value="${2}"
-
-  echo "${name}=${value}"
-
-  if [[ -n "${GITHUB_OUTPUT:-}" ]]; then
-    echo "${name}=${value}" >> "${GITHUB_OUTPUT}"
-  fi
 }
 
 main() {

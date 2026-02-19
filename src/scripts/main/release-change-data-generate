@@ -27,6 +27,8 @@ SCRIPT_DIR="$(dirname "${0}")"
 source "${SCRIPT_DIR}/../defaults/output-sub-path.bash"
 # shellcheck source=src/scripts/defaults/release-change-data.bash
 source "${SCRIPT_DIR}/../defaults/release-change-data.bash"
+# shellcheck source=src/scripts/lib/output-var.bash
+source "${SCRIPT_DIR}/../lib/output-var.bash"
 
 # Logging
 LOG_ERROR_PREFIX="${LOG_ERROR_PREFIX:-ERROR: }"
@@ -40,17 +42,6 @@ VERSIONED_OUTPUT_FILE="${DOCKER_CONTEXT_DIR}/release-change-data-${VERSION}.yaml
 
 # Pattern matching Kaptain build system tag annotations
 KAPTAIN_TAG_PATTERN="Automatic release tag for version .* by Kaptain build script\."
-
-output_var() {
-  local name="${1}"
-  local value="${2}"
-
-  echo "${name}=${value}"
-
-  if [[ -n "${GITHUB_OUTPUT:-}" ]]; then
-    echo "${name}=${value}" >> "${GITHUB_OUTPUT}"
-  fi
-}
 
 # Find the previous Kaptain-created tag by:
 # 1. All annotated tags merged into HEAD

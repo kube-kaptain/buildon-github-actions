@@ -39,6 +39,8 @@ source "${SCRIPT_DIR}/../defaults/docker-build.bash"
 source "${SCRIPT_DIR}/../defaults/docker-retag.bash"
 # shellcheck source=src/scripts/defaults/image-build-command.bash
 source "${SCRIPT_DIR}/../defaults/image-build-command.bash"
+# shellcheck source=src/scripts/lib/output-var.bash
+source "${SCRIPT_DIR}/../lib/output-var.bash"
 
 # Validate required inputs
 if [[ -z "${DOCKER_SOURCE_REGISTRY}" ]]; then

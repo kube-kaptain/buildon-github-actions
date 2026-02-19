@@ -57,22 +57,13 @@ IS_RELEASE="${IS_RELEASE:-}"
 # shellcheck source=src/scripts/defaults/tokens.bash
 source "$(dirname "${BASH_SOURCE[0]}")/../defaults/tokens.bash"
 
+# shellcheck source=src/scripts/lib/output-var.bash
+source "${SCRIPT_DIR}/../lib/output-var.bash"
+
 # Build output structure (sub-paths, relative to working directory)
 MANIFESTS_COMBINED_SUB_PATH="${OUTPUT_SUB_PATH}/manifests/combined"
 MANIFESTS_CONFIG_SUB_PATH="${OUTPUT_SUB_PATH}/manifests/config"
 MANIFESTS_ZIP_SUB_PATH="${OUTPUT_SUB_PATH}/manifests/zip"
-
-# Output variable for GitHub Actions
-output_var() {
-  local name="$1"
-  local value="$2"
-
-  echo "${name}=${value}"
-
-  if [[ -n "${GITHUB_OUTPUT:-}" ]]; then
-    echo "${name}=${value}" >> "${GITHUB_OUTPUT}"
-  fi
-}
 
 main() {
   echo "=== Kubernetes Manifest Package Prepare ===" >&2
