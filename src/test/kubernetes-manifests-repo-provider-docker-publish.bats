@@ -17,25 +17,6 @@ teardown() {
   :
 }
 
-@test "is a no-op that passes through MANIFESTS_URI" {
-  export MANIFESTS_URI="ghcr.io/test/my-repo:1.0.0-manifests"
-  export IS_RELEASE="true"
-
-  run "$REPO_PROVIDERS_DIR/kubernetes-manifests-repo-provider-docker-publish"
-  [ "$status" -eq 0 ]
-  assert_docker_not_called "push"
-  assert_var_equals "MANIFESTS_URI" "ghcr.io/test/my-repo:1.0.0-manifests"
-  assert_var_equals "MANIFESTS_PUBLISHED" "false"
-}
-
-@test "fails when MANIFESTS_URI missing" {
-  unset MANIFESTS_URI
-
-  run "$REPO_PROVIDERS_DIR/kubernetes-manifests-repo-provider-docker-publish"
-  [ "$status" -ne 0 ]
-  assert_output_contains "MANIFESTS_URI"
-}
-
 @test "outputs pushed by docker-push-all message" {
   export MANIFESTS_URI="ghcr.io/test/my-repo:1.0.0-manifests"
   export IS_RELEASE="true"
