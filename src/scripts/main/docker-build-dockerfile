@@ -52,8 +52,8 @@ LOG_WARNING_SUFFIX="${LOG_WARNING_SUFFIX:-}"
 source "${SCRIPT_DIR}/../defaults/output-sub-path.bash"
 # shellcheck source=src/scripts/defaults/build-mode.bash
 source "${SCRIPT_DIR}/../defaults/build-mode.bash"
-# shellcheck source=src/scripts/defaults/image-build-command.bash
-source "${SCRIPT_DIR}/../defaults/image-build-command.bash"
+# shellcheck source=src/scripts/defaults/docker-common.bash
+source "${SCRIPT_DIR}/../defaults/docker-common.bash"
 # shellcheck source=src/scripts/defaults/docker-build.bash
 source "${SCRIPT_DIR}/../defaults/docker-build.bash"
 # shellcheck source=src/scripts/defaults/docker-dockerfile.bash

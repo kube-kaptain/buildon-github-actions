@@ -32,8 +32,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/../defaults/docker-push-image-list.bash"
 # shellcheck source=src/scripts/defaults/docker-build.bash
 source "${SCRIPT_DIR}/../defaults/docker-build.bash"
-# shellcheck source=src/scripts/defaults/image-build-command.bash
-source "${SCRIPT_DIR}/../defaults/image-build-command.bash"
+# shellcheck source=src/scripts/defaults/docker-common.bash
+source "${SCRIPT_DIR}/../defaults/docker-common.bash"
 # shellcheck source=src/scripts/lib/output-var.bash
 source "${SCRIPT_DIR}/../lib/output-var.bash"
 

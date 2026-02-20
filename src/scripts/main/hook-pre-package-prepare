@@ -61,8 +61,8 @@ source "$(dirname "${BASH_SOURCE[0]}")/../defaults/tokens.bash"
 source "$(dirname "${BASH_SOURCE[0]}")/../defaults/tag-versioning.bash"
 # shellcheck source=src/scripts/defaults/quality-checks.bash
 source "$(dirname "${BASH_SOURCE[0]}")/../defaults/quality-checks.bash"
-# shellcheck source=src/scripts/defaults/image-build-command.bash
-source "$(dirname "${BASH_SOURCE[0]}")/../defaults/image-build-command.bash"
+# shellcheck source=src/scripts/defaults/docker-common.bash
+source "$(dirname "${BASH_SOURCE[0]}")/../defaults/docker-common.bash"
 
 # === Vendor Specific ===
 # shellcheck source=src/scripts/defaults/vendor-github-release.bash
