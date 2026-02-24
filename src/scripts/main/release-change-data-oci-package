@@ -4,8 +4,8 @@
 #
 # release-change-data-oci-package - Packages release change data as OCI image
 #
-# Builds a FROM scratch OCI image containing the versioned release-change-data YAML.
-# Registers the image URI for consolidated push via docker-push-all.
+# Prepares the content directory with the versioned release-change-data YAML,
+# then delegates to docker-package-multi-arch for multi-architecture builds.
 #
 # Inputs (environment variables):
 #   VERSION                    - Release version (from versions-and-naming)
@@ -23,10 +23,10 @@ SCRIPT_DIR="$(dirname "${0}")"
 
 # shellcheck source=src/scripts/defaults/output-sub-path.bash
 source "${SCRIPT_DIR}/../defaults/output-sub-path.bash"
-# shellcheck source=src/scripts/defaults/docker-push-image-list.bash
-source "${SCRIPT_DIR}/../defaults/docker-push-image-list.bash"
-# shellcheck source=src/scripts/defaults/image-build-command.bash
-source "${SCRIPT_DIR}/../defaults/image-build-command.bash"
+# shellcheck source=src/scripts/defaults/docker-common.bash
+source "${SCRIPT_DIR}/../defaults/docker-common.bash"
+# shellcheck source=src/scripts/lib/output-var.bash
+source "${SCRIPT_DIR}/../lib/output-var.bash"
 
 # Logging
 LOG_ERROR_PREFIX="${LOG_ERROR_PREFIX:-ERROR: }"
@@ -40,7 +40,7 @@ DOCKER_TARGET_REGISTRY="${DOCKER_TARGET_REGISTRY:?DOCKER_TARGET_REGISTRY is requ
 DOCKER_TARGET_NAMESPACE="${DOCKER_TARGET_NAMESPACE:-}"
 
 # Paths
-DOCKER_CONTEXT_DIR="${OUTPUT_SUB_PATH}/release-change-data/docker-context"
+CONTENT_DIR="${OUTPUT_SUB_PATH}/release-change-data/docker-context"
 VERSIONED_YAML="release-change-data-${VERSION}.yaml"
 
 # Assemble image URI with -release-change-data tag suffix
@@ -51,45 +51,21 @@ else
   IMAGE_URI="${DOCKER_TARGET_REGISTRY}/${DOCKER_IMAGE_NAME}:${IMAGE_TAG}"
 fi
 
-output_var() {
-  local name="${1}"
-  local value="${2}"
-
-  echo "${name}=${value}"
-
-  if [[ -n "${GITHUB_OUTPUT:-}" ]]; then
-    echo "${name}=${value}" >> "${GITHUB_OUTPUT}"
-  fi
-}
-
 main() {
   echo "=== Release Change Data OCI Package ===" >&2
   echo "Version: ${VERSION}" >&2
   echo "Target: ${IMAGE_URI}" >&2
-  echo "Context: ${DOCKER_CONTEXT_DIR}" >&2
+  echo "Content: ${CONTENT_DIR}" >&2
   echo "=========================================" >&2
 
   # Validate versioned YAML exists
-  if [[ ! -f "${DOCKER_CONTEXT_DIR}/${VERSIONED_YAML}" ]]; then
-    echo "${LOG_ERROR_PREFIX}Versioned YAML not found: ${DOCKER_CONTEXT_DIR}/${VERSIONED_YAML}${LOG_ERROR_SUFFIX}" >&2
+  if [[ ! -f "${CONTENT_DIR}/${VERSIONED_YAML}" ]]; then
+    echo "${LOG_ERROR_PREFIX}Versioned YAML not found: ${CONTENT_DIR}/${VERSIONED_YAML}${LOG_ERROR_SUFFIX}" >&2
     exit 1
   fi
 
-  # Generate Dockerfile in context directory
-  cat > "${DOCKER_CONTEXT_DIR}/Dockerfile" <<EOF
-FROM scratch
-LABEL version="${VERSION}"
-LABEL project.name="${DOCKER_IMAGE_NAME}"
-LABEL image.name="${IMAGE_URI}"
-COPY ${VERSIONED_YAML} /${VERSIONED_YAML}
-EOF
-
-  # Build the image
-  echo "Building release change data image..." >&2
-  ${IMAGE_BUILD_COMMAND} build -t "${IMAGE_URI}" "${DOCKER_CONTEXT_DIR}"
-
-  # Register image for consolidated push
-  echo "${IMAGE_URI}" >> "${DOCKER_PUSH_IMAGE_LIST_FILE}"
+  # Delegate to multi-arch packager
+  "${SCRIPT_DIR}/../util/docker-package-multi-arch" "${CONTENT_DIR}" "${IMAGE_URI}"
 
   output_var "RELEASE_CHANGE_DATA_IMAGE_URI" "${IMAGE_URI}"
 

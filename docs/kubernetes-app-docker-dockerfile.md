@@ -15,6 +15,9 @@ Kubernetes App - Docker Dockerfile
 | `dockerfile-sub-path` | string | `src/docker` | Directory containing Dockerfile, relative to repo root. |
 | `dockerfile-squash` | string | `squash` | Squash mode: squash, squash-all, or no |
 | `dockerfile-no-cache` | boolean | `true` | Disable layer caching for reproducible builds |
+| `dockerfile-sub-path-linux-amd64` | string | `src/docker-linux-amd64` | Per-platform Dockerfile directory for linux/amd64 multi-platform builds |
+| `dockerfile-sub-path-linux-arm64` | string | `src/docker-linux-arm64` | Per-platform Dockerfile directory for linux/arm64 multi-platform builds |
+| `docker-platform` | string | `linux/amd64` | Target platform (linux/amd64, linux/arm64, or both comma-separated) |
 | `manifests-sub-path` | string | `src/kubernetes` | Directory containing Kubernetes manifests (relative) |
 | `manifests-repo-provider-type` | string | `docker` | Repo provider type for manifest storage (default: docker, currently the only supported provider) |
 | `manifests-packaging-base-image` | string | `""` | Base image for manifest packaging (default: scratch) |

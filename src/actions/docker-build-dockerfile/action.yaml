@@ -31,6 +31,14 @@ inputs:
     description: 'Disable layer caching for reproducible builds'
     required: false
     default: 'true'
+  dockerfile-sub-path-linux-amd64:
+    description: 'Per-platform Dockerfile directory for linux/amd64 multi-platform builds'
+    required: false
+    default: 'src/docker-linux-amd64'
+  dockerfile-sub-path-linux-arm64:
+    description: 'Per-platform Dockerfile directory for linux/arm64 multi-platform builds'
+    required: false
+    default: 'src/docker-linux-arm64'
   # Token substitution
   token-delimiter-style:
     description: 'Token delimiter syntax for variables (shell, mustache, helm, erb, github-actions, blade, stringtemplate, ognl, t4, swift)'
@@ -83,6 +91,11 @@ inputs:
   image-build-command:
     description: 'Container runtime command (podman or docker)'
     required: true
+  # Target platform for docker/podman operations
+  docker-platform:
+    description: 'Target platform (linux/amd64, linux/arm64, or both comma-separated)'
+    required: false
+    default: 'linux/amd64'
 
 outputs:
   docker-target-image-full-uri:
@@ -125,4 +138,7 @@ runs:
         CONFIG_SUB_PATH: ${{ inputs.config-sub-path }}
         ALLOW_BUILTIN_TOKEN_OVERRIDE: ${{ inputs.allow-builtin-token-override }}
         CONFIG_VALUE_TRAILING_NEWLINE: ${{ inputs.config-value-trailing-newline }}
+        DOCKER_PLATFORM: ${{ inputs.docker-platform }}
+        DOCKERFILE_SUB_PATH_LINUX_AMD64: ${{ inputs.dockerfile-sub-path-linux-amd64 }}
+        DOCKERFILE_SUB_PATH_LINUX_ARM64: ${{ inputs.dockerfile-sub-path-linux-arm64 }}
       run: "${{ github.action_path }}/../../scripts/main/docker-build-dockerfile"

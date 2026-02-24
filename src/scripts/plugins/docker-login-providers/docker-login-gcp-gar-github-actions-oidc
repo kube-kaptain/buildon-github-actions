@@ -18,8 +18,8 @@
 #
 set -euo pipefail
 
-# shellcheck source=src/scripts/defaults/image-build-command.bash
-source "$(dirname "${BASH_SOURCE[0]}")/../../defaults/image-build-command.bash"
+# shellcheck source=src/scripts/defaults/docker-common.bash
+source "$(dirname "${BASH_SOURCE[0]}")/../../defaults/docker-common.bash"
 
 # secret_method=$1 - unused for OIDC
 registry="${2}"

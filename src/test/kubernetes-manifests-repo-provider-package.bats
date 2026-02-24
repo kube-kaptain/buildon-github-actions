@@ -32,6 +32,8 @@ teardown() {
   export REPO_PROVIDER_URL="ghcr.io"
   export REPO_PROVIDER_NAME="test/my-repo"
   export REPO_PROVIDER_VERSION="1.0.0-manifests"
+  export VERSION="1.0.0"
+  export PROJECT_NAME="my-repo"
 
   run "$SCRIPTS_DIR/kubernetes-manifests-repo-provider-package"
   [ "$status" -eq 0 ]
@@ -55,6 +57,8 @@ teardown() {
   export REPO_PROVIDER_URL="ghcr.io"
   export REPO_PROVIDER_NAME="test/my-repo"
   export REPO_PROVIDER_VERSION="1.0.0-manifests"
+  export VERSION="1.0.0"
+  export PROJECT_NAME="my-repo"
 
   run "$SCRIPTS_DIR/kubernetes-manifests-repo-provider-package"
   [ "$status" -eq 0 ]

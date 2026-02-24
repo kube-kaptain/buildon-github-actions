@@ -1,0 +1,123 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
+#
+# docker-package-multi-arch - Build multi-arch FROM scratch OCI packages
+#
+# Reusable utility for packaging files as multi-architecture OCI images.
+# Generates a Dockerfile by scanning the content directory, builds once per
+# architecture, and registers all URIs for consolidated push.
+#
+# Always builds both linux/amd64 and linux/arm64. No platform arg — callers
+# don't choose, it's always both.
+#
+# Usage: docker-package-multi-arch <content-dir> <base-image-uri>
+#
+# Arguments:
+#   content-dir    - Directory containing files to COPY into the image
+#   base-image-uri - Image URI without arch suffix (e.g., registry/name:tag)
+#
+# Required environment variables:
+#   VERSION                     - Version (from versions-and-naming)
+#   PROJECT_NAME                - Project name (from versions-and-naming)
+#   DOCKER_PUSH_IMAGE_LIST_FILE - Path to image URIs file (required)
+#   IMAGE_BUILD_COMMAND         - Container runtime (required)
+#
+# Optional environment variables:
+#   PACKAGE_BASE_IMAGE          - Base image (default: scratch)
+#   OUTPUT_SUB_PATH             - Build output directory (default: target)
+#
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# shellcheck source=src/scripts/defaults/docker-common.bash
+source "${SCRIPT_DIR}/../defaults/docker-common.bash"
+# shellcheck source=src/scripts/defaults/output-sub-path.bash
+source "${SCRIPT_DIR}/../defaults/output-sub-path.bash"
+# shellcheck source=src/scripts/defaults/docker-push-image-list.bash
+source "${SCRIPT_DIR}/../defaults/docker-push-image-list.bash"
+
+# Logging
+LOG_ERROR_PREFIX="${LOG_ERROR_PREFIX:-ERROR: }"
+LOG_ERROR_SUFFIX="${LOG_ERROR_SUFFIX:-}"
+
+# Required env vars from versions-and-naming
+VERSION="${VERSION:?VERSION is required}"
+PROJECT_NAME="${PROJECT_NAME:?PROJECT_NAME is required}"
+
+# Arguments
+content_dir="${1:?Usage: docker-package-multi-arch <content-dir> <base-image-uri>}"
+base_image_uri="${2:?Usage: docker-package-multi-arch <content-dir> <base-image-uri>}"
+
+PACKAGE_BASE_IMAGE="${PACKAGE_BASE_IMAGE:-scratch}"
+MANIFEST_URIS_FILE="${OUTPUT_SUB_PATH}/docker-push-all/manifest-uris"
+
+# Both architectures, always
+PLATFORMS=("linux/amd64" "linux/arm64")
+
+echo "=== Docker Package Multi-Arch ===" >&2
+echo "Content dir: ${content_dir}" >&2
+echo "Base URI: ${base_image_uri}" >&2
+echo "Base image: ${PACKAGE_BASE_IMAGE}" >&2
+echo "==================================" >&2
+
+# Validate content directory exists and has files
+if [[ ! -d "${content_dir}" ]]; then
+  echo "${LOG_ERROR_PREFIX}Content directory not found: ${content_dir}${LOG_ERROR_SUFFIX}" >&2
+  exit 1
+fi
+
+# Parse image name and tag from URI (avoids wiring DOCKER_IMAGE_NAME and DOCKER_TAG)
+image_tag="${base_image_uri##*:}"
+image_name_with_registry="${base_image_uri%:*}"
+image_name="${image_name_with_registry#*/}"
+
+# Generate Dockerfile by scanning content directory
+build_dir="${OUTPUT_SUB_PATH}/docker-package-multi-arch/$(basename "${content_dir}")"
+rm -rf "${build_dir}"
+mkdir -p "${build_dir}"
+cp -R "${content_dir}"/* "${build_dir}/"
+
+{
+  echo "FROM ${PACKAGE_BASE_IMAGE}"
+  echo
+  echo "LABEL version=\"${VERSION}\""
+  echo "LABEL project.name=\"${PROJECT_NAME}\""
+  echo "LABEL image.tag=\"${image_tag}\""
+  echo "LABEL image.name=\"${image_name}\""
+  echo "LABEL image.uri=\"${base_image_uri}\""
+  echo
+  for entry in "${build_dir}"/*; do
+    [[ -e "${entry}" ]] || continue
+    local_name="$(basename "${entry}")"
+    echo "COPY ${local_name} /${local_name}"
+  done
+} > "${build_dir}/Dockerfile"
+
+echo "Generated Dockerfile:" >&2
+cat "${build_dir}/Dockerfile" >&2
+echo >&2
+
+# Build for each architecture
+for platform in "${PLATFORMS[@]}"; do
+  platform_suffix="${platform//\//-}"
+  arch_uri="${base_image_uri}-${platform_suffix}"
+
+  echo "Building ${arch_uri} for ${platform}..." >&2
+  ${IMAGE_BUILD_COMMAND} build \
+    --platform "${platform}" \
+    -t "${arch_uri}" \
+    "${build_dir}"
+
+  # Register arch-specific image for push
+  echo "${arch_uri}" >> "${DOCKER_PUSH_IMAGE_LIST_FILE}"
+  echo "Registered: ${arch_uri}" >&2
+done
+
+# Register base URI for manifest list creation
+mkdir -p "$(dirname "${MANIFEST_URIS_FILE}")"
+echo "${base_image_uri}" >> "${MANIFEST_URIS_FILE}"
+echo "Registered manifest: ${base_image_uri}" >&2
+
+echo "Docker package multi-arch complete" >&2

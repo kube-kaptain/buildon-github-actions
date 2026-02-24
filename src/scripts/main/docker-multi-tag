@@ -32,8 +32,12 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/../defaults/docker-push-image-list.bash"
 # shellcheck source=src/scripts/defaults/docker-build.bash
 source "${SCRIPT_DIR}/../defaults/docker-build.bash"
-# shellcheck source=src/scripts/defaults/image-build-command.bash
-source "${SCRIPT_DIR}/../defaults/image-build-command.bash"
+# shellcheck source=src/scripts/defaults/docker-common.bash
+source "${SCRIPT_DIR}/../defaults/docker-common.bash"
+# shellcheck source=src/scripts/defaults/output-sub-path.bash
+source "${SCRIPT_DIR}/../defaults/output-sub-path.bash"
+# shellcheck source=src/scripts/lib/output-var.bash
+source "${SCRIPT_DIR}/../lib/output-var.bash"
 
 # Validate required inputs
 if [[ -z "${DOCKER_IMAGE_NAME:-}" ]]; then
@@ -52,18 +56,6 @@ if [[ -z "${DOCKER_TARGET_REGISTRY:-}" ]]; then
   echo "DOCKER_TARGET_REGISTRY is required" >&2
   exit 1
 fi
-
-# Output variable for GitHub Actions
-output_var() {
-  local name="${1}"
-  local value="${2}"
-
-  echo "${name}=${value}"
-
-  if [[ -n "${GITHUB_OUTPUT:-}" ]]; then
-    echo "${name}=${value}" >> "${GITHUB_OUTPUT}"
-  fi
-}
 
 # Build full image URI from components
 build_image_uri() {
@@ -148,6 +140,29 @@ main() {
       count=$((count + 1))
     done < <(echo "${DOCKER_PUSH_TARGETS}" | jq -c '.[]')
   done <<< "${tags}"
+
+  # === Manifest list handling for multi-platform ===
+  # When multi-platform is active, register base URIs (without arch suffix)
+  # in manifest-uris for each target registry. This ensures docker-push-all
+  # creates manifest lists for additional registries too.
+  if [[ "${DOCKER_PLATFORM}" == *,* ]]; then
+    local manifest_uris_file="${OUTPUT_SUB_PATH}/docker-push-all/manifest-uris"
+    mkdir -p "$(dirname "${manifest_uris_file}")"
+
+    echo "" >&2
+    echo "Multi-platform active - registering manifest URIs for additional registries..." >&2
+
+    while IFS= read -r target; do
+      local registry namespace manifest_uri
+
+      registry=$(echo "${target}" | jq -r '.registry')
+      namespace=$(echo "${target}" | jq -r '.["namespace"] // ""')
+      manifest_uri=$(build_image_uri "${registry}" "${namespace}" "${DOCKER_IMAGE_NAME}" "${DOCKER_TAG}")
+
+      echo "  ${manifest_uri}" >&2
+      echo "${manifest_uri}" >> "${manifest_uris_file}"
+    done < <(echo "${DOCKER_PUSH_TARGETS}" | jq -c '.[]')
+  fi
 
   output_var "IMAGES_TAGGED" "${count}"
 

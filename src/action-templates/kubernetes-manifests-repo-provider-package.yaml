@@ -135,4 +135,6 @@ runs:
         REPO_PROVIDER_AUTH_TOKEN: ${{ github.token }}
         REPO_PROVIDER_AUTH_USER: ${{ github.actor }}
         IMAGE_BUILD_COMMAND: ${{ inputs.image-build-command }}
+        VERSION: ${{ inputs.version }}
+        PROJECT_NAME: ${{ inputs.project-name }}
       run: "${{ github.action_path }}/../../scripts/main/kubernetes-manifests-repo-provider-package"

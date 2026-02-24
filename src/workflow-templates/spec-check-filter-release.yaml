@@ -11,6 +11,7 @@ on:
 
       # INJECT-INPUT: docker-build
       # INJECT-INPUT: docker-dockerfile
+      # INJECT-INPUT: docker-platform
 
       # Spec configuration
       spec-type:
@@ -144,6 +145,11 @@ jobs:
       # INJECT: github-check-start(name="Docker Registry Logins", id="check-docker-registry-logins")
       # INJECT: docker-registry-logins
       # INJECT: github-check-end(name="Docker Registry Logins", id="check-docker-registry-logins")
+
+      # === Docker Platform Setup ===
+      # INJECT: github-check-start(name="Docker Platform Setup", id="check-docker-platform-setup")
+      # INJECT: docker-platform-setup
+      # INJECT: github-check-end(name="Docker Platform Setup", id="check-docker-platform-setup")
 
       # === Pre-tagging Tests ===
       # INJECT: github-check-start(name="Pre-tagging Tests", id="check-pre-tagging", if="inputs.hook-pre-tagging-tests-script-sub-path != ''")
@@ -304,6 +310,7 @@ jobs:
           SPEC_TYPE: ${{ inputs.spec-type }}
           SPEC_YAML: ${{ steps.prepare-spec-release.outputs.spec-yaml-versioned }}
           SPEC_JSON: ${{ steps.prepare-spec-release.outputs.spec-json-versioned }}
+          OUTPUT_SUB_PATH: ${{ inputs.output-sub-path }}
           GITHUB_SERVER_URL: ${{ github.server_url }}
           GITHUB_REPOSITORY: ${{ github.repository }}
         run: |
@@ -338,6 +345,7 @@ jobs:
               echo "* Docker Image: [${DOCKER_URI}](https://${DOCKER_URI})"
               echo "* Release Change Data: [release-change-data-${VERSION}.yaml](${release_url}/release-change-data-${VERSION}.yaml)"
               echo "* Release Change Data Image: [${RELEASE_CHANGE_DATA_URI}](https://${RELEASE_CHANGE_DATA_URI})"
+              ./.github/buildon-github-actions/src/scripts/util/format-release-image-list "${OUTPUT_SUB_PATH}" "${VERSION}"
               echo "NOTES_EOF"
             } >> "${GITHUB_OUTPUT}"
           fi

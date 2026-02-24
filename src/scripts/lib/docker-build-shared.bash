@@ -18,7 +18,6 @@
 #
 # Provides functions:
 #   confirm_target_image_doesnt_exist - Check registry for existing image
-#   output_var                        - Output variable for GitHub Actions
 #
 # Errors/warnings go to stderr using LOG_ERROR_PREFIX/SUFFIX, LOG_WARNING_PREFIX/SUFFIX.
 
@@ -66,15 +65,4 @@ confirm_target_image_doesnt_exist() {
   fi
   echo "Confirmed target image does not exist in registry (safe to build and push)" >&2
   return 0
-}
-
-output_var() {
-  local name="${1}"
-  local value="${2}"
-
-  echo "${name}=${value}"
-
-  if [[ -n "${GITHUB_OUTPUT:-}" ]]; then
-    echo "${name}=${value}" >> "${GITHUB_OUTPUT}"
-  fi
 }

@@ -21,7 +21,7 @@ on:
 
 jobs:
   retag:
-    uses: kube-kaptain/buildon-github-actions/.github/workflows/docker-build-retag.yaml@1.0.65
+    uses: kube-kaptain/buildon-github-actions/.github/workflows/docker-build-retag.yaml@1.0.67
     permissions:
       contents: write
       packages: write
@@ -52,6 +52,17 @@ jobs:
 #     with:
 #       docker-target-registry: 'myregistry.example.com'  # ecr, gcr, harbor, nexus
 #       docker-target-namespace: 'my-team/vendored'
+
+# ┌─────────────────────────────────────────────────────────────────────────┐
+# │ Docker Platform                                                         │
+# └─────────────────────────────────────────────────────────────────────────┘
+# Default: linux/amd64. For multi-platform retags, specify both architectures.
+# Multi-platform pulls each arch from the source and creates a manifest list.
+#
+#     with:
+#       docker-platform: 'linux/amd64'                      # Default, single platform
+#       docker-platform: 'linux/arm64'                      # ARM only
+#       docker-platform: 'linux/amd64,linux/arm64'          # Both (manifest list)
 
 # ┌─────────────────────────────────────────────────────────────────────────┐
 # │ Branch Configuration                                                    │

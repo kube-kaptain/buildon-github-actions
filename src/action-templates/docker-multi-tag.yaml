@@ -23,6 +23,7 @@ inputs:
     required: false
     default: ''
   # INJECT-INPUT: image-build-command
+  # INJECT-INPUT: docker-platform
 
 outputs:
   images-tagged:
@@ -43,4 +44,5 @@ runs:
         DOCKER_TARGET_REGISTRY: ${{ inputs.docker-target-registry }}
         DOCKER_TARGET_NAMESPACE: ${{ inputs.docker-target-namespace }}
         IMAGE_BUILD_COMMAND: ${{ inputs.image-build-command }}
+        DOCKER_PLATFORM: ${{ inputs.docker-platform }}
       run: "${{ github.action_path }}/../../scripts/main/docker-multi-tag"

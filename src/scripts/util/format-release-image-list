@@ -1,0 +1,71 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
+#
+# format-release-image-list - Generate markdown image list from image-uris and manifest-uris files
+#
+# Reads the docker-push-all image-uris and manifest-uris files, generates
+# human-readable titles from URI suffixes, and outputs markdown list items.
+#
+# Usage: format-release-image-list <output-sub-path> <version>
+
+set -euo pipefail
+
+if [[ $# -ne 2 ]]; then
+  echo "Usage: format-release-image-list <output-sub-path> <version>" >&2
+  exit 1
+fi
+
+OUTPUT_SUB_PATH="$1"
+VERSION="$2"
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+FORMAT_TITLE="${SCRIPT_DIR}/format-project-title"
+
+IMAGE_URIS_FILE="${OUTPUT_SUB_PATH}/docker-push-all/image-uris"
+MANIFEST_URIS_FILE="${OUTPUT_SUB_PATH}/docker-push-all/manifest-uris"
+
+# Generate a title from a URI suffix
+# Empty suffix -> "Docker Image", otherwise format-project-title the suffix
+title_from_suffix() {
+  local suffix="$1"
+  if [[ -z "${suffix}" ]]; then
+    echo "Docker Image"
+  else
+    "${FORMAT_TITLE}" "${suffix}"
+  fi
+}
+
+# Extract suffix after :${VERSION} from a URI
+suffix_from_uri() {
+  local uri="$1"
+  local after="${uri##*:"${VERSION}"}"
+  # Strip leading hyphen
+  echo "${after#-}"
+}
+
+# List URIs from a file with generated titles
+list_uris() {
+  local file="$1"
+  while IFS= read -r uri; do
+    [[ -z "${uri}" ]] && continue
+    local suffix title
+    suffix=$(suffix_from_uri "${uri}")
+    title=$(title_from_suffix "${suffix}")
+    echo "* ${title}: [${uri}](https://${uri})"
+  done < "${file}"
+}
+
+# All docker images
+if [[ -f "${IMAGE_URIS_FILE}" ]] && [[ -s "${IMAGE_URIS_FILE}" ]]; then
+  echo ""
+  echo "### All Docker Images"
+  list_uris "${IMAGE_URIS_FILE}"
+fi
+
+# All manifest lists
+if [[ -f "${MANIFEST_URIS_FILE}" ]] && [[ -s "${MANIFEST_URIS_FILE}" ]]; then
+  echo ""
+  echo "### All Docker Manifest Lists (linux/amd64,linux/arm64)"
+  list_uris "${MANIFEST_URIS_FILE}"
+fi

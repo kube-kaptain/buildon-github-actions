@@ -17,6 +17,9 @@ SCRIPT_DIR="$(dirname "${0}")"
 # shellcheck source=src/scripts/defaults/build-mode.bash
 source "${SCRIPT_DIR}/../defaults/build-mode.bash"
 
+# shellcheck source=src/scripts/lib/output-var.bash
+source "${SCRIPT_DIR}/../lib/output-var.bash"
+
 # Logging prefixes (match other scripts)
 LOG_ERROR_PREFIX="${LOG_ERROR_PREFIX:-ERROR: }"
 LOG_ERROR_SUFFIX="${LOG_ERROR_SUFFIX:-}"
@@ -150,18 +153,6 @@ fi
 if [[ ${EXIT_CODE} -eq 0 ]]; then
   echo "All required tools available!" >&2
 fi
-
-# Output container runtime command for downstream scripts
-output_var() {
-  local name="${1}"
-  local value="${2}"
-
-  echo "${name}=${value}"
-
-  if [[ -n "${GITHUB_OUTPUT:-}" ]]; then
-    echo "${name}=${value}" >> "${GITHUB_OUTPUT}"
-  fi
-}
 
 if [[ -n "${IMAGE_BUILD_COMMAND}" ]]; then
   output_var "IMAGE_BUILD_COMMAND" "${IMAGE_BUILD_COMMAND}"

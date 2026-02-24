@@ -10,6 +10,8 @@
     docker-image-name: ${{ steps.versions.outputs.docker-image-name }}
     docker-target-registry: ${{ steps.resolve-registry.outputs.docker-target-registry }}
     docker-target-namespace: ${{ steps.resolve-registry.outputs.docker-target-namespace }}
+    project-name: ${{ steps.versions.outputs.project-name }}
     output-sub-path: ${{ inputs.output-sub-path }}
     docker-push-image-list-file: ${{ steps.docker-registry-logins.outputs.docker-push-image-list-file }}
     image-build-command: ${{ steps.validate-tooling.outputs.IMAGE_BUILD_COMMAND }}
+    docker-platform: ${{ inputs.docker-platform }}

@@ -1,0 +1,69 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
+#
+# docker-platform-setup - Validates docker platform and installs QEMU on Linux CI
+#
+# Validates DOCKER_PLATFORM against allowed values and installs QEMU binfmt
+# support on Linux build servers for cross-architecture builds.
+#
+# Inputs (environment variables):
+#   DOCKER_PLATFORM    - Target platform (from docker-common.bash default or input)
+#   IMAGE_BUILD_COMMAND - Container runtime (from validate-tooling)
+#   BUILD_MODE         - "local" or "build_server" (from build-mode.bash default)
+#
+set -euo pipefail
+
+SCRIPT_DIR="$(dirname "${0}")"
+
+# shellcheck source=src/scripts/defaults/docker-common.bash
+source "${SCRIPT_DIR}/../defaults/docker-common.bash"
+# shellcheck source=src/scripts/defaults/build-mode.bash
+source "${SCRIPT_DIR}/../defaults/build-mode.bash"
+
+# Logging
+LOG_ERROR_PREFIX="${LOG_ERROR_PREFIX:-ERROR: }"
+LOG_ERROR_SUFFIX="${LOG_ERROR_SUFFIX:-}"
+
+echo "=== Docker Platform Setup ===" >&2
+echo "Platform: ${DOCKER_PLATFORM}" >&2
+echo "Build mode: ${BUILD_MODE}" >&2
+echo "=============================" >&2
+
+# Validate platform value
+case "${DOCKER_PLATFORM}" in
+  linux/amd64) ;;
+  linux/arm64) ;;
+  linux/amd64,linux/arm64) ;;
+  linux/arm64,linux/amd64) ;;
+  *)
+    echo "${LOG_ERROR_PREFIX}Invalid DOCKER_PLATFORM value '${DOCKER_PLATFORM}' - must be: linux/amd64, linux/arm64, or both comma-separated${LOG_ERROR_SUFFIX}" >&2
+    exit 1
+    ;;
+esac
+
+echo "Platform validated: ${DOCKER_PLATFORM}" >&2
+
+# Install QEMU on Linux build servers (always, not conditional on platform value)
+if [[ "$(uname -s)" == "Linux" ]] && [[ "${BUILD_MODE}" == "build_server" ]]; then
+  # Check if binfmt is already registered (e.g. pre-baked CI image)
+  if ls /proc/sys/fs/binfmt_misc/qemu-* &>/dev/null; then
+    echo "QEMU binfmt already registered — skipping install" >&2
+  else
+    echo "Linux build server detected — installing QEMU binfmt support..." >&2
+    if command -v apt-get &>/dev/null; then
+      sudo apt-get update
+      sudo apt-get install -y qemu-user-static binfmt-support
+    elif command -v yum &>/dev/null; then
+      sudo yum install -y qemu-user-static
+    else
+      echo "${LOG_ERROR_PREFIX}No supported package manager found (need apt-get or yum)${LOG_ERROR_SUFFIX}" >&2
+      exit 1
+    fi
+    echo "QEMU binfmt support installed" >&2
+  fi
+else
+  echo "Not a Linux build server — skipping QEMU install" >&2
+fi
+
+echo "Docker platform setup complete" >&2

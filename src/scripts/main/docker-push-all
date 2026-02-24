@@ -25,24 +25,17 @@ LOG_ERROR_SUFFIX="${LOG_ERROR_SUFFIX:-}"
 
 # shellcheck source=src/scripts/defaults/docker-push-image-list.bash
 source "${SCRIPT_DIR}/../defaults/docker-push-image-list.bash"
-# shellcheck source=src/scripts/defaults/image-build-command.bash
-source "${SCRIPT_DIR}/../defaults/image-build-command.bash"
+# shellcheck source=src/scripts/defaults/docker-common.bash
+source "${SCRIPT_DIR}/../defaults/docker-common.bash"
+# shellcheck source=src/scripts/defaults/output-sub-path.bash
+source "${SCRIPT_DIR}/../defaults/output-sub-path.bash"
+# shellcheck source=src/scripts/lib/output-var.bash
+source "${SCRIPT_DIR}/../lib/output-var.bash"
 
 # Optional inputs with defaults
 IS_RELEASE="${IS_RELEASE:-false}"
 
 IMAGES_TO_PUSH_FILE="${DOCKER_PUSH_IMAGE_LIST_FILE}"
-
-output_var() {
-  local name="${1}"
-  local value="${2}"
-
-  echo "${name}=${value}"
-
-  if [[ -n "${GITHUB_OUTPUT:-}" ]]; then
-    echo "${name}=${value}" >> "${GITHUB_OUTPUT}"
-  fi
-}
 
 main() {
   echo "=== Docker Push All ===" >&2
@@ -95,6 +88,50 @@ main() {
       failed_uris="${failed_uris}  ${image_uri} (push failed)"$'\n'
     fi
   done < "${IMAGES_TO_PUSH_FILE}"
+
+  # === Manifest list handling ===
+  # After all arch-specific images are pushed, create and push manifest lists
+  local manifest_uris_file="${OUTPUT_SUB_PATH}/docker-push-all/manifest-uris"
+  if [[ -f "${manifest_uris_file}" ]] && [[ -s "${manifest_uris_file}" ]]; then
+    echo "" >&2
+    echo "=== Creating manifest lists ===" >&2
+    while IFS= read -r manifest_uri; do
+      [[ -z "${manifest_uri}" ]] && continue
+
+      local amd64_uri="${manifest_uri}-linux-amd64"
+      local arm64_uri="${manifest_uri}-linux-arm64"
+
+      echo "Creating manifest: ${manifest_uri}" >&2
+      echo "  amd64: ${amd64_uri}" >&2
+      echo "  arm64: ${arm64_uri}" >&2
+
+      if ! ${IMAGE_BUILD_COMMAND} manifest create "${manifest_uri}" "${amd64_uri}" "${arm64_uri}"; then
+        echo "${LOG_ERROR_PREFIX}Failed to create manifest: ${manifest_uri}${LOG_ERROR_SUFFIX}" >&2
+        failed=$((failed + 1))
+        failed_uris="${failed_uris}  ${manifest_uri} (manifest create failed)"$'\n'
+        continue
+      fi
+
+      echo "Pushing manifest: ${manifest_uri}" >&2
+      if [[ "${IMAGE_BUILD_COMMAND}" == "podman" ]]; then
+        if ${IMAGE_BUILD_COMMAND} manifest push --all "${manifest_uri}"; then
+          pushed=$((pushed + 1))
+        else
+          echo "${LOG_ERROR_PREFIX}Failed to push manifest: ${manifest_uri}${LOG_ERROR_SUFFIX}" >&2
+          failed=$((failed + 1))
+          failed_uris="${failed_uris}  ${manifest_uri} (manifest push failed)"$'\n'
+        fi
+      else
+        if ${IMAGE_BUILD_COMMAND} manifest push "${manifest_uri}"; then
+          pushed=$((pushed + 1))
+        else
+          echo "${LOG_ERROR_PREFIX}Failed to push manifest: ${manifest_uri}${LOG_ERROR_SUFFIX}" >&2
+          failed=$((failed + 1))
+          failed_uris="${failed_uris}  ${manifest_uri} (manifest push failed)"$'\n'
+        fi
+      fi
+    done < "${manifest_uris_file}"
+  fi
 
   output_var "IMAGES_PUSHED" "${pushed}"
 

@@ -37,8 +37,12 @@ source "${SCRIPT_DIR}/../defaults/docker-push-image-list.bash"
 source "${SCRIPT_DIR}/../defaults/docker-build.bash"
 # shellcheck source=src/scripts/defaults/docker-retag.bash
 source "${SCRIPT_DIR}/../defaults/docker-retag.bash"
-# shellcheck source=src/scripts/defaults/image-build-command.bash
-source "${SCRIPT_DIR}/../defaults/image-build-command.bash"
+# shellcheck source=src/scripts/defaults/docker-common.bash
+source "${SCRIPT_DIR}/../defaults/docker-common.bash"
+# shellcheck source=src/scripts/defaults/output-sub-path.bash
+source "${SCRIPT_DIR}/../defaults/output-sub-path.bash"
+# shellcheck source=src/scripts/lib/output-var.bash
+source "${SCRIPT_DIR}/../lib/output-var.bash"
 
 # Validate required inputs
 if [[ -z "${DOCKER_SOURCE_REGISTRY}" ]]; then
@@ -89,23 +93,61 @@ main() {
   echo "=== Docker Retag ===" >&2
   echo "Source: ${SOURCE_IMAGE_FULL_URI}" >&2
   echo "Target: ${TARGET_IMAGE_FULL_URI}" >&2
+  echo "Platform: ${DOCKER_PLATFORM}" >&2
   echo "====================" >&2
 
-  echo "Pulling source image: ${SOURCE_IMAGE_FULL_URI}" >&2
-  ${IMAGE_BUILD_COMMAND} pull "${SOURCE_IMAGE_FULL_URI}"
+  if [[ "${DOCKER_PLATFORM}" == *,* ]]; then
+    # === Multi-platform retag ===
+    IFS=',' read -ra platforms <<< "${DOCKER_PLATFORM}"
+    local manifest_uris_file="${OUTPUT_SUB_PATH}/docker-push-all/manifest-uris"
+    mkdir -p "$(dirname "${manifest_uris_file}")"
 
-  # Confirm target doesn't exist (fail fast)
-  confirm_target_image_doesnt_exist || exit 1
+    for platform in "${platforms[@]}"; do
+      local platform_suffix="${platform//\//-}"
+      local arch_uri="${TARGET_IMAGE_FULL_URI}-${platform_suffix}"
 
-  echo "Tagging: ${SOURCE_IMAGE_FULL_URI} -> ${TARGET_IMAGE_FULL_URI}" >&2
-  ${IMAGE_BUILD_COMMAND} tag "${SOURCE_IMAGE_FULL_URI}" "${TARGET_IMAGE_FULL_URI}"
+      echo "Pulling source image: ${SOURCE_IMAGE_FULL_URI} (platform: ${platform})" >&2
+      if ! ${IMAGE_BUILD_COMMAND} pull --platform "${platform}" "${SOURCE_IMAGE_FULL_URI}"; then
+        echo "${LOG_ERROR_PREFIX}Source image does not support platform ${platform}: ${SOURCE_IMAGE_FULL_URI}${LOG_ERROR_SUFFIX}" >&2
+        exit 1
+      fi
 
-  # === Map internal names back to external DOCKER_* outputs ===
-  output_var "DOCKER_SOURCE_IMAGE_FULL_URI" "${SOURCE_IMAGE_FULL_URI}"
-  output_var "DOCKER_TARGET_IMAGE_FULL_URI" "${TARGET_IMAGE_FULL_URI}"
+      # Confirm arch-specific target doesn't exist (fail fast)
+      if ${IMAGE_BUILD_COMMAND} manifest inspect "${arch_uri}" &>/dev/null; then
+        echo "${LOG_ERROR_PREFIX}Target image already exists in registry: ${arch_uri}${LOG_ERROR_SUFFIX}" >&2
+        exit 1
+      fi
+      echo "Confirmed target image does not exist in registry: ${arch_uri}" >&2
 
-  # Register image for consolidated push
-  echo "${TARGET_IMAGE_FULL_URI}" >> "${DOCKER_PUSH_IMAGE_LIST_FILE}"
+      echo "Tagging: ${SOURCE_IMAGE_FULL_URI} -> ${arch_uri}" >&2
+      ${IMAGE_BUILD_COMMAND} tag "${SOURCE_IMAGE_FULL_URI}" "${arch_uri}"
+
+      # Register arch-specific image for consolidated push
+      echo "${arch_uri}" >> "${DOCKER_PUSH_IMAGE_LIST_FILE}"
+    done
+
+    # Register base URI for manifest list creation
+    echo "${TARGET_IMAGE_FULL_URI}" >> "${manifest_uris_file}"
+
+    output_var "DOCKER_SOURCE_IMAGE_FULL_URI" "${SOURCE_IMAGE_FULL_URI}"
+    output_var "DOCKER_TARGET_IMAGE_FULL_URI" "${TARGET_IMAGE_FULL_URI}"
+  else
+    # === Single-platform retag ===
+    echo "Pulling source image: ${SOURCE_IMAGE_FULL_URI} (platform: ${DOCKER_PLATFORM})" >&2
+    ${IMAGE_BUILD_COMMAND} pull --platform "${DOCKER_PLATFORM}" "${SOURCE_IMAGE_FULL_URI}"
+
+    # Confirm target doesn't exist (fail fast)
+    confirm_target_image_doesnt_exist || exit 1
+
+    echo "Tagging: ${SOURCE_IMAGE_FULL_URI} -> ${TARGET_IMAGE_FULL_URI}" >&2
+    ${IMAGE_BUILD_COMMAND} tag "${SOURCE_IMAGE_FULL_URI}" "${TARGET_IMAGE_FULL_URI}"
+
+    output_var "DOCKER_SOURCE_IMAGE_FULL_URI" "${SOURCE_IMAGE_FULL_URI}"
+    output_var "DOCKER_TARGET_IMAGE_FULL_URI" "${TARGET_IMAGE_FULL_URI}"
+
+    # Register image for consolidated push
+    echo "${TARGET_IMAGE_FULL_URI}" >> "${DOCKER_PUSH_IMAGE_LIST_FILE}"
+  fi
 
   echo "Docker Retag complete" >&2
 }

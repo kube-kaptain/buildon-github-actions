@@ -11,6 +11,7 @@ Basic Quality and Versioning
 | `docker-target-registry` | string | `""` | Target container registry domain (defaults to ghcr.io on GH Actions) |
 | `docker-target-namespace` | string | `""` | Path segment between registry and image name (defaults to lower cased org name or user ID on GH Actions) |
 | `docker-push-targets` | string | `""` | JSON array of additional push targets [{registry, namespace?}] |
+| `docker-platform` | string | `linux/amd64` | Target platform (linux/amd64, linux/arm64, or both comma-separated) |
 | `token-delimiter-style` | string | `shell` | Token delimiter syntax for variables (shell, mustache, helm, erb, github-actions, blade, stringtemplate, ognl, t4, swift) |
 | `token-name-style` | string | `PascalCase` | Case style for token names (UPPER_SNAKE, lower_snake, lower-kebab, UPPER-KEBAB, camelCase, PascalCase, lower.dot, UPPER.DOT) |
 | `token-name-validation` | string | `MATCH` | How to validate user token names (MATCH = must match token-name-style, ALL = accept any valid name) |

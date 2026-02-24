@@ -60,8 +60,25 @@ set_required_env() {
   run "$SCRIPTS_DIR/docker-build-dockerfile"
   [ "$status" -eq 0 ]
   # Check key parts of the build command - now uses substituted path
-  assert_docker_called "build -f $OUTPUT_DIR/docker/substituted/Dockerfile -t ghcr.io/test/my-repo:1.0.0"
+  assert_docker_called "build --platform linux/amd64 -f $OUTPUT_DIR/docker/substituted/Dockerfile -t ghcr.io/test/my-repo:1.0.0"
   assert_docker_called "$OUTPUT_DIR/docker/substituted"
+}
+
+@test "uses default platform linux/amd64" {
+  set_required_env
+
+  run "$SCRIPTS_DIR/docker-build-dockerfile"
+  [ "$status" -eq 0 ]
+  assert_docker_called "--platform linux/amd64"
+}
+
+@test "uses custom single platform" {
+  set_required_env
+  export DOCKER_PLATFORM="linux/arm64"
+
+  run "$SCRIPTS_DIR/docker-build-dockerfile"
+  [ "$status" -eq 0 ]
+  assert_docker_called "--platform linux/arm64"
 }
 
 @test "does not push (build only)" {
@@ -268,6 +285,17 @@ set_required_env() {
   [ -f "$OUTPUT_DIR/docker/substituted/config.txt" ]
 }
 
+@test "copies dotfiles from docker directory" {
+  set_required_env
+  echo "node_modules" > "$TEST_DIR/.dockerignore"
+  echo "secret" > "$TEST_DIR/.env.example"
+
+  run "$SCRIPTS_DIR/docker-build-dockerfile"
+  [ "$status" -eq 0 ]
+  [ -f "$OUTPUT_DIR/docker/substituted/.dockerignore" ]
+  [ -f "$OUTPUT_DIR/docker/substituted/.env.example" ]
+}
+
 @test "substitutes tokens in specified files" {
   set_required_env
   export DOCKER_TARGET_NAMESPACE="my-org"
@@ -316,4 +344,72 @@ set_required_env() {
   [ "$status" -eq 0 ]
   [[ "$output" == *"ENV MY_VAR=my-custom-value"* ]]
 
+}
+
+# === Multi-platform tests ===
+
+@test "multi-platform builds both architectures with arch-suffixed tags" {
+  set_required_env
+  export DOCKER_PLATFORM="linux/amd64,linux/arm64"
+  # Create per-platform Dockerfile directories
+  export DOCKERFILE_SUB_PATH_LINUX_AMD64="$TEST_DIR"
+  export DOCKERFILE_SUB_PATH_LINUX_ARM64="$TEST_DIR"
+
+  run "$SCRIPTS_DIR/docker-build-dockerfile"
+  [ "$status" -eq 0 ]
+  assert_docker_called "build --platform linux/amd64"
+  assert_docker_called "-t ghcr.io/test/my-repo:1.0.0-linux-amd64"
+  assert_docker_called "build --platform linux/arm64"
+  assert_docker_called "-t ghcr.io/test/my-repo:1.0.0-linux-arm64"
+}
+
+@test "multi-platform registers arch URIs in image-uris" {
+  set_required_env
+  export DOCKER_PLATFORM="linux/amd64,linux/arm64"
+  export DOCKERFILE_SUB_PATH_LINUX_AMD64="$TEST_DIR"
+  export DOCKERFILE_SUB_PATH_LINUX_ARM64="$TEST_DIR"
+
+  run "$SCRIPTS_DIR/docker-build-dockerfile"
+  [ "$status" -eq 0 ]
+
+  [ -f "$DOCKER_PUSH_IMAGE_LIST_FILE" ]
+  run cat "$DOCKER_PUSH_IMAGE_LIST_FILE"
+  [[ "$output" == *"ghcr.io/test/my-repo:1.0.0-linux-amd64"* ]]
+  [[ "$output" == *"ghcr.io/test/my-repo:1.0.0-linux-arm64"* ]]
+}
+
+@test "multi-platform registers base URI in manifest-uris" {
+  set_required_env
+  export DOCKER_PLATFORM="linux/amd64,linux/arm64"
+  export DOCKERFILE_SUB_PATH_LINUX_AMD64="$TEST_DIR"
+  export DOCKERFILE_SUB_PATH_LINUX_ARM64="$TEST_DIR"
+
+  run "$SCRIPTS_DIR/docker-build-dockerfile"
+  [ "$status" -eq 0 ]
+
+  local manifest_file="${OUTPUT_SUB_PATH}/docker-push-all/manifest-uris"
+  [ -f "$manifest_file" ]
+  run cat "$manifest_file"
+  [[ "$output" == *"ghcr.io/test/my-repo:1.0.0"* ]]
+}
+
+@test "multi-platform outputs base URI as DOCKER_TARGET_IMAGE_FULL_URI" {
+  set_required_env
+  export DOCKER_PLATFORM="linux/amd64,linux/arm64"
+  export DOCKERFILE_SUB_PATH_LINUX_AMD64="$TEST_DIR"
+  export DOCKERFILE_SUB_PATH_LINUX_ARM64="$TEST_DIR"
+
+  run "$SCRIPTS_DIR/docker-build-dockerfile"
+  [ "$status" -eq 0 ]
+  assert_var_equals "DOCKER_TARGET_IMAGE_FULL_URI" "ghcr.io/test/my-repo:1.0.0"
+}
+
+@test "multi-platform rejects unsupported platform" {
+  set_required_env
+  export DOCKER_PLATFORM="linux/amd64,linux/s390x"
+  export DOCKERFILE_SUB_PATH_LINUX_AMD64="$TEST_DIR"
+
+  run "$SCRIPTS_DIR/docker-build-dockerfile"
+  [ "$status" -ne 0 ]
+  assert_output_contains "Unsupported platform"
 }

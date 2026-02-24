@@ -28,7 +28,7 @@ on:
 
 jobs:
   build:
-    uses: kube-kaptain/buildon-github-actions/.github/workflows/spec-check-filter-release.yaml@1.0.65
+    uses: kube-kaptain/buildon-github-actions/.github/workflows/spec-check-filter-release.yaml@1.0.67
     permissions:
       contents: write
       packages: write
@@ -69,6 +69,17 @@ jobs:
 #     with:
 #       docker-target-registry: 'myregistry.example.com'
 #       docker-target-namespace: 'my-team/specs'
+
+# ┌─────────────────────────────────────────────────────────────────────────┐
+# │ Docker Platform                                                         │
+# └─────────────────────────────────────────────────────────────────────────┘
+# Default: linux/amd64. Spec packages are OCI images that benefit from
+# multi-platform support so consumers on any architecture can pull them.
+#
+#     with:
+#       docker-platform: 'linux/amd64'                      # Default, single platform
+#       docker-platform: 'linux/arm64'                      # ARM only
+#       docker-platform: 'linux/amd64,linux/arm64'          # Both (manifest list)
 
 # ┌─────────────────────────────────────────────────────────────────────────┐
 # │ GitHub Release                                                          │

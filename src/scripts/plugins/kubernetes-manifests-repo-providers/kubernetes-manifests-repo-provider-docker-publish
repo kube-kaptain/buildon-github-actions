@@ -7,40 +7,9 @@
 # Docker manifest images are now pushed by the consolidated docker-push-all script.
 # This script is kept as a no-op to preserve the repo provider plugin interface.
 #
-# Inputs (environment variables - REPO_PROVIDER_* API):
-#   MANIFESTS_URI       - Full image reference (required, from package step)
-#   IS_RELEASE          - "true" if release (default: false)
-#
-# Outputs:
-#   MANIFESTS_URI       - Full image reference (same as input, pass-through)
-#   MANIFESTS_PUBLISHED - Always "false" (actual push handled by docker-push-all)
-#
+
 set -euo pipefail
 
-# Required inputs
-MANIFESTS_URI="${MANIFESTS_URI:?MANIFESTS_URI is required}"
-
-# Optional inputs with defaults
-IS_RELEASE="${IS_RELEASE:-false}"
-
-output_var() {
-  local name="${1}"
-  local value="${2}"
-
-  echo "${name}=${value}"
-
-  if [[ -n "${GITHUB_OUTPUT:-}" ]]; then
-    echo "${name}=${value}" >> "${GITHUB_OUTPUT}"
-  fi
-}
-
-main() {
-  echo "=== Kubernetes Manifests Repo Provider Publish: Docker ===" >&2
-  echo "Pushed by common docker-push-all script" >&2
-  echo "===========================================================" >&2
-
-  output_var "MANIFESTS_URI" "${MANIFESTS_URI}"
-  output_var "MANIFESTS_PUBLISHED" "false"
-}
-
-main "$@"
+echo "=== Kubernetes Manifests Repo Provider Publish: Docker ===" >&2
+echo "Pushed by common docker-push-all script" >&2
+echo "===========================================================" >&2

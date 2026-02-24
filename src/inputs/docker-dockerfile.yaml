@@ -22,3 +22,13 @@ dockerfile-no-cache:
   required: false
   type: boolean
   default: true
+dockerfile-sub-path-linux-amd64:
+  description: 'Per-platform Dockerfile directory for linux/amd64 multi-platform builds'
+  required: false
+  type: string
+  default: 'src/docker-linux-amd64'
+dockerfile-sub-path-linux-arm64:
+  description: 'Per-platform Dockerfile directory for linux/arm64 multi-platform builds'
+  required: false
+  type: string
+  default: 'src/docker-linux-arm64'

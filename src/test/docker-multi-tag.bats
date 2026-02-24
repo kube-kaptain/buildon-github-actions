@@ -305,3 +305,55 @@ MOCKDOCKER
   [ "$status" -eq 0 ]
   assert_docker_called "images --filter reference=ghcr.io/myorg/test/my-repo:1.0.0*"
 }
+
+# === Multi-platform manifest-uris ===
+
+@test "writes manifest-uris for additional registries when multi-platform" {
+  set_required_env
+  export DOCKER_PLATFORM="linux/amd64,linux/arm64"
+  export OUTPUT_SUB_PATH="$(dirname "$DOCKER_PUSH_IMAGE_LIST_FILE")/.."
+  mock_image_tags "1.0.0"
+  export DOCKER_PUSH_TARGETS='[{"registry": "docker.io"}]'
+
+  run "$SCRIPTS_DIR/docker-multi-tag"
+  [ "$status" -eq 0 ]
+
+  local manifest_file="${OUTPUT_SUB_PATH}/docker-push-all/manifest-uris"
+  [ -f "$manifest_file" ]
+  run cat "$manifest_file"
+  [[ "$output" == *"docker.io/test/my-repo:1.0.0"* ]]
+}
+
+@test "writes manifest-uris for multiple additional registries" {
+  set_required_env
+  export DOCKER_PLATFORM="linux/amd64,linux/arm64"
+  export OUTPUT_SUB_PATH="$(dirname "$DOCKER_PUSH_IMAGE_LIST_FILE")/.."
+  mock_image_tags "1.0.0"
+  export DOCKER_PUSH_TARGETS='[
+    {"registry": "docker.io"},
+    {"registry": "quay.io", "namespace": "myorg"}
+  ]'
+
+  run "$SCRIPTS_DIR/docker-multi-tag"
+  [ "$status" -eq 0 ]
+
+  local manifest_file="${OUTPUT_SUB_PATH}/docker-push-all/manifest-uris"
+  [ -f "$manifest_file" ]
+  run cat "$manifest_file"
+  [[ "$output" == *"docker.io/test/my-repo:1.0.0"* ]]
+  [[ "$output" == *"quay.io/myorg/test/my-repo:1.0.0"* ]]
+}
+
+@test "does not write manifest-uris when single platform" {
+  set_required_env
+  export DOCKER_PLATFORM="linux/amd64"
+  export OUTPUT_SUB_PATH="$(dirname "$DOCKER_PUSH_IMAGE_LIST_FILE")/.."
+  mock_image_tags "1.0.0"
+  export DOCKER_PUSH_TARGETS='[{"registry": "docker.io"}]'
+
+  run "$SCRIPTS_DIR/docker-multi-tag"
+  [ "$status" -eq 0 ]
+
+  local manifest_file="${OUTPUT_SUB_PATH}/docker-push-all/manifest-uris"
+  [ ! -f "$manifest_file" ]
+}

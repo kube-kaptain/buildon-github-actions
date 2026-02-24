@@ -28,7 +28,7 @@ on:
 
 jobs:
   build:
-    uses: kube-kaptain/buildon-github-actions/.github/workflows/kubernetes-app-docker-dockerfile.yaml@1.0.65
+    uses: kube-kaptain/buildon-github-actions/.github/workflows/kubernetes-app-docker-dockerfile.yaml@1.0.67
     permissions:
       contents: write
       packages: write
@@ -49,8 +49,23 @@ jobs:
 # └─────────────────────────────────────────────────────────────────────────┘
 #     with:
 #       dockerfile-sub-path: 'docker'  # 'build', '.'
-#       dockerfile-squash: false  # true
+#       dockerfile-squash: 'no'  # 'squash' (default), 'squash-all', 'no'
 #       dockerfile-no-cache: false  # true
+
+# ┌─────────────────────────────────────────────────────────────────────────┐
+# │ Docker Platform                                                         │
+# └─────────────────────────────────────────────────────────────────────────┘
+# Default: linux/amd64. For multi-platform builds, specify both architectures.
+# Multi-platform builds produce per-arch images and a manifest list.
+#
+#     with:
+#       docker-platform: 'linux/amd64'                      # Default, single platform
+#       docker-platform: 'linux/arm64'                      # ARM only
+#       docker-platform: 'linux/amd64,linux/arm64'          # Both (manifest list)
+#
+# Multi-platform uses per-platform Dockerfile directories:
+#       dockerfile-sub-path-linux-amd64: 'src/docker-linux-amd64'  # Default
+#       dockerfile-sub-path-linux-arm64: 'src/docker-linux-arm64'  # Default
 
 # ┌─────────────────────────────────────────────────────────────────────────┐
 # │ Target Registry                                                         │

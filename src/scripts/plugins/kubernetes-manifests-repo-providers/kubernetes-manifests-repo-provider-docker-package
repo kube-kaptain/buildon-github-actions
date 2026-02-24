@@ -4,8 +4,9 @@
 #
 # kubernetes-manifests-repo-provider-docker-package - Packages manifests zip as a Docker image
 #
-# Uses a minimal base image, stores zip at /<original-filename>
-# Builds the image but does NOT push. Pair with kubernetes-manifests-repo-provider-docker-publish.
+# Prepares the content directory with the manifests zip, then delegates to
+# docker-package-multi-arch for multi-architecture builds.
+# Does NOT push. Pair with kubernetes-manifests-repo-provider-docker-publish.
 #
 # Inputs (environment variables - REPO_PROVIDER_* API):
 #   REPO_PROVIDER_URL       - Container registry (required, e.g., ghcr.io)
@@ -22,8 +23,8 @@
 #
 set -euo pipefail
 
-# shellcheck source=src/scripts/defaults/image-build-command.bash
-source "$(dirname "${BASH_SOURCE[0]}")/../../defaults/image-build-command.bash"
+# shellcheck source=src/scripts/defaults/docker-common.bash
+source "$(dirname "${BASH_SOURCE[0]}")/../../defaults/docker-common.bash"
 
 # Logging configuration (CI-agnostic)
 LOG_ERROR_PREFIX="${LOG_ERROR_PREFIX:-}"
@@ -47,8 +48,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/../../defaults/output-sub-path.bash"
 # shellcheck source=src/scripts/defaults/manifests-repo-provider.bash
 source "${SCRIPT_DIR}/../../defaults/manifests-repo-provider.bash"
-# shellcheck source=src/scripts/defaults/docker-push-image-list.bash
-source "${SCRIPT_DIR}/../../defaults/docker-push-image-list.bash"
+# shellcheck source=src/scripts/lib/output-var.bash
+source "${SCRIPT_DIR}/../../lib/output-var.bash"
 
 # Build output structure
 PUBLISH_SUB_PATH="${OUTPUT_SUB_PATH}/publish/docker"
@@ -72,17 +73,6 @@ confirm_image_doesnt_exist() {
   return 0
 }
 
-output_var() {
-  local name="${1}"
-  local value="${2}"
-
-  echo "${name}=${value}"
-
-  if [[ -n "${GITHUB_OUTPUT:-}" ]]; then
-    echo "${name}=${value}" >> "${GITHUB_OUTPUT}"
-  fi
-}
-
 main() {
   echo "=== Kubernetes Manifests Repo Provider Package: Docker ===" >&2
   echo "Manifests zip path: ${MANIFESTS_ZIP_SUB_PATH}" >&2
@@ -100,29 +90,18 @@ main() {
   # Confirm target doesn't exist (fail fast)
   confirm_image_doesnt_exist "${image_uri}" || exit 1
 
-  # Create publish build directory (instead of temp dir)
+  # Create publish build directory
   rm -rf "${PUBLISH_SUB_PATH}"
   mkdir -p "${PUBLISH_SUB_PATH}"
 
   # Copy zip to publish dir
   cp "${MANIFESTS_ZIP_SUB_PATH}/${MANIFESTS_ZIP_FILE_NAME}" "${PUBLISH_SUB_PATH}/"
 
-  # Create Dockerfile
-  cat > "${PUBLISH_SUB_PATH}/Dockerfile" <<EOF
-FROM ${BASE_IMAGE}
-LABEL version="${tag}"
-LABEL project.name="${image_name}"
-LABEL image.name="${image_uri}"
-COPY ${MANIFESTS_ZIP_FILE_NAME} /${MANIFESTS_ZIP_FILE_NAME}
-EOF
-
-  echo "Building manifest image..." >&2
-  ${IMAGE_BUILD_COMMAND} build -t "${image_uri}" "${PUBLISH_SUB_PATH}"
+  # Delegate to multi-arch packager
+  PACKAGE_BASE_IMAGE="${BASE_IMAGE}" \
+    "${SCRIPT_DIR}/../../util/docker-package-multi-arch" "${PUBLISH_SUB_PATH}" "${image_uri}"
 
   output_var "MANIFESTS_URI" "${image_uri}"
-
-  # Register image for consolidated push
-  echo "${image_uri}" >> "${DOCKER_PUSH_IMAGE_LIST_FILE}"
 
   echo "Kubernetes Manifests Repo Provider Package: Docker complete" >&2
 }

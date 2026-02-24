@@ -1,0 +1,9 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
+#
+# Target platform for docker/podman operations
+docker-platform:
+  description: 'Target platform (linux/amd64, linux/arm64, or both comma-separated)'
+  required: false
+  type: string
+  default: 'linux/amd64'

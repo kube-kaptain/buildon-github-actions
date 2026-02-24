@@ -414,11 +414,18 @@ verify_action_template_env_mappings() {
   step_outputs="$step_outputs TARGET_IMAGE_FULL_URI DOCKER_IMAGE_FULL_URI DOCKER_SUBSTITUTED_SUB_PATH"
   step_outputs="$step_outputs MANIFESTS_SUBSTITUTED_SUB_PATH MANIFESTS_ZIP_SUB_PATH MANIFESTS_ZIP_FILE_NAME"
 
+  # Computed vars from defaults files - not wired via action inputs
+  local computed_vars="DOCKER_CONTEXT_SUB_PATH DOCKER_CONTEXT_SUB_PATH_LINUX_AMD64 DOCKER_CONTEXT_SUB_PATH_LINUX_ARM64"
+
   local missing=""
   while IFS= read -r export_var; do
     [[ -z "$export_var" ]] && continue
     # Skip step outputs - they're wired differently
     if echo "$step_outputs" | grep -qw "$export_var"; then
+      continue
+    fi
+    # Skip computed vars - set by defaults files, not action inputs
+    if echo "$computed_vars" | grep -qw "$export_var"; then
       continue
     fi
     if ! echo "$action_env_vars" | grep -q "^${export_var}$"; then

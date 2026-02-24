@@ -12,6 +12,7 @@
     PROJECT_NAME: ${{ steps.versions.outputs.project-name }}
     DOCKER_URI: ${{ steps.docker-build.outputs.docker-target-image-full-uri }}
     RELEASE_CHANGE_DATA_URI: ${{ steps.release-change-data-oci-package.outputs.release-change-data-image-uri }}
+    OUTPUT_SUB_PATH: ${{ inputs.output-sub-path }}
     GITHUB_SERVER_URL: ${{ github.server_url }}
     GITHUB_REPOSITORY: ${{ github.repository }}
   run: |
@@ -39,6 +40,7 @@
         echo "* Docker Image: [${DOCKER_URI}](https://${DOCKER_URI})"
         echo "* Release Change Data: [release-change-data-${VERSION}.yaml](${release_url}/release-change-data-${VERSION}.yaml)"
         echo "* Release Change Data Image: [${RELEASE_CHANGE_DATA_URI}](https://${RELEASE_CHANGE_DATA_URI})"
+        ./.github/buildon-github-actions/src/scripts/util/format-release-image-list "${OUTPUT_SUB_PATH}" "${VERSION}"
         echo "NOTES_EOF"
       } >> "${GITHUB_OUTPUT}"
     fi

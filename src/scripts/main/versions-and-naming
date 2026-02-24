@@ -42,6 +42,9 @@ source "${SCRIPT_DIR}/../defaults/branch-inputs.bash"
 # shellcheck source=src/scripts/lib/branch-setup-shared.bash
 source "${SCRIPT_DIR}/../lib/branch-setup-shared.bash"
 
+# shellcheck source=src/scripts/lib/output-var.bash
+source "${SCRIPT_DIR}/../lib/output-var.bash"
+
 # Required inputs
 REPOSITORY_NAME="${REPOSITORY_NAME:?Is required}"
 REPOSITORY_OWNER="${REPOSITORY_OWNER:?Is required}"
@@ -98,21 +101,6 @@ version_to_n_parts() {
   done
 
   echo "${result}"
-}
-
-output_var() {
-  local name="${1}"
-  local value="${2}"
-
-  echo "${name}=${value}"
-
-  # If running in GitHub Actions, set output
-  if [[ -n "${GITHUB_OUTPUT:-}" ]]; then
-    echo "${name}=${value}" >> "${GITHUB_OUTPUT}"
-  fi
-
-  # Also export for downstream scripts
-  export "${name}=${value}"
 }
 
 # Create tag locally (push happens later via git-push-tag)
