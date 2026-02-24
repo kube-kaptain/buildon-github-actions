@@ -72,7 +72,7 @@ inputs:
 outputs:
   manifests-uri:
     description: 'Reference to published manifests (format depends on repo provider)'
-    value: ${{ steps.publish.outputs.MANIFESTS_URI }}
+    value: ${{ inputs.manifests-uri }}
   manifests-published:
     description: 'Whether manifests were published'
     value: ${{ steps.publish.outputs.MANIFESTS_PUBLISHED }}

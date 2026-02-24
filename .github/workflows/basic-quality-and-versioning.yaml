@@ -957,6 +957,7 @@ jobs:
           VERSION: ${{ steps.versions.outputs.version }}
           PROJECT_NAME: ${{ steps.versions.outputs.project-name }}
           RELEASE_CHANGE_DATA_URI: ${{ steps.release-change-data-oci-package.outputs.release-change-data-image-uri }}
+          OUTPUT_SUB_PATH: ${{ inputs.output-sub-path }}
           GITHUB_SERVER_URL: ${{ github.server_url }}
           GITHUB_REPOSITORY: ${{ github.repository }}
         run: |
@@ -983,6 +984,7 @@ jobs:
               echo "### Release Assets"
               echo "* Release Change Data: [release-change-data-${VERSION}.yaml](${release_url}/release-change-data-${VERSION}.yaml)"
               echo "* Release Change Data Image: [${RELEASE_CHANGE_DATA_URI}](https://${RELEASE_CHANGE_DATA_URI})"
+              ./.github/buildon-github-actions/src/scripts/util/format-release-image-list "${OUTPUT_SUB_PATH}" "${VERSION}"
               echo "NOTES_EOF"
             } >> "${GITHUB_OUTPUT}"
           fi
