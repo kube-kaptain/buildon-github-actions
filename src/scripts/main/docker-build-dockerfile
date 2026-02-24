@@ -111,7 +111,7 @@ main() {
     local file_count
     file_count=$(find "${DOCKERFILE_SUB_PATH}" -type f | wc -l | tr -d ' ')
     if [[ "${file_count}" -gt 0 ]]; then
-      cp -R "${DOCKERFILE_SUB_PATH}"/* "${DOCKER_CONTEXT_SUB_PATH}/"
+      cp -R "${DOCKERFILE_SUB_PATH}/." "${DOCKER_CONTEXT_SUB_PATH}/"
       echo "Copied ${file_count} file(s) to ${DOCKER_CONTEXT_SUB_PATH}" >&2
     else
       echo "${LOG_WARNING_PREFIX}No files in ${DOCKERFILE_SUB_PATH} (final context dir may be populated by hook)${LOG_WARNING_SUFFIX}" >&2

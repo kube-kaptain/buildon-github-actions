@@ -268,6 +268,17 @@ set_required_env() {
   [ -f "$OUTPUT_DIR/docker/substituted/config.txt" ]
 }
 
+@test "copies dotfiles from docker directory" {
+  set_required_env
+  echo "node_modules" > "$TEST_DIR/.dockerignore"
+  echo "secret" > "$TEST_DIR/.env.example"
+
+  run "$SCRIPTS_DIR/docker-build-dockerfile"
+  [ "$status" -eq 0 ]
+  [ -f "$OUTPUT_DIR/docker/substituted/.dockerignore" ]
+  [ -f "$OUTPUT_DIR/docker/substituted/.env.example" ]
+}
+
 @test "substitutes tokens in specified files" {
   set_required_env
   export DOCKER_TARGET_NAMESPACE="my-org"
