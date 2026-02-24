@@ -77,4 +77,6 @@ runs:
         ALLOW_BUILTIN_TOKEN_OVERRIDE: ${{ inputs.allow-builtin-token-override }}
         CONFIG_VALUE_TRAILING_NEWLINE: ${{ inputs.config-value-trailing-newline }}
         DOCKER_PLATFORM: ${{ inputs.docker-platform }}
+        DOCKERFILE_SUB_PATH_LINUX_AMD64: ${{ inputs.dockerfile-sub-path-linux-amd64 }}
+        DOCKERFILE_SUB_PATH_LINUX_ARM64: ${{ inputs.dockerfile-sub-path-linux-arm64 }}
       run: "${{ github.action_path }}/../../scripts/main/docker-build-dockerfile"

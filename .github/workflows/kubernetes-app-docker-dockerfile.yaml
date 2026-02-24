@@ -1923,6 +1923,8 @@ jobs:
           config-value-trailing-newline: ${{ inputs.config-value-trailing-newline }}
           image-build-command: ${{ steps.validate-tooling.outputs.IMAGE_BUILD_COMMAND }}
           docker-platform: ${{ inputs.docker-platform }}
+          dockerfile-sub-path-linux-amd64: ${{ inputs.dockerfile-sub-path-linux-amd64 }}
+          dockerfile-sub-path-linux-arm64: ${{ inputs.dockerfile-sub-path-linux-arm64 }}
       - name: Pass check - Docker Build
         if: success() && steps.check-docker-build.outputs.check-run-id != ''
         continue-on-error: true
