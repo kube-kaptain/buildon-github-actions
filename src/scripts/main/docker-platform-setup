@@ -52,10 +52,10 @@ if [[ "$(uname -s)" == "Linux" ]] && [[ "${BUILD_MODE}" == "build_server" ]]; th
   else
     echo "Linux build server detected — installing QEMU binfmt support..." >&2
     if command -v apt-get &>/dev/null; then
-      sudo apt-get update -qq
-      sudo apt-get install -y -qq qemu-user-static binfmt-support
+      sudo apt-get update
+      sudo apt-get install -y qemu-user-static binfmt-support
     elif command -v yum &>/dev/null; then
-      sudo yum install -y -q qemu-user-static
+      sudo yum install -y qemu-user-static
     else
       echo "${LOG_ERROR_PREFIX}No supported package manager found (need apt-get or yum)${LOG_ERROR_SUFFIX}" >&2
       exit 1
