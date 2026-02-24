@@ -12,6 +12,7 @@ inputs:
     description: 'Whether to push (true) or skip (false)'
     required: true
   # INJECT-INPUT: image-build-command
+  # INJECT-INPUT: docker-platform
 
 outputs:
   images-pushed:
@@ -29,4 +30,5 @@ runs:
         DOCKER_PUSH_IMAGE_LIST_FILE: ${{ inputs.docker-push-image-list-file }}
         IS_RELEASE: ${{ inputs.is-release }}
         IMAGE_BUILD_COMMAND: ${{ inputs.image-build-command }}
+        DOCKER_PLATFORM: ${{ inputs.docker-platform }}
       run: "${{ github.action_path }}/../../scripts/main/docker-push-all"

@@ -63,12 +63,29 @@ set_required_env() {
   assert_var_equals "DOCKER_SOURCE_IMAGE_FULL_URI" "docker.io/alpine:3.21"
 }
 
-@test "calls docker pull with source image" {
+@test "calls docker pull with platform and source image" {
   set_required_env
 
   run "$SCRIPTS_DIR/docker-build-retag"
   [ "$status" -eq 0 ]
-  assert_docker_called "pull docker.io/library/alpine:3.21"
+  assert_docker_called "pull --platform linux/amd64 docker.io/library/alpine:3.21"
+}
+
+@test "uses default platform linux/amd64 on pull" {
+  set_required_env
+
+  run "$SCRIPTS_DIR/docker-build-retag"
+  [ "$status" -eq 0 ]
+  assert_docker_called "--platform linux/amd64"
+}
+
+@test "uses custom single platform on pull" {
+  set_required_env
+  export DOCKER_PLATFORM="linux/arm64"
+
+  run "$SCRIPTS_DIR/docker-build-retag"
+  [ "$status" -eq 0 ]
+  assert_docker_called "pull --platform linux/arm64"
 }
 
 @test "calls docker tag with source and target" {
@@ -216,4 +233,66 @@ set_required_env() {
   run "$SCRIPTS_DIR/docker-build-retag"
   [ "$status" -eq 0 ]
   assert_var_equals "DOCKER_TARGET_IMAGE_FULL_URI" "myregistry.example.com/docker-local/my-repo:1.0.0"
+}
+
+# === Multi-platform tests ===
+
+@test "multi-platform pulls both architectures" {
+  set_required_env
+  export DOCKER_PLATFORM="linux/amd64,linux/arm64"
+  export OUTPUT_SUB_PATH="$(dirname "$DOCKER_PUSH_IMAGE_LIST_FILE")/.."
+
+  run "$SCRIPTS_DIR/docker-build-retag"
+  [ "$status" -eq 0 ]
+  assert_docker_called "pull --platform linux/amd64 docker.io/library/alpine:3.21"
+  assert_docker_called "pull --platform linux/arm64 docker.io/library/alpine:3.21"
+}
+
+@test "multi-platform tags with arch-suffixed URIs" {
+  set_required_env
+  export DOCKER_PLATFORM="linux/amd64,linux/arm64"
+  export OUTPUT_SUB_PATH="$(dirname "$DOCKER_PUSH_IMAGE_LIST_FILE")/.."
+
+  run "$SCRIPTS_DIR/docker-build-retag"
+  [ "$status" -eq 0 ]
+  assert_docker_called "tag docker.io/library/alpine:3.21 ghcr.io/test/my-repo:1.0.0-linux-amd64"
+  assert_docker_called "tag docker.io/library/alpine:3.21 ghcr.io/test/my-repo:1.0.0-linux-arm64"
+}
+
+@test "multi-platform registers arch URIs in image-uris" {
+  set_required_env
+  export DOCKER_PLATFORM="linux/amd64,linux/arm64"
+  export OUTPUT_SUB_PATH="$(dirname "$DOCKER_PUSH_IMAGE_LIST_FILE")/.."
+
+  run "$SCRIPTS_DIR/docker-build-retag"
+  [ "$status" -eq 0 ]
+
+  [ -f "$DOCKER_PUSH_IMAGE_LIST_FILE" ]
+  run cat "$DOCKER_PUSH_IMAGE_LIST_FILE"
+  [[ "$output" == *"ghcr.io/test/my-repo:1.0.0-linux-amd64"* ]]
+  [[ "$output" == *"ghcr.io/test/my-repo:1.0.0-linux-arm64"* ]]
+}
+
+@test "multi-platform registers base URI in manifest-uris" {
+  set_required_env
+  export DOCKER_PLATFORM="linux/amd64,linux/arm64"
+  export OUTPUT_SUB_PATH="$(dirname "$DOCKER_PUSH_IMAGE_LIST_FILE")/.."
+
+  run "$SCRIPTS_DIR/docker-build-retag"
+  [ "$status" -eq 0 ]
+
+  local manifest_file="${OUTPUT_SUB_PATH}/docker-push-all/manifest-uris"
+  [ -f "$manifest_file" ]
+  run cat "$manifest_file"
+  [[ "$output" == *"ghcr.io/test/my-repo:1.0.0"* ]]
+}
+
+@test "multi-platform outputs base URI as DOCKER_TARGET_IMAGE_FULL_URI" {
+  set_required_env
+  export DOCKER_PLATFORM="linux/amd64,linux/arm64"
+  export OUTPUT_SUB_PATH="$(dirname "$DOCKER_PUSH_IMAGE_LIST_FILE")/.."
+
+  run "$SCRIPTS_DIR/docker-build-retag"
+  [ "$status" -eq 0 ]
+  assert_var_equals "DOCKER_TARGET_IMAGE_FULL_URI" "ghcr.io/test/my-repo:1.0.0"
 }

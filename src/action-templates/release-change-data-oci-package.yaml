@@ -25,7 +25,11 @@ inputs:
     description: 'Namespace between registry and image name (pre-resolved by workflow)'
     required: false
     default: ''
+  project-name:
+    description: 'Project name (from version generator)'
+    required: true
   # INJECT-INPUT: image-build-command
+  # INJECT-INPUT: docker-platform
 
 outputs:
   release-change-data-image-uri:
@@ -45,7 +49,9 @@ runs:
         DOCKER_IMAGE_NAME: ${{ inputs.docker-image-name }}
         DOCKER_TARGET_REGISTRY: ${{ inputs.docker-target-registry }}
         DOCKER_TARGET_NAMESPACE: ${{ inputs.docker-target-namespace }}
+        PROJECT_NAME: ${{ inputs.project-name }}
         OUTPUT_SUB_PATH: ${{ inputs.output-sub-path }}
         DOCKER_PUSH_IMAGE_LIST_FILE: ${{ inputs.docker-push-image-list-file }}
         IMAGE_BUILD_COMMAND: ${{ inputs.image-build-command }}
+        DOCKER_PLATFORM: ${{ inputs.docker-platform }}
       run: "${{ github.action_path }}/../../scripts/main/release-change-data-oci-package"

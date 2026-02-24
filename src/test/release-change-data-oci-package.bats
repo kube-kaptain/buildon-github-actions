@@ -26,14 +26,16 @@ set_required_env() {
   export DOCKER_IMAGE_NAME="test/my-repo"
   export DOCKER_TARGET_REGISTRY="ghcr.io"
   export IMAGE_BUILD_COMMAND="docker"
+  export PROJECT_NAME="my-repo"
 }
 
-@test "builds OCI image with correct URI" {
+@test "builds OCI image for both architectures" {
   set_required_env
 
   run "$SCRIPTS_DIR/release-change-data-oci-package"
   [ "$status" -eq 0 ]
-  assert_docker_called "build -t ghcr.io/test/my-repo:1.0.1-release-change-data"
+  assert_docker_called "build --platform linux/amd64 -t ghcr.io/test/my-repo:1.0.1-release-change-data-linux-amd64"
+  assert_docker_called "build --platform linux/arm64 -t ghcr.io/test/my-repo:1.0.1-release-change-data-linux-arm64"
 }
 
 @test "uses -release-change-data tag suffix" {
@@ -53,7 +55,7 @@ set_required_env() {
   assert_var_equals "RELEASE_CHANGE_DATA_IMAGE_URI" "ghcr.io/kube-kaptain/test/my-repo:1.0.1-release-change-data"
 }
 
-@test "registers image URI for docker-push-all" {
+@test "registers arch-specific URIs for docker-push-all" {
   set_required_env
 
   run "$SCRIPTS_DIR/release-change-data-oci-package"
@@ -62,16 +64,30 @@ set_required_env() {
   local push_file="$DOCKER_PUSH_IMAGE_LIST_FILE"
   [ -f "$push_file" ]
   run cat "$push_file"
-  [[ "$output" == *"ghcr.io/test/my-repo:1.0.1-release-change-data"* ]]
+  [[ "$output" == *"ghcr.io/test/my-repo:1.0.1-release-change-data-linux-amd64"* ]]
+  [[ "$output" == *"ghcr.io/test/my-repo:1.0.1-release-change-data-linux-arm64"* ]]
 }
 
-@test "generates Dockerfile in context directory" {
+@test "registers base URI in manifest-uris" {
   set_required_env
 
   run "$SCRIPTS_DIR/release-change-data-oci-package"
   [ "$status" -eq 0 ]
 
-  local dockerfile="$OUTPUT_SUB_PATH/release-change-data/docker-context/Dockerfile"
+  local manifest_file="$OUTPUT_SUB_PATH/docker-push-all/manifest-uris"
+  [ -f "$manifest_file" ]
+  run cat "$manifest_file"
+  [[ "$output" == *"ghcr.io/test/my-repo:1.0.1-release-change-data"* ]]
+}
+
+@test "generates Dockerfile via docker-package-multi-arch" {
+  set_required_env
+
+  run "$SCRIPTS_DIR/release-change-data-oci-package"
+  [ "$status" -eq 0 ]
+
+  # docker-package-multi-arch copies content and generates Dockerfile in its build dir
+  local dockerfile="$OUTPUT_SUB_PATH/docker-package-multi-arch/docker-context/Dockerfile"
   [ -f "$dockerfile" ]
   run cat "$dockerfile"
   [[ "$output" == *"FROM scratch"* ]]

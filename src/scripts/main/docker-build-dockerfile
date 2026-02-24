@@ -11,6 +11,10 @@
 # Build only - does not push. Workflow handles push after optional test step.
 # This separation allows injecting test steps between build and push.
 #
+# Single-platform mode (default): builds one image with the base tag.
+# Multi-platform mode (comma-separated DOCKER_PLATFORM): builds per-platform
+# images with arch-suffixed tags, registers manifest-uris for push-all.
+#
 # Inputs (environment variables):
 # System generated:
 #   DOCKER_IMAGE_NAME        - Image name (from version generator)
@@ -32,9 +36,15 @@
 #   ALLOW_BUILTIN_TOKEN_OVERRIDE - Allow user tokens to override built-ins (default: false)
 #   CONFIG_SUB_PATH     - Source directory for user-defined tokens, relative (default: src/config)
 #   CONFIG_VALUE_TRAILING_NEWLINE - Trailing newline handling (default: strip-for-single-line)
+#   DOCKER_PLATFORM     - Target platform (default: linux/amd64, or comma-separated for multi)
+# Multi-platform inputs:
+#   DOCKERFILE_SUB_PATH_LINUX_AMD64 - Per-platform source dir (default: src/docker-linux-amd64)
+#   DOCKERFILE_SUB_PATH_LINUX_ARM64 - Per-platform source dir (default: src/docker-linux-arm64)
+#   DOCKER_CONTEXT_SUB_PATH_LINUX_AMD64 - Per-platform context dir
+#   DOCKER_CONTEXT_SUB_PATH_LINUX_ARM64 - Per-platform context dir
 #
 # Outputs:
-#   DOCKER_TARGET_IMAGE_FULL_URI - Full image reference (for use in push step)
+#   DOCKER_TARGET_IMAGE_FULL_URI - Full image reference (base URI, for use in push step)
 #
 set -euo pipefail
 
@@ -76,24 +86,31 @@ PROJECT_NAME="${PROJECT_NAME:?PROJECT_NAME is required}"
 # Build output structure (sub-paths, relative to working directory)
 DOCKER_CONFIG_SUB_PATH="${OUTPUT_SUB_PATH}/docker/config"
 
-main() {
-  echo "=== Docker Build Dockerfile ===" >&2
-  echo "Target: ${TARGET_IMAGE_FULL_URI}" >&2
-  echo "Dockerfile sub-path: ${DOCKERFILE_SUB_PATH}" >&2
-  echo "Output sub-path: ${OUTPUT_SUB_PATH}" >&2
-  echo "Squash: ${DOCKERFILE_SQUASH}" >&2
-  echo "Token style: ${TOKEN_DELIMITER_STYLE}" >&2
-  echo "Name style: ${TOKEN_NAME_STYLE}" >&2
-  echo "===============================" >&2
+# build_for_platform - Copies, substitutes, and builds for a single platform
+#
+# Used once in single-platform mode, once per arch in multi-platform mode.
+#
+# Args:
+#   $1 - platform (e.g., linux/amd64)
+#   $2 - source_dir (Dockerfile source directory)
+#   $3 - context_dir (build context output directory)
+#   $4 - config_dir (substitution tokens output directory)
+#   $5 - image_uri (full image URI including tag)
+build_for_platform() {
+  local platform="$1"
+  local source_dir="$2"
+  local context_dir="$3"
+  local config_dir="$4"
+  local image_uri="$5"
 
   # Copy source directory to build context (if it exists)
-  mkdir -p "${DOCKER_CONTEXT_SUB_PATH}"
-  if [[ ! -d "${DOCKERFILE_SUB_PATH}" ]]; then
-    echo "${LOG_WARNING_PREFIX}Dockerfile directory not found: ${DOCKERFILE_SUB_PATH} (final context dir may be populated by hook)${LOG_WARNING_SUFFIX}" >&2
+  mkdir -p "${context_dir}"
+  if [[ ! -d "${source_dir}" ]]; then
+    echo "${LOG_WARNING_PREFIX}Dockerfile directory not found: ${source_dir} (final context dir may be populated by hook)${LOG_WARNING_SUFFIX}" >&2
   else
     # Validate Dockerfile case in source (case-sensitive check for case-insensitive filesystems)
     local wrong_case=""
-    for f in "${DOCKERFILE_SUB_PATH}"/*; do
+    for f in "${source_dir}"/*; do
       [[ -f "${f}" ]] || continue
       local name
       name=$(basename "${f}")
@@ -109,27 +126,31 @@ main() {
     echo "" >&2
     echo "Copying docker directory for substitution..." >&2
     local file_count
-    file_count=$(find "${DOCKERFILE_SUB_PATH}" -type f | wc -l | tr -d ' ')
+    file_count=$(find "${source_dir}" -type f | wc -l | tr -d ' ')
     if [[ "${file_count}" -gt 0 ]]; then
-      cp -R "${DOCKERFILE_SUB_PATH}/." "${DOCKER_CONTEXT_SUB_PATH}/"
-      echo "Copied ${file_count} file(s) to ${DOCKER_CONTEXT_SUB_PATH}" >&2
+      cp -R "${source_dir}/." "${context_dir}/"
+      echo "Copied ${file_count} file(s) to ${context_dir}" >&2
     else
-      echo "${LOG_WARNING_PREFIX}No files in ${DOCKERFILE_SUB_PATH} (final context dir may be populated by hook)${LOG_WARNING_SUFFIX}" >&2
+      echo "${LOG_WARNING_PREFIX}No files in ${source_dir} (final context dir may be populated by hook)${LOG_WARNING_SUFFIX}" >&2
     fi
   fi
 
   # Confirm target doesn't exist before building (fail fast)
-  confirm_target_image_doesnt_exist || exit 1
+  if ${IMAGE_BUILD_COMMAND} manifest inspect "${image_uri}" &>/dev/null; then
+    echo "${LOG_ERROR_PREFIX}Target image already exists in registry: ${image_uri}${LOG_ERROR_SUFFIX}" >&2
+    exit 1
+  fi
+  echo "Confirmed target image does not exist in registry: ${image_uri}" >&2
 
   # Fail if no Dockerfile in context dir (neither from source nor from hook)
-  if [[ ! -f "${DOCKER_CONTEXT_SUB_PATH}/Dockerfile" ]]; then
-    echo "${LOG_ERROR_PREFIX}Dockerfile not found in build context: ${DOCKER_CONTEXT_SUB_PATH} (not in ${DOCKERFILE_SUB_PATH} and not provided by hook)${LOG_ERROR_SUFFIX}" >&2
+  if [[ ! -f "${context_dir}/Dockerfile" ]]; then
+    echo "${LOG_ERROR_PREFIX}Dockerfile not found in build context: ${context_dir} (not in ${source_dir} and not provided by hook)${LOG_ERROR_SUFFIX}" >&2
     exit 1
   fi
 
   # Prepare substitution tokens (built-ins + user config)
   echo "" >&2
-  TOKENS_OUTPUT_SUB_PATH="${DOCKER_CONFIG_SUB_PATH}" \
+  TOKENS_OUTPUT_SUB_PATH="${config_dir}" \
   CONFIG_SUB_PATH="${CONFIG_SUB_PATH}" \
   TOKEN_NAME_STYLE="${TOKEN_NAME_STYLE}" \
   TOKEN_NAME_VALIDATION="${TOKEN_NAME_VALIDATION}" \
@@ -139,7 +160,7 @@ main() {
   VERSION="${VERSION}" \
   DOCKER_TAG="${DOCKER_TAG}" \
   DOCKER_IMAGE_NAME="${DOCKER_IMAGE_NAME}" \
-  DOCKER_IMAGE_FULL_URI="${TARGET_IMAGE_FULL_URI}" \
+  DOCKER_IMAGE_FULL_URI="${image_uri}" \
   TARGET_REGISTRY="${TARGET_REGISTRY}" \
   TARGET_NAMESPACE="${TARGET_NAMESPACE}" \
   "${SCRIPT_DIR}/../util/prepare-substitution-tokens"
@@ -150,12 +171,12 @@ main() {
     echo "Performing variable substitution on: ${DOCKERFILE_SUBSTITUTION_FILES}" >&2
     IFS=',' read -ra sub_files <<< "${DOCKERFILE_SUBSTITUTION_FILES}"
     for sub_file in "${sub_files[@]}"; do
-      local target_file="${DOCKER_CONTEXT_SUB_PATH}/${sub_file}"
+      local target_file="${context_dir}/${sub_file}"
       if [[ -f "${target_file}" ]]; then
         CONFIG_VALUE_TRAILING_NEWLINE="${CONFIG_VALUE_TRAILING_NEWLINE}" \
         "${SCRIPT_DIR}/../util/substitute-tokens-from-dir" \
           "${TOKEN_DELIMITER_STYLE}" \
-          "${DOCKER_CONFIG_SUB_PATH}" \
+          "${config_dir}" \
           "${target_file}"
       else
         echo "${LOG_WARNING_PREFIX}Substitution target not found, skipping: ${sub_file}${LOG_WARNING_SUFFIX}" >&2
@@ -166,32 +187,8 @@ main() {
   fi
 
   # Build from substituted directory
-  local dockerfile="${DOCKER_CONTEXT_SUB_PATH}/Dockerfile"
-
-  # Validate squash value
-  case "${DOCKERFILE_SQUASH}" in
-    squash|squash-all|no) ;;
-    *)
-      echo "${LOG_ERROR_PREFIX}Invalid DOCKERFILE_SQUASH value '${DOCKERFILE_SQUASH}' - must be: squash, squash-all, or no${LOG_ERROR_SUFFIX}" >&2
-      exit 1
-      ;;
-  esac
-
-  # Squash handling
-  if [[ "${DOCKERFILE_SQUASH}" != "no" ]]; then
-    if [[ "${IMAGE_BUILD_COMMAND}" == "docker" ]]; then
-      if [[ "${BUILD_MODE}" == "build_server" ]]; then
-        echo "${LOG_ERROR_PREFIX}Squash requested but docker 29+ does not support it - podman is required on build server${LOG_ERROR_SUFFIX}" >&2
-        exit 1
-      else
-        echo "${LOG_WARNING_PREFIX}Squash requested but docker 29+ does not support it - forcing no squash${LOG_WARNING_SUFFIX}" >&2
-        DOCKERFILE_SQUASH="no"
-      fi
-    fi
-  fi
-
-  # Build command
-  local cmd=("${IMAGE_BUILD_COMMAND}" build -f "${dockerfile}" -t "${TARGET_IMAGE_FULL_URI}")
+  local dockerfile="${context_dir}/Dockerfile"
+  local cmd=("${IMAGE_BUILD_COMMAND}" build --platform "${platform}" -f "${dockerfile}" -t "${image_uri}")
 
   # Add standard build args (Dockerfile can use or ignore)
   cmd+=(--build-arg "VERSION=${VERSION}")
@@ -215,25 +212,106 @@ main() {
   fi
 
   # Add context
-  cmd+=("${DOCKER_CONTEXT_SUB_PATH}")
+  cmd+=("${context_dir}")
 
   echo "" >&2
   echo "Building: ${cmd[*]}" >&2
 
   # Capture build output for post-build validation
-  local BUILD_OUTPUT="${OUTPUT_SUB_PATH}/docker-build-output.log"
+  local platform_suffix="${platform//\//-}"
+  local BUILD_OUTPUT="${OUTPUT_SUB_PATH}/docker-build-output-${platform_suffix}.log"
   local BUILD_EXIT=0
   "${cmd[@]}" 2>&1 | tee "${BUILD_OUTPUT}" || BUILD_EXIT=${PIPESTATUS[0]}
 
   if [[ ${BUILD_EXIT} -ne 0 ]]; then
-    echo "${LOG_ERROR_PREFIX}Docker build failed (exit ${BUILD_EXIT})${LOG_ERROR_SUFFIX}" >&2
+    echo "${LOG_ERROR_PREFIX}Docker build failed for ${platform} (exit ${BUILD_EXIT})${LOG_ERROR_SUFFIX}" >&2
     exit "${BUILD_EXIT}"
   fi
+}
 
-  output_var "DOCKER_TARGET_IMAGE_FULL_URI" "${TARGET_IMAGE_FULL_URI}"
+main() {
+  echo "=== Docker Build Dockerfile ===" >&2
+  echo "Target: ${TARGET_IMAGE_FULL_URI}" >&2
+  echo "Platform: ${DOCKER_PLATFORM}" >&2
+  echo "Dockerfile sub-path: ${DOCKERFILE_SUB_PATH}" >&2
+  echo "Output sub-path: ${OUTPUT_SUB_PATH}" >&2
+  echo "Squash: ${DOCKERFILE_SQUASH}" >&2
+  echo "Token style: ${TOKEN_DELIMITER_STYLE}" >&2
+  echo "Name style: ${TOKEN_NAME_STYLE}" >&2
+  echo "===============================" >&2
 
-  # Register image for consolidated push
-  echo "${TARGET_IMAGE_FULL_URI}" >> "${DOCKER_PUSH_IMAGE_LIST_FILE}"
+  # Validate squash value
+  case "${DOCKERFILE_SQUASH}" in
+    squash|squash-all|no) ;;
+    *)
+      echo "${LOG_ERROR_PREFIX}Invalid DOCKERFILE_SQUASH value '${DOCKERFILE_SQUASH}' - must be: squash, squash-all, or no${LOG_ERROR_SUFFIX}" >&2
+      exit 1
+      ;;
+  esac
+
+  # Squash handling
+  if [[ "${DOCKERFILE_SQUASH}" != "no" ]]; then
+    if [[ "${IMAGE_BUILD_COMMAND}" == "docker" ]]; then
+      if [[ "${BUILD_MODE}" == "build_server" ]]; then
+        echo "${LOG_ERROR_PREFIX}Squash requested but docker 29+ does not support it - podman is required on build server${LOG_ERROR_SUFFIX}" >&2
+        exit 1
+      else
+        echo "${LOG_WARNING_PREFIX}Squash requested but docker 29+ does not support it - forcing no squash${LOG_WARNING_SUFFIX}" >&2
+        DOCKERFILE_SQUASH="no"
+      fi
+    fi
+  fi
+
+  if [[ "${DOCKER_PLATFORM}" == *,* ]]; then
+    # === Multi-platform build ===
+    IFS=',' read -ra platforms <<< "${DOCKER_PLATFORM}"
+    local manifest_uris_file="${OUTPUT_SUB_PATH}/docker-push-all/manifest-uris"
+    mkdir -p "$(dirname "${manifest_uris_file}")"
+
+    for platform in "${platforms[@]}"; do
+      local platform_suffix="${platform//\//-}"
+      local source_dir context_dir config_dir arch_uri
+
+      case "${platform}" in
+        linux/amd64)
+          source_dir="${DOCKERFILE_SUB_PATH_LINUX_AMD64}"
+          context_dir="${DOCKER_CONTEXT_SUB_PATH_LINUX_AMD64}"
+          config_dir="${OUTPUT_SUB_PATH}/docker-linux-amd64/config"
+          ;;
+        linux/arm64)
+          source_dir="${DOCKERFILE_SUB_PATH_LINUX_ARM64}"
+          context_dir="${DOCKER_CONTEXT_SUB_PATH_LINUX_ARM64}"
+          config_dir="${OUTPUT_SUB_PATH}/docker-linux-arm64/config"
+          ;;
+        *)
+          echo "${LOG_ERROR_PREFIX}Unsupported platform in multi-platform build: ${platform}${LOG_ERROR_SUFFIX}" >&2
+          exit 1
+          ;;
+      esac
+
+      arch_uri="${TARGET_IMAGE_FULL_URI}-${platform_suffix}"
+
+      echo "" >&2
+      echo "--- Building for ${platform} (${arch_uri}) ---" >&2
+      build_for_platform "${platform}" "${source_dir}" "${context_dir}" "${config_dir}" "${arch_uri}"
+
+      # Register arch-specific image for consolidated push
+      echo "${arch_uri}" >> "${DOCKER_PUSH_IMAGE_LIST_FILE}"
+    done
+
+    # Register base URI for manifest list creation
+    echo "${TARGET_IMAGE_FULL_URI}" >> "${manifest_uris_file}"
+
+    output_var "DOCKER_TARGET_IMAGE_FULL_URI" "${TARGET_IMAGE_FULL_URI}"
+  else
+    # === Single-platform build ===
+    build_for_platform "${DOCKER_PLATFORM}" "${DOCKERFILE_SUB_PATH}" "${DOCKER_CONTEXT_SUB_PATH}" "${DOCKER_CONFIG_SUB_PATH}" "${TARGET_IMAGE_FULL_URI}"
+
+    output_var "DOCKER_TARGET_IMAGE_FULL_URI" "${TARGET_IMAGE_FULL_URI}"
+
+    # Register image for consolidated push
+    echo "${TARGET_IMAGE_FULL_URI}" >> "${DOCKER_PUSH_IMAGE_LIST_FILE}"
+  fi
 
   echo "" >&2
   echo "Docker Build Dockerfile complete" >&2

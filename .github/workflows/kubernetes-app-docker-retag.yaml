@@ -53,6 +53,12 @@ on:
         description: 'Upstream image tag (e.g., 1.25)'
         required: true
         type: string
+      # Target platform for docker/podman operations
+      docker-platform:
+        description: 'Target platform (linux/amd64, linux/arm64, or both comma-separated)'
+        required: false
+        type: string
+        default: 'linux/amd64'
 
       # Manifests source
       manifests-sub-path:
@@ -1367,6 +1373,34 @@ jobs:
           action: fail
           check-run-id: ${{ steps.check-docker-registry-logins.outputs.check-run-id }}
 
+      # === Docker Platform Setup ===
+      - name: Start check - Docker Platform Setup
+        id: check-docker-platform-setup
+        continue-on-error: true
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
+        with:
+          action: start
+          check-name: 'Build & Publish → Docker Platform Setup'
+      - name: Docker platform setup
+        id: docker-platform-setup
+        uses: ./.github/buildon-github-actions/src/actions/docker-platform-setup
+        with:
+          docker-platform: ${{ inputs.docker-platform }}
+          image-build-command: ${{ steps.validate-tooling.outputs.IMAGE_BUILD_COMMAND }}
+      - name: Pass check - Docker Platform Setup
+        if: success() && steps.check-docker-platform-setup.outputs.check-run-id != ''
+        continue-on-error: true
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
+        with:
+          action: pass
+          check-run-id: ${{ steps.check-docker-platform-setup.outputs.check-run-id }}
+      - name: Fail check - Docker Platform Setup
+        if: failure() && steps.check-docker-platform-setup.outputs.check-run-id != ''
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
+        with:
+          action: fail
+          check-run-id: ${{ steps.check-docker-platform-setup.outputs.check-run-id }}
+
       # === Pre-tagging Tests ===
       - name: Start check - Pre-tagging Tests
         if: inputs.hook-pre-tagging-tests-script-sub-path != '' && success()
@@ -1383,6 +1417,7 @@ jobs:
         with:
           script-sub-path: ${{ inputs.hook-pre-tagging-tests-script-sub-path }}
           image-build-command: ${{ steps.validate-tooling.outputs.IMAGE_BUILD_COMMAND }}
+          docker-platform: ${{ inputs.docker-platform }}
           # === Workflow Inputs ===
           # Build output
           output-sub-path: ${{ inputs.output-sub-path }}
@@ -1641,9 +1676,11 @@ jobs:
           docker-image-name: ${{ steps.versions.outputs.docker-image-name }}
           docker-target-registry: ${{ steps.resolve-registry.outputs.docker-target-registry }}
           docker-target-namespace: ${{ steps.resolve-registry.outputs.docker-target-namespace }}
+          project-name: ${{ steps.versions.outputs.project-name }}
           output-sub-path: ${{ inputs.output-sub-path }}
           docker-push-image-list-file: ${{ steps.docker-registry-logins.outputs.docker-push-image-list-file }}
           image-build-command: ${{ steps.validate-tooling.outputs.IMAGE_BUILD_COMMAND }}
+          docker-platform: ${{ inputs.docker-platform }}
       - name: Pass check - Release Change Data OCI Package
         if: success() && steps.check-release-change-data-oci-package.outputs.check-run-id != ''
         continue-on-error: true
@@ -1680,6 +1717,7 @@ jobs:
           docker-image-name: ${{ steps.versions.outputs.docker-image-name }}
           docker-tag: ${{ steps.versions.outputs.docker-tag }}
           image-build-command: ${{ steps.validate-tooling.outputs.IMAGE_BUILD_COMMAND }}
+          docker-platform: ${{ inputs.docker-platform }}
       - name: Pass check - Docker Retag
         if: success() && steps.check-docker-retag.outputs.check-run-id != ''
         continue-on-error: true
@@ -2065,6 +2103,7 @@ jobs:
         with:
           script-sub-path: ${{ inputs.hook-pre-package-prepare-script-sub-path }}
           image-build-command: ${{ steps.validate-tooling.outputs.IMAGE_BUILD_COMMAND }}
+          docker-platform: ${{ inputs.docker-platform }}
           # === Workflow Inputs ===
           # Build output
           output-sub-path: ${{ inputs.output-sub-path }}
@@ -2298,6 +2337,7 @@ jobs:
           docker-image-name: ${{ steps.versions.outputs.docker-image-name }}
           docker-tag: ${{ steps.versions.outputs.docker-tag }}-manifests
           version: ${{ steps.versions.outputs.version }}
+          project-name: ${{ steps.versions.outputs.project-name }}
           output-sub-path: ${{ inputs.output-sub-path }}
           docker-push-image-list-file: ${{ steps.docker-registry-logins.outputs.docker-push-image-list-file }}
           image-build-command: ${{ steps.validate-tooling.outputs.IMAGE_BUILD_COMMAND }}
@@ -2331,6 +2371,7 @@ jobs:
         with:
           script-sub-path: ${{ inputs.hook-post-package-tests-script-sub-path }}
           image-build-command: ${{ steps.validate-tooling.outputs.IMAGE_BUILD_COMMAND }}
+          docker-platform: ${{ inputs.docker-platform }}
           # === Workflow Inputs ===
           # Build output
           output-sub-path: ${{ inputs.output-sub-path }}
@@ -2517,6 +2558,7 @@ jobs:
           docker-target-registry: ${{ steps.resolve-registry.outputs.docker-target-registry }}
           docker-target-namespace: ${{ steps.resolve-registry.outputs.docker-target-namespace }}
           image-build-command: ${{ steps.validate-tooling.outputs.IMAGE_BUILD_COMMAND }}
+          docker-platform: ${{ inputs.docker-platform }}
       - name: Pass check - Docker Multi-Tag
         if: inputs.docker-push-targets != '' && steps.versions.outputs.is-release == 'true' && success() && steps.check-docker-multi-tag.outputs.check-run-id != ''
         continue-on-error: true
@@ -2682,6 +2724,7 @@ jobs:
           docker-push-image-list-file: ${{ steps.docker-registry-logins.outputs.docker-push-image-list-file }}
           is-release: ${{ steps.versions.outputs.is-release }}
           image-build-command: ${{ steps.validate-tooling.outputs.IMAGE_BUILD_COMMAND }}
+          docker-platform: ${{ inputs.docker-platform }}
       - name: Pass check - Docker Push All
         if: steps.versions.outputs.is-release == 'true' && success() && steps.check-docker-push-all.outputs.check-run-id != ''
         continue-on-error: true

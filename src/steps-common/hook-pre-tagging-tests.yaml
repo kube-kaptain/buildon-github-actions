@@ -8,6 +8,7 @@
   with:
     script-sub-path: ${{ inputs.hook-pre-tagging-tests-script-sub-path }}
     image-build-command: ${{ steps.validate-tooling.outputs.IMAGE_BUILD_COMMAND }}
+    docker-platform: ${{ inputs.docker-platform }}
     # === Workflow Inputs ===
     # Build output
     output-sub-path: ${{ inputs.output-sub-path }}

@@ -6,3 +6,4 @@
 #
 
 IMAGE_BUILD_COMMAND="${IMAGE_BUILD_COMMAND:?IMAGE_BUILD_COMMAND is required - run validate-tooling first}"
+DOCKER_PLATFORM="${DOCKER_PLATFORM:-linux/amd64}"

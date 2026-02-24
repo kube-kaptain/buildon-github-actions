@@ -41,6 +41,11 @@ inputs:
   image-build-command:
     description: 'Container runtime command (podman or docker)'
     required: true
+  # Target platform for docker/podman operations
+  docker-platform:
+    description: 'Target platform (linux/amd64, linux/arm64, or both comma-separated)'
+    required: false
+    default: 'linux/amd64'
 
 outputs:
   docker-source-image-full-uri:
@@ -75,4 +80,5 @@ runs:
         DOCKER_IMAGE_NAME: ${{ inputs.docker-image-name }}
         DOCKER_TAG: ${{ inputs.docker-tag }}
         IMAGE_BUILD_COMMAND: ${{ inputs.image-build-command }}
+        DOCKER_PLATFORM: ${{ inputs.docker-platform }}
       run: "${{ github.action_path }}/../../scripts/main/docker-build-retag"

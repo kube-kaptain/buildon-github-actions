@@ -1,0 +1,29 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
+
+name: 'Docker Platform Setup'
+description: 'Validates docker platform and installs QEMU on Linux CI'
+
+inputs:
+  # Target platform for docker/podman operations
+  docker-platform:
+    description: 'Target platform (linux/amd64, linux/arm64, or both comma-separated)'
+    required: false
+    default: 'linux/amd64'
+  # Container runtime
+  image-build-command:
+    description: 'Container runtime command (podman or docker)'
+    required: true
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Docker platform setup
+      id: docker-platform-setup
+      shell: bash
+      env:
+        LOG_ERROR_PREFIX: '::error::'
+        DOCKER_PLATFORM: ${{ inputs.docker-platform }}
+        IMAGE_BUILD_COMMAND: ${{ inputs.image-build-command }}
+        BUILD_MODE: build_server
+      run: "${{ github.action_path }}/../../scripts/main/docker-platform-setup"

@@ -1,0 +1,22 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
+
+name: 'Docker Platform Setup'
+description: 'Validates docker platform and installs QEMU on Linux CI'
+
+inputs:
+  # INJECT-INPUT: docker-platform
+  # INJECT-INPUT: image-build-command
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Docker platform setup
+      id: docker-platform-setup
+      shell: bash
+      env:
+        LOG_ERROR_PREFIX: '::error::'
+        DOCKER_PLATFORM: ${{ inputs.docker-platform }}
+        IMAGE_BUILD_COMMAND: ${{ inputs.image-build-command }}
+        BUILD_MODE: build_server
+      run: "${{ github.action_path }}/../../scripts/main/docker-platform-setup"

@@ -33,6 +33,7 @@ inputs:
     description: 'Whether this is a release build (from version generator)'
     required: true
   # INJECT-INPUT: image-build-command
+  # INJECT-INPUT: docker-platform
 
 outputs:
   docker-target-image-full-uri:
@@ -75,4 +76,5 @@ runs:
         CONFIG_SUB_PATH: ${{ inputs.config-sub-path }}
         ALLOW_BUILTIN_TOKEN_OVERRIDE: ${{ inputs.allow-builtin-token-override }}
         CONFIG_VALUE_TRAILING_NEWLINE: ${{ inputs.config-value-trailing-newline }}
+        DOCKER_PLATFORM: ${{ inputs.docker-platform }}
       run: "${{ github.action_path }}/../../scripts/main/docker-build-dockerfile"

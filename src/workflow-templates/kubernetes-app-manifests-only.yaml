@@ -22,6 +22,7 @@ on:
         default: ''
 
       # INJECT-INPUT: docker-build
+      # INJECT-INPUT: docker-platform
 
       # INJECT-INPUT: kubernetes-app-manifests
 
@@ -152,6 +153,11 @@ jobs:
       # INJECT: github-check-start(name="Docker Registry Logins", id="check-docker-registry-logins")
       # INJECT: docker-registry-logins
       # INJECT: github-check-end(name="Docker Registry Logins", id="check-docker-registry-logins")
+
+      # === Docker Platform Setup ===
+      # INJECT: github-check-start(name="Docker Platform Setup", id="check-docker-platform-setup")
+      # INJECT: docker-platform-setup
+      # INJECT: github-check-end(name="Docker Platform Setup", id="check-docker-platform-setup")
 
       # === Pre-tagging Tests ===
       # INJECT: github-check-start(name="Pre-tagging Tests", id="check-pre-tagging", if="inputs.hook-pre-tagging-tests-script-sub-path != ''")

@@ -22,6 +22,7 @@ inputs:
     description: 'Tag for target image (from version generator docker-tag)'
     required: true
   # INJECT-INPUT: image-build-command
+  # INJECT-INPUT: docker-platform
 
 outputs:
   docker-source-image-full-uri:
@@ -56,4 +57,5 @@ runs:
         DOCKER_IMAGE_NAME: ${{ inputs.docker-image-name }}
         DOCKER_TAG: ${{ inputs.docker-tag }}
         IMAGE_BUILD_COMMAND: ${{ inputs.image-build-command }}
+        DOCKER_PLATFORM: ${{ inputs.docker-platform }}
       run: "${{ github.action_path }}/../../scripts/main/docker-build-retag"

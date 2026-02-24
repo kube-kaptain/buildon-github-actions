@@ -1,0 +1,9 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
+
+- name: Docker platform setup
+  id: docker-platform-setup
+  uses: ./.github/buildon-github-actions/src/actions/docker-platform-setup
+  with:
+    docker-platform: ${{ inputs.docker-platform }}
+    image-build-command: ${{ steps.validate-tooling.outputs.IMAGE_BUILD_COMMAND }}

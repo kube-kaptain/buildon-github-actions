@@ -60,6 +60,14 @@ inputs:
     description: 'Disable layer caching for reproducible builds'
     required: false
     default: 'true'
+  dockerfile-sub-path-linux-amd64:
+    description: 'Per-platform Dockerfile directory for linux/amd64 multi-platform builds'
+    required: false
+    default: 'src/docker-linux-amd64'
+  dockerfile-sub-path-linux-arm64:
+    description: 'Per-platform Dockerfile directory for linux/arm64 multi-platform builds'
+    required: false
+    default: 'src/docker-linux-arm64'
   # Manifests source
   manifests-sub-path:
     description: 'Directory containing Kubernetes manifests (relative)'
@@ -873,6 +881,11 @@ inputs:
     description: 'Add version suffix to release filenames (e.g., file.yaml -> file-1.2.3.yaml)'
     required: false
     default: 'true'
+  # Target platform for docker/podman operations
+  docker-platform:
+    description: 'Target platform (linux/amd64, linux/arm64, or both comma-separated)'
+    required: false
+    default: 'linux/amd64'
 
   # === Step Outputs ===
   # Version outputs (from versions-and-naming)
@@ -953,15 +966,17 @@ runs:
         DOCKER_REGISTRY_LOGINS: ${{ inputs.docker-registry-logins }}
         # Workflow inputs - docker build options
         DOCKERFILE_SUB_PATH: ${{ inputs.dockerfile-sub-path }}
+        DOCKERFILE_SUB_PATH_LINUX_AMD64: ${{ inputs.dockerfile-sub-path-linux-amd64 }}
+        DOCKERFILE_SUB_PATH_LINUX_ARM64: ${{ inputs.dockerfile-sub-path-linux-arm64 }}
         DOCKERFILE_SQUASH: ${{ inputs.dockerfile-squash }}
         DOCKERFILE_NO_CACHE: ${{ inputs.dockerfile-no-cache }}
+        DOCKER_PLATFORM: ${{ inputs.docker-platform }}
         # Workflow inputs - docker target config
         DOCKER_TARGET_REGISTRY: ${{ inputs.docker-target-registry }}
         DOCKER_TARGET_NAMESPACE: ${{ inputs.docker-target-namespace }}
         # Workflow inputs - docker push targets
         DOCKER_PUSH_TARGETS: ${{ inputs.docker-push-targets }}
-        # Workflow inputs - docker context and source (for multi-stage/source images)
-        DOCKER_CONTEXT_SUB_PATH: ${{ inputs.docker-context-sub-path }}
+        # Workflow inputs - docker source (for multi-stage/source images)
         DOCKER_SOURCE_REGISTRY: ${{ inputs.docker-source-registry }}
         DOCKER_SOURCE_NAMESPACE: ${{ inputs.docker-source-namespace }}
         DOCKER_SOURCE_IMAGE_NAME: ${{ inputs.docker-source-image-name }}

@@ -87,6 +87,7 @@ See [`examples/`](examples/) for more usage patterns.
 | `docker-build-dockerfile` | Builds a Docker image from a Dockerfile with token substitution (build only, push handled by docker-push-all) |
 | `docker-build-retag` | Pulls and retags Docker images (no push) |
 | `docker-multi-tag` | Discovers and tags all matching images for additional registries |
+| `docker-platform-setup` | Validates docker platform and installs QEMU on Linux CI |
 | `docker-push-all` | Pushes all Docker images registered during build/tag steps |
 | `docker-registry-logins` | Authenticate to container registries (GHCR by default, configure others as needed) |
 | `generate-kubernetes-configmap` | Generates a Kubernetes ConfigMap manifest from files in a directory |
@@ -131,6 +132,7 @@ See [`examples/`](examples/) for more usage patterns.
 | `config-value-trailing-newline` | string | `strip-for-single-line` | How to handle trailing newlines in config values (strip-for-single-line, preserve-all, always-strip-one-newline) |
 | `docker-image-name-override` | string | `""` | Docker image name (if provided, substitutes into manifests; if empty, token remains for later substitution) |
 | `docker-image-tag-override` | string | `""` | Docker image tag (if provided, substitutes into manifests; if empty, token remains for later substitution) |
+| `docker-platform` | string | `linux/amd64` | Target platform (linux/amd64, linux/arm64, or both comma-separated) |
 | `docker-push-targets` | string | `""` | JSON array of additional push targets [{registry, namespace?}] |
 | `docker-registry-logins` | string | `""` | YAML config for Docker registry logins (registry URL as key) |
 | `docker-source-image-name` | string | *required* | Upstream image name (e.g., nginx) |
@@ -142,6 +144,8 @@ See [`examples/`](examples/) for more usage patterns.
 | `dockerfile-no-cache` | boolean | `true` | Disable layer caching for reproducible builds |
 | `dockerfile-squash` | string | `squash` | Squash mode: squash, squash-all, or no |
 | `dockerfile-sub-path` | string | `src/docker` | Directory containing Dockerfile, relative to repo root. |
+| `dockerfile-sub-path-linux-amd64` | string | `src/docker-linux-amd64` | Per-platform Dockerfile directory for linux/amd64 multi-platform builds |
+| `dockerfile-sub-path-linux-arm64` | string | `src/docker-linux-arm64` | Per-platform Dockerfile directory for linux/arm64 multi-platform builds |
 | `dockerfile-substitution-files` | string | `Dockerfile` | Comma-separated list of files to perform token substitution on (relative to dockerfile-sub-path and docker-context-sub-path) |
 | `github-release-add-version-to-filenames` | boolean | `true` | Add version suffix to release filenames (e.g., file.yaml -> file-1.2.3.yaml) |
 | `github-release-enabled` | boolean | `true` | Create a GitHub release on version tags |

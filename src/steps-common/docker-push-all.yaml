@@ -9,3 +9,4 @@
     docker-push-image-list-file: ${{ steps.docker-registry-logins.outputs.docker-push-image-list-file }}
     is-release: ${{ steps.versions.outputs.is-release }}
     image-build-command: ${{ steps.validate-tooling.outputs.IMAGE_BUILD_COMMAND }}
+    docker-platform: ${{ inputs.docker-platform }}
