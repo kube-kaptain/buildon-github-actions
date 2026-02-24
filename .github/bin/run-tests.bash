@@ -346,6 +346,26 @@ check_example_versions() {
   log_info "All examples reference @${expected}"
 }
 
+# Check that examples weren't modified by regeneration (source is git tags, not template files)
+check_example_freshness() {
+  log_info "Checking example files are fresh"
+
+  local modified_examples
+  modified_examples=$(git -C "${PROJECT_ROOT}" diff --name-only examples/ 2>/dev/null || true)
+
+  if [[ -z "${modified_examples}" ]]; then
+    log_info "Example files are fresh"
+    return 0
+  fi
+
+  log_error "Example files were modified by regeneration (version tags are stale):"
+  echo "${modified_examples}" | while IFS= read -r file; do
+    [[ -n "${file}" ]] && log_error "  - ${file}"
+  done
+  log_error "Run src/bin/assemble-workflows.bash and commit the updated examples"
+  exit 1
+}
+
 main() {
   log_info "Starting test suite"
   log_info "Project root: ${PROJECT_ROOT}"
@@ -377,11 +397,14 @@ main() {
     exit 1
   fi
 
-  # Check generated files are up to date (last-ish, so real tests run first)
+  # Check examples reference the next version (before regeneration which would fix them)
+  check_example_versions
+
+  # Check generated files are up to date (regenerates working tree)
   check_generated_files
 
-  # Check examples reference the next version (last - useful to get a full run before this fails)
-  check_example_versions
+  # Check examples are fresh (after regeneration — source is git tags, not template files)
+  check_example_freshness
 
   log_info "All tests passed!"
 }
