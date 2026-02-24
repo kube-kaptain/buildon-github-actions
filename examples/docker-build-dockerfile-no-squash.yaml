@@ -26,7 +26,7 @@ jobs:
       packages: write
       checks: write
     with:
-      dockerfile-squash: false
+      dockerfile-squash: 'no'
 
 # ┌───────────────────────────────────────────────────────────────────────────┐
 # │ All Available Options                                                     │
@@ -38,7 +38,7 @@ jobs:
 # └─────────────────────────────────────────────────────────────────────────┘
 #     with:
 #       dockerfile-sub-path: 'docker'  # 'build', '.'
-#       dockerfile-squash: false  # true
+#       dockerfile-squash: 'no'  # 'squash' (default), 'squash-all', 'no'
 #       dockerfile-no-cache: false  # true
 
 # ┌─────────────────────────────────────────────────────────────────────────┐

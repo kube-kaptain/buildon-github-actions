@@ -40,7 +40,7 @@ jobs:
 # └─────────────────────────────────────────────────────────────────────────┘
 #     with:
 #       dockerfile-sub-path: 'docker'  # 'build', '.'
-#       dockerfile-squash: false  # true
+#       dockerfile-squash: 'no'  # 'squash' (default), 'squash-all', 'no'
 #       dockerfile-no-cache: false  # true
 
 # ┌─────────────────────────────────────────────────────────────────────────┐
