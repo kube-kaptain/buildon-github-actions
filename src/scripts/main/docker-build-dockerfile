@@ -102,6 +102,7 @@ build_for_platform() {
   local context_dir="$3"
   local config_dir="$4"
   local image_uri="$5"
+  local platform_cpu_architecture="${platform##*/}"
 
   # Copy source directory to build context (if it exists)
   mkdir -p "${context_dir}"
@@ -163,6 +164,8 @@ build_for_platform() {
   DOCKER_IMAGE_FULL_URI="${image_uri}" \
   TARGET_REGISTRY="${TARGET_REGISTRY}" \
   TARGET_NAMESPACE="${TARGET_NAMESPACE}" \
+  DOCKER_PLATFORM="${platform}" \
+  DOCKER_PLATFORM_CPU_ARCHITECTURE="${platform_cpu_architecture}" \
   "${SCRIPT_DIR}/../util/prepare-substitution-tokens"
 
   # Perform variable substitution on specific files only
@@ -193,6 +196,8 @@ build_for_platform() {
   # Add standard build args (Dockerfile can use or ignore)
   cmd+=(--build-arg "VERSION=${VERSION}")
   cmd+=(--build-arg "PROJECT_NAME=${PROJECT_NAME}")
+  cmd+=(--build-arg "DOCKER_PLATFORM=${platform}")
+  cmd+=(--build-arg "DOCKER_PLATFORM_CPU_ARCHITECTURE=${platform_cpu_architecture}")
 
   # Add standard labels (injected at build time, no Dockerfile changes needed)
   local build_datetime

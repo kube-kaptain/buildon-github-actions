@@ -79,6 +79,8 @@ set_required_env() {
   run "$SCRIPTS_DIR/docker-build-dockerfile"
   [ "$status" -eq 0 ]
   assert_docker_called "--platform linux/arm64"
+  assert_docker_called "--build-arg DOCKER_PLATFORM=linux/arm64"
+  assert_docker_called "--build-arg DOCKER_PLATFORM_CPU_ARCHITECTURE=arm64"
 }
 
 @test "does not push (build only)" {
@@ -137,6 +139,8 @@ set_required_env() {
   [ "$status" -eq 0 ]
   assert_docker_called "--build-arg VERSION=1.0.0"
   assert_docker_called "--build-arg PROJECT_NAME=my-repo"
+  assert_docker_called "--build-arg DOCKER_PLATFORM=linux/amd64"
+  assert_docker_called "--build-arg DOCKER_PLATFORM_CPU_ARCHITECTURE=amd64"
 }
 
 @test "adds standard labels automatically" {
@@ -359,8 +363,12 @@ set_required_env() {
   [ "$status" -eq 0 ]
   assert_docker_called "build --platform linux/amd64"
   assert_docker_called "-t ghcr.io/test/my-repo:1.0.0-linux-amd64"
+  assert_docker_called "--build-arg DOCKER_PLATFORM=linux/amd64"
+  assert_docker_called "--build-arg DOCKER_PLATFORM_CPU_ARCHITECTURE=amd64"
   assert_docker_called "build --platform linux/arm64"
   assert_docker_called "-t ghcr.io/test/my-repo:1.0.0-linux-arm64"
+  assert_docker_called "--build-arg DOCKER_PLATFORM=linux/arm64"
+  assert_docker_called "--build-arg DOCKER_PLATFORM_CPU_ARCHITECTURE=arm64"
 }
 
 @test "multi-platform registers arch URIs in image-uris" {

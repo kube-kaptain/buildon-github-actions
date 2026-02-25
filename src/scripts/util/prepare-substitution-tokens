@@ -97,6 +97,14 @@ main() {
     write_builtin_token "TARGET_NAMESPACE" "${TARGET_NAMESPACE}"
   fi
 
+  # Optional platform tokens (available when called from docker-build-dockerfile)
+  if [[ -n "${DOCKER_PLATFORM:-}" ]]; then
+    write_builtin_token "DOCKER_PLATFORM" "${DOCKER_PLATFORM}"
+  fi
+  if [[ -n "${DOCKER_PLATFORM_CPU_ARCHITECTURE:-}" ]]; then
+    write_builtin_token "DOCKER_PLATFORM_CPU_ARCHITECTURE" "${DOCKER_PLATFORM_CPU_ARCHITECTURE}"
+  fi
+
   # Optional manifest packaging tokens (not available in docker-build-dockerfile)
   if [[ -n "${MANIFESTS_ZIP_FILE_NAME:-}" ]]; then
     write_builtin_token "MANIFESTS_ZIP_FILE_NAME" "${MANIFESTS_ZIP_FILE_NAME}"
