@@ -95,6 +95,4 @@ runs:
         OUTPUT_SUB_PATH: ${{ inputs.output-sub-path }}
         LOG_ERROR_PREFIX: '::error::'
         LOG_ERROR_SUFFIX: ''
-        LOG_GROUP_START: '::group::'
         IMAGE_BUILD_COMMAND: ${{ inputs.image-build-command }}
-        LOG_GROUP_END: ''

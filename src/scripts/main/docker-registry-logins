@@ -36,8 +36,6 @@ source "${SCRIPT_DIR}/../lib/output-var.bash"
 # Logging configuration (CI-agnostic)
 LOG_ERROR_PREFIX="${LOG_ERROR_PREFIX:-}"
 LOG_ERROR_SUFFIX="${LOG_ERROR_SUFFIX:-}"
-LOG_GROUP_START="${LOG_GROUP_START:-}"
-LOG_GROUP_END="${LOG_GROUP_END:-}"
 
 # Config from inline YAML - required
 if [[ -z "${CONFIG:-}" ]]; then
@@ -163,7 +161,7 @@ route_login() {
     return 1
   fi
 
-  echo "${LOG_GROUP_START}Login: ${registry} (${login_type})${LOG_GROUP_END}" >&2
+  echo "Login: ${registry} (${login_type})" >&2
 
   case "${login_type}" in
     username-password)
