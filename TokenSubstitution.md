@@ -91,7 +91,7 @@ Optional (when provided):
 | `DOCKER_IMAGE_NAME` | Input |
 | `DOCKER_IMAGE_FULL_URI` | Input (docker workflows) |
 | `TARGET_REGISTRY` | Input |
-| `TARGET_BASE_PATH` | Input |
+| `TARGET_NAMESPACE` | Input |
 
 Built-in token names are converted to match `token-name-style` (e.g., `PROJECT_NAME` becomes `ProjectName` with PascalCase).
 
