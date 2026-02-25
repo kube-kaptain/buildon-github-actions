@@ -35,6 +35,8 @@ set_required_env() {
   export DOCKERFILE_SQUASH="no"
   export IMAGE_BUILD_COMMAND="docker"
   export IS_RELEASE="true"
+  export REPOSITORY_OWNER="kube-kaptain"
+  export REPOSITORY_NAME="my-repo"
 }
 
 @test "assembles target URI without namespace" {
@@ -52,6 +54,7 @@ set_required_env() {
   run "$SCRIPTS_DIR/docker-build-dockerfile"
   [ "$status" -eq 0 ]
   assert_var_equals "DOCKER_TARGET_IMAGE_FULL_URI" "ghcr.io/kube-kaptain/test/my-repo:1.0.0"
+  assert_docker_called "--build-arg DOCKER_NAMESPACE=kube-kaptain"
 }
 
 @test "calls docker build with correct args" {
@@ -139,8 +142,14 @@ set_required_env() {
   [ "$status" -eq 0 ]
   assert_docker_called "--build-arg VERSION=1.0.0"
   assert_docker_called "--build-arg PROJECT_NAME=my-repo"
+  assert_docker_called "--build-arg DOCKER_TAG=1.0.0"
+  assert_docker_called "--build-arg DOCKER_IMAGE_NAME=test/my-repo"
+  assert_docker_called "--build-arg DOCKER_REGISTRY=ghcr.io"
+  assert_docker_called "--build-arg DOCKER_NAMESPACE="
   assert_docker_called "--build-arg DOCKER_PLATFORM=linux/amd64"
   assert_docker_called "--build-arg DOCKER_PLATFORM_CPU_ARCHITECTURE=amd64"
+  assert_docker_called "--build-arg REPOSITORY_OWNER=kube-kaptain"
+  assert_docker_called "--build-arg REPOSITORY_NAME=my-repo"
 }
 
 @test "adds standard labels automatically" {

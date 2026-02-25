@@ -105,6 +105,14 @@ main() {
     write_builtin_token "DOCKER_PLATFORM_CPU_ARCHITECTURE" "${DOCKER_PLATFORM_CPU_ARCHITECTURE}"
   fi
 
+  # Repository metadata tokens (from versions-and-naming)
+  if [[ -n "${REPOSITORY_OWNER:-}" ]]; then
+    write_builtin_token "REPOSITORY_OWNER" "${REPOSITORY_OWNER}"
+  fi
+  if [[ -n "${REPOSITORY_NAME:-}" ]]; then
+    write_builtin_token "REPOSITORY_NAME" "${REPOSITORY_NAME}"
+  fi
+
   # Optional manifest packaging tokens (not available in docker-build-dockerfile)
   if [[ -n "${MANIFESTS_ZIP_FILE_NAME:-}" ]]; then
     write_builtin_token "MANIFESTS_ZIP_FILE_NAME" "${MANIFESTS_ZIP_FILE_NAME}"

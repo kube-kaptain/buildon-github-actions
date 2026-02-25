@@ -87,6 +87,12 @@ inputs:
   is-release:
     description: 'Whether this is a release build (from version generator)'
     required: true
+  repository-owner:
+    description: 'Repository owner (from version generator)'
+    required: true
+  repository-name:
+    description: 'Repository name (from version generator)'
+    required: true
   # Container runtime
   image-build-command:
     description: 'Container runtime command (podman or docker)'
@@ -124,6 +130,8 @@ runs:
         VERSION: ${{ inputs.version }}
         PROJECT_NAME: ${{ inputs.project-name }}
         IS_RELEASE: ${{ inputs.is-release }}
+        REPOSITORY_OWNER: ${{ inputs.repository-owner }}
+        REPOSITORY_NAME: ${{ inputs.repository-name }}
         DOCKERFILE_SUB_PATH: ${{ inputs.dockerfile-sub-path }}
         DOCKERFILE_SUBSTITUTION_FILES: ${{ inputs.dockerfile-substitution-files }}
         OUTPUT_SUB_PATH: ${{ inputs.output-sub-path }}

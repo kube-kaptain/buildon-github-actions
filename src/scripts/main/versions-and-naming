@@ -216,6 +216,7 @@ main() {
   output_var "IS_RELEASE" "${is_release}"
   output_var "PROJECT_NAME" "${project_name}"
   output_var "REPOSITORY_OWNER" "${REPOSITORY_OWNER}"
+  output_var "REPOSITORY_NAME" "${REPOSITORY_NAME}"
 }
 
 main "$@"

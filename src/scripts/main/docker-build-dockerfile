@@ -21,6 +21,8 @@
 #   DOCKER_TAG               - Tag for the image (from version generator)
 #   VERSION             - Version number (from version generator, passed as build arg)
 #   PROJECT_NAME        - Project name (from version generator, passed as build arg)
+#   REPOSITORY_OWNER    - Repository owner (from version generator, passed as build arg)
+#   REPOSITORY_NAME     - Repository name (from version generator, passed as build arg)
 # User set inputs (validate):
 #   DOCKER_TARGET_REGISTRY   - Container registry (e.g., ghcr.io)
 #   DOCKER_TARGET_NAMESPACE   - Namespace between registry and image name (optional)
@@ -82,6 +84,8 @@ source "${SCRIPT_DIR}/../lib/docker-build-shared.bash"
 # Required inputs (DOCKER_TAG validated in shared script)
 VERSION="${VERSION:?VERSION is required}"
 PROJECT_NAME="${PROJECT_NAME:?PROJECT_NAME is required}"
+REPOSITORY_OWNER="${REPOSITORY_OWNER:?REPOSITORY_OWNER is required}"
+REPOSITORY_NAME="${REPOSITORY_NAME:?REPOSITORY_NAME is required}"
 
 # Build output structure (sub-paths, relative to working directory)
 DOCKER_CONFIG_SUB_PATH="${OUTPUT_SUB_PATH}/docker/config"
@@ -166,6 +170,8 @@ build_for_platform() {
   TARGET_NAMESPACE="${TARGET_NAMESPACE}" \
   DOCKER_PLATFORM="${platform}" \
   DOCKER_PLATFORM_CPU_ARCHITECTURE="${platform_cpu_architecture}" \
+  REPOSITORY_OWNER="${REPOSITORY_OWNER}" \
+  REPOSITORY_NAME="${REPOSITORY_NAME}" \
   "${SCRIPT_DIR}/../util/prepare-substitution-tokens"
 
   # Perform variable substitution on specific files only
@@ -196,8 +202,14 @@ build_for_platform() {
   # Add standard build args (Dockerfile can use or ignore)
   cmd+=(--build-arg "VERSION=${VERSION}")
   cmd+=(--build-arg "PROJECT_NAME=${PROJECT_NAME}")
+  cmd+=(--build-arg "DOCKER_TAG=${DOCKER_TAG}")
+  cmd+=(--build-arg "DOCKER_IMAGE_NAME=${DOCKER_IMAGE_NAME}")
+  cmd+=(--build-arg "DOCKER_REGISTRY=${TARGET_REGISTRY}")
+  cmd+=(--build-arg "DOCKER_NAMESPACE=${TARGET_NAMESPACE}")
   cmd+=(--build-arg "DOCKER_PLATFORM=${platform}")
   cmd+=(--build-arg "DOCKER_PLATFORM_CPU_ARCHITECTURE=${platform_cpu_architecture}")
+  cmd+=(--build-arg "REPOSITORY_OWNER=${REPOSITORY_OWNER}")
+  cmd+=(--build-arg "REPOSITORY_NAME=${REPOSITORY_NAME}")
 
   # Add standard labels (injected at build time, no Dockerfile changes needed)
   local build_datetime
