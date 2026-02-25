@@ -53,15 +53,11 @@ set -euo pipefail
 # Locate script directory for calling sibling scripts
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-# Logging configuration (CI-agnostic)
-LOG_ERROR_PREFIX="${LOG_ERROR_PREFIX:-}"
-LOG_ERROR_SUFFIX="${LOG_ERROR_SUFFIX:-}"
-LOG_WARNING_PREFIX="${LOG_WARNING_PREFIX:-}"
-LOG_WARNING_SUFFIX="${LOG_WARNING_SUFFIX:-}"
-
 # Apply defaults for inputs used directly in this script
 # shellcheck source=src/scripts/defaults/output-sub-path.bash
 source "${SCRIPT_DIR}/../defaults/output-sub-path.bash"
+# shellcheck source=src/scripts/defaults/platform.bash
+source "${SCRIPT_DIR}/../defaults/platform.bash"
 # shellcheck source=src/scripts/defaults/build-mode.bash
 source "${SCRIPT_DIR}/../defaults/build-mode.bash"
 # shellcheck source=src/scripts/defaults/docker-common.bash
@@ -76,6 +72,8 @@ source "${SCRIPT_DIR}/../defaults/docker-push-image-list.bash"
 source "${SCRIPT_DIR}/../defaults/tokens.bash"
 # shellcheck source=src/scripts/lib/output-var.bash
 source "${SCRIPT_DIR}/../lib/output-var.bash"
+# shellcheck source=src/scripts/lib/log.bash
+source "${SCRIPT_DIR}/../lib/log.bash"
 
 # === Shared target validation, URI assembly, and utilities ===
 # shellcheck source=src/scripts/lib/docker-build-shared.bash
@@ -111,7 +109,7 @@ build_for_platform() {
   # Copy source directory to build context (if it exists)
   mkdir -p "${context_dir}"
   if [[ ! -d "${source_dir}" ]]; then
-    echo "${LOG_WARNING_PREFIX}Dockerfile directory not found: ${source_dir} (final context dir may be populated by hook)${LOG_WARNING_SUFFIX}" >&2
+    log_warning "Dockerfile directory not found: ${source_dir} (final context dir may be populated by hook)"
   else
     # Validate Dockerfile case in source (case-sensitive check for case-insensitive filesystems)
     local wrong_case=""
@@ -124,37 +122,37 @@ build_for_platform() {
       fi
     done
     if [[ -n "${wrong_case}" ]]; then
-      echo "${LOG_ERROR_PREFIX}Dockerfile has wrong case: found '${wrong_case}' but must be exactly 'Dockerfile'${LOG_ERROR_SUFFIX}" >&2
+      log_error "Dockerfile has wrong case: found '${wrong_case}' but must be exactly 'Dockerfile'"
       exit 1
     fi
 
-    echo "" >&2
-    echo "Copying docker directory for substitution..." >&2
+    log ""
+    log "Copying docker directory for substitution..."
     local file_count
     file_count=$(find "${source_dir}" -type f | wc -l | tr -d ' ')
     if [[ "${file_count}" -gt 0 ]]; then
       cp -R "${source_dir}/." "${context_dir}/"
-      echo "Copied ${file_count} file(s) to ${context_dir}" >&2
+      log "Copied ${file_count} file(s) to ${context_dir}"
     else
-      echo "${LOG_WARNING_PREFIX}No files in ${source_dir} (final context dir may be populated by hook)${LOG_WARNING_SUFFIX}" >&2
+      log_warning "No files in ${source_dir} (final context dir may be populated by hook)"
     fi
   fi
 
   # Confirm target doesn't exist before building (fail fast)
   if ${IMAGE_BUILD_COMMAND} manifest inspect "${image_uri}" &>/dev/null; then
-    echo "${LOG_ERROR_PREFIX}Target image already exists in registry: ${image_uri}${LOG_ERROR_SUFFIX}" >&2
+    log_error "Target image already exists in registry: ${image_uri}"
     exit 1
   fi
-  echo "Confirmed target image does not exist in registry: ${image_uri}" >&2
+  log "Confirmed target image does not exist in registry: ${image_uri}"
 
   # Fail if no Dockerfile in context dir (neither from source nor from hook)
   if [[ ! -f "${context_dir}/Dockerfile" ]]; then
-    echo "${LOG_ERROR_PREFIX}Dockerfile not found in build context: ${context_dir} (not in ${source_dir} and not provided by hook)${LOG_ERROR_SUFFIX}" >&2
+    log_error "Dockerfile not found in build context: ${context_dir} (not in ${source_dir} and not provided by hook)"
     exit 1
   fi
 
   # Prepare substitution tokens (built-ins + user config)
-  echo "" >&2
+  log ""
   TOKENS_OUTPUT_SUB_PATH="${config_dir}" \
   CONFIG_SUB_PATH="${CONFIG_SUB_PATH}" \
   TOKEN_NAME_STYLE="${TOKEN_NAME_STYLE}" \
@@ -175,9 +173,9 @@ build_for_platform() {
   "${SCRIPT_DIR}/../util/prepare-substitution-tokens"
 
   # Perform variable substitution on specific files only
-  echo "" >&2
+  log ""
   if [[ -n "${DOCKERFILE_SUBSTITUTION_FILES}" ]]; then
-    echo "Performing variable substitution on: ${DOCKERFILE_SUBSTITUTION_FILES}" >&2
+    log "Performing variable substitution on: ${DOCKERFILE_SUBSTITUTION_FILES}"
     IFS=',' read -ra sub_files <<< "${DOCKERFILE_SUBSTITUTION_FILES}"
     for sub_file in "${sub_files[@]}"; do
       local target_file="${context_dir}/${sub_file}"
@@ -188,11 +186,11 @@ build_for_platform() {
           "${config_dir}" \
           "${target_file}"
       else
-        echo "${LOG_WARNING_PREFIX}Substitution target not found, skipping: ${sub_file}${LOG_WARNING_SUFFIX}" >&2
+        log_warning "Substitution target not found, skipping: ${sub_file}"
       fi
     done
   else
-    echo "No substitution files specified, skipping token substitution" >&2
+    log "No substitution files specified, skipping token substitution"
   fi
 
   # Build from substituted directory
@@ -231,8 +229,8 @@ build_for_platform() {
   # Add context
   cmd+=("${context_dir}")
 
-  echo "" >&2
-  echo "Building: ${cmd[*]}" >&2
+  log ""
+  log "Building: ${cmd[*]}"
 
   # Capture build output for post-build validation
   local platform_suffix="${platform//\//-}"
@@ -241,27 +239,27 @@ build_for_platform() {
   "${cmd[@]}" 2>&1 | tee "${BUILD_OUTPUT}" || BUILD_EXIT=${PIPESTATUS[0]}
 
   if [[ ${BUILD_EXIT} -ne 0 ]]; then
-    echo "${LOG_ERROR_PREFIX}Docker build failed for ${platform} (exit ${BUILD_EXIT})${LOG_ERROR_SUFFIX}" >&2
+    log_error "Docker build failed for ${platform} (exit ${BUILD_EXIT})"
     exit "${BUILD_EXIT}"
   fi
 }
 
 main() {
-  echo "=== Docker Build Dockerfile ===" >&2
-  echo "Target: ${TARGET_IMAGE_FULL_URI}" >&2
-  echo "Platform: ${DOCKER_PLATFORM}" >&2
-  echo "Dockerfile sub-path: ${DOCKERFILE_SUB_PATH}" >&2
-  echo "Output sub-path: ${OUTPUT_SUB_PATH}" >&2
-  echo "Squash: ${DOCKERFILE_SQUASH}" >&2
-  echo "Token style: ${TOKEN_DELIMITER_STYLE}" >&2
-  echo "Name style: ${TOKEN_NAME_STYLE}" >&2
-  echo "===============================" >&2
+  log "=== Docker Build Dockerfile ==="
+  log "Target: ${TARGET_IMAGE_FULL_URI}"
+  log "Platform: ${DOCKER_PLATFORM}"
+  log "Dockerfile sub-path: ${DOCKERFILE_SUB_PATH}"
+  log "Output sub-path: ${OUTPUT_SUB_PATH}"
+  log "Squash: ${DOCKERFILE_SQUASH}"
+  log "Token style: ${TOKEN_DELIMITER_STYLE}"
+  log "Name style: ${TOKEN_NAME_STYLE}"
+  log "==============================="
 
   # Validate squash value
   case "${DOCKERFILE_SQUASH}" in
     squash|squash-all|no) ;;
     *)
-      echo "${LOG_ERROR_PREFIX}Invalid DOCKERFILE_SQUASH value '${DOCKERFILE_SQUASH}' - must be: squash, squash-all, or no${LOG_ERROR_SUFFIX}" >&2
+      log_error "Invalid DOCKERFILE_SQUASH value '${DOCKERFILE_SQUASH}' - must be: squash, squash-all, or no"
       exit 1
       ;;
   esac
@@ -270,10 +268,10 @@ main() {
   if [[ "${DOCKERFILE_SQUASH}" != "no" ]]; then
     if [[ "${IMAGE_BUILD_COMMAND}" == "docker" ]]; then
       if [[ "${BUILD_MODE}" == "build_server" ]]; then
-        echo "${LOG_ERROR_PREFIX}Squash requested but docker 29+ does not support it - podman is required on build server${LOG_ERROR_SUFFIX}" >&2
+        log_error "Squash requested but docker 29+ does not support it - podman is required on build server"
         exit 1
       else
-        echo "${LOG_WARNING_PREFIX}Squash requested but docker 29+ does not support it - forcing no squash${LOG_WARNING_SUFFIX}" >&2
+        log_warning "Squash requested but docker 29+ does not support it - forcing no squash"
         DOCKERFILE_SQUASH="no"
       fi
     fi
@@ -301,15 +299,15 @@ main() {
           config_dir="${OUTPUT_SUB_PATH}/docker-linux-arm64/config"
           ;;
         *)
-          echo "${LOG_ERROR_PREFIX}Unsupported platform in multi-platform build: ${platform}${LOG_ERROR_SUFFIX}" >&2
+          log_error "Unsupported platform in multi-platform build: ${platform}"
           exit 1
           ;;
       esac
 
       arch_uri="${TARGET_IMAGE_FULL_URI}-${platform_suffix}"
 
-      echo "" >&2
-      echo "--- Building for ${platform} (${arch_uri}) ---" >&2
+      log ""
+      log "--- Building for ${platform} (${arch_uri}) ---"
       build_for_platform "${platform}" "${source_dir}" "${context_dir}" "${config_dir}" "${arch_uri}"
 
       # Register arch-specific image for consolidated push
@@ -330,8 +328,8 @@ main() {
     echo "${TARGET_IMAGE_FULL_URI}" >> "${DOCKER_PUSH_IMAGE_LIST_FILE}"
   fi
 
-  echo "" >&2
-  echo "Docker Build Dockerfile complete" >&2
+  log ""
+  log "Docker Build Dockerfile complete"
 }
 
 main "$@"

@@ -23,14 +23,14 @@ SCRIPT_DIR="$(cd "$(dirname "${0}")" && pwd)"
 # shellcheck disable=SC1091 # path not resolvable at static analysis time
 # shellcheck source=../../lib/tag-version-calculation.bash
 source "${SCRIPT_DIR}/../../lib/tag-version-calculation.bash"
-
-# Logging configuration (CI-agnostic)
-LOG_ERROR_PREFIX="${LOG_ERROR_PREFIX:-}"
-LOG_ERROR_SUFFIX="${LOG_ERROR_SUFFIX:-}"
+# shellcheck source=src/scripts/defaults/platform.bash
+source "${SCRIPT_DIR}/../../defaults/platform.bash"
+# shellcheck source=src/scripts/lib/log.bash
+source "${SCRIPT_DIR}/../../lib/log.bash"
 
 # Required inputs
 if [[ -z "${TAG_VERSION_MAX_PARTS:-}" ]]; then
-  echo "${LOG_ERROR_PREFIX}TAG_VERSION_MAX_PARTS is required${LOG_ERROR_SUFFIX}" >&2
+  log_error "TAG_VERSION_MAX_PARTS is required"
   exit 1
 fi
 
@@ -112,7 +112,7 @@ main() {
   local part_count
   part_count=$(count_version_parts "${version}")
   if [[ ${part_count} -gt ${TAG_VERSION_MAX_PARTS} ]]; then
-    echo "${LOG_ERROR_PREFIX}Version '${version}' has ${part_count} parts, exceeds TAG_VERSION_MAX_PARTS=${TAG_VERSION_MAX_PARTS}${LOG_ERROR_SUFFIX}" >&2
+    log_error "Version '${version}' has ${part_count} parts, exceeds TAG_VERSION_MAX_PARTS=${TAG_VERSION_MAX_PARTS}"
     exit 1
   fi
 

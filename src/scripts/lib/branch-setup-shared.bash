@@ -8,30 +8,24 @@
 #
 # shellcheck disable=SC2154 # RELEASE_BRANCH, DEFAULT_BRANCH set by defaults before sourcing
 
-# Logging configuration (CI-agnostic)
-LOG_ERROR_PREFIX="${LOG_ERROR_PREFIX:-}"
-LOG_ERROR_SUFFIX="${LOG_ERROR_SUFFIX:-}"
-LOG_WARNING_PREFIX="${LOG_WARNING_PREFIX:-}"
-LOG_WARNING_SUFFIX="${LOG_WARNING_SUFFIX:-}"
-
 # Current branch validation
 if [[ -z "${CURRENT_BRANCH}" ]]; then
-  echo "${LOG_ERROR_PREFIX}CURRENT_BRANCH is required${LOG_ERROR_SUFFIX}" >&2
+  log_error "CURRENT_BRANCH is required"
   exit 1
 fi
 
 # Warn if RELEASE_BRANCH was not provided (defaulted to main)
 if [[ -z "${RELEASE_BRANCH_INPUT}" ]]; then
-  echo "${LOG_WARNING_PREFIX}RELEASE_BRANCH was not set! Using main...${LOG_WARNING_SUFFIX}" >&2
-  echo "${LOG_WARNING_PREFIX}Setting RELEASE_BRANCH to: ${RELEASE_BRANCH}${LOG_WARNING_SUFFIX}" >&2
-  echo >&2
+  log_warning "RELEASE_BRANCH was not set! Using main..."
+  log_warning "Setting RELEASE_BRANCH to: ${RELEASE_BRANCH}"
+  log ""
 fi
 
 # Warn if DEFAULT_BRANCH was not provided (defaulted to main)
 if [[ -z "${DEFAULT_BRANCH_INPUT}" ]]; then
-  echo "${LOG_WARNING_PREFIX}DEFAULT_BRANCH was not set! Using main...${LOG_WARNING_SUFFIX}" >&2
-  echo "${LOG_WARNING_PREFIX}Setting DEFAULT_BRANCH to: ${DEFAULT_BRANCH}${LOG_WARNING_SUFFIX}" >&2
-  echo >&2
+  log_warning "DEFAULT_BRANCH was not set! Using main..."
+  log_warning "Setting DEFAULT_BRANCH to: ${DEFAULT_BRANCH}"
+  log ""
 fi
 
 # Check if current branch is a release branch

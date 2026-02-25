@@ -27,8 +27,8 @@
 #   "" ""               → (empty)
 build_name_middle_fragment() {
   if [[ $# -ne 2 ]]; then
-    echo "Error: build_name_middle_fragment requires 2 arguments, got $#" >&2
-    echo "Usage: build_name_middle_fragment <combined_sub_path> <suffix>" >&2
+    log_error "build_name_middle_fragment requires 2 arguments, got $#"
+    log "Usage: build_name_middle_fragment <combined_sub_path> <suffix>"
     return 1
   fi
 
@@ -59,8 +59,8 @@ build_name_middle_fragment() {
 #   "\${ProjectName}" "" "" ""                                    → "\${ProjectName}"
 build_resource_name() {
   if [[ $# -lt 3 || $# -gt 4 ]]; then
-    echo "Error: build_resource_name requires 3-4 arguments, got $#" >&2
-    echo "Usage: build_resource_name <project_name_token> <combined_sub_path> <suffix> [final_suffix]" >&2
+    log_error "build_resource_name requires 3-4 arguments, got $#"
+    log "Usage: build_resource_name <project_name_token> <combined_sub_path> <suffix> [final_suffix]"
     return 1
   fi
 
@@ -89,8 +89,8 @@ build_resource_name() {
 #   "target/manifests/combined" "Secret" "db" "template.yaml" → "target/manifests/combined/secret-db.template.yaml"
 build_output_filename() {
   if [[ $# -lt 3 || $# -gt 4 ]]; then
-    echo "Error: build_output_filename requires 3-4 arguments, got $#" >&2
-    echo "Usage: build_output_filename <sub_path> <kind> <suffix> [extension]" >&2
+    log_error "build_output_filename requires 3-4 arguments, got $#"
+    log "Usage: build_output_filename <sub_path> <kind> <suffix> [extension]"
     return 1
   fi
 
@@ -116,8 +116,8 @@ build_output_filename() {
 #   "target" ""        → creates & echoes "target/manifests/combined"
 ensure_manifest_output_dir() {
   if [[ $# -ne 2 ]]; then
-    echo "Error: ensure_manifest_output_dir requires 2 arguments, got $#" >&2
-    echo "Usage: ensure_manifest_output_dir <output_base_path> <combined_sub_path>" >&2
+    log_error "ensure_manifest_output_dir requires 2 arguments, got $#"
+    log "Usage: ensure_manifest_output_dir <output_base_path> <combined_sub_path>"
     return 1
   fi
 
@@ -141,8 +141,8 @@ ensure_manifest_output_dir() {
 #   4 args: namespaced resource
 generate_manifest_header() {
   if [[ $# -lt 3 || $# -gt 4 ]]; then
-    echo "Error: generate_manifest_header requires 3 or 4 arguments" >&2
-    echo "Usage: generate_manifest_header <apiVersion> <kind> <name> [namespace]" >&2
+    log_error "generate_manifest_header requires 3 or 4 arguments"
+    log "Usage: generate_manifest_header <apiVersion> <kind> <name> [namespace]"
     return 1
   fi
 
@@ -174,7 +174,7 @@ merge_key_value_pairs() {
     local pairs="$1"
     for pair in ${pairs}; do
       if [[ "${pair}" != *"="* ]]; then
-        echo "Error: merge_key_value_pairs: pair '${pair}' must contain '='" >&2
+        log_error "merge_key_value_pairs: pair '${pair}' must contain '='"
         return 1
       fi
     done
@@ -312,8 +312,8 @@ generate_metadata_map() {
 #
 generate_metadata() {
   if [[ $# -lt 2 || $# -gt 3 ]]; then
-    echo "Error: generate_metadata requires 2-3 arguments, got $#" >&2
-    echo "Usage: generate_metadata <indent> <labels|annotations> [default_container]" >&2
+    log_error "generate_metadata requires 2-3 arguments, got $#"
+    log "Usage: generate_metadata <indent> <labels|annotations> [default_container]"
     return 1
   fi
 
@@ -338,7 +338,7 @@ generate_metadata() {
       specific="${SPECIFIC_ANNOTATIONS:-}"
       ;;
     *)
-      echo "Error: generate_metadata type must be 'labels' or 'annotations', got: ${type}" >&2
+      log_error "generate_metadata type must be 'labels' or 'annotations', got: ${type}"
       return 1
       ;;
   esac

@@ -65,8 +65,8 @@ runs:
       id: generate
       shell: bash
       env:
-        LOG_ERROR_PREFIX: '::error::'
-        LOG_WARNING_PREFIX: '::warning::'
+        BUILD_PLATFORM: github-actions
+        BUILD_PLATFORM_LOG_PROVIDER: github-actions
         BUILD_MODE: build_server
         REPOSITORY_NAME: ${{ github.event.repository.name }}
         REPOSITORY_OWNER: ${{ github.repository_owner }}

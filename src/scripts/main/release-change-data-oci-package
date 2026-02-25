@@ -25,12 +25,13 @@ SCRIPT_DIR="$(dirname "${0}")"
 source "${SCRIPT_DIR}/../defaults/output-sub-path.bash"
 # shellcheck source=src/scripts/defaults/docker-common.bash
 source "${SCRIPT_DIR}/../defaults/docker-common.bash"
+# shellcheck source=src/scripts/defaults/platform.bash
+source "${SCRIPT_DIR}/../defaults/platform.bash"
+
 # shellcheck source=src/scripts/lib/output-var.bash
 source "${SCRIPT_DIR}/../lib/output-var.bash"
-
-# Logging
-LOG_ERROR_PREFIX="${LOG_ERROR_PREFIX:-ERROR: }"
-LOG_ERROR_SUFFIX="${LOG_ERROR_SUFFIX:-}"
+# shellcheck source=src/scripts/lib/log.bash
+source "${SCRIPT_DIR}/../lib/log.bash"
 
 # Required inputs
 VERSION="${VERSION:?VERSION is required}"
@@ -52,15 +53,15 @@ else
 fi
 
 main() {
-  echo "=== Release Change Data OCI Package ===" >&2
-  echo "Version: ${VERSION}" >&2
-  echo "Target: ${IMAGE_URI}" >&2
-  echo "Content: ${CONTENT_DIR}" >&2
-  echo "=========================================" >&2
+  log "=== Release Change Data OCI Package ==="
+  log "Version: ${VERSION}"
+  log "Target: ${IMAGE_URI}"
+  log "Content: ${CONTENT_DIR}"
+  log "========================================="
 
   # Validate versioned YAML exists
   if [[ ! -f "${CONTENT_DIR}/${VERSIONED_YAML}" ]]; then
-    echo "${LOG_ERROR_PREFIX}Versioned YAML not found: ${CONTENT_DIR}/${VERSIONED_YAML}${LOG_ERROR_SUFFIX}" >&2
+    log_error "Versioned YAML not found: ${CONTENT_DIR}/${VERSIONED_YAML}"
     exit 1
   fi
 
@@ -69,7 +70,7 @@ main() {
 
   output_var "RELEASE_CHANGE_DATA_IMAGE_URI" "${IMAGE_URI}"
 
-  echo "Release change data OCI package complete: ${IMAGE_URI}" >&2
+  log "Release change data OCI package complete: ${IMAGE_URI}"
 }
 
 main "$@"

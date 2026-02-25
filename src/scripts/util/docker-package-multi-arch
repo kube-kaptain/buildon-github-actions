@@ -37,10 +37,11 @@ source "${SCRIPT_DIR}/../defaults/docker-common.bash"
 source "${SCRIPT_DIR}/../defaults/output-sub-path.bash"
 # shellcheck source=src/scripts/defaults/docker-push-image-list.bash
 source "${SCRIPT_DIR}/../defaults/docker-push-image-list.bash"
+# shellcheck source=src/scripts/defaults/platform.bash
+source "${SCRIPT_DIR}/../defaults/platform.bash"
 
-# Logging
-LOG_ERROR_PREFIX="${LOG_ERROR_PREFIX:-ERROR: }"
-LOG_ERROR_SUFFIX="${LOG_ERROR_SUFFIX:-}"
+# shellcheck source=src/scripts/lib/log.bash
+source "${SCRIPT_DIR}/../lib/log.bash"
 
 # Required env vars from versions-and-naming
 VERSION="${VERSION:?VERSION is required}"
@@ -56,15 +57,15 @@ MANIFEST_URIS_FILE="${OUTPUT_SUB_PATH}/docker-push-all/manifest-uris"
 # Both architectures, always
 PLATFORMS=("linux/amd64" "linux/arm64")
 
-echo "=== Docker Package Multi-Arch ===" >&2
-echo "Content dir: ${content_dir}" >&2
-echo "Base URI: ${base_image_uri}" >&2
-echo "Base image: ${PACKAGE_BASE_IMAGE}" >&2
-echo "==================================" >&2
+log "=== Docker Package Multi-Arch ==="
+log "Content dir: ${content_dir}"
+log "Base URI: ${base_image_uri}"
+log "Base image: ${PACKAGE_BASE_IMAGE}"
+log "=================================="
 
 # Validate content directory exists and has files
 if [[ ! -d "${content_dir}" ]]; then
-  echo "${LOG_ERROR_PREFIX}Content directory not found: ${content_dir}${LOG_ERROR_SUFFIX}" >&2
+  log_error "Content directory not found: ${content_dir}"
   exit 1
 fi
 
@@ -95,16 +96,16 @@ cp -R "${content_dir}"/* "${build_dir}/"
   done
 } > "${build_dir}/Dockerfile"
 
-echo "Generated Dockerfile:" >&2
-cat "${build_dir}/Dockerfile" >&2
-echo >&2
+log "Generated Dockerfile:"
+log "$(cat "${build_dir}/Dockerfile")"
+log ""
 
 # Build for each architecture
 for platform in "${PLATFORMS[@]}"; do
   platform_suffix="${platform//\//-}"
   arch_uri="${base_image_uri}-${platform_suffix}"
 
-  echo "Building ${arch_uri} for ${platform}..." >&2
+  log "Building ${arch_uri} for ${platform}..."
   ${IMAGE_BUILD_COMMAND} build \
     --platform "${platform}" \
     -t "${arch_uri}" \
@@ -112,12 +113,12 @@ for platform in "${PLATFORMS[@]}"; do
 
   # Register arch-specific image for push
   echo "${arch_uri}" >> "${DOCKER_PUSH_IMAGE_LIST_FILE}"
-  echo "Registered: ${arch_uri}" >&2
+  log "Registered: ${arch_uri}"
 done
 
 # Register base URI for manifest list creation
 mkdir -p "$(dirname "${MANIFEST_URIS_FILE}")"
 echo "${base_image_uri}" >> "${MANIFEST_URIS_FILE}"
-echo "Registered manifest: ${base_image_uri}" >&2
+log "Registered manifest: ${base_image_uri}"
 
-echo "Docker package multi-arch complete" >&2
+log "Docker package multi-arch complete"

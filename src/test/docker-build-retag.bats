@@ -160,15 +160,14 @@ set_required_env() {
   assert_var_equals "DOCKER_TARGET_IMAGE_FULL_URI" "ghcr.io/test/my-repo:1.0.0"
 }
 
-@test "uses LOG_WARNING_PREFIX in warnings" {
+@test "warns about leading/trailing slashes in image name" {
   set_required_env
   export DOCKER_SOURCE_IMAGE_NAME="/alpine"
-  export LOG_WARNING_PREFIX="::warning::"
   unset DOCKER_SOURCE_NAMESPACE
 
   run "$SCRIPTS_DIR/docker-build-retag"
   [ "$status" -eq 0 ]
-  assert_output_contains "::warning::DOCKER_SOURCE_IMAGE_NAME has leading/trailing slashes"
+  assert_output_contains "WARNING: DOCKER_SOURCE_IMAGE_NAME has leading/trailing slashes"
 }
 
 @test "does not push (build only)" {

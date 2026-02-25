@@ -31,9 +31,11 @@ PLUGINS_DIR="${SCRIPT_DIR}/../plugins"
 # Source the token formatting library
 source "${LIB_DIR}/token-format.bash"
 
-# Logging configuration (CI-agnostic)
-LOG_ERROR_PREFIX="${LOG_ERROR_PREFIX:-}"
-LOG_ERROR_SUFFIX="${LOG_ERROR_SUFFIX:-}"
+# shellcheck source=src/scripts/defaults/platform.bash
+source "${SCRIPT_DIR}/../defaults/platform.bash"
+
+# shellcheck source=src/scripts/lib/log.bash
+source "${SCRIPT_DIR}/../lib/log.bash"
 
 # Required inputs
 TOKENS_OUTPUT_SUB_PATH="${TOKENS_OUTPUT_SUB_PATH:?TOKENS_OUTPUT_SUB_PATH is required}"
@@ -44,7 +46,7 @@ source "${SCRIPT_DIR}/../defaults/tokens.bash"
 
 # Validate token name style upfront
 if ! is_valid_token_name_style "${TOKEN_NAME_STYLE}"; then
-  echo "${LOG_ERROR_PREFIX}Unknown token name style: ${TOKEN_NAME_STYLE}${LOG_ERROR_SUFFIX}" >&2
+  log_error "Unknown token name style: ${TOKEN_NAME_STYLE}"
   exit 1
 fi
 
@@ -66,17 +68,17 @@ write_builtin_token() {
 }
 
 main() {
-  echo "Preparing substitution tokens..." >&2
-  echo "  Output: ${TOKENS_OUTPUT_SUB_PATH}" >&2
-  echo "  Config: ${CONFIG_SUB_PATH}" >&2
-  echo "  Name style: ${TOKEN_NAME_STYLE}" >&2
-  echo "  Validation: ${TOKEN_NAME_VALIDATION}" >&2
+  log "Preparing substitution tokens..."
+  log "  Output: ${TOKENS_OUTPUT_SUB_PATH}"
+  log "  Config: ${CONFIG_SUB_PATH}"
+  log "  Name style: ${TOKEN_NAME_STYLE}"
+  log "  Validation: ${TOKEN_NAME_VALIDATION}"
 
   # Create output directory
   mkdir -p "${TOKENS_OUTPUT_SUB_PATH}"
 
   # Step 1: Write built-in tokens from environment variables
-  echo "Writing built-in tokens..." >&2
+  log "Writing built-in tokens..."
 
   # Required tokens provided by versions-and-naming which always precedes this)
   write_builtin_token "PROJECT_NAME" "${PROJECT_NAME}"
@@ -120,7 +122,7 @@ main() {
 
   # Step 2: Validate and copy user config if it exists
   if [[ -d "${CONFIG_SUB_PATH}" ]] && [[ -n "$(find "${CONFIG_SUB_PATH}" -type f 2>/dev/null)" ]]; then
-    echo "Validating user config tokens..." >&2
+    log "Validating user config tokens..."
 
     # Determine which validator to use
     local validator_style
@@ -133,7 +135,7 @@ main() {
     local validator_script="${PLUGINS_DIR}/token-name-validators/${validator_style}"
 
     if [[ ! -x "${validator_script}" ]]; then
-      echo "${LOG_ERROR_PREFIX}Validator not found: ${validator_style}${LOG_ERROR_SUFFIX}" >&2
+      log_error "Validator not found: ${validator_style}"
       exit 1
     fi
 
@@ -155,20 +157,20 @@ main() {
       done < <(find "${CONFIG_SUB_PATH}" -type f -print0)
 
       if [[ ${#conflicts[@]} -gt 0 ]]; then
-        echo "${LOG_ERROR_PREFIX}Found attempt to override built-in variable(s) - this is not allowed:${LOG_ERROR_SUFFIX}" >&2
+        log_error "Found attempt to override built-in variable(s) - this is not allowed:"
         for conflict in "${conflicts[@]}"; do
-          echo "  ${conflict}" >&2
+          log "  ${conflict}"
         done
         exit 1
       fi
     fi
 
     # Step 4: Copy user config to output (may override built-ins if allowed)
-    echo "Copying user config tokens..." >&2
+    log "Copying user config tokens..."
     cp -R "${CONFIG_SUB_PATH}"/* "${TOKENS_OUTPUT_SUB_PATH}/"
   fi
 
-  echo "Token preparation complete" >&2
+  log "Token preparation complete"
 }
 
 main "$@"

@@ -15,8 +15,8 @@ runs:
       id: check
       shell: bash
       env:
-        LOG_ERROR_PREFIX: '::error::'
-        LOG_WARNING_PREFIX: '::warning::'
+        BUILD_PLATFORM: github-actions
+        BUILD_PLATFORM_LOG_PROVIDER: github-actions
         CURRENT_BRANCH: ${{ github.head_ref || github.ref_name }}
         RELEASE_BRANCH: ${{ inputs.release-branch }}
         ADDITIONAL_RELEASE_BRANCHES: ${{ inputs.additional-release-branches }}

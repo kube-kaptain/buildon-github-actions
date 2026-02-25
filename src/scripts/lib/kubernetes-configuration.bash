@@ -79,14 +79,14 @@ validate_configuration_entries_directory() {
 
   # Check if source directory exists
   if [[ ! -d "${directory}" ]]; then
-    echo "${resource_type_label} source directory '${directory}' not found, skipping ${resource_type_label} generation" >&2
+    log "${resource_type_label} source directory '${directory}' not found, skipping ${resource_type_label} generation"
     exit 0
   fi
 
   # Check if directory has files (excluding dotfiles)
   SOURCE_FILE_COUNT=$(find "${directory}" -type f -not -name '.*' 2>/dev/null | wc -l | tr -d ' ')
   if [[ "${SOURCE_FILE_COUNT}" -eq 0 ]]; then
-    echo "${LOG_ERROR_PREFIX:-}No files found (excluding dotfiles) in ${resource_type_label} source directory '${directory}'${LOG_ERROR_SUFFIX:-}" >&2
+    log_error "No files found (excluding dotfiles) in ${resource_type_label} source directory '${directory}'"
     exit 7
   fi
 }

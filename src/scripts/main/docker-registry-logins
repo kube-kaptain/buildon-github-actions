@@ -29,23 +29,23 @@ PLUGINS_DIR="${SCRIPT_DIR}/../plugins"
 
 # shellcheck source=src/scripts/defaults/output-sub-path.bash
 source "${SCRIPT_DIR}/../defaults/output-sub-path.bash"
+# shellcheck source=src/scripts/defaults/platform.bash
+source "${SCRIPT_DIR}/../defaults/platform.bash"
 
 # shellcheck source=src/scripts/lib/output-var.bash
 source "${SCRIPT_DIR}/../lib/output-var.bash"
-
-# Logging configuration (CI-agnostic)
-LOG_ERROR_PREFIX="${LOG_ERROR_PREFIX:-}"
-LOG_ERROR_SUFFIX="${LOG_ERROR_SUFFIX:-}"
+# shellcheck source=src/scripts/lib/log.bash
+source "${SCRIPT_DIR}/../lib/log.bash"
 
 # Config from inline YAML - required
 if [[ -z "${CONFIG:-}" ]]; then
-  echo "${LOG_ERROR_PREFIX}CONFIG is required${LOG_ERROR_SUFFIX}" >&2
+  log_error "CONFIG is required"
   exit 1
 fi
 
 # Secret retrieval method - required
 if [[ -z "${SECRET_METHOD:-}" ]]; then
-  echo "${LOG_ERROR_PREFIX}SECRET_METHOD is required (github, env)${LOG_ERROR_SUFFIX}" >&2
+  log_error "SECRET_METHOD is required (github, env)"
   exit 1
 fi
 
@@ -57,10 +57,10 @@ validate_secret_method() {
   local method="${1}"
   local script="${PLUGINS_DIR}/secret-value-providers/get-secret-${method}"
   if [[ ! -x "${script}" ]]; then
-    echo "${LOG_ERROR_PREFIX}Unknown secret method: ${method} (no executable ${script})${LOG_ERROR_SUFFIX}" >&2
-    echo "Available methods:" >&2
+    log_error "Unknown secret method: ${method} (no executable ${script})"
+    log "Available methods:"
     for f in "${PLUGINS_DIR}"/secret-value-providers/get-secret-*; do
-      [[ -x "${f}" ]] && echo "  - ${f##*get-secret-}" >&2
+      [[ -x "${f}" ]] && log "  - ${f##*get-secret-}"
     done
     return 1
   fi
@@ -128,22 +128,22 @@ validate_all_secrets() {
   done <<< "${registries}"
 
   # Report results
-  echo "Analysis found ${#found_secrets[@]} secrets with ${#missing_secrets[@]} missing secrets." >&2
-  echo "" >&2
-  echo "Missing secrets:" >&2
+  log "Analysis found ${#found_secrets[@]} secrets with ${#missing_secrets[@]} missing secrets."
+  log ""
+  log "Missing secrets:"
   for s in ${missing_secrets[@]+"${missing_secrets[@]}"}; do
-    echo "  - ${s}" >&2
+    log "  - ${s}"
   done
-  echo "" >&2
-  echo "Available secrets:" >&2
+  log ""
+  log "Available secrets:"
   for s in ${found_secrets[@]+"${found_secrets[@]}"}; do
-    echo "  - ${s}" >&2
+    log "  - ${s}"
   done
-  echo "" >&2
+  log ""
 
   # Bail if anything we wanted isn't there.
   if [[ ${#missing_secrets[@]} -gt 0 ]]; then
-    echo "${LOG_ERROR_PREFIX}Secret validation failed${LOG_ERROR_SUFFIX}" >&2
+    log_error "Secret validation failed"
     return 1
   fi
   return 0
@@ -157,11 +157,11 @@ route_login() {
 
   local login_script="${PLUGINS_DIR}/docker-login-providers/docker-login-${login_type}"
   if [[ ! -x "${login_script}" ]]; then
-    echo "${LOG_ERROR_PREFIX}Unknown login type: ${login_type} (no executable ${login_script})${LOG_ERROR_SUFFIX}" >&2
+    log_error "Unknown login type: ${login_type} (no executable ${login_script})"
     return 1
   fi
 
-  echo "Login: ${registry} (${login_type})" >&2
+  log "Login: ${registry} (${login_type})"
 
   case "${login_type}" in
     username-password)
@@ -219,34 +219,34 @@ route_login() {
 
     *)
       # Should not reach here due to executable check above
-      echo "${LOG_ERROR_PREFIX}Unknown login type: ${login_type}${LOG_ERROR_SUFFIX}" >&2
+      log_error "Unknown login type: ${login_type}"
       return 1
       ;;
   esac
 
-  echo "Successfully authenticated to ${registry}" >&2
+  log "Successfully authenticated to ${registry}"
 }
 
 main() {
-  echo "=== Docker Logins ===" >&2
+  log "=== Docker Logins ==="
 
   # Validate secret method first
   validate_secret_method "${SECRET_METHOD}" || exit 1
-  echo "Secret provider: get-secret-${SECRET_METHOD}" >&2
+  log "Secret provider: get-secret-${SECRET_METHOD}"
 
   # Report available secrets (names only, never values)
   local secret_keys
   secret_keys=$(echo "${SECRETS_JSON}" | yq -r 'keys | .[]' 2>/dev/null || true)
   if [[ -z "${secret_keys}" ]]; then
-    echo "SECRETS_JSON contains 0 keys (empty or invalid JSON)" >&2
-    echo "Raw SECRETS_JSON value:" >&2
-    echo "${SECRETS_JSON}" >&2
+    log "SECRETS_JSON contains 0 keys (empty or invalid JSON)"
+    log "Raw SECRETS_JSON value:"
+    log "${SECRETS_JSON}"
   else
     local key_count
     key_count=$(echo "${secret_keys}" | wc -l | tr -d ' ')
-    echo "SECRETS_JSON contains ${key_count} keys:" >&2
+    log "SECRETS_JSON contains ${key_count} keys:"
     while IFS= read -r key; do
-      echo "  - ${key}" >&2
+      log "  - ${key}"
     done <<< "${secret_keys}"
   fi
 
@@ -258,7 +258,7 @@ main() {
   registries=$(echo "${CONFIG}" | yq -r 'keys | .[]')
 
   if [[ -z "${registries}" ]]; then
-    echo "No registries configured" >&2
+    log "No registries configured"
     exit 0
   fi
 
@@ -269,7 +269,7 @@ main() {
     count=$((count + 1))
   done <<< "${registries}"
 
-  echo "Docker Logins complete - authenticated to ${count} registry/registries" >&2
+  log "Docker Logins complete - authenticated to ${count} registry/registries"
 
   # Set up the push image list file for all downstream build/tag steps
   DOCKER_PUSH_IMAGE_LIST_FILE="${OUTPUT_SUB_PATH}/docker-push-all/image-uris"

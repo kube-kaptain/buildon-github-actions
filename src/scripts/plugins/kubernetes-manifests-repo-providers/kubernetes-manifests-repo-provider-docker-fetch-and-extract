@@ -31,10 +31,10 @@ set -euo pipefail
 
 # shellcheck source=src/scripts/defaults/docker-common.bash
 source "$(dirname "${BASH_SOURCE[0]}")/../../defaults/docker-common.bash"
-
-# Logging configuration (CI-agnostic)
-LOG_ERROR_PREFIX="${LOG_ERROR_PREFIX:-}"
-LOG_ERROR_SUFFIX="${LOG_ERROR_SUFFIX:-}"
+# shellcheck source=src/scripts/defaults/platform.bash
+source "$(dirname "${BASH_SOURCE[0]}")/../../defaults/platform.bash"
+# shellcheck source=src/scripts/lib/log.bash
+source "$(dirname "${BASH_SOURCE[0]}")/../../lib/log.bash"
 
 # Build output sub-path
 # shellcheck source=src/scripts/defaults/output-sub-path.bash
@@ -58,7 +58,7 @@ usage() {
 main() {
   # Validate arguments
   if [[ $# -lt 1 ]]; then
-    echo "${LOG_ERROR_PREFIX}Missing required argument: manifests-image-uri${LOG_ERROR_SUFFIX}" >&2
+    log_error "Missing required argument: manifests-image-uri"
     usage
   fi
 
@@ -66,21 +66,21 @@ main() {
   local fetched_manifests_sub_path="${OUTPUT_SUB_PATH}/fetched-manifests"
   local extracted_manifests_sub_path="${OUTPUT_SUB_PATH}/extracted-manifests"
 
-  echo "=== Kubernetes Manifests Repo Provider Fetch-and-Extract: Docker ===" >&2
-  echo "Image: ${manifests_image_uri}" >&2
-  echo "Fetch to: ${fetched_manifests_sub_path}" >&2
-  echo "Extract to: ${extracted_manifests_sub_path}" >&2
-  echo "====================================================================" >&2
+  log "=== Kubernetes Manifests Repo Provider Fetch-and-Extract: Docker ==="
+  log "Image: ${manifests_image_uri}"
+  log "Fetch to: ${fetched_manifests_sub_path}"
+  log "Extract to: ${extracted_manifests_sub_path}"
+  log "===================================================================="
 
   # Pull the image
-  echo "Pulling image..." >&2
+  log "Pulling image..."
   if ! ${IMAGE_BUILD_COMMAND} pull "${manifests_image_uri}"; then
-    echo "${LOG_ERROR_PREFIX}Failed to pull image: ${manifests_image_uri}${LOG_ERROR_SUFFIX}" >&2
+    log_error "Failed to pull image: ${manifests_image_uri}"
     exit 1
   fi
 
   # Create container (without starting it) to access filesystem
-  echo "Creating container..." >&2
+  log "Creating container..."
   local container_id
   container_id=$(${IMAGE_BUILD_COMMAND} create "${manifests_image_uri}")
 
@@ -89,38 +89,38 @@ main() {
   trap "${IMAGE_BUILD_COMMAND} rm '${container_id}' >/dev/null 2>&1 || true" EXIT
 
   # Find zip file in image root
-  echo "Finding manifest zip in image..." >&2
+  log "Finding manifest zip in image..."
   local zip_file
   zip_file=$(${IMAGE_BUILD_COMMAND} run --rm --entrypoint="" "${manifests_image_uri}" ls -1 / 2>/dev/null | grep '\.zip$' | head -n1 || true)
 
   if [[ -z "${zip_file}" ]]; then
-    echo "${LOG_ERROR_PREFIX}No zip file found in image root${LOG_ERROR_SUFFIX}" >&2
+    log_error "No zip file found in image root"
     exit 1
   fi
 
-  echo "Found: /${zip_file}" >&2
+  log "Found: /${zip_file}"
 
   # Create output sub-paths
   mkdir -p "${fetched_manifests_sub_path}"
   mkdir -p "${extracted_manifests_sub_path}"
 
   # Copy zip from container
-  echo "Copying zip from container..." >&2
+  log "Copying zip from container..."
   if ! ${IMAGE_BUILD_COMMAND} cp "${container_id}:/${zip_file}" "${fetched_manifests_sub_path}/${zip_file}"; then
-    echo "${LOG_ERROR_PREFIX}Failed to copy zip from container${LOG_ERROR_SUFFIX}" >&2
+    log_error "Failed to copy zip from container"
     exit 1
   fi
 
   # Extract zip to output
-  echo "Unpacking to ${extracted_manifests_sub_path}..." >&2
+  log "Unpacking to ${extracted_manifests_sub_path}..."
   if ! unzip -q -o "${fetched_manifests_sub_path}/${zip_file}" -d "${extracted_manifests_sub_path}"; then
-    echo "${LOG_ERROR_PREFIX}Failed to extract zip${LOG_ERROR_SUFFIX}" >&2
+    log_error "Failed to extract zip"
     exit 1
   fi
 
-  echo "Kubernetes Manifests Repo Provider Fetch-and-Extract: Docker complete" >&2
-  echo "Zip file: ${fetched_manifests_sub_path}/${zip_file}" >&2
-  echo "Manifests: ${extracted_manifests_sub_path}" >&2
+  log "Kubernetes Manifests Repo Provider Fetch-and-Extract: Docker complete"
+  log "Zip file: ${fetched_manifests_sub_path}/${zip_file}"
+  log "Manifests: ${extracted_manifests_sub_path}"
 }
 
 main "$@"

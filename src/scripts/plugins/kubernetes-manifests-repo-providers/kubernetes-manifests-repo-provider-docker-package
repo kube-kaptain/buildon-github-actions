@@ -25,10 +25,10 @@ set -euo pipefail
 
 # shellcheck source=src/scripts/defaults/docker-common.bash
 source "$(dirname "${BASH_SOURCE[0]}")/../../defaults/docker-common.bash"
-
-# Logging configuration (CI-agnostic)
-LOG_ERROR_PREFIX="${LOG_ERROR_PREFIX:-}"
-LOG_ERROR_SUFFIX="${LOG_ERROR_SUFFIX:-}"
+# shellcheck source=src/scripts/defaults/platform.bash
+source "$(dirname "${BASH_SOURCE[0]}")/../../defaults/platform.bash"
+# shellcheck source=src/scripts/lib/log.bash
+source "$(dirname "${BASH_SOURCE[0]}")/../../lib/log.bash"
 
 # =============================================================================
 # Map REPO_PROVIDER_* → Docker terminology
@@ -65,25 +65,25 @@ confirm_image_doesnt_exist() {
   local image="${1}"
 
   if ${IMAGE_BUILD_COMMAND} manifest inspect "${image}" &>/dev/null; then
-    echo "${LOG_ERROR_PREFIX}Target image already exists in registry: ${image}${LOG_ERROR_SUFFIX}" >&2
+    log_error "Target image already exists in registry: ${image}"
     return 1
   fi
 
-  echo "Confirmed image does not exist in registry (safe to push)" >&2
+  log "Confirmed image does not exist in registry (safe to push)"
   return 0
 }
 
 main() {
-  echo "=== Kubernetes Manifests Repo Provider Package: Docker ===" >&2
-  echo "Manifests zip path: ${MANIFESTS_ZIP_SUB_PATH}" >&2
-  echo "Manifests zip name: ${MANIFESTS_ZIP_FILE_NAME}" >&2
-  echo "Base image: ${BASE_IMAGE}" >&2
-  echo "Target: ${image_uri}" >&2
-  echo "===========================================================" >&2
+  log "=== Kubernetes Manifests Repo Provider Package: Docker ==="
+  log "Manifests zip path: ${MANIFESTS_ZIP_SUB_PATH}"
+  log "Manifests zip name: ${MANIFESTS_ZIP_FILE_NAME}"
+  log "Base image: ${BASE_IMAGE}"
+  log "Target: ${image_uri}"
+  log "==========================================================="
 
   # Validate zip exists
   if [[ ! -f "${MANIFESTS_ZIP_SUB_PATH}/${MANIFESTS_ZIP_FILE_NAME}" ]]; then
-    echo "${LOG_ERROR_PREFIX}Manifests zip not found: ${MANIFESTS_ZIP_SUB_PATH}/${MANIFESTS_ZIP_FILE_NAME}${LOG_ERROR_SUFFIX}" >&2
+    log_error "Manifests zip not found: ${MANIFESTS_ZIP_SUB_PATH}/${MANIFESTS_ZIP_FILE_NAME}"
     exit 1
   fi
 
@@ -103,7 +103,7 @@ main() {
 
   output_var "MANIFESTS_URI" "${image_uri}"
 
-  echo "Kubernetes Manifests Repo Provider Package: Docker complete" >&2
+  log "Kubernetes Manifests Repo Provider Package: Docker complete"
 }
 
 main "$@"

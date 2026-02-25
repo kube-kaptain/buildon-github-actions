@@ -27,12 +27,13 @@ SCRIPT_DIR="$(dirname "${0}")"
 source "${SCRIPT_DIR}/../defaults/output-sub-path.bash"
 # shellcheck source=src/scripts/defaults/release-change-data.bash
 source "${SCRIPT_DIR}/../defaults/release-change-data.bash"
+# shellcheck source=src/scripts/defaults/platform.bash
+source "${SCRIPT_DIR}/../defaults/platform.bash"
+
 # shellcheck source=src/scripts/lib/output-var.bash
 source "${SCRIPT_DIR}/../lib/output-var.bash"
-
-# Logging
-LOG_ERROR_PREFIX="${LOG_ERROR_PREFIX:-ERROR: }"
-LOG_ERROR_SUFFIX="${LOG_ERROR_SUFFIX:-}"
+# shellcheck source=src/scripts/lib/log.bash
+source "${SCRIPT_DIR}/../lib/log.bash"
 
 # Output paths
 RELEASE_CHANGE_DATA_DIR="${OUTPUT_SUB_PATH}/release-change-data"
@@ -190,7 +191,7 @@ read_change_source_note() {
   CHANGE_SOURCE_NOTE_CREATOR=""
 
   if [[ "${CHANGE_SOURCE_NOTE_ENABLED:-true}" == "false" ]]; then
-    echo "Change source notes disabled" >&2
+    log "Change source notes disabled"
     return
   fi
 
@@ -207,12 +208,12 @@ read_change_source_note() {
   fi
 
   if [[ -z "${note_content}" ]]; then
-    echo "No change source note found" >&2
+    log "No change source note found"
     return
   fi
 
   CHANGE_SOURCE_NOTE_FOUND="true"
-  echo "Change source note found" >&2
+  log "Change source note found"
 
   # Parse key-value pairs from note
   while IFS= read -r line; do
@@ -223,8 +224,8 @@ read_change_source_note() {
     fi
   done <<< "${note_content}"
 
-  echo "  Branch: ${CHANGE_SOURCE_NOTE_BRANCH}" >&2
-  echo "  Creator: ${CHANGE_SOURCE_NOTE_CREATOR}" >&2
+  log "  Branch: ${CHANGE_SOURCE_NOTE_BRANCH}"
+  log "  Creator: ${CHANGE_SOURCE_NOTE_CREATOR}"
 }
 
 # Detect the source of this build from the HEAD commit message
@@ -310,11 +311,11 @@ detect_change_source() {
 }
 
 main() {
-  echo "=== Release Change Data Generate ===" >&2
-  echo "Version: ${VERSION}" >&2
-  echo "Project: ${PROJECT_NAME}" >&2
-  echo "Tag: ${GIT_TAG}" >&2
-  echo "=====================================" >&2
+  log "=== Release Change Data Generate ==="
+  log "Version: ${VERSION}"
+  log "Project: ${PROJECT_NAME}"
+  log "Tag: ${GIT_TAG}"
+  log "====================================="
 
   # Create output directories
   mkdir -p "${RELEASE_CHANGE_DATA_DIR}"
@@ -326,9 +327,9 @@ main() {
   local previous_sha=""
   if [[ -n "${previous_tag}" ]]; then
     previous_sha=$(git rev-parse "${previous_tag}^{commit}" 2>/dev/null || true)
-    echo "Previous tag: ${previous_tag} (${previous_sha})" >&2
+    log "Previous tag: ${previous_tag} (${previous_sha})"
   else
-    echo "No previous Kaptain tag found - including all commits" >&2
+    log "No previous Kaptain tag found - including all commits"
   fi
 
   # Count commits
@@ -338,7 +339,7 @@ main() {
   else
     commit_count=$(git rev-list --count HEAD 2>/dev/null || echo "0")
   fi
-  echo "Commit count: ${commit_count}" >&2
+  log "Commit count: ${commit_count}"
 
   # Get HEAD sha and timestamp
   local head_sha
@@ -351,12 +352,12 @@ main() {
 
   # Detect build source from HEAD commit message (pattern matching)
   detect_change_source
-  echo "Change source: ${CHANGE_SOURCE_TYPE} ${CHANGE_SOURCE_REF_DATA:+(${CHANGE_SOURCE_REF_DATA})} ${CHANGE_SOURCE_BRANCH:+[${CHANGE_SOURCE_BRANCH}]}" >&2
+  log "Change source: ${CHANGE_SOURCE_TYPE} ${CHANGE_SOURCE_REF_DATA:+(${CHANGE_SOURCE_REF_DATA})} ${CHANGE_SOURCE_BRANCH:+[${CHANGE_SOURCE_BRANCH}]}"
 
   # Note branch overrides pattern-matched branch when available
   if [[ "${CHANGE_SOURCE_NOTE_FOUND}" == "true" && -n "${CHANGE_SOURCE_NOTE_BRANCH}" ]]; then
     CHANGE_SOURCE_BRANCH="${CHANGE_SOURCE_NOTE_BRANCH}"
-    echo "Branch overridden by note: ${CHANGE_SOURCE_BRANCH}" >&2
+    log "Branch overridden by note: ${CHANGE_SOURCE_BRANCH}"
   fi
 
   # Create base YAML document (required fields only)
@@ -429,9 +430,9 @@ main() {
   output_var "RELEASE_CHANGE_DATA_FILE" "${OUTPUT_FILE}"
   output_var "RELEASE_CHANGE_DATA_DOCKER_CONTEXT" "${DOCKER_CONTEXT_DIR}"
 
-  echo "Release change data generated:" >&2
-  echo "  Plain: ${OUTPUT_FILE}" >&2
-  echo "  Versioned: ${VERSIONED_OUTPUT_FILE}" >&2
+  log "Release change data generated:"
+  log "  Plain: ${OUTPUT_FILE}"
+  log "  Versioned: ${VERSIONED_OUTPUT_FILE}"
 }
 
 main "$@"

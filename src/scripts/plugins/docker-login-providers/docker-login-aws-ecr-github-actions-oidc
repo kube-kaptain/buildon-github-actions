@@ -21,6 +21,10 @@ set -euo pipefail
 
 # shellcheck source=src/scripts/defaults/docker-common.bash
 source "$(dirname "${BASH_SOURCE[0]}")/../../defaults/docker-common.bash"
+# shellcheck source=src/scripts/defaults/platform.bash
+source "$(dirname "${BASH_SOURCE[0]}")/../../defaults/platform.bash"
+# shellcheck source=src/scripts/lib/log.bash
+source "$(dirname "${BASH_SOURCE[0]}")/../../lib/log.bash"
 
 # secret_method=$1 - unused for OIDC
 registry="${2}"
@@ -28,7 +32,7 @@ role_arn="${3}"
 region="${4}"
 session_name="${5:-github-actions}"
 
-echo "Assuming AWS role ${role_arn} via OIDC..." >&2
+log "Assuming AWS role ${role_arn} via OIDC..."
 
 # shellcheck disable=SC2154 # ACTIONS_ID_TOKEN_* are set by GitHub Actions runtime
 token=$(curl -s -H "Authorization: bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" \
@@ -49,5 +53,5 @@ AWS_SECRET_ACCESS_KEY=$(echo "${creds}" | yq -r '.Credentials.SecretAccessKey')
 AWS_SESSION_TOKEN=$(echo "${creds}" | yq -r '.Credentials.SessionToken')
 export AWS_DEFAULT_REGION="${region}"
 
-echo "Logging in to AWS ECR ${registry}..." >&2
+log "Logging in to AWS ECR ${registry}..."
 aws ecr get-login-password --region "${region}" | ${IMAGE_BUILD_COMMAND} login --username AWS --password-stdin "${registry}"

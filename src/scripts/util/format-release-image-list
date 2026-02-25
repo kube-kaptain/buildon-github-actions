@@ -11,8 +11,16 @@
 
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# shellcheck source=src/scripts/defaults/platform.bash
+source "${SCRIPT_DIR}/../defaults/platform.bash"
+
+# shellcheck source=src/scripts/lib/log.bash
+source "${SCRIPT_DIR}/../lib/log.bash"
+
 if [[ $# -ne 2 ]]; then
-  echo "Usage: format-release-image-list <output-sub-path> <version>" >&2
+  log_error "Usage: format-release-image-list <output-sub-path> <version>"
   exit 1
 fi
 

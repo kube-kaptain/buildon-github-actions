@@ -58,10 +58,10 @@ source "${LIB_DIR}/kubernetes-pod-spec.bash"
 source "${LIB_DIR}/kubernetes-pod-placement.bash"
 # shellcheck source=src/scripts/lib/generator-input-validation.bash
 source "${LIB_DIR}/generator-input-validation.bash"
-
-# Logging configuration (CI-agnostic)
-LOG_ERROR_PREFIX="${LOG_ERROR_PREFIX:-}"
-LOG_ERROR_SUFFIX="${LOG_ERROR_SUFFIX:-}"
+# shellcheck source=src/scripts/defaults/platform.bash
+source "${SCRIPT_DIR}/../defaults/platform.bash"
+# shellcheck source=src/scripts/lib/log.bash
+source "${LIB_DIR}/log.bash"
 
 # =============================================================================
 # Inputs with defaults
@@ -92,27 +92,27 @@ validate_workload_inputs
 
 # Validate StatefulSet-specific settings
 if [[ "${POD_MANAGEMENT_POLICY}" != "OrderedReady" && "${POD_MANAGEMENT_POLICY}" != "Parallel" ]]; then
-  echo "${LOG_ERROR_PREFIX}KUBERNETES_STATEFULSET_POD_MANAGEMENT_POLICY must be 'OrderedReady' or 'Parallel', got: ${POD_MANAGEMENT_POLICY}${LOG_ERROR_SUFFIX}" >&2
+  log_error "KUBERNETES_STATEFULSET_POD_MANAGEMENT_POLICY must be 'OrderedReady' or 'Parallel', got: ${POD_MANAGEMENT_POLICY}"
   exit 4
 fi
 
 if [[ "${POD_MANAGEMENT_POLICY}" == "Parallel" && "${ALLOW_UNRELIABLE_POD_MANAGEMENT_POLICY}" != "I_LIKE_DOWNTIME" ]]; then
-  echo "${LOG_ERROR_PREFIX}Parallel pod management policy can cause data loss and downtime. To use it, set KUBERNETES_STATEFULSET_ALLOW_UNRELIABLE_POD_MANAGEMENT_POLICY=I_LIKE_DOWNTIME${LOG_ERROR_SUFFIX}" >&2
+  log_error "Parallel pod management policy can cause data loss and downtime. To use it, set KUBERNETES_STATEFULSET_ALLOW_UNRELIABLE_POD_MANAGEMENT_POLICY=I_LIKE_DOWNTIME"
   exit 4
 fi
 
 if [[ "${UPDATE_STRATEGY_TYPE}" != "RollingUpdate" && "${UPDATE_STRATEGY_TYPE}" != "OnDelete" ]]; then
-  echo "${LOG_ERROR_PREFIX}KUBERNETES_STATEFULSET_UPDATE_STRATEGY_TYPE must be 'RollingUpdate' or 'OnDelete', got: ${UPDATE_STRATEGY_TYPE}${LOG_ERROR_SUFFIX}" >&2
+  log_error "KUBERNETES_STATEFULSET_UPDATE_STRATEGY_TYPE must be 'RollingUpdate' or 'OnDelete', got: ${UPDATE_STRATEGY_TYPE}"
   exit 4
 fi
 
 if [[ "${PVC_ENABLED}" != "true" && "${PVC_ENABLED}" != "false" ]]; then
-  echo "${LOG_ERROR_PREFIX}KUBERNETES_STATEFULSET_PVC_ENABLED must be 'true' or 'false', got: ${PVC_ENABLED}${LOG_ERROR_SUFFIX}" >&2
+  log_error "KUBERNETES_STATEFULSET_PVC_ENABLED must be 'true' or 'false', got: ${PVC_ENABLED}"
   exit 4
 fi
 
 if [[ "${PVC_ACCESS_MODE}" != "ReadWriteOnce" && "${PVC_ACCESS_MODE}" != "ReadOnlyMany" && "${PVC_ACCESS_MODE}" != "ReadWriteMany" ]]; then
-  echo "${LOG_ERROR_PREFIX}KUBERNETES_STATEFULSET_PVC_ACCESS_MODE must be 'ReadWriteOnce', 'ReadOnlyMany', or 'ReadWriteMany', got: ${PVC_ACCESS_MODE}${LOG_ERROR_SUFFIX}" >&2
+  log_error "KUBERNETES_STATEFULSET_PVC_ACCESS_MODE must be 'ReadWriteOnce', 'ReadOnlyMany', or 'ReadWriteMany', got: ${PVC_ACCESS_MODE}"
   exit 4
 fi
 
@@ -160,63 +160,63 @@ detect_all_resources
 # Diagnostic output
 # =============================================================================
 
-echo "Strategy/Mode Selections" >&2
-echo "  Affinity strategy:        ${AFFINITY_STRATEGY}" >&2
-echo "  Readonly root filesystem: ${READONLY_ROOT_FILESYSTEM}" >&2
-echo "  Seccomp profile:          ${SECCOMP_PROFILE}" >&2
-echo "  Liveness probe:           ${LIVENESS_CHECK_TYPE}" >&2
-echo "  Readiness probe:          ${READINESS_CHECK_TYPE}" >&2
-echo "  Startup probe:            ${STARTUP_CHECK_TYPE}" >&2
-echo "  Pod management policy:    ${POD_MANAGEMENT_POLICY}" >&2
-echo "  Update strategy:          ${UPDATE_STRATEGY_TYPE}" >&2
-echo "  PVC enabled:              ${PVC_ENABLED}" >&2
+log "Strategy/Mode Selections"
+log "  Affinity strategy:        ${AFFINITY_STRATEGY}"
+log "  Readonly root filesystem: ${READONLY_ROOT_FILESYSTEM}"
+log "  Seccomp profile:          ${SECCOMP_PROFILE}"
+log "  Liveness probe:           ${LIVENESS_CHECK_TYPE}"
+log "  Readiness probe:          ${READINESS_CHECK_TYPE}"
+log "  Startup probe:            ${STARTUP_CHECK_TYPE}"
+log "  Pod management policy:    ${POD_MANAGEMENT_POLICY}"
+log "  Update strategy:          ${UPDATE_STRATEGY_TYPE}"
+log "  PVC enabled:              ${PVC_ENABLED}"
 
-echo "Detection Results" >&2
+log "Detection Results"
 if [[ "${has_configmap}" == "true" ]]; then
-  echo "  ConfigMap detected:       ${configmap_source}" >&2
+  log "  ConfigMap detected:       ${configmap_source}"
 else
-  echo "  ConfigMap detected:       No, so won't be mounted" >&2
+  log "  ConfigMap detected:       No, so won't be mounted"
 fi
 if [[ "${has_secret}" == "true" ]]; then
-  echo "  Secret detected:          ${secret_source}" >&2
+  log "  Secret detected:          ${secret_source}"
 else
-  echo "  Secret detected:          No, so won't be mounted" >&2
+  log "  Secret detected:          No, so won't be mounted"
 fi
 if [[ "${has_serviceaccount}" == "true" ]]; then
-  echo "  ServiceAccount detected:  ${serviceaccount_source}" >&2
+  log "  ServiceAccount detected:  ${serviceaccount_source}"
 else
-  echo "  ServiceAccount detected:  No, so implicit default used" >&2
+  log "  ServiceAccount detected:  No, so implicit default used"
 fi
 if [[ "${has_env_vars}" == "true" ]]; then
-  echo "  Environment variables:    ${env_file_count} found" >&2
+  log "  Environment variables:    ${env_file_count} found"
 else
-  echo "  Environment variables:    None found, not configured" >&2
+  log "  Environment variables:    None found, not configured"
 fi
 
-echo "Conditional Fields" >&2
+log "Conditional Fields"
 if [[ "${resolved_replicas}" == "NO" ]]; then
-  echo "  Replicas:                 managed by HPA" >&2
+  log "  Replicas:                 managed by HPA"
 else
-  echo "  Replicas:                 ${resolved_replicas}" >&2
+  log "  Replicas:                 ${resolved_replicas}"
 fi
 if [[ -n "${CPU_LIMIT}" ]]; then
-  echo "  CPU limit:                ${CPU_LIMIT}" >&2
+  log "  CPU limit:                ${CPU_LIMIT}"
 else
-  echo "  CPU limit:                Not set, so no throttling" >&2
+  log "  CPU limit:                Not set, so no throttling"
 fi
 if [[ -n "${PRESTOP_COMMAND}" ]]; then
-  echo "  PreStop hook:             configured" >&2
+  log "  PreStop hook:             configured"
 else
-  echo "  PreStop hook:             not configured" >&2
+  log "  PreStop hook:             not configured"
 fi
 if [[ "${PVC_ENABLED}" == "true" ]]; then
-  echo "  PVC storage:              ${PVC_STORAGE_SIZE} (${PVC_ACCESS_MODE})" >&2
+  log "  PVC storage:              ${PVC_STORAGE_SIZE} (${PVC_ACCESS_MODE})"
 fi
 if [[ -n "${NODE_SELECTOR}" ]]; then
-  echo "  Node selector:            ${NODE_SELECTOR}" >&2
+  log "  Node selector:            ${NODE_SELECTOR}"
 fi
 if [[ -n "${DNS_POLICY}" ]]; then
-  echo "  DNS policy:               ${DNS_POLICY}" >&2
+  log "  DNS policy:               ${DNS_POLICY}"
 fi
 
 # =============================================================================
@@ -230,7 +230,7 @@ script_name=$(basename "${BASH_SOURCE[0]}")
 # Generate headless service (required for StatefulSet)
 # =============================================================================
 
-echo "Generating headless service for StatefulSet..." >&2
+log "Generating headless service for StatefulSet..."
 
 # Build suffix for headless service filename
 # Service name must match headless_service_name (${statefulset_name}-headless)
@@ -401,4 +401,4 @@ KUBERNETES_SERVICE_ADDITIONAL_ANNOTATIONS="kaptain/generated-for=\"statefulset/$
 
 } > "${output_file}"
 
-echo "Generated StatefulSet manifest: ${output_file}" >&2
+log "Generated StatefulSet manifest: ${output_file}"

@@ -57,7 +57,8 @@ runs:
       id: prepare
       shell: bash
       env:
-        LOG_ERROR_PREFIX: '::error::'
+        BUILD_PLATFORM: github-actions
+        BUILD_PLATFORM_LOG_PROVIDER: github-actions
         MANIFESTS_SUB_PATH: ${{ inputs.manifests-sub-path }}
         PROJECT_NAME: ${{ inputs.project-name }}
         VERSION: ${{ inputs.version }}

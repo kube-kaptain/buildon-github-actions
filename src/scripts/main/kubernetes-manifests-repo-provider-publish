@@ -17,15 +17,16 @@
 #
 set -euo pipefail
 
-# Logging configuration (CI-agnostic)
-LOG_ERROR_PREFIX="${LOG_ERROR_PREFIX:-}"
-LOG_ERROR_SUFFIX="${LOG_ERROR_SUFFIX:-}"
-
 # Locate script directory (where this selector lives)
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # shellcheck source=src/scripts/defaults/manifests-repo-provider.bash
 source "${SCRIPT_DIR}/../defaults/manifests-repo-provider.bash"
+# shellcheck source=src/scripts/defaults/platform.bash
+source "${SCRIPT_DIR}/../defaults/platform.bash"
+
+# shellcheck source=src/scripts/lib/log.bash
+source "${SCRIPT_DIR}/../lib/log.bash"
 
 PLUGINS_DIR="${SCRIPT_DIR}/../plugins"
 REPO_PROVIDERS_DIR="${PLUGINS_DIR}/kubernetes-manifests-repo-providers"
@@ -56,18 +57,18 @@ main() {
   if [[ ! -f "${provider_script}" ]]; then
     local available
     available=$(list_providers)
-    echo "${LOG_ERROR_PREFIX}Unknown repo provider type: ${MANIFESTS_REPO_PROVIDER_TYPE}. Available: ${available}${LOG_ERROR_SUFFIX}" >&2
+    log_error "Unknown repo provider type: ${MANIFESTS_REPO_PROVIDER_TYPE}. Available: ${available}"
     exit 2
   fi
 
   if [[ ! -x "${provider_script}" ]]; then
-    echo "${LOG_ERROR_PREFIX}Repo provider script not executable: ${provider_script}${LOG_ERROR_SUFFIX}" >&2
+    log_error "Repo provider script not executable: ${provider_script}"
     exit 3
   fi
 
-  echo "=== Kubernetes Manifests Repo Provider Publish ===" >&2
-  echo "Selected repo provider: ${MANIFESTS_REPO_PROVIDER_TYPE}" >&2
-  echo "===================================================" >&2
+  log "=== Kubernetes Manifests Repo Provider Publish ==="
+  log "Selected repo provider: ${MANIFESTS_REPO_PROVIDER_TYPE}"
+  log "==================================================="
 
   # Execute repo provider script
   exec "${provider_script}" "$@"

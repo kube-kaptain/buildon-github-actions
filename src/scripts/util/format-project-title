@@ -10,8 +10,16 @@
 
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# shellcheck source=src/scripts/defaults/platform.bash
+source "${SCRIPT_DIR}/../defaults/platform.bash"
+
+# shellcheck source=src/scripts/lib/log.bash
+source "${SCRIPT_DIR}/../lib/log.bash"
+
 if [[ $# -ne 1 ]]; then
-  echo "Usage: format-project-title <project-name>" >&2
+  log_error "Usage: format-project-title <project-name>"
   exit 1
 fi
 
