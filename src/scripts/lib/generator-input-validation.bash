@@ -13,7 +13,6 @@
 #
 # Assumes:
 #   - token-format.bash is sourced (for validate_token_styles)
-#   - LOG_ERROR_PREFIX and LOG_ERROR_SUFFIX are set (can be empty)
 
 # Validate value is one of allowed options
 # Usage: validate_enum <var_name> <value> <option1> <option2> ...
@@ -47,7 +46,7 @@ validate_enum() {
     fi
   done
 
-  echo "${LOG_ERROR_PREFIX:-}${var_name} must be ${quoted_opts}, got: ${value}${LOG_ERROR_SUFFIX:-}" >&2
+  log_error "${var_name} must be ${quoted_opts}, got: ${value}"
   exit 4
 }
 
@@ -63,7 +62,7 @@ validate_boolean() {
   local value="$2"
 
   if [[ "${value}" != "true" && "${value}" != "false" ]]; then
-    echo "${LOG_ERROR_PREFIX:-}${var_name} must be 'true' or 'false', got: ${value}${LOG_ERROR_SUFFIX:-}" >&2
+    log_error "${var_name} must be 'true' or 'false', got: ${value}"
     exit 4
   fi
 }
@@ -90,12 +89,12 @@ validate_combined_sub_path() {
   fi
 
   if [[ ! "${path}" =~ ^[a-z0-9/-]+$ ]]; then
-    echo "${LOG_ERROR_PREFIX:-}Combined sub-path must contain only lowercase letters, digits, hyphens, and slashes, got: ${path}${LOG_ERROR_SUFFIX:-}" >&2
+    log_error "Combined sub-path must contain only lowercase letters, digits, hyphens, and slashes, got: ${path}"
     exit 5
   fi
 
   if [[ "${path}" == /* || "${path}" == */ ]]; then
-    echo "${LOG_ERROR_PREFIX:-}Combined sub-path must not start or end with a slash, got: ${path}${LOG_ERROR_SUFFIX:-}" >&2
+    log_error "Combined sub-path must not start or end with a slash, got: ${path}"
     exit 6
   fi
 }
@@ -115,7 +114,7 @@ validate_combined_sub_path() {
 #
 validate_common_inputs() {
   if [[ -z "${PROJECT_NAME:-}" ]]; then
-    echo "${LOG_ERROR_PREFIX:-}PROJECT_NAME is required${LOG_ERROR_SUFFIX:-}" >&2
+    log_error "PROJECT_NAME is required"
     exit 1
   fi
 
@@ -161,7 +160,7 @@ validate_workload_inputs() {
   lib_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
   affinity_plugin="${lib_dir}/../plugins/pod-placement-strategy/${AFFINITY_STRATEGY}"
   if [[ ! -x "${affinity_plugin}" ]]; then
-    echo "${LOG_ERROR_PREFIX:-}Unknown affinity strategy '${AFFINITY_STRATEGY}' - plugin not found at ${affinity_plugin}${LOG_ERROR_SUFFIX:-}" >&2
+    log_error "Unknown affinity strategy '${AFFINITY_STRATEGY}' - plugin not found at ${affinity_plugin}"
     exit 5
   fi
 }

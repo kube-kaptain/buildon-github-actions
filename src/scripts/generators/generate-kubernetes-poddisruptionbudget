@@ -38,10 +38,10 @@ source "${LIB_DIR}/token-format.bash"
 source "${LIB_DIR}/kubernetes-metadata.bash"
 # shellcheck source=src/scripts/lib/generator-input-validation.bash
 source "${LIB_DIR}/generator-input-validation.bash"
-
-# Logging configuration (CI-agnostic)
-LOG_ERROR_PREFIX="${LOG_ERROR_PREFIX:-}"
-LOG_ERROR_SUFFIX="${LOG_ERROR_SUFFIX:-}"
+# shellcheck source=src/scripts/defaults/platform.bash
+source "${SCRIPT_DIR}/../defaults/platform.bash"
+# shellcheck source=src/scripts/lib/log.bash
+source "${LIB_DIR}/log.bash"
 
 # Resource kind
 kind="PodDisruptionBudget"
@@ -63,7 +63,7 @@ if [[ -z "${KUBERNETES_PODDISRUPTIONBUDGET_GENERATION_ENABLED:-}" ]]; then
 fi
 
 if [[ "${KUBERNETES_PODDISRUPTIONBUDGET_GENERATION_ENABLED}" != "true" ]]; then
-  echo "PodDisruptionBudget generation not enabled (workload type: ${KUBERNETES_WORKLOAD_TYPE}), skipping" >&2
+  log "PodDisruptionBudget generation not enabled (workload type: ${KUBERNETES_WORKLOAD_TYPE}), skipping"
   exit 0
 fi
 
@@ -86,14 +86,14 @@ case "${STRATEGY}" in
   min-available|max-unavailable)
     ;;
   *)
-    echo "${LOG_ERROR_PREFIX}Invalid KUBERNETES_PODDISRUPTIONBUDGET_STRATEGY: ${STRATEGY}. Must be 'min-available' or 'max-unavailable'${LOG_ERROR_SUFFIX}" >&2
+    log_error "Invalid KUBERNETES_PODDISRUPTIONBUDGET_STRATEGY: ${STRATEGY}. Must be 'min-available' or 'max-unavailable'"
     exit 4
     ;;
 esac
 
 # Value is required
 if [[ -z "${VALUE}" ]]; then
-  echo "${LOG_ERROR_PREFIX}KUBERNETES_PODDISRUPTIONBUDGET_VALUE is required${LOG_ERROR_SUFFIX}" >&2
+  log_error "KUBERNETES_PODDISRUPTIONBUDGET_VALUE is required"
   exit 4
 fi
 
@@ -125,10 +125,10 @@ output_file=$(build_output_filename "${output_dir}" "${kind}" "${NAME_SUFFIX}")
 # Diagnostic output
 # =============================================================================
 
-echo "PodDisruptionBudget Configuration" >&2
-echo "  Workload type:            ${KUBERNETES_WORKLOAD_TYPE}" >&2
-echo "  Strategy:                 ${STRATEGY}" >&2
-echo "  Value:                    ${VALUE}" >&2
+log "PodDisruptionBudget Configuration"
+log "  Workload type:            ${KUBERNETES_WORKLOAD_TYPE}"
+log "  Strategy:                 ${STRATEGY}"
+log "  Value:                    ${VALUE}"
 
 # =============================================================================
 # Build labels and annotations
@@ -162,4 +162,4 @@ script_name=$(basename "${BASH_SOURCE[0]}")
 
 } > "${output_file}"
 
-echo "Generated PodDisruptionBudget manifest: ${output_file}" >&2
+log "Generated PodDisruptionBudget manifest: ${output_file}"

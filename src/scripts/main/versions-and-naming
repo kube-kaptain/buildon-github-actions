@@ -39,27 +39,32 @@ source "${SCRIPT_DIR}/../defaults/docker-dockerfile.bash"
 # shellcheck source=src/scripts/defaults/branch-inputs.bash
 source "${SCRIPT_DIR}/../defaults/branch-inputs.bash"
 
+# shellcheck source=src/scripts/defaults/platform.bash
+source "${SCRIPT_DIR}/../defaults/platform.bash"
+
 # shellcheck source=src/scripts/lib/branch-setup-shared.bash
 source "${SCRIPT_DIR}/../lib/branch-setup-shared.bash"
 
 # shellcheck source=src/scripts/lib/output-var.bash
 source "${SCRIPT_DIR}/../lib/output-var.bash"
+# shellcheck source=src/scripts/lib/log.bash
+source "${SCRIPT_DIR}/../lib/log.bash"
 
 # Required inputs
 REPOSITORY_NAME="${REPOSITORY_NAME:?Is required}"
 REPOSITORY_OWNER="${REPOSITORY_OWNER:?Is required}"
 
-echo "Critical inputs:" >&2
-echo "  Repository name: ${REPOSITORY_NAME}" >&2
-echo "  Current branch:  ${CURRENT_BRANCH}" >&2
-echo "  Release branch:  ${RELEASE_BRANCH}" >&2
-echo "  Default branch:  ${DEFAULT_BRANCH}" >&2
-echo "  Build mode:      ${BUILD_MODE}" >&2
-echo >&2
+log "Critical inputs:"
+log "  Repository name: ${REPOSITORY_NAME}"
+log "  Current branch:  ${CURRENT_BRANCH}"
+log "  Release branch:  ${RELEASE_BRANCH}"
+log "  Default branch:  ${DEFAULT_BRANCH}"
+log "  Build mode:      ${BUILD_MODE}"
+log ""
 
 # Configuration validation - fail fast on conflicting settings
 if [[ "${RELEASE_BRANCH}" != "${DEFAULT_BRANCH}" ]]; then
-  echo "${LOG_ERROR_PREFIX}Configuration error: RELEASE_BRANCH (${RELEASE_BRANCH}) must match DEFAULT_BRANCH (${DEFAULT_BRANCH})${LOG_ERROR_SUFFIX}" >&2
+  log_error "Configuration error: RELEASE_BRANCH (${RELEASE_BRANCH}) must match DEFAULT_BRANCH (${DEFAULT_BRANCH})"
   exit 1
 fi
 
@@ -67,14 +72,14 @@ if [[ -n "${ADDITIONAL_RELEASE_BRANCHES}" ]]; then
   IFS=',' read -ra additional_branches <<< "${ADDITIONAL_RELEASE_BRANCHES}"
   for additional in "${additional_branches[@]}"; do
     if [[ "${additional}" != "${RELEASE_BRANCH}" ]] && ! [[ "${additional}" =~ ^${RELEASE_BRANCH}[-._/+] ]]; then
-      echo "${LOG_ERROR_PREFIX}Configuration error: Additional release branch '${additional}' must start with '${RELEASE_BRANCH}' followed by a divider (. - / _ +)${LOG_ERROR_SUFFIX}" >&2
+      log_error "Configuration error: Additional release branch '${additional}' must start with '${RELEASE_BRANCH}' followed by a divider (. - / _ +)"
       exit 1
     fi
   done
 fi
 
 if [[ "${BUILD_MODE}" != "local" && "${BUILD_MODE}" != "build_server" ]]; then
-  echo "${LOG_ERROR_PREFIX}Invalid BUILD_MODE: ${BUILD_MODE}. Valid values: local, build_server${LOG_ERROR_SUFFIX}" >&2
+  log_error "Invalid BUILD_MODE: ${BUILD_MODE}. Valid values: local, build_server"
   exit 1
 fi
 
@@ -125,48 +130,53 @@ main() {
 
   # Validate exact mode is only used with file-based strategies
   if [[ "${TAG_VERSION_USE_SOURCE_VERSION_EXACT}" == "true" ]] && [[ "${TAG_VERSION_CALCULATION_STRATEGY}" == "git-auto-closest-highest" ]]; then
-    echo "${LOG_ERROR_PREFIX}TAG_VERSION_USE_SOURCE_VERSION_EXACT is only supported with file-based strategies (file-pattern-match, compound-file-pattern-match)${LOG_ERROR_SUFFIX}" >&2
+    log_error "TAG_VERSION_USE_SOURCE_VERSION_EXACT is only supported with file-based strategies (file-pattern-match, compound-file-pattern-match)"
     exit 1
   fi
 
   # Validate strategy plugin exists
   local strategy_script="${PLUGINS_DIR}/tag-version-calculation-providers/tag-version-calculation-${TAG_VERSION_CALCULATION_STRATEGY}"
   if [[ ! -x "${strategy_script}" ]]; then
-    echo "${LOG_ERROR_PREFIX}Unknown tag version calculation strategy: ${TAG_VERSION_CALCULATION_STRATEGY}${LOG_ERROR_SUFFIX}" >&2
-    echo "Expected executable: ${strategy_script}" >&2
-    echo "Available strategies:" >&2
+    log_error "Unknown tag version calculation strategy: ${TAG_VERSION_CALCULATION_STRATEGY}"
+    log "Expected executable: ${strategy_script}"
+    log "Available strategies:"
     for f in "${PLUGINS_DIR}"/tag-version-calculation-providers/tag-version-calculation-*; do
       if [[ -x "${f}" ]]; then
         local name
         name=$(basename "${f}")
-        echo "  - ${name#tag-version-calculation-}" >&2
+        log "  - ${name#tag-version-calculation-}"
       fi
     done
     exit 1
   fi
 
-  # Call the strategy plugin
-  local plugin_output
-  plugin_output=$(
-    TAG_VERSION_MAX_PARTS="${TAG_VERSION_MAX_PARTS}" \
-    TAG_VERSION_PATTERN_TYPE="${TAG_VERSION_PATTERN_TYPE}" \
-    TAG_VERSION_PREFIX_PARTS="${TAG_VERSION_PREFIX_PARTS}" \
-    DOCKERFILE_SUB_PATH="${DOCKERFILE_SUB_PATH}" \
-    TAG_VERSION_SOURCE_SUB_PATH="${TAG_VERSION_SOURCE_SUB_PATH}" \
-    TAG_VERSION_SOURCE_FILE_NAME="${TAG_VERSION_SOURCE_FILE_NAME}" \
-    TAG_VERSION_SOURCE_CUSTOM_PATTERN="${TAG_VERSION_SOURCE_CUSTOM_PATTERN}" \
-    TAG_VERSION_USE_SOURCE_VERSION_EXACT="${TAG_VERSION_USE_SOURCE_VERSION_EXACT}" \
-    LOG_ERROR_PREFIX="${LOG_ERROR_PREFIX}" \
-    LOG_ERROR_SUFFIX="${LOG_ERROR_SUFFIX}" \
-    "${strategy_script}"
-  ) || exit $?
+  # Prepare the version file location for the plugin to write to
+  local version_file="${OUTPUT_SUB_PATH}/versions-and-naming/tag-version-calculation-provider/VERSION"
+  mkdir -p "$(dirname "${version_file}")"
 
-  # Parse VERSION from plugin output
+  # Call the strategy plugin
+  TAG_VERSION_MAX_PARTS="${TAG_VERSION_MAX_PARTS}" \
+  TAG_VERSION_PATTERN_TYPE="${TAG_VERSION_PATTERN_TYPE}" \
+  TAG_VERSION_PREFIX_PARTS="${TAG_VERSION_PREFIX_PARTS}" \
+  DOCKERFILE_SUB_PATH="${DOCKERFILE_SUB_PATH}" \
+  TAG_VERSION_SOURCE_SUB_PATH="${TAG_VERSION_SOURCE_SUB_PATH}" \
+  TAG_VERSION_SOURCE_FILE_NAME="${TAG_VERSION_SOURCE_FILE_NAME}" \
+  TAG_VERSION_SOURCE_CUSTOM_PATTERN="${TAG_VERSION_SOURCE_CUSTOM_PATTERN}" \
+  TAG_VERSION_USE_SOURCE_VERSION_EXACT="${TAG_VERSION_USE_SOURCE_VERSION_EXACT}" \
+  BUILD_PLATFORM="${BUILD_PLATFORM}" \
+  BUILD_PLATFORM_LOG_PROVIDER="${BUILD_PLATFORM_LOG_PROVIDER}" \
+  "${strategy_script}" || exit $?
+
+  # Read VERSION from file
   local version
-  version=$(echo "${plugin_output}" | grep '^VERSION=' | cut -d= -f2-)
+  if [[ ! -f "${version_file}" ]]; then
+    log_error "Strategy plugin did not write VERSION file: ${version_file}"
+    exit 1
+  fi
+  version=$(cat "${version_file}")
 
   if [[ -z "${version}" ]]; then
-    echo "${LOG_ERROR_PREFIX}Strategy plugin did not output VERSION${LOG_ERROR_SUFFIX}" >&2
+    log_error "Strategy plugin wrote empty VERSION file: ${version_file}"
     exit 1
   fi
 
@@ -181,7 +191,7 @@ main() {
 
   # Create tag locally for build_server mode (push happens later)
   if [[ "${BUILD_MODE}" == "build_server" ]]; then
-    echo "Creating tag: ${git_tag}" >&2
+    log "Creating tag: ${git_tag}"
     create_tag "${git_tag}" "${project_name}"
   fi
 
@@ -216,6 +226,7 @@ main() {
   output_var "IS_RELEASE" "${is_release}"
   output_var "PROJECT_NAME" "${project_name}"
   output_var "REPOSITORY_OWNER" "${REPOSITORY_OWNER}"
+  output_var "REPOSITORY_NAME" "${REPOSITORY_NAME}"
 }
 
 main "$@"

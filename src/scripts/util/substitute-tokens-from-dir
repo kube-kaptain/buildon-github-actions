@@ -29,17 +29,18 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PLUGINS_DIR="${SCRIPT_DIR}/../plugins"
 
-# Logging configuration (CI-agnostic)
-LOG_ERROR_PREFIX="${LOG_ERROR_PREFIX:-}"
-LOG_ERROR_SUFFIX="${LOG_ERROR_SUFFIX:-}"
-
 # shellcheck source=src/scripts/defaults/tokens.bash
 source "${SCRIPT_DIR}/../defaults/tokens.bash"
+# shellcheck source=src/scripts/defaults/platform.bash
+source "${SCRIPT_DIR}/../defaults/platform.bash"
+
+# shellcheck source=src/scripts/lib/log.bash
+source "${SCRIPT_DIR}/../lib/log.bash"
 export CONFIG_VALUE_TRAILING_NEWLINE
 
 # Validate arguments
 if [[ $# -ne 3 ]]; then
-  echo "${LOG_ERROR_PREFIX}Usage: substitute-tokens-from-dir <token-style> <tokens-dir> <target-file-or-dir>${LOG_ERROR_SUFFIX}" >&2
+  log_error "Usage: substitute-tokens-from-dir <token-style> <tokens-dir> <target-file-or-dir>"
   exit 1
 fi
 
@@ -50,13 +51,13 @@ TARGET="${3}"
 # Validate token style script exists
 PROVIDER_SCRIPT="${PLUGINS_DIR}/token-substitution-providers/substitute-${TOKEN_STYLE}-style-token"
 if [[ ! -x "${PROVIDER_SCRIPT}" ]]; then
-  echo "${LOG_ERROR_PREFIX}Unknown token style: ${TOKEN_STYLE} (script not found: substitute-${TOKEN_STYLE}-style-token)${LOG_ERROR_SUFFIX}" >&2
+  log_error "Unknown token style: ${TOKEN_STYLE} (script not found: substitute-${TOKEN_STYLE}-style-token)"
   exit 1
 fi
 
 # Validate tokens directory exists
 if [[ ! -d "${TOKENS_DIR}" ]]; then
-  echo "${LOG_ERROR_PREFIX}Tokens directory not found: ${TOKENS_DIR}${LOG_ERROR_SUFFIX}" >&2
+  log_error "Tokens directory not found: ${TOKENS_DIR}"
   exit 1
 fi
 
@@ -66,7 +67,7 @@ if [[ -d "${TARGET}" ]]; then
 elif [[ -f "${TARGET}" ]]; then
   TARGET_MODE="file"
 else
-  echo "${LOG_ERROR_PREFIX}Target not found: ${TARGET}${LOG_ERROR_SUFFIX}" >&2
+  log_error "Target not found: ${TARGET}"
   exit 1
 fi
 
@@ -77,9 +78,9 @@ while IFS= read -r -d '' symlink; do
 done < <(find "${TOKENS_DIR}" -type l -print0)
 
 if [[ ${#symlinks_found[@]} -gt 0 ]]; then
-  echo "${LOG_ERROR_PREFIX}Symlinks not allowed in tokens directory:${LOG_ERROR_SUFFIX}" >&2
+  log_error "Symlinks not allowed in tokens directory:"
   for symlink in "${symlinks_found[@]}"; do
-    echo "  ${symlink#"${TOKENS_DIR}"/}" >&2
+    log "  ${symlink#"${TOKENS_DIR}"/}"
   done
   exit 1
 fi
@@ -95,9 +96,9 @@ while IFS= read -r -d '' token_file; do
 done < <(find "${TOKENS_DIR}" -type f -print0)
 
 if [[ ${#binary_files_found[@]} -gt 0 ]]; then
-  echo "${LOG_ERROR_PREFIX}Binary files (containing null bytes) not allowed in tokens directory:${LOG_ERROR_SUFFIX}" >&2
+  log_error "Binary files (containing null bytes) not allowed in tokens directory:"
   for binary_file in "${binary_files_found[@]}"; do
-    echo "  ${binary_file#"${TOKENS_DIR}"/}" >&2
+    log "  ${binary_file#"${TOKENS_DIR}"/}"
   done
   exit 1
 fi

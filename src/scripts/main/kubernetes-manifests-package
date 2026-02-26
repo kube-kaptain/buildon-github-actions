@@ -23,16 +23,14 @@ set -euo pipefail
 # Locate script directory for calling sibling scripts
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-# Logging configuration (CI-agnostic)
-LOG_ERROR_PREFIX="${LOG_ERROR_PREFIX:-}"
-LOG_ERROR_SUFFIX="${LOG_ERROR_SUFFIX:-}"
-
 # Required inputs
 PROJECT_NAME="${PROJECT_NAME:?PROJECT_NAME is required}"
 VERSION="${VERSION:?VERSION is required}"
 
 # shellcheck source=src/scripts/defaults/output-sub-path.bash
 source "$(dirname "${BASH_SOURCE[0]}")/../defaults/output-sub-path.bash"
+# shellcheck source=src/scripts/defaults/platform.bash
+source "${SCRIPT_DIR}/../defaults/platform.bash"
 
 # Token substitution defaults
 # shellcheck source=src/scripts/defaults/tokens.bash
@@ -40,6 +38,8 @@ source "$(dirname "${BASH_SOURCE[0]}")/../defaults/tokens.bash"
 
 # shellcheck source=src/scripts/lib/output-var.bash
 source "${SCRIPT_DIR}/../lib/output-var.bash"
+# shellcheck source=src/scripts/lib/log.bash
+source "${SCRIPT_DIR}/../lib/log.bash"
 
 # Build output structure (sub-paths, relative to working directory)
 MANIFESTS_COMBINED_SUB_PATH="${OUTPUT_SUB_PATH}/manifests/combined"
@@ -48,22 +48,22 @@ MANIFESTS_SUBSTITUTED_SUB_PATH="${OUTPUT_SUB_PATH}/manifests/substituted"
 MANIFESTS_ZIP_SUB_PATH="${OUTPUT_SUB_PATH}/manifests/zip"
 
 main() {
-  echo "=== Kubernetes Manifest Package ===" >&2
-  echo "Project: ${PROJECT_NAME}" >&2
-  echo "Version: ${VERSION}" >&2
-  echo "Output: ${OUTPUT_SUB_PATH}" >&2
-  echo "====================================" >&2
+  log "=== Kubernetes Manifest Package ==="
+  log "Project: ${PROJECT_NAME}"
+  log "Version: ${VERSION}"
+  log "Output: ${OUTPUT_SUB_PATH}"
+  log "===================================="
 
   # Validate prepare has run
   if [[ ! -d "${MANIFESTS_COMBINED_SUB_PATH}" ]]; then
-    echo "${LOG_ERROR_PREFIX}Combined manifests directory not found: ${MANIFESTS_COMBINED_SUB_PATH}${LOG_ERROR_SUFFIX}" >&2
-    echo "${LOG_ERROR_PREFIX}Did kubernetes-manifests-package-prepare run first?${LOG_ERROR_SUFFIX}" >&2
+    log_error "Combined manifests directory not found: ${MANIFESTS_COMBINED_SUB_PATH}"
+    log_error "Did kubernetes-manifests-package-prepare run first?"
     exit 1
   fi
 
   if [[ ! -d "${MANIFESTS_CONFIG_SUB_PATH}" ]]; then
-    echo "${LOG_ERROR_PREFIX}Config/tokens directory not found: ${MANIFESTS_CONFIG_SUB_PATH}${LOG_ERROR_SUFFIX}" >&2
-    echo "${LOG_ERROR_PREFIX}Did kubernetes-manifests-package-prepare run first?${LOG_ERROR_SUFFIX}" >&2
+    log_error "Config/tokens directory not found: ${MANIFESTS_CONFIG_SUB_PATH}"
+    log_error "Did kubernetes-manifests-package-prepare run first?"
     exit 1
   fi
 
@@ -71,13 +71,13 @@ main() {
   local zip_name="${PROJECT_NAME}-${VERSION}-manifests.zip"
 
   # Copy manifests to substituted/<project-name>/
-  echo "" >&2
-  echo "Preparing manifests for substitution..." >&2
+  log ""
+  log "Preparing manifests for substitution..."
   mkdir -p "${MANIFESTS_SUBSTITUTED_SUB_PATH}/${PROJECT_NAME}"
   cp -R "${MANIFESTS_COMBINED_SUB_PATH}"/* "${MANIFESTS_SUBSTITUTED_SUB_PATH}/${PROJECT_NAME}/"
 
   # Perform variable substitution
-  echo "Performing variable substitution..." >&2
+  log "Performing variable substitution..."
   CONFIG_VALUE_TRAILING_NEWLINE="${CONFIG_VALUE_TRAILING_NEWLINE}" \
   "${SCRIPT_DIR}/../util/substitute-tokens-from-dir" \
     "${TOKEN_DELIMITER_STYLE}" \
@@ -85,8 +85,8 @@ main() {
     "${MANIFESTS_SUBSTITUTED_SUB_PATH}/${PROJECT_NAME}"
 
   # Create zip directly from substituted (project-name wrapper already in place)
-  echo "" >&2
-  echo "Creating zip: ${MANIFESTS_ZIP_SUB_PATH}/${zip_name}" >&2
+  log ""
+  log "Creating zip: ${MANIFESTS_ZIP_SUB_PATH}/${zip_name}"
 
   local repo_root
   repo_root="$(pwd)"
@@ -94,19 +94,19 @@ main() {
 
   # Verify zip was created
   if [[ ! -f "${MANIFESTS_ZIP_SUB_PATH}/${zip_name}" ]]; then
-    echo "${LOG_ERROR_PREFIX}Failed to create zip file${LOG_ERROR_SUFFIX}" >&2
+    log_error "Failed to create zip file"
     exit 1
   fi
 
   local zip_size
   zip_size=$(wc -c < "${MANIFESTS_ZIP_SUB_PATH}/${zip_name}" | tr -d ' ')
-  echo "Created: ${zip_name} (${zip_size} bytes)" >&2
+  log "Created: ${zip_name} (${zip_size} bytes)"
 
   output_var "MANIFESTS_ZIP_SUB_PATH" "${MANIFESTS_ZIP_SUB_PATH}"
   output_var "MANIFESTS_ZIP_FILE_NAME" "${zip_name}"
 
-  echo "" >&2
-  echo "=== Package Complete ===" >&2
+  log ""
+  log "=== Package Complete ==="
 }
 
 main "$@"

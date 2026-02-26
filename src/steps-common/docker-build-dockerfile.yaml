@@ -12,6 +12,8 @@
     version: ${{ steps.versions.outputs.version }}
     project-name: ${{ steps.versions.outputs.project-name }}
     is-release: ${{ steps.versions.outputs.is-release }}
+    repository-owner: ${{ steps.versions.outputs.repository-owner }}
+    repository-name: ${{ steps.versions.outputs.repository-name }}
     dockerfile-sub-path: ${{ inputs.dockerfile-sub-path }}
     dockerfile-substitution-files: ${{ inputs.dockerfile-substitution-files }}
     output-sub-path: ${{ inputs.output-sub-path }}

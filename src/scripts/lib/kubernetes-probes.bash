@@ -33,7 +33,7 @@ build_indent() {
 # Usage: probe_check_http_get <indent> <path> <port> <scheme>
 probe_check_http_get() {
   if [[ $# -ne 4 ]]; then
-    echo "Error: probe_check_http_get requires exactly 4 arguments, got $#" >&2
+    log_error "probe_check_http_get requires exactly 4 arguments, got $#"
     return 1
   fi
 
@@ -55,7 +55,7 @@ probe_check_http_get() {
 # Usage: probe_check_tcp_socket <indent> <port>
 probe_check_tcp_socket() {
   if [[ $# -ne 2 ]]; then
-    echo "Error: probe_check_tcp_socket requires exactly 2 arguments, got $#" >&2
+    log_error "probe_check_tcp_socket requires exactly 2 arguments, got $#"
     return 1
   fi
 
@@ -74,7 +74,7 @@ probe_check_tcp_socket() {
 # Command is wrapped with /bin/sh -c automatically
 probe_check_exec() {
   if [[ $# -ne 2 ]]; then
-    echo "Error: probe_check_exec requires exactly 2 arguments, got $#" >&2
+    log_error "probe_check_exec requires exactly 2 arguments, got $#"
     return 1
   fi
 
@@ -96,7 +96,7 @@ probe_check_exec() {
 # Service is optional - if empty string, omitted from output
 probe_check_grpc() {
   if [[ $# -ne 3 ]]; then
-    echo "Error: probe_check_grpc requires exactly 3 arguments, got $#" >&2
+    log_error "probe_check_grpc requires exactly 3 arguments, got $#"
     return 1
   fi
 
@@ -120,7 +120,7 @@ probe_check_grpc() {
 # termination_grace_period is optional - only for liveness/startup probes (K8s 1.25+)
 probe_timing_fields() {
   if [[ $# -lt 5 || $# -gt 7 ]]; then
-    echo "Error: probe_timing_fields requires 5-7 arguments, got $#" >&2
+    log_error "probe_timing_fields requires 5-7 arguments, got $#"
     return 1
   fi
 
@@ -174,7 +174,7 @@ probe_timing_fields() {
 #
 generate_probe() {
   if [[ $# -lt 5 ]]; then
-    echo "Error: generate_probe requires at least 5 arguments" >&2
+    log_error "generate_probe requires at least 5 arguments"
     return 1
   fi
 
@@ -187,7 +187,7 @@ generate_probe() {
   case "${probe_type}" in
     liveness|readiness|startup) ;;
     *)
-      echo "Error: invalid probe_type '${probe_type}', must be liveness, readiness, or startup" >&2
+      log_error "invalid probe_type '${probe_type}', must be liveness, readiness, or startup"
       return 1
       ;;
   esac
@@ -196,7 +196,7 @@ generate_probe() {
   case "${check_type}" in
     http-get|tcp-socket|exec|grpc) ;;
     *)
-      echo "Error: invalid check_type '${check_type}', must be http-get, tcp-socket, exec, or grpc" >&2
+      log_error "invalid check_type '${check_type}', must be http-get, tcp-socket, exec, or grpc"
       return 1
       ;;
   esac
@@ -219,7 +219,7 @@ generate_probe() {
   done
 
   if ! ${found_separator}; then
-    echo "Error: generate_probe requires -- separator between check args and timing args" >&2
+    log_error "generate_probe requires -- separator between check args and timing args"
     return 1
   fi
 
@@ -234,28 +234,28 @@ generate_probe() {
   case "${check_type}" in
     http-get)
       if [[ ${#check_args[@]} -ne 3 ]]; then
-        echo "Error: http-get requires 3 check args (path, port, scheme), got ${#check_args[@]}" >&2
+        log_error "http-get requires 3 check args (path, port, scheme), got ${#check_args[@]}"
         return 1
       fi
       probe_check_http_get "${inner_indent}" "${check_args[0]}" "${check_args[1]}" "${check_args[2]}"
       ;;
     tcp-socket)
       if [[ ${#check_args[@]} -ne 1 ]]; then
-        echo "Error: tcp-socket requires 1 check arg (port), got ${#check_args[@]}" >&2
+        log_error "tcp-socket requires 1 check arg (port), got ${#check_args[@]}"
         return 1
       fi
       probe_check_tcp_socket "${inner_indent}" "${check_args[0]}"
       ;;
     exec)
       if [[ ${#check_args[@]} -ne 1 ]]; then
-        echo "Error: exec requires 1 check arg (command), got ${#check_args[@]}" >&2
+        log_error "exec requires 1 check arg (command), got ${#check_args[@]}"
         return 1
       fi
       probe_check_exec "${inner_indent}" "${check_args[0]}"
       ;;
     grpc)
       if [[ ${#check_args[@]} -ne 2 ]]; then
-        echo "Error: grpc requires 2 check args (port, service), got ${#check_args[@]}" >&2
+        log_error "grpc requires 2 check args (port, service), got ${#check_args[@]}"
         return 1
       fi
       probe_check_grpc "${inner_indent}" "${check_args[0]}" "${check_args[1]}"
@@ -264,7 +264,7 @@ generate_probe() {
 
   # Validate timing args
   if [[ ${#timing_args[@]} -lt 4 ]]; then
-    echo "Error: timing args require at least 4 values (initial_delay, period, timeout, failure), got ${#timing_args[@]}" >&2
+    log_error "timing args require at least 4 values (initial_delay, period, timeout, failure), got ${#timing_args[@]}"
     return 1
   fi
 
@@ -324,19 +324,19 @@ generate_workload_probes() {
   case "${LIVENESS_CHECK_TYPE}" in
     exec)
       if [[ -z "${LIVENESS_EXEC_COMMAND:-}" ]]; then
-        echo "Error: Liveness probe type 'exec' requires LIVENESS_EXEC_COMMAND" >&2
+        log_error "Liveness probe type 'exec' requires LIVENESS_EXEC_COMMAND"
         return 4
       fi
       ;;
     tcp-socket)
       if [[ -z "${LIVENESS_TCP_PORT:-}" ]]; then
-        echo "Error: Liveness probe type 'tcp-socket' requires LIVENESS_TCP_PORT" >&2
+        log_error "Liveness probe type 'tcp-socket' requires LIVENESS_TCP_PORT"
         return 4
       fi
       ;;
     grpc)
       if [[ -z "${LIVENESS_GRPC_PORT:-}" ]]; then
-        echo "Error: Liveness probe type 'grpc' requires LIVENESS_GRPC_PORT" >&2
+        log_error "Liveness probe type 'grpc' requires LIVENESS_GRPC_PORT"
         return 4
       fi
       ;;
@@ -345,19 +345,19 @@ generate_workload_probes() {
   case "${READINESS_CHECK_TYPE}" in
     exec)
       if [[ -z "${READINESS_EXEC_COMMAND:-}" ]]; then
-        echo "Error: Readiness probe type 'exec' requires READINESS_EXEC_COMMAND" >&2
+        log_error "Readiness probe type 'exec' requires READINESS_EXEC_COMMAND"
         return 4
       fi
       ;;
     tcp-socket)
       if [[ -z "${READINESS_TCP_PORT:-}" ]]; then
-        echo "Error: Readiness probe type 'tcp-socket' requires READINESS_TCP_PORT" >&2
+        log_error "Readiness probe type 'tcp-socket' requires READINESS_TCP_PORT"
         return 4
       fi
       ;;
     grpc)
       if [[ -z "${READINESS_GRPC_PORT:-}" ]]; then
-        echo "Error: Readiness probe type 'grpc' requires READINESS_GRPC_PORT" >&2
+        log_error "Readiness probe type 'grpc' requires READINESS_GRPC_PORT"
         return 4
       fi
       ;;
@@ -366,19 +366,19 @@ generate_workload_probes() {
   case "${STARTUP_CHECK_TYPE}" in
     exec)
       if [[ -z "${STARTUP_EXEC_COMMAND:-}" ]]; then
-        echo "Error: Startup probe type 'exec' requires STARTUP_EXEC_COMMAND" >&2
+        log_error "Startup probe type 'exec' requires STARTUP_EXEC_COMMAND"
         return 4
       fi
       ;;
     tcp-socket)
       if [[ -z "${STARTUP_TCP_PORT:-}" ]]; then
-        echo "Error: Startup probe type 'tcp-socket' requires STARTUP_TCP_PORT" >&2
+        log_error "Startup probe type 'tcp-socket' requires STARTUP_TCP_PORT"
         return 4
       fi
       ;;
     grpc)
       if [[ -z "${STARTUP_GRPC_PORT:-}" ]]; then
-        echo "Error: Startup probe type 'grpc' requires STARTUP_GRPC_PORT" >&2
+        log_error "Startup probe type 'grpc' requires STARTUP_GRPC_PORT"
         return 4
       fi
       ;;
@@ -472,19 +472,19 @@ generate_liveness_probe() {
   case "${LIVENESS_CHECK_TYPE}" in
     exec)
       if [[ -z "${LIVENESS_EXEC_COMMAND:-}" ]]; then
-        echo "Error: Liveness probe type 'exec' requires LIVENESS_EXEC_COMMAND" >&2
+        log_error "Liveness probe type 'exec' requires LIVENESS_EXEC_COMMAND"
         return 4
       fi
       ;;
     tcp-socket)
       if [[ -z "${LIVENESS_TCP_PORT:-}" ]]; then
-        echo "Error: Liveness probe type 'tcp-socket' requires LIVENESS_TCP_PORT" >&2
+        log_error "Liveness probe type 'tcp-socket' requires LIVENESS_TCP_PORT"
         return 4
       fi
       ;;
     grpc)
       if [[ -z "${LIVENESS_GRPC_PORT:-}" ]]; then
-        echo "Error: Liveness probe type 'grpc' requires LIVENESS_GRPC_PORT" >&2
+        log_error "Liveness probe type 'grpc' requires LIVENESS_GRPC_PORT"
         return 4
       fi
       ;;
@@ -527,19 +527,19 @@ generate_readiness_probe() {
   case "${READINESS_CHECK_TYPE}" in
     exec)
       if [[ -z "${READINESS_EXEC_COMMAND:-}" ]]; then
-        echo "Error: Readiness probe type 'exec' requires READINESS_EXEC_COMMAND" >&2
+        log_error "Readiness probe type 'exec' requires READINESS_EXEC_COMMAND"
         return 4
       fi
       ;;
     tcp-socket)
       if [[ -z "${READINESS_TCP_PORT:-}" ]]; then
-        echo "Error: Readiness probe type 'tcp-socket' requires READINESS_TCP_PORT" >&2
+        log_error "Readiness probe type 'tcp-socket' requires READINESS_TCP_PORT"
         return 4
       fi
       ;;
     grpc)
       if [[ -z "${READINESS_GRPC_PORT:-}" ]]; then
-        echo "Error: Readiness probe type 'grpc' requires READINESS_GRPC_PORT" >&2
+        log_error "Readiness probe type 'grpc' requires READINESS_GRPC_PORT"
         return 4
       fi
       ;;
@@ -580,19 +580,19 @@ generate_startup_probe() {
   case "${STARTUP_CHECK_TYPE}" in
     exec)
       if [[ -z "${STARTUP_EXEC_COMMAND:-}" ]]; then
-        echo "Error: Startup probe type 'exec' requires STARTUP_EXEC_COMMAND" >&2
+        log_error "Startup probe type 'exec' requires STARTUP_EXEC_COMMAND"
         return 4
       fi
       ;;
     tcp-socket)
       if [[ -z "${STARTUP_TCP_PORT:-}" ]]; then
-        echo "Error: Startup probe type 'tcp-socket' requires STARTUP_TCP_PORT" >&2
+        log_error "Startup probe type 'tcp-socket' requires STARTUP_TCP_PORT"
         return 4
       fi
       ;;
     grpc)
       if [[ -z "${STARTUP_GRPC_PORT:-}" ]]; then
-        echo "Error: Startup probe type 'grpc' requires STARTUP_GRPC_PORT" >&2
+        log_error "Startup probe type 'grpc' requires STARTUP_GRPC_PORT"
         return 4
       fi
       ;;

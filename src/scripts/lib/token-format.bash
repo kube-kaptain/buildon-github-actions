@@ -33,7 +33,7 @@ _capitalize() {
 # Returns: 0 if valid, 1 if invalid
 is_valid_token_name_style() {
   if [[ $# -ne 1 ]]; then
-    echo "Error: is_valid_token_name_style requires exactly 1 argument, got $#" >&2
+    log_error "is_valid_token_name_style requires exactly 1 argument, got $#"
     return 1
   fi
   case "${1:-}" in
@@ -51,7 +51,7 @@ is_valid_token_name_style() {
 # Returns: 0 if valid, 1 if invalid
 is_valid_substitution_token_style() {
   if [[ $# -ne 1 ]]; then
-    echo "Error: is_valid_substitution_token_style requires exactly 1 argument, got $#" >&2
+    log_error "is_valid_substitution_token_style requires exactly 1 argument, got $#"
     return 1
   fi
   case "${1:-}" in
@@ -67,16 +67,15 @@ is_valid_substitution_token_style() {
 # Validate both token styles and exit on error
 # Usage: validate_token_styles
 # Reads from caller's scope: TOKEN_NAME_STYLE, TOKEN_DELIMITER_STYLE
-# Also uses: LOG_ERROR_PREFIX, LOG_ERROR_SUFFIX (optional)
 # Exits: 2 for invalid name style, 3 for invalid delimiter style
 validate_token_styles() {
   if ! is_valid_token_name_style "${TOKEN_NAME_STYLE:-}"; then
-    echo "${LOG_ERROR_PREFIX:-}Unknown token name style: ${TOKEN_NAME_STYLE:-}${LOG_ERROR_SUFFIX:-}" >&2
+    log_error "Unknown token name style: ${TOKEN_NAME_STYLE:-}"
     exit 2
   fi
 
   if ! is_valid_substitution_token_style "${TOKEN_DELIMITER_STYLE:-}"; then
-    echo "${LOG_ERROR_PREFIX:-}Unknown substitution token style: ${TOKEN_DELIMITER_STYLE:-}${LOG_ERROR_SUFFIX:-}" >&2
+    log_error "Unknown substitution token style: ${TOKEN_DELIMITER_STYLE:-}"
     exit 3
   fi
 }
@@ -86,7 +85,7 @@ validate_token_styles() {
 # Styles: PascalCase, camelCase, UPPER_SNAKE, lower_snake, lower-kebab, UPPER-KEBAB, lower.dot, UPPER.DOT
 convert_token_name() {
   if [[ $# -ne 2 ]]; then
-    echo "Error: convert_token_name requires exactly 2 arguments, got $#" >&2
+    log_error "convert_token_name requires exactly 2 arguments, got $#"
     return 1
   fi
 
@@ -95,11 +94,11 @@ convert_token_name() {
 
   # Validate inputs
   if [[ -z "${style}" ]]; then
-    echo "Error: name style is required" >&2
+    log_error "name style is required"
     return 1
   fi
   if [[ -z "${name}" || "${name}" =~ ^[[:space:]]+$ ]]; then
-    echo "Error: canonical name is required and cannot be whitespace-only" >&2
+    log_error "canonical name is required and cannot be whitespace-only"
     return 1
   fi
 
@@ -129,7 +128,7 @@ convert_token_name() {
       echo "${name}" | tr '_' '.'
       ;;
     *)
-      echo "Error: Unknown name style: ${style}" >&2
+      log_error "Unknown name style: ${style}"
       return 1
       ;;
   esac
@@ -140,7 +139,7 @@ convert_token_name() {
 # Styles: shell, mustache, helm, erb, github-actions, blade, stringtemplate, ognl, t4, swift
 format_token_reference() {
   if [[ $# -ne 2 ]]; then
-    echo "Error: format_token_reference requires exactly 2 arguments, got $#" >&2
+    log_error "format_token_reference requires exactly 2 arguments, got $#"
     return 1
   fi
 
@@ -149,11 +148,11 @@ format_token_reference() {
 
   # Validate inputs
   if [[ -z "${style}" ]]; then
-    echo "Error: substitution style is required" >&2
+    log_error "substitution style is required"
     return 1
   fi
   if [[ -z "${name}" ]]; then
-    echo "Error: name is required" >&2
+    log_error "name is required"
     return 1
   fi
 
@@ -189,7 +188,7 @@ format_token_reference() {
       echo "\\(${name})"
       ;;
     *)
-      echo "Error: Unknown substitution style: ${style}" >&2
+      log_error "Unknown substitution style: ${style}"
       return 1
       ;;
   esac
@@ -199,7 +198,7 @@ format_token_reference() {
 # Usage: format_canonical_token <substitution-style> <name-style> <UPPER_SNAKE_NAME>
 format_canonical_token() {
   if [[ $# -ne 3 ]]; then
-    echo "Error: format_canonical_token requires exactly 3 arguments, got $#" >&2
+    log_error "format_canonical_token requires exactly 3 arguments, got $#"
     return 1
   fi
 
@@ -209,15 +208,15 @@ format_canonical_token() {
 
   # Validate inputs
   if [[ -z "${subst_style}" ]]; then
-    echo "Error: substitution style is required" >&2
+    log_error "substitution style is required"
     return 1
   fi
   if [[ -z "${name_style}" ]]; then
-    echo "Error: name style is required" >&2
+    log_error "name style is required"
     return 1
   fi
   if [[ -z "${canonical_name}" ]]; then
-    echo "Error: canonical name is required" >&2
+    log_error "canonical name is required"
     return 1
   fi
 
@@ -232,7 +231,7 @@ format_canonical_token() {
 # Example: convert_kebab_name "PascalCase" "my-cool-project" → "MyCoolProject"
 convert_kebab_name() {
   if [[ $# -ne 2 ]]; then
-    echo "Error: convert_kebab_name requires exactly 2 arguments, got $#" >&2
+    log_error "convert_kebab_name requires exactly 2 arguments, got $#"
     return 1
   fi
 
@@ -241,11 +240,11 @@ convert_kebab_name() {
 
   # Validate inputs
   if [[ -z "${style}" ]]; then
-    echo "Error: name style is required" >&2
+    log_error "name style is required"
     return 1
   fi
   if [[ -z "${kebab_name}" || "${kebab_name}" =~ ^[[:space:]]+$ ]]; then
-    echo "Error: kebab name is required and cannot be whitespace-only" >&2
+    log_error "kebab name is required and cannot be whitespace-only"
     return 1
   fi
 
@@ -262,7 +261,7 @@ convert_kebab_name() {
 #          Returns: ${MyProjectAffinityColocateApp}
 format_project_suffixed_token() {
   if [[ $# -ne 4 ]]; then
-    echo "Error: format_project_suffixed_token requires exactly 4 arguments, got $#" >&2
+    log_error "format_project_suffixed_token requires exactly 4 arguments, got $#"
     return 1
   fi
 
@@ -273,19 +272,19 @@ format_project_suffixed_token() {
 
   # Validate inputs
   if [[ -z "${delim_style}" ]]; then
-    echo "Error: delimiter style is required" >&2
+    log_error "delimiter style is required"
     return 1
   fi
   if [[ -z "${name_style}" ]]; then
-    echo "Error: name style is required" >&2
+    log_error "name style is required"
     return 1
   fi
   if [[ -z "${project_kebab}" ]]; then
-    echo "Error: project name (kebab) is required" >&2
+    log_error "project name (kebab) is required"
     return 1
   fi
   if [[ -z "${suffix_upper_snake}" ]]; then
-    echo "Error: suffix (UPPER_SNAKE) is required" >&2
+    log_error "suffix (UPPER_SNAKE) is required"
     return 1
   fi
 

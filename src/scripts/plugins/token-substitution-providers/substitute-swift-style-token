@@ -16,11 +16,14 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-LOG_ERROR_PREFIX="${LOG_ERROR_PREFIX:-}"
-LOG_ERROR_SUFFIX="${LOG_ERROR_SUFFIX:-}"
+
+# shellcheck source=src/scripts/defaults/platform.bash
+source "${SCRIPT_DIR}/../../defaults/platform.bash"
+# shellcheck source=src/scripts/lib/log.bash
+source "${SCRIPT_DIR}/../../lib/log.bash"
 
 if [[ ${#} -ne 2 ]]; then
-  echo "${LOG_ERROR_PREFIX}Usage: substitute-swift-style-token <token-file> <target-file>${LOG_ERROR_SUFFIX}" >&2
+  log_error "Usage: substitute-swift-style-token <token-file> <target-file>"
   exit 1
 fi
 
@@ -28,12 +31,12 @@ TOKEN_FILE="${1}"
 TARGET="${2}"
 
 if [[ ! -f "${TOKEN_FILE}" ]]; then
-  echo "${LOG_ERROR_PREFIX}Token file not found: ${TOKEN_FILE}${LOG_ERROR_SUFFIX}" >&2
+  log_error "Token file not found: ${TOKEN_FILE}"
   exit 1
 fi
 
 if [[ ! -f "${TARGET}" ]]; then
-  echo "${LOG_ERROR_PREFIX}Target file not found: ${TARGET}${LOG_ERROR_SUFFIX}" >&2
+  log_error "Target file not found: ${TARGET}"
   exit 1
 fi
 

@@ -16,15 +16,13 @@ SCRIPT_DIR="$(dirname "${0}")"
 
 # shellcheck source=src/scripts/defaults/build-mode.bash
 source "${SCRIPT_DIR}/../defaults/build-mode.bash"
+# shellcheck source=src/scripts/defaults/platform.bash
+source "${SCRIPT_DIR}/../defaults/platform.bash"
 
 # shellcheck source=src/scripts/lib/output-var.bash
 source "${SCRIPT_DIR}/../lib/output-var.bash"
-
-# Logging prefixes (match other scripts)
-LOG_ERROR_PREFIX="${LOG_ERROR_PREFIX:-ERROR: }"
-LOG_ERROR_SUFFIX="${LOG_ERROR_SUFFIX:-}"
-LOG_WARNING_PREFIX="${LOG_WARNING_PREFIX:-WARNING: }"
-LOG_WARNING_SUFFIX="${LOG_WARNING_SUFFIX:-}"
+# shellcheck source=src/scripts/lib/log.bash
+source "${SCRIPT_DIR}/../lib/log.bash"
 
 # Tool categories
 CORE_TOOLS="git awk grep find tr wc cmp cp mkdir basename zip date uname"
@@ -41,117 +39,117 @@ check_tool() {
   command -v "${tool}" &>/dev/null
 }
 
-echo "Validating tooling for BUILD_MODE=${BUILD_MODE}" >&2
-echo >&2
+log "Validating tooling for BUILD_MODE=${BUILD_MODE}"
+log ""
 
 # Check core tools (always required)
-echo "Checking core tools..." >&2
+log "Checking core tools..."
 for tool in ${CORE_TOOLS}; do
   if check_tool "${tool}"; then
-    echo "  ✓ ${tool}" >&2
+    log "  ✓ ${tool}"
   else
-    echo "  ✗ ${tool}" >&2
+    log "  ✗ ${tool}"
     MISSING_CORE="${MISSING_CORE} ${tool}"
   fi
 done
-echo >&2
+log ""
 
 # Check container runtime
-echo "Checking container runtime..." >&2
+log "Checking container runtime..."
 IMAGE_BUILD_COMMAND=""
 HAS_PODMAN=false
 HAS_DOCKER=false
 if check_tool "podman"; then
   HAS_PODMAN=true
-  echo "  ✓ podman" >&2
+  log "  ✓ podman"
 else
-  echo "  - podman (not found)" >&2
+  log "  - podman (not found)"
 fi
 if check_tool "docker"; then
   HAS_DOCKER=true
-  echo "  ✓ docker" >&2
+  log "  ✓ docker"
 else
-  echo "  - docker (not found)" >&2
+  log "  - docker (not found)"
 fi
 
 if [[ "${BUILD_MODE}" == "build_server" ]]; then
   if [[ "${HAS_PODMAN}" != "true" ]]; then
-    echo "${LOG_ERROR_PREFIX}podman is required on build server but not found${LOG_ERROR_SUFFIX}" >&2
+    log_error "podman is required on build server but not found"
     MISSING_CORE="${MISSING_CORE} podman"
   else
     IMAGE_BUILD_COMMAND="podman"
-    echo "  Creating docker -> podman symlink for hook script compatibility" >&2
+    log "  Creating docker -> podman symlink for hook script compatibility"
     sudo ln -sf "$(command -v podman)" /usr/local/bin/docker
     if ! check_tool "docker"; then
-      echo "${LOG_ERROR_PREFIX}docker symlink creation failed${LOG_ERROR_SUFFIX}" >&2
+      log_error "docker symlink creation failed"
       MISSING_CORE="${MISSING_CORE} docker-symlink"
     else
-      echo "  ✓ docker symlink verified" >&2
+      log "  ✓ docker symlink verified"
     fi
   fi
 else
   # Local mode - accept either, no symlink
   if [[ "${HAS_PODMAN}" == "true" ]]; then
     IMAGE_BUILD_COMMAND="podman"
-    echo "${LOG_WARNING_PREFIX}Using podman locally - hook scripts targeting 'docker' command will not work, use 'podman' in hook scripts${LOG_WARNING_SUFFIX}" >&2
+    log_warning "Using podman locally - hook scripts targeting 'docker' command will not work, use 'podman' in hook scripts"
   elif [[ "${HAS_DOCKER}" == "true" ]]; then
     IMAGE_BUILD_COMMAND="docker"
-    echo "${LOG_WARNING_PREFIX}Using docker locally - squash will be disabled (podman required for squash support)${LOG_WARNING_SUFFIX}" >&2
+    log_warning "Using docker locally - squash will be disabled (podman required for squash support)"
   else
-    echo "${LOG_ERROR_PREFIX}No container runtime found - install podman or docker${LOG_ERROR_SUFFIX}" >&2
+    log_error "No container runtime found - install podman or docker"
     MISSING_CORE="${MISSING_CORE} podman/docker"
   fi
 fi
 
 if [[ -n "${IMAGE_BUILD_COMMAND}" ]]; then
-  echo "  → IMAGE_BUILD_COMMAND=${IMAGE_BUILD_COMMAND}" >&2
+  log "  → IMAGE_BUILD_COMMAND=${IMAGE_BUILD_COMMAND}"
 fi
-echo >&2
+log ""
 
 # Check build server tools (warn only - some have fallbacks)
-echo "Checking build server tools..." >&2
+log "Checking build server tools..."
 for tool in ${BUILD_SERVER_TOOLS}; do
   if check_tool "${tool}"; then
-    echo "  ✓ ${tool}" >&2
+    log "  ✓ ${tool}"
   else
-    echo "  - ${tool} (not found)" >&2
+    log "  - ${tool} (not found)"
     MISSING_BUILD_SERVER="${MISSING_BUILD_SERVER} ${tool}"
   fi
 done
-echo >&2
+log ""
 
 # Check cloud CLIs (warn only)
-echo "Checking cloud CLIs (optional)..." >&2
+log "Checking cloud CLIs (optional)..."
 for tool in ${CLOUD_TOOLS}; do
   if check_tool "${tool}"; then
-    echo "  ✓ ${tool}" >&2
+    log "  ✓ ${tool}"
   else
-    echo "  - ${tool} (not found)" >&2
+    log "  - ${tool} (not found)"
     MISSING_CLOUD="${MISSING_CLOUD} ${tool}"
   fi
 done
-echo >&2
+log ""
 
 # Report results
 EXIT_CODE=0
 
 if [[ -n "${MISSING_CORE}" ]]; then
-  echo "${LOG_ERROR_PREFIX}Missing required core tools:${MISSING_CORE}${LOG_ERROR_SUFFIX}" >&2
+  log_error "Missing required core tools:${MISSING_CORE}"
   EXIT_CODE=1
 fi
 
 if [[ -n "${MISSING_BUILD_SERVER}" ]]; then
-  echo "${LOG_WARNING_PREFIX}Missing build server tools (some have fallbacks):${MISSING_BUILD_SERVER}${LOG_WARNING_SUFFIX}" >&2
+  log_warning "Missing build server tools (some have fallbacks):${MISSING_BUILD_SERVER}"
   # Not a failure - these tools have fallbacks or are only needed for specific features
 fi
 
 if [[ -n "${MISSING_CLOUD}" ]]; then
-  echo "${LOG_WARNING_PREFIX}Missing cloud CLIs (needed for specific registry logins):${MISSING_CLOUD}${LOG_WARNING_SUFFIX}" >&2
+  log_warning "Missing cloud CLIs (needed for specific registry logins):${MISSING_CLOUD}"
   # Not a failure - cloud tools are optional
 fi
 
 if [[ ${EXIT_CODE} -eq 0 ]]; then
-  echo "All required tools available!" >&2
+  log "All required tools available!"
 fi
 
 if [[ -n "${IMAGE_BUILD_COMMAND}" ]]; then

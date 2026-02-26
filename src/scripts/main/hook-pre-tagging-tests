@@ -165,5 +165,9 @@ export GITHUB_RELEASE_NOTES GITHUB_RELEASE_NOTES_FILE GITHUB_RELEASE_ADD_VERSION
 # Only workflow inputs are available at this lifecycle point.
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=src/scripts/defaults/platform.bash
+source "${SCRIPT_DIR}/../defaults/platform.bash"
+# shellcheck source=src/scripts/lib/log.bash
+source "${SCRIPT_DIR}/../lib/log.bash"
 # shellcheck source=src/scripts/lib/hook-runner.bash
 source "${SCRIPT_DIR}/../lib/hook-runner.bash"

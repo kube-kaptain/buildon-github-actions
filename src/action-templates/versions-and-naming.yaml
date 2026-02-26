@@ -54,6 +54,9 @@ outputs:
   repository-owner:
     description: 'The repository owner (org or user)'
     value: ${{ steps.generate.outputs.REPOSITORY_OWNER }}
+  repository-name:
+    description: 'The repository name'
+    value: ${{ steps.generate.outputs.REPOSITORY_NAME }}
 
 runs:
   using: 'composite'
@@ -62,8 +65,8 @@ runs:
       id: generate
       shell: bash
       env:
-        LOG_ERROR_PREFIX: '::error::'
-        LOG_WARNING_PREFIX: '::warning::'
+        BUILD_PLATFORM: github-actions
+        BUILD_PLATFORM_LOG_PROVIDER: github-actions
         BUILD_MODE: build_server
         REPOSITORY_NAME: ${{ github.event.repository.name }}
         REPOSITORY_OWNER: ${{ github.repository_owner }}

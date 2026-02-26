@@ -33,10 +33,6 @@ set -euo pipefail
 # Locate script directory for calling sibling scripts
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-# Logging configuration (CI-agnostic)
-LOG_ERROR_PREFIX="${LOG_ERROR_PREFIX:-}"
-LOG_ERROR_SUFFIX="${LOG_ERROR_SUFFIX:-}"
-
 # Required inputs
 PROJECT_NAME="${PROJECT_NAME:?PROJECT_NAME is required}"
 VERSION="${VERSION:?VERSION is required}"
@@ -45,6 +41,8 @@ DOCKER_IMAGE_NAME="${DOCKER_IMAGE_NAME:?DOCKER_IMAGE_NAME is required}"
 
 # shellcheck source=src/scripts/defaults/output-sub-path.bash
 source "$(dirname "${BASH_SOURCE[0]}")/../defaults/output-sub-path.bash"
+# shellcheck source=src/scripts/defaults/platform.bash
+source "${SCRIPT_DIR}/../defaults/platform.bash"
 # shellcheck source=src/scripts/defaults/manifests-sub-path.bash
 source "$(dirname "${BASH_SOURCE[0]}")/../defaults/manifests-sub-path.bash"
 
@@ -59,6 +57,8 @@ source "$(dirname "${BASH_SOURCE[0]}")/../defaults/tokens.bash"
 
 # shellcheck source=src/scripts/lib/output-var.bash
 source "${SCRIPT_DIR}/../lib/output-var.bash"
+# shellcheck source=src/scripts/lib/log.bash
+source "${SCRIPT_DIR}/../lib/log.bash"
 
 # Build output structure (sub-paths, relative to working directory)
 MANIFESTS_COMBINED_SUB_PATH="${OUTPUT_SUB_PATH}/manifests/combined"
@@ -66,15 +66,15 @@ MANIFESTS_CONFIG_SUB_PATH="${OUTPUT_SUB_PATH}/manifests/config"
 MANIFESTS_ZIP_SUB_PATH="${OUTPUT_SUB_PATH}/manifests/zip"
 
 main() {
-  echo "=== Kubernetes Manifest Package Prepare ===" >&2
-  echo "Source: ${MANIFESTS_SUB_PATH}" >&2
-  echo "Config: ${CONFIG_SUB_PATH}" >&2
-  echo "Output: ${OUTPUT_SUB_PATH}" >&2
-  echo "Project: ${PROJECT_NAME}" >&2
-  echo "Version: ${VERSION}" >&2
-  echo "Docker tag: ${DOCKER_TAG}" >&2
-  echo "Docker image: ${DOCKER_IMAGE_NAME}" >&2
-  echo "============================================" >&2
+  log "=== Kubernetes Manifest Package Prepare ==="
+  log "Source: ${MANIFESTS_SUB_PATH}"
+  log "Config: ${CONFIG_SUB_PATH}"
+  log "Output: ${OUTPUT_SUB_PATH}"
+  log "Project: ${PROJECT_NAME}"
+  log "Version: ${VERSION}"
+  log "Docker tag: ${DOCKER_TAG}"
+  log "Docker image: ${DOCKER_IMAGE_NAME}"
+  log "============================================"
 
   # Create output directory structure (may already exist from pre-package hooks)
   mkdir -p "${MANIFESTS_COMBINED_SUB_PATH}"
@@ -87,16 +87,16 @@ main() {
     source_file_count=$(find "${MANIFESTS_SUB_PATH}" -type f | wc -l | tr -d ' ')
 
     if [[ "${source_file_count}" -gt 0 ]]; then
-      echo "" >&2
-      echo "Copying ${source_file_count} file(s) from ${MANIFESTS_SUB_PATH}" >&2
+      log ""
+      log "Copying ${source_file_count} file(s) from ${MANIFESTS_SUB_PATH}"
       cp -R "${MANIFESTS_SUB_PATH}"/* "${MANIFESTS_COMBINED_SUB_PATH}/"
     else
-      echo "" >&2
-      echo "Source directory empty: ${MANIFESTS_SUB_PATH}" >&2
+      log ""
+      log "Source directory empty: ${MANIFESTS_SUB_PATH}"
     fi
   else
-    echo "" >&2
-    echo "Source directory not found: ${MANIFESTS_SUB_PATH}" >&2
+    log ""
+    log "Source directory not found: ${MANIFESTS_SUB_PATH}"
   fi
 
   # Validate combined/ has files (from any source: hooks or src/kubernetes)
@@ -113,21 +113,21 @@ main() {
   done < <(find "${MANIFESTS_COMBINED_SUB_PATH}" -type f)
 
   if [[ "${total_files}" -eq 0 ]]; then
-    echo "${LOG_ERROR_PREFIX}No manifests to package (${MANIFESTS_COMBINED_SUB_PATH} is empty)${LOG_ERROR_SUFFIX}" >&2
+    log_error "No manifests to package (${MANIFESTS_COMBINED_SUB_PATH} is empty)"
     exit 1
   fi
 
-  echo "" >&2
-  echo "Found ${yaml_count} manifest file(s) (.yaml)" >&2
+  log ""
+  log "Found ${yaml_count} manifest file(s) (.yaml)"
   if [[ ${other_count} -gt 0 ]]; then
-    echo "Found ${other_count} non-manifest file(s)" >&2
+    log "Found ${other_count} non-manifest file(s)"
   fi
 
   # Compute the zip filename (used as a built-in token)
   local zip_name="${PROJECT_NAME}-${VERSION}-manifests.zip"
 
   # Prepare substitution tokens (built-ins + user config)
-  echo "" >&2
+  log ""
   TOKENS_OUTPUT_SUB_PATH="${MANIFESTS_CONFIG_SUB_PATH}" \
   CONFIG_SUB_PATH="${CONFIG_SUB_PATH}" \
   TOKEN_NAME_STYLE="${TOKEN_NAME_STYLE}" \
@@ -147,8 +147,8 @@ main() {
 
   output_var "MANIFESTS_ZIP_FILE_NAME" "${zip_name}"
 
-  echo "" >&2
-  echo "=== Prepare Complete ===" >&2
+  log ""
+  log "=== Prepare Complete ==="
 }
 
 main "$@"

@@ -25,32 +25,33 @@ LIB_DIR="${SCRIPT_DIR}/../lib"
 # shellcheck source=src/scripts/lib/token-format.bash
 source "${LIB_DIR}/token-format.bash"
 
-# Logging configuration (CI-agnostic)
-LOG_ERROR_PREFIX="${LOG_ERROR_PREFIX:-}"
-LOG_ERROR_SUFFIX="${LOG_ERROR_SUFFIX:-}"
-
 # Optional inputs
 DOCKER_IMAGE_NAME_OVERRIDE="${DOCKER_IMAGE_NAME_OVERRIDE:-}"
 DOCKER_TAG_OVERRIDE="${DOCKER_TAG_OVERRIDE:-}"
 
 # shellcheck source=src/scripts/defaults/output-sub-path.bash
 source "$(dirname "${BASH_SOURCE[0]}")/../defaults/output-sub-path.bash"
+# shellcheck source=src/scripts/defaults/platform.bash
+source "${SCRIPT_DIR}/../defaults/platform.bash"
 # shellcheck source=src/scripts/defaults/tokens.bash
 source "$(dirname "${BASH_SOURCE[0]}")/../defaults/tokens.bash"
+
+# shellcheck source=src/scripts/lib/log.bash
+source "${SCRIPT_DIR}/../lib/log.bash"
 
 # Config directory (where tokens are stored)
 MANIFESTS_CONFIG_SUB_PATH="${OUTPUT_SUB_PATH}/manifests/config"
 
 main() {
-  echo "=== Manifests-Only Token Override ===" >&2
-  echo "Config: ${MANIFESTS_CONFIG_SUB_PATH}" >&2
-  echo "Token style: ${TOKEN_NAME_STYLE}" >&2
-  echo "======================================" >&2
+  log "=== Manifests-Only Token Override ==="
+  log "Config: ${MANIFESTS_CONFIG_SUB_PATH}"
+  log "Token style: ${TOKEN_NAME_STYLE}"
+  log "======================================"
 
   # Validate config directory exists
   if [[ ! -d "${MANIFESTS_CONFIG_SUB_PATH}" ]]; then
-    echo "${LOG_ERROR_PREFIX}Config directory not found: ${MANIFESTS_CONFIG_SUB_PATH}${LOG_ERROR_SUFFIX}" >&2
-    echo "${LOG_ERROR_PREFIX}Did kubernetes-manifests-package-prepare run first?${LOG_ERROR_SUFFIX}" >&2
+    log_error "Config directory not found: ${MANIFESTS_CONFIG_SUB_PATH}"
+    log_error "Did kubernetes-manifests-package-prepare run first?"
     exit 1
   fi
 
@@ -61,23 +62,23 @@ main() {
 
   # Handle image name token
   if [[ -n "${DOCKER_IMAGE_NAME_OVERRIDE}" ]]; then
-    echo "Overwriting ${image_name_token}: ${DOCKER_IMAGE_NAME_OVERRIDE}" >&2
+    log "Overwriting ${image_name_token}: ${DOCKER_IMAGE_NAME_OVERRIDE}"
     printf '%s' "${DOCKER_IMAGE_NAME_OVERRIDE}" > "${MANIFESTS_CONFIG_SUB_PATH}/${image_name_token}"
   else
-    echo "Removing ${image_name_token} (variable will remain in output)" >&2
+    log "Removing ${image_name_token} (variable will remain in output)"
     rm -f "${MANIFESTS_CONFIG_SUB_PATH}/${image_name_token}"
   fi
 
   # Handle tag token
   if [[ -n "${DOCKER_TAG_OVERRIDE}" ]]; then
-    echo "Overwriting ${tag_token}: ${DOCKER_TAG_OVERRIDE}" >&2
+    log "Overwriting ${tag_token}: ${DOCKER_TAG_OVERRIDE}"
     printf '%s' "${DOCKER_TAG_OVERRIDE}" > "${MANIFESTS_CONFIG_SUB_PATH}/${tag_token}"
   else
-    echo "Removing ${tag_token} (variable will remain in output)" >&2
+    log "Removing ${tag_token} (variable will remain in output)"
     rm -f "${MANIFESTS_CONFIG_SUB_PATH}/${tag_token}"
   fi
 
-  echo "=== Override Complete ===" >&2
+  log "=== Override Complete ==="
 }
 
 main "$@"

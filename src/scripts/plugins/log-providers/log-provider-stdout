@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
+#
+# log-provider-stdout - Default log provider
+#
+# All output to stdout with plain text prefixes for errors
+# and warnings. Used for local development and platforms
+# without specific log provider support.
+#
+# Sourced by log.bash - not executed directly.
+#
+
+log() { echo "$*"; }
+log_error() { echo "ERROR: $*"; }
+log_warning() { echo "WARNING: $*"; }

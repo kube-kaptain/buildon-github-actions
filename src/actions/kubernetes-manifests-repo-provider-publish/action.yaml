@@ -88,8 +88,8 @@ runs:
       id: publish
       shell: bash
       env:
-        LOG_ERROR_PREFIX: '::error::'
-        LOG_ERROR_SUFFIX: ''
+        BUILD_PLATFORM: github-actions
+        BUILD_PLATFORM_LOG_PROVIDER: github-actions
         MANIFESTS_REPO_PROVIDER_TYPE: ${{ inputs.manifests-repo-provider-type }}
         IS_RELEASE: ${{ inputs.is-release }}
 

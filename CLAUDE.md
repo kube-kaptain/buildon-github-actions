@@ -123,3 +123,5 @@ This keeps diffs clean and makes code review easier. Mixing unrelated fixes into
 SPDX-License-Identifier: CC-BY-SA-4.0
 Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
 ```
+
+The above applies to this file - and is not for use in any scripts. See LICENSE.md for licensing details.

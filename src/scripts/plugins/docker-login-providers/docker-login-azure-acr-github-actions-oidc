@@ -19,13 +19,18 @@
 #
 set -euo pipefail
 
+# shellcheck source=src/scripts/defaults/platform.bash
+source "$(dirname "${BASH_SOURCE[0]}")/../../defaults/platform.bash"
+# shellcheck source=src/scripts/lib/log.bash
+source "$(dirname "${BASH_SOURCE[0]}")/../../lib/log.bash"
+
 # secret_method=$1 - unused for OIDC
 registry="${2}"
 client_id="${3}"
 tenant_id="${4}"
 subscription_id="${5}"
 
-echo "Authenticating to Azure via OIDC..." >&2
+log "Authenticating to Azure via OIDC..."
 
 # shellcheck disable=SC2154 # ACTIONS_ID_TOKEN_* are set by GitHub Actions runtime
 token=$(curl -s -H "Authorization: bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" \
@@ -39,5 +44,5 @@ az login --service-principal \
 
 az account set --subscription "${subscription_id}"
 
-echo "Logging in to Azure ACR ${registry}..." >&2
+log "Logging in to Azure ACR ${registry}..."
 az acr login --name "${registry%.azurecr.io}"

@@ -7,10 +7,9 @@
 # Sourced by tag version calculation plugins. Provides common version
 # extraction, prefix handling, tag lookup, and increment logic.
 #
-# Requires LOG_ERROR_PREFIX and LOG_ERROR_SUFFIX to be set (may be empty).
 #
 # shellcheck disable=SC2034 # SOURCE_SUB_PATH, SOURCE_FILE_NAME, VERSION_PATTERN used by callers
-# shellcheck disable=SC2154 # TAG_VERSION_PATTERN_TYPE, LOG_ERROR_PREFIX/SUFFIX set by callers
+# shellcheck disable=SC2154 # TAG_VERSION_PATTERN_TYPE set by callers
 
 TAG_VERSION_LIB_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
@@ -30,15 +29,15 @@ set_defaults_for_type() {
       ;;
     custom)
       if [[ -z "${TAG_VERSION_SOURCE_SUB_PATH:-}" ]]; then
-        echo "${LOG_ERROR_PREFIX}TAG_VERSION_SOURCE_SUB_PATH is required for custom pattern type${LOG_ERROR_SUFFIX}" >&2
+        log_error "TAG_VERSION_SOURCE_SUB_PATH is required for custom pattern type"
         exit 1
       fi
       if [[ -z "${TAG_VERSION_SOURCE_FILE_NAME:-}" ]]; then
-        echo "${LOG_ERROR_PREFIX}TAG_VERSION_SOURCE_FILE_NAME is required for custom pattern type${LOG_ERROR_SUFFIX}" >&2
+        log_error "TAG_VERSION_SOURCE_FILE_NAME is required for custom pattern type"
         exit 1
       fi
       if [[ -z "${TAG_VERSION_SOURCE_CUSTOM_PATTERN:-}" ]]; then
-        echo "${LOG_ERROR_PREFIX}TAG_VERSION_SOURCE_CUSTOM_PATTERN is required for custom pattern type${LOG_ERROR_SUFFIX}" >&2
+        log_error "TAG_VERSION_SOURCE_CUSTOM_PATTERN is required for custom pattern type"
         exit 1
       fi
       SOURCE_SUB_PATH="${TAG_VERSION_SOURCE_SUB_PATH}"
@@ -46,8 +45,8 @@ set_defaults_for_type() {
       VERSION_PATTERN="${TAG_VERSION_SOURCE_CUSTOM_PATTERN}"
       ;;
     *)
-      echo "${LOG_ERROR_PREFIX}Unknown TAG_VERSION_PATTERN_TYPE: ${TAG_VERSION_PATTERN_TYPE}${LOG_ERROR_SUFFIX}" >&2
-      echo "Valid types: dockerfile-env-kubectl, retag-workflow-source-tag, custom" >&2
+      log_error "Unknown TAG_VERSION_PATTERN_TYPE: ${TAG_VERSION_PATTERN_TYPE}"
+      log "Valid types: dockerfile-env-kubectl, retag-workflow-source-tag, custom"
       exit 1
       ;;
   esac
@@ -59,37 +58,37 @@ validate_version_format() {
   local label="${2:-}"
   if [[ ! "${value}" =~ ^[0-9]+(\.[0-9]+)*$ ]]; then
     if [[ -n "${label}" ]]; then
-      echo "${LOG_ERROR_PREFIX}Captured value '${value}' from ${label} is not a valid version format${LOG_ERROR_SUFFIX}" >&2
+      log_error "Captured value '${value}' from ${label} is not a valid version format"
     else
-      echo "${LOG_ERROR_PREFIX}Captured value '${value}' is not a valid version format${LOG_ERROR_SUFFIX}" >&2
+      log_error "Captured value '${value}' is not a valid version format"
     fi
-    echo "Expected: digits separated by dots (e.g., 1, 1.28, 1.28.0)" >&2
+    log "Expected: digits separated by dots (e.g., 1, 1.28, 1.28.0)"
     exit 1
   fi
 }
 
 # Extract version from a file using a regex pattern
+# Sets EXTRACTED_VERSION (avoids $() capture which swallows log_error on stdout-based providers)
 extract_version_from_file() {
   local source_file="${1}"
   local pattern="${2}"
   local label="${3:-}"
+  EXTRACTED_VERSION=""
 
   if [[ ! -f "${source_file}" ]]; then
-    echo "${LOG_ERROR_PREFIX}Source file not found: ${source_file}${LOG_ERROR_SUFFIX}" >&2
+    log_error "Source file not found: ${source_file}"
     exit 1
   fi
 
-  local version
-  version=$(grep -E "${pattern}" "${source_file}" | head -1 | sed -E "s/${pattern}/\\1/")
+  EXTRACTED_VERSION=$(grep -E "${pattern}" "${source_file}" | head -1 | sed -E "s/${pattern}/\\1/") || true
 
-  if [[ -z "${version}" ]]; then
-    echo "${LOG_ERROR_PREFIX}Could not find version matching pattern in ${source_file} (${label})${LOG_ERROR_SUFFIX}" >&2
-    echo "Pattern: ${pattern}" >&2
+  if [[ -z "${EXTRACTED_VERSION}" ]]; then
+    log_error "Could not find version matching pattern in ${source_file} (${label})"
+    log_error "Pattern: ${pattern}"
     exit 1
   fi
 
-  validate_version_format "${version}" "${label}"
-  echo "${version}"
+  validate_version_format "${EXTRACTED_VERSION}" "${label}"
 }
 
 # Get N-part prefix from version

@@ -25,12 +25,8 @@ set -euo pipefail
 # Locate script directory for sourcing shared scripts
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-# Logging configuration (CI-agnostic)
-LOG_ERROR_PREFIX="${LOG_ERROR_PREFIX:-}"
-LOG_ERROR_SUFFIX="${LOG_ERROR_SUFFIX:-}"
-LOG_WARNING_PREFIX="${LOG_WARNING_PREFIX:-}"
-LOG_WARNING_SUFFIX="${LOG_WARNING_SUFFIX:-}"
-
+# shellcheck source=src/scripts/defaults/platform.bash
+source "${SCRIPT_DIR}/../defaults/platform.bash"
 # shellcheck source=src/scripts/defaults/docker-push-image-list.bash
 source "${SCRIPT_DIR}/../defaults/docker-push-image-list.bash"
 # shellcheck source=src/scripts/defaults/docker-build.bash
@@ -43,24 +39,26 @@ source "${SCRIPT_DIR}/../defaults/docker-common.bash"
 source "${SCRIPT_DIR}/../defaults/output-sub-path.bash"
 # shellcheck source=src/scripts/lib/output-var.bash
 source "${SCRIPT_DIR}/../lib/output-var.bash"
+# shellcheck source=src/scripts/lib/log.bash
+source "${SCRIPT_DIR}/../lib/log.bash"
 
 # Validate required inputs
 if [[ -z "${DOCKER_SOURCE_REGISTRY}" ]]; then
-  echo "${LOG_ERROR_PREFIX}DOCKER_SOURCE_REGISTRY is required${LOG_ERROR_SUFFIX}" >&2
+  log_error "DOCKER_SOURCE_REGISTRY is required"
   exit 1
 fi
 if [[ -z "${DOCKER_SOURCE_IMAGE_NAME}" ]]; then
-  echo "${LOG_ERROR_PREFIX}DOCKER_SOURCE_IMAGE_NAME is required${LOG_ERROR_SUFFIX}" >&2
+  log_error "DOCKER_SOURCE_IMAGE_NAME is required"
   exit 1
 fi
 if [[ -z "${DOCKER_SOURCE_TAG}" ]]; then
-  echo "${LOG_ERROR_PREFIX}DOCKER_SOURCE_TAG is required${LOG_ERROR_SUFFIX}" >&2
+  log_error "DOCKER_SOURCE_TAG is required"
   exit 1
 fi
 
 # Source registry cannot contain slashes
 if [[ "${SOURCE_REGISTRY}" == */* ]]; then
-  echo "${LOG_ERROR_PREFIX}DOCKER_SOURCE_REGISTRY cannot contain slashes - use DOCKER_SOURCE_NAMESPACE for paths${LOG_ERROR_SUFFIX}" >&2
+  log_error "DOCKER_SOURCE_REGISTRY cannot contain slashes - use DOCKER_SOURCE_NAMESPACE for paths"
   exit 1
 fi
 
@@ -68,14 +66,14 @@ fi
 SOURCE_IMAGE_NAME="${INPUT_SOURCE_IMAGE_NAME#/}"
 SOURCE_IMAGE_NAME="${SOURCE_IMAGE_NAME%/}"
 if [[ "${INPUT_SOURCE_IMAGE_NAME}" != "${SOURCE_IMAGE_NAME}" ]]; then
-  echo "${LOG_WARNING_PREFIX}DOCKER_SOURCE_IMAGE_NAME has leading/trailing slashes. Stripping.${LOG_WARNING_SUFFIX}" >&2
+  log_warning "DOCKER_SOURCE_IMAGE_NAME has leading/trailing slashes. Stripping."
 fi
 
 # Strip leading/trailing slashes from source namespace
 SOURCE_NAMESPACE="${INPUT_SOURCE_NAMESPACE#/}"
 SOURCE_NAMESPACE="${SOURCE_NAMESPACE%/}"
 if [[ "${INPUT_SOURCE_NAMESPACE}" != "${SOURCE_NAMESPACE}" ]]; then
-  echo "${LOG_WARNING_PREFIX}DOCKER_SOURCE_NAMESPACE has leading/trailing slashes. Stripping.${LOG_WARNING_SUFFIX}" >&2
+  log_warning "DOCKER_SOURCE_NAMESPACE has leading/trailing slashes. Stripping."
 fi
 
 # === Assemble source image URI ===
@@ -90,11 +88,11 @@ fi
 source "${SCRIPT_DIR}/../lib/docker-build-shared.bash"
 
 main() {
-  echo "=== Docker Retag ===" >&2
-  echo "Source: ${SOURCE_IMAGE_FULL_URI}" >&2
-  echo "Target: ${TARGET_IMAGE_FULL_URI}" >&2
-  echo "Platform: ${DOCKER_PLATFORM}" >&2
-  echo "====================" >&2
+  log "=== Docker Retag ==="
+  log "Source: ${SOURCE_IMAGE_FULL_URI}"
+  log "Target: ${TARGET_IMAGE_FULL_URI}"
+  log "Platform: ${DOCKER_PLATFORM}"
+  log "===================="
 
   if [[ "${DOCKER_PLATFORM}" == *,* ]]; then
     # === Multi-platform retag ===
@@ -106,20 +104,20 @@ main() {
       local platform_suffix="${platform//\//-}"
       local arch_uri="${TARGET_IMAGE_FULL_URI}-${platform_suffix}"
 
-      echo "Pulling source image: ${SOURCE_IMAGE_FULL_URI} (platform: ${platform})" >&2
+      log "Pulling source image: ${SOURCE_IMAGE_FULL_URI} (platform: ${platform})"
       if ! ${IMAGE_BUILD_COMMAND} pull --platform "${platform}" "${SOURCE_IMAGE_FULL_URI}"; then
-        echo "${LOG_ERROR_PREFIX}Source image does not support platform ${platform}: ${SOURCE_IMAGE_FULL_URI}${LOG_ERROR_SUFFIX}" >&2
+        log_error "Source image does not support platform ${platform}: ${SOURCE_IMAGE_FULL_URI}"
         exit 1
       fi
 
       # Confirm arch-specific target doesn't exist (fail fast)
       if ${IMAGE_BUILD_COMMAND} manifest inspect "${arch_uri}" &>/dev/null; then
-        echo "${LOG_ERROR_PREFIX}Target image already exists in registry: ${arch_uri}${LOG_ERROR_SUFFIX}" >&2
+        log_error "Target image already exists in registry: ${arch_uri}"
         exit 1
       fi
-      echo "Confirmed target image does not exist in registry: ${arch_uri}" >&2
+      log "Confirmed target image does not exist in registry: ${arch_uri}"
 
-      echo "Tagging: ${SOURCE_IMAGE_FULL_URI} -> ${arch_uri}" >&2
+      log "Tagging: ${SOURCE_IMAGE_FULL_URI} -> ${arch_uri}"
       ${IMAGE_BUILD_COMMAND} tag "${SOURCE_IMAGE_FULL_URI}" "${arch_uri}"
 
       # Register arch-specific image for consolidated push
@@ -133,13 +131,13 @@ main() {
     output_var "DOCKER_TARGET_IMAGE_FULL_URI" "${TARGET_IMAGE_FULL_URI}"
   else
     # === Single-platform retag ===
-    echo "Pulling source image: ${SOURCE_IMAGE_FULL_URI} (platform: ${DOCKER_PLATFORM})" >&2
+    log "Pulling source image: ${SOURCE_IMAGE_FULL_URI} (platform: ${DOCKER_PLATFORM})"
     ${IMAGE_BUILD_COMMAND} pull --platform "${DOCKER_PLATFORM}" "${SOURCE_IMAGE_FULL_URI}"
 
     # Confirm target doesn't exist (fail fast)
     confirm_target_image_doesnt_exist || exit 1
 
-    echo "Tagging: ${SOURCE_IMAGE_FULL_URI} -> ${TARGET_IMAGE_FULL_URI}" >&2
+    log "Tagging: ${SOURCE_IMAGE_FULL_URI} -> ${TARGET_IMAGE_FULL_URI}"
     ${IMAGE_BUILD_COMMAND} tag "${SOURCE_IMAGE_FULL_URI}" "${TARGET_IMAGE_FULL_URI}"
 
     output_var "DOCKER_SOURCE_IMAGE_FULL_URI" "${SOURCE_IMAGE_FULL_URI}"
@@ -149,7 +147,7 @@ main() {
     echo "${TARGET_IMAGE_FULL_URI}" >> "${DOCKER_PUSH_IMAGE_LIST_FILE}"
   fi
 
-  echo "Docker Retag complete" >&2
+  log "Docker Retag complete"
 }
 
 main "$@"

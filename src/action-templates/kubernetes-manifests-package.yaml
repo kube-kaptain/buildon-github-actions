@@ -31,7 +31,8 @@ runs:
       id: package
       shell: bash
       env:
-        LOG_ERROR_PREFIX: '::error::'
+        BUILD_PLATFORM: github-actions
+        BUILD_PLATFORM_LOG_PROVIDER: github-actions
         PROJECT_NAME: ${{ inputs.project-name }}
         VERSION: ${{ inputs.version }}
         OUTPUT_SUB_PATH: ${{ inputs.output-sub-path }}

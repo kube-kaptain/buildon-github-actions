@@ -22,7 +22,7 @@
 
 # Validate TOKEN_FILE is set
 if [[ -z "${TOKEN_FILE:-}" ]]; then
-  echo "${LOG_ERROR_PREFIX:-}TOKEN_FILE must be set before sourcing prepare-token-name-and-value.bash${LOG_ERROR_SUFFIX:-}" >&2
+  log_error "TOKEN_FILE must be set before sourcing prepare-token-name-and-value.bash"
   exit 1
 fi
 

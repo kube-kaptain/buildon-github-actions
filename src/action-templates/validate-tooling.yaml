@@ -17,6 +17,6 @@ runs:
       shell: bash
       env:
         BUILD_MODE: build_server
-        LOG_ERROR_PREFIX: '::error::'
-        LOG_WARNING_PREFIX: '::warning::'
+        BUILD_PLATFORM: github-actions
+        BUILD_PLATFORM_LOG_PROVIDER: github-actions
       run: "${{ github.action_path }}/../../scripts/main/validate-tooling"

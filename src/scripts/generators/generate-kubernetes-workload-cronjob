@@ -56,10 +56,10 @@ source "${LIB_DIR}/kubernetes-pod-placement.bash"
 source "${LIB_DIR}/kubernetes-probes.bash"
 # shellcheck source=src/scripts/lib/generator-input-validation.bash
 source "${LIB_DIR}/generator-input-validation.bash"
-
-# Logging configuration (CI-agnostic)
-LOG_ERROR_PREFIX="${LOG_ERROR_PREFIX:-}"
-LOG_ERROR_SUFFIX="${LOG_ERROR_SUFFIX:-}"
+# shellcheck source=src/scripts/defaults/platform.bash
+source "${SCRIPT_DIR}/../defaults/platform.bash"
+# shellcheck source=src/scripts/lib/log.bash
+source "${LIB_DIR}/log.bash"
 
 # Resource kind
 kind="CronJob"
@@ -93,13 +93,13 @@ validate_workload_inputs
 
 # Validate concurrency policy
 if [[ "${CONCURRENCY_POLICY}" != "Allow" && "${CONCURRENCY_POLICY}" != "Forbid" && "${CONCURRENCY_POLICY}" != "Replace" ]]; then
-  echo "${LOG_ERROR_PREFIX}CronJob concurrencyPolicy must be 'Allow', 'Forbid', or 'Replace', got: ${CONCURRENCY_POLICY}${LOG_ERROR_SUFFIX}" >&2
+  log_error "CronJob concurrencyPolicy must be 'Allow', 'Forbid', or 'Replace', got: ${CONCURRENCY_POLICY}"
   exit 1
 fi
 
 # Validate restart policy
 if [[ "${RESTART_POLICY}" != "Never" && "${RESTART_POLICY}" != "OnFailure" ]]; then
-  echo "${LOG_ERROR_PREFIX}CronJob restartPolicy must be 'Never' or 'OnFailure', got: ${RESTART_POLICY}${LOG_ERROR_SUFFIX}" >&2
+  log_error "CronJob restartPolicy must be 'Never' or 'OnFailure', got: ${RESTART_POLICY}"
   exit 1
 fi
 
@@ -170,47 +170,47 @@ detect_all_resources
 # Diagnostic output
 # =============================================================================
 
-echo "CronJob Configuration" >&2
-echo "  Name:                  ${cronjob_name}" >&2
-echo "  Schedule:              ${cronjob_schedule_token} (environment token)" >&2
-echo "  Suspend:               ${cronjob_suspend_token} (environment token)" >&2
-echo "  Concurrency policy:    ${CONCURRENCY_POLICY}" >&2
+log "CronJob Configuration"
+log "  Name:                  ${cronjob_name}"
+log "  Schedule:              ${cronjob_schedule_token} (environment token)"
+log "  Suspend:               ${cronjob_suspend_token} (environment token)"
+log "  Concurrency policy:    ${CONCURRENCY_POLICY}"
 if [[ -n "${STARTING_DEADLINE_SECONDS}" ]]; then
-  echo "  Starting deadline:     ${STARTING_DEADLINE_SECONDS}s" >&2
+  log "  Starting deadline:     ${STARTING_DEADLINE_SECONDS}s"
 fi
-echo "  Success history limit: ${SUCCESSFUL_JOBS_HISTORY_LIMIT}" >&2
-echo "  Failed history limit:  ${FAILED_JOBS_HISTORY_LIMIT}" >&2
+log "  Success history limit: ${SUCCESSFUL_JOBS_HISTORY_LIMIT}"
+log "  Failed history limit:  ${FAILED_JOBS_HISTORY_LIMIT}"
 
-echo "Job Template Settings" >&2
-echo "  Backoff limit:         ${BACKOFF_LIMIT}" >&2
-echo "  Completions:           ${COMPLETIONS}" >&2
-echo "  Parallelism:           ${PARALLELISM}" >&2
-echo "  Restart policy:        ${RESTART_POLICY}" >&2
-echo "  Affinity strategy:     ${AFFINITY_STRATEGY}" >&2
+log "Job Template Settings"
+log "  Backoff limit:         ${BACKOFF_LIMIT}"
+log "  Completions:           ${COMPLETIONS}"
+log "  Parallelism:           ${PARALLELISM}"
+log "  Restart policy:        ${RESTART_POLICY}"
+log "  Affinity strategy:     ${AFFINITY_STRATEGY}"
 if [[ -n "${ACTIVE_DEADLINE_SECONDS}" ]]; then
-  echo "  Active deadline:       ${ACTIVE_DEADLINE_SECONDS}s" >&2
+  log "  Active deadline:       ${ACTIVE_DEADLINE_SECONDS}s"
 fi
 
-echo "Detection Results" >&2
+log "Detection Results"
 if [[ "${has_configmap}" == "true" ]]; then
-  echo "  ConfigMap detected:       ${configmap_source}" >&2
+  log "  ConfigMap detected:       ${configmap_source}"
 else
-  echo "  ConfigMap detected:       No, so won't be mounted" >&2
+  log "  ConfigMap detected:       No, so won't be mounted"
 fi
 if [[ "${has_secret}" == "true" ]]; then
-  echo "  Secret detected:          ${secret_source}" >&2
+  log "  Secret detected:          ${secret_source}"
 else
-  echo "  Secret detected:          No, so won't be mounted" >&2
+  log "  Secret detected:          No, so won't be mounted"
 fi
 if [[ "${has_serviceaccount}" == "true" ]]; then
-  echo "  ServiceAccount detected:  ${serviceaccount_source}" >&2
+  log "  ServiceAccount detected:  ${serviceaccount_source}"
 else
-  echo "  ServiceAccount detected:  No, so implicit default used" >&2
+  log "  ServiceAccount detected:  No, so implicit default used"
 fi
 if [[ "${has_env_vars}" == "true" ]]; then
-  echo "  Environment variables:    ${env_file_count} found" >&2
+  log "  Environment variables:    ${env_file_count} found"
 else
-  echo "  Environment variables:    None found, not configured" >&2
+  log "  Environment variables:    None found, not configured"
 fi
 
 # =============================================================================
@@ -360,4 +360,4 @@ script_name=$(basename "${BASH_SOURCE[0]}")
 
 } > "${output_file}"
 
-echo "Generated CronJob manifest: ${output_file}" >&2
+log "Generated CronJob manifest: ${output_file}"

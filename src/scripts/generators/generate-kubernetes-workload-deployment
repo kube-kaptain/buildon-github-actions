@@ -46,10 +46,10 @@ source "${LIB_DIR}/kubernetes-pod-spec.bash"
 source "${LIB_DIR}/kubernetes-pod-placement.bash"
 # shellcheck source=src/scripts/lib/generator-input-validation.bash
 source "${LIB_DIR}/generator-input-validation.bash"
-
-# Logging configuration (CI-agnostic)
-LOG_ERROR_PREFIX="${LOG_ERROR_PREFIX:-}"
-LOG_ERROR_SUFFIX="${LOG_ERROR_SUFFIX:-}"
+# shellcheck source=src/scripts/defaults/platform.bash
+source "${SCRIPT_DIR}/../defaults/platform.bash"
+# shellcheck source=src/scripts/lib/log.bash
+source "${LIB_DIR}/log.bash"
 
 # =============================================================================
 # Inputs with defaults
@@ -121,60 +121,60 @@ detect_all_resources
 # Diagnostic output
 # =============================================================================
 
-echo "Strategy/Mode Selections" >&2
-echo "  Deployment strategy:      RollingUpdate" >&2
-echo "    maxSurge:               ${MAX_SURGE}" >&2
-echo "    maxUnavailable:         ${MAX_UNAVAILABLE}" >&2
-echo "  Affinity strategy:        ${AFFINITY_STRATEGY}" >&2
-echo "  Readonly root filesystem: ${READONLY_ROOT_FILESYSTEM}" >&2
-echo "  Seccomp profile:          ${SECCOMP_PROFILE}" >&2
-echo "  Liveness probe:           ${LIVENESS_CHECK_TYPE}" >&2
-echo "  Readiness probe:          ${READINESS_CHECK_TYPE}" >&2
-echo "  Startup probe:            ${STARTUP_CHECK_TYPE}" >&2
+log "Strategy/Mode Selections"
+log "  Deployment strategy:      RollingUpdate"
+log "    maxSurge:               ${MAX_SURGE}"
+log "    maxUnavailable:         ${MAX_UNAVAILABLE}"
+log "  Affinity strategy:        ${AFFINITY_STRATEGY}"
+log "  Readonly root filesystem: ${READONLY_ROOT_FILESYSTEM}"
+log "  Seccomp profile:          ${SECCOMP_PROFILE}"
+log "  Liveness probe:           ${LIVENESS_CHECK_TYPE}"
+log "  Readiness probe:          ${READINESS_CHECK_TYPE}"
+log "  Startup probe:            ${STARTUP_CHECK_TYPE}"
 
-echo "Detection Results" >&2
+log "Detection Results"
 if [[ "${has_configmap}" == "true" ]]; then
-  echo "  ConfigMap detected:       ${configmap_source}" >&2
+  log "  ConfigMap detected:       ${configmap_source}"
 else
-  echo "  ConfigMap detected:       No, so won't be mounted" >&2
+  log "  ConfigMap detected:       No, so won't be mounted"
 fi
 if [[ "${has_secret}" == "true" ]]; then
-  echo "  Secret detected:          ${secret_source}" >&2
+  log "  Secret detected:          ${secret_source}"
 else
-  echo "  Secret detected:          No, so won't be mounted" >&2
+  log "  Secret detected:          No, so won't be mounted"
 fi
 if [[ "${has_serviceaccount}" == "true" ]]; then
-  echo "  ServiceAccount detected:  ${serviceaccount_source}" >&2
+  log "  ServiceAccount detected:  ${serviceaccount_source}"
 else
-  echo "  ServiceAccount detected:  No, so implicit default used" >&2
+  log "  ServiceAccount detected:  No, so implicit default used"
 fi
 if [[ "${has_env_vars}" == "true" ]]; then
-  echo "  Environment variables:    ${env_file_count} found" >&2
+  log "  Environment variables:    ${env_file_count} found"
 else
-  echo "  Environment variables:    None found, not configured" >&2
+  log "  Environment variables:    None found, not configured"
 fi
 
-echo "Conditional Fields" >&2
+log "Conditional Fields"
 if [[ "${resolved_replicas}" == "NO" ]]; then
-  echo "  Replicas:                 managed by HPA" >&2
+  log "  Replicas:                 managed by HPA"
 else
-  echo "  Replicas:                 ${resolved_replicas}" >&2
+  log "  Replicas:                 ${resolved_replicas}"
 fi
 if [[ -n "${CPU_LIMIT}" ]]; then
-  echo "  CPU limit:                ${CPU_LIMIT}" >&2
+  log "  CPU limit:                ${CPU_LIMIT}"
 else
-  echo "  CPU limit:                Not set, so no throttling" >&2
+  log "  CPU limit:                Not set, so no throttling"
 fi
 if [[ -n "${PRESTOP_COMMAND}" ]]; then
-  echo "  PreStop hook:             configured" >&2
+  log "  PreStop hook:             configured"
 else
-  echo "  PreStop hook:             not configured" >&2
+  log "  PreStop hook:             not configured"
 fi
 if [[ -n "${NODE_SELECTOR}" ]]; then
-  echo "  Node selector:            ${NODE_SELECTOR}" >&2
+  log "  Node selector:            ${NODE_SELECTOR}"
 fi
 if [[ -n "${DNS_POLICY}" ]]; then
-  echo "  DNS policy:               ${DNS_POLICY}" >&2
+  log "  DNS policy:               ${DNS_POLICY}"
 fi
 
 # =============================================================================
@@ -300,4 +300,4 @@ script_name=$(basename "${BASH_SOURCE[0]}")
 
 } > "${output_file}"
 
-echo "Generated Deployment manifest: ${output_file}" >&2
+log "Generated Deployment manifest: ${output_file}"

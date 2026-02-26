@@ -12,18 +12,22 @@
 #
 set -euo pipefail
 
-LOG_ERROR_PREFIX="${LOG_ERROR_PREFIX:-}"
-LOG_ERROR_SUFFIX="${LOG_ERROR_SUFFIX:-}"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# shellcheck source=src/scripts/defaults/platform.bash
+source "${SCRIPT_DIR}/../../defaults/platform.bash"
+# shellcheck source=src/scripts/lib/log.bash
+source "${SCRIPT_DIR}/../../lib/log.bash"
 
 if [[ ${#} -ne 1 ]]; then
-  echo "${LOG_ERROR_PREFIX}Usage: UPPER_SNAKE <directory>${LOG_ERROR_SUFFIX}" >&2
+  log_error "Usage: UPPER_SNAKE <directory>"
   exit 1
 fi
 
 DIR="${1}"
 
 if [[ ! -d "${DIR}" ]]; then
-  echo "${LOG_ERROR_PREFIX}Directory not found: ${DIR}${LOG_ERROR_SUFFIX}" >&2
+  log_error "Directory not found: ${DIR}"
   exit 1
 fi
 
@@ -63,9 +67,9 @@ while IFS= read -r -d '' file; do
 done < <(find "${DIR}" -type f -print0)
 
 if [[ ${#invalid_names[@]} -gt 0 ]]; then
-  echo "${LOG_ERROR_PREFIX}Invalid UPPER_SNAKE token names:${LOG_ERROR_SUFFIX}" >&2
+  log_error "Invalid UPPER_SNAKE token names:"
   for name in "${invalid_names[@]}"; do
-    echo "  ${name}" >&2
+    log "  ${name}"
   done
   exit 1
 fi

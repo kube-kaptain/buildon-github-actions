@@ -19,28 +19,28 @@
 # Provides functions:
 #   confirm_target_image_doesnt_exist - Check registry for existing image
 #
-# Errors/warnings go to stderr using LOG_ERROR_PREFIX/SUFFIX, LOG_WARNING_PREFIX/SUFFIX.
+# Errors/warnings go to stderr using log_error/log_warning functions.
 
 # shellcheck disable=SC2034  # TARGET_IMAGE_FULL_URI used by caller
 # shellcheck disable=SC2154 # TARGET_REGISTRY, INPUT_TARGET_NAMESPACE set by docker-build.bash before sourcing
 
 # Validate required inputs (caller must source docker-build.bash first)
 if [[ -z "${DOCKER_TARGET_REGISTRY}" ]]; then
-  echo "${LOG_ERROR_PREFIX:-}DOCKER_TARGET_REGISTRY is required${LOG_ERROR_SUFFIX:-}" >&2
+  log_error "DOCKER_TARGET_REGISTRY is required"
   exit 1
 fi
 if [[ -z "${DOCKER_IMAGE_NAME:-}" ]]; then
-  echo "${LOG_ERROR_PREFIX:-}DOCKER_IMAGE_NAME is required${LOG_ERROR_SUFFIX:-}" >&2
+  log_error "DOCKER_IMAGE_NAME is required"
   exit 1
 fi
 if [[ -z "${DOCKER_TAG:-}" ]]; then
-  echo "${LOG_ERROR_PREFIX:-}DOCKER_TAG is required${LOG_ERROR_SUFFIX:-}" >&2
+  log_error "DOCKER_TAG is required"
   exit 1
 fi
 
 # Registry cannot contain slashes
 if [[ "${TARGET_REGISTRY}" == */* ]]; then
-  echo "${LOG_ERROR_PREFIX:-}DOCKER_TARGET_REGISTRY cannot contain slashes - use DOCKER_TARGET_NAMESPACE for paths${LOG_ERROR_SUFFIX:-}" >&2
+  log_error "DOCKER_TARGET_REGISTRY cannot contain slashes - use DOCKER_TARGET_NAMESPACE for paths"
   exit 1
 fi
 
@@ -48,7 +48,7 @@ fi
 TARGET_NAMESPACE="${INPUT_TARGET_NAMESPACE#/}"
 TARGET_NAMESPACE="${TARGET_NAMESPACE%/}"
 if [[ "${INPUT_TARGET_NAMESPACE}" != "${TARGET_NAMESPACE}" ]]; then
-  echo "${LOG_WARNING_PREFIX:-}DOCKER_TARGET_NAMESPACE has leading/trailing slashes. Stripping.${LOG_WARNING_SUFFIX:-}" >&2
+  log_warning "DOCKER_TARGET_NAMESPACE has leading/trailing slashes. Stripping."
 fi
 
 # Assemble full image URI
@@ -60,9 +60,9 @@ fi
 
 confirm_target_image_doesnt_exist() {
   if ${IMAGE_BUILD_COMMAND} manifest inspect "${TARGET_IMAGE_FULL_URI}" &>/dev/null; then
-    echo "${LOG_ERROR_PREFIX:-}Target image already exists in registry: ${TARGET_IMAGE_FULL_URI}${LOG_ERROR_SUFFIX:-}" >&2
+    log_error "Target image already exists in registry: ${TARGET_IMAGE_FULL_URI}"
     return 1
   fi
-  echo "Confirmed target image does not exist in registry (safe to build and push)" >&2
+  log "Confirmed target image does not exist in registry (safe to build and push)"
   return 0
 }

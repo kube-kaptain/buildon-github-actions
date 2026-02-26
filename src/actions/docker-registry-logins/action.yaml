@@ -93,8 +93,6 @@ runs:
         CONFIG: ${{ steps.config.outputs.FINAL_CONFIG }}
         SECRETS_JSON: ${{ inputs.secrets-json }}
         OUTPUT_SUB_PATH: ${{ inputs.output-sub-path }}
-        LOG_ERROR_PREFIX: '::error::'
-        LOG_ERROR_SUFFIX: ''
-        LOG_GROUP_START: '::group::'
+        BUILD_PLATFORM: github-actions
+        BUILD_PLATFORM_LOG_PROVIDER: github-actions
         IMAGE_BUILD_COMMAND: ${{ inputs.image-build-command }}
-        LOG_GROUP_END: ''

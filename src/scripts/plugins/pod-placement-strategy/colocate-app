@@ -26,23 +26,28 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 LIB_DIR="${SCRIPT_DIR}/../../lib"
 
+# shellcheck source=src/scripts/defaults/platform.bash
+source "${SCRIPT_DIR}/../../defaults/platform.bash"
+# shellcheck source=src/scripts/lib/log.bash
+source "${LIB_DIR}/log.bash"
+
 # Source libraries
 # shellcheck source=src/scripts/lib/token-format.bash
 source "${LIB_DIR}/token-format.bash"
 
 # Validate required inputs
 if [[ -z "${TOKEN_NAME_STYLE:-}" ]]; then
-  echo "Error: TOKEN_NAME_STYLE is required" >&2
+  log_error "TOKEN_NAME_STYLE is required"
   exit 1
 fi
 
 if [[ -z "${TOKEN_DELIMITER_STYLE:-}" ]]; then
-  echo "Error: TOKEN_DELIMITER_STYLE is required" >&2
+  log_error "TOKEN_DELIMITER_STYLE is required"
   exit 1
 fi
 
 if [[ -z "${PROJECT_NAME:-}" ]]; then
-  echo "Error: PROJECT_NAME is required (in lower-kebab format)" >&2
+  log_error "PROJECT_NAME is required (in lower-kebab format)"
   exit 1
 fi
 

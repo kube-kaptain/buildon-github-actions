@@ -20,13 +20,17 @@ set -euo pipefail
 
 # shellcheck source=src/scripts/defaults/docker-common.bash
 source "$(dirname "${BASH_SOURCE[0]}")/../../defaults/docker-common.bash"
+# shellcheck source=src/scripts/defaults/platform.bash
+source "$(dirname "${BASH_SOURCE[0]}")/../../defaults/platform.bash"
+# shellcheck source=src/scripts/lib/log.bash
+source "$(dirname "${BASH_SOURCE[0]}")/../../lib/log.bash"
 
 # secret_method=$1 - unused for OIDC
 registry="${2}"
 workload_identity_provider="${3}"
 service_account="${4}"
 
-echo "Authenticating to GCP via Workload Identity Federation..." >&2
+log "Authenticating to GCP via Workload Identity Federation..."
 
 # shellcheck disable=SC2154 # ACTIONS_ID_TOKEN_* are set by GitHub Actions runtime
 token=$(curl -s -H "Authorization: bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" \
@@ -50,5 +54,5 @@ sa_token=$(curl -s -X POST \
   -H "Content-Type: application/json" \
   -d '{"scope": ["https://www.googleapis.com/auth/cloud-platform"]}' | yq -r '.accessToken')
 
-echo "Logging in to Google Artifact Registry ${registry}..." >&2
+log "Logging in to Google Artifact Registry ${registry}..."
 echo "${sa_token}" | ${IMAGE_BUILD_COMMAND} login -u oauth2accesstoken --password-stdin "https://${registry}"

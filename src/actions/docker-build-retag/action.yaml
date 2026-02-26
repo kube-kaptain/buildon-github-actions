@@ -68,8 +68,8 @@ runs:
       id: retag
       shell: bash
       env:
-        LOG_ERROR_PREFIX: '::error::'
-        LOG_WARNING_PREFIX: '::warning::'
+        BUILD_PLATFORM: github-actions
+        BUILD_PLATFORM_LOG_PROVIDER: github-actions
         DOCKER_PUSH_IMAGE_LIST_FILE: ${{ inputs.docker-push-image-list-file }}
         DOCKER_SOURCE_REGISTRY: ${{ inputs.docker-source-registry }}
         DOCKER_SOURCE_NAMESPACE: ${{ inputs.docker-source-namespace }}

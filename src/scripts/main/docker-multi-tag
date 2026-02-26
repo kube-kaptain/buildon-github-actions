@@ -28,6 +28,8 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
+# shellcheck source=src/scripts/defaults/platform.bash
+source "${SCRIPT_DIR}/../defaults/platform.bash"
 # shellcheck source=src/scripts/defaults/docker-push-image-list.bash
 source "${SCRIPT_DIR}/../defaults/docker-push-image-list.bash"
 # shellcheck source=src/scripts/defaults/docker-build.bash
@@ -38,22 +40,24 @@ source "${SCRIPT_DIR}/../defaults/docker-common.bash"
 source "${SCRIPT_DIR}/../defaults/output-sub-path.bash"
 # shellcheck source=src/scripts/lib/output-var.bash
 source "${SCRIPT_DIR}/../lib/output-var.bash"
+# shellcheck source=src/scripts/lib/log.bash
+source "${SCRIPT_DIR}/../lib/log.bash"
 
 # Validate required inputs
 if [[ -z "${DOCKER_IMAGE_NAME:-}" ]]; then
-  echo "DOCKER_IMAGE_NAME is required" >&2
+  log_error "DOCKER_IMAGE_NAME is required"
   exit 1
 fi
 if [[ -z "${DOCKER_TAG:-}" ]]; then
-  echo "DOCKER_TAG is required" >&2
+  log_error "DOCKER_TAG is required"
   exit 1
 fi
 if [[ -z "${DOCKER_PUSH_TARGETS}" ]]; then
-  echo "DOCKER_PUSH_TARGETS is required" >&2
+  log_error "DOCKER_PUSH_TARGETS is required"
   exit 1
 fi
 if [[ -z "${DOCKER_TARGET_REGISTRY:-}" ]]; then
-  echo "DOCKER_TARGET_REGISTRY is required" >&2
+  log_error "DOCKER_TARGET_REGISTRY is required"
   exit 1
 fi
 
@@ -72,16 +76,16 @@ build_image_uri() {
 }
 
 main() {
-  echo "=== Docker Multi-Tag ===" >&2
-  echo "Image name: ${DOCKER_IMAGE_NAME}" >&2
-  echo "Base tag: ${DOCKER_TAG}" >&2
-  echo "Source registry: ${DOCKER_TARGET_REGISTRY}" >&2
-  echo "Source namespace: ${DOCKER_TARGET_NAMESPACE:-<none>}" >&2
-  echo "========================" >&2
+  log "=== Docker Multi-Tag ==="
+  log "Image name: ${DOCKER_IMAGE_NAME}"
+  log "Base tag: ${DOCKER_TAG}"
+  log "Source registry: ${DOCKER_TARGET_REGISTRY}"
+  log "Source namespace: ${DOCKER_TARGET_NAMESPACE:-<none>}"
+  log "========================"
 
   # Validate JSON before processing
   if ! echo "${DOCKER_PUSH_TARGETS}" | jq -e 'type == "array"' > /dev/null 2>&1; then
-    echo "${LOG_ERROR_PREFIX:-}DOCKER_PUSH_TARGETS must be a valid JSON array${LOG_ERROR_SUFFIX:-}" >&2
+    log_error "DOCKER_PUSH_TARGETS must be a valid JSON array"
     exit 1
   fi
 
@@ -92,21 +96,21 @@ main() {
   source_prefix="${source_prefix%:}"
 
   local filter_reference="${source_prefix}:${DOCKER_TAG}*"
-  echo "Filter: ${filter_reference}" >&2
+  log "Filter: ${filter_reference}"
 
   # Discover all matching tags
   local tags
   tags=$(${IMAGE_BUILD_COMMAND} images --filter "reference=${filter_reference}" --format '{{.Tag}}' 2>/dev/null || true)
 
   if [[ -z "${tags}" ]]; then
-    echo "No images found matching filter - nothing to tag" >&2
+    log "No images found matching filter - nothing to tag"
     output_var "IMAGES_TAGGED" "0"
     return 0
   fi
 
-  echo "Discovered tags:" >&2
+  log "Discovered tags:"
   echo "${tags}" | while IFS= read -r tag; do
-    echo "  ${tag}" >&2
+    log "  ${tag}"
   done
 
   local count=0
@@ -125,13 +129,13 @@ main() {
 
       # Validate registry is present
       if [[ -z "${registry}" ]] || [[ "${registry}" == "null" ]]; then
-        echo "${LOG_ERROR_PREFIX:-}Push target missing required 'registry' field${LOG_ERROR_SUFFIX:-}" >&2
+        log_error "Push target missing required 'registry' field"
         exit 1
       fi
 
       target_uri=$(build_image_uri "${registry}" "${namespace}" "${DOCKER_IMAGE_NAME}" "${tag}")
 
-      echo "Tagging: ${source_uri} -> ${target_uri}" >&2
+      log "Tagging: ${source_uri} -> ${target_uri}"
       ${IMAGE_BUILD_COMMAND} tag "${source_uri}" "${target_uri}"
 
       # Register image for consolidated push
@@ -149,8 +153,8 @@ main() {
     local manifest_uris_file="${OUTPUT_SUB_PATH}/docker-push-all/manifest-uris"
     mkdir -p "$(dirname "${manifest_uris_file}")"
 
-    echo "" >&2
-    echo "Multi-platform active - registering manifest URIs for additional registries..." >&2
+    log ""
+    log "Multi-platform active - registering manifest URIs for additional registries..."
 
     while IFS= read -r target; do
       local registry namespace manifest_uri
@@ -159,15 +163,15 @@ main() {
       namespace=$(echo "${target}" | jq -r '.["namespace"] // ""')
       manifest_uri=$(build_image_uri "${registry}" "${namespace}" "${DOCKER_IMAGE_NAME}" "${DOCKER_TAG}")
 
-      echo "  ${manifest_uri}" >&2
+      log "  ${manifest_uri}"
       echo "${manifest_uri}" >> "${manifest_uris_file}"
     done < <(echo "${DOCKER_PUSH_TARGETS}" | jq -c '.[]')
   fi
 
   output_var "IMAGES_TAGGED" "${count}"
 
-  echo "" >&2
-  echo "Docker Multi-Tag complete: ${count} image(s) tagged" >&2
+  log ""
+  log "Docker Multi-Tag complete: ${count} image(s) tagged"
 }
 
 main "$@"

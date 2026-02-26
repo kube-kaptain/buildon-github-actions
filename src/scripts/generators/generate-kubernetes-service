@@ -52,10 +52,10 @@ source "${LIB_DIR}/token-format.bash"
 source "${LIB_DIR}/kubernetes-metadata.bash"
 # shellcheck source=src/scripts/lib/generator-input-validation.bash
 source "${LIB_DIR}/generator-input-validation.bash"
-
-# Logging configuration (CI-agnostic)
-LOG_ERROR_PREFIX="${LOG_ERROR_PREFIX:-}"
-LOG_ERROR_SUFFIX="${LOG_ERROR_SUFFIX:-}"
+# shellcheck source=src/scripts/defaults/platform.bash
+source "${SCRIPT_DIR}/../defaults/platform.bash"
+# shellcheck source=src/scripts/lib/log.bash
+source "${LIB_DIR}/log.bash"
 
 # Resource kind
 kind="Service"
@@ -77,7 +77,7 @@ if [[ -z "${KUBERNETES_SERVICE_GENERATION_ENABLED:-}" ]]; then
 fi
 
 if [[ "${KUBERNETES_SERVICE_GENERATION_ENABLED}" != "true" ]]; then
-  echo "Service generation not enabled (workload type: ${KUBERNETES_WORKLOAD_TYPE}), skipping" >&2
+  log "Service generation not enabled (workload type: ${KUBERNETES_WORKLOAD_TYPE}), skipping"
   exit 0
 fi
 
@@ -152,7 +152,7 @@ case "${SERVICE_TYPE}" in
     requires_external_name=true
     ;;
   *)
-    echo "${LOG_ERROR_PREFIX}Invalid KUBERNETES_SERVICE_TYPE: ${SERVICE_TYPE}. Must be one of: ClusterIP, Headless, NoSelector, NodePort, LoadBalancer, ExternalName${LOG_ERROR_SUFFIX}" >&2
+    log_error "Invalid KUBERNETES_SERVICE_TYPE: ${SERVICE_TYPE}. Must be one of: ClusterIP, Headless, NoSelector, NodePort, LoadBalancer, ExternalName"
     exit 4
     ;;
 esac
@@ -163,7 +163,7 @@ esac
 
 # Validate ExternalName requirements
 if [[ "${requires_external_name}" == "true" && -z "${EXTERNAL_NAME}" ]]; then
-  echo "${LOG_ERROR_PREFIX}KUBERNETES_SERVICE_EXTERNAL_NAME is required for ExternalName service type${LOG_ERROR_SUFFIX}" >&2
+  log_error "KUBERNETES_SERVICE_EXTERNAL_NAME is required for ExternalName service type"
   exit 4
 fi
 
@@ -173,7 +173,7 @@ if [[ "${has_ports}" == "true" ]]; then
     TCP|UDP|SCTP)
       ;;
     *)
-      echo "${LOG_ERROR_PREFIX}Invalid KUBERNETES_SERVICE_PROTOCOL: ${PROTOCOL}. Must be one of: TCP, UDP, SCTP${LOG_ERROR_SUFFIX}" >&2
+      log_error "Invalid KUBERNETES_SERVICE_PROTOCOL: ${PROTOCOL}. Must be one of: TCP, UDP, SCTP"
       exit 7
       ;;
   esac
@@ -181,21 +181,21 @@ fi
 
 # Validate node port is only used with NodePort type
 if [[ -n "${NODE_PORT}" && "${allows_node_port}" != "true" ]]; then
-  echo "${LOG_ERROR_PREFIX}KUBERNETES_SERVICE_NODE_PORT can only be used with NodePort service type${LOG_ERROR_SUFFIX}" >&2
+  log_error "KUBERNETES_SERVICE_NODE_PORT can only be used with NodePort service type"
   exit 4
 fi
 
 # Validate external traffic policy is only used with NodePort/LoadBalancer
 if [[ -n "${EXTERNAL_TRAFFIC_POLICY}" ]]; then
   if [[ "${allows_traffic_policy}" != "true" ]]; then
-    echo "${LOG_ERROR_PREFIX}KUBERNETES_SERVICE_EXTERNAL_TRAFFIC_POLICY can only be used with NodePort or LoadBalancer service types${LOG_ERROR_SUFFIX}" >&2
+    log_error "KUBERNETES_SERVICE_EXTERNAL_TRAFFIC_POLICY can only be used with NodePort or LoadBalancer service types"
     exit 4
   fi
   case "${EXTERNAL_TRAFFIC_POLICY}" in
     Cluster|Local)
       ;;
     *)
-      echo "${LOG_ERROR_PREFIX}Invalid KUBERNETES_SERVICE_EXTERNAL_TRAFFIC_POLICY: ${EXTERNAL_TRAFFIC_POLICY}. Must be 'Cluster' or 'Local'${LOG_ERROR_SUFFIX}" >&2
+      log_error "Invalid KUBERNETES_SERVICE_EXTERNAL_TRAFFIC_POLICY: ${EXTERNAL_TRAFFIC_POLICY}. Must be 'Cluster' or 'Local'"
       exit 4
       ;;
   esac
@@ -229,29 +229,29 @@ output_file=$(build_output_filename "${output_dir}" "${kind}" "${NAME_SUFFIX}")
 # Diagnostic output
 # =============================================================================
 
-echo "Service Configuration" >&2
-echo "  Type:                     ${SERVICE_TYPE} (k8s type: ${k8s_type})" >&2
-echo "  Has selector:             ${has_selector}" >&2
-echo "  Has ports:                ${has_ports}" >&2
+log "Service Configuration"
+log "  Type:                     ${SERVICE_TYPE} (k8s type: ${k8s_type})"
+log "  Has selector:             ${has_selector}"
+log "  Has ports:                ${has_ports}"
 if [[ "${cluster_ip}" != "omit" ]]; then
-  echo "  ClusterIP:                ${cluster_ip}" >&2
+  log "  ClusterIP:                ${cluster_ip}"
 fi
 if [[ "${has_ports}" == "true" ]]; then
-  echo "  Port:                     ${SERVICE_PORT}" >&2
-  echo "  Target port:              ${TARGET_PORT}" >&2
-  echo "  Protocol:                 ${PROTOCOL}" >&2
+  log "  Port:                     ${SERVICE_PORT}"
+  log "  Target port:              ${TARGET_PORT}"
+  log "  Protocol:                 ${PROTOCOL}"
   if [[ -n "${PORT_NAME}" ]]; then
-    echo "  Port name:                ${PORT_NAME}" >&2
+    log "  Port name:                ${PORT_NAME}"
   fi
   if [[ -n "${NODE_PORT}" ]]; then
-    echo "  Node port:                ${NODE_PORT}" >&2
+    log "  Node port:                ${NODE_PORT}"
   fi
 fi
 if [[ -n "${EXTERNAL_NAME}" ]]; then
-  echo "  External name:            ${EXTERNAL_NAME}" >&2
+  log "  External name:            ${EXTERNAL_NAME}"
 fi
 if [[ -n "${EXTERNAL_TRAFFIC_POLICY}" ]]; then
-  echo "  External traffic policy:  ${EXTERNAL_TRAFFIC_POLICY}" >&2
+  log "  External traffic policy:  ${EXTERNAL_TRAFFIC_POLICY}"
 fi
 
 # =============================================================================
@@ -310,4 +310,4 @@ script_name=$(basename "${BASH_SOURCE[0]}")
 
 } > "${output_file}"
 
-echo "Generated Service manifest: ${output_file}" >&2
+log "Generated Service manifest: ${output_file}"

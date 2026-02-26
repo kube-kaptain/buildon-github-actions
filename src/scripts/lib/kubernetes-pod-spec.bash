@@ -113,7 +113,7 @@ _pod_spec_indent() {
 #   seccomp_profile: DISABLED, RuntimeDefault, Localhost, or Unconfined
 generate_pod_security_context() {
   if [[ $# -ne 2 ]]; then
-    echo "Error: generate_pod_security_context requires exactly 2 arguments, got $#" >&2
+    log_error "generate_pod_security_context requires exactly 2 arguments, got $#"
     return 1
   fi
 
@@ -135,7 +135,7 @@ generate_pod_security_context() {
 # Usage: generate_container_security_context <indent> <readonly_root_filesystem>
 generate_container_security_context() {
   if [[ $# -ne 2 ]]; then
-    echo "Error: generate_container_security_context requires exactly 2 arguments, got $#" >&2
+    log_error "generate_container_security_context requires exactly 2 arguments, got $#"
     return 1
   fi
 
@@ -158,7 +158,7 @@ generate_container_security_context() {
 #   cpu_limit is optional - omit for no CPU throttling
 generate_container_resources() {
   if [[ $# -lt 4 || $# -gt 5 ]]; then
-    echo "Error: generate_container_resources requires 4-5 arguments, got $#" >&2
+    log_error "generate_container_resources requires 4-5 arguments, got $#"
     return 1
   fi
 
@@ -189,7 +189,7 @@ generate_container_resources() {
 #   protocol defaults to TCP
 generate_container_ports() {
   if [[ $# -lt 2 || $# -gt 3 ]]; then
-    echo "Error: generate_container_ports requires 2-3 arguments, got $#" >&2
+    log_error "generate_container_ports requires 2-3 arguments, got $#"
     return 1
   fi
 
@@ -210,7 +210,7 @@ generate_container_ports() {
 #   Only generates output if prestop_command is non-empty
 generate_container_lifecycle() {
   if [[ $# -ne 2 ]]; then
-    echo "Error: generate_container_lifecycle requires exactly 2 arguments, got $#" >&2
+    log_error "generate_container_lifecycle requires exactly 2 arguments, got $#"
     return 1
   fi
 
@@ -241,7 +241,7 @@ generate_container_lifecycle() {
 #   skip_header: if "true", don't emit the "env:" header (for use with wrapper)
 generate_container_env_from_directory() {
   if [[ $# -lt 2 || $# -gt 3 ]]; then
-    echo "Error: generate_container_env_from_directory requires 2-3 arguments, got $#" >&2
+    log_error "generate_container_env_from_directory requires 2-3 arguments, got $#"
     return 1
   fi
 
@@ -285,7 +285,7 @@ generate_container_env_from_directory() {
 #   Only generates output if keys_list is non-empty
 generate_container_env_refs() {
   if [[ $# -ne 5 ]]; then
-    echo "Error: generate_container_env_refs requires exactly 5 arguments, got $#" >&2
+    log_error "generate_container_env_refs requires exactly 5 arguments, got $#"
     return 1
   fi
 
@@ -312,14 +312,14 @@ generate_container_env_refs() {
       ref_type="secretKeyRef"
       ;;
     *)
-      echo "Error: resource_type must be 'configmap' or 'secret', got '${resource_type}'" >&2
+      log_error "resource_type must be 'configmap' or 'secret', got '${resource_type}'"
       return 1
       ;;
   esac
 
   # Validate file exists
   if [[ ! -f "${resource_file_path}" ]]; then
-    echo "Error: ${resource_type} file not found: ${resource_file_path}" >&2
+    log_error "${resource_type} file not found: ${resource_file_path}"
     return 1
   fi
 
@@ -336,7 +336,7 @@ generate_container_env_refs() {
     local has_key
     has_key=$(yq "${yq_path} | has(\"${key}\")" "${resource_file_path}" 2>/dev/null)
     if [[ "${has_key}" != "true" ]]; then
-      echo "Error: key '${key}' not found in ${resource_type} at ${yq_path} in ${resource_file_path}" >&2
+      log_error "key '${key}' not found in ${resource_type} at ${yq_path} in ${resource_file_path}"
       return 1
     fi
 
@@ -357,7 +357,7 @@ generate_container_env_refs() {
 #   Order: plain KVs, then configmap refs, then secret refs
 generate_container_env_all() {
   if [[ $# -ne 8 ]]; then
-    echo "Error: generate_container_env_all requires exactly 8 arguments, got $#" >&2
+    log_error "generate_container_env_all requires exactly 8 arguments, got $#"
     return 1
   fi
 
@@ -422,7 +422,7 @@ generate_container_env_all() {
 #   Only generates output if at least one of has_configmap or has_secret is true
 generate_configmap_secret_volume_mounts() {
   if [[ $# -ne 5 ]]; then
-    echo "Error: generate_configmap_secret_volume_mounts requires exactly 5 arguments, got $#" >&2
+    log_error "generate_configmap_secret_volume_mounts requires exactly 5 arguments, got $#"
     return 1
   fi
 
@@ -458,7 +458,7 @@ generate_configmap_secret_volume_mounts() {
 #   Only generates output if at least one of has_configmap or has_secret is true
 generate_configmap_secret_volumes() {
   if [[ $# -ne 5 ]]; then
-    echo "Error: generate_configmap_secret_volumes requires exactly 5 arguments, got $#" >&2
+    log_error "generate_configmap_secret_volumes requires exactly 5 arguments, got $#"
     return 1
   fi
 
@@ -493,7 +493,7 @@ generate_configmap_secret_volumes() {
 # Usage: generate_image_pull_secrets <indent> <secret_name>
 generate_image_pull_secrets() {
   if [[ $# -ne 2 ]]; then
-    echo "Error: generate_image_pull_secrets requires exactly 2 arguments, got $#" >&2
+    log_error "generate_image_pull_secrets requires exactly 2 arguments, got $#"
     return 1
   fi
 
@@ -511,7 +511,7 @@ generate_image_pull_secrets() {
 # Usage: generate_service_account_config <indent> <has_serviceaccount> <serviceaccount_name> <automount_token>
 generate_service_account_config() {
   if [[ $# -ne 4 ]]; then
-    echo "Error: generate_service_account_config requires exactly 4 arguments, got $#" >&2
+    log_error "generate_service_account_config requires exactly 4 arguments, got $#"
     return 1
   fi
 
@@ -534,7 +534,7 @@ generate_service_account_config() {
 #   image_pull_policy defaults to IfNotPresent
 generate_container_start() {
   if [[ $# -lt 3 || $# -gt 4 ]]; then
-    echo "Error: generate_container_start requires 3-4 arguments, got $#" >&2
+    log_error "generate_container_start requires 3-4 arguments, got $#"
     return 1
   fi
 
@@ -558,7 +558,7 @@ generate_container_start() {
 #   Only generates output if command_string is non-empty
 generate_container_command() {
   if [[ $# -ne 2 ]]; then
-    echo "Error: generate_container_command requires 2 arguments, got $#" >&2
+    log_error "generate_container_command requires 2 arguments, got $#"
     return 1
   fi
 
@@ -586,7 +586,7 @@ generate_container_command() {
 #   Only generates output if args_string is non-empty
 generate_container_args() {
   if [[ $# -ne 2 ]]; then
-    echo "Error: generate_container_args requires 2 arguments, got $#" >&2
+    log_error "generate_container_args requires 2 arguments, got $#"
     return 1
   fi
 

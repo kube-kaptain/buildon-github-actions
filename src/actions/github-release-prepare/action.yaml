@@ -110,6 +110,8 @@ runs:
         TARGET_REGISTRY: ${{ inputs.docker-target-registry }}
         TARGET_NAMESPACE: ${{ inputs.docker-target-namespace }}
         MANIFESTS_ZIP_FILE_NAME: ${{ inputs.manifests-zip-file-name }}
+        BUILD_PLATFORM: github-actions
+        BUILD_PLATFORM_LOG_PROVIDER: github-actions
         UTIL_DIR: ${{ github.action_path }}/../../scripts/util
       run: |
         set -euo pipefail

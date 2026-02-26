@@ -632,13 +632,10 @@ setup() {
   [ "$status" -eq 2 ]
 }
 
-@test "validate_token_styles: uses LOG_ERROR_PREFIX and SUFFIX" {
+@test "validate_token_styles: formats errors through log provider" {
   TOKEN_NAME_STYLE="InvalidStyle"
   TOKEN_DELIMITER_STYLE="shell"
-  LOG_ERROR_PREFIX="::error::"
-  LOG_ERROR_SUFFIX="!!!"
   run validate_token_styles
   [ "$status" -eq 2 ]
-  assert_output_contains "::error::"
-  assert_output_contains "!!!"
+  assert_output_contains "ERROR: "
 }

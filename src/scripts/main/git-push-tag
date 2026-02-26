@@ -10,6 +10,14 @@
 #
 set -euo pipefail
 
+SCRIPT_DIR="$(dirname "${0}")"
+
+# shellcheck source=src/scripts/defaults/platform.bash
+source "${SCRIPT_DIR}/../defaults/platform.bash"
+
+# shellcheck source=src/scripts/lib/log.bash
+source "${SCRIPT_DIR}/../lib/log.bash"
+
 # Required inputs
 GIT_TAG="${GIT_TAG:?GIT_TAG is required}"
 
@@ -17,8 +25,8 @@ GIT_TAG="${GIT_TAG:?GIT_TAG is required}"
 IS_RELEASE="${IS_RELEASE:-false}"
 
 if [[ "${IS_RELEASE}" == "true" ]]; then
-  echo "Pushing tag: ${GIT_TAG}" >&2
+  log "Pushing tag: ${GIT_TAG}"
   git push origin "${GIT_TAG}"
 else
-  echo "Skipping tag push (IS_RELEASE=${IS_RELEASE})" >&2
+  log "Skipping tag push (IS_RELEASE=${IS_RELEASE})"
 fi

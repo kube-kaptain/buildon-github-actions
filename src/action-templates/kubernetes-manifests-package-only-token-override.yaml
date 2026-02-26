@@ -25,7 +25,8 @@ runs:
       id: override
       shell: bash
       env:
-        LOG_ERROR_PREFIX: '::error::'
+        BUILD_PLATFORM: github-actions
+        BUILD_PLATFORM_LOG_PROVIDER: github-actions
         DOCKER_IMAGE_NAME_OVERRIDE: ${{ inputs.docker-image-name-override }}
         DOCKER_TAG_OVERRIDE: ${{ inputs.docker-tag-override }}
         OUTPUT_SUB_PATH: ${{ inputs.output-sub-path }}

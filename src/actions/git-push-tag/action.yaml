@@ -20,4 +20,6 @@ runs:
       env:
         GIT_TAG: ${{ inputs.git-tag }}
         IS_RELEASE: ${{ inputs.is-release }}
+        BUILD_PLATFORM: github-actions
+        BUILD_PLATFORM_LOG_PROVIDER: github-actions
       run: "${{ github.action_path }}/../../scripts/main/git-push-tag"

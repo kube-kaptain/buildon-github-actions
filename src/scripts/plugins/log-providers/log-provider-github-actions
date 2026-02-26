@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
+#
+# log-provider-github-actions - GitHub Actions log provider
+#
+# GitHub Actions captures stdout for step outputs, so all log
+# messages go to stderr. Errors and warnings use GitHub's
+# annotation format for UI integration.
+#
+# Sourced by log.bash - not executed directly.
+#
+
+log() { echo "$*" >&2; }
+log_error() { echo "::error::$*" >&2; }
+log_warning() { echo "::warning::$*" >&2; }

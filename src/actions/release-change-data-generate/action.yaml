@@ -45,7 +45,8 @@ runs:
       id: generate
       shell: bash
       env:
-        LOG_ERROR_PREFIX: '::error::'
+        BUILD_PLATFORM: github-actions
+        BUILD_PLATFORM_LOG_PROVIDER: github-actions
         VERSION: ${{ inputs.version }}
         PROJECT_NAME: ${{ inputs.project-name }}
         REPOSITORY_OWNER: ${{ inputs.repository-owner }}

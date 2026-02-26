@@ -61,10 +61,10 @@ source "${LIB_DIR}/kubernetes-pod-spec.bash"
 source "${LIB_DIR}/kubernetes-pod-placement.bash"
 # shellcheck source=src/scripts/lib/generator-input-validation.bash
 source "${LIB_DIR}/generator-input-validation.bash"
-
-# Logging configuration (CI-agnostic)
-LOG_ERROR_PREFIX="${LOG_ERROR_PREFIX:-}"
-LOG_ERROR_SUFFIX="${LOG_ERROR_SUFFIX:-}"
+# shellcheck source=src/scripts/defaults/platform.bash
+source "${SCRIPT_DIR}/../defaults/platform.bash"
+# shellcheck source=src/scripts/lib/log.bash
+source "${LIB_DIR}/log.bash"
 
 # =============================================================================
 # Inputs with defaults
@@ -95,14 +95,14 @@ validate_workload_inputs
 
 # Validate DaemonSet-specific settings
 if [[ "${UPDATE_STRATEGY_TYPE}" != "RollingUpdate" && "${UPDATE_STRATEGY_TYPE}" != "OnDelete" ]]; then
-  echo "${LOG_ERROR_PREFIX}KUBERNETES_DAEMONSET_UPDATE_STRATEGY_TYPE must be 'RollingUpdate' or 'OnDelete', got: ${UPDATE_STRATEGY_TYPE}${LOG_ERROR_SUFFIX}" >&2
+  log_error "KUBERNETES_DAEMONSET_UPDATE_STRATEGY_TYPE must be 'RollingUpdate' or 'OnDelete', got: ${UPDATE_STRATEGY_TYPE}"
   exit 4
 fi
 
 for bool_var in HOST_NETWORK HOST_PID HOST_IPC RUN_AS_NON_ROOT PRIVILEGED; do
   var_value="${!bool_var}"
   if [[ "${var_value}" != "true" && "${var_value}" != "false" ]]; then
-    echo "${LOG_ERROR_PREFIX}KUBERNETES_DAEMONSET_${bool_var} must be 'true' or 'false', got: ${var_value}${LOG_ERROR_SUFFIX}" >&2
+    log_error "KUBERNETES_DAEMONSET_${bool_var} must be 'true' or 'false', got: ${var_value}"
     exit 4
   fi
 done
@@ -112,7 +112,7 @@ if [[ -n "${DNS_POLICY}" ]]; then
   case "${DNS_POLICY}" in
     ClusterFirst|ClusterFirstWithHostNet|Default|None) ;;
     *)
-      echo "${LOG_ERROR_PREFIX}KUBERNETES_DAEMONSET_DNS_POLICY must be 'ClusterFirst', 'ClusterFirstWithHostNet', 'Default', or 'None', got: ${DNS_POLICY}${LOG_ERROR_SUFFIX}" >&2
+      log_error "KUBERNETES_DAEMONSET_DNS_POLICY must be 'ClusterFirst', 'ClusterFirstWithHostNet', 'Default', or 'None', got: ${DNS_POLICY}"
       exit 4
       ;;
   esac
@@ -160,63 +160,63 @@ detect_all_resources
 # Diagnostic output
 # =============================================================================
 
-echo "Strategy/Mode Selections" >&2
-echo "  Update strategy:          ${UPDATE_STRATEGY_TYPE}" >&2
+log "Strategy/Mode Selections"
+log "  Update strategy:          ${UPDATE_STRATEGY_TYPE}"
 if [[ "${UPDATE_STRATEGY_TYPE}" == "RollingUpdate" ]]; then
-  echo "  Max unavailable:          ${MAX_UNAVAILABLE}" >&2
+  log "  Max unavailable:          ${MAX_UNAVAILABLE}"
 fi
-echo "  Affinity strategy:        ${AFFINITY_STRATEGY}" >&2
-echo "  Readonly root filesystem: ${READONLY_ROOT_FILESYSTEM}" >&2
-echo "  Seccomp profile:          ${SECCOMP_PROFILE}" >&2
-echo "  Run as non-root:          ${RUN_AS_NON_ROOT}" >&2
-echo "  Privileged:               ${PRIVILEGED}" >&2
-echo "  Liveness probe:           ${LIVENESS_CHECK_TYPE}" >&2
-echo "  Readiness probe:          ${READINESS_CHECK_TYPE}" >&2
-echo "  Startup probe:            ${STARTUP_CHECK_TYPE}" >&2
+log "  Affinity strategy:        ${AFFINITY_STRATEGY}"
+log "  Readonly root filesystem: ${READONLY_ROOT_FILESYSTEM}"
+log "  Seccomp profile:          ${SECCOMP_PROFILE}"
+log "  Run as non-root:          ${RUN_AS_NON_ROOT}"
+log "  Privileged:               ${PRIVILEGED}"
+log "  Liveness probe:           ${LIVENESS_CHECK_TYPE}"
+log "  Readiness probe:          ${READINESS_CHECK_TYPE}"
+log "  Startup probe:            ${STARTUP_CHECK_TYPE}"
 
-echo "Host Namespace Access" >&2
-echo "  Host network:             ${HOST_NETWORK}" >&2
-echo "  Host PID:                 ${HOST_PID}" >&2
-echo "  Host IPC:                 ${HOST_IPC}" >&2
+log "Host Namespace Access"
+log "  Host network:             ${HOST_NETWORK}"
+log "  Host PID:                 ${HOST_PID}"
+log "  Host IPC:                 ${HOST_IPC}"
 
-echo "Detection Results" >&2
+log "Detection Results"
 if [[ "${has_configmap}" == "true" ]]; then
-  echo "  ConfigMap detected:       ${configmap_source}" >&2
+  log "  ConfigMap detected:       ${configmap_source}"
 else
-  echo "  ConfigMap detected:       No, so won't be mounted" >&2
+  log "  ConfigMap detected:       No, so won't be mounted"
 fi
 if [[ "${has_secret}" == "true" ]]; then
-  echo "  Secret detected:          ${secret_source}" >&2
+  log "  Secret detected:          ${secret_source}"
 else
-  echo "  Secret detected:          No, so won't be mounted" >&2
+  log "  Secret detected:          No, so won't be mounted"
 fi
 if [[ "${has_serviceaccount}" == "true" ]]; then
-  echo "  ServiceAccount detected:  ${serviceaccount_source}" >&2
+  log "  ServiceAccount detected:  ${serviceaccount_source}"
 else
-  echo "  ServiceAccount detected:  No, so implicit default used" >&2
+  log "  ServiceAccount detected:  No, so implicit default used"
 fi
 if [[ "${has_env_vars}" == "true" ]]; then
-  echo "  Environment variables:    ${env_file_count} found" >&2
+  log "  Environment variables:    ${env_file_count} found"
 else
-  echo "  Environment variables:    None found, not configured" >&2
+  log "  Environment variables:    None found, not configured"
 fi
 
-echo "Conditional Fields" >&2
+log "Conditional Fields"
 if [[ -n "${CPU_LIMIT}" ]]; then
-  echo "  CPU limit:                ${CPU_LIMIT}" >&2
+  log "  CPU limit:                ${CPU_LIMIT}"
 else
-  echo "  CPU limit:                Not set, so no throttling" >&2
+  log "  CPU limit:                Not set, so no throttling"
 fi
 if [[ -n "${PRESTOP_COMMAND}" ]]; then
-  echo "  PreStop hook:             configured" >&2
+  log "  PreStop hook:             configured"
 else
-  echo "  PreStop hook:             not configured" >&2
+  log "  PreStop hook:             not configured"
 fi
 if [[ -n "${NODE_SELECTOR}" ]]; then
-  echo "  Node selector:            ${NODE_SELECTOR}" >&2
+  log "  Node selector:            ${NODE_SELECTOR}"
 fi
 if [[ -n "${TOLERATIONS}" ]]; then
-  echo "  Tolerations:              configured" >&2
+  log "  Tolerations:              configured"
 fi
 
 # =============================================================================
@@ -411,4 +411,4 @@ generate_daemonset_container_security_context() {
 
 } > "${output_file}"
 
-echo "Generated DaemonSet manifest: ${output_file}" >&2
+log "Generated DaemonSet manifest: ${output_file}"

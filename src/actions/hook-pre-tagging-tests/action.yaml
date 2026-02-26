@@ -898,6 +898,8 @@ runs:
       env:
         HOOK_SCRIPT_SUB_PATH: .github/${{ inputs.script-sub-path }}
         IMAGE_BUILD_COMMAND: ${{ inputs.image-build-command }}
+        BUILD_PLATFORM: github-actions
+        BUILD_PLATFORM_LOG_PROVIDER: github-actions
         # Workflow inputs - build output
         OUTPUT_SUB_PATH: ${{ inputs.output-sub-path }}
         DOCKER_PUSH_IMAGE_LIST_FILE: ${{ inputs.docker-push-image-list-file }}

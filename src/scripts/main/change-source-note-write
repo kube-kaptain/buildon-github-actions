@@ -16,10 +16,13 @@
 #
 set -euo pipefail
 
-# Logging
-LOG_ERROR_PREFIX="${LOG_ERROR_PREFIX:-ERROR: }"
-LOG_ERROR_SUFFIX="${LOG_ERROR_SUFFIX:-}"
-LOG_WARNING_PREFIX="${LOG_WARNING_PREFIX:-WARNING: }"
+SCRIPT_DIR="$(dirname "${0}")"
+
+# shellcheck source=src/scripts/defaults/platform.bash
+source "${SCRIPT_DIR}/../defaults/platform.bash"
+
+# shellcheck source=src/scripts/lib/log.bash
+source "${SCRIPT_DIR}/../lib/log.bash"
 
 CURRENT_BRANCH="${CURRENT_BRANCH:?CURRENT_BRANCH is required}"
 MERGE_CANDIDATE_CREATOR="${MERGE_CANDIDATE_CREATOR:-}"
@@ -27,10 +30,10 @@ MERGE_CANDIDATE_CREATOR="${MERGE_CANDIDATE_CREATOR:-}"
 NOTES_REF="kaptain-change-source"
 
 main() {
-  echo "=== Change Source Note Write ===" >&2
-  echo "Branch: ${CURRENT_BRANCH}" >&2
-  echo "Creator: ${MERGE_CANDIDATE_CREATOR:-<not set>}" >&2
-  echo "================================" >&2
+  log "=== Change Source Note Write ==="
+  log "Branch: ${CURRENT_BRANCH}"
+  log "Creator: ${MERGE_CANDIDATE_CREATOR:-<not set>}"
+  log "================================"
 
   local note_content="merge-candidate-branch: ${CURRENT_BRANCH}"
   if [[ -n "${MERGE_CANDIDATE_CREATOR}" ]]; then
@@ -46,16 +49,16 @@ merge-candidate-creator: ${MERGE_CANDIDATE_CREATOR}"
 
   # Write the note
   if ! git notes --ref="${NOTES_REF}" add -f -m "${note_content}" HEAD; then
-    echo "${LOG_WARNING_PREFIX}Failed to write change source note to ${head_sha}${LOG_ERROR_SUFFIX}" >&2
+    log_warning "Failed to write change source note to ${head_sha}"
     return 0
   fi
-  echo "Note written to ${head_sha}" >&2
+  log "Note written to ${head_sha}"
 
   # Push the note (non-fatal)
   if git push origin "refs/notes/${NOTES_REF}" 2>&1; then
-    echo "Note pushed to origin" >&2
+    log "Note pushed to origin"
   else
-    echo "${LOG_WARNING_PREFIX}Failed to push change source note - this is non-fatal (permissions may not allow it)${LOG_ERROR_SUFFIX}" >&2
+    log_warning "Failed to push change source note - this is non-fatal (permissions may not allow it)"
   fi
 }
 

@@ -35,19 +35,21 @@ SCRIPT_DIR="$(cd "$(dirname "${0}")" && pwd)"
 # shellcheck disable=SC1091 # path not resolvable at static analysis time
 # shellcheck source=../../lib/tag-version-calculation.bash
 source "${SCRIPT_DIR}/../../lib/tag-version-calculation.bash"
-
-# Logging configuration (CI-agnostic)
-LOG_ERROR_PREFIX="${LOG_ERROR_PREFIX:-}"
-LOG_ERROR_SUFFIX="${LOG_ERROR_SUFFIX:-}"
+# shellcheck source=src/scripts/defaults/output-sub-path.bash
+source "${SCRIPT_DIR}/../../defaults/output-sub-path.bash"
+# shellcheck source=src/scripts/defaults/platform.bash
+source "${SCRIPT_DIR}/../../defaults/platform.bash"
+# shellcheck source=src/scripts/lib/log.bash
+source "${SCRIPT_DIR}/../../lib/log.bash"
 
 # Required inputs
 if [[ -z "${TAG_VERSION_PATTERN_TYPE:-}" ]]; then
-  echo "${LOG_ERROR_PREFIX}TAG_VERSION_PATTERN_TYPE is required (dockerfile-env-kubectl, retag-workflow-source-tag, custom)${LOG_ERROR_SUFFIX}" >&2
+  log_error "TAG_VERSION_PATTERN_TYPE is required (dockerfile-env-kubectl, retag-workflow-source-tag, custom)"
   exit 1
 fi
 
 if [[ -z "${TAG_VERSION_MAX_PARTS:-}" ]]; then
-  echo "${LOG_ERROR_PREFIX}TAG_VERSION_MAX_PARTS is required${LOG_ERROR_SUFFIX}" >&2
+  log_error "TAG_VERSION_MAX_PARTS is required"
   exit 1
 fi
 
@@ -56,7 +58,7 @@ TAG_VERSION_PREFIX_PARTS="${TAG_VERSION_PREFIX_PARTS:-2}"
 
 # Validate PREFIX_PARTS + 1 doesn't exceed TAG_VERSION_MAX_PARTS (not relevant in exact mode)
 if [[ "${TAG_VERSION_USE_SOURCE_VERSION_EXACT:-false}" != "true" ]] && [[ $((TAG_VERSION_PREFIX_PARTS + 1)) -gt ${TAG_VERSION_MAX_PARTS} ]]; then
-  echo "${LOG_ERROR_PREFIX}TAG_VERSION_PREFIX_PARTS (${TAG_VERSION_PREFIX_PARTS}) + 1 exceeds TAG_VERSION_MAX_PARTS (${TAG_VERSION_MAX_PARTS})${LOG_ERROR_SUFFIX}" >&2
+  log_error "TAG_VERSION_PREFIX_PARTS (${TAG_VERSION_PREFIX_PARTS}) + 1 exceeds TAG_VERSION_MAX_PARTS (${TAG_VERSION_MAX_PARTS})"
   exit 1
 fi
 
@@ -64,23 +66,23 @@ fi
 main() {
   # Step 0: Set defaults based on pattern type
   set_defaults_for_type
-  echo "Pattern type: ${TAG_VERSION_PATTERN_TYPE}" >&2
-  echo "Source file: ${SOURCE_SUB_PATH}/${SOURCE_FILE_NAME}" >&2
+  log "Pattern type: ${TAG_VERSION_PATTERN_TYPE}"
+  log "Source file: ${SOURCE_SUB_PATH}/${SOURCE_FILE_NAME}"
 
   # Step 1: Extract version from file
-  local source_version
-  source_version=$(extract_version_from_file "${SOURCE_SUB_PATH}/${SOURCE_FILE_NAME}" "${VERSION_PATTERN}" "source file")
-  echo "Found version: ${source_version}" >&2
+  extract_version_from_file "${SOURCE_SUB_PATH}/${SOURCE_FILE_NAME}" "${VERSION_PATTERN}" "source file"
+  local source_version="${EXTRACTED_VERSION}"
+  log "Found version: ${source_version}"
 
   local version
 
   if [[ "${TAG_VERSION_USE_SOURCE_VERSION_EXACT:-false}" == "true" ]]; then
     # Exact mode: use the source version as-is, no prefix extraction or incrementing
-    echo "Exact mode: using source version directly" >&2
+    log "Exact mode: using source version directly"
     version="${source_version}"
     if git tag --list | grep -qx "${version}"; then
-      echo "${LOG_ERROR_PREFIX}Tag '${version}' already exists. In exact mode that means you need to change your source files.${LOG_ERROR_SUFFIX}" >&2
-      echo "${LOG_ERROR_PREFIX}Change the regex matched version in ${SOURCE_SUB_PATH}/${SOURCE_FILE_NAME} to get a new build working.${LOG_ERROR_SUFFIX}" >&2
+      log_error "Tag '${version}' already exists. In exact mode that means you need to change your source files."
+      log_error "Change the regex matched version in ${SOURCE_SUB_PATH}/${SOURCE_FILE_NAME} to get a new build working."
       exit 1
     fi
   else
@@ -88,22 +90,22 @@ main() {
     local source_part_count
     source_part_count=$(count_version_parts "${source_version}")
     if [[ ${TAG_VERSION_PREFIX_PARTS} -gt ${source_part_count} ]]; then
-      echo "${LOG_ERROR_PREFIX}TAG_VERSION_PREFIX_PARTS (${TAG_VERSION_PREFIX_PARTS}) exceeds source version parts (${source_part_count} in '${source_version}')${LOG_ERROR_SUFFIX}" >&2
+      log_error "TAG_VERSION_PREFIX_PARTS (${TAG_VERSION_PREFIX_PARTS}) exceeds source version parts (${source_part_count} in '${source_version}')"
       exit 1
     fi
 
     # Step 2: Get N-part prefix from source version
     local prefix
     prefix=$(get_prefix "${source_version}" "${TAG_VERSION_PREFIX_PARTS}")
-    echo "Using version series: ${prefix}.x" >&2
+    log "Using version series: ${prefix}.x"
 
     # Step 3: Find highest existing tag in series
     local highest_tag
     highest_tag=$(find_highest_in_series "${prefix}")
     if [[ -n "${highest_tag}" ]]; then
-      echo "Highest existing tag in series: ${highest_tag}" >&2
+      log "Highest existing tag in series: ${highest_tag}"
     else
-      echo "No existing tags in ${prefix}.x series" >&2
+      log "No existing tags in ${prefix}.x series"
     fi
 
     # Step 4: Increment version
@@ -114,12 +116,12 @@ main() {
   local part_count
   part_count=$(count_version_parts "${version}")
   if [[ ${part_count} -gt ${TAG_VERSION_MAX_PARTS} ]]; then
-    echo "${LOG_ERROR_PREFIX}Version '${version}' has ${part_count} parts, exceeds TAG_VERSION_MAX_PARTS=${TAG_VERSION_MAX_PARTS}${LOG_ERROR_SUFFIX}" >&2
+    log_error "Version '${version}' has ${part_count} parts, exceeds TAG_VERSION_MAX_PARTS=${TAG_VERSION_MAX_PARTS}"
     exit 1
   fi
 
-  # Output the version
-  echo "VERSION=${version}"
+  # Write the version to file
+  echo "${version}" > "${OUTPUT_SUB_PATH}/versions-and-naming/tag-version-calculation-provider/VERSION"
 }
 
 main "$@"

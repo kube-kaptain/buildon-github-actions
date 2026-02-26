@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
+#
+# log-provider-azure-devops - Azure DevOps log provider
+#
+# Azure DevOps logging commands are sent via stdout. Stderr
+# can trigger task failures (failOnStderr). Errors and warnings
+# use Azure's ##vso format for pipeline UI integration.
+#
+# Sourced by log.bash - not executed directly.
+#
+
+log() { echo "$*"; }
+log_error() { echo "##vso[task.logissue type=error]$*"; }
+log_warning() { echo "##vso[task.logissue type=warning]$*"; }

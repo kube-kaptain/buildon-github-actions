@@ -6,6 +6,12 @@
 # Get project root
 PROJECT_ROOT="${PROJECT_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
 
+# Build platform for tests (scripts source platform.bash which requires this)
+export BUILD_PLATFORM="${BUILD_PLATFORM:-test}"
+
+# Source log functions (lib files sourced by tests use log/log_error/log_warning)
+source "$PROJECT_ROOT/src/scripts/lib/log.bash"
+
 # Path to scripts, utilities, libraries, repo providers, and fixtures
 SCRIPTS_DIR="$PROJECT_ROOT/src/scripts/main"
 GENERATORS_DIR="$PROJECT_ROOT/src/scripts/generators"

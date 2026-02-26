@@ -18,7 +18,8 @@ runs:
       id: write
       shell: bash
       env:
-        LOG_WARNING_PREFIX: '::warning::'
+        BUILD_PLATFORM: github-actions
+        BUILD_PLATFORM_LOG_PROVIDER: github-actions
         CURRENT_BRANCH: ${{ github.head_ref || github.ref_name }}
         MERGE_CANDIDATE_CREATOR: ${{ github.event.pull_request.user.login }}
       run: "${{ github.action_path }}/../../scripts/main/change-source-note-write"

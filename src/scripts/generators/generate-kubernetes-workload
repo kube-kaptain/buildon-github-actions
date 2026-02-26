@@ -20,16 +20,17 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-# Logging configuration (CI-agnostic)
-LOG_ERROR_PREFIX="${LOG_ERROR_PREFIX:-}"
-LOG_ERROR_SUFFIX="${LOG_ERROR_SUFFIX:-}"
+# shellcheck source=src/scripts/defaults/platform.bash
+source "${SCRIPT_DIR}/../defaults/platform.bash"
+# shellcheck source=src/scripts/lib/log.bash
+source "${SCRIPT_DIR}/../lib/log.bash"
 
 # shellcheck source=src/scripts/defaults/kubernetes-workload.bash
 source "${SCRIPT_DIR}/../defaults/kubernetes-workload.bash"
 
 # Handle disabled
 if [[ "${WORKLOAD_TYPE}" == "none" ]]; then
-  echo "Workload generation disabled (KUBERNETES_WORKLOAD_TYPE=none)" >&2
+  log "Workload generation disabled (KUBERNETES_WORKLOAD_TYPE=none)"
   exit 0
 fi
 
@@ -37,13 +38,13 @@ fi
 GENERATOR="${SCRIPT_DIR}/generate-kubernetes-workload-${WORKLOAD_TYPE}"
 
 if [[ ! -x "${GENERATOR}" ]]; then
-  echo "${LOG_ERROR_PREFIX}Unknown workload type '${WORKLOAD_TYPE}'${LOG_ERROR_SUFFIX}" >&2
-  echo "" >&2
-  echo "Available workload types:" >&2
+  log_error "Unknown workload type '${WORKLOAD_TYPE}'"
+  log ""
+  log "Available workload types:"
   for gen in "${SCRIPT_DIR}"/generate-kubernetes-workload-*; do
     if [[ -x "${gen}" ]]; then
       type_name="${gen##*generate-kubernetes-workload-}"
-      echo "  - ${type_name}" >&2
+      log "  - ${type_name}"
     fi
   done
   exit 1
