@@ -23,6 +23,8 @@ SCRIPT_DIR="$(cd "$(dirname "${0}")" && pwd)"
 # shellcheck disable=SC1091 # path not resolvable at static analysis time
 # shellcheck source=../../lib/tag-version-calculation.bash
 source "${SCRIPT_DIR}/../../lib/tag-version-calculation.bash"
+# shellcheck source=src/scripts/defaults/output-sub-path.bash
+source "${SCRIPT_DIR}/../../defaults/output-sub-path.bash"
 # shellcheck source=src/scripts/defaults/platform.bash
 source "${SCRIPT_DIR}/../../defaults/platform.bash"
 # shellcheck source=src/scripts/lib/log.bash
@@ -82,6 +84,7 @@ find_recent_tag() {
   fi
 }
 
+# shellcheck disable=SC2154 # OUTPUT_SUB_PATH set by sourced defaults
 main() {
   # Step 1: Find most recent tag to determine our series
   local recent_tag
@@ -116,8 +119,8 @@ main() {
     exit 1
   fi
 
-  # Output the version
-  echo "VERSION=${version}"
+  # Write the version to file
+  echo "${version}" > "${OUTPUT_SUB_PATH}/versions-and-naming/tag-version-calculation-provider/VERSION"
 }
 
 main "$@"

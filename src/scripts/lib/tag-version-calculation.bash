@@ -68,27 +68,27 @@ validate_version_format() {
 }
 
 # Extract version from a file using a regex pattern
+# Sets EXTRACTED_VERSION (avoids $() capture which swallows log_error on stdout-based providers)
 extract_version_from_file() {
   local source_file="${1}"
   local pattern="${2}"
   local label="${3:-}"
+  EXTRACTED_VERSION=""
 
   if [[ ! -f "${source_file}" ]]; then
     log_error "Source file not found: ${source_file}"
     exit 1
   fi
 
-  local version
-  version=$(grep -E "${pattern}" "${source_file}" | head -1 | sed -E "s/${pattern}/\\1/")
+  EXTRACTED_VERSION=$(grep -E "${pattern}" "${source_file}" | head -1 | sed -E "s/${pattern}/\\1/") || true
 
-  if [[ -z "${version}" ]]; then
+  if [[ -z "${EXTRACTED_VERSION}" ]]; then
     log_error "Could not find version matching pattern in ${source_file} (${label})"
-    log "Pattern: ${pattern}"
+    log_error "Pattern: ${pattern}"
     exit 1
   fi
 
-  validate_version_format "${version}" "${label}"
-  echo "${version}"
+  validate_version_format "${EXTRACTED_VERSION}" "${label}"
 }
 
 # Get N-part prefix from version

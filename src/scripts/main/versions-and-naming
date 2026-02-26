@@ -150,28 +150,33 @@ main() {
     exit 1
   fi
 
-  # Call the strategy plugin
-  local plugin_output
-  plugin_output=$(
-    TAG_VERSION_MAX_PARTS="${TAG_VERSION_MAX_PARTS}" \
-    TAG_VERSION_PATTERN_TYPE="${TAG_VERSION_PATTERN_TYPE}" \
-    TAG_VERSION_PREFIX_PARTS="${TAG_VERSION_PREFIX_PARTS}" \
-    DOCKERFILE_SUB_PATH="${DOCKERFILE_SUB_PATH}" \
-    TAG_VERSION_SOURCE_SUB_PATH="${TAG_VERSION_SOURCE_SUB_PATH}" \
-    TAG_VERSION_SOURCE_FILE_NAME="${TAG_VERSION_SOURCE_FILE_NAME}" \
-    TAG_VERSION_SOURCE_CUSTOM_PATTERN="${TAG_VERSION_SOURCE_CUSTOM_PATTERN}" \
-    TAG_VERSION_USE_SOURCE_VERSION_EXACT="${TAG_VERSION_USE_SOURCE_VERSION_EXACT}" \
-    BUILD_PLATFORM="${BUILD_PLATFORM}" \
-    BUILD_PLATFORM_LOG_PROVIDER="${BUILD_PLATFORM_LOG_PROVIDER}" \
-    "${strategy_script}"
-  ) || exit $?
+  # Prepare the version file location for the plugin to write to
+  local version_file="${OUTPUT_SUB_PATH}/versions-and-naming/tag-version-calculation-provider/VERSION"
+  mkdir -p "$(dirname "${version_file}")"
 
-  # Parse VERSION from plugin output
+  # Call the strategy plugin
+  TAG_VERSION_MAX_PARTS="${TAG_VERSION_MAX_PARTS}" \
+  TAG_VERSION_PATTERN_TYPE="${TAG_VERSION_PATTERN_TYPE}" \
+  TAG_VERSION_PREFIX_PARTS="${TAG_VERSION_PREFIX_PARTS}" \
+  DOCKERFILE_SUB_PATH="${DOCKERFILE_SUB_PATH}" \
+  TAG_VERSION_SOURCE_SUB_PATH="${TAG_VERSION_SOURCE_SUB_PATH}" \
+  TAG_VERSION_SOURCE_FILE_NAME="${TAG_VERSION_SOURCE_FILE_NAME}" \
+  TAG_VERSION_SOURCE_CUSTOM_PATTERN="${TAG_VERSION_SOURCE_CUSTOM_PATTERN}" \
+  TAG_VERSION_USE_SOURCE_VERSION_EXACT="${TAG_VERSION_USE_SOURCE_VERSION_EXACT}" \
+  BUILD_PLATFORM="${BUILD_PLATFORM}" \
+  BUILD_PLATFORM_LOG_PROVIDER="${BUILD_PLATFORM_LOG_PROVIDER}" \
+  "${strategy_script}" || exit $?
+
+  # Read VERSION from file
   local version
-  version=$(echo "${plugin_output}" | grep '^VERSION=' | cut -d= -f2-)
+  if [[ ! -f "${version_file}" ]]; then
+    log_error "Strategy plugin did not write VERSION file: ${version_file}"
+    exit 1
+  fi
+  version=$(cat "${version_file}")
 
   if [[ -z "${version}" ]]; then
-    log_error "Strategy plugin did not output VERSION"
+    log_error "Strategy plugin wrote empty VERSION file: ${version_file}"
     exit 1
   fi
 

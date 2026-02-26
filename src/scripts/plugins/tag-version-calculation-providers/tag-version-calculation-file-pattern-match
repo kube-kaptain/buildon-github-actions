@@ -35,6 +35,8 @@ SCRIPT_DIR="$(cd "$(dirname "${0}")" && pwd)"
 # shellcheck disable=SC1091 # path not resolvable at static analysis time
 # shellcheck source=../../lib/tag-version-calculation.bash
 source "${SCRIPT_DIR}/../../lib/tag-version-calculation.bash"
+# shellcheck source=src/scripts/defaults/output-sub-path.bash
+source "${SCRIPT_DIR}/../../defaults/output-sub-path.bash"
 # shellcheck source=src/scripts/defaults/platform.bash
 source "${SCRIPT_DIR}/../../defaults/platform.bash"
 # shellcheck source=src/scripts/lib/log.bash
@@ -68,8 +70,8 @@ main() {
   log "Source file: ${SOURCE_SUB_PATH}/${SOURCE_FILE_NAME}"
 
   # Step 1: Extract version from file
-  local source_version
-  source_version=$(extract_version_from_file "${SOURCE_SUB_PATH}/${SOURCE_FILE_NAME}" "${VERSION_PATTERN}" "source file")
+  extract_version_from_file "${SOURCE_SUB_PATH}/${SOURCE_FILE_NAME}" "${VERSION_PATTERN}" "source file"
+  local source_version="${EXTRACTED_VERSION}"
   log "Found version: ${source_version}"
 
   local version
@@ -118,8 +120,8 @@ main() {
     exit 1
   fi
 
-  # Output the version
-  echo "VERSION=${version}"
+  # Write the version to file
+  echo "${version}" > "${OUTPUT_SUB_PATH}/versions-and-naming/tag-version-calculation-provider/VERSION"
 }
 
 main "$@"

@@ -48,6 +48,8 @@ SCRIPT_DIR="$(cd "$(dirname "${0}")" && pwd)"
 # shellcheck disable=SC1091 # path not resolvable at static analysis time
 # shellcheck source=../../lib/tag-version-calculation.bash
 source "${SCRIPT_DIR}/../../lib/tag-version-calculation.bash"
+# shellcheck source=src/scripts/defaults/output-sub-path.bash
+source "${SCRIPT_DIR}/../../defaults/output-sub-path.bash"
 # shellcheck source=src/scripts/defaults/platform.bash
 source "${SCRIPT_DIR}/../../defaults/platform.bash"
 # shellcheck source=src/scripts/lib/log.bash
@@ -98,8 +100,8 @@ main() {
   log "Source TWO file: ${two_file}"
 
   # Step 1: Extract version from source ONE
-  local source_one_version
-  source_one_version=$(extract_version_from_file "${SOURCE_SUB_PATH}/${SOURCE_FILE_NAME}" "${VERSION_PATTERN}" "source ONE")
+  extract_version_from_file "${SOURCE_SUB_PATH}/${SOURCE_FILE_NAME}" "${VERSION_PATTERN}" "source ONE"
+  local source_one_version="${EXTRACTED_VERSION}"
   log "Source ONE version: ${source_one_version}"
 
   # Step 2: Get prefix from source ONE
@@ -119,11 +121,11 @@ main() {
   log "Source ONE prefix: ${one_prefix}"
 
   # Step 3: Extract version from source TWO
-  local source_two_version
-  source_two_version=$(extract_version_from_file \
+  extract_version_from_file \
     "${TAG_VERSION_SOURCE_TWO_SUB_PATH}/${TAG_VERSION_SOURCE_TWO_FILE_NAME}" \
     "${TAG_VERSION_SOURCE_TWO_PATTERN}" \
-    "source TWO")
+    "source TWO"
+  local source_two_version="${EXTRACTED_VERSION}"
   log "Source TWO version: ${source_two_version}"
 
   # Step 4: Get prefix from source TWO
@@ -174,8 +176,8 @@ main() {
     exit 1
   fi
 
-  # Output the version
-  echo "VERSION=${version}"
+  # Write the version to file
+  echo "${version}" > "${OUTPUT_SUB_PATH}/versions-and-naming/tag-version-calculation-provider/VERSION"
 }
 
 main "$@"
