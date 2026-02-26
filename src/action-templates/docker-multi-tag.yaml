@@ -45,4 +45,6 @@ runs:
         DOCKER_TARGET_NAMESPACE: ${{ inputs.docker-target-namespace }}
         IMAGE_BUILD_COMMAND: ${{ inputs.image-build-command }}
         DOCKER_PLATFORM: ${{ inputs.docker-platform }}
+        BUILD_PLATFORM: github-actions
+        BUILD_PLATFORM_LOG_PROVIDER: github-actions
       run: "${{ github.action_path }}/../../scripts/main/docker-multi-tag"
