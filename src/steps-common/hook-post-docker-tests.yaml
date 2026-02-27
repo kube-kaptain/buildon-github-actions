@@ -152,5 +152,4 @@
     project-name: ${{ steps.versions.outputs.project-name }}
     is-release: ${{ steps.versions.outputs.is-release }}
     # Docker outputs (from docker-build)
-    docker-substituted-sub-path: ${{ steps.docker-build.outputs.docker-substituted-sub-path }}
     target-image-full-uri: ${{ steps.docker-build.outputs.docker-target-image-full-uri }}

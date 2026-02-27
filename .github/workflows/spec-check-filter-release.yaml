@@ -326,9 +326,6 @@ on:
       images-pushed:
         description: 'Number of images pushed'
         value: ${{ jobs.build.outputs.images-pushed }}
-      docker-substituted-sub-path:
-        description: 'Directory containing substituted files (relative)'
-        value: ${{ jobs.build.outputs.docker-substituted-sub-path }}
       spec-yaml:
         description: 'File name of spec YAML file'
         value: ${{ jobs.build.outputs.spec-yaml }}
@@ -358,7 +355,7 @@ jobs:
       is-release: ${{ steps.versions.outputs.is-release }}
       docker-target-image-full-uri: ${{ steps.docker-build.outputs.docker-target-image-full-uri }}
       images-pushed: ${{ steps.docker-push-all.outputs.images-pushed }}
-      docker-substituted-sub-path: ${{ steps.docker-build.outputs.docker-substituted-sub-path }}
+      docker-context-sub-path: ${{ inputs.output-sub-path }}/docker/substituted
       spec-yaml: ${{ steps.spec-package-prepare.outputs.SPEC_YAML }}
       spec-json: ${{ steps.spec-package-prepare.outputs.SPEC_JSON }}
     steps:
@@ -868,6 +865,8 @@ jobs:
           VERSION: ${{ steps.versions.outputs.version }}
           OUTPUT_SUB_PATH: ${{ inputs.output-sub-path }}
           SPEC_PACKAGING_BASE_IMAGE: ${{ inputs.spec-packaging-base-image }}
+          BUILD_PLATFORM: github-actions
+          BUILD_PLATFORM_LOG_PROVIDER: github-actions
         run: ./.github/buildon-github-actions/src/scripts/main/spec-package-prepare
       - name: Pass check - Spec Package Prepare
         if: success() && steps.check-spec-prepare.outputs.check-run-id != ''
@@ -941,8 +940,10 @@ jobs:
         env:
           SPEC_TYPE: ${{ inputs.spec-type }}
           SPEC_VALIDATION_TYPE: ${{ inputs.spec-validation-type }}
-          SPEC_SUB_PATH: ${{ steps.docker-build.outputs.docker-substituted-sub-path }}
+          SPEC_SUB_PATH: ${{ inputs.output-sub-path }}/docker/substituted
           SPEC_JSON: ${{ steps.spec-package-prepare.outputs.SPEC_JSON }}
+          BUILD_PLATFORM: github-actions
+          BUILD_PLATFORM_LOG_PROVIDER: github-actions
         run: ./.github/buildon-github-actions/src/scripts/main/spec-validate
       - name: Pass check - Spec Validate
         if: success() && steps.check-spec-validate.outputs.check-run-id != ''
@@ -973,7 +974,7 @@ jobs:
         shell: bash
         env:
           OUTPUT_SUB_PATH: ${{ inputs.output-sub-path }}
-          SUBSTITUTED_SUB_PATH: ${{ steps.docker-build.outputs.docker-substituted-sub-path }}
+          SUBSTITUTED_SUB_PATH: ${{ inputs.output-sub-path }}/docker/substituted
           SPEC_YAML: ${{ steps.spec-package-prepare.outputs.SPEC_YAML }}
           SPEC_JSON: ${{ steps.spec-package-prepare.outputs.SPEC_JSON }}
           VERSION: ${{ steps.versions.outputs.version }}

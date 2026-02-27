@@ -417,7 +417,7 @@ verify_action_template_env_mappings() {
   # Step outputs like VERSION, DOCKER_TAG, etc. are passed via action inputs, not defaults
   local step_outputs="VERSION VERSION_MAJOR VERSION_MINOR VERSION_PATCH VERSION_2_PART VERSION_3_PART VERSION_4_PART"
   step_outputs="$step_outputs DOCKER_TAG DOCKER_IMAGE_NAME GIT_TAG PROJECT_NAME IS_RELEASE"
-  step_outputs="$step_outputs TARGET_IMAGE_FULL_URI DOCKER_IMAGE_FULL_URI DOCKER_SUBSTITUTED_SUB_PATH"
+  step_outputs="$step_outputs TARGET_IMAGE_FULL_URI DOCKER_IMAGE_FULL_URI"
   step_outputs="$step_outputs MANIFESTS_SUBSTITUTED_SUB_PATH MANIFESTS_ZIP_SUB_PATH MANIFESTS_ZIP_FILE_NAME"
 
   # Computed vars from defaults files - not wired via action inputs

@@ -1874,8 +1874,6 @@ jobs:
           git-tag: ${{ steps.versions.outputs.git-tag }}
           project-name: ${{ steps.versions.outputs.project-name }}
           is-release: ${{ steps.versions.outputs.is-release }}
-          # Docker outputs (computed path for this position)
-          docker-substituted-sub-path: ${{ inputs.output-sub-path }}/docker/substituted
       - name: Pass check - Pre-docker Prepare
         if: inputs.hook-pre-docker-prepare-script-sub-path != '' && success() && steps.check-pre-docker-prepare.outputs.check-run-id != ''
         continue-on-error: true
@@ -2101,7 +2099,6 @@ jobs:
           project-name: ${{ steps.versions.outputs.project-name }}
           is-release: ${{ steps.versions.outputs.is-release }}
           # Docker outputs (from docker-build)
-          docker-substituted-sub-path: ${{ steps.docker-build.outputs.docker-substituted-sub-path }}
           target-image-full-uri: ${{ steps.docker-build.outputs.docker-target-image-full-uri }}
       - name: Pass check - Post-docker Tests
         if: inputs.hook-post-docker-tests-script-sub-path != '' && success() && steps.check-post-docker.outputs.check-run-id != ''
@@ -2632,7 +2629,6 @@ jobs:
           project-name: ${{ steps.versions.outputs.project-name }}
           is-release: ${{ steps.versions.outputs.is-release }}
           # Docker outputs (from docker-build - empty in manifests-only workflows)
-          docker-substituted-sub-path: ${{ steps.docker-build.outputs.docker-substituted-sub-path }}
           target-image-full-uri: ${{ steps.docker-build.outputs.docker-target-image-full-uri }}
           # Manifest outputs (computed path for this position)
           manifests-substituted-sub-path: ${{ inputs.output-sub-path }}/manifests/substituted/${{ steps.versions.outputs.project-name }}
@@ -2900,7 +2896,6 @@ jobs:
           project-name: ${{ steps.versions.outputs.project-name }}
           is-release: ${{ steps.versions.outputs.is-release }}
           # Docker outputs (from docker-build - empty in manifests-only workflows)
-          docker-substituted-sub-path: ${{ steps.docker-build.outputs.docker-substituted-sub-path }}
           target-image-full-uri: ${{ steps.docker-build.outputs.docker-target-image-full-uri }}
           # Manifest outputs (from manifest-package)
           manifests-substituted-sub-path: ${{ inputs.output-sub-path }}/manifests/substituted/${{ steps.versions.outputs.project-name }}
