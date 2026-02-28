@@ -27,7 +27,7 @@ setup() {
   export PROJECT_NAME="my-image"
   export IS_RELEASE="true"
   export TARGET_IMAGE_FULL_URI="ghcr.io/test/my-image:1.2.3"
-  export DOCKER_SUBSTITUTED_SUB_PATH="target/docker"
+  export DOCKER_CONTEXT_SUB_PATH="target/docker/substituted"
 
   # Set required workflow inputs - these get defaults from sourced scripts
   # but we set explicit values to verify they're exported correctly

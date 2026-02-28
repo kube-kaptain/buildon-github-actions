@@ -93,8 +93,16 @@ main() {
   # Step 2: Find highest tag in that series across entire repo
   local version
   if [[ -z "${recent_tag}" ]]; then
-    # No tags at all, start at 1.0.0
-    version="1.0.0"
+    # No tags at all, seed based on TAG_VERSION_MAX_PARTS: 1, 1.1, 1.0.1, 1.0.0.1, etc
+    version="1"
+    local i
+    for ((i=1; i<TAG_VERSION_MAX_PARTS; i++)); do
+      if [[ ${i} -lt $((TAG_VERSION_MAX_PARTS - 1)) ]]; then
+        version+=".0"
+      else
+        version+=".1"
+      fi
+    done
   else
     local part_count
     part_count=$(count_version_parts "${recent_tag}")

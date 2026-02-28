@@ -151,5 +151,3 @@
     git-tag: ${{ steps.versions.outputs.git-tag }}
     project-name: ${{ steps.versions.outputs.project-name }}
     is-release: ${{ steps.versions.outputs.is-release }}
-    # Docker outputs (computed path for this position)
-    docker-substituted-sub-path: ${{ inputs.output-sub-path }}/docker/substituted

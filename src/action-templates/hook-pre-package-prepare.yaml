@@ -77,10 +77,6 @@ inputs:
     description: 'Whether this is a release build'
     required: true
   # Docker outputs (from docker-build)
-  docker-substituted-sub-path:
-    description: 'Docker substituted files directory - empty in manifests-only workflows'
-    required: false
-    default: ''
   target-image-full-uri:
     description: 'Full target image URI (registry/name:tag) - empty in manifests-only workflows'
     required: false
@@ -107,12 +103,13 @@ runs:
         # Workflow inputs - docker registry logins
         DOCKER_REGISTRY_LOGINS: ${{ inputs.docker-registry-logins }}
         # Workflow inputs - docker build options
-        DOCKERFILE_SUB_PATH: ${{ inputs.dockerfile-sub-path }}
-        DOCKERFILE_SUB_PATH_LINUX_AMD64: ${{ inputs.dockerfile-sub-path-linux-amd64 }}
-        DOCKERFILE_SUB_PATH_LINUX_ARM64: ${{ inputs.dockerfile-sub-path-linux-arm64 }}
         DOCKERFILE_SQUASH: ${{ inputs.dockerfile-squash }}
         DOCKERFILE_NO_CACHE: ${{ inputs.dockerfile-no-cache }}
         DOCKER_PLATFORM: ${{ inputs.docker-platform }}
+        # Workflow inputs - dockerfile source dirs
+        DOCKERFILE_SUB_PATH: ${{ inputs.dockerfile-sub-path }}
+        DOCKERFILE_SUB_PATH_LINUX_AMD64: ${{ inputs.dockerfile-sub-path-linux-amd64 }}
+        DOCKERFILE_SUB_PATH_LINUX_ARM64: ${{ inputs.dockerfile-sub-path-linux-arm64 }}
         # Workflow inputs - docker target config
         DOCKER_TARGET_REGISTRY: ${{ inputs.docker-target-registry }}
         DOCKER_TARGET_NAMESPACE: ${{ inputs.docker-target-namespace }}
@@ -347,7 +344,6 @@ runs:
         PROJECT_NAME: ${{ inputs.project-name }}
         IS_RELEASE: ${{ inputs.is-release }}
         # Step outputs - docker outputs
-        DOCKER_SUBSTITUTED_SUB_PATH: ${{ inputs.docker-substituted-sub-path }}
         TARGET_IMAGE_FULL_URI: ${{ inputs.target-image-full-uri }}
         # Step outputs - manifest outputs
         MANIFESTS_SUBSTITUTED_SUB_PATH: ${{ inputs.manifests-substituted-sub-path }}

@@ -907,12 +907,13 @@ runs:
         # Workflow inputs - docker registry logins
         DOCKER_REGISTRY_LOGINS: ${{ inputs.docker-registry-logins }}
         # Workflow inputs - docker build options
-        DOCKERFILE_SUB_PATH: ${{ inputs.dockerfile-sub-path }}
-        DOCKERFILE_SUB_PATH_LINUX_AMD64: ${{ inputs.dockerfile-sub-path-linux-amd64 }}
-        DOCKERFILE_SUB_PATH_LINUX_ARM64: ${{ inputs.dockerfile-sub-path-linux-arm64 }}
         DOCKERFILE_SQUASH: ${{ inputs.dockerfile-squash }}
         DOCKERFILE_NO_CACHE: ${{ inputs.dockerfile-no-cache }}
         DOCKER_PLATFORM: ${{ inputs.docker-platform }}
+        # Workflow inputs - dockerfile source dirs
+        DOCKERFILE_SUB_PATH: ${{ inputs.dockerfile-sub-path }}
+        DOCKERFILE_SUB_PATH_LINUX_AMD64: ${{ inputs.dockerfile-sub-path-linux-amd64 }}
+        DOCKERFILE_SUB_PATH_LINUX_ARM64: ${{ inputs.dockerfile-sub-path-linux-arm64 }}
         # Workflow inputs - docker target config
         DOCKER_TARGET_REGISTRY: ${{ inputs.docker-target-registry }}
         DOCKER_TARGET_NAMESPACE: ${{ inputs.docker-target-namespace }}
