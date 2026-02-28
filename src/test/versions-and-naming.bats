@@ -17,19 +17,49 @@ teardown() {
   cleanup_mock_git
 }
 
-@test "generates 1.0.0 for repo with no tags" {
+@test "seeds 1.0.1 for repo with no tags (default 3 parts)" {
   TEST_REPO=$(clone_fixture "tag-none")
   cd "$TEST_REPO"
 
   run "$SCRIPTS_DIR/versions-and-naming"
   [ "$status" -eq 0 ]
-  assert_var_equals "VERSION" "1.0.0"
+  assert_var_equals "VERSION" "1.0.1"
   assert_var_equals "VERSION_MAJOR" "1"
   assert_var_equals "VERSION_MINOR" "0"
-  assert_var_equals "VERSION_PATCH" "0"
+  assert_var_equals "VERSION_PATCH" "1"
   assert_var_equals "VERSION_2_PART" "1.0"
-  assert_var_equals "VERSION_3_PART" "1.0.0"
-  assert_var_equals "VERSION_4_PART" "1.0.0.0"
+  assert_var_equals "VERSION_3_PART" "1.0.1"
+  assert_var_equals "VERSION_4_PART" "1.0.1.0"
+}
+
+@test "seeds 1.1 for repo with no tags and MAX_PARTS=2" {
+  TEST_REPO=$(clone_fixture "tag-none")
+  cd "$TEST_REPO"
+  export TAG_VERSION_MAX_PARTS=2
+
+  run "$SCRIPTS_DIR/versions-and-naming"
+  [ "$status" -eq 0 ]
+  assert_var_equals "VERSION" "1.1"
+}
+
+@test "seeds 1 for repo with no tags and MAX_PARTS=1" {
+  TEST_REPO=$(clone_fixture "tag-none")
+  cd "$TEST_REPO"
+  export TAG_VERSION_MAX_PARTS=1
+
+  run "$SCRIPTS_DIR/versions-and-naming"
+  [ "$status" -eq 0 ]
+  assert_var_equals "VERSION" "1"
+}
+
+@test "seeds 1.0.0.1 for repo with no tags and MAX_PARTS=4" {
+  TEST_REPO=$(clone_fixture "tag-none")
+  cd "$TEST_REPO"
+  export TAG_VERSION_MAX_PARTS=4
+
+  run "$SCRIPTS_DIR/versions-and-naming"
+  [ "$status" -eq 0 ]
+  assert_var_equals "VERSION" "1.0.0.1"
 }
 
 @test "increments patch version from 1.0.0" {
@@ -110,8 +140,8 @@ teardown() {
 
   run "$SCRIPTS_DIR/versions-and-naming"
   [ "$status" -eq 0 ]
-  # v1.0.0 exists but should be ignored, so starts fresh at 1.0.0
-  assert_var_equals "VERSION" "1.0.0"
+  # v1.0.0 exists but should be ignored, so starts fresh at 1.0.1
+  assert_var_equals "VERSION" "1.0.1"
 }
 
 @test "finds highest tag across multiple" {
@@ -698,7 +728,7 @@ ENV KUBECTL_VERSION=1.28.5' > src/docker/Dockerfile
   [ "$status" -eq 0 ]
   # Without BUILD_MODE, defaults to local which forces IS_RELEASE=false
   assert_var_equals "IS_RELEASE" "false"
-  assert_var_equals "DOCKER_TAG" "1.0.0-PRERELEASE"
+  assert_var_equals "DOCKER_TAG" "1.0.1-PRERELEASE"
 }
 
 @test "BUILD_MODE=local forces IS_RELEASE=false on release branch" {
@@ -709,7 +739,7 @@ ENV KUBECTL_VERSION=1.28.5' > src/docker/Dockerfile
   run "$SCRIPTS_DIR/versions-and-naming"
   [ "$status" -eq 0 ]
   assert_var_equals "IS_RELEASE" "false"
-  assert_var_equals "DOCKER_TAG" "1.0.0-PRERELEASE"
+  assert_var_equals "DOCKER_TAG" "1.0.1-PRERELEASE"
 }
 
 @test "BUILD_MODE=local forces IS_RELEASE=false on additional release branch" {
@@ -733,7 +763,7 @@ ENV KUBECTL_VERSION=1.28.5' > src/docker/Dockerfile
   run "$SCRIPTS_DIR/versions-and-naming"
   [ "$status" -eq 0 ]
   assert_var_equals "IS_RELEASE" "true"
-  assert_var_equals "DOCKER_TAG" "1.0.0"
+  assert_var_equals "DOCKER_TAG" "1.0.1"
 }
 
 # Branch configuration validation tests
