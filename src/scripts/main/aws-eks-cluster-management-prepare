@@ -217,6 +217,7 @@ fi
 
 # === Compute values ===
 
+# shellcheck disable=SC2154,SC2153 # KUBERNETES_MINOR_VERSION set dynamically by resolve_config via eval
 k8s_version="${KUBERNETES_MAJOR_VERSION}.${KUBERNETES_MINOR_VERSION}"
 version_dashes=$(echo "${VERSION}" | tr '.' '-')
 timestamp=$(date +%Y%m%d)

@@ -130,7 +130,7 @@ unresolved_token_regex() {
     stringtemplate)  echo '\$'"${name_regex}"'\$' ;;
     ognl)            echo "%\\{${name_regex}\\}" ;;
     t4)              echo '<#=.*#>' ;;
-    swift)           echo "\\\\\\(${name_regex}\\)" ;;
+    swift)           printf '%s\n' "\\\\\\(${name_regex}\\)" ;;
     *)
       log_error "Unknown delimiter style: ${delim_style}"
       return 1
