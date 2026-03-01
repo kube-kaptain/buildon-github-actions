@@ -1,0 +1,186 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
+
+name: 'EKS Cluster Management Prepare'
+description: 'Generate EKS cluster config and Dockerfile for cluster management image'
+
+inputs:
+  # Build output
+  output-sub-path:
+    description: 'Build output directory (relative)'
+    required: false
+    default: 'target'
+  # Docker build options
+  dockerfile-substitution-files:
+    description: 'Comma-separated list of files to perform token substitution on (relative to dockerfile-sub-path and docker-context-sub-path)'
+    required: false
+    default: 'Dockerfile'
+  dockerfile-sub-path:
+    description: 'Directory containing Dockerfile, relative to repo root.'
+    required: false
+    default: 'src/docker'
+  dockerfile-squash:
+    description: 'Squash mode: squash, squash-all, or no'
+    required: false
+    default: 'squash'
+  dockerfile-no-cache:
+    description: 'Disable layer caching for reproducible builds'
+    required: false
+    default: 'true'
+  dockerfile-sub-path-linux-amd64:
+    description: 'Per-platform Dockerfile directory for linux/amd64 multi-platform builds'
+    required: false
+    default: 'src/docker-linux-amd64'
+  dockerfile-sub-path-linux-arm64:
+    description: 'Per-platform Dockerfile directory for linux/arm64 multi-platform builds'
+    required: false
+    default: 'src/docker-linux-arm64'
+  # Target platform for docker/podman operations
+  docker-platform:
+    description: 'Target platform (linux/amd64, linux/arm64, or both comma-separated)'
+    required: false
+    default: 'linux/amd64'
+  # Token substitution
+  token-delimiter-style:
+    description: 'Token delimiter syntax for variables (shell, mustache, helm, erb, github-actions, blade, stringtemplate, ognl, t4, swift)'
+    required: false
+    default: 'shell'
+  token-name-style:
+    description: 'Case style for token names (UPPER_SNAKE, lower_snake, lower-kebab, UPPER-KEBAB, camelCase, PascalCase, lower.dot, UPPER.DOT)'
+    required: false
+    default: 'PascalCase'
+  token-name-validation:
+    description: 'How to validate user token names (MATCH = must match token-name-style, ALL = accept any valid name)'
+    required: false
+    default: 'MATCH'
+  allow-builtin-token-override:
+    description: 'Allow user tokens to override built-in tokens (for template/reusable projects)'
+    required: false
+    default: 'false'
+  config-sub-path:
+    description: 'Directory containing user-defined token files (relative)'
+    required: false
+    default: 'src/config'
+  config-value-trailing-newline:
+    description: 'How to handle trailing newlines in config values (strip-for-single-line, preserve-all, always-strip-one-newline)'
+    required: false
+    default: 'strip-for-single-line'
+  # EKS cluster management inputs
+  eks-base-image-registry:
+    description: 'Base image registry for EKS management image'
+    required: false
+    default: 'ghcr.io'
+  eks-base-image-namespace:
+    description: 'Base image namespace for EKS management image'
+    required: false
+    default: 'kube-kaptain'
+  eks-base-image-name:
+    description: 'Base image name for EKS management image'
+    required: false
+    default: 'aws/aws-eks-cluster-management'
+  eks-base-image-tag:
+    description: 'Base image tag for EKS management image'
+    required: false
+    default: '1.1'
+  kubernetes-major-version:
+    description: 'Kubernetes major version'
+    required: false
+    default: '1'
+  kubernetes-minor-version:
+    description: 'Kubernetes minor version (e.g., 32) - required, no default'
+    required: false
+    default: ''
+  eks-private-networking:
+    description: 'Include private subnets section in cluster config'
+    required: false
+    default: 'true'
+  eks-public-networking:
+    description: 'Include public subnets section in cluster config'
+    required: false
+    default: 'false'
+  eks-cilium-ebpf-networking:
+    description: 'Generate controlplane-only yaml for Cilium eBPF networking'
+    required: false
+    default: 'false'
+  eks-custom-security-group:
+    description: 'Include custom security group in cluster config'
+    required: false
+    default: 'false'
+  nodegroup-desired-capacity:
+    description: 'Default nodegroup desired capacity (written to platform config if not in config-sub-path)'
+    required: false
+    default: '1'
+  nodegroup-min-size:
+    description: 'Default nodegroup minimum size (written to platform config if not in config-sub-path)'
+    required: false
+    default: '3'
+  nodegroup-max-size:
+    description: 'Default nodegroup maximum size (written to platform config if not in config-sub-path)'
+    required: false
+    default: '12'
+  eks-addons-list:
+    description: 'Comma-separated list of EKS addon names (no versions)'
+    required: false
+    default: 'coredns,kube-proxy,vpc-cni,aws-ebs-csi-driver,aws-efs-csi-driver'
+  eks-cluster-yaml-sub-path:
+    description: 'Source directory for cluster config files (relative)'
+    required: false
+    default: 'src/eks'
+  secrets-sub-path:
+    description: 'Source directory for encrypted secrets (relative)'
+    required: false
+    default: 'src/secrets'
+
+  # Action-specific inputs (passed from workflow/version generator)
+  version:
+    description: 'Version number (from version generator)'
+    required: true
+  project-name:
+    description: 'Project name (from version generator)'
+    required: true
+
+outputs:
+  dockerfile-substitution-files:
+    description: 'Extended substitution files list (includes cluster yaml files)'
+    value: ${{ steps.prepare.outputs.DOCKERFILE_SUBSTITUTION_FILES }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Prepare EKS cluster management
+      id: prepare
+      shell: bash
+      env:
+        BUILD_PLATFORM: github-actions
+        BUILD_PLATFORM_LOG_PROVIDER: github-actions
+        VERSION: ${{ inputs.version }}
+        PROJECT_NAME: ${{ inputs.project-name }}
+        OUTPUT_SUB_PATH: ${{ inputs.output-sub-path }}
+        # Docker build options
+        DOCKERFILE_SUBSTITUTION_FILES: ${{ inputs.dockerfile-substitution-files }}
+        DOCKERFILE_SUB_PATH: ${{ inputs.dockerfile-sub-path }}
+        DOCKERFILE_SUB_PATH_LINUX_AMD64: ${{ inputs.dockerfile-sub-path-linux-amd64 }}
+        DOCKERFILE_SUB_PATH_LINUX_ARM64: ${{ inputs.dockerfile-sub-path-linux-arm64 }}
+        DOCKER_PLATFORM: ${{ inputs.docker-platform }}
+        # Token substitution
+        TOKEN_DELIMITER_STYLE: ${{ inputs.token-delimiter-style }}
+        TOKEN_NAME_STYLE: ${{ inputs.token-name-style }}
+        CONFIG_SUB_PATH: ${{ inputs.config-sub-path }}
+        # EKS cluster management
+        EKS_BASE_IMAGE_REGISTRY: ${{ inputs.eks-base-image-registry }}
+        EKS_BASE_IMAGE_NAMESPACE: ${{ inputs.eks-base-image-namespace }}
+        EKS_BASE_IMAGE_NAME: ${{ inputs.eks-base-image-name }}
+        EKS_BASE_IMAGE_TAG: ${{ inputs.eks-base-image-tag }}
+        KUBERNETES_MAJOR_VERSION: ${{ inputs.kubernetes-major-version }}
+        KUBERNETES_MINOR_VERSION: ${{ inputs.kubernetes-minor-version }}
+        EKS_PRIVATE_NETWORKING: ${{ inputs.eks-private-networking }}
+        EKS_PUBLIC_NETWORKING: ${{ inputs.eks-public-networking }}
+        EKS_CILIUM_EBPF_NETWORKING: ${{ inputs.eks-cilium-ebpf-networking }}
+        EKS_CUSTOM_SECURITY_GROUP: ${{ inputs.eks-custom-security-group }}
+        NODEGROUP_DESIRED_CAPACITY: ${{ inputs.nodegroup-desired-capacity }}
+        NODEGROUP_MIN_SIZE: ${{ inputs.nodegroup-min-size }}
+        NODEGROUP_MAX_SIZE: ${{ inputs.nodegroup-max-size }}
+        EKS_ADDONS_LIST: ${{ inputs.eks-addons-list }}
+        EKS_CLUSTER_YAML_SUB_PATH: ${{ inputs.eks-cluster-yaml-sub-path }}
+        SECRETS_SUB_PATH: ${{ inputs.secrets-sub-path }}
+      run: "${{ github.action_path }}/../../scripts/main/aws-eks-cluster-management-prepare"

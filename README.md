@@ -35,6 +35,7 @@ See [`examples/`](examples/) for more usage patterns.
 | Example | Description |
 |---------|-------------|
 | [`additional-release-branches.yaml`](examples/additional-release-branches.yaml) | Support hotfix workflows by building on branches other than the default and still getting releases published |
+| [`aws-eks-cluster-management.yaml`](examples/aws-eks-cluster-management.yaml) | Builds an EKS cluster management image layering your cluster config on top of |
 | [`basic-quality-and-versioning.yaml`](examples/basic-quality-and-versioning.yaml) | Standard build setup |
 | [`cronjob-history-and-cleanup.yaml`](examples/cronjob-history-and-cleanup.yaml) | CronJobs in Kaptain use sensible defaults for history retention and cleanup |
 | [`daemonset-privileged-and-tolerations.yaml`](examples/daemonset-privileged-and-tolerations.yaml) | This example demonstrates a DaemonSet configured for system-level agents that |
@@ -70,6 +71,7 @@ See [`examples/`](examples/) for more usage patterns.
 | `basic-quality-checks.yaml` | Enforces basic quality - blocks bad branch names, bad commit messages, and bad branch structure |
 | `basic-quality-and-versioning.yaml` | Quality checks and naming/versioning combined - the standard foundation for most projects |
 | `docker-build-dockerfile.yaml` | Everything from quality and versions above, but also builds a docker image from a Dockerfile |
+| `aws-eks-cluster-management.yaml` | Everything from docker Dockerfile build plus EKS cluster config generation and three-phase validation |
 | `docker-build-retag.yaml` | Everything from quality and version above, but also pulls, retags, and republishes a docker image |
 | `kubernetes-app-manifests-only.yaml` | Everything from quality and version above, plus packages Kubernetes manifests with token substitution |
 | `kubernetes-app-docker-dockerfile.yaml` | Everything from both docker Dockerfile and Kubernetes manifest packaging - a full kube app build |
@@ -82,6 +84,9 @@ See [`examples/`](examples/) for more usage patterns.
 <!-- ACTIONS-START -->
 | Action | Description |
 |--------|-------------|
+| `aws-eks-cluster-management-post-build-validate` | Validate substituted cluster yaml and image integrity after docker build |
+| `aws-eks-cluster-management-pre-build-validate` | Validate cluster yaml token placement before docker build |
+| `aws-eks-cluster-management-prepare` | Generate EKS cluster config and Dockerfile for cluster management image |
 | `basic-quality-checks` | Basic quality checks for commits and branches |
 | `change-source-note-write` | Writes merge candidate metadata as a git note for release tracking |
 | `docker-build-dockerfile` | Builds a Docker image from a Dockerfile with token substitution (build only, push handled by docker-push-all) |
@@ -147,6 +152,16 @@ See [`examples/`](examples/) for more usage patterns.
 | `dockerfile-sub-path-linux-amd64` | string | `src/docker-linux-amd64` | Per-platform Dockerfile directory for linux/amd64 multi-platform builds |
 | `dockerfile-sub-path-linux-arm64` | string | `src/docker-linux-arm64` | Per-platform Dockerfile directory for linux/arm64 multi-platform builds |
 | `dockerfile-substitution-files` | string | `Dockerfile` | Comma-separated list of files to perform token substitution on (relative to dockerfile-sub-path and docker-context-sub-path) |
+| `eks-addons-list` | string | `coredns,kube-proxy,vpc-cni,aws-ebs-csi-driver,aws-efs-csi-driver` | Comma-separated list of EKS addon names (no versions) |
+| `eks-base-image-name` | string | `aws/aws-eks-cluster-management` | Base image name for EKS management image |
+| `eks-base-image-namespace` | string | `kube-kaptain` | Base image namespace for EKS management image |
+| `eks-base-image-registry` | string | `ghcr.io` | Base image registry for EKS management image |
+| `eks-base-image-tag` | string | `1.1` | Base image tag for EKS management image |
+| `eks-cilium-ebpf-networking` | boolean | `false` | Generate controlplane-only yaml for Cilium eBPF networking |
+| `eks-cluster-yaml-sub-path` | string | `src/eks` | Source directory for cluster config files (relative) |
+| `eks-custom-security-group` | boolean | `false` | Include custom security group in cluster config |
+| `eks-private-networking` | boolean | `true` | Include private subnets section in cluster config |
+| `eks-public-networking` | boolean | `false` | Include public subnets section in cluster config |
 | `github-release-add-version-to-filenames` | boolean | `true` | Add version suffix to release filenames (e.g., file.yaml -> file-1.2.3.yaml) |
 | `github-release-enabled` | boolean | `true` | Create a GitHub release on version tags |
 | `github-release-notes` | string | `""` | Inline release notes string (mutually exclusive with github-release-notes-file) |
@@ -210,6 +225,8 @@ See [`examples/`](examples/) for more usage patterns.
 | `kubernetes-job-restart-policy` | string | `Never` | Pod restart policy (Never or OnFailure) |
 | `kubernetes-job-startup-probe-enabled` | string | `false` | Enable startup probe (uses workload probe settings when true) |
 | `kubernetes-job-ttl-seconds-after-finished` | string | `86400` | Cleanup time after Job completion in seconds |
+| `kubernetes-major-version` | string | `1` | Kubernetes major version |
+| `kubernetes-minor-version` | string | `""` | Kubernetes minor version (e.g., 32) - required, no default |
 | `kubernetes-poddisruptionbudget-additional-annotations` | string | `""` | Additional annotations specific to PodDisruptionBudget (comma-separated key=value) |
 | `kubernetes-poddisruptionbudget-additional-labels` | string | `""` | Additional labels specific to PodDisruptionBudget (comma-separated key=value) |
 | `kubernetes-poddisruptionbudget-combined-sub-path` | string | `""` | Sub-path within combined/ for output |
@@ -324,6 +341,9 @@ See [`examples/`](examples/) for more usage patterns.
 | `manifests-packaging-base-image` | string | `""` | Base image for manifest packaging (default: scratch) |
 | `manifests-repo-provider-type` | string | `docker` | Repo provider type for manifest storage (default: docker, currently the only supported provider) |
 | `manifests-sub-path` | string | `src/kubernetes` | Directory containing Kubernetes manifests (relative) |
+| `nodegroup-desired-capacity` | string | `1` | Default nodegroup desired capacity (written to platform config if not in config-sub-path) |
+| `nodegroup-max-size` | string | `12` | Default nodegroup maximum size (written to platform config if not in config-sub-path) |
+| `nodegroup-min-size` | string | `3` | Default nodegroup minimum size (written to platform config if not in config-sub-path) |
 | `output-sub-path` | string | `target` | Build output directory (relative) |
 | `qc-block-conventional-commits` | boolean | `false` | Block commits that use conventional commit format |
 | `qc-block-double-hyphen-containing-branches` | boolean | `true` | Block branch names containing double hyphens (typo detection) |
@@ -332,6 +352,7 @@ See [`examples/`](examples/) for more usage patterns.
 | `qc-require-conventional-branches` | boolean | `false` | Require branch names start with feature/, fix/, etc. |
 | `qc-require-conventional-commits` | boolean | `false` | Require commits use conventional commit format (feat:, fix:, etc.) |
 | `release-branch` | string | `main` | The release branch name |
+| `secrets-sub-path` | string | `src/secrets` | Source directory for encrypted secrets (relative) |
 | `spec-packaging-base-image` | string | `scratch` | Base image for spec packaging |
 | `spec-type` | string | *required* | Type of spec (schema or api) |
 | `spec-validation-type` | string | `basic` | Schema validator to use (basic, python3-jsonschema) |
@@ -365,6 +386,7 @@ See [`examples/`](examples/) for more usage patterns.
 <!-- WORKFLOW-DOCS-START -->
 | Workflow | Description | Documentation |
 |----------|-------------|---------------|
+| `aws-eks-cluster-management.yaml` | EKS Cluster Management | [docs/aws-eks-cluster-management.md](docs/aws-eks-cluster-management.md) |
 | `basic-quality-and-versioning.yaml` | Basic Quality and Versioning | [docs/basic-quality-and-versioning.md](docs/basic-quality-and-versioning.md) |
 | `basic-quality-checks.yaml` | Basic Quality Checks | [docs/basic-quality-checks.md](docs/basic-quality-checks.md) |
 | `docker-build-dockerfile.yaml` | Docker Build Dockerfile | [docs/docker-build-dockerfile.md](docs/docker-build-dockerfile.md) |

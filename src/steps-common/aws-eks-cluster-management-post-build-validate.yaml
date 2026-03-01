@@ -1,0 +1,20 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
+
+- name: Post-build validate EKS cluster yaml
+  id: eks-post-build-validate
+  uses: ./.github/buildon-github-actions/src/actions/aws-eks-cluster-management-post-build-validate
+  with:
+    output-sub-path: ${{ inputs.output-sub-path }}
+    dockerfile-sub-path: ${{ inputs.dockerfile-sub-path }}
+    dockerfile-sub-path-linux-amd64: ${{ inputs.dockerfile-sub-path-linux-amd64 }}
+    dockerfile-sub-path-linux-arm64: ${{ inputs.dockerfile-sub-path-linux-arm64 }}
+    docker-platform: ${{ inputs.docker-platform }}
+    token-delimiter-style: ${{ inputs.token-delimiter-style }}
+    token-name-style: ${{ inputs.token-name-style }}
+    image-build-command: ${{ steps.validate-tooling.outputs.IMAGE_BUILD_COMMAND }}
+    project-name: ${{ steps.versions.outputs.project-name }}
+    docker-tag: ${{ steps.versions.outputs.docker-tag }}
+    docker-image-name: ${{ steps.versions.outputs.docker-image-name }}
+    docker-target-registry: ${{ steps.resolve-registry.outputs.docker-target-registry }}
+    docker-target-namespace: ${{ steps.resolve-registry.outputs.docker-target-namespace }}

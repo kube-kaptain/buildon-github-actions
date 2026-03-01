@@ -1,0 +1,514 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
+#
+# aws-eks-cluster-management-prepare - Generate EKS cluster config and Dockerfile
+#
+# Runs as a pre-docker hook. Generates cluster.yaml (and optionally
+# cluster-controlplane-only.yaml) with token placeholders, plus a thin
+# Dockerfile that layers them onto the base management image.
+#
+# Three-tier file resolution for each generated file:
+#   1. Already in docker context dir → skip (user's pre-docker hook put it there)
+#   2. Exists in EKS_CLUSTER_YAML_SUB_PATH → copy to context dir
+#   3. Neither → generate from template
+#
+# Required config (env var or file in CONFIG_SUB_PATH):
+#   KUBERNETES_MINOR_VERSION    - K8s minor version (e.g., 32) - env var or config file
+#
+# Required config (file in CONFIG_SUB_PATH only, used as tokens):
+#   EKS_REGION                  - AWS region (e.g., eu-west-1)
+#   VPC_ID                      - VPC identifier
+#   NODEGROUP_INSTANCE_TYPE     - Node instance type (e.g., t3.medium)
+#   PRIVATE_SUBNET_1/2/3        - Private subnet IDs (if EKS_PRIVATE_NETWORKING=true)
+#   PUBLIC_SUBNET_1/2/3         - Public subnet IDs (if EKS_PUBLIC_NETWORKING=true)
+#
+# Conditional config (file in CONFIG_SUB_PATH, required when switch is on):
+#   VPC_SECURITY_GROUP          - Custom security group ID (if EKS_CUSTOM_SECURITY_GROUP=true)
+#
+# Tokens with defaults (checked in CONFIG_SUB_PATH, default written to platform config dir if absent):
+#   NODEGROUP_DESIRED_CAPACITY  - default: 1
+#   NODEGROUP_MIN_SIZE          - default: 3
+#   NODEGROUP_MAX_SIZE          - default: 12
+#
+# Inputs (environment variables / switches):
+#   EKS_BASE_IMAGE_REGISTRY    - Base image registry (default: ghcr.io)
+#   EKS_BASE_IMAGE_NAMESPACE   - Base image namespace (default: kube-kaptain)
+#   EKS_BASE_IMAGE_NAME        - Base image name (default: aws/aws-eks-cluster-management)
+#   EKS_BASE_IMAGE_TAG         - Base image tag (default: 1.1)
+#   KUBERNETES_MAJOR_VERSION   - K8s major version (default: 1)
+#   EKS_PRIVATE_NETWORKING     - Include private subnets section (default: true)
+#   EKS_PUBLIC_NETWORKING      - Include public subnets section (default: false)
+#   EKS_CILIUM_EBPF_NETWORKING - Generate controlplane-only yaml (default: false)
+#   EKS_CUSTOM_SECURITY_GROUP  - Include custom security group (default: false)
+#   EKS_ADDONS_LIST            - Comma-separated addon names (default: coredns,kube-proxy,vpc-cni,aws-ebs-csi-driver,aws-efs-csi-driver)
+#   EKS_CLUSTER_YAML_SUB_PATH  - Source dir for cluster configs (default: src/eks)
+#   SECRETS_SUB_PATH           - Source dir for encrypted secrets (default: src/secrets)
+#   DOCKER_PLATFORM            - Target platform(s) (default: linux/amd64,linux/arm64)
+#   TOKEN_DELIMITER_STYLE      - Token delimiter syntax (default: shell)
+#   TOKEN_NAME_STYLE           - Case style for token names (default: PascalCase)
+#   CONFIG_SUB_PATH            - Token config dir (default: src/config)
+#   VERSION                    - Build version (from versions-and-naming)
+#   PROJECT_NAME               - Project name (from versions-and-naming)
+#
+# Outputs:
+#   DOCKERFILE_SUBSTITUTION_FILES - Extended with cluster yaml filenames
+#   Writes NODE_GROUP_DEFAULT_PREFIX to platform config dir(s) and OUTPUT_SUB_PATH/aws-eks-cluster-management/nodegroup-prefix
+#   Writes defaultable token values to platform config dir(s) when not in CONFIG_SUB_PATH
+#
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# === Source defaults ===
+
+# shellcheck source=src/scripts/defaults/output-sub-path.bash
+source "${SCRIPT_DIR}/../defaults/output-sub-path.bash"
+# shellcheck source=src/scripts/defaults/docker-dockerfile.bash
+source "${SCRIPT_DIR}/../defaults/docker-dockerfile.bash"
+# shellcheck source=src/scripts/defaults/tokens.bash
+source "${SCRIPT_DIR}/../defaults/tokens.bash"
+# shellcheck source=src/scripts/defaults/aws-eks-cluster-management.bash
+source "${SCRIPT_DIR}/../defaults/aws-eks-cluster-management.bash"
+
+# === Source libs ===
+
+# shellcheck source=src/scripts/lib/log.bash
+source "${SCRIPT_DIR}/../lib/log.bash"
+# shellcheck source=src/scripts/lib/token-format.bash
+source "${SCRIPT_DIR}/../lib/token-format.bash"
+# shellcheck source=src/scripts/lib/output-var.bash
+source "${SCRIPT_DIR}/../lib/output-var.bash"
+
+# === Helper functions ===
+
+validation_errors=0
+
+# resolve_config - Read a required value from env var or config file
+#
+# Args:
+#   $1 - UPPER_SNAKE variable name
+#
+# Sets the variable in caller's scope. Increments validation_errors on missing.
+resolve_config() {
+  local var_name="$1"
+  local current_value="${!var_name:-}"
+
+  if [[ -n "${current_value}" ]]; then
+    return 0
+  fi
+
+  local config_file_name
+  config_file_name=$(convert_token_name "${TOKEN_NAME_STYLE}" "${var_name}")
+  local config_file="${CONFIG_SUB_PATH}/${config_file_name}"
+
+  if [[ -f "${config_file}" ]]; then
+    local value
+    value=$(< "${config_file}")
+    value="${value%$'\n'}"
+    eval "${var_name}=\"${value}\""
+    log "  ${var_name}: read from ${config_file}"
+    return 0
+  fi
+
+  log_error "${var_name} is required - set as env var or add ${config_file_name} to ${CONFIG_SUB_PATH}/"
+  validation_errors=$((validation_errors + 1))
+  return 1
+}
+
+# require_config_file - Validate a required token config file exists
+#
+# Args:
+#   $1 - UPPER_SNAKE token name
+#   $2 - human-readable description for error message
+require_config_file() {
+  local token_name="$1"
+  local description="$2"
+  local config_file_name
+  config_file_name=$(convert_token_name "${TOKEN_NAME_STYLE}" "${token_name}")
+
+  if [[ ! -f "${CONFIG_SUB_PATH}/${config_file_name}" ]]; then
+    log_error "${token_name}: ${CONFIG_SUB_PATH}/${config_file_name} not found - ${description}"
+    validation_errors=$((validation_errors + 1))
+  fi
+}
+
+# ensure_default_token - Write default to platform config dir(s) if not already provided
+#
+# Checks three places in order:
+#   1. CONFIG_SUB_PATH (user's src/config) - token system picks it up
+#   2. Platform config dir - hook or prior step may have written it
+#   3. Neither - write the default to each platform config dir
+#
+# Args:
+#   $1 - UPPER_SNAKE token name
+#   $2 - default value
+ensure_default_token() {
+  local token_name="$1"
+  local default_value="$2"
+  local config_file_name
+  config_file_name=$(convert_token_name "${TOKEN_NAME_STYLE}" "${token_name}")
+
+  # User override in CONFIG_SUB_PATH - token system handles it
+  if [[ -f "${CONFIG_SUB_PATH}/${config_file_name}" ]]; then
+    log "  ${token_name}: user config found in ${CONFIG_SUB_PATH}/"
+    return 0
+  fi
+
+  # Write default to each platform config dir that doesn't already have it
+  local all_present=true
+  for config_dir in "${platform_config_dirs[@]}"; do
+    if [[ ! -f "${config_dir}/${config_file_name}" ]]; then
+      all_present=false
+      break
+    fi
+  done
+
+  if [[ "${all_present}" == "true" ]]; then
+    log "  ${token_name}: already present in platform config dir(s)"
+    return 0
+  fi
+
+  for config_dir in "${platform_config_dirs[@]}"; do
+    if [[ ! -f "${config_dir}/${config_file_name}" ]]; then
+      mkdir -p "${config_dir}"
+      printf '%s' "${default_value}" > "${config_dir}/${config_file_name}"
+    fi
+  done
+  log "  ${token_name}: default ${default_value} written to platform config dir(s) where missing"
+}
+
+# === Validate required inputs ===
+
+VERSION="${VERSION:?VERSION is required}"
+PROJECT_NAME="${PROJECT_NAME:?PROJECT_NAME is required}"
+
+validate_token_styles
+
+resolve_config "KUBERNETES_MINOR_VERSION"
+
+# === Validate required token config files ===
+
+require_config_file "EKS_REGION" "Create this file with the AWS region for your cluster (e.g., eu-west-1)"
+require_config_file "VPC_ID" "Create this file with the VPC ID for your cluster (e.g., vpc-0123456789abcdef0)"
+require_config_file "NODEGROUP_INSTANCE_TYPE" "Create this file with the instance type (e.g., t3.medium)"
+
+if [[ "${EKS_PRIVATE_NETWORKING}" == "true" ]]; then
+  require_config_file "PRIVATE_SUBNET_1" "Required when EKS_PRIVATE_NETWORKING=true"
+  require_config_file "PRIVATE_SUBNET_2" "Required when EKS_PRIVATE_NETWORKING=true"
+  require_config_file "PRIVATE_SUBNET_3" "Required when EKS_PRIVATE_NETWORKING=true"
+fi
+
+if [[ "${EKS_PUBLIC_NETWORKING}" == "true" ]]; then
+  require_config_file "PUBLIC_SUBNET_1" "Required when EKS_PUBLIC_NETWORKING=true"
+  require_config_file "PUBLIC_SUBNET_2" "Required when EKS_PUBLIC_NETWORKING=true"
+  require_config_file "PUBLIC_SUBNET_3" "Required when EKS_PUBLIC_NETWORKING=true"
+fi
+
+EKS_CUSTOM_SECURITY_GROUP="${EKS_CUSTOM_SECURITY_GROUP:-false}"
+if [[ "${EKS_CUSTOM_SECURITY_GROUP}" == "true" ]]; then
+  require_config_file "VPC_SECURITY_GROUP" "Required when EKS_CUSTOM_SECURITY_GROUP=true"
+fi
+
+if [[ ${validation_errors} -gt 0 ]]; then
+  log_error "Validation failed with ${validation_errors} missing config file(s)"
+  exit 1
+fi
+
+# === Compute values ===
+
+k8s_version="${KUBERNETES_MAJOR_VERSION}.${KUBERNETES_MINOR_VERSION}"
+version_dashes=$(echo "${VERSION}" | tr '.' '-')
+timestamp=$(date +%Y%m%d)
+nodegroup_prefix="ng-${timestamp}-k-${KUBERNETES_MAJOR_VERSION}-${KUBERNETES_MINOR_VERSION}-v-${version_dashes}"
+
+# Persist nodegroup prefix for post-build-validate (before platform dirs are set up)
+mkdir -p "${OUTPUT_SUB_PATH}/aws-eks-cluster-management"
+printf '%s' "${nodegroup_prefix}" > "${OUTPUT_SUB_PATH}/aws-eks-cluster-management/nodegroup-prefix"
+
+# === Determine platforms, context dirs, and config dirs ===
+
+declare -a platforms=()
+declare -a context_dirs=()
+declare -a platform_config_dirs=()
+
+if [[ "${DOCKER_PLATFORM}" == *,* ]]; then
+  IFS=',' read -ra platforms <<< "${DOCKER_PLATFORM}"
+  for platform in "${platforms[@]}"; do
+    case "${platform}" in
+      linux/amd64)
+        context_dirs+=("${DOCKER_CONTEXT_SUB_PATH_LINUX_AMD64}")
+        platform_config_dirs+=("${OUTPUT_SUB_PATH}/docker-linux-amd64/config")
+        ;;
+      linux/arm64)
+        context_dirs+=("${DOCKER_CONTEXT_SUB_PATH_LINUX_ARM64}")
+        platform_config_dirs+=("${OUTPUT_SUB_PATH}/docker-linux-arm64/config")
+        ;;
+      *)
+        log_error "Unsupported platform: ${platform}"
+        exit 1
+        ;;
+    esac
+  done
+else
+  platforms=("${DOCKER_PLATFORM}")
+  context_dirs=("${DOCKER_CONTEXT_SUB_PATH}")
+  platform_config_dirs+=("${OUTPUT_SUB_PATH}/docker/config")
+fi
+
+# === Write computed and default tokens to platform config dirs ===
+
+# Nodegroup prefix is always computed - write to every platform config dir
+nodegroup_config_name=$(convert_token_name "${TOKEN_NAME_STYLE}" "NODE_GROUP_DEFAULT_PREFIX")
+for config_dir in "${platform_config_dirs[@]}"; do
+  mkdir -p "${config_dir}"
+  printf '%s' "${nodegroup_prefix}" > "${config_dir}/${nodegroup_config_name}"
+done
+log "  NODE_GROUP_DEFAULT_PREFIX: ${nodegroup_prefix} written to platform config dir(s)"
+
+ensure_default_token "NODEGROUP_DESIRED_CAPACITY" "${NODEGROUP_DESIRED_CAPACITY}"
+ensure_default_token "NODEGROUP_MIN_SIZE" "${NODEGROUP_MIN_SIZE}"
+ensure_default_token "NODEGROUP_MAX_SIZE" "${NODEGROUP_MAX_SIZE}"
+
+# === Build token references ===
+
+token_project_name=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "PROJECT_NAME")
+token_eks_region=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "EKS_REGION")
+token_vpc_id=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "VPC_ID")
+token_nodegroup_prefix=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "NODE_GROUP_DEFAULT_PREFIX")
+token_instance_type=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "NODEGROUP_INSTANCE_TYPE")
+token_desired_capacity=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "NODEGROUP_DESIRED_CAPACITY")
+token_min_size=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "NODEGROUP_MIN_SIZE")
+token_max_size=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "NODEGROUP_MAX_SIZE")
+
+if [[ "${EKS_PRIVATE_NETWORKING}" == "true" ]]; then
+  token_private_subnet_1=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "PRIVATE_SUBNET_1")
+  token_private_subnet_2=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "PRIVATE_SUBNET_2")
+  token_private_subnet_3=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "PRIVATE_SUBNET_3")
+fi
+
+if [[ "${EKS_PUBLIC_NETWORKING}" == "true" ]]; then
+  token_public_subnet_1=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "PUBLIC_SUBNET_1")
+  token_public_subnet_2=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "PUBLIC_SUBNET_2")
+  token_public_subnet_3=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "PUBLIC_SUBNET_3")
+fi
+
+if [[ "${EKS_CUSTOM_SECURITY_GROUP}" == "true" ]]; then
+  token_security_group=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "VPC_SECURITY_GROUP")
+fi
+
+# === Generate addon lists ===
+
+IFS=',' read -ra all_addons <<< "${EKS_ADDONS_LIST}"
+
+# Full cluster addons: exclude kube-proxy and vpc-cni if cilium mode (cilium replaces both)
+declare -a cluster_addons=()
+for addon in "${all_addons[@]}"; do
+  if [[ "${EKS_CILIUM_EBPF_NETWORKING}" == "true" ]]; then
+    if [[ "${addon}" == "kube-proxy" || "${addon}" == "vpc-cni" ]]; then
+      continue
+    fi
+  fi
+  cluster_addons+=("${addon}")
+done
+
+# === Template generators ===
+
+generate_cluster_yaml() {
+  local include_nodegroups="$1"
+  local addon_list=("${@:2}")
+
+  cat <<YAML
+apiVersion: eksctl.io/v1alpha5
+kind: ClusterConfig
+
+metadata:
+  name: ${token_project_name}
+  region: ${token_eks_region}
+  version: "${k8s_version}"
+
+vpc:
+  id: ${token_vpc_id}
+YAML
+
+  if [[ "${EKS_CUSTOM_SECURITY_GROUP}" == "true" ]]; then
+    echo "  securityGroup: ${token_security_group}"
+  fi
+
+  if [[ "${EKS_PRIVATE_NETWORKING}" == "true" || "${EKS_PUBLIC_NETWORKING}" == "true" ]]; then
+    echo "  subnets:"
+  fi
+
+  if [[ "${EKS_PRIVATE_NETWORKING}" == "true" ]]; then
+    cat <<YAML
+    private:
+      az1:
+        id: ${token_private_subnet_1}
+      az2:
+        id: ${token_private_subnet_2}
+      az3:
+        id: ${token_private_subnet_3}
+YAML
+  fi
+
+  if [[ "${EKS_PUBLIC_NETWORKING}" == "true" ]]; then
+    cat <<YAML
+    public:
+      az1:
+        id: ${token_public_subnet_1}
+      az2:
+        id: ${token_public_subnet_2}
+      az3:
+        id: ${token_public_subnet_3}
+YAML
+  fi
+
+  cat <<YAML
+
+privateCluster:
+  enabled: ${EKS_PRIVATE_NETWORKING}
+YAML
+
+  if [[ "${include_nodegroups}" == "true" ]]; then
+    cat <<YAML
+
+managedNodeGroups:
+  - name: ${token_nodegroup_prefix}
+    instanceType: ${token_instance_type}
+    privateNetworking: ${EKS_PRIVATE_NETWORKING}
+    desiredCapacity: ${token_desired_capacity}
+    minSize: ${token_min_size}
+    maxSize: ${token_max_size}
+YAML
+  fi
+
+  cat <<YAML
+
+addons:
+YAML
+
+  for addon in "${addon_list[@]}"; do
+    echo "  - name: ${addon}"
+  done
+}
+
+generate_dockerfile() {
+  local context_dir="$1"
+
+  echo "FROM ${EKS_BASE_IMAGE_REGISTRY}/${EKS_BASE_IMAGE_NAMESPACE}/${EKS_BASE_IMAGE_NAME}:${EKS_BASE_IMAGE_TAG}"
+  echo "COPY cluster.yaml /kd/eks/"
+
+  if [[ -f "${context_dir}/cluster-controlplane-only.yaml" ]]; then
+    echo "COPY cluster-controlplane-only.yaml /kd/eks/"
+  fi
+
+  if [[ -f "${context_dir}/aws-credentials.age" ]]; then
+    echo "COPY aws-credentials.age /kd/secrets/"
+  fi
+
+  echo "USER kaptain"
+}
+
+# resolve_file - Three-tier file resolution
+#
+# Args:
+#   $1 - filename
+#   $2 - context_dir (docker build context)
+#   $3 - source_dir (EKS_CLUSTER_YAML_SUB_PATH or SECRETS_SUB_PATH)
+#
+# Returns: 0 if file placed, 1 if not found
+resolve_file() {
+  local filename="$1"
+  local context_dir="$2"
+  local source_dir="$3"
+
+  # Tier 1: Already in context dir
+  if [[ -f "${context_dir}/${filename}" ]]; then
+    log "  ${filename}: already in context dir (skipping)"
+    return 0
+  fi
+
+  # Tier 2: Copy from source dir
+  if [[ -f "${source_dir}/${filename}" ]]; then
+    cp "${source_dir}/${filename}" "${context_dir}/${filename}"
+    log "  ${filename}: copied from ${source_dir}/"
+    return 0
+  fi
+
+  # Tier 3: Not found - caller handles generation
+  return 1
+}
+
+# === Main ===
+
+main() {
+  log "=== EKS Cluster Management Prepare ==="
+  log "Kubernetes version: ${k8s_version}"
+  log "Nodegroup prefix: ${nodegroup_prefix}"
+  log "Base image: ${EKS_BASE_IMAGE_REGISTRY}/${EKS_BASE_IMAGE_NAMESPACE}/${EKS_BASE_IMAGE_NAME}:${EKS_BASE_IMAGE_TAG}"
+  log "Cilium eBPF networking: ${EKS_CILIUM_EBPF_NETWORKING}"
+  log "Private networking: ${EKS_PRIVATE_NETWORKING}"
+  log "Public networking: ${EKS_PUBLIC_NETWORKING}"
+  log "Custom security group: ${EKS_CUSTOM_SECURITY_GROUP}"
+  log "Platforms: ${DOCKER_PLATFORM}"
+  log "======================================="
+
+  # Track which files need token substitution
+  local sub_files="${DOCKERFILE_SUBSTITUTION_FILES}"
+
+  # Determine if controlplane-only yaml is needed
+  local need_controlplane_only="false"
+  if [[ "${EKS_CILIUM_EBPF_NETWORKING}" == "true" ]]; then
+    need_controlplane_only="true"
+  elif [[ -f "${EKS_CLUSTER_YAML_SUB_PATH}/cluster-controlplane-only.yaml" ]]; then
+    need_controlplane_only="true"
+  fi
+
+  for i in "${!context_dirs[@]}"; do
+    local context_dir="${context_dirs[${i}]}"
+    log ""
+    log "--- Preparing ${context_dir} ---"
+    mkdir -p "${context_dir}"
+
+    # cluster.yaml
+    if ! resolve_file "cluster.yaml" "${context_dir}" "${EKS_CLUSTER_YAML_SUB_PATH}"; then
+      log "  cluster.yaml: generating from template"
+      generate_cluster_yaml "true" "${cluster_addons[@]}" > "${context_dir}/cluster.yaml"
+    fi
+
+    # cluster-controlplane-only.yaml (if needed)
+    if [[ "${need_controlplane_only}" == "true" ]]; then
+      if ! resolve_file "cluster-controlplane-only.yaml" "${context_dir}" "${EKS_CLUSTER_YAML_SUB_PATH}"; then
+        log "  cluster-controlplane-only.yaml: generating from template"
+        generate_cluster_yaml "false" "${all_addons[@]}" > "${context_dir}/cluster-controlplane-only.yaml"
+      fi
+    fi
+
+    # aws-credentials.age (optional, never generated)
+    if [[ -f "${SECRETS_SUB_PATH}/aws-credentials.age" ]]; then
+      resolve_file "aws-credentials.age" "${context_dir}" "${SECRETS_SUB_PATH}" || true
+    fi
+
+    # Generate Dockerfile
+    if [[ ! -f "${context_dir}/Dockerfile" ]]; then
+      log "  Dockerfile: generating"
+      generate_dockerfile "${context_dir}" > "${context_dir}/Dockerfile"
+    else
+      log "  Dockerfile: already in context dir (skipping)"
+    fi
+  done
+
+  # Extend substitution files list with cluster yamls
+  sub_files="${sub_files},cluster.yaml"
+  if [[ "${need_controlplane_only}" == "true" ]]; then
+    sub_files="${sub_files},cluster-controlplane-only.yaml"
+  fi
+
+  output_var "DOCKERFILE_SUBSTITUTION_FILES" "${sub_files}"
+
+  log ""
+  log "EKS Cluster Management Prepare complete"
+  log "Substitution files: ${sub_files}"
+}
+
+main "$@"
