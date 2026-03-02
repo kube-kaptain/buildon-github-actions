@@ -253,13 +253,18 @@ main() {
   # Validate all secrets exist before attempting any logins
   validate_all_secrets || exit 1
 
+  # Set up the push image list file for all downstream build/tag steps
+  DOCKER_PUSH_IMAGE_LIST_FILE="${OUTPUT_SUB_PATH}/docker-push-all/image-uris"
+  mkdir -p "$(dirname "${DOCKER_PUSH_IMAGE_LIST_FILE}")"
+  output_var "DOCKER_PUSH_IMAGE_LIST_FILE" "${DOCKER_PUSH_IMAGE_LIST_FILE}"
+
   # Get list of registries
   local registries
   registries=$(echo "${CONFIG}" | yq -r 'keys | .[]')
 
   if [[ -z "${registries}" ]]; then
     log "No registries configured"
-    exit 0
+    return 0
   fi
 
   # Process each registry
@@ -270,11 +275,6 @@ main() {
   done <<< "${registries}"
 
   log "Docker Logins complete - authenticated to ${count} registry/registries"
-
-  # Set up the push image list file for all downstream build/tag steps
-  DOCKER_PUSH_IMAGE_LIST_FILE="${OUTPUT_SUB_PATH}/docker-push-all/image-uris"
-  mkdir -p "$(dirname "${DOCKER_PUSH_IMAGE_LIST_FILE}")"
-  output_var "DOCKER_PUSH_IMAGE_LIST_FILE" "${DOCKER_PUSH_IMAGE_LIST_FILE}"
 }
 
 main "$@"
