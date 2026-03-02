@@ -26,7 +26,7 @@ setup() {
   export GIT_TAG="1.2.3"
   export PROJECT_NAME="my-image"
   export IS_RELEASE="true"
-  export TARGET_IMAGE_FULL_URI="ghcr.io/test/my-image:1.2.3"
+  export DOCKER_TARGET_IMAGE_FULL_URI="ghcr.io/test/my-image:1.2.3"
   export DOCKER_CONTEXT_SUB_PATH="target/docker/substituted"
 
   # Set required workflow inputs - these get defaults from sourced scripts
@@ -218,7 +218,7 @@ teardown() {
   # Generate a hook that dumps all expected exports
   generate_export_dump_hook "$HOOK_SCRIPT" "$HOOK_OUTPUT" $exports
 
-  export HOOK_SCRIPT_SUB_PATH="${HOOK_SCRIPT}"
+  export HOOK_POST_DOCKER_TESTS_SCRIPT_SUB_PATH="${HOOK_SCRIPT}"
   export HOOK_OUTPUT
 
   run "$SCRIPTS_DIR/hook-post-docker-tests"
@@ -230,7 +230,7 @@ teardown() {
 }
 
 @test "hook-post-docker-tests skips when no hook script configured" {
-  unset HOOK_SCRIPT_SUB_PATH
+  unset HOOK_POST_DOCKER_TESTS_SCRIPT_SUB_PATH
 
   run "$SCRIPTS_DIR/hook-post-docker-tests"
   [ "$status" -eq 0 ]
@@ -238,7 +238,7 @@ teardown() {
 }
 
 @test "hook-post-docker-tests fails when hook script not found" {
-  export HOOK_SCRIPT_SUB_PATH="/nonexistent/script.bash"
+  export HOOK_POST_DOCKER_TESTS_SCRIPT_SUB_PATH="/nonexistent/script.bash"
 
   run "$SCRIPTS_DIR/hook-post-docker-tests"
   [ "$status" -eq 2 ]
@@ -252,7 +252,7 @@ echo "test"
 EOF
   # Intentionally NOT making it executable
 
-  export HOOK_SCRIPT_SUB_PATH="${HOOK_SCRIPT}"
+  export HOOK_POST_DOCKER_TESTS_SCRIPT_SUB_PATH="${HOOK_SCRIPT}"
 
   run "$SCRIPTS_DIR/hook-post-docker-tests"
   [ "$status" -eq 3 ]
@@ -269,18 +269,18 @@ EOF
   fi
 }
 
-@test "hook-post-docker-tests DOCKER_IMAGE_FULL_URI aliases TARGET_IMAGE_FULL_URI" {
+@test "hook-post-docker-tests DOCKER_IMAGE_FULL_URI aliases DOCKER_TARGET_IMAGE_FULL_URI" {
   cat > "${HOOK_SCRIPT}" << 'EOF'
 #!/usr/bin/env bash
 set -euo pipefail
 {
-  echo "TARGET=${TARGET_IMAGE_FULL_URI}"
+  echo "TARGET=${DOCKER_TARGET_IMAGE_FULL_URI}"
   echo "ALIAS=${DOCKER_IMAGE_FULL_URI}"
 } > "${HOOK_OUTPUT}"
 EOF
   chmod +x "${HOOK_SCRIPT}"
 
-  export HOOK_SCRIPT_SUB_PATH="${HOOK_SCRIPT}"
+  export HOOK_POST_DOCKER_TESTS_SCRIPT_SUB_PATH="${HOOK_SCRIPT}"
   export HOOK_OUTPUT
 
   run "$SCRIPTS_DIR/hook-post-docker-tests"
