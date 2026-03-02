@@ -208,13 +208,13 @@ MOCKDOCKER
   assert_output_contains "DOCKER_TAG"
 }
 
-@test "fails when DOCKER_PUSH_TARGETS missing" {
+@test "skips when DOCKER_PUSH_TARGETS missing" {
   export DOCKER_IMAGE_NAME="test/my-repo"
   export DOCKER_TAG="1.0.0"
 
   run "$SCRIPTS_DIR/docker-multi-tag"
-  [ "$status" -ne 0 ]
-  assert_output_contains "DOCKER_PUSH_TARGETS"
+  [ "$status" -eq 0 ]
+  assert_output_contains "skipping multi-tag"
 }
 
 @test "fails when DOCKER_TARGET_REGISTRY missing" {

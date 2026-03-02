@@ -202,7 +202,7 @@ teardown() {
   # Generate a hook that dumps all expected exports
   generate_export_dump_hook "$HOOK_SCRIPT" "$HOOK_OUTPUT" $exports
 
-  export HOOK_SCRIPT_SUB_PATH="${HOOK_SCRIPT}"
+  export HOOK_PRE_TAGGING_TESTS_SCRIPT_SUB_PATH="${HOOK_SCRIPT}"
   export HOOK_OUTPUT
 
   run "$SCRIPTS_DIR/hook-pre-tagging-tests"
@@ -224,7 +224,7 @@ teardown() {
 }
 
 @test "hook-pre-tagging-tests skips when no hook script configured" {
-  unset HOOK_SCRIPT_SUB_PATH
+  unset HOOK_PRE_TAGGING_TESTS_SCRIPT_SUB_PATH
 
   run "$SCRIPTS_DIR/hook-pre-tagging-tests"
   [ "$status" -eq 0 ]

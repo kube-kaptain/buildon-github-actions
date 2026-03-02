@@ -1,0 +1,271 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
+#
+# aws-eks-cluster-management-post-build-validate - Validate substituted cluster yaml and image integrity
+#
+# Runs after docker-build-dockerfile. Validates substituted cluster.yaml files
+# on disk, then verifies the built image contains identical files.
+#
+# Phase 1 - Substituted file validation:
+#   - metadata.name contains actual PROJECT_NAME value
+#   - metadata.region is a valid AWS region
+#   - All nodegroup names start with the computed nodegroup prefix
+#   - If multiple nodegroups, names are unique
+#   - No unsubstituted tokens remain
+#
+# Phase 2 - Image integrity:
+#   - Checksum files on disk
+#   - Run the built image and checksum the same files inside
+#   - Compare checksums to ensure image matches validated files
+#
+# Inputs (environment variables):
+#   DOCKER_PLATFORM            - Target platform(s)
+#   TOKEN_DELIMITER_STYLE      - Token delimiter syntax (default: shell)
+#   TOKEN_NAME_STYLE           - Case style for token names (default: PascalCase)
+#   OUTPUT_SUB_PATH            - Build output directory (default: target)
+#   PROJECT_NAME               - Project name (from versions-and-naming)
+#   IMAGE_BUILD_COMMAND        - Container runtime: podman or docker
+#   DOCKER_TAG                 - Image tag (from versions-and-naming)
+#   DOCKER_IMAGE_NAME          - Image name (from versions-and-naming)
+#   DOCKER_TARGET_REGISTRY     - Target registry
+#   DOCKER_TARGET_NAMESPACE    - Target namespace
+#
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# === Source defaults ===
+
+# shellcheck source=src/scripts/defaults/output-sub-path.bash
+source "${SCRIPT_DIR}/../defaults/output-sub-path.bash"
+# shellcheck source=src/scripts/defaults/docker-dockerfile.bash
+source "${SCRIPT_DIR}/../defaults/docker-dockerfile.bash"
+# shellcheck source=src/scripts/defaults/tokens.bash
+source "${SCRIPT_DIR}/../defaults/tokens.bash"
+# shellcheck source=src/scripts/defaults/docker-common.bash
+source "${SCRIPT_DIR}/../defaults/docker-common.bash"
+# shellcheck source=src/scripts/defaults/docker-build.bash
+source "${SCRIPT_DIR}/../defaults/docker-build.bash"
+# shellcheck source=src/scripts/defaults/aws-eks-cluster-management.bash
+source "${SCRIPT_DIR}/../defaults/aws-eks-cluster-management.bash"
+
+# === Source libs ===
+
+# shellcheck source=src/scripts/lib/log.bash
+source "${SCRIPT_DIR}/../lib/log.bash"
+# shellcheck source=src/scripts/lib/token-format.bash
+source "${SCRIPT_DIR}/../lib/token-format.bash"
+# shellcheck source=src/scripts/lib/docker-build-shared.bash
+source "${SCRIPT_DIR}/../lib/docker-build-shared.bash"
+
+# === Required inputs ===
+
+PROJECT_NAME="${PROJECT_NAME:?PROJECT_NAME is required}"
+
+# === Read nodegroup prefix from prepare output ===
+
+nodegroup_prefix_file="${OUTPUT_SUB_PATH}/aws-eks-cluster-management/nodegroup-prefix"
+if [[ ! -f "${nodegroup_prefix_file}" ]]; then
+  echo "ERROR: ${nodegroup_prefix_file} not found - was aws-eks-cluster-management-prepare run?" >&2
+  exit 1
+fi
+nodegroup_prefix=$(< "${nodegroup_prefix_file}")
+
+# === Determine context dirs and image URIs ===
+
+declare -a context_dirs=()
+declare -a image_uris=()
+
+if [[ "${DOCKER_PLATFORM}" == *,* ]]; then
+  IFS=',' read -ra platforms <<< "${DOCKER_PLATFORM}"
+  for platform in "${platforms[@]}"; do
+    platform_suffix="${platform//\//-}"
+    case "${platform}" in
+      linux/amd64)
+        context_dirs+=("${DOCKER_CONTEXT_SUB_PATH_LINUX_AMD64}")
+        ;;
+      linux/arm64)
+        context_dirs+=("${DOCKER_CONTEXT_SUB_PATH_LINUX_ARM64}")
+        ;;
+    esac
+    image_uris+=("${TARGET_IMAGE_FULL_URI}-${platform_suffix}")
+  done
+else
+  context_dirs=("${DOCKER_CONTEXT_SUB_PATH}")
+  image_uris+=("${TARGET_IMAGE_FULL_URI}")
+fi
+
+# === Validation ===
+
+errors=0
+
+fail() {
+  log_error "$1"
+  errors=$((errors + 1))
+}
+
+# Phase 1: Validate substituted yaml on disk
+validate_substituted_yaml() {
+  local yaml_file="$1"
+
+  if [[ ! -f "${yaml_file}" ]]; then
+    fail "${yaml_file}: file not found"
+    return
+  fi
+
+  log "Validating substituted ${yaml_file}..."
+
+  # No unsubstituted tokens remain
+  local pattern
+  pattern=$(unresolved_token_regex "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}")
+  local remnants
+  remnants=$(grep -E "${pattern}" "${yaml_file}" 2>/dev/null || true)
+  if [[ -n "${remnants}" ]]; then
+    fail "${yaml_file}: unsubstituted tokens found:"
+    log_error "${remnants}"
+  fi
+
+  # metadata.name contains actual project name
+  local cluster_name
+  cluster_name=$(yq '.metadata.name' "${yaml_file}" 2>/dev/null || echo "")
+  if [[ -z "${cluster_name}" || "${cluster_name}" == "null" ]]; then
+    fail "${yaml_file}: metadata.name is missing"
+  elif [[ "${cluster_name}" != *"${PROJECT_NAME}"* ]]; then
+    fail "${yaml_file}: metadata.name '${cluster_name}' does not contain project name '${PROJECT_NAME}'"
+  fi
+
+  # metadata.region looks like an AWS region
+  local region
+  region=$(yq '.metadata.region' "${yaml_file}" 2>/dev/null || echo "")
+  if [[ -z "${region}" || "${region}" == "null" ]]; then
+    fail "${yaml_file}: metadata.region is missing"
+  elif [[ ! "${region}" =~ ^[a-z]{2}-[a-z]+-[0-9]+$ ]]; then
+    fail "${yaml_file}: metadata.region '${region}' does not look like an AWS region"
+  fi
+
+  # All nodegroup names start with computed prefix
+  local nodegroup_count
+  nodegroup_count=$(yq '.managedNodeGroups | length' "${yaml_file}" 2>/dev/null || echo "0")
+
+  if [[ "${nodegroup_count}" -gt 0 ]]; then
+    declare -a ng_names=()
+    for i in $(seq 0 $((nodegroup_count - 1))); do
+      local ng_name
+      ng_name=$(yq ".managedNodeGroups[${i}].name" "${yaml_file}" 2>/dev/null || echo "")
+      if [[ -z "${ng_name}" || "${ng_name}" == "null" ]]; then
+        fail "${yaml_file}: managedNodeGroups[${i}].name is missing"
+        continue
+      fi
+
+      if [[ "${ng_name}" != "${nodegroup_prefix}"* ]]; then
+        fail "${yaml_file}: managedNodeGroups[${i}].name '${ng_name}' does not start with nodegroup prefix '${nodegroup_prefix}'"
+      fi
+
+      ng_names+=("${ng_name}")
+    done
+
+    # Unique names check
+    if [[ "${nodegroup_count}" -gt 1 && ${#ng_names[@]} -gt 0 ]]; then
+      local unique_count
+      unique_count=$(printf '%s\n' "${ng_names[@]}" | sort -u | wc -l | tr -d ' ')
+      if [[ "${unique_count}" -ne "${nodegroup_count}" ]]; then
+        fail "${yaml_file}: duplicate nodegroup names found - each must be unique (add suffixes)"
+      fi
+    fi
+  fi
+}
+
+# Phase 2: Validate image integrity
+validate_image_integrity() {
+  local context_dir="$1"
+  local image_uri="$2"
+
+  log ""
+  log "Validating image integrity: ${image_uri}..."
+
+  # Collect files to check and their disk checksums as parallel arrays
+  declare -a check_files=()
+  declare -a disk_checksums=()
+
+  for file in cluster.yaml cluster-controlplane-only.yaml; do
+    if [[ -f "${context_dir}/${file}" ]]; then
+      check_files+=("${file}")
+      local checksum
+      checksum=$(sha256sum "${context_dir}/${file}" | cut -d' ' -f1)
+      disk_checksums+=("${checksum}")
+      log "  ${file} disk checksum: ${checksum}"
+    fi
+  done
+
+  if [[ ${#check_files[@]} -eq 0 ]]; then
+    fail "${context_dir}: no cluster yaml files found to verify"
+    return
+  fi
+
+  # Build a command to checksum files inside the image
+  local checksum_cmd="sha256sum"
+  for file in "${check_files[@]}"; do
+    checksum_cmd="${checksum_cmd} /kd/eks/${file}"
+  done
+
+  # Run the image and get checksums
+  local image_output
+  image_output=$(${IMAGE_BUILD_COMMAND} run --rm --entrypoint="" "${image_uri}" sh -c "${checksum_cmd}" 2>&1) || {
+    fail "Failed to run image ${image_uri} for integrity check"
+    return
+  }
+
+  # Compare checksums
+  for i in "${!check_files[@]}"; do
+    local file="${check_files[${i}]}"
+    local expected="${disk_checksums[${i}]}"
+    local image_checksum
+    image_checksum=$(echo "${image_output}" | grep "/kd/eks/${file}" | cut -d' ' -f1)
+    if [[ -z "${image_checksum}" ]]; then
+      fail "${image_uri}: /kd/eks/${file} not found in image"
+    elif [[ "${image_checksum}" != "${expected}" ]]; then
+      fail "${image_uri}: /kd/eks/${file} checksum mismatch (disk: ${expected}, image: ${image_checksum})"
+    else
+      log "  ${file} image checksum matches disk"
+    fi
+  done
+}
+
+# === Main ===
+
+main() {
+  log "=== EKS Cluster Management Post-Build Validate ==="
+  log "Project name: ${PROJECT_NAME}"
+  log "Nodegroup prefix: ${nodegroup_prefix}"
+  log "==================================================="
+
+  # Phase 1: Validate substituted files on disk
+  for context_dir in "${context_dirs[@]}"; do
+    log ""
+    log "--- Phase 1: Validating substituted files in ${context_dir} ---"
+
+    validate_substituted_yaml "${context_dir}/cluster.yaml"
+
+    if [[ -f "${context_dir}/cluster-controlplane-only.yaml" ]]; then
+      validate_substituted_yaml "${context_dir}/cluster-controlplane-only.yaml"
+    fi
+  done
+
+  # Phase 2: Validate image integrity
+  for i in "${!context_dirs[@]}"; do
+    log ""
+    log "--- Phase 2: Validating image integrity ---"
+    validate_image_integrity "${context_dirs[${i}]}" "${image_uris[${i}]}"
+  done
+
+  log ""
+  if [[ ${errors} -gt 0 ]]; then
+    log_error "Post-build validation failed with ${errors} error(s)"
+    exit 1
+  fi
+
+  log "Post-build validation complete - all checks passed"
+}
+
+main "$@"

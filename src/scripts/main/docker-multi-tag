@@ -43,6 +43,12 @@ source "${SCRIPT_DIR}/../lib/output-var.bash"
 # shellcheck source=src/scripts/lib/log.bash
 source "${SCRIPT_DIR}/../lib/log.bash"
 
+# Skip if no push targets configured
+if [[ -z "${DOCKER_PUSH_TARGETS:-}" ]]; then
+  log "No push targets configured - skipping multi-tag"
+  exit 0
+fi
+
 # Validate required inputs
 if [[ -z "${DOCKER_IMAGE_NAME:-}" ]]; then
   log_error "DOCKER_IMAGE_NAME is required"
@@ -50,10 +56,6 @@ if [[ -z "${DOCKER_IMAGE_NAME:-}" ]]; then
 fi
 if [[ -z "${DOCKER_TAG:-}" ]]; then
   log_error "DOCKER_TAG is required"
-  exit 1
-fi
-if [[ -z "${DOCKER_PUSH_TARGETS}" ]]; then
-  log_error "DOCKER_PUSH_TARGETS is required"
   exit 1
 fi
 if [[ -z "${DOCKER_TARGET_REGISTRY:-}" ]]; then

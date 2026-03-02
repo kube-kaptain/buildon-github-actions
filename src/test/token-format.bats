@@ -10,6 +10,7 @@
 #   format_token_reference - Wrap name with substitution delimiters
 #   format_canonical_token - Convenience combining both
 #   format_project_suffixed_token - Combine project + suffix into delimited token
+#   unresolved_token_regex - grep-E regex matching unresolved tokens
 
 load helpers
 
@@ -638,4 +639,273 @@ setup() {
   run validate_token_styles
   [ "$status" -eq 2 ]
   assert_output_contains "ERROR: "
+}
+
+# =============================================================================
+# unresolved_token_regex tests - grep-E regex for detecting leftover tokens
+# =============================================================================
+
+# --- shell delimiter style ---
+
+@test "unresolved_token_regex: shell + PascalCase matches token" {
+  pattern=$(unresolved_token_regex shell PascalCase)
+  echo '${ProjectName}' | grep -Eq "$pattern"
+}
+
+@test "unresolved_token_regex: shell + PascalCase rejects plain text" {
+  pattern=$(unresolved_token_regex shell PascalCase)
+  ! echo 'my-actual-project' | grep -Eq "$pattern"
+}
+
+@test "unresolved_token_regex: shell + PascalCase rejects lowercase start" {
+  pattern=$(unresolved_token_regex shell PascalCase)
+  ! echo '${projectName}' | grep -Eq "$pattern"
+}
+
+@test "unresolved_token_regex: shell + UPPER_SNAKE matches token" {
+  pattern=$(unresolved_token_regex shell UPPER_SNAKE)
+  echo '${PROJECT_NAME}' | grep -Eq "$pattern"
+}
+
+@test "unresolved_token_regex: shell + UPPER_SNAKE rejects lowercase" {
+  pattern=$(unresolved_token_regex shell UPPER_SNAKE)
+  ! echo '${project_name}' | grep -Eq "$pattern"
+}
+
+@test "unresolved_token_regex: shell + camelCase matches token" {
+  pattern=$(unresolved_token_regex shell camelCase)
+  echo '${projectName}' | grep -Eq "$pattern"
+}
+
+@test "unresolved_token_regex: shell + camelCase rejects uppercase start" {
+  pattern=$(unresolved_token_regex shell camelCase)
+  ! echo '${ProjectName}' | grep -Eq "$pattern"
+}
+
+@test "unresolved_token_regex: shell + lower_snake matches token" {
+  pattern=$(unresolved_token_regex shell lower_snake)
+  echo '${project_name}' | grep -Eq "$pattern"
+}
+
+@test "unresolved_token_regex: shell + lower-kebab matches token" {
+  pattern=$(unresolved_token_regex shell lower-kebab)
+  echo '${project-name}' | grep -Eq "$pattern"
+}
+
+@test "unresolved_token_regex: shell + UPPER-KEBAB matches token" {
+  pattern=$(unresolved_token_regex shell UPPER-KEBAB)
+  echo '${PROJECT-NAME}' | grep -Eq "$pattern"
+}
+
+@test "unresolved_token_regex: shell + lower.dot matches token" {
+  pattern=$(unresolved_token_regex shell lower.dot)
+  echo '${project.name}' | grep -Eq "$pattern"
+}
+
+@test "unresolved_token_regex: shell + UPPER.DOT matches token" {
+  pattern=$(unresolved_token_regex shell UPPER.DOT)
+  echo '${PROJECT.NAME}' | grep -Eq "$pattern"
+}
+
+# --- mustache delimiter style ---
+
+@test "unresolved_token_regex: mustache + PascalCase matches token" {
+  pattern=$(unresolved_token_regex mustache PascalCase)
+  echo '{{ ProjectName }}' | grep -Eq "$pattern"
+}
+
+@test "unresolved_token_regex: mustache + PascalCase rejects plain text" {
+  pattern=$(unresolved_token_regex mustache PascalCase)
+  ! echo 'ProjectName' | grep -Eq "$pattern"
+}
+
+# --- helm delimiter style ---
+
+@test "unresolved_token_regex: helm + PascalCase matches token" {
+  pattern=$(unresolved_token_regex helm PascalCase)
+  echo '{{ .Values.ProjectName }}' | grep -Eq "$pattern"
+}
+
+@test "unresolved_token_regex: helm + PascalCase rejects mustache without .Values" {
+  pattern=$(unresolved_token_regex helm PascalCase)
+  ! echo '{{ ProjectName }}' | grep -Eq "$pattern"
+}
+
+# --- erb delimiter style ---
+
+@test "unresolved_token_regex: erb + PascalCase matches token" {
+  pattern=$(unresolved_token_regex erb PascalCase)
+  echo '<%= ProjectName %>' | grep -Eq "$pattern"
+}
+
+# --- github-actions delimiter style ---
+
+@test "unresolved_token_regex: github-actions + PascalCase matches token" {
+  pattern=$(unresolved_token_regex github-actions PascalCase)
+  echo '${{ ProjectName }}' | grep -Eq "$pattern"
+}
+
+@test "unresolved_token_regex: github-actions + PascalCase rejects plain mustache" {
+  pattern=$(unresolved_token_regex github-actions PascalCase)
+  ! echo '{{ ProjectName }}' | grep -Eq "$pattern"
+}
+
+# --- blade delimiter style ---
+
+@test "unresolved_token_regex: blade + PascalCase matches token" {
+  pattern=$(unresolved_token_regex blade PascalCase)
+  echo '{{ $ProjectName }}' | grep -Eq "$pattern"
+}
+
+# --- stringtemplate delimiter style ---
+
+@test "unresolved_token_regex: stringtemplate + PascalCase matches token" {
+  pattern=$(unresolved_token_regex stringtemplate PascalCase)
+  echo '$ProjectName$' | grep -Eq "$pattern"
+}
+
+@test "unresolved_token_regex: stringtemplate + PascalCase rejects shell style" {
+  pattern=$(unresolved_token_regex stringtemplate PascalCase)
+  ! echo '${ProjectName}' | grep -Eq "$pattern"
+}
+
+# --- ognl delimiter style ---
+
+@test "unresolved_token_regex: ognl + PascalCase matches token" {
+  pattern=$(unresolved_token_regex ognl PascalCase)
+  echo '%{ProjectName}' | grep -Eq "$pattern"
+}
+
+# --- t4 delimiter style ---
+
+@test "unresolved_token_regex: t4 + PascalCase matches token" {
+  pattern=$(unresolved_token_regex t4 PascalCase)
+  echo '<#= ProjectName #>' | grep -Eq "$pattern"
+}
+
+# --- swift delimiter style ---
+
+@test "unresolved_token_regex: swift + PascalCase matches token" {
+  pattern=$(unresolved_token_regex swift PascalCase)
+  echo '\(ProjectName)' | grep -Eq "$pattern"
+}
+
+# --- Cross-style: regex only matches its own delimiter style ---
+
+@test "unresolved_token_regex: shell regex does not match mustache tokens" {
+  pattern=$(unresolved_token_regex shell PascalCase)
+  ! echo '{{ ProjectName }}' | grep -Eq "$pattern"
+}
+
+@test "unresolved_token_regex: mustache regex does not match shell tokens" {
+  pattern=$(unresolved_token_regex mustache PascalCase)
+  ! echo '${ProjectName}' | grep -Eq "$pattern"
+}
+
+# --- Matches token embedded in a line ---
+
+@test "unresolved_token_regex: shell + PascalCase matches token within yaml line" {
+  pattern=$(unresolved_token_regex shell PascalCase)
+  echo '  name: ${ProjectName}' | grep -Eq "$pattern"
+}
+
+@test "unresolved_token_regex: shell + PascalCase does not match substituted yaml line" {
+  pattern=$(unresolved_token_regex shell PascalCase)
+  ! echo '  name: my-actual-cluster' | grep -Eq "$pattern"
+}
+
+# --- format_canonical_token output matches unresolved_token_regex ---
+
+@test "unresolved_token_regex: matches format_canonical_token output for shell + PascalCase" {
+  token=$(format_canonical_token shell PascalCase PROJECT_NAME)
+  pattern=$(unresolved_token_regex shell PascalCase)
+  echo "$token" | grep -Eq "$pattern"
+}
+
+@test "unresolved_token_regex: matches format_canonical_token output for mustache + lower-kebab" {
+  token=$(format_canonical_token mustache lower-kebab PROJECT_NAME)
+  pattern=$(unresolved_token_regex mustache lower-kebab)
+  echo "$token" | grep -Eq "$pattern"
+}
+
+@test "unresolved_token_regex: matches format_canonical_token output for helm + PascalCase" {
+  token=$(format_canonical_token helm PascalCase DOCKER_IMAGE_NAME)
+  pattern=$(unresolved_token_regex helm PascalCase)
+  echo "$token" | grep -Eq "$pattern"
+}
+
+@test "unresolved_token_regex: matches format_canonical_token output for github-actions + lower.dot" {
+  token=$(format_canonical_token github-actions lower.dot PROJECT_NAME)
+  pattern=$(unresolved_token_regex github-actions lower.dot)
+  echo "$token" | grep -Eq "$pattern"
+}
+
+@test "unresolved_token_regex: matches format_canonical_token output for blade + camelCase" {
+  token=$(format_canonical_token blade camelCase DOCKER_TAG)
+  pattern=$(unresolved_token_regex blade camelCase)
+  echo "$token" | grep -Eq "$pattern"
+}
+
+@test "unresolved_token_regex: matches format_canonical_token output for stringtemplate + UPPER_SNAKE" {
+  token=$(format_canonical_token stringtemplate UPPER_SNAKE PROJECT_NAME)
+  pattern=$(unresolved_token_regex stringtemplate UPPER_SNAKE)
+  echo "$token" | grep -Eq "$pattern"
+}
+
+@test "unresolved_token_regex: matches format_canonical_token output for ognl + PascalCase" {
+  token=$(format_canonical_token ognl PascalCase VERSION)
+  pattern=$(unresolved_token_regex ognl PascalCase)
+  echo "$token" | grep -Eq "$pattern"
+}
+
+@test "unresolved_token_regex: matches format_canonical_token output for swift + UPPER-KEBAB" {
+  token=$(format_canonical_token swift UPPER-KEBAB PROJECT_NAME)
+  pattern=$(unresolved_token_regex swift UPPER-KEBAB)
+  echo "$token" | grep -Eq "$pattern"
+}
+
+# --- Error cases ---
+
+@test "unresolved_token_regex: unknown delimiter style fails" {
+  run unresolved_token_regex unknown-style PascalCase
+  [ "$status" -ne 0 ]
+  assert_output_contains "Unknown"
+}
+
+@test "unresolved_token_regex: unknown name style fails" {
+  run unresolved_token_regex shell UnknownStyle
+  [ "$status" -ne 0 ]
+  assert_output_contains "Unknown"
+}
+
+@test "unresolved_token_regex: missing arguments fails" {
+  run unresolved_token_regex shell
+  [ "$status" -ne 0 ]
+  assert_output_contains "requires exactly 2 arguments"
+}
+
+@test "unresolved_token_regex: empty delimiter style fails" {
+  run unresolved_token_regex "" PascalCase
+  [ "$status" -ne 0 ]
+}
+
+@test "unresolved_token_regex: empty name style fails" {
+  run unresolved_token_regex shell ""
+  [ "$status" -ne 0 ]
+}
+
+# --- All style combinations produce output ---
+
+@test "unresolved_token_regex: all delimiter styles produce valid regex" {
+  for delim in shell mustache helm erb github-actions blade stringtemplate ognl t4 swift; do
+    result=$(unresolved_token_regex "$delim" PascalCase)
+    [ -n "$result" ] || { echo "Empty result for delimiter: $delim"; return 1; }
+  done
+}
+
+@test "unresolved_token_regex: all name styles produce valid regex" {
+  for name_style in PascalCase camelCase UPPER_SNAKE lower_snake lower-kebab UPPER-KEBAB lower.dot UPPER.DOT; do
+    result=$(unresolved_token_regex shell "$name_style")
+    [ -n "$result" ] || { echo "Empty result for name style: $name_style"; return 1; }
+  done
 }

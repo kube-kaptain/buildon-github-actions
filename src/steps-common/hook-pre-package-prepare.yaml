@@ -6,7 +6,6 @@
   id: pre-package-prepare
   uses: ./.github/buildon-github-actions/src/actions/hook-pre-package-prepare
   with:
-    script-sub-path: ${{ inputs.hook-pre-package-prepare-script-sub-path }}
     image-build-command: ${{ steps.validate-tooling.outputs.IMAGE_BUILD_COMMAND }}
     docker-platform: ${{ inputs.docker-platform }}
     # === Workflow Inputs ===
@@ -152,6 +151,6 @@
     project-name: ${{ steps.versions.outputs.project-name }}
     is-release: ${{ steps.versions.outputs.is-release }}
     # Docker outputs (from docker-build - empty in manifests-only workflows)
-    target-image-full-uri: ${{ steps.docker-build.outputs.docker-target-image-full-uri }}
+    docker-target-image-full-uri: ${{ steps.docker-build.outputs.docker-target-image-full-uri }}
     # Manifest outputs (computed path for this position)
     manifests-substituted-sub-path: ${{ inputs.output-sub-path }}/manifests/substituted/${{ steps.versions.outputs.project-name }}

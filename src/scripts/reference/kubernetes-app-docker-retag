@@ -1,0 +1,47 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
+#
+# Reference script: kubernetes-app-docker-retag workflow
+#
+# Full Kubernetes application build: quality checks, versioning, Docker retag
+# (pull and republish), manifest generation, packaging, and release publishing.
+# All variables can be overridden via environment.
+#
+# CI providers can wrap each script call to expose individual
+# build step pass/fail status in their UI.
+#
+set -euo pipefail
+
+# shellcheck source=../lib/setup-local-context.bash
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")/../lib" && pwd)/setup-local-context.bash"
+
+run_step "validate-tooling"
+run_step "basic-quality-checks"
+run_step "docker-registry-logins"
+run_step "docker-platform-setup"
+run_step "hook-pre-tagging-tests"
+run_step "versions-and-naming"
+run_step "change-source-note-write"
+run_step "release-change-data-generate"
+run_step "release-change-data-oci-package"
+run_step "docker-build-retag"
+run_generator "generate-kubernetes-configmap"
+run_generator "generate-kubernetes-secret-template"
+run_generator "generate-kubernetes-serviceaccount"
+run_generator "generate-kubernetes-workload"
+run_generator "generate-kubernetes-poddisruptionbudget"
+run_generator "generate-kubernetes-service"
+run_step "hook-pre-package-prepare"
+run_step "kubernetes-manifests-package-prepare"
+run_step "kubernetes-manifests-package"
+run_step "kubernetes-manifests-repo-provider-package"
+run_step "hook-post-package-tests"
+run_step "docker-multi-tag"
+run_step "git-push-tag"
+run_step "kubernetes-manifests-repo-provider-publish"
+run_step "docker-push-all"
+
+# CI provider: release file preparation, release creation
+
+print_build_complete

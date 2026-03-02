@@ -1,0 +1,57 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
+
+# Copy release change data with version suffix
+- name: Copy release change data to release directory
+  if: inputs.github-release-enabled == true
+  shell: bash
+  run: |
+    RCD_FILE="${{ inputs.output-sub-path }}/release-change-data/release-change-data.yaml"
+    if [[ -f "${RCD_FILE}" ]]; then
+      mkdir -p "${{ inputs.output-sub-path }}/github-release"
+      cp "${RCD_FILE}" "${{ inputs.output-sub-path }}/github-release/release-change-data-${{ steps.versions.outputs.version }}.yaml"
+    fi
+
+# Copy substituted cluster yaml files to release directory
+- name: Copy cluster yaml to release directory
+  if: inputs.github-release-enabled == true
+  shell: bash
+  run: |
+    mkdir -p "${{ inputs.output-sub-path }}/github-release"
+    # Use first context dir (both arch copies are identical after substitution)
+    CONTEXT_DIR=""
+    if [[ "${{ inputs.docker-platform }}" == *,* ]]; then
+      CONTEXT_DIR="${{ inputs.output-sub-path }}/docker-linux-amd64/substituted"
+    else
+      CONTEXT_DIR="${{ inputs.output-sub-path }}/docker/substituted"
+    fi
+    for yaml_file in cluster.yaml cluster-controlplane-only.yaml; do
+      if [[ -f "${CONTEXT_DIR}/${yaml_file}" ]]; then
+        cp "${CONTEXT_DIR}/${yaml_file}" \
+           "${{ inputs.output-sub-path }}/github-release/${yaml_file%.yaml}-${{ steps.versions.outputs.version }}.yaml"
+      fi
+    done
+
+- name: Prepare release files
+  id: github-release-prepare
+  if: inputs.github-release-enabled == true
+  uses: ./.github/buildon-github-actions/src/actions/github-release-prepare
+  with:
+    github-release-substituted-files: ${{ inputs.github-release-substituted-files }}
+    github-release-verbatim-files: ${{ inputs.github-release-verbatim-files }}
+    output-sub-path: ${{ inputs.output-sub-path }}
+    version: ${{ steps.versions.outputs.version }}
+    project-name: ${{ steps.versions.outputs.project-name }}
+    docker-tag: ${{ steps.versions.outputs.docker-tag }}
+    docker-image-name: ${{ steps.versions.outputs.docker-image-name }}
+    is-release: ${{ steps.versions.outputs.is-release }}
+    github-release-add-version-to-filenames: ${{ inputs.github-release-add-version-to-filenames }}
+    token-delimiter-style: ${{ inputs.token-delimiter-style }}
+    token-name-style: ${{ inputs.token-name-style }}
+    token-name-validation: ${{ inputs.token-name-validation }}
+    config-sub-path: ${{ inputs.config-sub-path }}
+    allow-builtin-token-override: ${{ inputs.allow-builtin-token-override }}
+    config-value-trailing-newline: ${{ inputs.config-value-trailing-newline }}
+    docker-image-full-uri: ${{ steps.docker-build.outputs.docker-target-image-full-uri }}
+    docker-target-registry: ${{ steps.resolve-registry.outputs.docker-target-registry }}
+    docker-target-namespace: ${{ steps.resolve-registry.outputs.docker-target-namespace }}

@@ -13,6 +13,7 @@
 #   format_canonical_token           - Convenience combining both
 #   format_project_suffixed_token    - Combine project name + suffix into delimited token
 #   validate_token_styles            - Validate both styles and exit on error
+#   unresolved_token_regex           - grep-E regex matching unresolved tokens for a given style pair
 
 # Internal: lowercase a string (bash 3.2 compatible)
 _lowercase() {
@@ -78,6 +79,63 @@ validate_token_styles() {
     log_error "Unknown substitution token style: ${TOKEN_DELIMITER_STYLE:-}"
     exit 3
   fi
+}
+
+# Return a grep-E regex that matches unresolved tokens for a given style pair
+# Usage: unresolved_token_regex <delimiter-style> <name-style>
+# Example: unresolved_token_regex "shell" "PascalCase" → '\$\{[A-Z][A-Za-z0-9]*\}'
+unresolved_token_regex() {
+  if [[ $# -ne 2 ]]; then
+    log_error "unresolved_token_regex requires exactly 2 arguments, got $#"
+    return 1
+  fi
+
+  local delim_style="${1:-}"
+  local name_style="${2:-}"
+
+  if [[ -z "${delim_style}" ]]; then
+    log_error "delimiter style is required"
+    return 1
+  fi
+  if [[ -z "${name_style}" ]]; then
+    log_error "name style is required"
+    return 1
+  fi
+
+  # Build name character class from name style
+  local name_regex
+  case "${name_style}" in
+    PascalCase)      name_regex='[A-Z][A-Za-z0-9]*' ;;
+    camelCase)       name_regex='[a-z][A-Za-z0-9]*' ;;
+    UPPER_SNAKE)     name_regex='[A-Z_][A-Z0-9_]*' ;;
+    lower_snake)     name_regex='[a-z_][a-z0-9_]*' ;;
+    lower-kebab)     name_regex='[a-z][a-z0-9-]*' ;;
+    UPPER-KEBAB)     name_regex='[A-Z][A-Z0-9-]*' ;;
+    lower.dot)       name_regex='[a-z][a-z0-9.]*' ;;
+    UPPER.DOT)       name_regex='[A-Z][A-Z0-9.]*' ;;
+    *)
+      log_error "Unknown name style: ${name_style}"
+      return 1
+      ;;
+  esac
+
+  # Wrap with delimiter regex
+  case "${delim_style}" in
+    shell)           echo "\\$\\{${name_regex}\\}" ;;
+    mustache)        echo "\\{\\{ ${name_regex} \\}\\}" ;;
+    helm)            echo "\\{\\{ \\.Values\\.${name_regex} \\}\\}" ;;
+    erb)             echo '<%=.*%>' ;;
+    github-actions)  echo "\\$\\{\\{ ${name_regex} \\}\\}" ;;
+    blade)           echo '\{\{ \$'"${name_regex}"' \}\}' ;;
+    stringtemplate)  echo '\$'"${name_regex}"'\$' ;;
+    ognl)            echo "%\\{${name_regex}\\}" ;;
+    t4)              echo '<#=.*#>' ;;
+    swift)           printf '%s\n' "\\\\\\(${name_regex}\\)" ;;
+    *)
+      log_error "Unknown delimiter style: ${delim_style}"
+      return 1
+      ;;
+  esac
 }
 
 # Convert UPPER_SNAKE_CASE name to target style

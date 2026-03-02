@@ -215,7 +215,7 @@ teardown() {
   # Generate a hook that dumps all expected exports
   generate_export_dump_hook "$HOOK_SCRIPT" "$HOOK_OUTPUT" $exports
 
-  export HOOK_SCRIPT_SUB_PATH="${HOOK_SCRIPT}"
+  export HOOK_PRE_DOCKER_PREPARE_SCRIPT_SUB_PATH="${HOOK_SCRIPT}"
   export HOOK_OUTPUT
 
   run "$SCRIPTS_DIR/hook-pre-docker-prepare"
@@ -237,7 +237,7 @@ teardown() {
 }
 
 @test "hook-pre-docker-prepare skips when no hook script configured" {
-  unset HOOK_SCRIPT_SUB_PATH
+  unset HOOK_PRE_DOCKER_PREPARE_SCRIPT_SUB_PATH
 
   run "$SCRIPTS_DIR/hook-pre-docker-prepare"
   [ "$status" -eq 0 ]

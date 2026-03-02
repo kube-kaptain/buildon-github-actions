@@ -4,9 +4,12 @@
 #
 # output-var - Output variable helper for CI systems
 #
-# Provides output_var() which echoes name=value to stdout,
-# writes to GITHUB_OUTPUT if available, and exports for
-# downstream scripts in the same shell context.
+# Provides output_var() which:
+#
+# 1. echoes name=value to stdout,
+# 2. writes to GITHUB_OUTPUT if available
+# 3. writes to REFERENCE_SCRIPT_OUTPUT if available
+# 4. exports fordownstream scripts in the same shell context
 #
 
 output_var() {
@@ -17,6 +20,10 @@ output_var() {
 
   if [[ -n "${GITHUB_OUTPUT:-}" ]]; then
     echo "${name}=${value}" >> "${GITHUB_OUTPUT}"
+  fi
+
+  if [[ -n "${REFERENCE_SCRIPT_OUTPUT:-}" ]]; then
+    echo "${name}=${value}" >> "${REFERENCE_SCRIPT_OUTPUT}"
   fi
 
   export "${name}"="${value}"
