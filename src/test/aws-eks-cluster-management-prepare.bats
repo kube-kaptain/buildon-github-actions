@@ -39,6 +39,7 @@ setup() {
 
   # Single platform by default
   export DOCKER_PLATFORM="linux/amd64"
+  export IMAGE_BUILD_COMMAND="podman"
 
   # Token defaults
   export TOKEN_DELIMITER_STYLE="shell"

@@ -35,6 +35,7 @@ setup() {
 
   # Single platform by default
   export DOCKER_PLATFORM="linux/amd64"
+  export IMAGE_BUILD_COMMAND="podman"
 
   # Create context dir with a valid cluster.yaml containing tokens
   local context_dir="$OUTPUT_SUB_PATH/docker/substituted"

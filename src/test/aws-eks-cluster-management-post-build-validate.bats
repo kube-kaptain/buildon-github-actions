@@ -68,7 +68,7 @@ setup() {
 
   # Required env vars
   export PROJECT_NAME="test-cluster"
-  export IMAGE_BUILD_COMMAND="docker"
+  export IMAGE_BUILD_COMMAND="podman"
   export DOCKER_TAG="1.0.0"
   export DOCKER_IMAGE_NAME="test-cluster"
   export DOCKER_TARGET_REGISTRY="ghcr.io"
