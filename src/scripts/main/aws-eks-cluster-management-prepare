@@ -44,7 +44,7 @@
 #   EKS_ADDONS_LIST            - Comma-separated addon names (default: coredns,kube-proxy,vpc-cni,aws-ebs-csi-driver,aws-efs-csi-driver)
 #   EKS_CLUSTER_YAML_SUB_PATH  - Source dir for cluster configs (default: src/eks)
 #   SECRETS_SUB_PATH           - Source dir for encrypted secrets (default: src/secrets)
-#   DOCKER_PLATFORM            - Target platform(s) (default: linux/amd64,linux/arm64)
+#   DOCKER_PLATFORM            - Target platform(s) (default: linux/amd64)
 #   TOKEN_DELIMITER_STYLE      - Token delimiter syntax (default: shell)
 #   TOKEN_NAME_STYLE           - Case style for token names (default: PascalCase)
 #   CONFIG_SUB_PATH            - Token config dir (default: src/config)
@@ -66,6 +66,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/../defaults/output-sub-path.bash"
 # shellcheck source=src/scripts/defaults/docker-dockerfile.bash
 source "${SCRIPT_DIR}/../defaults/docker-dockerfile.bash"
+# shellcheck source=src/scripts/defaults/docker-common.bash
+source "${SCRIPT_DIR}/../defaults/docker-common.bash"
 # shellcheck source=src/scripts/defaults/tokens.bash
 source "${SCRIPT_DIR}/../defaults/tokens.bash"
 # shellcheck source=src/scripts/defaults/aws-eks-cluster-management.bash

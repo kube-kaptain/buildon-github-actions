@@ -31,9 +31,6 @@ NODEGROUP_MAX_SIZE="${NODEGROUP_MAX_SIZE:-12}"
 # Addons (comma-separated, no versions ever)
 EKS_ADDONS_LIST="${EKS_ADDONS_LIST:-coredns,kube-proxy,vpc-cni,aws-ebs-csi-driver,aws-efs-csi-driver}"
 
-# Override buildon default platform (amd64 only) with both architectures
-DOCKER_PLATFORM="${DOCKER_PLATFORM:-linux/amd64,linux/arm64}"
-
 # Source locations in consuming repo
 EKS_CLUSTER_YAML_SUB_PATH="${EKS_CLUSTER_YAML_SUB_PATH:-src/eks}"
 SECRETS_SUB_PATH="${SECRETS_SUB_PATH:-src/secrets}"
