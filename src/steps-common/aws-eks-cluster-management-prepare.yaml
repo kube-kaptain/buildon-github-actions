@@ -13,6 +13,7 @@
     dockerfile-sub-path-linux-arm64: ${{ inputs.dockerfile-sub-path-linux-arm64 }}
     output-sub-path: ${{ inputs.output-sub-path }}
     docker-platform: ${{ inputs.docker-platform }}
+    image-build-command: ${{ steps.validate-tooling.outputs.IMAGE_BUILD_COMMAND }}
     token-delimiter-style: ${{ inputs.token-delimiter-style }}
     token-name-style: ${{ inputs.token-name-style }}
     config-sub-path: ${{ inputs.config-sub-path }}

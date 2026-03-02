@@ -8,6 +8,7 @@ inputs:
   # INJECT-INPUT: output-sub-path
   # INJECT-INPUT: docker-dockerfile
   # INJECT-INPUT: docker-platform
+  # INJECT-INPUT: image-build-command
   # INJECT-INPUT: token-substitution
 
 runs:
@@ -24,6 +25,7 @@ runs:
         DOCKERFILE_SUB_PATH_LINUX_AMD64: ${{ inputs.dockerfile-sub-path-linux-amd64 }}
         DOCKERFILE_SUB_PATH_LINUX_ARM64: ${{ inputs.dockerfile-sub-path-linux-arm64 }}
         DOCKER_PLATFORM: ${{ inputs.docker-platform }}
+        IMAGE_BUILD_COMMAND: ${{ inputs.image-build-command }}
         TOKEN_DELIMITER_STYLE: ${{ inputs.token-delimiter-style }}
         TOKEN_NAME_STYLE: ${{ inputs.token-name-style }}
       run: "${{ github.action_path }}/../../scripts/main/aws-eks-cluster-management-pre-build-validate"
