@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
+#
+# Reference script: basic-quality-checks workflow
+#
+# Runs basic quality checks locally with sensible defaults.
+# All variables can be overridden via environment.
+#
+# CI providers can wrap each script call to expose individual
+# build step pass/fail status in their UI.
+#
+set -euo pipefail
+
+# shellcheck source=../lib/setup-local-context.bash
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")/../lib" && pwd)/setup-local-context.bash"
+
+# Quality Check Options (override via environment)
+export BLOCK_SLASHES="${BLOCK_SLASHES:-}"
+export QC_BLOCK_SLASH_CONTAINING_BRANCHES="${QC_BLOCK_SLASH_CONTAINING_BRANCHES:-false}"
+export QC_BLOCK_DOUBLE_HYPHEN_CONTAINING_BRANCHES="${QC_BLOCK_DOUBLE_HYPHEN_CONTAINING_BRANCHES:-true}"
+export QC_REQUIRE_CONVENTIONAL_BRANCHES="${QC_REQUIRE_CONVENTIONAL_BRANCHES:-false}"
+export QC_REQUIRE_CONVENTIONAL_COMMITS="${QC_REQUIRE_CONVENTIONAL_COMMITS:-false}"
+export QC_BLOCK_CONVENTIONAL_COMMITS="${QC_BLOCK_CONVENTIONAL_COMMITS:-false}"
+export QC_BLOCK_DUPLICATE_COMMIT_MESSAGES="${QC_BLOCK_DUPLICATE_COMMIT_MESSAGES:-true}"
+
+run_step "validate-tooling"
+run_step "basic-quality-checks"
+
+print_build_complete

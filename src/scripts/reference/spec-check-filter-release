@@ -1,0 +1,37 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
+#
+# Reference script: spec-check-filter-release workflow
+#
+# Spec (JSON Schema / API Spec) validation and packaging: quality checks,
+# versioning, spec packaging, Docker build, validation, and release publishing.
+# All variables can be overridden via environment.
+#
+# CI providers can wrap each script call to expose individual
+# build step pass/fail status in their UI.
+#
+set -euo pipefail
+
+# shellcheck source=../lib/setup-local-context.bash
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")/../lib" && pwd)/setup-local-context.bash"
+
+run_step "validate-tooling"
+run_step "basic-quality-checks"
+run_step "docker-registry-logins"
+run_step "docker-platform-setup"
+run_step "hook-pre-tagging-tests"
+run_step "versions-and-naming"
+run_step "change-source-note-write"
+run_step "release-change-data-generate"
+run_step "release-change-data-oci-package"
+run_step "spec-package-prepare"
+run_step "docker-build-dockerfile"
+run_step "spec-validate"
+run_step "docker-multi-tag"
+run_step "git-push-tag"
+run_step "docker-push-all"
+
+# CI provider: release file preparation, release creation
+
+print_build_complete
