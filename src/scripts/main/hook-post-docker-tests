@@ -24,8 +24,8 @@
 #   GIT_TAG - Git tag
 #   PROJECT_NAME - Project name
 #   IS_RELEASE - Whether this is a release build (true/false)
-#   TARGET_IMAGE_FULL_URI - Full image URI (registry/name:tag)
-#   DOCKER_IMAGE_FULL_URI - Alias for TARGET_IMAGE_FULL_URI
+#   DOCKER_TARGET_IMAGE_FULL_URI - Full image URI (registry/name:tag)
+#   DOCKER_IMAGE_FULL_URI - Alias for DOCKER_TARGET_IMAGE_FULL_URI
 #   DOCKER_CONTEXT_SUB_PATH - Docker build context directory
 #   DOCKER_CONTEXT_SUB_PATH_LINUX_AMD64 - Per-platform build context (multi-platform builds)
 #   DOCKER_CONTEXT_SUB_PATH_LINUX_ARM64 - Per-platform build context (multi-platform builds)
@@ -180,15 +180,15 @@ export GITHUB_RELEASE_NOTES GITHUB_RELEASE_NOTES_FILE GITHUB_RELEASE_ADD_VERSION
 : "${PROJECT_NAME:?PROJECT_NAME is required}"
 : "${IS_RELEASE:?IS_RELEASE is required}"
 # Docker outputs from docker-build step
-: "${TARGET_IMAGE_FULL_URI:?TARGET_IMAGE_FULL_URI is required}"
+: "${DOCKER_TARGET_IMAGE_FULL_URI:?DOCKER_TARGET_IMAGE_FULL_URI is required}"
 
 # Export step outputs for hook script
 export VERSION VERSION_MAJOR VERSION_MINOR VERSION_PATCH
 export VERSION_2_PART VERSION_3_PART VERSION_4_PART
 export DOCKER_TAG DOCKER_IMAGE_NAME GIT_TAG PROJECT_NAME IS_RELEASE
-export TARGET_IMAGE_FULL_URI
-# User-friendly alias for TARGET_IMAGE_FULL_URI
-DOCKER_IMAGE_FULL_URI="${TARGET_IMAGE_FULL_URI}"
+export DOCKER_TARGET_IMAGE_FULL_URI
+# User-friendly alias for DOCKER_TARGET_IMAGE_FULL_URI
+DOCKER_IMAGE_FULL_URI="${DOCKER_TARGET_IMAGE_FULL_URI}"
 export DOCKER_IMAGE_FULL_URI
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

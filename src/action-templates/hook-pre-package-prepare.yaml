@@ -77,7 +77,7 @@ inputs:
     description: 'Whether this is a release build'
     required: true
   # Docker outputs (from docker-build)
-  target-image-full-uri:
+  docker-target-image-full-uri:
     description: 'Full target image URI (registry/name:tag) - empty in manifests-only workflows'
     required: false
     default: ''
@@ -344,7 +344,7 @@ runs:
         PROJECT_NAME: ${{ inputs.project-name }}
         IS_RELEASE: ${{ inputs.is-release }}
         # Step outputs - docker outputs
-        TARGET_IMAGE_FULL_URI: ${{ inputs.target-image-full-uri }}
+        DOCKER_TARGET_IMAGE_FULL_URI: ${{ inputs.docker-target-image-full-uri }}
         # Step outputs - manifest outputs
         MANIFESTS_SUBSTITUTED_SUB_PATH: ${{ inputs.manifests-substituted-sub-path }}
       run: .github/buildon-github-actions/src/scripts/main/hook-pre-package-prepare

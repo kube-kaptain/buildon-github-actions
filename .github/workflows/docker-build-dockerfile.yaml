@@ -315,12 +315,12 @@ on:
         description: 'Whether this is a release build'
         value: ${{ jobs.build.outputs.is-release }}
       # Build outputs
-      target-image-full-uri:
+      docker-target-image-full-uri:
         description: 'Full target image reference (action output name)'
-        value: ${{ jobs.build.outputs.target-image-full-uri }}
+        value: ${{ jobs.build.outputs.docker-target-image-full-uri }}
       docker-image-full-uri:
-        description: 'Full docker image reference (alias for target-image-full-uri)'
-        value: ${{ jobs.build.outputs.target-image-full-uri }}
+        description: 'Full docker image reference (alias for docker-target-image-full-uri)'
+        value: ${{ jobs.build.outputs.docker-target-image-full-uri }}
       images-pushed:
         description: 'Number of images pushed'
         value: ${{ jobs.build.outputs.images-pushed }}
@@ -345,7 +345,7 @@ jobs:
       git-tag: ${{ steps.versions.outputs.git-tag }}
       project-name: ${{ steps.versions.outputs.project-name }}
       is-release: ${{ steps.versions.outputs.is-release }}
-      target-image-full-uri: ${{ steps.docker-build.outputs.docker-target-image-full-uri }}
+      docker-target-image-full-uri: ${{ steps.docker-build.outputs.docker-docker-target-image-full-uri }}
       images-pushed: ${{ steps.docker-push-all.outputs.images-pushed }}
     steps:
       - name: Checkout
@@ -1222,7 +1222,7 @@ jobs:
           project-name: ${{ steps.versions.outputs.project-name }}
           is-release: ${{ steps.versions.outputs.is-release }}
           # Docker outputs (from docker-build)
-          target-image-full-uri: ${{ steps.docker-build.outputs.docker-target-image-full-uri }}
+          docker-target-image-full-uri: ${{ steps.docker-build.outputs.docker-target-image-full-uri }}
       - name: Pass check - Post-docker Tests
         if: inputs.hook-post-docker-tests-script-sub-path != '' && success() && steps.check-post-docker.outputs.check-run-id != ''
         continue-on-error: true

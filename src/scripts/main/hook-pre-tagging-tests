@@ -23,7 +23,7 @@
 #   ... and all other workflow inputs
 #
 # NOT available at this lifecycle point:
-#   VERSION, DOCKER_TAG, PROJECT_NAME, TARGET_IMAGE_FULL_URI, MANIFESTS_*
+#   VERSION, DOCKER_TAG, PROJECT_NAME, DOCKER_TARGET_IMAGE_FULL_URI, MANIFESTS_*
 #
 set -euo pipefail
 

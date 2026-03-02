@@ -2188,7 +2188,7 @@ jobs:
           project-name: ${{ steps.versions.outputs.project-name }}
           is-release: ${{ steps.versions.outputs.is-release }}
           # Docker outputs (from docker-build - empty in manifests-only workflows)
-          target-image-full-uri: ${{ steps.docker-build.outputs.docker-target-image-full-uri }}
+          docker-target-image-full-uri: ${{ steps.docker-build.outputs.docker-target-image-full-uri }}
           # Manifest outputs (computed path for this position)
           manifests-substituted-sub-path: ${{ inputs.output-sub-path }}/manifests/substituted/${{ steps.versions.outputs.project-name }}
       - name: Pass check - Pre-package Prepare
@@ -2463,7 +2463,7 @@ jobs:
           project-name: ${{ steps.versions.outputs.project-name }}
           is-release: ${{ steps.versions.outputs.is-release }}
           # Docker outputs (from docker-build - empty in manifests-only workflows)
-          target-image-full-uri: ${{ steps.docker-build.outputs.docker-target-image-full-uri }}
+          docker-target-image-full-uri: ${{ steps.docker-build.outputs.docker-target-image-full-uri }}
           # Manifest outputs (from manifest-package)
           manifests-substituted-sub-path: ${{ inputs.output-sub-path }}/manifests/substituted/${{ steps.versions.outputs.project-name }}
           manifests-zip-sub-path: ${{ steps.manifest-package.outputs.manifests-zip-sub-path }}

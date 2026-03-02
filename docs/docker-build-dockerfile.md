@@ -78,6 +78,6 @@ Docker Build Dockerfile
 | `git-tag` | Tag for git |
 | `project-name` | The repository/project name |
 | `is-release` | Whether this is a release build |
-| `target-image-full-uri` | Full target image reference (action output name) |
-| `docker-image-full-uri` | Full docker image reference (alias for target-image-full-uri) |
+| `docker-target-image-full-uri` | Full target image reference (action output name) |
+| `docker-image-full-uri` | Full docker image reference (alias for docker-target-image-full-uri) |
 | `images-pushed` | Number of images pushed |

@@ -85,12 +85,12 @@ on:
         description: 'Whether this is a release build'
         value: ${{ jobs.build.outputs.is-release }}
       # Docker build outputs
-      target-image-full-uri:
+      docker-target-image-full-uri:
         description: 'Full target image reference (action output name)'
-        value: ${{ jobs.build.outputs.target-image-full-uri }}
+        value: ${{ jobs.build.outputs.docker-target-image-full-uri }}
       docker-image-full-uri:
-        description: 'Full docker image reference (alias for target-image-full-uri)'
-        value: ${{ jobs.build.outputs.target-image-full-uri }}
+        description: 'Full docker image reference (alias for docker-target-image-full-uri)'
+        value: ${{ jobs.build.outputs.docker-target-image-full-uri }}
       images-pushed:
         description: 'Number of images pushed'
         value: ${{ jobs.build.outputs.images-pushed }}
@@ -129,7 +129,7 @@ jobs:
       git-tag: ${{ steps.versions.outputs.git-tag }}
       project-name: ${{ steps.versions.outputs.project-name }}
       is-release: ${{ steps.versions.outputs.is-release }}
-      target-image-full-uri: ${{ steps.docker-build.outputs.docker-target-image-full-uri }}
+      docker-target-image-full-uri: ${{ steps.docker-build.outputs.docker-docker-target-image-full-uri }}
       images-pushed: ${{ steps.docker-push-all.outputs.images-pushed }}
       manifests-zip-sub-path: ${{ steps.manifest-package.outputs.manifests-zip-sub-path }}
       manifests-zip-file-name: ${{ steps.manifest-package.outputs.manifests-zip-file-name }}
