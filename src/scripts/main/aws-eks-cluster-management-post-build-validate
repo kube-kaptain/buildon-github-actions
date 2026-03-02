@@ -45,6 +45,8 @@ source "${SCRIPT_DIR}/../defaults/docker-dockerfile.bash"
 source "${SCRIPT_DIR}/../defaults/tokens.bash"
 # shellcheck source=src/scripts/defaults/docker-common.bash
 source "${SCRIPT_DIR}/../defaults/docker-common.bash"
+# shellcheck source=src/scripts/defaults/docker-build.bash
+source "${SCRIPT_DIR}/../defaults/docker-build.bash"
 # shellcheck source=src/scripts/defaults/aws-eks-cluster-management.bash
 source "${SCRIPT_DIR}/../defaults/aws-eks-cluster-management.bash"
 
