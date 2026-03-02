@@ -9,7 +9,7 @@
 # or perform any post-packaging verification.
 #
 # Inputs (environment variables):
-#   HOOK_SCRIPT_SUB_PATH - Path to user's hook script (set by CI wrapper)
+#   HOOK_POST_PACKAGE_TESTS_SCRIPT_SUB_PATH - Path to user's hook script
 #
 # Available context (set by CI wrapper):
 #   VERSION - Full version string
@@ -202,4 +202,4 @@ source "${SCRIPT_DIR}/../defaults/platform.bash"
 # shellcheck source=src/scripts/lib/log.bash
 source "${SCRIPT_DIR}/../lib/log.bash"
 # shellcheck source=src/scripts/lib/hook-runner.bash
-source "${SCRIPT_DIR}/../lib/hook-runner.bash"
+source "${SCRIPT_DIR}/../lib/hook-runner.bash" "${HOOK_POST_PACKAGE_TESTS_SCRIPT_SUB_PATH:-}"

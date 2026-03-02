@@ -1393,7 +1393,6 @@ jobs:
         id: pre-tagging-tests
         uses: ./.github/buildon-github-actions/src/actions/hook-pre-tagging-tests
         with:
-          script-sub-path: ${{ inputs.hook-pre-tagging-tests-script-sub-path }}
           image-build-command: ${{ steps.validate-tooling.outputs.IMAGE_BUILD_COMMAND }}
           docker-platform: ${{ inputs.docker-platform }}
           # === Workflow Inputs ===
@@ -2042,7 +2041,6 @@ jobs:
         id: pre-package-prepare
         uses: ./.github/buildon-github-actions/src/actions/hook-pre-package-prepare
         with:
-          script-sub-path: ${{ inputs.hook-pre-package-prepare-script-sub-path }}
           image-build-command: ${{ steps.validate-tooling.outputs.IMAGE_BUILD_COMMAND }}
           docker-platform: ${{ inputs.docker-platform }}
           # === Workflow Inputs ===
@@ -2317,7 +2315,6 @@ jobs:
         id: post-package-tests
         uses: ./.github/buildon-github-actions/src/actions/hook-post-package-tests
         with:
-          script-sub-path: ${{ inputs.hook-post-package-tests-script-sub-path }}
           image-build-command: ${{ steps.validate-tooling.outputs.IMAGE_BUILD_COMMAND }}
           docker-platform: ${{ inputs.docker-platform }}
           # === Workflow Inputs ===

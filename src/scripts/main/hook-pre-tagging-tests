@@ -11,7 +11,7 @@
 # Only workflow inputs (paths, config) are available at this lifecycle point.
 #
 # Inputs (environment variables):
-#   HOOK_SCRIPT_SUB_PATH - Path to user's hook script (set by CI wrapper)
+#   HOOK_PRE_TAGGING_TESTS_SCRIPT_SUB_PATH - Path to user's hook script
 #
 # Available context (set by CI wrapper - workflow inputs only):
 #   OUTPUT_SUB_PATH - Build output directory (default: target)
@@ -169,4 +169,4 @@ source "${SCRIPT_DIR}/../defaults/platform.bash"
 # shellcheck source=src/scripts/lib/log.bash
 source "${SCRIPT_DIR}/../lib/log.bash"
 # shellcheck source=src/scripts/lib/hook-runner.bash
-source "${SCRIPT_DIR}/../lib/hook-runner.bash"
+source "${SCRIPT_DIR}/../lib/hook-runner.bash" "${HOOK_PRE_TAGGING_TESTS_SCRIPT_SUB_PATH:-}"
