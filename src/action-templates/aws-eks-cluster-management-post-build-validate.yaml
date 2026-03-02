@@ -1,0 +1,53 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
+
+name: 'EKS Cluster Management Post-Build Validate'
+description: 'Validate substituted cluster yaml and image integrity after docker build'
+
+inputs:
+  # INJECT-INPUT: output-sub-path
+  # INJECT-INPUT: docker-dockerfile
+  # INJECT-INPUT: docker-platform
+  # INJECT-INPUT: token-substitution
+  # INJECT-INPUT: image-build-command
+
+  # Action-specific inputs (passed from workflow/version generator)
+  project-name:
+    description: 'Project name (from version generator)'
+    required: true
+  docker-tag:
+    description: 'Tag for target image (from version generator)'
+    required: true
+  docker-image-name:
+    description: 'Image name (from version generator)'
+    required: true
+  docker-target-registry:
+    description: 'Target container registry (pre-resolved by workflow)'
+    required: true
+  docker-target-namespace:
+    description: 'Namespace between registry and image name (pre-resolved by workflow)'
+    required: true
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Validate substituted cluster yaml and image integrity
+      id: post-build-validate
+      shell: bash
+      env:
+        BUILD_PLATFORM: github-actions
+        BUILD_PLATFORM_LOG_PROVIDER: github-actions
+        OUTPUT_SUB_PATH: ${{ inputs.output-sub-path }}
+        DOCKERFILE_SUB_PATH: ${{ inputs.dockerfile-sub-path }}
+        DOCKERFILE_SUB_PATH_LINUX_AMD64: ${{ inputs.dockerfile-sub-path-linux-amd64 }}
+        DOCKERFILE_SUB_PATH_LINUX_ARM64: ${{ inputs.dockerfile-sub-path-linux-arm64 }}
+        DOCKER_PLATFORM: ${{ inputs.docker-platform }}
+        TOKEN_DELIMITER_STYLE: ${{ inputs.token-delimiter-style }}
+        TOKEN_NAME_STYLE: ${{ inputs.token-name-style }}
+        IMAGE_BUILD_COMMAND: ${{ inputs.image-build-command }}
+        PROJECT_NAME: ${{ inputs.project-name }}
+        DOCKER_TAG: ${{ inputs.docker-tag }}
+        DOCKER_IMAGE_NAME: ${{ inputs.docker-image-name }}
+        DOCKER_TARGET_REGISTRY: ${{ inputs.docker-target-registry }}
+        DOCKER_TARGET_NAMESPACE: ${{ inputs.docker-target-namespace }}
+      run: "${{ github.action_path }}/../../scripts/main/aws-eks-cluster-management-post-build-validate"

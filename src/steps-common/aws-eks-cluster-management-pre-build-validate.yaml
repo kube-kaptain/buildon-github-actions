@@ -1,0 +1,14 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
+
+- name: Pre-build validate EKS cluster yaml
+  id: eks-pre-build-validate
+  uses: ./.github/buildon-github-actions/src/actions/aws-eks-cluster-management-pre-build-validate
+  with:
+    output-sub-path: ${{ inputs.output-sub-path }}
+    dockerfile-sub-path: ${{ inputs.dockerfile-sub-path }}
+    dockerfile-sub-path-linux-amd64: ${{ inputs.dockerfile-sub-path-linux-amd64 }}
+    dockerfile-sub-path-linux-arm64: ${{ inputs.dockerfile-sub-path-linux-arm64 }}
+    docker-platform: ${{ inputs.docker-platform }}
+    token-delimiter-style: ${{ inputs.token-delimiter-style }}
+    token-name-style: ${{ inputs.token-name-style }}

@@ -1,0 +1,128 @@
+# SPDX-License-Identifier: CC0-1.0
+# This example is released to the public domain. Use freely without attribution.
+#
+# AWS EKS Cluster Management
+#
+# Builds an EKS cluster management image layering your cluster config on top of
+# the base aws-eks-cluster-management image. Generates cluster.yaml with tokenized
+# values, validates token placement pre-build, performs token substitution during
+# docker build, then validates substituted values and image integrity post-build.
+#
+# Required: Create token config files in src/config/ (one value per file):
+#   EksRegion          - AWS region (e.g., eu-west-1)
+#   VpcId              - VPC identifier
+#   NodegroupInstanceType - EC2 instance type (e.g., t3.medium)
+#   PrivateSubnet1     - Private subnet ID (az-a)
+#   PrivateSubnet2     - Private subnet ID (az-b)
+#   PrivateSubnet3     - Private subnet ID (az-c)
+#
+# Optional config files (when switches are enabled):
+#   PublicSubnet1/2/3  - Public subnet IDs (eks-public-networking: true)
+#   VpcSecurityGroup   - Security group ID (eks-custom-security-group: true)
+#
+# The default token style is PascalCase with shell delimiters: ${EksRegion}
+# Adjust the file names if you change token-name-style.
+#
+# Copy this to .github/workflows/build.yaml in your repo.
+
+name: EKS Cluster Management
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    uses: kube-kaptain/buildon-github-actions/.github/workflows/aws-eks-cluster-management.yaml@1.0.71
+    permissions:
+      contents: write
+      packages: write
+      checks: write
+    with:
+      # ┌─────────────────────────────────────────────────────────────────────┐
+      # │ Kubernetes Version (required - no default)                         │
+      # └─────────────────────────────────────────────────────────────────────┘
+      kubernetes-minor-version: '32'
+
+      # ┌─────────────────────────────────────────────────────────────────────┐
+      # │ Networking                                                          │
+      # └─────────────────────────────────────────────────────────────────────┘
+      # Private networking is enabled by default. Public and Cilium are off.
+      # Each switch controls which subnets appear in the generated cluster.yaml
+      # and which config files are required in src/config/.
+      #
+      eks-private-networking: true     # Default: true  (requires PrivateSubnet1/2/3)
+      # eks-public-networking: false   # Default: false (requires PublicSubnet1/2/3)
+      # eks-cilium-ebpf-networking: false  # Default: false (generates controlplane-only yaml, removes kube-proxy and vpc-cni from addons)
+      # eks-custom-security-group: false   # Default: false (requires VpcSecurityGroup)
+
+      # ┌─────────────────────────────────────────────────────────────────────┐
+      # │ Nodegroup Sizing                                                    │
+      # └─────────────────────────────────────────────────────────────────────┘
+      # Defaults written to platform config dirs if not in src/config/.
+      # These become tokens in cluster.yaml: ${NodegroupDesiredCapacity}, etc.
+      #
+      # nodegroup-desired-capacity: '1'   # Default
+      # nodegroup-min-size: '3'           # Default
+      # nodegroup-max-size: '12'          # Default
+
+      # ┌─────────────────────────────────────────────────────────────────────┐
+      # │ EKS Addons                                                          │
+      # └─────────────────────────────────────────────────────────────────────┘
+      # Comma-separated addon names (versions resolved at deploy time).
+      # Cilium mode automatically removes kube-proxy and vpc-cni from this list.
+      #
+      # eks-addons-list: 'coredns,kube-proxy,vpc-cni,aws-ebs-csi-driver,aws-efs-csi-driver'  # Default
+
+      # ┌─────────────────────────────────────────────────────────────────────┐
+      # │ Base Image                                                          │
+      # └─────────────────────────────────────────────────────────────────────┘
+      # The base image contains eksctl, kubectl, age, and cluster management
+      # scripts. Override to use a custom or pinned version.
+      #
+      # eks-base-image-registry: 'ghcr.io'                          # Default
+      # eks-base-image-namespace: 'kube-kaptain'                    # Default
+      # eks-base-image-name: 'aws/aws-eks-cluster-management'       # Default
+      # eks-base-image-tag: '1.1'                                   # Default
+
+      # ┌─────────────────────────────────────────────────────────────────────┐
+      # │ Docker Platform                                                     │
+      # └─────────────────────────────────────────────────────────────────────┘
+      # Default is linux/amd64,linux/arm64 (multi-platform). Override for
+      # single platform builds.
+      #
+      # docker-platform: 'linux/amd64,linux/arm64'                  # Default
+
+      # ┌─────────────────────────────────────────────────────────────────────┐
+      # │ Source Directories                                                  │
+      # └─────────────────────────────────────────────────────────────────────┘
+      # Place custom cluster.yaml in eks-cluster-yaml-sub-path to override
+      # generation (three-tier: context dir > src/eks/ > generate).
+      # Place aws-credentials.age in secrets-sub-path for age-encrypted creds.
+      #
+      # eks-cluster-yaml-sub-path: 'src/eks'       # Default
+      # secrets-sub-path: 'src/secrets'             # Default
+
+      # ┌─────────────────────────────────────────────────────────────────────┐
+      # │ Token Substitution                                                  │
+      # └─────────────────────────────────────────────────────────────────────┘
+      # token-delimiter-style: 'shell'       # Default: ${Token}
+      # token-name-style: 'PascalCase'       # Default: EksRegion, VpcId, etc.
+      # config-sub-path: 'src/config'        # Default: where token files live
+
+      # ┌─────────────────────────────────────────────────────────────────────┐
+      # │ Test Injection                                                      │
+      # └─────────────────────────────────────────────────────────────────────┘
+      # hook-pre-tagging-tests-script-sub-path: 'bin/run-tests.bash'
+      # hook-pre-docker-prepare-script-sub-path: 'bin/pre-docker.bash'
+      # hook-post-docker-tests-script-sub-path: 'bin/test-container.bash'
+
+      # ┌─────────────────────────────────────────────────────────────────────┐
+      # │ GitHub Release                                                      │
+      # └─────────────────────────────────────────────────────────────────────┘
+      # Release includes the Docker image and substituted cluster.yaml files
+      # as downloadable artifacts.
+      #
+      # github-release-enabled: true                                # Default

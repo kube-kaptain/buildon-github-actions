@@ -1,0 +1,167 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
+#
+# aws-eks-cluster-management-pre-build-validate - Validate cluster yaml tokens before build
+#
+# Runs after prepare and hook-pre-docker-prepare, before docker-build-dockerfile.
+# Validates that the generated/provided cluster.yaml files contain the correct
+# token references in the right places BEFORE substitution occurs.
+#
+# Checks:
+#   - metadata.name contains the PROJECT_NAME token
+#   - metadata.region contains the EKS_REGION token
+#   - All nodegroup names start with the NODE_GROUP_DEFAULT_PREFIX token
+#   - If multiple nodegroups, names are unique (have distinguishing suffixes)
+#   - No obviously wrong literal values where tokens should be
+#
+# Inputs (environment variables):
+#   DOCKER_PLATFORM            - Target platform(s) (from prepare)
+#   TOKEN_DELIMITER_STYLE      - Token delimiter syntax (default: shell)
+#   TOKEN_NAME_STYLE           - Case style for token names (default: PascalCase)
+#   OUTPUT_SUB_PATH            - Build output directory (default: target)
+#
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# === Source defaults ===
+
+# shellcheck source=src/scripts/defaults/output-sub-path.bash
+source "${SCRIPT_DIR}/../defaults/output-sub-path.bash"
+# shellcheck source=src/scripts/defaults/docker-dockerfile.bash
+source "${SCRIPT_DIR}/../defaults/docker-dockerfile.bash"
+# shellcheck source=src/scripts/defaults/tokens.bash
+source "${SCRIPT_DIR}/../defaults/tokens.bash"
+# shellcheck source=src/scripts/defaults/aws-eks-cluster-management.bash
+source "${SCRIPT_DIR}/../defaults/aws-eks-cluster-management.bash"
+
+# === Source libs ===
+
+# shellcheck source=src/scripts/lib/log.bash
+source "${SCRIPT_DIR}/../lib/log.bash"
+# shellcheck source=src/scripts/lib/token-format.bash
+source "${SCRIPT_DIR}/../lib/token-format.bash"
+
+# === Build expected token strings ===
+
+token_project_name=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "PROJECT_NAME")
+token_eks_region=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "EKS_REGION")
+token_nodegroup_prefix=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "NODE_GROUP_DEFAULT_PREFIX")
+
+# === Determine context dirs ===
+
+declare -a context_dirs=()
+
+if [[ "${DOCKER_PLATFORM}" == *,* ]]; then
+  IFS=',' read -ra platforms <<< "${DOCKER_PLATFORM}"
+  for platform in "${platforms[@]}"; do
+    case "${platform}" in
+      linux/amd64) context_dirs+=("${DOCKER_CONTEXT_SUB_PATH_LINUX_AMD64}") ;;
+      linux/arm64) context_dirs+=("${DOCKER_CONTEXT_SUB_PATH_LINUX_ARM64}") ;;
+    esac
+  done
+else
+  context_dirs=("${DOCKER_CONTEXT_SUB_PATH}")
+fi
+
+# === Validation ===
+
+errors=0
+
+fail() {
+  log_error "$1"
+  errors=$((errors + 1))
+}
+
+validate_cluster_yaml_tokens() {
+  local yaml_file="$1"
+
+  if [[ ! -f "${yaml_file}" ]]; then
+    fail "${yaml_file}: file not found"
+    return
+  fi
+
+  log "Validating tokens in ${yaml_file}..."
+
+  # metadata.name must be exactly the PROJECT_NAME token
+  local cluster_name
+  cluster_name=$(yq '.metadata.name' "${yaml_file}" 2>/dev/null || echo "")
+  if [[ -z "${cluster_name}" || "${cluster_name}" == "null" ]]; then
+    fail "${yaml_file}: metadata.name is missing"
+  elif [[ "${cluster_name}" != "${token_project_name}" ]]; then
+    fail "${yaml_file}: metadata.name '${cluster_name}' must be exactly '${token_project_name}'"
+  fi
+
+  # metadata.region must be exactly the EKS_REGION token
+  local region
+  region=$(yq '.metadata.region' "${yaml_file}" 2>/dev/null || echo "")
+  if [[ -z "${region}" || "${region}" == "null" ]]; then
+    fail "${yaml_file}: metadata.region is missing"
+  elif [[ "${region}" != "${token_eks_region}" ]]; then
+    fail "${yaml_file}: metadata.region '${region}' must be exactly '${token_eks_region}'"
+  fi
+
+  # All nodegroup names must start with NODE_GROUP_DEFAULT_PREFIX token
+  local nodegroup_count
+  nodegroup_count=$(yq '.managedNodeGroups | length' "${yaml_file}" 2>/dev/null || echo "0")
+
+  if [[ "${nodegroup_count}" -gt 0 ]]; then
+    declare -a ng_names=()
+    for i in $(seq 0 $((nodegroup_count - 1))); do
+      local ng_name
+      ng_name=$(yq ".managedNodeGroups[${i}].name" "${yaml_file}" 2>/dev/null || echo "")
+      if [[ -z "${ng_name}" || "${ng_name}" == "null" ]]; then
+        fail "${yaml_file}: managedNodeGroups[${i}].name is missing"
+        continue
+      fi
+
+      # Name must start with the nodegroup prefix token
+      if [[ "${ng_name}" != "${token_nodegroup_prefix}"* ]]; then
+        fail "${yaml_file}: managedNodeGroups[${i}].name '${ng_name}' does not start with NODE_GROUP_DEFAULT_PREFIX token '${token_nodegroup_prefix}'"
+      fi
+
+      ng_names+=("${ng_name}")
+    done
+
+    # If multiple nodegroups, names must be unique
+    if [[ "${nodegroup_count}" -gt 1 && ${#ng_names[@]} -gt 0 ]]; then
+      local unique_count
+      unique_count=$(printf '%s\n' "${ng_names[@]}" | sort -u | wc -l | tr -d ' ')
+      if [[ "${unique_count}" -ne "${nodegroup_count}" ]]; then
+        fail "${yaml_file}: duplicate nodegroup names found - each must be unique (add suffixes)"
+      fi
+    fi
+  fi
+}
+
+# === Main ===
+
+main() {
+  log "=== EKS Cluster Management Pre-Build Validate ==="
+  log "Expected PROJECT_NAME token: ${token_project_name}"
+  log "Expected EKS_REGION token: ${token_eks_region}"
+  log "Expected NODE_GROUP_DEFAULT_PREFIX token: ${token_nodegroup_prefix}"
+  log "=================================================="
+
+  for context_dir in "${context_dirs[@]}"; do
+    log ""
+    log "--- Validating ${context_dir} ---"
+
+    validate_cluster_yaml_tokens "${context_dir}/cluster.yaml"
+
+    if [[ -f "${context_dir}/cluster-controlplane-only.yaml" ]]; then
+      validate_cluster_yaml_tokens "${context_dir}/cluster-controlplane-only.yaml"
+    fi
+  done
+
+  log ""
+  if [[ ${errors} -gt 0 ]]; then
+    log_error "Pre-build validation failed with ${errors} error(s)"
+    exit 1
+  fi
+
+  log "Pre-build validation complete - all token checks passed"
+}
+
+main "$@"

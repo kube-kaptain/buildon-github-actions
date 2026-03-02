@@ -1,0 +1,34 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
+
+- name: Prepare EKS cluster management
+  id: eks-prepare
+  uses: ./.github/buildon-github-actions/src/actions/aws-eks-cluster-management-prepare
+  with:
+    version: ${{ steps.versions.outputs.version }}
+    project-name: ${{ steps.versions.outputs.project-name }}
+    dockerfile-sub-path: ${{ inputs.dockerfile-sub-path }}
+    dockerfile-substitution-files: ${{ inputs.dockerfile-substitution-files }}
+    dockerfile-sub-path-linux-amd64: ${{ inputs.dockerfile-sub-path-linux-amd64 }}
+    dockerfile-sub-path-linux-arm64: ${{ inputs.dockerfile-sub-path-linux-arm64 }}
+    output-sub-path: ${{ inputs.output-sub-path }}
+    docker-platform: ${{ inputs.docker-platform }}
+    token-delimiter-style: ${{ inputs.token-delimiter-style }}
+    token-name-style: ${{ inputs.token-name-style }}
+    config-sub-path: ${{ inputs.config-sub-path }}
+    eks-base-image-registry: ${{ inputs.eks-base-image-registry }}
+    eks-base-image-namespace: ${{ inputs.eks-base-image-namespace }}
+    eks-base-image-name: ${{ inputs.eks-base-image-name }}
+    eks-base-image-tag: ${{ inputs.eks-base-image-tag }}
+    kubernetes-major-version: ${{ inputs.kubernetes-major-version }}
+    kubernetes-minor-version: ${{ inputs.kubernetes-minor-version }}
+    eks-private-networking: ${{ inputs.eks-private-networking }}
+    eks-public-networking: ${{ inputs.eks-public-networking }}
+    eks-cilium-ebpf-networking: ${{ inputs.eks-cilium-ebpf-networking }}
+    eks-custom-security-group: ${{ inputs.eks-custom-security-group }}
+    nodegroup-desired-capacity: ${{ inputs.nodegroup-desired-capacity }}
+    nodegroup-min-size: ${{ inputs.nodegroup-min-size }}
+    nodegroup-max-size: ${{ inputs.nodegroup-max-size }}
+    eks-addons-list: ${{ inputs.eks-addons-list }}
+    eks-cluster-yaml-sub-path: ${{ inputs.eks-cluster-yaml-sub-path }}
+    secrets-sub-path: ${{ inputs.secrets-sub-path }}
