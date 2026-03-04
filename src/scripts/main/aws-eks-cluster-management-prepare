@@ -34,6 +34,9 @@
 #   NODEGROUP_PRIVATE_NETWORKING        - Generate privateNetworking in nodegroup (e.g., true)
 #   AUTO_MODE_CONFIG_ENABLED            - Enable EKS Auto Mode (generates autoModeConfig block)
 #   NETWORK_CONFIG_SERVICE_IP_V4_CIDR   - Custom service CIDR (generates networkConfig block)
+#   METADATA_TAGS                       - Additional metadata tags (flat yaml: key: value per line)
+#   NODEGROUP_TAGS                      - Additional nodegroup tags (flat yaml: key: value per line)
+#   NODEGROUP_LABELS                    - Additional nodegroup labels (flat yaml: key: value per line)
 #
 # Tokens with defaults (checked in CONFIG_SUB_PATH, default written to platform config dir if absent):
 #   IAM_WITH_OIDC                              - default: true
@@ -147,6 +150,43 @@ require_config_file() {
     log_error "${token_name}: ${CONFIG_SUB_PATH}/${config_file_name} not found - ${description}"
     validation_errors=$((validation_errors + 1))
   fi
+}
+
+# validate_flat_yaml_tags - Validate a flat yaml tags config file
+#
+# Each non-empty line must be: key: value (with optional single or double quotes)
+# Blank lines and lines containing only whitespace are skipped.
+#
+# Args:
+#   $1 - UPPER_SNAKE token name (for error messages)
+#   $2 - path to the config file
+#
+# Returns: 0 if valid, 1 if invalid (increments validation_errors)
+validate_flat_yaml_tags() {
+  local token_name="$1"
+  local file_path="$2"
+  local line_num=0
+  local tag_errors=0
+
+  while IFS= read -r line || [[ -n "${line}" ]]; do
+    line_num=$((line_num + 1))
+
+    # Skip blank lines
+    [[ "${line}" =~ ^[[:space:]]*$ ]] && continue
+
+    # Must match: word-chars (and hyphens): space then value (optionally quoted)
+    if [[ ! "${line}" =~ ^[A-Za-z][A-Za-z0-9_-]*:[[:space:]]+.+$ ]]; then
+      log_error "${token_name}: invalid tag at line ${line_num}: ${line}"
+      log_error "  Expected format: TagName: value  or  TagName: \"value\""
+      tag_errors=$((tag_errors + 1))
+    fi
+  done < "${file_path}"
+
+  if [[ "${tag_errors}" -gt 0 ]]; then
+    validation_errors=$((validation_errors + tag_errors))
+    return 1
+  fi
+  return 0
 }
 
 # ensure_default_token - Write default to platform config dir(s) if not already provided
@@ -325,6 +365,37 @@ if [[ -f "${CONFIG_SUB_PATH}/${network_config_name}" ]]; then
   has_network_config="true"
 fi
 
+# Tags - optional flat yaml config files (key: value per line)
+has_metadata_tags="false"
+metadata_tags_file=""
+metadata_tags_config_name=$(convert_token_name "${TOKEN_NAME_STYLE}" "METADATA_TAGS")
+if [[ -f "${CONFIG_SUB_PATH}/${metadata_tags_config_name}" ]]; then
+  metadata_tags_file="${CONFIG_SUB_PATH}/${metadata_tags_config_name}"
+  if validate_flat_yaml_tags "METADATA_TAGS" "${metadata_tags_file}"; then
+    has_metadata_tags="true"
+  fi
+fi
+
+has_nodegroup_tags="false"
+nodegroup_tags_file=""
+nodegroup_tags_config_name=$(convert_token_name "${TOKEN_NAME_STYLE}" "NODEGROUP_TAGS")
+if [[ -f "${CONFIG_SUB_PATH}/${nodegroup_tags_config_name}" ]]; then
+  nodegroup_tags_file="${CONFIG_SUB_PATH}/${nodegroup_tags_config_name}"
+  if validate_flat_yaml_tags "NODEGROUP_TAGS" "${nodegroup_tags_file}"; then
+    has_nodegroup_tags="true"
+  fi
+fi
+
+has_nodegroup_labels="false"
+nodegroup_labels_file=""
+nodegroup_labels_config_name=$(convert_token_name "${TOKEN_NAME_STYLE}" "NODEGROUP_LABELS")
+if [[ -f "${CONFIG_SUB_PATH}/${nodegroup_labels_config_name}" ]]; then
+  nodegroup_labels_file="${CONFIG_SUB_PATH}/${nodegroup_labels_config_name}"
+  if validate_flat_yaml_tags "NODEGROUP_LABELS" "${nodegroup_labels_file}"; then
+    has_nodegroup_labels="true"
+  fi
+fi
+
 if [[ ${validation_errors} -gt 0 ]]; then
   log_error "Validation failed with ${validation_errors} missing config file(s)"
   exit 1
@@ -487,6 +558,20 @@ metadata:
   name: ${token_project_name}
   region: ${token_aws_region}
   version: "${token_kubernetes_version}"
+  tags:
+    ManagedBy: "Kaptain aws-eks-cluster-management system"
+    ManagedByGitRepo: ${token_project_name}
+YAML
+
+  # Append user metadata tags (flat yaml, indented under tags:)
+  if [[ "${has_metadata_tags}" == "true" ]]; then
+    while IFS= read -r line || [[ -n "${line}" ]]; do
+      [[ "${line}" =~ ^[[:space:]]*$ ]] && continue
+      echo "    ${line}"
+    done < "${metadata_tags_file}"
+  fi
+
+  cat <<YAML
 
 iam:
   withOIDC: ${token_iam_with_oidc}
@@ -595,7 +680,27 @@ YAML
     desiredCapacity: ${token_desired_capacity}
     minSize: ${token_min_size}
     maxSize: ${token_max_size}
+    tags:
+      ManagedBy: "Kaptain aws-eks-cluster-management system"
+      ManagedByGitRepo: ${token_project_name}
 YAML
+
+    # Append user nodegroup tags (flat yaml, indented under tags:)
+    if [[ "${has_nodegroup_tags}" == "true" ]]; then
+      while IFS= read -r line || [[ -n "${line}" ]]; do
+        [[ "${line}" =~ ^[[:space:]]*$ ]] && continue
+        echo "      ${line}"
+      done < "${nodegroup_tags_file}"
+    fi
+
+    # Nodegroup labels (optional, only when config file present)
+    if [[ "${has_nodegroup_labels}" == "true" ]]; then
+      echo "    labels:"
+      while IFS= read -r line || [[ -n "${line}" ]]; do
+        [[ "${line}" =~ ^[[:space:]]*$ ]] && continue
+        echo "      ${line}"
+      done < "${nodegroup_labels_file}"
+    fi
   fi
 }
 

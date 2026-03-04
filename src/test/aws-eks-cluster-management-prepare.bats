@@ -467,6 +467,118 @@ teardown() {
   assert_contains "$content" 'keyARN: ${SecretsEncryptionKeyArn}' "cluster.yaml"
 }
 
+# === Tags and labels ===
+
+@test "generates fixed metadata tags by default" {
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -eq 0 ]
+
+  local content
+  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
+  assert_contains "$content" 'ManagedBy: "Kaptain aws-eks-cluster-management system"' "cluster.yaml"
+  assert_contains "$content" 'ManagedByGitRepo: ${ProjectName}' "cluster.yaml"
+}
+
+@test "generates fixed nodegroup tags by default" {
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -eq 0 ]
+
+  local content
+  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
+  # Nodegroup tags section should also have the fixed tags
+  # Count occurrences - should appear twice (metadata + nodegroup)
+  local count
+  count=$(grep -c 'ManagedBy: "Kaptain aws-eks-cluster-management system"' "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
+  [ "$count" -eq 2 ]
+}
+
+@test "appends user metadata tags from config file" {
+  cat > "$CONFIG_SUB_PATH/MetadataTags" << 'EOF'
+Environment: production
+Team: "platform engineering"
+EOF
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -eq 0 ]
+
+  local content
+  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
+  assert_contains "$content" "Environment: production" "cluster.yaml"
+  assert_contains "$content" 'Team: "platform engineering"' "cluster.yaml"
+  # Fixed tags still present
+  assert_contains "$content" 'ManagedBy: "Kaptain aws-eks-cluster-management system"' "cluster.yaml"
+}
+
+@test "appends user nodegroup tags from config file" {
+  cat > "$CONFIG_SUB_PATH/NodegroupTags" << 'EOF'
+CostCenter: '12345'
+EOF
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -eq 0 ]
+
+  local content
+  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
+  assert_contains "$content" "CostCenter: '12345'" "cluster.yaml"
+}
+
+@test "generates nodegroup labels from config file" {
+  cat > "$CONFIG_SUB_PATH/NodegroupLabels" << 'EOF'
+role: worker
+environment: production
+EOF
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -eq 0 ]
+
+  local content
+  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
+  assert_contains "$content" "labels:" "cluster.yaml"
+  assert_contains "$content" "role: worker" "cluster.yaml"
+  assert_contains "$content" "environment: production" "cluster.yaml"
+}
+
+@test "does not generate nodegroup labels section when config absent" {
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -eq 0 ]
+
+  local content
+  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
+  [[ "$content" != *"labels:"* ]]
+}
+
+@test "fails with invalid metadata tag format" {
+  printf 'bad tag format no colon' > "$CONFIG_SUB_PATH/MetadataTags"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -ne 0 ]
+  assert_output_contains "invalid tag at line 1"
+}
+
+@test "fails with invalid nodegroup tag format" {
+  printf 'also bad' > "$CONFIG_SUB_PATH/NodegroupTags"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -ne 0 ]
+  assert_output_contains "invalid tag at line 1"
+}
+
+@test "skips blank lines in tag config files" {
+  cat > "$CONFIG_SUB_PATH/MetadataTags" << 'EOF'
+Environment: production
+
+Team: platform
+EOF
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -eq 0 ]
+
+  local content
+  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
+  assert_contains "$content" "Environment: production" "cluster.yaml"
+  assert_contains "$content" "Team: platform" "cluster.yaml"
+}
+
 @test "generates cluster.yaml with addons" {
   run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
   [ "$status" -eq 0 ]
