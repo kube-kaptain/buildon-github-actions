@@ -37,6 +37,7 @@
 #   METADATA_TAGS                       - Additional metadata tags (flat yaml: key: value per line)
 #   NODEGROUP_TAGS                      - Additional nodegroup tags (flat yaml: key: value per line)
 #   NODEGROUP_LABELS                    - Additional nodegroup labels (flat yaml: key: value per line)
+#   NODEGROUP_IAM_INSTANCE_ROLE_ARN     - Custom IAM instance role ARN for nodegroup
 #
 # Tokens with defaults (checked in CONFIG_SUB_PATH, default written to platform config dir if absent):
 #   IAM_WITH_OIDC                              - default: true
@@ -348,6 +349,13 @@ if [[ -f "${CONFIG_SUB_PATH}/${nodegroup_private_networking_name}" ]]; then
   has_nodegroup_private_networking="true"
 fi
 
+# Nodegroup IAM instance role ARN - conditional: if config file exists, include instanceRoleARN line
+has_nodegroup_iam_instance_role_arn="false"
+nodegroup_iam_instance_role_arn_name=$(convert_token_name "${TOKEN_NAME_STYLE}" "NODEGROUP_IAM_INSTANCE_ROLE_ARN")
+if [[ -f "${CONFIG_SUB_PATH}/${nodegroup_iam_instance_role_arn_name}" ]]; then
+  has_nodegroup_iam_instance_role_arn="true"
+fi
+
 # Auto Mode - conditional: if config file exists, generate block; if true, require node pools
 has_auto_mode_config="false"
 auto_mode_needs_node_pools="false"
@@ -551,6 +559,10 @@ if [[ "${has_nodegroup_private_networking}" == "true" ]]; then
   token_nodegroup_private_networking=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "NODEGROUP_PRIVATE_NETWORKING")
 fi
 
+if [[ "${has_nodegroup_iam_instance_role_arn}" == "true" ]]; then
+  token_nodegroup_iam_instance_role_arn=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "NODEGROUP_IAM_INSTANCE_ROLE_ARN")
+fi
+
 if [[ "${has_auto_mode_config}" == "true" ]]; then
   token_auto_mode_enabled=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "AUTO_MODE_CONFIG_ENABLED")
   if [[ "${auto_mode_needs_node_pools}" == "true" ]]; then
@@ -713,6 +725,9 @@ YAML
     if [[ "${has_nodegroup_private_networking}" == "true" ]]; then
       echo "    privateNetworking: ${token_nodegroup_private_networking}"
     fi
+    if [[ "${has_nodegroup_iam_instance_role_arn}" == "true" ]]; then
+      echo "    instanceRoleARN: ${token_nodegroup_iam_instance_role_arn}"
+    fi
     cat <<YAML
     desiredCapacity: ${token_desired_capacity}
     minSize: ${token_min_size}
@@ -802,6 +817,7 @@ main() {
   log "Private subnets: ${EKS_PRIVATE_NETWORKING}"
   log "Private cluster config: ${has_private_cluster_config}"
   log "Nodegroup private networking: ${has_nodegroup_private_networking}"
+  log "Nodegroup IAM instance role ARN: ${has_nodegroup_iam_instance_role_arn}"
   log "Public networking: ${EKS_PUBLIC_NETWORKING}"
   log "Custom security group: ${EKS_CUSTOM_SECURITY_GROUP}"
   log "Platforms: ${DOCKER_PLATFORM}"
