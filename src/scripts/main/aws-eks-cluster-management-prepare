@@ -515,6 +515,17 @@ main() {
     fi
   done
 
+  # Copy pre-substitution cluster yamls to canonical dir for diff/inspection
+  local with_tokens_dir="${canonical_dir}/with-tokens"
+  mkdir -p "${with_tokens_dir}"
+  local first_context_dir="${context_dirs[0]}"
+  cp "${first_context_dir}/cluster.yaml" "${with_tokens_dir}/cluster.yaml"
+  log "  cluster.yaml: copied to ${with_tokens_dir}/"
+  if [[ -f "${first_context_dir}/cluster-controlplane-only.yaml" ]]; then
+    cp "${first_context_dir}/cluster-controlplane-only.yaml" "${with_tokens_dir}/cluster-controlplane-only.yaml"
+    log "  cluster-controlplane-only.yaml: copied to ${with_tokens_dir}/"
+  fi
+
   # Extend substitution files list with cluster yamls
   sub_files="${sub_files},cluster.yaml"
   if [[ "${need_controlplane_only}" == "true" ]]; then

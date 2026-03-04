@@ -315,6 +315,17 @@ main() {
     fi
   done
 
+  # Copy substituted cluster yamls to canonical dir for diff/inspection
+  local substituted_dir="${canonical_dir}/substituted"
+  mkdir -p "${substituted_dir}"
+  local first_context_dir="${context_dirs[0]}"
+  cp "${first_context_dir}/cluster.yaml" "${substituted_dir}/cluster.yaml"
+  log "  cluster.yaml: copied to ${substituted_dir}/"
+  if [[ -f "${first_context_dir}/cluster-controlplane-only.yaml" ]]; then
+    cp "${first_context_dir}/cluster-controlplane-only.yaml" "${substituted_dir}/cluster-controlplane-only.yaml"
+    log "  cluster-controlplane-only.yaml: copied to ${substituted_dir}/"
+  fi
+
   # Phase 2: Validate image integrity
   for i in "${!context_dirs[@]}"; do
     log ""

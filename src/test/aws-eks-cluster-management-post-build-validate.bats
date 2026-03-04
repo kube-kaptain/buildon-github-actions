@@ -386,6 +386,58 @@ YAML
   assert_output_contains "unsubstituted tokens found"
 }
 
+# === Substituted yaml copy to canonical dir ===
+
+@test "copies substituted cluster.yaml to substituted dir" {
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-post-build-validate"
+  [ "$status" -eq 0 ]
+
+  [ -f "$OUTPUT_SUB_PATH/aws-eks-cluster-management/substituted/cluster.yaml" ]
+  local content
+  content=$(< "$OUTPUT_SUB_PATH/aws-eks-cluster-management/substituted/cluster.yaml")
+  assert_contains "$content" "name: test-cluster" "substituted cluster.yaml"
+}
+
+@test "copies substituted controlplane-only yaml when present" {
+  local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
+
+  cat > "$context_dir/cluster-controlplane-only.yaml" << 'YAML'
+apiVersion: eksctl.io/v1alpha5
+kind: ClusterConfig
+
+metadata:
+  name: test-cluster
+  region: eu-west-1
+  version: "1.32"
+
+vpc:
+  id: vpc-0123456789abcdef0
+
+privateCluster:
+  enabled: true
+
+addons:
+  - name: coredns
+    version: latest
+  - name: kube-proxy
+    version: latest
+  - name: vpc-cni
+    version: latest
+YAML
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-post-build-validate"
+  [ "$status" -eq 0 ]
+
+  [ -f "$OUTPUT_SUB_PATH/aws-eks-cluster-management/substituted/cluster-controlplane-only.yaml" ]
+}
+
+@test "does not copy controlplane-only yaml to substituted dir when not present" {
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-post-build-validate"
+  [ "$status" -eq 0 ]
+
+  [ ! -f "$OUTPUT_SUB_PATH/aws-eks-cluster-management/substituted/cluster-controlplane-only.yaml" ]
+}
+
 # === Output messages ===
 
 @test "outputs post-build validate header" {

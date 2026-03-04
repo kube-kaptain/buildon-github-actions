@@ -575,6 +575,44 @@ teardown() {
   [ "$version" = "1.32" ]
 }
 
+@test "copies cluster.yaml to with-tokens dir for inspection" {
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -eq 0 ]
+
+  [ -f "$OUTPUT_SUB_PATH/aws-eks-cluster-management/with-tokens/cluster.yaml" ]
+  local content
+  content=$(< "$OUTPUT_SUB_PATH/aws-eks-cluster-management/with-tokens/cluster.yaml")
+  assert_contains "$content" 'name: ${ProjectName}' "with-tokens cluster.yaml"
+}
+
+@test "copies controlplane-only yaml to with-tokens dir when generated" {
+  export EKS_CILIUM_EBPF_NETWORKING="true"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -eq 0 ]
+
+  [ -f "$OUTPUT_SUB_PATH/aws-eks-cluster-management/with-tokens/cluster-controlplane-only.yaml" ]
+}
+
+@test "does not copy controlplane-only yaml to with-tokens dir when not generated" {
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -eq 0 ]
+
+  [ ! -f "$OUTPUT_SUB_PATH/aws-eks-cluster-management/with-tokens/cluster-controlplane-only.yaml" ]
+}
+
+@test "copies user-provided cluster.yaml to with-tokens dir" {
+  mkdir -p "$EKS_CLUSTER_YAML_SUB_PATH"
+  echo "custom user cluster config" > "$EKS_CLUSTER_YAML_SUB_PATH/cluster.yaml"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -eq 0 ]
+
+  local content
+  content=$(< "$OUTPUT_SUB_PATH/aws-eks-cluster-management/with-tokens/cluster.yaml")
+  assert_contains "$content" "custom user cluster config" "with-tokens cluster.yaml"
+}
+
 @test "writes KubernetesVersion to platform config dir" {
   run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
   [ "$status" -eq 0 ]
