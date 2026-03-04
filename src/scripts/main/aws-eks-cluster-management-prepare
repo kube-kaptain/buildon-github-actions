@@ -405,6 +405,7 @@ YAML
 
   for addon in "${addon_list[@]}"; do
     echo "  - name: ${addon}"
+    echo "    version: latest"
   done
 }
 

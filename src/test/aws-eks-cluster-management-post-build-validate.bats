@@ -126,8 +126,11 @@ managedNodeGroups:
 
 addons:
   - name: coredns
+    version: latest
   - name: kube-proxy
+    version: latest
   - name: vpc-cni
+    version: latest
 YAML
 
   # Mock docker that returns matching sha256sum output for image integrity checks
@@ -350,8 +353,11 @@ privateCluster:
 
 addons:
   - name: coredns
+    version: latest
   - name: kube-proxy
+    version: latest
   - name: vpc-cni
+    version: latest
 YAML
 
   run "$SCRIPTS_DIR/aws-eks-cluster-management-post-build-validate"
@@ -372,6 +378,7 @@ metadata:
 
 addons:
   - name: coredns
+    version: latest
 YAML
 
   run "$SCRIPTS_DIR/aws-eks-cluster-management-post-build-validate"

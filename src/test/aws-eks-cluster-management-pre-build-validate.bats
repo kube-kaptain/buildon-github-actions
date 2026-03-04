@@ -74,8 +74,11 @@ managedNodeGroups:
 
 addons:
   - name: coredns
+    version: latest
   - name: kube-proxy
+    version: latest
   - name: vpc-cni
+    version: latest
 YAML
 }
 
@@ -278,8 +281,11 @@ privateCluster:
 
 addons:
   - name: coredns
+    version: latest
   - name: kube-proxy
+    version: latest
   - name: vpc-cni
+    version: latest
 YAML
 
   run "$SCRIPTS_DIR/aws-eks-cluster-management-pre-build-validate"
@@ -302,6 +308,7 @@ vpc:
 
 addons:
   - name: coredns
+    version: latest
 YAML
 
   run "$SCRIPTS_DIR/aws-eks-cluster-management-pre-build-validate"

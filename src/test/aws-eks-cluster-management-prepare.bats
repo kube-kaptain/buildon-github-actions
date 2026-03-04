@@ -324,6 +324,7 @@ teardown() {
   assert_contains "$content" "name: vpc-cni" "cluster.yaml"
   assert_contains "$content" "name: aws-ebs-csi-driver" "cluster.yaml"
   assert_contains "$content" "name: aws-efs-csi-driver" "cluster.yaml"
+  assert_contains "$content" "version: latest" "cluster.yaml"
 }
 
 # === Cilium eBPF networking ===
