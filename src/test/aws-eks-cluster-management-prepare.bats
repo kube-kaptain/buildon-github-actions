@@ -403,6 +403,11 @@ teardown() {
   assert_contains "$content" "updateConfig:" "cluster.yaml"
   assert_contains "$content" '${NodegroupUpdateConfigMaxUnavailable}' "cluster.yaml"
   assert_contains "$content" '${NodegroupUpdateConfigMaxSurge}' "cluster.yaml"
+  # subnets present (EKS_PRIVATE_NETWORKING=true by default)
+  assert_contains "$content" "subnets:" "cluster.yaml nodegroup"
+  assert_contains "$content" '${PrivateSubnetIdA}' "cluster.yaml nodegroup subnets"
+  assert_contains "$content" '${PrivateSubnetIdB}' "cluster.yaml nodegroup subnets"
+  assert_contains "$content" '${PrivateSubnetIdC}' "cluster.yaml nodegroup subnets"
   # privateNetworking not present without config file
   [[ "$content" != *"privateNetworking"* ]]
 }
@@ -416,6 +421,34 @@ teardown() {
   local content
   content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
   assert_contains "$content" 'privateNetworking: ${NodegroupPrivateNetworking}' "cluster.yaml"
+}
+
+@test "generates nodegroup subnets with public subnets when EKS_PUBLIC_NETWORKING=true" {
+  export EKS_PUBLIC_NETWORKING="true"
+  printf 'subnet-pub11111111111111' > "$CONFIG_SUB_PATH/PublicSubnetIdA"
+  printf 'subnet-pub22222222222222' > "$CONFIG_SUB_PATH/PublicSubnetIdB"
+  printf 'subnet-pub33333333333333' > "$CONFIG_SUB_PATH/PublicSubnetIdC"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -eq 0 ]
+
+  local content
+  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
+  assert_contains "$content" '${PublicSubnetIdA}' "cluster.yaml nodegroup subnets"
+}
+
+@test "does not generate nodegroup subnets when no networking subnets" {
+  export EKS_PRIVATE_NETWORKING="false"
+  export EKS_PUBLIC_NETWORKING="false"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -eq 0 ]
+
+  local content
+  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
+  # managedNodeGroups section should not contain subnets
+  # vpc section has no subnets either, so no "subnets:" at all
+  [[ "$content" != *"subnets:"* ]]
 }
 
 @test "generates instanceRoleARN in nodegroup when config file present" {

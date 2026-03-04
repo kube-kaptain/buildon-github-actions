@@ -750,6 +750,21 @@ YAML
       maxSurge: ${token_update_max_surge}
 YAML
 
+    # Nodegroup subnets (from private and/or public subnet config)
+    if [[ "${EKS_PRIVATE_NETWORKING}" == "true" || "${EKS_PUBLIC_NETWORKING}" == "true" ]]; then
+      echo "    subnets:"
+      if [[ "${EKS_PRIVATE_NETWORKING}" == "true" ]]; then
+        echo "      - ${token_private_subnet_id_a}"
+        echo "      - ${token_private_subnet_id_b}"
+        echo "      - ${token_private_subnet_id_c}"
+      fi
+      if [[ "${EKS_PUBLIC_NETWORKING}" == "true" ]]; then
+        echo "      - ${token_public_subnet_id_a}"
+        echo "      - ${token_public_subnet_id_b}"
+        echo "      - ${token_public_subnet_id_c}"
+      fi
+    fi
+
     # Nodegroup labels (optional, only when config file present)
     if [[ "${has_nodegroup_labels}" == "true" ]]; then
       echo "    labels:"
