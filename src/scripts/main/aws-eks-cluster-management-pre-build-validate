@@ -9,12 +9,13 @@
 # token references in the right places BEFORE substitution occurs.
 #
 # Checks:
-#   - metadata.name contains the PROJECT_NAME token
-#   - metadata.region contains the AWS_REGION token
-#   - metadata.version contains the KUBERNETES_VERSION token
+#   - metadata.name is exactly the PROJECT_NAME token
+#   - metadata.region is exactly the AWS_REGION token
+#   - metadata.version is exactly the KUBERNETES_VERSION token
+#   - vpc.id is exactly the VPC_ID token
+#   - Subnet IDs match token pattern (prefix + single AZ letter)
 #   - All nodegroup names start with the NODE_GROUP_DEFAULT_PREFIX token
 #   - If multiple nodegroups, names are unique (have distinguishing suffixes)
-#   - No obviously wrong literal values where tokens should be
 #
 # Inputs (environment variables):
 #   DOCKER_PLATFORM            - Target platform(s) (from prepare)
@@ -51,7 +52,23 @@ source "${SCRIPT_DIR}/../lib/token-format.bash"
 token_project_name=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "PROJECT_NAME")
 token_aws_region=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "AWS_REGION")
 token_kubernetes_version=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "KUBERNETES_VERSION")
+token_vpc_id=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "VPC_ID")
 token_nodegroup_prefix=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "NODE_GROUP_DEFAULT_PREFIX")
+
+# Build subnet token patterns (prefix + single AZ letter) using two-reference diff
+_build_subnet_pattern() {
+  local ref_a ref_b
+  ref_a=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "$1")
+  ref_b=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "$2")
+  local i=0
+  while [[ "${ref_a:$i:1}" == "${ref_b:$i:1}" && $i -lt ${#ref_a} ]]; do
+    ((i++))
+  done
+  echo "${ref_a:0:$i}?${ref_a:$((i+1))}"
+}
+
+private_subnet_pattern=$(_build_subnet_pattern "PRIVATE_SUBNET_ID_A" "PRIVATE_SUBNET_ID_B")
+public_subnet_pattern=$(_build_subnet_pattern "PUBLIC_SUBNET_ID_A" "PUBLIC_SUBNET_ID_B")
 
 # === Determine context dirs ===
 
@@ -115,6 +132,53 @@ validate_cluster_yaml_tokens() {
     fail "${yaml_file}: metadata.version '${version}' must be exactly '${token_kubernetes_version}'"
   fi
 
+  # vpc.id must be exactly the VPC_ID token
+  local vpc_id
+  vpc_id=$(yq '.vpc.id' "${yaml_file}" 2>/dev/null || echo "")
+  if [[ -z "${vpc_id}" || "${vpc_id}" == "null" ]]; then
+    fail "${yaml_file}: vpc.id is missing"
+  elif [[ "${vpc_id}" != "${token_vpc_id}" ]]; then
+    fail "${yaml_file}: vpc.id '${vpc_id}' must be exactly '${token_vpc_id}'"
+  fi
+
+  # Subnet keys must be AWS_REGION token + single AZ letter; IDs must match token pattern
+  local subnet_type subnet_pattern
+  for subnet_type in private public; do
+    if yq -e ".vpc.subnets.${subnet_type}" "${yaml_file}" &>/dev/null; then
+      if [[ "${subnet_type}" == "private" ]]; then
+        subnet_pattern="${private_subnet_pattern}"
+      else
+        subnet_pattern="${public_subnet_pattern}"
+      fi
+
+      # Validate AZ keys: must be region token + single letter
+      local az_keys
+      az_keys=$(yq ".vpc.subnets.${subnet_type} | keys | .[]" "${yaml_file}" 2>/dev/null || true)
+      while IFS= read -r az_key; do
+        if [[ -z "${az_key}" ]]; then
+          continue
+        fi
+        # shellcheck disable=SC2254 # pattern is intentionally a glob
+        if [[ "${az_key}" != ${token_aws_region}[a-z] ]]; then
+          fail "${yaml_file}: ${subnet_type} subnet key '${az_key}' must be AWS_REGION token + single lowercase AZ letter (e.g., ${token_aws_region}a)"
+        fi
+      done <<< "${az_keys}"
+
+      # Validate subnet IDs: must match token pattern
+      local subnet_ids
+      subnet_ids=$(yq ".vpc.subnets.${subnet_type}[].id" "${yaml_file}" 2>/dev/null || true)
+      while IFS= read -r sid; do
+        if [[ -z "${sid}" || "${sid}" == "null" ]]; then
+          continue
+        fi
+        # shellcheck disable=SC2254 # pattern is intentionally a glob
+        if [[ "${sid}" != ${subnet_pattern} ]]; then
+          fail "${yaml_file}: ${subnet_type} subnet id '${sid}' does not match expected token pattern '${subnet_pattern}'"
+        fi
+      done <<< "${subnet_ids}"
+    fi
+  done
+
   # All nodegroup names must start with NODE_GROUP_DEFAULT_PREFIX token
   local nodegroup_count
   nodegroup_count=$(yq '.managedNodeGroups | length' "${yaml_file}" 2>/dev/null || echo "0")
@@ -155,6 +219,9 @@ main() {
   log "Expected PROJECT_NAME token: ${token_project_name}"
   log "Expected AWS_REGION token: ${token_aws_region}"
   log "Expected KUBERNETES_VERSION token: ${token_kubernetes_version}"
+  log "Expected VPC_ID token: ${token_vpc_id}"
+  log "Private subnet pattern: ${private_subnet_pattern}"
+  log "Public subnet pattern: ${public_subnet_pattern}"
   log "Expected NODE_GROUP_DEFAULT_PREFIX token: ${token_nodegroup_prefix}"
   log "=================================================="
 

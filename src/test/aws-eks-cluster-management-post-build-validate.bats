@@ -214,6 +214,38 @@ teardown() {
   [ "$status" -eq 0 ]
 }
 
+# === vpc.id validation ===
+
+@test "fails when vpc.id does not look like a VPC ID" {
+  local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
+  yq -i '.vpc.id = "not-a-vpc-id"' "$context_dir/cluster.yaml"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-post-build-validate"
+  [ "$status" -ne 0 ]
+  assert_output_contains "does not look like a VPC ID"
+}
+
+# === subnet id validation ===
+
+@test "fails when subnet key is not region + AZ letter" {
+  local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
+  yq -i '.vpc.subnets.private.badkey = .vpc.subnets.private."eu-west-1a"' "$context_dir/cluster.yaml"
+  yq -i 'del(.vpc.subnets.private."eu-west-1a")' "$context_dir/cluster.yaml"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-post-build-validate"
+  [ "$status" -ne 0 ]
+  assert_output_contains "must be region + single AZ letter"
+}
+
+@test "fails when subnet id does not look like a subnet ID" {
+  local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
+  yq -i '.vpc.subnets.private."eu-west-1a".id = "not-a-subnet"' "$context_dir/cluster.yaml"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-post-build-validate"
+  [ "$status" -ne 0 ]
+  assert_output_contains "does not look like a subnet ID"
+}
+
 @test "fails when nodegroup name does not start with computed prefix" {
   local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
   yq -i '.managedNodeGroups[0].name = "wrong-prefix-name"' "$context_dir/cluster.yaml"

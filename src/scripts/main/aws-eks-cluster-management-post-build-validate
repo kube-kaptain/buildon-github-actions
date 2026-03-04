@@ -11,6 +11,8 @@
 #   - metadata.name is exactly the canonical project-name
 #   - metadata.region is exactly the canonical aws-region (and valid format)
 #   - metadata.version is exactly the canonical kubernetes-version (and minor >= 2 digits)
+#   - vpc.id looks like a VPC ID (vpc-<hex>)
+#   - Subnet IDs look like subnet IDs (subnet-<hex>)
 #   - All nodegroup names start with the canonical nodegroup-prefix
 #   - If multiple nodegroups, names are unique
 #   - No unsubstituted tokens remain
@@ -163,6 +165,45 @@ validate_substituted_yaml() {
   elif [[ ! "${version}" =~ ^[0-9]+\.[0-9]{2,}$ ]]; then
     fail "${yaml_file}: metadata.version '${version}' must be major.minor where minor is at least 2 digits"
   fi
+
+  # vpc.id must look like a VPC ID
+  local vpc_id
+  vpc_id=$(yq '.vpc.id' "${yaml_file}" 2>/dev/null || echo "")
+  if [[ -z "${vpc_id}" || "${vpc_id}" == "null" ]]; then
+    fail "${yaml_file}: vpc.id is missing"
+  elif [[ ! "${vpc_id}" =~ ^vpc-[0-9a-f]+$ ]]; then
+    fail "${yaml_file}: vpc.id '${vpc_id}' does not look like a VPC ID (expected vpc-<hex>)"
+  fi
+
+  # Subnet keys must be region + single AZ letter; IDs must look like subnet IDs
+  local subnet_type
+  for subnet_type in private public; do
+    if yq -e ".vpc.subnets.${subnet_type}" "${yaml_file}" &>/dev/null; then
+      # Validate AZ keys: must be canonical region + single lowercase letter
+      local az_keys
+      az_keys=$(yq ".vpc.subnets.${subnet_type} | keys | .[]" "${yaml_file}" 2>/dev/null || true)
+      while IFS= read -r az_key; do
+        if [[ -z "${az_key}" ]]; then
+          continue
+        fi
+        if [[ ! "${az_key}" =~ ^${aws_region}[a-z]$ ]]; then
+          fail "${yaml_file}: ${subnet_type} subnet key '${az_key}' must be region + single AZ letter (e.g., ${aws_region}a)"
+        fi
+      done <<< "${az_keys}"
+
+      # Validate subnet IDs: must look like subnet IDs
+      local subnet_ids
+      subnet_ids=$(yq ".vpc.subnets.${subnet_type}[].id" "${yaml_file}" 2>/dev/null || true)
+      while IFS= read -r sid; do
+        if [[ -z "${sid}" || "${sid}" == "null" ]]; then
+          continue
+        fi
+        if [[ ! "${sid}" =~ ^subnet-[0-9a-f]+$ ]]; then
+          fail "${yaml_file}: ${subnet_type} subnet id '${sid}' does not look like a subnet ID (expected subnet-<hex>)"
+        fi
+      done <<< "${subnet_ids}"
+    fi
+  done
 
   # All nodegroup names start with computed prefix
   local nodegroup_count
