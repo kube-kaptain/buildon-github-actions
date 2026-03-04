@@ -386,6 +386,16 @@ privateCluster:
   enabled: ${EKS_PRIVATE_NETWORKING}
 YAML
 
+  cat <<YAML
+
+addons:
+YAML
+
+  for addon in "${addon_list[@]}"; do
+    echo "  - name: ${addon}"
+    echo "    version: latest"
+  done
+
   if [[ "${include_nodegroups}" == "true" ]]; then
     cat <<YAML
 
@@ -398,16 +408,6 @@ managedNodeGroups:
     maxSize: ${token_max_size}
 YAML
   fi
-
-  cat <<YAML
-
-addons:
-YAML
-
-  for addon in "${addon_list[@]}"; do
-    echo "  - name: ${addon}"
-    echo "    version: latest"
-  done
 }
 
 generate_dockerfile() {
