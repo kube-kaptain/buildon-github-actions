@@ -225,9 +225,12 @@ version_dashes=$(echo "${VERSION}" | tr '.' '-')
 timestamp=$(date +%Y%m%d)
 nodegroup_prefix="ng-${timestamp}-k-${KUBERNETES_MAJOR_VERSION}-${KUBERNETES_MINOR_VERSION}-v-${version_dashes}"
 
-# Persist nodegroup prefix for post-build-validate (before platform dirs are set up)
-mkdir -p "${OUTPUT_SUB_PATH}/aws-eks-cluster-management"
-printf '%s' "${nodegroup_prefix}" > "${OUTPUT_SUB_PATH}/aws-eks-cluster-management/nodegroup-prefix"
+# Persist canonical values for post-build-validate (before platform dirs are set up)
+canonical_dir="${OUTPUT_SUB_PATH}/aws-eks-cluster-management"
+mkdir -p "${canonical_dir}"
+printf '%s' "${PROJECT_NAME}" > "${canonical_dir}/project-name"
+printf '%s' "$(< "${CONFIG_SUB_PATH}/$(convert_token_name "${TOKEN_NAME_STYLE}" "AWS_REGION")")" > "${canonical_dir}/aws-region"
+printf '%s' "${nodegroup_prefix}" > "${canonical_dir}/nodegroup-prefix"
 
 # === Determine platforms, context dirs, and config dirs ===
 

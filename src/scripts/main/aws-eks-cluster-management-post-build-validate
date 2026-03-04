@@ -7,10 +7,10 @@
 # Runs after docker-build-dockerfile. Validates substituted cluster.yaml files
 # on disk, then verifies the built image contains identical files.
 #
-# Phase 1 - Substituted file validation:
-#   - metadata.name contains actual PROJECT_NAME value
-#   - metadata.region is a valid AWS region
-#   - All nodegroup names start with the computed nodegroup prefix
+# Phase 1 - Substituted file validation (against canonical values from prepare):
+#   - metadata.name is exactly the canonical project-name
+#   - metadata.region is exactly the canonical aws-region (and valid format)
+#   - All nodegroup names start with the canonical nodegroup-prefix
 #   - If multiple nodegroups, names are unique
 #   - No unsubstituted tokens remain
 #
@@ -24,7 +24,6 @@
 #   TOKEN_DELIMITER_STYLE      - Token delimiter syntax (default: shell)
 #   TOKEN_NAME_STYLE           - Case style for token names (default: PascalCase)
 #   OUTPUT_SUB_PATH            - Build output directory (default: target)
-#   PROJECT_NAME               - Project name (from versions-and-naming)
 #   IMAGE_BUILD_COMMAND        - Container runtime: podman or docker
 #   DOCKER_TAG                 - Image tag (from versions-and-naming)
 #   DOCKER_IMAGE_NAME          - Image name (from versions-and-naming)
@@ -59,18 +58,24 @@ source "${SCRIPT_DIR}/../lib/token-format.bash"
 # shellcheck source=src/scripts/lib/docker-build-shared.bash
 source "${SCRIPT_DIR}/../lib/docker-build-shared.bash"
 
-# === Required inputs ===
+# === Read canonical values from prepare output ===
 
-PROJECT_NAME="${PROJECT_NAME:?PROJECT_NAME is required}"
+canonical_dir="${OUTPUT_SUB_PATH}/aws-eks-cluster-management"
+canonical_error=0
 
-# === Read nodegroup prefix from prepare output ===
-
-nodegroup_prefix_file="${OUTPUT_SUB_PATH}/aws-eks-cluster-management/nodegroup-prefix"
-if [[ ! -f "${nodegroup_prefix_file}" ]]; then
-  echo "ERROR: ${nodegroup_prefix_file} not found - was aws-eks-cluster-management-prepare run?" >&2
+for canonical_file in project-name aws-region nodegroup-prefix; do
+  if [[ ! -f "${canonical_dir}/${canonical_file}" ]]; then
+    echo "ERROR: ${canonical_dir}/${canonical_file} not found - was aws-eks-cluster-management-prepare run?" >&2
+    canonical_error=1
+  fi
+done
+if [[ "${canonical_error}" -ne 0 ]]; then
   exit 1
 fi
-nodegroup_prefix=$(< "${nodegroup_prefix_file}")
+
+project_name=$(< "${canonical_dir}/project-name")
+aws_region=$(< "${canonical_dir}/aws-region")
+nodegroup_prefix=$(< "${canonical_dir}/nodegroup-prefix")
 
 # === Determine context dirs and image URIs ===
 
@@ -126,20 +131,22 @@ validate_substituted_yaml() {
     log_error "${remnants}"
   fi
 
-  # metadata.name contains actual project name
+  # metadata.name must be exactly the canonical project name
   local cluster_name
   cluster_name=$(yq '.metadata.name' "${yaml_file}" 2>/dev/null || echo "")
   if [[ -z "${cluster_name}" || "${cluster_name}" == "null" ]]; then
     fail "${yaml_file}: metadata.name is missing"
-  elif [[ "${cluster_name}" != *"${PROJECT_NAME}"* ]]; then
-    fail "${yaml_file}: metadata.name '${cluster_name}' does not contain project name '${PROJECT_NAME}'"
+  elif [[ "${cluster_name}" != "${project_name}" ]]; then
+    fail "${yaml_file}: metadata.name '${cluster_name}' must be exactly '${project_name}'"
   fi
 
-  # metadata.region looks like an AWS region
+  # metadata.region must be exactly the canonical aws region (also format-checked)
   local region
   region=$(yq '.metadata.region' "${yaml_file}" 2>/dev/null || echo "")
   if [[ -z "${region}" || "${region}" == "null" ]]; then
     fail "${yaml_file}: metadata.region is missing"
+  elif [[ "${region}" != "${aws_region}" ]]; then
+    fail "${yaml_file}: metadata.region '${region}' must be exactly '${aws_region}'"
   elif [[ ! "${region}" =~ ^[a-z]{2}-[a-z]+-[0-9]+$ ]]; then
     fail "${yaml_file}: metadata.region '${region}' does not look like an AWS region"
   fi
@@ -236,7 +243,8 @@ validate_image_integrity() {
 
 main() {
   log "=== EKS Cluster Management Post-Build Validate ==="
-  log "Project name: ${PROJECT_NAME}"
+  log "Project name: ${project_name}"
+  log "AWS region: ${aws_region}"
   log "Nodegroup prefix: ${nodegroup_prefix}"
   log "==================================================="
 

@@ -67,7 +67,6 @@ setup() {
   export CONFIG_SUB_PATH="$base_dir/src/config"
 
   # Required env vars
-  export PROJECT_NAME="test-cluster"
   export IMAGE_BUILD_COMMAND="podman"
   export DOCKER_TAG="1.0.0"
   export DOCKER_IMAGE_NAME="test-cluster"
@@ -81,9 +80,11 @@ setup() {
   # Single platform by default
   export DOCKER_PLATFORM="linux/amd64"
 
-  # Create nodegroup prefix file (as written by prepare step)
+  # Create canonical value files (as written by prepare step)
   local nodegroup_prefix="ng-20260302-k-1-32-v-1-0-0"
   mkdir -p "$OUTPUT_SUB_PATH/aws-eks-cluster-management"
+  printf '%s' "test-cluster" > "$OUTPUT_SUB_PATH/aws-eks-cluster-management/project-name"
+  printf '%s' "eu-west-1" > "$OUTPUT_SUB_PATH/aws-eks-cluster-management/aws-region"
   printf '%s' "$nodegroup_prefix" > "$OUTPUT_SUB_PATH/aws-eks-cluster-management/nodegroup-prefix"
 
   # Create context dir with substituted cluster.yaml (tokens already replaced)
@@ -153,30 +154,33 @@ teardown() {
   assert_output_contains "unsubstituted tokens found"
 }
 
-@test "fails when metadata.name does not contain PROJECT_NAME" {
+@test "fails when metadata.name does not match canonical project-name" {
   local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
   yq -i '.metadata.name = "wrong-cluster"' "$context_dir/cluster.yaml"
 
   run "$SCRIPTS_DIR/aws-eks-cluster-management-post-build-validate"
   [ "$status" -ne 0 ]
-  assert_output_contains "does not contain project name"
+  assert_output_contains "must be exactly"
 }
 
-@test "fails when metadata.region is not a valid AWS region" {
+@test "fails when metadata.region does not match canonical aws-region" {
   local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
+  yq -i '.metadata.region = "us-east-1"' "$context_dir/cluster.yaml"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-post-build-validate"
+  [ "$status" -ne 0 ]
+  assert_output_contains "must be exactly"
+}
+
+@test "fails when metadata.region is not a valid AWS region format" {
+  local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
+  # Set both the canonical file and yaml to the same bad value
+  printf '%s' "not-a-region" > "$OUTPUT_SUB_PATH/aws-eks-cluster-management/aws-region"
   yq -i '.metadata.region = "not-a-region"' "$context_dir/cluster.yaml"
 
   run "$SCRIPTS_DIR/aws-eks-cluster-management-post-build-validate"
   [ "$status" -ne 0 ]
   assert_output_contains "does not look like an AWS region"
-}
-
-@test "accepts valid AWS region formats" {
-  local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
-
-  yq -i '.metadata.region = "us-east-1"' "$context_dir/cluster.yaml"
-  run "$SCRIPTS_DIR/aws-eks-cluster-management-post-build-validate"
-  [ "$status" -eq 0 ]
 }
 
 @test "fails when nodegroup name does not start with computed prefix" {
@@ -234,14 +238,24 @@ teardown() {
   assert_docker_called "run"
 }
 
-# === Required inputs ===
+# === Canonical value files ===
 
-@test "fails when PROJECT_NAME is not set" {
-  unset PROJECT_NAME
+@test "fails when project-name file is missing" {
+  rm "$OUTPUT_SUB_PATH/aws-eks-cluster-management/project-name"
 
   run "$SCRIPTS_DIR/aws-eks-cluster-management-post-build-validate"
   [ "$status" -ne 0 ]
-  assert_output_contains "PROJECT_NAME is required"
+  assert_output_contains "project-name"
+  assert_output_contains "not found"
+}
+
+@test "fails when aws-region file is missing" {
+  rm "$OUTPUT_SUB_PATH/aws-eks-cluster-management/aws-region"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-post-build-validate"
+  [ "$status" -ne 0 ]
+  assert_output_contains "aws-region"
+  assert_output_contains "not found"
 }
 
 # === Controlplane-only yaml validation ===
@@ -302,6 +316,7 @@ YAML
 
   assert_output_contains "EKS Cluster Management Post-Build Validate"
   assert_output_contains "Project name: test-cluster"
+  assert_output_contains "AWS region: eu-west-1"
 }
 
 # === Fail-complete behavior ===
