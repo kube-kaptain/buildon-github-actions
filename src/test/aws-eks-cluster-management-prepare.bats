@@ -22,9 +22,9 @@ setup() {
   printf 'eu-west-1' > "$CONFIG_SUB_PATH/AwsRegion"
   printf 'vpc-0123456789abcdef0' > "$CONFIG_SUB_PATH/VpcId"
   printf 't3.medium' > "$CONFIG_SUB_PATH/NodegroupInstanceType"
-  printf 'subnet-aaa11111111111111' > "$CONFIG_SUB_PATH/PrivateSubnet1"
-  printf 'subnet-bbb22222222222222' > "$CONFIG_SUB_PATH/PrivateSubnet2"
-  printf 'subnet-ccc33333333333333' > "$CONFIG_SUB_PATH/PrivateSubnet3"
+  printf 'subnet-aaa11111111111111' > "$CONFIG_SUB_PATH/PrivateSubnetIdA"
+  printf 'subnet-bbb22222222222222' > "$CONFIG_SUB_PATH/PrivateSubnetIdB"
+  printf 'subnet-ccc33333333333333' > "$CONFIG_SUB_PATH/PrivateSubnetIdC"
 
   # Required env vars
   export VERSION="1.0.0"
@@ -140,22 +140,22 @@ teardown() {
 # === Private networking config ===
 
 @test "requires private subnet files when EKS_PRIVATE_NETWORKING=true" {
-  rm "$CONFIG_SUB_PATH/PrivateSubnet1"
-  rm "$CONFIG_SUB_PATH/PrivateSubnet2"
-  rm "$CONFIG_SUB_PATH/PrivateSubnet3"
+  rm "$CONFIG_SUB_PATH/PrivateSubnetIdA"
+  rm "$CONFIG_SUB_PATH/PrivateSubnetIdB"
+  rm "$CONFIG_SUB_PATH/PrivateSubnetIdC"
 
   run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
   [ "$status" -ne 0 ]
-  assert_output_contains "PRIVATE_SUBNET_1"
-  assert_output_contains "PRIVATE_SUBNET_2"
-  assert_output_contains "PRIVATE_SUBNET_3"
+  assert_output_contains "PRIVATE_SUBNET_ID_A"
+  assert_output_contains "PRIVATE_SUBNET_ID_B"
+  assert_output_contains "PRIVATE_SUBNET_ID_C"
 }
 
 @test "does not require private subnet files when EKS_PRIVATE_NETWORKING=false" {
   export EKS_PRIVATE_NETWORKING="false"
-  rm "$CONFIG_SUB_PATH/PrivateSubnet1"
-  rm "$CONFIG_SUB_PATH/PrivateSubnet2"
-  rm "$CONFIG_SUB_PATH/PrivateSubnet3"
+  rm "$CONFIG_SUB_PATH/PrivateSubnetIdA"
+  rm "$CONFIG_SUB_PATH/PrivateSubnetIdB"
+  rm "$CONFIG_SUB_PATH/PrivateSubnetIdC"
 
   run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
   [ "$status" -eq 0 ]
@@ -168,16 +168,16 @@ teardown() {
 
   run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
   [ "$status" -ne 0 ]
-  assert_output_contains "PUBLIC_SUBNET_1"
-  assert_output_contains "PUBLIC_SUBNET_2"
-  assert_output_contains "PUBLIC_SUBNET_3"
+  assert_output_contains "PUBLIC_SUBNET_ID_A"
+  assert_output_contains "PUBLIC_SUBNET_ID_B"
+  assert_output_contains "PUBLIC_SUBNET_ID_C"
 }
 
 @test "succeeds with public subnet files when EKS_PUBLIC_NETWORKING=true" {
   export EKS_PUBLIC_NETWORKING="true"
-  printf 'subnet-pub11111111111111' > "$CONFIG_SUB_PATH/PublicSubnet1"
-  printf 'subnet-pub22222222222222' > "$CONFIG_SUB_PATH/PublicSubnet2"
-  printf 'subnet-pub33333333333333' > "$CONFIG_SUB_PATH/PublicSubnet3"
+  printf 'subnet-pub11111111111111' > "$CONFIG_SUB_PATH/PublicSubnetIdA"
+  printf 'subnet-pub22222222222222' > "$CONFIG_SUB_PATH/PublicSubnetIdB"
+  printf 'subnet-pub33333333333333' > "$CONFIG_SUB_PATH/PublicSubnetIdC"
 
   run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
   [ "$status" -eq 0 ]
@@ -233,14 +233,14 @@ teardown() {
   local content
   content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
   assert_contains "$content" "private:" "cluster.yaml"
-  assert_contains "$content" '${PrivateSubnet1}' "cluster.yaml"
-  assert_contains "$content" '${PrivateSubnet2}' "cluster.yaml"
-  assert_contains "$content" '${PrivateSubnet3}' "cluster.yaml"
+  assert_contains "$content" '${PrivateSubnetIdA}' "cluster.yaml"
+  assert_contains "$content" '${PrivateSubnetIdB}' "cluster.yaml"
+  assert_contains "$content" '${PrivateSubnetIdC}' "cluster.yaml"
 }
 
 @test "generates cluster.yaml without private subnets when EKS_PRIVATE_NETWORKING=false" {
   export EKS_PRIVATE_NETWORKING="false"
-  rm "$CONFIG_SUB_PATH/PrivateSubnet1" "$CONFIG_SUB_PATH/PrivateSubnet2" "$CONFIG_SUB_PATH/PrivateSubnet3"
+  rm "$CONFIG_SUB_PATH/PrivateSubnetIdA" "$CONFIG_SUB_PATH/PrivateSubnetIdB" "$CONFIG_SUB_PATH/PrivateSubnetIdC"
 
   run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
   [ "$status" -eq 0 ]
@@ -252,9 +252,9 @@ teardown() {
 
 @test "generates cluster.yaml with public subnets when EKS_PUBLIC_NETWORKING=true" {
   export EKS_PUBLIC_NETWORKING="true"
-  printf 'subnet-pub11111111111111' > "$CONFIG_SUB_PATH/PublicSubnet1"
-  printf 'subnet-pub22222222222222' > "$CONFIG_SUB_PATH/PublicSubnet2"
-  printf 'subnet-pub33333333333333' > "$CONFIG_SUB_PATH/PublicSubnet3"
+  printf 'subnet-pub11111111111111' > "$CONFIG_SUB_PATH/PublicSubnetIdA"
+  printf 'subnet-pub22222222222222' > "$CONFIG_SUB_PATH/PublicSubnetIdB"
+  printf 'subnet-pub33333333333333' > "$CONFIG_SUB_PATH/PublicSubnetIdC"
 
   run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
   [ "$status" -eq 0 ]
@@ -262,9 +262,9 @@ teardown() {
   local content
   content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
   assert_contains "$content" "public:" "cluster.yaml"
-  assert_contains "$content" '${PublicSubnet1}' "cluster.yaml"
-  assert_contains "$content" '${PublicSubnet2}' "cluster.yaml"
-  assert_contains "$content" '${PublicSubnet3}' "cluster.yaml"
+  assert_contains "$content" '${PublicSubnetIdA}' "cluster.yaml"
+  assert_contains "$content" '${PublicSubnetIdB}' "cluster.yaml"
+  assert_contains "$content" '${PublicSubnetIdC}' "cluster.yaml"
 }
 
 @test "generates cluster.yaml with security group when EKS_CUSTOM_SECURITY_GROUP=true" {
@@ -765,9 +765,9 @@ teardown() {
   mv "$CONFIG_SUB_PATH/AwsRegion" "$CONFIG_SUB_PATH/AWS_REGION"
   mv "$CONFIG_SUB_PATH/VpcId" "$CONFIG_SUB_PATH/VPC_ID"
   mv "$CONFIG_SUB_PATH/NodegroupInstanceType" "$CONFIG_SUB_PATH/NODEGROUP_INSTANCE_TYPE"
-  mv "$CONFIG_SUB_PATH/PrivateSubnet1" "$CONFIG_SUB_PATH/PRIVATE_SUBNET_1"
-  mv "$CONFIG_SUB_PATH/PrivateSubnet2" "$CONFIG_SUB_PATH/PRIVATE_SUBNET_2"
-  mv "$CONFIG_SUB_PATH/PrivateSubnet3" "$CONFIG_SUB_PATH/PRIVATE_SUBNET_3"
+  mv "$CONFIG_SUB_PATH/PrivateSubnetIdA" "$CONFIG_SUB_PATH/PRIVATE_SUBNET_ID_A"
+  mv "$CONFIG_SUB_PATH/PrivateSubnetIdB" "$CONFIG_SUB_PATH/PRIVATE_SUBNET_ID_B"
+  mv "$CONFIG_SUB_PATH/PrivateSubnetIdC" "$CONFIG_SUB_PATH/PRIVATE_SUBNET_ID_C"
 
   run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
   [ "$status" -eq 0 ]

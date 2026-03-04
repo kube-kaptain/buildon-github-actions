@@ -20,8 +20,8 @@
 #   AWS_REGION                  - AWS region (e.g., eu-west-1)
 #   VPC_ID                      - VPC identifier
 #   NODEGROUP_INSTANCE_TYPE     - Node instance type (e.g., t3.medium)
-#   PRIVATE_SUBNET_1/2/3        - Private subnet IDs (if EKS_PRIVATE_NETWORKING=true)
-#   PUBLIC_SUBNET_1/2/3         - Public subnet IDs (if EKS_PUBLIC_NETWORKING=true)
+#   PRIVATE_SUBNET_ID_A/B/C     - Private subnet IDs (if EKS_PRIVATE_NETWORKING=true)
+#   PUBLIC_SUBNET_ID_A/B/C      - Public subnet IDs (if EKS_PUBLIC_NETWORKING=true)
 #
 # Conditional config (file in CONFIG_SUB_PATH, required when switch is on):
 #   VPC_SECURITY_GROUP          - Custom security group ID (if EKS_CUSTOM_SECURITY_GROUP=true)
@@ -196,15 +196,15 @@ require_config_file "VPC_ID" "Create this file with the VPC ID for your cluster 
 require_config_file "NODEGROUP_INSTANCE_TYPE" "Create this file with the instance type (e.g., t3.medium)"
 
 if [[ "${EKS_PRIVATE_NETWORKING}" == "true" ]]; then
-  require_config_file "PRIVATE_SUBNET_1" "Required when EKS_PRIVATE_NETWORKING=true"
-  require_config_file "PRIVATE_SUBNET_2" "Required when EKS_PRIVATE_NETWORKING=true"
-  require_config_file "PRIVATE_SUBNET_3" "Required when EKS_PRIVATE_NETWORKING=true"
+  require_config_file "PRIVATE_SUBNET_ID_A" "Required when EKS_PRIVATE_NETWORKING=true"
+  require_config_file "PRIVATE_SUBNET_ID_B" "Required when EKS_PRIVATE_NETWORKING=true"
+  require_config_file "PRIVATE_SUBNET_ID_C" "Required when EKS_PRIVATE_NETWORKING=true"
 fi
 
 if [[ "${EKS_PUBLIC_NETWORKING}" == "true" ]]; then
-  require_config_file "PUBLIC_SUBNET_1" "Required when EKS_PUBLIC_NETWORKING=true"
-  require_config_file "PUBLIC_SUBNET_2" "Required when EKS_PUBLIC_NETWORKING=true"
-  require_config_file "PUBLIC_SUBNET_3" "Required when EKS_PUBLIC_NETWORKING=true"
+  require_config_file "PUBLIC_SUBNET_ID_A" "Required when EKS_PUBLIC_NETWORKING=true"
+  require_config_file "PUBLIC_SUBNET_ID_B" "Required when EKS_PUBLIC_NETWORKING=true"
+  require_config_file "PUBLIC_SUBNET_ID_C" "Required when EKS_PUBLIC_NETWORKING=true"
 fi
 
 EKS_CUSTOM_SECURITY_GROUP="${EKS_CUSTOM_SECURITY_GROUP:-false}"
@@ -298,15 +298,15 @@ token_min_size=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME
 token_max_size=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "NODEGROUP_MAX_SIZE")
 
 if [[ "${EKS_PRIVATE_NETWORKING}" == "true" ]]; then
-  token_private_subnet_1=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "PRIVATE_SUBNET_1")
-  token_private_subnet_2=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "PRIVATE_SUBNET_2")
-  token_private_subnet_3=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "PRIVATE_SUBNET_3")
+  token_private_subnet_id_a=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "PRIVATE_SUBNET_ID_A")
+  token_private_subnet_id_b=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "PRIVATE_SUBNET_ID_B")
+  token_private_subnet_id_c=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "PRIVATE_SUBNET_ID_C")
 fi
 
 if [[ "${EKS_PUBLIC_NETWORKING}" == "true" ]]; then
-  token_public_subnet_1=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "PUBLIC_SUBNET_1")
-  token_public_subnet_2=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "PUBLIC_SUBNET_2")
-  token_public_subnet_3=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "PUBLIC_SUBNET_3")
+  token_public_subnet_id_a=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "PUBLIC_SUBNET_ID_A")
+  token_public_subnet_id_b=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "PUBLIC_SUBNET_ID_B")
+  token_public_subnet_id_c=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "PUBLIC_SUBNET_ID_C")
 fi
 
 if [[ "${EKS_CUSTOM_SECURITY_GROUP}" == "true" ]]; then
@@ -358,24 +358,24 @@ YAML
   if [[ "${EKS_PRIVATE_NETWORKING}" == "true" ]]; then
     cat <<YAML
     private:
-      az1:
-        id: ${token_private_subnet_1}
-      az2:
-        id: ${token_private_subnet_2}
-      az3:
-        id: ${token_private_subnet_3}
+      ${token_aws_region}a:
+        id: ${token_private_subnet_id_a}
+      ${token_aws_region}b:
+        id: ${token_private_subnet_id_b}
+      ${token_aws_region}c:
+        id: ${token_private_subnet_id_c}
 YAML
   fi
 
   if [[ "${EKS_PUBLIC_NETWORKING}" == "true" ]]; then
     cat <<YAML
     public:
-      az1:
-        id: ${token_public_subnet_1}
-      az2:
-        id: ${token_public_subnet_2}
-      az3:
-        id: ${token_public_subnet_3}
+      ${token_aws_region}a:
+        id: ${token_public_subnet_id_a}
+      ${token_aws_region}b:
+        id: ${token_public_subnet_id_b}
+      ${token_aws_region}c:
+        id: ${token_public_subnet_id_c}
 YAML
   fi
 

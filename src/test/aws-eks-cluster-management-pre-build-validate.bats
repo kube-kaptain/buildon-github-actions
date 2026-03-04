@@ -25,9 +25,9 @@ setup() {
   printf 'eu-west-1' > "$CONFIG_SUB_PATH/AwsRegion"
   printf 'vpc-0123456789abcdef0' > "$CONFIG_SUB_PATH/VpcId"
   printf 't3.medium' > "$CONFIG_SUB_PATH/NodegroupInstanceType"
-  printf 'subnet-aaa11111111111111' > "$CONFIG_SUB_PATH/PrivateSubnet1"
-  printf 'subnet-bbb22222222222222' > "$CONFIG_SUB_PATH/PrivateSubnet2"
-  printf 'subnet-ccc33333333333333' > "$CONFIG_SUB_PATH/PrivateSubnet3"
+  printf 'subnet-aaa11111111111111' > "$CONFIG_SUB_PATH/PrivateSubnetIdA"
+  printf 'subnet-bbb22222222222222' > "$CONFIG_SUB_PATH/PrivateSubnetIdB"
+  printf 'subnet-ccc33333333333333' > "$CONFIG_SUB_PATH/PrivateSubnetIdC"
 
   # Token defaults
   export TOKEN_DELIMITER_STYLE="shell"
@@ -54,12 +54,12 @@ vpc:
   id: ${VpcId}
   subnets:
     private:
-      az1:
-        id: ${PrivateSubnet1}
-      az2:
-        id: ${PrivateSubnet2}
-      az3:
-        id: ${PrivateSubnet3}
+      ${AwsRegion}a:
+        id: ${PrivateSubnetIdA}
+      ${AwsRegion}b:
+        id: ${PrivateSubnetIdB}
+      ${AwsRegion}c:
+        id: ${PrivateSubnetIdC}
 
 privateCluster:
   enabled: true

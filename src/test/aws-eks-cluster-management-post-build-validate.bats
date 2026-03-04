@@ -106,11 +106,11 @@ vpc:
   id: vpc-0123456789abcdef0
   subnets:
     private:
-      az1:
+      eu-west-1a:
         id: subnet-aaa11111111111111
-      az2:
+      eu-west-1b:
         id: subnet-bbb22222222222222
-      az3:
+      eu-west-1c:
         id: subnet-ccc33333333333333
 
 privateCluster:
