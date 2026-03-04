@@ -398,6 +398,19 @@ teardown() {
   assert_contains "$content" '${NodegroupDesiredCapacity}' "cluster.yaml"
   assert_contains "$content" '${NodegroupMinSize}' "cluster.yaml"
   assert_contains "$content" '${NodegroupMaxSize}' "cluster.yaml"
+  # privateNetworking not present without config file
+  [[ "$content" != *"privateNetworking"* ]]
+}
+
+@test "generates privateNetworking in nodegroup when config file present" {
+  printf 'true' > "$CONFIG_SUB_PATH/NodegroupPrivateNetworking"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -eq 0 ]
+
+  local content
+  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
+  assert_contains "$content" 'privateNetworking: ${NodegroupPrivateNetworking}' "cluster.yaml"
 }
 
 @test "generates cluster.yaml with iam section" {
@@ -410,14 +423,25 @@ teardown() {
   assert_contains "$content" 'withOIDC: ${IamWithOidc}' "cluster.yaml"
 }
 
-@test "generates cluster.yaml with privateCluster section" {
+@test "does not generate privateCluster section by default" {
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -eq 0 ]
+
+  local content
+  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
+  [[ "$content" != *"privateCluster"* ]]
+}
+
+@test "generates privateCluster section when config file present" {
+  printf 'true' > "$CONFIG_SUB_PATH/PrivateClusterEnabled"
+
   run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
   [ "$status" -eq 0 ]
 
   local content
   content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
   assert_contains "$content" "privateCluster:" "cluster.yaml"
-  assert_contains "$content" "enabled: true" "cluster.yaml"
+  assert_contains "$content" 'enabled: ${PrivateClusterEnabled}' "cluster.yaml"
 }
 
 @test "generates cluster.yaml with cloudWatch section as block sequence" {
