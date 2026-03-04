@@ -13,7 +13,6 @@
     token-delimiter-style: ${{ inputs.token-delimiter-style }}
     token-name-style: ${{ inputs.token-name-style }}
     image-build-command: ${{ steps.validate-tooling.outputs.IMAGE_BUILD_COMMAND }}
-    project-name: ${{ steps.versions.outputs.project-name }}
     docker-tag: ${{ steps.versions.outputs.docker-tag }}
     docker-image-name: ${{ steps.versions.outputs.docker-image-name }}
     docker-target-registry: ${{ steps.resolve-registry.outputs.docker-target-registry }}

@@ -7,10 +7,13 @@
 # Runs after docker-build-dockerfile. Validates substituted cluster.yaml files
 # on disk, then verifies the built image contains identical files.
 #
-# Phase 1 - Substituted file validation:
-#   - metadata.name contains actual PROJECT_NAME value
-#   - metadata.region is a valid AWS region
-#   - All nodegroup names start with the computed nodegroup prefix
+# Phase 1 - Substituted file validation (against canonical values from prepare):
+#   - metadata.name is exactly the canonical project-name
+#   - metadata.region is exactly the canonical aws-region (and valid format)
+#   - metadata.version is exactly the canonical kubernetes-version (and minor >= 2 digits)
+#   - vpc.id looks like a VPC ID (vpc-<hex>)
+#   - Subnet IDs look like subnet IDs (subnet-<hex>)
+#   - All nodegroup names start with the canonical nodegroup-prefix
 #   - If multiple nodegroups, names are unique
 #   - No unsubstituted tokens remain
 #
@@ -24,7 +27,6 @@
 #   TOKEN_DELIMITER_STYLE      - Token delimiter syntax (default: shell)
 #   TOKEN_NAME_STYLE           - Case style for token names (default: PascalCase)
 #   OUTPUT_SUB_PATH            - Build output directory (default: target)
-#   PROJECT_NAME               - Project name (from versions-and-naming)
 #   IMAGE_BUILD_COMMAND        - Container runtime: podman or docker
 #   DOCKER_TAG                 - Image tag (from versions-and-naming)
 #   DOCKER_IMAGE_NAME          - Image name (from versions-and-naming)
@@ -59,18 +61,26 @@ source "${SCRIPT_DIR}/../lib/token-format.bash"
 # shellcheck source=src/scripts/lib/docker-build-shared.bash
 source "${SCRIPT_DIR}/../lib/docker-build-shared.bash"
 
-# === Required inputs ===
+# === Read canonical values from prepare output ===
 
-PROJECT_NAME="${PROJECT_NAME:?PROJECT_NAME is required}"
+canonical_dir="${OUTPUT_SUB_PATH}/aws-eks-cluster-management"
+expected_values_dir="${canonical_dir}/expected-values"
+canonical_error=0
 
-# === Read nodegroup prefix from prepare output ===
-
-nodegroup_prefix_file="${OUTPUT_SUB_PATH}/aws-eks-cluster-management/nodegroup-prefix"
-if [[ ! -f "${nodegroup_prefix_file}" ]]; then
-  echo "ERROR: ${nodegroup_prefix_file} not found - was aws-eks-cluster-management-prepare run?" >&2
+for canonical_file in project-name aws-region kubernetes-version nodegroup-prefix; do
+  if [[ ! -f "${expected_values_dir}/${canonical_file}" ]]; then
+    echo "ERROR: ${expected_values_dir}/${canonical_file} not found - was aws-eks-cluster-management-prepare run?" >&2
+    canonical_error=1
+  fi
+done
+if [[ "${canonical_error}" -ne 0 ]]; then
   exit 1
 fi
-nodegroup_prefix=$(< "${nodegroup_prefix_file}")
+
+project_name=$(< "${expected_values_dir}/project-name")
+aws_region=$(< "${expected_values_dir}/aws-region")
+kubernetes_version=$(< "${expected_values_dir}/kubernetes-version")
+nodegroup_prefix=$(< "${expected_values_dir}/nodegroup-prefix")
 
 # === Determine context dirs and image URIs ===
 
@@ -126,23 +136,75 @@ validate_substituted_yaml() {
     log_error "${remnants}"
   fi
 
-  # metadata.name contains actual project name
+  # metadata.name must be exactly the canonical project name
   local cluster_name
   cluster_name=$(yq '.metadata.name' "${yaml_file}" 2>/dev/null || echo "")
   if [[ -z "${cluster_name}" || "${cluster_name}" == "null" ]]; then
     fail "${yaml_file}: metadata.name is missing"
-  elif [[ "${cluster_name}" != *"${PROJECT_NAME}"* ]]; then
-    fail "${yaml_file}: metadata.name '${cluster_name}' does not contain project name '${PROJECT_NAME}'"
+  elif [[ "${cluster_name}" != "${project_name}" ]]; then
+    fail "${yaml_file}: metadata.name '${cluster_name}' must be exactly '${project_name}'"
   fi
 
-  # metadata.region looks like an AWS region
+  # metadata.region must be exactly the canonical aws region (also format-checked)
   local region
   region=$(yq '.metadata.region' "${yaml_file}" 2>/dev/null || echo "")
   if [[ -z "${region}" || "${region}" == "null" ]]; then
     fail "${yaml_file}: metadata.region is missing"
+  elif [[ "${region}" != "${aws_region}" ]]; then
+    fail "${yaml_file}: metadata.region '${region}' must be exactly '${aws_region}'"
   elif [[ ! "${region}" =~ ^[a-z]{2}-[a-z]+-[0-9]+$ ]]; then
     fail "${yaml_file}: metadata.region '${region}' does not look like an AWS region"
   fi
+
+  # metadata.version must be exactly the canonical kubernetes version (format-checked)
+  local version
+  version=$(yq '.metadata.version' "${yaml_file}" 2>/dev/null || echo "")
+  if [[ -z "${version}" || "${version}" == "null" ]]; then
+    fail "${yaml_file}: metadata.version is missing"
+  elif [[ "${version}" != "${kubernetes_version}" ]]; then
+    fail "${yaml_file}: metadata.version '${version}' must be exactly '${kubernetes_version}'"
+  elif [[ ! "${version}" =~ ^[0-9]+\.[0-9]{2,}$ ]]; then
+    fail "${yaml_file}: metadata.version '${version}' must be major.minor where minor is at least 2 digits"
+  fi
+
+  # vpc.id must look like a VPC ID
+  local vpc_id
+  vpc_id=$(yq '.vpc.id' "${yaml_file}" 2>/dev/null || echo "")
+  if [[ -z "${vpc_id}" || "${vpc_id}" == "null" ]]; then
+    fail "${yaml_file}: vpc.id is missing"
+  elif [[ ! "${vpc_id}" =~ ^vpc-[0-9a-f]+$ ]]; then
+    fail "${yaml_file}: vpc.id '${vpc_id}' does not look like a VPC ID (expected vpc-<hex>)"
+  fi
+
+  # Subnet keys must be region + single AZ letter; IDs must look like subnet IDs
+  local subnet_type
+  for subnet_type in private public; do
+    if yq -e ".vpc.subnets.${subnet_type}" "${yaml_file}" &>/dev/null; then
+      # Validate AZ keys: must be canonical region + single lowercase letter
+      local az_keys
+      az_keys=$(yq ".vpc.subnets.${subnet_type} | keys | .[]" "${yaml_file}" 2>/dev/null || true)
+      while IFS= read -r az_key; do
+        if [[ -z "${az_key}" ]]; then
+          continue
+        fi
+        if [[ ! "${az_key}" =~ ^${aws_region}[a-z]$ ]]; then
+          fail "${yaml_file}: ${subnet_type} subnet key '${az_key}' must be region + single AZ letter (e.g., ${aws_region}a)"
+        fi
+      done <<< "${az_keys}"
+
+      # Validate subnet IDs: must look like subnet IDs
+      local subnet_ids
+      subnet_ids=$(yq ".vpc.subnets.${subnet_type}[].id" "${yaml_file}" 2>/dev/null || true)
+      while IFS= read -r sid; do
+        if [[ -z "${sid}" || "${sid}" == "null" ]]; then
+          continue
+        fi
+        if [[ ! "${sid}" =~ ^subnet-[0-9a-f]+$ ]]; then
+          fail "${yaml_file}: ${subnet_type} subnet id '${sid}' does not look like a subnet ID (expected subnet-<hex>)"
+        fi
+      done <<< "${subnet_ids}"
+    fi
+  done
 
   # All nodegroup names start with computed prefix
   local nodegroup_count
@@ -236,7 +298,9 @@ validate_image_integrity() {
 
 main() {
   log "=== EKS Cluster Management Post-Build Validate ==="
-  log "Project name: ${PROJECT_NAME}"
+  log "Project name: ${project_name}"
+  log "AWS region: ${aws_region}"
+  log "Kubernetes version: ${kubernetes_version}"
   log "Nodegroup prefix: ${nodegroup_prefix}"
   log "==================================================="
 
@@ -251,6 +315,17 @@ main() {
       validate_substituted_yaml "${context_dir}/cluster-controlplane-only.yaml"
     fi
   done
+
+  # Copy substituted cluster yamls to canonical dir for diff/inspection
+  local substituted_dir="${canonical_dir}/substituted"
+  mkdir -p "${substituted_dir}"
+  local first_context_dir="${context_dirs[0]}"
+  cp "${first_context_dir}/cluster.yaml" "${substituted_dir}/cluster.yaml"
+  log "  cluster.yaml: copied to ${substituted_dir}/"
+  if [[ -f "${first_context_dir}/cluster-controlplane-only.yaml" ]]; then
+    cp "${first_context_dir}/cluster-controlplane-only.yaml" "${substituted_dir}/cluster-controlplane-only.yaml"
+    log "  cluster-controlplane-only.yaml: copied to ${substituted_dir}/"
+  fi
 
   # Phase 2: Validate image integrity
   for i in "${!context_dirs[@]}"; do

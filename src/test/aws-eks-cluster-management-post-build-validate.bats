@@ -67,7 +67,6 @@ setup() {
   export CONFIG_SUB_PATH="$base_dir/src/config"
 
   # Required env vars
-  export PROJECT_NAME="test-cluster"
   export IMAGE_BUILD_COMMAND="podman"
   export DOCKER_TAG="1.0.0"
   export DOCKER_IMAGE_NAME="test-cluster"
@@ -81,10 +80,13 @@ setup() {
   # Single platform by default
   export DOCKER_PLATFORM="linux/amd64"
 
-  # Create nodegroup prefix file (as written by prepare step)
+  # Create canonical value files (as written by prepare step)
   local nodegroup_prefix="ng-20260302-k-1-32-v-1-0-0"
-  mkdir -p "$OUTPUT_SUB_PATH/aws-eks-cluster-management"
-  printf '%s' "$nodegroup_prefix" > "$OUTPUT_SUB_PATH/aws-eks-cluster-management/nodegroup-prefix"
+  mkdir -p "$OUTPUT_SUB_PATH/aws-eks-cluster-management/expected-values"
+  printf '%s' "test-cluster" > "$OUTPUT_SUB_PATH/aws-eks-cluster-management/expected-values/project-name"
+  printf '%s' "eu-west-1" > "$OUTPUT_SUB_PATH/aws-eks-cluster-management/expected-values/aws-region"
+  printf '%s' "1.32" > "$OUTPUT_SUB_PATH/aws-eks-cluster-management/expected-values/kubernetes-version"
+  printf '%s' "$nodegroup_prefix" > "$OUTPUT_SUB_PATH/aws-eks-cluster-management/expected-values/nodegroup-prefix"
 
   # Create context dir with substituted cluster.yaml (tokens already replaced)
   local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
@@ -104,11 +106,11 @@ vpc:
   id: vpc-0123456789abcdef0
   subnets:
     private:
-      az1:
+      eu-west-1a:
         id: subnet-aaa11111111111111
-      az2:
+      eu-west-1b:
         id: subnet-bbb22222222222222
-      az3:
+      eu-west-1c:
         id: subnet-ccc33333333333333
 
 privateCluster:
@@ -124,8 +126,11 @@ managedNodeGroups:
 
 addons:
   - name: coredns
+    version: latest
   - name: kube-proxy
+    version: latest
   - name: vpc-cni
+    version: latest
 YAML
 
   # Mock docker that returns matching sha256sum output for image integrity checks
@@ -153,17 +158,28 @@ teardown() {
   assert_output_contains "unsubstituted tokens found"
 }
 
-@test "fails when metadata.name does not contain PROJECT_NAME" {
+@test "fails when metadata.name does not match canonical project-name" {
   local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
   yq -i '.metadata.name = "wrong-cluster"' "$context_dir/cluster.yaml"
 
   run "$SCRIPTS_DIR/aws-eks-cluster-management-post-build-validate"
   [ "$status" -ne 0 ]
-  assert_output_contains "does not contain project name"
+  assert_output_contains "must be exactly"
 }
 
-@test "fails when metadata.region is not a valid AWS region" {
+@test "fails when metadata.region does not match canonical aws-region" {
   local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
+  yq -i '.metadata.region = "us-east-1"' "$context_dir/cluster.yaml"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-post-build-validate"
+  [ "$status" -ne 0 ]
+  assert_output_contains "must be exactly"
+}
+
+@test "fails when metadata.region is not a valid AWS region format" {
+  local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
+  # Set both the canonical file and yaml to the same bad value
+  printf '%s' "not-a-region" > "$OUTPUT_SUB_PATH/aws-eks-cluster-management/expected-values/aws-region"
   yq -i '.metadata.region = "not-a-region"' "$context_dir/cluster.yaml"
 
   run "$SCRIPTS_DIR/aws-eks-cluster-management-post-build-validate"
@@ -171,12 +187,66 @@ teardown() {
   assert_output_contains "does not look like an AWS region"
 }
 
-@test "accepts valid AWS region formats" {
-  local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
+# === metadata.version validation ===
 
-  yq -i '.metadata.region = "us-east-1"' "$context_dir/cluster.yaml"
+@test "fails when metadata.version does not match canonical kubernetes-version" {
+  local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
+  yq -i '.metadata.version = "1.31"' "$context_dir/cluster.yaml"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-post-build-validate"
+  [ "$status" -ne 0 ]
+  assert_output_contains "must be exactly"
+}
+
+@test "fails when metadata.version minor part is less than 2 digits" {
+  local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
+  printf '%s' "1.9" > "$OUTPUT_SUB_PATH/aws-eks-cluster-management/expected-values/kubernetes-version"
+  yq -i '.metadata.version = "1.9"' "$context_dir/cluster.yaml"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-post-build-validate"
+  [ "$status" -ne 0 ]
+  assert_output_contains "minor is at least 2 digits"
+}
+
+@test "passes when metadata.version minor part has 3 digits" {
+  local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
+  printf '%s' "1.100" > "$OUTPUT_SUB_PATH/aws-eks-cluster-management/expected-values/kubernetes-version"
+  yq -i '.metadata.version = "1.100"' "$context_dir/cluster.yaml"
+
   run "$SCRIPTS_DIR/aws-eks-cluster-management-post-build-validate"
   [ "$status" -eq 0 ]
+}
+
+# === vpc.id validation ===
+
+@test "fails when vpc.id does not look like a VPC ID" {
+  local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
+  yq -i '.vpc.id = "not-a-vpc-id"' "$context_dir/cluster.yaml"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-post-build-validate"
+  [ "$status" -ne 0 ]
+  assert_output_contains "does not look like a VPC ID"
+}
+
+# === subnet id validation ===
+
+@test "fails when subnet key is not region + AZ letter" {
+  local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
+  yq -i '.vpc.subnets.private.badkey = .vpc.subnets.private."eu-west-1a"' "$context_dir/cluster.yaml"
+  yq -i 'del(.vpc.subnets.private."eu-west-1a")' "$context_dir/cluster.yaml"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-post-build-validate"
+  [ "$status" -ne 0 ]
+  assert_output_contains "must be region + single AZ letter"
+}
+
+@test "fails when subnet id does not look like a subnet ID" {
+  local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
+  yq -i '.vpc.subnets.private."eu-west-1a".id = "not-a-subnet"' "$context_dir/cluster.yaml"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-post-build-validate"
+  [ "$status" -ne 0 ]
+  assert_output_contains "does not look like a subnet ID"
 }
 
 @test "fails when nodegroup name does not start with computed prefix" {
@@ -191,7 +261,7 @@ teardown() {
 @test "fails with duplicate nodegroup names in substituted yaml" {
   local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
   local prefix
-  prefix=$(< "$OUTPUT_SUB_PATH/aws-eks-cluster-management/nodegroup-prefix")
+  prefix=$(< "$OUTPUT_SUB_PATH/aws-eks-cluster-management/expected-values/nodegroup-prefix")
   yq -i ".managedNodeGroups += [{\"name\": \"${prefix}\", \"instanceType\": \"g5.xlarge\"}]" "$context_dir/cluster.yaml"
 
   run "$SCRIPTS_DIR/aws-eks-cluster-management-post-build-validate"
@@ -207,10 +277,17 @@ teardown() {
   assert_output_contains "file not found"
 }
 
-# === Nodegroup prefix file ===
+@test "fails when kubernetes-version file is missing" {
+  rm "$OUTPUT_SUB_PATH/aws-eks-cluster-management/expected-values/kubernetes-version"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-post-build-validate"
+  [ "$status" -ne 0 ]
+  assert_output_contains "kubernetes-version"
+  assert_output_contains "not found"
+}
 
 @test "fails when nodegroup-prefix file is missing" {
-  rm "$OUTPUT_SUB_PATH/aws-eks-cluster-management/nodegroup-prefix"
+  rm "$OUTPUT_SUB_PATH/aws-eks-cluster-management/expected-values/nodegroup-prefix"
 
   run "$SCRIPTS_DIR/aws-eks-cluster-management-post-build-validate"
   [ "$status" -ne 0 ]
@@ -234,14 +311,24 @@ teardown() {
   assert_docker_called "run"
 }
 
-# === Required inputs ===
+# === Canonical value files ===
 
-@test "fails when PROJECT_NAME is not set" {
-  unset PROJECT_NAME
+@test "fails when project-name file is missing" {
+  rm "$OUTPUT_SUB_PATH/aws-eks-cluster-management/expected-values/project-name"
 
   run "$SCRIPTS_DIR/aws-eks-cluster-management-post-build-validate"
   [ "$status" -ne 0 ]
-  assert_output_contains "PROJECT_NAME is required"
+  assert_output_contains "project-name"
+  assert_output_contains "not found"
+}
+
+@test "fails when aws-region file is missing" {
+  rm "$OUTPUT_SUB_PATH/aws-eks-cluster-management/expected-values/aws-region"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-post-build-validate"
+  [ "$status" -ne 0 ]
+  assert_output_contains "aws-region"
+  assert_output_contains "not found"
 }
 
 # === Controlplane-only yaml validation ===
@@ -266,8 +353,11 @@ privateCluster:
 
 addons:
   - name: coredns
+    version: latest
   - name: kube-proxy
+    version: latest
   - name: vpc-cni
+    version: latest
 YAML
 
   run "$SCRIPTS_DIR/aws-eks-cluster-management-post-build-validate"
@@ -288,11 +378,64 @@ metadata:
 
 addons:
   - name: coredns
+    version: latest
 YAML
 
   run "$SCRIPTS_DIR/aws-eks-cluster-management-post-build-validate"
   [ "$status" -ne 0 ]
   assert_output_contains "unsubstituted tokens found"
+}
+
+# === Substituted yaml copy to canonical dir ===
+
+@test "copies substituted cluster.yaml to substituted dir" {
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-post-build-validate"
+  [ "$status" -eq 0 ]
+
+  [ -f "$OUTPUT_SUB_PATH/aws-eks-cluster-management/substituted/cluster.yaml" ]
+  local content
+  content=$(< "$OUTPUT_SUB_PATH/aws-eks-cluster-management/substituted/cluster.yaml")
+  assert_contains "$content" "name: test-cluster" "substituted cluster.yaml"
+}
+
+@test "copies substituted controlplane-only yaml when present" {
+  local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
+
+  cat > "$context_dir/cluster-controlplane-only.yaml" << 'YAML'
+apiVersion: eksctl.io/v1alpha5
+kind: ClusterConfig
+
+metadata:
+  name: test-cluster
+  region: eu-west-1
+  version: "1.32"
+
+vpc:
+  id: vpc-0123456789abcdef0
+
+privateCluster:
+  enabled: true
+
+addons:
+  - name: coredns
+    version: latest
+  - name: kube-proxy
+    version: latest
+  - name: vpc-cni
+    version: latest
+YAML
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-post-build-validate"
+  [ "$status" -eq 0 ]
+
+  [ -f "$OUTPUT_SUB_PATH/aws-eks-cluster-management/substituted/cluster-controlplane-only.yaml" ]
+}
+
+@test "does not copy controlplane-only yaml to substituted dir when not present" {
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-post-build-validate"
+  [ "$status" -eq 0 ]
+
+  [ ! -f "$OUTPUT_SUB_PATH/aws-eks-cluster-management/substituted/cluster-controlplane-only.yaml" ]
 }
 
 # === Output messages ===
@@ -302,6 +445,8 @@ YAML
 
   assert_output_contains "EKS Cluster Management Post-Build Validate"
   assert_output_contains "Project name: test-cluster"
+  assert_output_contains "AWS region: eu-west-1"
+  assert_output_contains "Kubernetes version: 1.32"
 }
 
 # === Fail-complete behavior ===

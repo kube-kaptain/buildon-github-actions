@@ -22,12 +22,12 @@ setup() {
 
   # Create minimal required config files
   mkdir -p "$CONFIG_SUB_PATH"
-  printf 'eu-west-1' > "$CONFIG_SUB_PATH/EksRegion"
+  printf 'eu-west-1' > "$CONFIG_SUB_PATH/AwsRegion"
   printf 'vpc-0123456789abcdef0' > "$CONFIG_SUB_PATH/VpcId"
   printf 't3.medium' > "$CONFIG_SUB_PATH/NodegroupInstanceType"
-  printf 'subnet-aaa11111111111111' > "$CONFIG_SUB_PATH/PrivateSubnet1"
-  printf 'subnet-bbb22222222222222' > "$CONFIG_SUB_PATH/PrivateSubnet2"
-  printf 'subnet-ccc33333333333333' > "$CONFIG_SUB_PATH/PrivateSubnet3"
+  printf 'subnet-aaa11111111111111' > "$CONFIG_SUB_PATH/PrivateSubnetIdA"
+  printf 'subnet-bbb22222222222222' > "$CONFIG_SUB_PATH/PrivateSubnetIdB"
+  printf 'subnet-ccc33333333333333' > "$CONFIG_SUB_PATH/PrivateSubnetIdC"
 
   # Token defaults
   export TOKEN_DELIMITER_STYLE="shell"
@@ -47,19 +47,19 @@ kind: ClusterConfig
 
 metadata:
   name: ${ProjectName}
-  region: ${EksRegion}
-  version: "1.32"
+  region: ${AwsRegion}
+  version: "${KubernetesVersion}"
 
 vpc:
   id: ${VpcId}
   subnets:
     private:
-      az1:
-        id: ${PrivateSubnet1}
-      az2:
-        id: ${PrivateSubnet2}
-      az3:
-        id: ${PrivateSubnet3}
+      ${AwsRegion}a:
+        id: ${PrivateSubnetIdA}
+      ${AwsRegion}b:
+        id: ${PrivateSubnetIdB}
+      ${AwsRegion}c:
+        id: ${PrivateSubnetIdC}
 
 privateCluster:
   enabled: true
@@ -74,8 +74,11 @@ managedNodeGroups:
 
 addons:
   - name: coredns
+    version: latest
   - name: kube-proxy
+    version: latest
   - name: vpc-cni
+    version: latest
 YAML
 }
 
@@ -124,14 +127,83 @@ teardown() {
   assert_output_contains "metadata.region is missing"
 }
 
-@test "fails when metadata.region is not the EKS_REGION token" {
+@test "fails when metadata.region is not the AWS_REGION token" {
   local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
   yq -i '.metadata.region = "eu-west-1"' "$context_dir/cluster.yaml"
 
   run "$SCRIPTS_DIR/aws-eks-cluster-management-pre-build-validate"
   [ "$status" -ne 0 ]
   assert_output_contains "must be exactly"
-  assert_output_contains '${EksRegion}'
+  assert_output_contains '${AwsRegion}'
+}
+
+# === metadata.version validation ===
+
+@test "fails when metadata.version is missing" {
+  local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
+  yq -i 'del(.metadata.version)' "$context_dir/cluster.yaml"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-pre-build-validate"
+  [ "$status" -ne 0 ]
+  assert_output_contains "metadata.version is missing"
+}
+
+@test "fails when metadata.version is not the KUBERNETES_VERSION token" {
+  local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
+  yq -i '.metadata.version = "1.32"' "$context_dir/cluster.yaml"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-pre-build-validate"
+  [ "$status" -ne 0 ]
+  assert_output_contains "must be exactly"
+  assert_output_contains '${KubernetesVersion}'
+}
+
+# === vpc.id validation ===
+
+@test "fails when vpc.id is missing" {
+  local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
+  yq -i 'del(.vpc.id)' "$context_dir/cluster.yaml"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-pre-build-validate"
+  [ "$status" -ne 0 ]
+  assert_output_contains "vpc.id is missing"
+}
+
+@test "fails when vpc.id is not the VPC_ID token" {
+  local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
+  yq -i '.vpc.id = "vpc-hardcoded123"' "$context_dir/cluster.yaml"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-pre-build-validate"
+  [ "$status" -ne 0 ]
+  assert_output_contains "must be exactly"
+  assert_output_contains '${VpcId}'
+}
+
+# === subnet token validation ===
+
+@test "fails when subnet key is not region token + AZ letter" {
+  local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
+  # Replace the correct key with a bad one
+  yq -i '.vpc.subnets.private.badkey = .vpc.subnets.private."${AwsRegion}a"' "$context_dir/cluster.yaml"
+  yq -i 'del(.vpc.subnets.private."${AwsRegion}a")' "$context_dir/cluster.yaml"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-pre-build-validate"
+  [ "$status" -ne 0 ]
+  assert_output_contains "must be AWS_REGION token + single lowercase AZ letter"
+}
+
+@test "fails when private subnet id is hardcoded" {
+  local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
+  yq -i '.vpc.subnets.private."${AwsRegion}a".id = "subnet-hardcoded123"' "$context_dir/cluster.yaml"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-pre-build-validate"
+  [ "$status" -ne 0 ]
+  assert_output_contains "does not match expected token pattern"
+}
+
+@test "passes when all subnet ids use correct token pattern" {
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-pre-build-validate"
+  [ "$status" -eq 0 ]
 }
 
 # === nodegroup name validation ===
@@ -198,8 +270,8 @@ kind: ClusterConfig
 
 metadata:
   name: ${ProjectName}
-  region: ${EksRegion}
-  version: "1.32"
+  region: ${AwsRegion}
+  version: "${KubernetesVersion}"
 
 vpc:
   id: ${VpcId}
@@ -209,8 +281,11 @@ privateCluster:
 
 addons:
   - name: coredns
+    version: latest
   - name: kube-proxy
+    version: latest
   - name: vpc-cni
+    version: latest
 YAML
 
   run "$SCRIPTS_DIR/aws-eks-cluster-management-pre-build-validate"
@@ -225,14 +300,15 @@ kind: ClusterConfig
 
 metadata:
   name: wrong-name
-  region: ${EksRegion}
-  version: "1.32"
+  region: ${AwsRegion}
+  version: "${KubernetesVersion}"
 
 vpc:
   id: ${VpcId}
 
 addons:
   - name: coredns
+    version: latest
 YAML
 
   run "$SCRIPTS_DIR/aws-eks-cluster-management-pre-build-validate"
@@ -268,7 +344,10 @@ YAML
   run "$SCRIPTS_DIR/aws-eks-cluster-management-pre-build-validate"
   [ "$status" -eq 0 ]
   assert_output_contains 'Expected PROJECT_NAME token: ${ProjectName}'
-  assert_output_contains 'Expected EKS_REGION token: ${EksRegion}'
+  assert_output_contains 'Expected AWS_REGION token: ${AwsRegion}'
+  assert_output_contains 'Expected KUBERNETES_VERSION token: ${KubernetesVersion}'
+  assert_output_contains 'Expected VPC_ID token: ${VpcId}'
+  assert_output_contains 'Private subnet pattern: ${PrivateSubnetId?}'
 }
 
 # === Fail-complete behavior ===
