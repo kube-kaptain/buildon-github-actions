@@ -22,6 +22,7 @@ setup() {
   printf 'eu-west-1' > "$CONFIG_SUB_PATH/AwsRegion"
   printf 'vpc-0123456789abcdef0' > "$CONFIG_SUB_PATH/VpcId"
   printf 't3.medium' > "$CONFIG_SUB_PATH/NodegroupInstanceType"
+  printf 'arn:aws:kms:eu-west-1:123456789012:key/12345678-1234-1234-1234-123456789012' > "$CONFIG_SUB_PATH/SecretsEncryptionKeyArn"
   printf 'subnet-aaa11111111111111' > "$CONFIG_SUB_PATH/PrivateSubnetIdA"
   printf 'subnet-bbb22222222222222' > "$CONFIG_SUB_PATH/PrivateSubnetIdB"
   printf 'subnet-ccc33333333333333' > "$CONFIG_SUB_PATH/PrivateSubnetIdC"
@@ -124,17 +125,28 @@ teardown() {
   assert_output_contains "not found"
 }
 
+@test "fails when SecretsEncryptionKeyArn config file missing" {
+  rm "$CONFIG_SUB_PATH/SecretsEncryptionKeyArn"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -ne 0 ]
+  assert_output_contains "SECRETS_ENCRYPTION_KEY_ARN"
+  assert_output_contains "not found"
+}
+
 @test "reports all missing config files before exiting" {
   rm "$CONFIG_SUB_PATH/AwsRegion"
   rm "$CONFIG_SUB_PATH/VpcId"
   rm "$CONFIG_SUB_PATH/NodegroupInstanceType"
+  rm "$CONFIG_SUB_PATH/SecretsEncryptionKeyArn"
 
   run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
   [ "$status" -ne 0 ]
   assert_output_contains "AWS_REGION"
   assert_output_contains "VPC_ID"
   assert_output_contains "NODEGROUP_INSTANCE_TYPE"
-  assert_output_contains "3 missing config file(s)"
+  assert_output_contains "SECRETS_ENCRYPTION_KEY_ARN"
+  assert_output_contains "4 missing config file(s)"
 }
 
 # === Private networking config ===
@@ -226,6 +238,17 @@ teardown() {
   assert_contains "$content" 'id: ${VpcId}' "cluster.yaml"
 }
 
+@test "generates cluster.yaml with clusterEndpoints section" {
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -eq 0 ]
+
+  local content
+  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
+  assert_contains "$content" "clusterEndpoints:" "cluster.yaml"
+  assert_contains "$content" 'privateAccess: ${VpcClusterEndpointsPrivateAccess}' "cluster.yaml"
+  assert_contains "$content" 'publicAccess: ${VpcClusterEndpointsPublicAccess}' "cluster.yaml"
+}
+
 @test "generates cluster.yaml with private subnets when EKS_PRIVATE_NETWORKING=true" {
   run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
   [ "$status" -eq 0 ]
@@ -288,6 +311,81 @@ teardown() {
   [[ "$content" != *"securityGroup"* ]]
 }
 
+# === Auto Mode config ===
+
+@test "does not generate autoModeConfig by default" {
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -eq 0 ]
+
+  local content
+  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
+  [[ "$content" != *"autoModeConfig"* ]]
+}
+
+@test "generates autoModeConfig when config file exists with false" {
+  printf 'false' > "$CONFIG_SUB_PATH/AutoModeConfigEnabled"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -eq 0 ]
+
+  local content
+  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
+  assert_contains "$content" "autoModeConfig:" "cluster.yaml"
+  assert_contains "$content" 'enabled: ${AutoModeConfigEnabled}' "cluster.yaml"
+  [[ "$content" != *"nodePools"* ]]
+}
+
+@test "generates autoModeConfig with nodePools when enabled=true" {
+  printf 'true' > "$CONFIG_SUB_PATH/AutoModeConfigEnabled"
+  printf 'general-purpose,system' > "$CONFIG_SUB_PATH/AutoModeConfigNodePools"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -eq 0 ]
+
+  local content
+  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
+  assert_contains "$content" "autoModeConfig:" "cluster.yaml"
+  assert_contains "$content" 'enabled: ${AutoModeConfigEnabled}' "cluster.yaml"
+  assert_contains "$content" '- ${AutoModeConfigNodePool1}' "cluster.yaml"
+  assert_contains "$content" '- ${AutoModeConfigNodePool2}' "cluster.yaml"
+
+  # Verify numbered token files were written
+  [ "$(< "$OUTPUT_SUB_PATH/docker/config/AutoModeConfigNodePool1")" = "general-purpose" ]
+  [ "$(< "$OUTPUT_SUB_PATH/docker/config/AutoModeConfigNodePool2")" = "system" ]
+}
+
+@test "fails when AutoModeConfigEnabled=true but AutoModeConfigNodePools missing" {
+  printf 'true' > "$CONFIG_SUB_PATH/AutoModeConfigEnabled"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -ne 0 ]
+  assert_output_contains "AUTO_MODE_CONFIG_NODE_POOLS"
+  assert_output_contains "not found"
+}
+
+# === Network config ===
+
+@test "does not generate networkConfig by default" {
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -eq 0 ]
+
+  local content
+  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
+  [[ "$content" != *"networkConfig"* ]]
+}
+
+@test "generates networkConfig when config file exists" {
+  printf '10.100.0.0/16' > "$CONFIG_SUB_PATH/NetworkConfigServiceIpV4Cidr"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -eq 0 ]
+
+  local content
+  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
+  assert_contains "$content" "networkConfig:" "cluster.yaml"
+  assert_contains "$content" 'serviceIPv4CIDR: ${NetworkConfigServiceIpV4Cidr}' "cluster.yaml"
+}
+
 @test "generates cluster.yaml with managedNodeGroups section" {
   run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
   [ "$status" -eq 0 ]
@@ -302,6 +400,16 @@ teardown() {
   assert_contains "$content" '${NodegroupMaxSize}' "cluster.yaml"
 }
 
+@test "generates cluster.yaml with iam section" {
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -eq 0 ]
+
+  local content
+  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
+  assert_contains "$content" "iam:" "cluster.yaml"
+  assert_contains "$content" 'withOIDC: ${IamWithOidc}' "cluster.yaml"
+}
+
 @test "generates cluster.yaml with privateCluster section" {
   run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
   [ "$status" -eq 0 ]
@@ -310,6 +418,29 @@ teardown() {
   content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
   assert_contains "$content" "privateCluster:" "cluster.yaml"
   assert_contains "$content" "enabled: true" "cluster.yaml"
+}
+
+@test "generates cluster.yaml with cloudWatch section as block sequence" {
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -eq 0 ]
+
+  local content
+  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
+  assert_contains "$content" "cloudWatch:" "cluster.yaml"
+  assert_contains "$content" "clusterLogging:" "cluster.yaml"
+  assert_contains "$content" "enableTypes:" "cluster.yaml"
+  assert_contains "$content" '- ${CloudWatchClusterLoggingEnableType1}' "cluster.yaml"
+  assert_contains "$content" '- ${CloudWatchClusterLoggingEnableType5}' "cluster.yaml"
+}
+
+@test "generates cluster.yaml with secretsEncryption section" {
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -eq 0 ]
+
+  local content
+  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
+  assert_contains "$content" "secretsEncryption:" "cluster.yaml"
+  assert_contains "$content" 'keyARN: ${SecretsEncryptionKeyArn}' "cluster.yaml"
 }
 
 @test "generates cluster.yaml with addons" {
@@ -635,6 +766,75 @@ teardown() {
 
 # === Default token handling ===
 
+@test "writes default IAM_WITH_OIDC to platform config dir" {
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -eq 0 ]
+
+  [ -f "$OUTPUT_SUB_PATH/docker/config/IamWithOidc" ]
+  local value
+  value=$(< "$OUTPUT_SUB_PATH/docker/config/IamWithOidc")
+  [ "$value" = "true" ]
+}
+
+@test "writes default VPC_CLUSTER_ENDPOINTS_PRIVATE_ACCESS to platform config dir" {
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -eq 0 ]
+
+  [ -f "$OUTPUT_SUB_PATH/docker/config/VpcClusterEndpointsPrivateAccess" ]
+  local value
+  value=$(< "$OUTPUT_SUB_PATH/docker/config/VpcClusterEndpointsPrivateAccess")
+  [ "$value" = "true" ]
+}
+
+@test "writes default VPC_CLUSTER_ENDPOINTS_PUBLIC_ACCESS to platform config dir" {
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -eq 0 ]
+
+  [ -f "$OUTPUT_SUB_PATH/docker/config/VpcClusterEndpointsPublicAccess" ]
+  local value
+  value=$(< "$OUTPUT_SUB_PATH/docker/config/VpcClusterEndpointsPublicAccess")
+  [ "$value" = "false" ]
+}
+
+@test "expands default CLOUD_WATCH_CLUSTER_LOGGING_ENABLE_TYPES to numbered tokens" {
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -eq 0 ]
+
+  [ -f "$OUTPUT_SUB_PATH/docker/config/CloudWatchClusterLoggingEnableType1" ]
+  [ -f "$OUTPUT_SUB_PATH/docker/config/CloudWatchClusterLoggingEnableType2" ]
+  [ -f "$OUTPUT_SUB_PATH/docker/config/CloudWatchClusterLoggingEnableType3" ]
+  [ -f "$OUTPUT_SUB_PATH/docker/config/CloudWatchClusterLoggingEnableType4" ]
+  [ -f "$OUTPUT_SUB_PATH/docker/config/CloudWatchClusterLoggingEnableType5" ]
+  [ "$(< "$OUTPUT_SUB_PATH/docker/config/CloudWatchClusterLoggingEnableType1")" = "api" ]
+  [ "$(< "$OUTPUT_SUB_PATH/docker/config/CloudWatchClusterLoggingEnableType2")" = "audit" ]
+  [ "$(< "$OUTPUT_SUB_PATH/docker/config/CloudWatchClusterLoggingEnableType3")" = "authenticator" ]
+  [ "$(< "$OUTPUT_SUB_PATH/docker/config/CloudWatchClusterLoggingEnableType4")" = "controllerManager" ]
+  [ "$(< "$OUTPUT_SUB_PATH/docker/config/CloudWatchClusterLoggingEnableType5")" = "scheduler" ]
+}
+
+@test "does not overwrite user-provided IamWithOidc in CONFIG_SUB_PATH" {
+  printf 'false' > "$CONFIG_SUB_PATH/IamWithOidc"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -eq 0 ]
+
+  assert_output_contains "IAM_WITH_OIDC: user config found"
+}
+
+@test "expands user-provided CloudWatchClusterLoggingEnableTypes to numbered tokens" {
+  printf 'api,audit' > "$CONFIG_SUB_PATH/CloudWatchClusterLoggingEnableTypes"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -eq 0 ]
+
+  assert_output_contains "CLOUD_WATCH_CLUSTER_LOGGING_ENABLE_TYPES: user config found"
+  [ -f "$OUTPUT_SUB_PATH/docker/config/CloudWatchClusterLoggingEnableType1" ]
+  [ -f "$OUTPUT_SUB_PATH/docker/config/CloudWatchClusterLoggingEnableType2" ]
+  [ ! -f "$OUTPUT_SUB_PATH/docker/config/CloudWatchClusterLoggingEnableType3" ]
+  [ "$(< "$OUTPUT_SUB_PATH/docker/config/CloudWatchClusterLoggingEnableType1")" = "api" ]
+  [ "$(< "$OUTPUT_SUB_PATH/docker/config/CloudWatchClusterLoggingEnableType2")" = "audit" ]
+}
+
 @test "writes default NODEGROUP_DESIRED_CAPACITY to platform config dir" {
   run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
   [ "$status" -eq 0 ]
@@ -782,6 +982,10 @@ teardown() {
   assert_contains "$content" '${ProjectName}' "cluster.yaml"
   assert_contains "$content" '${AwsRegion}' "cluster.yaml"
   assert_contains "$content" '${KubernetesVersion}' "cluster.yaml"
+  assert_contains "$content" '${IamWithOidc}' "cluster.yaml"
+  assert_contains "$content" '${CloudWatchClusterLoggingEnableType1}' "cluster.yaml"
+  assert_contains "$content" '${CloudWatchClusterLoggingEnableType5}' "cluster.yaml"
+  assert_contains "$content" '${SecretsEncryptionKeyArn}' "cluster.yaml"
 }
 
 @test "generates tokens with mustache delimiter style" {
@@ -795,6 +999,10 @@ teardown() {
   assert_contains "$content" '{{ ProjectName }}' "cluster.yaml"
   assert_contains "$content" '{{ AwsRegion }}' "cluster.yaml"
   assert_contains "$content" '{{ KubernetesVersion }}' "cluster.yaml"
+  assert_contains "$content" '{{ IamWithOidc }}' "cluster.yaml"
+  assert_contains "$content" '{{ CloudWatchClusterLoggingEnableType1 }}' "cluster.yaml"
+  assert_contains "$content" '{{ CloudWatchClusterLoggingEnableType5 }}' "cluster.yaml"
+  assert_contains "$content" '{{ SecretsEncryptionKeyArn }}' "cluster.yaml"
 }
 
 @test "generates tokens with UPPER_SNAKE name style" {
@@ -804,6 +1012,7 @@ teardown() {
   mv "$CONFIG_SUB_PATH/AwsRegion" "$CONFIG_SUB_PATH/AWS_REGION"
   mv "$CONFIG_SUB_PATH/VpcId" "$CONFIG_SUB_PATH/VPC_ID"
   mv "$CONFIG_SUB_PATH/NodegroupInstanceType" "$CONFIG_SUB_PATH/NODEGROUP_INSTANCE_TYPE"
+  mv "$CONFIG_SUB_PATH/SecretsEncryptionKeyArn" "$CONFIG_SUB_PATH/SECRETS_ENCRYPTION_KEY_ARN"
   mv "$CONFIG_SUB_PATH/PrivateSubnetIdA" "$CONFIG_SUB_PATH/PRIVATE_SUBNET_ID_A"
   mv "$CONFIG_SUB_PATH/PrivateSubnetIdB" "$CONFIG_SUB_PATH/PRIVATE_SUBNET_ID_B"
   mv "$CONFIG_SUB_PATH/PrivateSubnetIdC" "$CONFIG_SUB_PATH/PRIVATE_SUBNET_ID_C"
@@ -816,6 +1025,10 @@ teardown() {
   assert_contains "$content" '${PROJECT_NAME}' "cluster.yaml"
   assert_contains "$content" '${AWS_REGION}' "cluster.yaml"
   assert_contains "$content" '${KUBERNETES_VERSION}' "cluster.yaml"
+  assert_contains "$content" '${IAM_WITH_OIDC}' "cluster.yaml"
+  assert_contains "$content" '${CLOUD_WATCH_CLUSTER_LOGGING_ENABLE_TYPE_1}' "cluster.yaml"
+  assert_contains "$content" '${CLOUD_WATCH_CLUSTER_LOGGING_ENABLE_TYPE_5}' "cluster.yaml"
+  assert_contains "$content" '${SECRETS_ENCRYPTION_KEY_ARN}' "cluster.yaml"
 
   # Config file names should also be UPPER_SNAKE
   [ -f "$OUTPUT_SUB_PATH/docker/config/KUBERNETES_VERSION" ]

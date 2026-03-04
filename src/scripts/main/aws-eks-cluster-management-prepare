@@ -20,16 +20,28 @@
 #   AWS_REGION                  - AWS region (e.g., eu-west-1)
 #   VPC_ID                      - VPC identifier
 #   NODEGROUP_INSTANCE_TYPE     - Node instance type (e.g., t3.medium)
+#   SECRETS_ENCRYPTION_KEY_ARN  - KMS key ARN for envelope encryption of Kubernetes secrets
 #   PRIVATE_SUBNET_ID_A/B/C     - Private subnet IDs (if EKS_PRIVATE_NETWORKING=true)
 #   PUBLIC_SUBNET_ID_A/B/C      - Public subnet IDs (if EKS_PUBLIC_NETWORKING=true)
 #
 # Conditional config (file in CONFIG_SUB_PATH, required when switch is on):
 #   VPC_SECURITY_GROUP          - Custom security group ID (if EKS_CUSTOM_SECURITY_GROUP=true)
+#   AUTO_MODE_CONFIG_NODE_POOLS - Node pool names, comma-separated (if AUTO_MODE_CONFIG_ENABLED=true)
+#     (expanded to numbered tokens: AUTO_MODE_CONFIG_NODE_POOL_1, ...POOL_2, etc.)
+#
+# Optional config (file in CONFIG_SUB_PATH, generates section when present):
+#   AUTO_MODE_CONFIG_ENABLED    - Enable EKS Auto Mode (generates autoModeConfig block)
+#   NETWORK_CONFIG_SERVICE_IP_V4_CIDR - Custom service CIDR (generates networkConfig block)
 #
 # Tokens with defaults (checked in CONFIG_SUB_PATH, default written to platform config dir if absent):
-#   NODEGROUP_DESIRED_CAPACITY  - default: 1
-#   NODEGROUP_MIN_SIZE          - default: 3
-#   NODEGROUP_MAX_SIZE          - default: 12
+#   IAM_WITH_OIDC                              - default: true
+#   VPC_CLUSTER_ENDPOINTS_PRIVATE_ACCESS       - default: true
+#   VPC_CLUSTER_ENDPOINTS_PUBLIC_ACCESS        - default: false
+#   CLOUD_WATCH_CLUSTER_LOGGING_ENABLE_TYPES   - default: api,audit,authenticator,controllerManager,scheduler
+#     (expanded to numbered tokens: CLOUD_WATCH_CLUSTER_LOGGING_ENABLE_TYPE_1, ...TYPE_2, etc.)
+#   NODEGROUP_DESIRED_CAPACITY                 - default: 1
+#   NODEGROUP_MIN_SIZE                         - default: 3
+#   NODEGROUP_MAX_SIZE                         - default: 12
 #
 # Inputs (environment variables / switches):
 #   EKS_BASE_IMAGE_REGISTRY    - Base image registry (default: ghcr.io)
@@ -180,6 +192,69 @@ ensure_default_token() {
   log "  ${token_name}: default ${default_value} written to platform config dir(s) where missing"
 }
 
+# expand_comma_list_token - Expand comma-separated value into individually numbered tokens
+#
+# User writes comma-separated values in CONFIG_SUB_PATH (e.g., api,audit,authenticator).
+# This function reads the source, splits on commas, and writes individually numbered
+# token files to the platform config dir (e.g., CloudWatchClusterLoggingEnableType1,
+# ...Type2, ...Type3). The generated YAML references these numbered tokens as a
+# block sequence. The source plural file is NOT used in the template.
+#
+# This avoids YAML flow sequence syntax ([${token}]) which breaks yq parsing
+# because ${} contains flow indicators.
+#
+# Args:
+#   $1 - UPPER_SNAKE token name (plural source, e.g., CLOUD_WATCH_CLUSTER_LOGGING_ENABLE_TYPES)
+#   $2 - UPPER_SNAKE singular base name (e.g., CLOUD_WATCH_CLUSTER_LOGGING_ENABLE_TYPE)
+#   $3 - default comma-separated value
+#
+# Sets in caller scope:
+#   expanded_count - number of items expanded
+#   expanded_tokens - array of formatted token references for YAML generation
+expand_comma_list_token() {
+  local source_name="$1"
+  local singular_base="$2"
+  local default_value="$3"
+  local source_config_name
+  source_config_name=$(convert_token_name "${TOKEN_NAME_STYLE}" "${source_name}")
+
+  local raw_value="${default_value}"
+
+  # User override in CONFIG_SUB_PATH
+  if [[ -f "${CONFIG_SUB_PATH}/${source_config_name}" ]]; then
+    raw_value=$(< "${CONFIG_SUB_PATH}/${source_config_name}")
+    raw_value="${raw_value%$'\n'}"
+    log "  ${source_name}: user config found in ${CONFIG_SUB_PATH}/"
+  else
+    log "  ${source_name}: using default: ${default_value}"
+  fi
+
+  # Split on commas
+  IFS=',' read -ra items <<< "${raw_value}"
+  expanded_count=${#items[@]}
+  expanded_tokens=()
+
+  for idx in $(seq 1 "${expanded_count}"); do
+    local item="${items[$((idx - 1))]}"
+    local numbered_name="${singular_base}_${idx}"
+    local numbered_config_name
+    numbered_config_name=$(convert_token_name "${TOKEN_NAME_STYLE}" "${numbered_name}")
+
+    # Write to each platform config dir
+    for config_dir in "${platform_config_dirs[@]}"; do
+      mkdir -p "${config_dir}"
+      printf '%s' "${item}" > "${config_dir}/${numbered_config_name}"
+    done
+
+    # Build token reference for YAML generation
+    local token_ref
+    token_ref=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "${numbered_name}")
+    expanded_tokens+=("${token_ref}")
+  done
+
+  log "  ${source_name}: expanded ${expanded_count} item(s) to numbered tokens"
+}
+
 # === Validate required inputs ===
 
 VERSION="${VERSION:?VERSION is required}"
@@ -194,6 +269,7 @@ resolve_config "KUBERNETES_MINOR_VERSION"
 require_config_file "AWS_REGION" "Create this file with the AWS region for your cluster (e.g., eu-west-1)"
 require_config_file "VPC_ID" "Create this file with the VPC ID for your cluster (e.g., vpc-0123456789abcdef0)"
 require_config_file "NODEGROUP_INSTANCE_TYPE" "Create this file with the instance type (e.g., t3.medium)"
+require_config_file "SECRETS_ENCRYPTION_KEY_ARN" "Create this file with the KMS key ARN for secrets encryption"
 
 if [[ "${EKS_PRIVATE_NETWORKING}" == "true" ]]; then
   require_config_file "PRIVATE_SUBNET_ID_A" "Required when EKS_PRIVATE_NETWORKING=true"
@@ -210,6 +286,27 @@ fi
 EKS_CUSTOM_SECURITY_GROUP="${EKS_CUSTOM_SECURITY_GROUP:-false}"
 if [[ "${EKS_CUSTOM_SECURITY_GROUP}" == "true" ]]; then
   require_config_file "VPC_SECURITY_GROUP" "Required when EKS_CUSTOM_SECURITY_GROUP=true"
+fi
+
+# Auto Mode - conditional: if config file exists, generate block; if true, require node pools
+has_auto_mode_config="false"
+auto_mode_needs_node_pools="false"
+auto_mode_config_name=$(convert_token_name "${TOKEN_NAME_STYLE}" "AUTO_MODE_CONFIG_ENABLED")
+if [[ -f "${CONFIG_SUB_PATH}/${auto_mode_config_name}" ]]; then
+  has_auto_mode_config="true"
+  auto_mode_value=$(< "${CONFIG_SUB_PATH}/${auto_mode_config_name}")
+  auto_mode_value="${auto_mode_value%$'\n'}"
+  if [[ "${auto_mode_value}" == "true" ]]; then
+    auto_mode_needs_node_pools="true"
+    require_config_file "AUTO_MODE_CONFIG_NODE_POOLS" "Required when AUTO_MODE_CONFIG_ENABLED=true"
+  fi
+fi
+
+# Network config - conditional: if config file exists, generate block
+has_network_config="false"
+network_config_name=$(convert_token_name "${TOKEN_NAME_STYLE}" "NETWORK_CONFIG_SERVICE_IP_V4_CIDR")
+if [[ -f "${CONFIG_SUB_PATH}/${network_config_name}" ]]; then
+  has_network_config="true"
 fi
 
 if [[ ${validation_errors} -gt 0 ]]; then
@@ -282,6 +379,12 @@ for config_dir in "${platform_config_dirs[@]}"; do
 done
 log "  NODE_GROUP_DEFAULT_PREFIX: ${nodegroup_prefix} written to platform config dir(s)"
 
+ensure_default_token "IAM_WITH_OIDC" "true"
+ensure_default_token "VPC_CLUSTER_ENDPOINTS_PRIVATE_ACCESS" "true"
+ensure_default_token "VPC_CLUSTER_ENDPOINTS_PUBLIC_ACCESS" "false"
+expand_comma_list_token "CLOUD_WATCH_CLUSTER_LOGGING_ENABLE_TYPES" "CLOUD_WATCH_CLUSTER_LOGGING_ENABLE_TYPE" "api,audit,authenticator,controllerManager,scheduler"
+cloudwatch_token_count="${expanded_count}"
+cloudwatch_tokens=("${expanded_tokens[@]}")
 ensure_default_token "NODEGROUP_DESIRED_CAPACITY" "${NODEGROUP_DESIRED_CAPACITY}"
 ensure_default_token "NODEGROUP_MIN_SIZE" "${NODEGROUP_MIN_SIZE}"
 ensure_default_token "NODEGROUP_MAX_SIZE" "${NODEGROUP_MAX_SIZE}"
@@ -291,7 +394,11 @@ ensure_default_token "NODEGROUP_MAX_SIZE" "${NODEGROUP_MAX_SIZE}"
 token_project_name=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "PROJECT_NAME")
 token_aws_region=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "AWS_REGION")
 token_kubernetes_version=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "KUBERNETES_VERSION")
+token_iam_with_oidc=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "IAM_WITH_OIDC")
 token_vpc_id=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "VPC_ID")
+token_vpc_private_access=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "VPC_CLUSTER_ENDPOINTS_PRIVATE_ACCESS")
+token_vpc_public_access=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "VPC_CLUSTER_ENDPOINTS_PUBLIC_ACCESS")
+token_secrets_encryption_key_arn=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "SECRETS_ENCRYPTION_KEY_ARN")
 token_nodegroup_prefix=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "NODE_GROUP_DEFAULT_PREFIX")
 token_instance_type=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "NODEGROUP_INSTANCE_TYPE")
 token_desired_capacity=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "NODEGROUP_DESIRED_CAPACITY")
@@ -312,6 +419,19 @@ fi
 
 if [[ "${EKS_CUSTOM_SECURITY_GROUP}" == "true" ]]; then
   token_security_group=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "VPC_SECURITY_GROUP")
+fi
+
+if [[ "${has_auto_mode_config}" == "true" ]]; then
+  token_auto_mode_enabled=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "AUTO_MODE_CONFIG_ENABLED")
+  if [[ "${auto_mode_needs_node_pools}" == "true" ]]; then
+    expand_comma_list_token "AUTO_MODE_CONFIG_NODE_POOLS" "AUTO_MODE_CONFIG_NODE_POOL" "" # no default - value comes from CONFIG_SUB_PATH
+    node_pools_token_count="${expanded_count}"
+    node_pools_tokens=("${expanded_tokens[@]}")
+  fi
+fi
+
+if [[ "${has_network_config}" == "true" ]]; then
+  token_network_service_ipv4_cidr=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "NETWORK_CONFIG_SERVICE_IP_V4_CIDR")
 fi
 
 # === Generate addon lists ===
@@ -344,8 +464,14 @@ metadata:
   region: ${token_aws_region}
   version: "${token_kubernetes_version}"
 
+iam:
+  withOIDC: ${token_iam_with_oidc}
+
 vpc:
   id: ${token_vpc_id}
+  clusterEndpoints:
+    privateAccess: ${token_vpc_private_access}
+    publicAccess: ${token_vpc_public_access}
 YAML
 
   if [[ "${EKS_CUSTOM_SECURITY_GROUP}" == "true" ]]; then
@@ -384,7 +510,39 @@ YAML
 
 privateCluster:
   enabled: ${EKS_PRIVATE_NETWORKING}
+
+cloudWatch:
+  clusterLogging:
+    enableTypes:
 YAML
+
+  for token in "${cloudwatch_tokens[@]}"; do
+    echo "      - ${token}"
+  done
+
+  cat <<YAML
+
+secretsEncryption:
+  keyARN: ${token_secrets_encryption_key_arn}
+YAML
+
+  if [[ "${has_auto_mode_config}" == "true" ]]; then
+    echo ""
+    echo "autoModeConfig:"
+    echo "  enabled: ${token_auto_mode_enabled}"
+    if [[ "${auto_mode_needs_node_pools}" == "true" ]]; then
+      echo "  nodePools:"
+      for token in "${node_pools_tokens[@]}"; do
+        echo "    - ${token}"
+      done
+    fi
+  fi
+
+  if [[ "${has_network_config}" == "true" ]]; then
+    echo ""
+    echo "networkConfig:"
+    echo "  serviceIPv4CIDR: ${token_network_service_ipv4_cidr}"
+  fi
 
   cat <<YAML
 
