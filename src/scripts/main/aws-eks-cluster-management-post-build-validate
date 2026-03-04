@@ -64,11 +64,12 @@ source "${SCRIPT_DIR}/../lib/docker-build-shared.bash"
 # === Read canonical values from prepare output ===
 
 canonical_dir="${OUTPUT_SUB_PATH}/aws-eks-cluster-management"
+expected_values_dir="${canonical_dir}/expected-values"
 canonical_error=0
 
 for canonical_file in project-name aws-region kubernetes-version nodegroup-prefix; do
-  if [[ ! -f "${canonical_dir}/${canonical_file}" ]]; then
-    echo "ERROR: ${canonical_dir}/${canonical_file} not found - was aws-eks-cluster-management-prepare run?" >&2
+  if [[ ! -f "${expected_values_dir}/${canonical_file}" ]]; then
+    echo "ERROR: ${expected_values_dir}/${canonical_file} not found - was aws-eks-cluster-management-prepare run?" >&2
     canonical_error=1
   fi
 done
@@ -76,10 +77,10 @@ if [[ "${canonical_error}" -ne 0 ]]; then
   exit 1
 fi
 
-project_name=$(< "${canonical_dir}/project-name")
-aws_region=$(< "${canonical_dir}/aws-region")
-kubernetes_version=$(< "${canonical_dir}/kubernetes-version")
-nodegroup_prefix=$(< "${canonical_dir}/nodegroup-prefix")
+project_name=$(< "${expected_values_dir}/project-name")
+aws_region=$(< "${expected_values_dir}/aws-region")
+kubernetes_version=$(< "${expected_values_dir}/kubernetes-version")
+nodegroup_prefix=$(< "${expected_values_dir}/nodegroup-prefix")
 
 # === Determine context dirs and image URIs ===
 

@@ -82,11 +82,11 @@ setup() {
 
   # Create canonical value files (as written by prepare step)
   local nodegroup_prefix="ng-20260302-k-1-32-v-1-0-0"
-  mkdir -p "$OUTPUT_SUB_PATH/aws-eks-cluster-management"
-  printf '%s' "test-cluster" > "$OUTPUT_SUB_PATH/aws-eks-cluster-management/project-name"
-  printf '%s' "eu-west-1" > "$OUTPUT_SUB_PATH/aws-eks-cluster-management/aws-region"
-  printf '%s' "1.32" > "$OUTPUT_SUB_PATH/aws-eks-cluster-management/kubernetes-version"
-  printf '%s' "$nodegroup_prefix" > "$OUTPUT_SUB_PATH/aws-eks-cluster-management/nodegroup-prefix"
+  mkdir -p "$OUTPUT_SUB_PATH/aws-eks-cluster-management/expected-values"
+  printf '%s' "test-cluster" > "$OUTPUT_SUB_PATH/aws-eks-cluster-management/expected-values/project-name"
+  printf '%s' "eu-west-1" > "$OUTPUT_SUB_PATH/aws-eks-cluster-management/expected-values/aws-region"
+  printf '%s' "1.32" > "$OUTPUT_SUB_PATH/aws-eks-cluster-management/expected-values/kubernetes-version"
+  printf '%s' "$nodegroup_prefix" > "$OUTPUT_SUB_PATH/aws-eks-cluster-management/expected-values/nodegroup-prefix"
 
   # Create context dir with substituted cluster.yaml (tokens already replaced)
   local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
@@ -179,7 +179,7 @@ teardown() {
 @test "fails when metadata.region is not a valid AWS region format" {
   local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
   # Set both the canonical file and yaml to the same bad value
-  printf '%s' "not-a-region" > "$OUTPUT_SUB_PATH/aws-eks-cluster-management/aws-region"
+  printf '%s' "not-a-region" > "$OUTPUT_SUB_PATH/aws-eks-cluster-management/expected-values/aws-region"
   yq -i '.metadata.region = "not-a-region"' "$context_dir/cluster.yaml"
 
   run "$SCRIPTS_DIR/aws-eks-cluster-management-post-build-validate"
@@ -200,7 +200,7 @@ teardown() {
 
 @test "fails when metadata.version minor part is less than 2 digits" {
   local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
-  printf '%s' "1.9" > "$OUTPUT_SUB_PATH/aws-eks-cluster-management/kubernetes-version"
+  printf '%s' "1.9" > "$OUTPUT_SUB_PATH/aws-eks-cluster-management/expected-values/kubernetes-version"
   yq -i '.metadata.version = "1.9"' "$context_dir/cluster.yaml"
 
   run "$SCRIPTS_DIR/aws-eks-cluster-management-post-build-validate"
@@ -210,7 +210,7 @@ teardown() {
 
 @test "passes when metadata.version minor part has 3 digits" {
   local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
-  printf '%s' "1.100" > "$OUTPUT_SUB_PATH/aws-eks-cluster-management/kubernetes-version"
+  printf '%s' "1.100" > "$OUTPUT_SUB_PATH/aws-eks-cluster-management/expected-values/kubernetes-version"
   yq -i '.metadata.version = "1.100"' "$context_dir/cluster.yaml"
 
   run "$SCRIPTS_DIR/aws-eks-cluster-management-post-build-validate"
@@ -261,7 +261,7 @@ teardown() {
 @test "fails with duplicate nodegroup names in substituted yaml" {
   local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
   local prefix
-  prefix=$(< "$OUTPUT_SUB_PATH/aws-eks-cluster-management/nodegroup-prefix")
+  prefix=$(< "$OUTPUT_SUB_PATH/aws-eks-cluster-management/expected-values/nodegroup-prefix")
   yq -i ".managedNodeGroups += [{\"name\": \"${prefix}\", \"instanceType\": \"g5.xlarge\"}]" "$context_dir/cluster.yaml"
 
   run "$SCRIPTS_DIR/aws-eks-cluster-management-post-build-validate"
@@ -278,7 +278,7 @@ teardown() {
 }
 
 @test "fails when kubernetes-version file is missing" {
-  rm "$OUTPUT_SUB_PATH/aws-eks-cluster-management/kubernetes-version"
+  rm "$OUTPUT_SUB_PATH/aws-eks-cluster-management/expected-values/kubernetes-version"
 
   run "$SCRIPTS_DIR/aws-eks-cluster-management-post-build-validate"
   [ "$status" -ne 0 ]
@@ -287,7 +287,7 @@ teardown() {
 }
 
 @test "fails when nodegroup-prefix file is missing" {
-  rm "$OUTPUT_SUB_PATH/aws-eks-cluster-management/nodegroup-prefix"
+  rm "$OUTPUT_SUB_PATH/aws-eks-cluster-management/expected-values/nodegroup-prefix"
 
   run "$SCRIPTS_DIR/aws-eks-cluster-management-post-build-validate"
   [ "$status" -ne 0 ]
@@ -314,7 +314,7 @@ teardown() {
 # === Canonical value files ===
 
 @test "fails when project-name file is missing" {
-  rm "$OUTPUT_SUB_PATH/aws-eks-cluster-management/project-name"
+  rm "$OUTPUT_SUB_PATH/aws-eks-cluster-management/expected-values/project-name"
 
   run "$SCRIPTS_DIR/aws-eks-cluster-management-post-build-validate"
   [ "$status" -ne 0 ]
@@ -323,7 +323,7 @@ teardown() {
 }
 
 @test "fails when aws-region file is missing" {
-  rm "$OUTPUT_SUB_PATH/aws-eks-cluster-management/aws-region"
+  rm "$OUTPUT_SUB_PATH/aws-eks-cluster-management/expected-values/aws-region"
 
   run "$SCRIPTS_DIR/aws-eks-cluster-management-post-build-validate"
   [ "$status" -ne 0 ]

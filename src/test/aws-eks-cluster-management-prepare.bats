@@ -558,9 +558,9 @@ teardown() {
   run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
   [ "$status" -eq 0 ]
 
-  [ -f "$OUTPUT_SUB_PATH/aws-eks-cluster-management/nodegroup-prefix" ]
+  [ -f "$OUTPUT_SUB_PATH/aws-eks-cluster-management/expected-values/nodegroup-prefix" ]
   local prefix
-  prefix=$(< "$OUTPUT_SUB_PATH/aws-eks-cluster-management/nodegroup-prefix")
+  prefix=$(< "$OUTPUT_SUB_PATH/aws-eks-cluster-management/expected-values/nodegroup-prefix")
   [[ "$prefix" == ng-* ]]
   [[ "$prefix" == *-k-1-32-v-1-0-0 ]]
 }
@@ -569,9 +569,9 @@ teardown() {
   run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
   [ "$status" -eq 0 ]
 
-  [ -f "$OUTPUT_SUB_PATH/aws-eks-cluster-management/kubernetes-version" ]
+  [ -f "$OUTPUT_SUB_PATH/aws-eks-cluster-management/expected-values/kubernetes-version" ]
   local version
-  version=$(< "$OUTPUT_SUB_PATH/aws-eks-cluster-management/kubernetes-version")
+  version=$(< "$OUTPUT_SUB_PATH/aws-eks-cluster-management/expected-values/kubernetes-version")
   [ "$version" = "1.32" ]
 }
 

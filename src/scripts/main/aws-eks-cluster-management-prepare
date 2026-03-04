@@ -227,11 +227,12 @@ nodegroup_prefix="ng-${timestamp}-k-${KUBERNETES_MAJOR_VERSION}-${KUBERNETES_MIN
 
 # Persist canonical values for post-build-validate (before platform dirs are set up)
 canonical_dir="${OUTPUT_SUB_PATH}/aws-eks-cluster-management"
-mkdir -p "${canonical_dir}"
-printf '%s' "${PROJECT_NAME}" > "${canonical_dir}/project-name"
-printf '%s' "$(< "${CONFIG_SUB_PATH}/$(convert_token_name "${TOKEN_NAME_STYLE}" "AWS_REGION")")" > "${canonical_dir}/aws-region"
-printf '%s' "${k8s_version}" > "${canonical_dir}/kubernetes-version"
-printf '%s' "${nodegroup_prefix}" > "${canonical_dir}/nodegroup-prefix"
+expected_values_dir="${canonical_dir}/expected-values"
+mkdir -p "${expected_values_dir}"
+printf '%s' "${PROJECT_NAME}" > "${expected_values_dir}/project-name"
+printf '%s' "$(< "${CONFIG_SUB_PATH}/$(convert_token_name "${TOKEN_NAME_STYLE}" "AWS_REGION")")" > "${expected_values_dir}/aws-region"
+printf '%s' "${k8s_version}" > "${expected_values_dir}/kubernetes-version"
+printf '%s' "${nodegroup_prefix}" > "${expected_values_dir}/nodegroup-prefix"
 
 # === Determine platforms, context dirs, and config dirs ===
 
