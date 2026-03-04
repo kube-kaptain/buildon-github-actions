@@ -46,6 +46,8 @@
 #     (expanded to numbered tokens: CLOUD_WATCH_CLUSTER_LOGGING_ENABLE_TYPE_1, ...TYPE_2, etc.)
 #   NODEGROUP_AMI_FAMILY                       - default: AmazonLinux2023
 #   NODEGROUP_VOLUME_SIZE                      - default: 20
+#   NODEGROUP_UPDATE_CONFIG_MAX_UNAVAILABLE    - default: 0 (both zero is invalid)
+#   NODEGROUP_UPDATE_CONFIG_MAX_SURGE          - default: 1 (both zero is invalid)
 #   NODEGROUP_DESIRED_CAPACITY                 - default: 1
 #   NODEGROUP_MIN_SIZE                         - default: 3
 #   NODEGROUP_MAX_SIZE                         - default: 12
@@ -476,9 +478,34 @@ cloudwatch_token_count="${expanded_count}"
 cloudwatch_tokens=("${expanded_tokens[@]}")
 ensure_default_token "NODEGROUP_AMI_FAMILY" "AmazonLinux2023"
 ensure_default_token "NODEGROUP_VOLUME_SIZE" "20"
+ensure_default_token "NODEGROUP_UPDATE_CONFIG_MAX_UNAVAILABLE" "0"
+ensure_default_token "NODEGROUP_UPDATE_CONFIG_MAX_SURGE" "1"
 ensure_default_token "NODEGROUP_DESIRED_CAPACITY" "${NODEGROUP_DESIRED_CAPACITY}"
 ensure_default_token "NODEGROUP_MIN_SIZE" "${NODEGROUP_MIN_SIZE}"
 ensure_default_token "NODEGROUP_MAX_SIZE" "${NODEGROUP_MAX_SIZE}"
+
+# Validate update config: both zero is invalid
+update_max_unavailable_name=$(convert_token_name "${TOKEN_NAME_STYLE}" "NODEGROUP_UPDATE_CONFIG_MAX_UNAVAILABLE")
+update_max_surge_name=$(convert_token_name "${TOKEN_NAME_STYLE}" "NODEGROUP_UPDATE_CONFIG_MAX_SURGE")
+update_max_unavailable_val="0"
+update_max_surge_val="1"
+if [[ -f "${CONFIG_SUB_PATH}/${update_max_unavailable_name}" ]]; then
+  update_max_unavailable_val=$(< "${CONFIG_SUB_PATH}/${update_max_unavailable_name}")
+  update_max_unavailable_val="${update_max_unavailable_val%$'\n'}"
+fi
+if [[ -f "${CONFIG_SUB_PATH}/${update_max_surge_name}" ]]; then
+  update_max_surge_val=$(< "${CONFIG_SUB_PATH}/${update_max_surge_name}")
+  update_max_surge_val="${update_max_surge_val%$'\n'}"
+fi
+if [[ "${update_max_unavailable_val}" == "0" && "${update_max_surge_val}" == "0" ]]; then
+  log_error "NODEGROUP_UPDATE_CONFIG_MAX_UNAVAILABLE and NODEGROUP_UPDATE_CONFIG_MAX_SURGE cannot both be 0"
+  validation_errors=$((validation_errors + 1))
+fi
+
+if [[ ${validation_errors} -gt 0 ]]; then
+  log_error "Validation failed with ${validation_errors} error(s)"
+  exit 1
+fi
 
 # === Build token references ===
 
@@ -494,6 +521,8 @@ token_nodegroup_prefix=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TO
 token_instance_type=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "NODEGROUP_INSTANCE_TYPE")
 token_ami_family=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "NODEGROUP_AMI_FAMILY")
 token_volume_size=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "NODEGROUP_VOLUME_SIZE")
+token_update_max_unavailable=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "NODEGROUP_UPDATE_CONFIG_MAX_UNAVAILABLE")
+token_update_max_surge=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "NODEGROUP_UPDATE_CONFIG_MAX_SURGE")
 token_desired_capacity=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "NODEGROUP_DESIRED_CAPACITY")
 token_min_size=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "NODEGROUP_MIN_SIZE")
 token_max_size=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "NODEGROUP_MAX_SIZE")
@@ -688,6 +717,9 @@ YAML
     desiredCapacity: ${token_desired_capacity}
     minSize: ${token_min_size}
     maxSize: ${token_max_size}
+    updateConfig:
+      maxUnavailable: ${token_update_max_unavailable}
+      maxSurge: ${token_update_max_surge}
     tags:
       ManagedBy: "Kaptain aws-eks-cluster-management system"
       ManagedByGitRepo: ${token_project_name}
