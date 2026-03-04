@@ -38,6 +38,8 @@
 #   NODEGROUP_TAGS                      - Additional nodegroup tags (flat yaml: key: value per line)
 #   NODEGROUP_LABELS                    - Additional nodegroup labels (flat yaml: key: value per line)
 #   NODEGROUP_IAM_INSTANCE_ROLE_ARN     - Custom IAM instance role ARN for nodegroup
+#   ADDONS_<NAME>_SERVICE_ACCOUNT_ROLE_ARN - Per-addon service account role ARN
+#     (e.g., ADDONS_VPC_CNI_SERVICE_ACCOUNT_ROLE_ARN → AddonsVpcCniServiceAccountRoleArn)
 #
 # Tokens with defaults (checked in CONFIG_SUB_PATH, default written to platform config dir if absent):
 #   IAM_WITH_OIDC                              - default: true
@@ -711,6 +713,17 @@ YAML
   for addon in "${addon_list[@]}"; do
     echo "  - name: ${addon}"
     echo "    version: latest"
+    # Check for optional service account role ARN config file
+    local addon_upper_snake
+    addon_upper_snake=$(echo "${addon}" | tr '-' '_' | tr '[:lower:]' '[:upper:]')
+    local sa_role_canonical="ADDONS_${addon_upper_snake}_SERVICE_ACCOUNT_ROLE_ARN"
+    local sa_role_config_name
+    sa_role_config_name=$(convert_token_name "${TOKEN_NAME_STYLE}" "${sa_role_canonical}")
+    if [[ -f "${CONFIG_SUB_PATH}/${sa_role_config_name}" ]]; then
+      local sa_role_token
+      sa_role_token=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "${sa_role_canonical}")
+      echo "    serviceAccountRoleARN: ${sa_role_token}"
+    fi
   done
 
   if [[ "${include_nodegroups}" == "true" ]]; then

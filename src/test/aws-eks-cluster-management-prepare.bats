@@ -619,6 +619,42 @@ EOF
   assert_contains "$content" "version: latest" "cluster.yaml"
 }
 
+@test "adds serviceAccountRoleARN to addon when config file present" {
+  printf 'arn:aws:iam::123456789012:role/vpc-cni-role' > "$CONFIG_SUB_PATH/AddonsVpcCniServiceAccountRoleArn"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -eq 0 ]
+
+  local content
+  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
+  assert_contains "$content" 'serviceAccountRoleARN: ${AddonsVpcCniServiceAccountRoleArn}' "cluster.yaml"
+}
+
+@test "does not add serviceAccountRoleARN when config file absent" {
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -eq 0 ]
+
+  local content
+  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
+  [[ "$content" != *"serviceAccountRoleARN"* ]]
+}
+
+@test "adds serviceAccountRoleARN only to matching addon" {
+  printf 'arn:aws:iam::123456789012:role/ebs-role' > "$CONFIG_SUB_PATH/AddonsAwsEbsCsiDriverServiceAccountRoleArn"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -eq 0 ]
+
+  local content
+  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
+  # ebs addon has it
+  assert_contains "$content" 'serviceAccountRoleARN: ${AddonsAwsEbsCsiDriverServiceAccountRoleArn}' "cluster.yaml"
+  # Count occurrences - should be exactly 1
+  local count
+  count=$(echo "$content" | grep -c "serviceAccountRoleARN" || true)
+  [ "$count" -eq 1 ]
+}
+
 # === Cilium eBPF networking ===
 
 @test "generates controlplane-only yaml when EKS_CILIUM_EBPF_NETWORKING=true" {
