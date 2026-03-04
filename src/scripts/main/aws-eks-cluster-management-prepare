@@ -44,6 +44,8 @@
 #   VPC_CLUSTER_ENDPOINTS_PUBLIC_ACCESS        - default: false
 #   CLOUD_WATCH_CLUSTER_LOGGING_ENABLE_TYPES   - default: api,audit,authenticator,controllerManager,scheduler
 #     (expanded to numbered tokens: CLOUD_WATCH_CLUSTER_LOGGING_ENABLE_TYPE_1, ...TYPE_2, etc.)
+#   NODEGROUP_AMI_FAMILY                       - default: AmazonLinux2023
+#   NODEGROUP_VOLUME_SIZE                      - default: 20
 #   NODEGROUP_DESIRED_CAPACITY                 - default: 1
 #   NODEGROUP_MIN_SIZE                         - default: 3
 #   NODEGROUP_MAX_SIZE                         - default: 12
@@ -472,6 +474,8 @@ ensure_default_token "VPC_CLUSTER_ENDPOINTS_PUBLIC_ACCESS" "false"
 expand_comma_list_token "CLOUD_WATCH_CLUSTER_LOGGING_ENABLE_TYPES" "CLOUD_WATCH_CLUSTER_LOGGING_ENABLE_TYPE" "api,audit,authenticator,controllerManager,scheduler"
 cloudwatch_token_count="${expanded_count}"
 cloudwatch_tokens=("${expanded_tokens[@]}")
+ensure_default_token "NODEGROUP_AMI_FAMILY" "AmazonLinux2023"
+ensure_default_token "NODEGROUP_VOLUME_SIZE" "20"
 ensure_default_token "NODEGROUP_DESIRED_CAPACITY" "${NODEGROUP_DESIRED_CAPACITY}"
 ensure_default_token "NODEGROUP_MIN_SIZE" "${NODEGROUP_MIN_SIZE}"
 ensure_default_token "NODEGROUP_MAX_SIZE" "${NODEGROUP_MAX_SIZE}"
@@ -488,6 +492,8 @@ token_vpc_public_access=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${T
 token_secrets_encryption_key_arn=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "SECRETS_ENCRYPTION_KEY_ARN")
 token_nodegroup_prefix=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "NODE_GROUP_DEFAULT_PREFIX")
 token_instance_type=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "NODEGROUP_INSTANCE_TYPE")
+token_ami_family=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "NODEGROUP_AMI_FAMILY")
+token_volume_size=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "NODEGROUP_VOLUME_SIZE")
 token_desired_capacity=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "NODEGROUP_DESIRED_CAPACITY")
 token_min_size=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "NODEGROUP_MIN_SIZE")
 token_max_size=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "NODEGROUP_MAX_SIZE")
@@ -671,7 +677,9 @@ YAML
 
 managedNodeGroups:
   - name: ${token_nodegroup_prefix}
+    amiFamily: ${token_ami_family}
     instanceType: ${token_instance_type}
+    volumeSize: ${token_volume_size}
 YAML
     if [[ "${has_nodegroup_private_networking}" == "true" ]]; then
       echo "    privateNetworking: ${token_nodegroup_private_networking}"

@@ -395,6 +395,8 @@ teardown() {
   assert_contains "$content" "managedNodeGroups:" "cluster.yaml"
   assert_contains "$content" '${NodeGroupDefaultPrefix}' "cluster.yaml"
   assert_contains "$content" '${NodegroupInstanceType}' "cluster.yaml"
+  assert_contains "$content" '${NodegroupAmiFamily}' "cluster.yaml"
+  assert_contains "$content" '${NodegroupVolumeSize}' "cluster.yaml"
   assert_contains "$content" '${NodegroupDesiredCapacity}' "cluster.yaml"
   assert_contains "$content" '${NodegroupMinSize}' "cluster.yaml"
   assert_contains "$content" '${NodegroupMaxSize}' "cluster.yaml"
@@ -969,6 +971,26 @@ EOF
   [ ! -f "$OUTPUT_SUB_PATH/docker/config/CloudWatchClusterLoggingEnableType3" ]
   [ "$(< "$OUTPUT_SUB_PATH/docker/config/CloudWatchClusterLoggingEnableType1")" = "api" ]
   [ "$(< "$OUTPUT_SUB_PATH/docker/config/CloudWatchClusterLoggingEnableType2")" = "audit" ]
+}
+
+@test "writes default NODEGROUP_AMI_FAMILY to platform config dir" {
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -eq 0 ]
+
+  [ -f "$OUTPUT_SUB_PATH/docker/config/NodegroupAmiFamily" ]
+  local value
+  value=$(< "$OUTPUT_SUB_PATH/docker/config/NodegroupAmiFamily")
+  [ "$value" = "AmazonLinux2023" ]
+}
+
+@test "writes default NODEGROUP_VOLUME_SIZE to platform config dir" {
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -eq 0 ]
+
+  [ -f "$OUTPUT_SUB_PATH/docker/config/NodegroupVolumeSize" ]
+  local value
+  value=$(< "$OUTPUT_SUB_PATH/docker/config/NodegroupVolumeSize")
+  [ "$value" = "20" ]
 }
 
 @test "writes default NODEGROUP_DESIRED_CAPACITY to platform config dir" {
