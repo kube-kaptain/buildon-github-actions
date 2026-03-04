@@ -61,10 +61,10 @@ _build_subnet_pattern() {
   ref_a=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "$1")
   ref_b=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "$2")
   local i=0
-  while [[ "${ref_a:$i:1}" == "${ref_b:$i:1}" && $i -lt ${#ref_a} ]]; do
+  while [[ "${ref_a:${i}:1}" == "${ref_b:${i}:1}" && ${i} -lt ${#ref_a} ]]; do
     ((i++))
   done
-  echo "${ref_a:0:$i}?${ref_a:$((i+1))}"
+  echo "${ref_a:0:${i}}?${ref_a:$((i+1))}"
 }
 
 private_subnet_pattern=$(_build_subnet_pattern "PRIVATE_SUBNET_ID_A" "PRIVATE_SUBNET_ID_B")
@@ -171,7 +171,7 @@ validate_cluster_yaml_tokens() {
         if [[ -z "${sid}" || "${sid}" == "null" ]]; then
           continue
         fi
-        # shellcheck disable=SC2254 # pattern is intentionally a glob
+        # shellcheck disable=SC2053 # pattern is intentionally a glob
         if [[ "${sid}" != ${subnet_pattern} ]]; then
           fail "${yaml_file}: ${subnet_type} subnet id '${sid}' does not match expected token pattern '${subnet_pattern}'"
         fi

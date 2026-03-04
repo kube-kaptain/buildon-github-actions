@@ -484,7 +484,6 @@ ensure_default_token "IAM_WITH_OIDC" "true"
 ensure_default_token "VPC_CLUSTER_ENDPOINTS_PRIVATE_ACCESS" "true"
 ensure_default_token "VPC_CLUSTER_ENDPOINTS_PUBLIC_ACCESS" "false"
 expand_comma_list_token "CLOUD_WATCH_CLUSTER_LOGGING_ENABLE_TYPES" "CLOUD_WATCH_CLUSTER_LOGGING_ENABLE_TYPE" "api,audit,authenticator,controllerManager,scheduler"
-cloudwatch_token_count="${expanded_count}"
 cloudwatch_tokens=("${expanded_tokens[@]}")
 ensure_default_token "NODEGROUP_AMI_FAMILY" "AmazonLinux2023"
 ensure_default_token "NODEGROUP_VOLUME_SIZE" "20"
@@ -569,7 +568,6 @@ if [[ "${has_auto_mode_config}" == "true" ]]; then
   token_auto_mode_enabled=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "AUTO_MODE_CONFIG_ENABLED")
   if [[ "${auto_mode_needs_node_pools}" == "true" ]]; then
     expand_comma_list_token "AUTO_MODE_CONFIG_NODE_POOLS" "AUTO_MODE_CONFIG_NODE_POOL" "" # no default - value comes from CONFIG_SUB_PATH
-    node_pools_token_count="${expanded_count}"
     node_pools_tokens=("${expanded_tokens[@]}")
   fi
 fi
