@@ -22,7 +22,7 @@ setup() {
 
   # Create minimal required config files
   mkdir -p "$CONFIG_SUB_PATH"
-  printf 'eu-west-1' > "$CONFIG_SUB_PATH/EksRegion"
+  printf 'eu-west-1' > "$CONFIG_SUB_PATH/AwsRegion"
   printf 'vpc-0123456789abcdef0' > "$CONFIG_SUB_PATH/VpcId"
   printf 't3.medium' > "$CONFIG_SUB_PATH/NodegroupInstanceType"
   printf 'subnet-aaa11111111111111' > "$CONFIG_SUB_PATH/PrivateSubnet1"
@@ -47,7 +47,7 @@ kind: ClusterConfig
 
 metadata:
   name: ${ProjectName}
-  region: ${EksRegion}
+  region: ${AwsRegion}
   version: "1.32"
 
 vpc:
@@ -124,14 +124,14 @@ teardown() {
   assert_output_contains "metadata.region is missing"
 }
 
-@test "fails when metadata.region is not the EKS_REGION token" {
+@test "fails when metadata.region is not the AWS_REGION token" {
   local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
   yq -i '.metadata.region = "eu-west-1"' "$context_dir/cluster.yaml"
 
   run "$SCRIPTS_DIR/aws-eks-cluster-management-pre-build-validate"
   [ "$status" -ne 0 ]
   assert_output_contains "must be exactly"
-  assert_output_contains '${EksRegion}'
+  assert_output_contains '${AwsRegion}'
 }
 
 # === nodegroup name validation ===
@@ -198,7 +198,7 @@ kind: ClusterConfig
 
 metadata:
   name: ${ProjectName}
-  region: ${EksRegion}
+  region: ${AwsRegion}
   version: "1.32"
 
 vpc:
@@ -225,7 +225,7 @@ kind: ClusterConfig
 
 metadata:
   name: wrong-name
-  region: ${EksRegion}
+  region: ${AwsRegion}
   version: "1.32"
 
 vpc:
@@ -268,7 +268,7 @@ YAML
   run "$SCRIPTS_DIR/aws-eks-cluster-management-pre-build-validate"
   [ "$status" -eq 0 ]
   assert_output_contains 'Expected PROJECT_NAME token: ${ProjectName}'
-  assert_output_contains 'Expected EKS_REGION token: ${EksRegion}'
+  assert_output_contains 'Expected AWS_REGION token: ${AwsRegion}'
 }
 
 # === Fail-complete behavior ===

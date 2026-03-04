@@ -19,7 +19,7 @@ setup() {
 
   # Create required config files (PascalCase names)
   mkdir -p "$CONFIG_SUB_PATH"
-  printf 'eu-west-1' > "$CONFIG_SUB_PATH/EksRegion"
+  printf 'eu-west-1' > "$CONFIG_SUB_PATH/AwsRegion"
   printf 'vpc-0123456789abcdef0' > "$CONFIG_SUB_PATH/VpcId"
   printf 't3.medium' > "$CONFIG_SUB_PATH/NodegroupInstanceType"
   printf 'subnet-aaa11111111111111' > "$CONFIG_SUB_PATH/PrivateSubnet1"
@@ -97,12 +97,12 @@ teardown() {
 
 # === Required config file validation ===
 
-@test "fails when EksRegion config file missing" {
-  rm "$CONFIG_SUB_PATH/EksRegion"
+@test "fails when AwsRegion config file missing" {
+  rm "$CONFIG_SUB_PATH/AwsRegion"
 
   run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
   [ "$status" -ne 0 ]
-  assert_output_contains "EKS_REGION"
+  assert_output_contains "AWS_REGION"
   assert_output_contains "not found"
 }
 
@@ -125,13 +125,13 @@ teardown() {
 }
 
 @test "reports all missing config files before exiting" {
-  rm "$CONFIG_SUB_PATH/EksRegion"
+  rm "$CONFIG_SUB_PATH/AwsRegion"
   rm "$CONFIG_SUB_PATH/VpcId"
   rm "$CONFIG_SUB_PATH/NodegroupInstanceType"
 
   run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
   [ "$status" -ne 0 ]
-  assert_output_contains "EKS_REGION"
+  assert_output_contains "AWS_REGION"
   assert_output_contains "VPC_ID"
   assert_output_contains "NODEGROUP_INSTANCE_TYPE"
   assert_output_contains "3 missing config file(s)"
@@ -213,7 +213,7 @@ teardown() {
   local content
   content=$(< "$context_dir/cluster.yaml")
   assert_contains "$content" 'name: ${ProjectName}' "cluster.yaml"
-  assert_contains "$content" 'region: ${EksRegion}' "cluster.yaml"
+  assert_contains "$content" 'region: ${AwsRegion}' "cluster.yaml"
   assert_contains "$content" 'version: "1.32"' "cluster.yaml"
 }
 
@@ -719,7 +719,7 @@ teardown() {
   content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
   # Shell style uses ${VarName}
   assert_contains "$content" '${ProjectName}' "cluster.yaml"
-  assert_contains "$content" '${EksRegion}' "cluster.yaml"
+  assert_contains "$content" '${AwsRegion}' "cluster.yaml"
 }
 
 @test "generates tokens with mustache delimiter style" {
@@ -731,14 +731,14 @@ teardown() {
   local content
   content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
   assert_contains "$content" '{{ ProjectName }}' "cluster.yaml"
-  assert_contains "$content" '{{ EksRegion }}' "cluster.yaml"
+  assert_contains "$content" '{{ AwsRegion }}' "cluster.yaml"
 }
 
 @test "generates tokens with UPPER_SNAKE name style" {
   export TOKEN_NAME_STYLE="UPPER_SNAKE"
 
   # UPPER_SNAKE style looks for config files named with underscores
-  mv "$CONFIG_SUB_PATH/EksRegion" "$CONFIG_SUB_PATH/EKS_REGION"
+  mv "$CONFIG_SUB_PATH/AwsRegion" "$CONFIG_SUB_PATH/AWS_REGION"
   mv "$CONFIG_SUB_PATH/VpcId" "$CONFIG_SUB_PATH/VPC_ID"
   mv "$CONFIG_SUB_PATH/NodegroupInstanceType" "$CONFIG_SUB_PATH/NODEGROUP_INSTANCE_TYPE"
   mv "$CONFIG_SUB_PATH/PrivateSubnet1" "$CONFIG_SUB_PATH/PRIVATE_SUBNET_1"
@@ -751,7 +751,7 @@ teardown() {
   local content
   content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
   assert_contains "$content" '${PROJECT_NAME}' "cluster.yaml"
-  assert_contains "$content" '${EKS_REGION}' "cluster.yaml"
+  assert_contains "$content" '${AWS_REGION}' "cluster.yaml"
 
   # Config file names should also be UPPER_SNAKE
   [ -f "$OUTPUT_SUB_PATH/docker/config/NODE_GROUP_DEFAULT_PREFIX" ]

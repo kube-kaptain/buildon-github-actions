@@ -17,7 +17,7 @@
 #   KUBERNETES_MINOR_VERSION    - K8s minor version (e.g., 32) - env var or config file
 #
 # Required config (file in CONFIG_SUB_PATH only, used as tokens):
-#   EKS_REGION                  - AWS region (e.g., eu-west-1)
+#   AWS_REGION                  - AWS region (e.g., eu-west-1)
 #   VPC_ID                      - VPC identifier
 #   NODEGROUP_INSTANCE_TYPE     - Node instance type (e.g., t3.medium)
 #   PRIVATE_SUBNET_1/2/3        - Private subnet IDs (if EKS_PRIVATE_NETWORKING=true)
@@ -191,7 +191,7 @@ resolve_config "KUBERNETES_MINOR_VERSION"
 
 # === Validate required token config files ===
 
-require_config_file "EKS_REGION" "Create this file with the AWS region for your cluster (e.g., eu-west-1)"
+require_config_file "AWS_REGION" "Create this file with the AWS region for your cluster (e.g., eu-west-1)"
 require_config_file "VPC_ID" "Create this file with the VPC ID for your cluster (e.g., vpc-0123456789abcdef0)"
 require_config_file "NODEGROUP_INSTANCE_TYPE" "Create this file with the instance type (e.g., t3.medium)"
 
@@ -276,7 +276,7 @@ ensure_default_token "NODEGROUP_MAX_SIZE" "${NODEGROUP_MAX_SIZE}"
 # === Build token references ===
 
 token_project_name=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "PROJECT_NAME")
-token_eks_region=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "EKS_REGION")
+token_aws_region=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "AWS_REGION")
 token_vpc_id=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "VPC_ID")
 token_nodegroup_prefix=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "NODE_GROUP_DEFAULT_PREFIX")
 token_instance_type=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "NODEGROUP_INSTANCE_TYPE")
@@ -327,7 +327,7 @@ kind: ClusterConfig
 
 metadata:
   name: ${token_project_name}
-  region: ${token_eks_region}
+  region: ${token_aws_region}
   version: "${k8s_version}"
 
 vpc:

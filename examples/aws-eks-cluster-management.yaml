@@ -9,7 +9,7 @@
 # docker build, then validates substituted values and image integrity post-build.
 #
 # Required: Create token config files in src/config/ (one value per file):
-#   EksRegion          - AWS region (e.g., eu-west-1)
+#   AwsRegion          - AWS region (e.g., eu-west-1)
 #   VpcId              - VPC identifier
 #   NodegroupInstanceType - EC2 instance type (e.g., t3.medium)
 #   PrivateSubnet1     - Private subnet ID (az-a)
@@ -20,7 +20,7 @@
 #   PublicSubnet1/2/3  - Public subnet IDs (eks-public-networking: true)
 #   VpcSecurityGroup   - Security group ID (eks-custom-security-group: true)
 #
-# The default token style is PascalCase with shell delimiters: ${EksRegion}
+# The default token style is PascalCase with shell delimiters: ${AwsRegion}
 # Adjust the file names if you change token-name-style.
 #
 # Copy this to .github/workflows/build.yaml in your repo.
@@ -109,7 +109,7 @@ jobs:
       # │ Token Substitution                                                  │
       # └─────────────────────────────────────────────────────────────────────┘
       # token-delimiter-style: 'shell'       # Default: ${Token}
-      # token-name-style: 'PascalCase'       # Default: EksRegion, VpcId, etc.
+      # token-name-style: 'PascalCase'       # Default: AwsRegion, VpcId, etc.
       # config-sub-path: 'src/config'        # Default: where token files live
 
       # ┌─────────────────────────────────────────────────────────────────────┐

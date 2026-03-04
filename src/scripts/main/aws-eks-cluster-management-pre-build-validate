@@ -10,7 +10,7 @@
 #
 # Checks:
 #   - metadata.name contains the PROJECT_NAME token
-#   - metadata.region contains the EKS_REGION token
+#   - metadata.region contains the AWS_REGION token
 #   - All nodegroup names start with the NODE_GROUP_DEFAULT_PREFIX token
 #   - If multiple nodegroups, names are unique (have distinguishing suffixes)
 #   - No obviously wrong literal values where tokens should be
@@ -48,7 +48,7 @@ source "${SCRIPT_DIR}/../lib/token-format.bash"
 # === Build expected token strings ===
 
 token_project_name=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "PROJECT_NAME")
-token_eks_region=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "EKS_REGION")
+token_aws_region=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "AWS_REGION")
 token_nodegroup_prefix=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "NODE_GROUP_DEFAULT_PREFIX")
 
 # === Determine context dirs ===
@@ -95,13 +95,13 @@ validate_cluster_yaml_tokens() {
     fail "${yaml_file}: metadata.name '${cluster_name}' must be exactly '${token_project_name}'"
   fi
 
-  # metadata.region must be exactly the EKS_REGION token
+  # metadata.region must be exactly the AWS_REGION token
   local region
   region=$(yq '.metadata.region' "${yaml_file}" 2>/dev/null || echo "")
   if [[ -z "${region}" || "${region}" == "null" ]]; then
     fail "${yaml_file}: metadata.region is missing"
-  elif [[ "${region}" != "${token_eks_region}" ]]; then
-    fail "${yaml_file}: metadata.region '${region}' must be exactly '${token_eks_region}'"
+  elif [[ "${region}" != "${token_aws_region}" ]]; then
+    fail "${yaml_file}: metadata.region '${region}' must be exactly '${token_aws_region}'"
   fi
 
   # All nodegroup names must start with NODE_GROUP_DEFAULT_PREFIX token
@@ -142,7 +142,7 @@ validate_cluster_yaml_tokens() {
 main() {
   log "=== EKS Cluster Management Pre-Build Validate ==="
   log "Expected PROJECT_NAME token: ${token_project_name}"
-  log "Expected EKS_REGION token: ${token_eks_region}"
+  log "Expected AWS_REGION token: ${token_aws_region}"
   log "Expected NODE_GROUP_DEFAULT_PREFIX token: ${token_nodegroup_prefix}"
   log "=================================================="
 
