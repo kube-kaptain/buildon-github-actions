@@ -748,6 +748,18 @@ YAML
     updateConfig:
       maxUnavailable: ${token_update_max_unavailable}
       maxSurge: ${token_update_max_surge}
+YAML
+
+    # Nodegroup labels (optional, only when config file present)
+    if [[ "${has_nodegroup_labels}" == "true" ]]; then
+      echo "    labels:"
+      while IFS= read -r line || [[ -n "${line}" ]]; do
+        [[ "${line}" =~ ^[[:space:]]*$ ]] && continue
+        echo "      ${line}"
+      done < "${nodegroup_labels_file}"
+    fi
+
+    cat <<YAML
     tags:
       ManagedBy: "Kaptain aws-eks-cluster-management system"
       ManagedByGitRepo: ${token_project_name}
@@ -759,15 +771,6 @@ YAML
         [[ "${line}" =~ ^[[:space:]]*$ ]] && continue
         echo "      ${line}"
       done < "${nodegroup_tags_file}"
-    fi
-
-    # Nodegroup labels (optional, only when config file present)
-    if [[ "${has_nodegroup_labels}" == "true" ]]; then
-      echo "    labels:"
-      while IFS= read -r line || [[ -n "${line}" ]]; do
-        [[ "${line}" =~ ^[[:space:]]*$ ]] && continue
-        echo "      ${line}"
-      done < "${nodegroup_labels_file}"
     fi
   fi
 }
