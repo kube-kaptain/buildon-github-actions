@@ -10,6 +10,7 @@
 # Phase 1 - Substituted file validation (against canonical values from prepare):
 #   - metadata.name is exactly the canonical project-name
 #   - metadata.region is exactly the canonical aws-region (and valid format)
+#   - metadata.version is exactly the canonical kubernetes-version (and minor >= 2 digits)
 #   - All nodegroup names start with the canonical nodegroup-prefix
 #   - If multiple nodegroups, names are unique
 #   - No unsubstituted tokens remain
@@ -63,7 +64,7 @@ source "${SCRIPT_DIR}/../lib/docker-build-shared.bash"
 canonical_dir="${OUTPUT_SUB_PATH}/aws-eks-cluster-management"
 canonical_error=0
 
-for canonical_file in project-name aws-region nodegroup-prefix; do
+for canonical_file in project-name aws-region kubernetes-version nodegroup-prefix; do
   if [[ ! -f "${canonical_dir}/${canonical_file}" ]]; then
     echo "ERROR: ${canonical_dir}/${canonical_file} not found - was aws-eks-cluster-management-prepare run?" >&2
     canonical_error=1
@@ -75,6 +76,7 @@ fi
 
 project_name=$(< "${canonical_dir}/project-name")
 aws_region=$(< "${canonical_dir}/aws-region")
+kubernetes_version=$(< "${canonical_dir}/kubernetes-version")
 nodegroup_prefix=$(< "${canonical_dir}/nodegroup-prefix")
 
 # === Determine context dirs and image URIs ===
@@ -149,6 +151,17 @@ validate_substituted_yaml() {
     fail "${yaml_file}: metadata.region '${region}' must be exactly '${aws_region}'"
   elif [[ ! "${region}" =~ ^[a-z]{2}-[a-z]+-[0-9]+$ ]]; then
     fail "${yaml_file}: metadata.region '${region}' does not look like an AWS region"
+  fi
+
+  # metadata.version must be exactly the canonical kubernetes version (format-checked)
+  local version
+  version=$(yq '.metadata.version' "${yaml_file}" 2>/dev/null || echo "")
+  if [[ -z "${version}" || "${version}" == "null" ]]; then
+    fail "${yaml_file}: metadata.version is missing"
+  elif [[ "${version}" != "${kubernetes_version}" ]]; then
+    fail "${yaml_file}: metadata.version '${version}' must be exactly '${kubernetes_version}'"
+  elif [[ ! "${version}" =~ ^[0-9]+\.[0-9]{2,}$ ]]; then
+    fail "${yaml_file}: metadata.version '${version}' must be major.minor where minor is at least 2 digits"
   fi
 
   # All nodegroup names start with computed prefix
@@ -245,6 +258,7 @@ main() {
   log "=== EKS Cluster Management Post-Build Validate ==="
   log "Project name: ${project_name}"
   log "AWS region: ${aws_region}"
+  log "Kubernetes version: ${kubernetes_version}"
   log "Nodegroup prefix: ${nodegroup_prefix}"
   log "==================================================="
 

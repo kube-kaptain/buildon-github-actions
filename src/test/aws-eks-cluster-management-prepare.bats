@@ -214,7 +214,7 @@ teardown() {
   content=$(< "$context_dir/cluster.yaml")
   assert_contains "$content" 'name: ${ProjectName}' "cluster.yaml"
   assert_contains "$content" 'region: ${AwsRegion}' "cluster.yaml"
-  assert_contains "$content" 'version: "1.32"' "cluster.yaml"
+  assert_contains "$content" 'version: "${KubernetesVersion}"' "cluster.yaml"
 }
 
 @test "generates cluster.yaml with vpc section" {
@@ -564,6 +564,26 @@ teardown() {
   [[ "$prefix" == *-k-1-32-v-1-0-0 ]]
 }
 
+@test "writes kubernetes-version to output dir" {
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -eq 0 ]
+
+  [ -f "$OUTPUT_SUB_PATH/aws-eks-cluster-management/kubernetes-version" ]
+  local version
+  version=$(< "$OUTPUT_SUB_PATH/aws-eks-cluster-management/kubernetes-version")
+  [ "$version" = "1.32" ]
+}
+
+@test "writes KubernetesVersion to platform config dir" {
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -eq 0 ]
+
+  [ -f "$OUTPUT_SUB_PATH/docker/config/KubernetesVersion" ]
+  local version
+  version=$(< "$OUTPUT_SUB_PATH/docker/config/KubernetesVersion")
+  [ "$version" = "1.32" ]
+}
+
 @test "writes nodegroup prefix to platform config dir" {
   run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
   [ "$status" -eq 0 ]
@@ -685,6 +705,8 @@ teardown() {
   run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
   [ "$status" -eq 0 ]
 
+  [ -f "$OUTPUT_SUB_PATH/docker-linux-amd64/config/KubernetesVersion" ]
+  [ -f "$OUTPUT_SUB_PATH/docker-linux-arm64/config/KubernetesVersion" ]
   [ -f "$OUTPUT_SUB_PATH/docker-linux-amd64/config/NodeGroupDefaultPrefix" ]
   [ -f "$OUTPUT_SUB_PATH/docker-linux-arm64/config/NodeGroupDefaultPrefix" ]
 }
@@ -720,6 +742,7 @@ teardown() {
   # Shell style uses ${VarName}
   assert_contains "$content" '${ProjectName}' "cluster.yaml"
   assert_contains "$content" '${AwsRegion}' "cluster.yaml"
+  assert_contains "$content" '${KubernetesVersion}' "cluster.yaml"
 }
 
 @test "generates tokens with mustache delimiter style" {
@@ -732,6 +755,7 @@ teardown() {
   content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
   assert_contains "$content" '{{ ProjectName }}' "cluster.yaml"
   assert_contains "$content" '{{ AwsRegion }}' "cluster.yaml"
+  assert_contains "$content" '{{ KubernetesVersion }}' "cluster.yaml"
 }
 
 @test "generates tokens with UPPER_SNAKE name style" {
@@ -752,8 +776,10 @@ teardown() {
   content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
   assert_contains "$content" '${PROJECT_NAME}' "cluster.yaml"
   assert_contains "$content" '${AWS_REGION}' "cluster.yaml"
+  assert_contains "$content" '${KUBERNETES_VERSION}' "cluster.yaml"
 
   # Config file names should also be UPPER_SNAKE
+  [ -f "$OUTPUT_SUB_PATH/docker/config/KUBERNETES_VERSION" ]
   [ -f "$OUTPUT_SUB_PATH/docker/config/NODE_GROUP_DEFAULT_PREFIX" ]
 }
 

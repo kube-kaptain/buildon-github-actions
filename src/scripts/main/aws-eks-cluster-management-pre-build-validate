@@ -11,6 +11,7 @@
 # Checks:
 #   - metadata.name contains the PROJECT_NAME token
 #   - metadata.region contains the AWS_REGION token
+#   - metadata.version contains the KUBERNETES_VERSION token
 #   - All nodegroup names start with the NODE_GROUP_DEFAULT_PREFIX token
 #   - If multiple nodegroups, names are unique (have distinguishing suffixes)
 #   - No obviously wrong literal values where tokens should be
@@ -49,6 +50,7 @@ source "${SCRIPT_DIR}/../lib/token-format.bash"
 
 token_project_name=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "PROJECT_NAME")
 token_aws_region=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "AWS_REGION")
+token_kubernetes_version=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "KUBERNETES_VERSION")
 token_nodegroup_prefix=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "NODE_GROUP_DEFAULT_PREFIX")
 
 # === Determine context dirs ===
@@ -104,6 +106,15 @@ validate_cluster_yaml_tokens() {
     fail "${yaml_file}: metadata.region '${region}' must be exactly '${token_aws_region}'"
   fi
 
+  # metadata.version must be exactly the KUBERNETES_VERSION token
+  local version
+  version=$(yq '.metadata.version' "${yaml_file}" 2>/dev/null || echo "")
+  if [[ -z "${version}" || "${version}" == "null" ]]; then
+    fail "${yaml_file}: metadata.version is missing"
+  elif [[ "${version}" != "${token_kubernetes_version}" ]]; then
+    fail "${yaml_file}: metadata.version '${version}' must be exactly '${token_kubernetes_version}'"
+  fi
+
   # All nodegroup names must start with NODE_GROUP_DEFAULT_PREFIX token
   local nodegroup_count
   nodegroup_count=$(yq '.managedNodeGroups | length' "${yaml_file}" 2>/dev/null || echo "0")
@@ -143,6 +154,7 @@ main() {
   log "=== EKS Cluster Management Pre-Build Validate ==="
   log "Expected PROJECT_NAME token: ${token_project_name}"
   log "Expected AWS_REGION token: ${token_aws_region}"
+  log "Expected KUBERNETES_VERSION token: ${token_kubernetes_version}"
   log "Expected NODE_GROUP_DEFAULT_PREFIX token: ${token_nodegroup_prefix}"
   log "=================================================="
 

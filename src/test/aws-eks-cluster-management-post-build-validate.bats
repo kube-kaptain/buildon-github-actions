@@ -85,6 +85,7 @@ setup() {
   mkdir -p "$OUTPUT_SUB_PATH/aws-eks-cluster-management"
   printf '%s' "test-cluster" > "$OUTPUT_SUB_PATH/aws-eks-cluster-management/project-name"
   printf '%s' "eu-west-1" > "$OUTPUT_SUB_PATH/aws-eks-cluster-management/aws-region"
+  printf '%s' "1.32" > "$OUTPUT_SUB_PATH/aws-eks-cluster-management/kubernetes-version"
   printf '%s' "$nodegroup_prefix" > "$OUTPUT_SUB_PATH/aws-eks-cluster-management/nodegroup-prefix"
 
   # Create context dir with substituted cluster.yaml (tokens already replaced)
@@ -183,6 +184,36 @@ teardown() {
   assert_output_contains "does not look like an AWS region"
 }
 
+# === metadata.version validation ===
+
+@test "fails when metadata.version does not match canonical kubernetes-version" {
+  local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
+  yq -i '.metadata.version = "1.31"' "$context_dir/cluster.yaml"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-post-build-validate"
+  [ "$status" -ne 0 ]
+  assert_output_contains "must be exactly"
+}
+
+@test "fails when metadata.version minor part is less than 2 digits" {
+  local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
+  printf '%s' "1.9" > "$OUTPUT_SUB_PATH/aws-eks-cluster-management/kubernetes-version"
+  yq -i '.metadata.version = "1.9"' "$context_dir/cluster.yaml"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-post-build-validate"
+  [ "$status" -ne 0 ]
+  assert_output_contains "minor is at least 2 digits"
+}
+
+@test "passes when metadata.version minor part has 3 digits" {
+  local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
+  printf '%s' "1.100" > "$OUTPUT_SUB_PATH/aws-eks-cluster-management/kubernetes-version"
+  yq -i '.metadata.version = "1.100"' "$context_dir/cluster.yaml"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-post-build-validate"
+  [ "$status" -eq 0 ]
+}
+
 @test "fails when nodegroup name does not start with computed prefix" {
   local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
   yq -i '.managedNodeGroups[0].name = "wrong-prefix-name"' "$context_dir/cluster.yaml"
@@ -211,7 +242,14 @@ teardown() {
   assert_output_contains "file not found"
 }
 
-# === Nodegroup prefix file ===
+@test "fails when kubernetes-version file is missing" {
+  rm "$OUTPUT_SUB_PATH/aws-eks-cluster-management/kubernetes-version"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-post-build-validate"
+  [ "$status" -ne 0 ]
+  assert_output_contains "kubernetes-version"
+  assert_output_contains "not found"
+}
 
 @test "fails when nodegroup-prefix file is missing" {
   rm "$OUTPUT_SUB_PATH/aws-eks-cluster-management/nodegroup-prefix"
@@ -317,6 +355,7 @@ YAML
   assert_output_contains "EKS Cluster Management Post-Build Validate"
   assert_output_contains "Project name: test-cluster"
   assert_output_contains "AWS region: eu-west-1"
+  assert_output_contains "Kubernetes version: 1.32"
 }
 
 # === Fail-complete behavior ===

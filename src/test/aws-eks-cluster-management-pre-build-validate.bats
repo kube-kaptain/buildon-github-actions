@@ -48,7 +48,7 @@ kind: ClusterConfig
 metadata:
   name: ${ProjectName}
   region: ${AwsRegion}
-  version: "1.32"
+  version: "${KubernetesVersion}"
 
 vpc:
   id: ${VpcId}
@@ -134,6 +134,27 @@ teardown() {
   assert_output_contains '${AwsRegion}'
 }
 
+# === metadata.version validation ===
+
+@test "fails when metadata.version is missing" {
+  local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
+  yq -i 'del(.metadata.version)' "$context_dir/cluster.yaml"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-pre-build-validate"
+  [ "$status" -ne 0 ]
+  assert_output_contains "metadata.version is missing"
+}
+
+@test "fails when metadata.version is not the KUBERNETES_VERSION token" {
+  local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
+  yq -i '.metadata.version = "1.32"' "$context_dir/cluster.yaml"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-pre-build-validate"
+  [ "$status" -ne 0 ]
+  assert_output_contains "must be exactly"
+  assert_output_contains '${KubernetesVersion}'
+}
+
 # === nodegroup name validation ===
 
 @test "fails when nodegroup name does not start with prefix token" {
@@ -199,7 +220,7 @@ kind: ClusterConfig
 metadata:
   name: ${ProjectName}
   region: ${AwsRegion}
-  version: "1.32"
+  version: "${KubernetesVersion}"
 
 vpc:
   id: ${VpcId}
@@ -226,7 +247,7 @@ kind: ClusterConfig
 metadata:
   name: wrong-name
   region: ${AwsRegion}
-  version: "1.32"
+  version: "${KubernetesVersion}"
 
 vpc:
   id: ${VpcId}
@@ -269,6 +290,7 @@ YAML
   [ "$status" -eq 0 ]
   assert_output_contains 'Expected PROJECT_NAME token: ${ProjectName}'
   assert_output_contains 'Expected AWS_REGION token: ${AwsRegion}'
+  assert_output_contains 'Expected KUBERNETES_VERSION token: ${KubernetesVersion}'
 }
 
 # === Fail-complete behavior ===

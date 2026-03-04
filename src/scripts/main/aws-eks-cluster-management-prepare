@@ -230,6 +230,7 @@ canonical_dir="${OUTPUT_SUB_PATH}/aws-eks-cluster-management"
 mkdir -p "${canonical_dir}"
 printf '%s' "${PROJECT_NAME}" > "${canonical_dir}/project-name"
 printf '%s' "$(< "${CONFIG_SUB_PATH}/$(convert_token_name "${TOKEN_NAME_STYLE}" "AWS_REGION")")" > "${canonical_dir}/aws-region"
+printf '%s' "${k8s_version}" > "${canonical_dir}/kubernetes-version"
 printf '%s' "${nodegroup_prefix}" > "${canonical_dir}/nodegroup-prefix"
 
 # === Determine platforms, context dirs, and config dirs ===
@@ -264,6 +265,14 @@ fi
 
 # === Write computed and default tokens to platform config dirs ===
 
+# Kubernetes version is always computed - write to every platform config dir
+kubernetes_version_config_name=$(convert_token_name "${TOKEN_NAME_STYLE}" "KUBERNETES_VERSION")
+for config_dir in "${platform_config_dirs[@]}"; do
+  mkdir -p "${config_dir}"
+  printf '%s' "${k8s_version}" > "${config_dir}/${kubernetes_version_config_name}"
+done
+log "  KUBERNETES_VERSION: ${k8s_version} written to platform config dir(s)"
+
 # Nodegroup prefix is always computed - write to every platform config dir
 nodegroup_config_name=$(convert_token_name "${TOKEN_NAME_STYLE}" "NODE_GROUP_DEFAULT_PREFIX")
 for config_dir in "${platform_config_dirs[@]}"; do
@@ -280,6 +289,7 @@ ensure_default_token "NODEGROUP_MAX_SIZE" "${NODEGROUP_MAX_SIZE}"
 
 token_project_name=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "PROJECT_NAME")
 token_aws_region=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "AWS_REGION")
+token_kubernetes_version=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "KUBERNETES_VERSION")
 token_vpc_id=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "VPC_ID")
 token_nodegroup_prefix=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "NODE_GROUP_DEFAULT_PREFIX")
 token_instance_type=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "NODEGROUP_INSTANCE_TYPE")
@@ -331,7 +341,7 @@ kind: ClusterConfig
 metadata:
   name: ${token_project_name}
   region: ${token_aws_region}
-  version: "${k8s_version}"
+  version: "${token_kubernetes_version}"
 
 vpc:
   id: ${token_vpc_id}
