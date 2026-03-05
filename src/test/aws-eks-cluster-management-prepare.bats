@@ -36,7 +36,6 @@ setup() {
   export EKS_PRIVATE_NETWORKING="true"
   export EKS_PUBLIC_NETWORKING="false"
   export EKS_CILIUM_EBPF_NETWORKING="false"
-  export EKS_CUSTOM_SECURITY_GROUP="false"
 
   # Single platform by default
   export DOCKER_PLATFORM="linux/amd64"
@@ -195,22 +194,15 @@ teardown() {
   [ "$status" -eq 0 ]
 }
 
-# === Custom security group config ===
+# === VPC security group config ===
 
-@test "requires VpcSecurityGroup when EKS_CUSTOM_SECURITY_GROUP=true" {
-  export EKS_CUSTOM_SECURITY_GROUP="true"
-
-  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
-  [ "$status" -ne 0 ]
-  assert_output_contains "VPC_SECURITY_GROUP"
-}
-
-@test "succeeds with VpcSecurityGroup when EKS_CUSTOM_SECURITY_GROUP=true" {
-  export EKS_CUSTOM_SECURITY_GROUP="true"
-  printf 'sg-0123456789abcdef0' > "$CONFIG_SUB_PATH/VpcSecurityGroup"
-
+@test "does not generate securityGroup by default" {
   run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
   [ "$status" -eq 0 ]
+
+  local content
+  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
+  [[ "$content" != *"securityGroup"* ]]
 }
 
 # === Generated cluster.yaml content ===
@@ -290,8 +282,7 @@ teardown() {
   assert_contains "$content" '${PublicSubnetIdC}' "cluster.yaml"
 }
 
-@test "generates cluster.yaml with security group when EKS_CUSTOM_SECURITY_GROUP=true" {
-  export EKS_CUSTOM_SECURITY_GROUP="true"
+@test "generates cluster.yaml with securityGroup token when config present" {
   printf 'sg-0123456789abcdef0' > "$CONFIG_SUB_PATH/VpcSecurityGroup"
 
   run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
@@ -300,15 +291,6 @@ teardown() {
   local content
   content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
   assert_contains "$content" 'securityGroup: ${VpcSecurityGroup}' "cluster.yaml"
-}
-
-@test "generates cluster.yaml without security group by default" {
-  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
-  [ "$status" -eq 0 ]
-
-  local content
-  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
-  [[ "$content" != *"securityGroup"* ]]
 }
 
 # === Auto Mode config ===

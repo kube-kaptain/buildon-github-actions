@@ -25,11 +25,11 @@
 #   PUBLIC_SUBNET_ID_A/B/C      - Public subnet IDs (if EKS_PUBLIC_NETWORKING=true)
 #
 # Conditional config (file in CONFIG_SUB_PATH, required when switch is on):
-#   VPC_SECURITY_GROUP          - Custom security group ID (if EKS_CUSTOM_SECURITY_GROUP=true)
 #   AUTO_MODE_CONFIG_NODE_POOLS - Node pool names, comma-separated (if AUTO_MODE_CONFIG_ENABLED=true)
 #     (expanded to numbered tokens: AUTO_MODE_CONFIG_NODE_POOL_1, ...POOL_2, etc.)
 #
 # Optional config (file in CONFIG_SUB_PATH, generates section when present):
+#   VPC_SECURITY_GROUP                  - VPC security group ID (generates securityGroup in vpc block)
 #   PRIVATE_CLUSTER_ENABLED             - Generate privateCluster block (e.g., true)
 #   NODEGROUP_PRIVATE_NETWORKING        - Generate privateNetworking in nodegroup (e.g., true)
 #   AUTO_MODE_CONFIG_ENABLED            - Enable EKS Auto Mode (generates autoModeConfig block)
@@ -63,7 +63,6 @@
 #   EKS_PRIVATE_NETWORKING     - Include private subnets section (default: true)
 #   EKS_PUBLIC_NETWORKING      - Include public subnets section (default: false)
 #   EKS_CILIUM_EBPF_NETWORKING - Generate controlplane-only yaml (default: false)
-#   EKS_CUSTOM_SECURITY_GROUP  - Include custom security group (default: false)
 #   EKS_ADDONS_LIST            - Comma-separated addon names (default: coredns,kube-proxy,vpc-cni,aws-ebs-csi-driver,aws-efs-csi-driver)
 #   EKS_CLUSTER_YAML_SUB_PATH  - Source dir for cluster configs (default: src/eks)
 #   SECRETS_SUB_PATH           - Source dir for encrypted secrets (default: src/secrets)
@@ -331,9 +330,11 @@ if [[ "${EKS_PUBLIC_NETWORKING}" == "true" ]]; then
   require_config_file "PUBLIC_SUBNET_ID_C" "Required when EKS_PUBLIC_NETWORKING=true"
 fi
 
-EKS_CUSTOM_SECURITY_GROUP="${EKS_CUSTOM_SECURITY_GROUP:-false}"
-if [[ "${EKS_CUSTOM_SECURITY_GROUP}" == "true" ]]; then
-  require_config_file "VPC_SECURITY_GROUP" "Required when EKS_CUSTOM_SECURITY_GROUP=true"
+# VPC security group - optional: if config file exists, include securityGroup line
+has_vpc_security_group="false"
+vpc_security_group_name=$(convert_token_name "${TOKEN_NAME_STYLE}" "VPC_SECURITY_GROUP")
+if [[ -f "${CONFIG_SUB_PATH}/${vpc_security_group_name}" ]]; then
+  has_vpc_security_group="true"
 fi
 
 # Private cluster - conditional: if config file exists, generate privateCluster block
@@ -527,7 +528,7 @@ if [[ "${EKS_PUBLIC_NETWORKING}" == "true" ]]; then
   token_public_subnet_id_c=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "PUBLIC_SUBNET_ID_C")
 fi
 
-if [[ "${EKS_CUSTOM_SECURITY_GROUP}" == "true" ]]; then
+if [[ "${has_vpc_security_group}" == "true" ]]; then
   token_security_group=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "VPC_SECURITY_GROUP")
 fi
 
@@ -609,7 +610,7 @@ vpc:
     publicAccess: ${token_vpc_public_access}
 YAML
 
-  if [[ "${EKS_CUSTOM_SECURITY_GROUP}" == "true" ]]; then
+  if [[ "${has_vpc_security_group}" == "true" ]]; then
     echo "  securityGroup: ${token_security_group}"
   fi
 
@@ -827,7 +828,6 @@ main() {
   log "Nodegroup private networking: ${has_nodegroup_private_networking}"
   log "Nodegroup IAM instance role ARN: ${has_nodegroup_iam_instance_role_arn}"
   log "Public networking: ${EKS_PUBLIC_NETWORKING}"
-  log "Custom security group: ${EKS_CUSTOM_SECURITY_GROUP}"
   log "Platforms: ${DOCKER_PLATFORM}"
   log "======================================="
 
