@@ -365,16 +365,16 @@ teardown() {
 
 # === Network config ===
 
-@test "does not generate networkConfig by default" {
+@test "does not generate kubernetesNetworkConfig by default" {
   run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
   [ "$status" -eq 0 ]
 
   local content
   content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
-  [[ "$content" != *"networkConfig"* ]]
+  [[ "$content" != *"kubernetesNetworkConfig"* ]]
 }
 
-@test "generates networkConfig when config file exists" {
+@test "generates kubernetesNetworkConfig when config file exists" {
   printf '10.100.0.0/16' > "$CONFIG_SUB_PATH/NetworkConfigServiceIpV4Cidr"
 
   run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
@@ -382,7 +382,7 @@ teardown() {
 
   local content
   content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
-  assert_contains "$content" "networkConfig:" "cluster.yaml"
+  assert_contains "$content" "kubernetesNetworkConfig:" "cluster.yaml"
   assert_contains "$content" 'serviceIPv4CIDR: ${NetworkConfigServiceIpV4Cidr}' "cluster.yaml"
 }
 

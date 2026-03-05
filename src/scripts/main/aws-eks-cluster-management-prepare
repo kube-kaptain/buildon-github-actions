@@ -33,7 +33,7 @@
 #   PRIVATE_CLUSTER_ENABLED             - Generate privateCluster block (e.g., true)
 #   NODEGROUP_PRIVATE_NETWORKING        - Generate privateNetworking in nodegroup (e.g., true)
 #   AUTO_MODE_CONFIG_ENABLED            - Enable EKS Auto Mode (generates autoModeConfig block)
-#   NETWORK_CONFIG_SERVICE_IP_V4_CIDR   - Custom service CIDR (generates networkConfig block)
+#   NETWORK_CONFIG_SERVICE_IP_V4_CIDR   - Custom service CIDR (generates kubernetesNetworkConfig block)
 #   METADATA_TAGS                       - Additional metadata tags (flat yaml: key: value per line)
 #   NODEGROUP_TAGS                      - Additional nodegroup tags (flat yaml: key: value per line)
 #   NODEGROUP_LABELS                    - Additional nodegroup labels (flat yaml: key: value per line)
@@ -699,7 +699,7 @@ YAML
 
   if [[ "${has_network_config}" == "true" ]]; then
     echo ""
-    echo "networkConfig:"
+    echo "kubernetesNetworkConfig:"
     echo "  serviceIPv4CIDR: ${token_network_service_ipv4_cidr}"
   fi
 
