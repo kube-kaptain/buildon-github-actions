@@ -85,7 +85,6 @@ inputs:
   eks-base-image-tag:
     description: 'Base image tag for EKS management image'
     required: false
-    default: '1.1'
   kubernetes-major-version:
     description: 'Kubernetes major version'
     required: false
