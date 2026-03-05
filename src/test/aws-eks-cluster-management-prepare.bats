@@ -402,7 +402,6 @@ teardown() {
   assert_contains "$content" '${NodegroupMaxSize}' "cluster.yaml"
   assert_contains "$content" "updateConfig:" "cluster.yaml"
   assert_contains "$content" '${NodegroupUpdateConfigMaxUnavailable}' "cluster.yaml"
-  assert_contains "$content" '${NodegroupUpdateConfigMaxSurge}' "cluster.yaml"
   # subnets present (EKS_PRIVATE_NETWORKING=true by default)
   assert_contains "$content" "subnets:" "cluster.yaml nodegroup"
   assert_contains "$content" '${PrivateSubnetIdA}' "cluster.yaml nodegroup subnets"
@@ -1126,32 +1125,6 @@ EOF
   [ "$value" = "0" ]
 }
 
-@test "writes default NODEGROUP_UPDATE_CONFIG_MAX_SURGE to platform config dir" {
-  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
-  [ "$status" -eq 0 ]
-
-  [ -f "$OUTPUT_SUB_PATH/docker/config/NodegroupUpdateConfigMaxSurge" ]
-  local value
-  value=$(< "$OUTPUT_SUB_PATH/docker/config/NodegroupUpdateConfigMaxSurge")
-  [ "$value" = "1" ]
-}
-
-@test "fails when both update config values are zero" {
-  printf '0' > "$CONFIG_SUB_PATH/NodegroupUpdateConfigMaxUnavailable"
-  printf '0' > "$CONFIG_SUB_PATH/NodegroupUpdateConfigMaxSurge"
-
-  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
-  [ "$status" -ne 0 ]
-  assert_output_contains "cannot both be 0"
-}
-
-@test "allows non-zero update config max unavailable with zero max surge" {
-  printf '1' > "$CONFIG_SUB_PATH/NodegroupUpdateConfigMaxUnavailable"
-  printf '0' > "$CONFIG_SUB_PATH/NodegroupUpdateConfigMaxSurge"
-
-  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
-  [ "$status" -eq 0 ]
-}
 
 @test "does not overwrite user-provided nodegroup sizing in CONFIG_SUB_PATH" {
   printf '5' > "$CONFIG_SUB_PATH/NodegroupDesiredCapacity"
