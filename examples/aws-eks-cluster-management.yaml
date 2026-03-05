@@ -47,8 +47,7 @@
 #   CloudWatchClusterLoggingEnableTypes   - default: api,audit,authenticator,controllerManager,scheduler
 #   NodegroupAmiFamily                    - default: AmazonLinux2023
 #   NodegroupVolumeSize                   - default: 20 (GB)
-#   NodegroupUpdateConfigMaxUnavailable   - default: 0 (both zero is invalid)
-#   NodegroupUpdateConfigMaxSurge         - default: 1 (both zero is invalid)
+#   NodegroupUpdateConfigMaxUnavailable   - default: 0
 #   NodegroupDesiredCapacity              - default: 1
 #   NodegroupMinSize                      - default: 3
 #   NodegroupMaxSize                      - default: 12
@@ -65,7 +64,7 @@ on:
 
 jobs:
   build:
-    uses: kube-kaptain/buildon-github-actions/.github/workflows/aws-eks-cluster-management.yaml@1.0.75
+    uses: kube-kaptain/buildon-github-actions/.github/workflows/aws-eks-cluster-management.yaml@1.0.76
     permissions:
       contents: write
       packages: write
