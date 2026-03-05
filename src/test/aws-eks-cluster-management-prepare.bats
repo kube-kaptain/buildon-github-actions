@@ -1104,7 +1104,15 @@ EOF
   [ -f "$OUTPUT_SUB_PATH/docker/config/NodegroupUpdateConfigMaxUnavailable" ]
   local value
   value=$(< "$OUTPUT_SUB_PATH/docker/config/NodegroupUpdateConfigMaxUnavailable")
-  [ "$value" = "0" ]
+  [ "$value" = "1" ]
+}
+
+@test "fails when NODEGROUP_UPDATE_CONFIG_MAX_UNAVAILABLE is zero" {
+  printf '0' > "$CONFIG_SUB_PATH/NodegroupUpdateConfigMaxUnavailable"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -ne 0 ]
+  assert_output_contains "must be greater than 0"
 }
 
 

@@ -47,7 +47,7 @@
 #   CloudWatchClusterLoggingEnableTypes   - default: api,audit,authenticator,controllerManager,scheduler
 #   NodegroupAmiFamily                    - default: AmazonLinux2023
 #   NodegroupVolumeSize                   - default: 20 (GB)
-#   NodegroupUpdateConfigMaxUnavailable   - default: 0
+#   NodegroupUpdateConfigMaxUnavailable   - default: 1 (must be > 0)
 #   NodegroupDesiredCapacity              - default: 1
 #   NodegroupMinSize                      - default: 3
 #   NodegroupMaxSize                      - default: 12

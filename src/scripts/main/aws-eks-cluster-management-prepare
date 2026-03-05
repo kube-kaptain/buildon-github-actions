@@ -49,7 +49,7 @@
 #     (expanded to numbered tokens: CLOUD_WATCH_CLUSTER_LOGGING_ENABLE_TYPE_1, ...TYPE_2, etc.)
 #   NODEGROUP_AMI_FAMILY                       - default: AmazonLinux2023
 #   NODEGROUP_VOLUME_SIZE                      - default: 20
-#   NODEGROUP_UPDATE_CONFIG_MAX_UNAVAILABLE    - default: 0
+#   NODEGROUP_UPDATE_CONFIG_MAX_UNAVAILABLE    - default: 1 (must be > 0)
 #   NODEGROUP_DESIRED_CAPACITY                 - default: 1
 #   NODEGROUP_MIN_SIZE                         - default: 3
 #   NODEGROUP_MAX_SIZE                         - default: 12
@@ -487,10 +487,22 @@ expand_comma_list_token "CLOUD_WATCH_CLUSTER_LOGGING_ENABLE_TYPES" "CLOUD_WATCH_
 cloudwatch_tokens=("${expanded_tokens[@]}")
 ensure_default_token "NODEGROUP_AMI_FAMILY" "AmazonLinux2023"
 ensure_default_token "NODEGROUP_VOLUME_SIZE" "20"
-ensure_default_token "NODEGROUP_UPDATE_CONFIG_MAX_UNAVAILABLE" "0"
+ensure_default_token "NODEGROUP_UPDATE_CONFIG_MAX_UNAVAILABLE" "1"
 ensure_default_token "NODEGROUP_DESIRED_CAPACITY" "${NODEGROUP_DESIRED_CAPACITY}"
 ensure_default_token "NODEGROUP_MIN_SIZE" "${NODEGROUP_MIN_SIZE}"
 ensure_default_token "NODEGROUP_MAX_SIZE" "${NODEGROUP_MAX_SIZE}"
+
+# Validate maxUnavailable is greater than 0
+update_max_unavailable_name=$(convert_token_name "${TOKEN_NAME_STYLE}" "NODEGROUP_UPDATE_CONFIG_MAX_UNAVAILABLE")
+update_max_unavailable_val="1"
+if [[ -f "${CONFIG_SUB_PATH}/${update_max_unavailable_name}" ]]; then
+  update_max_unavailable_val=$(< "${CONFIG_SUB_PATH}/${update_max_unavailable_name}")
+  update_max_unavailable_val="${update_max_unavailable_val%$'\n'}"
+fi
+if [[ "${update_max_unavailable_val}" -le 0 ]]; then
+  log_error "NODEGROUP_UPDATE_CONFIG_MAX_UNAVAILABLE must be greater than 0 (got: ${update_max_unavailable_val})"
+  validation_errors=$((validation_errors + 1))
+fi
 
 if [[ ${validation_errors} -gt 0 ]]; then
   log_error "Validation failed with ${validation_errors} error(s)"
