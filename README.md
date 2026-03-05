@@ -156,7 +156,7 @@ See [`examples/`](examples/) for more usage patterns.
 | `eks-base-image-name` | string | `aws/aws-eks-cluster-management` | Base image name for EKS management image |
 | `eks-base-image-namespace` | string | `kube-kaptain` | Base image namespace for EKS management image |
 | `eks-base-image-registry` | string | `ghcr.io` | Base image registry for EKS management image |
-| `eks-base-image-tag` | string | `1.1` | Base image tag for EKS management image |
+| `eks-base-image-tag` | string | `""` | Base image tag for EKS management image |
 | `eks-cilium-ebpf-networking` | boolean | `false` | Generate controlplane-only yaml for Cilium eBPF networking |
 | `eks-cluster-yaml-sub-path` | string | `src/eks` | Source directory for cluster config files (relative) |
 | `eks-custom-security-group` | boolean | `false` | Include custom security group in cluster config |

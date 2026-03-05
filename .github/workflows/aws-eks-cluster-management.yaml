@@ -93,7 +93,6 @@ on:
         description: 'Base image tag for EKS management image'
         required: false
         type: string
-        default: '1.1'
       kubernetes-major-version:
         description: 'Kubernetes major version'
         required: false
