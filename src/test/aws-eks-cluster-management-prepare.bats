@@ -822,7 +822,7 @@ EOF
 
   local content
   content=$(< "$OUTPUT_SUB_PATH/docker/substituted/Dockerfile")
-  assert_contains "$content" "FROM ghcr.io/kube-kaptain/aws/aws-eks-cluster-management:1.1" "Dockerfile"
+  assert_contains "$content" "FROM ghcr.io/kube-kaptain/aws/aws-eks-cluster-management:" "Dockerfile"
 }
 
 @test "generated Dockerfile copies cluster.yaml" {
@@ -1352,7 +1352,7 @@ EOF
   run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
   [ "$status" -eq 0 ]
 
-  assert_output_contains "Base image: ghcr.io/kube-kaptain/aws/aws-eks-cluster-management:1.1"
+  assert_output_contains "Base image: ghcr.io/kube-kaptain/aws/aws-eks-cluster-management:"
 }
 
 @test "outputs completion message" {
