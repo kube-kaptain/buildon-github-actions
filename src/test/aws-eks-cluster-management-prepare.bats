@@ -451,7 +451,7 @@ teardown() {
   [[ "$content" != *"subnets:"* ]]
 }
 
-@test "generates instanceRoleARN in nodegroup when config file present" {
+@test "generates iam.instanceRoleARN in nodegroup when config file present" {
   printf 'arn:aws:iam::123456789012:role/my-node-role' > "$CONFIG_SUB_PATH/NodegroupIamInstanceRoleArn"
 
   run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
@@ -459,6 +459,7 @@ teardown() {
 
   local content
   content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
+  assert_contains "$content" "iam:" "cluster.yaml nodegroup"
   assert_contains "$content" 'instanceRoleARN: ${NodegroupIamInstanceRoleArn}' "cluster.yaml"
 }
 

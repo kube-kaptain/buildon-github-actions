@@ -737,7 +737,8 @@ YAML
       echo "    privateNetworking: ${token_nodegroup_private_networking}"
     fi
     if [[ "${has_nodegroup_iam_instance_role_arn}" == "true" ]]; then
-      echo "    instanceRoleARN: ${token_nodegroup_iam_instance_role_arn}"
+      echo "    iam:"
+      echo "      instanceRoleARN: ${token_nodegroup_iam_instance_role_arn}"
     fi
     cat <<YAML
     desiredCapacity: ${token_desired_capacity}
