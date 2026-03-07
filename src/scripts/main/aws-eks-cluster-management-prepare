@@ -267,7 +267,7 @@ inject_flat_yaml() {
     local key="${line%%:*}"
     local after_key="${line#*:}"
     local spaces="${after_key%%[! ]*}"
-    local value="${after_key#${spaces}}"
+    local value="${after_key#"${spaces}"}"
 
     # Check if already quoted (single or double)
     if [[ "${value}" =~ ^\".*\"$ ]] || [[ "${value}" =~ ^\'.*\'$ ]]; then
