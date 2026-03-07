@@ -21,15 +21,16 @@
 #   VPC_ID                      - VPC identifier
 #   NODEGROUP_INSTANCE_TYPE     - Node instance type (e.g., t3.medium)
 #   SECRETS_ENCRYPTION_KEY_ARN  - KMS key ARN for envelope encryption of Kubernetes secrets
+#   AWS_ACCOUNT_ID              - AWS account ID (e.g., 123456789012)
 #   PRIVATE_SUBNET_ID_A/B/C     - Private subnet IDs (if EKS_PRIVATE_NETWORKING=true)
 #   PUBLIC_SUBNET_ID_A/B/C      - Public subnet IDs (if EKS_PUBLIC_NETWORKING=true)
 #
 # Conditional config (file in CONFIG_SUB_PATH, required when switch is on):
-#   VPC_SECURITY_GROUP          - Custom security group ID (if EKS_CUSTOM_SECURITY_GROUP=true)
 #   AUTO_MODE_CONFIG_NODE_POOLS - Node pool names, comma-separated (if AUTO_MODE_CONFIG_ENABLED=true)
 #     (expanded to numbered tokens: AUTO_MODE_CONFIG_NODE_POOL_1, ...POOL_2, etc.)
 #
 # Optional config (file in CONFIG_SUB_PATH, generates section when present):
+#   VPC_SECURITY_GROUP                  - VPC security group ID (generates securityGroup in vpc block)
 #   PRIVATE_CLUSTER_ENABLED             - Generate privateCluster block (e.g., true)
 #   NODEGROUP_PRIVATE_NETWORKING        - Generate privateNetworking in nodegroup (e.g., true)
 #   AUTO_MODE_CONFIG_ENABLED            - Enable EKS Auto Mode (generates autoModeConfig block)
@@ -37,6 +38,7 @@
 #   METADATA_TAGS                       - Additional metadata tags (flat yaml: key: value per line)
 #   NODEGROUP_TAGS                      - Additional nodegroup tags (flat yaml: key: value per line)
 #   NODEGROUP_LABELS                    - Additional nodegroup labels (flat yaml: key: value per line)
+#   METADATA_ANNOTATIONS                - Additional metadata annotations (flat yaml: key: value per line)
 #   NODEGROUP_IAM_INSTANCE_ROLE_ARN     - Custom IAM instance role ARN for nodegroup
 #   ADDONS_<NAME>_SERVICE_ACCOUNT_ROLE_ARN - Per-addon service account role ARN
 #     (e.g., ADDONS_VPC_CNI_SERVICE_ACCOUNT_ROLE_ARN → AddonsVpcCniServiceAccountRoleArn)
@@ -49,7 +51,7 @@
 #     (expanded to numbered tokens: CLOUD_WATCH_CLUSTER_LOGGING_ENABLE_TYPE_1, ...TYPE_2, etc.)
 #   NODEGROUP_AMI_FAMILY                       - default: AmazonLinux2023
 #   NODEGROUP_VOLUME_SIZE                      - default: 20
-#   NODEGROUP_UPDATE_CONFIG_MAX_UNAVAILABLE    - default: 0
+#   NODEGROUP_UPDATE_CONFIG_MAX_UNAVAILABLE    - default: 1 (must be > 0)
 #   NODEGROUP_DESIRED_CAPACITY                 - default: 1
 #   NODEGROUP_MIN_SIZE                         - default: 3
 #   NODEGROUP_MAX_SIZE                         - default: 12
@@ -63,7 +65,6 @@
 #   EKS_PRIVATE_NETWORKING     - Include private subnets section (default: true)
 #   EKS_PUBLIC_NETWORKING      - Include public subnets section (default: false)
 #   EKS_CILIUM_EBPF_NETWORKING - Generate controlplane-only yaml (default: false)
-#   EKS_CUSTOM_SECURITY_GROUP  - Include custom security group (default: false)
 #   EKS_ADDONS_LIST            - Comma-separated addon names (default: coredns,kube-proxy,vpc-cni,aws-ebs-csi-driver,aws-efs-csi-driver)
 #   EKS_CLUSTER_YAML_SUB_PATH  - Source dir for cluster configs (default: src/eks)
 #   SECRETS_SUB_PATH           - Source dir for encrypted secrets (default: src/secrets)
@@ -158,6 +159,51 @@ require_config_file() {
   fi
 }
 
+# is_yaml_unsafe_value - Check if a value would be coerced by YAML 1.1
+#
+# Returns 0 (true) if the value needs quoting to remain a string in YAML.
+# Covers: booleans, null, integers, octal, hex, floats, sexagesimal.
+#
+# Args:
+#   $1 - the value to check
+is_yaml_unsafe_value() {
+  local val="$1"
+
+  # Case-insensitive exact matches: booleans and null
+  local lower
+  lower=$(echo "${val}" | tr '[:upper:]' '[:lower:]')
+  case "${lower}" in
+    true|false|yes|no|on|off|null) return 0 ;;
+  esac
+
+  # Tilde (YAML null)
+  [[ "${val}" == "~" ]] && return 0
+
+  # Integers (positive and negative)
+  [[ "${val}" =~ ^-?[0-9]+$ ]] && return 0
+
+  # Octal: 0777 or 0o777
+  [[ "${val}" =~ ^0[0-7]+$ ]] && return 0
+  [[ "${val}" =~ ^0o[0-7]+$ ]] && return 0
+
+  # Hex: 0x1F
+  [[ "${val}" =~ ^0x[0-9a-fA-F]+$ ]] && return 0
+
+  # Floats: 1.0, .5, -1.0, 1e10, 1.5e-3
+  [[ "${val}" =~ ^-?[0-9]*\.[0-9]+([eE][-+]?[0-9]+)?$ ]] && return 0
+  [[ "${val}" =~ ^-?[0-9]+[eE][-+]?[0-9]+$ ]] && return 0
+
+  # Special floats
+  case "${lower}" in
+    .inf|-.inf|+.inf|.nan) return 0 ;;
+  esac
+
+  # Sexagesimal: digits:digits (YAML 1.1 base-60)
+  [[ "${val}" =~ ^[0-9]+:[0-9]+(:[0-9]+)*$ ]] && return 0
+
+  return 1
+}
+
 # validate_flat_yaml_tags - Validate a flat yaml tags config file
 #
 # Each non-empty line must be: key: value (with optional single or double quotes)
@@ -180,8 +226,8 @@ validate_flat_yaml_tags() {
     # Skip blank lines
     [[ "${line}" =~ ^[[:space:]]*$ ]] && continue
 
-    # Must match: word-chars (and hyphens): space then value (optionally quoted)
-    if [[ ! "${line}" =~ ^[A-Za-z][A-Za-z0-9_-]*:[[:space:]]+.+$ ]]; then
+    # Must match: key (alphanumerics, hyphens, underscores, dots, slashes): space then value
+    if [[ ! "${line}" =~ ^[A-Za-z][A-Za-z0-9_./-]*:[[:space:]]+.+$ ]]; then
       log_error "${token_name}: invalid tag at line ${line_num}: ${line}"
       log_error "  Expected format: TagName: value  or  TagName: \"value\""
       tag_errors=$((tag_errors + 1))
@@ -193,6 +239,51 @@ validate_flat_yaml_tags() {
     return 1
   fi
   return 0
+}
+
+# inject_flat_yaml - Inject flat yaml lines with auto-quoting of YAML-unsafe values
+#
+# Reads a flat yaml file and echoes each line with the given indentation.
+# Values that would be coerced by YAML 1.1 are wrapped in double quotes
+# and a warning is emitted. Already-quoted values are left alone.
+#
+# Args:
+#   $1 - UPPER_SNAKE token name (for warning messages)
+#   $2 - path to the config file
+#   $3 - indentation string (e.g. "    " for 4 spaces)
+inject_flat_yaml() {
+  local token_name="$1"
+  local file_path="$2"
+  local indent="$3"
+  local line_num=0
+
+  while IFS= read -r line || [[ -n "${line}" ]]; do
+    line_num=$((line_num + 1))
+
+    # Skip blank lines
+    [[ "${line}" =~ ^[[:space:]]*$ ]] && continue
+
+    # Extract key and value portions
+    local key="${line%%:*}"
+    local after_key="${line#*:}"
+    local spaces="${after_key%%[! ]*}"
+    local value="${after_key#"${spaces}"}"
+
+    # Check if already quoted (single or double)
+    if [[ "${value}" =~ ^\".*\"$ ]] || [[ "${value}" =~ ^\'.*\'$ ]]; then
+      echo "${indent}${line}"
+      continue
+    fi
+
+    # Check if value is YAML-unsafe and quote it
+    if is_yaml_unsafe_value "${value}"; then
+      local quoted="${key}:${spaces}\"${value}\""
+      log_warning "${token_name}: auto-quoted YAML-unsafe value at line ${line_num}: ${line} -> ${quoted}" >&2
+      echo "${indent}${quoted}"
+    else
+      echo "${indent}${line}"
+    fi
+  done < "${file_path}"
 }
 
 # ensure_default_token - Write default to platform config dir(s) if not already provided
@@ -318,6 +409,7 @@ require_config_file "AWS_REGION" "Create this file with the AWS region for your 
 require_config_file "VPC_ID" "Create this file with the VPC ID for your cluster (e.g., vpc-0123456789abcdef0)"
 require_config_file "NODEGROUP_INSTANCE_TYPE" "Create this file with the instance type (e.g., t3.medium)"
 require_config_file "SECRETS_ENCRYPTION_KEY_ARN" "Create this file with the KMS key ARN for secrets encryption"
+require_config_file "AWS_ACCOUNT_ID" "Create this file with the AWS account ID for your cluster (e.g., 123456789012)"
 
 if [[ "${EKS_PRIVATE_NETWORKING}" == "true" ]]; then
   require_config_file "PRIVATE_SUBNET_ID_A" "Required when EKS_PRIVATE_NETWORKING=true"
@@ -331,9 +423,11 @@ if [[ "${EKS_PUBLIC_NETWORKING}" == "true" ]]; then
   require_config_file "PUBLIC_SUBNET_ID_C" "Required when EKS_PUBLIC_NETWORKING=true"
 fi
 
-EKS_CUSTOM_SECURITY_GROUP="${EKS_CUSTOM_SECURITY_GROUP:-false}"
-if [[ "${EKS_CUSTOM_SECURITY_GROUP}" == "true" ]]; then
-  require_config_file "VPC_SECURITY_GROUP" "Required when EKS_CUSTOM_SECURITY_GROUP=true"
+# VPC security group - optional: if config file exists, include securityGroup line
+has_vpc_security_group="false"
+vpc_security_group_name=$(convert_token_name "${TOKEN_NAME_STYLE}" "VPC_SECURITY_GROUP")
+if [[ -f "${CONFIG_SUB_PATH}/${vpc_security_group_name}" ]]; then
+  has_vpc_security_group="true"
 fi
 
 # Private cluster - conditional: if config file exists, generate privateCluster block
@@ -406,6 +500,16 @@ if [[ -f "${CONFIG_SUB_PATH}/${nodegroup_labels_config_name}" ]]; then
   nodegroup_labels_file="${CONFIG_SUB_PATH}/${nodegroup_labels_config_name}"
   if validate_flat_yaml_tags "NODEGROUP_LABELS" "${nodegroup_labels_file}"; then
     has_nodegroup_labels="true"
+  fi
+fi
+
+has_metadata_annotations="false"
+metadata_annotations_file=""
+metadata_annotations_config_name=$(convert_token_name "${TOKEN_NAME_STYLE}" "METADATA_ANNOTATIONS")
+if [[ -f "${CONFIG_SUB_PATH}/${metadata_annotations_config_name}" ]]; then
+  metadata_annotations_file="${CONFIG_SUB_PATH}/${metadata_annotations_config_name}"
+  if validate_flat_yaml_tags "METADATA_ANNOTATIONS" "${metadata_annotations_file}"; then
+    has_metadata_annotations="true"
   fi
 fi
 
@@ -486,10 +590,22 @@ expand_comma_list_token "CLOUD_WATCH_CLUSTER_LOGGING_ENABLE_TYPES" "CLOUD_WATCH_
 cloudwatch_tokens=("${expanded_tokens[@]}")
 ensure_default_token "NODEGROUP_AMI_FAMILY" "AmazonLinux2023"
 ensure_default_token "NODEGROUP_VOLUME_SIZE" "20"
-ensure_default_token "NODEGROUP_UPDATE_CONFIG_MAX_UNAVAILABLE" "0"
+ensure_default_token "NODEGROUP_UPDATE_CONFIG_MAX_UNAVAILABLE" "1"
 ensure_default_token "NODEGROUP_DESIRED_CAPACITY" "${NODEGROUP_DESIRED_CAPACITY}"
 ensure_default_token "NODEGROUP_MIN_SIZE" "${NODEGROUP_MIN_SIZE}"
 ensure_default_token "NODEGROUP_MAX_SIZE" "${NODEGROUP_MAX_SIZE}"
+
+# Validate maxUnavailable is greater than 0
+update_max_unavailable_name=$(convert_token_name "${TOKEN_NAME_STYLE}" "NODEGROUP_UPDATE_CONFIG_MAX_UNAVAILABLE")
+update_max_unavailable_val="1"
+if [[ -f "${CONFIG_SUB_PATH}/${update_max_unavailable_name}" ]]; then
+  update_max_unavailable_val=$(< "${CONFIG_SUB_PATH}/${update_max_unavailable_name}")
+  update_max_unavailable_val="${update_max_unavailable_val%$'\n'}"
+fi
+if [[ "${update_max_unavailable_val}" -le 0 ]]; then
+  log_error "NODEGROUP_UPDATE_CONFIG_MAX_UNAVAILABLE must be greater than 0 (got: ${update_max_unavailable_val})"
+  validation_errors=$((validation_errors + 1))
+fi
 
 if [[ ${validation_errors} -gt 0 ]]; then
   log_error "Validation failed with ${validation_errors} error(s)"
@@ -506,6 +622,7 @@ token_vpc_id=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_S
 token_vpc_private_access=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "VPC_CLUSTER_ENDPOINTS_PRIVATE_ACCESS")
 token_vpc_public_access=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "VPC_CLUSTER_ENDPOINTS_PUBLIC_ACCESS")
 token_secrets_encryption_key_arn=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "SECRETS_ENCRYPTION_KEY_ARN")
+token_aws_account_id=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "AWS_ACCOUNT_ID")
 token_nodegroup_prefix=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "NODE_GROUP_DEFAULT_PREFIX")
 token_instance_type=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "NODEGROUP_INSTANCE_TYPE")
 token_ami_family=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "NODEGROUP_AMI_FAMILY")
@@ -527,7 +644,7 @@ if [[ "${EKS_PUBLIC_NETWORKING}" == "true" ]]; then
   token_public_subnet_id_c=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "PUBLIC_SUBNET_ID_C")
 fi
 
-if [[ "${EKS_CUSTOM_SECURITY_GROUP}" == "true" ]]; then
+if [[ "${has_vpc_security_group}" == "true" ]]; then
   token_security_group=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "VPC_SECURITY_GROUP")
 fi
 
@@ -591,10 +708,17 @@ YAML
 
   # Append user metadata tags (flat yaml, indented under tags:)
   if [[ "${has_metadata_tags}" == "true" ]]; then
-    while IFS= read -r line || [[ -n "${line}" ]]; do
-      [[ "${line}" =~ ^[[:space:]]*$ ]] && continue
-      echo "    ${line}"
-    done < "${metadata_tags_file}"
+    inject_flat_yaml "METADATA_TAGS" "${metadata_tags_file}" "    "
+  fi
+
+  cat <<YAML
+  annotations:
+    kaptain.org/aws-account-id: ${token_aws_account_id}
+YAML
+
+  # Append user metadata annotations (flat yaml, indented under annotations:)
+  if [[ "${has_metadata_annotations}" == "true" ]]; then
+    inject_flat_yaml "METADATA_ANNOTATIONS" "${metadata_annotations_file}" "    "
   fi
 
   cat <<YAML
@@ -609,7 +733,7 @@ vpc:
     publicAccess: ${token_vpc_public_access}
 YAML
 
-  if [[ "${EKS_CUSTOM_SECURITY_GROUP}" == "true" ]]; then
+  if [[ "${has_vpc_security_group}" == "true" ]]; then
     echo "  securityGroup: ${token_security_group}"
   fi
 
@@ -745,10 +869,7 @@ YAML
     # Nodegroup labels (optional, only when config file present)
     if [[ "${has_nodegroup_labels}" == "true" ]]; then
       echo "    labels:"
-      while IFS= read -r line || [[ -n "${line}" ]]; do
-        [[ "${line}" =~ ^[[:space:]]*$ ]] && continue
-        echo "      ${line}"
-      done < "${nodegroup_labels_file}"
+      inject_flat_yaml "NODEGROUP_LABELS" "${nodegroup_labels_file}" "      "
     fi
 
     cat <<YAML
@@ -759,10 +880,7 @@ YAML
 
     # Append user nodegroup tags (flat yaml, indented under tags:)
     if [[ "${has_nodegroup_tags}" == "true" ]]; then
-      while IFS= read -r line || [[ -n "${line}" ]]; do
-        [[ "${line}" =~ ^[[:space:]]*$ ]] && continue
-        echo "      ${line}"
-      done < "${nodegroup_tags_file}"
+      inject_flat_yaml "NODEGROUP_TAGS" "${nodegroup_tags_file}" "      "
     fi
   fi
 }
@@ -827,7 +945,6 @@ main() {
   log "Nodegroup private networking: ${has_nodegroup_private_networking}"
   log "Nodegroup IAM instance role ARN: ${has_nodegroup_iam_instance_role_arn}"
   log "Public networking: ${EKS_PUBLIC_NETWORKING}"
-  log "Custom security group: ${EKS_CUSTOM_SECURITY_GROUP}"
   log "Platforms: ${DOCKER_PLATFORM}"
   log "======================================="
 

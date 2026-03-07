@@ -25,10 +25,10 @@
 #   PublicSubnetIdC                       - Public subnet ID for AZ c (EKS_PUBLIC_NETWORKING=true)
 #
 # ── Conditional (required when related switch is on) ──────────────────────────
-#   VpcSecurityGroup                      - Custom security group ID (EKS_CUSTOM_SECURITY_GROUP=true)
 #   AutoModeConfigNodePools               - Comma-separated node pool names (AutoModeConfigEnabled=true)
 #
 # ── Optional (generates section when present, omitted when absent) ────────────
+#   VpcSecurityGroup                      - VPC security group ID (e.g., sg-0123456789abcdef0)
 #   PrivateClusterEnabled                 - Generates privateCluster block (e.g., true)
 #   NodegroupPrivateNetworking            - Adds privateNetworking to nodegroup (e.g., true)
 #   NodegroupIamInstanceRoleArn           - Adds iam.instanceRoleARN to nodegroup
@@ -47,7 +47,7 @@
 #   CloudWatchClusterLoggingEnableTypes   - default: api,audit,authenticator,controllerManager,scheduler
 #   NodegroupAmiFamily                    - default: AmazonLinux2023
 #   NodegroupVolumeSize                   - default: 20 (GB)
-#   NodegroupUpdateConfigMaxUnavailable   - default: 0
+#   NodegroupUpdateConfigMaxUnavailable   - default: 1 (must be > 0)
 #   NodegroupDesiredCapacity              - default: 1
 #   NodegroupMinSize                      - default: 3
 #   NodegroupMaxSize                      - default: 12
@@ -64,7 +64,7 @@ on:
 
 jobs:
   build:
-    uses: kube-kaptain/buildon-github-actions/.github/workflows/aws-eks-cluster-management.yaml@1.0.76
+    uses: kube-kaptain/buildon-github-actions/.github/workflows/aws-eks-cluster-management.yaml@1.0.77
     permissions:
       contents: write
       packages: write
@@ -85,7 +85,6 @@ jobs:
       eks-private-networking: true     # Default: true  (requires PrivateSubnetIdA/B/C)
       # eks-public-networking: false   # Default: false (requires PublicSubnetIdA/B/C)
       # eks-cilium-ebpf-networking: false  # Default: false (generates controlplane-only yaml, removes kube-proxy and vpc-cni from addons)
-      # eks-custom-security-group: false   # Default: false (requires VpcSecurityGroup)
 
       # ┌─────────────────────────────────────────────────────────────────────┐
       # │ Nodegroup Sizing                                                    │

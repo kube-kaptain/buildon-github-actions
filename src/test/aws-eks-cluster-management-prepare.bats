@@ -23,6 +23,7 @@ setup() {
   printf 'vpc-0123456789abcdef0' > "$CONFIG_SUB_PATH/VpcId"
   printf 't3.medium' > "$CONFIG_SUB_PATH/NodegroupInstanceType"
   printf 'arn:aws:kms:eu-west-1:123456789012:key/12345678-1234-1234-1234-123456789012' > "$CONFIG_SUB_PATH/SecretsEncryptionKeyArn"
+  printf '123456789012' > "$CONFIG_SUB_PATH/AwsAccountId"
   printf 'subnet-aaa11111111111111' > "$CONFIG_SUB_PATH/PrivateSubnetIdA"
   printf 'subnet-bbb22222222222222' > "$CONFIG_SUB_PATH/PrivateSubnetIdB"
   printf 'subnet-ccc33333333333333' > "$CONFIG_SUB_PATH/PrivateSubnetIdC"
@@ -36,7 +37,6 @@ setup() {
   export EKS_PRIVATE_NETWORKING="true"
   export EKS_PUBLIC_NETWORKING="false"
   export EKS_CILIUM_EBPF_NETWORKING="false"
-  export EKS_CUSTOM_SECURITY_GROUP="false"
 
   # Single platform by default
   export DOCKER_PLATFORM="linux/amd64"
@@ -139,6 +139,7 @@ teardown() {
   rm "$CONFIG_SUB_PATH/VpcId"
   rm "$CONFIG_SUB_PATH/NodegroupInstanceType"
   rm "$CONFIG_SUB_PATH/SecretsEncryptionKeyArn"
+  rm "$CONFIG_SUB_PATH/AwsAccountId"
 
   run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
   [ "$status" -ne 0 ]
@@ -146,7 +147,8 @@ teardown() {
   assert_output_contains "VPC_ID"
   assert_output_contains "NODEGROUP_INSTANCE_TYPE"
   assert_output_contains "SECRETS_ENCRYPTION_KEY_ARN"
-  assert_output_contains "4 missing config file(s)"
+  assert_output_contains "AWS_ACCOUNT_ID"
+  assert_output_contains "5 missing config file(s)"
 }
 
 # === Private networking config ===
@@ -195,22 +197,15 @@ teardown() {
   [ "$status" -eq 0 ]
 }
 
-# === Custom security group config ===
+# === VPC security group config ===
 
-@test "requires VpcSecurityGroup when EKS_CUSTOM_SECURITY_GROUP=true" {
-  export EKS_CUSTOM_SECURITY_GROUP="true"
-
-  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
-  [ "$status" -ne 0 ]
-  assert_output_contains "VPC_SECURITY_GROUP"
-}
-
-@test "succeeds with VpcSecurityGroup when EKS_CUSTOM_SECURITY_GROUP=true" {
-  export EKS_CUSTOM_SECURITY_GROUP="true"
-  printf 'sg-0123456789abcdef0' > "$CONFIG_SUB_PATH/VpcSecurityGroup"
-
+@test "does not generate securityGroup by default" {
   run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
   [ "$status" -eq 0 ]
+
+  local content
+  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
+  [[ "$content" != *"securityGroup"* ]]
 }
 
 # === Generated cluster.yaml content ===
@@ -290,8 +285,7 @@ teardown() {
   assert_contains "$content" '${PublicSubnetIdC}' "cluster.yaml"
 }
 
-@test "generates cluster.yaml with security group when EKS_CUSTOM_SECURITY_GROUP=true" {
-  export EKS_CUSTOM_SECURITY_GROUP="true"
+@test "generates cluster.yaml with securityGroup token when config present" {
   printf 'sg-0123456789abcdef0' > "$CONFIG_SUB_PATH/VpcSecurityGroup"
 
   run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
@@ -300,15 +294,6 @@ teardown() {
   local content
   content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
   assert_contains "$content" 'securityGroup: ${VpcSecurityGroup}' "cluster.yaml"
-}
-
-@test "generates cluster.yaml without security group by default" {
-  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
-  [ "$status" -eq 0 ]
-
-  local content
-  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
-  [[ "$content" != *"securityGroup"* ]]
 }
 
 # === Auto Mode config ===
@@ -635,6 +620,196 @@ EOF
   content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
   assert_contains "$content" "Environment: production" "cluster.yaml"
   assert_contains "$content" "Team: platform" "cluster.yaml"
+}
+
+# === YAML auto-quoting ===
+
+@test "auto-quotes boolean values in metadata tags" {
+  cat > "$CONFIG_SUB_PATH/MetadataTags" << 'EOF'
+Enabled: true
+Active: YES
+Disabled: off
+EOF
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -eq 0 ]
+
+  local content
+  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
+  assert_contains "$content" 'Enabled: "true"' "cluster.yaml"
+  assert_contains "$content" 'Active: "YES"' "cluster.yaml"
+  assert_contains "$content" 'Disabled: "off"' "cluster.yaml"
+  assert_output_contains "auto-quoted YAML-unsafe value"
+}
+
+@test "auto-quotes numeric values in nodegroup tags" {
+  cat > "$CONFIG_SUB_PATH/NodegroupTags" << 'EOF'
+Priority: 1
+Weight: 3.5
+Negative: -42
+EOF
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -eq 0 ]
+
+  local content
+  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
+  assert_contains "$content" 'Priority: "1"' "cluster.yaml"
+  assert_contains "$content" 'Weight: "3.5"' "cluster.yaml"
+  assert_contains "$content" 'Negative: "-42"' "cluster.yaml"
+}
+
+@test "auto-quotes null and special values in metadata tags" {
+  cat > "$CONFIG_SUB_PATH/MetadataTags" << 'EOF'
+Override: null
+Octal: 0777
+Hex: 0x1F
+Tilde: ~
+EOF
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -eq 0 ]
+
+  local content
+  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
+  assert_contains "$content" 'Override: "null"' "cluster.yaml"
+  assert_contains "$content" 'Octal: "0777"' "cluster.yaml"
+  assert_contains "$content" 'Hex: "0x1F"' "cluster.yaml"
+  assert_contains "$content" 'Tilde: "~"' "cluster.yaml"
+}
+
+@test "does not double-quote already-quoted values" {
+  cat > "$CONFIG_SUB_PATH/MetadataTags" << 'EOF'
+Name: "true"
+Other: 'false'
+Normal: my-string-value
+EOF
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -eq 0 ]
+
+  local content
+  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
+  assert_contains "$content" 'Name: "true"' "cluster.yaml"
+  assert_contains "$content" "Other: 'false'" "cluster.yaml"
+  assert_contains "$content" "Normal: my-string-value" "cluster.yaml"
+  [[ "$output" != *"auto-quoted"*"Name:"* ]]
+  [[ "$output" != *"auto-quoted"*"Other:"* ]]
+  [[ "$output" != *"auto-quoted"*"Normal:"* ]]
+}
+
+@test "auto-quotes in nodegroup labels" {
+  cat > "$CONFIG_SUB_PATH/NodegroupLabels" << 'EOF'
+gpu: false
+tier: 0
+EOF
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -eq 0 ]
+
+  local content
+  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
+  assert_contains "$content" 'gpu: "false"' "cluster.yaml"
+  assert_contains "$content" 'tier: "0"' "cluster.yaml"
+}
+
+@test "auto-quotes sexagesimal values" {
+  cat > "$CONFIG_SUB_PATH/MetadataTags" << 'EOF'
+Duration: 1:30
+EOF
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -eq 0 ]
+
+  local content
+  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
+  assert_contains "$content" 'Duration: "1:30"' "cluster.yaml"
+}
+
+@test "does not quote safe string values" {
+  cat > "$CONFIG_SUB_PATH/MetadataTags" << 'EOF'
+Environment: production
+Team: platform-engineering
+Region: eu-west-1
+EOF
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -eq 0 ]
+
+  local content
+  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
+  assert_contains "$content" "Environment: production" "cluster.yaml"
+  assert_contains "$content" "Team: platform-engineering" "cluster.yaml"
+  assert_contains "$content" "Region: eu-west-1" "cluster.yaml"
+  [[ "$output" != *"auto-quoted"* ]]
+}
+
+# === Required AwsAccountId ===
+
+@test "fails when AwsAccountId config file missing" {
+  rm "$CONFIG_SUB_PATH/AwsAccountId"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -ne 0 ]
+  assert_output_contains "AWS_ACCOUNT_ID"
+  assert_output_contains "not found"
+}
+
+# === Annotations ===
+
+@test "generates fixed annotation with AwsAccountId token" {
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -eq 0 ]
+
+  local content
+  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
+  assert_contains "$content" "annotations:" "cluster.yaml"
+  assert_contains "$content" 'kaptain.org/aws-account-id: ${AwsAccountId}' "cluster.yaml"
+}
+
+@test "appends user metadata annotations from config file" {
+  cat > "$CONFIG_SUB_PATH/MetadataAnnotations" << 'EOF'
+kaptain.org/team: platform-engineering
+kaptain.org/cost-center: infrastructure
+EOF
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -eq 0 ]
+
+  local content
+  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
+  assert_contains "$content" "kaptain.org/team: platform-engineering" "cluster.yaml"
+  assert_contains "$content" "kaptain.org/cost-center: infrastructure" "cluster.yaml"
+  # Fixed annotation still present
+  assert_contains "$content" 'kaptain.org/aws-account-id: ${AwsAccountId}' "cluster.yaml"
+}
+
+@test "auto-quotes in metadata annotations" {
+  cat > "$CONFIG_SUB_PATH/MetadataAnnotations" << 'EOF'
+kaptain.org/enabled: true
+kaptain.org/priority: 1
+EOF
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -eq 0 ]
+
+  local content
+  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
+  assert_contains "$content" 'kaptain.org/enabled: "true"' "cluster.yaml"
+  assert_contains "$content" 'kaptain.org/priority: "1"' "cluster.yaml"
+  assert_output_contains "auto-quoted YAML-unsafe value"
+}
+
+@test "does not generate user annotations when config absent" {
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -eq 0 ]
+
+  local content
+  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
+  # Fixed annotation is always present
+  assert_contains "$content" 'kaptain.org/aws-account-id: ${AwsAccountId}' "cluster.yaml"
+  # No user annotations
+  [[ "$content" != *"kaptain.org/team"* ]]
 }
 
 @test "generates cluster.yaml with addons" {
@@ -1122,7 +1297,15 @@ EOF
   [ -f "$OUTPUT_SUB_PATH/docker/config/NodegroupUpdateConfigMaxUnavailable" ]
   local value
   value=$(< "$OUTPUT_SUB_PATH/docker/config/NodegroupUpdateConfigMaxUnavailable")
-  [ "$value" = "0" ]
+  [ "$value" = "1" ]
+}
+
+@test "fails when NODEGROUP_UPDATE_CONFIG_MAX_UNAVAILABLE is zero" {
+  printf '0' > "$CONFIG_SUB_PATH/NodegroupUpdateConfigMaxUnavailable"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -ne 0 ]
+  assert_output_contains "must be greater than 0"
 }
 
 
@@ -1274,6 +1457,7 @@ EOF
   mv "$CONFIG_SUB_PATH/VpcId" "$CONFIG_SUB_PATH/VPC_ID"
   mv "$CONFIG_SUB_PATH/NodegroupInstanceType" "$CONFIG_SUB_PATH/NODEGROUP_INSTANCE_TYPE"
   mv "$CONFIG_SUB_PATH/SecretsEncryptionKeyArn" "$CONFIG_SUB_PATH/SECRETS_ENCRYPTION_KEY_ARN"
+  mv "$CONFIG_SUB_PATH/AwsAccountId" "$CONFIG_SUB_PATH/AWS_ACCOUNT_ID"
   mv "$CONFIG_SUB_PATH/PrivateSubnetIdA" "$CONFIG_SUB_PATH/PRIVATE_SUBNET_ID_A"
   mv "$CONFIG_SUB_PATH/PrivateSubnetIdB" "$CONFIG_SUB_PATH/PRIVATE_SUBNET_ID_B"
   mv "$CONFIG_SUB_PATH/PrivateSubnetIdC" "$CONFIG_SUB_PATH/PRIVATE_SUBNET_ID_C"
