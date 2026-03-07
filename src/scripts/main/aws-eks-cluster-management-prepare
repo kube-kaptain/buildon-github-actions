@@ -21,6 +21,7 @@
 #   VPC_ID                      - VPC identifier
 #   NODEGROUP_INSTANCE_TYPE     - Node instance type (e.g., t3.medium)
 #   SECRETS_ENCRYPTION_KEY_ARN  - KMS key ARN for envelope encryption of Kubernetes secrets
+#   AWS_ACCOUNT_ID              - AWS account ID (e.g., 123456789012)
 #   PRIVATE_SUBNET_ID_A/B/C     - Private subnet IDs (if EKS_PRIVATE_NETWORKING=true)
 #   PUBLIC_SUBNET_ID_A/B/C      - Public subnet IDs (if EKS_PUBLIC_NETWORKING=true)
 #
@@ -37,6 +38,7 @@
 #   METADATA_TAGS                       - Additional metadata tags (flat yaml: key: value per line)
 #   NODEGROUP_TAGS                      - Additional nodegroup tags (flat yaml: key: value per line)
 #   NODEGROUP_LABELS                    - Additional nodegroup labels (flat yaml: key: value per line)
+#   METADATA_ANNOTATIONS                - Additional metadata annotations (flat yaml: key: value per line)
 #   NODEGROUP_IAM_INSTANCE_ROLE_ARN     - Custom IAM instance role ARN for nodegroup
 #   ADDONS_<NAME>_SERVICE_ACCOUNT_ROLE_ARN - Per-addon service account role ARN
 #     (e.g., ADDONS_VPC_CNI_SERVICE_ACCOUNT_ROLE_ARN → AddonsVpcCniServiceAccountRoleArn)
@@ -224,8 +226,8 @@ validate_flat_yaml_tags() {
     # Skip blank lines
     [[ "${line}" =~ ^[[:space:]]*$ ]] && continue
 
-    # Must match: word-chars (and hyphens): space then value (optionally quoted)
-    if [[ ! "${line}" =~ ^[A-Za-z][A-Za-z0-9_-]*:[[:space:]]+.+$ ]]; then
+    # Must match: key (alphanumerics, hyphens, underscores, dots, slashes): space then value
+    if [[ ! "${line}" =~ ^[A-Za-z][A-Za-z0-9_./-]*:[[:space:]]+.+$ ]]; then
       log_error "${token_name}: invalid tag at line ${line_num}: ${line}"
       log_error "  Expected format: TagName: value  or  TagName: \"value\""
       tag_errors=$((tag_errors + 1))
@@ -407,6 +409,7 @@ require_config_file "AWS_REGION" "Create this file with the AWS region for your 
 require_config_file "VPC_ID" "Create this file with the VPC ID for your cluster (e.g., vpc-0123456789abcdef0)"
 require_config_file "NODEGROUP_INSTANCE_TYPE" "Create this file with the instance type (e.g., t3.medium)"
 require_config_file "SECRETS_ENCRYPTION_KEY_ARN" "Create this file with the KMS key ARN for secrets encryption"
+require_config_file "AWS_ACCOUNT_ID" "Create this file with the AWS account ID for your cluster (e.g., 123456789012)"
 
 if [[ "${EKS_PRIVATE_NETWORKING}" == "true" ]]; then
   require_config_file "PRIVATE_SUBNET_ID_A" "Required when EKS_PRIVATE_NETWORKING=true"
@@ -497,6 +500,16 @@ if [[ -f "${CONFIG_SUB_PATH}/${nodegroup_labels_config_name}" ]]; then
   nodegroup_labels_file="${CONFIG_SUB_PATH}/${nodegroup_labels_config_name}"
   if validate_flat_yaml_tags "NODEGROUP_LABELS" "${nodegroup_labels_file}"; then
     has_nodegroup_labels="true"
+  fi
+fi
+
+has_metadata_annotations="false"
+metadata_annotations_file=""
+metadata_annotations_config_name=$(convert_token_name "${TOKEN_NAME_STYLE}" "METADATA_ANNOTATIONS")
+if [[ -f "${CONFIG_SUB_PATH}/${metadata_annotations_config_name}" ]]; then
+  metadata_annotations_file="${CONFIG_SUB_PATH}/${metadata_annotations_config_name}"
+  if validate_flat_yaml_tags "METADATA_ANNOTATIONS" "${metadata_annotations_file}"; then
+    has_metadata_annotations="true"
   fi
 fi
 
@@ -609,6 +622,7 @@ token_vpc_id=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_S
 token_vpc_private_access=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "VPC_CLUSTER_ENDPOINTS_PRIVATE_ACCESS")
 token_vpc_public_access=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "VPC_CLUSTER_ENDPOINTS_PUBLIC_ACCESS")
 token_secrets_encryption_key_arn=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "SECRETS_ENCRYPTION_KEY_ARN")
+token_aws_account_id=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "AWS_ACCOUNT_ID")
 token_nodegroup_prefix=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "NODE_GROUP_DEFAULT_PREFIX")
 token_instance_type=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "NODEGROUP_INSTANCE_TYPE")
 token_ami_family=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "NODEGROUP_AMI_FAMILY")
@@ -695,6 +709,16 @@ YAML
   # Append user metadata tags (flat yaml, indented under tags:)
   if [[ "${has_metadata_tags}" == "true" ]]; then
     inject_flat_yaml "METADATA_TAGS" "${metadata_tags_file}" "    "
+  fi
+
+  cat <<YAML
+  annotations:
+    kaptain.org/aws-account-id: ${token_aws_account_id}
+YAML
+
+  # Append user metadata annotations (flat yaml, indented under annotations:)
+  if [[ "${has_metadata_annotations}" == "true" ]]; then
+    inject_flat_yaml "METADATA_ANNOTATIONS" "${metadata_annotations_file}" "    "
   fi
 
   cat <<YAML
