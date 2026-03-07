@@ -764,7 +764,7 @@ EOF
   local content
   content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
   assert_contains "$content" "annotations:" "cluster.yaml"
-  assert_contains "$content" 'kaptain.org/aws-account-id: ${AwsAccountId}' "cluster.yaml"
+  assert_contains "$content" 'kaptain.org/aws-account-id: "${AwsAccountId}"' "cluster.yaml"
 }
 
 @test "appends user metadata annotations from config file" {
@@ -781,7 +781,7 @@ EOF
   assert_contains "$content" "kaptain.org/team: platform-engineering" "cluster.yaml"
   assert_contains "$content" "kaptain.org/cost-center: infrastructure" "cluster.yaml"
   # Fixed annotation still present
-  assert_contains "$content" 'kaptain.org/aws-account-id: ${AwsAccountId}' "cluster.yaml"
+  assert_contains "$content" 'kaptain.org/aws-account-id: "${AwsAccountId}"' "cluster.yaml"
 }
 
 @test "auto-quotes in metadata annotations" {
@@ -807,7 +807,7 @@ EOF
   local content
   content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
   # Fixed annotation is always present
-  assert_contains "$content" 'kaptain.org/aws-account-id: ${AwsAccountId}' "cluster.yaml"
+  assert_contains "$content" 'kaptain.org/aws-account-id: "${AwsAccountId}"' "cluster.yaml"
   # No user annotations
   [[ "$content" != *"kaptain.org/team"* ]]
 }

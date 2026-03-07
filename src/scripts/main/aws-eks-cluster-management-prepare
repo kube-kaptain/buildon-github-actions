@@ -713,7 +713,7 @@ YAML
 
   cat <<YAML
   annotations:
-    kaptain.org/aws-account-id: ${token_aws_account_id}
+    kaptain.org/aws-account-id: "${token_aws_account_id}"
 YAML
 
   # Append user metadata annotations (flat yaml, indented under annotations:)
