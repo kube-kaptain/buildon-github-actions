@@ -619,6 +619,128 @@ EOF
   assert_contains "$content" "Team: platform" "cluster.yaml"
 }
 
+# === YAML auto-quoting ===
+
+@test "auto-quotes boolean values in metadata tags" {
+  cat > "$CONFIG_SUB_PATH/MetadataTags" << 'EOF'
+Enabled: true
+Active: YES
+Disabled: off
+EOF
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -eq 0 ]
+
+  local content
+  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
+  assert_contains "$content" 'Enabled: "true"' "cluster.yaml"
+  assert_contains "$content" 'Active: "YES"' "cluster.yaml"
+  assert_contains "$content" 'Disabled: "off"' "cluster.yaml"
+  assert_output_contains "auto-quoted YAML-unsafe value"
+}
+
+@test "auto-quotes numeric values in nodegroup tags" {
+  cat > "$CONFIG_SUB_PATH/NodegroupTags" << 'EOF'
+Priority: 1
+Weight: 3.5
+Negative: -42
+EOF
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -eq 0 ]
+
+  local content
+  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
+  assert_contains "$content" 'Priority: "1"' "cluster.yaml"
+  assert_contains "$content" 'Weight: "3.5"' "cluster.yaml"
+  assert_contains "$content" 'Negative: "-42"' "cluster.yaml"
+}
+
+@test "auto-quotes null and special values in metadata tags" {
+  cat > "$CONFIG_SUB_PATH/MetadataTags" << 'EOF'
+Override: null
+Octal: 0777
+Hex: 0x1F
+Tilde: ~
+EOF
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -eq 0 ]
+
+  local content
+  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
+  assert_contains "$content" 'Override: "null"' "cluster.yaml"
+  assert_contains "$content" 'Octal: "0777"' "cluster.yaml"
+  assert_contains "$content" 'Hex: "0x1F"' "cluster.yaml"
+  assert_contains "$content" 'Tilde: "~"' "cluster.yaml"
+}
+
+@test "does not double-quote already-quoted values" {
+  cat > "$CONFIG_SUB_PATH/MetadataTags" << 'EOF'
+Name: "true"
+Other: 'false'
+Normal: my-string-value
+EOF
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -eq 0 ]
+
+  local content
+  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
+  assert_contains "$content" 'Name: "true"' "cluster.yaml"
+  assert_contains "$content" "Other: 'false'" "cluster.yaml"
+  assert_contains "$content" "Normal: my-string-value" "cluster.yaml"
+  [[ "$output" != *"auto-quoted"*"Name:"* ]]
+  [[ "$output" != *"auto-quoted"*"Other:"* ]]
+  [[ "$output" != *"auto-quoted"*"Normal:"* ]]
+}
+
+@test "auto-quotes in nodegroup labels" {
+  cat > "$CONFIG_SUB_PATH/NodegroupLabels" << 'EOF'
+gpu: false
+tier: 0
+EOF
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -eq 0 ]
+
+  local content
+  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
+  assert_contains "$content" 'gpu: "false"' "cluster.yaml"
+  assert_contains "$content" 'tier: "0"' "cluster.yaml"
+}
+
+@test "auto-quotes sexagesimal values" {
+  cat > "$CONFIG_SUB_PATH/MetadataTags" << 'EOF'
+Duration: 1:30
+EOF
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -eq 0 ]
+
+  local content
+  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
+  assert_contains "$content" 'Duration: "1:30"' "cluster.yaml"
+}
+
+@test "does not quote safe string values" {
+  cat > "$CONFIG_SUB_PATH/MetadataTags" << 'EOF'
+Environment: production
+Team: platform-engineering
+Region: eu-west-1
+EOF
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -eq 0 ]
+
+  local content
+  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
+  assert_contains "$content" "Environment: production" "cluster.yaml"
+  assert_contains "$content" "Team: platform-engineering" "cluster.yaml"
+  assert_contains "$content" "Region: eu-west-1" "cluster.yaml"
+  [[ "$output" != *"auto-quoted"* ]]
+}
+
 @test "generates cluster.yaml with addons" {
   run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
   [ "$status" -eq 0 ]

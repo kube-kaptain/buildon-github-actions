@@ -157,6 +157,51 @@ require_config_file() {
   fi
 }
 
+# is_yaml_unsafe_value - Check if a value would be coerced by YAML 1.1
+#
+# Returns 0 (true) if the value needs quoting to remain a string in YAML.
+# Covers: booleans, null, integers, octal, hex, floats, sexagesimal.
+#
+# Args:
+#   $1 - the value to check
+is_yaml_unsafe_value() {
+  local val="$1"
+
+  # Case-insensitive exact matches: booleans and null
+  local lower
+  lower=$(echo "${val}" | tr '[:upper:]' '[:lower:]')
+  case "${lower}" in
+    true|false|yes|no|on|off|null) return 0 ;;
+  esac
+
+  # Tilde (YAML null)
+  [[ "${val}" == "~" ]] && return 0
+
+  # Integers (positive and negative)
+  [[ "${val}" =~ ^-?[0-9]+$ ]] && return 0
+
+  # Octal: 0777 or 0o777
+  [[ "${val}" =~ ^0[0-7]+$ ]] && return 0
+  [[ "${val}" =~ ^0o[0-7]+$ ]] && return 0
+
+  # Hex: 0x1F
+  [[ "${val}" =~ ^0x[0-9a-fA-F]+$ ]] && return 0
+
+  # Floats: 1.0, .5, -1.0, 1e10, 1.5e-3
+  [[ "${val}" =~ ^-?[0-9]*\.[0-9]+([eE][-+]?[0-9]+)?$ ]] && return 0
+  [[ "${val}" =~ ^-?[0-9]+[eE][-+]?[0-9]+$ ]] && return 0
+
+  # Special floats
+  case "${lower}" in
+    .inf|-.inf|+.inf|.nan) return 0 ;;
+  esac
+
+  # Sexagesimal: digits:digits (YAML 1.1 base-60)
+  [[ "${val}" =~ ^[0-9]+:[0-9]+(:[0-9]+)*$ ]] && return 0
+
+  return 1
+}
+
 # validate_flat_yaml_tags - Validate a flat yaml tags config file
 #
 # Each non-empty line must be: key: value (with optional single or double quotes)
@@ -192,6 +237,51 @@ validate_flat_yaml_tags() {
     return 1
   fi
   return 0
+}
+
+# inject_flat_yaml - Inject flat yaml lines with auto-quoting of YAML-unsafe values
+#
+# Reads a flat yaml file and echoes each line with the given indentation.
+# Values that would be coerced by YAML 1.1 are wrapped in double quotes
+# and a warning is emitted. Already-quoted values are left alone.
+#
+# Args:
+#   $1 - UPPER_SNAKE token name (for warning messages)
+#   $2 - path to the config file
+#   $3 - indentation string (e.g. "    " for 4 spaces)
+inject_flat_yaml() {
+  local token_name="$1"
+  local file_path="$2"
+  local indent="$3"
+  local line_num=0
+
+  while IFS= read -r line || [[ -n "${line}" ]]; do
+    line_num=$((line_num + 1))
+
+    # Skip blank lines
+    [[ "${line}" =~ ^[[:space:]]*$ ]] && continue
+
+    # Extract key and value portions
+    local key="${line%%:*}"
+    local after_key="${line#*:}"
+    local spaces="${after_key%%[! ]*}"
+    local value="${after_key#${spaces}}"
+
+    # Check if already quoted (single or double)
+    if [[ "${value}" =~ ^\".*\"$ ]] || [[ "${value}" =~ ^\'.*\'$ ]]; then
+      echo "${indent}${line}"
+      continue
+    fi
+
+    # Check if value is YAML-unsafe and quote it
+    if is_yaml_unsafe_value "${value}"; then
+      local quoted="${key}:${spaces}\"${value}\""
+      log_warning "${token_name}: auto-quoted YAML-unsafe value at line ${line_num}: ${line} -> ${quoted}" >&2
+      echo "${indent}${quoted}"
+    else
+      echo "${indent}${line}"
+    fi
+  done < "${file_path}"
 }
 
 # ensure_default_token - Write default to platform config dir(s) if not already provided
@@ -604,10 +694,7 @@ YAML
 
   # Append user metadata tags (flat yaml, indented under tags:)
   if [[ "${has_metadata_tags}" == "true" ]]; then
-    while IFS= read -r line || [[ -n "${line}" ]]; do
-      [[ "${line}" =~ ^[[:space:]]*$ ]] && continue
-      echo "    ${line}"
-    done < "${metadata_tags_file}"
+    inject_flat_yaml "METADATA_TAGS" "${metadata_tags_file}" "    "
   fi
 
   cat <<YAML
@@ -758,10 +845,7 @@ YAML
     # Nodegroup labels (optional, only when config file present)
     if [[ "${has_nodegroup_labels}" == "true" ]]; then
       echo "    labels:"
-      while IFS= read -r line || [[ -n "${line}" ]]; do
-        [[ "${line}" =~ ^[[:space:]]*$ ]] && continue
-        echo "      ${line}"
-      done < "${nodegroup_labels_file}"
+      inject_flat_yaml "NODEGROUP_LABELS" "${nodegroup_labels_file}" "      "
     fi
 
     cat <<YAML
@@ -772,10 +856,7 @@ YAML
 
     # Append user nodegroup tags (flat yaml, indented under tags:)
     if [[ "${has_nodegroup_tags}" == "true" ]]; then
-      while IFS= read -r line || [[ -n "${line}" ]]; do
-        [[ "${line}" =~ ^[[:space:]]*$ ]] && continue
-        echo "      ${line}"
-      done < "${nodegroup_tags_file}"
+      inject_flat_yaml "NODEGROUP_TAGS" "${nodegroup_tags_file}" "      "
     fi
   fi
 }
