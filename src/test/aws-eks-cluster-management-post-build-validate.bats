@@ -481,7 +481,7 @@ YAML
   run "$SCRIPTS_DIR/aws-eks-cluster-management-post-build-validate"
   [ "$status" -ne 0 ]
   assert_output_contains "metadata.tags"
-  assert_output_contains "non-string values"
+  assert_output_contains "not a string"
   assert_output_contains "Enabled"
 }
 
@@ -492,7 +492,7 @@ YAML
   run "$SCRIPTS_DIR/aws-eks-cluster-management-post-build-validate"
   [ "$status" -ne 0 ]
   assert_output_contains "metadata.annotations"
-  assert_output_contains "non-string values"
+  assert_output_contains "not a string"
   assert_output_contains "kaptain.org/priority"
 }
 
@@ -503,7 +503,7 @@ YAML
   run "$SCRIPTS_DIR/aws-eks-cluster-management-post-build-validate"
   [ "$status" -ne 0 ]
   assert_output_contains "managedNodeGroups[0].labels"
-  assert_output_contains "non-string values"
+  assert_output_contains "not a string"
   assert_output_contains "gpu"
 }
 
@@ -514,7 +514,7 @@ YAML
   run "$SCRIPTS_DIR/aws-eks-cluster-management-post-build-validate"
   [ "$status" -ne 0 ]
   assert_output_contains "managedNodeGroups[0].tags"
-  assert_output_contains "non-string values"
+  assert_output_contains "not a string"
   assert_output_contains "Priority"
 }
 

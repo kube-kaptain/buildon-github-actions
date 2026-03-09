@@ -124,25 +124,36 @@ fail() {
 # Args:
 #   $1 - yaml file path
 #   $2 - yq path expression (e.g., ".metadata.tags")
-#   $3 - human-readable section label for error messages
 validate_values_are_strings() {
   local yaml_file="$1"
   local yq_path="$2"
-  local section_label="$3"
+
+  log ""
+  log "    --- ${yq_path} ---"
 
   # Skip if section doesn't exist
   if ! yq -e "${yq_path}" "${yaml_file}" &>/dev/null; then
+    log "    not present, skipping"
     return
   fi
 
-  local non_strings
-  non_strings=$(yq "${yq_path} | to_entries[] | select(.value | tag != \"!!str\") | .key + \": \" + (.value | tostring) + \" (\" + (.value | tag) + \")\"" "${yaml_file}" 2>/dev/null || true)
-  if [[ -n "${non_strings}" ]]; then
-    fail "${yaml_file}: ${section_label} has non-string values that will be coerced by YAML - quote them:"
-    while IFS= read -r line; do
-      log_error "  ${line}"
-    done <<< "${non_strings}"
-  fi
+  local value_count
+  value_count=$(yq "${yq_path} | to_entries | length" "${yaml_file}" 2>/dev/null || echo "0")
+  log "    ${value_count} entries"
+
+  # Show each entry with its resolved YAML type
+  local entries
+  entries=$(yq "${yq_path} | to_entries[] | .key + \": \" + (.value | tostring) + \" (of type \" + (.value | tag) + \")\"" "${yaml_file}" 2>/dev/null || true)
+  while IFS= read -r entry; do
+    if [[ -z "${entry}" ]]; then
+      continue
+    fi
+    if [[ "${entry}" == *"(of type !!str)" ]]; then
+      log "    ${entry}"
+    else
+      fail "  ${yq_path}: ${entry} - not a string, quote it"
+    fi
+  done <<< "${entries}"
 }
 
 # Phase 1: Validate substituted yaml on disk
@@ -156,6 +167,8 @@ validate_substituted_yaml() {
 
   log "Validating substituted ${yaml_file}..."
 
+  log ""
+  log "  --- Token substitution ---"
   # No unsubstituted tokens remain
   local pattern
   pattern=$(unresolved_token_regex "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}")
@@ -164,8 +177,12 @@ validate_substituted_yaml() {
   if [[ -n "${remnants}" ]]; then
     fail "${yaml_file}: unsubstituted tokens found:"
     log_error "${remnants}"
+  else
+    log "  unsubstituted tokens: none found"
   fi
 
+  log ""
+  log "  --- Metadata fields ---"
   # metadata.name must be exactly the canonical project name
   local cluster_name
   cluster_name=$(yq '.metadata.name' "${yaml_file}" 2>/dev/null || echo "")
@@ -173,6 +190,8 @@ validate_substituted_yaml() {
     fail "${yaml_file}: metadata.name is missing"
   elif [[ "${cluster_name}" != "${project_name}" ]]; then
     fail "${yaml_file}: metadata.name '${cluster_name}' must be exactly '${project_name}'"
+  else
+    log "  metadata.name: ${cluster_name} (expected: ${project_name})"
   fi
 
   # metadata.region must be exactly the canonical aws region (also format-checked)
@@ -184,6 +203,8 @@ validate_substituted_yaml() {
     fail "${yaml_file}: metadata.region '${region}' must be exactly '${aws_region}'"
   elif [[ ! "${region}" =~ ^[a-z]{2}-[a-z]+-[0-9]+$ ]]; then
     fail "${yaml_file}: metadata.region '${region}' does not look like an AWS region"
+  else
+    log "  metadata.region: ${region} (expected: ${aws_region})"
   fi
 
   # metadata.version must be exactly the canonical kubernetes version (format-checked)
@@ -195,8 +216,12 @@ validate_substituted_yaml() {
     fail "${yaml_file}: metadata.version '${version}' must be exactly '${kubernetes_version}'"
   elif [[ ! "${version}" =~ ^[0-9]+\.[0-9]{2,}$ ]]; then
     fail "${yaml_file}: metadata.version '${version}' must be major.minor where minor is at least 2 digits"
+  else
+    log "  metadata.version: ${version} (expected: ${kubernetes_version})"
   fi
 
+  log ""
+  log "  --- VPC ---"
   # vpc.id must look like a VPC ID
   local vpc_id
   vpc_id=$(yq '.vpc.id' "${yaml_file}" 2>/dev/null || echo "")
@@ -204,12 +229,16 @@ validate_substituted_yaml() {
     fail "${yaml_file}: vpc.id is missing"
   elif [[ ! "${vpc_id}" =~ ^vpc-[0-9a-f]+$ ]]; then
     fail "${yaml_file}: vpc.id '${vpc_id}' does not look like a VPC ID (expected vpc-<hex>)"
+  else
+    log "  vpc.id: ${vpc_id}"
   fi
 
   # Subnet keys must be region + single AZ letter; IDs must look like subnet IDs
   local subnet_type
   for subnet_type in private public; do
     if yq -e ".vpc.subnets.${subnet_type}" "${yaml_file}" &>/dev/null; then
+      log "  vpc.subnets.${subnet_type}:"
+
       # Validate AZ keys: must be canonical region + single lowercase letter
       local az_keys
       az_keys=$(yq ".vpc.subnets.${subnet_type} | keys | .[]" "${yaml_file}" 2>/dev/null || true)
@@ -219,6 +248,8 @@ validate_substituted_yaml() {
         fi
         if [[ ! "${az_key}" =~ ^${aws_region}[a-z]$ ]]; then
           fail "${yaml_file}: ${subnet_type} subnet key '${az_key}' must be region + single AZ letter (e.g., ${aws_region}a)"
+        else
+          log "    ${az_key}: valid AZ key"
         fi
       done <<< "${az_keys}"
 
@@ -231,14 +262,20 @@ validate_substituted_yaml() {
         fi
         if [[ ! "${sid}" =~ ^subnet-[0-9a-f]+$ ]]; then
           fail "${yaml_file}: ${subnet_type} subnet id '${sid}' does not look like a subnet ID (expected subnet-<hex>)"
+        else
+          log "    ${sid}: valid subnet ID"
         fi
       done <<< "${subnet_ids}"
     fi
   done
 
+  log ""
+  log "  --- Node groups ---"
   # All nodegroup names start with computed prefix
   local nodegroup_count
   nodegroup_count=$(yq '.managedNodeGroups | length' "${yaml_file}" 2>/dev/null || echo "0")
+
+  log "  managedNodeGroups: ${nodegroup_count} found"
 
   if [[ "${nodegroup_count}" -gt 0 ]]; then
     declare -a ng_names=()
@@ -252,6 +289,8 @@ validate_substituted_yaml() {
 
       if [[ "${ng_name}" != "${nodegroup_prefix}"* ]]; then
         fail "${yaml_file}: managedNodeGroups[${i}].name '${ng_name}' does not start with nodegroup prefix '${nodegroup_prefix}'"
+      else
+        log "  managedNodeGroups[${i}].name: ${ng_name} (prefix: ${nodegroup_prefix})"
       fi
 
       ng_names+=("${ng_name}")
@@ -263,19 +302,25 @@ validate_substituted_yaml() {
       unique_count=$(printf '%s\n' "${ng_names[@]}" | sort -u | wc -l | tr -d ' ')
       if [[ "${unique_count}" -ne "${nodegroup_count}" ]]; then
         fail "${yaml_file}: duplicate nodegroup names found - each must be unique (add suffixes)"
+      else
+        log "  nodegroup names: ${nodegroup_count} unique"
       fi
     fi
 
+    log ""
+    log "  --- Node group value types ---"
     # Validate nodegroup labels and tags values are strings
     for i in $(seq 0 $((nodegroup_count - 1))); do
-      validate_values_are_strings "${yaml_file}" ".managedNodeGroups[${i}].labels" "managedNodeGroups[${i}].labels"
-      validate_values_are_strings "${yaml_file}" ".managedNodeGroups[${i}].tags" "managedNodeGroups[${i}].tags"
+      validate_values_are_strings "${yaml_file}" ".managedNodeGroups[${i}].labels"
+      validate_values_are_strings "${yaml_file}" ".managedNodeGroups[${i}].tags"
     done
   fi
 
+  log ""
+  log "  --- Metadata value types ---"
   # Validate metadata tags and annotations values are strings
-  validate_values_are_strings "${yaml_file}" ".metadata.tags" "metadata.tags"
-  validate_values_are_strings "${yaml_file}" ".metadata.annotations" "metadata.annotations"
+  validate_values_are_strings "${yaml_file}" ".metadata.tags"
+  validate_values_are_strings "${yaml_file}" ".metadata.annotations"
 }
 
 # Phase 2: Validate image integrity
