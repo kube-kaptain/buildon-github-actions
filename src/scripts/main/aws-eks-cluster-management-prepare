@@ -711,10 +711,8 @@ YAML
     inject_flat_yaml "METADATA_TAGS" "${metadata_tags_file}" "    "
   fi
 
-  cat <<YAML
-  annotations:
-    kaptain.org/aws-account-id: "${token_aws_account_id}"
-YAML
+  echo "  annotations:"
+  echo "    kaptain.org/aws-account-id: \"${token_aws_account_id}\""
 
   # Append user metadata annotations (flat yaml, indented under annotations:)
   if [[ "${has_metadata_annotations}" == "true" ]]; then
