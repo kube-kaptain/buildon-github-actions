@@ -101,6 +101,11 @@ metadata:
   name: test-cluster
   region: eu-west-1
   version: "1.32"
+  tags:
+    ManagedBy: "Kaptain aws-eks-cluster-management system"
+    ManagedByGitRepo: test-cluster
+  annotations:
+    kaptain.org/aws-account-id: "123456789012"
 
 vpc:
   id: vpc-0123456789abcdef0
@@ -123,6 +128,11 @@ managedNodeGroups:
     desiredCapacity: 1
     minSize: 3
     maxSize: 12
+    labels:
+      role: worker
+    tags:
+      ManagedBy: "Kaptain aws-eks-cluster-management system"
+      ManagedByGitRepo: test-cluster
 
 addons:
   - name: coredns
@@ -460,4 +470,62 @@ YAML
   [ "$status" -ne 0 ]
   assert_output_contains "metadata.name"
   assert_output_contains "metadata.region"
+}
+
+# === YAML value type validation ===
+
+@test "fails when metadata tag value is not a string" {
+  local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
+  yq -i '.metadata.tags.Enabled = true' "$context_dir/cluster.yaml"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-post-build-validate"
+  [ "$status" -ne 0 ]
+  assert_output_contains "metadata.tags"
+  assert_output_contains "non-string values"
+  assert_output_contains "Enabled"
+}
+
+@test "fails when metadata annotation value is not a string" {
+  local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
+  yq -i '.metadata.annotations."kaptain.org/priority" = 42' "$context_dir/cluster.yaml"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-post-build-validate"
+  [ "$status" -ne 0 ]
+  assert_output_contains "metadata.annotations"
+  assert_output_contains "non-string values"
+  assert_output_contains "kaptain.org/priority"
+}
+
+@test "fails when nodegroup label value is not a string" {
+  local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
+  yq -i '.managedNodeGroups[0].labels.gpu = false' "$context_dir/cluster.yaml"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-post-build-validate"
+  [ "$status" -ne 0 ]
+  assert_output_contains "managedNodeGroups[0].labels"
+  assert_output_contains "non-string values"
+  assert_output_contains "gpu"
+}
+
+@test "fails when nodegroup tag value is not a string" {
+  local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
+  yq -i '.managedNodeGroups[0].tags.Priority = 1' "$context_dir/cluster.yaml"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-post-build-validate"
+  [ "$status" -ne 0 ]
+  assert_output_contains "managedNodeGroups[0].tags"
+  assert_output_contains "non-string values"
+  assert_output_contains "Priority"
+}
+
+@test "passes when all tag annotation and label values are strings" {
+  local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
+  yq -i '.metadata.tags.Enabled = "true"' "$context_dir/cluster.yaml"
+  yq -i '.metadata.annotations."kaptain.org/priority" = "42"' "$context_dir/cluster.yaml"
+  yq -i '.managedNodeGroups[0].labels.gpu = "false"' "$context_dir/cluster.yaml"
+  yq -i '.managedNodeGroups[0].tags.Priority = "1"' "$context_dir/cluster.yaml"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-post-build-validate"
+  [ "$status" -eq 0 ]
+  assert_output_contains "all checks passed"
 }

@@ -115,6 +115,36 @@ fail() {
   errors=$((errors + 1))
 }
 
+# validate_values_are_strings - Check all values in a YAML section are strings
+#
+# After token substitution, YAML-unsafe values (booleans, numbers, null, etc.)
+# that were not quoted will be parsed as their coerced types by yq/eksctl.
+# This catches any that slipped through without quotes.
+#
+# Args:
+#   $1 - yaml file path
+#   $2 - yq path expression (e.g., ".metadata.tags")
+#   $3 - human-readable section label for error messages
+validate_values_are_strings() {
+  local yaml_file="$1"
+  local yq_path="$2"
+  local section_label="$3"
+
+  # Skip if section doesn't exist
+  if ! yq -e "${yq_path}" "${yaml_file}" &>/dev/null; then
+    return
+  fi
+
+  local non_strings
+  non_strings=$(yq "${yq_path} | to_entries[] | select(.value | tag != \"!!str\") | .key + \": \" + (.value | tostring) + \" (\" + (.value | tag) + \")\"" "${yaml_file}" 2>/dev/null || true)
+  if [[ -n "${non_strings}" ]]; then
+    fail "${yaml_file}: ${section_label} has non-string values that will be coerced by YAML - quote them:"
+    while IFS= read -r line; do
+      log_error "  ${line}"
+    done <<< "${non_strings}"
+  fi
+}
+
 # Phase 1: Validate substituted yaml on disk
 validate_substituted_yaml() {
   local yaml_file="$1"
@@ -235,7 +265,17 @@ validate_substituted_yaml() {
         fail "${yaml_file}: duplicate nodegroup names found - each must be unique (add suffixes)"
       fi
     fi
+
+    # Validate nodegroup labels and tags values are strings
+    for i in $(seq 0 $((nodegroup_count - 1))); do
+      validate_values_are_strings "${yaml_file}" ".managedNodeGroups[${i}].labels" "managedNodeGroups[${i}].labels"
+      validate_values_are_strings "${yaml_file}" ".managedNodeGroups[${i}].tags" "managedNodeGroups[${i}].tags"
+    done
   fi
+
+  # Validate metadata tags and annotations values are strings
+  validate_values_are_strings "${yaml_file}" ".metadata.tags" "metadata.tags"
+  validate_values_are_strings "${yaml_file}" ".metadata.annotations" "metadata.annotations"
 }
 
 # Phase 2: Validate image integrity
