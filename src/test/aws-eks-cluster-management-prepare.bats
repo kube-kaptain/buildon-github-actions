@@ -552,6 +552,19 @@ EOF
   assert_contains "$content" 'ManagedBy: "Kaptain aws-eks-cluster-management system"' "cluster.yaml"
 }
 
+@test "fails when metadata tags contain reserved Name key" {
+  cat > "$CONFIG_SUB_PATH/MetadataTags" << 'EOF'
+Name: my-cluster-name
+Environment: production
+EOF
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -ne 0 ]
+  assert_output_contains "METADATA_TAGS"
+  assert_output_contains "Name"
+  assert_output_contains "reserved"
+}
+
 @test "appends user nodegroup tags from config file" {
   cat > "$CONFIG_SUB_PATH/NodegroupTags" << 'EOF'
 CostCenter: '12345'
@@ -563,6 +576,18 @@ EOF
   local content
   content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
   assert_contains "$content" "CostCenter: '12345'" "cluster.yaml"
+}
+
+@test "fails when nodegroup tags contain reserved Name key" {
+  cat > "$CONFIG_SUB_PATH/NodegroupTags" << 'EOF'
+Name: my-custom-name
+CostCenter: '12345'
+EOF
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -ne 0 ]
+  assert_output_contains "Name"
+  assert_output_contains "reserved"
 }
 
 @test "generates nodegroup labels from config file" {
@@ -680,7 +705,7 @@ EOF
 
 @test "does not double-quote already-quoted values" {
   cat > "$CONFIG_SUB_PATH/MetadataTags" << 'EOF'
-Name: "true"
+QuotedBool: "true"
 Other: 'false'
 Normal: my-string-value
 EOF
@@ -690,10 +715,10 @@ EOF
 
   local content
   content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
-  assert_contains "$content" 'Name: "true"' "cluster.yaml"
+  assert_contains "$content" 'QuotedBool: "true"' "cluster.yaml"
   assert_contains "$content" "Other: 'false'" "cluster.yaml"
   assert_contains "$content" "Normal: my-string-value" "cluster.yaml"
-  [[ "$output" != *"auto-quoted"*"Name:"* ]]
+  [[ "$output" != *"auto-quoted"*"QuotedBool:"* ]]
   [[ "$output" != *"auto-quoted"*"Other:"* ]]
   [[ "$output" != *"auto-quoted"*"Normal:"* ]]
 }

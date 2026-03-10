@@ -518,6 +518,26 @@ YAML
   assert_output_contains "Priority"
 }
 
+@test "fails when nodegroup tags contain reserved Name key" {
+  local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
+  yq -i '.managedNodeGroups[0].tags.Name = "my-custom-name"' "$context_dir/cluster.yaml"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-post-build-validate"
+  [ "$status" -ne 0 ]
+  assert_output_contains "Name"
+  assert_output_contains "reserved"
+}
+
+@test "fails when metadata tags contain reserved Name key" {
+  local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
+  yq -i '.metadata.tags.Name = "my-cluster-name"' "$context_dir/cluster.yaml"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-post-build-validate"
+  [ "$status" -ne 0 ]
+  assert_output_contains "metadata.tags.Name"
+  assert_output_contains "reserved"
+}
+
 @test "passes when all tag annotation and label values are strings" {
   local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
   yq -i '.metadata.tags.Enabled = "true"' "$context_dir/cluster.yaml"

@@ -481,6 +481,10 @@ if [[ -f "${CONFIG_SUB_PATH}/${metadata_tags_config_name}" ]]; then
   if validate_flat_yaml_tags "METADATA_TAGS" "${metadata_tags_file}"; then
     has_metadata_tags="true"
   fi
+  if grep -qE '^Name:' "${metadata_tags_file}"; then
+    log_error "METADATA_TAGS: 'Name' tag is reserved - eksctl sets it from the nodegroup name"
+    validation_errors=$((validation_errors + 1))
+  fi
 fi
 
 has_nodegroup_tags="false"
@@ -490,6 +494,12 @@ if [[ -f "${CONFIG_SUB_PATH}/${nodegroup_tags_config_name}" ]]; then
   nodegroup_tags_file="${CONFIG_SUB_PATH}/${nodegroup_tags_config_name}"
   if validate_flat_yaml_tags "NODEGROUP_TAGS" "${nodegroup_tags_file}"; then
     has_nodegroup_tags="true"
+  fi
+  # eksctl auto-sets the Name tag on nodegroup EC2 instances from the nodegroup name.
+  # A user-supplied Name tag conflicts and causes intermittent behaviour on upgrades.
+  if grep -qE '^Name:' "${nodegroup_tags_file}"; then
+    log_error "NODEGROUP_TAGS: 'Name' tag is reserved - eksctl sets it from the nodegroup name"
+    validation_errors=$((validation_errors + 1))
   fi
 fi
 
