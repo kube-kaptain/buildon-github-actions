@@ -307,6 +307,13 @@ validate_substituted_yaml() {
       fi
     fi
 
+    # eksctl auto-sets Name tag on nodegroup EC2 instances - user-supplied Name conflicts
+    for i in $(seq 0 $((nodegroup_count - 1))); do
+      if yq -e ".managedNodeGroups[${i}].tags.Name" "${yaml_file}" &>/dev/null; then
+        fail "${yaml_file}: managedNodeGroups[${i}].tags.Name is reserved - eksctl sets it from the nodegroup name"
+      fi
+    done
+
     log ""
     log "  --- Node group value types ---"
     # Validate nodegroup labels and tags values are strings
@@ -314,6 +321,11 @@ validate_substituted_yaml() {
       validate_values_are_strings "${yaml_file}" ".managedNodeGroups[${i}].labels"
       validate_values_are_strings "${yaml_file}" ".managedNodeGroups[${i}].tags"
     done
+  fi
+
+  # eksctl auto-sets Name tag - user-supplied Name in metadata tags feeds into nodegroups
+  if yq -e ".metadata.tags.Name" "${yaml_file}" &>/dev/null; then
+    fail "${yaml_file}: metadata.tags.Name is reserved - eksctl sets it from the nodegroup name"
   fi
 
   log ""
