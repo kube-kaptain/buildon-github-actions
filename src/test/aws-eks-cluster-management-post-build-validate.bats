@@ -787,6 +787,66 @@ YAML
   assert_output_contains "eksctl will create one"
 }
 
+# === Taint validation ===
+
+@test "passes with valid taints in substituted yaml" {
+  local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
+  yq -i '.managedNodeGroups[0].taints = [{"key": "workload", "value": "kong", "effect": "NoSchedule"}]' "$context_dir/cluster.yaml"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-post-build-validate"
+  [ "$status" -eq 0 ]
+  assert_output_contains "taints"
+  assert_output_contains "1 entries"
+}
+
+@test "passes with multiple valid taints" {
+  local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
+  yq -i '.managedNodeGroups[0].taints = [{"key": "workload", "value": "kong", "effect": "NoSchedule"}, {"key": "dedicated", "effect": "NoExecute"}]' "$context_dir/cluster.yaml"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-post-build-validate"
+  [ "$status" -eq 0 ]
+  assert_output_contains "2 entries"
+}
+
+@test "passes with all three valid taint effects in substituted yaml" {
+  local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
+  yq -i '.managedNodeGroups[0].taints = [{"key": "a", "effect": "NoSchedule"}, {"key": "b", "effect": "PreferNoSchedule"}, {"key": "c", "effect": "NoExecute"}]' "$context_dir/cluster.yaml"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-post-build-validate"
+  [ "$status" -eq 0 ]
+  assert_output_contains "3 entries"
+}
+
+@test "fails when taint missing key in substituted yaml" {
+  local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
+  yq -i '.managedNodeGroups[0].taints = [{"effect": "NoSchedule"}]' "$context_dir/cluster.yaml"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-post-build-validate"
+  [ "$status" -ne 0 ]
+  assert_output_contains "taints"
+  assert_output_contains "missing 'key'"
+}
+
+@test "fails when taint missing effect in substituted yaml" {
+  local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
+  yq -i '.managedNodeGroups[0].taints = [{"key": "workload", "value": "kong"}]' "$context_dir/cluster.yaml"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-post-build-validate"
+  [ "$status" -ne 0 ]
+  assert_output_contains "taints"
+  assert_output_contains "missing 'effect'"
+}
+
+@test "fails when taint has invalid effect in substituted yaml" {
+  local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
+  yq -i '.managedNodeGroups[0].taints = [{"key": "workload", "effect": "InvalidEffect"}]' "$context_dir/cluster.yaml"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-post-build-validate"
+  [ "$status" -ne 0 ]
+  assert_output_contains "taints"
+  assert_output_contains "must be one of"
+}
+
 @test "passes when all tag annotation and label values are strings" {
   local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
   yq -i '.metadata.tags.Enabled = "true"' "$context_dir/cluster.yaml"

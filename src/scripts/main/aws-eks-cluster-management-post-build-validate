@@ -453,6 +453,37 @@ validate_substituted_yaml() {
         fail "${yaml_file}: ${ng_yaml_key}[0].volumeKmsKeyID '${volume_kms_key_id_value}' must be a KMS key ARN (expected arn:aws:kms:...)"
       fi
     fi
+
+    # Validate taints structure on first nodegroup
+    local taint_count
+    taint_count=$(yq ".${ng_yaml_key}[0].taints | length" "${yaml_file}" 2>/dev/null || echo "0")
+    if [[ "${taint_count}" -gt 0 ]]; then
+      log ""
+      log "  --- Node group taints ---"
+      log "  ${ng_yaml_key}[0].taints: ${taint_count} entries"
+      for idx in $(seq 0 $((taint_count - 1))); do
+        local taint_key
+        taint_key=$(yq ".${ng_yaml_key}[0].taints[${idx}].key" "${yaml_file}" 2>/dev/null || echo "")
+        if [[ -z "${taint_key}" || "${taint_key}" == "null" ]]; then
+          fail "${yaml_file}: ${ng_yaml_key}[0].taints[${idx}] missing 'key'"
+        fi
+
+        local taint_effect
+        taint_effect=$(yq ".${ng_yaml_key}[0].taints[${idx}].effect" "${yaml_file}" 2>/dev/null || echo "")
+        if [[ -z "${taint_effect}" || "${taint_effect}" == "null" ]]; then
+          fail "${yaml_file}: ${ng_yaml_key}[0].taints[${idx}] missing 'effect'"
+        else
+          case "${taint_effect}" in
+            NoSchedule|PreferNoSchedule|NoExecute)
+              log "    taint[${idx}]: key=${taint_key} effect=${taint_effect}"
+              ;;
+            *)
+              fail "${yaml_file}: ${ng_yaml_key}[0].taints[${idx}].effect '${taint_effect}' must be one of: NoSchedule, PreferNoSchedule, NoExecute"
+              ;;
+          esac
+        fi
+      done
+    fi
   fi
 
   # eksctl auto-sets Name tag - user-supplied Name in metadata tags feeds into nodegroups

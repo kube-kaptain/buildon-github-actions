@@ -44,6 +44,7 @@
 #   NODEGROUP_TAGS                      - Additional nodegroup tags (flat yaml: key: value per line)
 #   NODEGROUP_LABELS                    - Additional nodegroup labels (flat yaml: key: value per line)
 #   METADATA_ANNOTATIONS                - Additional metadata annotations (flat yaml: key: value per line)
+#   NODEGROUP_TAINTS                     - Nodegroup taints (raw yaml list: - key/value/effect per entry)
 #   NODEGROUP_SECURITY_GROUPS_ATTACH_IDS - Additional SG IDs for nodegroup instances, comma-separated
 #     (expanded to numbered tokens: NODEGROUP_SECURITY_GROUPS_ATTACH_ID_1, ...ID_2, etc.)
 #   VPC_SHARED_NODE_SECURITY_GROUP      - Shared node SG ID, unmanaged nodegroups only (generates sharedNodeSecurityGroup in vpc block)
@@ -583,6 +584,60 @@ if [[ -f "${CONFIG_SUB_PATH}/${nodegroup_labels_config_name}" ]]; then
   fi
 fi
 
+has_nodegroup_taints="false"
+nodegroup_taints_file=""
+nodegroup_taints_config_name=$(convert_token_name "${TOKEN_NAME_STYLE}" "NODEGROUP_TAINTS")
+if [[ -f "${CONFIG_SUB_PATH}/${nodegroup_taints_config_name}" ]]; then
+  nodegroup_taints_file="${CONFIG_SUB_PATH}/${nodegroup_taints_config_name}"
+  # Validate taints structure using yq
+  if ! yq -e '.' "${nodegroup_taints_file}" &>/dev/null; then
+    log_error "NODEGROUP_TAINTS: file is not valid YAML"
+    validation_errors=$((validation_errors + 1))
+  else
+    taint_count=$(yq '. | length' "${nodegroup_taints_file}" 2>/dev/null || echo "0")
+    if [[ "${taint_count}" -eq 0 ]]; then
+      log_error "NODEGROUP_TAINTS: file is empty or not a YAML list"
+      validation_errors=$((validation_errors + 1))
+    else
+      taint_errors=0
+      for idx in $(seq 0 $((taint_count - 1))); do
+        taint_key=$(yq ".[${idx}].key" "${nodegroup_taints_file}" 2>/dev/null || echo "")
+        if [[ -z "${taint_key}" || "${taint_key}" == "null" ]]; then
+          log_error "NODEGROUP_TAINTS: entry ${idx} missing 'key'"
+          taint_errors=$((taint_errors + 1))
+        fi
+
+        taint_effect=$(yq ".[${idx}].effect" "${nodegroup_taints_file}" 2>/dev/null || echo "")
+        if [[ -z "${taint_effect}" || "${taint_effect}" == "null" ]]; then
+          log_error "NODEGROUP_TAINTS: entry ${idx} missing 'effect'"
+          taint_errors=$((taint_errors + 1))
+        else
+          case "${taint_effect}" in
+            NoSchedule|PreferNoSchedule|NoExecute) ;;
+            *)
+              log_error "NODEGROUP_TAINTS: entry ${idx} effect '${taint_effect}' must be one of: NoSchedule, PreferNoSchedule, NoExecute"
+              taint_errors=$((taint_errors + 1))
+              ;;
+          esac
+        fi
+      done
+
+      # Check for duplicate key+effect combinations
+      unique_pairs=$(yq '.[] | .key + ":" + .effect' "${nodegroup_taints_file}" 2>/dev/null | sort -u | wc -l | tr -d ' ')
+      if [[ "${unique_pairs}" -ne "${taint_count}" ]]; then
+        log_error "NODEGROUP_TAINTS: duplicate key+effect combinations found"
+        taint_errors=$((taint_errors + 1))
+      fi
+
+      if [[ "${taint_errors}" -gt 0 ]]; then
+        validation_errors=$((validation_errors + taint_errors))
+      else
+        has_nodegroup_taints="true"
+      fi
+    fi
+  fi
+fi
+
 has_nodegroup_sg_attach_ids="false"
 nodegroup_sg_attach_ids_name=$(convert_token_name "${TOKEN_NAME_STYLE}" "NODEGROUP_SECURITY_GROUPS_ATTACH_IDS")
 if [[ -f "${CONFIG_SUB_PATH}/${nodegroup_sg_attach_ids_name}" ]]; then
@@ -1100,6 +1155,14 @@ YAML
     if [[ "${has_nodegroup_labels}" == "true" ]]; then
       echo "    labels:"
       inject_flat_yaml "NODEGROUP_LABELS" "${nodegroup_labels_file}" "      "
+    fi
+
+    # Nodegroup taints (optional, raw yaml list emitted as-is with indentation)
+    if [[ "${has_nodegroup_taints}" == "true" ]]; then
+      echo "    taints:"
+      while IFS= read -r line; do
+        echo "      ${line}"
+      done < <(yq '.' "${nodegroup_taints_file}")
     fi
 
     cat <<YAML

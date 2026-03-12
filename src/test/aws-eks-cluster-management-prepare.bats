@@ -956,6 +956,144 @@ EOF
   [[ "$content" != *"labels:"* ]]
 }
 
+# === Nodegroup taints ===
+
+@test "generates taints when config file present" {
+  cat > "$CONFIG_SUB_PATH/NodegroupTaints" << 'YAML'
+- key: workload
+  value: kong
+  effect: NoSchedule
+YAML
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -eq 0 ]
+
+  local content
+  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
+  assert_contains "$content" "taints:" "cluster.yaml"
+  assert_contains "$content" "key: workload" "cluster.yaml taints"
+  assert_contains "$content" "value: kong" "cluster.yaml taints"
+  assert_contains "$content" "effect: NoSchedule" "cluster.yaml taints"
+}
+
+@test "generates taints with multiple entries" {
+  cat > "$CONFIG_SUB_PATH/NodegroupTaints" << 'YAML'
+- key: workload
+  value: kong
+  effect: NoSchedule
+- key: dedicated
+  effect: NoExecute
+YAML
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -eq 0 ]
+
+  local content
+  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
+  assert_contains "$content" "key: workload" "cluster.yaml taints"
+  assert_contains "$content" "key: dedicated" "cluster.yaml taints"
+  assert_contains "$content" "effect: NoExecute" "cluster.yaml taints"
+}
+
+@test "does not generate taints when config absent" {
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -eq 0 ]
+
+  local content
+  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
+  [[ "$content" != *"taints:"* ]]
+}
+
+@test "fails when taint missing key" {
+  cat > "$CONFIG_SUB_PATH/NodegroupTaints" << 'YAML'
+- value: kong
+  effect: NoSchedule
+YAML
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -ne 0 ]
+  assert_output_contains "NODEGROUP_TAINTS"
+  assert_output_contains "missing 'key'"
+}
+
+@test "fails when taint missing effect" {
+  cat > "$CONFIG_SUB_PATH/NodegroupTaints" << 'YAML'
+- key: workload
+  value: kong
+YAML
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -ne 0 ]
+  assert_output_contains "NODEGROUP_TAINTS"
+  assert_output_contains "missing 'effect'"
+}
+
+@test "fails when taint has invalid effect" {
+  cat > "$CONFIG_SUB_PATH/NodegroupTaints" << 'YAML'
+- key: workload
+  value: kong
+  effect: InvalidEffect
+YAML
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -ne 0 ]
+  assert_output_contains "NODEGROUP_TAINTS"
+  assert_output_contains "must be one of"
+}
+
+@test "fails when taints have duplicate key+effect" {
+  cat > "$CONFIG_SUB_PATH/NodegroupTaints" << 'YAML'
+- key: workload
+  value: kong
+  effect: NoSchedule
+- key: workload
+  value: different
+  effect: NoSchedule
+YAML
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -ne 0 ]
+  assert_output_contains "NODEGROUP_TAINTS"
+  assert_output_contains "duplicate"
+}
+
+@test "passes with taint without value (key-only)" {
+  cat > "$CONFIG_SUB_PATH/NodegroupTaints" << 'YAML'
+- key: dedicated
+  effect: NoSchedule
+YAML
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -eq 0 ]
+
+  local content
+  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
+  assert_contains "$content" "key: dedicated" "cluster.yaml taints"
+  assert_contains "$content" "effect: NoSchedule" "cluster.yaml taints"
+}
+
+@test "passes with all three valid taint effects" {
+  cat > "$CONFIG_SUB_PATH/NodegroupTaints" << 'YAML'
+- key: a
+  effect: NoSchedule
+- key: b
+  effect: PreferNoSchedule
+- key: c
+  effect: NoExecute
+YAML
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -eq 0 ]
+}
+
+@test "fails with invalid YAML in taints file" {
+  printf 'not: valid: yaml: [' > "$CONFIG_SUB_PATH/NodegroupTaints"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -ne 0 ]
+  assert_output_contains "NODEGROUP_TAINTS"
+}
+
 @test "fails with invalid metadata tag format" {
   printf 'bad tag format no colon' > "$CONFIG_SUB_PATH/MetadataTags"
 

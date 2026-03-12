@@ -47,6 +47,7 @@
 #   MetadataAnnotations                   - Additional cluster metadata annotations (key: value per line)
 #   NodegroupTags                         - Additional nodegroup tags (key: value per line)
 #   NodegroupLabels                       - Additional nodegroup labels (key: value per line)
+#   NodegroupTaints                       - Nodegroup taints (raw YAML list: - key/effect[/value] per entry)
 #   Addons<Name>ServiceAccountRoleArn     - Per-addon IAM role (e.g., AddonsVpcCniServiceAccountRoleArn)
 #
 # ── Tokens with defaults (override by creating the file) ─────────────────────
