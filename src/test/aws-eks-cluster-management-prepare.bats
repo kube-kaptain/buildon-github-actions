@@ -457,6 +457,36 @@ teardown() {
   [ "$(< "$OUTPUT_SUB_PATH/aws-eks-cluster-management/expected-values/nodegroup-sg-attach-ids-count")" = "2" ]
 }
 
+@test "generates sharedNodeSecurityGroup when config present and unmanaged" {
+  printf 'unmanaged' > "$CONFIG_SUB_PATH/NodegroupType"
+  printf 'sg-0shared123456789' > "$CONFIG_SUB_PATH/VpcSharedNodeSecurityGroup"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -eq 0 ]
+
+  local content
+  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
+  assert_contains "$content" 'sharedNodeSecurityGroup: ${VpcSharedNodeSecurityGroup}' "cluster.yaml"
+}
+
+@test "does not generate sharedNodeSecurityGroup by default" {
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -eq 0 ]
+
+  local content
+  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
+  [[ "$content" != *"sharedNodeSecurityGroup"* ]]
+}
+
+@test "fails when sharedNodeSecurityGroup config present with managed NodegroupType" {
+  printf 'sg-0shared123456789' > "$CONFIG_SUB_PATH/VpcSharedNodeSecurityGroup"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -ne 0 ]
+  assert_output_contains "VPC_SHARED_NODE_SECURITY_GROUP"
+  assert_output_contains "not supported for managed"
+}
+
 @test "does not generate securityGroups.attachIDs by default" {
   run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
   [ "$status" -eq 0 ]

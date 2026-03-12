@@ -685,6 +685,29 @@ YAML
   assert_output_contains "not found"
 }
 
+@test "passes with valid sharedNodeSecurityGroup" {
+  local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
+  printf '%s' "unmanaged" > "$OUTPUT_SUB_PATH/aws-eks-cluster-management/expected-values/nodegroup-type"
+  yq -i '.nodeGroups = .managedNodeGroups | del(.managedNodeGroups)' "$context_dir/cluster.yaml"
+  yq -i '.vpc.sharedNodeSecurityGroup = "sg-0aaa111bbb222ccc3"' "$context_dir/cluster.yaml"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-post-build-validate"
+  [ "$status" -eq 0 ]
+  assert_output_contains "vpc.sharedNodeSecurityGroup: sg-"
+}
+
+@test "fails when sharedNodeSecurityGroup is not sg-hex" {
+  local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
+  printf '%s' "unmanaged" > "$OUTPUT_SUB_PATH/aws-eks-cluster-management/expected-values/nodegroup-type"
+  yq -i '.nodeGroups = .managedNodeGroups | del(.managedNodeGroups)' "$context_dir/cluster.yaml"
+  yq -i '.vpc.sharedNodeSecurityGroup = "not-a-sg"' "$context_dir/cluster.yaml"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-post-build-validate"
+  [ "$status" -ne 0 ]
+  assert_output_contains "vpc.sharedNodeSecurityGroup"
+  assert_output_contains "does not look like a security group ID"
+}
+
 @test "logs eksctl will create SG when no security group specified" {
   run "$SCRIPTS_DIR/aws-eks-cluster-management-post-build-validate"
   [ "$status" -eq 0 ]

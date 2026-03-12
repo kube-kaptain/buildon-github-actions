@@ -267,6 +267,16 @@ validate_substituted_yaml() {
     fi
   fi
 
+  local shared_node_sg_value
+  shared_node_sg_value=$(yq '.vpc.sharedNodeSecurityGroup' "${yaml_file}" 2>/dev/null || echo "")
+  if [[ -n "${shared_node_sg_value}" && "${shared_node_sg_value}" != "null" ]]; then
+    if [[ ! "${shared_node_sg_value}" =~ ^sg-[0-9a-f]+$ ]]; then
+      fail "${yaml_file}: vpc.sharedNodeSecurityGroup '${shared_node_sg_value}' does not look like a security group ID (expected sg-<hex>)"
+    else
+      log "  vpc.sharedNodeSecurityGroup: ${shared_node_sg_value}"
+    fi
+  fi
+
   local cp_sg_count
   cp_sg_count=$(yq '.vpc.controlPlaneSecurityGroupIDs | length' "${yaml_file}" 2>/dev/null || echo "0")
   if [[ "${cp_sg_count}" -gt 0 ]]; then

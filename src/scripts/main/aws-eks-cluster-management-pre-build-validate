@@ -92,6 +92,7 @@ token_kubernetes_version=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${
 token_vpc_id=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "VPC_ID")
 token_nodegroup_prefix=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "NODE_GROUP_DEFAULT_PREFIX")
 token_vpc_security_group=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "VPC_SECURITY_GROUP")
+token_vpc_shared_node_sg=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "VPC_SHARED_NODE_SECURITY_GROUP")
 token_cluster_security_group=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "CLUSTER_SECURITY_GROUP")
 
 # Build expected controlPlaneSecurityGroupIDs tokens (numbered)
@@ -215,6 +216,14 @@ validate_cluster_yaml_tokens() {
     has_sg="true"
     if [[ "${sg_value}" != "${token_vpc_security_group}" ]]; then
       fail "${yaml_file}: vpc.securityGroup '${sg_value}' must be exactly '${token_vpc_security_group}'"
+    fi
+  fi
+
+  local shared_node_sg_value
+  shared_node_sg_value=$(yq '.vpc.sharedNodeSecurityGroup' "${yaml_file}" 2>/dev/null || echo "")
+  if [[ -n "${shared_node_sg_value}" && "${shared_node_sg_value}" != "null" ]]; then
+    if [[ "${shared_node_sg_value}" != "${token_vpc_shared_node_sg}" ]]; then
+      fail "${yaml_file}: vpc.sharedNodeSecurityGroup '${shared_node_sg_value}' must be exactly '${token_vpc_shared_node_sg}'"
     fi
   fi
 

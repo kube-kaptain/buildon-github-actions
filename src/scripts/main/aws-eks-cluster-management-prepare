@@ -46,6 +46,7 @@
 #   METADATA_ANNOTATIONS                - Additional metadata annotations (flat yaml: key: value per line)
 #   NODEGROUP_SECURITY_GROUPS_ATTACH_IDS - Additional SG IDs for nodegroup instances, comma-separated
 #     (expanded to numbered tokens: NODEGROUP_SECURITY_GROUPS_ATTACH_ID_1, ...ID_2, etc.)
+#   VPC_SHARED_NODE_SECURITY_GROUP      - Shared node SG ID, unmanaged nodegroups only (generates sharedNodeSecurityGroup in vpc block)
 #   NODEGROUP_IAM_INSTANCE_ROLE_ARN     - Custom IAM instance role ARN for nodegroup
 #   ADDONS_<NAME>_SERVICE_ACCOUNT_ROLE_ARN - Per-addon service account role ARN
 #     (e.g., ADDONS_VPC_CNI_SERVICE_ACCOUNT_ROLE_ARN → AddonsVpcCniServiceAccountRoleArn)
@@ -471,6 +472,13 @@ if [[ -f "${CONFIG_SUB_PATH}/${vpc_control_plane_sg_ids_name}" ]]; then
   has_vpc_control_plane_sg_ids="true"
 fi
 
+# VPC shared node security group - optional: unmanaged-only, generates sharedNodeSecurityGroup in vpc block
+has_vpc_shared_node_sg="false"
+vpc_shared_node_sg_name=$(convert_token_name "${TOKEN_NAME_STYLE}" "VPC_SHARED_NODE_SECURITY_GROUP")
+if [[ -f "${CONFIG_SUB_PATH}/${vpc_shared_node_sg_name}" ]]; then
+  has_vpc_shared_node_sg="true"
+fi
+
 # VPC security group mutual exclusion: cannot have both securityGroup and controlPlaneSecurityGroupIDs
 if [[ "${has_vpc_security_group}" == "true" && "${has_vpc_control_plane_sg_ids}" == "true" ]]; then
   log_error "VPC_SECURITY_GROUP and VPC_CONTROL_PLANE_SECURITY_GROUP_IDS are mutually exclusive and have the same purpose - provide one or the other"
@@ -480,6 +488,12 @@ fi
 # Adopted clusters require a control plane security group (eksctl can't resolve from CloudFormation)
 if [[ "${cluster_origin}" == "adopted" && "${has_vpc_security_group}" == "false" && "${has_vpc_control_plane_sg_ids}" == "false" ]]; then
   log_error "CLUSTER_ORIGIN=adopted requires either VPC_SECURITY_GROUP or VPC_CONTROL_PLANE_SECURITY_GROUP_IDS"
+  validation_errors=$((validation_errors + 1))
+fi
+
+# sharedNodeSecurityGroup is unmanaged-only - reject when managed
+if [[ "${has_vpc_shared_node_sg}" == "true" && "${nodegroup_type}" == "managed" ]]; then
+  log_error "VPC_SHARED_NODE_SECURITY_GROUP is not supported for managed nodegroups - managed nodegroups use the EKS cluster default security group, sharedNodeSecurityGroup only applies to unmanaged (self-managed) nodegroups"
   validation_errors=$((validation_errors + 1))
 fi
 
@@ -728,6 +742,10 @@ if [[ "${has_vpc_security_group}" == "true" ]]; then
   token_security_group=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "VPC_SECURITY_GROUP")
 fi
 
+if [[ "${has_vpc_shared_node_sg}" == "true" ]]; then
+  token_vpc_shared_node_sg=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "VPC_SHARED_NODE_SECURITY_GROUP")
+fi
+
 if [[ "${has_private_cluster_config}" == "true" ]]; then
   token_private_cluster_enabled=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "PRIVATE_CLUSTER_ENABLED")
 fi
@@ -828,6 +846,10 @@ YAML
 
   if [[ "${has_vpc_security_group}" == "true" ]]; then
     echo "  securityGroup: ${token_security_group}"
+  fi
+
+  if [[ "${has_vpc_shared_node_sg}" == "true" ]]; then
+    echo "  sharedNodeSecurityGroup: ${token_vpc_shared_node_sg}"
   fi
 
   if [[ "${has_vpc_control_plane_sg_ids}" == "true" ]]; then

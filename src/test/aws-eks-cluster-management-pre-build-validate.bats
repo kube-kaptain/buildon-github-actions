@@ -446,6 +446,31 @@ teardown() {
   assert_output_contains "missing from YAML"
 }
 
+# === VPC sharedNodeSecurityGroup token validation ===
+
+@test "passes when sharedNodeSecurityGroup has correct token" {
+  local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
+  printf '%s' "unmanaged" > "$OUTPUT_SUB_PATH/aws-eks-cluster-management/expected-values/nodegroup-type"
+  yq -i '.nodeGroups = .managedNodeGroups | del(.managedNodeGroups)' "$context_dir/cluster.yaml"
+  yq -i '.vpc.sharedNodeSecurityGroup = "${VpcSharedNodeSecurityGroup}"' "$context_dir/cluster.yaml"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-pre-build-validate"
+  [ "$status" -eq 0 ]
+}
+
+@test "fails when sharedNodeSecurityGroup has wrong token" {
+  local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
+  printf '%s' "unmanaged" > "$OUTPUT_SUB_PATH/aws-eks-cluster-management/expected-values/nodegroup-type"
+  yq -i '.nodeGroups = .managedNodeGroups | del(.managedNodeGroups)' "$context_dir/cluster.yaml"
+  yq -i '.vpc.sharedNodeSecurityGroup = "sg-hardcoded123"' "$context_dir/cluster.yaml"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-pre-build-validate"
+  [ "$status" -ne 0 ]
+  assert_output_contains "vpc.sharedNodeSecurityGroup"
+  assert_output_contains "must be exactly"
+  assert_output_contains '${VpcSharedNodeSecurityGroup}'
+}
+
 # === Cluster security group annotation validation ===
 
 @test "fails when cluster-security-group annotation missing" {
