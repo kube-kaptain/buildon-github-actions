@@ -67,7 +67,7 @@ canonical_dir="${OUTPUT_SUB_PATH}/aws-eks-cluster-management"
 expected_values_dir="${canonical_dir}/expected-values"
 canonical_error=0
 
-for canonical_file in project-name aws-region kubernetes-version nodegroup-prefix; do
+for canonical_file in project-name aws-region kubernetes-version nodegroup-prefix cluster-origin; do
   if [[ ! -f "${expected_values_dir}/${canonical_file}" ]]; then
     echo "ERROR: ${expected_values_dir}/${canonical_file} not found - was aws-eks-cluster-management-prepare run?" >&2
     canonical_error=1
@@ -81,6 +81,7 @@ project_name=$(< "${expected_values_dir}/project-name")
 aws_region=$(< "${expected_values_dir}/aws-region")
 kubernetes_version=$(< "${expected_values_dir}/kubernetes-version")
 nodegroup_prefix=$(< "${expected_values_dir}/nodegroup-prefix")
+cluster_origin=$(< "${expected_values_dir}/cluster-origin")
 
 # === Determine context dirs and image URIs ===
 
@@ -231,6 +232,54 @@ validate_substituted_yaml() {
     fail "${yaml_file}: vpc.id '${vpc_id}' does not look like a VPC ID (expected vpc-<hex>)"
   else
     log "  vpc.id: ${vpc_id}"
+  fi
+
+  # Security group validation
+  local has_sg="false"
+  local has_cp_sg_ids="false"
+
+  local sg_value
+  sg_value=$(yq '.vpc.securityGroup' "${yaml_file}" 2>/dev/null || echo "")
+  if [[ -n "${sg_value}" && "${sg_value}" != "null" ]]; then
+    has_sg="true"
+    if [[ ! "${sg_value}" =~ ^sg-[0-9a-f]+$ ]]; then
+      fail "${yaml_file}: vpc.securityGroup '${sg_value}' does not look like a security group ID (expected sg-<hex>)"
+    else
+      log "  vpc.securityGroup: ${sg_value}"
+    fi
+  fi
+
+  local cp_sg_count
+  cp_sg_count=$(yq '.vpc.controlPlaneSecurityGroupIDs | length' "${yaml_file}" 2>/dev/null || echo "0")
+  if [[ "${cp_sg_count}" -gt 0 ]]; then
+    has_cp_sg_ids="true"
+    log "  vpc.controlPlaneSecurityGroupIDs: ${cp_sg_count} entries"
+    local cp_sg_ids
+    cp_sg_ids=$(yq '.vpc.controlPlaneSecurityGroupIDs[]' "${yaml_file}" 2>/dev/null || true)
+    while IFS= read -r sg_id; do
+      if [[ -z "${sg_id}" ]]; then
+        continue
+      fi
+      if [[ ! "${sg_id}" =~ ^sg-[0-9a-f]+$ ]]; then
+        fail "${yaml_file}: vpc.controlPlaneSecurityGroupIDs entry '${sg_id}' does not look like a security group ID (expected sg-<hex>)"
+      else
+        log "    ${sg_id}: valid SG ID"
+      fi
+    done <<< "${cp_sg_ids}"
+  fi
+
+  # Mutual exclusion: cannot have both securityGroup and controlPlaneSecurityGroupIDs
+  if [[ "${has_sg}" == "true" && "${has_cp_sg_ids}" == "true" ]]; then
+    fail "${yaml_file}: vpc.securityGroup and vpc.controlPlaneSecurityGroupIDs are mutually exclusive"
+  fi
+
+  # Adopted clusters require a control plane security group
+  if [[ "${cluster_origin}" == "adopted" && "${has_sg}" == "false" && "${has_cp_sg_ids}" == "false" ]]; then
+    fail "${yaml_file}: cluster origin is 'adopted' - vpc.securityGroup or vpc.controlPlaneSecurityGroupIDs is required"
+  fi
+
+  if [[ "${has_sg}" == "false" && "${has_cp_sg_ids}" == "false" ]]; then
+    log "  vpc security group: not specified (eksctl will create one)"
   fi
 
   # Subnet keys must be region + single AZ letter; IDs must look like subnet IDs
@@ -395,6 +444,7 @@ validate_image_integrity() {
 
 main() {
   log "=== EKS Cluster Management Post-Build Validate ==="
+  log "Cluster origin: ${cluster_origin}"
   log "Project name: ${project_name}"
   log "AWS region: ${aws_region}"
   log "Kubernetes version: ${kubernetes_version}"

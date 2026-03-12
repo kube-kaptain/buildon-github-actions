@@ -37,6 +37,10 @@ setup() {
   export DOCKER_PLATFORM="linux/amd64"
   export IMAGE_BUILD_COMMAND="podman"
 
+  # Create canonical values (as written by prepare step)
+  mkdir -p "$OUTPUT_SUB_PATH/aws-eks-cluster-management/expected-values"
+  printf '%s' "eksctl" > "$OUTPUT_SUB_PATH/aws-eks-cluster-management/expected-values/cluster-origin"
+
   # Create context dir with a valid cluster.yaml containing tokens
   local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
   mkdir -p "$context_dir"
@@ -248,6 +252,124 @@ teardown() {
   run "$SCRIPTS_DIR/aws-eks-cluster-management-pre-build-validate"
   [ "$status" -ne 0 ]
   assert_output_contains "duplicate nodegroup names"
+}
+
+# === Security group validation ===
+
+@test "passes with vpc.securityGroup token when origin is eksctl" {
+  local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
+  yq -i '.vpc.securityGroup = "${VpcSecurityGroup}"' "$context_dir/cluster.yaml"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-pre-build-validate"
+  [ "$status" -eq 0 ]
+}
+
+@test "fails when vpc.securityGroup is not the expected token" {
+  local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
+  yq -i '.vpc.securityGroup = "sg-hardcoded123"' "$context_dir/cluster.yaml"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-pre-build-validate"
+  [ "$status" -ne 0 ]
+  assert_output_contains "must be exactly"
+  assert_output_contains '${VpcSecurityGroup}'
+}
+
+@test "fails when both vpc.securityGroup and vpc.controlPlaneSecurityGroupIDs present" {
+  local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
+  yq -i '.vpc.securityGroup = "${VpcSecurityGroup}"' "$context_dir/cluster.yaml"
+  printf '%s' "1" > "$OUTPUT_SUB_PATH/aws-eks-cluster-management/expected-values/control-plane-sg-ids-count"
+  yq -i '.vpc.controlPlaneSecurityGroupIDs = ["${VpcControlPlaneSecurityGroupId1}"]' "$context_dir/cluster.yaml"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-pre-build-validate"
+  [ "$status" -ne 0 ]
+  assert_output_contains "mutually exclusive"
+}
+
+@test "fails when adopted origin and no security group in yaml" {
+  printf '%s' "adopted" > "$OUTPUT_SUB_PATH/aws-eks-cluster-management/expected-values/cluster-origin"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-pre-build-validate"
+  [ "$status" -ne 0 ]
+  assert_output_contains "adopted"
+  assert_output_contains "required"
+}
+
+@test "passes when adopted origin with vpc.securityGroup token present" {
+  local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
+  printf '%s' "adopted" > "$OUTPUT_SUB_PATH/aws-eks-cluster-management/expected-values/cluster-origin"
+  yq -i '.vpc.securityGroup = "${VpcSecurityGroup}"' "$context_dir/cluster.yaml"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-pre-build-validate"
+  [ "$status" -eq 0 ]
+}
+
+@test "passes when adopted origin with vpc.controlPlaneSecurityGroupIDs present" {
+  local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
+  printf '%s' "adopted" > "$OUTPUT_SUB_PATH/aws-eks-cluster-management/expected-values/cluster-origin"
+  printf '%s' "1" > "$OUTPUT_SUB_PATH/aws-eks-cluster-management/expected-values/control-plane-sg-ids-count"
+  yq -i '.vpc.controlPlaneSecurityGroupIDs = ["${VpcControlPlaneSecurityGroupId1}"]' "$context_dir/cluster.yaml"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-pre-build-validate"
+  [ "$status" -eq 0 ]
+}
+
+@test "fails when cluster-origin canonical file missing" {
+  rm "$OUTPUT_SUB_PATH/aws-eks-cluster-management/expected-values/cluster-origin"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-pre-build-validate"
+  [ "$status" -ne 0 ]
+  assert_output_contains "cluster-origin"
+  assert_output_contains "not found"
+}
+
+# === controlPlaneSecurityGroupIDs token validation ===
+
+@test "validates controlPlaneSecurityGroupIDs entries are correct tokens" {
+  local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
+  printf '%s' "2" > "$OUTPUT_SUB_PATH/aws-eks-cluster-management/expected-values/control-plane-sg-ids-count"
+  yq -i '.vpc.controlPlaneSecurityGroupIDs = ["${VpcControlPlaneSecurityGroupId1}", "${VpcControlPlaneSecurityGroupId2}"]' "$context_dir/cluster.yaml"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-pre-build-validate"
+  [ "$status" -eq 0 ]
+}
+
+@test "fails when controlPlaneSecurityGroupIDs entry is wrong token" {
+  local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
+  printf '%s' "1" > "$OUTPUT_SUB_PATH/aws-eks-cluster-management/expected-values/control-plane-sg-ids-count"
+  yq -i '.vpc.controlPlaneSecurityGroupIDs = ["${WrongToken}"]' "$context_dir/cluster.yaml"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-pre-build-validate"
+  [ "$status" -ne 0 ]
+  assert_output_contains "must be exactly"
+  assert_output_contains '${VpcControlPlaneSecurityGroupId1}'
+}
+
+@test "fails when controlPlaneSecurityGroupIDs count does not match expected" {
+  local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
+  printf '%s' "2" > "$OUTPUT_SUB_PATH/aws-eks-cluster-management/expected-values/control-plane-sg-ids-count"
+  yq -i '.vpc.controlPlaneSecurityGroupIDs = ["${VpcControlPlaneSecurityGroupId1}"]' "$context_dir/cluster.yaml"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-pre-build-validate"
+  [ "$status" -ne 0 ]
+  assert_output_contains "1 entries but expected 2"
+}
+
+@test "fails when controlPlaneSecurityGroupIDs present but no count file" {
+  local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
+  yq -i '.vpc.controlPlaneSecurityGroupIDs = ["${SomeToken}"]' "$context_dir/cluster.yaml"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-pre-build-validate"
+  [ "$status" -ne 0 ]
+  assert_output_contains "config not provided"
+}
+
+@test "fails when controlPlaneSecurityGroupIDs config provided but missing from YAML" {
+  printf '%s' "2" > "$OUTPUT_SUB_PATH/aws-eks-cluster-management/expected-values/control-plane-sg-ids-count"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-pre-build-validate"
+  [ "$status" -ne 0 ]
+  assert_output_contains "config provided"
+  assert_output_contains "missing from YAML"
 }
 
 # === Missing cluster.yaml ===

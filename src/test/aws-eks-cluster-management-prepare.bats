@@ -24,6 +24,7 @@ setup() {
   printf 't3.medium' > "$CONFIG_SUB_PATH/NodegroupInstanceType"
   printf 'arn:aws:kms:eu-west-1:123456789012:key/12345678-1234-1234-1234-123456789012' > "$CONFIG_SUB_PATH/SecretsEncryptionKeyArn"
   printf '123456789012' > "$CONFIG_SUB_PATH/AwsAccountId"
+  printf 'eksctl' > "$CONFIG_SUB_PATH/ClusterOrigin"
   printf 'subnet-aaa11111111111111' > "$CONFIG_SUB_PATH/PrivateSubnetIdA"
   printf 'subnet-bbb22222222222222' > "$CONFIG_SUB_PATH/PrivateSubnetIdB"
   printf 'subnet-ccc33333333333333' > "$CONFIG_SUB_PATH/PrivateSubnetIdC"
@@ -140,6 +141,7 @@ teardown() {
   rm "$CONFIG_SUB_PATH/NodegroupInstanceType"
   rm "$CONFIG_SUB_PATH/SecretsEncryptionKeyArn"
   rm "$CONFIG_SUB_PATH/AwsAccountId"
+  rm "$CONFIG_SUB_PATH/ClusterOrigin"
 
   run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
   [ "$status" -ne 0 ]
@@ -148,7 +150,8 @@ teardown() {
   assert_output_contains "NODEGROUP_INSTANCE_TYPE"
   assert_output_contains "SECRETS_ENCRYPTION_KEY_ARN"
   assert_output_contains "AWS_ACCOUNT_ID"
-  assert_output_contains "5 missing config file(s)"
+  assert_output_contains "CLUSTER_ORIGIN"
+  assert_output_contains "6 missing config file(s)"
 }
 
 # === Private networking config ===
@@ -206,6 +209,122 @@ teardown() {
   local content
   content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
   [[ "$content" != *"securityGroup"* ]]
+}
+
+# === Cluster origin ===
+
+@test "fails when ClusterOrigin config file missing" {
+  rm "$CONFIG_SUB_PATH/ClusterOrigin"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -ne 0 ]
+  assert_output_contains "CLUSTER_ORIGIN"
+  assert_output_contains "not found"
+}
+
+@test "fails when ClusterOrigin has invalid value" {
+  printf 'terraform' > "$CONFIG_SUB_PATH/ClusterOrigin"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -ne 0 ]
+  assert_output_contains "CLUSTER_ORIGIN"
+  assert_output_contains "must be 'eksctl' or 'adopted'"
+}
+
+@test "succeeds with ClusterOrigin=eksctl without security group config" {
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -eq 0 ]
+  assert_output_contains "Cluster origin: eksctl"
+}
+
+@test "succeeds with ClusterOrigin=adopted and VpcSecurityGroup present" {
+  printf 'adopted' > "$CONFIG_SUB_PATH/ClusterOrigin"
+  printf 'sg-0123456789abcdef0' > "$CONFIG_SUB_PATH/VpcSecurityGroup"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -eq 0 ]
+  assert_output_contains "Cluster origin: adopted"
+}
+
+@test "succeeds with ClusterOrigin=adopted and VpcControlPlaneSecurityGroupIds present" {
+  printf 'adopted' > "$CONFIG_SUB_PATH/ClusterOrigin"
+  printf 'sg-0123456789abcdef0' > "$CONFIG_SUB_PATH/VpcControlPlaneSecurityGroupIds"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -eq 0 ]
+}
+
+@test "fails with ClusterOrigin=adopted and no security group config" {
+  printf 'adopted' > "$CONFIG_SUB_PATH/ClusterOrigin"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -ne 0 ]
+  assert_output_contains "CLUSTER_ORIGIN=adopted"
+  assert_output_contains "VPC_SECURITY_GROUP"
+}
+
+@test "fails when both VpcSecurityGroup and VpcControlPlaneSecurityGroupIds present" {
+  printf 'sg-0123456789abcdef0' > "$CONFIG_SUB_PATH/VpcSecurityGroup"
+  printf 'sg-0123456789abcdef0' > "$CONFIG_SUB_PATH/VpcControlPlaneSecurityGroupIds"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -ne 0 ]
+  assert_output_contains "mutually exclusive"
+}
+
+@test "fails when both SG configs present even with adopted origin" {
+  printf 'adopted' > "$CONFIG_SUB_PATH/ClusterOrigin"
+  printf 'sg-0123456789abcdef0' > "$CONFIG_SUB_PATH/VpcSecurityGroup"
+  printf 'sg-0123456789abcdef0' > "$CONFIG_SUB_PATH/VpcControlPlaneSecurityGroupIds"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -ne 0 ]
+  assert_output_contains "mutually exclusive"
+}
+
+# === Control plane security group IDs generation ===
+
+@test "generates controlPlaneSecurityGroupIDs with numbered tokens when config present" {
+  printf 'sg-aaa,sg-bbb' > "$CONFIG_SUB_PATH/VpcControlPlaneSecurityGroupIds"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -eq 0 ]
+
+  local content
+  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
+  assert_contains "$content" "controlPlaneSecurityGroupIDs:" "cluster.yaml"
+  assert_contains "$content" '- ${VpcControlPlaneSecurityGroupId1}' "cluster.yaml"
+  assert_contains "$content" '- ${VpcControlPlaneSecurityGroupId2}' "cluster.yaml"
+}
+
+@test "expands VPC_CONTROL_PLANE_SECURITY_GROUP_IDS to numbered token files" {
+  printf 'sg-aaa,sg-bbb,sg-ccc' > "$CONFIG_SUB_PATH/VpcControlPlaneSecurityGroupIds"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -eq 0 ]
+
+  [ "$(< "$OUTPUT_SUB_PATH/docker/config/VpcControlPlaneSecurityGroupId1")" = "sg-aaa" ]
+  [ "$(< "$OUTPUT_SUB_PATH/docker/config/VpcControlPlaneSecurityGroupId2")" = "sg-bbb" ]
+  [ "$(< "$OUTPUT_SUB_PATH/docker/config/VpcControlPlaneSecurityGroupId3")" = "sg-ccc" ]
+}
+
+@test "writes control-plane-sg-ids-count to expected-values" {
+  printf 'sg-aaa,sg-bbb' > "$CONFIG_SUB_PATH/VpcControlPlaneSecurityGroupIds"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -eq 0 ]
+
+  [ -f "$OUTPUT_SUB_PATH/aws-eks-cluster-management/expected-values/control-plane-sg-ids-count" ]
+  [ "$(< "$OUTPUT_SUB_PATH/aws-eks-cluster-management/expected-values/control-plane-sg-ids-count")" = "2" ]
+}
+
+@test "does not generate controlPlaneSecurityGroupIDs by default" {
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -eq 0 ]
+
+  local content
+  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
+  [[ "$content" != *"controlPlaneSecurityGroupIDs"* ]]
 }
 
 # === Generated cluster.yaml content ===
@@ -1483,6 +1602,7 @@ EOF
   mv "$CONFIG_SUB_PATH/NodegroupInstanceType" "$CONFIG_SUB_PATH/NODEGROUP_INSTANCE_TYPE"
   mv "$CONFIG_SUB_PATH/SecretsEncryptionKeyArn" "$CONFIG_SUB_PATH/SECRETS_ENCRYPTION_KEY_ARN"
   mv "$CONFIG_SUB_PATH/AwsAccountId" "$CONFIG_SUB_PATH/AWS_ACCOUNT_ID"
+  mv "$CONFIG_SUB_PATH/ClusterOrigin" "$CONFIG_SUB_PATH/CLUSTER_ORIGIN"
   mv "$CONFIG_SUB_PATH/PrivateSubnetIdA" "$CONFIG_SUB_PATH/PRIVATE_SUBNET_ID_A"
   mv "$CONFIG_SUB_PATH/PrivateSubnetIdB" "$CONFIG_SUB_PATH/PRIVATE_SUBNET_ID_B"
   mv "$CONFIG_SUB_PATH/PrivateSubnetIdC" "$CONFIG_SUB_PATH/PRIVATE_SUBNET_ID_C"

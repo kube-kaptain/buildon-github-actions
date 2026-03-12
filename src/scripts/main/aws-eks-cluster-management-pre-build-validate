@@ -16,6 +16,9 @@
 #   - Subnet IDs match token pattern (prefix + single AZ letter)
 #   - All nodegroup names start with the NODE_GROUP_DEFAULT_PREFIX token
 #   - If multiple nodegroups, names are unique (have distinguishing suffixes)
+#   - vpc.securityGroup and vpc.controlPlaneSecurityGroupIDs are mutually exclusive
+#   - Adopted clusters require vpc.securityGroup or vpc.controlPlaneSecurityGroupIDs
+#   - vpc.securityGroup, if present, is exactly the VPC_SECURITY_GROUP token
 #
 # Inputs (environment variables):
 #   DOCKER_PLATFORM            - Target platform(s) (from prepare)
@@ -47,6 +50,22 @@ source "${SCRIPT_DIR}/../lib/log.bash"
 # shellcheck source=src/scripts/lib/token-format.bash
 source "${SCRIPT_DIR}/../lib/token-format.bash"
 
+# === Read canonical values from prepare output ===
+
+canonical_dir="${OUTPUT_SUB_PATH}/aws-eks-cluster-management"
+expected_values_dir="${canonical_dir}/expected-values"
+
+if [[ ! -f "${expected_values_dir}/cluster-origin" ]]; then
+  echo "ERROR: ${expected_values_dir}/cluster-origin not found - was aws-eks-cluster-management-prepare run?" >&2
+  exit 1
+fi
+cluster_origin=$(< "${expected_values_dir}/cluster-origin")
+
+cp_sg_ids_expected_count=0
+if [[ -f "${expected_values_dir}/control-plane-sg-ids-count" ]]; then
+  cp_sg_ids_expected_count=$(< "${expected_values_dir}/control-plane-sg-ids-count")
+fi
+
 # === Build expected token strings ===
 
 token_project_name=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "PROJECT_NAME")
@@ -54,6 +73,15 @@ token_aws_region=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NA
 token_kubernetes_version=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "KUBERNETES_VERSION")
 token_vpc_id=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "VPC_ID")
 token_nodegroup_prefix=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "NODE_GROUP_DEFAULT_PREFIX")
+token_vpc_security_group=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "VPC_SECURITY_GROUP")
+
+# Build expected controlPlaneSecurityGroupIDs tokens (numbered)
+declare -a expected_cp_sg_tokens=()
+if [[ "${cp_sg_ids_expected_count}" -gt 0 ]]; then
+  for idx in $(seq 1 "${cp_sg_ids_expected_count}"); do
+    expected_cp_sg_tokens+=("$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "VPC_CONTROL_PLANE_SECURITY_GROUP_ID_${idx}")")
+  done
+fi
 
 # Build subnet token patterns (prefix + single AZ letter) using two-reference diff
 _build_subnet_pattern() {
@@ -141,6 +169,52 @@ validate_cluster_yaml_tokens() {
     fail "${yaml_file}: vpc.id '${vpc_id}' must be exactly '${token_vpc_id}'"
   fi
 
+  # Security group validation
+  local has_sg="false"
+  local has_cp_sg_ids="false"
+
+  local sg_value
+  sg_value=$(yq '.vpc.securityGroup' "${yaml_file}" 2>/dev/null || echo "")
+  if [[ -n "${sg_value}" && "${sg_value}" != "null" ]]; then
+    has_sg="true"
+    if [[ "${sg_value}" != "${token_vpc_security_group}" ]]; then
+      fail "${yaml_file}: vpc.securityGroup '${sg_value}' must be exactly '${token_vpc_security_group}'"
+    fi
+  fi
+
+  local cp_sg_count
+  cp_sg_count=$(yq '.vpc.controlPlaneSecurityGroupIDs | length' "${yaml_file}" 2>/dev/null || echo "0")
+  if [[ "${cp_sg_count}" -gt 0 ]]; then
+    has_cp_sg_ids="true"
+
+    if [[ "${cp_sg_ids_expected_count}" -eq 0 ]]; then
+      fail "${yaml_file}: vpc.controlPlaneSecurityGroupIDs present but VPC_CONTROL_PLANE_SECURITY_GROUP_IDS config not provided"
+    elif [[ "${cp_sg_count}" -ne "${cp_sg_ids_expected_count}" ]]; then
+      fail "${yaml_file}: vpc.controlPlaneSecurityGroupIDs has ${cp_sg_count} entries but expected ${cp_sg_ids_expected_count}"
+    else
+      for idx in $(seq 0 $((cp_sg_count - 1))); do
+        local entry
+        entry=$(yq ".vpc.controlPlaneSecurityGroupIDs[${idx}]" "${yaml_file}" 2>/dev/null || echo "")
+        local expected_token="${expected_cp_sg_tokens[${idx}]}"
+        if [[ "${entry}" != "${expected_token}" ]]; then
+          fail "${yaml_file}: vpc.controlPlaneSecurityGroupIDs[${idx}] '${entry}' must be exactly '${expected_token}'"
+        fi
+      done
+    fi
+  elif [[ "${cp_sg_ids_expected_count}" -gt 0 ]]; then
+    fail "${yaml_file}: VPC_CONTROL_PLANE_SECURITY_GROUP_IDS config provided (${cp_sg_ids_expected_count} entries) but vpc.controlPlaneSecurityGroupIDs missing from YAML"
+  fi
+
+  # Mutual exclusion: cannot have both
+  if [[ "${has_sg}" == "true" && "${has_cp_sg_ids}" == "true" ]]; then
+    fail "${yaml_file}: vpc.securityGroup and vpc.controlPlaneSecurityGroupIDs are mutually exclusive"
+  fi
+
+  # Adopted clusters require a control plane security group
+  if [[ "${cluster_origin}" == "adopted" && "${has_sg}" == "false" && "${has_cp_sg_ids}" == "false" ]]; then
+    fail "${yaml_file}: cluster origin is 'adopted' - vpc.securityGroup or vpc.controlPlaneSecurityGroupIDs is required"
+  fi
+
   # Subnet keys must be AWS_REGION token + single AZ letter; IDs must match token pattern
   local subnet_type subnet_pattern
   for subnet_type in private public; do
@@ -216,6 +290,7 @@ validate_cluster_yaml_tokens() {
 
 main() {
   log "=== EKS Cluster Management Pre-Build Validate ==="
+  log "Cluster origin: ${cluster_origin}"
   log "Expected PROJECT_NAME token: ${token_project_name}"
   log "Expected AWS_REGION token: ${token_aws_region}"
   log "Expected KUBERNETES_VERSION token: ${token_kubernetes_version}"
@@ -223,6 +298,9 @@ main() {
   log "Private subnet pattern: ${private_subnet_pattern}"
   log "Public subnet pattern: ${public_subnet_pattern}"
   log "Expected NODE_GROUP_DEFAULT_PREFIX token: ${token_nodegroup_prefix}"
+  if [[ "${cp_sg_ids_expected_count}" -gt 0 ]]; then
+    log "Expected VPC_CONTROL_PLANE_SECURITY_GROUP_ID count: ${cp_sg_ids_expected_count}"
+  fi
   log "=================================================="
 
   for context_dir in "${context_dirs[@]}"; do

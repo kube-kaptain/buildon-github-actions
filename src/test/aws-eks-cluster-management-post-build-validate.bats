@@ -87,6 +87,7 @@ setup() {
   printf '%s' "eu-west-1" > "$OUTPUT_SUB_PATH/aws-eks-cluster-management/expected-values/aws-region"
   printf '%s' "1.32" > "$OUTPUT_SUB_PATH/aws-eks-cluster-management/expected-values/kubernetes-version"
   printf '%s' "$nodegroup_prefix" > "$OUTPUT_SUB_PATH/aws-eks-cluster-management/expected-values/nodegroup-prefix"
+  printf '%s' "eksctl" > "$OUTPUT_SUB_PATH/aws-eks-cluster-management/expected-values/cluster-origin"
 
   # Create context dir with substituted cluster.yaml (tokens already replaced)
   local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
@@ -536,6 +537,87 @@ YAML
   [ "$status" -ne 0 ]
   assert_output_contains "metadata.tags.Name"
   assert_output_contains "reserved"
+}
+
+# === Security group validation ===
+
+@test "passes with vpc.securityGroup when origin is eksctl" {
+  local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
+  yq -i '.vpc.securityGroup = "sg-0123456789abcdef0"' "$context_dir/cluster.yaml"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-post-build-validate"
+  [ "$status" -eq 0 ]
+  assert_output_contains "vpc.securityGroup: sg-"
+}
+
+@test "fails when vpc.securityGroup is not sg-hex format" {
+  local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
+  yq -i '.vpc.securityGroup = "not-a-sg-id"' "$context_dir/cluster.yaml"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-post-build-validate"
+  [ "$status" -ne 0 ]
+  assert_output_contains "does not look like a security group ID"
+}
+
+@test "fails when both vpc.securityGroup and vpc.controlPlaneSecurityGroupIDs present" {
+  local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
+  yq -i '.vpc.securityGroup = "sg-0123456789abcdef0"' "$context_dir/cluster.yaml"
+  yq -i '.vpc.controlPlaneSecurityGroupIDs = ["sg-aaaa1111bbbb2222c"]' "$context_dir/cluster.yaml"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-post-build-validate"
+  [ "$status" -ne 0 ]
+  assert_output_contains "mutually exclusive"
+}
+
+@test "fails when adopted origin and no security group in yaml" {
+  printf '%s' "adopted" > "$OUTPUT_SUB_PATH/aws-eks-cluster-management/expected-values/cluster-origin"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-post-build-validate"
+  [ "$status" -ne 0 ]
+  assert_output_contains "adopted"
+  assert_output_contains "required"
+}
+
+@test "passes when adopted origin with vpc.securityGroup present" {
+  local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
+  printf '%s' "adopted" > "$OUTPUT_SUB_PATH/aws-eks-cluster-management/expected-values/cluster-origin"
+  yq -i '.vpc.securityGroup = "sg-0123456789abcdef0"' "$context_dir/cluster.yaml"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-post-build-validate"
+  [ "$status" -eq 0 ]
+}
+
+@test "passes when adopted origin with vpc.controlPlaneSecurityGroupIDs present" {
+  local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
+  printf '%s' "adopted" > "$OUTPUT_SUB_PATH/aws-eks-cluster-management/expected-values/cluster-origin"
+  yq -i '.vpc.controlPlaneSecurityGroupIDs = ["sg-0123456789abcdef0"]' "$context_dir/cluster.yaml"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-post-build-validate"
+  [ "$status" -eq 0 ]
+}
+
+@test "validates each entry in vpc.controlPlaneSecurityGroupIDs" {
+  local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
+  yq -i '.vpc.controlPlaneSecurityGroupIDs = ["sg-0123456789abcdef0", "bad-id"]' "$context_dir/cluster.yaml"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-post-build-validate"
+  [ "$status" -ne 0 ]
+  assert_output_contains "does not look like a security group ID"
+}
+
+@test "fails when cluster-origin canonical file missing" {
+  rm "$OUTPUT_SUB_PATH/aws-eks-cluster-management/expected-values/cluster-origin"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-post-build-validate"
+  [ "$status" -ne 0 ]
+  assert_output_contains "cluster-origin"
+  assert_output_contains "not found"
+}
+
+@test "logs eksctl will create SG when no security group specified" {
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-post-build-validate"
+  [ "$status" -eq 0 ]
+  assert_output_contains "eksctl will create one"
 }
 
 @test "passes when all tag annotation and label values are strings" {

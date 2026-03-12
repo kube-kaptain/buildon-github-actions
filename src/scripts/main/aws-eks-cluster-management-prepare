@@ -22,6 +22,7 @@
 #   NODEGROUP_INSTANCE_TYPE     - Node instance type (e.g., t3.medium)
 #   SECRETS_ENCRYPTION_KEY_ARN  - KMS key ARN for envelope encryption of Kubernetes secrets
 #   AWS_ACCOUNT_ID              - AWS account ID (e.g., 123456789012)
+#   CLUSTER_ORIGIN              - Cluster origin: 'eksctl' (created by eksctl) or 'adopted' (existing cluster)
 #   PRIVATE_SUBNET_ID_A/B/C     - Private subnet IDs (if EKS_PRIVATE_NETWORKING=true)
 #   PUBLIC_SUBNET_ID_A/B/C      - Public subnet IDs (if EKS_PUBLIC_NETWORKING=true)
 #
@@ -31,6 +32,8 @@
 #
 # Optional config (file in CONFIG_SUB_PATH, generates section when present):
 #   VPC_SECURITY_GROUP                  - VPC security group ID (generates securityGroup in vpc block)
+#   VPC_CONTROL_PLANE_SECURITY_GROUP_IDS - Control plane SG IDs, comma-separated, mutually exclusive with VPC_SECURITY_GROUP
+#     (expanded to numbered tokens: VPC_CONTROL_PLANE_SECURITY_GROUP_ID_1, ...ID_2, etc.)
 #   PRIVATE_CLUSTER_ENABLED             - Generate privateCluster block (e.g., true)
 #   NODEGROUP_PRIVATE_NETWORKING        - Generate privateNetworking in nodegroup (e.g., true)
 #   AUTO_MODE_CONFIG_ENABLED            - Enable EKS Auto Mode (generates autoModeConfig block)
@@ -410,6 +413,7 @@ require_config_file "VPC_ID" "Create this file with the VPC ID for your cluster 
 require_config_file "NODEGROUP_INSTANCE_TYPE" "Create this file with the instance type (e.g., t3.medium)"
 require_config_file "SECRETS_ENCRYPTION_KEY_ARN" "Create this file with the KMS key ARN for secrets encryption"
 require_config_file "AWS_ACCOUNT_ID" "Create this file with the AWS account ID for your cluster (e.g., 123456789012)"
+require_config_file "CLUSTER_ORIGIN" "Create this file with 'eksctl' (cluster created by eksctl) or 'adopted' (existing cluster)"
 
 if [[ "${EKS_PRIVATE_NETWORKING}" == "true" ]]; then
   require_config_file "PRIVATE_SUBNET_ID_A" "Required when EKS_PRIVATE_NETWORKING=true"
@@ -423,11 +427,42 @@ if [[ "${EKS_PUBLIC_NETWORKING}" == "true" ]]; then
   require_config_file "PUBLIC_SUBNET_ID_C" "Required when EKS_PUBLIC_NETWORKING=true"
 fi
 
+# Cluster origin - required: determines security group requirements
+cluster_origin=""
+cluster_origin_config_name=$(convert_token_name "${TOKEN_NAME_STYLE}" "CLUSTER_ORIGIN")
+if [[ -f "${CONFIG_SUB_PATH}/${cluster_origin_config_name}" ]]; then
+  cluster_origin=$(< "${CONFIG_SUB_PATH}/${cluster_origin_config_name}")
+  cluster_origin="${cluster_origin%$'\n'}"
+  if [[ "${cluster_origin}" != "eksctl" && "${cluster_origin}" != "adopted" ]]; then
+    log_error "CLUSTER_ORIGIN: invalid value '${cluster_origin}' - must be 'eksctl' or 'adopted'"
+    validation_errors=$((validation_errors + 1))
+  fi
+fi
+
 # VPC security group - optional: if config file exists, include securityGroup line
 has_vpc_security_group="false"
 vpc_security_group_name=$(convert_token_name "${TOKEN_NAME_STYLE}" "VPC_SECURITY_GROUP")
 if [[ -f "${CONFIG_SUB_PATH}/${vpc_security_group_name}" ]]; then
   has_vpc_security_group="true"
+fi
+
+# VPC control plane security group IDs - optional alternative to VPC_SECURITY_GROUP
+has_vpc_control_plane_sg_ids="false"
+vpc_control_plane_sg_ids_name=$(convert_token_name "${TOKEN_NAME_STYLE}" "VPC_CONTROL_PLANE_SECURITY_GROUP_IDS")
+if [[ -f "${CONFIG_SUB_PATH}/${vpc_control_plane_sg_ids_name}" ]]; then
+  has_vpc_control_plane_sg_ids="true"
+fi
+
+# VPC security group mutual exclusion: cannot have both securityGroup and controlPlaneSecurityGroupIDs
+if [[ "${has_vpc_security_group}" == "true" && "${has_vpc_control_plane_sg_ids}" == "true" ]]; then
+  log_error "VPC_SECURITY_GROUP and VPC_CONTROL_PLANE_SECURITY_GROUP_IDS are mutually exclusive - provide one or the other"
+  validation_errors=$((validation_errors + 1))
+fi
+
+# Adopted clusters require a control plane security group (eksctl can't resolve from CloudFormation)
+if [[ "${cluster_origin}" == "adopted" && "${has_vpc_security_group}" == "false" && "${has_vpc_control_plane_sg_ids}" == "false" ]]; then
+  log_error "CLUSTER_ORIGIN=adopted requires either VPC_SECURITY_GROUP or VPC_CONTROL_PLANE_SECURITY_GROUP_IDS"
+  validation_errors=$((validation_errors + 1))
 fi
 
 # Private cluster - conditional: if config file exists, generate privateCluster block
@@ -544,6 +579,7 @@ printf '%s' "${PROJECT_NAME}" > "${expected_values_dir}/project-name"
 printf '%s' "$(< "${CONFIG_SUB_PATH}/$(convert_token_name "${TOKEN_NAME_STYLE}" "AWS_REGION")")" > "${expected_values_dir}/aws-region"
 printf '%s' "${k8s_version}" > "${expected_values_dir}/kubernetes-version"
 printf '%s' "${nodegroup_prefix}" > "${expected_values_dir}/nodegroup-prefix"
+printf '%s' "${cluster_origin}" > "${expected_values_dir}/cluster-origin"
 
 # === Determine platforms, context dirs, and config dirs ===
 
@@ -678,6 +714,13 @@ if [[ "${has_auto_mode_config}" == "true" ]]; then
   fi
 fi
 
+if [[ "${has_vpc_control_plane_sg_ids}" == "true" ]]; then
+  expand_comma_list_token "VPC_CONTROL_PLANE_SECURITY_GROUP_IDS" "VPC_CONTROL_PLANE_SECURITY_GROUP_ID" "" # no default - value comes from CONFIG_SUB_PATH
+  cp_sg_ids_tokens=("${expanded_tokens[@]}")
+  cp_sg_ids_count="${expanded_count}"
+  printf '%s' "${cp_sg_ids_count}" > "${expected_values_dir}/control-plane-sg-ids-count"
+fi
+
 if [[ "${has_network_config}" == "true" ]]; then
   token_network_service_ipv4_cidr=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "NETWORK_CONFIG_SERVICE_IP_V4_CIDR")
 fi
@@ -743,6 +786,13 @@ YAML
 
   if [[ "${has_vpc_security_group}" == "true" ]]; then
     echo "  securityGroup: ${token_security_group}"
+  fi
+
+  if [[ "${has_vpc_control_plane_sg_ids}" == "true" ]]; then
+    echo "  controlPlaneSecurityGroupIDs:"
+    for token in "${cp_sg_ids_tokens[@]}"; do
+      echo "    - ${token}"
+    done
   fi
 
   if [[ "${EKS_PRIVATE_NETWORKING}" == "true" || "${EKS_PUBLIC_NETWORKING}" == "true" ]]; then
@@ -944,6 +994,7 @@ resolve_file() {
 
 main() {
   log "=== EKS Cluster Management Prepare ==="
+  log "Cluster origin: ${cluster_origin}"
   log "Kubernetes version: ${k8s_version}"
   log "Nodegroup prefix: ${nodegroup_prefix}"
   log "Base image: ${EKS_BASE_IMAGE_REGISTRY}/${EKS_BASE_IMAGE_NAMESPACE}/${EKS_BASE_IMAGE_NAME}:${EKS_BASE_IMAGE_TAG}"
