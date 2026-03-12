@@ -53,6 +53,8 @@ metadata:
   name: ${ProjectName}
   region: ${AwsRegion}
   version: "${KubernetesVersion}"
+  annotations:
+    kaptain.org/eks-cluster-security-group: "${ClusterSecurityGroup}"
 
 vpc:
   id: ${VpcId}
@@ -372,6 +374,34 @@ teardown() {
   assert_output_contains "missing from YAML"
 }
 
+# === Cluster security group annotation validation ===
+
+@test "fails when cluster-security-group annotation missing" {
+  local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
+  yq -i 'del(.metadata.annotations["kaptain.org/eks-cluster-security-group"])' "$context_dir/cluster.yaml"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-pre-build-validate"
+  [ "$status" -ne 0 ]
+  assert_output_contains "kaptain.org/eks-cluster-security-group"
+  assert_output_contains "missing"
+}
+
+@test "fails when cluster-security-group annotation is wrong token" {
+  local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
+  yq -i '.metadata.annotations["kaptain.org/eks-cluster-security-group"] = "sg-hardcoded123"' "$context_dir/cluster.yaml"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-pre-build-validate"
+  [ "$status" -ne 0 ]
+  assert_output_contains "must be exactly"
+  assert_output_contains '${ClusterSecurityGroup}'
+}
+
+@test "passes when cluster-security-group annotation has correct token" {
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-pre-build-validate"
+  [ "$status" -eq 0 ]
+  assert_output_contains "all token checks passed"
+}
+
 # === Missing cluster.yaml ===
 
 @test "fails when cluster.yaml not found in context dir" {
@@ -394,6 +424,8 @@ metadata:
   name: ${ProjectName}
   region: ${AwsRegion}
   version: "${KubernetesVersion}"
+  annotations:
+    kaptain.org/eks-cluster-security-group: "${ClusterSecurityGroup}"
 
 vpc:
   id: ${VpcId}
@@ -424,6 +456,8 @@ metadata:
   name: wrong-name
   region: ${AwsRegion}
   version: "${KubernetesVersion}"
+  annotations:
+    kaptain.org/eks-cluster-security-group: "${ClusterSecurityGroup}"
 
 vpc:
   id: ${VpcId}

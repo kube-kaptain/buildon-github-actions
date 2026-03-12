@@ -19,6 +19,7 @@
 #   - vpc.securityGroup and vpc.controlPlaneSecurityGroupIDs are mutually exclusive
 #   - Adopted clusters require vpc.securityGroup or vpc.controlPlaneSecurityGroupIDs
 #   - vpc.securityGroup, if present, is exactly the VPC_SECURITY_GROUP token
+#   - metadata.annotations["kaptain.org/eks-cluster-security-group"] is exactly the CLUSTER_SECURITY_GROUP token
 #
 # Inputs (environment variables):
 #   DOCKER_PLATFORM            - Target platform(s) (from prepare)
@@ -74,6 +75,7 @@ token_kubernetes_version=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${
 token_vpc_id=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "VPC_ID")
 token_nodegroup_prefix=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "NODE_GROUP_DEFAULT_PREFIX")
 token_vpc_security_group=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "VPC_SECURITY_GROUP")
+token_cluster_security_group=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "CLUSTER_SECURITY_GROUP")
 
 # Build expected controlPlaneSecurityGroupIDs tokens (numbered)
 declare -a expected_cp_sg_tokens=()
@@ -158,6 +160,15 @@ validate_cluster_yaml_tokens() {
     fail "${yaml_file}: metadata.version is missing"
   elif [[ "${version}" != "${token_kubernetes_version}" ]]; then
     fail "${yaml_file}: metadata.version '${version}' must be exactly '${token_kubernetes_version}'"
+  fi
+
+  # metadata.annotations["kaptain.org/eks-cluster-security-group"] must be exactly the CLUSTER_SECURITY_GROUP token
+  local cluster_sg_annotation
+  cluster_sg_annotation=$(yq '.metadata.annotations["kaptain.org/eks-cluster-security-group"]' "${yaml_file}" 2>/dev/null || echo "")
+  if [[ -z "${cluster_sg_annotation}" || "${cluster_sg_annotation}" == "null" ]]; then
+    fail "${yaml_file}: metadata.annotations[kaptain.org/eks-cluster-security-group] is missing"
+  elif [[ "${cluster_sg_annotation}" != "${token_cluster_security_group}" ]]; then
+    fail "${yaml_file}: metadata.annotations[kaptain.org/eks-cluster-security-group] '${cluster_sg_annotation}' must be exactly '${token_cluster_security_group}'"
   fi
 
   # vpc.id must be exactly the VPC_ID token

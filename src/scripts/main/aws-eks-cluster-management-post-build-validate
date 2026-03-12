@@ -221,6 +221,17 @@ validate_substituted_yaml() {
     log "  metadata.version: ${version} (expected: ${kubernetes_version})"
   fi
 
+  # metadata.annotations["kaptain.org/eks-cluster-security-group"] must be an SG ID
+  local cluster_sg_annotation
+  cluster_sg_annotation=$(yq '.metadata.annotations["kaptain.org/eks-cluster-security-group"]' "${yaml_file}" 2>/dev/null || echo "")
+  if [[ -z "${cluster_sg_annotation}" || "${cluster_sg_annotation}" == "null" ]]; then
+    fail "${yaml_file}: metadata.annotations[kaptain.org/eks-cluster-security-group] is missing"
+  elif [[ "${cluster_sg_annotation}" != "sg-known-after-creation" && ! "${cluster_sg_annotation}" =~ ^sg-[0-9a-f]+$ ]]; then
+    fail "${yaml_file}: metadata.annotations[kaptain.org/eks-cluster-security-group] '${cluster_sg_annotation}' does not look like a security group ID (expected sg-<hex> or sg-known-after-creation)"
+  else
+    log "  metadata.annotations[kaptain.org/eks-cluster-security-group]: ${cluster_sg_annotation}"
+  fi
+
   log ""
   log "  --- VPC ---"
   # vpc.id must look like a VPC ID

@@ -107,6 +107,7 @@ metadata:
     ManagedByGitRepo: test-cluster
   annotations:
     kaptain.org/aws-account-id: "123456789012"
+    kaptain.org/eks-cluster-security-group: "sg-0abc123def456789a"
 
 vpc:
   id: vpc-0123456789abcdef0
@@ -355,6 +356,8 @@ metadata:
   name: test-cluster
   region: eu-west-1
   version: "1.32"
+  annotations:
+    kaptain.org/eks-cluster-security-group: "sg-0abc123def456789a"
 
 vpc:
   id: vpc-0123456789abcdef0
@@ -420,6 +423,8 @@ metadata:
   name: test-cluster
   region: eu-west-1
   version: "1.32"
+  annotations:
+    kaptain.org/eks-cluster-security-group: "sg-0abc123def456789a"
 
 vpc:
   id: vpc-0123456789abcdef0
@@ -495,6 +500,34 @@ YAML
   assert_output_contains "metadata.annotations"
   assert_output_contains "not a string"
   assert_output_contains "kaptain.org/priority"
+}
+
+@test "fails when cluster-security-group annotation missing from substituted yaml" {
+  local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
+  yq -i 'del(.metadata.annotations["kaptain.org/eks-cluster-security-group"])' "$context_dir/cluster.yaml"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-post-build-validate"
+  [ "$status" -ne 0 ]
+  assert_output_contains "kaptain.org/eks-cluster-security-group"
+  assert_output_contains "missing"
+}
+
+@test "fails when cluster-security-group annotation is not sg-hex format" {
+  local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
+  yq -i '.metadata.annotations["kaptain.org/eks-cluster-security-group"] = "not-a-sg"' "$context_dir/cluster.yaml"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-post-build-validate"
+  [ "$status" -ne 0 ]
+  assert_output_contains "kaptain.org/eks-cluster-security-group"
+  assert_output_contains "does not look like a security group ID"
+}
+
+@test "passes when cluster-security-group annotation is sg-known-after-creation" {
+  local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
+  yq -i '.metadata.annotations["kaptain.org/eks-cluster-security-group"] = "sg-known-after-creation"' "$context_dir/cluster.yaml"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-post-build-validate"
+  [ "$status" -eq 0 ]
 }
 
 @test "fails when nodegroup label value is not a string" {

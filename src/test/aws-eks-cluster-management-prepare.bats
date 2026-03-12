@@ -24,6 +24,7 @@ setup() {
   printf 't3.medium' > "$CONFIG_SUB_PATH/NodegroupInstanceType"
   printf 'arn:aws:kms:eu-west-1:123456789012:key/12345678-1234-1234-1234-123456789012' > "$CONFIG_SUB_PATH/SecretsEncryptionKeyArn"
   printf '123456789012' > "$CONFIG_SUB_PATH/AwsAccountId"
+  printf 'sg-clusterdefault123456' > "$CONFIG_SUB_PATH/ClusterSecurityGroup"
   printf 'eksctl' > "$CONFIG_SUB_PATH/ClusterOrigin"
   printf 'subnet-aaa11111111111111' > "$CONFIG_SUB_PATH/PrivateSubnetIdA"
   printf 'subnet-bbb22222222222222' > "$CONFIG_SUB_PATH/PrivateSubnetIdB"
@@ -899,6 +900,15 @@ EOF
   assert_output_contains "not found"
 }
 
+@test "fails when ClusterSecurityGroup config file missing" {
+  rm "$CONFIG_SUB_PATH/ClusterSecurityGroup"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -ne 0 ]
+  assert_output_contains "CLUSTER_SECURITY_GROUP"
+  assert_output_contains "not found"
+}
+
 # === Annotations ===
 
 @test "generates fixed annotation with AwsAccountId token" {
@@ -909,6 +919,15 @@ EOF
   content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
   assert_contains "$content" "annotations:" "cluster.yaml"
   assert_contains "$content" 'kaptain.org/aws-account-id: "${AwsAccountId}"' "cluster.yaml"
+}
+
+@test "generates fixed annotation with ClusterSecurityGroup token" {
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -eq 0 ]
+
+  local content
+  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
+  assert_contains "$content" 'kaptain.org/eks-cluster-security-group: "${ClusterSecurityGroup}"' "cluster.yaml"
 }
 
 @test "appends user metadata annotations from config file" {
@@ -1602,6 +1621,7 @@ EOF
   mv "$CONFIG_SUB_PATH/NodegroupInstanceType" "$CONFIG_SUB_PATH/NODEGROUP_INSTANCE_TYPE"
   mv "$CONFIG_SUB_PATH/SecretsEncryptionKeyArn" "$CONFIG_SUB_PATH/SECRETS_ENCRYPTION_KEY_ARN"
   mv "$CONFIG_SUB_PATH/AwsAccountId" "$CONFIG_SUB_PATH/AWS_ACCOUNT_ID"
+  mv "$CONFIG_SUB_PATH/ClusterSecurityGroup" "$CONFIG_SUB_PATH/CLUSTER_SECURITY_GROUP"
   mv "$CONFIG_SUB_PATH/ClusterOrigin" "$CONFIG_SUB_PATH/CLUSTER_ORIGIN"
   mv "$CONFIG_SUB_PATH/PrivateSubnetIdA" "$CONFIG_SUB_PATH/PRIVATE_SUBNET_ID_A"
   mv "$CONFIG_SUB_PATH/PrivateSubnetIdB" "$CONFIG_SUB_PATH/PRIVATE_SUBNET_ID_B"

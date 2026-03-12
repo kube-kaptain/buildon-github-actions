@@ -22,6 +22,7 @@
 #   NODEGROUP_INSTANCE_TYPE     - Node instance type (e.g., t3.medium)
 #   SECRETS_ENCRYPTION_KEY_ARN  - KMS key ARN for envelope encryption of Kubernetes secrets
 #   AWS_ACCOUNT_ID              - AWS account ID (e.g., 123456789012)
+#   CLUSTER_SECURITY_GROUP      - EKS cluster default security group ID (from EKS console Networking tab)
 #   CLUSTER_ORIGIN              - Cluster origin: 'eksctl' (created by eksctl) or 'adopted' (existing cluster)
 #   PRIVATE_SUBNET_ID_A/B/C     - Private subnet IDs (if EKS_PRIVATE_NETWORKING=true)
 #   PUBLIC_SUBNET_ID_A/B/C      - Public subnet IDs (if EKS_PUBLIC_NETWORKING=true)
@@ -413,7 +414,8 @@ require_config_file "VPC_ID" "Create this file with the VPC ID for your cluster 
 require_config_file "NODEGROUP_INSTANCE_TYPE" "Create this file with the instance type (e.g., t3.medium)"
 require_config_file "SECRETS_ENCRYPTION_KEY_ARN" "Create this file with the KMS key ARN for secrets encryption"
 require_config_file "AWS_ACCOUNT_ID" "Create this file with the AWS account ID for your cluster (e.g., 123456789012)"
-require_config_file "CLUSTER_ORIGIN" "Create this file with 'eksctl' (cluster created by eksctl) or 'adopted' (existing cluster)"
+require_config_file "CLUSTER_SECURITY_GROUP" "Create this file with the EKS cluster default security group ID (from EKS console Networking tab or sg-known-after-creation for new clusters)"
+require_config_file "CLUSTER_ORIGIN" "Create this file with 'eksctl' (cluster created by eksctl) or 'adopted' (existing cluster, eg Terraform/OpenTofu)"
 
 if [[ "${EKS_PRIVATE_NETWORKING}" == "true" ]]; then
   require_config_file "PRIVATE_SUBNET_ID_A" "Required when EKS_PRIVATE_NETWORKING=true"
@@ -455,7 +457,7 @@ fi
 
 # VPC security group mutual exclusion: cannot have both securityGroup and controlPlaneSecurityGroupIDs
 if [[ "${has_vpc_security_group}" == "true" && "${has_vpc_control_plane_sg_ids}" == "true" ]]; then
-  log_error "VPC_SECURITY_GROUP and VPC_CONTROL_PLANE_SECURITY_GROUP_IDS are mutually exclusive - provide one or the other"
+  log_error "VPC_SECURITY_GROUP and VPC_CONTROL_PLANE_SECURITY_GROUP_IDS are mutually exclusive and have the same purpose - provide one or the other"
   validation_errors=$((validation_errors + 1))
 fi
 
@@ -669,6 +671,7 @@ token_vpc_private_access=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${
 token_vpc_public_access=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "VPC_CLUSTER_ENDPOINTS_PUBLIC_ACCESS")
 token_secrets_encryption_key_arn=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "SECRETS_ENCRYPTION_KEY_ARN")
 token_aws_account_id=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "AWS_ACCOUNT_ID")
+token_cluster_security_group=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "CLUSTER_SECURITY_GROUP")
 token_nodegroup_prefix=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "NODE_GROUP_DEFAULT_PREFIX")
 token_instance_type=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "NODEGROUP_INSTANCE_TYPE")
 token_ami_family=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "NODEGROUP_AMI_FAMILY")
@@ -766,6 +769,7 @@ YAML
 
   echo "  annotations:"
   echo "    kaptain.org/aws-account-id: \"${token_aws_account_id}\""
+  echo "    kaptain.org/eks-cluster-security-group: \"${token_cluster_security_group}\""
 
   # Append user metadata annotations (flat yaml, indented under annotations:)
   if [[ "${has_metadata_annotations}" == "true" ]]; then
