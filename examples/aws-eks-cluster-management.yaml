@@ -17,6 +17,9 @@
 #   VpcId                                 - VPC identifier (e.g., vpc-0123456789abcdef0)
 #   NodegroupInstanceType                 - EC2 instance type (e.g., t3.medium)
 #   SecretsEncryptionKeyArn               - KMS key ARN for Kubernetes secrets encryption
+#   AwsAccountId                          - AWS account ID (e.g., 123456789012)
+#   ClusterSecurityGroup                  - EKS cluster default security group ID (or sg-known-after-creation for new clusters)
+#   ClusterOrigin                         - Cluster origin: 'eksctl' (created by eksctl) or 'adopted' (existing cluster)
 #   PrivateSubnetIdA                      - Private subnet ID for AZ a (EKS_PRIVATE_NETWORKING=true)
 #   PrivateSubnetIdB                      - Private subnet ID for AZ b (EKS_PRIVATE_NETWORKING=true)
 #   PrivateSubnetIdC                      - Private subnet ID for AZ c (EKS_PRIVATE_NETWORKING=true)
@@ -28,13 +31,15 @@
 #   AutoModeConfigNodePools               - Comma-separated node pool names (AutoModeConfigEnabled=true)
 #
 # ── Optional (generates section when present, omitted when absent) ────────────
-#   VpcSecurityGroup                      - VPC security group ID (e.g., sg-0123456789abcdef0)
+#   VpcSecurityGroup                      - Control plane access SG ID, singular, mutually exclusive with VpcControlPlaneSecurityGroupIds
+#   VpcControlPlaneSecurityGroupIds       - Control plane access SG IDs, comma-separated, mutually exclusive with VpcSecurityGroup
 #   PrivateClusterEnabled                 - Generates privateCluster block (e.g., true)
 #   NodegroupPrivateNetworking            - Adds privateNetworking to nodegroup (e.g., true)
 #   NodegroupIamInstanceRoleArn           - Adds iam.instanceRoleARN to nodegroup
 #   AutoModeConfigEnabled                 - Generates autoModeConfig block (e.g., true or false)
 #   NetworkConfigServiceIpV4Cidr          - Generates kubernetesNetworkConfig block with custom service CIDR
 #   MetadataTags                          - Additional cluster metadata tags (key: value per line)
+#   MetadataAnnotations                   - Additional cluster metadata annotations (key: value per line)
 #   NodegroupTags                         - Additional nodegroup tags (key: value per line)
 #   NodegroupLabels                       - Additional nodegroup labels (key: value per line)
 #   Addons<Name>ServiceAccountRoleArn     - Per-addon IAM role (e.g., AddonsVpcCniServiceAccountRoleArn)
