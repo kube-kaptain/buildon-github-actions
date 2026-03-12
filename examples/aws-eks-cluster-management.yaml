@@ -20,6 +20,7 @@
 #   AwsAccountId                          - AWS account ID (e.g., 123456789012)
 #   ClusterSecurityGroup                  - EKS cluster default security group ID (or sg-known-after-creation for new clusters)
 #   ClusterOrigin                         - Cluster origin: 'eksctl' (created by eksctl) or 'adopted' (existing cluster)
+#   NodegroupType                         - Nodegroup type: 'managed' (EKS managed) or 'unmanaged' (self-managed)
 #   PrivateSubnetIdA                      - Private subnet ID for AZ a (EKS_PRIVATE_NETWORKING=true)
 #   PrivateSubnetIdB                      - Private subnet ID for AZ b (EKS_PRIVATE_NETWORKING=true)
 #   PrivateSubnetIdC                      - Private subnet ID for AZ c (EKS_PRIVATE_NETWORKING=true)

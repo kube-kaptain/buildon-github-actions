@@ -24,6 +24,7 @@
 #   AWS_ACCOUNT_ID              - AWS account ID (e.g., 123456789012)
 #   CLUSTER_SECURITY_GROUP      - EKS cluster default security group ID (from EKS console Networking tab)
 #   CLUSTER_ORIGIN              - Cluster origin: 'eksctl' (created by eksctl) or 'adopted' (existing cluster)
+#   NODEGROUP_TYPE              - Nodegroup type: 'managed' (EKS managed) or 'unmanaged' (self-managed)
 #   PRIVATE_SUBNET_ID_A/B/C     - Private subnet IDs (if EKS_PRIVATE_NETWORKING=true)
 #   PUBLIC_SUBNET_ID_A/B/C      - Public subnet IDs (if EKS_PUBLIC_NETWORKING=true)
 #
@@ -418,6 +419,7 @@ require_config_file "SECRETS_ENCRYPTION_KEY_ARN" "Create this file with the KMS 
 require_config_file "AWS_ACCOUNT_ID" "Create this file with the AWS account ID for your cluster (e.g., 123456789012)"
 require_config_file "CLUSTER_SECURITY_GROUP" "Create this file with the EKS cluster default security group ID (from EKS console Networking tab or sg-known-after-creation for new clusters)"
 require_config_file "CLUSTER_ORIGIN" "Create this file with 'eksctl' (cluster created by eksctl) or 'adopted' (existing cluster, eg Terraform/OpenTofu)"
+require_config_file "NODEGROUP_TYPE" "Create this file with 'managed' (EKS managed nodegroups) or 'unmanaged' (self-managed nodegroups)"
 
 if [[ "${EKS_PRIVATE_NETWORKING}" == "true" ]]; then
   require_config_file "PRIVATE_SUBNET_ID_A" "Required when EKS_PRIVATE_NETWORKING=true"
@@ -439,6 +441,18 @@ if [[ -f "${CONFIG_SUB_PATH}/${cluster_origin_config_name}" ]]; then
   cluster_origin="${cluster_origin%$'\n'}"
   if [[ "${cluster_origin}" != "eksctl" && "${cluster_origin}" != "adopted" ]]; then
     log_error "CLUSTER_ORIGIN: invalid value '${cluster_origin}' - must be 'eksctl' or 'adopted'"
+    validation_errors=$((validation_errors + 1))
+  fi
+fi
+
+# Nodegroup type - required: determines managed vs unmanaged nodegroup generation
+nodegroup_type=""
+nodegroup_type_config_name=$(convert_token_name "${TOKEN_NAME_STYLE}" "NODEGROUP_TYPE")
+if [[ -f "${CONFIG_SUB_PATH}/${nodegroup_type_config_name}" ]]; then
+  nodegroup_type=$(< "${CONFIG_SUB_PATH}/${nodegroup_type_config_name}")
+  nodegroup_type="${nodegroup_type%$'\n'}"
+  if [[ "${nodegroup_type}" != "managed" && "${nodegroup_type}" != "unmanaged" ]]; then
+    log_error "NODEGROUP_TYPE: invalid value '${nodegroup_type}' - must be 'managed' or 'unmanaged'"
     validation_errors=$((validation_errors + 1))
   fi
 fi
@@ -590,6 +604,7 @@ printf '%s' "$(< "${CONFIG_SUB_PATH}/$(convert_token_name "${TOKEN_NAME_STYLE}" 
 printf '%s' "${k8s_version}" > "${expected_values_dir}/kubernetes-version"
 printf '%s' "${nodegroup_prefix}" > "${expected_values_dir}/nodegroup-prefix"
 printf '%s' "${cluster_origin}" > "${expected_values_dir}/cluster-origin"
+printf '%s' "${nodegroup_type}" > "${expected_values_dir}/nodegroup-type"
 
 # === Determine platforms, context dirs, and config dirs ===
 
@@ -646,22 +661,30 @@ expand_comma_list_token "CLOUD_WATCH_CLUSTER_LOGGING_ENABLE_TYPES" "CLOUD_WATCH_
 cloudwatch_tokens=("${expanded_tokens[@]}")
 ensure_default_token "NODEGROUP_AMI_FAMILY" "AmazonLinux2023"
 ensure_default_token "NODEGROUP_VOLUME_SIZE" "20"
-ensure_default_token "NODEGROUP_UPDATE_CONFIG_MAX_UNAVAILABLE" "1"
+update_max_unavailable_name=$(convert_token_name "${TOKEN_NAME_STYLE}" "NODEGROUP_UPDATE_CONFIG_MAX_UNAVAILABLE")
+if [[ "${nodegroup_type}" == "managed" ]]; then
+  ensure_default_token "NODEGROUP_UPDATE_CONFIG_MAX_UNAVAILABLE" "1"
+
+  # Validate maxUnavailable is greater than 0
+  update_max_unavailable_val="1"
+  if [[ -f "${CONFIG_SUB_PATH}/${update_max_unavailable_name}" ]]; then
+    update_max_unavailable_val=$(< "${CONFIG_SUB_PATH}/${update_max_unavailable_name}")
+    update_max_unavailable_val="${update_max_unavailable_val%$'\n'}"
+  fi
+  if [[ "${update_max_unavailable_val}" -le 0 ]]; then
+    log_error "NODEGROUP_UPDATE_CONFIG_MAX_UNAVAILABLE must be greater than 0 (got: ${update_max_unavailable_val})"
+    validation_errors=$((validation_errors + 1))
+  fi
+else
+  # updateConfig is not supported for unmanaged nodegroups
+  if [[ -f "${CONFIG_SUB_PATH}/${update_max_unavailable_name}" ]]; then
+    log_error "NODEGROUP_UPDATE_CONFIG_MAX_UNAVAILABLE is not supported for unmanaged nodegroups - remove the config file"
+    validation_errors=$((validation_errors + 1))
+  fi
+fi
 ensure_default_token "NODEGROUP_DESIRED_CAPACITY" "${NODEGROUP_DESIRED_CAPACITY}"
 ensure_default_token "NODEGROUP_MIN_SIZE" "${NODEGROUP_MIN_SIZE}"
 ensure_default_token "NODEGROUP_MAX_SIZE" "${NODEGROUP_MAX_SIZE}"
-
-# Validate maxUnavailable is greater than 0
-update_max_unavailable_name=$(convert_token_name "${TOKEN_NAME_STYLE}" "NODEGROUP_UPDATE_CONFIG_MAX_UNAVAILABLE")
-update_max_unavailable_val="1"
-if [[ -f "${CONFIG_SUB_PATH}/${update_max_unavailable_name}" ]]; then
-  update_max_unavailable_val=$(< "${CONFIG_SUB_PATH}/${update_max_unavailable_name}")
-  update_max_unavailable_val="${update_max_unavailable_val%$'\n'}"
-fi
-if [[ "${update_max_unavailable_val}" -le 0 ]]; then
-  log_error "NODEGROUP_UPDATE_CONFIG_MAX_UNAVAILABLE must be greater than 0 (got: ${update_max_unavailable_val})"
-  validation_errors=$((validation_errors + 1))
-fi
 
 if [[ ${validation_errors} -gt 0 ]]; then
   log_error "Validation failed with ${validation_errors} error(s)"
@@ -905,9 +928,13 @@ YAML
   done
 
   if [[ "${include_nodegroups}" == "true" ]]; then
+    local ng_yaml_key="managedNodeGroups"
+    if [[ "${nodegroup_type}" == "unmanaged" ]]; then
+      ng_yaml_key="nodeGroups"
+    fi
     cat <<YAML
 
-managedNodeGroups:
+${ng_yaml_key}:
   - name: ${token_nodegroup_prefix}
     amiFamily: ${token_ami_family}
     instanceType: ${token_instance_type}
@@ -931,9 +958,13 @@ YAML
     desiredCapacity: ${token_desired_capacity}
     minSize: ${token_min_size}
     maxSize: ${token_max_size}
+YAML
+    if [[ "${nodegroup_type}" == "managed" ]]; then
+      cat <<YAML
     updateConfig:
       maxUnavailable: ${token_update_max_unavailable}
 YAML
+    fi
 
     # Nodegroup subnets (from private and/or public subnet config)
     if [[ "${EKS_PRIVATE_NETWORKING}" == "true" || "${EKS_PUBLIC_NETWORKING}" == "true" ]]; then

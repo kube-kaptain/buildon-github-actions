@@ -40,6 +40,7 @@ setup() {
   # Create canonical values (as written by prepare step)
   mkdir -p "$OUTPUT_SUB_PATH/aws-eks-cluster-management/expected-values"
   printf '%s' "eksctl" > "$OUTPUT_SUB_PATH/aws-eks-cluster-management/expected-values/cluster-origin"
+  printf '%s' "managed" > "$OUTPUT_SUB_PATH/aws-eks-cluster-management/expected-values/nodegroup-type"
 
   # Create context dir with a valid cluster.yaml containing tokens
   local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
@@ -321,6 +322,27 @@ teardown() {
   run "$SCRIPTS_DIR/aws-eks-cluster-management-pre-build-validate"
   [ "$status" -ne 0 ]
   assert_output_contains "cluster-origin"
+  assert_output_contains "not found"
+}
+
+# === Nodegroup type ===
+
+@test "validates nodeGroups key when nodegroup-type is unmanaged" {
+  local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
+  printf '%s' "unmanaged" > "$OUTPUT_SUB_PATH/aws-eks-cluster-management/expected-values/nodegroup-type"
+  # Rename managedNodeGroups to nodeGroups in the test yaml
+  yq -i '.nodeGroups = .managedNodeGroups | del(.managedNodeGroups)' "$context_dir/cluster.yaml"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-pre-build-validate"
+  [ "$status" -eq 0 ]
+}
+
+@test "fails when nodegroup-type expected-values file missing" {
+  rm "$OUTPUT_SUB_PATH/aws-eks-cluster-management/expected-values/nodegroup-type"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-pre-build-validate"
+  [ "$status" -ne 0 ]
+  assert_output_contains "nodegroup-type"
   assert_output_contains "not found"
 }
 

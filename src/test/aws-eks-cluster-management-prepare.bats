@@ -26,6 +26,7 @@ setup() {
   printf '123456789012' > "$CONFIG_SUB_PATH/AwsAccountId"
   printf 'sg-clusterdefault123456' > "$CONFIG_SUB_PATH/ClusterSecurityGroup"
   printf 'eksctl' > "$CONFIG_SUB_PATH/ClusterOrigin"
+  printf 'managed' > "$CONFIG_SUB_PATH/NodegroupType"
   printf 'subnet-aaa11111111111111' > "$CONFIG_SUB_PATH/PrivateSubnetIdA"
   printf 'subnet-bbb22222222222222' > "$CONFIG_SUB_PATH/PrivateSubnetIdB"
   printf 'subnet-ccc33333333333333' > "$CONFIG_SUB_PATH/PrivateSubnetIdC"
@@ -143,6 +144,7 @@ teardown() {
   rm "$CONFIG_SUB_PATH/SecretsEncryptionKeyArn"
   rm "$CONFIG_SUB_PATH/AwsAccountId"
   rm "$CONFIG_SUB_PATH/ClusterOrigin"
+  rm "$CONFIG_SUB_PATH/NodegroupType"
 
   run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
   [ "$status" -ne 0 ]
@@ -152,7 +154,8 @@ teardown() {
   assert_output_contains "SECRETS_ENCRYPTION_KEY_ARN"
   assert_output_contains "AWS_ACCOUNT_ID"
   assert_output_contains "CLUSTER_ORIGIN"
-  assert_output_contains "6 missing config file(s)"
+  assert_output_contains "NODEGROUP_TYPE"
+  assert_output_contains "7 missing config file(s)"
 }
 
 # === Private networking config ===
@@ -281,6 +284,97 @@ teardown() {
   run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
   [ "$status" -ne 0 ]
   assert_output_contains "mutually exclusive"
+}
+
+# === Nodegroup type ===
+
+@test "fails when NodegroupType config file missing" {
+  rm "$CONFIG_SUB_PATH/NodegroupType"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -ne 0 ]
+  assert_output_contains "NODEGROUP_TYPE"
+  assert_output_contains "not found"
+}
+
+@test "fails when NodegroupType has invalid value" {
+  printf 'fargate' > "$CONFIG_SUB_PATH/NodegroupType"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -ne 0 ]
+  assert_output_contains "NODEGROUP_TYPE"
+  assert_output_contains "must be 'managed' or 'unmanaged'"
+}
+
+@test "generates managedNodeGroups when NodegroupType is managed" {
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -eq 0 ]
+
+  local content
+  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
+  assert_contains "$content" "managedNodeGroups:" "cluster.yaml"
+  [[ "$content" != *"nodeGroups:"* ]]
+}
+
+@test "generates nodeGroups when NodegroupType is unmanaged" {
+  printf 'unmanaged' > "$CONFIG_SUB_PATH/NodegroupType"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -eq 0 ]
+
+  local content
+  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
+  assert_contains "$content" "nodeGroups:" "cluster.yaml"
+  [[ "$content" != *"managedNodeGroups:"* ]]
+}
+
+@test "generates updateConfig when NodegroupType is managed" {
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -eq 0 ]
+
+  local content
+  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
+  assert_contains "$content" "updateConfig:" "cluster.yaml"
+  assert_contains "$content" "maxUnavailable:" "cluster.yaml"
+}
+
+@test "does not generate updateConfig when NodegroupType is unmanaged" {
+  printf 'unmanaged' > "$CONFIG_SUB_PATH/NodegroupType"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -eq 0 ]
+
+  local content
+  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
+  [[ "$content" != *"updateConfig:"* ]]
+  [[ "$content" != *"maxUnavailable:"* ]]
+}
+
+@test "does not write updateConfig default when NodegroupType is unmanaged" {
+  printf 'unmanaged' > "$CONFIG_SUB_PATH/NodegroupType"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -eq 0 ]
+
+  [ ! -f "$OUTPUT_SUB_PATH/docker/config/NodegroupUpdateConfigMaxUnavailable" ]
+}
+
+@test "fails when updateConfig config present with unmanaged NodegroupType" {
+  printf 'unmanaged' > "$CONFIG_SUB_PATH/NodegroupType"
+  printf '2' > "$CONFIG_SUB_PATH/NodegroupUpdateConfigMaxUnavailable"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -ne 0 ]
+  assert_output_contains "NODEGROUP_UPDATE_CONFIG_MAX_UNAVAILABLE"
+  assert_output_contains "not supported for unmanaged"
+}
+
+@test "writes nodegroup-type to expected-values" {
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -eq 0 ]
+
+  [ -f "$OUTPUT_SUB_PATH/aws-eks-cluster-management/expected-values/nodegroup-type" ]
+  [ "$(< "$OUTPUT_SUB_PATH/aws-eks-cluster-management/expected-values/nodegroup-type")" = "managed" ]
 }
 
 # === Control plane security group IDs generation ===
@@ -1667,6 +1761,7 @@ EOF
   mv "$CONFIG_SUB_PATH/AwsAccountId" "$CONFIG_SUB_PATH/AWS_ACCOUNT_ID"
   mv "$CONFIG_SUB_PATH/ClusterSecurityGroup" "$CONFIG_SUB_PATH/CLUSTER_SECURITY_GROUP"
   mv "$CONFIG_SUB_PATH/ClusterOrigin" "$CONFIG_SUB_PATH/CLUSTER_ORIGIN"
+  mv "$CONFIG_SUB_PATH/NodegroupType" "$CONFIG_SUB_PATH/NODEGROUP_TYPE"
   mv "$CONFIG_SUB_PATH/PrivateSubnetIdA" "$CONFIG_SUB_PATH/PRIVATE_SUBNET_ID_A"
   mv "$CONFIG_SUB_PATH/PrivateSubnetIdB" "$CONFIG_SUB_PATH/PRIVATE_SUBNET_ID_B"
   mv "$CONFIG_SUB_PATH/PrivateSubnetIdC" "$CONFIG_SUB_PATH/PRIVATE_SUBNET_ID_C"

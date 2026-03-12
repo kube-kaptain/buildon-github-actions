@@ -67,7 +67,7 @@ canonical_dir="${OUTPUT_SUB_PATH}/aws-eks-cluster-management"
 expected_values_dir="${canonical_dir}/expected-values"
 canonical_error=0
 
-for canonical_file in project-name aws-region kubernetes-version nodegroup-prefix cluster-origin; do
+for canonical_file in project-name aws-region kubernetes-version nodegroup-prefix cluster-origin nodegroup-type; do
   if [[ ! -f "${expected_values_dir}/${canonical_file}" ]]; then
     echo "ERROR: ${expected_values_dir}/${canonical_file} not found - was aws-eks-cluster-management-prepare run?" >&2
     canonical_error=1
@@ -82,6 +82,13 @@ aws_region=$(< "${expected_values_dir}/aws-region")
 kubernetes_version=$(< "${expected_values_dir}/kubernetes-version")
 nodegroup_prefix=$(< "${expected_values_dir}/nodegroup-prefix")
 cluster_origin=$(< "${expected_values_dir}/cluster-origin")
+nodegroup_type=$(< "${expected_values_dir}/nodegroup-type")
+
+if [[ "${nodegroup_type}" == "managed" ]]; then
+  ng_yaml_key="managedNodeGroups"
+else
+  ng_yaml_key="nodeGroups"
+fi
 
 # === Determine context dirs and image URIs ===
 
@@ -333,24 +340,24 @@ validate_substituted_yaml() {
   log "  --- Node groups ---"
   # All nodegroup names start with computed prefix
   local nodegroup_count
-  nodegroup_count=$(yq '.managedNodeGroups | length' "${yaml_file}" 2>/dev/null || echo "0")
+  nodegroup_count=$(yq ".${ng_yaml_key} | length" "${yaml_file}" 2>/dev/null || echo "0")
 
-  log "  managedNodeGroups: ${nodegroup_count} found"
+  log "  ${ng_yaml_key}: ${nodegroup_count} found"
 
   if [[ "${nodegroup_count}" -gt 0 ]]; then
     declare -a ng_names=()
     for i in $(seq 0 $((nodegroup_count - 1))); do
       local ng_name
-      ng_name=$(yq ".managedNodeGroups[${i}].name" "${yaml_file}" 2>/dev/null || echo "")
+      ng_name=$(yq ".${ng_yaml_key}[${i}].name" "${yaml_file}" 2>/dev/null || echo "")
       if [[ -z "${ng_name}" || "${ng_name}" == "null" ]]; then
-        fail "${yaml_file}: managedNodeGroups[${i}].name is missing"
+        fail "${yaml_file}: ${ng_yaml_key}[${i}].name is missing"
         continue
       fi
 
       if [[ "${ng_name}" != "${nodegroup_prefix}"* ]]; then
-        fail "${yaml_file}: managedNodeGroups[${i}].name '${ng_name}' does not start with nodegroup prefix '${nodegroup_prefix}'"
+        fail "${yaml_file}: ${ng_yaml_key}[${i}].name '${ng_name}' does not start with nodegroup prefix '${nodegroup_prefix}'"
       else
-        log "  managedNodeGroups[${i}].name: ${ng_name} (prefix: ${nodegroup_prefix})"
+        log "  ${ng_yaml_key}[${i}].name: ${ng_name} (prefix: ${nodegroup_prefix})"
       fi
 
       ng_names+=("${ng_name}")
@@ -369,8 +376,8 @@ validate_substituted_yaml() {
 
     # eksctl auto-sets Name tag on nodegroup EC2 instances - user-supplied Name conflicts
     for i in $(seq 0 $((nodegroup_count - 1))); do
-      if yq -e ".managedNodeGroups[${i}].tags.Name" "${yaml_file}" &>/dev/null; then
-        fail "${yaml_file}: managedNodeGroups[${i}].tags.Name is reserved - eksctl sets it from the nodegroup name"
+      if yq -e ".${ng_yaml_key}[${i}].tags.Name" "${yaml_file}" &>/dev/null; then
+        fail "${yaml_file}: ${ng_yaml_key}[${i}].tags.Name is reserved - eksctl sets it from the nodegroup name"
       fi
     done
 
@@ -378,25 +385,25 @@ validate_substituted_yaml() {
     log "  --- Node group value types ---"
     # Validate nodegroup labels and tags values are strings
     for i in $(seq 0 $((nodegroup_count - 1))); do
-      validate_values_are_strings "${yaml_file}" ".managedNodeGroups[${i}].labels"
-      validate_values_are_strings "${yaml_file}" ".managedNodeGroups[${i}].tags"
+      validate_values_are_strings "${yaml_file}" ".${ng_yaml_key}[${i}].labels"
+      validate_values_are_strings "${yaml_file}" ".${ng_yaml_key}[${i}].tags"
     done
 
     # Validate securityGroups.attachIDs entries are sg-hex format
     local ng_sg_attach_count
-    ng_sg_attach_count=$(yq '.managedNodeGroups[0].securityGroups.attachIDs | length' "${yaml_file}" 2>/dev/null || echo "0")
+    ng_sg_attach_count=$(yq ".${ng_yaml_key}[0].securityGroups.attachIDs | length" "${yaml_file}" 2>/dev/null || echo "0")
     if [[ "${ng_sg_attach_count}" -gt 0 ]]; then
       log ""
       log "  --- Node group securityGroups.attachIDs ---"
-      log "  managedNodeGroups[0].securityGroups.attachIDs: ${ng_sg_attach_count} entries"
+      log "  ${ng_yaml_key}[0].securityGroups.attachIDs: ${ng_sg_attach_count} entries"
       local ng_sg_ids
-      ng_sg_ids=$(yq '.managedNodeGroups[0].securityGroups.attachIDs[]' "${yaml_file}" 2>/dev/null || true)
+      ng_sg_ids=$(yq ".${ng_yaml_key}[0].securityGroups.attachIDs[]" "${yaml_file}" 2>/dev/null || true)
       while IFS= read -r sg_id; do
         if [[ -z "${sg_id}" ]]; then
           continue
         fi
         if [[ ! "${sg_id}" =~ ^sg-[0-9a-f]+$ ]]; then
-          fail "${yaml_file}: managedNodeGroups[0].securityGroups.attachIDs entry '${sg_id}' does not look like a security group ID (expected sg-<hex>)"
+          fail "${yaml_file}: ${ng_yaml_key}[0].securityGroups.attachIDs entry '${sg_id}' does not look like a security group ID (expected sg-<hex>)"
         else
           log "    ${sg_id}: valid SG ID"
         fi

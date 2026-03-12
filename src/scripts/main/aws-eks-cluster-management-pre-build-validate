@@ -62,6 +62,18 @@ if [[ ! -f "${expected_values_dir}/cluster-origin" ]]; then
 fi
 cluster_origin=$(< "${expected_values_dir}/cluster-origin")
 
+if [[ ! -f "${expected_values_dir}/nodegroup-type" ]]; then
+  echo "ERROR: ${expected_values_dir}/nodegroup-type not found - was aws-eks-cluster-management-prepare run?" >&2
+  exit 1
+fi
+nodegroup_type=$(< "${expected_values_dir}/nodegroup-type")
+
+if [[ "${nodegroup_type}" == "managed" ]]; then
+  ng_yaml_key="managedNodeGroups"
+else
+  ng_yaml_key="nodeGroups"
+fi
+
 cp_sg_ids_expected_count=0
 if [[ -f "${expected_values_dir}/control-plane-sg-ids-count" ]]; then
   cp_sg_ids_expected_count=$(< "${expected_values_dir}/control-plane-sg-ids-count")
@@ -279,21 +291,21 @@ validate_cluster_yaml_tokens() {
 
   # All nodegroup names must start with NODE_GROUP_DEFAULT_PREFIX token
   local nodegroup_count
-  nodegroup_count=$(yq '.managedNodeGroups | length' "${yaml_file}" 2>/dev/null || echo "0")
+  nodegroup_count=$(yq ".${ng_yaml_key} | length" "${yaml_file}" 2>/dev/null || echo "0")
 
   if [[ "${nodegroup_count}" -gt 0 ]]; then
     declare -a ng_names=()
     for i in $(seq 0 $((nodegroup_count - 1))); do
       local ng_name
-      ng_name=$(yq ".managedNodeGroups[${i}].name" "${yaml_file}" 2>/dev/null || echo "")
+      ng_name=$(yq ".${ng_yaml_key}[${i}].name" "${yaml_file}" 2>/dev/null || echo "")
       if [[ -z "${ng_name}" || "${ng_name}" == "null" ]]; then
-        fail "${yaml_file}: managedNodeGroups[${i}].name is missing"
+        fail "${yaml_file}: ${ng_yaml_key}[${i}].name is missing"
         continue
       fi
 
       # Name must start with the nodegroup prefix token
       if [[ "${ng_name}" != "${token_nodegroup_prefix}"* ]]; then
-        fail "${yaml_file}: managedNodeGroups[${i}].name '${ng_name}' does not start with NODE_GROUP_DEFAULT_PREFIX token '${token_nodegroup_prefix}'"
+        fail "${yaml_file}: ${ng_yaml_key}[${i}].name '${ng_name}' does not start with NODE_GROUP_DEFAULT_PREFIX token '${token_nodegroup_prefix}'"
       fi
 
       ng_names+=("${ng_name}")
@@ -310,24 +322,24 @@ validate_cluster_yaml_tokens() {
 
     # Validate securityGroups.attachIDs tokens on first nodegroup
     local ng_sg_attach_count
-    ng_sg_attach_count=$(yq '.managedNodeGroups[0].securityGroups.attachIDs | length' "${yaml_file}" 2>/dev/null || echo "0")
+    ng_sg_attach_count=$(yq ".${ng_yaml_key}[0].securityGroups.attachIDs | length" "${yaml_file}" 2>/dev/null || echo "0")
     if [[ "${ng_sg_attach_count}" -gt 0 ]]; then
       if [[ "${ng_sg_attach_expected_count}" -eq 0 ]]; then
-        fail "${yaml_file}: managedNodeGroups[0].securityGroups.attachIDs present but NODEGROUP_SECURITY_GROUPS_ATTACH_IDS config not provided"
+        fail "${yaml_file}: ${ng_yaml_key}[0].securityGroups.attachIDs present but NODEGROUP_SECURITY_GROUPS_ATTACH_IDS config not provided"
       elif [[ "${ng_sg_attach_count}" -ne "${ng_sg_attach_expected_count}" ]]; then
-        fail "${yaml_file}: managedNodeGroups[0].securityGroups.attachIDs has ${ng_sg_attach_count} entries but expected ${ng_sg_attach_expected_count}"
+        fail "${yaml_file}: ${ng_yaml_key}[0].securityGroups.attachIDs has ${ng_sg_attach_count} entries but expected ${ng_sg_attach_expected_count}"
       else
         for idx in $(seq 0 $((ng_sg_attach_count - 1))); do
           local entry
-          entry=$(yq ".managedNodeGroups[0].securityGroups.attachIDs[${idx}]" "${yaml_file}" 2>/dev/null || echo "")
+          entry=$(yq ".${ng_yaml_key}[0].securityGroups.attachIDs[${idx}]" "${yaml_file}" 2>/dev/null || echo "")
           local expected_token="${expected_ng_sg_attach_tokens[${idx}]}"
           if [[ "${entry}" != "${expected_token}" ]]; then
-            fail "${yaml_file}: managedNodeGroups[0].securityGroups.attachIDs[${idx}] '${entry}' must be exactly '${expected_token}'"
+            fail "${yaml_file}: ${ng_yaml_key}[0].securityGroups.attachIDs[${idx}] '${entry}' must be exactly '${expected_token}'"
           fi
         done
       fi
     elif [[ "${ng_sg_attach_expected_count}" -gt 0 ]]; then
-      fail "${yaml_file}: NODEGROUP_SECURITY_GROUPS_ATTACH_IDS config provided (${ng_sg_attach_expected_count} entries) but managedNodeGroups[0].securityGroups.attachIDs missing from YAML"
+      fail "${yaml_file}: NODEGROUP_SECURITY_GROUPS_ATTACH_IDS config provided (${ng_sg_attach_expected_count} entries) but ${ng_yaml_key}[0].securityGroups.attachIDs missing from YAML"
     fi
   fi
 }
@@ -337,6 +349,7 @@ validate_cluster_yaml_tokens() {
 main() {
   log "=== EKS Cluster Management Pre-Build Validate ==="
   log "Cluster origin: ${cluster_origin}"
+  log "Nodegroup type: ${nodegroup_type} (YAML key: ${ng_yaml_key})"
   log "Expected PROJECT_NAME token: ${token_project_name}"
   log "Expected AWS_REGION token: ${token_aws_region}"
   log "Expected KUBERNETES_VERSION token: ${token_kubernetes_version}"
