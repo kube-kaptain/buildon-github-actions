@@ -98,6 +98,14 @@ token_volume_type=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_N
 token_volume_encrypted=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "NODEGROUP_VOLUME_ENCRYPTED")
 token_volume_kms_key_id=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "NODEGROUP_VOLUME_KMS_KEY_ID")
 
+# Direct-emit config tokens - these are emitted during generation, not substitution.
+# If found in a user-provided template, substitution will produce broken YAML
+# because only the first line gets correct indentation.
+declare -a blocked_direct_emit_tokens=()
+for blocked_name in NODEGROUP_TAINTS NODEGROUP_LABELS NODEGROUP_TAGS METADATA_TAGS METADATA_ANNOTATIONS; do
+  blocked_direct_emit_tokens+=("$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "${blocked_name}")")
+done
+
 # Build expected controlPlaneSecurityGroupIDs tokens (numbered)
 declare -a expected_cp_sg_tokens=()
 if [[ "${cp_sg_ids_expected_count}" -gt 0 ]]; then
@@ -379,6 +387,16 @@ validate_cluster_yaml_tokens() {
       fi
     fi
   fi
+
+  # Block direct-emit tokens that don't work with substitution (multi-line YAML)
+  local yaml_content
+  yaml_content=$(< "${yaml_file}")
+  for blocked_token in "${blocked_direct_emit_tokens[@]}"; do
+    if [[ "${yaml_content}" == *"${blocked_token}"* ]]; then
+      log "Please remove ${blocked_token} from your src/eks/cluster.yaml template AND your src/config/ directory since it produces corrupt results"
+      fail "${yaml_file}: ${blocked_token} is not allowed in cluster.yaml templates because the substitution process would produce corrupt output."
+    fi
+  done
 }
 
 # === Main ===

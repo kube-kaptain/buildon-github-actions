@@ -522,6 +522,58 @@ teardown() {
   assert_output_contains '${NodegroupVolumeKmsKeyId}'
 }
 
+# === Direct-emit token blocking ===
+
+@test "fails when NodegroupTaints token found in template" {
+  local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
+  yq -i '.managedNodeGroups[0].taints = "${NodegroupTaints}"' "$context_dir/cluster.yaml"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-pre-build-validate"
+  [ "$status" -ne 0 ]
+  assert_output_contains "NodegroupTaints"
+  assert_output_contains "not allowed"
+}
+
+@test "fails when NodegroupLabels token found in template" {
+  local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
+  yq -i '.managedNodeGroups[0].labels = "${NodegroupLabels}"' "$context_dir/cluster.yaml"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-pre-build-validate"
+  [ "$status" -ne 0 ]
+  assert_output_contains "NodegroupLabels"
+  assert_output_contains "not allowed"
+}
+
+@test "fails when NodegroupTags token found in template" {
+  local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
+  yq -i '.managedNodeGroups[0].tags = "${NodegroupTags}"' "$context_dir/cluster.yaml"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-pre-build-validate"
+  [ "$status" -ne 0 ]
+  assert_output_contains "NodegroupTags"
+  assert_output_contains "not allowed"
+}
+
+@test "fails when MetadataTags token found in template" {
+  local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
+  yq -i '.metadata.tags = "${MetadataTags}"' "$context_dir/cluster.yaml"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-pre-build-validate"
+  [ "$status" -ne 0 ]
+  assert_output_contains "MetadataTags"
+  assert_output_contains "not allowed"
+}
+
+@test "fails when MetadataAnnotations token found in template" {
+  local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
+  yq -i '.metadata.annotations = "${MetadataAnnotations}"' "$context_dir/cluster.yaml"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-pre-build-validate"
+  [ "$status" -ne 0 ]
+  assert_output_contains "MetadataAnnotations"
+  assert_output_contains "not allowed"
+}
+
 # === Cluster security group annotation validation ===
 
 @test "fails when cluster-security-group annotation missing" {
