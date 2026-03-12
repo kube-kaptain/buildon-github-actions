@@ -419,6 +419,40 @@ validate_substituted_yaml() {
         fi
       done <<< "${ng_sg_ids}"
     fi
+
+    # Validate volume fields on first nodegroup
+    local volume_type_value
+    volume_type_value=$(yq ".${ng_yaml_key}[0].volumeType" "${yaml_file}" 2>/dev/null || echo "")
+    if [[ -n "${volume_type_value}" && "${volume_type_value}" != "null" ]]; then
+      case "${volume_type_value}" in
+        gp2|gp3|io1|io2|st1|sc1|standard)
+          log "  ${ng_yaml_key}[0].volumeType: ${volume_type_value}"
+          ;;
+        *)
+          fail "${yaml_file}: ${ng_yaml_key}[0].volumeType '${volume_type_value}' must be one of: gp2, gp3, io1, io2, st1, sc1, standard"
+          ;;
+      esac
+    fi
+
+    local volume_encrypted_value
+    volume_encrypted_value=$(yq ".${ng_yaml_key}[0].volumeEncrypted" "${yaml_file}" 2>/dev/null || echo "")
+    if [[ -n "${volume_encrypted_value}" && "${volume_encrypted_value}" != "null" ]]; then
+      if [[ "${volume_encrypted_value}" == "true" || "${volume_encrypted_value}" == "false" ]]; then
+        log "  ${ng_yaml_key}[0].volumeEncrypted: ${volume_encrypted_value}"
+      else
+        fail "${yaml_file}: ${ng_yaml_key}[0].volumeEncrypted '${volume_encrypted_value}' must be true or false"
+      fi
+    fi
+
+    local volume_kms_key_id_value
+    volume_kms_key_id_value=$(yq ".${ng_yaml_key}[0].volumeKmsKeyID" "${yaml_file}" 2>/dev/null || echo "")
+    if [[ -n "${volume_kms_key_id_value}" && "${volume_kms_key_id_value}" != "null" ]]; then
+      if [[ "${volume_kms_key_id_value}" =~ ^arn:aws:kms:.+$ ]]; then
+        log "  ${ng_yaml_key}[0].volumeKmsKeyID: ${volume_kms_key_id_value}"
+      else
+        fail "${yaml_file}: ${ng_yaml_key}[0].volumeKmsKeyID '${volume_kms_key_id_value}' must be a KMS key ARN (expected arn:aws:kms:...)"
+      fi
+    fi
   fi
 
   # eksctl auto-sets Name tag - user-supplied Name in metadata tags feeds into nodegroups

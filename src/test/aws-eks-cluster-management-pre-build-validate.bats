@@ -75,6 +75,9 @@ managedNodeGroups:
   - name: ${NodeGroupDefaultPrefix}
     instanceType: ${NodegroupInstanceType}
     privateNetworking: true
+    volumeSize: ${NodegroupVolumeSize}
+    volumeType: ${NodegroupVolumeType}
+    volumeEncrypted: ${NodegroupVolumeEncrypted}
     desiredCapacity: ${NodegroupDesiredCapacity}
     minSize: ${NodegroupMinSize}
     maxSize: ${NodegroupMaxSize}
@@ -469,6 +472,54 @@ teardown() {
   assert_output_contains "vpc.sharedNodeSecurityGroup"
   assert_output_contains "must be exactly"
   assert_output_contains '${VpcSharedNodeSecurityGroup}'
+}
+
+# === Volume token validation ===
+
+@test "passes when volumeType has correct token" {
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-pre-build-validate"
+  [ "$status" -eq 0 ]
+}
+
+@test "fails when volumeType token is wrong" {
+  local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
+  yq -i '.managedNodeGroups[0].volumeType = "gp3"' "$context_dir/cluster.yaml"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-pre-build-validate"
+  [ "$status" -ne 0 ]
+  assert_output_contains "volumeType"
+  assert_output_contains "must be exactly"
+  assert_output_contains '${NodegroupVolumeType}'
+}
+
+@test "fails when volumeEncrypted token is wrong" {
+  local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
+  yq -i '.managedNodeGroups[0].volumeEncrypted = "true"' "$context_dir/cluster.yaml"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-pre-build-validate"
+  [ "$status" -ne 0 ]
+  assert_output_contains "volumeEncrypted"
+  assert_output_contains "must be exactly"
+  assert_output_contains '${NodegroupVolumeEncrypted}'
+}
+
+@test "passes when volumeKmsKeyID has correct token" {
+  local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
+  yq -i '.managedNodeGroups[0].volumeKmsKeyID = "${NodegroupVolumeKmsKeyId}"' "$context_dir/cluster.yaml"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-pre-build-validate"
+  [ "$status" -eq 0 ]
+}
+
+@test "fails when volumeKmsKeyID has wrong token" {
+  local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
+  yq -i '.managedNodeGroups[0].volumeKmsKeyID = "arn:aws:kms:eu-west-1:123:key/abc"' "$context_dir/cluster.yaml"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-pre-build-validate"
+  [ "$status" -ne 0 ]
+  assert_output_contains "volumeKmsKeyID"
+  assert_output_contains "must be exactly"
+  assert_output_contains '${NodegroupVolumeKmsKeyId}'
 }
 
 # === Cluster security group annotation validation ===

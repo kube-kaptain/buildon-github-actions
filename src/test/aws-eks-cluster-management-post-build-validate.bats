@@ -128,6 +128,9 @@ managedNodeGroups:
   - name: ${nodegroup_prefix}
     instanceType: t3.medium
     privateNetworking: true
+    volumeSize: 20
+    volumeType: gp3
+    volumeEncrypted: true
     desiredCapacity: 1
     minSize: 3
     maxSize: 12
@@ -706,6 +709,76 @@ YAML
   [ "$status" -ne 0 ]
   assert_output_contains "vpc.sharedNodeSecurityGroup"
   assert_output_contains "does not look like a security group ID"
+}
+
+# === Volume field validation ===
+
+@test "passes with valid volumeType" {
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-post-build-validate"
+  [ "$status" -eq 0 ]
+  assert_output_contains "volumeType: gp3"
+}
+
+@test "fails when volumeType is not a valid EBS type" {
+  local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
+  yq -i '.managedNodeGroups[0].volumeType = "invalid"' "$context_dir/cluster.yaml"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-post-build-validate"
+  [ "$status" -ne 0 ]
+  assert_output_contains "volumeType"
+  assert_output_contains "must be one of"
+}
+
+@test "passes with all valid EBS volume types" {
+  local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
+  for vol_type in gp2 gp3 io1 io2 st1 sc1 standard; do
+    yq -i ".managedNodeGroups[0].volumeType = \"${vol_type}\"" "$context_dir/cluster.yaml"
+    run "$SCRIPTS_DIR/aws-eks-cluster-management-post-build-validate"
+    [ "$status" -eq 0 ]
+  done
+}
+
+@test "passes with valid volumeEncrypted true" {
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-post-build-validate"
+  [ "$status" -eq 0 ]
+  assert_output_contains "volumeEncrypted: true"
+}
+
+@test "passes with volumeEncrypted false" {
+  local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
+  yq -i '.managedNodeGroups[0].volumeEncrypted = "false"' "$context_dir/cluster.yaml"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-post-build-validate"
+  [ "$status" -eq 0 ]
+}
+
+@test "fails when volumeEncrypted is not boolean" {
+  local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
+  yq -i '.managedNodeGroups[0].volumeEncrypted = "yes"' "$context_dir/cluster.yaml"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-post-build-validate"
+  [ "$status" -ne 0 ]
+  assert_output_contains "volumeEncrypted"
+  assert_output_contains "must be true or false"
+}
+
+@test "passes with valid volumeKmsKeyID" {
+  local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
+  yq -i '.managedNodeGroups[0].volumeKmsKeyID = "arn:aws:kms:eu-west-1:123456789012:key/12345678-1234-1234-1234-123456789012"' "$context_dir/cluster.yaml"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-post-build-validate"
+  [ "$status" -eq 0 ]
+  assert_output_contains "volumeKmsKeyID: arn:aws:kms:"
+}
+
+@test "fails when volumeKmsKeyID is not a KMS ARN" {
+  local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
+  yq -i '.managedNodeGroups[0].volumeKmsKeyID = "not-a-kms-arn"' "$context_dir/cluster.yaml"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-post-build-validate"
+  [ "$status" -ne 0 ]
+  assert_output_contains "volumeKmsKeyID"
+  assert_output_contains "must be a KMS key ARN"
 }
 
 @test "logs eksctl will create SG when no security group specified" {

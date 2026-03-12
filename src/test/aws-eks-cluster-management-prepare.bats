@@ -487,6 +487,57 @@ teardown() {
   assert_output_contains "not supported for managed"
 }
 
+# === Volume config ===
+
+@test "generates volumeType and volumeEncrypted in cluster.yaml" {
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -eq 0 ]
+
+  local content
+  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
+  assert_contains "$content" 'volumeType: ${NodegroupVolumeType}' "cluster.yaml"
+  assert_contains "$content" 'volumeEncrypted: ${NodegroupVolumeEncrypted}' "cluster.yaml"
+}
+
+@test "generates volumeKmsKeyID when config present" {
+  printf 'arn:aws:kms:eu-west-1:123456789012:key/12345678-1234-1234-1234-123456789012' > "$CONFIG_SUB_PATH/NodegroupVolumeKmsKeyId"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -eq 0 ]
+
+  local content
+  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
+  assert_contains "$content" 'volumeKmsKeyID: ${NodegroupVolumeKmsKeyId}' "cluster.yaml"
+}
+
+@test "does not generate volumeKmsKeyID by default" {
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -eq 0 ]
+
+  local content
+  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
+  [[ "$content" != *"volumeKmsKeyID"* ]]
+}
+
+@test "fails when NODEGROUP_VOLUME_TYPE is invalid" {
+  printf 'ssd' > "$CONFIG_SUB_PATH/NodegroupVolumeType"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -ne 0 ]
+  assert_output_contains "NODEGROUP_VOLUME_TYPE"
+  assert_output_contains "must be one of"
+}
+
+@test "fails when NODEGROUP_VOLUME_ENCRYPTED is not true or false" {
+  printf 'yes' > "$CONFIG_SUB_PATH/NodegroupVolumeEncrypted"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -ne 0 ]
+  assert_output_contains "NODEGROUP_VOLUME_ENCRYPTED"
+  assert_output_contains "true"
+  assert_output_contains "false"
+}
+
 @test "does not generate securityGroups.attachIDs by default" {
   run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
   [ "$status" -eq 0 ]
@@ -670,6 +721,8 @@ teardown() {
   assert_contains "$content" '${NodegroupInstanceType}' "cluster.yaml"
   assert_contains "$content" '${NodegroupAmiFamily}' "cluster.yaml"
   assert_contains "$content" '${NodegroupVolumeSize}' "cluster.yaml"
+  assert_contains "$content" '${NodegroupVolumeType}' "cluster.yaml"
+  assert_contains "$content" '${NodegroupVolumeEncrypted}' "cluster.yaml"
   assert_contains "$content" '${NodegroupDesiredCapacity}' "cluster.yaml"
   assert_contains "$content" '${NodegroupMinSize}' "cluster.yaml"
   assert_contains "$content" '${NodegroupMaxSize}' "cluster.yaml"
@@ -1589,6 +1642,26 @@ EOF
   local value
   value=$(< "$OUTPUT_SUB_PATH/docker/config/NodegroupVolumeSize")
   [ "$value" = "20" ]
+}
+
+@test "writes default NODEGROUP_VOLUME_TYPE to platform config dir" {
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -eq 0 ]
+
+  [ -f "$OUTPUT_SUB_PATH/docker/config/NodegroupVolumeType" ]
+  local value
+  value=$(< "$OUTPUT_SUB_PATH/docker/config/NodegroupVolumeType")
+  [ "$value" = "gp3" ]
+}
+
+@test "writes default NODEGROUP_VOLUME_ENCRYPTED to platform config dir" {
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -eq 0 ]
+
+  [ -f "$OUTPUT_SUB_PATH/docker/config/NodegroupVolumeEncrypted" ]
+  local value
+  value=$(< "$OUTPUT_SUB_PATH/docker/config/NodegroupVolumeEncrypted")
+  [ "$value" = "true" ]
 }
 
 @test "writes default NODEGROUP_DESIRED_CAPACITY to platform config dir" {

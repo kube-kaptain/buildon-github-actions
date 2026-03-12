@@ -94,6 +94,9 @@ token_nodegroup_prefix=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TO
 token_vpc_security_group=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "VPC_SECURITY_GROUP")
 token_vpc_shared_node_sg=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "VPC_SHARED_NODE_SECURITY_GROUP")
 token_cluster_security_group=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "CLUSTER_SECURITY_GROUP")
+token_volume_type=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "NODEGROUP_VOLUME_TYPE")
+token_volume_encrypted=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "NODEGROUP_VOLUME_ENCRYPTED")
+token_volume_kms_key_id=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "NODEGROUP_VOLUME_KMS_KEY_ID")
 
 # Build expected controlPlaneSecurityGroupIDs tokens (numbered)
 declare -a expected_cp_sg_tokens=()
@@ -349,6 +352,31 @@ validate_cluster_yaml_tokens() {
       fi
     elif [[ "${ng_sg_attach_expected_count}" -gt 0 ]]; then
       fail "${yaml_file}: NODEGROUP_SECURITY_GROUPS_ATTACH_IDS config provided (${ng_sg_attach_expected_count} entries) but ${ng_yaml_key}[0].securityGroups.attachIDs missing from YAML"
+    fi
+
+    # Validate volume tokens on first nodegroup
+    local volume_type_value
+    volume_type_value=$(yq ".${ng_yaml_key}[0].volumeType" "${yaml_file}" 2>/dev/null || echo "")
+    if [[ -n "${volume_type_value}" && "${volume_type_value}" != "null" ]]; then
+      if [[ "${volume_type_value}" != "${token_volume_type}" ]]; then
+        fail "${yaml_file}: ${ng_yaml_key}[0].volumeType '${volume_type_value}' must be exactly '${token_volume_type}'"
+      fi
+    fi
+
+    local volume_encrypted_value
+    volume_encrypted_value=$(yq ".${ng_yaml_key}[0].volumeEncrypted" "${yaml_file}" 2>/dev/null || echo "")
+    if [[ -n "${volume_encrypted_value}" && "${volume_encrypted_value}" != "null" ]]; then
+      if [[ "${volume_encrypted_value}" != "${token_volume_encrypted}" ]]; then
+        fail "${yaml_file}: ${ng_yaml_key}[0].volumeEncrypted '${volume_encrypted_value}' must be exactly '${token_volume_encrypted}'"
+      fi
+    fi
+
+    local volume_kms_key_id_value
+    volume_kms_key_id_value=$(yq ".${ng_yaml_key}[0].volumeKmsKeyID" "${yaml_file}" 2>/dev/null || echo "")
+    if [[ -n "${volume_kms_key_id_value}" && "${volume_kms_key_id_value}" != "null" ]]; then
+      if [[ "${volume_kms_key_id_value}" != "${token_volume_kms_key_id}" ]]; then
+        fail "${yaml_file}: ${ng_yaml_key}[0].volumeKmsKeyID '${volume_kms_key_id_value}' must be exactly '${token_volume_kms_key_id}'"
+      fi
     fi
   fi
 }

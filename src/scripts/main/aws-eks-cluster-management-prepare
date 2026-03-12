@@ -47,6 +47,7 @@
 #   NODEGROUP_SECURITY_GROUPS_ATTACH_IDS - Additional SG IDs for nodegroup instances, comma-separated
 #     (expanded to numbered tokens: NODEGROUP_SECURITY_GROUPS_ATTACH_ID_1, ...ID_2, etc.)
 #   VPC_SHARED_NODE_SECURITY_GROUP      - Shared node SG ID, unmanaged nodegroups only (generates sharedNodeSecurityGroup in vpc block)
+#   NODEGROUP_VOLUME_KMS_KEY_ID         - KMS key ARN for EBS volume encryption
 #   NODEGROUP_IAM_INSTANCE_ROLE_ARN     - Custom IAM instance role ARN for nodegroup
 #   ADDONS_<NAME>_SERVICE_ACCOUNT_ROLE_ARN - Per-addon service account role ARN
 #     (e.g., ADDONS_VPC_CNI_SERVICE_ACCOUNT_ROLE_ARN → AddonsVpcCniServiceAccountRoleArn)
@@ -59,6 +60,8 @@
 #     (expanded to numbered tokens: CLOUD_WATCH_CLUSTER_LOGGING_ENABLE_TYPE_1, ...TYPE_2, etc.)
 #   NODEGROUP_AMI_FAMILY                       - default: AmazonLinux2023
 #   NODEGROUP_VOLUME_SIZE                      - default: 20
+#   NODEGROUP_VOLUME_TYPE                      - default: gp3 (gp2, gp3, io1, io2, st1, sc1, standard)
+#   NODEGROUP_VOLUME_ENCRYPTED                 - default: true (true or false)
 #   NODEGROUP_UPDATE_CONFIG_MAX_UNAVAILABLE    - default: 1 (must be > 0)
 #   NODEGROUP_DESIRED_CAPACITY                 - default: 1
 #   NODEGROUP_MIN_SIZE                         - default: 3
@@ -586,6 +589,13 @@ if [[ -f "${CONFIG_SUB_PATH}/${nodegroup_sg_attach_ids_name}" ]]; then
   has_nodegroup_sg_attach_ids="true"
 fi
 
+# Volume KMS key ID - optional: if config file exists, include volumeKmsKeyID line
+has_volume_kms_key_id="false"
+volume_kms_key_id_name=$(convert_token_name "${TOKEN_NAME_STYLE}" "NODEGROUP_VOLUME_KMS_KEY_ID")
+if [[ -f "${CONFIG_SUB_PATH}/${volume_kms_key_id_name}" ]]; then
+  has_volume_kms_key_id="true"
+fi
+
 has_metadata_annotations="false"
 metadata_annotations_file=""
 metadata_annotations_config_name=$(convert_token_name "${TOKEN_NAME_STYLE}" "METADATA_ANNOTATIONS")
@@ -675,6 +685,36 @@ expand_comma_list_token "CLOUD_WATCH_CLUSTER_LOGGING_ENABLE_TYPES" "CLOUD_WATCH_
 cloudwatch_tokens=("${expanded_tokens[@]}")
 ensure_default_token "NODEGROUP_AMI_FAMILY" "AmazonLinux2023"
 ensure_default_token "NODEGROUP_VOLUME_SIZE" "20"
+ensure_default_token "NODEGROUP_VOLUME_TYPE" "gp3"
+ensure_default_token "NODEGROUP_VOLUME_ENCRYPTED" "true"
+
+# Validate volumeType is a valid EBS type
+volume_type_name=$(convert_token_name "${TOKEN_NAME_STYLE}" "NODEGROUP_VOLUME_TYPE")
+volume_type_val="gp3"
+if [[ -f "${CONFIG_SUB_PATH}/${volume_type_name}" ]]; then
+  volume_type_val=$(< "${CONFIG_SUB_PATH}/${volume_type_name}")
+  volume_type_val="${volume_type_val%$'\n'}"
+fi
+case "${volume_type_val}" in
+  gp2|gp3|io1|io2|st1|sc1|standard) ;;
+  *)
+    log_error "NODEGROUP_VOLUME_TYPE must be one of: gp2, gp3, io1, io2, st1, sc1, standard (got: ${volume_type_val})"
+    validation_errors=$((validation_errors + 1))
+    ;;
+esac
+
+# Validate volumeEncrypted is true or false
+volume_encrypted_name=$(convert_token_name "${TOKEN_NAME_STYLE}" "NODEGROUP_VOLUME_ENCRYPTED")
+volume_encrypted_val="true"
+if [[ -f "${CONFIG_SUB_PATH}/${volume_encrypted_name}" ]]; then
+  volume_encrypted_val=$(< "${CONFIG_SUB_PATH}/${volume_encrypted_name}")
+  volume_encrypted_val="${volume_encrypted_val%$'\n'}"
+fi
+if [[ "${volume_encrypted_val}" != "true" && "${volume_encrypted_val}" != "false" ]]; then
+  log_error "NODEGROUP_VOLUME_ENCRYPTED must be 'true' or 'false' (got: ${volume_encrypted_val})"
+  validation_errors=$((validation_errors + 1))
+fi
+
 update_max_unavailable_name=$(convert_token_name "${TOKEN_NAME_STYLE}" "NODEGROUP_UPDATE_CONFIG_MAX_UNAVAILABLE")
 if [[ "${nodegroup_type}" == "managed" ]]; then
   ensure_default_token "NODEGROUP_UPDATE_CONFIG_MAX_UNAVAILABLE" "1"
@@ -721,6 +761,8 @@ token_nodegroup_prefix=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TO
 token_instance_type=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "NODEGROUP_INSTANCE_TYPE")
 token_ami_family=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "NODEGROUP_AMI_FAMILY")
 token_volume_size=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "NODEGROUP_VOLUME_SIZE")
+token_volume_type=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "NODEGROUP_VOLUME_TYPE")
+token_volume_encrypted=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "NODEGROUP_VOLUME_ENCRYPTED")
 token_update_max_unavailable=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "NODEGROUP_UPDATE_CONFIG_MAX_UNAVAILABLE")
 token_desired_capacity=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "NODEGROUP_DESIRED_CAPACITY")
 token_min_size=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "NODEGROUP_MIN_SIZE")
@@ -756,6 +798,10 @@ fi
 
 if [[ "${has_nodegroup_iam_instance_role_arn}" == "true" ]]; then
   token_nodegroup_iam_instance_role_arn=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "NODEGROUP_IAM_INSTANCE_ROLE_ARN")
+fi
+
+if [[ "${has_volume_kms_key_id}" == "true" ]]; then
+  token_volume_kms_key_id=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "NODEGROUP_VOLUME_KMS_KEY_ID")
 fi
 
 if [[ "${has_auto_mode_config}" == "true" ]]; then
@@ -961,7 +1007,12 @@ ${ng_yaml_key}:
     amiFamily: ${token_ami_family}
     instanceType: ${token_instance_type}
     volumeSize: ${token_volume_size}
+    volumeType: ${token_volume_type}
+    volumeEncrypted: ${token_volume_encrypted}
 YAML
+    if [[ "${has_volume_kms_key_id}" == "true" ]]; then
+      echo "    volumeKmsKeyID: ${token_volume_kms_key_id}"
+    fi
     if [[ "${has_nodegroup_private_networking}" == "true" ]]; then
       echo "    privateNetworking: ${token_nodegroup_private_networking}"
     fi
