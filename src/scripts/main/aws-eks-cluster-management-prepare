@@ -43,6 +43,8 @@
 #   NODEGROUP_TAGS                      - Additional nodegroup tags (flat yaml: key: value per line)
 #   NODEGROUP_LABELS                    - Additional nodegroup labels (flat yaml: key: value per line)
 #   METADATA_ANNOTATIONS                - Additional metadata annotations (flat yaml: key: value per line)
+#   NODEGROUP_SECURITY_GROUPS_ATTACH_IDS - Additional SG IDs for nodegroup instances, comma-separated
+#     (expanded to numbered tokens: NODEGROUP_SECURITY_GROUPS_ATTACH_ID_1, ...ID_2, etc.)
 #   NODEGROUP_IAM_INSTANCE_ROLE_ARN     - Custom IAM instance role ARN for nodegroup
 #   ADDONS_<NAME>_SERVICE_ACCOUNT_ROLE_ARN - Per-addon service account role ARN
 #     (e.g., ADDONS_VPC_CNI_SERVICE_ACCOUNT_ROLE_ARN → AddonsVpcCniServiceAccountRoleArn)
@@ -550,6 +552,12 @@ if [[ -f "${CONFIG_SUB_PATH}/${nodegroup_labels_config_name}" ]]; then
   fi
 fi
 
+has_nodegroup_sg_attach_ids="false"
+nodegroup_sg_attach_ids_name=$(convert_token_name "${TOKEN_NAME_STYLE}" "NODEGROUP_SECURITY_GROUPS_ATTACH_IDS")
+if [[ -f "${CONFIG_SUB_PATH}/${nodegroup_sg_attach_ids_name}" ]]; then
+  has_nodegroup_sg_attach_ids="true"
+fi
+
 has_metadata_annotations="false"
 metadata_annotations_file=""
 metadata_annotations_config_name=$(convert_token_name "${TOKEN_NAME_STYLE}" "METADATA_ANNOTATIONS")
@@ -722,6 +730,13 @@ if [[ "${has_vpc_control_plane_sg_ids}" == "true" ]]; then
   cp_sg_ids_tokens=("${expanded_tokens[@]}")
   cp_sg_ids_count="${expanded_count}"
   printf '%s' "${cp_sg_ids_count}" > "${expected_values_dir}/control-plane-sg-ids-count"
+fi
+
+if [[ "${has_nodegroup_sg_attach_ids}" == "true" ]]; then
+  expand_comma_list_token "NODEGROUP_SECURITY_GROUPS_ATTACH_IDS" "NODEGROUP_SECURITY_GROUPS_ATTACH_ID" "" # no default - value comes from CONFIG_SUB_PATH
+  ng_sg_attach_tokens=("${expanded_tokens[@]}")
+  ng_sg_attach_count="${expanded_count}"
+  printf '%s' "${ng_sg_attach_count}" > "${expected_values_dir}/nodegroup-sg-attach-ids-count"
 fi
 
 if [[ "${has_network_config}" == "true" ]]; then
@@ -904,6 +919,13 @@ YAML
     if [[ "${has_nodegroup_iam_instance_role_arn}" == "true" ]]; then
       echo "    iam:"
       echo "      instanceRoleARN: ${token_nodegroup_iam_instance_role_arn}"
+    fi
+    if [[ "${has_nodegroup_sg_attach_ids}" == "true" ]]; then
+      echo "    securityGroups:"
+      echo "      attachIDs:"
+      for token in "${ng_sg_attach_tokens[@]}"; do
+        echo "        - ${token}"
+      done
     fi
     cat <<YAML
     desiredCapacity: ${token_desired_capacity}

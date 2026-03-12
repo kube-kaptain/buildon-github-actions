@@ -374,6 +374,56 @@ teardown() {
   assert_output_contains "missing from YAML"
 }
 
+# === Nodegroup securityGroups.attachIDs token validation ===
+
+@test "passes when securityGroups.attachIDs has correct tokens" {
+  local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
+  printf '%s' "2" > "$OUTPUT_SUB_PATH/aws-eks-cluster-management/expected-values/nodegroup-sg-attach-ids-count"
+  yq -i '.managedNodeGroups[0].securityGroups.attachIDs = ["${NodegroupSecurityGroupsAttachId1}", "${NodegroupSecurityGroupsAttachId2}"]' "$context_dir/cluster.yaml"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-pre-build-validate"
+  [ "$status" -eq 0 ]
+}
+
+@test "fails when securityGroups.attachIDs count mismatches" {
+  local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
+  printf '%s' "2" > "$OUTPUT_SUB_PATH/aws-eks-cluster-management/expected-values/nodegroup-sg-attach-ids-count"
+  yq -i '.managedNodeGroups[0].securityGroups.attachIDs = ["${NodegroupSecurityGroupsAttachId1}"]' "$context_dir/cluster.yaml"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-pre-build-validate"
+  [ "$status" -ne 0 ]
+  assert_output_contains "1 entries but expected 2"
+}
+
+@test "fails when securityGroups.attachIDs has wrong token" {
+  local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
+  printf '%s' "1" > "$OUTPUT_SUB_PATH/aws-eks-cluster-management/expected-values/nodegroup-sg-attach-ids-count"
+  yq -i '.managedNodeGroups[0].securityGroups.attachIDs = ["${WrongToken}"]' "$context_dir/cluster.yaml"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-pre-build-validate"
+  [ "$status" -ne 0 ]
+  assert_output_contains "must be exactly"
+  assert_output_contains '${NodegroupSecurityGroupsAttachId1}'
+}
+
+@test "fails when securityGroups.attachIDs present but no count file" {
+  local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
+  yq -i '.managedNodeGroups[0].securityGroups.attachIDs = ["${SomeToken}"]' "$context_dir/cluster.yaml"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-pre-build-validate"
+  [ "$status" -ne 0 ]
+  assert_output_contains "config not provided"
+}
+
+@test "fails when securityGroups.attachIDs config provided but missing from YAML" {
+  printf '%s' "2" > "$OUTPUT_SUB_PATH/aws-eks-cluster-management/expected-values/nodegroup-sg-attach-ids-count"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-pre-build-validate"
+  [ "$status" -ne 0 ]
+  assert_output_contains "config provided"
+  assert_output_contains "missing from YAML"
+}
+
 # === Cluster security group annotation validation ===
 
 @test "fails when cluster-security-group annotation missing" {

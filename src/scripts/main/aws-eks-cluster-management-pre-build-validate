@@ -67,6 +67,11 @@ if [[ -f "${expected_values_dir}/control-plane-sg-ids-count" ]]; then
   cp_sg_ids_expected_count=$(< "${expected_values_dir}/control-plane-sg-ids-count")
 fi
 
+ng_sg_attach_expected_count=0
+if [[ -f "${expected_values_dir}/nodegroup-sg-attach-ids-count" ]]; then
+  ng_sg_attach_expected_count=$(< "${expected_values_dir}/nodegroup-sg-attach-ids-count")
+fi
+
 # === Build expected token strings ===
 
 token_project_name=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "PROJECT_NAME")
@@ -82,6 +87,14 @@ declare -a expected_cp_sg_tokens=()
 if [[ "${cp_sg_ids_expected_count}" -gt 0 ]]; then
   for idx in $(seq 1 "${cp_sg_ids_expected_count}"); do
     expected_cp_sg_tokens+=("$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "VPC_CONTROL_PLANE_SECURITY_GROUP_ID_${idx}")")
+  done
+fi
+
+# Build expected nodegroup securityGroups.attachIDs tokens (numbered)
+declare -a expected_ng_sg_attach_tokens=()
+if [[ "${ng_sg_attach_expected_count}" -gt 0 ]]; then
+  for idx in $(seq 1 "${ng_sg_attach_expected_count}"); do
+    expected_ng_sg_attach_tokens+=("$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "NODEGROUP_SECURITY_GROUPS_ATTACH_ID_${idx}")")
   done
 fi
 
@@ -294,6 +307,28 @@ validate_cluster_yaml_tokens() {
         fail "${yaml_file}: duplicate nodegroup names found - each must be unique (add suffixes)"
       fi
     fi
+
+    # Validate securityGroups.attachIDs tokens on first nodegroup
+    local ng_sg_attach_count
+    ng_sg_attach_count=$(yq '.managedNodeGroups[0].securityGroups.attachIDs | length' "${yaml_file}" 2>/dev/null || echo "0")
+    if [[ "${ng_sg_attach_count}" -gt 0 ]]; then
+      if [[ "${ng_sg_attach_expected_count}" -eq 0 ]]; then
+        fail "${yaml_file}: managedNodeGroups[0].securityGroups.attachIDs present but NODEGROUP_SECURITY_GROUPS_ATTACH_IDS config not provided"
+      elif [[ "${ng_sg_attach_count}" -ne "${ng_sg_attach_expected_count}" ]]; then
+        fail "${yaml_file}: managedNodeGroups[0].securityGroups.attachIDs has ${ng_sg_attach_count} entries but expected ${ng_sg_attach_expected_count}"
+      else
+        for idx in $(seq 0 $((ng_sg_attach_count - 1))); do
+          local entry
+          entry=$(yq ".managedNodeGroups[0].securityGroups.attachIDs[${idx}]" "${yaml_file}" 2>/dev/null || echo "")
+          local expected_token="${expected_ng_sg_attach_tokens[${idx}]}"
+          if [[ "${entry}" != "${expected_token}" ]]; then
+            fail "${yaml_file}: managedNodeGroups[0].securityGroups.attachIDs[${idx}] '${entry}' must be exactly '${expected_token}'"
+          fi
+        done
+      fi
+    elif [[ "${ng_sg_attach_expected_count}" -gt 0 ]]; then
+      fail "${yaml_file}: NODEGROUP_SECURITY_GROUPS_ATTACH_IDS config provided (${ng_sg_attach_expected_count} entries) but managedNodeGroups[0].securityGroups.attachIDs missing from YAML"
+    fi
   fi
 }
 
@@ -311,6 +346,9 @@ main() {
   log "Expected NODE_GROUP_DEFAULT_PREFIX token: ${token_nodegroup_prefix}"
   if [[ "${cp_sg_ids_expected_count}" -gt 0 ]]; then
     log "Expected VPC_CONTROL_PLANE_SECURITY_GROUP_ID count: ${cp_sg_ids_expected_count}"
+  fi
+  if [[ "${ng_sg_attach_expected_count}" -gt 0 ]]; then
+    log "Expected NODEGROUP_SECURITY_GROUPS_ATTACH_ID count: ${ng_sg_attach_expected_count}"
   fi
   log "=================================================="
 

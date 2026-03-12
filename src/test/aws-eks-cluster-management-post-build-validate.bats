@@ -530,6 +530,25 @@ YAML
   [ "$status" -eq 0 ]
 }
 
+@test "passes with valid securityGroups.attachIDs on nodegroup" {
+  local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
+  yq -i '.managedNodeGroups[0].securityGroups.attachIDs = ["sg-0aaa111bbb222ccc3", "sg-0ddd444eee555fff6"]' "$context_dir/cluster.yaml"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-post-build-validate"
+  [ "$status" -eq 0 ]
+  assert_output_contains "securityGroups.attachIDs"
+  assert_output_contains "2 entries"
+}
+
+@test "fails when securityGroups.attachIDs entry is not sg-hex" {
+  local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
+  yq -i '.managedNodeGroups[0].securityGroups.attachIDs = ["sg-0aaa111bbb222ccc3", "not-a-sg"]' "$context_dir/cluster.yaml"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-post-build-validate"
+  [ "$status" -ne 0 ]
+  assert_output_contains "does not look like a security group ID"
+}
+
 @test "fails when nodegroup label value is not a string" {
   local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
   yq -i '.managedNodeGroups[0].labels.gpu = false' "$context_dir/cluster.yaml"

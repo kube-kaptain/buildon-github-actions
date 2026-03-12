@@ -381,6 +381,27 @@ validate_substituted_yaml() {
       validate_values_are_strings "${yaml_file}" ".managedNodeGroups[${i}].labels"
       validate_values_are_strings "${yaml_file}" ".managedNodeGroups[${i}].tags"
     done
+
+    # Validate securityGroups.attachIDs entries are sg-hex format
+    local ng_sg_attach_count
+    ng_sg_attach_count=$(yq '.managedNodeGroups[0].securityGroups.attachIDs | length' "${yaml_file}" 2>/dev/null || echo "0")
+    if [[ "${ng_sg_attach_count}" -gt 0 ]]; then
+      log ""
+      log "  --- Node group securityGroups.attachIDs ---"
+      log "  managedNodeGroups[0].securityGroups.attachIDs: ${ng_sg_attach_count} entries"
+      local ng_sg_ids
+      ng_sg_ids=$(yq '.managedNodeGroups[0].securityGroups.attachIDs[]' "${yaml_file}" 2>/dev/null || true)
+      while IFS= read -r sg_id; do
+        if [[ -z "${sg_id}" ]]; then
+          continue
+        fi
+        if [[ ! "${sg_id}" =~ ^sg-[0-9a-f]+$ ]]; then
+          fail "${yaml_file}: managedNodeGroups[0].securityGroups.attachIDs entry '${sg_id}' does not look like a security group ID (expected sg-<hex>)"
+        else
+          log "    ${sg_id}: valid SG ID"
+        fi
+      done <<< "${ng_sg_ids}"
+    fi
   fi
 
   # eksctl auto-sets Name tag - user-supplied Name in metadata tags feeds into nodegroups

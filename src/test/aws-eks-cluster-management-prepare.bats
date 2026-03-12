@@ -328,6 +328,50 @@ teardown() {
   [[ "$content" != *"controlPlaneSecurityGroupIDs"* ]]
 }
 
+@test "generates securityGroups.attachIDs with numbered tokens when config present" {
+  printf 'sg-aaa,sg-bbb' > "$CONFIG_SUB_PATH/NodegroupSecurityGroupsAttachIds"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -eq 0 ]
+
+  local content
+  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
+  assert_contains "$content" "securityGroups:" "cluster.yaml"
+  assert_contains "$content" "attachIDs:" "cluster.yaml"
+  assert_contains "$content" '- ${NodegroupSecurityGroupsAttachId1}' "cluster.yaml"
+  assert_contains "$content" '- ${NodegroupSecurityGroupsAttachId2}' "cluster.yaml"
+}
+
+@test "expands NODEGROUP_SECURITY_GROUPS_ATTACH_IDS to numbered token files" {
+  printf 'sg-aaa,sg-bbb,sg-ccc' > "$CONFIG_SUB_PATH/NodegroupSecurityGroupsAttachIds"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -eq 0 ]
+
+  [ "$(< "$OUTPUT_SUB_PATH/docker/config/NodegroupSecurityGroupsAttachId1")" = "sg-aaa" ]
+  [ "$(< "$OUTPUT_SUB_PATH/docker/config/NodegroupSecurityGroupsAttachId2")" = "sg-bbb" ]
+  [ "$(< "$OUTPUT_SUB_PATH/docker/config/NodegroupSecurityGroupsAttachId3")" = "sg-ccc" ]
+}
+
+@test "writes nodegroup-sg-attach-ids-count to expected-values" {
+  printf 'sg-aaa,sg-bbb' > "$CONFIG_SUB_PATH/NodegroupSecurityGroupsAttachIds"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -eq 0 ]
+
+  [ -f "$OUTPUT_SUB_PATH/aws-eks-cluster-management/expected-values/nodegroup-sg-attach-ids-count" ]
+  [ "$(< "$OUTPUT_SUB_PATH/aws-eks-cluster-management/expected-values/nodegroup-sg-attach-ids-count")" = "2" ]
+}
+
+@test "does not generate securityGroups.attachIDs by default" {
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -eq 0 ]
+
+  local content
+  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
+  [[ "$content" != *"attachIDs"* ]]
+}
+
 # === Generated cluster.yaml content ===
 
 @test "generates cluster.yaml with metadata tokens" {

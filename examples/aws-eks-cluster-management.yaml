@@ -36,6 +36,7 @@
 #   PrivateClusterEnabled                 - Generates privateCluster block (e.g., true)
 #   NodegroupPrivateNetworking            - Adds privateNetworking to nodegroup (e.g., true)
 #   NodegroupIamInstanceRoleArn           - Adds iam.instanceRoleARN to nodegroup
+#   NodegroupSecurityGroupsAttachIds      - Additional SG IDs for nodegroup instances, comma-separated
 #   AutoModeConfigEnabled                 - Generates autoModeConfig block (e.g., true or false)
 #   NetworkConfigServiceIpV4Cidr          - Generates kubernetesNetworkConfig block with custom service CIDR
 #   MetadataTags                          - Additional cluster metadata tags (key: value per line)
