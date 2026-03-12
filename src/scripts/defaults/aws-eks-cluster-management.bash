@@ -23,7 +23,7 @@ EKS_CILIUM_EBPF_NETWORKING="${EKS_CILIUM_EBPF_NETWORKING:-false}"
 
 # Nodegroup token defaults (written to platform config dir if not in CONFIG_SUB_PATH)
 # NODEGROUP_INSTANCE_TYPE - required token from CONFIG_SUB_PATH, no default
-NODEGROUP_DESIRED_CAPACITY="${NODEGROUP_DESIRED_CAPACITY:-1}" # start with 1 faster completion of upgrade/creation - let it scale up as workloads migrate
+# NODEGROUP_DESIRED_CAPACITY - defaults to NODEGROUP_MIN_SIZE (derived in prepare script)
 NODEGROUP_MIN_SIZE="${NODEGROUP_MIN_SIZE:-3}"
 NODEGROUP_MAX_SIZE="${NODEGROUP_MAX_SIZE:-12}"
 

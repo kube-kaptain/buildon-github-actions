@@ -1671,7 +1671,7 @@ EOF
   [ -f "$OUTPUT_SUB_PATH/docker/config/NodegroupDesiredCapacity" ]
   local value
   value=$(< "$OUTPUT_SUB_PATH/docker/config/NodegroupDesiredCapacity")
-  [ "$value" = "1" ]
+  [ "$value" = "3" ]
 }
 
 @test "writes default NODEGROUP_MIN_SIZE to platform config dir" {
@@ -1744,6 +1744,64 @@ EOF
   local value
   value=$(< "$OUTPUT_SUB_PATH/docker/config/NodegroupDesiredCapacity")
   [ "$value" = "4" ]
+}
+
+@test "defaults NODEGROUP_DESIRED_CAPACITY to user-provided NODEGROUP_MIN_SIZE" {
+  printf '5' > "$CONFIG_SUB_PATH/NodegroupMinSize"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -eq 0 ]
+
+  [ -f "$OUTPUT_SUB_PATH/docker/config/NodegroupDesiredCapacity" ]
+  local value
+  value=$(< "$OUTPUT_SUB_PATH/docker/config/NodegroupDesiredCapacity")
+  [ "$value" = "5" ]
+}
+
+@test "fails when NODEGROUP_DESIRED_CAPACITY less than NODEGROUP_MIN_SIZE" {
+  printf '1' > "$CONFIG_SUB_PATH/NodegroupDesiredCapacity"
+  printf '3' > "$CONFIG_SUB_PATH/NodegroupMinSize"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -ne 0 ]
+  assert_output_contains "NODEGROUP_DESIRED_CAPACITY"
+  assert_output_contains "must be >= NODEGROUP_MIN_SIZE"
+}
+
+@test "fails when NODEGROUP_DESIRED_CAPACITY greater than NODEGROUP_MAX_SIZE" {
+  printf '20' > "$CONFIG_SUB_PATH/NodegroupDesiredCapacity"
+  printf '12' > "$CONFIG_SUB_PATH/NodegroupMaxSize"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -ne 0 ]
+  assert_output_contains "NODEGROUP_DESIRED_CAPACITY"
+  assert_output_contains "must be <= NODEGROUP_MAX_SIZE"
+}
+
+@test "fails when NODEGROUP_MIN_SIZE greater than NODEGROUP_MAX_SIZE" {
+  printf '15' > "$CONFIG_SUB_PATH/NodegroupMinSize"
+  printf '12' > "$CONFIG_SUB_PATH/NodegroupMaxSize"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -ne 0 ]
+  assert_output_contains "NODEGROUP_MIN_SIZE"
+  assert_output_contains "must be <= NODEGROUP_MAX_SIZE"
+}
+
+@test "passes when desired equals min" {
+  printf '3' > "$CONFIG_SUB_PATH/NodegroupDesiredCapacity"
+  printf '3' > "$CONFIG_SUB_PATH/NodegroupMinSize"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -eq 0 ]
+}
+
+@test "passes when desired equals max" {
+  printf '12' > "$CONFIG_SUB_PATH/NodegroupDesiredCapacity"
+  printf '12' > "$CONFIG_SUB_PATH/NodegroupMaxSize"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -eq 0 ]
 }
 
 # === DOCKERFILE_SUBSTITUTION_FILES output ===

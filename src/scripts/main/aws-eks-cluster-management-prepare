@@ -63,9 +63,9 @@
 #   NODEGROUP_VOLUME_TYPE                      - default: gp3 (gp2, gp3, io1, io2, st1, sc1, standard)
 #   NODEGROUP_VOLUME_ENCRYPTED                 - default: true (true or false)
 #   NODEGROUP_UPDATE_CONFIG_MAX_UNAVAILABLE    - default: 1 (must be > 0)
-#   NODEGROUP_DESIRED_CAPACITY                 - default: 1
 #   NODEGROUP_MIN_SIZE                         - default: 3
 #   NODEGROUP_MAX_SIZE                         - default: 12
+#   NODEGROUP_DESIRED_CAPACITY                 - default: same as NODEGROUP_MIN_SIZE
 #
 # Inputs (environment variables / switches):
 #   EKS_BASE_IMAGE_REGISTRY    - Base image registry (default: ghcr.io)
@@ -736,9 +736,51 @@ else
     validation_errors=$((validation_errors + 1))
   fi
 fi
-ensure_default_token "NODEGROUP_DESIRED_CAPACITY" "${NODEGROUP_DESIRED_CAPACITY}"
 ensure_default_token "NODEGROUP_MIN_SIZE" "${NODEGROUP_MIN_SIZE}"
 ensure_default_token "NODEGROUP_MAX_SIZE" "${NODEGROUP_MAX_SIZE}"
+
+# desiredCapacity defaults to minSize — resolve actual min value first
+min_size_name=$(convert_token_name "${TOKEN_NAME_STYLE}" "NODEGROUP_MIN_SIZE")
+resolved_min_size="${NODEGROUP_MIN_SIZE}"
+if [[ -f "${CONFIG_SUB_PATH}/${min_size_name}" ]]; then
+  resolved_min_size=$(< "${CONFIG_SUB_PATH}/${min_size_name}")
+  resolved_min_size="${resolved_min_size%$'\n'}"
+fi
+desired_capacity_default="${NODEGROUP_DESIRED_CAPACITY:-${resolved_min_size}}"
+ensure_default_token "NODEGROUP_DESIRED_CAPACITY" "${desired_capacity_default}"
+
+# Validate nodegroup sizing: min <= desired <= max
+resolve_sizing_value() {
+  local token_name="$1"
+  local config_file_name
+  config_file_name=$(convert_token_name "${TOKEN_NAME_STYLE}" "${token_name}")
+  if [[ -f "${CONFIG_SUB_PATH}/${config_file_name}" ]]; then
+    local val
+    val=$(< "${CONFIG_SUB_PATH}/${config_file_name}")
+    printf '%s' "${val%$'\n'}"
+  else
+    local val
+    val=$(< "${platform_config_dirs[0]}/${config_file_name}")
+    printf '%s' "${val%$'\n'}"
+  fi
+}
+
+resolved_min=$(resolve_sizing_value "NODEGROUP_MIN_SIZE")
+resolved_max=$(resolve_sizing_value "NODEGROUP_MAX_SIZE")
+resolved_desired=$(resolve_sizing_value "NODEGROUP_DESIRED_CAPACITY")
+
+if [[ "${resolved_min}" -gt "${resolved_max}" ]]; then
+  log_error "NODEGROUP_MIN_SIZE (${resolved_min}) must be <= NODEGROUP_MAX_SIZE (${resolved_max})"
+  validation_errors=$((validation_errors + 1))
+fi
+if [[ "${resolved_desired}" -lt "${resolved_min}" ]]; then
+  log_error "NODEGROUP_DESIRED_CAPACITY (${resolved_desired}) must be >= NODEGROUP_MIN_SIZE (${resolved_min})"
+  validation_errors=$((validation_errors + 1))
+fi
+if [[ "${resolved_desired}" -gt "${resolved_max}" ]]; then
+  log_error "NODEGROUP_DESIRED_CAPACITY (${resolved_desired}) must be <= NODEGROUP_MAX_SIZE (${resolved_max})"
+  validation_errors=$((validation_errors + 1))
+fi
 
 if [[ ${validation_errors} -gt 0 ]]; then
   log_error "Validation failed with ${validation_errors} error(s)"

@@ -59,9 +59,9 @@
 #   NodegroupVolumeType                   - default: gp3 (gp2, gp3, io1, io2, st1, sc1, standard)
 #   NodegroupVolumeEncrypted              - default: true (true or false)
 #   NodegroupUpdateConfigMaxUnavailable   - default: 1 (must be > 0)
-#   NodegroupDesiredCapacity              - default: 1
 #   NodegroupMinSize                      - default: 3
 #   NodegroupMaxSize                      - default: 12
+#   NodegroupDesiredCapacity              - default: same as NodegroupMinSize (must be min <= desired <= max)
 #
 # Copy this to .github/workflows/build.yaml in your repo.
 
