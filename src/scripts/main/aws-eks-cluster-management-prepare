@@ -47,6 +47,8 @@
 #   NODEGROUP_TAINTS                     - Nodegroup taints (raw yaml list: - key/value/effect per entry)
 #   NODEGROUP_SECURITY_GROUPS_ATTACH_IDS - Additional SG IDs for nodegroup instances, comma-separated
 #     (expanded to numbered tokens: NODEGROUP_SECURITY_GROUPS_ATTACH_ID_1, ...ID_2, etc.)
+#   NODEGROUP_AVAILABILITY_ZONES         - Pin nodegroup to specific AZs, comma-separated (e.g., eu-west-1a,eu-west-1b)
+#     (expanded to numbered tokens: NODEGROUP_AVAILABILITY_ZONE_1, ...ZONE_2, etc.)
 #   VPC_SHARED_NODE_SECURITY_GROUP      - Shared node SG ID, unmanaged nodegroups only (generates sharedNodeSecurityGroup in vpc block)
 #   NODEGROUP_VOLUME_KMS_KEY_ID         - KMS key ARN for EBS volume encryption
 #   NODEGROUP_IAM_INSTANCE_ROLE_ARN     - Custom IAM instance role ARN for nodegroup
@@ -644,6 +646,12 @@ if [[ -f "${CONFIG_SUB_PATH}/${nodegroup_sg_attach_ids_name}" ]]; then
   has_nodegroup_sg_attach_ids="true"
 fi
 
+has_nodegroup_availability_zones="false"
+nodegroup_az_name=$(convert_token_name "${TOKEN_NAME_STYLE}" "NODEGROUP_AVAILABILITY_ZONES")
+if [[ -f "${CONFIG_SUB_PATH}/${nodegroup_az_name}" ]]; then
+  has_nodegroup_availability_zones="true"
+fi
+
 # Volume KMS key ID - optional: if config file exists, include volumeKmsKeyID line
 has_volume_kms_key_id="false"
 volume_kms_key_id_name=$(convert_token_name "${TOKEN_NAME_STYLE}" "NODEGROUP_VOLUME_KMS_KEY_ID")
@@ -923,6 +931,13 @@ if [[ "${has_nodegroup_sg_attach_ids}" == "true" ]]; then
   printf '%s' "${ng_sg_attach_count}" > "${expected_values_dir}/nodegroup-sg-attach-ids-count"
 fi
 
+if [[ "${has_nodegroup_availability_zones}" == "true" ]]; then
+  expand_comma_list_token "NODEGROUP_AVAILABILITY_ZONES" "NODEGROUP_AVAILABILITY_ZONE" "" # no default - value comes from CONFIG_SUB_PATH
+  ng_az_tokens=("${expanded_tokens[@]}")
+  ng_az_count="${expanded_count}"
+  printf '%s' "${ng_az_count}" > "${expected_values_dir}/nodegroup-az-count"
+fi
+
 if [[ "${has_network_config}" == "true" ]]; then
   token_network_service_ipv4_cidr=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "NETWORK_CONFIG_SERVICE_IP_V4_CIDR")
 fi
@@ -1149,6 +1164,14 @@ YAML
         echo "      - ${token_public_subnet_id_b}"
         echo "      - ${token_public_subnet_id_c}"
       fi
+    fi
+
+    # Nodegroup availabilityZones (optional, expanded to numbered tokens)
+    if [[ "${has_nodegroup_availability_zones}" == "true" ]]; then
+      echo "    availabilityZones:"
+      for token in "${ng_az_tokens[@]}"; do
+        echo "      - ${token}"
+      done
     fi
 
     # Nodegroup labels (optional, only when config file present)

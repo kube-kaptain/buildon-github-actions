@@ -847,6 +847,27 @@ YAML
   assert_output_contains "must be one of"
 }
 
+# === Availability zone validation ===
+
+@test "passes with valid availabilityZones in substituted yaml" {
+  local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
+  yq -i '.managedNodeGroups[0].availabilityZones = ["eu-west-1a", "eu-west-1b"]' "$context_dir/cluster.yaml"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-post-build-validate"
+  [ "$status" -eq 0 ]
+  assert_output_contains "availabilityZones"
+  assert_output_contains "2 entries"
+}
+
+@test "fails when availabilityZone is not valid AZ format" {
+  local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
+  yq -i '.managedNodeGroups[0].availabilityZones = ["eu-west-1a", "not-an-az"]' "$context_dir/cluster.yaml"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-post-build-validate"
+  [ "$status" -ne 0 ]
+  assert_output_contains "does not look like an AZ"
+}
+
 @test "passes when all tag annotation and label values are strings" {
   local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
   yq -i '.metadata.tags.Enabled = "true"' "$context_dir/cluster.yaml"

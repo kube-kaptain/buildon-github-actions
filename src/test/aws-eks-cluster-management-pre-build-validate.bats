@@ -616,6 +616,66 @@ teardown() {
   assert_output_contains "numbered tokens instead"
 }
 
+@test "fails when NodegroupAvailabilityZones token found in template" {
+  local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
+  yq -i '.managedNodeGroups[0].availabilityZones = "${NodegroupAvailabilityZones}"' "$context_dir/cluster.yaml"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-pre-build-validate"
+  [ "$status" -ne 0 ]
+  assert_output_contains "NodegroupAvailabilityZones"
+  assert_output_contains "numbered tokens instead"
+}
+
+# === Nodegroup availabilityZones token validation ===
+
+@test "passes when availabilityZones has correct tokens" {
+  local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
+  printf '%s' "2" > "$OUTPUT_SUB_PATH/aws-eks-cluster-management/expected-values/nodegroup-az-count"
+  yq -i '.managedNodeGroups[0].availabilityZones = ["${NodegroupAvailabilityZone1}", "${NodegroupAvailabilityZone2}"]' "$context_dir/cluster.yaml"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-pre-build-validate"
+  [ "$status" -eq 0 ]
+}
+
+@test "fails when availabilityZones count mismatches" {
+  local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
+  printf '%s' "2" > "$OUTPUT_SUB_PATH/aws-eks-cluster-management/expected-values/nodegroup-az-count"
+  yq -i '.managedNodeGroups[0].availabilityZones = ["${NodegroupAvailabilityZone1}"]' "$context_dir/cluster.yaml"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-pre-build-validate"
+  [ "$status" -ne 0 ]
+  assert_output_contains "1 entries but expected 2"
+}
+
+@test "fails when availabilityZones has wrong token" {
+  local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
+  printf '%s' "1" > "$OUTPUT_SUB_PATH/aws-eks-cluster-management/expected-values/nodegroup-az-count"
+  yq -i '.managedNodeGroups[0].availabilityZones = ["${WrongToken}"]' "$context_dir/cluster.yaml"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-pre-build-validate"
+  [ "$status" -ne 0 ]
+  assert_output_contains "must be exactly"
+  assert_output_contains '${NodegroupAvailabilityZone1}'
+}
+
+@test "fails when availabilityZones present but no count file" {
+  local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
+  yq -i '.managedNodeGroups[0].availabilityZones = ["${SomeToken}"]' "$context_dir/cluster.yaml"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-pre-build-validate"
+  [ "$status" -ne 0 ]
+  assert_output_contains "config not provided"
+}
+
+@test "fails when availabilityZones config provided but missing from YAML" {
+  printf '%s' "2" > "$OUTPUT_SUB_PATH/aws-eks-cluster-management/expected-values/nodegroup-az-count"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-pre-build-validate"
+  [ "$status" -ne 0 ]
+  assert_output_contains "config provided"
+  assert_output_contains "missing from YAML"
+}
+
 # === Cluster security group annotation validation ===
 
 @test "fails when cluster-security-group annotation missing" {

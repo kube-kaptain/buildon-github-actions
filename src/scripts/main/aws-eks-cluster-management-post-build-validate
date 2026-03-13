@@ -484,6 +484,27 @@ validate_substituted_yaml() {
         fi
       done
     fi
+
+    # Validate availabilityZones entries on first nodegroup
+    local ng_az_count
+    ng_az_count=$(yq ".${ng_yaml_key}[0].availabilityZones | length" "${yaml_file}" 2>/dev/null || echo "0")
+    if [[ "${ng_az_count}" -gt 0 ]]; then
+      log ""
+      log "  --- Node group availabilityZones ---"
+      log "  ${ng_yaml_key}[0].availabilityZones: ${ng_az_count} entries"
+      local ng_azs
+      ng_azs=$(yq ".${ng_yaml_key}[0].availabilityZones[]" "${yaml_file}" 2>/dev/null || true)
+      while IFS= read -r az_value; do
+        if [[ -z "${az_value}" ]]; then
+          continue
+        fi
+        if [[ ! "${az_value}" =~ ^[a-z]{2}-[a-z]+-[0-9]+[a-z]$ ]]; then
+          fail "${yaml_file}: ${ng_yaml_key}[0].availabilityZones entry '${az_value}' does not look like an AZ (expected region + single letter, e.g., eu-west-1a)"
+        else
+          log "    ${az_value}: valid AZ"
+        fi
+      done <<< "${ng_azs}"
+    fi
   fi
 
   # eksctl auto-sets Name tag - user-supplied Name in metadata tags feeds into nodegroups

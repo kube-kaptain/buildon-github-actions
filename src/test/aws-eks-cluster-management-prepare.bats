@@ -2155,3 +2155,48 @@ EOF
   assert_contains "$content" "apiVersion: eksctl.io/v1alpha5" "cluster.yaml"
   assert_contains "$content" "kind: ClusterConfig" "cluster.yaml"
 }
+
+# === Nodegroup availabilityZones ===
+
+@test "generates availabilityZones when config file present" {
+  printf 'eu-west-1a,eu-west-1b' > "$CONFIG_SUB_PATH/NodegroupAvailabilityZones"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -eq 0 ]
+
+  local content
+  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
+  assert_contains "$content" "availabilityZones:" "cluster.yaml"
+  assert_contains "$content" '- ${NodegroupAvailabilityZone1}' "cluster.yaml"
+  assert_contains "$content" '- ${NodegroupAvailabilityZone2}' "cluster.yaml"
+}
+
+@test "does not generate availabilityZones by default" {
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -eq 0 ]
+
+  local content
+  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
+  [[ "$content" != *"availabilityZones:"* ]]
+}
+
+@test "writes nodegroup-az-count to expected-values" {
+  printf 'eu-west-1a,eu-west-1b' > "$CONFIG_SUB_PATH/NodegroupAvailabilityZones"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -eq 0 ]
+
+  [ -f "$OUTPUT_SUB_PATH/aws-eks-cluster-management/expected-values/nodegroup-az-count" ]
+  [ "$(< "$OUTPUT_SUB_PATH/aws-eks-cluster-management/expected-values/nodegroup-az-count")" = "2" ]
+}
+
+@test "expands NODEGROUP_AVAILABILITY_ZONES to numbered token files" {
+  printf 'eu-west-1a,eu-west-1b,eu-west-1c' > "$CONFIG_SUB_PATH/NodegroupAvailabilityZones"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -eq 0 ]
+
+  [ "$(< "$OUTPUT_SUB_PATH/docker/config/NodegroupAvailabilityZone1")" = "eu-west-1a" ]
+  [ "$(< "$OUTPUT_SUB_PATH/docker/config/NodegroupAvailabilityZone2")" = "eu-west-1b" ]
+  [ "$(< "$OUTPUT_SUB_PATH/docker/config/NodegroupAvailabilityZone3")" = "eu-west-1c" ]
+}

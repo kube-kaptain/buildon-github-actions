@@ -84,6 +84,11 @@ if [[ -f "${expected_values_dir}/nodegroup-sg-attach-ids-count" ]]; then
   ng_sg_attach_expected_count=$(< "${expected_values_dir}/nodegroup-sg-attach-ids-count")
 fi
 
+ng_az_expected_count=0
+if [[ -f "${expected_values_dir}/nodegroup-az-count" ]]; then
+  ng_az_expected_count=$(< "${expected_values_dir}/nodegroup-az-count")
+fi
+
 # === Build expected token strings ===
 
 token_project_name=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "PROJECT_NAME")
@@ -110,7 +115,7 @@ done
 # The source file contains a comma-separated string, not a YAML list.
 # Use the numbered tokens instead (e.g., VpcControlPlaneSecurityGroupId1, ...Id2).
 declare -a blocked_comma_list_tokens=()
-for blocked_name in CLOUD_WATCH_CLUSTER_LOGGING_ENABLE_TYPES AUTO_MODE_CONFIG_NODE_POOLS VPC_CONTROL_PLANE_SECURITY_GROUP_IDS NODEGROUP_SECURITY_GROUPS_ATTACH_IDS; do
+for blocked_name in CLOUD_WATCH_CLUSTER_LOGGING_ENABLE_TYPES AUTO_MODE_CONFIG_NODE_POOLS VPC_CONTROL_PLANE_SECURITY_GROUP_IDS NODEGROUP_SECURITY_GROUPS_ATTACH_IDS NODEGROUP_AVAILABILITY_ZONES; do
   blocked_comma_list_tokens+=("$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "${blocked_name}")")
 done
 
@@ -127,6 +132,14 @@ declare -a expected_ng_sg_attach_tokens=()
 if [[ "${ng_sg_attach_expected_count}" -gt 0 ]]; then
   for idx in $(seq 1 "${ng_sg_attach_expected_count}"); do
     expected_ng_sg_attach_tokens+=("$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "NODEGROUP_SECURITY_GROUPS_ATTACH_ID_${idx}")")
+  done
+fi
+
+# Build expected nodegroup availabilityZones tokens (numbered)
+declare -a expected_ng_az_tokens=()
+if [[ "${ng_az_expected_count}" -gt 0 ]]; then
+  for idx in $(seq 1 "${ng_az_expected_count}"); do
+    expected_ng_az_tokens+=("$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "NODEGROUP_AVAILABILITY_ZONE_${idx}")")
   done
 fi
 
@@ -370,6 +383,28 @@ validate_cluster_yaml_tokens() {
       fail "${yaml_file}: NODEGROUP_SECURITY_GROUPS_ATTACH_IDS config provided (${ng_sg_attach_expected_count} entries) but ${ng_yaml_key}[0].securityGroups.attachIDs missing from YAML"
     fi
 
+    # Validate availabilityZones tokens on first nodegroup
+    local ng_az_count
+    ng_az_count=$(yq ".${ng_yaml_key}[0].availabilityZones | length" "${yaml_file}" 2>/dev/null || echo "0")
+    if [[ "${ng_az_count}" -gt 0 ]]; then
+      if [[ "${ng_az_expected_count}" -eq 0 ]]; then
+        fail "${yaml_file}: ${ng_yaml_key}[0].availabilityZones present but NODEGROUP_AVAILABILITY_ZONES config not provided"
+      elif [[ "${ng_az_count}" -ne "${ng_az_expected_count}" ]]; then
+        fail "${yaml_file}: ${ng_yaml_key}[0].availabilityZones has ${ng_az_count} entries but expected ${ng_az_expected_count}"
+      else
+        for idx in $(seq 0 $((ng_az_count - 1))); do
+          local entry
+          entry=$(yq ".${ng_yaml_key}[0].availabilityZones[${idx}]" "${yaml_file}" 2>/dev/null || echo "")
+          local expected_token="${expected_ng_az_tokens[${idx}]}"
+          if [[ "${entry}" != "${expected_token}" ]]; then
+            fail "${yaml_file}: ${ng_yaml_key}[0].availabilityZones[${idx}] '${entry}' must be exactly '${expected_token}'"
+          fi
+        done
+      fi
+    elif [[ "${ng_az_expected_count}" -gt 0 ]]; then
+      fail "${yaml_file}: NODEGROUP_AVAILABILITY_ZONES config provided (${ng_az_expected_count} entries) but ${ng_yaml_key}[0].availabilityZones missing from YAML"
+    fi
+
     # Validate volume tokens on first nodegroup
     local volume_type_value
     volume_type_value=$(yq ".${ng_yaml_key}[0].volumeType" "${yaml_file}" 2>/dev/null || echo "")
@@ -433,6 +468,9 @@ main() {
   fi
   if [[ "${ng_sg_attach_expected_count}" -gt 0 ]]; then
     log "Expected NODEGROUP_SECURITY_GROUPS_ATTACH_ID count: ${ng_sg_attach_expected_count}"
+  fi
+  if [[ "${ng_az_expected_count}" -gt 0 ]]; then
+    log "Expected NODEGROUP_AVAILABILITY_ZONE count: ${ng_az_expected_count}"
   fi
   log "=================================================="
 
