@@ -678,7 +678,7 @@ if [[ -f "${CONFIG_SUB_PATH}/${additional_ng_config_name}" ]]; then
   for i in "${!additional_ng_suffixes[@]}"; do
     suffix="${additional_ng_suffixes[${i}]}"
     suffix=$(echo "${suffix}" | tr '[:upper:]' '[:lower:]')
-    additional_ng_suffixes[${i}]="${suffix}"
+    additional_ng_suffixes[i]="${suffix}"
 
     if [[ ! "${suffix}" =~ ^[a-z]+$ ]]; then
       log_error "ADDITIONAL_NODE_GROUPS: suffix '${suffix}' must be a single alphabetic word (a-z only)"
@@ -931,7 +931,7 @@ token_vpc_public_access=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${T
 token_secrets_encryption_key_arn=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "SECRETS_ENCRYPTION_KEY_ARN")
 token_aws_account_id=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "AWS_ACCOUNT_ID")
 token_cluster_security_group=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "CLUSTER_SECURITY_GROUP")
-token_nodegroup_prefix=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "NODE_GROUP_DEFAULT_PREFIX")
+
 
 if [[ "${EKS_PRIVATE_NETWORKING}" == "true" ]]; then
   token_private_subnet_id_a=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "PRIVATE_SUBNET_ID_A")
