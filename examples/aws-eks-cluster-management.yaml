@@ -146,11 +146,10 @@ jobs:
       # ┌─────────────────────────────────────────────────────────────────────┐
       # │ Source Directories                                                  │
       # └─────────────────────────────────────────────────────────────────────┘
-      # Place custom cluster.yaml in eks-cluster-yaml-sub-path to override
-      # generation (three-tier: context dir > src/eks/ > generate).
+      # Place custom cluster.yaml in src/eks/ to override generation
+      # (three-tier: context dir > src/eks/ > generate).
       # Place aws-credentials.age in secrets-sub-path for age-encrypted creds.
       #
-      # eks-cluster-yaml-sub-path: 'src/eks'       # Default
       # secrets-sub-path: 'src/secrets'             # Default
 
       # ┌─────────────────────────────────────────────────────────────────────┐

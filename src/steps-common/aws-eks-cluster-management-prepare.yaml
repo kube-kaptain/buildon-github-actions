@@ -31,5 +31,4 @@
     nodegroup-min-size: ${{ inputs.nodegroup-min-size }}
     nodegroup-max-size: ${{ inputs.nodegroup-max-size }}
     eks-addons-list: ${{ inputs.eks-addons-list }}
-    eks-cluster-yaml-sub-path: ${{ inputs.eks-cluster-yaml-sub-path }}
     secrets-sub-path: ${{ inputs.secrets-sub-path }}

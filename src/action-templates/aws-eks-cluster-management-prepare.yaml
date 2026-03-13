@@ -63,6 +63,5 @@ runs:
         NODEGROUP_MIN_SIZE: ${{ inputs.nodegroup-min-size }}
         NODEGROUP_MAX_SIZE: ${{ inputs.nodegroup-max-size }}
         EKS_ADDONS_LIST: ${{ inputs.eks-addons-list }}
-        EKS_CLUSTER_YAML_SUB_PATH: ${{ inputs.eks-cluster-yaml-sub-path }}
         SECRETS_SUB_PATH: ${{ inputs.secrets-sub-path }}
       run: "${{ github.action_path }}/../../scripts/main/aws-eks-cluster-management-prepare"

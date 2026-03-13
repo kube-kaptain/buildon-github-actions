@@ -10,7 +10,7 @@
 #
 # Three-tier file resolution for each generated file:
 #   1. Already in docker context dir → skip (user's pre-docker hook put it there)
-#   2. Exists in EKS_CLUSTER_YAML_SUB_PATH → copy to context dir
+#   2. Exists in src/eks/ → copy to context dir
 #   3. Neither → generate from template
 #
 # Required config (env var or file in CONFIG_SUB_PATH):
@@ -85,7 +85,6 @@
 #   EKS_PUBLIC_NETWORKING      - Include public subnets section (default: false)
 #   EKS_CILIUM_EBPF_NETWORKING - Generate controlplane-only yaml (default: false)
 #   EKS_ADDONS_LIST            - Comma-separated addon names (default: coredns,kube-proxy,vpc-cni,aws-ebs-csi-driver,aws-efs-csi-driver)
-#   EKS_CLUSTER_YAML_SUB_PATH  - Source dir for cluster configs (default: src/eks)
 #   SECRETS_SUB_PATH           - Source dir for encrypted secrets (default: src/secrets)
 #   DOCKER_PLATFORM            - Target platform(s) (default: linux/amd64)
 #   TOKEN_DELIMITER_STYLE      - Token delimiter syntax (default: shell)

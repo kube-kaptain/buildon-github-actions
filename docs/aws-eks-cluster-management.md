@@ -32,7 +32,6 @@ EKS Cluster Management
 | `nodegroup-min-size` | string | `3` | Default nodegroup minimum size (written to platform config if not in config-sub-path) |
 | `nodegroup-max-size` | string | `12` | Default nodegroup maximum size (written to platform config if not in config-sub-path) |
 | `eks-addons-list` | string | `coredns,kube-proxy,vpc-cni,aws-ebs-csi-driver,aws-efs-csi-driver` | Comma-separated list of EKS addon names (no versions) |
-| `eks-cluster-yaml-sub-path` | string | `src/eks` | Source directory for cluster config files (relative) |
 | `secrets-sub-path` | string | `src/secrets` | Source directory for encrypted secrets (relative) |
 | `token-delimiter-style` | string | `shell` | Token delimiter syntax for variables (shell, mustache, helm, erb, github-actions, blade, stringtemplate, ognl, t4, swift) |
 | `token-name-style` | string | `PascalCase` | Case style for token names (UPPER_SNAKE, lower_snake, lower-kebab, UPPER-KEBAB, camelCase, PascalCase, lower.dot, UPPER.DOT) |

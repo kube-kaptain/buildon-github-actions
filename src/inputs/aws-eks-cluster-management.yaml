@@ -71,11 +71,6 @@ eks-addons-list:
   required: false
   type: string
   default: 'coredns,kube-proxy,vpc-cni,aws-ebs-csi-driver,aws-efs-csi-driver'
-eks-cluster-yaml-sub-path:
-  description: 'Source directory for cluster config files (relative)'
-  required: false
-  type: string
-  default: 'src/eks'
 secrets-sub-path:
   description: 'Source directory for encrypted secrets (relative)'
   required: false

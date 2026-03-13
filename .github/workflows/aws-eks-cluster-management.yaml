@@ -143,11 +143,6 @@ on:
         required: false
         type: string
         default: 'coredns,kube-proxy,vpc-cni,aws-ebs-csi-driver,aws-efs-csi-driver'
-      eks-cluster-yaml-sub-path:
-        description: 'Source directory for cluster config files (relative)'
-        required: false
-        type: string
-        default: 'src/eks'
       secrets-sub-path:
         description: 'Source directory for encrypted secrets (relative)'
         required: false
@@ -956,7 +951,6 @@ jobs:
           nodegroup-min-size: ${{ inputs.nodegroup-min-size }}
           nodegroup-max-size: ${{ inputs.nodegroup-max-size }}
           eks-addons-list: ${{ inputs.eks-addons-list }}
-          eks-cluster-yaml-sub-path: ${{ inputs.eks-cluster-yaml-sub-path }}
           secrets-sub-path: ${{ inputs.secrets-sub-path }}
       - name: Pass check - EKS Cluster Management Prepare
         if: success() && steps.check-eks-prepare.outputs.check-run-id != ''

@@ -158,7 +158,6 @@ See [`examples/`](examples/) for more usage patterns.
 | `eks-base-image-registry` | string | `ghcr.io` | Base image registry for EKS management image |
 | `eks-base-image-tag` | string | `""` | Base image tag for EKS management image |
 | `eks-cilium-ebpf-networking` | boolean | `false` | Generate controlplane-only yaml for Cilium eBPF networking |
-| `eks-cluster-yaml-sub-path` | string | `src/eks` | Source directory for cluster config files (relative) |
 | `eks-custom-security-group` | boolean | `false` | Include custom security group in cluster config |
 | `eks-private-networking` | boolean | `true` | Include private subnets section in cluster config |
 | `eks-public-networking` | boolean | `false` | Include public subnets section in cluster config |
