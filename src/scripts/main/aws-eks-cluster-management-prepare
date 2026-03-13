@@ -50,6 +50,7 @@
 #   NODEGROUP_AVAILABILITY_ZONES         - Pin nodegroup to specific AZs, comma-separated (e.g., eu-west-1a,eu-west-1b)
 #     (expanded to numbered tokens: NODEGROUP_AVAILABILITY_ZONE_1, ...ZONE_2, etc.)
 #   VPC_SHARED_NODE_SECURITY_GROUP      - Shared node SG ID, unmanaged nodegroups only (generates sharedNodeSecurityGroup in vpc block)
+#   NODEGROUP_SPOT                      - Use Spot instances (true or false), managed nodegroups only
 #   NODEGROUP_VOLUME_KMS_KEY_ID         - KMS key ARN for EBS volume encryption
 #   NODEGROUP_IAM_INSTANCE_ROLE_ARN     - Custom IAM instance role ARN for nodegroup
 #   ADDONS_<NAME>_SERVICE_ACCOUNT_ROLE_ARN - Per-addon service account role ARN
@@ -799,6 +800,28 @@ else
     validation_errors=$((validation_errors + 1))
   fi
 fi
+
+# Spot instances - optional, managed only, must be true or false
+has_nodegroup_spot="false"
+nodegroup_spot_name=$(convert_token_name "${TOKEN_NAME_STYLE}" "NODEGROUP_SPOT")
+if [[ "${nodegroup_type}" == "managed" ]]; then
+  if [[ -f "${CONFIG_SUB_PATH}/${nodegroup_spot_name}" ]]; then
+    nodegroup_spot_val=$(< "${CONFIG_SUB_PATH}/${nodegroup_spot_name}")
+    nodegroup_spot_val="${nodegroup_spot_val%$'\n'}"
+    if [[ "${nodegroup_spot_val}" != "true" && "${nodegroup_spot_val}" != "false" ]]; then
+      log_error "NODEGROUP_SPOT must be 'true' or 'false' (got: ${nodegroup_spot_val})"
+      validation_errors=$((validation_errors + 1))
+    else
+      has_nodegroup_spot="true"
+    fi
+  fi
+else
+  if [[ -f "${CONFIG_SUB_PATH}/${nodegroup_spot_name}" ]]; then
+    log_error "NODEGROUP_SPOT is not supported for unmanaged nodegroups (use instancesDistribution instead) - remove the config file"
+    validation_errors=$((validation_errors + 1))
+  fi
+fi
+
 ensure_default_token "NODEGROUP_MIN_SIZE" "${NODEGROUP_MIN_SIZE}"
 ensure_default_token "NODEGROUP_MAX_SIZE" "${NODEGROUP_MAX_SIZE}"
 
@@ -903,6 +926,10 @@ fi
 
 if [[ "${has_nodegroup_iam_instance_role_arn}" == "true" ]]; then
   token_nodegroup_iam_instance_role_arn=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "NODEGROUP_IAM_INSTANCE_ROLE_ARN")
+fi
+
+if [[ "${has_nodegroup_spot}" == "true" ]]; then
+  token_nodegroup_spot=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "NODEGROUP_SPOT")
 fi
 
 if [[ "${has_volume_kms_key_id}" == "true" ]]; then
@@ -1127,6 +1154,9 @@ YAML
     fi
     if [[ "${has_nodegroup_private_networking}" == "true" ]]; then
       echo "    privateNetworking: ${token_nodegroup_private_networking}"
+    fi
+    if [[ "${has_nodegroup_spot}" == "true" ]]; then
+      echo "    spot: ${token_nodegroup_spot}"
     fi
     if [[ "${has_nodegroup_iam_instance_role_arn}" == "true" ]]; then
       echo "    iam:"

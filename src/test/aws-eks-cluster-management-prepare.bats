@@ -2200,3 +2200,53 @@ EOF
   [ "$(< "$OUTPUT_SUB_PATH/docker/config/NodegroupAvailabilityZone2")" = "eu-west-1b" ]
   [ "$(< "$OUTPUT_SUB_PATH/docker/config/NodegroupAvailabilityZone3")" = "eu-west-1c" ]
 }
+
+# === Nodegroup spot ===
+
+@test "generates spot when config file present with true" {
+  printf 'true' > "$CONFIG_SUB_PATH/NodegroupSpot"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -eq 0 ]
+
+  local content
+  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
+  assert_contains "$content" 'spot: ${NodegroupSpot}' "cluster.yaml"
+}
+
+@test "generates spot when config file present with false" {
+  printf 'false' > "$CONFIG_SUB_PATH/NodegroupSpot"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -eq 0 ]
+
+  local content
+  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
+  assert_contains "$content" 'spot: ${NodegroupSpot}' "cluster.yaml"
+}
+
+@test "does not generate spot by default" {
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -eq 0 ]
+
+  local content
+  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
+  [[ "$content" != *"spot:"* ]]
+}
+
+@test "fails when NodegroupSpot is not true or false" {
+  printf 'yes' > "$CONFIG_SUB_PATH/NodegroupSpot"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -ne 0 ]
+  assert_output_contains "NODEGROUP_SPOT must be 'true' or 'false'"
+}
+
+@test "fails when NodegroupSpot present with unmanaged nodegroup type" {
+  printf 'unmanaged' > "$CONFIG_SUB_PATH/NodegroupType"
+  printf 'true' > "$CONFIG_SUB_PATH/NodegroupSpot"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -ne 0 ]
+  assert_output_contains "NODEGROUP_SPOT is not supported for unmanaged nodegroups"
+}

@@ -868,6 +868,36 @@ YAML
   assert_output_contains "does not look like an AZ"
 }
 
+# === Spot validation ===
+
+@test "passes with spot true in substituted yaml" {
+  local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
+  yq -i '.managedNodeGroups[0].spot = true' "$context_dir/cluster.yaml"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-post-build-validate"
+  [ "$status" -eq 0 ]
+  assert_output_contains "spot: true"
+}
+
+@test "passes with spot false in substituted yaml" {
+  local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
+  yq -i '.managedNodeGroups[0].spot = false' "$context_dir/cluster.yaml"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-post-build-validate"
+  [ "$status" -eq 0 ]
+  assert_output_contains "spot: false"
+}
+
+@test "fails when spot is not boolean in substituted yaml" {
+  local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
+  yq -i '.managedNodeGroups[0].spot = "yes"' "$context_dir/cluster.yaml"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-post-build-validate"
+  [ "$status" -ne 0 ]
+  assert_output_contains "spot"
+  assert_output_contains "must be true or false"
+}
+
 @test "passes when all tag annotation and label values are strings" {
   local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
   yq -i '.metadata.tags.Enabled = "true"' "$context_dir/cluster.yaml"

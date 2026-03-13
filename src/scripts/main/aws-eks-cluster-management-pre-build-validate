@@ -102,6 +102,7 @@ token_cluster_security_group=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}"
 token_volume_type=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "NODEGROUP_VOLUME_TYPE")
 token_volume_encrypted=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "NODEGROUP_VOLUME_ENCRYPTED")
 token_volume_kms_key_id=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "NODEGROUP_VOLUME_KMS_KEY_ID")
+token_nodegroup_spot=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "NODEGROUP_SPOT")
 
 # Direct-emit config tokens - these are emitted during generation, not substitution.
 # If found in a user-provided template, substitution will produce broken YAML
@@ -427,6 +428,14 @@ validate_cluster_yaml_tokens() {
     if [[ -n "${volume_kms_key_id_value}" && "${volume_kms_key_id_value}" != "null" ]]; then
       if [[ "${volume_kms_key_id_value}" != "${token_volume_kms_key_id}" ]]; then
         fail "${yaml_file}: ${ng_yaml_key}[0].volumeKmsKeyID '${volume_kms_key_id_value}' must be exactly '${token_volume_kms_key_id}'"
+      fi
+    fi
+
+    local spot_value
+    spot_value=$(yq ".${ng_yaml_key}[0].spot" "${yaml_file}" 2>/dev/null || echo "")
+    if [[ -n "${spot_value}" && "${spot_value}" != "null" ]]; then
+      if [[ "${spot_value}" != "${token_nodegroup_spot}" ]]; then
+        fail "${yaml_file}: ${ng_yaml_key}[0].spot '${spot_value}' must be exactly '${token_nodegroup_spot}'"
       fi
     fi
   fi

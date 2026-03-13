@@ -49,6 +49,7 @@
 #   NodegroupLabels                       - Additional nodegroup labels (key: value per line)
 #   NodegroupTaints                       - Nodegroup taints (raw YAML list: - key/effect[/value] per entry)
 #   NodegroupAvailabilityZones            - Pin nodegroup to specific AZs, comma-separated (e.g., eu-west-1a,eu-west-1b)
+#   NodegroupSpot                         - Use Spot instances (true or false), managed nodegroups only
 #   Addons<Name>ServiceAccountRoleArn     - Per-addon IAM role (e.g., AddonsVpcCniServiceAccountRoleArn)
 #
 # ── Tokens with defaults (override by creating the file) ─────────────────────

@@ -522,6 +522,27 @@ teardown() {
   assert_output_contains '${NodegroupVolumeKmsKeyId}'
 }
 
+# === Spot token validation ===
+
+@test "passes when spot has correct token" {
+  local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
+  yq -i '.managedNodeGroups[0].spot = "${NodegroupSpot}"' "$context_dir/cluster.yaml"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-pre-build-validate"
+  [ "$status" -eq 0 ]
+}
+
+@test "fails when spot token is wrong" {
+  local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
+  yq -i '.managedNodeGroups[0].spot = "true"' "$context_dir/cluster.yaml"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-pre-build-validate"
+  [ "$status" -ne 0 ]
+  assert_output_contains "spot"
+  assert_output_contains "must be exactly"
+  assert_output_contains '${NodegroupSpot}'
+}
+
 # === Direct-emit token blocking ===
 
 @test "fails when NodegroupTaints token found in template" {
