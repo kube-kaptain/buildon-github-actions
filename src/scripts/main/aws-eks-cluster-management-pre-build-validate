@@ -106,6 +106,14 @@ for blocked_name in NODEGROUP_TAINTS NODEGROUP_LABELS NODEGROUP_TAGS METADATA_TA
   blocked_direct_emit_tokens+=("$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "${blocked_name}")")
 done
 
+# Comma-list source tokens - these are expanded to numbered tokens during generation.
+# The source file contains a comma-separated string, not a YAML list.
+# Use the numbered tokens instead (e.g., VpcControlPlaneSecurityGroupId1, ...Id2).
+declare -a blocked_comma_list_tokens=()
+for blocked_name in CLOUD_WATCH_CLUSTER_LOGGING_ENABLE_TYPES AUTO_MODE_CONFIG_NODE_POOLS VPC_CONTROL_PLANE_SECURITY_GROUP_IDS NODEGROUP_SECURITY_GROUPS_ATTACH_IDS; do
+  blocked_comma_list_tokens+=("$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "${blocked_name}")")
+done
+
 # Build expected controlPlaneSecurityGroupIDs tokens (numbered)
 declare -a expected_cp_sg_tokens=()
 if [[ "${cp_sg_ids_expected_count}" -gt 0 ]]; then
@@ -395,6 +403,14 @@ validate_cluster_yaml_tokens() {
     if [[ "${yaml_content}" == *"${blocked_token}"* ]]; then
       log "Please remove ${blocked_token} from your src/eks/cluster.yaml template AND your src/config/ directory since it produces corrupt results"
       fail "${yaml_file}: ${blocked_token} is not allowed in cluster.yaml templates because the substitution process would produce corrupt output."
+    fi
+  done
+
+  # Block comma-list source tokens (expanded to numbered tokens during generation)
+  for blocked_token in "${blocked_comma_list_tokens[@]}"; do
+    if [[ "${yaml_content}" == *"${blocked_token}"* ]]; then
+      log "Please use the individually numbered tokens instead of ${blocked_token} (e.g. the token minus trailing s and with a number suffix for each entry)"
+      fail "${yaml_file}: ${blocked_token} is a comma-separated source token that gets expanded to numbered tokens during generation — use the numbered tokens instead"
     fi
   done
 }

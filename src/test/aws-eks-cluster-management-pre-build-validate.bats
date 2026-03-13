@@ -574,6 +574,48 @@ teardown() {
   assert_output_contains "not allowed"
 }
 
+# === Comma-list source token blocking ===
+
+@test "fails when CloudWatchClusterLoggingEnableTypes token found in template" {
+  local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
+  yq -i '.cloudWatch.clusterLogging.enableTypes = "${CloudWatchClusterLoggingEnableTypes}"' "$context_dir/cluster.yaml"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-pre-build-validate"
+  [ "$status" -ne 0 ]
+  assert_output_contains "CloudWatchClusterLoggingEnableTypes"
+  assert_output_contains "numbered tokens instead"
+}
+
+@test "fails when AutoModeConfigNodePools token found in template" {
+  local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
+  yq -i '.autoModeConfig.nodePools = "${AutoModeConfigNodePools}"' "$context_dir/cluster.yaml"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-pre-build-validate"
+  [ "$status" -ne 0 ]
+  assert_output_contains "AutoModeConfigNodePools"
+  assert_output_contains "numbered tokens instead"
+}
+
+@test "fails when VpcControlPlaneSecurityGroupIds token found in template" {
+  local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
+  yq -i '.vpc.controlPlaneSecurityGroupIDs = "${VpcControlPlaneSecurityGroupIds}"' "$context_dir/cluster.yaml"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-pre-build-validate"
+  [ "$status" -ne 0 ]
+  assert_output_contains "VpcControlPlaneSecurityGroupIds"
+  assert_output_contains "numbered tokens instead"
+}
+
+@test "fails when NodegroupSecurityGroupsAttachIds token found in template" {
+  local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
+  yq -i '.managedNodeGroups[0].securityGroups.attachIDs = "${NodegroupSecurityGroupsAttachIds}"' "$context_dir/cluster.yaml"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-pre-build-validate"
+  [ "$status" -ne 0 ]
+  assert_output_contains "NodegroupSecurityGroupsAttachIds"
+  assert_output_contains "numbered tokens instead"
+}
+
 # === Cluster security group annotation validation ===
 
 @test "fails when cluster-security-group annotation missing" {
