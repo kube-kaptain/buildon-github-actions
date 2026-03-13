@@ -90,6 +90,22 @@ else
   ng_yaml_key="nodeGroups"
 fi
 
+# Additional nodegroup metadata
+additional_ng_count=0
+if [[ -f "${expected_values_dir}/additional-nodegroup-count" ]]; then
+  additional_ng_count=$(< "${expected_values_dir}/additional-nodegroup-count")
+fi
+
+declare -a additional_ng_suffixes_lower=()
+if [[ ${additional_ng_count} -gt 0 && -f "${expected_values_dir}/additional-nodegroup-suffixes" ]]; then
+  IFS=',' read -ra suffixes_upper <<< "$(< "${expected_values_dir}/additional-nodegroup-suffixes")"
+  for s in "${suffixes_upper[@]}"; do
+    additional_ng_suffixes_lower+=("$(echo "${s}" | tr '[:upper:]' '[:lower:]')")
+  done
+fi
+
+expected_total_nodegroup_count=$((1 + additional_ng_count))
+
 # === Determine context dirs and image URIs ===
 
 declare -a context_dirs=()
@@ -352,7 +368,11 @@ validate_substituted_yaml() {
   local nodegroup_count
   nodegroup_count=$(yq ".${ng_yaml_key} | length" "${yaml_file}" 2>/dev/null || echo "0")
 
-  log "  ${ng_yaml_key}: ${nodegroup_count} found"
+  log "  ${ng_yaml_key}: ${nodegroup_count} found (expected: ${expected_total_nodegroup_count})"
+
+  if [[ ${additional_ng_count} -gt 0 && "${nodegroup_count}" -ne "${expected_total_nodegroup_count}" ]]; then
+    fail "${yaml_file}: ${ng_yaml_key} has ${nodegroup_count} entries but expected ${expected_total_nodegroup_count} (1 base + ${additional_ng_count} additional)"
+  fi
 
   if [[ "${nodegroup_count}" -gt 0 ]]; then
     declare -a ng_names=()
@@ -367,7 +387,22 @@ validate_substituted_yaml() {
       if [[ "${ng_name}" != "${nodegroup_prefix}"* ]]; then
         fail "${yaml_file}: ${ng_yaml_key}[${i}].name '${ng_name}' does not start with nodegroup prefix '${nodegroup_prefix}'"
       else
-        log "  ${ng_yaml_key}[${i}].name: ${ng_name} (prefix: ${nodegroup_prefix})"
+        # Base nodegroup: name is exactly the prefix
+        # Additional nodegroups: name is prefix-suffix
+        if [[ ${i} -eq 0 ]]; then
+          log "  ${ng_yaml_key}[${i}].name: ${ng_name} (base, prefix: ${nodegroup_prefix})"
+        else
+          local adj_idx=$((i - 1))
+          if [[ ${adj_idx} -lt ${#additional_ng_suffixes_lower[@]} ]]; then
+            local expected_suffix="${additional_ng_suffixes_lower[${adj_idx}]}"
+            local expected_name="${nodegroup_prefix}-${expected_suffix}"
+            if [[ "${ng_name}" != "${expected_name}" ]]; then
+              fail "${yaml_file}: ${ng_yaml_key}[${i}].name '${ng_name}' must be exactly '${expected_name}'"
+            else
+              log "  ${ng_yaml_key}[${i}].name: ${ng_name} (additional: ${expected_suffix})"
+            fi
+          fi
+        fi
       fi
 
       ng_names+=("${ng_name}")
@@ -399,123 +434,125 @@ validate_substituted_yaml() {
       validate_values_are_strings "${yaml_file}" ".${ng_yaml_key}[${i}].tags"
     done
 
-    # Validate securityGroups.attachIDs entries are sg-hex format
-    local ng_sg_attach_count
-    ng_sg_attach_count=$(yq ".${ng_yaml_key}[0].securityGroups.attachIDs | length" "${yaml_file}" 2>/dev/null || echo "0")
-    if [[ "${ng_sg_attach_count}" -gt 0 ]]; then
+    # Validate per-nodegroup fields on ALL nodegroups
+    for ng_idx in $(seq 0 $((nodegroup_count - 1))); do
       log ""
-      log "  --- Node group securityGroups.attachIDs ---"
-      log "  ${ng_yaml_key}[0].securityGroups.attachIDs: ${ng_sg_attach_count} entries"
-      local ng_sg_ids
-      ng_sg_ids=$(yq ".${ng_yaml_key}[0].securityGroups.attachIDs[]" "${yaml_file}" 2>/dev/null || true)
-      while IFS= read -r sg_id; do
-        if [[ -z "${sg_id}" ]]; then
-          continue
-        fi
-        if [[ ! "${sg_id}" =~ ^sg-[0-9a-f]+$ ]]; then
-          fail "${yaml_file}: ${ng_yaml_key}[0].securityGroups.attachIDs entry '${sg_id}' does not look like a security group ID (expected sg-<hex>)"
-        else
-          log "    ${sg_id}: valid SG ID"
-        fi
-      done <<< "${ng_sg_ids}"
-    fi
+      log "  --- Node group [${ng_idx}] field validation ---"
 
-    # Validate volume fields on first nodegroup
-    local volume_type_value
-    volume_type_value=$(yq ".${ng_yaml_key}[0].volumeType" "${yaml_file}" 2>/dev/null || echo "")
-    if [[ -n "${volume_type_value}" && "${volume_type_value}" != "null" ]]; then
-      case "${volume_type_value}" in
-        gp2|gp3|io1|io2|st1|sc1|standard)
-          log "  ${ng_yaml_key}[0].volumeType: ${volume_type_value}"
-          ;;
-        *)
-          fail "${yaml_file}: ${ng_yaml_key}[0].volumeType '${volume_type_value}' must be one of: gp2, gp3, io1, io2, st1, sc1, standard"
-          ;;
-      esac
-    fi
-
-    local volume_encrypted_value
-    volume_encrypted_value=$(yq ".${ng_yaml_key}[0].volumeEncrypted" "${yaml_file}" 2>/dev/null || echo "")
-    if [[ -n "${volume_encrypted_value}" && "${volume_encrypted_value}" != "null" ]]; then
-      if [[ "${volume_encrypted_value}" == "true" || "${volume_encrypted_value}" == "false" ]]; then
-        log "  ${ng_yaml_key}[0].volumeEncrypted: ${volume_encrypted_value}"
-      else
-        fail "${yaml_file}: ${ng_yaml_key}[0].volumeEncrypted '${volume_encrypted_value}' must be true or false"
+      # securityGroups.attachIDs
+      local ng_sg_attach_count
+      ng_sg_attach_count=$(yq ".${ng_yaml_key}[${ng_idx}].securityGroups.attachIDs | length" "${yaml_file}" 2>/dev/null || echo "0")
+      if [[ "${ng_sg_attach_count}" -gt 0 ]]; then
+        log "  ${ng_yaml_key}[${ng_idx}].securityGroups.attachIDs: ${ng_sg_attach_count} entries"
+        local ng_sg_ids
+        ng_sg_ids=$(yq ".${ng_yaml_key}[${ng_idx}].securityGroups.attachIDs[]" "${yaml_file}" 2>/dev/null || true)
+        while IFS= read -r sg_id; do
+          if [[ -z "${sg_id}" ]]; then
+            continue
+          fi
+          if [[ ! "${sg_id}" =~ ^sg-[0-9a-f]+$ ]]; then
+            fail "${yaml_file}: ${ng_yaml_key}[${ng_idx}].securityGroups.attachIDs entry '${sg_id}' does not look like a security group ID (expected sg-<hex>)"
+          else
+            log "    ${sg_id}: valid SG ID"
+          fi
+        done <<< "${ng_sg_ids}"
       fi
-    fi
 
-    local volume_kms_key_id_value
-    volume_kms_key_id_value=$(yq ".${ng_yaml_key}[0].volumeKmsKeyID" "${yaml_file}" 2>/dev/null || echo "")
-    if [[ -n "${volume_kms_key_id_value}" && "${volume_kms_key_id_value}" != "null" ]]; then
-      if [[ "${volume_kms_key_id_value}" =~ ^arn:aws:kms:.+$ ]]; then
-        log "  ${ng_yaml_key}[0].volumeKmsKeyID: ${volume_kms_key_id_value}"
-      else
-        fail "${yaml_file}: ${ng_yaml_key}[0].volumeKmsKeyID '${volume_kms_key_id_value}' must be a KMS key ARN (expected arn:aws:kms:...)"
+      # volumeType
+      local volume_type_value
+      volume_type_value=$(yq ".${ng_yaml_key}[${ng_idx}].volumeType" "${yaml_file}" 2>/dev/null || echo "")
+      if [[ -n "${volume_type_value}" && "${volume_type_value}" != "null" ]]; then
+        case "${volume_type_value}" in
+          gp2|gp3|io1|io2|st1|sc1|standard)
+            log "  ${ng_yaml_key}[${ng_idx}].volumeType: ${volume_type_value}"
+            ;;
+          *)
+            fail "${yaml_file}: ${ng_yaml_key}[${ng_idx}].volumeType '${volume_type_value}' must be one of: gp2, gp3, io1, io2, st1, sc1, standard"
+            ;;
+        esac
       fi
-    fi
 
-    # Validate spot field on first nodegroup
-    local spot_value
-    spot_value=$(yq ".${ng_yaml_key}[0].spot" "${yaml_file}" 2>/dev/null || echo "")
-    if [[ -n "${spot_value}" && "${spot_value}" != "null" ]]; then
-      if [[ "${spot_value}" == "true" || "${spot_value}" == "false" ]]; then
-        log "  ${ng_yaml_key}[0].spot: ${spot_value}"
-      else
-        fail "${yaml_file}: ${ng_yaml_key}[0].spot '${spot_value}' must be true or false"
+      # volumeEncrypted
+      local volume_encrypted_value
+      volume_encrypted_value=$(yq ".${ng_yaml_key}[${ng_idx}].volumeEncrypted" "${yaml_file}" 2>/dev/null || echo "")
+      if [[ -n "${volume_encrypted_value}" && "${volume_encrypted_value}" != "null" ]]; then
+        if [[ "${volume_encrypted_value}" == "true" || "${volume_encrypted_value}" == "false" ]]; then
+          log "  ${ng_yaml_key}[${ng_idx}].volumeEncrypted: ${volume_encrypted_value}"
+        else
+          fail "${yaml_file}: ${ng_yaml_key}[${ng_idx}].volumeEncrypted '${volume_encrypted_value}' must be true or false"
+        fi
       fi
-    fi
 
-    # Validate taints structure on first nodegroup
-    local taint_count
-    taint_count=$(yq ".${ng_yaml_key}[0].taints | length" "${yaml_file}" 2>/dev/null || echo "0")
-    if [[ "${taint_count}" -gt 0 ]]; then
-      log ""
-      log "  --- Node group taints ---"
-      log "  ${ng_yaml_key}[0].taints: ${taint_count} entries"
-      for idx in $(seq 0 $((taint_count - 1))); do
-        local taint_key
-        taint_key=$(yq ".${ng_yaml_key}[0].taints[${idx}].key" "${yaml_file}" 2>/dev/null || echo "")
-        if [[ -z "${taint_key}" || "${taint_key}" == "null" ]]; then
-          fail "${yaml_file}: ${ng_yaml_key}[0].taints[${idx}] missing 'key'"
-        fi
-
-        local taint_effect
-        taint_effect=$(yq ".${ng_yaml_key}[0].taints[${idx}].effect" "${yaml_file}" 2>/dev/null || echo "")
-        if [[ -z "${taint_effect}" || "${taint_effect}" == "null" ]]; then
-          fail "${yaml_file}: ${ng_yaml_key}[0].taints[${idx}] missing 'effect'"
+      # volumeKmsKeyID
+      local volume_kms_key_id_value
+      volume_kms_key_id_value=$(yq ".${ng_yaml_key}[${ng_idx}].volumeKmsKeyID" "${yaml_file}" 2>/dev/null || echo "")
+      if [[ -n "${volume_kms_key_id_value}" && "${volume_kms_key_id_value}" != "null" ]]; then
+        if [[ "${volume_kms_key_id_value}" =~ ^arn:aws:kms:.+$ ]]; then
+          log "  ${ng_yaml_key}[${ng_idx}].volumeKmsKeyID: ${volume_kms_key_id_value}"
         else
-          case "${taint_effect}" in
-            NoSchedule|PreferNoSchedule|NoExecute)
-              log "    taint[${idx}]: key=${taint_key} effect=${taint_effect}"
-              ;;
-            *)
-              fail "${yaml_file}: ${ng_yaml_key}[0].taints[${idx}].effect '${taint_effect}' must be one of: NoSchedule, PreferNoSchedule, NoExecute"
-              ;;
-          esac
+          fail "${yaml_file}: ${ng_yaml_key}[${ng_idx}].volumeKmsKeyID '${volume_kms_key_id_value}' must be a KMS key ARN (expected arn:aws:kms:...)"
         fi
-      done
-    fi
+      fi
 
-    # Validate availabilityZones entries on first nodegroup
-    local ng_az_count
-    ng_az_count=$(yq ".${ng_yaml_key}[0].availabilityZones | length" "${yaml_file}" 2>/dev/null || echo "0")
-    if [[ "${ng_az_count}" -gt 0 ]]; then
-      log ""
-      log "  --- Node group availabilityZones ---"
-      log "  ${ng_yaml_key}[0].availabilityZones: ${ng_az_count} entries"
-      local ng_azs
-      ng_azs=$(yq ".${ng_yaml_key}[0].availabilityZones[]" "${yaml_file}" 2>/dev/null || true)
-      while IFS= read -r az_value; do
-        if [[ -z "${az_value}" ]]; then
-          continue
-        fi
-        if [[ ! "${az_value}" =~ ^[a-z]{2}-[a-z]+-[0-9]+[a-z]$ ]]; then
-          fail "${yaml_file}: ${ng_yaml_key}[0].availabilityZones entry '${az_value}' does not look like an AZ (expected region + single letter, e.g., eu-west-1a)"
+      # spot
+      local spot_value
+      spot_value=$(yq ".${ng_yaml_key}[${ng_idx}].spot" "${yaml_file}" 2>/dev/null || echo "")
+      if [[ -n "${spot_value}" && "${spot_value}" != "null" ]]; then
+        if [[ "${spot_value}" == "true" || "${spot_value}" == "false" ]]; then
+          log "  ${ng_yaml_key}[${ng_idx}].spot: ${spot_value}"
         else
-          log "    ${az_value}: valid AZ"
+          fail "${yaml_file}: ${ng_yaml_key}[${ng_idx}].spot '${spot_value}' must be true or false"
         fi
-      done <<< "${ng_azs}"
-    fi
+      fi
+
+      # taints
+      local taint_count
+      taint_count=$(yq ".${ng_yaml_key}[${ng_idx}].taints | length" "${yaml_file}" 2>/dev/null || echo "0")
+      if [[ "${taint_count}" -gt 0 ]]; then
+        log "  ${ng_yaml_key}[${ng_idx}].taints: ${taint_count} entries"
+        for idx in $(seq 0 $((taint_count - 1))); do
+          local taint_key
+          taint_key=$(yq ".${ng_yaml_key}[${ng_idx}].taints[${idx}].key" "${yaml_file}" 2>/dev/null || echo "")
+          if [[ -z "${taint_key}" || "${taint_key}" == "null" ]]; then
+            fail "${yaml_file}: ${ng_yaml_key}[${ng_idx}].taints[${idx}] missing 'key'"
+          fi
+
+          local taint_effect
+          taint_effect=$(yq ".${ng_yaml_key}[${ng_idx}].taints[${idx}].effect" "${yaml_file}" 2>/dev/null || echo "")
+          if [[ -z "${taint_effect}" || "${taint_effect}" == "null" ]]; then
+            fail "${yaml_file}: ${ng_yaml_key}[${ng_idx}].taints[${idx}] missing 'effect'"
+          else
+            case "${taint_effect}" in
+              NoSchedule|PreferNoSchedule|NoExecute)
+                log "    taint[${idx}]: key=${taint_key} effect=${taint_effect}"
+                ;;
+              *)
+                fail "${yaml_file}: ${ng_yaml_key}[${ng_idx}].taints[${idx}].effect '${taint_effect}' must be one of: NoSchedule, PreferNoSchedule, NoExecute"
+                ;;
+            esac
+          fi
+        done
+      fi
+
+      # availabilityZones
+      local ng_az_count
+      ng_az_count=$(yq ".${ng_yaml_key}[${ng_idx}].availabilityZones | length" "${yaml_file}" 2>/dev/null || echo "0")
+      if [[ "${ng_az_count}" -gt 0 ]]; then
+        log "  ${ng_yaml_key}[${ng_idx}].availabilityZones: ${ng_az_count} entries"
+        local ng_azs
+        ng_azs=$(yq ".${ng_yaml_key}[${ng_idx}].availabilityZones[]" "${yaml_file}" 2>/dev/null || true)
+        while IFS= read -r az_value; do
+          if [[ -z "${az_value}" ]]; then
+            continue
+          fi
+          if [[ ! "${az_value}" =~ ^[a-z]{2}-[a-z]+-[0-9]+[a-z]$ ]]; then
+            fail "${yaml_file}: ${ng_yaml_key}[${ng_idx}].availabilityZones entry '${az_value}' does not look like an AZ (expected region + single letter, e.g., eu-west-1a)"
+          else
+            log "    ${az_value}: valid AZ"
+          fi
+        done <<< "${ng_azs}"
+      fi
+    done
   fi
 
   # eksctl auto-sets Name tag - user-supplied Name in metadata tags feeds into nodegroups
@@ -595,6 +632,8 @@ main() {
   log "AWS region: ${aws_region}"
   log "Kubernetes version: ${kubernetes_version}"
   log "Nodegroup prefix: ${nodegroup_prefix}"
+  log "Additional nodegroups: ${additional_ng_count}"
+  log "Expected total nodegroups: ${expected_total_nodegroup_count}"
   log "==================================================="
 
   # Phase 1: Validate substituted files on disk

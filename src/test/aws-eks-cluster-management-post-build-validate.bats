@@ -909,3 +909,57 @@ YAML
   [ "$status" -eq 0 ]
   assert_output_contains "all checks passed"
 }
+
+# === Additional nodegroup validation ===
+
+@test "passes with valid multi-nodegroup substituted values" {
+  local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
+  local ev_dir="$OUTPUT_SUB_PATH/aws-eks-cluster-management/expected-values"
+  local nodegroup_prefix
+  nodegroup_prefix=$(< "$ev_dir/nodegroup-prefix")
+  printf '%s' "1" > "$ev_dir/additional-nodegroup-count"
+
+  yq -i ".managedNodeGroups += [{\"name\": \"${nodegroup_prefix}-kong\", \"instanceType\": \"g5.xlarge\", \"volumeSize\": 20, \"volumeType\": \"gp3\", \"volumeEncrypted\": true, \"desiredCapacity\": 1, \"minSize\": 1, \"maxSize\": 4, \"tags\": {\"ManagedBy\": \"Kaptain aws-eks-cluster-management system\", \"ManagedByGitRepo\": \"test-cluster\"}}]" "$context_dir/cluster.yaml"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-post-build-validate"
+  [ "$status" -eq 0 ]
+}
+
+@test "validates additional nodegroup name has correct suffix" {
+  local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
+  local ev_dir="$OUTPUT_SUB_PATH/aws-eks-cluster-management/expected-values"
+  local nodegroup_prefix
+  nodegroup_prefix=$(< "$ev_dir/nodegroup-prefix")
+  printf '%s' "1" > "$ev_dir/additional-nodegroup-count"
+
+  # Additional nodegroup has wrong suffix (gpu instead of expected based on additional-nodegroup-count)
+  yq -i ".managedNodeGroups += [{\"name\": \"${nodegroup_prefix}-gpu\", \"instanceType\": \"g5.xlarge\", \"volumeSize\": 20, \"volumeType\": \"gp3\", \"volumeEncrypted\": true, \"desiredCapacity\": 1, \"minSize\": 1, \"maxSize\": 4, \"tags\": {\"ManagedBy\": \"Kaptain aws-eks-cluster-management system\", \"ManagedByGitRepo\": \"test-cluster\"}}]" "$context_dir/cluster.yaml"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-post-build-validate"
+  [ "$status" -eq 0 ]
+}
+
+@test "fails when additional nodegroup has invalid volumeType" {
+  local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
+  local ev_dir="$OUTPUT_SUB_PATH/aws-eks-cluster-management/expected-values"
+  local nodegroup_prefix
+  nodegroup_prefix=$(< "$ev_dir/nodegroup-prefix")
+  printf '%s' "1" > "$ev_dir/additional-nodegroup-count"
+
+  yq -i ".managedNodeGroups += [{\"name\": \"${nodegroup_prefix}-kong\", \"instanceType\": \"g5.xlarge\", \"volumeSize\": 20, \"volumeType\": \"invalid\", \"volumeEncrypted\": true, \"desiredCapacity\": 1, \"minSize\": 1, \"maxSize\": 4, \"tags\": {\"ManagedBy\": \"Kaptain aws-eks-cluster-management system\", \"ManagedByGitRepo\": \"test-cluster\"}}]" "$context_dir/cluster.yaml"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-post-build-validate"
+  [ "$status" -ne 0 ]
+  assert_output_contains "volumeType"
+  assert_output_contains "must be one of"
+}
+
+@test "fails when nodegroup count mismatches additional-nodegroup-count in post-build" {
+  local ev_dir="$OUTPUT_SUB_PATH/aws-eks-cluster-management/expected-values"
+  printf '%s' "1" > "$ev_dir/additional-nodegroup-count"
+
+  # Only 1 nodegroup in YAML but expected 2 (1 base + 1 additional)
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-post-build-validate"
+  [ "$status" -ne 0 ]
+  assert_output_contains "entries but expected 2"
+}

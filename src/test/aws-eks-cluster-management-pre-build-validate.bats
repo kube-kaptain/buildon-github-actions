@@ -73,14 +73,14 @@ privateCluster:
 
 managedNodeGroups:
   - name: ${NodeGroupDefaultPrefix}
-    instanceType: ${NodegroupInstanceType}
+    instanceType: ${NodegroupInstanceTypeKaptainDefaultNg}
     privateNetworking: true
-    volumeSize: ${NodegroupVolumeSize}
-    volumeType: ${NodegroupVolumeType}
-    volumeEncrypted: ${NodegroupVolumeEncrypted}
-    desiredCapacity: ${NodegroupDesiredCapacity}
-    minSize: ${NodegroupMinSize}
-    maxSize: ${NodegroupMaxSize}
+    volumeSize: ${NodegroupVolumeSizeKaptainDefaultNg}
+    volumeType: ${NodegroupVolumeTypeKaptainDefaultNg}
+    volumeEncrypted: ${NodegroupVolumeEncryptedKaptainDefaultNg}
+    desiredCapacity: ${NodegroupDesiredCapacityKaptainDefaultNg}
+    minSize: ${NodegroupMinSizeKaptainDefaultNg}
+    maxSize: ${NodegroupMaxSizeKaptainDefaultNg}
 
 addons:
   - name: coredns
@@ -403,8 +403,8 @@ teardown() {
 
 @test "passes when securityGroups.attachIDs has correct tokens" {
   local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
-  printf '%s' "2" > "$OUTPUT_SUB_PATH/aws-eks-cluster-management/expected-values/nodegroup-sg-attach-ids-count"
-  yq -i '.managedNodeGroups[0].securityGroups.attachIDs = ["${NodegroupSecurityGroupsAttachId1}", "${NodegroupSecurityGroupsAttachId2}"]' "$context_dir/cluster.yaml"
+  printf '%s' "2" > "$OUTPUT_SUB_PATH/aws-eks-cluster-management/expected-values/nodegroup-sg-attach-ids-count-kaptaindefaultng"
+  yq -i '.managedNodeGroups[0].securityGroups.attachIDs = ["${NodegroupSecurityGroupsAttachIdKaptainDefaultNg1}", "${NodegroupSecurityGroupsAttachIdKaptainDefaultNg2}"]' "$context_dir/cluster.yaml"
 
   run "$SCRIPTS_DIR/aws-eks-cluster-management-pre-build-validate"
   [ "$status" -eq 0 ]
@@ -412,8 +412,8 @@ teardown() {
 
 @test "fails when securityGroups.attachIDs count mismatches" {
   local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
-  printf '%s' "2" > "$OUTPUT_SUB_PATH/aws-eks-cluster-management/expected-values/nodegroup-sg-attach-ids-count"
-  yq -i '.managedNodeGroups[0].securityGroups.attachIDs = ["${NodegroupSecurityGroupsAttachId1}"]' "$context_dir/cluster.yaml"
+  printf '%s' "2" > "$OUTPUT_SUB_PATH/aws-eks-cluster-management/expected-values/nodegroup-sg-attach-ids-count-kaptaindefaultng"
+  yq -i '.managedNodeGroups[0].securityGroups.attachIDs = ["${NodegroupSecurityGroupsAttachIdKaptainDefaultNg1}"]' "$context_dir/cluster.yaml"
 
   run "$SCRIPTS_DIR/aws-eks-cluster-management-pre-build-validate"
   [ "$status" -ne 0 ]
@@ -422,13 +422,13 @@ teardown() {
 
 @test "fails when securityGroups.attachIDs has wrong token" {
   local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
-  printf '%s' "1" > "$OUTPUT_SUB_PATH/aws-eks-cluster-management/expected-values/nodegroup-sg-attach-ids-count"
+  printf '%s' "1" > "$OUTPUT_SUB_PATH/aws-eks-cluster-management/expected-values/nodegroup-sg-attach-ids-count-kaptaindefaultng"
   yq -i '.managedNodeGroups[0].securityGroups.attachIDs = ["${WrongToken}"]' "$context_dir/cluster.yaml"
 
   run "$SCRIPTS_DIR/aws-eks-cluster-management-pre-build-validate"
   [ "$status" -ne 0 ]
   assert_output_contains "must be exactly"
-  assert_output_contains '${NodegroupSecurityGroupsAttachId1}'
+  assert_output_contains '${NodegroupSecurityGroupsAttachIdKaptainDefaultNg1}'
 }
 
 @test "fails when securityGroups.attachIDs present but no count file" {
@@ -441,7 +441,7 @@ teardown() {
 }
 
 @test "fails when securityGroups.attachIDs config provided but missing from YAML" {
-  printf '%s' "2" > "$OUTPUT_SUB_PATH/aws-eks-cluster-management/expected-values/nodegroup-sg-attach-ids-count"
+  printf '%s' "2" > "$OUTPUT_SUB_PATH/aws-eks-cluster-management/expected-values/nodegroup-sg-attach-ids-count-kaptaindefaultng"
 
   run "$SCRIPTS_DIR/aws-eks-cluster-management-pre-build-validate"
   [ "$status" -ne 0 ]
@@ -489,7 +489,7 @@ teardown() {
   [ "$status" -ne 0 ]
   assert_output_contains "volumeType"
   assert_output_contains "must be exactly"
-  assert_output_contains '${NodegroupVolumeType}'
+  assert_output_contains '${NodegroupVolumeTypeKaptainDefaultNg}'
 }
 
 @test "fails when volumeEncrypted token is wrong" {
@@ -500,12 +500,12 @@ teardown() {
   [ "$status" -ne 0 ]
   assert_output_contains "volumeEncrypted"
   assert_output_contains "must be exactly"
-  assert_output_contains '${NodegroupVolumeEncrypted}'
+  assert_output_contains '${NodegroupVolumeEncryptedKaptainDefaultNg}'
 }
 
 @test "passes when volumeKmsKeyID has correct token" {
   local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
-  yq -i '.managedNodeGroups[0].volumeKmsKeyID = "${NodegroupVolumeKmsKeyId}"' "$context_dir/cluster.yaml"
+  yq -i '.managedNodeGroups[0].volumeKmsKeyID = "${NodegroupVolumeKmsKeyIdKaptainDefaultNg}"' "$context_dir/cluster.yaml"
 
   run "$SCRIPTS_DIR/aws-eks-cluster-management-pre-build-validate"
   [ "$status" -eq 0 ]
@@ -519,14 +519,14 @@ teardown() {
   [ "$status" -ne 0 ]
   assert_output_contains "volumeKmsKeyID"
   assert_output_contains "must be exactly"
-  assert_output_contains '${NodegroupVolumeKmsKeyId}'
+  assert_output_contains '${NodegroupVolumeKmsKeyIdKaptainDefaultNg}'
 }
 
 # === Spot token validation ===
 
 @test "passes when spot has correct token" {
   local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
-  yq -i '.managedNodeGroups[0].spot = "${NodegroupSpot}"' "$context_dir/cluster.yaml"
+  yq -i '.managedNodeGroups[0].spot = "${NodegroupSpotKaptainDefaultNg}"' "$context_dir/cluster.yaml"
 
   run "$SCRIPTS_DIR/aws-eks-cluster-management-pre-build-validate"
   [ "$status" -eq 0 ]
@@ -540,38 +540,38 @@ teardown() {
   [ "$status" -ne 0 ]
   assert_output_contains "spot"
   assert_output_contains "must be exactly"
-  assert_output_contains '${NodegroupSpot}'
+  assert_output_contains '${NodegroupSpotKaptainDefaultNg}'
 }
 
 # === Direct-emit token blocking ===
 
-@test "fails when NodegroupTaints token found in template" {
+@test "fails when NodegroupTaintsKaptainDefaultNg token found in template" {
   local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
-  yq -i '.managedNodeGroups[0].taints = "${NodegroupTaints}"' "$context_dir/cluster.yaml"
+  yq -i '.managedNodeGroups[0].taints = "${NodegroupTaintsKaptainDefaultNg}"' "$context_dir/cluster.yaml"
 
   run "$SCRIPTS_DIR/aws-eks-cluster-management-pre-build-validate"
   [ "$status" -ne 0 ]
-  assert_output_contains "NodegroupTaints"
+  assert_output_contains "NodegroupTaintsKaptainDefaultNg"
   assert_output_contains "not allowed"
 }
 
-@test "fails when NodegroupLabels token found in template" {
+@test "fails when NodegroupLabelsKaptainDefaultNg token found in template" {
   local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
-  yq -i '.managedNodeGroups[0].labels = "${NodegroupLabels}"' "$context_dir/cluster.yaml"
+  yq -i '.managedNodeGroups[0].labels = "${NodegroupLabelsKaptainDefaultNg}"' "$context_dir/cluster.yaml"
 
   run "$SCRIPTS_DIR/aws-eks-cluster-management-pre-build-validate"
   [ "$status" -ne 0 ]
-  assert_output_contains "NodegroupLabels"
+  assert_output_contains "NodegroupLabelsKaptainDefaultNg"
   assert_output_contains "not allowed"
 }
 
-@test "fails when NodegroupTags token found in template" {
+@test "fails when NodegroupTagsKaptainDefaultNg token found in template" {
   local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
-  yq -i '.managedNodeGroups[0].tags = "${NodegroupTags}"' "$context_dir/cluster.yaml"
+  yq -i '.managedNodeGroups[0].tags = "${NodegroupTagsKaptainDefaultNg}"' "$context_dir/cluster.yaml"
 
   run "$SCRIPTS_DIR/aws-eks-cluster-management-pre-build-validate"
   [ "$status" -ne 0 ]
-  assert_output_contains "NodegroupTags"
+  assert_output_contains "NodegroupTagsKaptainDefaultNg"
   assert_output_contains "not allowed"
 }
 
@@ -627,23 +627,23 @@ teardown() {
   assert_output_contains "numbered tokens instead"
 }
 
-@test "fails when NodegroupSecurityGroupsAttachIds token found in template" {
+@test "fails when NodegroupSecurityGroupsAttachIdsKaptainDefaultNg token found in template" {
   local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
-  yq -i '.managedNodeGroups[0].securityGroups.attachIDs = "${NodegroupSecurityGroupsAttachIds}"' "$context_dir/cluster.yaml"
+  yq -i '.managedNodeGroups[0].securityGroups.attachIDs = "${NodegroupSecurityGroupsAttachIdsKaptainDefaultNg}"' "$context_dir/cluster.yaml"
 
   run "$SCRIPTS_DIR/aws-eks-cluster-management-pre-build-validate"
   [ "$status" -ne 0 ]
-  assert_output_contains "NodegroupSecurityGroupsAttachIds"
+  assert_output_contains "NodegroupSecurityGroupsAttachIdsKaptainDefaultNg"
   assert_output_contains "numbered tokens instead"
 }
 
-@test "fails when NodegroupAvailabilityZones token found in template" {
+@test "fails when NodegroupAvailabilityZonesKaptainDefaultNg token found in template" {
   local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
-  yq -i '.managedNodeGroups[0].availabilityZones = "${NodegroupAvailabilityZones}"' "$context_dir/cluster.yaml"
+  yq -i '.managedNodeGroups[0].availabilityZones = "${NodegroupAvailabilityZonesKaptainDefaultNg}"' "$context_dir/cluster.yaml"
 
   run "$SCRIPTS_DIR/aws-eks-cluster-management-pre-build-validate"
   [ "$status" -ne 0 ]
-  assert_output_contains "NodegroupAvailabilityZones"
+  assert_output_contains "NodegroupAvailabilityZonesKaptainDefaultNg"
   assert_output_contains "numbered tokens instead"
 }
 
@@ -651,8 +651,8 @@ teardown() {
 
 @test "passes when availabilityZones has correct tokens" {
   local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
-  printf '%s' "2" > "$OUTPUT_SUB_PATH/aws-eks-cluster-management/expected-values/nodegroup-az-count"
-  yq -i '.managedNodeGroups[0].availabilityZones = ["${NodegroupAvailabilityZone1}", "${NodegroupAvailabilityZone2}"]' "$context_dir/cluster.yaml"
+  printf '%s' "2" > "$OUTPUT_SUB_PATH/aws-eks-cluster-management/expected-values/nodegroup-az-count-kaptaindefaultng"
+  yq -i '.managedNodeGroups[0].availabilityZones = ["${NodegroupAvailabilityZoneKaptainDefaultNg1}", "${NodegroupAvailabilityZoneKaptainDefaultNg2}"]' "$context_dir/cluster.yaml"
 
   run "$SCRIPTS_DIR/aws-eks-cluster-management-pre-build-validate"
   [ "$status" -eq 0 ]
@@ -660,8 +660,8 @@ teardown() {
 
 @test "fails when availabilityZones count mismatches" {
   local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
-  printf '%s' "2" > "$OUTPUT_SUB_PATH/aws-eks-cluster-management/expected-values/nodegroup-az-count"
-  yq -i '.managedNodeGroups[0].availabilityZones = ["${NodegroupAvailabilityZone1}"]' "$context_dir/cluster.yaml"
+  printf '%s' "2" > "$OUTPUT_SUB_PATH/aws-eks-cluster-management/expected-values/nodegroup-az-count-kaptaindefaultng"
+  yq -i '.managedNodeGroups[0].availabilityZones = ["${NodegroupAvailabilityZoneKaptainDefaultNg1}"]' "$context_dir/cluster.yaml"
 
   run "$SCRIPTS_DIR/aws-eks-cluster-management-pre-build-validate"
   [ "$status" -ne 0 ]
@@ -670,13 +670,13 @@ teardown() {
 
 @test "fails when availabilityZones has wrong token" {
   local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
-  printf '%s' "1" > "$OUTPUT_SUB_PATH/aws-eks-cluster-management/expected-values/nodegroup-az-count"
+  printf '%s' "1" > "$OUTPUT_SUB_PATH/aws-eks-cluster-management/expected-values/nodegroup-az-count-kaptaindefaultng"
   yq -i '.managedNodeGroups[0].availabilityZones = ["${WrongToken}"]' "$context_dir/cluster.yaml"
 
   run "$SCRIPTS_DIR/aws-eks-cluster-management-pre-build-validate"
   [ "$status" -ne 0 ]
   assert_output_contains "must be exactly"
-  assert_output_contains '${NodegroupAvailabilityZone1}'
+  assert_output_contains '${NodegroupAvailabilityZoneKaptainDefaultNg1}'
 }
 
 @test "fails when availabilityZones present but no count file" {
@@ -689,7 +689,7 @@ teardown() {
 }
 
 @test "fails when availabilityZones config provided but missing from YAML" {
-  printf '%s' "2" > "$OUTPUT_SUB_PATH/aws-eks-cluster-management/expected-values/nodegroup-az-count"
+  printf '%s' "2" > "$OUTPUT_SUB_PATH/aws-eks-cluster-management/expected-values/nodegroup-az-count-kaptaindefaultng"
 
   run "$SCRIPTS_DIR/aws-eks-cluster-management-pre-build-validate"
   [ "$status" -ne 0 ]
@@ -841,4 +841,65 @@ YAML
   assert_output_contains "metadata.name"
   assert_output_contains "metadata.region"
   assert_output_contains "2 error(s)"
+}
+
+# === Additional nodegroup validation ===
+
+@test "passes with valid base and additional nodegroup tokens" {
+  local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
+  local ev_dir="$OUTPUT_SUB_PATH/aws-eks-cluster-management/expected-values"
+  printf '%s' "1" > "$ev_dir/additional-nodegroup-count"
+  printf '%s' "KONG" > "$ev_dir/additional-nodegroup-suffixes"
+
+  yq -i '.managedNodeGroups += [{"name": "${NodeGroupDefaultPrefixKong}", "instanceType": "${NodegroupInstanceTypeKong}", "volumeSize": "${NodegroupVolumeSizeKong}", "volumeType": "${NodegroupVolumeTypeKong}", "volumeEncrypted": "${NodegroupVolumeEncryptedKong}", "desiredCapacity": "${NodegroupDesiredCapacityKong}", "minSize": "${NodegroupMinSizeKong}", "maxSize": "${NodegroupMaxSizeKong}"}]' "$context_dir/cluster.yaml"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-pre-build-validate"
+  [ "$status" -eq 0 ]
+}
+
+@test "fails when additional nodegroup has wrong token suffix" {
+  local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
+  local ev_dir="$OUTPUT_SUB_PATH/aws-eks-cluster-management/expected-values"
+  printf '%s' "1" > "$ev_dir/additional-nodegroup-count"
+  printf '%s' "KONG" > "$ev_dir/additional-nodegroup-suffixes"
+
+  yq -i '.managedNodeGroups += [{"name": "${NodeGroupDefaultPrefixWrong}", "instanceType": "${NodegroupInstanceTypeKong}", "volumeSize": "${NodegroupVolumeSizeKong}", "volumeType": "${NodegroupVolumeTypeKong}", "volumeEncrypted": "${NodegroupVolumeEncryptedKong}", "desiredCapacity": "${NodegroupDesiredCapacityKong}", "minSize": "${NodegroupMinSizeKong}", "maxSize": "${NodegroupMaxSizeKong}"}]' "$context_dir/cluster.yaml"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-pre-build-validate"
+  [ "$status" -ne 0 ]
+  assert_output_contains "does not start with NODE_GROUP_DEFAULT_PREFIX"
+}
+
+@test "fails when nodegroup count mismatches additional-nodegroup-count" {
+  local ev_dir="$OUTPUT_SUB_PATH/aws-eks-cluster-management/expected-values"
+  printf '%s' "1" > "$ev_dir/additional-nodegroup-count"
+  printf '%s' "KONG" > "$ev_dir/additional-nodegroup-suffixes"
+
+  # Only 1 nodegroup in YAML but expected 2 (1 base + 1 additional)
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-pre-build-validate"
+  [ "$status" -ne 0 ]
+  assert_output_contains "entries but expected 2"
+}
+
+@test "fails when AdditionalNodeGroups source token in YAML" {
+  local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
+  yq -i '.managedNodeGroups[0].additionalGroups = "${AdditionalNodeGroups}"' "$context_dir/cluster.yaml"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-pre-build-validate"
+  [ "$status" -ne 0 ]
+  assert_output_contains "AdditionalNodeGroups"
+  assert_output_contains "comma-separated source token"
+}
+
+@test "validates per-nodegroup sg-attach tokens on additional nodegroup" {
+  local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
+  local ev_dir="$OUTPUT_SUB_PATH/aws-eks-cluster-management/expected-values"
+  printf '%s' "1" > "$ev_dir/additional-nodegroup-count"
+  printf '%s' "KONG" > "$ev_dir/additional-nodegroup-suffixes"
+  printf '%s' "2" > "$ev_dir/nodegroup-sg-attach-ids-count-kong"
+
+  yq -i '.managedNodeGroups += [{"name": "${NodeGroupDefaultPrefixKong}", "instanceType": "${NodegroupInstanceTypeKong}", "volumeSize": "${NodegroupVolumeSizeKong}", "volumeType": "${NodegroupVolumeTypeKong}", "volumeEncrypted": "${NodegroupVolumeEncryptedKong}", "desiredCapacity": "${NodegroupDesiredCapacityKong}", "minSize": "${NodegroupMinSizeKong}", "maxSize": "${NodegroupMaxSizeKong}", "securityGroups": {"attachIDs": ["${NodegroupSecurityGroupsAttachIdKong1}", "${NodegroupSecurityGroupsAttachIdKong2}"]}}]' "$context_dir/cluster.yaml"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-pre-build-validate"
+  [ "$status" -eq 0 ]
 }
