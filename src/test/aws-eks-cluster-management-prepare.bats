@@ -24,6 +24,9 @@ setup() {
   printf 't3.medium' > "$CONFIG_SUB_PATH/NodegroupInstanceType"
   printf 'arn:aws:kms:eu-west-1:123456789012:key/12345678-1234-1234-1234-123456789012' > "$CONFIG_SUB_PATH/SecretsEncryptionKeyArn"
   printf '123456789012' > "$CONFIG_SUB_PATH/AwsAccountId"
+  printf 'sg-clusterdefault123456' > "$CONFIG_SUB_PATH/ClusterSecurityGroup"
+  printf 'eksctl' > "$CONFIG_SUB_PATH/ClusterOrigin"
+  printf 'managed' > "$CONFIG_SUB_PATH/NodegroupType"
   printf 'subnet-aaa11111111111111' > "$CONFIG_SUB_PATH/PrivateSubnetIdA"
   printf 'subnet-bbb22222222222222' > "$CONFIG_SUB_PATH/PrivateSubnetIdB"
   printf 'subnet-ccc33333333333333' > "$CONFIG_SUB_PATH/PrivateSubnetIdC"
@@ -140,6 +143,8 @@ teardown() {
   rm "$CONFIG_SUB_PATH/NodegroupInstanceType"
   rm "$CONFIG_SUB_PATH/SecretsEncryptionKeyArn"
   rm "$CONFIG_SUB_PATH/AwsAccountId"
+  rm "$CONFIG_SUB_PATH/ClusterOrigin"
+  rm "$CONFIG_SUB_PATH/NodegroupType"
 
   run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
   [ "$status" -ne 0 ]
@@ -148,7 +153,9 @@ teardown() {
   assert_output_contains "NODEGROUP_INSTANCE_TYPE"
   assert_output_contains "SECRETS_ENCRYPTION_KEY_ARN"
   assert_output_contains "AWS_ACCOUNT_ID"
-  assert_output_contains "5 missing config file(s)"
+  assert_output_contains "CLUSTER_ORIGIN"
+  assert_output_contains "NODEGROUP_TYPE"
+  assert_output_contains "7 missing config file(s)"
 }
 
 # === Private networking config ===
@@ -206,6 +213,338 @@ teardown() {
   local content
   content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
   [[ "$content" != *"securityGroup"* ]]
+}
+
+# === Cluster origin ===
+
+@test "fails when ClusterOrigin config file missing" {
+  rm "$CONFIG_SUB_PATH/ClusterOrigin"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -ne 0 ]
+  assert_output_contains "CLUSTER_ORIGIN"
+  assert_output_contains "not found"
+}
+
+@test "fails when ClusterOrigin has invalid value" {
+  printf 'terraform' > "$CONFIG_SUB_PATH/ClusterOrigin"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -ne 0 ]
+  assert_output_contains "CLUSTER_ORIGIN"
+  assert_output_contains "must be 'eksctl' or 'adopted'"
+}
+
+@test "succeeds with ClusterOrigin=eksctl without security group config" {
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -eq 0 ]
+  assert_output_contains "Cluster origin: eksctl"
+}
+
+@test "succeeds with ClusterOrigin=adopted and VpcSecurityGroup present" {
+  printf 'adopted' > "$CONFIG_SUB_PATH/ClusterOrigin"
+  printf 'sg-0123456789abcdef0' > "$CONFIG_SUB_PATH/VpcSecurityGroup"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -eq 0 ]
+  assert_output_contains "Cluster origin: adopted"
+}
+
+@test "succeeds with ClusterOrigin=adopted and VpcControlPlaneSecurityGroupIds present" {
+  printf 'adopted' > "$CONFIG_SUB_PATH/ClusterOrigin"
+  printf 'sg-0123456789abcdef0' > "$CONFIG_SUB_PATH/VpcControlPlaneSecurityGroupIds"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -eq 0 ]
+}
+
+@test "fails with ClusterOrigin=adopted and no security group config" {
+  printf 'adopted' > "$CONFIG_SUB_PATH/ClusterOrigin"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -ne 0 ]
+  assert_output_contains "CLUSTER_ORIGIN=adopted"
+  assert_output_contains "VPC_SECURITY_GROUP"
+}
+
+@test "fails when both VpcSecurityGroup and VpcControlPlaneSecurityGroupIds present" {
+  printf 'sg-0123456789abcdef0' > "$CONFIG_SUB_PATH/VpcSecurityGroup"
+  printf 'sg-0123456789abcdef0' > "$CONFIG_SUB_PATH/VpcControlPlaneSecurityGroupIds"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -ne 0 ]
+  assert_output_contains "mutually exclusive"
+}
+
+@test "fails when both SG configs present even with adopted origin" {
+  printf 'adopted' > "$CONFIG_SUB_PATH/ClusterOrigin"
+  printf 'sg-0123456789abcdef0' > "$CONFIG_SUB_PATH/VpcSecurityGroup"
+  printf 'sg-0123456789abcdef0' > "$CONFIG_SUB_PATH/VpcControlPlaneSecurityGroupIds"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -ne 0 ]
+  assert_output_contains "mutually exclusive"
+}
+
+# === Nodegroup type ===
+
+@test "fails when NodegroupType config file missing" {
+  rm "$CONFIG_SUB_PATH/NodegroupType"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -ne 0 ]
+  assert_output_contains "NODEGROUP_TYPE"
+  assert_output_contains "not found"
+}
+
+@test "fails when NodegroupType has invalid value" {
+  printf 'fargate' > "$CONFIG_SUB_PATH/NodegroupType"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -ne 0 ]
+  assert_output_contains "NODEGROUP_TYPE"
+  assert_output_contains "must be 'managed' or 'unmanaged'"
+}
+
+@test "generates managedNodeGroups when NodegroupType is managed" {
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -eq 0 ]
+
+  local content
+  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
+  assert_contains "$content" "managedNodeGroups:" "cluster.yaml"
+  [[ "$content" != *"nodeGroups:"* ]]
+}
+
+@test "generates nodeGroups when NodegroupType is unmanaged" {
+  printf 'unmanaged' > "$CONFIG_SUB_PATH/NodegroupType"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -eq 0 ]
+
+  local content
+  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
+  assert_contains "$content" "nodeGroups:" "cluster.yaml"
+  [[ "$content" != *"managedNodeGroups:"* ]]
+}
+
+@test "generates updateConfig when NodegroupType is managed" {
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -eq 0 ]
+
+  local content
+  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
+  assert_contains "$content" "updateConfig:" "cluster.yaml"
+  assert_contains "$content" "maxUnavailable:" "cluster.yaml"
+}
+
+@test "does not generate updateConfig when NodegroupType is unmanaged" {
+  printf 'unmanaged' > "$CONFIG_SUB_PATH/NodegroupType"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -eq 0 ]
+
+  local content
+  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
+  [[ "$content" != *"updateConfig:"* ]]
+  [[ "$content" != *"maxUnavailable:"* ]]
+}
+
+@test "does not write updateConfig default when NodegroupType is unmanaged" {
+  printf 'unmanaged' > "$CONFIG_SUB_PATH/NodegroupType"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -eq 0 ]
+
+  [ ! -f "$OUTPUT_SUB_PATH/docker/config/NodegroupUpdateConfigMaxUnavailable" ]
+}
+
+@test "fails when updateConfig config present with unmanaged NodegroupType" {
+  printf 'unmanaged' > "$CONFIG_SUB_PATH/NodegroupType"
+  printf '2' > "$CONFIG_SUB_PATH/NodegroupUpdateConfigMaxUnavailable"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -ne 0 ]
+  assert_output_contains "NODEGROUP_UPDATE_CONFIG_MAX_UNAVAILABLE"
+  assert_output_contains "not supported for unmanaged"
+}
+
+@test "writes nodegroup-type to expected-values" {
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -eq 0 ]
+
+  [ -f "$OUTPUT_SUB_PATH/aws-eks-cluster-management/expected-values/nodegroup-type" ]
+  [ "$(< "$OUTPUT_SUB_PATH/aws-eks-cluster-management/expected-values/nodegroup-type")" = "managed" ]
+}
+
+# === Control plane security group IDs generation ===
+
+@test "generates controlPlaneSecurityGroupIDs with numbered tokens when config present" {
+  printf 'sg-aaa,sg-bbb' > "$CONFIG_SUB_PATH/VpcControlPlaneSecurityGroupIds"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -eq 0 ]
+
+  local content
+  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
+  assert_contains "$content" "controlPlaneSecurityGroupIDs:" "cluster.yaml"
+  assert_contains "$content" '- ${VpcControlPlaneSecurityGroupId1}' "cluster.yaml"
+  assert_contains "$content" '- ${VpcControlPlaneSecurityGroupId2}' "cluster.yaml"
+}
+
+@test "expands VPC_CONTROL_PLANE_SECURITY_GROUP_IDS to numbered token files" {
+  printf 'sg-aaa,sg-bbb,sg-ccc' > "$CONFIG_SUB_PATH/VpcControlPlaneSecurityGroupIds"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -eq 0 ]
+
+  [ "$(< "$OUTPUT_SUB_PATH/docker/config/VpcControlPlaneSecurityGroupId1")" = "sg-aaa" ]
+  [ "$(< "$OUTPUT_SUB_PATH/docker/config/VpcControlPlaneSecurityGroupId2")" = "sg-bbb" ]
+  [ "$(< "$OUTPUT_SUB_PATH/docker/config/VpcControlPlaneSecurityGroupId3")" = "sg-ccc" ]
+}
+
+@test "writes control-plane-sg-ids-count to expected-values" {
+  printf 'sg-aaa,sg-bbb' > "$CONFIG_SUB_PATH/VpcControlPlaneSecurityGroupIds"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -eq 0 ]
+
+  [ -f "$OUTPUT_SUB_PATH/aws-eks-cluster-management/expected-values/control-plane-sg-ids-count" ]
+  [ "$(< "$OUTPUT_SUB_PATH/aws-eks-cluster-management/expected-values/control-plane-sg-ids-count")" = "2" ]
+}
+
+@test "does not generate controlPlaneSecurityGroupIDs by default" {
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -eq 0 ]
+
+  local content
+  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
+  [[ "$content" != *"controlPlaneSecurityGroupIDs"* ]]
+}
+
+@test "generates securityGroups.attachIDs with numbered tokens when config present" {
+  printf 'sg-aaa,sg-bbb' > "$CONFIG_SUB_PATH/NodegroupSecurityGroupsAttachIds"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -eq 0 ]
+
+  local content
+  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
+  assert_contains "$content" "securityGroups:" "cluster.yaml"
+  assert_contains "$content" "attachIDs:" "cluster.yaml"
+  assert_contains "$content" '- ${NodegroupSecurityGroupsAttachIdKaptainDefaultNg1}' "cluster.yaml"
+  assert_contains "$content" '- ${NodegroupSecurityGroupsAttachIdKaptainDefaultNg2}' "cluster.yaml"
+}
+
+@test "expands NODEGROUP_SECURITY_GROUPS_ATTACH_IDS to numbered token files" {
+  printf 'sg-aaa,sg-bbb,sg-ccc' > "$CONFIG_SUB_PATH/NodegroupSecurityGroupsAttachIds"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -eq 0 ]
+
+  [ "$(< "$OUTPUT_SUB_PATH/docker/config/NodegroupSecurityGroupsAttachIdKaptainDefaultNg1")" = "sg-aaa" ]
+  [ "$(< "$OUTPUT_SUB_PATH/docker/config/NodegroupSecurityGroupsAttachIdKaptainDefaultNg2")" = "sg-bbb" ]
+  [ "$(< "$OUTPUT_SUB_PATH/docker/config/NodegroupSecurityGroupsAttachIdKaptainDefaultNg3")" = "sg-ccc" ]
+}
+
+@test "writes nodegroup-sg-attach-ids-count to expected-values" {
+  printf 'sg-aaa,sg-bbb' > "$CONFIG_SUB_PATH/NodegroupSecurityGroupsAttachIds"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -eq 0 ]
+
+  [ -f "$OUTPUT_SUB_PATH/aws-eks-cluster-management/expected-values/nodegroup-sg-attach-ids-count-kaptaindefaultng" ]
+  [ "$(< "$OUTPUT_SUB_PATH/aws-eks-cluster-management/expected-values/nodegroup-sg-attach-ids-count-kaptaindefaultng")" = "2" ]
+}
+
+@test "generates sharedNodeSecurityGroup when config present and unmanaged" {
+  printf 'unmanaged' > "$CONFIG_SUB_PATH/NodegroupType"
+  printf 'sg-0shared123456789' > "$CONFIG_SUB_PATH/VpcSharedNodeSecurityGroup"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -eq 0 ]
+
+  local content
+  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
+  assert_contains "$content" 'sharedNodeSecurityGroup: ${VpcSharedNodeSecurityGroup}' "cluster.yaml"
+}
+
+@test "does not generate sharedNodeSecurityGroup by default" {
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -eq 0 ]
+
+  local content
+  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
+  [[ "$content" != *"sharedNodeSecurityGroup"* ]]
+}
+
+@test "fails when sharedNodeSecurityGroup config present with managed NodegroupType" {
+  printf 'sg-0shared123456789' > "$CONFIG_SUB_PATH/VpcSharedNodeSecurityGroup"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -ne 0 ]
+  assert_output_contains "VPC_SHARED_NODE_SECURITY_GROUP"
+  assert_output_contains "not supported for managed"
+}
+
+# === Volume config ===
+
+@test "generates volumeType and volumeEncrypted in cluster.yaml" {
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -eq 0 ]
+
+  local content
+  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
+  assert_contains "$content" 'volumeType: ${NodegroupVolumeTypeKaptainDefaultNg}' "cluster.yaml"
+  assert_contains "$content" 'volumeEncrypted: ${NodegroupVolumeEncryptedKaptainDefaultNg}' "cluster.yaml"
+}
+
+@test "generates volumeKmsKeyID when config present" {
+  printf 'arn:aws:kms:eu-west-1:123456789012:key/12345678-1234-1234-1234-123456789012' > "$CONFIG_SUB_PATH/NodegroupVolumeKmsKeyId"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -eq 0 ]
+
+  local content
+  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
+  assert_contains "$content" 'volumeKmsKeyID: ${NodegroupVolumeKmsKeyIdKaptainDefaultNg}' "cluster.yaml"
+}
+
+@test "does not generate volumeKmsKeyID by default" {
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -eq 0 ]
+
+  local content
+  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
+  [[ "$content" != *"volumeKmsKeyID"* ]]
+}
+
+@test "fails when NODEGROUP_VOLUME_TYPE is invalid" {
+  printf 'ssd' > "$CONFIG_SUB_PATH/NodegroupVolumeType"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -ne 0 ]
+  assert_output_contains "NODEGROUP_VOLUME_TYPE"
+  assert_output_contains "must be one of"
+}
+
+@test "fails when NODEGROUP_VOLUME_ENCRYPTED is not true or false" {
+  printf 'yes' > "$CONFIG_SUB_PATH/NodegroupVolumeEncrypted"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -ne 0 ]
+  assert_output_contains "NODEGROUP_VOLUME_ENCRYPTED"
+  assert_output_contains "true"
+  assert_output_contains "false"
+}
+
+@test "does not generate securityGroups.attachIDs by default" {
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -eq 0 ]
+
+  local content
+  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
+  [[ "$content" != *"attachIDs"* ]]
 }
 
 # === Generated cluster.yaml content ===
@@ -379,14 +718,16 @@ teardown() {
   content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
   assert_contains "$content" "managedNodeGroups:" "cluster.yaml"
   assert_contains "$content" '${NodeGroupDefaultPrefix}' "cluster.yaml"
-  assert_contains "$content" '${NodegroupInstanceType}' "cluster.yaml"
-  assert_contains "$content" '${NodegroupAmiFamily}' "cluster.yaml"
-  assert_contains "$content" '${NodegroupVolumeSize}' "cluster.yaml"
-  assert_contains "$content" '${NodegroupDesiredCapacity}' "cluster.yaml"
-  assert_contains "$content" '${NodegroupMinSize}' "cluster.yaml"
-  assert_contains "$content" '${NodegroupMaxSize}' "cluster.yaml"
+  assert_contains "$content" '${NodegroupInstanceTypeKaptainDefaultNg}' "cluster.yaml"
+  assert_contains "$content" '${NodegroupAmiFamilyKaptainDefaultNg}' "cluster.yaml"
+  assert_contains "$content" '${NodegroupVolumeSizeKaptainDefaultNg}' "cluster.yaml"
+  assert_contains "$content" '${NodegroupVolumeTypeKaptainDefaultNg}' "cluster.yaml"
+  assert_contains "$content" '${NodegroupVolumeEncryptedKaptainDefaultNg}' "cluster.yaml"
+  assert_contains "$content" '${NodegroupDesiredCapacityKaptainDefaultNg}' "cluster.yaml"
+  assert_contains "$content" '${NodegroupMinSizeKaptainDefaultNg}' "cluster.yaml"
+  assert_contains "$content" '${NodegroupMaxSizeKaptainDefaultNg}' "cluster.yaml"
   assert_contains "$content" "updateConfig:" "cluster.yaml"
-  assert_contains "$content" '${NodegroupUpdateConfigMaxUnavailable}' "cluster.yaml"
+  assert_contains "$content" '${NodegroupUpdateConfigMaxUnavailableKaptainDefaultNg}' "cluster.yaml"
   # subnets present (EKS_PRIVATE_NETWORKING=true by default)
   assert_contains "$content" "subnets:" "cluster.yaml nodegroup"
   assert_contains "$content" '${PrivateSubnetIdA}' "cluster.yaml nodegroup subnets"
@@ -404,7 +745,7 @@ teardown() {
 
   local content
   content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
-  assert_contains "$content" 'privateNetworking: ${NodegroupPrivateNetworking}' "cluster.yaml"
+  assert_contains "$content" 'privateNetworking: ${NodegroupPrivateNetworkingKaptainDefaultNg}' "cluster.yaml"
 }
 
 @test "generates nodegroup subnets with public subnets when EKS_PUBLIC_NETWORKING=true" {
@@ -444,7 +785,7 @@ teardown() {
   local content
   content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
   assert_contains "$content" "iam:" "cluster.yaml nodegroup"
-  assert_contains "$content" 'instanceRoleARN: ${NodegroupIamInstanceRoleArn}' "cluster.yaml"
+  assert_contains "$content" 'instanceRoleARN: ${NodegroupIamInstanceRoleArnKaptainDefaultNg}' "cluster.yaml"
 }
 
 @test "does not generate instanceRoleARN by default" {
@@ -615,6 +956,144 @@ EOF
   [[ "$content" != *"labels:"* ]]
 }
 
+# === Nodegroup taints ===
+
+@test "generates taints when config file present" {
+  cat > "$CONFIG_SUB_PATH/NodegroupTaints" << 'YAML'
+- key: workload
+  value: kong
+  effect: NoSchedule
+YAML
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -eq 0 ]
+
+  local content
+  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
+  assert_contains "$content" "taints:" "cluster.yaml"
+  assert_contains "$content" "key: workload" "cluster.yaml taints"
+  assert_contains "$content" "value: kong" "cluster.yaml taints"
+  assert_contains "$content" "effect: NoSchedule" "cluster.yaml taints"
+}
+
+@test "generates taints with multiple entries" {
+  cat > "$CONFIG_SUB_PATH/NodegroupTaints" << 'YAML'
+- key: workload
+  value: kong
+  effect: NoSchedule
+- key: dedicated
+  effect: NoExecute
+YAML
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -eq 0 ]
+
+  local content
+  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
+  assert_contains "$content" "key: workload" "cluster.yaml taints"
+  assert_contains "$content" "key: dedicated" "cluster.yaml taints"
+  assert_contains "$content" "effect: NoExecute" "cluster.yaml taints"
+}
+
+@test "does not generate taints when config absent" {
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -eq 0 ]
+
+  local content
+  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
+  [[ "$content" != *"taints:"* ]]
+}
+
+@test "fails when taint missing key" {
+  cat > "$CONFIG_SUB_PATH/NodegroupTaints" << 'YAML'
+- value: kong
+  effect: NoSchedule
+YAML
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -ne 0 ]
+  assert_output_contains "NODEGROUP_TAINTS"
+  assert_output_contains "missing 'key'"
+}
+
+@test "fails when taint missing effect" {
+  cat > "$CONFIG_SUB_PATH/NodegroupTaints" << 'YAML'
+- key: workload
+  value: kong
+YAML
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -ne 0 ]
+  assert_output_contains "NODEGROUP_TAINTS"
+  assert_output_contains "missing 'effect'"
+}
+
+@test "fails when taint has invalid effect" {
+  cat > "$CONFIG_SUB_PATH/NodegroupTaints" << 'YAML'
+- key: workload
+  value: kong
+  effect: InvalidEffect
+YAML
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -ne 0 ]
+  assert_output_contains "NODEGROUP_TAINTS"
+  assert_output_contains "must be one of"
+}
+
+@test "fails when taints have duplicate key+effect" {
+  cat > "$CONFIG_SUB_PATH/NodegroupTaints" << 'YAML'
+- key: workload
+  value: kong
+  effect: NoSchedule
+- key: workload
+  value: different
+  effect: NoSchedule
+YAML
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -ne 0 ]
+  assert_output_contains "NODEGROUP_TAINTS"
+  assert_output_contains "duplicate"
+}
+
+@test "passes with taint without value (key-only)" {
+  cat > "$CONFIG_SUB_PATH/NodegroupTaints" << 'YAML'
+- key: dedicated
+  effect: NoSchedule
+YAML
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -eq 0 ]
+
+  local content
+  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
+  assert_contains "$content" "key: dedicated" "cluster.yaml taints"
+  assert_contains "$content" "effect: NoSchedule" "cluster.yaml taints"
+}
+
+@test "passes with all three valid taint effects" {
+  cat > "$CONFIG_SUB_PATH/NodegroupTaints" << 'YAML'
+- key: a
+  effect: NoSchedule
+- key: b
+  effect: PreferNoSchedule
+- key: c
+  effect: NoExecute
+YAML
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -eq 0 ]
+}
+
+@test "fails with invalid YAML in taints file" {
+  printf 'not: valid: yaml: [' > "$CONFIG_SUB_PATH/NodegroupTaints"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -ne 0 ]
+  assert_output_contains "NODEGROUP_TAINTS"
+}
+
 @test "fails with invalid metadata tag format" {
   printf 'bad tag format no colon' > "$CONFIG_SUB_PATH/MetadataTags"
 
@@ -780,6 +1259,15 @@ EOF
   assert_output_contains "not found"
 }
 
+@test "fails when ClusterSecurityGroup config file missing" {
+  rm "$CONFIG_SUB_PATH/ClusterSecurityGroup"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -ne 0 ]
+  assert_output_contains "CLUSTER_SECURITY_GROUP"
+  assert_output_contains "not found"
+}
+
 # === Annotations ===
 
 @test "generates fixed annotation with AwsAccountId token" {
@@ -790,6 +1278,15 @@ EOF
   content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
   assert_contains "$content" "annotations:" "cluster.yaml"
   assert_contains "$content" 'kaptain.org/aws-account-id: "${AwsAccountId}"' "cluster.yaml"
+}
+
+@test "generates fixed annotation with ClusterSecurityGroup token" {
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -eq 0 ]
+
+  local content
+  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
+  assert_contains "$content" 'kaptain.org/eks-cluster-security-group: "${ClusterSecurityGroup}"' "cluster.yaml"
 }
 
 @test "appends user metadata annotations from config file" {
@@ -1285,6 +1782,26 @@ EOF
   [ "$value" = "20" ]
 }
 
+@test "writes default NODEGROUP_VOLUME_TYPE to platform config dir" {
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -eq 0 ]
+
+  [ -f "$OUTPUT_SUB_PATH/docker/config/NodegroupVolumeType" ]
+  local value
+  value=$(< "$OUTPUT_SUB_PATH/docker/config/NodegroupVolumeType")
+  [ "$value" = "gp3" ]
+}
+
+@test "writes default NODEGROUP_VOLUME_ENCRYPTED to platform config dir" {
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -eq 0 ]
+
+  [ -f "$OUTPUT_SUB_PATH/docker/config/NodegroupVolumeEncrypted" ]
+  local value
+  value=$(< "$OUTPUT_SUB_PATH/docker/config/NodegroupVolumeEncrypted")
+  [ "$value" = "true" ]
+}
+
 @test "writes default NODEGROUP_DESIRED_CAPACITY to platform config dir" {
   run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
   [ "$status" -eq 0 ]
@@ -1292,7 +1809,7 @@ EOF
   [ -f "$OUTPUT_SUB_PATH/docker/config/NodegroupDesiredCapacity" ]
   local value
   value=$(< "$OUTPUT_SUB_PATH/docker/config/NodegroupDesiredCapacity")
-  [ "$value" = "1" ]
+  [ "$value" = "3" ]
 }
 
 @test "writes default NODEGROUP_MIN_SIZE to platform config dir" {
@@ -1365,6 +1882,64 @@ EOF
   local value
   value=$(< "$OUTPUT_SUB_PATH/docker/config/NodegroupDesiredCapacity")
   [ "$value" = "4" ]
+}
+
+@test "defaults NODEGROUP_DESIRED_CAPACITY to user-provided NODEGROUP_MIN_SIZE" {
+  printf '5' > "$CONFIG_SUB_PATH/NodegroupMinSize"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -eq 0 ]
+
+  [ -f "$OUTPUT_SUB_PATH/docker/config/NodegroupDesiredCapacity" ]
+  local value
+  value=$(< "$OUTPUT_SUB_PATH/docker/config/NodegroupDesiredCapacity")
+  [ "$value" = "5" ]
+}
+
+@test "fails when NODEGROUP_DESIRED_CAPACITY less than NODEGROUP_MIN_SIZE" {
+  printf '1' > "$CONFIG_SUB_PATH/NodegroupDesiredCapacity"
+  printf '3' > "$CONFIG_SUB_PATH/NodegroupMinSize"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -ne 0 ]
+  assert_output_contains "NODEGROUP_DESIRED_CAPACITY"
+  assert_output_contains "must be >= NODEGROUP_MIN_SIZE"
+}
+
+@test "fails when NODEGROUP_DESIRED_CAPACITY greater than NODEGROUP_MAX_SIZE" {
+  printf '20' > "$CONFIG_SUB_PATH/NodegroupDesiredCapacity"
+  printf '12' > "$CONFIG_SUB_PATH/NodegroupMaxSize"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -ne 0 ]
+  assert_output_contains "NODEGROUP_DESIRED_CAPACITY"
+  assert_output_contains "must be <= NODEGROUP_MAX_SIZE"
+}
+
+@test "fails when NODEGROUP_MIN_SIZE greater than NODEGROUP_MAX_SIZE" {
+  printf '15' > "$CONFIG_SUB_PATH/NodegroupMinSize"
+  printf '12' > "$CONFIG_SUB_PATH/NodegroupMaxSize"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -ne 0 ]
+  assert_output_contains "NODEGROUP_MIN_SIZE"
+  assert_output_contains "must be <= NODEGROUP_MAX_SIZE"
+}
+
+@test "passes when desired equals min" {
+  printf '3' > "$CONFIG_SUB_PATH/NodegroupDesiredCapacity"
+  printf '3' > "$CONFIG_SUB_PATH/NodegroupMinSize"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -eq 0 ]
+}
+
+@test "passes when desired equals max" {
+  printf '12' > "$CONFIG_SUB_PATH/NodegroupDesiredCapacity"
+  printf '12' > "$CONFIG_SUB_PATH/NodegroupMaxSize"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -eq 0 ]
 }
 
 # === DOCKERFILE_SUBSTITUTION_FILES output ===
@@ -1483,6 +2058,9 @@ EOF
   mv "$CONFIG_SUB_PATH/NodegroupInstanceType" "$CONFIG_SUB_PATH/NODEGROUP_INSTANCE_TYPE"
   mv "$CONFIG_SUB_PATH/SecretsEncryptionKeyArn" "$CONFIG_SUB_PATH/SECRETS_ENCRYPTION_KEY_ARN"
   mv "$CONFIG_SUB_PATH/AwsAccountId" "$CONFIG_SUB_PATH/AWS_ACCOUNT_ID"
+  mv "$CONFIG_SUB_PATH/ClusterSecurityGroup" "$CONFIG_SUB_PATH/CLUSTER_SECURITY_GROUP"
+  mv "$CONFIG_SUB_PATH/ClusterOrigin" "$CONFIG_SUB_PATH/CLUSTER_ORIGIN"
+  mv "$CONFIG_SUB_PATH/NodegroupType" "$CONFIG_SUB_PATH/NODEGROUP_TYPE"
   mv "$CONFIG_SUB_PATH/PrivateSubnetIdA" "$CONFIG_SUB_PATH/PRIVATE_SUBNET_ID_A"
   mv "$CONFIG_SUB_PATH/PrivateSubnetIdB" "$CONFIG_SUB_PATH/PRIVATE_SUBNET_ID_B"
   mv "$CONFIG_SUB_PATH/PrivateSubnetIdC" "$CONFIG_SUB_PATH/PRIVATE_SUBNET_ID_C"
@@ -1576,4 +2154,311 @@ EOF
   content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
   assert_contains "$content" "apiVersion: eksctl.io/v1alpha5" "cluster.yaml"
   assert_contains "$content" "kind: ClusterConfig" "cluster.yaml"
+}
+
+# === Nodegroup availabilityZones ===
+
+@test "generates availabilityZones when config file present" {
+  printf 'eu-west-1a,eu-west-1b' > "$CONFIG_SUB_PATH/NodegroupAvailabilityZones"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -eq 0 ]
+
+  local content
+  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
+  assert_contains "$content" "availabilityZones:" "cluster.yaml"
+  assert_contains "$content" '- ${NodegroupAvailabilityZoneKaptainDefaultNg1}' "cluster.yaml"
+  assert_contains "$content" '- ${NodegroupAvailabilityZoneKaptainDefaultNg2}' "cluster.yaml"
+}
+
+@test "does not generate availabilityZones by default" {
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -eq 0 ]
+
+  local content
+  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
+  [[ "$content" != *"availabilityZones:"* ]]
+}
+
+@test "writes nodegroup-az-count to expected-values" {
+  printf 'eu-west-1a,eu-west-1b' > "$CONFIG_SUB_PATH/NodegroupAvailabilityZones"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -eq 0 ]
+
+  [ -f "$OUTPUT_SUB_PATH/aws-eks-cluster-management/expected-values/nodegroup-az-count-kaptaindefaultng" ]
+  [ "$(< "$OUTPUT_SUB_PATH/aws-eks-cluster-management/expected-values/nodegroup-az-count-kaptaindefaultng")" = "2" ]
+}
+
+@test "expands NODEGROUP_AVAILABILITY_ZONES to numbered token files" {
+  printf 'eu-west-1a,eu-west-1b,eu-west-1c' > "$CONFIG_SUB_PATH/NodegroupAvailabilityZones"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -eq 0 ]
+
+  [ "$(< "$OUTPUT_SUB_PATH/docker/config/NodegroupAvailabilityZoneKaptainDefaultNg1")" = "eu-west-1a" ]
+  [ "$(< "$OUTPUT_SUB_PATH/docker/config/NodegroupAvailabilityZoneKaptainDefaultNg2")" = "eu-west-1b" ]
+  [ "$(< "$OUTPUT_SUB_PATH/docker/config/NodegroupAvailabilityZoneKaptainDefaultNg3")" = "eu-west-1c" ]
+}
+
+# === Nodegroup spot ===
+
+@test "generates spot when config file present with true" {
+  printf 'true' > "$CONFIG_SUB_PATH/NodegroupSpot"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -eq 0 ]
+
+  local content
+  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
+  assert_contains "$content" 'spot: ${NodegroupSpotKaptainDefaultNg}' "cluster.yaml"
+}
+
+@test "generates spot when config file present with false" {
+  printf 'false' > "$CONFIG_SUB_PATH/NodegroupSpot"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -eq 0 ]
+
+  local content
+  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
+  assert_contains "$content" 'spot: ${NodegroupSpotKaptainDefaultNg}' "cluster.yaml"
+}
+
+@test "does not generate spot by default" {
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -eq 0 ]
+
+  local content
+  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
+  [[ "$content" != *"spot:"* ]]
+}
+
+@test "fails when NodegroupSpot is not true or false" {
+  printf 'yes' > "$CONFIG_SUB_PATH/NodegroupSpot"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -ne 0 ]
+  assert_output_contains "NODEGROUP_SPOT must be 'true' or 'false'"
+}
+
+@test "fails when NodegroupSpot present with unmanaged nodegroup type" {
+  printf 'unmanaged' > "$CONFIG_SUB_PATH/NodegroupType"
+  printf 'true' > "$CONFIG_SUB_PATH/NodegroupSpot"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -ne 0 ]
+  assert_output_contains "NODEGROUP_SPOT is not supported for unmanaged nodegroups"
+}
+
+# === Additional nodegroups ===
+
+@test "does not generate additional nodegroups by default" {
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -eq 0 ]
+
+  [ "$(< "$OUTPUT_SUB_PATH/aws-eks-cluster-management/expected-values/additional-nodegroup-count")" = "0" ]
+
+  local ng_count
+  ng_count=$(yq '.managedNodeGroups | length' "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
+  [ "$ng_count" -eq 1 ]
+}
+
+@test "generates additional nodegroups when AdditionalNodeGroups config present" {
+  printf 'kong,monitoring' > "$CONFIG_SUB_PATH/AdditionalNodeGroups"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -eq 0 ]
+
+  [ "$(< "$OUTPUT_SUB_PATH/aws-eks-cluster-management/expected-values/additional-nodegroup-count")" = "2" ]
+
+  local ng_count
+  ng_count=$(yq '.managedNodeGroups | length' "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
+  [ "$ng_count" -eq 3 ]
+}
+
+@test "additional nodegroup inherits base instanceType when no override" {
+  printf 'kong' > "$CONFIG_SUB_PATH/AdditionalNodeGroups"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -eq 0 ]
+
+  local content
+  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
+  # Second nodegroup should have the suffixed instance type token
+  assert_contains "$content" '${NodegroupInstanceTypeKong}' "cluster.yaml"
+}
+
+@test "additional nodegroup uses suffixed config when present" {
+  printf 'kong' > "$CONFIG_SUB_PATH/AdditionalNodeGroups"
+  printf 'g5.xlarge' > "$CONFIG_SUB_PATH/NodegroupInstanceTypeKong"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -eq 0 ]
+
+  local content
+  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
+  assert_contains "$content" '${NodegroupInstanceTypeKong}' "cluster.yaml"
+}
+
+@test "additional nodegroup inherits base volumeSize default" {
+  printf 'kong' > "$CONFIG_SUB_PATH/AdditionalNodeGroups"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -eq 0 ]
+
+  local content
+  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
+  assert_contains "$content" '${NodegroupVolumeSizeKong}' "cluster.yaml"
+}
+
+@test "additional nodegroup name has correct suffix" {
+  printf 'kong' > "$CONFIG_SUB_PATH/AdditionalNodeGroups"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -eq 0 ]
+
+  local content
+  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
+  # Additional nodegroup name token should have the suffix
+  assert_contains "$content" '${NodeGroupDefaultPrefixKong}' "cluster.yaml"
+}
+
+@test "writes additional-nodegroup-count to expected-values" {
+  printf 'kong,monitoring' > "$CONFIG_SUB_PATH/AdditionalNodeGroups"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -eq 0 ]
+
+  [ -f "$OUTPUT_SUB_PATH/aws-eks-cluster-management/expected-values/additional-nodegroup-count" ]
+  [ "$(< "$OUTPUT_SUB_PATH/aws-eks-cluster-management/expected-values/additional-nodegroup-count")" = "2" ]
+}
+
+@test "writes additional-nodegroup-suffixes to expected-values" {
+  printf 'kong,monitoring' > "$CONFIG_SUB_PATH/AdditionalNodeGroups"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -eq 0 ]
+
+  [ -f "$OUTPUT_SUB_PATH/aws-eks-cluster-management/expected-values/additional-nodegroup-suffixes" ]
+  [ "$(< "$OUTPUT_SUB_PATH/aws-eks-cluster-management/expected-values/additional-nodegroup-suffixes")" = "KONG,MONITORING" ]
+}
+
+@test "writes per-nodegroup expected-values with suffix" {
+  printf 'kong' > "$CONFIG_SUB_PATH/AdditionalNodeGroups"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -eq 0 ]
+
+  local ev_dir="$OUTPUT_SUB_PATH/aws-eks-cluster-management/expected-values"
+  # Base has-flags (kaptaindefaultng suffix)
+  [ -f "$ev_dir/has-volume-kms-key-id-kaptaindefaultng" ]
+  # Additional nodegroup has-flags (with suffix)
+  [ -f "$ev_dir/has-volume-kms-key-id-kong" ]
+  [ -f "$ev_dir/has-spot-kong" ]
+  [ -f "$ev_dir/has-sg-attach-ids-kong" ]
+  [ -f "$ev_dir/has-availability-zones-kong" ]
+}
+
+@test "validates suffix is alphabetic-only" {
+  printf 'kong-gpu' > "$CONFIG_SUB_PATH/AdditionalNodeGroups"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -ne 0 ]
+  assert_output_contains "must be a single alphabetic word"
+}
+
+@test "fails with duplicate additional nodegroup suffixes" {
+  printf 'kong,kong' > "$CONFIG_SUB_PATH/AdditionalNodeGroups"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -ne 0 ]
+  assert_output_contains "duplicate suffixes"
+}
+
+@test "additional nodegroup inherits optional sg-attach from base" {
+  printf 'kong' > "$CONFIG_SUB_PATH/AdditionalNodeGroups"
+  printf 'sg-aaa,sg-bbb' > "$CONFIG_SUB_PATH/NodegroupSecurityGroupsAttachIds"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -eq 0 ]
+
+  local content
+  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
+  # Base SG tokens (kaptaindefaultng suffix)
+  assert_contains "$content" '${NodegroupSecurityGroupsAttachIdKaptainDefaultNg1}' "cluster.yaml"
+  # Suffixed SG tokens on additional nodegroup
+  assert_contains "$content" '${NodegroupSecurityGroupsAttachIdKong1}' "cluster.yaml"
+  # Count file written for additional
+  [ -f "$OUTPUT_SUB_PATH/aws-eks-cluster-management/expected-values/nodegroup-sg-attach-ids-count-kong" ]
+  [ "$(< "$OUTPUT_SUB_PATH/aws-eks-cluster-management/expected-values/nodegroup-sg-attach-ids-count-kong")" = "2" ]
+}
+
+@test "additional nodegroup gets own suffixed comma-list when overridden" {
+  printf 'kong' > "$CONFIG_SUB_PATH/AdditionalNodeGroups"
+  printf 'sg-aaa,sg-bbb' > "$CONFIG_SUB_PATH/NodegroupSecurityGroupsAttachIds"
+  printf 'sg-xxx' > "$CONFIG_SUB_PATH/NodegroupSecurityGroupsAttachIdsKong"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -eq 0 ]
+
+  # Base has 2 SGs, kong has 1
+  [ "$(< "$OUTPUT_SUB_PATH/aws-eks-cluster-management/expected-values/nodegroup-sg-attach-ids-count-kaptaindefaultng")" = "2" ]
+  [ "$(< "$OUTPUT_SUB_PATH/aws-eks-cluster-management/expected-values/nodegroup-sg-attach-ids-count-kong")" = "1" ]
+}
+
+@test "additional nodegroup inherits labels from base" {
+  printf 'kong' > "$CONFIG_SUB_PATH/AdditionalNodeGroups"
+  printf 'role: worker\ntier: backend' > "$CONFIG_SUB_PATH/NodegroupLabels"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -eq 0 ]
+
+  local ev_dir="$OUTPUT_SUB_PATH/aws-eks-cluster-management/expected-values"
+  [ "$(< "$ev_dir/has-labels-kaptaindefaultng")" = "true" ]
+  [ "$(< "$ev_dir/has-labels-kong")" = "true" ]
+}
+
+@test "additional nodegroup spot inherits from base when managed" {
+  printf 'kong' > "$CONFIG_SUB_PATH/AdditionalNodeGroups"
+  printf 'true' > "$CONFIG_SUB_PATH/NodegroupSpot"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -eq 0 ]
+
+  local content
+  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
+  # Both base and kong should have spot tokens
+  assert_contains "$content" '${NodegroupSpotKaptainDefaultNg}' "cluster.yaml"
+  assert_contains "$content" '${NodegroupSpotKong}' "cluster.yaml"
+  local ev_dir="$OUTPUT_SUB_PATH/aws-eks-cluster-management/expected-values"
+  [ "$(< "$ev_dir/has-spot-kaptaindefaultng")" = "true" ]
+  [ "$(< "$ev_dir/has-spot-kong")" = "true" ]
+}
+
+@test "additional nodegroup spot override with own value" {
+  printf 'kong' > "$CONFIG_SUB_PATH/AdditionalNodeGroups"
+  printf 'false' > "$CONFIG_SUB_PATH/NodegroupSpotKong"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -eq 0 ]
+
+  local content
+  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
+  # Base has no spot, kong has spot
+  [[ "$content" != *'spot: ${NodegroupSpotKaptainDefaultNg}'* ]]
+  assert_contains "$content" '${NodegroupSpotKong}' "cluster.yaml"
+  local ev_dir="$OUTPUT_SUB_PATH/aws-eks-cluster-management/expected-values"
+  [ "$(< "$ev_dir/has-spot-kaptaindefaultng")" = "false" ]
+  [ "$(< "$ev_dir/has-spot-kong")" = "true" ]
+}
+
+# === Kaptain prefix rejection ===
+
+@test "fails with additional nodegroup suffix starting with kaptain" {
+  printf 'kaptainspecial' > "$CONFIG_SUB_PATH/AdditionalNodeGroups"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -ne 0 ]
+  assert_output_contains "must not start with 'kaptain'"
 }

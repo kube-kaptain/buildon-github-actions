@@ -87,6 +87,8 @@ setup() {
   printf '%s' "eu-west-1" > "$OUTPUT_SUB_PATH/aws-eks-cluster-management/expected-values/aws-region"
   printf '%s' "1.32" > "$OUTPUT_SUB_PATH/aws-eks-cluster-management/expected-values/kubernetes-version"
   printf '%s' "$nodegroup_prefix" > "$OUTPUT_SUB_PATH/aws-eks-cluster-management/expected-values/nodegroup-prefix"
+  printf '%s' "eksctl" > "$OUTPUT_SUB_PATH/aws-eks-cluster-management/expected-values/cluster-origin"
+  printf '%s' "managed" > "$OUTPUT_SUB_PATH/aws-eks-cluster-management/expected-values/nodegroup-type"
 
   # Create context dir with substituted cluster.yaml (tokens already replaced)
   local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
@@ -106,6 +108,7 @@ metadata:
     ManagedByGitRepo: test-cluster
   annotations:
     kaptain.org/aws-account-id: "123456789012"
+    kaptain.org/eks-cluster-security-group: "sg-0abc123def456789a"
 
 vpc:
   id: vpc-0123456789abcdef0
@@ -125,6 +128,9 @@ managedNodeGroups:
   - name: ${nodegroup_prefix}
     instanceType: t3.medium
     privateNetworking: true
+    volumeSize: 20
+    volumeType: gp3
+    volumeEncrypted: true
     desiredCapacity: 1
     minSize: 3
     maxSize: 12
@@ -354,6 +360,8 @@ metadata:
   name: test-cluster
   region: eu-west-1
   version: "1.32"
+  annotations:
+    kaptain.org/eks-cluster-security-group: "sg-0abc123def456789a"
 
 vpc:
   id: vpc-0123456789abcdef0
@@ -419,6 +427,8 @@ metadata:
   name: test-cluster
   region: eu-west-1
   version: "1.32"
+  annotations:
+    kaptain.org/eks-cluster-security-group: "sg-0abc123def456789a"
 
 vpc:
   id: vpc-0123456789abcdef0
@@ -496,6 +506,53 @@ YAML
   assert_output_contains "kaptain.org/priority"
 }
 
+@test "fails when cluster-security-group annotation missing from substituted yaml" {
+  local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
+  yq -i 'del(.metadata.annotations["kaptain.org/eks-cluster-security-group"])' "$context_dir/cluster.yaml"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-post-build-validate"
+  [ "$status" -ne 0 ]
+  assert_output_contains "kaptain.org/eks-cluster-security-group"
+  assert_output_contains "missing"
+}
+
+@test "fails when cluster-security-group annotation is not sg-hex format" {
+  local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
+  yq -i '.metadata.annotations["kaptain.org/eks-cluster-security-group"] = "not-a-sg"' "$context_dir/cluster.yaml"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-post-build-validate"
+  [ "$status" -ne 0 ]
+  assert_output_contains "kaptain.org/eks-cluster-security-group"
+  assert_output_contains "does not look like a security group ID"
+}
+
+@test "passes when cluster-security-group annotation is sg-known-after-creation" {
+  local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
+  yq -i '.metadata.annotations["kaptain.org/eks-cluster-security-group"] = "sg-known-after-creation"' "$context_dir/cluster.yaml"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-post-build-validate"
+  [ "$status" -eq 0 ]
+}
+
+@test "passes with valid securityGroups.attachIDs on nodegroup" {
+  local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
+  yq -i '.managedNodeGroups[0].securityGroups.attachIDs = ["sg-0aaa111bbb222ccc3", "sg-0ddd444eee555fff6"]' "$context_dir/cluster.yaml"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-post-build-validate"
+  [ "$status" -eq 0 ]
+  assert_output_contains "securityGroups.attachIDs"
+  assert_output_contains "2 entries"
+}
+
+@test "fails when securityGroups.attachIDs entry is not sg-hex" {
+  local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
+  yq -i '.managedNodeGroups[0].securityGroups.attachIDs = ["sg-0aaa111bbb222ccc3", "not-a-sg"]' "$context_dir/cluster.yaml"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-post-build-validate"
+  [ "$status" -ne 0 ]
+  assert_output_contains "does not look like a security group ID"
+}
+
 @test "fails when nodegroup label value is not a string" {
   local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
   yq -i '.managedNodeGroups[0].labels.gpu = false' "$context_dir/cluster.yaml"
@@ -538,6 +595,309 @@ YAML
   assert_output_contains "reserved"
 }
 
+# === Security group validation ===
+
+@test "passes with vpc.securityGroup when origin is eksctl" {
+  local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
+  yq -i '.vpc.securityGroup = "sg-0123456789abcdef0"' "$context_dir/cluster.yaml"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-post-build-validate"
+  [ "$status" -eq 0 ]
+  assert_output_contains "vpc.securityGroup: sg-"
+}
+
+@test "fails when vpc.securityGroup is not sg-hex format" {
+  local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
+  yq -i '.vpc.securityGroup = "not-a-sg-id"' "$context_dir/cluster.yaml"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-post-build-validate"
+  [ "$status" -ne 0 ]
+  assert_output_contains "does not look like a security group ID"
+}
+
+@test "fails when both vpc.securityGroup and vpc.controlPlaneSecurityGroupIDs present" {
+  local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
+  yq -i '.vpc.securityGroup = "sg-0123456789abcdef0"' "$context_dir/cluster.yaml"
+  yq -i '.vpc.controlPlaneSecurityGroupIDs = ["sg-aaaa1111bbbb2222c"]' "$context_dir/cluster.yaml"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-post-build-validate"
+  [ "$status" -ne 0 ]
+  assert_output_contains "mutually exclusive"
+}
+
+@test "fails when adopted origin and no security group in yaml" {
+  printf '%s' "adopted" > "$OUTPUT_SUB_PATH/aws-eks-cluster-management/expected-values/cluster-origin"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-post-build-validate"
+  [ "$status" -ne 0 ]
+  assert_output_contains "adopted"
+  assert_output_contains "required"
+}
+
+@test "passes when adopted origin with vpc.securityGroup present" {
+  local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
+  printf '%s' "adopted" > "$OUTPUT_SUB_PATH/aws-eks-cluster-management/expected-values/cluster-origin"
+  yq -i '.vpc.securityGroup = "sg-0123456789abcdef0"' "$context_dir/cluster.yaml"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-post-build-validate"
+  [ "$status" -eq 0 ]
+}
+
+@test "passes when adopted origin with vpc.controlPlaneSecurityGroupIDs present" {
+  local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
+  printf '%s' "adopted" > "$OUTPUT_SUB_PATH/aws-eks-cluster-management/expected-values/cluster-origin"
+  yq -i '.vpc.controlPlaneSecurityGroupIDs = ["sg-0123456789abcdef0"]' "$context_dir/cluster.yaml"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-post-build-validate"
+  [ "$status" -eq 0 ]
+}
+
+@test "validates each entry in vpc.controlPlaneSecurityGroupIDs" {
+  local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
+  yq -i '.vpc.controlPlaneSecurityGroupIDs = ["sg-0123456789abcdef0", "bad-id"]' "$context_dir/cluster.yaml"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-post-build-validate"
+  [ "$status" -ne 0 ]
+  assert_output_contains "does not look like a security group ID"
+}
+
+@test "fails when cluster-origin canonical file missing" {
+  rm "$OUTPUT_SUB_PATH/aws-eks-cluster-management/expected-values/cluster-origin"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-post-build-validate"
+  [ "$status" -ne 0 ]
+  assert_output_contains "cluster-origin"
+  assert_output_contains "not found"
+}
+
+@test "validates nodeGroups key when nodegroup-type is unmanaged" {
+  local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
+  printf '%s' "unmanaged" > "$OUTPUT_SUB_PATH/aws-eks-cluster-management/expected-values/nodegroup-type"
+  yq -i '.nodeGroups = .managedNodeGroups | del(.managedNodeGroups)' "$context_dir/cluster.yaml"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-post-build-validate"
+  [ "$status" -eq 0 ]
+}
+
+@test "fails when nodegroup-type expected-values file missing" {
+  rm "$OUTPUT_SUB_PATH/aws-eks-cluster-management/expected-values/nodegroup-type"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-post-build-validate"
+  [ "$status" -ne 0 ]
+  assert_output_contains "nodegroup-type"
+  assert_output_contains "not found"
+}
+
+@test "passes with valid sharedNodeSecurityGroup" {
+  local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
+  printf '%s' "unmanaged" > "$OUTPUT_SUB_PATH/aws-eks-cluster-management/expected-values/nodegroup-type"
+  yq -i '.nodeGroups = .managedNodeGroups | del(.managedNodeGroups)' "$context_dir/cluster.yaml"
+  yq -i '.vpc.sharedNodeSecurityGroup = "sg-0aaa111bbb222ccc3"' "$context_dir/cluster.yaml"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-post-build-validate"
+  [ "$status" -eq 0 ]
+  assert_output_contains "vpc.sharedNodeSecurityGroup: sg-"
+}
+
+@test "fails when sharedNodeSecurityGroup is not sg-hex" {
+  local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
+  printf '%s' "unmanaged" > "$OUTPUT_SUB_PATH/aws-eks-cluster-management/expected-values/nodegroup-type"
+  yq -i '.nodeGroups = .managedNodeGroups | del(.managedNodeGroups)' "$context_dir/cluster.yaml"
+  yq -i '.vpc.sharedNodeSecurityGroup = "not-a-sg"' "$context_dir/cluster.yaml"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-post-build-validate"
+  [ "$status" -ne 0 ]
+  assert_output_contains "vpc.sharedNodeSecurityGroup"
+  assert_output_contains "does not look like a security group ID"
+}
+
+# === Volume field validation ===
+
+@test "passes with valid volumeType" {
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-post-build-validate"
+  [ "$status" -eq 0 ]
+  assert_output_contains "volumeType: gp3"
+}
+
+@test "fails when volumeType is not a valid EBS type" {
+  local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
+  yq -i '.managedNodeGroups[0].volumeType = "invalid"' "$context_dir/cluster.yaml"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-post-build-validate"
+  [ "$status" -ne 0 ]
+  assert_output_contains "volumeType"
+  assert_output_contains "must be one of"
+}
+
+@test "passes with all valid EBS volume types" {
+  local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
+  for vol_type in gp2 gp3 io1 io2 st1 sc1 standard; do
+    yq -i ".managedNodeGroups[0].volumeType = \"${vol_type}\"" "$context_dir/cluster.yaml"
+    run "$SCRIPTS_DIR/aws-eks-cluster-management-post-build-validate"
+    [ "$status" -eq 0 ]
+  done
+}
+
+@test "passes with valid volumeEncrypted true" {
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-post-build-validate"
+  [ "$status" -eq 0 ]
+  assert_output_contains "volumeEncrypted: true"
+}
+
+@test "passes with volumeEncrypted false" {
+  local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
+  yq -i '.managedNodeGroups[0].volumeEncrypted = "false"' "$context_dir/cluster.yaml"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-post-build-validate"
+  [ "$status" -eq 0 ]
+}
+
+@test "fails when volumeEncrypted is not boolean" {
+  local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
+  yq -i '.managedNodeGroups[0].volumeEncrypted = "yes"' "$context_dir/cluster.yaml"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-post-build-validate"
+  [ "$status" -ne 0 ]
+  assert_output_contains "volumeEncrypted"
+  assert_output_contains "must be true or false"
+}
+
+@test "passes with valid volumeKmsKeyID" {
+  local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
+  yq -i '.managedNodeGroups[0].volumeKmsKeyID = "arn:aws:kms:eu-west-1:123456789012:key/12345678-1234-1234-1234-123456789012"' "$context_dir/cluster.yaml"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-post-build-validate"
+  [ "$status" -eq 0 ]
+  assert_output_contains "volumeKmsKeyID: arn:aws:kms:"
+}
+
+@test "fails when volumeKmsKeyID is not a KMS ARN" {
+  local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
+  yq -i '.managedNodeGroups[0].volumeKmsKeyID = "not-a-kms-arn"' "$context_dir/cluster.yaml"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-post-build-validate"
+  [ "$status" -ne 0 ]
+  assert_output_contains "volumeKmsKeyID"
+  assert_output_contains "must be a KMS key ARN"
+}
+
+@test "logs eksctl will create SG when no security group specified" {
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-post-build-validate"
+  [ "$status" -eq 0 ]
+  assert_output_contains "eksctl will create one"
+}
+
+# === Taint validation ===
+
+@test "passes with valid taints in substituted yaml" {
+  local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
+  yq -i '.managedNodeGroups[0].taints = [{"key": "workload", "value": "kong", "effect": "NoSchedule"}]' "$context_dir/cluster.yaml"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-post-build-validate"
+  [ "$status" -eq 0 ]
+  assert_output_contains "taints"
+  assert_output_contains "1 entries"
+}
+
+@test "passes with multiple valid taints" {
+  local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
+  yq -i '.managedNodeGroups[0].taints = [{"key": "workload", "value": "kong", "effect": "NoSchedule"}, {"key": "dedicated", "effect": "NoExecute"}]' "$context_dir/cluster.yaml"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-post-build-validate"
+  [ "$status" -eq 0 ]
+  assert_output_contains "2 entries"
+}
+
+@test "passes with all three valid taint effects in substituted yaml" {
+  local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
+  yq -i '.managedNodeGroups[0].taints = [{"key": "a", "effect": "NoSchedule"}, {"key": "b", "effect": "PreferNoSchedule"}, {"key": "c", "effect": "NoExecute"}]' "$context_dir/cluster.yaml"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-post-build-validate"
+  [ "$status" -eq 0 ]
+  assert_output_contains "3 entries"
+}
+
+@test "fails when taint missing key in substituted yaml" {
+  local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
+  yq -i '.managedNodeGroups[0].taints = [{"effect": "NoSchedule"}]' "$context_dir/cluster.yaml"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-post-build-validate"
+  [ "$status" -ne 0 ]
+  assert_output_contains "taints"
+  assert_output_contains "missing 'key'"
+}
+
+@test "fails when taint missing effect in substituted yaml" {
+  local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
+  yq -i '.managedNodeGroups[0].taints = [{"key": "workload", "value": "kong"}]' "$context_dir/cluster.yaml"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-post-build-validate"
+  [ "$status" -ne 0 ]
+  assert_output_contains "taints"
+  assert_output_contains "missing 'effect'"
+}
+
+@test "fails when taint has invalid effect in substituted yaml" {
+  local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
+  yq -i '.managedNodeGroups[0].taints = [{"key": "workload", "effect": "InvalidEffect"}]' "$context_dir/cluster.yaml"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-post-build-validate"
+  [ "$status" -ne 0 ]
+  assert_output_contains "taints"
+  assert_output_contains "must be one of"
+}
+
+# === Availability zone validation ===
+
+@test "passes with valid availabilityZones in substituted yaml" {
+  local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
+  yq -i '.managedNodeGroups[0].availabilityZones = ["eu-west-1a", "eu-west-1b"]' "$context_dir/cluster.yaml"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-post-build-validate"
+  [ "$status" -eq 0 ]
+  assert_output_contains "availabilityZones"
+  assert_output_contains "2 entries"
+}
+
+@test "fails when availabilityZone is not valid AZ format" {
+  local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
+  yq -i '.managedNodeGroups[0].availabilityZones = ["eu-west-1a", "not-an-az"]' "$context_dir/cluster.yaml"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-post-build-validate"
+  [ "$status" -ne 0 ]
+  assert_output_contains "does not look like an AZ"
+}
+
+# === Spot validation ===
+
+@test "passes with spot true in substituted yaml" {
+  local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
+  yq -i '.managedNodeGroups[0].spot = true' "$context_dir/cluster.yaml"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-post-build-validate"
+  [ "$status" -eq 0 ]
+  assert_output_contains "spot: true"
+}
+
+@test "passes with spot false in substituted yaml" {
+  local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
+  yq -i '.managedNodeGroups[0].spot = false' "$context_dir/cluster.yaml"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-post-build-validate"
+  [ "$status" -eq 0 ]
+  assert_output_contains "spot: false"
+}
+
+@test "fails when spot is not boolean in substituted yaml" {
+  local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
+  yq -i '.managedNodeGroups[0].spot = "yes"' "$context_dir/cluster.yaml"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-post-build-validate"
+  [ "$status" -ne 0 ]
+  assert_output_contains "spot"
+  assert_output_contains "must be true or false"
+}
+
 @test "passes when all tag annotation and label values are strings" {
   local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
   yq -i '.metadata.tags.Enabled = "true"' "$context_dir/cluster.yaml"
@@ -548,4 +908,58 @@ YAML
   run "$SCRIPTS_DIR/aws-eks-cluster-management-post-build-validate"
   [ "$status" -eq 0 ]
   assert_output_contains "all checks passed"
+}
+
+# === Additional nodegroup validation ===
+
+@test "passes with valid multi-nodegroup substituted values" {
+  local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
+  local ev_dir="$OUTPUT_SUB_PATH/aws-eks-cluster-management/expected-values"
+  local nodegroup_prefix
+  nodegroup_prefix=$(< "$ev_dir/nodegroup-prefix")
+  printf '%s' "1" > "$ev_dir/additional-nodegroup-count"
+
+  yq -i ".managedNodeGroups += [{\"name\": \"${nodegroup_prefix}-kong\", \"instanceType\": \"g5.xlarge\", \"volumeSize\": 20, \"volumeType\": \"gp3\", \"volumeEncrypted\": true, \"desiredCapacity\": 1, \"minSize\": 1, \"maxSize\": 4, \"tags\": {\"ManagedBy\": \"Kaptain aws-eks-cluster-management system\", \"ManagedByGitRepo\": \"test-cluster\"}}]" "$context_dir/cluster.yaml"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-post-build-validate"
+  [ "$status" -eq 0 ]
+}
+
+@test "validates additional nodegroup name has correct suffix" {
+  local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
+  local ev_dir="$OUTPUT_SUB_PATH/aws-eks-cluster-management/expected-values"
+  local nodegroup_prefix
+  nodegroup_prefix=$(< "$ev_dir/nodegroup-prefix")
+  printf '%s' "1" > "$ev_dir/additional-nodegroup-count"
+
+  # Additional nodegroup has wrong suffix (gpu instead of expected based on additional-nodegroup-count)
+  yq -i ".managedNodeGroups += [{\"name\": \"${nodegroup_prefix}-gpu\", \"instanceType\": \"g5.xlarge\", \"volumeSize\": 20, \"volumeType\": \"gp3\", \"volumeEncrypted\": true, \"desiredCapacity\": 1, \"minSize\": 1, \"maxSize\": 4, \"tags\": {\"ManagedBy\": \"Kaptain aws-eks-cluster-management system\", \"ManagedByGitRepo\": \"test-cluster\"}}]" "$context_dir/cluster.yaml"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-post-build-validate"
+  [ "$status" -eq 0 ]
+}
+
+@test "fails when additional nodegroup has invalid volumeType" {
+  local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
+  local ev_dir="$OUTPUT_SUB_PATH/aws-eks-cluster-management/expected-values"
+  local nodegroup_prefix
+  nodegroup_prefix=$(< "$ev_dir/nodegroup-prefix")
+  printf '%s' "1" > "$ev_dir/additional-nodegroup-count"
+
+  yq -i ".managedNodeGroups += [{\"name\": \"${nodegroup_prefix}-kong\", \"instanceType\": \"g5.xlarge\", \"volumeSize\": 20, \"volumeType\": \"invalid\", \"volumeEncrypted\": true, \"desiredCapacity\": 1, \"minSize\": 1, \"maxSize\": 4, \"tags\": {\"ManagedBy\": \"Kaptain aws-eks-cluster-management system\", \"ManagedByGitRepo\": \"test-cluster\"}}]" "$context_dir/cluster.yaml"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-post-build-validate"
+  [ "$status" -ne 0 ]
+  assert_output_contains "volumeType"
+  assert_output_contains "must be one of"
+}
+
+@test "fails when nodegroup count mismatches additional-nodegroup-count in post-build" {
+  local ev_dir="$OUTPUT_SUB_PATH/aws-eks-cluster-management/expected-values"
+  printf '%s' "1" > "$ev_dir/additional-nodegroup-count"
+
+  # Only 1 nodegroup in YAML but expected 2 (1 base + 1 additional)
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-post-build-validate"
+  [ "$status" -ne 0 ]
+  assert_output_contains "entries but expected 2"
 }

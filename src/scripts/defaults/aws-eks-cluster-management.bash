@@ -10,7 +10,7 @@
 EKS_BASE_IMAGE_REGISTRY="${EKS_BASE_IMAGE_REGISTRY:-ghcr.io}"
 EKS_BASE_IMAGE_NAMESPACE="${EKS_BASE_IMAGE_NAMESPACE:-kube-kaptain}"
 EKS_BASE_IMAGE_NAME="${EKS_BASE_IMAGE_NAME:-aws/aws-eks-cluster-management}"
-EKS_BASE_IMAGE_TAG="${EKS_BASE_IMAGE_TAG:-1.8}"
+EKS_BASE_IMAGE_TAG="${EKS_BASE_IMAGE_TAG:-1.9}"
 
 # Cluster config
 KUBERNETES_MAJOR_VERSION="${KUBERNETES_MAJOR_VERSION:-1}"
@@ -23,7 +23,7 @@ EKS_CILIUM_EBPF_NETWORKING="${EKS_CILIUM_EBPF_NETWORKING:-false}"
 
 # Nodegroup token defaults (written to platform config dir if not in CONFIG_SUB_PATH)
 # NODEGROUP_INSTANCE_TYPE - required token from CONFIG_SUB_PATH, no default
-NODEGROUP_DESIRED_CAPACITY="${NODEGROUP_DESIRED_CAPACITY:-1}" # start with 1 faster completion of upgrade/creation - let it scale up as workloads migrate
+# NODEGROUP_DESIRED_CAPACITY - defaults to NODEGROUP_MIN_SIZE (derived in prepare script)
 NODEGROUP_MIN_SIZE="${NODEGROUP_MIN_SIZE:-3}"
 NODEGROUP_MAX_SIZE="${NODEGROUP_MAX_SIZE:-12}"
 

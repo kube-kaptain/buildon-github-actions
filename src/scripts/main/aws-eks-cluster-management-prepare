@@ -22,6 +22,9 @@
 #   NODEGROUP_INSTANCE_TYPE     - Node instance type (e.g., t3.medium)
 #   SECRETS_ENCRYPTION_KEY_ARN  - KMS key ARN for envelope encryption of Kubernetes secrets
 #   AWS_ACCOUNT_ID              - AWS account ID (e.g., 123456789012)
+#   CLUSTER_SECURITY_GROUP      - EKS cluster default security group ID (from EKS console Networking tab)
+#   CLUSTER_ORIGIN              - Cluster origin: 'eksctl' (created by eksctl) or 'adopted' (existing cluster)
+#   NODEGROUP_TYPE              - Nodegroup type: 'managed' (EKS managed) or 'unmanaged' (self-managed)
 #   PRIVATE_SUBNET_ID_A/B/C     - Private subnet IDs (if EKS_PRIVATE_NETWORKING=true)
 #   PUBLIC_SUBNET_ID_A/B/C      - Public subnet IDs (if EKS_PUBLIC_NETWORKING=true)
 #
@@ -31,6 +34,8 @@
 #
 # Optional config (file in CONFIG_SUB_PATH, generates section when present):
 #   VPC_SECURITY_GROUP                  - VPC security group ID (generates securityGroup in vpc block)
+#   VPC_CONTROL_PLANE_SECURITY_GROUP_IDS - Control plane SG IDs, comma-separated, mutually exclusive with VPC_SECURITY_GROUP
+#     (expanded to numbered tokens: VPC_CONTROL_PLANE_SECURITY_GROUP_ID_1, ...ID_2, etc.)
 #   PRIVATE_CLUSTER_ENABLED             - Generate privateCluster block (e.g., true)
 #   NODEGROUP_PRIVATE_NETWORKING        - Generate privateNetworking in nodegroup (e.g., true)
 #   AUTO_MODE_CONFIG_ENABLED            - Enable EKS Auto Mode (generates autoModeConfig block)
@@ -39,7 +44,19 @@
 #   NODEGROUP_TAGS                      - Additional nodegroup tags (flat yaml: key: value per line)
 #   NODEGROUP_LABELS                    - Additional nodegroup labels (flat yaml: key: value per line)
 #   METADATA_ANNOTATIONS                - Additional metadata annotations (flat yaml: key: value per line)
+#   NODEGROUP_TAINTS                     - Nodegroup taints (raw yaml list: - key/value/effect per entry)
+#   NODEGROUP_SECURITY_GROUPS_ATTACH_IDS - Additional SG IDs for nodegroup instances, comma-separated
+#     (expanded to numbered tokens: NODEGROUP_SECURITY_GROUPS_ATTACH_ID_1, ...ID_2, etc.)
+#   NODEGROUP_AVAILABILITY_ZONES         - Pin nodegroup to specific AZs, comma-separated (e.g., eu-west-1a,eu-west-1b)
+#     (expanded to numbered tokens: NODEGROUP_AVAILABILITY_ZONE_1, ...ZONE_2, etc.)
+#   VPC_SHARED_NODE_SECURITY_GROUP      - Shared node SG ID, unmanaged nodegroups only (generates sharedNodeSecurityGroup in vpc block)
+#   NODEGROUP_SPOT                      - Use Spot instances (true or false), managed nodegroups only
+#   NODEGROUP_VOLUME_KMS_KEY_ID         - KMS key ARN for EBS volume encryption
 #   NODEGROUP_IAM_INSTANCE_ROLE_ARN     - Custom IAM instance role ARN for nodegroup
+#   ADDITIONAL_NODE_GROUPS              - Additional nodegroups, comma-separated (e.g., kong,monitoring)
+#     Each per-nodegroup field is shared unless overridden with a suffixed config file
+#     (e.g., NODEGROUP_INSTANCE_TYPE_KONG → NodegroupInstanceTypeKong overrides instanceType for kong)
+#     Suffix must be a single alphabetic word (lowercased for names, PascalCase for config files)
 #   ADDONS_<NAME>_SERVICE_ACCOUNT_ROLE_ARN - Per-addon service account role ARN
 #     (e.g., ADDONS_VPC_CNI_SERVICE_ACCOUNT_ROLE_ARN → AddonsVpcCniServiceAccountRoleArn)
 #
@@ -51,10 +68,12 @@
 #     (expanded to numbered tokens: CLOUD_WATCH_CLUSTER_LOGGING_ENABLE_TYPE_1, ...TYPE_2, etc.)
 #   NODEGROUP_AMI_FAMILY                       - default: AmazonLinux2023
 #   NODEGROUP_VOLUME_SIZE                      - default: 20
+#   NODEGROUP_VOLUME_TYPE                      - default: gp3 (gp2, gp3, io1, io2, st1, sc1, standard)
+#   NODEGROUP_VOLUME_ENCRYPTED                 - default: true (true or false)
 #   NODEGROUP_UPDATE_CONFIG_MAX_UNAVAILABLE    - default: 1 (must be > 0)
-#   NODEGROUP_DESIRED_CAPACITY                 - default: 1
 #   NODEGROUP_MIN_SIZE                         - default: 3
 #   NODEGROUP_MAX_SIZE                         - default: 12
+#   NODEGROUP_DESIRED_CAPACITY                 - default: same as NODEGROUP_MIN_SIZE
 #
 # Inputs (environment variables / switches):
 #   EKS_BASE_IMAGE_REGISTRY    - Base image registry (default: ghcr.io)
@@ -410,6 +429,9 @@ require_config_file "VPC_ID" "Create this file with the VPC ID for your cluster 
 require_config_file "NODEGROUP_INSTANCE_TYPE" "Create this file with the instance type (e.g., t3.medium)"
 require_config_file "SECRETS_ENCRYPTION_KEY_ARN" "Create this file with the KMS key ARN for secrets encryption"
 require_config_file "AWS_ACCOUNT_ID" "Create this file with the AWS account ID for your cluster (e.g., 123456789012)"
+require_config_file "CLUSTER_SECURITY_GROUP" "Create this file with the EKS cluster default security group ID (from EKS console Networking tab or sg-known-after-creation for new clusters)"
+require_config_file "CLUSTER_ORIGIN" "Create this file with 'eksctl' (cluster created by eksctl) or 'adopted' (existing cluster, eg Terraform/OpenTofu)"
+require_config_file "NODEGROUP_TYPE" "Create this file with 'managed' (EKS managed nodegroups) or 'unmanaged' (self-managed nodegroups)"
 
 if [[ "${EKS_PRIVATE_NETWORKING}" == "true" ]]; then
   require_config_file "PRIVATE_SUBNET_ID_A" "Required when EKS_PRIVATE_NETWORKING=true"
@@ -423,11 +445,67 @@ if [[ "${EKS_PUBLIC_NETWORKING}" == "true" ]]; then
   require_config_file "PUBLIC_SUBNET_ID_C" "Required when EKS_PUBLIC_NETWORKING=true"
 fi
 
+# Cluster origin - required: determines security group requirements
+cluster_origin=""
+cluster_origin_config_name=$(convert_token_name "${TOKEN_NAME_STYLE}" "CLUSTER_ORIGIN")
+if [[ -f "${CONFIG_SUB_PATH}/${cluster_origin_config_name}" ]]; then
+  cluster_origin=$(< "${CONFIG_SUB_PATH}/${cluster_origin_config_name}")
+  cluster_origin="${cluster_origin%$'\n'}"
+  if [[ "${cluster_origin}" != "eksctl" && "${cluster_origin}" != "adopted" ]]; then
+    log_error "CLUSTER_ORIGIN: invalid value '${cluster_origin}' - must be 'eksctl' or 'adopted'"
+    validation_errors=$((validation_errors + 1))
+  fi
+fi
+
+# Nodegroup type - required: determines managed vs unmanaged nodegroup generation
+nodegroup_type=""
+nodegroup_type_config_name=$(convert_token_name "${TOKEN_NAME_STYLE}" "NODEGROUP_TYPE")
+if [[ -f "${CONFIG_SUB_PATH}/${nodegroup_type_config_name}" ]]; then
+  nodegroup_type=$(< "${CONFIG_SUB_PATH}/${nodegroup_type_config_name}")
+  nodegroup_type="${nodegroup_type%$'\n'}"
+  if [[ "${nodegroup_type}" != "managed" && "${nodegroup_type}" != "unmanaged" ]]; then
+    log_error "NODEGROUP_TYPE: invalid value '${nodegroup_type}' - must be 'managed' or 'unmanaged'"
+    validation_errors=$((validation_errors + 1))
+  fi
+fi
+
 # VPC security group - optional: if config file exists, include securityGroup line
 has_vpc_security_group="false"
 vpc_security_group_name=$(convert_token_name "${TOKEN_NAME_STYLE}" "VPC_SECURITY_GROUP")
 if [[ -f "${CONFIG_SUB_PATH}/${vpc_security_group_name}" ]]; then
   has_vpc_security_group="true"
+fi
+
+# VPC control plane security group IDs - optional alternative to VPC_SECURITY_GROUP
+has_vpc_control_plane_sg_ids="false"
+vpc_control_plane_sg_ids_name=$(convert_token_name "${TOKEN_NAME_STYLE}" "VPC_CONTROL_PLANE_SECURITY_GROUP_IDS")
+if [[ -f "${CONFIG_SUB_PATH}/${vpc_control_plane_sg_ids_name}" ]]; then
+  has_vpc_control_plane_sg_ids="true"
+fi
+
+# VPC shared node security group - optional: unmanaged-only, generates sharedNodeSecurityGroup in vpc block
+has_vpc_shared_node_sg="false"
+vpc_shared_node_sg_name=$(convert_token_name "${TOKEN_NAME_STYLE}" "VPC_SHARED_NODE_SECURITY_GROUP")
+if [[ -f "${CONFIG_SUB_PATH}/${vpc_shared_node_sg_name}" ]]; then
+  has_vpc_shared_node_sg="true"
+fi
+
+# VPC security group mutual exclusion: cannot have both securityGroup and controlPlaneSecurityGroupIDs
+if [[ "${has_vpc_security_group}" == "true" && "${has_vpc_control_plane_sg_ids}" == "true" ]]; then
+  log_error "VPC_SECURITY_GROUP and VPC_CONTROL_PLANE_SECURITY_GROUP_IDS are mutually exclusive and have the same purpose - provide one or the other"
+  validation_errors=$((validation_errors + 1))
+fi
+
+# Adopted clusters require a control plane security group (eksctl can't resolve from CloudFormation)
+if [[ "${cluster_origin}" == "adopted" && "${has_vpc_security_group}" == "false" && "${has_vpc_control_plane_sg_ids}" == "false" ]]; then
+  log_error "CLUSTER_ORIGIN=adopted requires either VPC_SECURITY_GROUP or VPC_CONTROL_PLANE_SECURITY_GROUP_IDS"
+  validation_errors=$((validation_errors + 1))
+fi
+
+# sharedNodeSecurityGroup is unmanaged-only - reject when managed
+if [[ "${has_vpc_shared_node_sg}" == "true" && "${nodegroup_type}" == "managed" ]]; then
+  log_error "VPC_SHARED_NODE_SECURITY_GROUP is not supported for managed nodegroups - managed nodegroups use the EKS cluster default security group, sharedNodeSecurityGroup only applies to unmanaged (self-managed) nodegroups"
+  validation_errors=$((validation_errors + 1))
 fi
 
 # Private cluster - conditional: if config file exists, generate privateCluster block
@@ -437,18 +515,18 @@ if [[ -f "${CONFIG_SUB_PATH}/${private_cluster_config_name}" ]]; then
   has_private_cluster_config="true"
 fi
 
-# Nodegroup private networking - conditional: if config file exists, include privateNetworking line
-has_nodegroup_private_networking="false"
+# Global nodegroup private networking - if config file exists, all nodegroups inherit unless overridden
+has_global_private_networking="false"
 nodegroup_private_networking_name=$(convert_token_name "${TOKEN_NAME_STYLE}" "NODEGROUP_PRIVATE_NETWORKING")
 if [[ -f "${CONFIG_SUB_PATH}/${nodegroup_private_networking_name}" ]]; then
-  has_nodegroup_private_networking="true"
+  has_global_private_networking="true"
 fi
 
-# Nodegroup IAM instance role ARN - conditional: if config file exists, include instanceRoleARN line
-has_nodegroup_iam_instance_role_arn="false"
+# Global nodegroup IAM instance role ARN - if config file exists, all nodegroups inherit unless overridden
+has_global_iam_instance_role_arn="false"
 nodegroup_iam_instance_role_arn_name=$(convert_token_name "${TOKEN_NAME_STYLE}" "NODEGROUP_IAM_INSTANCE_ROLE_ARN")
 if [[ -f "${CONFIG_SUB_PATH}/${nodegroup_iam_instance_role_arn_name}" ]]; then
-  has_nodegroup_iam_instance_role_arn="true"
+  has_global_iam_instance_role_arn="true"
 fi
 
 # Auto Mode - conditional: if config file exists, generate block; if true, require node pools
@@ -487,29 +565,140 @@ if [[ -f "${CONFIG_SUB_PATH}/${metadata_tags_config_name}" ]]; then
   fi
 fi
 
-has_nodegroup_tags="false"
-nodegroup_tags_file=""
+has_global_tags="false"
+global_tags_file=""
 nodegroup_tags_config_name=$(convert_token_name "${TOKEN_NAME_STYLE}" "NODEGROUP_TAGS")
 if [[ -f "${CONFIG_SUB_PATH}/${nodegroup_tags_config_name}" ]]; then
-  nodegroup_tags_file="${CONFIG_SUB_PATH}/${nodegroup_tags_config_name}"
-  if validate_flat_yaml_tags "NODEGROUP_TAGS" "${nodegroup_tags_file}"; then
-    has_nodegroup_tags="true"
+  global_tags_file="${CONFIG_SUB_PATH}/${nodegroup_tags_config_name}"
+  if validate_flat_yaml_tags "NODEGROUP_TAGS" "${global_tags_file}"; then
+    has_global_tags="true"
   fi
   # eksctl auto-sets the Name tag on nodegroup EC2 instances from the nodegroup name.
   # A user-supplied Name tag conflicts and causes intermittent behaviour on upgrades.
-  if grep -qE '^Name:' "${nodegroup_tags_file}"; then
+  if grep -qE '^Name:' "${global_tags_file}"; then
     log_error "NODEGROUP_TAGS: 'Name' tag is reserved - eksctl sets it from the nodegroup name"
     validation_errors=$((validation_errors + 1))
   fi
 fi
 
-has_nodegroup_labels="false"
-nodegroup_labels_file=""
+has_global_labels="false"
+global_labels_file=""
 nodegroup_labels_config_name=$(convert_token_name "${TOKEN_NAME_STYLE}" "NODEGROUP_LABELS")
 if [[ -f "${CONFIG_SUB_PATH}/${nodegroup_labels_config_name}" ]]; then
-  nodegroup_labels_file="${CONFIG_SUB_PATH}/${nodegroup_labels_config_name}"
-  if validate_flat_yaml_tags "NODEGROUP_LABELS" "${nodegroup_labels_file}"; then
-    has_nodegroup_labels="true"
+  global_labels_file="${CONFIG_SUB_PATH}/${nodegroup_labels_config_name}"
+  if validate_flat_yaml_tags "NODEGROUP_LABELS" "${global_labels_file}"; then
+    has_global_labels="true"
+  fi
+fi
+
+has_global_taints="false"
+global_taints_file=""
+nodegroup_taints_config_name=$(convert_token_name "${TOKEN_NAME_STYLE}" "NODEGROUP_TAINTS")
+if [[ -f "${CONFIG_SUB_PATH}/${nodegroup_taints_config_name}" ]]; then
+  global_taints_file="${CONFIG_SUB_PATH}/${nodegroup_taints_config_name}"
+  # Validate taints structure using yq
+  if ! yq -e '.' "${global_taints_file}" &>/dev/null; then
+    log_error "NODEGROUP_TAINTS: file is not valid YAML"
+    validation_errors=$((validation_errors + 1))
+  else
+    taint_count=$(yq '. | length' "${global_taints_file}" 2>/dev/null || echo "0")
+    if [[ "${taint_count}" -eq 0 ]]; then
+      log_error "NODEGROUP_TAINTS: file is empty or not a YAML list"
+      validation_errors=$((validation_errors + 1))
+    else
+      taint_errors=0
+      for idx in $(seq 0 $((taint_count - 1))); do
+        taint_key=$(yq ".[${idx}].key" "${global_taints_file}" 2>/dev/null || echo "")
+        if [[ -z "${taint_key}" || "${taint_key}" == "null" ]]; then
+          log_error "NODEGROUP_TAINTS: entry ${idx} missing 'key'"
+          taint_errors=$((taint_errors + 1))
+        fi
+
+        taint_effect=$(yq ".[${idx}].effect" "${global_taints_file}" 2>/dev/null || echo "")
+        if [[ -z "${taint_effect}" || "${taint_effect}" == "null" ]]; then
+          log_error "NODEGROUP_TAINTS: entry ${idx} missing 'effect'"
+          taint_errors=$((taint_errors + 1))
+        else
+          case "${taint_effect}" in
+            NoSchedule|PreferNoSchedule|NoExecute) ;;
+            *)
+              log_error "NODEGROUP_TAINTS: entry ${idx} effect '${taint_effect}' must be one of: NoSchedule, PreferNoSchedule, NoExecute"
+              taint_errors=$((taint_errors + 1))
+              ;;
+          esac
+        fi
+      done
+
+      # Check for duplicate key+effect combinations
+      unique_pairs=$(yq '.[] | .key + ":" + .effect' "${global_taints_file}" 2>/dev/null | sort -u | wc -l | tr -d ' ')
+      if [[ "${unique_pairs}" -ne "${taint_count}" ]]; then
+        log_error "NODEGROUP_TAINTS: duplicate key+effect combinations found"
+        taint_errors=$((taint_errors + 1))
+      fi
+
+      if [[ "${taint_errors}" -gt 0 ]]; then
+        validation_errors=$((validation_errors + taint_errors))
+      else
+        has_global_taints="true"
+      fi
+    fi
+  fi
+fi
+
+has_global_sg_attach_ids="false"
+nodegroup_sg_attach_ids_name=$(convert_token_name "${TOKEN_NAME_STYLE}" "NODEGROUP_SECURITY_GROUPS_ATTACH_IDS")
+if [[ -f "${CONFIG_SUB_PATH}/${nodegroup_sg_attach_ids_name}" ]]; then
+  has_global_sg_attach_ids="true"
+fi
+
+has_global_availability_zones="false"
+nodegroup_az_name=$(convert_token_name "${TOKEN_NAME_STYLE}" "NODEGROUP_AVAILABILITY_ZONES")
+if [[ -f "${CONFIG_SUB_PATH}/${nodegroup_az_name}" ]]; then
+  has_global_availability_zones="true"
+fi
+
+# Global volume KMS key ID - if config file exists, all nodegroups inherit unless overridden
+has_global_volume_kms_key_id="false"
+volume_kms_key_id_name=$(convert_token_name "${TOKEN_NAME_STYLE}" "NODEGROUP_VOLUME_KMS_KEY_ID")
+if [[ -f "${CONFIG_SUB_PATH}/${volume_kms_key_id_name}" ]]; then
+  has_global_volume_kms_key_id="true"
+fi
+
+# Additional nodegroups - optional: comma-separated list of nodegroup suffixes
+additional_ng_count=0
+declare -a additional_ng_suffixes=()
+declare -a additional_ng_suffixes_upper=()
+additional_ng_config_name=$(convert_token_name "${TOKEN_NAME_STYLE}" "ADDITIONAL_NODE_GROUPS")
+if [[ -f "${CONFIG_SUB_PATH}/${additional_ng_config_name}" ]]; then
+  additional_ng_raw=$(< "${CONFIG_SUB_PATH}/${additional_ng_config_name}")
+  additional_ng_raw="${additional_ng_raw%$'\n'}"
+  IFS=',' read -ra additional_ng_suffixes <<< "${additional_ng_raw}"
+  additional_ng_count=${#additional_ng_suffixes[@]}
+
+  for i in "${!additional_ng_suffixes[@]}"; do
+    suffix="${additional_ng_suffixes[${i}]}"
+    suffix=$(echo "${suffix}" | tr '[:upper:]' '[:lower:]')
+    additional_ng_suffixes[i]="${suffix}"
+
+    if [[ ! "${suffix}" =~ ^[a-z]+$ ]]; then
+      log_error "ADDITIONAL_NODE_GROUPS: suffix '${suffix}' must be a single alphabetic word (a-z only)"
+      validation_errors=$((validation_errors + 1))
+    elif [[ "${suffix}" == kaptain* ]]; then
+      log_error "ADDITIONAL_NODE_GROUPS: suffix '${suffix}' must not start with 'kaptain' - this prefix is reserved"
+      validation_errors=$((validation_errors + 1))
+    fi
+
+    suffix_upper=$(echo "${suffix}" | tr '[:lower:]' '[:upper:]')
+    additional_ng_suffixes_upper+=("${suffix_upper}")
+  done
+
+  # Check for duplicate suffixes
+  if [[ ${additional_ng_count} -gt 1 ]]; then
+    unique_count=$(printf '%s\n' "${additional_ng_suffixes[@]}" | sort -u | wc -l | tr -d ' ')
+    if [[ "${unique_count}" -ne "${additional_ng_count}" ]]; then
+      log_error "ADDITIONAL_NODE_GROUPS: duplicate suffixes found"
+      validation_errors=$((validation_errors + 1))
+    fi
   fi
 fi
 
@@ -544,6 +733,12 @@ printf '%s' "${PROJECT_NAME}" > "${expected_values_dir}/project-name"
 printf '%s' "$(< "${CONFIG_SUB_PATH}/$(convert_token_name "${TOKEN_NAME_STYLE}" "AWS_REGION")")" > "${expected_values_dir}/aws-region"
 printf '%s' "${k8s_version}" > "${expected_values_dir}/kubernetes-version"
 printf '%s' "${nodegroup_prefix}" > "${expected_values_dir}/nodegroup-prefix"
+printf '%s' "${cluster_origin}" > "${expected_values_dir}/cluster-origin"
+printf '%s' "${nodegroup_type}" > "${expected_values_dir}/nodegroup-type"
+printf '%s' "${additional_ng_count}" > "${expected_values_dir}/additional-nodegroup-count"
+if [[ ${additional_ng_count} -gt 0 ]]; then
+  printf '%s' "$(IFS=','; echo "${additional_ng_suffixes_upper[*]}")" > "${expected_values_dir}/additional-nodegroup-suffixes"
+fi
 
 # === Determine platforms, context dirs, and config dirs ===
 
@@ -600,20 +795,122 @@ expand_comma_list_token "CLOUD_WATCH_CLUSTER_LOGGING_ENABLE_TYPES" "CLOUD_WATCH_
 cloudwatch_tokens=("${expanded_tokens[@]}")
 ensure_default_token "NODEGROUP_AMI_FAMILY" "AmazonLinux2023"
 ensure_default_token "NODEGROUP_VOLUME_SIZE" "20"
-ensure_default_token "NODEGROUP_UPDATE_CONFIG_MAX_UNAVAILABLE" "1"
-ensure_default_token "NODEGROUP_DESIRED_CAPACITY" "${NODEGROUP_DESIRED_CAPACITY}"
+ensure_default_token "NODEGROUP_VOLUME_TYPE" "gp3"
+ensure_default_token "NODEGROUP_VOLUME_ENCRYPTED" "true"
+
+# Validate volumeType is a valid EBS type
+volume_type_name=$(convert_token_name "${TOKEN_NAME_STYLE}" "NODEGROUP_VOLUME_TYPE")
+volume_type_val="gp3"
+if [[ -f "${CONFIG_SUB_PATH}/${volume_type_name}" ]]; then
+  volume_type_val=$(< "${CONFIG_SUB_PATH}/${volume_type_name}")
+  volume_type_val="${volume_type_val%$'\n'}"
+fi
+case "${volume_type_val}" in
+  gp2|gp3|io1|io2|st1|sc1|standard) ;;
+  *)
+    log_error "NODEGROUP_VOLUME_TYPE must be one of: gp2, gp3, io1, io2, st1, sc1, standard (got: ${volume_type_val})"
+    validation_errors=$((validation_errors + 1))
+    ;;
+esac
+
+# Validate volumeEncrypted is true or false
+volume_encrypted_name=$(convert_token_name "${TOKEN_NAME_STYLE}" "NODEGROUP_VOLUME_ENCRYPTED")
+volume_encrypted_val="true"
+if [[ -f "${CONFIG_SUB_PATH}/${volume_encrypted_name}" ]]; then
+  volume_encrypted_val=$(< "${CONFIG_SUB_PATH}/${volume_encrypted_name}")
+  volume_encrypted_val="${volume_encrypted_val%$'\n'}"
+fi
+if [[ "${volume_encrypted_val}" != "true" && "${volume_encrypted_val}" != "false" ]]; then
+  log_error "NODEGROUP_VOLUME_ENCRYPTED must be 'true' or 'false' (got: ${volume_encrypted_val})"
+  validation_errors=$((validation_errors + 1))
+fi
+
+update_max_unavailable_name=$(convert_token_name "${TOKEN_NAME_STYLE}" "NODEGROUP_UPDATE_CONFIG_MAX_UNAVAILABLE")
+if [[ "${nodegroup_type}" == "managed" ]]; then
+  ensure_default_token "NODEGROUP_UPDATE_CONFIG_MAX_UNAVAILABLE" "1"
+
+  # Validate maxUnavailable is greater than 0
+  update_max_unavailable_val="1"
+  if [[ -f "${CONFIG_SUB_PATH}/${update_max_unavailable_name}" ]]; then
+    update_max_unavailable_val=$(< "${CONFIG_SUB_PATH}/${update_max_unavailable_name}")
+    update_max_unavailable_val="${update_max_unavailable_val%$'\n'}"
+  fi
+  if [[ "${update_max_unavailable_val}" -le 0 ]]; then
+    log_error "NODEGROUP_UPDATE_CONFIG_MAX_UNAVAILABLE must be greater than 0 (got: ${update_max_unavailable_val})"
+    validation_errors=$((validation_errors + 1))
+  fi
+else
+  # updateConfig is not supported for unmanaged nodegroups
+  if [[ -f "${CONFIG_SUB_PATH}/${update_max_unavailable_name}" ]]; then
+    log_error "NODEGROUP_UPDATE_CONFIG_MAX_UNAVAILABLE is not supported for unmanaged nodegroups - remove the config file"
+    validation_errors=$((validation_errors + 1))
+  fi
+fi
+
+# Spot instances - optional, managed only, must be true or false
+has_global_spot="false"
+nodegroup_spot_name=$(convert_token_name "${TOKEN_NAME_STYLE}" "NODEGROUP_SPOT")
+if [[ "${nodegroup_type}" == "managed" ]]; then
+  if [[ -f "${CONFIG_SUB_PATH}/${nodegroup_spot_name}" ]]; then
+    nodegroup_spot_val=$(< "${CONFIG_SUB_PATH}/${nodegroup_spot_name}")
+    nodegroup_spot_val="${nodegroup_spot_val%$'\n'}"
+    if [[ "${nodegroup_spot_val}" != "true" && "${nodegroup_spot_val}" != "false" ]]; then
+      log_error "NODEGROUP_SPOT must be 'true' or 'false' (got: ${nodegroup_spot_val})"
+      validation_errors=$((validation_errors + 1))
+    else
+      has_global_spot="true"
+    fi
+  fi
+else
+  if [[ -f "${CONFIG_SUB_PATH}/${nodegroup_spot_name}" ]]; then
+    log_error "NODEGROUP_SPOT is not supported for unmanaged nodegroups (use instancesDistribution instead) - remove the config file"
+    validation_errors=$((validation_errors + 1))
+  fi
+fi
+
 ensure_default_token "NODEGROUP_MIN_SIZE" "${NODEGROUP_MIN_SIZE}"
 ensure_default_token "NODEGROUP_MAX_SIZE" "${NODEGROUP_MAX_SIZE}"
 
-# Validate maxUnavailable is greater than 0
-update_max_unavailable_name=$(convert_token_name "${TOKEN_NAME_STYLE}" "NODEGROUP_UPDATE_CONFIG_MAX_UNAVAILABLE")
-update_max_unavailable_val="1"
-if [[ -f "${CONFIG_SUB_PATH}/${update_max_unavailable_name}" ]]; then
-  update_max_unavailable_val=$(< "${CONFIG_SUB_PATH}/${update_max_unavailable_name}")
-  update_max_unavailable_val="${update_max_unavailable_val%$'\n'}"
+# desiredCapacity defaults to minSize — resolve actual min value first
+min_size_name=$(convert_token_name "${TOKEN_NAME_STYLE}" "NODEGROUP_MIN_SIZE")
+resolved_min_size="${NODEGROUP_MIN_SIZE}"
+if [[ -f "${CONFIG_SUB_PATH}/${min_size_name}" ]]; then
+  resolved_min_size=$(< "${CONFIG_SUB_PATH}/${min_size_name}")
+  resolved_min_size="${resolved_min_size%$'\n'}"
 fi
-if [[ "${update_max_unavailable_val}" -le 0 ]]; then
-  log_error "NODEGROUP_UPDATE_CONFIG_MAX_UNAVAILABLE must be greater than 0 (got: ${update_max_unavailable_val})"
+desired_capacity_default="${NODEGROUP_DESIRED_CAPACITY:-${resolved_min_size}}"
+ensure_default_token "NODEGROUP_DESIRED_CAPACITY" "${desired_capacity_default}"
+
+# Validate nodegroup sizing: min <= desired <= max
+resolve_sizing_value() {
+  local token_name="$1"
+  local config_file_name
+  config_file_name=$(convert_token_name "${TOKEN_NAME_STYLE}" "${token_name}")
+  if [[ -f "${CONFIG_SUB_PATH}/${config_file_name}" ]]; then
+    local val
+    val=$(< "${CONFIG_SUB_PATH}/${config_file_name}")
+    printf '%s' "${val%$'\n'}"
+  else
+    local val
+    val=$(< "${platform_config_dirs[0]}/${config_file_name}")
+    printf '%s' "${val%$'\n'}"
+  fi
+}
+
+resolved_min=$(resolve_sizing_value "NODEGROUP_MIN_SIZE")
+resolved_max=$(resolve_sizing_value "NODEGROUP_MAX_SIZE")
+resolved_desired=$(resolve_sizing_value "NODEGROUP_DESIRED_CAPACITY")
+
+if [[ "${resolved_min}" -gt "${resolved_max}" ]]; then
+  log_error "NODEGROUP_MIN_SIZE (${resolved_min}) must be <= NODEGROUP_MAX_SIZE (${resolved_max})"
+  validation_errors=$((validation_errors + 1))
+fi
+if [[ "${resolved_desired}" -lt "${resolved_min}" ]]; then
+  log_error "NODEGROUP_DESIRED_CAPACITY (${resolved_desired}) must be >= NODEGROUP_MIN_SIZE (${resolved_min})"
+  validation_errors=$((validation_errors + 1))
+fi
+if [[ "${resolved_desired}" -gt "${resolved_max}" ]]; then
+  log_error "NODEGROUP_DESIRED_CAPACITY (${resolved_desired}) must be <= NODEGROUP_MAX_SIZE (${resolved_max})"
   validation_errors=$((validation_errors + 1))
 fi
 
@@ -633,14 +930,8 @@ token_vpc_private_access=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${
 token_vpc_public_access=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "VPC_CLUSTER_ENDPOINTS_PUBLIC_ACCESS")
 token_secrets_encryption_key_arn=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "SECRETS_ENCRYPTION_KEY_ARN")
 token_aws_account_id=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "AWS_ACCOUNT_ID")
-token_nodegroup_prefix=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "NODE_GROUP_DEFAULT_PREFIX")
-token_instance_type=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "NODEGROUP_INSTANCE_TYPE")
-token_ami_family=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "NODEGROUP_AMI_FAMILY")
-token_volume_size=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "NODEGROUP_VOLUME_SIZE")
-token_update_max_unavailable=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "NODEGROUP_UPDATE_CONFIG_MAX_UNAVAILABLE")
-token_desired_capacity=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "NODEGROUP_DESIRED_CAPACITY")
-token_min_size=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "NODEGROUP_MIN_SIZE")
-token_max_size=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "NODEGROUP_MAX_SIZE")
+token_cluster_security_group=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "CLUSTER_SECURITY_GROUP")
+
 
 if [[ "${EKS_PRIVATE_NETWORKING}" == "true" ]]; then
   token_private_subnet_id_a=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "PRIVATE_SUBNET_ID_A")
@@ -658,16 +949,12 @@ if [[ "${has_vpc_security_group}" == "true" ]]; then
   token_security_group=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "VPC_SECURITY_GROUP")
 fi
 
+if [[ "${has_vpc_shared_node_sg}" == "true" ]]; then
+  token_vpc_shared_node_sg=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "VPC_SHARED_NODE_SECURITY_GROUP")
+fi
+
 if [[ "${has_private_cluster_config}" == "true" ]]; then
   token_private_cluster_enabled=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "PRIVATE_CLUSTER_ENABLED")
-fi
-
-if [[ "${has_nodegroup_private_networking}" == "true" ]]; then
-  token_nodegroup_private_networking=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "NODEGROUP_PRIVATE_NETWORKING")
-fi
-
-if [[ "${has_nodegroup_iam_instance_role_arn}" == "true" ]]; then
-  token_nodegroup_iam_instance_role_arn=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "NODEGROUP_IAM_INSTANCE_ROLE_ARN")
 fi
 
 if [[ "${has_auto_mode_config}" == "true" ]]; then
@@ -678,8 +965,284 @@ if [[ "${has_auto_mode_config}" == "true" ]]; then
   fi
 fi
 
+if [[ "${has_vpc_control_plane_sg_ids}" == "true" ]]; then
+  expand_comma_list_token "VPC_CONTROL_PLANE_SECURITY_GROUP_IDS" "VPC_CONTROL_PLANE_SECURITY_GROUP_ID" "" # no default - value comes from CONFIG_SUB_PATH
+  cp_sg_ids_tokens=("${expanded_tokens[@]}")
+  cp_sg_ids_count="${expanded_count}"
+  printf '%s' "${cp_sg_ids_count}" > "${expected_values_dir}/control-plane-sg-ids-count"
+fi
+
 if [[ "${has_network_config}" == "true" ]]; then
   token_network_service_ipv4_cidr=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "NETWORK_CONFIG_SERVICE_IP_V4_CIDR")
+fi
+
+# === Process all nodegroups (base + additional) ===
+# Base nodegroup uses KAPTAIN_DEFAULT_NG suffix for tokens (name stays unsuffixed).
+# Additional nodegroups use their own suffix. All share the same processing logic.
+
+declare -a all_ng_suffixes_lower=("kaptaindefaultng")
+declare -a all_ng_suffixes_upper=("KAPTAIN_DEFAULT_NG")
+for i in "${!additional_ng_suffixes[@]}"; do
+  all_ng_suffixes_lower+=("${additional_ng_suffixes[${i}]}")
+  all_ng_suffixes_upper+=("${additional_ng_suffixes_upper[${i}]}")
+done
+
+for ng_idx in "${!all_ng_suffixes_lower[@]}"; do
+  suffix_lower="${all_ng_suffixes_lower[${ng_idx}]}"
+  suffix_upper="${all_ng_suffixes_upper[${ng_idx}]}"
+  log ""
+
+  if [[ "${suffix_upper}" == "KAPTAIN_DEFAULT_NG" ]]; then
+    log "--- Base nodegroup: ${suffix_lower} (${suffix_upper}) ---"
+  else
+    log "--- Additional nodegroup: ${suffix_lower} (${suffix_upper}) ---"
+
+    # Compute suffixed nodegroup prefix and write to platform config dirs
+    ng_prefix_value="${nodegroup_prefix}-${suffix_lower}"
+    ng_prefix_config_name=$(convert_token_name "${TOKEN_NAME_STYLE}" "NODE_GROUP_DEFAULT_PREFIX_${suffix_upper}")
+    for config_dir in "${platform_config_dirs[@]}"; do
+      printf '%s' "${ng_prefix_value}" > "${config_dir}/${ng_prefix_config_name}"
+    done
+    log "  NODE_GROUP_DEFAULT_PREFIX_${suffix_upper}: ${ng_prefix_value}"
+  fi
+
+  # Inherit always-present fields (defaults from global resolved values)
+  ensure_default_token "NODEGROUP_INSTANCE_TYPE_${suffix_upper}" "$(resolve_sizing_value "NODEGROUP_INSTANCE_TYPE")"
+  ensure_default_token "NODEGROUP_AMI_FAMILY_${suffix_upper}" "$(resolve_sizing_value "NODEGROUP_AMI_FAMILY")"
+  ensure_default_token "NODEGROUP_VOLUME_SIZE_${suffix_upper}" "$(resolve_sizing_value "NODEGROUP_VOLUME_SIZE")"
+  ensure_default_token "NODEGROUP_VOLUME_TYPE_${suffix_upper}" "$(resolve_sizing_value "NODEGROUP_VOLUME_TYPE")"
+  ensure_default_token "NODEGROUP_VOLUME_ENCRYPTED_${suffix_upper}" "$(resolve_sizing_value "NODEGROUP_VOLUME_ENCRYPTED")"
+  ensure_default_token "NODEGROUP_MIN_SIZE_${suffix_upper}" "$(resolve_sizing_value "NODEGROUP_MIN_SIZE")"
+  ensure_default_token "NODEGROUP_MAX_SIZE_${suffix_upper}" "$(resolve_sizing_value "NODEGROUP_MAX_SIZE")"
+  ensure_default_token "NODEGROUP_DESIRED_CAPACITY_${suffix_upper}" "$(resolve_sizing_value "NODEGROUP_DESIRED_CAPACITY")"
+
+  if [[ "${nodegroup_type}" == "managed" ]]; then
+    ensure_default_token "NODEGROUP_UPDATE_CONFIG_MAX_UNAVAILABLE_${suffix_upper}" "$(resolve_sizing_value "NODEGROUP_UPDATE_CONFIG_MAX_UNAVAILABLE")"
+  fi
+
+  # Validate suffixed volumeType
+  ng_vol_type_val=$(resolve_sizing_value "NODEGROUP_VOLUME_TYPE_${suffix_upper}")
+  case "${ng_vol_type_val}" in
+    gp2|gp3|io1|io2|st1|sc1|standard) ;;
+    *)
+      log_error "NODEGROUP_VOLUME_TYPE_${suffix_upper} must be one of: gp2, gp3, io1, io2, st1, sc1, standard (got: ${ng_vol_type_val})"
+      validation_errors=$((validation_errors + 1))
+      ;;
+  esac
+
+  # Validate suffixed volumeEncrypted
+  ng_vol_enc_val=$(resolve_sizing_value "NODEGROUP_VOLUME_ENCRYPTED_${suffix_upper}")
+  if [[ "${ng_vol_enc_val}" != "true" && "${ng_vol_enc_val}" != "false" ]]; then
+    log_error "NODEGROUP_VOLUME_ENCRYPTED_${suffix_upper} must be 'true' or 'false' (got: ${ng_vol_enc_val})"
+    validation_errors=$((validation_errors + 1))
+  fi
+
+  # Validate suffixed sizing
+  ng_min=$(resolve_sizing_value "NODEGROUP_MIN_SIZE_${suffix_upper}")
+  ng_max=$(resolve_sizing_value "NODEGROUP_MAX_SIZE_${suffix_upper}")
+  ng_desired=$(resolve_sizing_value "NODEGROUP_DESIRED_CAPACITY_${suffix_upper}")
+  if [[ "${ng_min}" -gt "${ng_max}" ]]; then
+    log_error "NODEGROUP_MIN_SIZE_${suffix_upper} (${ng_min}) must be <= NODEGROUP_MAX_SIZE_${suffix_upper} (${ng_max})"
+    validation_errors=$((validation_errors + 1))
+  fi
+  if [[ "${ng_desired}" -lt "${ng_min}" ]]; then
+    log_error "NODEGROUP_DESIRED_CAPACITY_${suffix_upper} (${ng_desired}) must be >= NODEGROUP_MIN_SIZE_${suffix_upper} (${ng_min})"
+    validation_errors=$((validation_errors + 1))
+  fi
+  if [[ "${ng_desired}" -gt "${ng_max}" ]]; then
+    log_error "NODEGROUP_DESIRED_CAPACITY_${suffix_upper} (${ng_desired}) must be <= NODEGROUP_MAX_SIZE_${suffix_upper} (${ng_max})"
+    validation_errors=$((validation_errors + 1))
+  fi
+
+  # Optional simple fields — inherit from base if not overridden
+  # volumeKmsKeyID
+  ng_has_volume_kms="false"
+  suffixed_name=$(convert_token_name "${TOKEN_NAME_STYLE}" "NODEGROUP_VOLUME_KMS_KEY_ID_${suffix_upper}")
+  if [[ -f "${CONFIG_SUB_PATH}/${suffixed_name}" ]]; then
+    ng_has_volume_kms="true"
+  elif [[ "${has_global_volume_kms_key_id}" == "true" ]]; then
+    ensure_default_token "NODEGROUP_VOLUME_KMS_KEY_ID_${suffix_upper}" "$(resolve_sizing_value "NODEGROUP_VOLUME_KMS_KEY_ID")"
+    ng_has_volume_kms="true"
+  fi
+  printf '%s' "${ng_has_volume_kms}" > "${expected_values_dir}/has-volume-kms-key-id-${suffix_lower}"
+
+  # privateNetworking
+  ng_has_private_networking="false"
+  suffixed_name=$(convert_token_name "${TOKEN_NAME_STYLE}" "NODEGROUP_PRIVATE_NETWORKING_${suffix_upper}")
+  if [[ -f "${CONFIG_SUB_PATH}/${suffixed_name}" ]]; then
+    ng_has_private_networking="true"
+  elif [[ "${has_global_private_networking}" == "true" ]]; then
+    ensure_default_token "NODEGROUP_PRIVATE_NETWORKING_${suffix_upper}" "$(resolve_sizing_value "NODEGROUP_PRIVATE_NETWORKING")"
+    ng_has_private_networking="true"
+  fi
+  printf '%s' "${ng_has_private_networking}" > "${expected_values_dir}/has-private-networking-${suffix_lower}"
+
+  # spot (managed only)
+  ng_has_spot="false"
+  suffixed_spot_name=$(convert_token_name "${TOKEN_NAME_STYLE}" "NODEGROUP_SPOT_${suffix_upper}")
+  if [[ "${nodegroup_type}" == "managed" ]]; then
+    if [[ -f "${CONFIG_SUB_PATH}/${suffixed_spot_name}" ]]; then
+      ng_spot_val=$(< "${CONFIG_SUB_PATH}/${suffixed_spot_name}")
+      ng_spot_val="${ng_spot_val%$'\n'}"
+      if [[ "${ng_spot_val}" != "true" && "${ng_spot_val}" != "false" ]]; then
+        log_error "NODEGROUP_SPOT_${suffix_upper} must be 'true' or 'false' (got: ${ng_spot_val})"
+        validation_errors=$((validation_errors + 1))
+      else
+        ng_has_spot="true"
+      fi
+    elif [[ "${has_global_spot}" == "true" ]]; then
+      ensure_default_token "NODEGROUP_SPOT_${suffix_upper}" "$(resolve_sizing_value "NODEGROUP_SPOT")"
+      ng_has_spot="true"
+    fi
+  else
+    if [[ -f "${CONFIG_SUB_PATH}/${suffixed_spot_name}" ]]; then
+      log_error "NODEGROUP_SPOT_${suffix_upper} is not supported for unmanaged nodegroups (use instancesDistribution instead) - remove the config file"
+      validation_errors=$((validation_errors + 1))
+    fi
+  fi
+  printf '%s' "${ng_has_spot}" > "${expected_values_dir}/has-spot-${suffix_lower}"
+
+  # iamInstanceRoleArn
+  ng_has_iam_role="false"
+  suffixed_name=$(convert_token_name "${TOKEN_NAME_STYLE}" "NODEGROUP_IAM_INSTANCE_ROLE_ARN_${suffix_upper}")
+  if [[ -f "${CONFIG_SUB_PATH}/${suffixed_name}" ]]; then
+    ng_has_iam_role="true"
+  elif [[ "${has_global_iam_instance_role_arn}" == "true" ]]; then
+    ensure_default_token "NODEGROUP_IAM_INSTANCE_ROLE_ARN_${suffix_upper}" "$(resolve_sizing_value "NODEGROUP_IAM_INSTANCE_ROLE_ARN")"
+    ng_has_iam_role="true"
+  fi
+  printf '%s' "${ng_has_iam_role}" > "${expected_values_dir}/has-iam-instance-role-arn-${suffix_lower}"
+
+  # Comma-list fields — inherit from base if not overridden
+  # securityGroups.attachIDs
+  ng_has_sg_attach="false"
+  suffixed_sg_source=$(convert_token_name "${TOKEN_NAME_STYLE}" "NODEGROUP_SECURITY_GROUPS_ATTACH_IDS_${suffix_upper}")
+  if [[ -f "${CONFIG_SUB_PATH}/${suffixed_sg_source}" ]]; then
+    ng_has_sg_attach="true"
+    expand_comma_list_token "NODEGROUP_SECURITY_GROUPS_ATTACH_IDS_${suffix_upper}" "NODEGROUP_SECURITY_GROUPS_ATTACH_ID_${suffix_upper}" ""
+    printf '%s' "${expanded_count}" > "${expected_values_dir}/nodegroup-sg-attach-ids-count-${suffix_lower}"
+  elif [[ "${has_global_sg_attach_ids}" == "true" ]]; then
+    base_sg_config_name=$(convert_token_name "${TOKEN_NAME_STYLE}" "NODEGROUP_SECURITY_GROUPS_ATTACH_IDS")
+    base_sg_value=$(< "${CONFIG_SUB_PATH}/${base_sg_config_name}")
+    base_sg_value="${base_sg_value%$'\n'}"
+    expand_comma_list_token "NODEGROUP_SECURITY_GROUPS_ATTACH_IDS_${suffix_upper}" "NODEGROUP_SECURITY_GROUPS_ATTACH_ID_${suffix_upper}" "${base_sg_value}"
+    printf '%s' "${expanded_count}" > "${expected_values_dir}/nodegroup-sg-attach-ids-count-${suffix_lower}"
+    ng_has_sg_attach="true"
+  fi
+  printf '%s' "${ng_has_sg_attach}" > "${expected_values_dir}/has-sg-attach-ids-${suffix_lower}"
+
+  # availabilityZones
+  ng_has_az="false"
+  suffixed_az_source=$(convert_token_name "${TOKEN_NAME_STYLE}" "NODEGROUP_AVAILABILITY_ZONES_${suffix_upper}")
+  if [[ -f "${CONFIG_SUB_PATH}/${suffixed_az_source}" ]]; then
+    ng_has_az="true"
+    expand_comma_list_token "NODEGROUP_AVAILABILITY_ZONES_${suffix_upper}" "NODEGROUP_AVAILABILITY_ZONE_${suffix_upper}" ""
+    printf '%s' "${expanded_count}" > "${expected_values_dir}/nodegroup-az-count-${suffix_lower}"
+  elif [[ "${has_global_availability_zones}" == "true" ]]; then
+    base_az_config_name=$(convert_token_name "${TOKEN_NAME_STYLE}" "NODEGROUP_AVAILABILITY_ZONES")
+    base_az_value=$(< "${CONFIG_SUB_PATH}/${base_az_config_name}")
+    base_az_value="${base_az_value%$'\n'}"
+    expand_comma_list_token "NODEGROUP_AVAILABILITY_ZONES_${suffix_upper}" "NODEGROUP_AVAILABILITY_ZONE_${suffix_upper}" "${base_az_value}"
+    printf '%s' "${expanded_count}" > "${expected_values_dir}/nodegroup-az-count-${suffix_lower}"
+    ng_has_az="true"
+  fi
+  printf '%s' "${ng_has_az}" > "${expected_values_dir}/has-availability-zones-${suffix_lower}"
+
+  # Flat/raw YAML fields — suffixed file overrides base, base inherited if present
+  # labels
+  ng_has_labels="false"
+  ng_labels_file=""
+  suffixed_labels_name=$(convert_token_name "${TOKEN_NAME_STYLE}" "NODEGROUP_LABELS_${suffix_upper}")
+  if [[ -f "${CONFIG_SUB_PATH}/${suffixed_labels_name}" ]]; then
+    ng_labels_file="${CONFIG_SUB_PATH}/${suffixed_labels_name}"
+    if validate_flat_yaml_tags "NODEGROUP_LABELS_${suffix_upper}" "${ng_labels_file}"; then
+      ng_has_labels="true"
+    fi
+  elif [[ "${has_global_labels}" == "true" ]]; then
+    ng_labels_file="${global_labels_file}"
+    ng_has_labels="true"
+  fi
+  printf '%s' "${ng_has_labels}" > "${expected_values_dir}/has-labels-${suffix_lower}"
+
+  # taints
+  ng_has_taints="false"
+  ng_taints_file=""
+  suffixed_taints_name=$(convert_token_name "${TOKEN_NAME_STYLE}" "NODEGROUP_TAINTS_${suffix_upper}")
+  if [[ -f "${CONFIG_SUB_PATH}/${suffixed_taints_name}" ]]; then
+    ng_taints_file="${CONFIG_SUB_PATH}/${suffixed_taints_name}"
+    if ! yq -e '.' "${ng_taints_file}" &>/dev/null; then
+      log_error "NODEGROUP_TAINTS_${suffix_upper}: file is not valid YAML"
+      validation_errors=$((validation_errors + 1))
+    else
+      taint_count=$(yq '. | length' "${ng_taints_file}" 2>/dev/null || echo "0")
+      if [[ "${taint_count}" -eq 0 ]]; then
+        log_error "NODEGROUP_TAINTS_${suffix_upper}: file is empty or not a YAML list"
+        validation_errors=$((validation_errors + 1))
+      else
+        taint_errors=0
+        for idx in $(seq 0 $((taint_count - 1))); do
+          taint_key=$(yq ".[${idx}].key" "${ng_taints_file}" 2>/dev/null || echo "")
+          if [[ -z "${taint_key}" || "${taint_key}" == "null" ]]; then
+            log_error "NODEGROUP_TAINTS_${suffix_upper}: entry ${idx} missing 'key'"
+            taint_errors=$((taint_errors + 1))
+          fi
+          taint_effect=$(yq ".[${idx}].effect" "${ng_taints_file}" 2>/dev/null || echo "")
+          if [[ -z "${taint_effect}" || "${taint_effect}" == "null" ]]; then
+            log_error "NODEGROUP_TAINTS_${suffix_upper}: entry ${idx} missing 'effect'"
+            taint_errors=$((taint_errors + 1))
+          else
+            case "${taint_effect}" in
+              NoSchedule|PreferNoSchedule|NoExecute) ;;
+              *)
+                log_error "NODEGROUP_TAINTS_${suffix_upper}: entry ${idx} effect '${taint_effect}' must be one of: NoSchedule, PreferNoSchedule, NoExecute"
+                taint_errors=$((taint_errors + 1))
+                ;;
+            esac
+          fi
+        done
+        unique_pairs=$(yq '.[] | .key + ":" + .effect' "${ng_taints_file}" 2>/dev/null | sort -u | wc -l | tr -d ' ')
+        if [[ "${unique_pairs}" -ne "${taint_count}" ]]; then
+          log_error "NODEGROUP_TAINTS_${suffix_upper}: duplicate key+effect combinations found"
+          taint_errors=$((taint_errors + 1))
+        fi
+        if [[ "${taint_errors}" -gt 0 ]]; then
+          validation_errors=$((validation_errors + taint_errors))
+        else
+          ng_has_taints="true"
+        fi
+      fi
+    fi
+  elif [[ "${has_global_taints}" == "true" ]]; then
+    ng_taints_file="${global_taints_file}"
+    ng_has_taints="true"
+  fi
+  printf '%s' "${ng_has_taints}" > "${expected_values_dir}/has-taints-${suffix_lower}"
+
+  # tags
+  ng_has_tags="false"
+  ng_tags_file=""
+  suffixed_tags_name=$(convert_token_name "${TOKEN_NAME_STYLE}" "NODEGROUP_TAGS_${suffix_upper}")
+  if [[ -f "${CONFIG_SUB_PATH}/${suffixed_tags_name}" ]]; then
+    ng_tags_file="${CONFIG_SUB_PATH}/${suffixed_tags_name}"
+    if validate_flat_yaml_tags "NODEGROUP_TAGS_${suffix_upper}" "${ng_tags_file}"; then
+      ng_has_tags="true"
+    fi
+    if grep -qE '^Name:' "${ng_tags_file}"; then
+      log_error "NODEGROUP_TAGS_${suffix_upper}: 'Name' tag is reserved - eksctl sets it from the nodegroup name"
+      validation_errors=$((validation_errors + 1))
+    fi
+  elif [[ "${has_global_tags}" == "true" ]]; then
+    ng_tags_file="${global_tags_file}"
+    ng_has_tags="true"
+  fi
+  printf '%s' "${ng_has_tags}" > "${expected_values_dir}/has-tags-${suffix_lower}"
+
+  log "  Optional fields: volume-kms=${ng_has_volume_kms} private-net=${ng_has_private_networking} spot=${ng_has_spot} iam-role=${ng_has_iam_role} sg-attach=${ng_has_sg_attach} az=${ng_has_az} labels=${ng_has_labels} taints=${ng_has_taints} tags=${ng_has_tags}"
+done
+
+if [[ ${validation_errors} -gt 0 ]]; then
+  log_error "Nodegroup validation failed with ${validation_errors} error(s)"
+  exit 1
 fi
 
 # === Generate addon lists ===
@@ -698,6 +1261,187 @@ for addon in "${all_addons[@]}"; do
 done
 
 # === Template generators ===
+
+# emit_nodegroup - Emit a single nodegroup YAML block
+#
+# Args:
+#   $1 - suffix_upper: UPPER_SNAKE suffix (e.g., "KAPTAIN_DEFAULT_NG" for base, "KONG" for additional)
+#
+# Uses outer-scope variables for shared fields (subnets, project name, token styles)
+# Reads per-nodegroup has-flags from expected-values dir
+emit_nodegroup() {
+  local suffix_upper="$1"
+  local tk="_${suffix_upper}"
+  local suffix_lower
+  suffix_lower=$(echo "${suffix_upper}" | tr '[:upper:]' '[:lower:]' | tr -d '_')
+  local suffix_dash="-${suffix_lower}"
+
+  # Token references — always present
+  # Name token: base nodegroup uses unsuffixed prefix, additional use suffixed
+  local t_prefix t_instance t_ami t_vol_size t_vol_type t_vol_enc
+  local t_desired t_min t_max
+  if [[ "${suffix_upper}" == "KAPTAIN_DEFAULT_NG" ]]; then
+    t_prefix=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "NODE_GROUP_DEFAULT_PREFIX")
+  else
+    t_prefix=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "NODE_GROUP_DEFAULT_PREFIX${tk}")
+  fi
+  t_instance=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "NODEGROUP_INSTANCE_TYPE${tk}")
+  t_ami=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "NODEGROUP_AMI_FAMILY${tk}")
+  t_vol_size=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "NODEGROUP_VOLUME_SIZE${tk}")
+  t_vol_type=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "NODEGROUP_VOLUME_TYPE${tk}")
+  t_vol_enc=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "NODEGROUP_VOLUME_ENCRYPTED${tk}")
+  t_desired=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "NODEGROUP_DESIRED_CAPACITY${tk}")
+  t_min=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "NODEGROUP_MIN_SIZE${tk}")
+  t_max=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "NODEGROUP_MAX_SIZE${tk}")
+
+  # Has-flags from expected-values
+  local h_vol_kms h_priv_net h_spot h_iam_role h_sg_attach h_az h_labels h_taints h_tags
+  h_vol_kms=$(< "${expected_values_dir}/has-volume-kms-key-id${suffix_dash}")
+  h_priv_net=$(< "${expected_values_dir}/has-private-networking${suffix_dash}")
+  h_spot=$(< "${expected_values_dir}/has-spot${suffix_dash}")
+  h_iam_role=$(< "${expected_values_dir}/has-iam-instance-role-arn${suffix_dash}")
+  h_sg_attach=$(< "${expected_values_dir}/has-sg-attach-ids${suffix_dash}")
+  h_az=$(< "${expected_values_dir}/has-availability-zones${suffix_dash}")
+  h_labels=$(< "${expected_values_dir}/has-labels${suffix_dash}")
+  h_taints=$(< "${expected_values_dir}/has-taints${suffix_dash}")
+  h_tags=$(< "${expected_values_dir}/has-tags${suffix_dash}")
+
+  # Core fields
+  echo "  - name: ${t_prefix}"
+  echo "    amiFamily: ${t_ami}"
+  echo "    instanceType: ${t_instance}"
+  echo "    volumeSize: ${t_vol_size}"
+  echo "    volumeType: ${t_vol_type}"
+  echo "    volumeEncrypted: ${t_vol_enc}"
+
+  if [[ "${h_vol_kms}" == "true" ]]; then
+    local t_vol_kms
+    t_vol_kms=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "NODEGROUP_VOLUME_KMS_KEY_ID${tk}")
+    echo "    volumeKmsKeyID: ${t_vol_kms}"
+  fi
+
+  if [[ "${h_priv_net}" == "true" ]]; then
+    local t_priv_net
+    t_priv_net=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "NODEGROUP_PRIVATE_NETWORKING${tk}")
+    echo "    privateNetworking: ${t_priv_net}"
+  fi
+
+  if [[ "${h_spot}" == "true" ]]; then
+    local t_spot
+    t_spot=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "NODEGROUP_SPOT${tk}")
+    echo "    spot: ${t_spot}"
+  fi
+
+  if [[ "${h_iam_role}" == "true" ]]; then
+    local t_iam_role
+    t_iam_role=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "NODEGROUP_IAM_INSTANCE_ROLE_ARN${tk}")
+    echo "    iam:"
+    echo "      instanceRoleARN: ${t_iam_role}"
+  fi
+
+  if [[ "${h_sg_attach}" == "true" ]]; then
+    local sg_count sg_idx
+    sg_count=$(< "${expected_values_dir}/nodegroup-sg-attach-ids-count${suffix_dash}")
+    echo "    securityGroups:"
+    echo "      attachIDs:"
+    for sg_idx in $(seq 1 "${sg_count}"); do
+      local sg_token
+      sg_token=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "NODEGROUP_SECURITY_GROUPS_ATTACH_ID${tk}_${sg_idx}")
+      echo "        - ${sg_token}"
+    done
+  fi
+
+  echo "    desiredCapacity: ${t_desired}"
+  echo "    minSize: ${t_min}"
+  echo "    maxSize: ${t_max}"
+
+  if [[ "${nodegroup_type}" == "managed" ]]; then
+    local t_update_max
+    t_update_max=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "NODEGROUP_UPDATE_CONFIG_MAX_UNAVAILABLE${tk}")
+    echo "    updateConfig:"
+    echo "      maxUnavailable: ${t_update_max}"
+  fi
+
+  # Subnets — shared tokens for all nodegroups
+  if [[ "${EKS_PRIVATE_NETWORKING}" == "true" || "${EKS_PUBLIC_NETWORKING}" == "true" ]]; then
+    echo "    subnets:"
+    if [[ "${EKS_PRIVATE_NETWORKING}" == "true" ]]; then
+      echo "      - ${token_private_subnet_id_a}"
+      echo "      - ${token_private_subnet_id_b}"
+      echo "      - ${token_private_subnet_id_c}"
+    fi
+    if [[ "${EKS_PUBLIC_NETWORKING}" == "true" ]]; then
+      echo "      - ${token_public_subnet_id_a}"
+      echo "      - ${token_public_subnet_id_b}"
+      echo "      - ${token_public_subnet_id_c}"
+    fi
+  fi
+
+  # availabilityZones
+  if [[ "${h_az}" == "true" ]]; then
+    local az_count az_idx
+    az_count=$(< "${expected_values_dir}/nodegroup-az-count${suffix_dash}")
+    echo "    availabilityZones:"
+    for az_idx in $(seq 1 "${az_count}"); do
+      local az_token
+      az_token=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "NODEGROUP_AVAILABILITY_ZONE${tk}_${az_idx}")
+      echo "      - ${az_token}"
+    done
+  fi
+
+  # labels
+  if [[ "${h_labels}" == "true" ]]; then
+    local labels_file=""
+    local suffixed_labels_name
+    suffixed_labels_name=$(convert_token_name "${TOKEN_NAME_STYLE}" "NODEGROUP_LABELS${tk}")
+    if [[ -f "${CONFIG_SUB_PATH}/${suffixed_labels_name}" ]]; then
+      labels_file="${CONFIG_SUB_PATH}/${suffixed_labels_name}"
+    elif [[ -n "${global_labels_file}" ]]; then
+      labels_file="${global_labels_file}"
+    fi
+    if [[ -n "${labels_file}" ]]; then
+      echo "    labels:"
+      inject_flat_yaml "NODEGROUP_LABELS${tk}" "${labels_file}" "      "
+    fi
+  fi
+
+  # taints
+  if [[ "${h_taints}" == "true" ]]; then
+    local taints_file=""
+    local suffixed_taints_name
+    suffixed_taints_name=$(convert_token_name "${TOKEN_NAME_STYLE}" "NODEGROUP_TAINTS${tk}")
+    if [[ -f "${CONFIG_SUB_PATH}/${suffixed_taints_name}" ]]; then
+      taints_file="${CONFIG_SUB_PATH}/${suffixed_taints_name}"
+    elif [[ -n "${global_taints_file}" ]]; then
+      taints_file="${global_taints_file}"
+    fi
+    if [[ -n "${taints_file}" ]]; then
+      echo "    taints:"
+      while IFS= read -r line; do
+        echo "      ${line}"
+      done < <(yq '.' "${taints_file}")
+    fi
+  fi
+
+  # tags — system tags always present, user tags optional
+  echo "    tags:"
+  echo "      ManagedBy: \"Kaptain aws-eks-cluster-management system\""
+  echo "      ManagedByGitRepo: ${token_project_name}"
+
+  if [[ "${h_tags}" == "true" ]]; then
+    local tags_file=""
+    local suffixed_tags_name
+    suffixed_tags_name=$(convert_token_name "${TOKEN_NAME_STYLE}" "NODEGROUP_TAGS${tk}")
+    if [[ -f "${CONFIG_SUB_PATH}/${suffixed_tags_name}" ]]; then
+      tags_file="${CONFIG_SUB_PATH}/${suffixed_tags_name}"
+    elif [[ -n "${global_tags_file}" ]]; then
+      tags_file="${global_tags_file}"
+    fi
+    if [[ -n "${tags_file}" ]]; then
+      inject_flat_yaml "NODEGROUP_TAGS${tk}" "${tags_file}" "      "
+    fi
+  fi
+}
 
 generate_cluster_yaml() {
   local include_nodegroups="$1"
@@ -723,6 +1467,7 @@ YAML
 
   echo "  annotations:"
   echo "    kaptain.org/aws-account-id: \"${token_aws_account_id}\""
+  echo "    kaptain.org/eks-cluster-security-group: \"${token_cluster_security_group}\""
 
   # Append user metadata annotations (flat yaml, indented under annotations:)
   if [[ "${has_metadata_annotations}" == "true" ]]; then
@@ -743,6 +1488,17 @@ YAML
 
   if [[ "${has_vpc_security_group}" == "true" ]]; then
     echo "  securityGroup: ${token_security_group}"
+  fi
+
+  if [[ "${has_vpc_shared_node_sg}" == "true" ]]; then
+    echo "  sharedNodeSecurityGroup: ${token_vpc_shared_node_sg}"
+  fi
+
+  if [[ "${has_vpc_control_plane_sg_ids}" == "true" ]]; then
+    echo "  controlPlaneSecurityGroupIDs:"
+    for token in "${cp_sg_ids_tokens[@]}"; do
+      echo "    - ${token}"
+    done
   fi
 
   if [[ "${EKS_PRIVATE_NETWORKING}" == "true" || "${EKS_PUBLIC_NETWORKING}" == "true" ]]; then
@@ -836,60 +1592,17 @@ YAML
   done
 
   if [[ "${include_nodegroups}" == "true" ]]; then
-    cat <<YAML
-
-managedNodeGroups:
-  - name: ${token_nodegroup_prefix}
-    amiFamily: ${token_ami_family}
-    instanceType: ${token_instance_type}
-    volumeSize: ${token_volume_size}
-YAML
-    if [[ "${has_nodegroup_private_networking}" == "true" ]]; then
-      echo "    privateNetworking: ${token_nodegroup_private_networking}"
+    local ng_yaml_key="managedNodeGroups"
+    if [[ "${nodegroup_type}" == "unmanaged" ]]; then
+      ng_yaml_key="nodeGroups"
     fi
-    if [[ "${has_nodegroup_iam_instance_role_arn}" == "true" ]]; then
-      echo "    iam:"
-      echo "      instanceRoleARN: ${token_nodegroup_iam_instance_role_arn}"
-    fi
-    cat <<YAML
-    desiredCapacity: ${token_desired_capacity}
-    minSize: ${token_min_size}
-    maxSize: ${token_max_size}
-    updateConfig:
-      maxUnavailable: ${token_update_max_unavailable}
-YAML
+    echo ""
+    echo "${ng_yaml_key}:"
 
-    # Nodegroup subnets (from private and/or public subnet config)
-    if [[ "${EKS_PRIVATE_NETWORKING}" == "true" || "${EKS_PUBLIC_NETWORKING}" == "true" ]]; then
-      echo "    subnets:"
-      if [[ "${EKS_PRIVATE_NETWORKING}" == "true" ]]; then
-        echo "      - ${token_private_subnet_id_a}"
-        echo "      - ${token_private_subnet_id_b}"
-        echo "      - ${token_private_subnet_id_c}"
-      fi
-      if [[ "${EKS_PUBLIC_NETWORKING}" == "true" ]]; then
-        echo "      - ${token_public_subnet_id_a}"
-        echo "      - ${token_public_subnet_id_b}"
-        echo "      - ${token_public_subnet_id_c}"
-      fi
-    fi
-
-    # Nodegroup labels (optional, only when config file present)
-    if [[ "${has_nodegroup_labels}" == "true" ]]; then
-      echo "    labels:"
-      inject_flat_yaml "NODEGROUP_LABELS" "${nodegroup_labels_file}" "      "
-    fi
-
-    cat <<YAML
-    tags:
-      ManagedBy: "Kaptain aws-eks-cluster-management system"
-      ManagedByGitRepo: ${token_project_name}
-YAML
-
-    # Append user nodegroup tags (flat yaml, indented under tags:)
-    if [[ "${has_nodegroup_tags}" == "true" ]]; then
-      inject_flat_yaml "NODEGROUP_TAGS" "${nodegroup_tags_file}" "      "
-    fi
+    # Emit all nodegroups (base first, then additional)
+    for suffix_upper in "${all_ng_suffixes_upper[@]}"; do
+      emit_nodegroup "${suffix_upper}"
+    done
   fi
 }
 
@@ -944,15 +1657,20 @@ resolve_file() {
 
 main() {
   log "=== EKS Cluster Management Prepare ==="
+  log "Cluster origin: ${cluster_origin}"
   log "Kubernetes version: ${k8s_version}"
   log "Nodegroup prefix: ${nodegroup_prefix}"
   log "Base image: ${EKS_BASE_IMAGE_REGISTRY}/${EKS_BASE_IMAGE_NAMESPACE}/${EKS_BASE_IMAGE_NAME}:${EKS_BASE_IMAGE_TAG}"
   log "Cilium eBPF networking: ${EKS_CILIUM_EBPF_NETWORKING}"
   log "Private subnets: ${EKS_PRIVATE_NETWORKING}"
   log "Private cluster config: ${has_private_cluster_config}"
-  log "Nodegroup private networking: ${has_nodegroup_private_networking}"
-  log "Nodegroup IAM instance role ARN: ${has_nodegroup_iam_instance_role_arn}"
+  log "Nodegroup private networking: ${has_global_private_networking}"
+  log "Nodegroup IAM instance role ARN: ${has_global_iam_instance_role_arn}"
   log "Public networking: ${EKS_PUBLIC_NETWORKING}"
+  log "Additional nodegroups: ${additional_ng_count}"
+  if [[ ${additional_ng_count} -gt 0 ]]; then
+    log "  Suffixes: ${additional_ng_suffixes[*]}"
+  fi
   log "Platforms: ${DOCKER_PLATFORM}"
   log "======================================="
 
