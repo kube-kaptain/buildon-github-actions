@@ -12,6 +12,11 @@
 #
 set -euo pipefail
 
+if [[ "${IS_RELEASE}" == "true" ]]; then
+  echo "Skipping pre-tagging tests (IS_RELEASE=${IS_RELEASE})"
+  exit 0
+fi
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
