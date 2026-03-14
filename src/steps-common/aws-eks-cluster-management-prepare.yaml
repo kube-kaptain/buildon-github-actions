@@ -21,14 +21,7 @@
     eks-base-image-namespace: ${{ inputs.eks-base-image-namespace }}
     eks-base-image-name: ${{ inputs.eks-base-image-name }}
     eks-base-image-tag: ${{ inputs.eks-base-image-tag }}
-    kubernetes-major-version: ${{ inputs.kubernetes-major-version }}
-    kubernetes-minor-version: ${{ inputs.kubernetes-minor-version }}
     eks-private-networking: ${{ inputs.eks-private-networking }}
     eks-public-networking: ${{ inputs.eks-public-networking }}
     eks-cilium-ebpf-networking: ${{ inputs.eks-cilium-ebpf-networking }}
-    eks-custom-security-group: ${{ inputs.eks-custom-security-group }}
-    nodegroup-desired-capacity: ${{ inputs.nodegroup-desired-capacity }}
-    nodegroup-min-size: ${{ inputs.nodegroup-min-size }}
-    nodegroup-max-size: ${{ inputs.nodegroup-max-size }}
-    eks-addons-list: ${{ inputs.eks-addons-list }}
     secrets-sub-path: ${{ inputs.secrets-sub-path }}

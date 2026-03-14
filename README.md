@@ -152,13 +152,11 @@ See [`examples/`](examples/) for more usage patterns.
 | `dockerfile-sub-path-linux-amd64` | string | `src/docker-linux-amd64` | Per-platform Dockerfile directory for linux/amd64 multi-platform builds |
 | `dockerfile-sub-path-linux-arm64` | string | `src/docker-linux-arm64` | Per-platform Dockerfile directory for linux/arm64 multi-platform builds |
 | `dockerfile-substitution-files` | string | `Dockerfile` | Comma-separated list of files to perform token substitution on (relative to dockerfile-sub-path and docker-context-sub-path) |
-| `eks-addons-list` | string | `coredns,kube-proxy,vpc-cni,aws-ebs-csi-driver,aws-efs-csi-driver` | Comma-separated list of EKS addon names (no versions) |
 | `eks-base-image-name` | string | `aws/aws-eks-cluster-management` | Base image name for EKS management image |
 | `eks-base-image-namespace` | string | `kube-kaptain` | Base image namespace for EKS management image |
 | `eks-base-image-registry` | string | `ghcr.io` | Base image registry for EKS management image |
 | `eks-base-image-tag` | string | `""` | Base image tag for EKS management image |
 | `eks-cilium-ebpf-networking` | boolean | `false` | Generate controlplane-only yaml for Cilium eBPF networking |
-| `eks-custom-security-group` | boolean | `false` | Include custom security group in cluster config |
 | `eks-private-networking` | boolean | `true` | Include private subnets section in cluster config |
 | `eks-public-networking` | boolean | `false` | Include public subnets section in cluster config |
 | `github-release-add-version-to-filenames` | boolean | `true` | Add version suffix to release filenames (e.g., file.yaml -> file-1.2.3.yaml) |
@@ -224,8 +222,6 @@ See [`examples/`](examples/) for more usage patterns.
 | `kubernetes-job-restart-policy` | string | `Never` | Pod restart policy (Never or OnFailure) |
 | `kubernetes-job-startup-probe-enabled` | string | `false` | Enable startup probe (uses workload probe settings when true) |
 | `kubernetes-job-ttl-seconds-after-finished` | string | `86400` | Cleanup time after Job completion in seconds |
-| `kubernetes-major-version` | string | `1` | Kubernetes major version |
-| `kubernetes-minor-version` | string | `""` | Kubernetes minor version (e.g., 32) - required, no default |
 | `kubernetes-poddisruptionbudget-additional-annotations` | string | `""` | Additional annotations specific to PodDisruptionBudget (comma-separated key=value) |
 | `kubernetes-poddisruptionbudget-additional-labels` | string | `""` | Additional labels specific to PodDisruptionBudget (comma-separated key=value) |
 | `kubernetes-poddisruptionbudget-combined-sub-path` | string | `""` | Sub-path within combined/ for output |
@@ -340,9 +336,6 @@ See [`examples/`](examples/) for more usage patterns.
 | `manifests-packaging-base-image` | string | `""` | Base image for manifest packaging (default: scratch) |
 | `manifests-repo-provider-type` | string | `docker` | Repo provider type for manifest storage (default: docker, currently the only supported provider) |
 | `manifests-sub-path` | string | `src/kubernetes` | Directory containing Kubernetes manifests (relative) |
-| `nodegroup-desired-capacity` | string | `1` | Default nodegroup desired capacity (written to platform config if not in config-sub-path) |
-| `nodegroup-max-size` | string | `12` | Default nodegroup maximum size (written to platform config if not in config-sub-path) |
-| `nodegroup-min-size` | string | `3` | Default nodegroup minimum size (written to platform config if not in config-sub-path) |
 | `output-sub-path` | string | `target` | Build output directory (relative) |
 | `qc-block-conventional-commits` | boolean | `false` | Block commits that use conventional commit format |
 | `qc-block-double-hyphen-containing-branches` | boolean | `true` | Block branch names containing double hyphens (typo detection) |

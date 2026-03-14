@@ -15,7 +15,8 @@
 # ── Required ──────────────────────────────────────────────────────────────────
 #   ClusterOrigin                         - Cluster origin: 'eksctl' (created by eksctl) or 'adopted' (existing cluster)
 #   NodegroupType                         - Nodegroup type: 'managed' (EKS managed) or 'unmanaged' (self-managed)
-#   KubernetesMinorVersion                - K8s minor version (also settable via env var)
+#   KubernetesMajorVersion                - K8s major version (default: 1, rarely needs override)
+#   KubernetesMinorVersion                - K8s minor version (e.g., 32)
 #   AwsAccountId                          - AWS account ID (e.g., 123456789012)
 #   AwsRegion                             - AWS region (e.g., eu-west-1)
 #   VpcId                                 - VPC identifier (e.g., vpc-0123456789abcdef0)
@@ -71,6 +72,7 @@
 #   NodegroupMinSize                      - default: 3
 #   NodegroupMaxSize                      - default: 12
 #   NodegroupDesiredCapacity              - default: same as NodegroupMinSize (must be min <= desired <= max)
+#   EksAddonsList                         - default: coredns,kube-proxy,vpc-cni,aws-ebs-csi-driver,aws-efs-csi-driver
 #
 # Copy this to .github/workflows/build.yaml in your repo.
 
@@ -91,11 +93,6 @@ jobs:
       checks: write
     with:
       # ┌─────────────────────────────────────────────────────────────────────┐
-      # │ Kubernetes Version (required - no default)                         │
-      # └─────────────────────────────────────────────────────────────────────┘
-      kubernetes-minor-version: '32'
-
-      # ┌─────────────────────────────────────────────────────────────────────┐
       # │ Networking                                                          │
       # └─────────────────────────────────────────────────────────────────────┘
       # Private networking is enabled by default. Public and Cilium are off.
@@ -105,24 +102,6 @@ jobs:
       eks-private-networking: true     # Default: true  (requires PrivateSubnetIdA/B/C)
       # eks-public-networking: false   # Default: false (requires PublicSubnetIdA/B/C)
       # eks-cilium-ebpf-networking: false  # Default: false (generates controlplane-only yaml, removes kube-proxy and vpc-cni from addons)
-
-      # ┌─────────────────────────────────────────────────────────────────────┐
-      # │ Nodegroup Sizing                                                    │
-      # └─────────────────────────────────────────────────────────────────────┘
-      # Defaults written to platform config dirs if not in src/config/.
-      # These become tokens in cluster.yaml: ${NodegroupDesiredCapacity}, etc.
-      #
-      # nodegroup-desired-capacity: '1'   # Default
-      # nodegroup-min-size: '3'           # Default
-      # nodegroup-max-size: '12'          # Default
-
-      # ┌─────────────────────────────────────────────────────────────────────┐
-      # │ EKS Addons                                                          │
-      # └─────────────────────────────────────────────────────────────────────┘
-      # Comma-separated addon names (versions resolved at deploy time).
-      # Cilium mode automatically removes kube-proxy and vpc-cni from this list.
-      #
-      # eks-addons-list: 'coredns,kube-proxy,vpc-cni,aws-ebs-csi-driver,aws-efs-csi-driver'  # Default
 
       # ┌─────────────────────────────────────────────────────────────────────┐
       # │ Base Image                                                          │

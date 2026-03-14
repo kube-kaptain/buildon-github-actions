@@ -13,10 +13,8 @@
 #   2. Exists in src/eks/ → copy to context dir
 #   3. Neither → generate from template
 #
-# Required config (env var or file in CONFIG_SUB_PATH):
-#   KUBERNETES_MINOR_VERSION    - K8s minor version (e.g., 32) - env var or config file
-#
 # Required config (file in CONFIG_SUB_PATH only, used as tokens):
+#   KUBERNETES_MINOR_VERSION    - K8s minor version
 #   AWS_REGION                  - AWS region (e.g., eu-west-1)
 #   VPC_ID                      - VPC identifier
 #   NODEGROUP_INSTANCE_TYPE     - Node instance type (e.g., t3.medium)
@@ -27,45 +25,43 @@
 #   NODEGROUP_TYPE              - Nodegroup type: 'managed' (EKS managed) or 'unmanaged' (self-managed)
 #   PRIVATE_SUBNET_ID_A/B/C     - Private subnet IDs (if EKS_PRIVATE_NETWORKING=true)
 #   PUBLIC_SUBNET_ID_A/B/C      - Public subnet IDs (if EKS_PUBLIC_NETWORKING=true)
-#
-# Conditional config (file in CONFIG_SUB_PATH, required when switch is on):
 #   AUTO_MODE_CONFIG_NODE_POOLS - Node pool names, comma-separated (if AUTO_MODE_CONFIG_ENABLED=true)
 #     (expanded to numbered tokens: AUTO_MODE_CONFIG_NODE_POOL_1, ...POOL_2, etc.)
 #
 # Optional config (file in CONFIG_SUB_PATH, generates section when present):
-#   VPC_SECURITY_GROUP                  - VPC security group ID (generates securityGroup in vpc block)
-#   VPC_CONTROL_PLANE_SECURITY_GROUP_IDS - Control plane SG IDs, comma-separated, mutually exclusive with VPC_SECURITY_GROUP
+#   VPC_SECURITY_GROUP                     - VPC security group ID (generates securityGroup in vpc block)
+#   VPC_CONTROL_PLANE_SECURITY_GROUP_IDS   - Control plane SG IDs, comma-separated, mutually exclusive with VPC_SECURITY_GROUP
 #     (expanded to numbered tokens: VPC_CONTROL_PLANE_SECURITY_GROUP_ID_1, ...ID_2, etc.)
-#   PRIVATE_CLUSTER_ENABLED             - Generate privateCluster block (e.g., true)
-#   NODEGROUP_PRIVATE_NETWORKING        - Generate privateNetworking in nodegroup (e.g., true)
-#   AUTO_MODE_CONFIG_ENABLED            - Enable EKS Auto Mode (generates autoModeConfig block)
-#   NETWORK_CONFIG_SERVICE_IP_V4_CIDR   - Custom service CIDR (generates kubernetesNetworkConfig block)
-#   METADATA_TAGS                       - Additional metadata tags (flat yaml: key: value per line)
-#   NODEGROUP_TAGS                      - Additional nodegroup tags (flat yaml: key: value per line)
-#   NODEGROUP_LABELS                    - Additional nodegroup labels (flat yaml: key: value per line)
-#   METADATA_ANNOTATIONS                - Additional metadata annotations (flat yaml: key: value per line)
-#   NODEGROUP_TAINTS                     - Nodegroup taints (raw yaml list: - key/value/effect per entry)
-#   NODEGROUP_SECURITY_GROUPS_ATTACH_IDS - Additional SG IDs for nodegroup instances, comma-separated
+#   PRIVATE_CLUSTER_ENABLED                - Generate privateCluster block (e.g., true)
+#   NODEGROUP_PRIVATE_NETWORKING           - Generate privateNetworking in nodegroup (e.g., true)
+#   AUTO_MODE_CONFIG_ENABLED               - Enable EKS Auto Mode (generates autoModeConfig block)
+#   NETWORK_CONFIG_SERVICE_IP_V4_CIDR      - Custom service CIDR (generates kubernetesNetworkConfig block)
+#   METADATA_TAGS                          - Additional metadata tags (flat yaml: key: value per line)
+#   METADATA_ANNOTATIONS                   - Additional metadata annotations (flat yaml: key: value per line)
+#   NODEGROUP_TAGS                         - Additional nodegroup tags (flat yaml: key: value per line)
+#   NODEGROUP_LABELS                       - Additional nodegroup labels (flat yaml: key: value per line)
+#   NODEGROUP_TAINTS                       - Nodegroup taints (raw yaml list: - key/value/effect per entry)
+#   NODEGROUP_SECURITY_GROUPS_ATTACH_IDS   - Additional SG IDs for nodegroup instances, comma-separated
 #     (expanded to numbered tokens: NODEGROUP_SECURITY_GROUPS_ATTACH_ID_1, ...ID_2, etc.)
-#   NODEGROUP_AVAILABILITY_ZONES         - Pin nodegroup to specific AZs, comma-separated (e.g., eu-west-1a,eu-west-1b)
+#   NODEGROUP_AVAILABILITY_ZONES           - Pin nodegroup to specific AZs, comma-separated (e.g., eu-west-1a,eu-west-1b)
 #     (expanded to numbered tokens: NODEGROUP_AVAILABILITY_ZONE_1, ...ZONE_2, etc.)
-#   VPC_SHARED_NODE_SECURITY_GROUP      - Shared node SG ID, unmanaged nodegroups only (generates sharedNodeSecurityGroup in vpc block)
-#   NODEGROUP_SPOT                      - Use Spot instances (true or false), managed nodegroups only
-#   NODEGROUP_VOLUME_KMS_KEY_ID         - KMS key ARN for EBS volume encryption
-#   NODEGROUP_IAM_INSTANCE_ROLE_ARN     - Custom IAM instance role ARN for nodegroup
-#   ADDITIONAL_NODE_GROUPS              - Additional nodegroups, comma-separated (e.g., kong,monitoring)
+#   VPC_SHARED_NODE_SECURITY_GROUP         - Shared node SG ID, unmanaged nodegroups only (generates sharedNodeSecurityGroup in vpc block)
+#   NODEGROUP_SPOT                         - Use Spot instances (true or false), managed nodegroups only
+#   NODEGROUP_VOLUME_KMS_KEY_ID            - KMS key ARN for EBS volume encryption
+#   NODEGROUP_IAM_INSTANCE_ROLE_ARN        - Custom IAM instance role ARN for nodegroup
+#   ADDITIONAL_NODE_GROUPS                 - Additional nodegroups, comma-separated (e.g., kong,monitoring)
 #     Each per-nodegroup field is shared unless overridden with a suffixed config file
-#     (e.g., NODEGROUP_INSTANCE_TYPE_KONG → NodegroupInstanceTypeKong overrides instanceType for kong)
-#     Suffix must be a single alphabetic word (lowercased for names, PascalCase for config files)
+#     (e.g., NODEGROUP_INSTANCE_TYPE_KONG to NodegroupInstanceTypeKong overrides instanceType for kong)
+#     Suffix must be lowercase alphanumeric with optional hyphens (no leading/trailing/consecutive hyphens)
 #   ADDONS_<NAME>_SERVICE_ACCOUNT_ROLE_ARN - Per-addon service account role ARN
-#     (e.g., ADDONS_VPC_CNI_SERVICE_ACCOUNT_ROLE_ARN → AddonsVpcCniServiceAccountRoleArn)
+#     (e.g., ADDONS_VPC_CNI_SERVICE_ACCOUNT_ROLE_ARN to AddonsVpcCniServiceAccountRoleArn)
 #
-# Tokens with defaults (checked in CONFIG_SUB_PATH, default written to platform config dir if absent):
+# Tokens with defaults (checked in CONFIG_SUB_PATH, default written to platform config dir if absent and needed):
+#   KUBERNETES_MAJOR_VERSION                   - default: 1
 #   IAM_WITH_OIDC                              - default: true
 #   VPC_CLUSTER_ENDPOINTS_PRIVATE_ACCESS       - default: true
 #   VPC_CLUSTER_ENDPOINTS_PUBLIC_ACCESS        - default: false
-#   CLOUD_WATCH_CLUSTER_LOGGING_ENABLE_TYPES   - default: api,audit,authenticator,controllerManager,scheduler
-#     (expanded to numbered tokens: CLOUD_WATCH_CLUSTER_LOGGING_ENABLE_TYPE_1, ...TYPE_2, etc.)
+#   CLOUD_WATCH_CLUSTER_LOGGING_ENABLE_TYPES   - default: api,audit,authenticator,controllerManager,scheduler - expanded to numbered tokens likeCLOUD_WATCH_CLUSTER_LOGGING_ENABLE_TYPE_1 etc
 #   NODEGROUP_AMI_FAMILY                       - default: AmazonLinux2023
 #   NODEGROUP_VOLUME_SIZE                      - default: 20
 #   NODEGROUP_VOLUME_TYPE                      - default: gp3 (gp2, gp3, io1, io2, st1, sc1, standard)
@@ -74,17 +70,16 @@
 #   NODEGROUP_MIN_SIZE                         - default: 3
 #   NODEGROUP_MAX_SIZE                         - default: 12
 #   NODEGROUP_DESIRED_CAPACITY                 - default: same as NODEGROUP_MIN_SIZE
+#   EKS_ADDONS_LIST                            - default: coredns,kube-proxy,vpc-cni,aws-ebs-csi-driver,aws-efs-csi-driver
 #
 # Inputs (environment variables / switches):
 #   EKS_BASE_IMAGE_REGISTRY    - Base image registry (default: ghcr.io)
 #   EKS_BASE_IMAGE_NAMESPACE   - Base image namespace (default: kube-kaptain)
 #   EKS_BASE_IMAGE_NAME        - Base image name (default: aws/aws-eks-cluster-management)
-#   EKS_BASE_IMAGE_TAG         - Base image tag (default: 1.1)
-#   KUBERNETES_MAJOR_VERSION   - K8s major version (default: 1)
+#   EKS_BASE_IMAGE_TAG         - Base image tag (default: <see defaults script for current>)
 #   EKS_PRIVATE_NETWORKING     - Include private subnets section (default: true)
 #   EKS_PUBLIC_NETWORKING      - Include public subnets section (default: false)
 #   EKS_CILIUM_EBPF_NETWORKING - Generate controlplane-only yaml (default: false)
-#   EKS_ADDONS_LIST            - Comma-separated addon names (default: coredns,kube-proxy,vpc-cni,aws-ebs-csi-driver,aws-efs-csi-driver)
 #   SECRETS_SUB_PATH           - Source dir for encrypted secrets (default: src/secrets)
 #   DOCKER_PLATFORM            - Target platform(s) (default: linux/amd64)
 #   TOKEN_DELIMITER_STYLE      - Token delimiter syntax (default: shell)
@@ -127,54 +122,80 @@ source "${SCRIPT_DIR}/../lib/output-var.bash"
 # === Helper functions ===
 
 validation_errors=0
+declare -a platform_config_dirs=()
 
-# resolve_config - Read a required value from env var or config file
+# resolve_token - Resolve a token value from config file or default
+#
+# Checks CONFIG_SUB_PATH for a user-provided file. If found, reads the value
+# and sets the shell variable. If not found and a default is provided, uses
+# the default and writes it to platform config dir(s). If not found and no
+# default, logs an error and increments validation_errors.
 #
 # Args:
 #   $1 - UPPER_SNAKE variable name
+#   $2 - default value (optional — omit for required tokens)
 #
-# Sets the variable in caller's scope. Increments validation_errors on missing.
-resolve_config() {
+# Sets the named variable in caller's scope via eval.
+resolve_token() {
   local var_name="$1"
-  local current_value="${!var_name:-}"
-
-  if [[ -n "${current_value}" ]]; then
-    return 0
+  local has_default="false"
+  local default_value=""
+  if [[ $# -ge 2 ]]; then
+    has_default="true"
+    default_value="$2"
   fi
 
   local config_file_name
   config_file_name=$(convert_token_name "${TOKEN_NAME_STYLE}" "${var_name}")
-  local config_file="${CONFIG_SUB_PATH}/${config_file_name}"
 
-  if [[ -f "${config_file}" ]]; then
+  # Config file in CONFIG_SUB_PATH always wins
+  if [[ -f "${CONFIG_SUB_PATH}/${config_file_name}" ]]; then
     local value
-    value=$(< "${config_file}")
+    value=$(< "${CONFIG_SUB_PATH}/${config_file_name}")
     value="${value%$'\n'}"
-    eval "${var_name}=\"${value}\""
-    log "  ${var_name}: read from ${config_file}"
+    eval "${var_name}=\"\${value}\""
+    log "  ${var_name}: read from ${CONFIG_SUB_PATH}/"
     return 0
   fi
 
-  log_error "${var_name} is required - set as env var or add ${config_file_name} to ${CONFIG_SUB_PATH}/"
-  validation_errors=$((validation_errors + 1))
-  return 1
-}
-
-# require_config_file - Validate a required token config file exists
-#
-# Args:
-#   $1 - UPPER_SNAKE token name
-#   $2 - human-readable description for error message
-require_config_file() {
-  local token_name="$1"
-  local description="$2"
-  local config_file_name
-  config_file_name=$(convert_token_name "${TOKEN_NAME_STYLE}" "${token_name}")
-
-  if [[ ! -f "${CONFIG_SUB_PATH}/${config_file_name}" ]]; then
-    log_error "${token_name}: ${CONFIG_SUB_PATH}/${config_file_name} not found - ${description}"
-    validation_errors=$((validation_errors + 1))
+  # Check if already present in platform config dir(s) (hook may have written it)
+  if [[ ${#platform_config_dirs[@]} -gt 0 ]]; then
+    local all_present=true
+    for config_dir in "${platform_config_dirs[@]}"; do
+      if [[ ! -f "${config_dir}/${config_file_name}" ]]; then
+        all_present=false
+        break
+      fi
+    done
+    if [[ "${all_present}" == "true" ]]; then
+      local value
+      value=$(< "${platform_config_dirs[0]}/${config_file_name}")
+      value="${value%$'\n'}"
+      eval "${var_name}=\"\${value}\""
+      log "  ${var_name}: already present in platform config dir(s)"
+      return 0
+    fi
   fi
+
+  # No config file — use default if provided
+  if [[ "${has_default}" == "true" ]]; then
+    eval "${var_name}=\"\${default_value}\""
+    if [[ ${#platform_config_dirs[@]} -gt 0 ]]; then
+      for config_dir in "${platform_config_dirs[@]}"; do
+        mkdir -p "${config_dir}"
+        printf '%s' "${default_value}" > "${config_dir}/${config_file_name}"
+      done
+      log "  ${var_name}: default '${default_value}' written to platform config dir(s)"
+    else
+      log "  ${var_name}: using default '${default_value}'"
+    fi
+    return 0
+  fi
+
+  # Required and missing
+  eval "${var_name}=''"
+  log_error "${var_name} is required - add ${config_file_name} to ${CONFIG_SUB_PATH}/"
+  validation_errors=$((validation_errors + 1))
 }
 
 # is_yaml_unsafe_value - Check if a value would be coerced by YAML 1.1
@@ -304,51 +325,6 @@ inject_flat_yaml() {
   done < "${file_path}"
 }
 
-# ensure_default_token - Write default to platform config dir(s) if not already provided
-#
-# Checks three places in order:
-#   1. CONFIG_SUB_PATH (user's src/config) - token system picks it up
-#   2. Platform config dir - hook or prior step may have written it
-#   3. Neither - write the default to each platform config dir
-#
-# Args:
-#   $1 - UPPER_SNAKE token name
-#   $2 - default value
-ensure_default_token() {
-  local token_name="$1"
-  local default_value="$2"
-  local config_file_name
-  config_file_name=$(convert_token_name "${TOKEN_NAME_STYLE}" "${token_name}")
-
-  # User override in CONFIG_SUB_PATH - token system handles it
-  if [[ -f "${CONFIG_SUB_PATH}/${config_file_name}" ]]; then
-    log "  ${token_name}: user config found in ${CONFIG_SUB_PATH}/"
-    return 0
-  fi
-
-  # Write default to each platform config dir that doesn't already have it
-  local all_present=true
-  for config_dir in "${platform_config_dirs[@]}"; do
-    if [[ ! -f "${config_dir}/${config_file_name}" ]]; then
-      all_present=false
-      break
-    fi
-  done
-
-  if [[ "${all_present}" == "true" ]]; then
-    log "  ${token_name}: already present in platform config dir(s)"
-    return 0
-  fi
-
-  for config_dir in "${platform_config_dirs[@]}"; do
-    if [[ ! -f "${config_dir}/${config_file_name}" ]]; then
-      mkdir -p "${config_dir}"
-      printf '%s' "${default_value}" > "${config_dir}/${config_file_name}"
-    fi
-  done
-  log "  ${token_name}: default ${default_value} written to platform config dir(s) where missing"
-}
-
 # expand_comma_list_token - Expand comma-separated value into individually numbered tokens
 #
 # User writes comma-separated values in CONFIG_SUB_PATH (e.g., api,audit,authenticator).
@@ -419,53 +395,46 @@ PROJECT_NAME="${PROJECT_NAME:?PROJECT_NAME is required}"
 
 validate_token_styles
 
-resolve_config "KUBERNETES_MINOR_VERSION"
+# === Resolve config tokens ===
 
-# === Validate required token config files ===
-
-require_config_file "AWS_REGION" "Create this file with the AWS region for your cluster (e.g., eu-west-1)"
-require_config_file "VPC_ID" "Create this file with the VPC ID for your cluster (e.g., vpc-0123456789abcdef0)"
-require_config_file "NODEGROUP_INSTANCE_TYPE" "Create this file with the instance type (e.g., t3.medium)"
-require_config_file "SECRETS_ENCRYPTION_KEY_ARN" "Create this file with the KMS key ARN for secrets encryption"
-require_config_file "AWS_ACCOUNT_ID" "Create this file with the AWS account ID for your cluster (e.g., 123456789012)"
-require_config_file "CLUSTER_SECURITY_GROUP" "Create this file with the EKS cluster default security group ID (from EKS console Networking tab or sg-known-after-creation for new clusters)"
-require_config_file "CLUSTER_ORIGIN" "Create this file with 'eksctl' (cluster created by eksctl) or 'adopted' (existing cluster, eg Terraform/OpenTofu)"
-require_config_file "NODEGROUP_TYPE" "Create this file with 'managed' (EKS managed nodegroups) or 'unmanaged' (self-managed nodegroups)"
+resolve_token "KUBERNETES_MAJOR_VERSION" "${KUBERNETES_MAJOR_VERSION}"
+resolve_token "KUBERNETES_MINOR_VERSION"
+resolve_token "EKS_ADDONS_LIST" "${EKS_ADDONS_LIST}"
+resolve_token "AWS_REGION"
+resolve_token "VPC_ID"
+resolve_token "NODEGROUP_INSTANCE_TYPE"
+resolve_token "SECRETS_ENCRYPTION_KEY_ARN"
+resolve_token "AWS_ACCOUNT_ID"
+resolve_token "CLUSTER_SECURITY_GROUP"
+resolve_token "CLUSTER_ORIGIN"
+resolve_token "NODEGROUP_TYPE"
 
 if [[ "${EKS_PRIVATE_NETWORKING}" == "true" ]]; then
-  require_config_file "PRIVATE_SUBNET_ID_A" "Required when EKS_PRIVATE_NETWORKING=true"
-  require_config_file "PRIVATE_SUBNET_ID_B" "Required when EKS_PRIVATE_NETWORKING=true"
-  require_config_file "PRIVATE_SUBNET_ID_C" "Required when EKS_PRIVATE_NETWORKING=true"
+  resolve_token "PRIVATE_SUBNET_ID_A"
+  resolve_token "PRIVATE_SUBNET_ID_B"
+  resolve_token "PRIVATE_SUBNET_ID_C"
 fi
 
 if [[ "${EKS_PUBLIC_NETWORKING}" == "true" ]]; then
-  require_config_file "PUBLIC_SUBNET_ID_A" "Required when EKS_PUBLIC_NETWORKING=true"
-  require_config_file "PUBLIC_SUBNET_ID_B" "Required when EKS_PUBLIC_NETWORKING=true"
-  require_config_file "PUBLIC_SUBNET_ID_C" "Required when EKS_PUBLIC_NETWORKING=true"
+  resolve_token "PUBLIC_SUBNET_ID_A"
+  resolve_token "PUBLIC_SUBNET_ID_B"
+  resolve_token "PUBLIC_SUBNET_ID_C"
 fi
 
-# Cluster origin - required: determines security group requirements
-cluster_origin=""
-cluster_origin_config_name=$(convert_token_name "${TOKEN_NAME_STYLE}" "CLUSTER_ORIGIN")
-if [[ -f "${CONFIG_SUB_PATH}/${cluster_origin_config_name}" ]]; then
-  cluster_origin=$(< "${CONFIG_SUB_PATH}/${cluster_origin_config_name}")
-  cluster_origin="${cluster_origin%$'\n'}"
-  if [[ "${cluster_origin}" != "eksctl" && "${cluster_origin}" != "adopted" ]]; then
-    log_error "CLUSTER_ORIGIN: invalid value '${cluster_origin}' - must be 'eksctl' or 'adopted'"
-    validation_errors=$((validation_errors + 1))
-  fi
+# Validate cluster origin value
+# shellcheck disable=SC2154,SC2153 # CLUSTER_ORIGIN set dynamically by resolve_token via eval
+cluster_origin="${CLUSTER_ORIGIN}"
+if [[ -n "${cluster_origin}" && "${cluster_origin}" != "eksctl" && "${cluster_origin}" != "adopted" ]]; then
+  log_error "CLUSTER_ORIGIN: invalid value '${cluster_origin}' - must be 'eksctl' or 'adopted'"
+  validation_errors=$((validation_errors + 1))
 fi
 
-# Nodegroup type - required: determines managed vs unmanaged nodegroup generation
-nodegroup_type=""
-nodegroup_type_config_name=$(convert_token_name "${TOKEN_NAME_STYLE}" "NODEGROUP_TYPE")
-if [[ -f "${CONFIG_SUB_PATH}/${nodegroup_type_config_name}" ]]; then
-  nodegroup_type=$(< "${CONFIG_SUB_PATH}/${nodegroup_type_config_name}")
-  nodegroup_type="${nodegroup_type%$'\n'}"
-  if [[ "${nodegroup_type}" != "managed" && "${nodegroup_type}" != "unmanaged" ]]; then
-    log_error "NODEGROUP_TYPE: invalid value '${nodegroup_type}' - must be 'managed' or 'unmanaged'"
-    validation_errors=$((validation_errors + 1))
-  fi
+# Validate nodegroup type value
+# shellcheck disable=SC2154,SC2153 # NODEGROUP_TYPE set dynamically by resolve_token via eval
+nodegroup_type="${NODEGROUP_TYPE}"
+if [[ -n "${nodegroup_type}" && "${nodegroup_type}" != "managed" && "${nodegroup_type}" != "unmanaged" ]]; then
+  log_error "NODEGROUP_TYPE: invalid value '${nodegroup_type}' - must be 'managed' or 'unmanaged'"
+  validation_errors=$((validation_errors + 1))
 fi
 
 # VPC security group - optional: if config file exists, include securityGroup line
@@ -516,15 +485,21 @@ fi
 
 # Global nodegroup private networking - if config file exists, all nodegroups inherit unless overridden
 has_global_private_networking="false"
+NODEGROUP_PRIVATE_NETWORKING=""
 nodegroup_private_networking_name=$(convert_token_name "${TOKEN_NAME_STYLE}" "NODEGROUP_PRIVATE_NETWORKING")
 if [[ -f "${CONFIG_SUB_PATH}/${nodegroup_private_networking_name}" ]]; then
+  NODEGROUP_PRIVATE_NETWORKING=$(< "${CONFIG_SUB_PATH}/${nodegroup_private_networking_name}")
+  NODEGROUP_PRIVATE_NETWORKING="${NODEGROUP_PRIVATE_NETWORKING%$'\n'}"
   has_global_private_networking="true"
 fi
 
 # Global nodegroup IAM instance role ARN - if config file exists, all nodegroups inherit unless overridden
 has_global_iam_instance_role_arn="false"
+NODEGROUP_IAM_INSTANCE_ROLE_ARN=""
 nodegroup_iam_instance_role_arn_name=$(convert_token_name "${TOKEN_NAME_STYLE}" "NODEGROUP_IAM_INSTANCE_ROLE_ARN")
 if [[ -f "${CONFIG_SUB_PATH}/${nodegroup_iam_instance_role_arn_name}" ]]; then
+  NODEGROUP_IAM_INSTANCE_ROLE_ARN=$(< "${CONFIG_SUB_PATH}/${nodegroup_iam_instance_role_arn_name}")
+  NODEGROUP_IAM_INSTANCE_ROLE_ARN="${NODEGROUP_IAM_INSTANCE_ROLE_ARN%$'\n'}"
   has_global_iam_instance_role_arn="true"
 fi
 
@@ -538,7 +513,7 @@ if [[ -f "${CONFIG_SUB_PATH}/${auto_mode_config_name}" ]]; then
   auto_mode_value="${auto_mode_value%$'\n'}"
   if [[ "${auto_mode_value}" == "true" ]]; then
     auto_mode_needs_node_pools="true"
-    require_config_file "AUTO_MODE_CONFIG_NODE_POOLS" "Required when AUTO_MODE_CONFIG_ENABLED=true"
+    resolve_token "AUTO_MODE_CONFIG_NODE_POOLS"
   fi
 fi
 
@@ -658,8 +633,11 @@ fi
 
 # Global volume KMS key ID - if config file exists, all nodegroups inherit unless overridden
 has_global_volume_kms_key_id="false"
+NODEGROUP_VOLUME_KMS_KEY_ID=""
 volume_kms_key_id_name=$(convert_token_name "${TOKEN_NAME_STYLE}" "NODEGROUP_VOLUME_KMS_KEY_ID")
 if [[ -f "${CONFIG_SUB_PATH}/${volume_kms_key_id_name}" ]]; then
+  NODEGROUP_VOLUME_KMS_KEY_ID=$(< "${CONFIG_SUB_PATH}/${volume_kms_key_id_name}")
+  NODEGROUP_VOLUME_KMS_KEY_ID="${NODEGROUP_VOLUME_KMS_KEY_ID%$'\n'}"
   has_global_volume_kms_key_id="true"
 fi
 
@@ -676,18 +654,16 @@ if [[ -f "${CONFIG_SUB_PATH}/${additional_ng_config_name}" ]]; then
 
   for i in "${!additional_ng_suffixes[@]}"; do
     suffix="${additional_ng_suffixes[${i}]}"
-    suffix=$(echo "${suffix}" | tr '[:upper:]' '[:lower:]')
-    additional_ng_suffixes[i]="${suffix}"
 
-    if [[ ! "${suffix}" =~ ^[a-z]+$ ]]; then
-      log_error "ADDITIONAL_NODE_GROUPS: suffix '${suffix}' must be a single alphabetic word (a-z only)"
+    if [[ ! "${suffix}" =~ ^[a-z0-9](-?[a-z0-9])*$ ]]; then
+      log_error "ADDITIONAL_NODE_GROUPS: suffix '${suffix}' must be lowercase alphanumeric with optional hyphens (no leading/trailing/consecutive hyphens)"
       validation_errors=$((validation_errors + 1))
     elif [[ "${suffix}" == kaptain* ]]; then
       log_error "ADDITIONAL_NODE_GROUPS: suffix '${suffix}' must not start with 'kaptain' - this prefix is reserved"
       validation_errors=$((validation_errors + 1))
     fi
 
-    suffix_upper=$(echo "${suffix}" | tr '[:lower:]' '[:upper:]')
+    suffix_upper=$(echo "${suffix}" | tr '[:lower:]-' '[:upper:]_')
     additional_ng_suffixes_upper+=("${suffix_upper}")
   done
 
@@ -718,7 +694,7 @@ fi
 
 # === Compute values ===
 
-# shellcheck disable=SC2154,SC2153 # KUBERNETES_MINOR_VERSION set dynamically by resolve_config via eval
+# shellcheck disable=SC2154,SC2153 # KUBERNETES_MINOR_VERSION set dynamically by resolve_token via eval
 k8s_version="${KUBERNETES_MAJOR_VERSION}.${KUBERNETES_MINOR_VERSION}"
 version_dashes=$(echo "${VERSION}" | tr '.' '-')
 timestamp=$(date +%Y%m%d)
@@ -729,7 +705,8 @@ canonical_dir="${OUTPUT_SUB_PATH}/aws-eks-cluster-management"
 expected_values_dir="${canonical_dir}/expected-values"
 mkdir -p "${expected_values_dir}"
 printf '%s' "${PROJECT_NAME}" > "${expected_values_dir}/project-name"
-printf '%s' "$(< "${CONFIG_SUB_PATH}/$(convert_token_name "${TOKEN_NAME_STYLE}" "AWS_REGION")")" > "${expected_values_dir}/aws-region"
+# shellcheck disable=SC2154 # AWS_REGION set dynamically by resolve_token via eval
+printf '%s' "${AWS_REGION}" > "${expected_values_dir}/aws-region"
 printf '%s' "${k8s_version}" > "${expected_values_dir}/kubernetes-version"
 printf '%s' "${nodegroup_prefix}" > "${expected_values_dir}/nodegroup-prefix"
 printf '%s' "${cluster_origin}" > "${expected_values_dir}/cluster-origin"
@@ -743,7 +720,6 @@ fi
 
 declare -a platforms=()
 declare -a context_dirs=()
-declare -a platform_config_dirs=()
 
 if [[ "${DOCKER_PLATFORM}" == *,* ]]; then
   IFS=',' read -ra platforms <<< "${DOCKER_PLATFORM}"
@@ -787,55 +763,38 @@ for config_dir in "${platform_config_dirs[@]}"; do
 done
 log "  NODE_GROUP_DEFAULT_PREFIX: ${nodegroup_prefix} written to platform config dir(s)"
 
-ensure_default_token "IAM_WITH_OIDC" "true"
-ensure_default_token "VPC_CLUSTER_ENDPOINTS_PRIVATE_ACCESS" "true"
-ensure_default_token "VPC_CLUSTER_ENDPOINTS_PUBLIC_ACCESS" "false"
-expand_comma_list_token "CLOUD_WATCH_CLUSTER_LOGGING_ENABLE_TYPES" "CLOUD_WATCH_CLUSTER_LOGGING_ENABLE_TYPE" "api,audit,authenticator,controllerManager,scheduler"
+resolve_token "IAM_WITH_OIDC" "${IAM_WITH_OIDC}"
+resolve_token "VPC_CLUSTER_ENDPOINTS_PRIVATE_ACCESS" "${VPC_CLUSTER_ENDPOINTS_PRIVATE_ACCESS}"
+resolve_token "VPC_CLUSTER_ENDPOINTS_PUBLIC_ACCESS" "${VPC_CLUSTER_ENDPOINTS_PUBLIC_ACCESS}"
+expand_comma_list_token "CLOUD_WATCH_CLUSTER_LOGGING_ENABLE_TYPES" "CLOUD_WATCH_CLUSTER_LOGGING_ENABLE_TYPE" "${CLOUD_WATCH_CLUSTER_LOGGING_ENABLE_TYPES}"
 cloudwatch_tokens=("${expanded_tokens[@]}")
-ensure_default_token "NODEGROUP_AMI_FAMILY" "AmazonLinux2023"
-ensure_default_token "NODEGROUP_VOLUME_SIZE" "20"
-ensure_default_token "NODEGROUP_VOLUME_TYPE" "gp3"
-ensure_default_token "NODEGROUP_VOLUME_ENCRYPTED" "true"
+resolve_token "NODEGROUP_AMI_FAMILY" "${NODEGROUP_AMI_FAMILY}"
+resolve_token "NODEGROUP_VOLUME_SIZE" "${NODEGROUP_VOLUME_SIZE}"
+resolve_token "NODEGROUP_VOLUME_TYPE" "${NODEGROUP_VOLUME_TYPE}"
+resolve_token "NODEGROUP_VOLUME_ENCRYPTED" "${NODEGROUP_VOLUME_ENCRYPTED}"
 
 # Validate volumeType is a valid EBS type
-volume_type_name=$(convert_token_name "${TOKEN_NAME_STYLE}" "NODEGROUP_VOLUME_TYPE")
-volume_type_val="gp3"
-if [[ -f "${CONFIG_SUB_PATH}/${volume_type_name}" ]]; then
-  volume_type_val=$(< "${CONFIG_SUB_PATH}/${volume_type_name}")
-  volume_type_val="${volume_type_val%$'\n'}"
-fi
-case "${volume_type_val}" in
+case "${NODEGROUP_VOLUME_TYPE}" in
   gp2|gp3|io1|io2|st1|sc1|standard) ;;
   *)
-    log_error "NODEGROUP_VOLUME_TYPE must be one of: gp2, gp3, io1, io2, st1, sc1, standard (got: ${volume_type_val})"
+    log_error "NODEGROUP_VOLUME_TYPE must be one of: gp2, gp3, io1, io2, st1, sc1, standard (got: ${NODEGROUP_VOLUME_TYPE})"
     validation_errors=$((validation_errors + 1))
     ;;
 esac
 
 # Validate volumeEncrypted is true or false
-volume_encrypted_name=$(convert_token_name "${TOKEN_NAME_STYLE}" "NODEGROUP_VOLUME_ENCRYPTED")
-volume_encrypted_val="true"
-if [[ -f "${CONFIG_SUB_PATH}/${volume_encrypted_name}" ]]; then
-  volume_encrypted_val=$(< "${CONFIG_SUB_PATH}/${volume_encrypted_name}")
-  volume_encrypted_val="${volume_encrypted_val%$'\n'}"
-fi
-if [[ "${volume_encrypted_val}" != "true" && "${volume_encrypted_val}" != "false" ]]; then
-  log_error "NODEGROUP_VOLUME_ENCRYPTED must be 'true' or 'false' (got: ${volume_encrypted_val})"
+if [[ "${NODEGROUP_VOLUME_ENCRYPTED}" != "true" && "${NODEGROUP_VOLUME_ENCRYPTED}" != "false" ]]; then
+  log_error "NODEGROUP_VOLUME_ENCRYPTED must be 'true' or 'false' (got: ${NODEGROUP_VOLUME_ENCRYPTED})"
   validation_errors=$((validation_errors + 1))
 fi
 
 update_max_unavailable_name=$(convert_token_name "${TOKEN_NAME_STYLE}" "NODEGROUP_UPDATE_CONFIG_MAX_UNAVAILABLE")
 if [[ "${nodegroup_type}" == "managed" ]]; then
-  ensure_default_token "NODEGROUP_UPDATE_CONFIG_MAX_UNAVAILABLE" "1"
+  resolve_token "NODEGROUP_UPDATE_CONFIG_MAX_UNAVAILABLE" "${NODEGROUP_UPDATE_CONFIG_MAX_UNAVAILABLE}"
 
   # Validate maxUnavailable is greater than 0
-  update_max_unavailable_val="1"
-  if [[ -f "${CONFIG_SUB_PATH}/${update_max_unavailable_name}" ]]; then
-    update_max_unavailable_val=$(< "${CONFIG_SUB_PATH}/${update_max_unavailable_name}")
-    update_max_unavailable_val="${update_max_unavailable_val%$'\n'}"
-  fi
-  if [[ "${update_max_unavailable_val}" -le 0 ]]; then
-    log_error "NODEGROUP_UPDATE_CONFIG_MAX_UNAVAILABLE must be greater than 0 (got: ${update_max_unavailable_val})"
+  if [[ "${NODEGROUP_UPDATE_CONFIG_MAX_UNAVAILABLE}" -le 0 ]]; then
+    log_error "NODEGROUP_UPDATE_CONFIG_MAX_UNAVAILABLE must be greater than 0 (got: ${NODEGROUP_UPDATE_CONFIG_MAX_UNAVAILABLE})"
     validation_errors=$((validation_errors + 1))
   fi
 else
@@ -848,13 +807,14 @@ fi
 
 # Spot instances - optional, managed only, must be true or false
 has_global_spot="false"
+NODEGROUP_SPOT=""
 nodegroup_spot_name=$(convert_token_name "${TOKEN_NAME_STYLE}" "NODEGROUP_SPOT")
 if [[ "${nodegroup_type}" == "managed" ]]; then
   if [[ -f "${CONFIG_SUB_PATH}/${nodegroup_spot_name}" ]]; then
-    nodegroup_spot_val=$(< "${CONFIG_SUB_PATH}/${nodegroup_spot_name}")
-    nodegroup_spot_val="${nodegroup_spot_val%$'\n'}"
-    if [[ "${nodegroup_spot_val}" != "true" && "${nodegroup_spot_val}" != "false" ]]; then
-      log_error "NODEGROUP_SPOT must be 'true' or 'false' (got: ${nodegroup_spot_val})"
+    NODEGROUP_SPOT=$(< "${CONFIG_SUB_PATH}/${nodegroup_spot_name}")
+    NODEGROUP_SPOT="${NODEGROUP_SPOT%$'\n'}"
+    if [[ "${NODEGROUP_SPOT}" != "true" && "${NODEGROUP_SPOT}" != "false" ]]; then
+      log_error "NODEGROUP_SPOT must be 'true' or 'false' (got: ${NODEGROUP_SPOT})"
       validation_errors=$((validation_errors + 1))
     else
       has_global_spot="true"
@@ -867,49 +827,24 @@ else
   fi
 fi
 
-ensure_default_token "NODEGROUP_MIN_SIZE" "${NODEGROUP_MIN_SIZE}"
-ensure_default_token "NODEGROUP_MAX_SIZE" "${NODEGROUP_MAX_SIZE}"
+resolve_token "NODEGROUP_MIN_SIZE" "${NODEGROUP_MIN_SIZE}"
+resolve_token "NODEGROUP_MAX_SIZE" "${NODEGROUP_MAX_SIZE}"
 
-# desiredCapacity defaults to minSize — resolve actual min value first
-min_size_name=$(convert_token_name "${TOKEN_NAME_STYLE}" "NODEGROUP_MIN_SIZE")
-resolved_min_size="${NODEGROUP_MIN_SIZE}"
-if [[ -f "${CONFIG_SUB_PATH}/${min_size_name}" ]]; then
-  resolved_min_size=$(< "${CONFIG_SUB_PATH}/${min_size_name}")
-  resolved_min_size="${resolved_min_size%$'\n'}"
-fi
-desired_capacity_default="${NODEGROUP_DESIRED_CAPACITY:-${resolved_min_size}}"
-ensure_default_token "NODEGROUP_DESIRED_CAPACITY" "${desired_capacity_default}"
+# desiredCapacity defaults to minSize — config file for min wins over defaults file
+desired_capacity_default="${NODEGROUP_DESIRED_CAPACITY:-${NODEGROUP_MIN_SIZE}}"
+resolve_token "NODEGROUP_DESIRED_CAPACITY" "${desired_capacity_default}"
 
 # Validate nodegroup sizing: min <= desired <= max
-resolve_sizing_value() {
-  local token_name="$1"
-  local config_file_name
-  config_file_name=$(convert_token_name "${TOKEN_NAME_STYLE}" "${token_name}")
-  if [[ -f "${CONFIG_SUB_PATH}/${config_file_name}" ]]; then
-    local val
-    val=$(< "${CONFIG_SUB_PATH}/${config_file_name}")
-    printf '%s' "${val%$'\n'}"
-  else
-    local val
-    val=$(< "${platform_config_dirs[0]}/${config_file_name}")
-    printf '%s' "${val%$'\n'}"
-  fi
-}
-
-resolved_min=$(resolve_sizing_value "NODEGROUP_MIN_SIZE")
-resolved_max=$(resolve_sizing_value "NODEGROUP_MAX_SIZE")
-resolved_desired=$(resolve_sizing_value "NODEGROUP_DESIRED_CAPACITY")
-
-if [[ "${resolved_min}" -gt "${resolved_max}" ]]; then
-  log_error "NODEGROUP_MIN_SIZE (${resolved_min}) must be <= NODEGROUP_MAX_SIZE (${resolved_max})"
+if [[ "${NODEGROUP_MIN_SIZE}" -gt "${NODEGROUP_MAX_SIZE}" ]]; then
+  log_error "NODEGROUP_MIN_SIZE (${NODEGROUP_MIN_SIZE}) must be <= NODEGROUP_MAX_SIZE (${NODEGROUP_MAX_SIZE})"
   validation_errors=$((validation_errors + 1))
 fi
-if [[ "${resolved_desired}" -lt "${resolved_min}" ]]; then
-  log_error "NODEGROUP_DESIRED_CAPACITY (${resolved_desired}) must be >= NODEGROUP_MIN_SIZE (${resolved_min})"
+if [[ "${NODEGROUP_DESIRED_CAPACITY}" -lt "${NODEGROUP_MIN_SIZE}" ]]; then
+  log_error "NODEGROUP_DESIRED_CAPACITY (${NODEGROUP_DESIRED_CAPACITY}) must be >= NODEGROUP_MIN_SIZE (${NODEGROUP_MIN_SIZE})"
   validation_errors=$((validation_errors + 1))
 fi
-if [[ "${resolved_desired}" -gt "${resolved_max}" ]]; then
-  log_error "NODEGROUP_DESIRED_CAPACITY (${resolved_desired}) must be <= NODEGROUP_MAX_SIZE (${resolved_max})"
+if [[ "${NODEGROUP_DESIRED_CAPACITY}" -gt "${NODEGROUP_MAX_SIZE}" ]]; then
+  log_error "NODEGROUP_DESIRED_CAPACITY (${NODEGROUP_DESIRED_CAPACITY}) must be <= NODEGROUP_MAX_SIZE (${NODEGROUP_MAX_SIZE})"
   validation_errors=$((validation_errors + 1))
 fi
 
@@ -1006,40 +941,41 @@ for ng_idx in "${!all_ng_suffixes_lower[@]}"; do
   fi
 
   # Inherit always-present fields (defaults from global resolved values)
-  ensure_default_token "NODEGROUP_INSTANCE_TYPE_${suffix_upper}" "$(resolve_sizing_value "NODEGROUP_INSTANCE_TYPE")"
-  ensure_default_token "NODEGROUP_AMI_FAMILY_${suffix_upper}" "$(resolve_sizing_value "NODEGROUP_AMI_FAMILY")"
-  ensure_default_token "NODEGROUP_VOLUME_SIZE_${suffix_upper}" "$(resolve_sizing_value "NODEGROUP_VOLUME_SIZE")"
-  ensure_default_token "NODEGROUP_VOLUME_TYPE_${suffix_upper}" "$(resolve_sizing_value "NODEGROUP_VOLUME_TYPE")"
-  ensure_default_token "NODEGROUP_VOLUME_ENCRYPTED_${suffix_upper}" "$(resolve_sizing_value "NODEGROUP_VOLUME_ENCRYPTED")"
-  ensure_default_token "NODEGROUP_MIN_SIZE_${suffix_upper}" "$(resolve_sizing_value "NODEGROUP_MIN_SIZE")"
-  ensure_default_token "NODEGROUP_MAX_SIZE_${suffix_upper}" "$(resolve_sizing_value "NODEGROUP_MAX_SIZE")"
-  ensure_default_token "NODEGROUP_DESIRED_CAPACITY_${suffix_upper}" "$(resolve_sizing_value "NODEGROUP_DESIRED_CAPACITY")"
+  # shellcheck disable=SC2154 # NODEGROUP_* vars set dynamically by resolve_token via eval
+  resolve_token "NODEGROUP_INSTANCE_TYPE_${suffix_upper}" "${NODEGROUP_INSTANCE_TYPE}"
+  resolve_token "NODEGROUP_AMI_FAMILY_${suffix_upper}" "${NODEGROUP_AMI_FAMILY}"
+  resolve_token "NODEGROUP_VOLUME_SIZE_${suffix_upper}" "${NODEGROUP_VOLUME_SIZE}"
+  resolve_token "NODEGROUP_VOLUME_TYPE_${suffix_upper}" "${NODEGROUP_VOLUME_TYPE}"
+  resolve_token "NODEGROUP_VOLUME_ENCRYPTED_${suffix_upper}" "${NODEGROUP_VOLUME_ENCRYPTED}"
+  resolve_token "NODEGROUP_MIN_SIZE_${suffix_upper}" "${NODEGROUP_MIN_SIZE}"
+  resolve_token "NODEGROUP_MAX_SIZE_${suffix_upper}" "${NODEGROUP_MAX_SIZE}"
+  resolve_token "NODEGROUP_DESIRED_CAPACITY_${suffix_upper}" "${NODEGROUP_DESIRED_CAPACITY}"
 
   if [[ "${nodegroup_type}" == "managed" ]]; then
-    ensure_default_token "NODEGROUP_UPDATE_CONFIG_MAX_UNAVAILABLE_${suffix_upper}" "$(resolve_sizing_value "NODEGROUP_UPDATE_CONFIG_MAX_UNAVAILABLE")"
+    resolve_token "NODEGROUP_UPDATE_CONFIG_MAX_UNAVAILABLE_${suffix_upper}" "${NODEGROUP_UPDATE_CONFIG_MAX_UNAVAILABLE}"
   fi
 
   # Validate suffixed volumeType
-  ng_vol_type_val=$(resolve_sizing_value "NODEGROUP_VOLUME_TYPE_${suffix_upper}")
-  case "${ng_vol_type_val}" in
+  ref="NODEGROUP_VOLUME_TYPE_${suffix_upper}"
+  case "${!ref}" in
     gp2|gp3|io1|io2|st1|sc1|standard) ;;
     *)
-      log_error "NODEGROUP_VOLUME_TYPE_${suffix_upper} must be one of: gp2, gp3, io1, io2, st1, sc1, standard (got: ${ng_vol_type_val})"
+      log_error "NODEGROUP_VOLUME_TYPE_${suffix_upper} must be one of: gp2, gp3, io1, io2, st1, sc1, standard (got: ${!ref})"
       validation_errors=$((validation_errors + 1))
       ;;
   esac
 
   # Validate suffixed volumeEncrypted
-  ng_vol_enc_val=$(resolve_sizing_value "NODEGROUP_VOLUME_ENCRYPTED_${suffix_upper}")
-  if [[ "${ng_vol_enc_val}" != "true" && "${ng_vol_enc_val}" != "false" ]]; then
-    log_error "NODEGROUP_VOLUME_ENCRYPTED_${suffix_upper} must be 'true' or 'false' (got: ${ng_vol_enc_val})"
+  ref="NODEGROUP_VOLUME_ENCRYPTED_${suffix_upper}"
+  if [[ "${!ref}" != "true" && "${!ref}" != "false" ]]; then
+    log_error "NODEGROUP_VOLUME_ENCRYPTED_${suffix_upper} must be 'true' or 'false' (got: ${!ref})"
     validation_errors=$((validation_errors + 1))
   fi
 
   # Validate suffixed sizing
-  ng_min=$(resolve_sizing_value "NODEGROUP_MIN_SIZE_${suffix_upper}")
-  ng_max=$(resolve_sizing_value "NODEGROUP_MAX_SIZE_${suffix_upper}")
-  ng_desired=$(resolve_sizing_value "NODEGROUP_DESIRED_CAPACITY_${suffix_upper}")
+  ref="NODEGROUP_MIN_SIZE_${suffix_upper}"; ng_min="${!ref}"
+  ref="NODEGROUP_MAX_SIZE_${suffix_upper}"; ng_max="${!ref}"
+  ref="NODEGROUP_DESIRED_CAPACITY_${suffix_upper}"; ng_desired="${!ref}"
   if [[ "${ng_min}" -gt "${ng_max}" ]]; then
     log_error "NODEGROUP_MIN_SIZE_${suffix_upper} (${ng_min}) must be <= NODEGROUP_MAX_SIZE_${suffix_upper} (${ng_max})"
     validation_errors=$((validation_errors + 1))
@@ -1060,7 +996,7 @@ for ng_idx in "${!all_ng_suffixes_lower[@]}"; do
   if [[ -f "${CONFIG_SUB_PATH}/${suffixed_name}" ]]; then
     ng_has_volume_kms="true"
   elif [[ "${has_global_volume_kms_key_id}" == "true" ]]; then
-    ensure_default_token "NODEGROUP_VOLUME_KMS_KEY_ID_${suffix_upper}" "$(resolve_sizing_value "NODEGROUP_VOLUME_KMS_KEY_ID")"
+    resolve_token "NODEGROUP_VOLUME_KMS_KEY_ID_${suffix_upper}" "${NODEGROUP_VOLUME_KMS_KEY_ID}"
     ng_has_volume_kms="true"
   fi
   printf '%s' "${ng_has_volume_kms}" > "${expected_values_dir}/has-volume-kms-key-id-${suffix_lower}"
@@ -1071,7 +1007,7 @@ for ng_idx in "${!all_ng_suffixes_lower[@]}"; do
   if [[ -f "${CONFIG_SUB_PATH}/${suffixed_name}" ]]; then
     ng_has_private_networking="true"
   elif [[ "${has_global_private_networking}" == "true" ]]; then
-    ensure_default_token "NODEGROUP_PRIVATE_NETWORKING_${suffix_upper}" "$(resolve_sizing_value "NODEGROUP_PRIVATE_NETWORKING")"
+    resolve_token "NODEGROUP_PRIVATE_NETWORKING_${suffix_upper}" "${NODEGROUP_PRIVATE_NETWORKING}"
     ng_has_private_networking="true"
   fi
   printf '%s' "${ng_has_private_networking}" > "${expected_values_dir}/has-private-networking-${suffix_lower}"
@@ -1090,7 +1026,7 @@ for ng_idx in "${!all_ng_suffixes_lower[@]}"; do
         ng_has_spot="true"
       fi
     elif [[ "${has_global_spot}" == "true" ]]; then
-      ensure_default_token "NODEGROUP_SPOT_${suffix_upper}" "$(resolve_sizing_value "NODEGROUP_SPOT")"
+      resolve_token "NODEGROUP_SPOT_${suffix_upper}" "${NODEGROUP_SPOT}"
       ng_has_spot="true"
     fi
   else
@@ -1107,7 +1043,7 @@ for ng_idx in "${!all_ng_suffixes_lower[@]}"; do
   if [[ -f "${CONFIG_SUB_PATH}/${suffixed_name}" ]]; then
     ng_has_iam_role="true"
   elif [[ "${has_global_iam_instance_role_arn}" == "true" ]]; then
-    ensure_default_token "NODEGROUP_IAM_INSTANCE_ROLE_ARN_${suffix_upper}" "$(resolve_sizing_value "NODEGROUP_IAM_INSTANCE_ROLE_ARN")"
+    resolve_token "NODEGROUP_IAM_INSTANCE_ROLE_ARN_${suffix_upper}" "${NODEGROUP_IAM_INSTANCE_ROLE_ARN}"
     ng_has_iam_role="true"
   fi
   printf '%s' "${ng_has_iam_role}" > "${expected_values_dir}/has-iam-instance-role-arn-${suffix_lower}"
@@ -1270,9 +1206,8 @@ done
 # Reads per-nodegroup has-flags from expected-values dir
 emit_nodegroup() {
   local suffix_upper="$1"
+  local suffix_lower="$2"
   local tk="_${suffix_upper}"
-  local suffix_lower
-  suffix_lower=$(echo "${suffix_upper}" | tr '[:upper:]' '[:lower:]' | tr -d '_')
   local suffix_dash="-${suffix_lower}"
 
   # Token references — always present
@@ -1599,8 +1534,8 @@ YAML
     echo "${ng_yaml_key}:"
 
     # Emit all nodegroups (base first, then additional)
-    for suffix_upper in "${all_ng_suffixes_upper[@]}"; do
-      emit_nodegroup "${suffix_upper}"
+    for ng_emit_idx in "${!all_ng_suffixes_upper[@]}"; do
+      emit_nodegroup "${all_ng_suffixes_upper[${ng_emit_idx}]}" "${all_ng_suffixes_lower[${ng_emit_idx}]}"
     done
   fi
 }

@@ -85,14 +85,6 @@ inputs:
   eks-base-image-tag:
     description: 'Base image tag for EKS management image'
     required: false
-  kubernetes-major-version:
-    description: 'Kubernetes major version'
-    required: false
-    default: '1'
-  kubernetes-minor-version:
-    description: 'Kubernetes minor version (e.g., 32) - required, no default'
-    required: false
-    default: ''
   eks-private-networking:
     description: 'Include private subnets section in cluster config'
     required: false
@@ -105,26 +97,6 @@ inputs:
     description: 'Generate controlplane-only yaml for Cilium eBPF networking'
     required: false
     default: 'false'
-  eks-custom-security-group:
-    description: 'Include custom security group in cluster config'
-    required: false
-    default: 'false'
-  nodegroup-desired-capacity:
-    description: 'Default nodegroup desired capacity (written to platform config if not in config-sub-path)'
-    required: false
-    default: '1'
-  nodegroup-min-size:
-    description: 'Default nodegroup minimum size (written to platform config if not in config-sub-path)'
-    required: false
-    default: '3'
-  nodegroup-max-size:
-    description: 'Default nodegroup maximum size (written to platform config if not in config-sub-path)'
-    required: false
-    default: '12'
-  eks-addons-list:
-    description: 'Comma-separated list of EKS addon names (no versions)'
-    required: false
-    default: 'coredns,kube-proxy,vpc-cni,aws-ebs-csi-driver,aws-efs-csi-driver'
   secrets-sub-path:
     description: 'Source directory for encrypted secrets (relative)'
     required: false
@@ -171,15 +143,8 @@ runs:
         EKS_BASE_IMAGE_NAMESPACE: ${{ inputs.eks-base-image-namespace }}
         EKS_BASE_IMAGE_NAME: ${{ inputs.eks-base-image-name }}
         EKS_BASE_IMAGE_TAG: ${{ inputs.eks-base-image-tag }}
-        KUBERNETES_MAJOR_VERSION: ${{ inputs.kubernetes-major-version }}
-        KUBERNETES_MINOR_VERSION: ${{ inputs.kubernetes-minor-version }}
         EKS_PRIVATE_NETWORKING: ${{ inputs.eks-private-networking }}
         EKS_PUBLIC_NETWORKING: ${{ inputs.eks-public-networking }}
         EKS_CILIUM_EBPF_NETWORKING: ${{ inputs.eks-cilium-ebpf-networking }}
-        EKS_CUSTOM_SECURITY_GROUP: ${{ inputs.eks-custom-security-group }}
-        NODEGROUP_DESIRED_CAPACITY: ${{ inputs.nodegroup-desired-capacity }}
-        NODEGROUP_MIN_SIZE: ${{ inputs.nodegroup-min-size }}
-        NODEGROUP_MAX_SIZE: ${{ inputs.nodegroup-max-size }}
-        EKS_ADDONS_LIST: ${{ inputs.eks-addons-list }}
         SECRETS_SUB_PATH: ${{ inputs.secrets-sub-path }}
       run: "${{ github.action_path }}/../../scripts/main/aws-eks-cluster-management-prepare"

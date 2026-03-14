@@ -22,16 +22,9 @@ EKS Cluster Management
 | `eks-base-image-namespace` | string | `kube-kaptain` | Base image namespace for EKS management image |
 | `eks-base-image-name` | string | `aws/aws-eks-cluster-management` | Base image name for EKS management image |
 | `eks-base-image-tag` | string | `""` | Base image tag for EKS management image |
-| `kubernetes-major-version` | string | `1` | Kubernetes major version |
-| `kubernetes-minor-version` | string | `""` | Kubernetes minor version (e.g., 32) - required, no default |
 | `eks-private-networking` | boolean | `true` | Include private subnets section in cluster config |
 | `eks-public-networking` | boolean | `false` | Include public subnets section in cluster config |
 | `eks-cilium-ebpf-networking` | boolean | `false` | Generate controlplane-only yaml for Cilium eBPF networking |
-| `eks-custom-security-group` | boolean | `false` | Include custom security group in cluster config |
-| `nodegroup-desired-capacity` | string | `1` | Default nodegroup desired capacity (written to platform config if not in config-sub-path) |
-| `nodegroup-min-size` | string | `3` | Default nodegroup minimum size (written to platform config if not in config-sub-path) |
-| `nodegroup-max-size` | string | `12` | Default nodegroup maximum size (written to platform config if not in config-sub-path) |
-| `eks-addons-list` | string | `coredns,kube-proxy,vpc-cni,aws-ebs-csi-driver,aws-efs-csi-driver` | Comma-separated list of EKS addon names (no versions) |
 | `secrets-sub-path` | string | `src/secrets` | Source directory for encrypted secrets (relative) |
 | `token-delimiter-style` | string | `shell` | Token delimiter syntax for variables (shell, mustache, helm, erb, github-actions, blade, stringtemplate, ognl, t4, swift) |
 | `token-name-style` | string | `PascalCase` | Case style for token names (UPPER_SNAKE, lower_snake, lower-kebab, UPPER-KEBAB, camelCase, PascalCase, lower.dot, UPPER.DOT) |
