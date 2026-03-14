@@ -23,12 +23,13 @@ FIXTURES_DIR="$PROJECT_ROOT/src/test/fixtures"
 MOCK_BIN_DIR="$PROJECT_ROOT/src/test/mock-bin"
 
 # Test output directory - all test artifacts go here for diagnostics
-TEST_TARGET_DIR="$PROJECT_ROOT/target/test"
+OUTPUT_SUB_PATH="${OUTPUT_SUB_PATH:-target}"
+TEST_TARGET_DIR="$PROJECT_ROOT/${OUTPUT_SUB_PATH}/test"
 
 # Counter for unique directory names within a test file
 _TEST_DIR_COUNTER=0
 
-# Create a unique test directory under target/test
+# Create a unique test directory under ${OUTPUT_SUB_PATH}/test
 # Usage: dir=$(create_test_dir "prefix")
 create_test_dir() {
   local prefix="${1:-test}"
