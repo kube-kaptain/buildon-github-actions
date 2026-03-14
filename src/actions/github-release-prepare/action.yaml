@@ -122,7 +122,6 @@ runs:
         set -euo pipefail
 
         # Apply defaults for inputs used directly in this script
-        OUTPUT_SUB_PATH="${OUTPUT_SUB_PATH:-target}"
         ADD_VERSION_TO_FILENAMES="${ADD_VERSION_TO_FILENAMES:-true}"
 
         # Pass-through vars (called scripts default their own; these just satisfy set -u)
