@@ -22,6 +22,7 @@ Docker Build Retag
 | `allow-builtin-token-override` | boolean | `false` | Allow user tokens to override built-in tokens (for template/reusable projects) |
 | `config-sub-path` | string | `src/config` | Directory containing user-defined token files (relative) |
 | `config-value-trailing-newline` | string | `strip-for-single-line` | How to handle trailing newlines in config values (strip-for-single-line, preserve-all, always-strip-one-newline) |
+| `token-substitution-passes` | string | `1` | Number of times to run the token substitution pass (for nested token references) |
 | `release-branch` | string | `main` | The release branch name |
 | `additional-release-branches` | string | `""` | Comma-separated list of additional release branches |
 | `tag-version-max-parts` | number | `3` | Maximum allowed version parts (fail if exceeded) |

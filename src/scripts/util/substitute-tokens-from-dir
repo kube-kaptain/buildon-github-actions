@@ -37,6 +37,7 @@ source "${SCRIPT_DIR}/../defaults/platform.bash"
 # shellcheck source=src/scripts/lib/log.bash
 source "${SCRIPT_DIR}/../lib/log.bash"
 export CONFIG_VALUE_TRAILING_NEWLINE
+export TOKEN_SUBSTITUTION_PASSES
 
 # Validate arguments
 if [[ $# -ne 3 ]]; then
@@ -133,27 +134,31 @@ done < <(find . -type f | LC_ALL=C sort)
 echo "Substituting tokens in ${TARGET}:"
 
 # Process each target file, outputting count as we go
-# Outer loop: files, Inner loop: tokens - enables real-time per-file output
-for target_file in "${TARGET_FILES[@]}"; do
-  file_count=0
+# Outer loop: passes, Middle loop: files, Inner loop: tokens
+passes=0
+while [[ ${passes} -lt ${TOKEN_SUBSTITUTION_PASSES} ]]; do
+  for target_file in "${TARGET_FILES[@]}"; do
+    file_count=0
 
-  # Apply all tokens to this file (skip if no tokens)
-  if [[ ${#TOKEN_FILES[@]} -gt 0 ]]; then
-    for token_file in "${TOKEN_FILES[@]}"; do
-      count=$("${PROVIDER_SCRIPT}" "${token_file}" "${target_file}")
-      file_count=$((file_count + count))
-    done
-  fi
+    # Apply all tokens to this file (skip if no tokens)
+    if [[ ${#TOKEN_FILES[@]} -gt 0 ]]; then
+      for token_file in "${TOKEN_FILES[@]}"; do
+        count=$("${PROVIDER_SCRIPT}" "${token_file}" "${target_file}")
+        file_count=$((file_count + count))
+      done
+    fi
 
-  # Output immediately after processing each file
-  if [[ "${TARGET_MODE}" == "dir" ]]; then
-    relative_path="${target_file#"${TARGET_ABS}"/}"
-  else
-    relative_path="$(basename "${target_file}")"
-  fi
-  if [[ ${file_count} -eq 0 ]]; then
-    echo "  Substituted no tokens in ${relative_path}"
-  else
-    echo "  Substituted ${file_count} tokens in ${relative_path}"
-  fi
+    # Output immediately after processing each file
+    if [[ "${TARGET_MODE}" == "dir" ]]; then
+      relative_path="${target_file#"${TARGET_ABS}"/}"
+    else
+      relative_path="$(basename "${target_file}")"
+    fi
+    if [[ ${file_count} -eq 0 ]]; then
+      echo "  Substituted no tokens in ${relative_path}"
+    else
+      echo "  Substituted ${file_count} tokens in ${relative_path}"
+    fi
+  done
+  passes=$((passes + 1))
 done

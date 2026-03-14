@@ -212,6 +212,7 @@ jobs:
           config-sub-path: ${{ inputs.config-sub-path }}
           allow-builtin-token-override: ${{ inputs.allow-builtin-token-override }}
           config-value-trailing-newline: ${{ inputs.config-value-trailing-newline }}
+          token-substitution-passes: ${{ inputs.token-substitution-passes }}
       # INJECT: github-check-end(name="Docker Build", id="check-docker-build")
 
       # === Spec Validate ===

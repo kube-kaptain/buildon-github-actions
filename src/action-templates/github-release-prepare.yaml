@@ -78,6 +78,7 @@ runs:
         CONFIG_SUB_PATH: ${{ inputs.config-sub-path }}
         ALLOW_BUILTIN_TOKEN_OVERRIDE: ${{ inputs.allow-builtin-token-override }}
         CONFIG_VALUE_TRAILING_NEWLINE: ${{ inputs.config-value-trailing-newline }}
+        TOKEN_SUBSTITUTION_PASSES: ${{ inputs.token-substitution-passes }}
         DOCKER_IMAGE_FULL_URI: ${{ inputs.docker-image-full-uri }}
         TARGET_REGISTRY: ${{ inputs.docker-target-registry }}
         TARGET_NAMESPACE: ${{ inputs.docker-target-namespace }}
@@ -99,6 +100,7 @@ runs:
         ALLOW_BUILTIN_TOKEN_OVERRIDE="${ALLOW_BUILTIN_TOKEN_OVERRIDE:-}"
         CONFIG_SUB_PATH="${CONFIG_SUB_PATH:-}"
         CONFIG_VALUE_TRAILING_NEWLINE="${CONFIG_VALUE_TRAILING_NEWLINE:-}"
+        TOKEN_SUBSTITUTION_PASSES="${TOKEN_SUBSTITUTION_PASSES:-}"
 
         # Fixed output subdirectory (shared knowledge with github-release action)
         RELEASE_OUTPUT_DIR="${OUTPUT_SUB_PATH}/github-release"
@@ -144,6 +146,7 @@ runs:
           TOKEN_NAME_VALIDATION="${TOKEN_NAME_VALIDATION}" \
           ALLOW_BUILTIN_TOKEN_OVERRIDE="${ALLOW_BUILTIN_TOKEN_OVERRIDE}" \
           CONFIG_VALUE_TRAILING_NEWLINE="${CONFIG_VALUE_TRAILING_NEWLINE}" \
+          TOKEN_SUBSTITUTION_PASSES="${TOKEN_SUBSTITUTION_PASSES}" \
           PROJECT_NAME="${PROJECT_NAME}" \
           VERSION="${VERSION}" \
           IS_RELEASE="${IS_RELEASE}" \
@@ -178,6 +181,7 @@ runs:
             cp "${source_file}" "${target_path}"
 
             CONFIG_VALUE_TRAILING_NEWLINE="${CONFIG_VALUE_TRAILING_NEWLINE}" \
+            TOKEN_SUBSTITUTION_PASSES="${TOKEN_SUBSTITUTION_PASSES}" \
               "${UTIL_DIR}/substitute-tokens-from-dir" \
               "${TOKEN_DELIMITER_STYLE}" \
               "${tokens_dir}" \

@@ -64,6 +64,10 @@ inputs:
     description: 'How to handle trailing newlines in config values (strip-for-single-line, preserve-all, always-strip-one-newline)'
     required: false
     default: 'strip-for-single-line'
+  token-substitution-passes:
+    description: 'Number of times to run the token substitution pass (for nested token references)'
+    required: false
+    default: '1'
 
   # Action-specific inputs (passed from workflow/version generator)
   docker-target-registry:
@@ -152,4 +156,5 @@ runs:
         CONFIG_SUB_PATH: ${{ inputs.config-sub-path }}
         ALLOW_BUILTIN_TOKEN_OVERRIDE: ${{ inputs.allow-builtin-token-override }}
         CONFIG_VALUE_TRAILING_NEWLINE: ${{ inputs.config-value-trailing-newline }}
+        TOKEN_SUBSTITUTION_PASSES: ${{ inputs.token-substitution-passes }}
       run: "${{ github.action_path }}/../../scripts/main/docker-build-dockerfile"

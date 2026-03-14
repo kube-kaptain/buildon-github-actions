@@ -73,6 +73,11 @@ on:
         required: false
         type: string
         default: 'strip-for-single-line'
+      token-substitution-passes:
+        description: 'Number of times to run the token substitution pass (for nested token references)'
+        required: false
+        type: string
+        default: '1'
 
       # Release branches
       release-branch:
@@ -598,6 +603,7 @@ jobs:
           allow-builtin-token-override: ${{ inputs.allow-builtin-token-override }}
           config-sub-path: ${{ inputs.config-sub-path }}
           config-value-trailing-newline: ${{ inputs.config-value-trailing-newline }}
+          token-substitution-passes: ${{ inputs.token-substitution-passes }}
 
           # Naming, Versions, and Tags calculation
           release-branch: ${{ inputs.release-branch }}
@@ -862,6 +868,7 @@ jobs:
           config-sub-path: ${{ inputs.config-sub-path }}
           allow-builtin-token-override: ${{ inputs.allow-builtin-token-override }}
           config-value-trailing-newline: ${{ inputs.config-value-trailing-newline }}
+          token-substitution-passes: ${{ inputs.token-substitution-passes }}
       - name: Pass check - GitHub Release Prepare
         if: inputs.github-release-enabled == true && success() && steps.check-github-release-prepare.outputs.check-run-id != ''
         continue-on-error: true

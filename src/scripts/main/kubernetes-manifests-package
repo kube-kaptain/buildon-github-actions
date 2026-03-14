@@ -79,6 +79,7 @@ main() {
   # Perform variable substitution
   log "Performing variable substitution..."
   CONFIG_VALUE_TRAILING_NEWLINE="${CONFIG_VALUE_TRAILING_NEWLINE}" \
+  TOKEN_SUBSTITUTION_PASSES="${TOKEN_SUBSTITUTION_PASSES}" \
   "${SCRIPT_DIR}/../util/substitute-tokens-from-dir" \
     "${TOKEN_DELIMITER_STYLE}" \
     "${MANIFESTS_CONFIG_SUB_PATH}" \

@@ -32,3 +32,8 @@ config-value-trailing-newline:
   required: false
   type: string
   default: 'strip-for-single-line'
+token-substitution-passes:
+  description: 'Number of times to run the token substitution pass (for nested token references)'
+  required: false
+  type: string
+  default: '1'

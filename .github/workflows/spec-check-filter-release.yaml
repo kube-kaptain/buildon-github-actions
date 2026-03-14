@@ -120,6 +120,11 @@ on:
         required: false
         type: string
         default: 'strip-for-single-line'
+      token-substitution-passes:
+        description: 'Number of times to run the token substitution pass (for nested token references)'
+        required: false
+        type: string
+        default: '1'
 
       # Release branches
       release-branch:
@@ -660,6 +665,7 @@ jobs:
           allow-builtin-token-override: ${{ inputs.allow-builtin-token-override }}
           config-sub-path: ${{ inputs.config-sub-path }}
           config-value-trailing-newline: ${{ inputs.config-value-trailing-newline }}
+          token-substitution-passes: ${{ inputs.token-substitution-passes }}
 
           # Naming, Versions, and Tags calculation
           release-branch: ${{ inputs.release-branch }}
@@ -911,6 +917,7 @@ jobs:
           config-sub-path: ${{ inputs.config-sub-path }}
           allow-builtin-token-override: ${{ inputs.allow-builtin-token-override }}
           config-value-trailing-newline: ${{ inputs.config-value-trailing-newline }}
+          token-substitution-passes: ${{ inputs.token-substitution-passes }}
       - name: Pass check - Docker Build
         if: success() && steps.check-docker-build.outputs.check-run-id != ''
         continue-on-error: true
@@ -1099,6 +1106,7 @@ jobs:
           config-sub-path: ${{ inputs.config-sub-path }}
           allow-builtin-token-override: ${{ inputs.allow-builtin-token-override }}
           config-value-trailing-newline: ${{ inputs.config-value-trailing-newline }}
+          token-substitution-passes: ${{ inputs.token-substitution-passes }}
           docker-image-full-uri: ${{ steps.docker-build.outputs.docker-target-image-full-uri }}
           docker-target-registry: ${{ steps.resolve-registry.outputs.docker-target-registry }}
           docker-target-namespace: ${{ steps.resolve-registry.outputs.docker-target-namespace }}

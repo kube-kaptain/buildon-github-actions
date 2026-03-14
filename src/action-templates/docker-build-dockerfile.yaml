@@ -90,4 +90,5 @@ runs:
         CONFIG_SUB_PATH: ${{ inputs.config-sub-path }}
         ALLOW_BUILTIN_TOKEN_OVERRIDE: ${{ inputs.allow-builtin-token-override }}
         CONFIG_VALUE_TRAILING_NEWLINE: ${{ inputs.config-value-trailing-newline }}
+        TOKEN_SUBSTITUTION_PASSES: ${{ inputs.token-substitution-passes }}
       run: "${{ github.action_path }}/../../scripts/main/docker-build-dockerfile"

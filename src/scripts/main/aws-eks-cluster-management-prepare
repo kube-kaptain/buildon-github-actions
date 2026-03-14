@@ -1672,6 +1672,14 @@ main() {
 
   output_var "DOCKERFILE_SUBSTITUTION_FILES" "${sub_files}"
 
+  # EKS cluster config uses tokens inside tag/label values that reference other
+  # tokens (e.g., nodegroup name, project name). This needs at least 2 substitution
+  # passes to fully resolve. Preserve any user-requested value above the minimum.
+  if [[ ${TOKEN_SUBSTITUTION_PASSES} -lt 2 ]]; then
+    TOKEN_SUBSTITUTION_PASSES=2
+  fi
+  output_var "TOKEN_SUBSTITUTION_PASSES" "${TOKEN_SUBSTITUTION_PASSES}"
+
   log ""
   log "EKS Cluster Management Prepare complete"
   log "Substitution files: ${sub_files}"

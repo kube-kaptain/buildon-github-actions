@@ -38,4 +38,5 @@ runs:
         OUTPUT_SUB_PATH: ${{ inputs.output-sub-path }}
         TOKEN_DELIMITER_STYLE: ${{ inputs.token-delimiter-style }}
         CONFIG_VALUE_TRAILING_NEWLINE: ${{ inputs.config-value-trailing-newline }}
+        TOKEN_SUBSTITUTION_PASSES: ${{ inputs.token-substitution-passes }}
       run: "${{ github.action_path }}/../../scripts/main/kubernetes-manifests-package"

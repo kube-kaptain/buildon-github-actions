@@ -363,6 +363,7 @@ See [`examples/`](examples/) for more usage patterns.
 | `token-delimiter-style` | string | `shell` | Token delimiter syntax for variables (shell, mustache, helm, erb, github-actions, blade, stringtemplate, ognl, t4, swift) |
 | `token-name-style` | string | `PascalCase` | Case style for token names (UPPER_SNAKE, lower_snake, lower-kebab, UPPER-KEBAB, camelCase, PascalCase, lower.dot, UPPER.DOT) |
 | `token-name-validation` | string | `MATCH` | How to validate user token names (MATCH = must match token-name-style, ALL = accept any valid name) |
+| `token-substitution-passes` | string | `1` | Number of times to run the token substitution pass (for nested token references) |
 <!-- INPUTS-END -->
 
 ### Secrets

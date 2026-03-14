@@ -69,6 +69,10 @@ inputs:
     description: 'How to handle trailing newlines in config values (strip-for-single-line, preserve-all, always-strip-one-newline)'
     required: false
     default: 'strip-for-single-line'
+  token-substitution-passes:
+    description: 'Number of times to run the token substitution pass (for nested token references)'
+    required: false
+    default: '1'
   # EKS cluster management inputs
   eks-base-image-registry:
     description: 'Base image registry for EKS management image'
@@ -114,6 +118,9 @@ outputs:
   dockerfile-substitution-files:
     description: 'Extended substitution files list (includes cluster yaml files)'
     value: ${{ steps.prepare.outputs.DOCKERFILE_SUBSTITUTION_FILES }}
+  token-substitution-passes:
+    description: 'Token substitution passes (at least 2 for EKS cluster config)'
+    value: ${{ steps.prepare.outputs.TOKEN_SUBSTITUTION_PASSES }}
 
 runs:
   using: 'composite'
@@ -138,6 +145,7 @@ runs:
         TOKEN_DELIMITER_STYLE: ${{ inputs.token-delimiter-style }}
         TOKEN_NAME_STYLE: ${{ inputs.token-name-style }}
         CONFIG_SUB_PATH: ${{ inputs.config-sub-path }}
+        TOKEN_SUBSTITUTION_PASSES: ${{ inputs.token-substitution-passes }}
         # EKS cluster management
         EKS_BASE_IMAGE_REGISTRY: ${{ inputs.eks-base-image-registry }}
         EKS_BASE_IMAGE_NAMESPACE: ${{ inputs.eks-base-image-namespace }}

@@ -159,6 +159,7 @@ build_for_platform() {
   TOKEN_NAME_VALIDATION="${TOKEN_NAME_VALIDATION}" \
   ALLOW_BUILTIN_TOKEN_OVERRIDE="${ALLOW_BUILTIN_TOKEN_OVERRIDE}" \
   CONFIG_VALUE_TRAILING_NEWLINE="${CONFIG_VALUE_TRAILING_NEWLINE}" \
+  TOKEN_SUBSTITUTION_PASSES="${TOKEN_SUBSTITUTION_PASSES}" \
   PROJECT_NAME="${PROJECT_NAME}" \
   VERSION="${VERSION}" \
   DOCKER_TAG="${DOCKER_TAG}" \
@@ -181,6 +182,7 @@ build_for_platform() {
       local target_file="${context_dir}/${sub_file}"
       if [[ -f "${target_file}" ]]; then
         CONFIG_VALUE_TRAILING_NEWLINE="${CONFIG_VALUE_TRAILING_NEWLINE}" \
+        TOKEN_SUBSTITUTION_PASSES="${TOKEN_SUBSTITUTION_PASSES}" \
         "${SCRIPT_DIR}/../util/substitute-tokens-from-dir" \
           "${TOKEN_DELIMITER_STYLE}" \
           "${config_dir}" \

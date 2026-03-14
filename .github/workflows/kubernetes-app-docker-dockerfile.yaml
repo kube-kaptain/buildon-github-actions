@@ -952,6 +952,11 @@ on:
         required: false
         type: string
         default: 'strip-for-single-line'
+      token-substitution-passes:
+        description: 'Number of times to run the token substitution pass (for nested token references)'
+        required: false
+        type: string
+        default: '1'
 
       # Release branches
       release-branch:
@@ -1526,6 +1531,7 @@ jobs:
           allow-builtin-token-override: ${{ inputs.allow-builtin-token-override }}
           config-sub-path: ${{ inputs.config-sub-path }}
           config-value-trailing-newline: ${{ inputs.config-value-trailing-newline }}
+          token-substitution-passes: ${{ inputs.token-substitution-passes }}
 
           # Naming, Versions, and Tags calculation
           release-branch: ${{ inputs.release-branch }}
@@ -1819,6 +1825,7 @@ jobs:
           allow-builtin-token-override: ${{ inputs.allow-builtin-token-override }}
           config-sub-path: ${{ inputs.config-sub-path }}
           config-value-trailing-newline: ${{ inputs.config-value-trailing-newline }}
+          token-substitution-passes: ${{ inputs.token-substitution-passes }}
 
           # Naming, Versions, and Tags calculation
           release-branch: ${{ inputs.release-branch }}
@@ -1919,6 +1926,7 @@ jobs:
           config-sub-path: ${{ inputs.config-sub-path }}
           allow-builtin-token-override: ${{ inputs.allow-builtin-token-override }}
           config-value-trailing-newline: ${{ inputs.config-value-trailing-newline }}
+          token-substitution-passes: ${{ inputs.token-substitution-passes }}
           image-build-command: ${{ steps.validate-tooling.outputs.IMAGE_BUILD_COMMAND }}
           docker-platform: ${{ inputs.docker-platform }}
           dockerfile-sub-path-linux-amd64: ${{ inputs.dockerfile-sub-path-linux-amd64 }}
@@ -2042,6 +2050,7 @@ jobs:
           allow-builtin-token-override: ${{ inputs.allow-builtin-token-override }}
           config-sub-path: ${{ inputs.config-sub-path }}
           config-value-trailing-newline: ${{ inputs.config-value-trailing-newline }}
+          token-substitution-passes: ${{ inputs.token-substitution-passes }}
 
           # Naming, Versions, and Tags calculation
           release-branch: ${{ inputs.release-branch }}
@@ -2571,6 +2580,7 @@ jobs:
           allow-builtin-token-override: ${{ inputs.allow-builtin-token-override }}
           config-sub-path: ${{ inputs.config-sub-path }}
           config-value-trailing-newline: ${{ inputs.config-value-trailing-newline }}
+          token-substitution-passes: ${{ inputs.token-substitution-passes }}
 
           # Naming, Versions, and Tags calculation
           release-branch: ${{ inputs.release-branch }}
@@ -2669,6 +2679,7 @@ jobs:
           allow-builtin-token-override: ${{ inputs.allow-builtin-token-override }}
           config-sub-path: ${{ inputs.config-sub-path }}
           config-value-trailing-newline: ${{ inputs.config-value-trailing-newline }}
+          token-substitution-passes: ${{ inputs.token-substitution-passes }}
           output-sub-path: ${{ inputs.output-sub-path }}
       - name: Package manifests
         id: manifest-package
@@ -2678,6 +2689,7 @@ jobs:
           version: ${{ steps.versions.outputs.version }}
           token-delimiter-style: ${{ inputs.token-delimiter-style }}
           config-value-trailing-newline: ${{ inputs.config-value-trailing-newline }}
+          token-substitution-passes: ${{ inputs.token-substitution-passes }}
           output-sub-path: ${{ inputs.output-sub-path }}
       - name: Pass check - Package Manifests
         if: success() && steps.check-manifest-package.outputs.check-run-id != ''
@@ -2837,6 +2849,7 @@ jobs:
           allow-builtin-token-override: ${{ inputs.allow-builtin-token-override }}
           config-sub-path: ${{ inputs.config-sub-path }}
           config-value-trailing-newline: ${{ inputs.config-value-trailing-newline }}
+          token-substitution-passes: ${{ inputs.token-substitution-passes }}
 
           # Naming, Versions, and Tags calculation
           release-branch: ${{ inputs.release-branch }}
@@ -2997,6 +3010,7 @@ jobs:
           config-sub-path: ${{ inputs.config-sub-path }}
           allow-builtin-token-override: ${{ inputs.allow-builtin-token-override }}
           config-value-trailing-newline: ${{ inputs.config-value-trailing-newline }}
+          token-substitution-passes: ${{ inputs.token-substitution-passes }}
           docker-image-full-uri: ${{ steps.docker-build.outputs.docker-target-image-full-uri }}
           docker-target-registry: ${{ steps.resolve-registry.outputs.docker-target-registry }}
           docker-target-namespace: ${{ steps.resolve-registry.outputs.docker-target-namespace }}
