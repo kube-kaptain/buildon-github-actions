@@ -21,16 +21,6 @@ eks-base-image-tag:
   description: 'Base image tag for EKS management image'
   required: false
   type: string
-kubernetes-major-version:
-  description: 'Kubernetes major version'
-  required: false
-  type: string
-  default: '1'
-kubernetes-minor-version:
-  description: 'Kubernetes minor version (e.g., 32) - required, no default'
-  required: false
-  type: string
-  default: ''
 eks-private-networking:
   description: 'Include private subnets section in cluster config'
   required: false
@@ -46,36 +36,6 @@ eks-cilium-ebpf-networking:
   required: false
   type: boolean
   default: false
-eks-custom-security-group:
-  description: 'Include custom security group in cluster config'
-  required: false
-  type: boolean
-  default: false
-nodegroup-desired-capacity:
-  description: 'Default nodegroup desired capacity (written to platform config if not in config-sub-path)'
-  required: false
-  type: string
-  default: '1'
-nodegroup-min-size:
-  description: 'Default nodegroup minimum size (written to platform config if not in config-sub-path)'
-  required: false
-  type: string
-  default: '3'
-nodegroup-max-size:
-  description: 'Default nodegroup maximum size (written to platform config if not in config-sub-path)'
-  required: false
-  type: string
-  default: '12'
-eks-addons-list:
-  description: 'Comma-separated list of EKS addon names (no versions)'
-  required: false
-  type: string
-  default: 'coredns,kube-proxy,vpc-cni,aws-ebs-csi-driver,aws-efs-csi-driver'
-eks-cluster-yaml-sub-path:
-  description: 'Source directory for cluster config files (relative)'
-  required: false
-  type: string
-  default: 'src/eks'
 secrets-sub-path:
   description: 'Source directory for encrypted secrets (relative)'
   required: false

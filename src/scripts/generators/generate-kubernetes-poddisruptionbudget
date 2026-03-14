@@ -13,7 +13,7 @@
 #   KUBERNETES_PODDISRUPTIONBUDGET_VALUE - Integer or percentage for the strategy (default: 1)
 #   KUBERNETES_PODDISRUPTIONBUDGET_NAME_SUFFIX - Optional suffix for name/filename
 #   KUBERNETES_PODDISRUPTIONBUDGET_COMBINED_SUB_PATH - Sub-path within combined/ for output
-#   OUTPUT_SUB_PATH            - Build output directory (default: target)
+#   OUTPUT_SUB_PATH            - Build output directory (default: kaptain-out)
 #   PROJECT_NAME               - Used in selector and metadata.name (required)
 #   TOKEN_NAME_STYLE           - Style for token references (default: PascalCase)
 #   TOKEN_DELIMITER_STYLE      - Delimiter style for tokens (default: shell)

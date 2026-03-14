@@ -6,7 +6,7 @@ EKS Cluster Management
 
 | Input | Type | Default | Description |
 |-------|------|---------|-------------|
-| `output-sub-path` | string | `target` | Build output directory (relative) |
+| `output-sub-path` | string | `kaptain-out` | Build output directory (relative) |
 | `docker-registry-logins` | string | `""` | YAML config for Docker registry logins (registry URL as key) |
 | `docker-target-registry` | string | `""` | Target container registry domain (defaults to ghcr.io on GH Actions) |
 | `docker-target-namespace` | string | `""` | Path segment between registry and image name (defaults to lower cased org name or user ID on GH Actions) |
@@ -22,17 +22,9 @@ EKS Cluster Management
 | `eks-base-image-namespace` | string | `kube-kaptain` | Base image namespace for EKS management image |
 | `eks-base-image-name` | string | `aws/aws-eks-cluster-management` | Base image name for EKS management image |
 | `eks-base-image-tag` | string | `""` | Base image tag for EKS management image |
-| `kubernetes-major-version` | string | `1` | Kubernetes major version |
-| `kubernetes-minor-version` | string | `""` | Kubernetes minor version (e.g., 32) - required, no default |
 | `eks-private-networking` | boolean | `true` | Include private subnets section in cluster config |
 | `eks-public-networking` | boolean | `false` | Include public subnets section in cluster config |
 | `eks-cilium-ebpf-networking` | boolean | `false` | Generate controlplane-only yaml for Cilium eBPF networking |
-| `eks-custom-security-group` | boolean | `false` | Include custom security group in cluster config |
-| `nodegroup-desired-capacity` | string | `1` | Default nodegroup desired capacity (written to platform config if not in config-sub-path) |
-| `nodegroup-min-size` | string | `3` | Default nodegroup minimum size (written to platform config if not in config-sub-path) |
-| `nodegroup-max-size` | string | `12` | Default nodegroup maximum size (written to platform config if not in config-sub-path) |
-| `eks-addons-list` | string | `coredns,kube-proxy,vpc-cni,aws-ebs-csi-driver,aws-efs-csi-driver` | Comma-separated list of EKS addon names (no versions) |
-| `eks-cluster-yaml-sub-path` | string | `src/eks` | Source directory for cluster config files (relative) |
 | `secrets-sub-path` | string | `src/secrets` | Source directory for encrypted secrets (relative) |
 | `token-delimiter-style` | string | `shell` | Token delimiter syntax for variables (shell, mustache, helm, erb, github-actions, blade, stringtemplate, ognl, t4, swift) |
 | `token-name-style` | string | `PascalCase` | Case style for token names (UPPER_SNAKE, lower_snake, lower-kebab, UPPER-KEBAB, camelCase, PascalCase, lower.dot, UPPER.DOT) |
@@ -40,6 +32,7 @@ EKS Cluster Management
 | `allow-builtin-token-override` | boolean | `false` | Allow user tokens to override built-in tokens (for template/reusable projects) |
 | `config-sub-path` | string | `src/config` | Directory containing user-defined token files (relative) |
 | `config-value-trailing-newline` | string | `strip-for-single-line` | How to handle trailing newlines in config values (strip-for-single-line, preserve-all, always-strip-one-newline) |
+| `token-substitution-passes` | string | `1` | Number of times to run the token substitution pass (for nested token references) |
 | `release-branch` | string | `main` | The release branch name |
 | `additional-release-branches` | string | `""` | Comma-separated list of additional release branches |
 | `tag-version-max-parts` | number | `3` | Maximum allowed version parts (fail if exceeded) |

@@ -9,4 +9,5 @@
     version: ${{ steps.versions.outputs.version }}
     token-delimiter-style: ${{ inputs.token-delimiter-style }}
     config-value-trailing-newline: ${{ inputs.config-value-trailing-newline }}
+    token-substitution-passes: ${{ inputs.token-substitution-passes }}
     output-sub-path: ${{ inputs.output-sub-path }}

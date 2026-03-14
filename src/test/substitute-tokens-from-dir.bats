@@ -233,3 +233,63 @@ b: ${Var2}'
   [ "$status" -eq 0 ]
   assert_output_contains "Substituted 2 tokens in test.yaml"
 }
+
+# Multi-pass substitution tests
+# Token chain: COne=${BTwo}, BTwo=${AThree}, AThree=success
+# Sorted order (LC_ALL=C): AThree, BTwo, COne — each value references
+# an already-processed token, so no cascading within a single pass.
+# Template: configmap.yaml with ${COne}, ${BTwo}, ${AThree} in data values
+setup_multi_pass_tokens() {
+  create_token "COne" '${BTwo}'
+  create_token "BTwo" '${AThree}'
+  create_token "AThree" "success"
+  create_target "configmap.yaml" 'apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: test
+data:
+  one: ${COne}
+  two: ${BTwo}
+  three: ${AThree}'
+}
+
+@test "multi-pass substitution: 1 pass (default) resolves one level" {
+  setup_multi_pass_tokens
+
+  run "$UTIL_DIR/substitute-tokens-from-dir" shell "$TOKENS_DIR" "$TARGET_DIR"
+  [ "$status" -eq 0 ]
+
+  local content
+  content=$(< "$TARGET_DIR/configmap.yaml")
+  assert_contains "$content" 'one: ${BTwo}' "configmap.yaml"
+  assert_contains "$content" 'two: ${AThree}' "configmap.yaml"
+  assert_contains "$content" 'three: success' "configmap.yaml"
+}
+
+@test "multi-pass substitution: 2 passes resolves two levels" {
+  setup_multi_pass_tokens
+
+  TOKEN_SUBSTITUTION_PASSES=2 \
+  run "$UTIL_DIR/substitute-tokens-from-dir" shell "$TOKENS_DIR" "$TARGET_DIR"
+  [ "$status" -eq 0 ]
+
+  local content
+  content=$(< "$TARGET_DIR/configmap.yaml")
+  assert_contains "$content" 'one: ${AThree}' "configmap.yaml"
+  assert_contains "$content" 'two: success' "configmap.yaml"
+  assert_contains "$content" 'three: success' "configmap.yaml"
+}
+
+@test "multi-pass substitution: 3 passes resolves all levels" {
+  setup_multi_pass_tokens
+
+  TOKEN_SUBSTITUTION_PASSES=3 \
+  run "$UTIL_DIR/substitute-tokens-from-dir" shell "$TOKENS_DIR" "$TARGET_DIR"
+  [ "$status" -eq 0 ]
+
+  local content
+  content=$(< "$TARGET_DIR/configmap.yaml")
+  assert_contains "$content" 'one: success' "configmap.yaml"
+  assert_contains "$content" 'two: success' "configmap.yaml"
+  assert_contains "$content" 'three: success' "configmap.yaml"
+}

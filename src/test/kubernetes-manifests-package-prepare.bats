@@ -187,14 +187,14 @@ set_required_env() {
   assert_output_contains "No manifests to package"
 }
 
-@test "defaults OUTPUT_SUB_PATH to target" {
+@test "defaults OUTPUT_SUB_PATH to kaptain-out" {
   set_required_env
   unset OUTPUT_SUB_PATH
   create_manifest "deployment.yaml"
 
   run "$SCRIPTS_DIR/kubernetes-manifests-package-prepare"
   [ "$status" -eq 0 ]
-  assert_output_contains "Output: target"
+  assert_output_contains "Output: kaptain-out"
 }
 
 @test "reports yaml file count" {

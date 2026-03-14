@@ -12,6 +12,12 @@
 #
 set -euo pipefail
 
+echo "GitHub event: ${GITHUB_EVENT_NAME:-}"
+if [[ "${GITHUB_EVENT_NAME:-}" == "push" ]]; then
+  echo "Skipping pre-tagging tests (release build)"
+  exit 0
+fi
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 

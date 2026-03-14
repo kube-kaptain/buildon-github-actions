@@ -23,17 +23,25 @@ FIXTURES_DIR="$PROJECT_ROOT/src/test/fixtures"
 MOCK_BIN_DIR="$PROJECT_ROOT/src/test/mock-bin"
 
 # Test output directory - all test artifacts go here for diagnostics
-TEST_TARGET_DIR="$PROJECT_ROOT/target/test"
+OUTPUT_SUB_PATH="${OUTPUT_SUB_PATH:-kaptain-out}"
+TEST_TARGET_DIR="$PROJECT_ROOT/${OUTPUT_SUB_PATH}/test"
 
 # Counter for unique directory names within a test file
 _TEST_DIR_COUNTER=0
 
-# Create a unique test directory under target/test
+# Create a unique test directory under ${OUTPUT_SUB_PATH}/test
 # Usage: dir=$(create_test_dir "prefix")
 create_test_dir() {
   local prefix="${1:-test}"
+  local bats_file_base
+  bats_file_base=$(basename "${BATS_TEST_FILENAME}" .bats)
+  local test_base_dir="${TEST_TARGET_DIR}/${bats_file_base}/${BATS_TEST_NAME:-unknown}"
+
   _TEST_DIR_COUNTER=$((_TEST_DIR_COUNTER + 1))
-  local dir="${TEST_TARGET_DIR}/${prefix}-${BATS_TEST_NAME:-unknown}-${_TEST_DIR_COUNTER}"
+  local dir="${test_base_dir}/${prefix}-${_TEST_DIR_COUNTER}"
+
+  # Clean stale artifacts from previous runs
+  rm -rf "${dir}"
   mkdir -p "$dir"
   echo "$dir"
 }

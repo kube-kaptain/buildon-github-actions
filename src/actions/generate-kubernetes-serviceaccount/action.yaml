@@ -14,7 +14,7 @@ inputs:
   output-sub-path:
     description: 'Build output directory (relative)'
     required: false
-    default: 'target'
+    default: 'kaptain-out'
   # Kubernetes generation
   kubernetes-global-additional-labels:
     description: 'Additional labels for all Kubernetes manifests (comma-separated key=value)'
@@ -70,6 +70,10 @@ inputs:
     description: 'How to handle trailing newlines in config values (strip-for-single-line, preserve-all, always-strip-one-newline)'
     required: false
     default: 'strip-for-single-line'
+  token-substitution-passes:
+    description: 'Number of times to run the token substitution pass (for nested token references)'
+    required: false
+    default: '1'
 
 runs:
   using: 'composite'

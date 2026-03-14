@@ -8,7 +8,7 @@ inputs:
   output-sub-path:
     description: 'Build output directory (relative)'
     required: false
-    default: 'target'
+    default: 'kaptain-out'
   # GitHub release
   github-release-enabled:
     description: 'Create a GitHub release on version tags'

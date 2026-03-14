@@ -26,7 +26,7 @@
 #   DOCKER_PLATFORM            - Target platform(s)
 #   TOKEN_DELIMITER_STYLE      - Token delimiter syntax (default: shell)
 #   TOKEN_NAME_STYLE           - Case style for token names (default: PascalCase)
-#   OUTPUT_SUB_PATH            - Build output directory (default: target)
+#   OUTPUT_SUB_PATH            - Build output directory (default: kaptain-out)
 #   IMAGE_BUILD_COMMAND        - Container runtime: podman or docker
 #   DOCKER_TAG                 - Image tag (from versions-and-naming)
 #   DOCKER_IMAGE_NAME          - Image name (from versions-and-naming)

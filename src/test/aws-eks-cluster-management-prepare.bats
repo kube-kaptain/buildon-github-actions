@@ -30,11 +30,11 @@ setup() {
   printf 'subnet-aaa11111111111111' > "$CONFIG_SUB_PATH/PrivateSubnetIdA"
   printf 'subnet-bbb22222222222222' > "$CONFIG_SUB_PATH/PrivateSubnetIdB"
   printf 'subnet-ccc33333333333333' > "$CONFIG_SUB_PATH/PrivateSubnetIdC"
+  printf '32' > "$CONFIG_SUB_PATH/KubernetesMinorVersion"
 
   # Required env vars
   export VERSION="1.0.0"
   export PROJECT_NAME="test-cluster"
-  export KUBERNETES_MINOR_VERSION="32"
 
   # Networking defaults
   export EKS_PRIVATE_NETWORKING="true"
@@ -74,16 +74,7 @@ teardown() {
 
 # === Config resolution ===
 
-@test "reads KUBERNETES_MINOR_VERSION from env var" {
-  export KUBERNETES_MINOR_VERSION="32"
-
-  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
-  [ "$status" -eq 0 ]
-  assert_output_contains "Kubernetes version: 1.32"
-}
-
-@test "reads KUBERNETES_MINOR_VERSION from config file when env var unset" {
-  unset KUBERNETES_MINOR_VERSION
+@test "reads KUBERNETES_MINOR_VERSION from config file" {
   printf '31' > "$CONFIG_SUB_PATH/KubernetesMinorVersion"
 
   run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
@@ -91,8 +82,8 @@ teardown() {
   assert_output_contains "Kubernetes version: 1.31"
 }
 
-@test "fails when KUBERNETES_MINOR_VERSION missing from both env and config" {
-  unset KUBERNETES_MINOR_VERSION
+@test "fails when KubernetesMinorVersion config file missing" {
+  rm "$CONFIG_SUB_PATH/KubernetesMinorVersion"
 
   run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
   [ "$status" -ne 0 ]
@@ -107,7 +98,7 @@ teardown() {
   run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
   [ "$status" -ne 0 ]
   assert_output_contains "AWS_REGION"
-  assert_output_contains "not found"
+  assert_output_contains "is required"
 }
 
 @test "fails when VpcId config file missing" {
@@ -116,7 +107,7 @@ teardown() {
   run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
   [ "$status" -ne 0 ]
   assert_output_contains "VPC_ID"
-  assert_output_contains "not found"
+  assert_output_contains "is required"
 }
 
 @test "fails when NodegroupInstanceType config file missing" {
@@ -125,7 +116,7 @@ teardown() {
   run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
   [ "$status" -ne 0 ]
   assert_output_contains "NODEGROUP_INSTANCE_TYPE"
-  assert_output_contains "not found"
+  assert_output_contains "is required"
 }
 
 @test "fails when SecretsEncryptionKeyArn config file missing" {
@@ -134,7 +125,7 @@ teardown() {
   run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
   [ "$status" -ne 0 ]
   assert_output_contains "SECRETS_ENCRYPTION_KEY_ARN"
-  assert_output_contains "not found"
+  assert_output_contains "is required"
 }
 
 @test "reports all missing config files before exiting" {
@@ -223,7 +214,7 @@ teardown() {
   run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
   [ "$status" -ne 0 ]
   assert_output_contains "CLUSTER_ORIGIN"
-  assert_output_contains "not found"
+  assert_output_contains "is required"
 }
 
 @test "fails when ClusterOrigin has invalid value" {
@@ -294,7 +285,7 @@ teardown() {
   run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
   [ "$status" -ne 0 ]
   assert_output_contains "NODEGROUP_TYPE"
-  assert_output_contains "not found"
+  assert_output_contains "is required"
 }
 
 @test "fails when NodegroupType has invalid value" {
@@ -684,7 +675,7 @@ teardown() {
   run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
   [ "$status" -ne 0 ]
   assert_output_contains "AUTO_MODE_CONFIG_NODE_POOLS"
-  assert_output_contains "not found"
+  assert_output_contains "is required"
 }
 
 # === Network config ===
@@ -1256,7 +1247,7 @@ EOF
   run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
   [ "$status" -ne 0 ]
   assert_output_contains "AWS_ACCOUNT_ID"
-  assert_output_contains "not found"
+  assert_output_contains "is required"
 }
 
 @test "fails when ClusterSecurityGroup config file missing" {
@@ -1265,7 +1256,7 @@ EOF
   run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
   [ "$status" -ne 0 ]
   assert_output_contains "CLUSTER_SECURITY_GROUP"
-  assert_output_contains "not found"
+  assert_output_contains "is required"
 }
 
 # === Annotations ===
@@ -1745,7 +1736,7 @@ EOF
   run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
   [ "$status" -eq 0 ]
 
-  assert_output_contains "IAM_WITH_OIDC: user config found"
+  assert_output_contains "IAM_WITH_OIDC: read from"
 }
 
 @test "expands user-provided CloudWatchClusterLoggingEnableTypes to numbered tokens" {
@@ -1859,15 +1850,61 @@ EOF
   run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
   [ "$status" -eq 0 ]
 
-  assert_output_contains "user config found"
-  # Platform config dir should NOT have the default values written
-  [ ! -f "$OUTPUT_SUB_PATH/docker/config/NodegroupDesiredCapacity" ] || {
-    local value
-    value=$(< "$OUTPUT_SUB_PATH/docker/config/NodegroupDesiredCapacity")
-    # If written, it shouldn't be the default since user override exists in CONFIG_SUB_PATH
-    # Actually the script skips writing when user config is found
-    true
-  }
+  assert_output_contains "NODEGROUP_DESIRED_CAPACITY: read from"
+  assert_output_contains "NODEGROUP_MIN_SIZE: read from"
+  assert_output_contains "NODEGROUP_MAX_SIZE: read from"
+}
+
+@test "config file overrides all defaultable tokens" {
+  # Override every defaultable token with a non-default but valid value
+  printf '2' > "$CONFIG_SUB_PATH/KubernetesMajorVersion"
+  printf 'false' > "$CONFIG_SUB_PATH/IamWithOidc"
+  printf 'false' > "$CONFIG_SUB_PATH/VpcClusterEndpointsPrivateAccess"
+  printf 'true' > "$CONFIG_SUB_PATH/VpcClusterEndpointsPublicAccess"
+  printf 'api,audit' > "$CONFIG_SUB_PATH/CloudWatchClusterLoggingEnableTypes"
+  printf 'Bottlerocket' > "$CONFIG_SUB_PATH/NodegroupAmiFamily"
+  printf '50' > "$CONFIG_SUB_PATH/NodegroupVolumeSize"
+  printf 'io1' > "$CONFIG_SUB_PATH/NodegroupVolumeType"
+  printf 'false' > "$CONFIG_SUB_PATH/NodegroupVolumeEncrypted"
+  printf '2' > "$CONFIG_SUB_PATH/NodegroupUpdateConfigMaxUnavailable"
+  printf '5' > "$CONFIG_SUB_PATH/NodegroupMinSize"
+  printf '20' > "$CONFIG_SUB_PATH/NodegroupMaxSize"
+  printf '10' > "$CONFIG_SUB_PATH/NodegroupDesiredCapacity"
+  printf 'coredns,kube-proxy' > "$CONFIG_SUB_PATH/EksAddonsList"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -eq 0 ]
+
+  # Every defaultable token should log "read from" CONFIG_SUB_PATH, not "using default"
+  assert_output_contains "KUBERNETES_MAJOR_VERSION: read from"
+  assert_output_contains "IAM_WITH_OIDC: read from"
+  assert_output_contains "VPC_CLUSTER_ENDPOINTS_PRIVATE_ACCESS: read from"
+  assert_output_contains "VPC_CLUSTER_ENDPOINTS_PUBLIC_ACCESS: read from"
+  assert_output_contains "CLOUD_WATCH_CLUSTER_LOGGING_ENABLE_TYPES: user config found"
+  assert_output_contains "NODEGROUP_AMI_FAMILY: read from"
+  assert_output_contains "NODEGROUP_VOLUME_SIZE: read from"
+  assert_output_contains "NODEGROUP_VOLUME_TYPE: read from"
+  assert_output_contains "NODEGROUP_VOLUME_ENCRYPTED: read from"
+  assert_output_contains "NODEGROUP_UPDATE_CONFIG_MAX_UNAVAILABLE: read from"
+  assert_output_contains "NODEGROUP_MIN_SIZE: read from"
+  assert_output_contains "NODEGROUP_MAX_SIZE: read from"
+  assert_output_contains "NODEGROUP_DESIRED_CAPACITY: read from"
+  assert_output_contains "EKS_ADDONS_LIST: read from"
+
+  # KubernetesVersion reflects overridden major version
+  [ "$(< "$OUTPUT_SUB_PATH/docker/config/KubernetesVersion")" = "2.32" ]
+
+  # Comma-expanded tokens reflect override count (2 items, not default 5)
+  [ "$(< "$OUTPUT_SUB_PATH/docker/config/CloudWatchClusterLoggingEnableType1")" = "api" ]
+  [ "$(< "$OUTPUT_SUB_PATH/docker/config/CloudWatchClusterLoggingEnableType2")" = "audit" ]
+  [ ! -f "$OUTPUT_SUB_PATH/docker/config/CloudWatchClusterLoggingEnableType3" ]
+
+  # Addon list override reflected in generated yaml (2 addons, not default 5)
+  local content
+  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
+  assert_contains "$content" "name: coredns" "cluster.yaml"
+  assert_contains "$content" "name: kube-proxy" "cluster.yaml"
+  [[ "$content" != *"name: vpc-cni"* ]]
 }
 
 @test "uses custom nodegroup sizing from env vars" {
@@ -2064,6 +2101,7 @@ EOF
   mv "$CONFIG_SUB_PATH/PrivateSubnetIdA" "$CONFIG_SUB_PATH/PRIVATE_SUBNET_ID_A"
   mv "$CONFIG_SUB_PATH/PrivateSubnetIdB" "$CONFIG_SUB_PATH/PRIVATE_SUBNET_ID_B"
   mv "$CONFIG_SUB_PATH/PrivateSubnetIdC" "$CONFIG_SUB_PATH/PRIVATE_SUBNET_ID_C"
+  mv "$CONFIG_SUB_PATH/KubernetesMinorVersion" "$CONFIG_SUB_PATH/KUBERNETES_MINOR_VERSION"
 
   run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
   [ "$status" -eq 0 ]
@@ -2131,8 +2169,8 @@ EOF
 
 # === Custom addon list ===
 
-@test "uses custom addon list from env var" {
-  export EKS_ADDONS_LIST="coredns,kube-proxy"
+@test "uses custom addon list from config file" {
+  printf 'coredns,kube-proxy' > "$CONFIG_SUB_PATH/EksAddonsList"
 
   run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
   [ "$status" -eq 0 ]
@@ -2360,12 +2398,85 @@ EOF
   [ -f "$ev_dir/has-availability-zones-kong" ]
 }
 
-@test "validates suffix is alphabetic-only" {
-  printf 'kong-gpu' > "$CONFIG_SUB_PATH/AdditionalNodeGroups"
+@test "accepts hyphenated suffix like kong-1" {
+  printf 'kong-1' > "$CONFIG_SUB_PATH/AdditionalNodeGroups"
+  printf 't3.large' > "$CONFIG_SUB_PATH/NodegroupInstanceTypeKong1"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -eq 0 ]
+
+  local content
+  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
+  assert_contains "$content" '${NodegroupInstanceTypeKong1}' "cluster.yaml"
+  assert_contains "$content" '${NodeGroupDefaultPrefixKong1}' "cluster.yaml"
+  # Actual prefix value in config file contains the hyphenated suffix
+  local prefix_val
+  prefix_val=$(< "$OUTPUT_SUB_PATH/docker/config/NodeGroupDefaultPrefixKong1")
+  [[ "$prefix_val" == *"-kong-1" ]]
+}
+
+@test "accepts digit-starting suffix like 1-kong" {
+  printf '1-kong' > "$CONFIG_SUB_PATH/AdditionalNodeGroups"
+  printf 't3.large' > "$CONFIG_SUB_PATH/NodegroupInstanceType1Kong"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -eq 0 ]
+
+  local content
+  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
+  assert_contains "$content" '${NodegroupInstanceType1Kong}' "cluster.yaml"
+  assert_contains "$content" '${NodeGroupDefaultPrefix1Kong}' "cluster.yaml"
+  local prefix_val
+  prefix_val=$(< "$OUTPUT_SUB_PATH/docker/config/NodeGroupDefaultPrefix1Kong")
+  [[ "$prefix_val" == *"-1-kong" ]]
+}
+
+@test "rejects suffix starting with hyphen" {
+  printf '%s' '-kong' > "$CONFIG_SUB_PATH/AdditionalNodeGroups"
 
   run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
   [ "$status" -ne 0 ]
-  assert_output_contains "must be a single alphabetic word"
+  assert_output_contains "lowercase alphanumeric"
+}
+
+@test "rejects suffix ending with hyphen" {
+  printf 'kong-' > "$CONFIG_SUB_PATH/AdditionalNodeGroups"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -ne 0 ]
+  assert_output_contains "lowercase alphanumeric"
+}
+
+@test "rejects suffix with consecutive hyphens" {
+  printf 'kong--gpu' > "$CONFIG_SUB_PATH/AdditionalNodeGroups"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -ne 0 ]
+  assert_output_contains "lowercase alphanumeric"
+}
+
+@test "rejects suffix with special characters" {
+  printf 'kong.gpu' > "$CONFIG_SUB_PATH/AdditionalNodeGroups"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -ne 0 ]
+  assert_output_contains "lowercase alphanumeric"
+}
+
+@test "rejects suffix with uppercase" {
+  printf 'Kong' > "$CONFIG_SUB_PATH/AdditionalNodeGroups"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -ne 0 ]
+  assert_output_contains "lowercase alphanumeric"
+}
+
+@test "rejects suffix with underscore" {
+  printf 'kong_gpu' > "$CONFIG_SUB_PATH/AdditionalNodeGroups"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -ne 0 ]
+  assert_output_contains "lowercase alphanumeric"
 }
 
 @test "fails with duplicate additional nodegroup suffixes" {

@@ -10,7 +10,7 @@ on:
         description: 'Build output directory (relative)'
         required: false
         type: string
-        default: 'target'
+        default: 'kaptain-out'
 
       # Docker registry logins
       docker-registry-logins:
@@ -93,16 +93,6 @@ on:
         description: 'Base image tag for EKS management image'
         required: false
         type: string
-      kubernetes-major-version:
-        description: 'Kubernetes major version'
-        required: false
-        type: string
-        default: '1'
-      kubernetes-minor-version:
-        description: 'Kubernetes minor version (e.g., 32) - required, no default'
-        required: false
-        type: string
-        default: ''
       eks-private-networking:
         description: 'Include private subnets section in cluster config'
         required: false
@@ -118,36 +108,6 @@ on:
         required: false
         type: boolean
         default: false
-      eks-custom-security-group:
-        description: 'Include custom security group in cluster config'
-        required: false
-        type: boolean
-        default: false
-      nodegroup-desired-capacity:
-        description: 'Default nodegroup desired capacity (written to platform config if not in config-sub-path)'
-        required: false
-        type: string
-        default: '1'
-      nodegroup-min-size:
-        description: 'Default nodegroup minimum size (written to platform config if not in config-sub-path)'
-        required: false
-        type: string
-        default: '3'
-      nodegroup-max-size:
-        description: 'Default nodegroup maximum size (written to platform config if not in config-sub-path)'
-        required: false
-        type: string
-        default: '12'
-      eks-addons-list:
-        description: 'Comma-separated list of EKS addon names (no versions)'
-        required: false
-        type: string
-        default: 'coredns,kube-proxy,vpc-cni,aws-ebs-csi-driver,aws-efs-csi-driver'
-      eks-cluster-yaml-sub-path:
-        description: 'Source directory for cluster config files (relative)'
-        required: false
-        type: string
-        default: 'src/eks'
       secrets-sub-path:
         description: 'Source directory for encrypted secrets (relative)'
         required: false
@@ -185,6 +145,11 @@ on:
         required: false
         type: string
         default: 'strip-for-single-line'
+      token-substitution-passes:
+        description: 'Number of times to run the token substitution pass (for nested token references)'
+        required: false
+        type: string
+        default: '1'
 
       # Release branches
       release-branch:
@@ -730,6 +695,7 @@ jobs:
           allow-builtin-token-override: ${{ inputs.allow-builtin-token-override }}
           config-sub-path: ${{ inputs.config-sub-path }}
           config-value-trailing-newline: ${{ inputs.config-value-trailing-newline }}
+          token-substitution-passes: ${{ inputs.token-substitution-passes }}
 
           # Naming, Versions, and Tags calculation
           release-branch: ${{ inputs.release-branch }}
@@ -946,17 +912,9 @@ jobs:
           eks-base-image-namespace: ${{ inputs.eks-base-image-namespace }}
           eks-base-image-name: ${{ inputs.eks-base-image-name }}
           eks-base-image-tag: ${{ inputs.eks-base-image-tag }}
-          kubernetes-major-version: ${{ inputs.kubernetes-major-version }}
-          kubernetes-minor-version: ${{ inputs.kubernetes-minor-version }}
           eks-private-networking: ${{ inputs.eks-private-networking }}
           eks-public-networking: ${{ inputs.eks-public-networking }}
           eks-cilium-ebpf-networking: ${{ inputs.eks-cilium-ebpf-networking }}
-          eks-custom-security-group: ${{ inputs.eks-custom-security-group }}
-          nodegroup-desired-capacity: ${{ inputs.nodegroup-desired-capacity }}
-          nodegroup-min-size: ${{ inputs.nodegroup-min-size }}
-          nodegroup-max-size: ${{ inputs.nodegroup-max-size }}
-          eks-addons-list: ${{ inputs.eks-addons-list }}
-          eks-cluster-yaml-sub-path: ${{ inputs.eks-cluster-yaml-sub-path }}
           secrets-sub-path: ${{ inputs.secrets-sub-path }}
       - name: Pass check - EKS Cluster Management Prepare
         if: success() && steps.check-eks-prepare.outputs.check-run-id != ''
@@ -1077,6 +1035,7 @@ jobs:
           allow-builtin-token-override: ${{ inputs.allow-builtin-token-override }}
           config-sub-path: ${{ inputs.config-sub-path }}
           config-value-trailing-newline: ${{ inputs.config-value-trailing-newline }}
+          token-substitution-passes: ${{ inputs.token-substitution-passes }}
 
           # Naming, Versions, and Tags calculation
           release-branch: ${{ inputs.release-branch }}
@@ -1211,6 +1170,7 @@ jobs:
           config-sub-path: ${{ inputs.config-sub-path }}
           allow-builtin-token-override: ${{ inputs.allow-builtin-token-override }}
           config-value-trailing-newline: ${{ inputs.config-value-trailing-newline }}
+          token-substitution-passes: ${{ steps.eks-prepare.outputs.token-substitution-passes }}
           image-build-command: ${{ steps.validate-tooling.outputs.IMAGE_BUILD_COMMAND }}
           docker-platform: ${{ inputs.docker-platform }}
           dockerfile-sub-path-linux-amd64: ${{ inputs.dockerfile-sub-path-linux-amd64 }}
@@ -1372,6 +1332,7 @@ jobs:
           allow-builtin-token-override: ${{ inputs.allow-builtin-token-override }}
           config-sub-path: ${{ inputs.config-sub-path }}
           config-value-trailing-newline: ${{ inputs.config-value-trailing-newline }}
+          token-substitution-passes: ${{ inputs.token-substitution-passes }}
 
           # Naming, Versions, and Tags calculation
           release-branch: ${{ inputs.release-branch }}
@@ -1537,6 +1498,7 @@ jobs:
           config-sub-path: ${{ inputs.config-sub-path }}
           allow-builtin-token-override: ${{ inputs.allow-builtin-token-override }}
           config-value-trailing-newline: ${{ inputs.config-value-trailing-newline }}
+          token-substitution-passes: ${{ inputs.token-substitution-passes }}
           docker-image-full-uri: ${{ steps.docker-build.outputs.docker-target-image-full-uri }}
           docker-target-registry: ${{ steps.resolve-registry.outputs.docker-target-registry }}
           docker-target-namespace: ${{ steps.resolve-registry.outputs.docker-target-namespace }}

@@ -13,7 +13,7 @@
 #   DOCKER_IMAGE_NAME          - Docker image name (from versions-and-naming)
 #   DOCKER_TARGET_REGISTRY     - Target registry (from resolve-registry)
 #   DOCKER_TARGET_NAMESPACE     - Target namespace (from resolve-registry, optional)
-#   OUTPUT_SUB_PATH            - Build output directory (default: target)
+#   OUTPUT_SUB_PATH            - Build output directory (default: kaptain-out)
 #   DOCKER_PUSH_IMAGE_LIST_FILE - Path to push list file (from docker-registry-logins)
 #   IMAGE_BUILD_COMMAND        - Container runtime (podman or docker)
 #

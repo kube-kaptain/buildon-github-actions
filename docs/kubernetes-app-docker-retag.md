@@ -6,7 +6,7 @@ Kubernetes App - Docker Retag
 
 | Input | Type | Default | Description |
 |-------|------|---------|-------------|
-| `output-sub-path` | string | `target` | Build output directory (relative) |
+| `output-sub-path` | string | `kaptain-out` | Build output directory (relative) |
 | `docker-registry-logins` | string | `""` | YAML config for Docker registry logins (registry URL as key) |
 | `docker-target-registry` | string | `""` | Target container registry domain (defaults to ghcr.io on GH Actions) |
 | `docker-target-namespace` | string | `""` | Path segment between registry and image name (defaults to lower cased org name or user ID on GH Actions) |
@@ -188,6 +188,7 @@ Kubernetes App - Docker Retag
 | `allow-builtin-token-override` | boolean | `false` | Allow user tokens to override built-in tokens (for template/reusable projects) |
 | `config-sub-path` | string | `src/config` | Directory containing user-defined token files (relative) |
 | `config-value-trailing-newline` | string | `strip-for-single-line` | How to handle trailing newlines in config values (strip-for-single-line, preserve-all, always-strip-one-newline) |
+| `token-substitution-passes` | string | `1` | Number of times to run the token substitution pass (for nested token references) |
 | `release-branch` | string | `main` | The release branch name |
 | `additional-release-branches` | string | `""` | Comma-separated list of additional release branches |
 | `tag-version-max-parts` | number | `3` | Maximum allowed version parts (fail if exceeded) |

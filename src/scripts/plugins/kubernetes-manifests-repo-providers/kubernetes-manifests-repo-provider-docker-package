@@ -15,7 +15,7 @@
 #   REPO_PROVIDER_VERSION   - Tag for the image (required, e.g., 1.2.3-manifests)
 #   MANIFESTS_ZIP_SUB_PATH      - Path to the zip file location (required)
 #   MANIFESTS_ZIP_FILE_NAME      - Filename of the zip (required)
-#   OUTPUT_SUB_PATH         - Build output directory (default: target)
+#   OUTPUT_SUB_PATH         - Build output directory (default: kaptain-out)
 #   MANIFESTS_PACKAGING_BASE_IMAGE - Base image for manifest packaging (default: scratch)
 #
 # Outputs:
