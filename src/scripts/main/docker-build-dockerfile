@@ -27,7 +27,7 @@
 #   DOCKER_TARGET_REGISTRY   - Container registry (e.g., ghcr.io)
 #   DOCKER_TARGET_NAMESPACE   - Namespace between registry and image name (optional)
 #   DOCKERFILE_SUB_PATH - Directory containing Dockerfile, relative (default: src/docker)
-#   OUTPUT_SUB_PATH     - Build output directory, relative (default: target)
+#   OUTPUT_SUB_PATH     - Build output directory, relative (default: kaptain-out)
 #   DOCKERFILE_SQUASH   - Squash mode: squash, squash-all, or no (default: squash)
 #   IMAGE_BUILD_COMMAND - Container runtime: podman or docker (from validate-tooling)
 #   BUILD_MODE          - "local" for lenient dev builds, "build_server" for strict (default: build_server)

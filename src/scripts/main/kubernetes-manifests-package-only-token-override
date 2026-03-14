@@ -12,7 +12,7 @@
 # Inputs (environment variables):
 #   DOCKER_IMAGE_NAME_OVERRIDE - Override value for docker image name (optional)
 #   DOCKER_TAG_OVERRIDE        - Override value for docker tag (optional)
-#   OUTPUT_SUB_PATH            - Build output directory, relative (default: target)
+#   OUTPUT_SUB_PATH            - Build output directory, relative (default: kaptain-out)
 #   TOKEN_NAME_STYLE           - Case style for token names (default: PascalCase)
 #
 set -euo pipefail

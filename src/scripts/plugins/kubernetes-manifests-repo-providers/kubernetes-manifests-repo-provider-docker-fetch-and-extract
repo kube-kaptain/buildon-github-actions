@@ -14,7 +14,7 @@
 #   manifests-image-uri - Full image reference (e.g., ghcr.io/kube-kaptain/my/my-app:1.2.3-manifests)
 #
 # Environment Variables:
-#   OUTPUT_SUB_PATH - Build output sub-path (default: target)
+#   OUTPUT_SUB_PATH - Build output sub-path (default: kaptain-out)
 #
 # Output Locations:
 #   ${OUTPUT_SUB_PATH}/fetched-manifests/   - Downloaded zip file
@@ -47,7 +47,7 @@ usage() {
   echo "  manifests-image-uri  Full image reference (e.g., ghcr.io/kube-kaptain/my/my-app:1.2.3-manifests)" >&2
   echo "" >&2
   echo "Environment:" >&2
-  echo "  OUTPUT_SUB_PATH  Build output sub-path (default: target)" >&2
+  echo "  OUTPUT_SUB_PATH  Build output sub-path (default: kaptain-out)" >&2
   echo "" >&2
   echo "Output Locations:" >&2
   echo "  \${OUTPUT_SUB_PATH}/fetched-manifests/   - Downloaded zip file" >&2

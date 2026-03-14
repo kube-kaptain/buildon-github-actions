@@ -10,7 +10,7 @@ on:
         description: 'Build output directory (relative)'
         required: false
         type: string
-        default: 'target'
+        default: 'kaptain-out'
 
       # Docker registry logins
       docker-registry-logins:

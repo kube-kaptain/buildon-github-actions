@@ -24,7 +24,7 @@
 #   KUBERNETES_WORKLOAD_NODE_SELECTOR      - Node selector (comma-separated key=value, optional)
 #   KUBERNETES_WORKLOAD_DNS_POLICY         - DNS policy (ClusterFirst, etc., optional)
 #   PROJECT_NAME                      - Used in metadata.name (required)
-#   OUTPUT_SUB_PATH                   - Build output directory (default: target)
+#   OUTPUT_SUB_PATH                   - Build output directory (default: kaptain-out)
 #
 # Output:
 #   ${OUTPUT_SUB_PATH}/manifests/combined/[${combined-sub-path}/]job[-${suffix}].yaml

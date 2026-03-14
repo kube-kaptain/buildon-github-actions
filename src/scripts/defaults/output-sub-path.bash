@@ -6,4 +6,4 @@
 #
 # shellcheck disable=SC2034  # Variables used by sourcing scripts
 
-OUTPUT_SUB_PATH="${OUTPUT_SUB_PATH:-target}"
+OUTPUT_SUB_PATH="${OUTPUT_SUB_PATH:-kaptain-out}"

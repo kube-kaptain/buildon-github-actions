@@ -12,6 +12,7 @@
 #   HOOK_POST_PACKAGE_TESTS_SCRIPT_SUB_PATH - Path to user's hook script
 #
 # Available context (set by CI wrapper):
+#   OUTPUT_SUB_PATH - Build output directory (default: kaptain-out)
 #   VERSION - Full version string
 #   VERSION_MAJOR - Major version number
 #   VERSION_MINOR - Minor version number

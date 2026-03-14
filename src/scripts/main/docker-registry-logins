@@ -17,7 +17,7 @@
 #   CONFIG - YAML config with registry logins (registry URL as key) - required
 #   SECRET_METHOD - Secret retrieval method (github, env) - required
 #   SECRETS_JSON - JSON object containing secret values keyed by secret name
-#   OUTPUT_SUB_PATH - Build output directory (default: target)
+#   OUTPUT_SUB_PATH - Build output directory (default: kaptain-out)
 #
 # Outputs:
 #   DOCKER_PUSH_IMAGE_LIST_FILE - Path to file listing image URIs for docker-push-all

@@ -9,7 +9,7 @@ inputs:
   output-sub-path:
     description: 'Build output directory (relative)'
     required: false
-    default: 'target'
+    default: 'kaptain-out'
   # Change source note
   change-source-note-enabled:
     description: 'Write a git note with merge candidate metadata for release tracking'

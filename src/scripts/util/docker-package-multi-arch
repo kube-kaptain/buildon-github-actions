@@ -25,7 +25,7 @@
 #
 # Optional environment variables:
 #   PACKAGE_BASE_IMAGE          - Base image (default: scratch)
-#   OUTPUT_SUB_PATH             - Build output directory (default: target)
+#   OUTPUT_SUB_PATH             - Build output directory (default: kaptain-out)
 #
 set -euo pipefail
 

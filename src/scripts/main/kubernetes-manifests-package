@@ -10,7 +10,7 @@
 # Inputs (environment variables):
 #   PROJECT_NAME    - For output naming (required)
 #   VERSION         - For output naming (required)
-#   OUTPUT_SUB_PATH - Build output directory, relative (default: target)
+#   OUTPUT_SUB_PATH - Build output directory, relative (default: kaptain-out)
 #   TOKEN_DELIMITER_STYLE - Token delimiter syntax (default: shell)
 #   CONFIG_VALUE_TRAILING_NEWLINE - Trailing newline handling (default: strip-for-single-line)
 #

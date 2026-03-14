@@ -15,7 +15,7 @@ inputs:
   output-sub-path:
     description: 'Build output directory (relative)'
     required: false
-    default: 'target'
+    default: 'kaptain-out'
   # Docker push image list file path
   docker-push-image-list-file:
     description: 'Path to file listing image URIs for docker-push-all (set by docker-registry-logins)'

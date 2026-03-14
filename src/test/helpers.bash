@@ -23,7 +23,7 @@ FIXTURES_DIR="$PROJECT_ROOT/src/test/fixtures"
 MOCK_BIN_DIR="$PROJECT_ROOT/src/test/mock-bin"
 
 # Test output directory - all test artifacts go here for diagnostics
-OUTPUT_SUB_PATH="${OUTPUT_SUB_PATH:-target}"
+OUTPUT_SUB_PATH="${OUTPUT_SUB_PATH:-kaptain-out}"
 TEST_TARGET_DIR="$PROJECT_ROOT/${OUTPUT_SUB_PATH}/test"
 
 # Counter for unique directory names within a test file

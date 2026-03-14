@@ -25,7 +25,7 @@ inputs:
   output-sub-path:
     description: 'Build output directory (relative)'
     required: false
-    default: 'target'
+    default: 'kaptain-out'
   # Container runtime
   image-build-command:
     description: 'Container runtime command (podman or docker)'

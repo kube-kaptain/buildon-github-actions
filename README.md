@@ -336,7 +336,7 @@ See [`examples/`](examples/) for more usage patterns.
 | `manifests-packaging-base-image` | string | `""` | Base image for manifest packaging (default: scratch) |
 | `manifests-repo-provider-type` | string | `docker` | Repo provider type for manifest storage (default: docker, currently the only supported provider) |
 | `manifests-sub-path` | string | `src/kubernetes` | Directory containing Kubernetes manifests (relative) |
-| `output-sub-path` | string | `target` | Build output directory (relative) |
+| `output-sub-path` | string | `kaptain-out` | Build output directory (relative) |
 | `qc-block-conventional-commits` | boolean | `false` | Block commits that use conventional commit format |
 | `qc-block-double-hyphen-containing-branches` | boolean | `true` | Block branch names containing double hyphens (typo detection) |
 | `qc-block-duplicate-commit-messages` | boolean | `true` | Block PRs where two or more commits have identical messages |

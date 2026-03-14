@@ -6,7 +6,7 @@ Basic Quality and Versioning
 
 | Input | Type | Default | Description |
 |-------|------|---------|-------------|
-| `output-sub-path` | string | `target` | Build output directory (relative) |
+| `output-sub-path` | string | `kaptain-out` | Build output directory (relative) |
 | `docker-registry-logins` | string | `""` | YAML config for Docker registry logins (registry URL as key) |
 | `docker-target-registry` | string | `""` | Target container registry domain (defaults to ghcr.io on GH Actions) |
 | `docker-target-namespace` | string | `""` | Path segment between registry and image name (defaults to lower cased org name or user ID on GH Actions) |

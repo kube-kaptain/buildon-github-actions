@@ -27,7 +27,7 @@
 #   KUBERNETES_SERVICE_EXTERNAL_TRAFFIC_POLICY - Cluster or Local (NodePort/LoadBalancer only)
 #   KUBERNETES_SERVICE_NAME_SUFFIX  - Optional suffix for name/filename
 #   KUBERNETES_SERVICE_COMBINED_SUB_PATH - Sub-path within combined/ for output
-#   OUTPUT_SUB_PATH                 - Build output directory (default: target)
+#   OUTPUT_SUB_PATH                 - Build output directory (default: kaptain-out)
 #   PROJECT_NAME                    - Used in metadata.name (required)
 #   TOKEN_NAME_STYLE                - Style for token references (default: PascalCase)
 #   TOKEN_DELIMITER_STYLE           - Delimiter style for tokens (default: shell)

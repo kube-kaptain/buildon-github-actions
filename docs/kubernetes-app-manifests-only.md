@@ -6,7 +6,7 @@ Kubernetes App - Manifests Only
 
 | Input | Type | Default | Description |
 |-------|------|---------|-------------|
-| `output-sub-path` | string | `target` | Build output directory (relative) |
+| `output-sub-path` | string | `kaptain-out` | Build output directory (relative) |
 | `docker-image-name-override` | string | `""` | Docker image name (if provided, substitutes into manifests; if empty, token remains for later substitution) |
 | `docker-image-tag-override` | string | `""` | Docker image tag (if provided, substitutes into manifests; if empty, token remains for later substitution) |
 | `docker-registry-logins` | string | `""` | YAML config for Docker registry logins (registry URL as key) |

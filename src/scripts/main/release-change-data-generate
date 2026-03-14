@@ -13,7 +13,7 @@
 #   PROJECT_NAME      - Project name (from versions-and-naming)
 #   REPOSITORY_OWNER  - Repository owner (from versions-and-naming)
 #   GIT_TAG           - Tag just created (from versions-and-naming)
-#   OUTPUT_SUB_PATH   - Build output directory (default: target)
+#   OUTPUT_SUB_PATH   - Build output directory (default: kaptain-out)
 #
 # Outputs:
 #   ${OUTPUT_SUB_PATH}/release-change-data/release-change-data.yaml

@@ -371,7 +371,7 @@ main() {
   log_info "Project root: ${PROJECT_ROOT}"
 
   # Clear and recreate test artifact directory
-  local output_sub_path="${OUTPUT_SUB_PATH:-target}"
+  local output_sub_path="${OUTPUT_SUB_PATH:-kaptain-out}"
   rm -rf "${PROJECT_ROOT}/${output_sub_path}/test"
   mkdir -p "${PROJECT_ROOT}/${output_sub_path}/test"
   log_info "Cleared ${output_sub_path}/test/ for test artifacts"
