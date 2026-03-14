@@ -12,8 +12,9 @@
 #
 set -euo pipefail
 
-if [[ "${IS_RELEASE}" == "true" ]]; then
-  echo "Skipping pre-tagging tests (IS_RELEASE=${IS_RELEASE})"
+echo "GitHub event: ${GITHUB_EVENT_NAME:-}"
+if [[ "${GITHUB_EVENT_NAME:-}" == "push" ]]; then
+  echo "Skipping pre-tagging tests (release build)"
   exit 0
 fi
 
