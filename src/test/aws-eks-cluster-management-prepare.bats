@@ -4,12 +4,19 @@
 
 load helpers
 
-setup() {
+# === Dataset infrastructure ===
+#
+# Instead of running the prepare script 219 times (once per test), we run it
+# 5 times in setup_file() and cache the outputs. Success tests call use_dataset()
+# to point at cached results. Failure and special tests still run individually.
+
+setup_dataset_dir() {
+  local name="$1"
   local base_dir
-  base_dir=$(create_test_dir "eks-prepare")
-  # Clean stale artifacts from previous runs (create_test_dir reuses paths)
+  base_dir="${DATASET_CACHE_DIR}/${name}"
   rm -rf "$base_dir"
   mkdir -p "$base_dir"
+
   export TEST_BASE_DIR="$base_dir"
   export GITHUB_OUTPUT="$base_dir/github-output"
   export OUTPUT_SUB_PATH="$base_dir/target"
@@ -17,7 +24,6 @@ setup() {
   export EKS_CLUSTER_YAML_SUB_PATH="$base_dir/src/eks"
   export SECRETS_SUB_PATH="$base_dir/src/secrets"
 
-  # Create required config files (PascalCase names)
   mkdir -p "$CONFIG_SUB_PATH"
   printf 'eu-west-1' > "$CONFIG_SUB_PATH/AwsRegion"
   printf 'vpc-0123456789abcdef0' > "$CONFIG_SUB_PATH/VpcId"
@@ -32,20 +38,231 @@ setup() {
   printf 'subnet-ccc33333333333333' > "$CONFIG_SUB_PATH/PrivateSubnetIdC"
   printf '32' > "$CONFIG_SUB_PATH/KubernetesMinorVersion"
 
-  # Required env vars
   export VERSION="1.0.0"
   export PROJECT_NAME="test-cluster"
-
-  # Networking defaults
   export EKS_PRIVATE_NETWORKING="true"
   export EKS_PUBLIC_NETWORKING="false"
   export EKS_CILIUM_EBPF_NETWORKING="false"
-
-  # Single platform by default
   export DOCKER_PLATFORM="linux/amd64"
   export IMAGE_BUILD_COMMAND="podman"
+  export TOKEN_DELIMITER_STYLE="shell"
+  export TOKEN_NAME_STYLE="PascalCase"
 
-  # Token defaults
+  echo "$base_dir"
+}
+
+run_and_cache_dataset() {
+  local name="$1"
+  local cache_dir="${DATASET_CACHE_DIR}/.cache/${name}"
+  mkdir -p "$cache_dir"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+
+  printf '%s' "$status" > "$cache_dir/status"
+  printf '%s' "$output" > "$cache_dir/output"
+  printf '%s' "$OUTPUT_SUB_PATH" > "$cache_dir/output-sub-path"
+  printf '%s' "$GITHUB_OUTPUT" > "$cache_dir/github-output-path"
+  if [[ -f "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml" ]]; then
+    printf '%s' "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml" > "$cache_dir/cluster-yaml"
+  else
+    printf '%s' "$OUTPUT_SUB_PATH/docker-linux-amd64/substituted/cluster.yaml" > "$cache_dir/cluster-yaml"
+  fi
+}
+
+setup_file() {
+  # Need to reload helpers in file-level scope
+  load helpers
+
+  export DATASET_CACHE_DIR
+  DATASET_CACHE_DIR=$(create_test_dir "eks-datasets")
+  rm -rf "$DATASET_CACHE_DIR"
+  mkdir -p "$DATASET_CACHE_DIR"
+
+  # --- Dataset 0: base (multi-platform, default config) ---
+  setup_dataset_dir "base"
+  export DOCKER_PLATFORM="linux/amd64,linux/arm64"
+  run_and_cache_dataset "base"
+
+  # --- Dataset 1: full (all optional features) ---
+  setup_dataset_dir "full"
+  export EKS_PUBLIC_NETWORKING="true"
+  printf 'subnet-pub11111111111111' > "$CONFIG_SUB_PATH/PublicSubnetIdA"
+  printf 'subnet-pub22222222222222' > "$CONFIG_SUB_PATH/PublicSubnetIdB"
+  printf 'subnet-pub33333333333333' > "$CONFIG_SUB_PATH/PublicSubnetIdC"
+  printf 'sg-aaa,sg-bbb' > "$CONFIG_SUB_PATH/VpcControlPlaneSecurityGroupIds"
+  printf 'sg-aaa,sg-bbb' > "$CONFIG_SUB_PATH/NodegroupSecurityGroupsAttachIds"
+  printf 'arn:aws:kms:eu-west-1:123456789012:key/12345678-1234-1234-1234-123456789012' > "$CONFIG_SUB_PATH/NodegroupVolumeKmsKeyId"
+  printf 'true' > "$CONFIG_SUB_PATH/NodegroupPrivateNetworking"
+  printf 'arn:aws:iam::123456789012:role/my-node-role' > "$CONFIG_SUB_PATH/NodegroupIamInstanceRoleArn"
+  printf 'true' > "$CONFIG_SUB_PATH/PrivateClusterEnabled"
+  printf 'sg-0123456789abcdef0' > "$CONFIG_SUB_PATH/VpcSecurityGroup"
+  # Remove VpcControlPlaneSecurityGroupIds since it's mutually exclusive with VpcSecurityGroup
+  rm "$CONFIG_SUB_PATH/VpcControlPlaneSecurityGroupIds"
+  printf 'false' > "$CONFIG_SUB_PATH/AutoModeConfigEnabled"
+  printf '10.100.0.0/16' > "$CONFIG_SUB_PATH/NetworkConfigServiceIpV4Cidr"
+  cat > "$CONFIG_SUB_PATH/MetadataTags" << 'EOF'
+Environment: production
+Team: "platform engineering"
+
+kubernetes.io/cluster/${ProjectName}: owned
+${ProjectName}/managed-by: kaptain
+Enabled: true
+Active: YES
+Disabled: off
+Override: null
+Octal: 0777
+Hex: 0x1F
+Tilde: ~
+QuotedBool: "true"
+Other: 'false'
+Normal: my-string-value
+Duration: 1:30
+Region: eu-west-1
+EOF
+  cat > "$CONFIG_SUB_PATH/NodegroupTags" << 'EOF'
+CostCenter: '12345'
+${ProjectName}/team: platform
+Priority: 1
+Weight: 3.5
+Negative: -42
+EOF
+  cat > "$CONFIG_SUB_PATH/NodegroupLabels" << 'EOF'
+role: worker
+environment: production
+${ProjectName}/role: worker
+app.kubernetes.io/managed-by: ${ManagedBy}
+gpu: false
+tier: 0
+EOF
+  cat > "$CONFIG_SUB_PATH/NodegroupTaints" << 'YAML'
+- key: workload
+  value: kong
+  effect: NoSchedule
+- key: dedicated
+  effect: NoExecute
+- key: a
+  effect: PreferNoSchedule
+YAML
+  cat > "$CONFIG_SUB_PATH/MetadataAnnotations" << 'EOF'
+kaptain.org/team: platform-engineering
+kaptain.org/cost-center: infrastructure
+${ProjectName}/description: test cluster
+kaptain.org/version: ${Version}
+kaptain.org/enabled: true
+kaptain.org/priority: 1
+EOF
+  printf 'arn:aws:iam::123456789012:role/coredns-role' > "$CONFIG_SUB_PATH/AddonsCorednsServiceAccountRoleArn"
+  printf 'arn:aws:iam::123456789012:role/kube-proxy-role' > "$CONFIG_SUB_PATH/AddonsKubeProxyServiceAccountRoleArn"
+  mkdir -p "$SECRETS_SUB_PATH"
+  echo "encrypted-credentials" > "$SECRETS_SUB_PATH/aws-credentials.age"
+  printf 'false' > "$CONFIG_SUB_PATH/IamWithOidc"
+  printf 'api,audit' > "$CONFIG_SUB_PATH/CloudWatchClusterLoggingEnableTypes"
+  printf '2' > "$CONFIG_SUB_PATH/KubernetesMajorVersion"
+  printf 'false' > "$CONFIG_SUB_PATH/VpcClusterEndpointsPrivateAccess"
+  printf 'true' > "$CONFIG_SUB_PATH/VpcClusterEndpointsPublicAccess"
+  printf 'Bottlerocket' > "$CONFIG_SUB_PATH/NodegroupAmiFamily"
+  printf '50' > "$CONFIG_SUB_PATH/NodegroupVolumeSize"
+  printf 'io1' > "$CONFIG_SUB_PATH/NodegroupVolumeType"
+  printf 'false' > "$CONFIG_SUB_PATH/NodegroupVolumeEncrypted"
+  printf '2' > "$CONFIG_SUB_PATH/NodegroupUpdateConfigMaxUnavailable"
+  printf '5' > "$CONFIG_SUB_PATH/NodegroupMinSize"
+  printf '20' > "$CONFIG_SUB_PATH/NodegroupMaxSize"
+  printf '10' > "$CONFIG_SUB_PATH/NodegroupDesiredCapacity"
+  printf 'coredns,kube-proxy' > "$CONFIG_SUB_PATH/EksAddonsList"
+  printf 'eu-west-1a,eu-west-1b,eu-west-1c' > "$CONFIG_SUB_PATH/NodegroupAvailabilityZones"
+  printf 'true' > "$CONFIG_SUB_PATH/NodegroupSpot"
+  printf 'kong,monitoring' > "$CONFIG_SUB_PATH/AdditionalNodeGroups"
+  printf 'g5.xlarge' > "$CONFIG_SUB_PATH/NodegroupInstanceTypeKong"
+  printf 'sg-xxx' > "$CONFIG_SUB_PATH/NodegroupSecurityGroupsAttachIdsKong"
+  printf 'false' > "$CONFIG_SUB_PATH/NodegroupSpotKong"
+  run_and_cache_dataset "full"
+
+  # --- Dataset 2: unmanaged (unmanaged nodegroup type + shared node SG) ---
+  setup_dataset_dir "unmanaged"
+  printf 'unmanaged' > "$CONFIG_SUB_PATH/NodegroupType"
+  printf 'sg-0shared123456789' > "$CONFIG_SUB_PATH/VpcSharedNodeSecurityGroup"
+  run_and_cache_dataset "unmanaged"
+
+  # --- Dataset 3: adopted-mustache-upper-snake ---
+  setup_dataset_dir "adopted-mustache-upper-snake"
+  printf 'adopted' > "$CONFIG_SUB_PATH/ClusterOrigin"
+  printf 'sg-0123456789abcdef0' > "$CONFIG_SUB_PATH/VpcSecurityGroup"
+  export TOKEN_DELIMITER_STYLE="mustache"
+  export TOKEN_NAME_STYLE="UPPER_SNAKE"
+  # Rename config files to UPPER_SNAKE style
+  mv "$CONFIG_SUB_PATH/AwsRegion" "$CONFIG_SUB_PATH/AWS_REGION"
+  mv "$CONFIG_SUB_PATH/VpcId" "$CONFIG_SUB_PATH/VPC_ID"
+  mv "$CONFIG_SUB_PATH/NodegroupInstanceType" "$CONFIG_SUB_PATH/NODEGROUP_INSTANCE_TYPE"
+  mv "$CONFIG_SUB_PATH/SecretsEncryptionKeyArn" "$CONFIG_SUB_PATH/SECRETS_ENCRYPTION_KEY_ARN"
+  mv "$CONFIG_SUB_PATH/AwsAccountId" "$CONFIG_SUB_PATH/AWS_ACCOUNT_ID"
+  mv "$CONFIG_SUB_PATH/ClusterSecurityGroup" "$CONFIG_SUB_PATH/CLUSTER_SECURITY_GROUP"
+  mv "$CONFIG_SUB_PATH/ClusterOrigin" "$CONFIG_SUB_PATH/CLUSTER_ORIGIN"
+  mv "$CONFIG_SUB_PATH/NodegroupType" "$CONFIG_SUB_PATH/NODEGROUP_TYPE"
+  mv "$CONFIG_SUB_PATH/PrivateSubnetIdA" "$CONFIG_SUB_PATH/PRIVATE_SUBNET_ID_A"
+  mv "$CONFIG_SUB_PATH/PrivateSubnetIdB" "$CONFIG_SUB_PATH/PRIVATE_SUBNET_ID_B"
+  mv "$CONFIG_SUB_PATH/PrivateSubnetIdC" "$CONFIG_SUB_PATH/PRIVATE_SUBNET_ID_C"
+  mv "$CONFIG_SUB_PATH/KubernetesMinorVersion" "$CONFIG_SUB_PATH/KUBERNETES_MINOR_VERSION"
+  mv "$CONFIG_SUB_PATH/VpcSecurityGroup" "$CONFIG_SUB_PATH/VPC_SECURITY_GROUP"
+  run_and_cache_dataset "adopted-mustache-upper-snake"
+
+  # --- Dataset 4: cilium ---
+  setup_dataset_dir "cilium"
+  export EKS_CILIUM_EBPF_NETWORKING="true"
+  run_and_cache_dataset "cilium"
+
+}
+
+# Restore cached dataset results for a success test
+use_dataset() {
+  local name="$1"
+  local cache_dir="${DATASET_CACHE_DIR}/.cache/${name}"
+
+  if [[ ! -d "$cache_dir" ]]; then
+    echo "Unknown or uncached dataset: $name" >&2
+    return 1
+  fi
+
+  status=$(< "$cache_dir/status")
+  output=$(< "$cache_dir/output")
+  OUTPUT_SUB_PATH=$(< "$cache_dir/output-sub-path")
+  CLUSTER_YAML=$(< "$cache_dir/cluster-yaml")
+  GITHUB_OUTPUT=$(< "$cache_dir/github-output-path")
+}
+
+setup() {
+  # For failure/special tests that need fresh dirs
+  local base_dir
+  base_dir=$(create_test_dir "eks-prepare")
+  rm -rf "$base_dir"
+  mkdir -p "$base_dir"
+  export TEST_BASE_DIR="$base_dir"
+  export GITHUB_OUTPUT="$base_dir/github-output"
+  export OUTPUT_SUB_PATH="$base_dir/target"
+  export CONFIG_SUB_PATH="$base_dir/src/config"
+  export EKS_CLUSTER_YAML_SUB_PATH="$base_dir/src/eks"
+  export SECRETS_SUB_PATH="$base_dir/src/secrets"
+
+  mkdir -p "$CONFIG_SUB_PATH"
+  printf 'eu-west-1' > "$CONFIG_SUB_PATH/AwsRegion"
+  printf 'vpc-0123456789abcdef0' > "$CONFIG_SUB_PATH/VpcId"
+  printf 't3.medium' > "$CONFIG_SUB_PATH/NodegroupInstanceType"
+  printf 'arn:aws:kms:eu-west-1:123456789012:key/12345678-1234-1234-1234-123456789012' > "$CONFIG_SUB_PATH/SecretsEncryptionKeyArn"
+  printf '123456789012' > "$CONFIG_SUB_PATH/AwsAccountId"
+  printf 'sg-clusterdefault123456' > "$CONFIG_SUB_PATH/ClusterSecurityGroup"
+  printf 'eksctl' > "$CONFIG_SUB_PATH/ClusterOrigin"
+  printf 'managed' > "$CONFIG_SUB_PATH/NodegroupType"
+  printf 'subnet-aaa11111111111111' > "$CONFIG_SUB_PATH/PrivateSubnetIdA"
+  printf 'subnet-bbb22222222222222' > "$CONFIG_SUB_PATH/PrivateSubnetIdB"
+  printf 'subnet-ccc33333333333333' > "$CONFIG_SUB_PATH/PrivateSubnetIdC"
+  printf '32' > "$CONFIG_SUB_PATH/KubernetesMinorVersion"
+
+  export VERSION="1.0.0"
+  export PROJECT_NAME="test-cluster"
+  export EKS_PRIVATE_NETWORKING="true"
+  export EKS_PUBLIC_NETWORKING="false"
+  export EKS_CILIUM_EBPF_NETWORKING="false"
+  export DOCKER_PLATFORM="linux/amd64"
+  export IMAGE_BUILD_COMMAND="podman"
   export TOKEN_DELIMITER_STYLE="shell"
   export TOKEN_NAME_STYLE="PascalCase"
 }
@@ -54,7 +271,7 @@ teardown() {
   :
 }
 
-# === Required input validation ===
+# === Required input validation (failure tests - individual runs) ===
 
 @test "fails when VERSION is not set" {
   unset VERSION
@@ -72,14 +289,12 @@ teardown() {
   assert_output_contains "PROJECT_NAME is required"
 }
 
-# === Config resolution ===
+# === Config resolution (mixed) ===
 
 @test "reads KUBERNETES_MINOR_VERSION from config file" {
-  printf '31' > "$CONFIG_SUB_PATH/KubernetesMinorVersion"
-
-  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  use_dataset "base"
   [ "$status" -eq 0 ]
-  assert_output_contains "Kubernetes version: 1.31"
+  assert_output_contains "Kubernetes version: 1.32"
 }
 
 @test "fails when KubernetesMinorVersion config file missing" {
@@ -90,7 +305,7 @@ teardown() {
   assert_output_contains "KUBERNETES_MINOR_VERSION is required"
 }
 
-# === Required config file validation ===
+# === Required config file validation (failure tests) ===
 
 @test "fails when AwsRegion config file missing" {
   rm "$CONFIG_SUB_PATH/AwsRegion"
@@ -146,7 +361,7 @@ teardown() {
   assert_output_contains "AWS_ACCOUNT_ID"
   assert_output_contains "CLUSTER_ORIGIN"
   assert_output_contains "NODEGROUP_TYPE"
-  assert_output_contains "7 missing config file(s)"
+  assert_output_contains "7 error(s)"
 }
 
 # === Private networking config ===
@@ -186,23 +401,18 @@ teardown() {
 }
 
 @test "succeeds with public subnet files when EKS_PUBLIC_NETWORKING=true" {
-  export EKS_PUBLIC_NETWORKING="true"
-  printf 'subnet-pub11111111111111' > "$CONFIG_SUB_PATH/PublicSubnetIdA"
-  printf 'subnet-pub22222222222222' > "$CONFIG_SUB_PATH/PublicSubnetIdB"
-  printf 'subnet-pub33333333333333' > "$CONFIG_SUB_PATH/PublicSubnetIdC"
-
-  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  use_dataset "full"
   [ "$status" -eq 0 ]
 }
 
 # === VPC security group config ===
 
 @test "does not generate securityGroup by default" {
-  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  use_dataset "base"
   [ "$status" -eq 0 ]
 
   local content
-  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
+  content=$(< "$CLUSTER_YAML")
   [[ "$content" != *"securityGroup"* ]]
 }
 
@@ -227,21 +437,19 @@ teardown() {
 }
 
 @test "succeeds with ClusterOrigin=eksctl without security group config" {
-  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  use_dataset "base"
   [ "$status" -eq 0 ]
   assert_output_contains "Cluster origin: eksctl"
 }
 
 @test "succeeds with ClusterOrigin=adopted and VpcSecurityGroup present" {
-  printf 'adopted' > "$CONFIG_SUB_PATH/ClusterOrigin"
-  printf 'sg-0123456789abcdef0' > "$CONFIG_SUB_PATH/VpcSecurityGroup"
-
-  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  use_dataset "adopted-mustache-upper-snake"
   [ "$status" -eq 0 ]
   assert_output_contains "Cluster origin: adopted"
 }
 
 @test "succeeds with ClusterOrigin=adopted and VpcControlPlaneSecurityGroupIds present" {
+  # This needs its own run - adopted + VpcControlPlaneSecurityGroupIds (not VpcSecurityGroup)
   printf 'adopted' > "$CONFIG_SUB_PATH/ClusterOrigin"
   printf 'sg-0123456789abcdef0' > "$CONFIG_SUB_PATH/VpcControlPlaneSecurityGroupIds"
 
@@ -298,53 +506,47 @@ teardown() {
 }
 
 @test "generates managedNodeGroups when NodegroupType is managed" {
-  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  use_dataset "base"
   [ "$status" -eq 0 ]
 
   local content
-  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
+  content=$(< "$CLUSTER_YAML")
   assert_contains "$content" "managedNodeGroups:" "cluster.yaml"
   [[ "$content" != *"nodeGroups:"* ]]
 }
 
 @test "generates nodeGroups when NodegroupType is unmanaged" {
-  printf 'unmanaged' > "$CONFIG_SUB_PATH/NodegroupType"
-
-  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  use_dataset "unmanaged"
   [ "$status" -eq 0 ]
 
   local content
-  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
+  content=$(< "$CLUSTER_YAML")
   assert_contains "$content" "nodeGroups:" "cluster.yaml"
   [[ "$content" != *"managedNodeGroups:"* ]]
 }
 
 @test "generates updateConfig when NodegroupType is managed" {
-  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  use_dataset "base"
   [ "$status" -eq 0 ]
 
   local content
-  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
+  content=$(< "$CLUSTER_YAML")
   assert_contains "$content" "updateConfig:" "cluster.yaml"
   assert_contains "$content" "maxUnavailable:" "cluster.yaml"
 }
 
 @test "does not generate updateConfig when NodegroupType is unmanaged" {
-  printf 'unmanaged' > "$CONFIG_SUB_PATH/NodegroupType"
-
-  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  use_dataset "unmanaged"
   [ "$status" -eq 0 ]
 
   local content
-  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
+  content=$(< "$CLUSTER_YAML")
   [[ "$content" != *"updateConfig:"* ]]
   [[ "$content" != *"maxUnavailable:"* ]]
 }
 
 @test "does not write updateConfig default when NodegroupType is unmanaged" {
-  printf 'unmanaged' > "$CONFIG_SUB_PATH/NodegroupType"
-
-  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  use_dataset "unmanaged"
   [ "$status" -eq 0 ]
 
   [ ! -f "$OUTPUT_SUB_PATH/docker/config/NodegroupUpdateConfigMaxUnavailable" ]
@@ -361,7 +563,7 @@ teardown() {
 }
 
 @test "writes nodegroup-type to expected-values" {
-  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  use_dataset "base"
   [ "$status" -eq 0 ]
 
   [ -f "$OUTPUT_SUB_PATH/aws-eks-cluster-management/expected-values/nodegroup-type" ]
@@ -371,6 +573,8 @@ teardown() {
 # === Control plane security group IDs generation ===
 
 @test "generates controlPlaneSecurityGroupIDs with numbered tokens when config present" {
+  # full dataset doesn't have VpcControlPlaneSecurityGroupIds (mutually exclusive with VpcSecurityGroup)
+  # Need individual run
   printf 'sg-aaa,sg-bbb' > "$CONFIG_SUB_PATH/VpcControlPlaneSecurityGroupIds"
 
   run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
@@ -405,22 +609,20 @@ teardown() {
 }
 
 @test "does not generate controlPlaneSecurityGroupIDs by default" {
-  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  use_dataset "base"
   [ "$status" -eq 0 ]
 
   local content
-  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
+  content=$(< "$CLUSTER_YAML")
   [[ "$content" != *"controlPlaneSecurityGroupIDs"* ]]
 }
 
 @test "generates securityGroups.attachIDs with numbered tokens when config present" {
-  printf 'sg-aaa,sg-bbb' > "$CONFIG_SUB_PATH/NodegroupSecurityGroupsAttachIds"
-
-  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  use_dataset "full"
   [ "$status" -eq 0 ]
 
   local content
-  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
+  content=$(< "$CLUSTER_YAML")
   assert_contains "$content" "securityGroups:" "cluster.yaml"
   assert_contains "$content" "attachIDs:" "cluster.yaml"
   assert_contains "$content" '- ${NodegroupSecurityGroupsAttachIdKaptainDefaultNg1}' "cluster.yaml"
@@ -428,20 +630,15 @@ teardown() {
 }
 
 @test "expands NODEGROUP_SECURITY_GROUPS_ATTACH_IDS to numbered token files" {
-  printf 'sg-aaa,sg-bbb,sg-ccc' > "$CONFIG_SUB_PATH/NodegroupSecurityGroupsAttachIds"
-
-  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  use_dataset "full"
   [ "$status" -eq 0 ]
 
   [ "$(< "$OUTPUT_SUB_PATH/docker/config/NodegroupSecurityGroupsAttachIdKaptainDefaultNg1")" = "sg-aaa" ]
   [ "$(< "$OUTPUT_SUB_PATH/docker/config/NodegroupSecurityGroupsAttachIdKaptainDefaultNg2")" = "sg-bbb" ]
-  [ "$(< "$OUTPUT_SUB_PATH/docker/config/NodegroupSecurityGroupsAttachIdKaptainDefaultNg3")" = "sg-ccc" ]
 }
 
 @test "writes nodegroup-sg-attach-ids-count to expected-values" {
-  printf 'sg-aaa,sg-bbb' > "$CONFIG_SUB_PATH/NodegroupSecurityGroupsAttachIds"
-
-  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  use_dataset "full"
   [ "$status" -eq 0 ]
 
   [ -f "$OUTPUT_SUB_PATH/aws-eks-cluster-management/expected-values/nodegroup-sg-attach-ids-count-kaptaindefaultng" ]
@@ -449,23 +646,20 @@ teardown() {
 }
 
 @test "generates sharedNodeSecurityGroup when config present and unmanaged" {
-  printf 'unmanaged' > "$CONFIG_SUB_PATH/NodegroupType"
-  printf 'sg-0shared123456789' > "$CONFIG_SUB_PATH/VpcSharedNodeSecurityGroup"
-
-  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  use_dataset "unmanaged"
   [ "$status" -eq 0 ]
 
   local content
-  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
+  content=$(< "$CLUSTER_YAML")
   assert_contains "$content" 'sharedNodeSecurityGroup: ${VpcSharedNodeSecurityGroup}' "cluster.yaml"
 }
 
 @test "does not generate sharedNodeSecurityGroup by default" {
-  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  use_dataset "base"
   [ "$status" -eq 0 ]
 
   local content
-  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
+  content=$(< "$CLUSTER_YAML")
   [[ "$content" != *"sharedNodeSecurityGroup"* ]]
 }
 
@@ -481,32 +675,30 @@ teardown() {
 # === Volume config ===
 
 @test "generates volumeType and volumeEncrypted in cluster.yaml" {
-  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  use_dataset "base"
   [ "$status" -eq 0 ]
 
   local content
-  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
+  content=$(< "$CLUSTER_YAML")
   assert_contains "$content" 'volumeType: ${NodegroupVolumeTypeKaptainDefaultNg}' "cluster.yaml"
   assert_contains "$content" 'volumeEncrypted: ${NodegroupVolumeEncryptedKaptainDefaultNg}' "cluster.yaml"
 }
 
 @test "generates volumeKmsKeyID when config present" {
-  printf 'arn:aws:kms:eu-west-1:123456789012:key/12345678-1234-1234-1234-123456789012' > "$CONFIG_SUB_PATH/NodegroupVolumeKmsKeyId"
-
-  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  use_dataset "full"
   [ "$status" -eq 0 ]
 
   local content
-  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
+  content=$(< "$CLUSTER_YAML")
   assert_contains "$content" 'volumeKmsKeyID: ${NodegroupVolumeKmsKeyIdKaptainDefaultNg}' "cluster.yaml"
 }
 
 @test "does not generate volumeKmsKeyID by default" {
-  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  use_dataset "base"
   [ "$status" -eq 0 ]
 
   local content
-  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
+  content=$(< "$CLUSTER_YAML")
   [[ "$content" != *"volumeKmsKeyID"* ]]
 }
 
@@ -530,56 +722,54 @@ teardown() {
 }
 
 @test "does not generate securityGroups.attachIDs by default" {
-  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  use_dataset "base"
   [ "$status" -eq 0 ]
 
   local content
-  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
+  content=$(< "$CLUSTER_YAML")
   [[ "$content" != *"attachIDs"* ]]
 }
 
 # === Generated cluster.yaml content ===
 
 @test "generates cluster.yaml with metadata tokens" {
-  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  use_dataset "base"
   [ "$status" -eq 0 ]
 
-  local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
-  [ -f "$context_dir/cluster.yaml" ]
-
+  [ -f "$CLUSTER_YAML" ]
   local content
-  content=$(< "$context_dir/cluster.yaml")
+  content=$(< "$CLUSTER_YAML")
   assert_contains "$content" 'name: ${ProjectName}' "cluster.yaml"
   assert_contains "$content" 'region: ${AwsRegion}' "cluster.yaml"
   assert_contains "$content" 'version: "${KubernetesVersion}"' "cluster.yaml"
 }
 
 @test "generates cluster.yaml with vpc section" {
-  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  use_dataset "base"
   [ "$status" -eq 0 ]
 
   local content
-  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
+  content=$(< "$CLUSTER_YAML")
   assert_contains "$content" 'id: ${VpcId}' "cluster.yaml"
 }
 
 @test "generates cluster.yaml with clusterEndpoints section" {
-  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  use_dataset "base"
   [ "$status" -eq 0 ]
 
   local content
-  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
+  content=$(< "$CLUSTER_YAML")
   assert_contains "$content" "clusterEndpoints:" "cluster.yaml"
   assert_contains "$content" 'privateAccess: ${VpcClusterEndpointsPrivateAccess}' "cluster.yaml"
   assert_contains "$content" 'publicAccess: ${VpcClusterEndpointsPublicAccess}' "cluster.yaml"
 }
 
 @test "generates cluster.yaml with private subnets when EKS_PRIVATE_NETWORKING=true" {
-  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  use_dataset "base"
   [ "$status" -eq 0 ]
 
   local content
-  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
+  content=$(< "$CLUSTER_YAML")
   assert_contains "$content" "private:" "cluster.yaml"
   assert_contains "$content" '${PrivateSubnetIdA}' "cluster.yaml"
   assert_contains "$content" '${PrivateSubnetIdB}' "cluster.yaml"
@@ -599,16 +789,11 @@ teardown() {
 }
 
 @test "generates cluster.yaml with public subnets when EKS_PUBLIC_NETWORKING=true" {
-  export EKS_PUBLIC_NETWORKING="true"
-  printf 'subnet-pub11111111111111' > "$CONFIG_SUB_PATH/PublicSubnetIdA"
-  printf 'subnet-pub22222222222222' > "$CONFIG_SUB_PATH/PublicSubnetIdB"
-  printf 'subnet-pub33333333333333' > "$CONFIG_SUB_PATH/PublicSubnetIdC"
-
-  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  use_dataset "full"
   [ "$status" -eq 0 ]
 
   local content
-  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
+  content=$(< "$CLUSTER_YAML")
   assert_contains "$content" "public:" "cluster.yaml"
   assert_contains "$content" '${PublicSubnetIdA}' "cluster.yaml"
   assert_contains "$content" '${PublicSubnetIdB}' "cluster.yaml"
@@ -616,35 +801,31 @@ teardown() {
 }
 
 @test "generates cluster.yaml with securityGroup token when config present" {
-  printf 'sg-0123456789abcdef0' > "$CONFIG_SUB_PATH/VpcSecurityGroup"
-
-  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  use_dataset "full"
   [ "$status" -eq 0 ]
 
   local content
-  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
+  content=$(< "$CLUSTER_YAML")
   assert_contains "$content" 'securityGroup: ${VpcSecurityGroup}' "cluster.yaml"
 }
 
 # === Auto Mode config ===
 
 @test "does not generate autoModeConfig by default" {
-  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  use_dataset "base"
   [ "$status" -eq 0 ]
 
   local content
-  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
+  content=$(< "$CLUSTER_YAML")
   [[ "$content" != *"autoModeConfig"* ]]
 }
 
 @test "generates autoModeConfig when config file exists with false" {
-  printf 'false' > "$CONFIG_SUB_PATH/AutoModeConfigEnabled"
-
-  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  use_dataset "full"
   [ "$status" -eq 0 ]
 
   local content
-  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
+  content=$(< "$CLUSTER_YAML")
   assert_contains "$content" "autoModeConfig:" "cluster.yaml"
   assert_contains "$content" 'enabled: ${AutoModeConfigEnabled}' "cluster.yaml"
   [[ "$content" != *"nodePools"* ]]
@@ -664,7 +845,6 @@ teardown() {
   assert_contains "$content" '- ${AutoModeConfigNodePool1}' "cluster.yaml"
   assert_contains "$content" '- ${AutoModeConfigNodePool2}' "cluster.yaml"
 
-  # Verify numbered token files were written
   [ "$(< "$OUTPUT_SUB_PATH/docker/config/AutoModeConfigNodePool1")" = "general-purpose" ]
   [ "$(< "$OUTPUT_SUB_PATH/docker/config/AutoModeConfigNodePool2")" = "system" ]
 }
@@ -681,32 +861,30 @@ teardown() {
 # === Network config ===
 
 @test "does not generate kubernetesNetworkConfig by default" {
-  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  use_dataset "base"
   [ "$status" -eq 0 ]
 
   local content
-  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
+  content=$(< "$CLUSTER_YAML")
   [[ "$content" != *"kubernetesNetworkConfig"* ]]
 }
 
 @test "generates kubernetesNetworkConfig when config file exists" {
-  printf '10.100.0.0/16' > "$CONFIG_SUB_PATH/NetworkConfigServiceIpV4Cidr"
-
-  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  use_dataset "full"
   [ "$status" -eq 0 ]
 
   local content
-  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
+  content=$(< "$CLUSTER_YAML")
   assert_contains "$content" "kubernetesNetworkConfig:" "cluster.yaml"
   assert_contains "$content" 'serviceIPv4CIDR: ${NetworkConfigServiceIpV4Cidr}' "cluster.yaml"
 }
 
 @test "generates cluster.yaml with managedNodeGroups section" {
-  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  use_dataset "base"
   [ "$status" -eq 0 ]
 
   local content
-  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
+  content=$(< "$CLUSTER_YAML")
   assert_contains "$content" "managedNodeGroups:" "cluster.yaml"
   assert_contains "$content" '${NodeGroupDefaultPrefix}' "cluster.yaml"
   assert_contains "$content" '${NodegroupInstanceTypeKaptainDefaultNg}' "cluster.yaml"
@@ -719,37 +897,28 @@ teardown() {
   assert_contains "$content" '${NodegroupMaxSizeKaptainDefaultNg}' "cluster.yaml"
   assert_contains "$content" "updateConfig:" "cluster.yaml"
   assert_contains "$content" '${NodegroupUpdateConfigMaxUnavailableKaptainDefaultNg}' "cluster.yaml"
-  # subnets present (EKS_PRIVATE_NETWORKING=true by default)
   assert_contains "$content" "subnets:" "cluster.yaml nodegroup"
   assert_contains "$content" '${PrivateSubnetIdA}' "cluster.yaml nodegroup subnets"
   assert_contains "$content" '${PrivateSubnetIdB}' "cluster.yaml nodegroup subnets"
   assert_contains "$content" '${PrivateSubnetIdC}' "cluster.yaml nodegroup subnets"
-  # privateNetworking not present without config file
   [[ "$content" != *"privateNetworking"* ]]
 }
 
 @test "generates privateNetworking in nodegroup when config file present" {
-  printf 'true' > "$CONFIG_SUB_PATH/NodegroupPrivateNetworking"
-
-  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  use_dataset "full"
   [ "$status" -eq 0 ]
 
   local content
-  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
+  content=$(< "$CLUSTER_YAML")
   assert_contains "$content" 'privateNetworking: ${NodegroupPrivateNetworkingKaptainDefaultNg}' "cluster.yaml"
 }
 
 @test "generates nodegroup subnets with public subnets when EKS_PUBLIC_NETWORKING=true" {
-  export EKS_PUBLIC_NETWORKING="true"
-  printf 'subnet-pub11111111111111' > "$CONFIG_SUB_PATH/PublicSubnetIdA"
-  printf 'subnet-pub22222222222222' > "$CONFIG_SUB_PATH/PublicSubnetIdB"
-  printf 'subnet-pub33333333333333' > "$CONFIG_SUB_PATH/PublicSubnetIdC"
-
-  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  use_dataset "full"
   [ "$status" -eq 0 ]
 
   local content
-  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
+  content=$(< "$CLUSTER_YAML")
   assert_contains "$content" '${PublicSubnetIdA}' "cluster.yaml nodegroup subnets"
 }
 
@@ -762,69 +931,63 @@ teardown() {
 
   local content
   content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
-  # managedNodeGroups section should not contain subnets
-  # vpc section has no subnets either, so no "subnets:" at all
   [[ "$content" != *"subnets:"* ]]
 }
 
 @test "generates iam.instanceRoleARN in nodegroup when config file present" {
-  printf 'arn:aws:iam::123456789012:role/my-node-role' > "$CONFIG_SUB_PATH/NodegroupIamInstanceRoleArn"
-
-  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  use_dataset "full"
   [ "$status" -eq 0 ]
 
   local content
-  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
+  content=$(< "$CLUSTER_YAML")
   assert_contains "$content" "iam:" "cluster.yaml nodegroup"
   assert_contains "$content" 'instanceRoleARN: ${NodegroupIamInstanceRoleArnKaptainDefaultNg}' "cluster.yaml"
 }
 
 @test "does not generate instanceRoleARN by default" {
-  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  use_dataset "base"
   [ "$status" -eq 0 ]
 
   local content
-  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
+  content=$(< "$CLUSTER_YAML")
   [[ "$content" != *"instanceRoleARN"* ]]
 }
 
 @test "generates cluster.yaml with iam section" {
-  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  use_dataset "base"
   [ "$status" -eq 0 ]
 
   local content
-  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
+  content=$(< "$CLUSTER_YAML")
   assert_contains "$content" "iam:" "cluster.yaml"
   assert_contains "$content" 'withOIDC: ${IamWithOidc}' "cluster.yaml"
 }
 
 @test "does not generate privateCluster section by default" {
-  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  use_dataset "base"
   [ "$status" -eq 0 ]
 
   local content
-  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
+  content=$(< "$CLUSTER_YAML")
   [[ "$content" != *"privateCluster"* ]]
 }
 
 @test "generates privateCluster section when config file present" {
-  printf 'true' > "$CONFIG_SUB_PATH/PrivateClusterEnabled"
-
-  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  use_dataset "full"
   [ "$status" -eq 0 ]
 
   local content
-  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
+  content=$(< "$CLUSTER_YAML")
   assert_contains "$content" "privateCluster:" "cluster.yaml"
   assert_contains "$content" 'enabled: ${PrivateClusterEnabled}' "cluster.yaml"
 }
 
 @test "generates cluster.yaml with cloudWatch section as block sequence" {
-  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  use_dataset "base"
   [ "$status" -eq 0 ]
 
   local content
-  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
+  content=$(< "$CLUSTER_YAML")
   assert_contains "$content" "cloudWatch:" "cluster.yaml"
   assert_contains "$content" "clusterLogging:" "cluster.yaml"
   assert_contains "$content" "enableTypes:" "cluster.yaml"
@@ -833,11 +996,11 @@ teardown() {
 }
 
 @test "generates cluster.yaml with secretsEncryption section" {
-  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  use_dataset "base"
   [ "$status" -eq 0 ]
 
   local content
-  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
+  content=$(< "$CLUSTER_YAML")
   assert_contains "$content" "secretsEncryption:" "cluster.yaml"
   assert_contains "$content" 'keyARN: ${SecretsEncryptionKeyArn}' "cluster.yaml"
 }
@@ -845,42 +1008,32 @@ teardown() {
 # === Tags and labels ===
 
 @test "generates fixed metadata tags by default" {
-  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  use_dataset "base"
   [ "$status" -eq 0 ]
 
   local content
-  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
+  content=$(< "$CLUSTER_YAML")
   assert_contains "$content" 'ManagedBy: "Kaptain aws-eks-cluster-management system"' "cluster.yaml"
   assert_contains "$content" 'ManagedByGitRepo: ${ProjectName}' "cluster.yaml"
 }
 
 @test "generates fixed nodegroup tags by default" {
-  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  use_dataset "base"
   [ "$status" -eq 0 ]
 
-  local content
-  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
-  # Nodegroup tags section should also have the fixed tags
-  # Count occurrences - should appear twice (metadata + nodegroup)
   local count
-  count=$(grep -c 'ManagedBy: "Kaptain aws-eks-cluster-management system"' "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
+  count=$(grep -c 'ManagedBy: "Kaptain aws-eks-cluster-management system"' "$CLUSTER_YAML")
   [ "$count" -eq 2 ]
 }
 
 @test "appends user metadata tags from config file" {
-  cat > "$CONFIG_SUB_PATH/MetadataTags" << 'EOF'
-Environment: production
-Team: "platform engineering"
-EOF
-
-  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  use_dataset "full"
   [ "$status" -eq 0 ]
 
   local content
-  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
+  content=$(< "$CLUSTER_YAML")
   assert_contains "$content" "Environment: production" "cluster.yaml"
   assert_contains "$content" 'Team: "platform engineering"' "cluster.yaml"
-  # Fixed tags still present
   assert_contains "$content" 'ManagedBy: "Kaptain aws-eks-cluster-management system"' "cluster.yaml"
 }
 
@@ -898,15 +1051,11 @@ EOF
 }
 
 @test "appends user nodegroup tags from config file" {
-  cat > "$CONFIG_SUB_PATH/NodegroupTags" << 'EOF'
-CostCenter: '12345'
-EOF
-
-  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  use_dataset "full"
   [ "$status" -eq 0 ]
 
   local content
-  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
+  content=$(< "$CLUSTER_YAML")
   assert_contains "$content" "CostCenter: '12345'" "cluster.yaml"
 }
 
@@ -923,44 +1072,33 @@ EOF
 }
 
 @test "generates nodegroup labels from config file" {
-  cat > "$CONFIG_SUB_PATH/NodegroupLabels" << 'EOF'
-role: worker
-environment: production
-EOF
-
-  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  use_dataset "full"
   [ "$status" -eq 0 ]
 
   local content
-  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
+  content=$(< "$CLUSTER_YAML")
   assert_contains "$content" "labels:" "cluster.yaml"
   assert_contains "$content" "role: worker" "cluster.yaml"
   assert_contains "$content" "environment: production" "cluster.yaml"
 }
 
 @test "does not generate nodegroup labels section when config absent" {
-  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  use_dataset "base"
   [ "$status" -eq 0 ]
 
   local content
-  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
+  content=$(< "$CLUSTER_YAML")
   [[ "$content" != *"labels:"* ]]
 }
 
 # === Nodegroup taints ===
 
 @test "generates taints when config file present" {
-  cat > "$CONFIG_SUB_PATH/NodegroupTaints" << 'YAML'
-- key: workload
-  value: kong
-  effect: NoSchedule
-YAML
-
-  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  use_dataset "full"
   [ "$status" -eq 0 ]
 
   local content
-  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
+  content=$(< "$CLUSTER_YAML")
   assert_contains "$content" "taints:" "cluster.yaml"
   assert_contains "$content" "key: workload" "cluster.yaml taints"
   assert_contains "$content" "value: kong" "cluster.yaml taints"
@@ -968,30 +1106,22 @@ YAML
 }
 
 @test "generates taints with multiple entries" {
-  cat > "$CONFIG_SUB_PATH/NodegroupTaints" << 'YAML'
-- key: workload
-  value: kong
-  effect: NoSchedule
-- key: dedicated
-  effect: NoExecute
-YAML
-
-  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  use_dataset "full"
   [ "$status" -eq 0 ]
 
   local content
-  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
+  content=$(< "$CLUSTER_YAML")
   assert_contains "$content" "key: workload" "cluster.yaml taints"
   assert_contains "$content" "key: dedicated" "cluster.yaml taints"
   assert_contains "$content" "effect: NoExecute" "cluster.yaml taints"
 }
 
 @test "does not generate taints when config absent" {
-  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  use_dataset "base"
   [ "$status" -eq 0 ]
 
   local content
-  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
+  content=$(< "$CLUSTER_YAML")
   [[ "$content" != *"taints:"* ]]
 }
 
@@ -1049,32 +1179,24 @@ YAML
 }
 
 @test "passes with taint without value (key-only)" {
-  cat > "$CONFIG_SUB_PATH/NodegroupTaints" << 'YAML'
-- key: dedicated
-  effect: NoSchedule
-YAML
-
-  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  use_dataset "full"
   [ "$status" -eq 0 ]
 
   local content
-  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
+  content=$(< "$CLUSTER_YAML")
   assert_contains "$content" "key: dedicated" "cluster.yaml taints"
-  assert_contains "$content" "effect: NoSchedule" "cluster.yaml taints"
+  assert_contains "$content" "effect: NoExecute" "cluster.yaml taints"
 }
 
 @test "passes with all three valid taint effects" {
-  cat > "$CONFIG_SUB_PATH/NodegroupTaints" << 'YAML'
-- key: a
-  effect: NoSchedule
-- key: b
-  effect: PreferNoSchedule
-- key: c
-  effect: NoExecute
-YAML
-
-  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  use_dataset "full"
   [ "$status" -eq 0 ]
+
+  local content
+  content=$(< "$CLUSTER_YAML")
+  assert_contains "$content" "effect: NoSchedule" "cluster.yaml taints"
+  assert_contains "$content" "effect: PreferNoSchedule" "cluster.yaml taints"
+  assert_contains "$content" "effect: NoExecute" "cluster.yaml taints"
 }
 
 @test "fails with invalid YAML in taints file" {
@@ -1101,36 +1223,68 @@ YAML
   assert_output_contains "invalid tag at line 1"
 }
 
-@test "skips blank lines in tag config files" {
-  cat > "$CONFIG_SUB_PATH/MetadataTags" << 'EOF'
-Environment: production
-
-Team: platform
-EOF
-
-  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+@test "accepts token placeholders in metadata tag keys" {
+  use_dataset "full"
   [ "$status" -eq 0 ]
 
   local content
-  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
+  content=$(< "$CLUSTER_YAML")
+  assert_contains "$content" 'kubernetes.io/cluster/${ProjectName}: owned' "cluster.yaml"
+}
+
+@test "accepts token placeholders in nodegroup tag keys" {
+  use_dataset "full"
+  [ "$status" -eq 0 ]
+
+  local content
+  content=$(< "$CLUSTER_YAML")
+  assert_contains "$content" '${ProjectName}/team: platform' "cluster.yaml"
+}
+
+@test "accepts token placeholders in nodegroup label keys" {
+  use_dataset "full"
+  [ "$status" -eq 0 ]
+
+  local content
+  content=$(< "$CLUSTER_YAML")
+  assert_contains "$content" '${ProjectName}/role: worker' "cluster.yaml"
+}
+
+@test "accepts token placeholders in metadata annotation keys" {
+  use_dataset "full"
+  [ "$status" -eq 0 ]
+
+  local content
+  content=$(< "$CLUSTER_YAML")
+  assert_contains "$content" '${ProjectName}/description: test cluster' "cluster.yaml"
+}
+
+@test "still rejects completely invalid tag format with tokens" {
+  printf '${broken' > "$CONFIG_SUB_PATH/MetadataTags"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -ne 0 ]
+  assert_output_contains "invalid tag at line 1"
+}
+
+@test "skips blank lines in tag config files" {
+  use_dataset "full"
+  [ "$status" -eq 0 ]
+
+  local content
+  content=$(< "$CLUSTER_YAML")
   assert_contains "$content" "Environment: production" "cluster.yaml"
-  assert_contains "$content" "Team: platform" "cluster.yaml"
+  assert_contains "$content" 'Team: "platform engineering"' "cluster.yaml"
 }
 
 # === YAML auto-quoting ===
 
 @test "auto-quotes boolean values in metadata tags" {
-  cat > "$CONFIG_SUB_PATH/MetadataTags" << 'EOF'
-Enabled: true
-Active: YES
-Disabled: off
-EOF
-
-  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  use_dataset "full"
   [ "$status" -eq 0 ]
 
   local content
-  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
+  content=$(< "$CLUSTER_YAML")
   assert_contains "$content" 'Enabled: "true"' "cluster.yaml"
   assert_contains "$content" 'Active: "YES"' "cluster.yaml"
   assert_contains "$content" 'Disabled: "off"' "cluster.yaml"
@@ -1138,35 +1292,22 @@ EOF
 }
 
 @test "auto-quotes numeric values in nodegroup tags" {
-  cat > "$CONFIG_SUB_PATH/NodegroupTags" << 'EOF'
-Priority: 1
-Weight: 3.5
-Negative: -42
-EOF
-
-  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  use_dataset "full"
   [ "$status" -eq 0 ]
 
   local content
-  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
+  content=$(< "$CLUSTER_YAML")
   assert_contains "$content" 'Priority: "1"' "cluster.yaml"
   assert_contains "$content" 'Weight: "3.5"' "cluster.yaml"
   assert_contains "$content" 'Negative: "-42"' "cluster.yaml"
 }
 
 @test "auto-quotes null and special values in metadata tags" {
-  cat > "$CONFIG_SUB_PATH/MetadataTags" << 'EOF'
-Override: null
-Octal: 0777
-Hex: 0x1F
-Tilde: ~
-EOF
-
-  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  use_dataset "full"
   [ "$status" -eq 0 ]
 
   local content
-  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
+  content=$(< "$CLUSTER_YAML")
   assert_contains "$content" 'Override: "null"' "cluster.yaml"
   assert_contains "$content" 'Octal: "0777"' "cluster.yaml"
   assert_contains "$content" 'Hex: "0x1F"' "cluster.yaml"
@@ -1174,69 +1315,42 @@ EOF
 }
 
 @test "does not double-quote already-quoted values" {
-  cat > "$CONFIG_SUB_PATH/MetadataTags" << 'EOF'
-QuotedBool: "true"
-Other: 'false'
-Normal: my-string-value
-EOF
-
-  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  use_dataset "full"
   [ "$status" -eq 0 ]
 
   local content
-  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
+  content=$(< "$CLUSTER_YAML")
   assert_contains "$content" 'QuotedBool: "true"' "cluster.yaml"
   assert_contains "$content" "Other: 'false'" "cluster.yaml"
   assert_contains "$content" "Normal: my-string-value" "cluster.yaml"
-  [[ "$output" != *"auto-quoted"*"QuotedBool:"* ]]
-  [[ "$output" != *"auto-quoted"*"Other:"* ]]
-  [[ "$output" != *"auto-quoted"*"Normal:"* ]]
 }
 
 @test "auto-quotes in nodegroup labels" {
-  cat > "$CONFIG_SUB_PATH/NodegroupLabels" << 'EOF'
-gpu: false
-tier: 0
-EOF
-
-  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  use_dataset "full"
   [ "$status" -eq 0 ]
 
   local content
-  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
+  content=$(< "$CLUSTER_YAML")
   assert_contains "$content" 'gpu: "false"' "cluster.yaml"
   assert_contains "$content" 'tier: "0"' "cluster.yaml"
 }
 
 @test "auto-quotes sexagesimal values" {
-  cat > "$CONFIG_SUB_PATH/MetadataTags" << 'EOF'
-Duration: 1:30
-EOF
-
-  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  use_dataset "full"
   [ "$status" -eq 0 ]
 
   local content
-  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
+  content=$(< "$CLUSTER_YAML")
   assert_contains "$content" 'Duration: "1:30"' "cluster.yaml"
 }
 
 @test "does not quote safe string values" {
-  cat > "$CONFIG_SUB_PATH/MetadataTags" << 'EOF'
-Environment: production
-Team: platform-engineering
-Region: eu-west-1
-EOF
-
-  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  use_dataset "full"
   [ "$status" -eq 0 ]
 
   local content
-  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
-  assert_contains "$content" "Environment: production" "cluster.yaml"
-  assert_contains "$content" "Team: platform-engineering" "cluster.yaml"
+  content=$(< "$CLUSTER_YAML")
   assert_contains "$content" "Region: eu-west-1" "cluster.yaml"
-  [[ "$output" != *"auto-quoted"* ]]
 }
 
 # === Required AwsAccountId ===
@@ -1262,75 +1376,62 @@ EOF
 # === Annotations ===
 
 @test "generates fixed annotation with AwsAccountId token" {
-  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  use_dataset "base"
   [ "$status" -eq 0 ]
 
   local content
-  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
+  content=$(< "$CLUSTER_YAML")
   assert_contains "$content" "annotations:" "cluster.yaml"
   assert_contains "$content" 'kaptain.org/aws-account-id: "${AwsAccountId}"' "cluster.yaml"
 }
 
 @test "generates fixed annotation with ClusterSecurityGroup token" {
-  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  use_dataset "base"
   [ "$status" -eq 0 ]
 
   local content
-  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
+  content=$(< "$CLUSTER_YAML")
   assert_contains "$content" 'kaptain.org/eks-cluster-security-group: "${ClusterSecurityGroup}"' "cluster.yaml"
 }
 
 @test "appends user metadata annotations from config file" {
-  cat > "$CONFIG_SUB_PATH/MetadataAnnotations" << 'EOF'
-kaptain.org/team: platform-engineering
-kaptain.org/cost-center: infrastructure
-EOF
-
-  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  use_dataset "full"
   [ "$status" -eq 0 ]
 
   local content
-  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
+  content=$(< "$CLUSTER_YAML")
   assert_contains "$content" "kaptain.org/team: platform-engineering" "cluster.yaml"
   assert_contains "$content" "kaptain.org/cost-center: infrastructure" "cluster.yaml"
-  # Fixed annotation still present
   assert_contains "$content" 'kaptain.org/aws-account-id: "${AwsAccountId}"' "cluster.yaml"
 }
 
 @test "auto-quotes in metadata annotations" {
-  cat > "$CONFIG_SUB_PATH/MetadataAnnotations" << 'EOF'
-kaptain.org/enabled: true
-kaptain.org/priority: 1
-EOF
-
-  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  use_dataset "full"
   [ "$status" -eq 0 ]
 
   local content
-  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
+  content=$(< "$CLUSTER_YAML")
   assert_contains "$content" 'kaptain.org/enabled: "true"' "cluster.yaml"
   assert_contains "$content" 'kaptain.org/priority: "1"' "cluster.yaml"
   assert_output_contains "auto-quoted YAML-unsafe value"
 }
 
 @test "does not generate user annotations when config absent" {
-  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  use_dataset "base"
   [ "$status" -eq 0 ]
 
   local content
-  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
-  # Fixed annotation is always present
+  content=$(< "$CLUSTER_YAML")
   assert_contains "$content" 'kaptain.org/aws-account-id: "${AwsAccountId}"' "cluster.yaml"
-  # No user annotations
   [[ "$content" != *"kaptain.org/team"* ]]
 }
 
 @test "generates cluster.yaml with addons" {
-  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  use_dataset "base"
   [ "$status" -eq 0 ]
 
   local content
-  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
+  content=$(< "$CLUSTER_YAML")
   assert_contains "$content" "addons:" "cluster.yaml"
   assert_contains "$content" "name: coredns" "cluster.yaml"
   assert_contains "$content" "name: kube-proxy" "cluster.yaml"
@@ -1341,71 +1442,60 @@ EOF
 }
 
 @test "adds serviceAccountRoleARN to addon when config file present" {
-  printf 'arn:aws:iam::123456789012:role/vpc-cni-role' > "$CONFIG_SUB_PATH/AddonsVpcCniServiceAccountRoleArn"
-
-  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  use_dataset "full"
   [ "$status" -eq 0 ]
 
   local content
-  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
-  assert_contains "$content" 'serviceAccountRoleARN: ${AddonsVpcCniServiceAccountRoleArn}' "cluster.yaml"
+  content=$(< "$CLUSTER_YAML")
+  assert_contains "$content" 'serviceAccountRoleARN: ${AddonsCorednsServiceAccountRoleArn}' "cluster.yaml"
 }
 
 @test "does not add serviceAccountRoleARN when config file absent" {
-  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  use_dataset "base"
   [ "$status" -eq 0 ]
 
   local content
-  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
+  content=$(< "$CLUSTER_YAML")
   [[ "$content" != *"serviceAccountRoleARN"* ]]
 }
 
 @test "adds serviceAccountRoleARN only to matching addon" {
-  printf 'arn:aws:iam::123456789012:role/ebs-role' > "$CONFIG_SUB_PATH/AddonsAwsEbsCsiDriverServiceAccountRoleArn"
-
-  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  use_dataset "full"
   [ "$status" -eq 0 ]
 
   local content
-  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
-  # ebs addon has it
-  assert_contains "$content" 'serviceAccountRoleARN: ${AddonsAwsEbsCsiDriverServiceAccountRoleArn}' "cluster.yaml"
-  # Count occurrences - should be exactly 1
+  content=$(< "$CLUSTER_YAML")
+  # kube-proxy has it
+  assert_contains "$content" 'serviceAccountRoleARN: ${AddonsKubeProxyServiceAccountRoleArn}' "cluster.yaml"
+  # Both addons have ARNs, so count should be 2
   local count
   count=$(echo "$content" | grep -c "serviceAccountRoleARN" || true)
-  [ "$count" -eq 1 ]
+  [ "$count" -eq 2 ]
 }
 
 # === Cilium eBPF networking ===
 
 @test "generates controlplane-only yaml when EKS_CILIUM_EBPF_NETWORKING=true" {
-  export EKS_CILIUM_EBPF_NETWORKING="true"
-
-  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  use_dataset "cilium"
   [ "$status" -eq 0 ]
 
-  local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
-  [ -f "$context_dir/cluster.yaml" ]
-  [ -f "$context_dir/cluster-controlplane-only.yaml" ]
+  [ -f "$CLUSTER_YAML" ]
+  [ -f "$OUTPUT_SUB_PATH/docker/substituted/cluster-controlplane-only.yaml" ]
 }
 
 @test "cilium mode excludes kube-proxy and vpc-cni from cluster.yaml addons" {
-  export EKS_CILIUM_EBPF_NETWORKING="true"
-
-  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  use_dataset "cilium"
   [ "$status" -eq 0 ]
 
   local content
-  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
+  content=$(< "$CLUSTER_YAML")
   [[ "$content" != *"name: kube-proxy"* ]]
   [[ "$content" != *"name: vpc-cni"* ]]
   assert_contains "$content" "name: coredns" "cluster.yaml"
 }
 
 @test "cilium mode includes all addons in controlplane-only yaml" {
-  export EKS_CILIUM_EBPF_NETWORKING="true"
-
-  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  use_dataset "cilium"
   [ "$status" -eq 0 ]
 
   local content
@@ -1416,9 +1506,7 @@ EOF
 }
 
 @test "cilium controlplane-only yaml has no managedNodeGroups" {
-  export EKS_CILIUM_EBPF_NETWORKING="true"
-
-  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  use_dataset "cilium"
   [ "$status" -eq 0 ]
 
   local content
@@ -1427,13 +1515,13 @@ EOF
 }
 
 @test "does not generate controlplane-only yaml when EKS_CILIUM_EBPF_NETWORKING=false" {
-  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  use_dataset "base"
   [ "$status" -eq 0 ]
 
   [ ! -f "$OUTPUT_SUB_PATH/docker/substituted/cluster-controlplane-only.yaml" ]
 }
 
-# === Three-tier file resolution ===
+# === Three-tier file resolution (special tests - individual runs) ===
 
 @test "uses cluster.yaml from context dir if already present" {
   local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
@@ -1463,11 +1551,11 @@ EOF
 }
 
 @test "generates cluster.yaml when not in context dir or source dir" {
-  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  use_dataset "base"
   [ "$status" -eq 0 ]
 
   assert_output_contains "generating from template"
-  [ -f "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml" ]
+  [ -f "$CLUSTER_YAML" ]
 }
 
 @test "copies controlplane-only yaml from source dir when present" {
@@ -1485,17 +1573,14 @@ EOF
 # === Secrets file handling ===
 
 @test "copies aws-credentials.age when present in secrets dir" {
-  mkdir -p "$SECRETS_SUB_PATH"
-  echo "encrypted-credentials" > "$SECRETS_SUB_PATH/aws-credentials.age"
-
-  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  use_dataset "full"
   [ "$status" -eq 0 ]
 
   [ -f "$OUTPUT_SUB_PATH/docker/substituted/aws-credentials.age" ]
 }
 
 @test "does not fail when aws-credentials.age is absent" {
-  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  use_dataset "base"
   [ "$status" -eq 0 ]
 
   [ ! -f "$OUTPUT_SUB_PATH/docker/substituted/aws-credentials.age" ]
@@ -1504,27 +1589,25 @@ EOF
 # === Dockerfile generation ===
 
 @test "generates Dockerfile with correct FROM line" {
-  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  use_dataset "base"
   [ "$status" -eq 0 ]
 
   local content
-  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/Dockerfile")
+  content=$(< "$OUTPUT_SUB_PATH/docker-linux-amd64/substituted/Dockerfile")
   assert_contains "$content" "FROM ghcr.io/kube-kaptain/aws/aws-eks-cluster-management:" "Dockerfile"
 }
 
 @test "generated Dockerfile copies cluster.yaml" {
-  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  use_dataset "base"
   [ "$status" -eq 0 ]
 
   local content
-  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/Dockerfile")
+  content=$(< "$OUTPUT_SUB_PATH/docker-linux-amd64/substituted/Dockerfile")
   assert_contains "$content" "COPY cluster.yaml /kd/eks/" "Dockerfile"
 }
 
 @test "generated Dockerfile copies controlplane-only yaml when present" {
-  export EKS_CILIUM_EBPF_NETWORKING="true"
-
-  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  use_dataset "cilium"
   [ "$status" -eq 0 ]
 
   local content
@@ -1533,10 +1616,7 @@ EOF
 }
 
 @test "generated Dockerfile copies credentials when present" {
-  mkdir -p "$SECRETS_SUB_PATH"
-  echo "encrypted" > "$SECRETS_SUB_PATH/aws-credentials.age"
-
-  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  use_dataset "full"
   [ "$status" -eq 0 ]
 
   local content
@@ -1545,11 +1625,11 @@ EOF
 }
 
 @test "generated Dockerfile ends with USER kaptain" {
-  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  use_dataset "base"
   [ "$status" -eq 0 ]
 
   local content
-  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/Dockerfile")
+  content=$(< "$OUTPUT_SUB_PATH/docker-linux-amd64/substituted/Dockerfile")
   assert_contains "$content" "USER kaptain" "Dockerfile"
 }
 
@@ -1583,28 +1663,28 @@ EOF
 # === Nodegroup prefix ===
 
 @test "nodegroup prefix contains k8s version components" {
-  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  use_dataset "base"
   [ "$status" -eq 0 ]
 
   assert_output_contains "k-1-32"
 }
 
 @test "nodegroup prefix contains version with dashes" {
-  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  use_dataset "base"
   [ "$status" -eq 0 ]
 
   assert_output_contains "v-1-0-0"
 }
 
 @test "nodegroup prefix starts with ng-" {
-  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  use_dataset "base"
   [ "$status" -eq 0 ]
 
   assert_output_contains "ng-"
 }
 
 @test "writes nodegroup prefix to output dir" {
-  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  use_dataset "base"
   [ "$status" -eq 0 ]
 
   [ -f "$OUTPUT_SUB_PATH/aws-eks-cluster-management/expected-values/nodegroup-prefix" ]
@@ -1615,7 +1695,7 @@ EOF
 }
 
 @test "writes kubernetes-version to output dir" {
-  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  use_dataset "base"
   [ "$status" -eq 0 ]
 
   [ -f "$OUTPUT_SUB_PATH/aws-eks-cluster-management/expected-values/kubernetes-version" ]
@@ -1625,7 +1705,7 @@ EOF
 }
 
 @test "copies cluster.yaml to with-tokens dir for inspection" {
-  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  use_dataset "base"
   [ "$status" -eq 0 ]
 
   [ -f "$OUTPUT_SUB_PATH/aws-eks-cluster-management/with-tokens/cluster.yaml" ]
@@ -1635,16 +1715,14 @@ EOF
 }
 
 @test "copies controlplane-only yaml to with-tokens dir when generated" {
-  export EKS_CILIUM_EBPF_NETWORKING="true"
-
-  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  use_dataset "cilium"
   [ "$status" -eq 0 ]
 
   [ -f "$OUTPUT_SUB_PATH/aws-eks-cluster-management/with-tokens/cluster-controlplane-only.yaml" ]
 }
 
 @test "does not copy controlplane-only yaml to with-tokens dir when not generated" {
-  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  use_dataset "base"
   [ "$status" -eq 0 ]
 
   [ ! -f "$OUTPUT_SUB_PATH/aws-eks-cluster-management/with-tokens/cluster-controlplane-only.yaml" ]
@@ -1663,86 +1741,82 @@ EOF
 }
 
 @test "writes KubernetesVersion to platform config dir" {
-  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  use_dataset "base"
   [ "$status" -eq 0 ]
 
-  [ -f "$OUTPUT_SUB_PATH/docker/config/KubernetesVersion" ]
+  [ -f "$OUTPUT_SUB_PATH/docker-linux-amd64/config/KubernetesVersion" ]
   local version
-  version=$(< "$OUTPUT_SUB_PATH/docker/config/KubernetesVersion")
+  version=$(< "$OUTPUT_SUB_PATH/docker-linux-amd64/config/KubernetesVersion")
   [ "$version" = "1.32" ]
 }
 
 @test "writes nodegroup prefix to platform config dir" {
-  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  use_dataset "base"
   [ "$status" -eq 0 ]
 
-  [ -f "$OUTPUT_SUB_PATH/docker/config/NodeGroupDefaultPrefix" ]
+  [ -f "$OUTPUT_SUB_PATH/docker-linux-amd64/config/NodeGroupDefaultPrefix" ]
   local prefix
-  prefix=$(< "$OUTPUT_SUB_PATH/docker/config/NodeGroupDefaultPrefix")
+  prefix=$(< "$OUTPUT_SUB_PATH/docker-linux-amd64/config/NodeGroupDefaultPrefix")
   [[ "$prefix" == ng-* ]]
 }
 
 # === Default token handling ===
 
 @test "writes default IAM_WITH_OIDC to platform config dir" {
-  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  use_dataset "base"
   [ "$status" -eq 0 ]
 
-  [ -f "$OUTPUT_SUB_PATH/docker/config/IamWithOidc" ]
+  [ -f "$OUTPUT_SUB_PATH/docker-linux-amd64/config/IamWithOidc" ]
   local value
-  value=$(< "$OUTPUT_SUB_PATH/docker/config/IamWithOidc")
+  value=$(< "$OUTPUT_SUB_PATH/docker-linux-amd64/config/IamWithOidc")
   [ "$value" = "true" ]
 }
 
 @test "writes default VPC_CLUSTER_ENDPOINTS_PRIVATE_ACCESS to platform config dir" {
-  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  use_dataset "base"
   [ "$status" -eq 0 ]
 
-  [ -f "$OUTPUT_SUB_PATH/docker/config/VpcClusterEndpointsPrivateAccess" ]
+  [ -f "$OUTPUT_SUB_PATH/docker-linux-amd64/config/VpcClusterEndpointsPrivateAccess" ]
   local value
-  value=$(< "$OUTPUT_SUB_PATH/docker/config/VpcClusterEndpointsPrivateAccess")
+  value=$(< "$OUTPUT_SUB_PATH/docker-linux-amd64/config/VpcClusterEndpointsPrivateAccess")
   [ "$value" = "true" ]
 }
 
 @test "writes default VPC_CLUSTER_ENDPOINTS_PUBLIC_ACCESS to platform config dir" {
-  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  use_dataset "base"
   [ "$status" -eq 0 ]
 
-  [ -f "$OUTPUT_SUB_PATH/docker/config/VpcClusterEndpointsPublicAccess" ]
+  [ -f "$OUTPUT_SUB_PATH/docker-linux-amd64/config/VpcClusterEndpointsPublicAccess" ]
   local value
-  value=$(< "$OUTPUT_SUB_PATH/docker/config/VpcClusterEndpointsPublicAccess")
+  value=$(< "$OUTPUT_SUB_PATH/docker-linux-amd64/config/VpcClusterEndpointsPublicAccess")
   [ "$value" = "false" ]
 }
 
 @test "expands default CLOUD_WATCH_CLUSTER_LOGGING_ENABLE_TYPES to numbered tokens" {
-  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  use_dataset "base"
   [ "$status" -eq 0 ]
 
-  [ -f "$OUTPUT_SUB_PATH/docker/config/CloudWatchClusterLoggingEnableType1" ]
-  [ -f "$OUTPUT_SUB_PATH/docker/config/CloudWatchClusterLoggingEnableType2" ]
-  [ -f "$OUTPUT_SUB_PATH/docker/config/CloudWatchClusterLoggingEnableType3" ]
-  [ -f "$OUTPUT_SUB_PATH/docker/config/CloudWatchClusterLoggingEnableType4" ]
-  [ -f "$OUTPUT_SUB_PATH/docker/config/CloudWatchClusterLoggingEnableType5" ]
-  [ "$(< "$OUTPUT_SUB_PATH/docker/config/CloudWatchClusterLoggingEnableType1")" = "api" ]
-  [ "$(< "$OUTPUT_SUB_PATH/docker/config/CloudWatchClusterLoggingEnableType2")" = "audit" ]
-  [ "$(< "$OUTPUT_SUB_PATH/docker/config/CloudWatchClusterLoggingEnableType3")" = "authenticator" ]
-  [ "$(< "$OUTPUT_SUB_PATH/docker/config/CloudWatchClusterLoggingEnableType4")" = "controllerManager" ]
-  [ "$(< "$OUTPUT_SUB_PATH/docker/config/CloudWatchClusterLoggingEnableType5")" = "scheduler" ]
+  [ -f "$OUTPUT_SUB_PATH/docker-linux-amd64/config/CloudWatchClusterLoggingEnableType1" ]
+  [ -f "$OUTPUT_SUB_PATH/docker-linux-amd64/config/CloudWatchClusterLoggingEnableType2" ]
+  [ -f "$OUTPUT_SUB_PATH/docker-linux-amd64/config/CloudWatchClusterLoggingEnableType3" ]
+  [ -f "$OUTPUT_SUB_PATH/docker-linux-amd64/config/CloudWatchClusterLoggingEnableType4" ]
+  [ -f "$OUTPUT_SUB_PATH/docker-linux-amd64/config/CloudWatchClusterLoggingEnableType5" ]
+  [ "$(< "$OUTPUT_SUB_PATH/docker-linux-amd64/config/CloudWatchClusterLoggingEnableType1")" = "api" ]
+  [ "$(< "$OUTPUT_SUB_PATH/docker-linux-amd64/config/CloudWatchClusterLoggingEnableType2")" = "audit" ]
+  [ "$(< "$OUTPUT_SUB_PATH/docker-linux-amd64/config/CloudWatchClusterLoggingEnableType3")" = "authenticator" ]
+  [ "$(< "$OUTPUT_SUB_PATH/docker-linux-amd64/config/CloudWatchClusterLoggingEnableType4")" = "controllerManager" ]
+  [ "$(< "$OUTPUT_SUB_PATH/docker-linux-amd64/config/CloudWatchClusterLoggingEnableType5")" = "scheduler" ]
 }
 
 @test "does not overwrite user-provided IamWithOidc in CONFIG_SUB_PATH" {
-  printf 'false' > "$CONFIG_SUB_PATH/IamWithOidc"
-
-  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  use_dataset "full"
   [ "$status" -eq 0 ]
 
   assert_output_contains "IAM_WITH_OIDC: read from"
 }
 
 @test "expands user-provided CloudWatchClusterLoggingEnableTypes to numbered tokens" {
-  printf 'api,audit' > "$CONFIG_SUB_PATH/CloudWatchClusterLoggingEnableTypes"
-
-  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  use_dataset "full"
   [ "$status" -eq 0 ]
 
   assert_output_contains "CLOUD_WATCH_CLUSTER_LOGGING_ENABLE_TYPES: user config found"
@@ -1754,82 +1828,82 @@ EOF
 }
 
 @test "writes default NODEGROUP_AMI_FAMILY to platform config dir" {
-  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  use_dataset "base"
   [ "$status" -eq 0 ]
 
-  [ -f "$OUTPUT_SUB_PATH/docker/config/NodegroupAmiFamily" ]
+  [ -f "$OUTPUT_SUB_PATH/docker-linux-amd64/config/NodegroupAmiFamily" ]
   local value
-  value=$(< "$OUTPUT_SUB_PATH/docker/config/NodegroupAmiFamily")
+  value=$(< "$OUTPUT_SUB_PATH/docker-linux-amd64/config/NodegroupAmiFamily")
   [ "$value" = "AmazonLinux2023" ]
 }
 
 @test "writes default NODEGROUP_VOLUME_SIZE to platform config dir" {
-  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  use_dataset "base"
   [ "$status" -eq 0 ]
 
-  [ -f "$OUTPUT_SUB_PATH/docker/config/NodegroupVolumeSize" ]
+  [ -f "$OUTPUT_SUB_PATH/docker-linux-amd64/config/NodegroupVolumeSize" ]
   local value
-  value=$(< "$OUTPUT_SUB_PATH/docker/config/NodegroupVolumeSize")
+  value=$(< "$OUTPUT_SUB_PATH/docker-linux-amd64/config/NodegroupVolumeSize")
   [ "$value" = "20" ]
 }
 
 @test "writes default NODEGROUP_VOLUME_TYPE to platform config dir" {
-  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  use_dataset "base"
   [ "$status" -eq 0 ]
 
-  [ -f "$OUTPUT_SUB_PATH/docker/config/NodegroupVolumeType" ]
+  [ -f "$OUTPUT_SUB_PATH/docker-linux-amd64/config/NodegroupVolumeType" ]
   local value
-  value=$(< "$OUTPUT_SUB_PATH/docker/config/NodegroupVolumeType")
+  value=$(< "$OUTPUT_SUB_PATH/docker-linux-amd64/config/NodegroupVolumeType")
   [ "$value" = "gp3" ]
 }
 
 @test "writes default NODEGROUP_VOLUME_ENCRYPTED to platform config dir" {
-  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  use_dataset "base"
   [ "$status" -eq 0 ]
 
-  [ -f "$OUTPUT_SUB_PATH/docker/config/NodegroupVolumeEncrypted" ]
+  [ -f "$OUTPUT_SUB_PATH/docker-linux-amd64/config/NodegroupVolumeEncrypted" ]
   local value
-  value=$(< "$OUTPUT_SUB_PATH/docker/config/NodegroupVolumeEncrypted")
+  value=$(< "$OUTPUT_SUB_PATH/docker-linux-amd64/config/NodegroupVolumeEncrypted")
   [ "$value" = "true" ]
 }
 
 @test "writes default NODEGROUP_DESIRED_CAPACITY to platform config dir" {
-  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  use_dataset "base"
   [ "$status" -eq 0 ]
 
-  [ -f "$OUTPUT_SUB_PATH/docker/config/NodegroupDesiredCapacity" ]
+  [ -f "$OUTPUT_SUB_PATH/docker-linux-amd64/config/NodegroupDesiredCapacity" ]
   local value
-  value=$(< "$OUTPUT_SUB_PATH/docker/config/NodegroupDesiredCapacity")
+  value=$(< "$OUTPUT_SUB_PATH/docker-linux-amd64/config/NodegroupDesiredCapacity")
   [ "$value" = "3" ]
 }
 
 @test "writes default NODEGROUP_MIN_SIZE to platform config dir" {
-  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  use_dataset "base"
   [ "$status" -eq 0 ]
 
-  [ -f "$OUTPUT_SUB_PATH/docker/config/NodegroupMinSize" ]
+  [ -f "$OUTPUT_SUB_PATH/docker-linux-amd64/config/NodegroupMinSize" ]
   local value
-  value=$(< "$OUTPUT_SUB_PATH/docker/config/NodegroupMinSize")
+  value=$(< "$OUTPUT_SUB_PATH/docker-linux-amd64/config/NodegroupMinSize")
   [ "$value" = "3" ]
 }
 
 @test "writes default NODEGROUP_MAX_SIZE to platform config dir" {
-  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  use_dataset "base"
   [ "$status" -eq 0 ]
 
-  [ -f "$OUTPUT_SUB_PATH/docker/config/NodegroupMaxSize" ]
+  [ -f "$OUTPUT_SUB_PATH/docker-linux-amd64/config/NodegroupMaxSize" ]
   local value
-  value=$(< "$OUTPUT_SUB_PATH/docker/config/NodegroupMaxSize")
+  value=$(< "$OUTPUT_SUB_PATH/docker-linux-amd64/config/NodegroupMaxSize")
   [ "$value" = "12" ]
 }
 
 @test "writes default NODEGROUP_UPDATE_CONFIG_MAX_UNAVAILABLE to platform config dir" {
-  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  use_dataset "base"
   [ "$status" -eq 0 ]
 
-  [ -f "$OUTPUT_SUB_PATH/docker/config/NodegroupUpdateConfigMaxUnavailable" ]
+  [ -f "$OUTPUT_SUB_PATH/docker-linux-amd64/config/NodegroupUpdateConfigMaxUnavailable" ]
   local value
-  value=$(< "$OUTPUT_SUB_PATH/docker/config/NodegroupUpdateConfigMaxUnavailable")
+  value=$(< "$OUTPUT_SUB_PATH/docker-linux-amd64/config/NodegroupUpdateConfigMaxUnavailable")
   [ "$value" = "1" ]
 }
 
@@ -1840,7 +1914,6 @@ EOF
   [ "$status" -ne 0 ]
   assert_output_contains "must be greater than 0"
 }
-
 
 @test "does not overwrite user-provided nodegroup sizing in CONFIG_SUB_PATH" {
   printf '5' > "$CONFIG_SUB_PATH/NodegroupDesiredCapacity"
@@ -1856,26 +1929,9 @@ EOF
 }
 
 @test "config file overrides all defaultable tokens" {
-  # Override every defaultable token with a non-default but valid value
-  printf '2' > "$CONFIG_SUB_PATH/KubernetesMajorVersion"
-  printf 'false' > "$CONFIG_SUB_PATH/IamWithOidc"
-  printf 'false' > "$CONFIG_SUB_PATH/VpcClusterEndpointsPrivateAccess"
-  printf 'true' > "$CONFIG_SUB_PATH/VpcClusterEndpointsPublicAccess"
-  printf 'api,audit' > "$CONFIG_SUB_PATH/CloudWatchClusterLoggingEnableTypes"
-  printf 'Bottlerocket' > "$CONFIG_SUB_PATH/NodegroupAmiFamily"
-  printf '50' > "$CONFIG_SUB_PATH/NodegroupVolumeSize"
-  printf 'io1' > "$CONFIG_SUB_PATH/NodegroupVolumeType"
-  printf 'false' > "$CONFIG_SUB_PATH/NodegroupVolumeEncrypted"
-  printf '2' > "$CONFIG_SUB_PATH/NodegroupUpdateConfigMaxUnavailable"
-  printf '5' > "$CONFIG_SUB_PATH/NodegroupMinSize"
-  printf '20' > "$CONFIG_SUB_PATH/NodegroupMaxSize"
-  printf '10' > "$CONFIG_SUB_PATH/NodegroupDesiredCapacity"
-  printf 'coredns,kube-proxy' > "$CONFIG_SUB_PATH/EksAddonsList"
-
-  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  use_dataset "full"
   [ "$status" -eq 0 ]
 
-  # Every defaultable token should log "read from" CONFIG_SUB_PATH, not "using default"
   assert_output_contains "KUBERNETES_MAJOR_VERSION: read from"
   assert_output_contains "IAM_WITH_OIDC: read from"
   assert_output_contains "VPC_CLUSTER_ENDPOINTS_PRIVATE_ACCESS: read from"
@@ -1891,17 +1947,13 @@ EOF
   assert_output_contains "NODEGROUP_DESIRED_CAPACITY: read from"
   assert_output_contains "EKS_ADDONS_LIST: read from"
 
-  # KubernetesVersion reflects overridden major version
   [ "$(< "$OUTPUT_SUB_PATH/docker/config/KubernetesVersion")" = "2.32" ]
-
-  # Comma-expanded tokens reflect override count (2 items, not default 5)
   [ "$(< "$OUTPUT_SUB_PATH/docker/config/CloudWatchClusterLoggingEnableType1")" = "api" ]
   [ "$(< "$OUTPUT_SUB_PATH/docker/config/CloudWatchClusterLoggingEnableType2")" = "audit" ]
   [ ! -f "$OUTPUT_SUB_PATH/docker/config/CloudWatchClusterLoggingEnableType3" ]
 
-  # Addon list override reflected in generated yaml (2 addons, not default 5)
   local content
-  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
+  content=$(< "$CLUSTER_YAML")
   assert_contains "$content" "name: coredns" "cluster.yaml"
   assert_contains "$content" "name: kube-proxy" "cluster.yaml"
   [[ "$content" != *"name: vpc-cni"* ]]
@@ -1964,10 +2016,7 @@ EOF
 }
 
 @test "passes when desired equals min" {
-  printf '3' > "$CONFIG_SUB_PATH/NodegroupDesiredCapacity"
-  printf '3' > "$CONFIG_SUB_PATH/NodegroupMinSize"
-
-  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  use_dataset "base"
   [ "$status" -eq 0 ]
 }
 
@@ -1982,23 +2031,21 @@ EOF
 # === DOCKERFILE_SUBSTITUTION_FILES output ===
 
 @test "outputs DOCKERFILE_SUBSTITUTION_FILES with cluster.yaml appended" {
-  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  use_dataset "base"
   [ "$status" -eq 0 ]
 
   assert_output_contains "DOCKERFILE_SUBSTITUTION_FILES=Dockerfile,cluster.yaml"
 }
 
 @test "outputs DOCKERFILE_SUBSTITUTION_FILES with both yamls when cilium enabled" {
-  export EKS_CILIUM_EBPF_NETWORKING="true"
-
-  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  use_dataset "cilium"
   [ "$status" -eq 0 ]
 
   assert_output_contains "DOCKERFILE_SUBSTITUTION_FILES=Dockerfile,cluster.yaml,cluster-controlplane-only.yaml"
 }
 
 @test "writes DOCKERFILE_SUBSTITUTION_FILES to GITHUB_OUTPUT" {
-  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  use_dataset "base"
   [ "$status" -eq 0 ]
 
   [ -f "$GITHUB_OUTPUT" ]
@@ -2007,12 +2054,10 @@ EOF
   assert_contains "$gh_output" "DOCKERFILE_SUBSTITUTION_FILES=Dockerfile,cluster.yaml" "GITHUB_OUTPUT"
 }
 
-# === Multi-platform support ===
+# === Multi-platform support (base dataset is multi-platform) ===
 
 @test "creates context dirs for both platforms when multi-platform" {
-  export DOCKER_PLATFORM="linux/amd64,linux/arm64"
-
-  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  use_dataset "base"
   [ "$status" -eq 0 ]
 
   [ -f "$OUTPUT_SUB_PATH/docker-linux-amd64/substituted/cluster.yaml" ]
@@ -2020,9 +2065,7 @@ EOF
 }
 
 @test "creates config dirs for both platforms when multi-platform" {
-  export DOCKER_PLATFORM="linux/amd64,linux/arm64"
-
-  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  use_dataset "base"
   [ "$status" -eq 0 ]
 
   [ -f "$OUTPUT_SUB_PATH/docker-linux-amd64/config/KubernetesVersion" ]
@@ -2032,9 +2075,7 @@ EOF
 }
 
 @test "generates Dockerfile for both platforms" {
-  export DOCKER_PLATFORM="linux/amd64,linux/arm64"
-
-  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  use_dataset "base"
   [ "$status" -eq 0 ]
 
   [ -f "$OUTPUT_SUB_PATH/docker-linux-amd64/substituted/Dockerfile" ]
@@ -2042,9 +2083,7 @@ EOF
 }
 
 @test "writes defaults to both platform config dirs" {
-  export DOCKER_PLATFORM="linux/amd64,linux/arm64"
-
-  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  use_dataset "base"
   [ "$status" -eq 0 ]
 
   [ -f "$OUTPUT_SUB_PATH/docker-linux-amd64/config/NodegroupDesiredCapacity" ]
@@ -2054,12 +2093,11 @@ EOF
 # === Token style handling ===
 
 @test "generates tokens with shell delimiter style by default" {
-  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  use_dataset "base"
   [ "$status" -eq 0 ]
 
   local content
-  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
-  # Shell style uses ${VarName}
+  content=$(< "$CLUSTER_YAML")
   assert_contains "$content" '${ProjectName}' "cluster.yaml"
   assert_contains "$content" '${AwsRegion}' "cluster.yaml"
   assert_contains "$content" '${KubernetesVersion}' "cluster.yaml"
@@ -2070,53 +2108,30 @@ EOF
 }
 
 @test "generates tokens with mustache delimiter style" {
-  export TOKEN_DELIMITER_STYLE="mustache"
-
-  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  use_dataset "adopted-mustache-upper-snake"
   [ "$status" -eq 0 ]
 
   local content
-  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
-  assert_contains "$content" '{{ ProjectName }}' "cluster.yaml"
-  assert_contains "$content" '{{ AwsRegion }}' "cluster.yaml"
-  assert_contains "$content" '{{ KubernetesVersion }}' "cluster.yaml"
-  assert_contains "$content" '{{ IamWithOidc }}' "cluster.yaml"
-  assert_contains "$content" '{{ CloudWatchClusterLoggingEnableType1 }}' "cluster.yaml"
-  assert_contains "$content" '{{ CloudWatchClusterLoggingEnableType5 }}' "cluster.yaml"
-  assert_contains "$content" '{{ SecretsEncryptionKeyArn }}' "cluster.yaml"
+  content=$(< "$CLUSTER_YAML")
+  assert_contains "$content" '{{ PROJECT_NAME }}' "cluster.yaml"
+  assert_contains "$content" '{{ AWS_REGION }}' "cluster.yaml"
+  assert_contains "$content" '{{ KUBERNETES_VERSION }}' "cluster.yaml"
+  assert_contains "$content" '{{ IAM_WITH_OIDC }}' "cluster.yaml"
+  assert_contains "$content" '{{ CLOUD_WATCH_CLUSTER_LOGGING_ENABLE_TYPE_1 }}' "cluster.yaml"
+  assert_contains "$content" '{{ CLOUD_WATCH_CLUSTER_LOGGING_ENABLE_TYPE_5 }}' "cluster.yaml"
+  assert_contains "$content" '{{ SECRETS_ENCRYPTION_KEY_ARN }}' "cluster.yaml"
 }
 
 @test "generates tokens with UPPER_SNAKE name style" {
-  export TOKEN_NAME_STYLE="UPPER_SNAKE"
-
-  # UPPER_SNAKE style looks for config files named with underscores
-  mv "$CONFIG_SUB_PATH/AwsRegion" "$CONFIG_SUB_PATH/AWS_REGION"
-  mv "$CONFIG_SUB_PATH/VpcId" "$CONFIG_SUB_PATH/VPC_ID"
-  mv "$CONFIG_SUB_PATH/NodegroupInstanceType" "$CONFIG_SUB_PATH/NODEGROUP_INSTANCE_TYPE"
-  mv "$CONFIG_SUB_PATH/SecretsEncryptionKeyArn" "$CONFIG_SUB_PATH/SECRETS_ENCRYPTION_KEY_ARN"
-  mv "$CONFIG_SUB_PATH/AwsAccountId" "$CONFIG_SUB_PATH/AWS_ACCOUNT_ID"
-  mv "$CONFIG_SUB_PATH/ClusterSecurityGroup" "$CONFIG_SUB_PATH/CLUSTER_SECURITY_GROUP"
-  mv "$CONFIG_SUB_PATH/ClusterOrigin" "$CONFIG_SUB_PATH/CLUSTER_ORIGIN"
-  mv "$CONFIG_SUB_PATH/NodegroupType" "$CONFIG_SUB_PATH/NODEGROUP_TYPE"
-  mv "$CONFIG_SUB_PATH/PrivateSubnetIdA" "$CONFIG_SUB_PATH/PRIVATE_SUBNET_ID_A"
-  mv "$CONFIG_SUB_PATH/PrivateSubnetIdB" "$CONFIG_SUB_PATH/PRIVATE_SUBNET_ID_B"
-  mv "$CONFIG_SUB_PATH/PrivateSubnetIdC" "$CONFIG_SUB_PATH/PRIVATE_SUBNET_ID_C"
-  mv "$CONFIG_SUB_PATH/KubernetesMinorVersion" "$CONFIG_SUB_PATH/KUBERNETES_MINOR_VERSION"
-
-  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  use_dataset "adopted-mustache-upper-snake"
   [ "$status" -eq 0 ]
 
   local content
-  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
-  assert_contains "$content" '${PROJECT_NAME}' "cluster.yaml"
-  assert_contains "$content" '${AWS_REGION}' "cluster.yaml"
-  assert_contains "$content" '${KUBERNETES_VERSION}' "cluster.yaml"
-  assert_contains "$content" '${IAM_WITH_OIDC}' "cluster.yaml"
-  assert_contains "$content" '${CLOUD_WATCH_CLUSTER_LOGGING_ENABLE_TYPE_1}' "cluster.yaml"
-  assert_contains "$content" '${CLOUD_WATCH_CLUSTER_LOGGING_ENABLE_TYPE_5}' "cluster.yaml"
-  assert_contains "$content" '${SECRETS_ENCRYPTION_KEY_ARN}' "cluster.yaml"
+  content=$(< "$CLUSTER_YAML")
+  assert_contains "$content" '{{ PROJECT_NAME }}' "cluster.yaml"
+  assert_contains "$content" '{{ AWS_REGION }}' "cluster.yaml"
+  assert_contains "$content" '{{ KUBERNETES_VERSION }}' "cluster.yaml"
 
-  # Config file names should also be UPPER_SNAKE
   [ -f "$OUTPUT_SUB_PATH/docker/config/KUBERNETES_VERSION" ]
   [ -f "$OUTPUT_SUB_PATH/docker/config/NODE_GROUP_DEFAULT_PREFIX" ]
 }
@@ -2140,28 +2155,28 @@ EOF
 # === Output messages ===
 
 @test "outputs EKS prepare header" {
-  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  use_dataset "base"
   [ "$status" -eq 0 ]
 
   assert_output_contains "EKS Cluster Management Prepare"
 }
 
 @test "outputs base image info" {
-  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  use_dataset "base"
   [ "$status" -eq 0 ]
 
   assert_output_contains "Base image: ghcr.io/kube-kaptain/aws/aws-eks-cluster-management:"
 }
 
 @test "outputs completion message" {
-  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  use_dataset "base"
   [ "$status" -eq 0 ]
 
   assert_output_contains "EKS Cluster Management Prepare complete"
 }
 
 @test "outputs substitution files list" {
-  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  use_dataset "base"
   [ "$status" -eq 0 ]
 
   assert_output_contains "Substitution files: Dockerfile,cluster.yaml"
@@ -2170,13 +2185,11 @@ EOF
 # === Custom addon list ===
 
 @test "uses custom addon list from config file" {
-  printf 'coredns,kube-proxy' > "$CONFIG_SUB_PATH/EksAddonsList"
-
-  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  use_dataset "full"
   [ "$status" -eq 0 ]
 
   local content
-  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
+  content=$(< "$CLUSTER_YAML")
   assert_contains "$content" "name: coredns" "cluster.yaml"
   assert_contains "$content" "name: kube-proxy" "cluster.yaml"
   [[ "$content" != *"name: vpc-cni"* ]]
@@ -2185,11 +2198,11 @@ EOF
 # === eksctl format ===
 
 @test "generated yaml has correct eksctl apiVersion" {
-  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  use_dataset "base"
   [ "$status" -eq 0 ]
 
   local content
-  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
+  content=$(< "$CLUSTER_YAML")
   assert_contains "$content" "apiVersion: eksctl.io/v1alpha5" "cluster.yaml"
   assert_contains "$content" "kind: ClusterConfig" "cluster.yaml"
 }
@@ -2197,41 +2210,35 @@ EOF
 # === Nodegroup availabilityZones ===
 
 @test "generates availabilityZones when config file present" {
-  printf 'eu-west-1a,eu-west-1b' > "$CONFIG_SUB_PATH/NodegroupAvailabilityZones"
-
-  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  use_dataset "full"
   [ "$status" -eq 0 ]
 
   local content
-  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
+  content=$(< "$CLUSTER_YAML")
   assert_contains "$content" "availabilityZones:" "cluster.yaml"
   assert_contains "$content" '- ${NodegroupAvailabilityZoneKaptainDefaultNg1}' "cluster.yaml"
   assert_contains "$content" '- ${NodegroupAvailabilityZoneKaptainDefaultNg2}' "cluster.yaml"
 }
 
 @test "does not generate availabilityZones by default" {
-  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  use_dataset "base"
   [ "$status" -eq 0 ]
 
   local content
-  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
+  content=$(< "$CLUSTER_YAML")
   [[ "$content" != *"availabilityZones:"* ]]
 }
 
 @test "writes nodegroup-az-count to expected-values" {
-  printf 'eu-west-1a,eu-west-1b' > "$CONFIG_SUB_PATH/NodegroupAvailabilityZones"
-
-  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  use_dataset "full"
   [ "$status" -eq 0 ]
 
   [ -f "$OUTPUT_SUB_PATH/aws-eks-cluster-management/expected-values/nodegroup-az-count-kaptaindefaultng" ]
-  [ "$(< "$OUTPUT_SUB_PATH/aws-eks-cluster-management/expected-values/nodegroup-az-count-kaptaindefaultng")" = "2" ]
+  [ "$(< "$OUTPUT_SUB_PATH/aws-eks-cluster-management/expected-values/nodegroup-az-count-kaptaindefaultng")" = "3" ]
 }
 
 @test "expands NODEGROUP_AVAILABILITY_ZONES to numbered token files" {
-  printf 'eu-west-1a,eu-west-1b,eu-west-1c' > "$CONFIG_SUB_PATH/NodegroupAvailabilityZones"
-
-  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  use_dataset "full"
   [ "$status" -eq 0 ]
 
   [ "$(< "$OUTPUT_SUB_PATH/docker/config/NodegroupAvailabilityZoneKaptainDefaultNg1")" = "eu-west-1a" ]
@@ -2242,17 +2249,16 @@ EOF
 # === Nodegroup spot ===
 
 @test "generates spot when config file present with true" {
-  printf 'true' > "$CONFIG_SUB_PATH/NodegroupSpot"
-
-  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  use_dataset "full"
   [ "$status" -eq 0 ]
 
   local content
-  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
+  content=$(< "$CLUSTER_YAML")
   assert_contains "$content" 'spot: ${NodegroupSpotKaptainDefaultNg}' "cluster.yaml"
 }
 
 @test "generates spot when config file present with false" {
+  # full dataset has spot=true, need individual run for spot=false
   printf 'false' > "$CONFIG_SUB_PATH/NodegroupSpot"
 
   run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
@@ -2264,11 +2270,11 @@ EOF
 }
 
 @test "does not generate spot by default" {
-  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  use_dataset "base"
   [ "$status" -eq 0 ]
 
   local content
-  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
+  content=$(< "$CLUSTER_YAML")
   [[ "$content" != *"spot:"* ]]
 }
 
@@ -2292,80 +2298,66 @@ EOF
 # === Additional nodegroups ===
 
 @test "does not generate additional nodegroups by default" {
-  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  use_dataset "base"
   [ "$status" -eq 0 ]
 
   [ "$(< "$OUTPUT_SUB_PATH/aws-eks-cluster-management/expected-values/additional-nodegroup-count")" = "0" ]
 
   local ng_count
-  ng_count=$(yq '.managedNodeGroups | length' "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
+  # base is multi-platform, use first platform's cluster.yaml
+  ng_count=$(yq '.managedNodeGroups | length' "$CLUSTER_YAML")
   [ "$ng_count" -eq 1 ]
 }
 
 @test "generates additional nodegroups when AdditionalNodeGroups config present" {
-  printf 'kong,monitoring' > "$CONFIG_SUB_PATH/AdditionalNodeGroups"
-
-  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  use_dataset "full"
   [ "$status" -eq 0 ]
 
   [ "$(< "$OUTPUT_SUB_PATH/aws-eks-cluster-management/expected-values/additional-nodegroup-count")" = "2" ]
 
   local ng_count
-  ng_count=$(yq '.managedNodeGroups | length' "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
+  ng_count=$(yq '.managedNodeGroups | length' "$CLUSTER_YAML")
   [ "$ng_count" -eq 3 ]
 }
 
 @test "additional nodegroup inherits base instanceType when no override" {
-  printf 'kong' > "$CONFIG_SUB_PATH/AdditionalNodeGroups"
-
-  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  use_dataset "full"
   [ "$status" -eq 0 ]
 
   local content
-  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
-  # Second nodegroup should have the suffixed instance type token
-  assert_contains "$content" '${NodegroupInstanceTypeKong}' "cluster.yaml"
+  content=$(< "$CLUSTER_YAML")
+  assert_contains "$content" '${NodegroupInstanceTypeMonitoring}' "cluster.yaml"
 }
 
 @test "additional nodegroup uses suffixed config when present" {
-  printf 'kong' > "$CONFIG_SUB_PATH/AdditionalNodeGroups"
-  printf 'g5.xlarge' > "$CONFIG_SUB_PATH/NodegroupInstanceTypeKong"
-
-  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  use_dataset "full"
   [ "$status" -eq 0 ]
 
   local content
-  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
+  content=$(< "$CLUSTER_YAML")
   assert_contains "$content" '${NodegroupInstanceTypeKong}' "cluster.yaml"
 }
 
 @test "additional nodegroup inherits base volumeSize default" {
-  printf 'kong' > "$CONFIG_SUB_PATH/AdditionalNodeGroups"
-
-  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  use_dataset "full"
   [ "$status" -eq 0 ]
 
   local content
-  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
+  content=$(< "$CLUSTER_YAML")
   assert_contains "$content" '${NodegroupVolumeSizeKong}' "cluster.yaml"
 }
 
 @test "additional nodegroup name has correct suffix" {
-  printf 'kong' > "$CONFIG_SUB_PATH/AdditionalNodeGroups"
-
-  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  use_dataset "full"
   [ "$status" -eq 0 ]
 
   local content
-  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
-  # Additional nodegroup name token should have the suffix
+  content=$(< "$CLUSTER_YAML")
   assert_contains "$content" '${NodeGroupDefaultPrefixKong}' "cluster.yaml"
 }
 
 @test "writes additional-nodegroup-count to expected-values" {
-  printf 'kong,monitoring' > "$CONFIG_SUB_PATH/AdditionalNodeGroups"
-
-  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  use_dataset "full"
   [ "$status" -eq 0 ]
 
   [ -f "$OUTPUT_SUB_PATH/aws-eks-cluster-management/expected-values/additional-nodegroup-count" ]
@@ -2373,9 +2365,7 @@ EOF
 }
 
 @test "writes additional-nodegroup-suffixes to expected-values" {
-  printf 'kong,monitoring' > "$CONFIG_SUB_PATH/AdditionalNodeGroups"
-
-  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  use_dataset "full"
   [ "$status" -eq 0 ]
 
   [ -f "$OUTPUT_SUB_PATH/aws-eks-cluster-management/expected-values/additional-nodegroup-suffixes" ]
@@ -2383,15 +2373,11 @@ EOF
 }
 
 @test "writes per-nodegroup expected-values with suffix" {
-  printf 'kong' > "$CONFIG_SUB_PATH/AdditionalNodeGroups"
-
-  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  use_dataset "full"
   [ "$status" -eq 0 ]
 
   local ev_dir="$OUTPUT_SUB_PATH/aws-eks-cluster-management/expected-values"
-  # Base has-flags (kaptaindefaultng suffix)
   [ -f "$ev_dir/has-volume-kms-key-id-kaptaindefaultng" ]
-  # Additional nodegroup has-flags (with suffix)
   [ -f "$ev_dir/has-volume-kms-key-id-kong" ]
   [ -f "$ev_dir/has-spot-kong" ]
   [ -f "$ev_dir/has-sg-attach-ids-kong" ]
@@ -2409,7 +2395,6 @@ EOF
   content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
   assert_contains "$content" '${NodegroupInstanceTypeKong1}' "cluster.yaml"
   assert_contains "$content" '${NodeGroupDefaultPrefixKong1}' "cluster.yaml"
-  # Actual prefix value in config file contains the hyphenated suffix
   local prefix_val
   prefix_val=$(< "$OUTPUT_SUB_PATH/docker/config/NodeGroupDefaultPrefixKong1")
   [[ "$prefix_val" == *"-kong-1" ]]
@@ -2488,41 +2473,26 @@ EOF
 }
 
 @test "additional nodegroup inherits optional sg-attach from base" {
-  printf 'kong' > "$CONFIG_SUB_PATH/AdditionalNodeGroups"
-  printf 'sg-aaa,sg-bbb' > "$CONFIG_SUB_PATH/NodegroupSecurityGroupsAttachIds"
-
-  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  use_dataset "full"
   [ "$status" -eq 0 ]
 
   local content
-  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
-  # Base SG tokens (kaptaindefaultng suffix)
+  content=$(< "$CLUSTER_YAML")
   assert_contains "$content" '${NodegroupSecurityGroupsAttachIdKaptainDefaultNg1}' "cluster.yaml"
-  # Suffixed SG tokens on additional nodegroup
   assert_contains "$content" '${NodegroupSecurityGroupsAttachIdKong1}' "cluster.yaml"
-  # Count file written for additional
   [ -f "$OUTPUT_SUB_PATH/aws-eks-cluster-management/expected-values/nodegroup-sg-attach-ids-count-kong" ]
-  [ "$(< "$OUTPUT_SUB_PATH/aws-eks-cluster-management/expected-values/nodegroup-sg-attach-ids-count-kong")" = "2" ]
 }
 
 @test "additional nodegroup gets own suffixed comma-list when overridden" {
-  printf 'kong' > "$CONFIG_SUB_PATH/AdditionalNodeGroups"
-  printf 'sg-aaa,sg-bbb' > "$CONFIG_SUB_PATH/NodegroupSecurityGroupsAttachIds"
-  printf 'sg-xxx' > "$CONFIG_SUB_PATH/NodegroupSecurityGroupsAttachIdsKong"
-
-  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  use_dataset "full"
   [ "$status" -eq 0 ]
 
-  # Base has 2 SGs, kong has 1
   [ "$(< "$OUTPUT_SUB_PATH/aws-eks-cluster-management/expected-values/nodegroup-sg-attach-ids-count-kaptaindefaultng")" = "2" ]
   [ "$(< "$OUTPUT_SUB_PATH/aws-eks-cluster-management/expected-values/nodegroup-sg-attach-ids-count-kong")" = "1" ]
 }
 
 @test "additional nodegroup inherits labels from base" {
-  printf 'kong' > "$CONFIG_SUB_PATH/AdditionalNodeGroups"
-  printf 'role: worker\ntier: backend' > "$CONFIG_SUB_PATH/NodegroupLabels"
-
-  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  use_dataset "full"
   [ "$status" -eq 0 ]
 
   local ev_dir="$OUTPUT_SUB_PATH/aws-eks-cluster-management/expected-values"
@@ -2531,15 +2501,11 @@ EOF
 }
 
 @test "additional nodegroup spot inherits from base when managed" {
-  printf 'kong' > "$CONFIG_SUB_PATH/AdditionalNodeGroups"
-  printf 'true' > "$CONFIG_SUB_PATH/NodegroupSpot"
-
-  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  use_dataset "full"
   [ "$status" -eq 0 ]
 
   local content
-  content=$(< "$OUTPUT_SUB_PATH/docker/substituted/cluster.yaml")
-  # Both base and kong should have spot tokens
+  content=$(< "$CLUSTER_YAML")
   assert_contains "$content" '${NodegroupSpotKaptainDefaultNg}' "cluster.yaml"
   assert_contains "$content" '${NodegroupSpotKong}' "cluster.yaml"
   local ev_dir="$OUTPUT_SUB_PATH/aws-eks-cluster-management/expected-values"

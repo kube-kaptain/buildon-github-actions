@@ -139,6 +139,35 @@ fail() {
   errors=$((errors + 1))
 }
 
+# validate_flat_yaml_keys - Strict check that tag/label/annotation keys are clean after substitution
+#
+# Keys must be alphanumerics, hyphens, underscores, dots, slashes only.
+# Catches unresolved token placeholders in key positions (yq accepts them as valid strings).
+#
+# Args:
+#   $1 - yaml file path
+#   $2 - yq path expression (e.g., ".metadata.tags")
+validate_flat_yaml_keys() {
+  local yaml_file="$1"
+  local yq_path="$2"
+
+  # Skip if section doesn't exist
+  if ! yq -e "${yq_path}" "${yaml_file}" &>/dev/null; then
+    return
+  fi
+
+  local keys
+  keys=$(yq "${yq_path} | keys | .[]" "${yaml_file}" 2>/dev/null || true)
+  while IFS= read -r key; do
+    if [[ -z "${key}" ]]; then
+      continue
+    fi
+    if [[ ! "${key}" =~ ^[A-Za-z][A-Za-z0-9_./-]*$ ]]; then
+      fail "${yq_path}: key '${key}' contains invalid characters (unresolved token?)"
+    fi
+  done <<< "${keys}"
+}
+
 # validate_values_are_strings - Check all values in a YAML section are strings
 #
 # After token substitution, YAML-unsafe values (booleans, numbers, null, etc.)
@@ -428,8 +457,10 @@ validate_substituted_yaml() {
 
     log ""
     log "  --- Node group value types ---"
-    # Validate nodegroup labels and tags values are strings
+    # Validate nodegroup labels and tags keys and values
     for i in $(seq 0 $((nodegroup_count - 1))); do
+      validate_flat_yaml_keys "${yaml_file}" ".${ng_yaml_key}[${i}].labels"
+      validate_flat_yaml_keys "${yaml_file}" ".${ng_yaml_key}[${i}].tags"
       validate_values_are_strings "${yaml_file}" ".${ng_yaml_key}[${i}].labels"
       validate_values_are_strings "${yaml_file}" ".${ng_yaml_key}[${i}].tags"
     done
@@ -562,7 +593,9 @@ validate_substituted_yaml() {
 
   log ""
   log "  --- Metadata value types ---"
-  # Validate metadata tags and annotations values are strings
+  # Validate metadata tags and annotations keys and values
+  validate_flat_yaml_keys "${yaml_file}" ".metadata.tags"
+  validate_flat_yaml_keys "${yaml_file}" ".metadata.annotations"
   validate_values_are_strings "${yaml_file}" ".metadata.tags"
   validate_values_are_strings "${yaml_file}" ".metadata.annotations"
 }
