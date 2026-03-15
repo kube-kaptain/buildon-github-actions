@@ -688,7 +688,7 @@ if [[ -f "${CONFIG_SUB_PATH}/${metadata_annotations_config_name}" ]]; then
 fi
 
 if [[ ${validation_errors} -gt 0 ]]; then
-  log_error "Validation failed with ${validation_errors} missing config file(s)"
+  log_error "Validation failed with ${validation_errors} error(s)"
   exit 1
 fi
 
