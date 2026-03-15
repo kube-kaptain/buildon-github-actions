@@ -146,7 +146,7 @@ teardown() {
   assert_output_contains "AWS_ACCOUNT_ID"
   assert_output_contains "CLUSTER_ORIGIN"
   assert_output_contains "NODEGROUP_TYPE"
-  assert_output_contains "7 missing config file(s)"
+  assert_output_contains "7 error(s)"
 }
 
 # === Private networking config ===
@@ -1095,6 +1095,55 @@ YAML
 
 @test "fails with invalid nodegroup tag format" {
   printf 'also bad' > "$CONFIG_SUB_PATH/NodegroupTags"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -ne 0 ]
+  assert_output_contains "invalid tag at line 1"
+}
+
+@test "accepts token placeholders in metadata tag keys" {
+  cat > "$CONFIG_SUB_PATH/MetadataTags" << 'EOF'
+kubernetes.io/cluster/${ProjectName}: owned
+${ProjectName}/managed-by: kaptain
+Environment: ${Environment}
+EOF
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -eq 0 ]
+}
+
+@test "accepts token placeholders in nodegroup tag keys" {
+  cat > "$CONFIG_SUB_PATH/NodegroupTags" << 'EOF'
+${ProjectName}/team: platform
+CostCenter: ${CostCenter}
+EOF
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -eq 0 ]
+}
+
+@test "accepts token placeholders in nodegroup label keys" {
+  cat > "$CONFIG_SUB_PATH/NodegroupLabels" << 'EOF'
+${ProjectName}/role: worker
+app.kubernetes.io/managed-by: ${ManagedBy}
+EOF
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -eq 0 ]
+}
+
+@test "accepts token placeholders in metadata annotation keys" {
+  cat > "$CONFIG_SUB_PATH/MetadataAnnotations" << 'EOF'
+${ProjectName}/description: test cluster
+kaptain.org/version: ${Version}
+EOF
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -eq 0 ]
+}
+
+@test "still rejects completely invalid tag format with tokens" {
+  printf '${broken' > "$CONFIG_SUB_PATH/MetadataTags"
 
   run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
   [ "$status" -ne 0 ]

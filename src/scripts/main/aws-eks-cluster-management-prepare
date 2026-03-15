@@ -243,10 +243,11 @@ is_yaml_unsafe_value() {
   return 1
 }
 
-# validate_flat_yaml_tags - Validate a flat yaml tags config file
+# validate_flat_yaml_tags - Validate a flat yaml tags config file (pre-substitution)
 #
 # Each non-empty line must be: key: value (with optional single or double quotes)
 # Blank lines and lines containing only whitespace are skipped.
+# Token placeholders are allowed anywhere (validated strictly in post-build-validate).
 #
 # Args:
 #   $1 - UPPER_SNAKE token name (for error messages)
@@ -265,8 +266,9 @@ validate_flat_yaml_tags() {
     # Skip blank lines
     [[ "${line}" =~ ^[[:space:]]*$ ]] && continue
 
-    # Must match: key (alphanumerics, hyphens, underscores, dots, slashes): space then value
-    if [[ ! "${line}" =~ ^[A-Za-z][A-Za-z0-9_./-]*:[[:space:]]+.+$ ]]; then
+    # Loose check: key: value format allowing token placeholders ($, {, }, spaces in keys)
+    # Strict format validation happens in post-build-validate after substitution
+    if [[ ! "${line}" =~ ^[A-Za-z$\{][A-Za-z0-9_./\ \}\$\{-]*:[[:space:]]+.+$ ]]; then
       log_error "${token_name}: invalid tag at line ${line_num}: ${line}"
       log_error "  Expected format: TagName: value  or  TagName: \"value\""
       tag_errors=$((tag_errors + 1))
