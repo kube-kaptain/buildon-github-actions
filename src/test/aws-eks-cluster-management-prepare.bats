@@ -151,8 +151,8 @@ kaptain.org/version: ${Version}
 kaptain.org/enabled: true
 kaptain.org/priority: 1
 EOF
-  printf 'arn:aws:iam::123456789012:role/vpc-cni-role' > "$CONFIG_SUB_PATH/AddonsVpcCniServiceAccountRoleArn"
-  printf 'arn:aws:iam::123456789012:role/ebs-role' > "$CONFIG_SUB_PATH/AddonsAwsEbsCsiDriverServiceAccountRoleArn"
+  printf 'arn:aws:iam::123456789012:role/coredns-role' > "$CONFIG_SUB_PATH/AddonsCorednsServiceAccountRoleArn"
+  printf 'arn:aws:iam::123456789012:role/kube-proxy-role' > "$CONFIG_SUB_PATH/AddonsKubeProxyServiceAccountRoleArn"
   mkdir -p "$SECRETS_SUB_PATH"
   echo "encrypted-credentials" > "$SECRETS_SUB_PATH/aws-credentials.age"
   printf 'false' > "$CONFIG_SUB_PATH/IamWithOidc"
@@ -1447,7 +1447,7 @@ YAML
 
   local content
   content=$(< "$CLUSTER_YAML")
-  assert_contains "$content" 'serviceAccountRoleARN: ${AddonsVpcCniServiceAccountRoleArn}' "cluster.yaml"
+  assert_contains "$content" 'serviceAccountRoleARN: ${AddonsCorednsServiceAccountRoleArn}' "cluster.yaml"
 }
 
 @test "does not add serviceAccountRoleARN when config file absent" {
@@ -1465,7 +1465,12 @@ YAML
 
   local content
   content=$(< "$CLUSTER_YAML")
-  assert_contains "$content" 'serviceAccountRoleARN: ${AddonsAwsEbsCsiDriverServiceAccountRoleArn}' "cluster.yaml"
+  # kube-proxy has it
+  assert_contains "$content" 'serviceAccountRoleARN: ${AddonsKubeProxyServiceAccountRoleArn}' "cluster.yaml"
+  # Both addons have ARNs, so count should be 2
+  local count
+  count=$(echo "$content" | grep -c "serviceAccountRoleARN" || true)
+  [ "$count" -eq 2 ]
 }
 
 # === Cilium eBPF networking ===
