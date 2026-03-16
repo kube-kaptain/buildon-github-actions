@@ -51,7 +51,7 @@
 #   NodegroupTaints                       - Nodegroup taints (raw YAML list: - key/effect[/value] per entry)
 #   NodegroupAvailabilityZones            - Pin nodegroup to specific AZs, comma-separated (e.g., eu-west-1a,eu-west-1b)
 #   NodegroupSpot                         - Use Spot instances (true or false), managed nodegroups only
-#   AdditionalNodeGroups                  - Additional nodegroups, comma-separated (e.g., kong,monitoring)
+#   AdditionalNodegroups                  - Additional nodegroups, comma-separated (e.g., kong,monitoring)
 #     Each field is shared unless overridden with a suffixed config file
 #     (e.g., NodegroupInstanceTypeKong overrides instanceType for the kong nodegroup)
 #     Base nodegroup uses KaptainDefaultNg suffix internally for tokens

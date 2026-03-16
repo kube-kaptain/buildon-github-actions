@@ -171,7 +171,7 @@ EOF
   printf 'coredns,kube-proxy' > "$CONFIG_SUB_PATH/EksAddonsList"
   printf 'eu-west-1a,eu-west-1b,eu-west-1c' > "$CONFIG_SUB_PATH/NodegroupAvailabilityZones"
   printf 'true' > "$CONFIG_SUB_PATH/NodegroupSpot"
-  printf 'kong,monitoring' > "$CONFIG_SUB_PATH/AdditionalNodeGroups"
+  printf 'kong,monitoring' > "$CONFIG_SUB_PATH/AdditionalNodegroups"
   printf 'g5.xlarge' > "$CONFIG_SUB_PATH/NodegroupInstanceTypeKong"
   printf 'sg-xxx' > "$CONFIG_SUB_PATH/NodegroupSecurityGroupsAttachIdsKong"
   printf 'false' > "$CONFIG_SUB_PATH/NodegroupSpotKong"
@@ -2309,7 +2309,7 @@ YAML
   [ "$ng_count" -eq 1 ]
 }
 
-@test "generates additional nodegroups when AdditionalNodeGroups config present" {
+@test "generates additional nodegroups when AdditionalNodegroups config present" {
   use_dataset "full"
   [ "$status" -eq 0 ]
 
@@ -2385,7 +2385,7 @@ YAML
 }
 
 @test "accepts hyphenated suffix like kong-1" {
-  printf 'kong-1' > "$CONFIG_SUB_PATH/AdditionalNodeGroups"
+  printf 'kong-1' > "$CONFIG_SUB_PATH/AdditionalNodegroups"
   printf 't3.large' > "$CONFIG_SUB_PATH/NodegroupInstanceTypeKong1"
 
   run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
@@ -2401,7 +2401,7 @@ YAML
 }
 
 @test "accepts digit-starting suffix like 1-kong" {
-  printf '1-kong' > "$CONFIG_SUB_PATH/AdditionalNodeGroups"
+  printf '1-kong' > "$CONFIG_SUB_PATH/AdditionalNodegroups"
   printf 't3.large' > "$CONFIG_SUB_PATH/NodegroupInstanceType1Kong"
 
   run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
@@ -2417,7 +2417,7 @@ YAML
 }
 
 @test "rejects suffix starting with hyphen" {
-  printf '%s' '-kong' > "$CONFIG_SUB_PATH/AdditionalNodeGroups"
+  printf '%s' '-kong' > "$CONFIG_SUB_PATH/AdditionalNodegroups"
 
   run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
   [ "$status" -ne 0 ]
@@ -2425,7 +2425,7 @@ YAML
 }
 
 @test "rejects suffix ending with hyphen" {
-  printf 'kong-' > "$CONFIG_SUB_PATH/AdditionalNodeGroups"
+  printf 'kong-' > "$CONFIG_SUB_PATH/AdditionalNodegroups"
 
   run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
   [ "$status" -ne 0 ]
@@ -2433,7 +2433,7 @@ YAML
 }
 
 @test "rejects suffix with consecutive hyphens" {
-  printf 'kong--gpu' > "$CONFIG_SUB_PATH/AdditionalNodeGroups"
+  printf 'kong--gpu' > "$CONFIG_SUB_PATH/AdditionalNodegroups"
 
   run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
   [ "$status" -ne 0 ]
@@ -2441,7 +2441,7 @@ YAML
 }
 
 @test "rejects suffix with special characters" {
-  printf 'kong.gpu' > "$CONFIG_SUB_PATH/AdditionalNodeGroups"
+  printf 'kong.gpu' > "$CONFIG_SUB_PATH/AdditionalNodegroups"
 
   run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
   [ "$status" -ne 0 ]
@@ -2449,7 +2449,7 @@ YAML
 }
 
 @test "rejects suffix with uppercase" {
-  printf 'Kong' > "$CONFIG_SUB_PATH/AdditionalNodeGroups"
+  printf 'Kong' > "$CONFIG_SUB_PATH/AdditionalNodegroups"
 
   run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
   [ "$status" -ne 0 ]
@@ -2457,7 +2457,7 @@ YAML
 }
 
 @test "rejects suffix with underscore" {
-  printf 'kong_gpu' > "$CONFIG_SUB_PATH/AdditionalNodeGroups"
+  printf 'kong_gpu' > "$CONFIG_SUB_PATH/AdditionalNodegroups"
 
   run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
   [ "$status" -ne 0 ]
@@ -2465,7 +2465,7 @@ YAML
 }
 
 @test "fails with duplicate additional nodegroup suffixes" {
-  printf 'kong,kong' > "$CONFIG_SUB_PATH/AdditionalNodeGroups"
+  printf 'kong,kong' > "$CONFIG_SUB_PATH/AdditionalNodegroups"
 
   run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
   [ "$status" -ne 0 ]
@@ -2514,7 +2514,7 @@ YAML
 }
 
 @test "additional nodegroup spot override with own value" {
-  printf 'kong' > "$CONFIG_SUB_PATH/AdditionalNodeGroups"
+  printf 'kong' > "$CONFIG_SUB_PATH/AdditionalNodegroups"
   printf 'false' > "$CONFIG_SUB_PATH/NodegroupSpotKong"
 
   run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
@@ -2533,7 +2533,7 @@ YAML
 # === Kaptain prefix rejection ===
 
 @test "fails with additional nodegroup suffix starting with kaptain" {
-  printf 'kaptainspecial' > "$CONFIG_SUB_PATH/AdditionalNodeGroups"
+  printf 'kaptainspecial' > "$CONFIG_SUB_PATH/AdditionalNodegroups"
 
   run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
   [ "$status" -ne 0 ]
