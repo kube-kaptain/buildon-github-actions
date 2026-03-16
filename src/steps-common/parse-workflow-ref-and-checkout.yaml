@@ -2,7 +2,7 @@
 # Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
 
 - name: Checkout
-  uses: actions/checkout@v4.2.2
+  uses: actions/checkout@v5.0.1
   with:
     fetch-depth: 0
     fetch-tags: true
@@ -52,7 +52,7 @@
 
 - name: Checkout actions
   if: steps.parse.outputs.ref != 'LOCAL'
-  uses: actions/checkout@v4.2.2
+  uses: actions/checkout@v5.0.1
   with:
     repository: kube-kaptain/buildon-github-actions
     ref: ${{ steps.parse.outputs.ref }}

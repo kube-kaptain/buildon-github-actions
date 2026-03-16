@@ -60,7 +60,7 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - name: Checkout
-        uses: actions/checkout@v4.2.2
+        uses: actions/checkout@v5.0.1
         with:
           fetch-depth: 0
           fetch-tags: true
@@ -110,7 +110,7 @@ jobs:
 
       - name: Checkout actions
         if: steps.parse.outputs.ref != 'LOCAL' && success()
-        uses: actions/checkout@v4.2.2
+        uses: actions/checkout@v5.0.1
         with:
           repository: kube-kaptain/buildon-github-actions
           ref: ${{ steps.parse.outputs.ref }}
