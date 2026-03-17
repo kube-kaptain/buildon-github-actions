@@ -49,6 +49,7 @@ Docker Build Dockerfile
 | `hook-pre-tagging-tests-script-sub-path` | string | `""` | Path to pre-tagging test script relative to .github/ (e.g., bin/pre-tagging.bash) |
 | `hook-pre-docker-prepare-script-sub-path` | string | `""` | Path to pre-docker prepare script relative to .github/ (e.g., bin/pre-docker-prepare.bash) |
 | `hook-post-docker-tests-script-sub-path` | string | `""` | Path to post-docker test script relative to .github/ (e.g., bin/post-docker.bash) |
+| `hook-post-versions-and-naming-script-sub-path` | string | `""` | Path to post-versions-and-naming script relative to .github/ (e.g., bin/post-versions-and-naming.bash) |
 | `change-source-note-enabled` | boolean | `true` | Write a git note with merge candidate metadata for release tracking |
 | `github-release-enabled` | boolean | `true` | Create a GitHub release on version tags |
 | `github-release-substituted-files` | string | `""` | Files with token substitution and version suffix (space-separated) |

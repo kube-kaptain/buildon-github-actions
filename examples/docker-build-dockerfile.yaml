@@ -102,6 +102,7 @@ jobs:
 # └─────────────────────────────────────────────────────────────────────────┘
 #     with:
 #       hook-pre-tagging-tests-script-sub-path: 'bin/run-tests.bash'
+#       hook-post-versions-and-naming-script-sub-path: 'bin/post-versions.bash'
 #       hook-post-docker-tests-script-sub-path: 'bin/test-container.bash'
 
 # ┌─────────────────────────────────────────────────────────────────────────┐

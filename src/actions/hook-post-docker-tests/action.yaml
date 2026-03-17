@@ -856,6 +856,11 @@ inputs:
     description: 'Path to post-package test script relative to .github/ (e.g., bin/post-package.bash)'
     required: false
     default: ''
+  # Post versions-and-naming hook script path
+  hook-post-versions-and-naming-script-sub-path:
+    description: 'Path to post-versions-and-naming script relative to .github/ (e.g., bin/post-versions-and-naming.bash)'
+    required: false
+    default: ''
   # GitHub release
   github-release-enabled:
     description: 'Create a GitHub release on version tags'
@@ -1165,6 +1170,7 @@ runs:
         HOOK_POST_DOCKER_TESTS_SCRIPT_SUB_PATH: .github/${{ inputs.hook-post-docker-tests-script-sub-path }}
         HOOK_PRE_PACKAGE_PREPARE_SCRIPT_SUB_PATH: .github/${{ inputs.hook-pre-package-prepare-script-sub-path }}
         HOOK_POST_PACKAGE_TESTS_SCRIPT_SUB_PATH: .github/${{ inputs.hook-post-package-tests-script-sub-path }}
+        HOOK_POST_VERSIONS_AND_NAMING_SCRIPT_SUB_PATH: .github/${{ inputs.hook-post-versions-and-naming-script-sub-path }}
 
         # Workflow inputs - github release
         GITHUB_RELEASE_ENABLED: ${{ inputs.github-release-enabled }}

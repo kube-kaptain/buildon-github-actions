@@ -7,6 +7,7 @@
 #
 # Available inputs to configure test hooks and workflow support guidance:
 # - hook-pre-tagging-tests-script-sub-path:  Runs before version tagging in almost all workflows
+# - hook-post-versions-and-naming-script-sub-path: Runs after version calculation in all versioning workflows
 # - hook-post-docker-tests-script-sub-path:  Runs after docker build in any workflow that includes a docker build (not retag)
 # - hook-post-package-tests-script-sub-path: Runs after manifest packaging has occurred
 #
@@ -111,6 +112,7 @@ jobs:
 # └─────────────────────────────────────────────────────────────────────────┘
 #     with:
 #       hook-pre-tagging-tests-script-sub-path: 'bin/run-tests.bash'
+#       hook-post-versions-and-naming-script-sub-path: 'bin/post-versions.bash'
 #       hook-post-docker-tests-script-sub-path: 'bin/test-container.bash'
 
 # ┌─────────────────────────────────────────────────────────────────────────┐

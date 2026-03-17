@@ -31,6 +31,7 @@ inputs:
   # INJECT-INPUT: hooks-pre-tagging
   # INJECT-INPUT: hooks-docker
   # INJECT-INPUT: hooks-package
+  # INJECT-INPUT: hooks-post-versions-and-naming
   # INJECT-INPUT: github-release
   # INJECT-INPUT: docker-platform
 
@@ -317,6 +318,7 @@ runs:
         HOOK_POST_DOCKER_TESTS_SCRIPT_SUB_PATH: .github/${{ inputs.hook-post-docker-tests-script-sub-path }}
         HOOK_PRE_PACKAGE_PREPARE_SCRIPT_SUB_PATH: .github/${{ inputs.hook-pre-package-prepare-script-sub-path }}
         HOOK_POST_PACKAGE_TESTS_SCRIPT_SUB_PATH: .github/${{ inputs.hook-post-package-tests-script-sub-path }}
+        HOOK_POST_VERSIONS_AND_NAMING_SCRIPT_SUB_PATH: .github/${{ inputs.hook-post-versions-and-naming-script-sub-path }}
 
         # Workflow inputs - github release
         GITHUB_RELEASE_ENABLED: ${{ inputs.github-release-enabled }}

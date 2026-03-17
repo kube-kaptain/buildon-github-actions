@@ -37,6 +37,7 @@ on:
       # INJECT-INPUT: basic-quality-checks
 
       # INJECT-INPUT: hooks-pre-tagging
+      # INJECT-INPUT: hooks-post-versions-and-naming
 
       # INJECT-INPUT: change-source-note
 
@@ -157,6 +158,11 @@ jobs:
       # INJECT: github-check-start(name="Versions & Naming", id="check-versions")
       # INJECT: versions-and-naming
       # INJECT: github-check-end(name="Versions & Naming", id="check-versions")
+
+      # === Post-Versions-and-Naming ===
+      # INJECT: github-check-start(name="Post-Versions-and-Naming", id="check-post-versions-and-naming", if="inputs.hook-post-versions-and-naming-script-sub-path != ''")
+      # INJECT: hook-post-versions-and-naming
+      # INJECT: github-check-end(name="Post-Versions-and-Naming", id="check-post-versions-and-naming", if="inputs.hook-post-versions-and-naming-script-sub-path != ''")
 
       # === Change Source Note ===
       # INJECT: github-check-start(name="Change Source Note", id="check-change-source-note", if="steps.versions.outputs.is-release != 'true'")

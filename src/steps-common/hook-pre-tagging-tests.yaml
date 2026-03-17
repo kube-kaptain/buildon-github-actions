@@ -128,6 +128,7 @@
     hook-post-docker-tests-script-sub-path: ${{ inputs.hook-post-docker-tests-script-sub-path }}
     hook-pre-package-prepare-script-sub-path: ${{ inputs.hook-pre-package-prepare-script-sub-path }}
     hook-post-package-tests-script-sub-path: ${{ inputs.hook-post-package-tests-script-sub-path }}
+    hook-post-versions-and-naming-script-sub-path: ${{ inputs.hook-post-versions-and-naming-script-sub-path }}
 
     # GitHub release
     github-release-enabled: ${{ inputs.github-release-enabled }}

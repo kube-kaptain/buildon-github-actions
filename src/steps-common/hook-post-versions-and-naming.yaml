@@ -1,10 +1,10 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
 
-- name: Run post-docker tests
-  if: inputs.hook-post-docker-tests-script-sub-path != ''
-  id: post-docker-tests
-  uses: ./.github/buildon-github-actions/src/actions/hook-post-docker-tests
+- name: Run post-versions-and-naming
+  if: inputs.hook-post-versions-and-naming-script-sub-path != ''
+  id: post-versions-and-naming
+  uses: ./.github/buildon-github-actions/src/actions/hook-post-versions-and-naming
   with:
     image-build-command: ${{ steps.validate-tooling.outputs.IMAGE_BUILD_COMMAND }}
     docker-platform: ${{ inputs.docker-platform }}
@@ -152,5 +152,3 @@
     git-tag: ${{ steps.versions.outputs.git-tag }}
     project-name: ${{ steps.versions.outputs.project-name }}
     is-release: ${{ steps.versions.outputs.is-release }}
-    # Docker outputs (from docker-build)
-    docker-target-image-full-uri: ${{ steps.docker-build.outputs.docker-target-image-full-uri }}
