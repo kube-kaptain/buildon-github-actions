@@ -18,11 +18,13 @@ set -euo pipefail
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/../lib" && pwd)/setup-local-context.bash"
 
 run_step "validate-tooling"
+run_step "hook-pre-build"
 run_step "basic-quality-checks"
 run_step "docker-registry-logins"
 run_step "docker-platform-setup"
 run_step "hook-pre-tagging-tests"
 run_step "versions-and-naming"
+run_step "hook-post-versions-and-naming"
 run_step "change-source-note-write"
 run_step "release-change-data-generate"
 run_step "release-change-data-oci-package"
@@ -35,6 +37,7 @@ run_step "hook-post-docker-tests"
 run_step "docker-multi-tag"
 run_step "git-push-tag"
 run_step "docker-push-all"
+run_step "hook-post-build"
 
 # CI provider: release file preparation, release creation
 

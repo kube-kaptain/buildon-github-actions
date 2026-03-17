@@ -20,7 +20,7 @@ on:
 
 jobs:
   retag:
-    uses: kube-kaptain/buildon-github-actions/.github/workflows/docker-build-retag.yaml@1.0.84
+    uses: kube-kaptain/buildon-github-actions/.github/workflows/docker-build-retag.yaml@1.0.85
     permissions:
       contents: write
       packages: write
@@ -103,7 +103,10 @@ jobs:
 # │ Test Injection                                                          │
 # └─────────────────────────────────────────────────────────────────────────┘
 #     with:
+#       hook-pre-build-script-sub-path: 'bin/pre-build.bash'
 #       hook-pre-tagging-tests-script-sub-path: 'bin/run-tests.bash'
+#       hook-post-versions-and-naming-script-sub-path: 'bin/post-versions.bash'
+#       hook-post-build-script-sub-path: 'bin/post-build.bash'
 
 # ┌─────────────────────────────────────────────────────────────────────────┐
 # │ Change Source Tracking                                                  │

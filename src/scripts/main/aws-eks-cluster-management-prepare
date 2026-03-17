@@ -49,7 +49,7 @@
 #   NODEGROUP_SPOT                         - Use Spot instances (true or false), managed nodegroups only
 #   NODEGROUP_VOLUME_KMS_KEY_ID            - KMS key ARN for EBS volume encryption
 #   NODEGROUP_IAM_INSTANCE_ROLE_ARN        - Custom IAM instance role ARN for nodegroup
-#   ADDITIONAL_NODE_GROUPS                 - Additional nodegroups, comma-separated (e.g., kong,monitoring)
+#   ADDITIONAL_NODEGROUPS                 - Additional nodegroups, comma-separated (e.g., kong,monitoring)
 #     Each per-nodegroup field is shared unless overridden with a suffixed config file
 #     (e.g., NODEGROUP_INSTANCE_TYPE_KONG to NodegroupInstanceTypeKong overrides instanceType for kong)
 #     Suffix must be lowercase alphanumeric with optional hyphens (no leading/trailing/consecutive hyphens)
@@ -647,7 +647,7 @@ fi
 additional_ng_count=0
 declare -a additional_ng_suffixes=()
 declare -a additional_ng_suffixes_upper=()
-additional_ng_config_name=$(convert_token_name "${TOKEN_NAME_STYLE}" "ADDITIONAL_NODE_GROUPS")
+additional_ng_config_name=$(convert_token_name "${TOKEN_NAME_STYLE}" "ADDITIONAL_NODEGROUPS")
 if [[ -f "${CONFIG_SUB_PATH}/${additional_ng_config_name}" ]]; then
   additional_ng_raw=$(< "${CONFIG_SUB_PATH}/${additional_ng_config_name}")
   additional_ng_raw="${additional_ng_raw%$'\n'}"
@@ -658,10 +658,10 @@ if [[ -f "${CONFIG_SUB_PATH}/${additional_ng_config_name}" ]]; then
     suffix="${additional_ng_suffixes[${i}]}"
 
     if [[ ! "${suffix}" =~ ^[a-z0-9](-?[a-z0-9])*$ ]]; then
-      log_error "ADDITIONAL_NODE_GROUPS: suffix '${suffix}' must be lowercase alphanumeric with optional hyphens (no leading/trailing/consecutive hyphens)"
+      log_error "ADDITIONAL_NODEGROUPS: suffix '${suffix}' must be lowercase alphanumeric with optional hyphens (no leading/trailing/consecutive hyphens)"
       validation_errors=$((validation_errors + 1))
     elif [[ "${suffix}" == kaptain* ]]; then
-      log_error "ADDITIONAL_NODE_GROUPS: suffix '${suffix}' must not start with 'kaptain' - this prefix is reserved"
+      log_error "ADDITIONAL_NODEGROUPS: suffix '${suffix}' must not start with 'kaptain' - this prefix is reserved"
       validation_errors=$((validation_errors + 1))
     fi
 
@@ -673,7 +673,7 @@ if [[ -f "${CONFIG_SUB_PATH}/${additional_ng_config_name}" ]]; then
   if [[ ${additional_ng_count} -gt 1 ]]; then
     unique_count=$(printf '%s\n' "${additional_ng_suffixes[@]}" | sort -u | wc -l | tr -d ' ')
     if [[ "${unique_count}" -ne "${additional_ng_count}" ]]; then
-      log_error "ADDITIONAL_NODE_GROUPS: duplicate suffixes found"
+      log_error "ADDITIONAL_NODEGROUPS: duplicate suffixes found"
       validation_errors=$((validation_errors + 1))
     fi
   fi

@@ -44,8 +44,8 @@ setup() {
 
   # Create all main script mocks
   for script in \
-    validate-tooling basic-quality-checks docker-registry-logins docker-platform-setup \
-    hook-pre-tagging-tests versions-and-naming change-source-note-write \
+    validate-tooling hook-pre-build basic-quality-checks docker-registry-logins docker-platform-setup \
+    hook-pre-tagging-tests versions-and-naming hook-post-versions-and-naming change-source-note-write \
     release-change-data-generate release-change-data-oci-package \
     docker-build-dockerfile docker-build-retag docker-multi-tag git-push-tag docker-push-all \
     hook-pre-docker-prepare hook-post-docker-tests hook-pre-package-prepare hook-post-package-tests \
@@ -54,7 +54,7 @@ setup() {
     kubernetes-manifests-repo-provider-package kubernetes-manifests-repo-provider-publish \
     spec-package-prepare spec-validate \
     aws-eks-cluster-management-prepare aws-eks-cluster-management-pre-build-validate \
-    aws-eks-cluster-management-post-build-validate; do
+    aws-eks-cluster-management-post-build-validate hook-post-build; do
     create_mock_script "$MOCK_SCRIPTS_DIR/$script"
   done
 
@@ -111,17 +111,20 @@ basic-quality-checks"
   [ "$status" -eq 0 ]
 
   assert_call_order "validate-tooling
+hook-pre-build
 basic-quality-checks
 docker-registry-logins
 docker-platform-setup
 hook-pre-tagging-tests
 versions-and-naming
+hook-post-versions-and-naming
 change-source-note-write
 release-change-data-generate
 release-change-data-oci-package
 docker-multi-tag
 git-push-tag
-docker-push-all"
+docker-push-all
+hook-post-build"
 }
 
 @test "reference: docker-build-dockerfile calls scripts in correct order" {
@@ -129,11 +132,13 @@ docker-push-all"
   [ "$status" -eq 0 ]
 
   assert_call_order "validate-tooling
+hook-pre-build
 basic-quality-checks
 docker-registry-logins
 docker-platform-setup
 hook-pre-tagging-tests
 versions-and-naming
+hook-post-versions-and-naming
 change-source-note-write
 release-change-data-generate
 release-change-data-oci-package
@@ -142,7 +147,8 @@ docker-build-dockerfile
 hook-post-docker-tests
 docker-multi-tag
 git-push-tag
-docker-push-all"
+docker-push-all
+hook-post-build"
 }
 
 @test "reference: docker-build-retag calls scripts in correct order" {
@@ -150,18 +156,21 @@ docker-push-all"
   [ "$status" -eq 0 ]
 
   assert_call_order "validate-tooling
+hook-pre-build
 basic-quality-checks
 docker-registry-logins
 docker-platform-setup
 hook-pre-tagging-tests
 versions-and-naming
+hook-post-versions-and-naming
 change-source-note-write
 release-change-data-generate
 release-change-data-oci-package
 docker-build-retag
 docker-multi-tag
 git-push-tag
-docker-push-all"
+docker-push-all
+hook-post-build"
 }
 
 @test "reference: kubernetes-app-docker-dockerfile calls scripts in correct order" {
@@ -169,11 +178,13 @@ docker-push-all"
   [ "$status" -eq 0 ]
 
   assert_call_order "validate-tooling
+hook-pre-build
 basic-quality-checks
 docker-registry-logins
 docker-platform-setup
 hook-pre-tagging-tests
 versions-and-naming
+hook-post-versions-and-naming
 change-source-note-write
 release-change-data-generate
 release-change-data-oci-package
@@ -194,7 +205,8 @@ hook-post-package-tests
 docker-multi-tag
 git-push-tag
 kubernetes-manifests-repo-provider-publish
-docker-push-all"
+docker-push-all
+hook-post-build"
 }
 
 @test "reference: kubernetes-app-docker-retag calls scripts in correct order" {
@@ -202,11 +214,13 @@ docker-push-all"
   [ "$status" -eq 0 ]
 
   assert_call_order "validate-tooling
+hook-pre-build
 basic-quality-checks
 docker-registry-logins
 docker-platform-setup
 hook-pre-tagging-tests
 versions-and-naming
+hook-post-versions-and-naming
 change-source-note-write
 release-change-data-generate
 release-change-data-oci-package
@@ -225,7 +239,8 @@ hook-post-package-tests
 docker-multi-tag
 git-push-tag
 kubernetes-manifests-repo-provider-publish
-docker-push-all"
+docker-push-all
+hook-post-build"
 }
 
 @test "reference: kubernetes-app-manifests-only calls scripts in correct order" {
@@ -233,10 +248,12 @@ docker-push-all"
   [ "$status" -eq 0 ]
 
   assert_call_order "validate-tooling
+hook-pre-build
 basic-quality-checks
 docker-platform-setup
 hook-pre-tagging-tests
 versions-and-naming
+hook-post-versions-and-naming
 change-source-note-write
 release-change-data-generate
 release-change-data-oci-package
@@ -256,7 +273,8 @@ hook-post-package-tests
 docker-multi-tag
 git-push-tag
 kubernetes-manifests-repo-provider-publish
-docker-push-all"
+docker-push-all
+hook-post-build"
 }
 
 @test "reference: spec-check-filter-release calls scripts in correct order" {
@@ -264,11 +282,13 @@ docker-push-all"
   [ "$status" -eq 0 ]
 
   assert_call_order "validate-tooling
+hook-pre-build
 basic-quality-checks
 docker-registry-logins
 docker-platform-setup
 hook-pre-tagging-tests
 versions-and-naming
+hook-post-versions-and-naming
 change-source-note-write
 release-change-data-generate
 release-change-data-oci-package
@@ -277,7 +297,8 @@ docker-build-dockerfile
 spec-validate
 docker-multi-tag
 git-push-tag
-docker-push-all"
+docker-push-all
+hook-post-build"
 }
 
 @test "reference: aws-eks-cluster-management calls scripts in correct order" {
@@ -285,11 +306,13 @@ docker-push-all"
   [ "$status" -eq 0 ]
 
   assert_call_order "validate-tooling
+hook-pre-build
 basic-quality-checks
 docker-registry-logins
 docker-platform-setup
 hook-pre-tagging-tests
 versions-and-naming
+hook-post-versions-and-naming
 change-source-note-write
 release-change-data-generate
 release-change-data-oci-package
@@ -301,7 +324,8 @@ aws-eks-cluster-management-post-build-validate
 hook-post-docker-tests
 docker-multi-tag
 git-push-tag
-docker-push-all"
+docker-push-all
+hook-post-build"
 }
 
 

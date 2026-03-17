@@ -881,13 +881,13 @@ YAML
   assert_output_contains "entries but expected 2"
 }
 
-@test "fails when AdditionalNodeGroups source token in YAML" {
+@test "fails when AdditionalNodegroups source token in YAML" {
   local context_dir="$OUTPUT_SUB_PATH/docker/substituted"
-  yq -i '.managedNodeGroups[0].additionalGroups = "${AdditionalNodeGroups}"' "$context_dir/cluster.yaml"
+  yq -i '.managedNodeGroups[0].additionalGroups = "${AdditionalNodegroups}"' "$context_dir/cluster.yaml"
 
   run "$SCRIPTS_DIR/aws-eks-cluster-management-pre-build-validate"
   [ "$status" -ne 0 ]
-  assert_output_contains "AdditionalNodeGroups"
+  assert_output_contains "AdditionalNodegroups"
   assert_output_contains "comma-separated source token"
 }
 

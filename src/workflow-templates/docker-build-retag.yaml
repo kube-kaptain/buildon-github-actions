@@ -20,7 +20,10 @@ on:
 
       # INJECT-INPUT: basic-quality-checks
 
+      # INJECT-INPUT: hooks-pre-build
       # INJECT-INPUT: hooks-pre-tagging
+      # INJECT-INPUT: hooks-post-versions-and-naming
+      # INJECT-INPUT: hooks-post-build
 
       # INJECT-INPUT: change-source-note
 
@@ -112,6 +115,11 @@ jobs:
       # INJECT: validate-tooling
       # INJECT: github-check-end(name="Validate Tooling", id="check-validate-tooling")
 
+      # === Pre-Build ===
+      # INJECT: github-check-start(name="Pre-Build", id="check-pre-build", if="inputs.hook-pre-build-script-sub-path != ''")
+      # INJECT: hook-pre-build
+      # INJECT: github-check-end(name="Pre-Build", id="check-pre-build", if="inputs.hook-pre-build-script-sub-path != ''")
+
       # === Basic Quality Checks ===
       # INJECT: github-check-start(name="Basic Quality Checks", id="check-basic-quality", if="github.event_name == 'pull_request'")
       # INJECT: basic-quality-checks
@@ -139,6 +147,11 @@ jobs:
       # INJECT: github-check-start(name="Versions & Naming", id="check-versions")
       # INJECT: versions-and-naming
       # INJECT: github-check-end(name="Versions & Naming", id="check-versions")
+
+      # === Post-Versions-and-Naming ===
+      # INJECT: github-check-start(name="Post-Versions-and-Naming", id="check-post-versions-and-naming", if="inputs.hook-post-versions-and-naming-script-sub-path != ''")
+      # INJECT: hook-post-versions-and-naming
+      # INJECT: github-check-end(name="Post-Versions-and-Naming", id="check-post-versions-and-naming", if="inputs.hook-post-versions-and-naming-script-sub-path != ''")
 
       # === Change Source Note ===
       # INJECT: github-check-start(name="Change Source Note", id="check-change-source-note", if="steps.versions.outputs.is-release != 'true'")
@@ -184,3 +197,8 @@ jobs:
       # INJECT: github-check-start(name="GitHub Release", id="check-github-release", if="inputs.github-release-enabled == true && steps.versions.outputs.is-release == 'true'")
       # INJECT: github-release-docker
       # INJECT: github-check-end(name="GitHub Release", id="check-github-release", if="inputs.github-release-enabled == true && steps.versions.outputs.is-release == 'true'")
+
+      # === Post-Build ===
+      # INJECT: github-check-start(name="Post-Build", id="check-post-build", if="inputs.hook-post-build-script-sub-path != ''")
+      # INJECT: hook-post-build
+      # INJECT: github-check-end(name="Post-Build", id="check-post-build", if="inputs.hook-post-build-script-sub-path != ''")
