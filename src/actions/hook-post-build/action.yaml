@@ -1,8 +1,8 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
 
-name: Hook - Pre-Docker Prepare
-description: Runs user's hook script before Docker build preparation to modify Dockerfile, copy files, or perform setup
+name: Hook - Post-Build
+description: Runs user's hook script after all build steps complete
 
 inputs:
   # Container runtime
@@ -943,7 +943,7 @@ inputs:
 runs:
   using: composite
   steps:
-    - name: Run pre-docker prepare hook
+    - name: Run post-build hook
       shell: bash
       env:
         IMAGE_BUILD_COMMAND: ${{ inputs.image-build-command }}
@@ -1200,4 +1200,4 @@ runs:
         GIT_TAG: ${{ inputs.git-tag }}
         PROJECT_NAME: ${{ inputs.project-name }}
         IS_RELEASE: ${{ inputs.is-release }}
-      run: .github/buildon-github-actions/src/scripts/main/hook-pre-docker-prepare
+      run: .github/buildon-github-actions/src/scripts/main/hook-post-build

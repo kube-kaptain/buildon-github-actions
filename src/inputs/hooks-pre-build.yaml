@@ -1,0 +1,9 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
+#
+# Pre-build hook script path
+hook-pre-build-script-sub-path:
+  description: 'Path to pre-build script relative to .github/ (e.g., bin/pre-build.bash)'
+  required: false
+  type: string
+  default: ''

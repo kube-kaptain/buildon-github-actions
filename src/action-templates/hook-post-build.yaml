@@ -1,8 +1,8 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
 
-name: Hook - Post-Docker Tests
-description: Runs user's hook script after Docker image is built for integration tests, security scans, or validation
+name: Hook - Post-Build
+description: Runs user's hook script after all build steps complete
 
 inputs:
   # INJECT-INPUT: image-build-command
@@ -75,15 +75,10 @@ inputs:
   is-release:
     description: 'Whether this is a release build'
     required: true
-  # Docker outputs (from docker-build)
-  docker-target-image-full-uri:
-    description: 'Full target image URI (registry/name:tag)'
-    required: true
-
 runs:
   using: composite
   steps:
-    - name: Run post-docker tests hook
+    - name: Run post-build hook
       shell: bash
       env:
         IMAGE_BUILD_COMMAND: ${{ inputs.image-build-command }}
@@ -315,7 +310,7 @@ runs:
         HOOK_PRE_DOCKER_PREPARE_SCRIPT_SUB_PATH: .github/${{ inputs.hook-pre-docker-prepare-script-sub-path }}
         HOOK_POST_DOCKER_TESTS_SCRIPT_SUB_PATH: .github/${{ inputs.hook-post-docker-tests-script-sub-path }}
         HOOK_PRE_PACKAGE_PREPARE_SCRIPT_SUB_PATH: .github/${{ inputs.hook-pre-package-prepare-script-sub-path }}
-        HOOK_POST_PACKAGE_TESTS_SCRIPT_SUB_PATH: .github/${{ inputs.hook-post-package-tests-script-sub-path }}
+        HOOK_POST_PACKAGE_TESTS_SCRIPT_SUB_PATH: ${{ inputs.hook-post-package-tests-script-sub-path }}
         HOOK_POST_VERSIONS_AND_NAMING_SCRIPT_SUB_PATH: .github/${{ inputs.hook-post-versions-and-naming-script-sub-path }}
         HOOK_POST_BUILD_SCRIPT_SUB_PATH: .github/${{ inputs.hook-post-build-script-sub-path }}
 
@@ -340,6 +335,4 @@ runs:
         GIT_TAG: ${{ inputs.git-tag }}
         PROJECT_NAME: ${{ inputs.project-name }}
         IS_RELEASE: ${{ inputs.is-release }}
-        # Step outputs - docker outputs
-        DOCKER_TARGET_IMAGE_FULL_URI: ${{ inputs.docker-target-image-full-uri }}
-      run: .github/buildon-github-actions/src/scripts/main/hook-post-docker-tests
+      run: .github/buildon-github-actions/src/scripts/main/hook-post-build

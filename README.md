@@ -105,9 +105,11 @@ See [`examples/`](examples/) for more usage patterns.
 | `github-check-run` | Create or update GitHub Check Runs for granular PR status reporting |
 | `github-release-prepare` | Prepares files for GitHub release with optional substitution and version suffix |
 | `github-release` | Create GitHub release with assets from prepared directory |
+| `hook-post-build` | Runs user's hook script after all build steps complete |
 | `hook-post-docker-tests` | Runs user's hook script after Docker image is built for integration tests, security scans, or validation |
 | `hook-post-package-tests` | Runs user's hook script after manifest packaging for validation, additional tests, or verification |
 | `hook-post-versions-and-naming` | Runs user's hook script after version calculation to perform actions that depend on the calculated version |
+| `hook-pre-build` | Runs user's hook script before build starts, after tooling validation |
 | `hook-pre-docker-prepare` | Runs user's hook script before Docker build preparation to modify Dockerfile, copy files, or perform setup |
 | `hook-pre-package-prepare` | Runs user's hook script before manifest packaging to generate ConfigMaps, modify manifests, or add files |
 | `hook-pre-tagging-tests` | Runs user's hook script before tagging/versioning for custom validation or preparation |
@@ -166,9 +168,11 @@ See [`examples/`](examples/) for more usage patterns.
 | `github-release-notes-file` | string | `""` | Path to release notes file (mutually exclusive with github-release-notes) |
 | `github-release-substituted-files` | string | `""` | Files with token substitution and version suffix (space-separated) |
 | `github-release-verbatim-files` | string | `""` | Files copied as-is with version suffix only (space-separated) |
+| `hook-post-build-script-sub-path` | string | `""` | Path to post-build script relative to .github/ (e.g., bin/post-build.bash) |
 | `hook-post-docker-tests-script-sub-path` | string | `""` | Path to post-docker test script relative to .github/ (e.g., bin/post-docker.bash) |
 | `hook-post-package-tests-script-sub-path` | string | `""` | Path to post-package test script relative to .github/ (e.g., bin/post-package.bash) |
 | `hook-post-versions-and-naming-script-sub-path` | string | `""` | Path to post-versions-and-naming script relative to .github/ (e.g., bin/post-versions-and-naming.bash) |
+| `hook-pre-build-script-sub-path` | string | `""` | Path to pre-build script relative to .github/ (e.g., bin/pre-build.bash) |
 | `hook-pre-docker-prepare-script-sub-path` | string | `""` | Path to pre-docker prepare script relative to .github/ (e.g., bin/pre-docker-prepare.bash) |
 | `hook-pre-package-prepare-script-sub-path` | string | `""` | Path to pre-package prepare script relative to .github/ (e.g., bin/pre-package-prepare.bash) |
 | `hook-pre-tagging-tests-script-sub-path` | string | `""` | Path to pre-tagging test script relative to .github/ (e.g., bin/pre-tagging.bash) |

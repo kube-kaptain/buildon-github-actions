@@ -101,9 +101,11 @@ jobs:
 # │ Test Injection                                                          │
 # └─────────────────────────────────────────────────────────────────────────┘
 #     with:
+#       hook-pre-build-script-sub-path: 'bin/pre-build.bash'
 #       hook-pre-tagging-tests-script-sub-path: 'bin/run-tests.bash'
 #       hook-post-versions-and-naming-script-sub-path: 'bin/post-versions.bash'
 #       hook-post-docker-tests-script-sub-path: 'bin/test-container.bash'
+#       hook-post-build-script-sub-path: 'bin/post-build.bash'
 
 # ┌─────────────────────────────────────────────────────────────────────────┐
 # │ Change Source Tracking                                                  │
