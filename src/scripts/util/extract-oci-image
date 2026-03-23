@@ -1,0 +1,105 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
+#
+# extract-oci-image - Extract files from an OCI image
+#
+# Reusable utility for extracting files from OCI images (including FROM scratch).
+# Uses the local image cache when available - only pulls if not already present,
+# since OCI images are immutable and a locally cached image is always current.
+#
+# Sub-path structure is preserved under output-dir to avoid filename collisions:
+# /dirA/file.txt and /dirB/file.txt land at output-dir/dirA/file.txt and
+# output-dir/dirB/file.txt respectively.
+#
+# The temporary container created for extraction is always removed on exit,
+# including on failure.
+#
+# Usage: extract-oci-image <image-uri> <output-dir> [<path-in-image>...]
+#
+# Arguments:
+#   image-uri       - Full OCI image reference (e.g., ghcr.io/org/name:tag)
+#   output-dir      - Local directory to extract files into (created if absent)
+#   path-in-image   - Absolute paths inside the image to extract (optional).
+#                     If none given, the entire image filesystem is extracted.
+#
+# Required environment variables:
+#   IMAGE_BUILD_COMMAND  - Container runtime: docker or podman
+#
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# shellcheck source=src/scripts/lib/log.bash
+source "${SCRIPT_DIR}/../lib/log.bash"
+
+image_uri="${1:?Usage: extract-oci-image <image-uri> <output-dir> [<path-in-image>...]}"
+output_dir="${2:?Usage: extract-oci-image <image-uri> <output-dir> [<path-in-image>...]}"
+shift 2
+paths=("$@")
+
+IMAGE_BUILD_COMMAND="${IMAGE_BUILD_COMMAND:?IMAGE_BUILD_COMMAND is required}"
+
+log "=== Extract OCI Image ==="
+log "Image:  ${image_uri}"
+log "Output: ${output_dir}"
+
+# Use local cache if available - images are immutable, no need to re-pull
+if ! ${IMAGE_BUILD_COMMAND} image inspect "${image_uri}" > /dev/null 2>&1; then
+  log "Pulling ${image_uri}..."
+  ${IMAGE_BUILD_COMMAND} pull "${image_uri}"
+else
+  log "Using cached ${image_uri}"
+fi
+
+mkdir -p "${output_dir}"
+
+if [[ ${#paths[@]} -eq 0 ]]; then
+  log "Extracting entire image filesystem to ${output_dir}..."
+
+  tmp_dir=$(mktemp -d)
+  cleanup() { rm -rf "${tmp_dir}"; }
+  trap cleanup EXIT
+
+  ${IMAGE_BUILD_COMMAND} image save "${image_uri}" | tar -x -C "${tmp_dir}"
+
+  while IFS= read -r layer; do
+    tar -x -C "${output_dir}" -f "${tmp_dir}/${layer}"
+  done < <(jq -r '.[0].Layers[]' "${tmp_dir}/manifest.json")
+
+  while IFS= read -r wh_file; do
+    log_warning "Whiteout file not applied: ${wh_file}"
+  done < <(find "${output_dir}" -name '.wh.*')
+
+  log "Extraction complete"
+else
+  # Create a temporary container for file extraction (not started)
+  container_id=""
+  container_id=$(${IMAGE_BUILD_COMMAND} create "${image_uri}" /bin/true)
+
+  # Remove container on exit regardless of success or failure
+  cleanup() {
+    if [[ -n "${container_id}" ]]; then
+      ${IMAGE_BUILD_COMMAND} rm "${container_id}" > /dev/null 2>&1 \
+        || log_warning "Failed to remove temporary container ${container_id}"
+    fi
+  }
+  trap cleanup EXIT
+
+  for path_in_image in "${paths[@]}"; do
+    parent_dir="$(dirname "${path_in_image}")"
+    case "${parent_dir}" in
+      "/" | ".") dest_dir="${output_dir%/}" ;;
+      *)         dest_dir="${output_dir%/}/${parent_dir#/}" ;;
+    esac
+    mkdir -p "${dest_dir}"
+
+    if ! ${IMAGE_BUILD_COMMAND} cp "${container_id}:${path_in_image}" "${dest_dir}/"; then
+      log_error "Failed to extract ${path_in_image} from ${image_uri}"
+      exit 1
+    fi
+    log "Extracted: ${path_in_image} -> ${dest_dir}/"
+  done
+fi
+
+log "========================="
