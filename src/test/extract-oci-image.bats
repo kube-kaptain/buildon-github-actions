@@ -32,7 +32,7 @@ case "$1" in
         if [[ "${MOCK_IMAGE_EXISTS:-true}" == "true" ]]; then exit 0; else exit 1; fi
         ;;
       save)
-        tmp_save=$(mktemp -d)
+        tmp_save=$(mktemp -d "$(dirname "${MOCK_DOCKER_CALLS}")/docker-save-XXXXXX")
         mkdir -p "${tmp_save}/abc123"
         layer_dir="${tmp_save}/layer_content"
         mkdir -p "${layer_dir}"
