@@ -23,6 +23,10 @@ on:
         required: false
         type: string
         default: 'basic'
+      spec-json-schema-url:
+        description: 'JSON Schema meta-schema URL used when validating schema-type specs'
+        required: false
+        type: string
       spec-packaging-base-image:
         description: 'Base image for spec packaging'
         required: false
@@ -38,6 +42,7 @@ on:
 
       # INJECT-INPUT: hooks-pre-build
       # INJECT-INPUT: hooks-pre-tagging
+      # INJECT-INPUT: hooks-docker
       # INJECT-INPUT: hooks-post-versions-and-naming
       # INJECT-INPUT: hooks-post-build
 
@@ -93,12 +98,6 @@ on:
       images-pushed:
         description: 'Number of images pushed'
         value: ${{ jobs.build.outputs.images-pushed }}
-      spec-yaml:
-        description: 'File name of spec YAML file'
-        value: ${{ jobs.build.outputs.spec-yaml }}
-      spec-json:
-        description: 'File name of spec JSON file'
-        value: ${{ jobs.build.outputs.spec-json }}
 jobs:
   build:
     name: Build & Push
@@ -123,8 +122,6 @@ jobs:
       docker-target-image-full-uri: ${{ steps.docker-build.outputs.docker-target-image-full-uri }}
       images-pushed: ${{ steps.docker-push-all.outputs.images-pushed }}
       docker-context-sub-path: ${{ inputs.output-sub-path }}/docker/substituted
-      spec-yaml: ${{ steps.spec-package-prepare.outputs.SPEC_YAML }}
-      spec-json: ${{ steps.spec-package-prepare.outputs.SPEC_JSON }}
     steps:
       # INJECT: parse-workflow-ref-and-checkout
 
@@ -186,6 +183,11 @@ jobs:
       # INJECT: release-change-data-oci-package
       # INJECT: github-check-end(name="Release Change Data OCI Package", id="check-release-change-data-oci-package")
 
+      # === Pre-docker Prepare ===
+      # INJECT: github-check-start(name="Pre-docker Prepare", id="check-pre-docker-prepare", if="inputs.hook-pre-docker-prepare-script-sub-path != ''")
+      # INJECT: hook-pre-docker-prepare
+      # INJECT: github-check-end(name="Pre-docker Prepare", id="check-pre-docker-prepare", if="inputs.hook-pre-docker-prepare-script-sub-path != ''")
+
       # === Spec Package Prepare ===
       # INJECT: github-check-start(name="Spec Package Prepare", id="check-spec-prepare")
       - name: Spec package prepare
@@ -215,7 +217,7 @@ jobs:
           project-name: ${{ steps.versions.outputs.project-name }}
           is-release: ${{ steps.versions.outputs.is-release }}
           dockerfile-sub-path: ${{ steps.spec-package-prepare.outputs.DOCKERFILE_SUB_PATH }}
-          dockerfile-substitution-files: Dockerfile,${{ steps.spec-package-prepare.outputs.SPEC_YAML }},${{ steps.spec-package-prepare.outputs.SPEC_JSON }}
+          dockerfile-substitution-files: ${{ steps.spec-package-prepare.outputs.SPEC_DOCKER_FILES }}
           dockerfile-squash: ${{ inputs.dockerfile-squash }}
           dockerfile-no-cache: ${{ inputs.dockerfile-no-cache }}
           output-sub-path: ${{ inputs.output-sub-path }}
@@ -236,12 +238,17 @@ jobs:
         env:
           SPEC_TYPE: ${{ inputs.spec-type }}
           SPEC_VALIDATION_TYPE: ${{ inputs.spec-validation-type }}
-          SPEC_SUB_PATH: ${{ inputs.output-sub-path }}/docker/substituted
-          SPEC_JSON: ${{ steps.spec-package-prepare.outputs.SPEC_JSON }}
+          SPEC_JSON_SCHEMA_URL: ${{ inputs.spec-json-schema-url }}
+          OUTPUT_SUB_PATH: ${{ inputs.output-sub-path }}
           BUILD_PLATFORM: github-actions
           BUILD_PLATFORM_LOG_PROVIDER: github-actions
         run: ./.github/buildon-github-actions/src/scripts/main/spec-validate
       # INJECT: github-check-end(name="Spec Validate", id="check-spec-validate")
+
+      # === Post-docker Tests ===
+      # INJECT: github-check-start(name="Post-docker Tests", id="check-post-docker", if="inputs.hook-post-docker-tests-script-sub-path != ''")
+      # INJECT: hook-post-docker-tests
+      # INJECT: github-check-end(name="Post-docker Tests", id="check-post-docker", if="inputs.hook-post-docker-tests-script-sub-path != ''")
 
       # === Spec GitHub Release Prepare ===
       # INJECT: github-check-start(name="Spec GitHub Release Prepare", id="check-spec-github-release-prepare", if="inputs.github-release-enabled == true")
@@ -252,41 +259,22 @@ jobs:
         env:
           OUTPUT_SUB_PATH: ${{ inputs.output-sub-path }}
           SUBSTITUTED_SUB_PATH: ${{ inputs.output-sub-path }}/docker/substituted
-          SPEC_YAML: ${{ steps.spec-package-prepare.outputs.SPEC_YAML }}
-          SPEC_JSON: ${{ steps.spec-package-prepare.outputs.SPEC_JSON }}
-          VERSION: ${{ steps.versions.outputs.version }}
         run: |
           set -euo pipefail
           RELEASE_DIR="${OUTPUT_SUB_PATH}/github-release"
           mkdir -p "${RELEASE_DIR}"
 
-          # Add version suffix to filename (e.g., spec.yaml -> spec-1.2.3.yaml)
-          add_version_suffix() {
-            local filename="$1"
-            local base ext
-            if [[ "${filename}" == *.* ]]; then
-              base="${filename%.*}"
-              ext="${filename##*.}"
-              echo "${base}-${VERSION}.${ext}"
-            else
-              echo "${filename}-${VERSION}"
-            fi
-          }
-
-          # Copy spec files (already substituted by docker-build) with version suffix
-          SPEC_YAML_VERSIONED=$(add_version_suffix "${SPEC_YAML}")
-          SPEC_JSON_VERSIONED=$(add_version_suffix "${SPEC_JSON}")
-
-          cp "${SUBSTITUTED_SUB_PATH}/${SPEC_YAML}" "${RELEASE_DIR}/${SPEC_YAML_VERSIONED}"
-          cp "${SUBSTITUTED_SUB_PATH}/${SPEC_JSON}" "${RELEASE_DIR}/${SPEC_JSON_VERSIONED}"
-
-          echo "Prepared spec files for release:"
-          echo "  ${SPEC_YAML} -> ${SPEC_YAML_VERSIONED}"
-          echo "  ${SPEC_JSON} -> ${SPEC_JSON_VERSIONED}"
-
-          # Output versioned filenames for release notes
-          echo "spec-yaml-versioned=${SPEC_YAML_VERSIONED}" >> "${GITHUB_OUTPUT}"
-          echo "spec-json-versioned=${SPEC_JSON_VERSIONED}" >> "${GITHUB_OUTPUT}"
+          # Copy all substituted spec files (already versioned by spec-package-prepare)
+          for f in "${SUBSTITUTED_SUB_PATH}/yaml"/*.yaml; do
+            [[ -f "${f}" ]] || continue
+            cp "${f}" "${RELEASE_DIR}/"
+            echo "Prepared: $(basename "${f}")"
+          done
+          for f in "${SUBSTITUTED_SUB_PATH}/json"/*.json; do
+            [[ -f "${f}" ]] || continue
+            cp "${f}" "${RELEASE_DIR}/"
+            echo "Prepared: $(basename "${f}")"
+          done
       # INJECT: github-check-end(name="Spec GitHub Release Prepare", id="check-spec-github-release-prepare", if="inputs.github-release-enabled == true")
 
       # === Docker Multi-Tag ===
@@ -323,8 +311,6 @@ jobs:
           DOCKER_URI: ${{ steps.docker-build.outputs.docker-target-image-full-uri }}
           RELEASE_CHANGE_DATA_URI: ${{ steps.release-change-data-oci-package.outputs.release-change-data-image-uri }}
           SPEC_TYPE: ${{ inputs.spec-type }}
-          SPEC_YAML: ${{ steps.prepare-spec-release.outputs.spec-yaml-versioned }}
-          SPEC_JSON: ${{ steps.prepare-spec-release.outputs.spec-json-versioned }}
           OUTPUT_SUB_PATH: ${{ inputs.output-sub-path }}
           GITHUB_SERVER_URL: ${{ github.server_url }}
           GITHUB_REPOSITORY: ${{ github.repository }}
@@ -357,8 +343,10 @@ jobs:
               echo "Automatic ${type_label} release for version ${VERSION} of ${PROJECT_NAME} by Kaptain build script. This release includes both YAML and JSON formats of the spec, and a Docker image with both files bundled."
               echo ""
               echo "### Release Assets"
-              echo "* ${type_label} YAML: [${SPEC_YAML}](${release_url}/${SPEC_YAML})"
-              echo "* ${type_label} JSON: [${SPEC_JSON}](${release_url}/${SPEC_JSON})"
+              while IFS= read -r f; do
+                fname=$(basename "${f}")
+                echo "* ${type_label}: [${fname}](${release_url}/${fname})"
+              done < <(find "${OUTPUT_SUB_PATH}/github-release" \( -name "*.yaml" -o -name "*.json" \) ! -name "release-change-data-*" | sort)
               echo "* Docker Image: [${DOCKER_URI}](https://${DOCKER_URI})"
               echo "* Release Change Data: [release-change-data-${VERSION}.yaml](${release_url}/release-change-data-${VERSION}.yaml)"
               echo "* Release Change Data Image: [${RELEASE_CHANGE_DATA_URI}](https://${RELEASE_CHANGE_DATA_URI})"

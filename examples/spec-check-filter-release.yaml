@@ -7,8 +7,10 @@
 # filename, converts to JSON, packages both into a Docker image, and optionally
 # creates a GitHub release with the spec files attached.
 #
-# Your spec file should be named ${repo-name}.yaml in the repo root.
-# For example: my-api-schema.yaml for a repo named my-api-schema.
+# Place spec files in src/specs/ named ${repo-name}*.yaml.
+# For example: src/specs/my-api-schema.yaml for a repo named my-api-schema.
+# Multiple spec files are supported (e.g., my-api-schema.yaml, my-api-schema-layer.yaml).
+# Spec files may also be generated into the output yaml dir via hook-post-versions-and-naming.
 #
 # Token substitution is handled by the docker build step, so you can use
 # ${Version}, ${ProjectName}, etc. in your spec files.
@@ -46,8 +48,9 @@ jobs:
 # └─────────────────────────────────────────────────────────────────────────┘
 #     with:
 #       spec-type: 'api'  # 'schema' for JSON Schema, 'api' for API specs (must declare $schema)
-#       spec-validation-type: 'python3-jsonschema'  # 'basic' (default), 'python3-jsonschema'
-#       spec-packaging-base-image: 'scratch'  # Default is pause image
+#       spec-validation-type: 'python3-jsonschema'  # 'basic' (default, jq syntax check only), 'python3-jsonschema' (adds schema validation)
+#       spec-json-schema-url: 'https://json-schema.org/draft/2020-12/schema'  # Default is draft-07
+#       spec-packaging-base-image: 'scratch'  # Default is scratch
 
 # ┌─────────────────────────────────────────────────────────────────────────┐
 # │ Token Substitution                                                      │
@@ -133,7 +136,9 @@ jobs:
 #     with:
 #       hook-pre-build-script-sub-path: 'bin/pre-build.bash'
 #       hook-pre-tagging-tests-script-sub-path: 'bin/run-tests.bash'
-#       hook-post-versions-and-naming-script-sub-path: 'bin/post-versions.bash'
+#       hook-post-versions-and-naming-script-sub-path: 'bin/post-versions.bash'  # Use this to generate spec files
+#       hook-pre-docker-prepare-script-sub-path: 'bin/pre-docker.bash'           # Runs before spec-package-prepare
+#       hook-post-docker-tests-script-sub-path: 'bin/post-docker.bash'           # Runs after spec-validate
 #       hook-post-build-script-sub-path: 'bin/post-build.bash'
 
 # ┌─────────────────────────────────────────────────────────────────────────┐
