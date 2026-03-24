@@ -20,7 +20,7 @@ LIB_DIR="$PROJECT_ROOT/src/scripts/lib"
 PLUGINS_DIR="$PROJECT_ROOT/src/scripts/plugins"
 REPO_PROVIDERS_DIR="$PLUGINS_DIR/kubernetes-manifests-repo-providers"
 FIXTURES_DIR="$PROJECT_ROOT/src/test/fixtures"
-MOCK_BIN_DIR="$PROJECT_ROOT/src/test/mock-bin"
+MOCK_BIN_DIR="${TEST_TARGET_DIR}/$(basename "${BATS_TEST_FILENAME:-unknown}" .bats)/mock-bin"
 
 # Test output directory - all test artifacts go here for diagnostics
 OUTPUT_SUB_PATH="${OUTPUT_SUB_PATH:-kaptain-out}"
