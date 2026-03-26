@@ -123,6 +123,31 @@ source "${SCRIPT_DIR}/../lib/output-var.bash"
 
 validation_errors=0
 declare -a platform_config_dirs=()
+valid_config_list=$(mktemp)
+trap 'rm -f "${valid_config_list}"' EXIT
+
+# has_config_file - Check if a config file exists and track it
+#
+# Converts the canonical UPPER_SNAKE name to the configured token name style,
+# checks if the file exists in CONFIG_SUB_PATH, and records it to valid_config_list
+# if present. Sets checked_name in caller scope for subsequent reads.
+#
+# Args:
+#   $1 - UPPER_SNAKE canonical name
+#
+# Sets in caller scope:
+#   checked_name - the converted config file name (always set)
+#
+# Returns: 0 if file exists, 1 if not
+has_config_file() {
+  local canonical="$1"
+  checked_name=$(convert_token_name "${TOKEN_NAME_STYLE}" "${canonical}")
+  if [[ -f "${CONFIG_SUB_PATH}/${checked_name}" ]]; then
+    echo "${checked_name}" >> "${valid_config_list}"
+    return 0
+  fi
+  return 1
+}
 
 # resolve_token - Resolve a token value from config file or default
 #
@@ -150,6 +175,7 @@ resolve_token() {
 
   # Config file in CONFIG_SUB_PATH always wins
   if [[ -f "${CONFIG_SUB_PATH}/${config_file_name}" ]]; then
+    echo "${config_file_name}" >> "${valid_config_list}"
     local value
     value=$(< "${CONFIG_SUB_PATH}/${config_file_name}")
     value="${value%$'\n'}"
@@ -357,6 +383,7 @@ expand_comma_list_token() {
 
   # User override in CONFIG_SUB_PATH
   if [[ -f "${CONFIG_SUB_PATH}/${source_config_name}" ]]; then
+    echo "${source_config_name}" >> "${valid_config_list}"
     raw_value=$(< "${CONFIG_SUB_PATH}/${source_config_name}")
     raw_value="${raw_value%$'\n'}"
     log "  ${source_name}: user config found in ${CONFIG_SUB_PATH}/"
@@ -392,8 +419,15 @@ expand_comma_list_token() {
 
 # === Validate required inputs ===
 
-VERSION="${VERSION:?VERSION is required}"
-PROJECT_NAME="${PROJECT_NAME:?PROJECT_NAME is required}"
+# Explicit checks — ${:?} exit status is swallowed by EXIT traps in bash 3.2
+if [[ -z "${VERSION:-}" ]]; then
+  log_error "VERSION is required"
+  exit 1
+fi
+if [[ -z "${PROJECT_NAME:-}" ]]; then
+  log_error "PROJECT_NAME is required"
+  exit 1
+fi
 
 validate_token_styles
 
@@ -441,22 +475,19 @@ fi
 
 # VPC security group - optional: if config file exists, include securityGroup line
 has_vpc_security_group="false"
-vpc_security_group_name=$(convert_token_name "${TOKEN_NAME_STYLE}" "VPC_SECURITY_GROUP")
-if [[ -f "${CONFIG_SUB_PATH}/${vpc_security_group_name}" ]]; then
+if has_config_file "VPC_SECURITY_GROUP"; then
   has_vpc_security_group="true"
 fi
 
 # VPC control plane security group IDs - optional alternative to VPC_SECURITY_GROUP
 has_vpc_control_plane_sg_ids="false"
-vpc_control_plane_sg_ids_name=$(convert_token_name "${TOKEN_NAME_STYLE}" "VPC_CONTROL_PLANE_SECURITY_GROUP_IDS")
-if [[ -f "${CONFIG_SUB_PATH}/${vpc_control_plane_sg_ids_name}" ]]; then
+if has_config_file "VPC_CONTROL_PLANE_SECURITY_GROUP_IDS"; then
   has_vpc_control_plane_sg_ids="true"
 fi
 
 # VPC shared node security group - optional: unmanaged-only, generates sharedNodeSecurityGroup in vpc block
 has_vpc_shared_node_sg="false"
-vpc_shared_node_sg_name=$(convert_token_name "${TOKEN_NAME_STYLE}" "VPC_SHARED_NODE_SECURITY_GROUP")
-if [[ -f "${CONFIG_SUB_PATH}/${vpc_shared_node_sg_name}" ]]; then
+if has_config_file "VPC_SHARED_NODE_SECURITY_GROUP"; then
   has_vpc_shared_node_sg="true"
 fi
 
@@ -480,17 +511,15 @@ fi
 
 # Private cluster - conditional: if config file exists, generate privateCluster block
 has_private_cluster_config="false"
-private_cluster_config_name=$(convert_token_name "${TOKEN_NAME_STYLE}" "PRIVATE_CLUSTER_ENABLED")
-if [[ -f "${CONFIG_SUB_PATH}/${private_cluster_config_name}" ]]; then
+if has_config_file "PRIVATE_CLUSTER_ENABLED"; then
   has_private_cluster_config="true"
 fi
 
 # Global nodegroup private networking - if config file exists, all nodegroups inherit unless overridden
 has_global_private_networking="false"
 NODEGROUP_PRIVATE_NETWORKING=""
-nodegroup_private_networking_name=$(convert_token_name "${TOKEN_NAME_STYLE}" "NODEGROUP_PRIVATE_NETWORKING")
-if [[ -f "${CONFIG_SUB_PATH}/${nodegroup_private_networking_name}" ]]; then
-  NODEGROUP_PRIVATE_NETWORKING=$(< "${CONFIG_SUB_PATH}/${nodegroup_private_networking_name}")
+if has_config_file "NODEGROUP_PRIVATE_NETWORKING"; then
+  NODEGROUP_PRIVATE_NETWORKING=$(< "${CONFIG_SUB_PATH}/${checked_name}")
   NODEGROUP_PRIVATE_NETWORKING="${NODEGROUP_PRIVATE_NETWORKING%$'\n'}"
   has_global_private_networking="true"
 fi
@@ -498,9 +527,8 @@ fi
 # Global nodegroup IAM instance role ARN - if config file exists, all nodegroups inherit unless overridden
 has_global_iam_instance_role_arn="false"
 NODEGROUP_IAM_INSTANCE_ROLE_ARN=""
-nodegroup_iam_instance_role_arn_name=$(convert_token_name "${TOKEN_NAME_STYLE}" "NODEGROUP_IAM_INSTANCE_ROLE_ARN")
-if [[ -f "${CONFIG_SUB_PATH}/${nodegroup_iam_instance_role_arn_name}" ]]; then
-  NODEGROUP_IAM_INSTANCE_ROLE_ARN=$(< "${CONFIG_SUB_PATH}/${nodegroup_iam_instance_role_arn_name}")
+if has_config_file "NODEGROUP_IAM_INSTANCE_ROLE_ARN"; then
+  NODEGROUP_IAM_INSTANCE_ROLE_ARN=$(< "${CONFIG_SUB_PATH}/${checked_name}")
   NODEGROUP_IAM_INSTANCE_ROLE_ARN="${NODEGROUP_IAM_INSTANCE_ROLE_ARN%$'\n'}"
   has_global_iam_instance_role_arn="true"
 fi
@@ -508,10 +536,9 @@ fi
 # Auto Mode - conditional: if config file exists, generate block; if true, require node pools
 has_auto_mode_config="false"
 auto_mode_needs_node_pools="false"
-auto_mode_config_name=$(convert_token_name "${TOKEN_NAME_STYLE}" "AUTO_MODE_CONFIG_ENABLED")
-if [[ -f "${CONFIG_SUB_PATH}/${auto_mode_config_name}" ]]; then
+if has_config_file "AUTO_MODE_CONFIG_ENABLED"; then
   has_auto_mode_config="true"
-  auto_mode_value=$(< "${CONFIG_SUB_PATH}/${auto_mode_config_name}")
+  auto_mode_value=$(< "${CONFIG_SUB_PATH}/${checked_name}")
   auto_mode_value="${auto_mode_value%$'\n'}"
   if [[ "${auto_mode_value}" == "true" ]]; then
     auto_mode_needs_node_pools="true"
@@ -521,17 +548,15 @@ fi
 
 # Network config - conditional: if config file exists, generate block
 has_network_config="false"
-network_config_name=$(convert_token_name "${TOKEN_NAME_STYLE}" "NETWORK_CONFIG_SERVICE_IP_V4_CIDR")
-if [[ -f "${CONFIG_SUB_PATH}/${network_config_name}" ]]; then
+if has_config_file "NETWORK_CONFIG_SERVICE_IP_V4_CIDR"; then
   has_network_config="true"
 fi
 
 # Tags - optional flat yaml config files (key: value per line)
 has_metadata_tags="false"
 metadata_tags_file=""
-metadata_tags_config_name=$(convert_token_name "${TOKEN_NAME_STYLE}" "METADATA_TAGS")
-if [[ -f "${CONFIG_SUB_PATH}/${metadata_tags_config_name}" ]]; then
-  metadata_tags_file="${CONFIG_SUB_PATH}/${metadata_tags_config_name}"
+if has_config_file "METADATA_TAGS"; then
+  metadata_tags_file="${CONFIG_SUB_PATH}/${checked_name}"
   if validate_flat_yaml_tags "METADATA_TAGS" "${metadata_tags_file}"; then
     has_metadata_tags="true"
   fi
@@ -543,9 +568,8 @@ fi
 
 has_global_tags="false"
 global_tags_file=""
-nodegroup_tags_config_name=$(convert_token_name "${TOKEN_NAME_STYLE}" "NODEGROUP_TAGS")
-if [[ -f "${CONFIG_SUB_PATH}/${nodegroup_tags_config_name}" ]]; then
-  global_tags_file="${CONFIG_SUB_PATH}/${nodegroup_tags_config_name}"
+if has_config_file "NODEGROUP_TAGS"; then
+  global_tags_file="${CONFIG_SUB_PATH}/${checked_name}"
   if validate_flat_yaml_tags "NODEGROUP_TAGS" "${global_tags_file}"; then
     has_global_tags="true"
   fi
@@ -559,9 +583,8 @@ fi
 
 has_global_labels="false"
 global_labels_file=""
-nodegroup_labels_config_name=$(convert_token_name "${TOKEN_NAME_STYLE}" "NODEGROUP_LABELS")
-if [[ -f "${CONFIG_SUB_PATH}/${nodegroup_labels_config_name}" ]]; then
-  global_labels_file="${CONFIG_SUB_PATH}/${nodegroup_labels_config_name}"
+if has_config_file "NODEGROUP_LABELS"; then
+  global_labels_file="${CONFIG_SUB_PATH}/${checked_name}"
   if validate_flat_yaml_tags "NODEGROUP_LABELS" "${global_labels_file}"; then
     has_global_labels="true"
   fi
@@ -569,9 +592,8 @@ fi
 
 has_global_taints="false"
 global_taints_file=""
-nodegroup_taints_config_name=$(convert_token_name "${TOKEN_NAME_STYLE}" "NODEGROUP_TAINTS")
-if [[ -f "${CONFIG_SUB_PATH}/${nodegroup_taints_config_name}" ]]; then
-  global_taints_file="${CONFIG_SUB_PATH}/${nodegroup_taints_config_name}"
+if has_config_file "NODEGROUP_TAINTS"; then
+  global_taints_file="${CONFIG_SUB_PATH}/${checked_name}"
   # Validate taints structure using yq
   if ! yq -e '.' "${global_taints_file}" &>/dev/null; then
     log_error "NODEGROUP_TAINTS: file is not valid YAML"
@@ -622,23 +644,20 @@ if [[ -f "${CONFIG_SUB_PATH}/${nodegroup_taints_config_name}" ]]; then
 fi
 
 has_global_sg_attach_ids="false"
-nodegroup_sg_attach_ids_name=$(convert_token_name "${TOKEN_NAME_STYLE}" "NODEGROUP_SECURITY_GROUPS_ATTACH_IDS")
-if [[ -f "${CONFIG_SUB_PATH}/${nodegroup_sg_attach_ids_name}" ]]; then
+if has_config_file "NODEGROUP_SECURITY_GROUPS_ATTACH_IDS"; then
   has_global_sg_attach_ids="true"
 fi
 
 has_global_availability_zones="false"
-nodegroup_az_name=$(convert_token_name "${TOKEN_NAME_STYLE}" "NODEGROUP_AVAILABILITY_ZONES")
-if [[ -f "${CONFIG_SUB_PATH}/${nodegroup_az_name}" ]]; then
+if has_config_file "NODEGROUP_AVAILABILITY_ZONES"; then
   has_global_availability_zones="true"
 fi
 
 # Global volume KMS key ID - if config file exists, all nodegroups inherit unless overridden
 has_global_volume_kms_key_id="false"
 NODEGROUP_VOLUME_KMS_KEY_ID=""
-volume_kms_key_id_name=$(convert_token_name "${TOKEN_NAME_STYLE}" "NODEGROUP_VOLUME_KMS_KEY_ID")
-if [[ -f "${CONFIG_SUB_PATH}/${volume_kms_key_id_name}" ]]; then
-  NODEGROUP_VOLUME_KMS_KEY_ID=$(< "${CONFIG_SUB_PATH}/${volume_kms_key_id_name}")
+if has_config_file "NODEGROUP_VOLUME_KMS_KEY_ID"; then
+  NODEGROUP_VOLUME_KMS_KEY_ID=$(< "${CONFIG_SUB_PATH}/${checked_name}")
   NODEGROUP_VOLUME_KMS_KEY_ID="${NODEGROUP_VOLUME_KMS_KEY_ID%$'\n'}"
   has_global_volume_kms_key_id="true"
 fi
@@ -647,9 +666,8 @@ fi
 additional_ng_count=0
 declare -a additional_ng_suffixes=()
 declare -a additional_ng_suffixes_upper=()
-additional_ng_config_name=$(convert_token_name "${TOKEN_NAME_STYLE}" "ADDITIONAL_NODEGROUPS")
-if [[ -f "${CONFIG_SUB_PATH}/${additional_ng_config_name}" ]]; then
-  additional_ng_raw=$(< "${CONFIG_SUB_PATH}/${additional_ng_config_name}")
+if has_config_file "ADDITIONAL_NODEGROUPS"; then
+  additional_ng_raw=$(< "${CONFIG_SUB_PATH}/${checked_name}")
   additional_ng_raw="${additional_ng_raw%$'\n'}"
   IFS=',' read -ra additional_ng_suffixes <<< "${additional_ng_raw}"
   additional_ng_count=${#additional_ng_suffixes[@]}
@@ -681,9 +699,8 @@ fi
 
 has_metadata_annotations="false"
 metadata_annotations_file=""
-metadata_annotations_config_name=$(convert_token_name "${TOKEN_NAME_STYLE}" "METADATA_ANNOTATIONS")
-if [[ -f "${CONFIG_SUB_PATH}/${metadata_annotations_config_name}" ]]; then
-  metadata_annotations_file="${CONFIG_SUB_PATH}/${metadata_annotations_config_name}"
+if has_config_file "METADATA_ANNOTATIONS"; then
+  metadata_annotations_file="${CONFIG_SUB_PATH}/${checked_name}"
   if validate_flat_yaml_tags "METADATA_ANNOTATIONS" "${metadata_annotations_file}"; then
     has_metadata_annotations="true"
   fi
@@ -790,7 +807,6 @@ if [[ "${NODEGROUP_VOLUME_ENCRYPTED}" != "true" && "${NODEGROUP_VOLUME_ENCRYPTED
   validation_errors=$((validation_errors + 1))
 fi
 
-update_max_unavailable_name=$(convert_token_name "${TOKEN_NAME_STYLE}" "NODEGROUP_UPDATE_CONFIG_MAX_UNAVAILABLE")
 if [[ "${nodegroup_type}" == "managed" ]]; then
   resolve_token "NODEGROUP_UPDATE_CONFIG_MAX_UNAVAILABLE" "${NODEGROUP_UPDATE_CONFIG_MAX_UNAVAILABLE}"
 
@@ -801,7 +817,7 @@ if [[ "${nodegroup_type}" == "managed" ]]; then
   fi
 else
   # updateConfig is not supported for unmanaged nodegroups
-  if [[ -f "${CONFIG_SUB_PATH}/${update_max_unavailable_name}" ]]; then
+  if has_config_file "NODEGROUP_UPDATE_CONFIG_MAX_UNAVAILABLE"; then
     log_error "NODEGROUP_UPDATE_CONFIG_MAX_UNAVAILABLE is not supported for unmanaged nodegroups - remove the config file"
     validation_errors=$((validation_errors + 1))
   fi
@@ -810,10 +826,9 @@ fi
 # Spot instances - optional, managed only, must be true or false
 has_global_spot="false"
 NODEGROUP_SPOT=""
-nodegroup_spot_name=$(convert_token_name "${TOKEN_NAME_STYLE}" "NODEGROUP_SPOT")
 if [[ "${nodegroup_type}" == "managed" ]]; then
-  if [[ -f "${CONFIG_SUB_PATH}/${nodegroup_spot_name}" ]]; then
-    NODEGROUP_SPOT=$(< "${CONFIG_SUB_PATH}/${nodegroup_spot_name}")
+  if has_config_file "NODEGROUP_SPOT"; then
+    NODEGROUP_SPOT=$(< "${CONFIG_SUB_PATH}/${checked_name}")
     NODEGROUP_SPOT="${NODEGROUP_SPOT%$'\n'}"
     if [[ "${NODEGROUP_SPOT}" != "true" && "${NODEGROUP_SPOT}" != "false" ]]; then
       log_error "NODEGROUP_SPOT must be 'true' or 'false' (got: ${NODEGROUP_SPOT})"
@@ -823,7 +838,7 @@ if [[ "${nodegroup_type}" == "managed" ]]; then
     fi
   fi
 else
-  if [[ -f "${CONFIG_SUB_PATH}/${nodegroup_spot_name}" ]]; then
+  if has_config_file "NODEGROUP_SPOT"; then
     log_error "NODEGROUP_SPOT is not supported for unmanaged nodegroups (use instancesDistribution instead) - remove the config file"
     validation_errors=$((validation_errors + 1))
   fi
@@ -994,8 +1009,7 @@ for ng_idx in "${!all_ng_suffixes_lower[@]}"; do
   # Optional simple fields — inherit from base if not overridden
   # volumeKmsKeyID
   ng_has_volume_kms="false"
-  suffixed_name=$(convert_token_name "${TOKEN_NAME_STYLE}" "NODEGROUP_VOLUME_KMS_KEY_ID_${suffix_upper}")
-  if [[ -f "${CONFIG_SUB_PATH}/${suffixed_name}" ]]; then
+  if has_config_file "NODEGROUP_VOLUME_KMS_KEY_ID_${suffix_upper}"; then
     ng_has_volume_kms="true"
   elif [[ "${has_global_volume_kms_key_id}" == "true" ]]; then
     resolve_token "NODEGROUP_VOLUME_KMS_KEY_ID_${suffix_upper}" "${NODEGROUP_VOLUME_KMS_KEY_ID}"
@@ -1005,8 +1019,7 @@ for ng_idx in "${!all_ng_suffixes_lower[@]}"; do
 
   # privateNetworking
   ng_has_private_networking="false"
-  suffixed_name=$(convert_token_name "${TOKEN_NAME_STYLE}" "NODEGROUP_PRIVATE_NETWORKING_${suffix_upper}")
-  if [[ -f "${CONFIG_SUB_PATH}/${suffixed_name}" ]]; then
+  if has_config_file "NODEGROUP_PRIVATE_NETWORKING_${suffix_upper}"; then
     ng_has_private_networking="true"
   elif [[ "${has_global_private_networking}" == "true" ]]; then
     resolve_token "NODEGROUP_PRIVATE_NETWORKING_${suffix_upper}" "${NODEGROUP_PRIVATE_NETWORKING}"
@@ -1016,10 +1029,9 @@ for ng_idx in "${!all_ng_suffixes_lower[@]}"; do
 
   # spot (managed only)
   ng_has_spot="false"
-  suffixed_spot_name=$(convert_token_name "${TOKEN_NAME_STYLE}" "NODEGROUP_SPOT_${suffix_upper}")
   if [[ "${nodegroup_type}" == "managed" ]]; then
-    if [[ -f "${CONFIG_SUB_PATH}/${suffixed_spot_name}" ]]; then
-      ng_spot_val=$(< "${CONFIG_SUB_PATH}/${suffixed_spot_name}")
+    if has_config_file "NODEGROUP_SPOT_${suffix_upper}"; then
+      ng_spot_val=$(< "${CONFIG_SUB_PATH}/${checked_name}")
       ng_spot_val="${ng_spot_val%$'\n'}"
       if [[ "${ng_spot_val}" != "true" && "${ng_spot_val}" != "false" ]]; then
         log_error "NODEGROUP_SPOT_${suffix_upper} must be 'true' or 'false' (got: ${ng_spot_val})"
@@ -1032,7 +1044,7 @@ for ng_idx in "${!all_ng_suffixes_lower[@]}"; do
       ng_has_spot="true"
     fi
   else
-    if [[ -f "${CONFIG_SUB_PATH}/${suffixed_spot_name}" ]]; then
+    if has_config_file "NODEGROUP_SPOT_${suffix_upper}"; then
       log_error "NODEGROUP_SPOT_${suffix_upper} is not supported for unmanaged nodegroups (use instancesDistribution instead) - remove the config file"
       validation_errors=$((validation_errors + 1))
     fi
@@ -1041,8 +1053,7 @@ for ng_idx in "${!all_ng_suffixes_lower[@]}"; do
 
   # iamInstanceRoleArn
   ng_has_iam_role="false"
-  suffixed_name=$(convert_token_name "${TOKEN_NAME_STYLE}" "NODEGROUP_IAM_INSTANCE_ROLE_ARN_${suffix_upper}")
-  if [[ -f "${CONFIG_SUB_PATH}/${suffixed_name}" ]]; then
+  if has_config_file "NODEGROUP_IAM_INSTANCE_ROLE_ARN_${suffix_upper}"; then
     ng_has_iam_role="true"
   elif [[ "${has_global_iam_instance_role_arn}" == "true" ]]; then
     resolve_token "NODEGROUP_IAM_INSTANCE_ROLE_ARN_${suffix_upper}" "${NODEGROUP_IAM_INSTANCE_ROLE_ARN}"
@@ -1053,8 +1064,7 @@ for ng_idx in "${!all_ng_suffixes_lower[@]}"; do
   # Comma-list fields — inherit from base if not overridden
   # securityGroups.attachIDs
   ng_has_sg_attach="false"
-  suffixed_sg_source=$(convert_token_name "${TOKEN_NAME_STYLE}" "NODEGROUP_SECURITY_GROUPS_ATTACH_IDS_${suffix_upper}")
-  if [[ -f "${CONFIG_SUB_PATH}/${suffixed_sg_source}" ]]; then
+  if has_config_file "NODEGROUP_SECURITY_GROUPS_ATTACH_IDS_${suffix_upper}"; then
     ng_has_sg_attach="true"
     expand_comma_list_token "NODEGROUP_SECURITY_GROUPS_ATTACH_IDS_${suffix_upper}" "NODEGROUP_SECURITY_GROUPS_ATTACH_ID_${suffix_upper}" ""
     printf '%s' "${expanded_count}" > "${expected_values_dir}/nodegroup-sg-attach-ids-count-${suffix_lower}"
@@ -1070,8 +1080,7 @@ for ng_idx in "${!all_ng_suffixes_lower[@]}"; do
 
   # availabilityZones
   ng_has_az="false"
-  suffixed_az_source=$(convert_token_name "${TOKEN_NAME_STYLE}" "NODEGROUP_AVAILABILITY_ZONES_${suffix_upper}")
-  if [[ -f "${CONFIG_SUB_PATH}/${suffixed_az_source}" ]]; then
+  if has_config_file "NODEGROUP_AVAILABILITY_ZONES_${suffix_upper}"; then
     ng_has_az="true"
     expand_comma_list_token "NODEGROUP_AVAILABILITY_ZONES_${suffix_upper}" "NODEGROUP_AVAILABILITY_ZONE_${suffix_upper}" ""
     printf '%s' "${expanded_count}" > "${expected_values_dir}/nodegroup-az-count-${suffix_lower}"
@@ -1089,9 +1098,8 @@ for ng_idx in "${!all_ng_suffixes_lower[@]}"; do
   # labels
   ng_has_labels="false"
   ng_labels_file=""
-  suffixed_labels_name=$(convert_token_name "${TOKEN_NAME_STYLE}" "NODEGROUP_LABELS_${suffix_upper}")
-  if [[ -f "${CONFIG_SUB_PATH}/${suffixed_labels_name}" ]]; then
-    ng_labels_file="${CONFIG_SUB_PATH}/${suffixed_labels_name}"
+  if has_config_file "NODEGROUP_LABELS_${suffix_upper}"; then
+    ng_labels_file="${CONFIG_SUB_PATH}/${checked_name}"
     if validate_flat_yaml_tags "NODEGROUP_LABELS_${suffix_upper}" "${ng_labels_file}"; then
       ng_has_labels="true"
     fi
@@ -1104,9 +1112,8 @@ for ng_idx in "${!all_ng_suffixes_lower[@]}"; do
   # taints
   ng_has_taints="false"
   ng_taints_file=""
-  suffixed_taints_name=$(convert_token_name "${TOKEN_NAME_STYLE}" "NODEGROUP_TAINTS_${suffix_upper}")
-  if [[ -f "${CONFIG_SUB_PATH}/${suffixed_taints_name}" ]]; then
-    ng_taints_file="${CONFIG_SUB_PATH}/${suffixed_taints_name}"
+  if has_config_file "NODEGROUP_TAINTS_${suffix_upper}"; then
+    ng_taints_file="${CONFIG_SUB_PATH}/${checked_name}"
     if ! yq -e '.' "${ng_taints_file}" &>/dev/null; then
       log_error "NODEGROUP_TAINTS_${suffix_upper}: file is not valid YAML"
       validation_errors=$((validation_errors + 1))
@@ -1158,9 +1165,8 @@ for ng_idx in "${!all_ng_suffixes_lower[@]}"; do
   # tags
   ng_has_tags="false"
   ng_tags_file=""
-  suffixed_tags_name=$(convert_token_name "${TOKEN_NAME_STYLE}" "NODEGROUP_TAGS_${suffix_upper}")
-  if [[ -f "${CONFIG_SUB_PATH}/${suffixed_tags_name}" ]]; then
-    ng_tags_file="${CONFIG_SUB_PATH}/${suffixed_tags_name}"
+  if has_config_file "NODEGROUP_TAGS_${suffix_upper}"; then
+    ng_tags_file="${CONFIG_SUB_PATH}/${checked_name}"
     if validate_flat_yaml_tags "NODEGROUP_TAGS_${suffix_upper}" "${ng_tags_file}"; then
       ng_has_tags="true"
     fi
@@ -1328,10 +1334,8 @@ emit_nodegroup() {
   # labels
   if [[ "${h_labels}" == "true" ]]; then
     local labels_file=""
-    local suffixed_labels_name
-    suffixed_labels_name=$(convert_token_name "${TOKEN_NAME_STYLE}" "NODEGROUP_LABELS${tk}")
-    if [[ -f "${CONFIG_SUB_PATH}/${suffixed_labels_name}" ]]; then
-      labels_file="${CONFIG_SUB_PATH}/${suffixed_labels_name}"
+    if has_config_file "NODEGROUP_LABELS${tk}"; then
+      labels_file="${CONFIG_SUB_PATH}/${checked_name}"
     elif [[ -n "${global_labels_file}" ]]; then
       labels_file="${global_labels_file}"
     fi
@@ -1344,10 +1348,8 @@ emit_nodegroup() {
   # taints
   if [[ "${h_taints}" == "true" ]]; then
     local taints_file=""
-    local suffixed_taints_name
-    suffixed_taints_name=$(convert_token_name "${TOKEN_NAME_STYLE}" "NODEGROUP_TAINTS${tk}")
-    if [[ -f "${CONFIG_SUB_PATH}/${suffixed_taints_name}" ]]; then
-      taints_file="${CONFIG_SUB_PATH}/${suffixed_taints_name}"
+    if has_config_file "NODEGROUP_TAINTS${tk}"; then
+      taints_file="${CONFIG_SUB_PATH}/${checked_name}"
     elif [[ -n "${global_taints_file}" ]]; then
       taints_file="${global_taints_file}"
     fi
@@ -1366,10 +1368,8 @@ emit_nodegroup() {
 
   if [[ "${h_tags}" == "true" ]]; then
     local tags_file=""
-    local suffixed_tags_name
-    suffixed_tags_name=$(convert_token_name "${TOKEN_NAME_STYLE}" "NODEGROUP_TAGS${tk}")
-    if [[ -f "${CONFIG_SUB_PATH}/${suffixed_tags_name}" ]]; then
-      tags_file="${CONFIG_SUB_PATH}/${suffixed_tags_name}"
+    if has_config_file "NODEGROUP_TAGS${tk}"; then
+      tags_file="${CONFIG_SUB_PATH}/${checked_name}"
     elif [[ -n "${global_tags_file}" ]]; then
       tags_file="${global_tags_file}"
     fi
@@ -1518,9 +1518,7 @@ YAML
     local addon_upper_snake
     addon_upper_snake=$(echo "${addon}" | tr '-' '_' | tr '[:lower:]' '[:upper:]')
     local sa_role_canonical="ADDONS_${addon_upper_snake}_SERVICE_ACCOUNT_ROLE_ARN"
-    local sa_role_config_name
-    sa_role_config_name=$(convert_token_name "${TOKEN_NAME_STYLE}" "${sa_role_canonical}")
-    if [[ -f "${CONFIG_SUB_PATH}/${sa_role_config_name}" ]]; then
+    if has_config_file "${sa_role_canonical}"; then
       local sa_role_token
       sa_role_token=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "${sa_role_canonical}")
       echo "    serviceAccountRoleARN: ${sa_role_token}"
@@ -1681,6 +1679,23 @@ main() {
     TOKEN_SUBSTITUTION_PASSES=2
   fi
   output_var "TOKEN_SUBSTITUTION_PASSES" "${TOKEN_SUBSTITUTION_PASSES}"
+
+  # === Validate no unrecognised config files ===
+  local unrecognised_count=0
+  for file in "${CONFIG_SUB_PATH}"/*; do
+    [[ -e "${file}" ]] || continue
+    local name
+    name=$(basename "${file}")
+    if ! grep -qxF "${name}" "${valid_config_list}"; then
+      log_error "Unrecognised config file: ${CONFIG_SUB_PATH}/${name}"
+      unrecognised_count=$((unrecognised_count + 1))
+    fi
+  done
+
+  if [[ ${unrecognised_count} -gt 0 ]]; then
+    log_error "${unrecognised_count} unrecognised config file(s) in ${CONFIG_SUB_PATH}/ — check for typos or case mismatches"
+    exit 1
+  fi
 
   log ""
   log "EKS Cluster Management Prepare complete"
