@@ -209,6 +209,7 @@ jobs:
         id: docker-build
         uses: ./.github/buildon-github-actions/src/actions/docker-build-dockerfile
         with:
+          image-build-command: ${{ steps.validate-tooling.outputs.IMAGE_BUILD_COMMAND }}
           docker-target-registry: ${{ steps.resolve-registry.outputs.docker-target-registry }}
           docker-target-namespace: ${{ steps.resolve-registry.outputs.docker-target-namespace }}
           docker-image-name: ${{ steps.versions.outputs.docker-image-name }}
@@ -216,11 +217,14 @@ jobs:
           version: ${{ steps.versions.outputs.version }}
           project-name: ${{ steps.versions.outputs.project-name }}
           is-release: ${{ steps.versions.outputs.is-release }}
+          repository-owner: ${{ steps.versions.outputs.repository-owner }}
+          repository-name: ${{ steps.versions.outputs.repository-name }}
           dockerfile-sub-path: ${{ steps.spec-package-prepare.outputs.DOCKERFILE_SUB_PATH }}
           dockerfile-substitution-files: ${{ steps.spec-package-prepare.outputs.SPEC_DOCKER_FILES }}
           dockerfile-squash: ${{ inputs.dockerfile-squash }}
           dockerfile-no-cache: ${{ inputs.dockerfile-no-cache }}
           output-sub-path: ${{ inputs.output-sub-path }}
+          docker-push-image-list-file: ${{ steps.docker-registry-logins.outputs.docker-push-image-list-file }}
           token-delimiter-style: ${{ inputs.token-delimiter-style }}
           token-name-style: ${{ inputs.token-name-style }}
           token-name-validation: ${{ inputs.token-name-validation }}
@@ -228,6 +232,9 @@ jobs:
           allow-builtin-token-override: ${{ inputs.allow-builtin-token-override }}
           config-value-trailing-newline: ${{ inputs.config-value-trailing-newline }}
           token-substitution-passes: ${{ inputs.token-substitution-passes }}
+          docker-platform: ${{ inputs.docker-platform }}
+          dockerfile-sub-path-linux-amd64: ${{ inputs.dockerfile-sub-path-linux-amd64 }}
+          dockerfile-sub-path-linux-arm64: ${{ inputs.dockerfile-sub-path-linux-arm64 }}
       # INJECT: github-check-end(name="Docker Build", id="check-docker-build")
 
       # === Spec Validate ===
