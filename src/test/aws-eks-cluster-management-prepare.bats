@@ -925,6 +925,7 @@ teardown() {
 @test "does not generate nodegroup subnets when no networking subnets" {
   export EKS_PRIVATE_NETWORKING="false"
   export EKS_PUBLIC_NETWORKING="false"
+  rm -f "$CONFIG_SUB_PATH/PrivateSubnetIdA" "$CONFIG_SUB_PATH/PrivateSubnetIdB" "$CONFIG_SUB_PATH/PrivateSubnetIdC"
 
   run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
   [ "$status" -eq 0 ]
@@ -2538,4 +2539,27 @@ YAML
   run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
   [ "$status" -ne 0 ]
   assert_output_contains "must not start with 'kaptain'"
+}
+
+# === Unrecognised config file detection ===
+
+@test "fails when unrecognised config file exists" {
+  printf 'something' > "$CONFIG_SUB_PATH/NodeGrupTypo"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -ne 0 ]
+  assert_output_contains "Unrecognised config file"
+  assert_output_contains "NodeGrupTypo"
+}
+
+@test "fails when multiple unrecognised config files exist" {
+  printf 'something' > "$CONFIG_SUB_PATH/NodeGrupTypo"
+  printf 'something' > "$CONFIG_SUB_PATH/AdditionalNodeGroups"
+
+  run "$SCRIPTS_DIR/aws-eks-cluster-management-prepare"
+  [ "$status" -ne 0 ]
+  assert_output_contains "Unrecognised config file"
+  assert_output_contains "NodeGrupTypo"
+  assert_output_contains "AdditionalNodeGroups"
+  assert_output_contains "2 unrecognised config file(s)"
 }

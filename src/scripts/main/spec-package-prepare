@@ -4,21 +4,30 @@
 #
 # Spec Package Prepare
 #
-# Copies spec file to output directory, converts to JSON, generates Dockerfile.
+# Copies spec YAML files from src/specs/ (if present) to the output directory,
+# converts all YAML files in the output directory to JSON, and generates a
+# Dockerfile that bundles all spec files into an OCI image.
+#
+# Spec files may also be placed in the output yaml directory by a
+# hook-post-versions-and-naming hook before this script runs. Files from both
+# sources are processed together.
+#
+# Fails if a file from src/specs/ would overwrite a hook-generated file in the
+# destination (name collision after versioning). Fails if no yaml files are
+# available to package from either source.
+#
 # Token substitution is handled by the docker build step.
 #
 # Inputs via env vars (required):
-#   PROJECT_NAME      - Repository/project name (also used to find ${PROJECT_NAME}.yaml)
+#   PROJECT_NAME      - Repository/project name (prefix for matching spec files)
 #   VERSION           - Version string for output files
 #   OUTPUT_SUB_PATH   - Base directory for output files
 #
 # Inputs via env vars (optional):
-#   SPEC_PACKAGING_BASE_IMAGE - Base image for Dockerfile (default: pause image)
+#   SPEC_PACKAGING_BASE_IMAGE - Base image for Dockerfile (default: scratch)
 #
 # Outputs:
-#   SPEC_SUB_PATH        - Directory containing spec files (relative)
-#   SPEC_YAML            - File name of spec YAML file
-#   SPEC_JSON            - File name of spec JSON file
+#   SPEC_DOCKER_FILES    - Comma-separated file list for dockerfile-substitution-files
 #   DOCKERFILE_SUB_PATH  - Directory containing generated Dockerfile
 
 set -euo pipefail
@@ -39,44 +48,91 @@ VERSION="${VERSION:?VERSION is required}"
 OUTPUT_SUB_PATH="${OUTPUT_SUB_PATH:?OUTPUT_SUB_PATH is required}"
 SPEC_PACKAGING_BASE_IMAGE="${SPEC_PACKAGING_BASE_IMAGE:-scratch}"
 
-# Validate source file exists
-spec_file="${PROJECT_NAME}.yaml"
-if [[ ! -f "${spec_file}" ]]; then
-  log_error "Spec file not found: ${spec_file}"
+# Setup directories
+specs_dir="${OUTPUT_SUB_PATH}/specs"
+yaml_dir="${specs_dir}/yaml"
+json_dir="${specs_dir}/json"
+mkdir -p "${yaml_dir}" "${json_dir}"
+
+# Copy fixed spec files from src/specs/ if any exist
+specs_src_dir="src/specs"
+if [[ -d "${specs_src_dir}" ]]; then
+  unexpected_files=()
+  src_spec_files=()
+  for spec_file in "${specs_src_dir}"/*; do
+    [[ -f "${spec_file}" ]] || continue
+    fname="${spec_file##*/}"
+    if [[ "${fname}" != "${PROJECT_NAME}"*.yaml ]]; then
+      unexpected_files+=("${fname}")
+    else
+      src_spec_files+=("${spec_file}")
+    fi
+  done
+  if [[ ${#unexpected_files[@]} -gt 0 ]]; then
+    for fname in "${unexpected_files[@]}"; do
+      log_error "Unexpected file in ${specs_src_dir}: ${fname} (must match ${PROJECT_NAME}*.yaml)"
+    done
+    log_error "${#src_spec_files[@]} valid file(s) found alongside the above"
+    exit 1
+  fi
+
+  for spec_file in "${src_spec_files[@]+"${src_spec_files[@]}"}"; do
+    fname="${spec_file##*/}"
+    stem="${fname%.yaml}"
+    versioned_yaml="${stem}-${VERSION}.yaml"
+    if [[ -f "${yaml_dir}/${versioned_yaml}" ]]; then
+      log_error "Collision: ${versioned_yaml} already exists in ${yaml_dir} (placed by hook) and src/specs/ also provides it"
+      exit 1
+    fi
+    log "Copying: ${spec_file} -> ${yaml_dir}/${versioned_yaml}"
+    cp "${spec_file}" "${yaml_dir}/${versioned_yaml}"
+  done
+fi
+
+# Fail early if nothing to package
+yaml_files=()
+for f in "${yaml_dir}"/*.yaml; do
+  [[ -f "${f}" ]] && yaml_files+=("${f}")
+done
+if [[ ${#yaml_files[@]} -eq 0 ]]; then
+  log_error "No spec YAML files to package: nothing in ${yaml_dir} (add files to src/specs/ or generate them via hook-post-versions-and-naming)"
   exit 1
 fi
 
-# Setup directories
-spec_dir="${OUTPUT_SUB_PATH}/spec"
-mkdir -p "${spec_dir}"
+log "Processing ${#yaml_files[@]} spec file(s)"
 
-log "Copying original to versioned..."
-spec_yaml="${PROJECT_NAME}-${VERSION}.yaml"
-cp "${spec_file}" "${spec_dir}/${spec_yaml}"
-log "Copied: ${spec_file} -> ${spec_dir}/${spec_yaml}"
+# Convert all yaml files to JSON and build Dockerfile entries
+docker_files="Dockerfile"
+dockerfile_copy_lines=()
 
-log "Converting to JSON..."
-spec_json="${PROJECT_NAME}-${VERSION}.json"
-yq eval -o=json '.' "${spec_dir}/${spec_yaml}" > "${spec_dir}/${spec_json}"
-log "Converted: ${spec_dir}/${spec_json}"
+for yaml_file in "${yaml_files[@]}"; do
+  fname="${yaml_file##*/}"
+  json_fname="${fname%.yaml}.json"
+
+  log "Converting to JSON: ${json_dir}/${json_fname}"
+  yq eval -o=json '.' "${yaml_file}" > "${json_dir}/${json_fname}"
+
+  docker_files="${docker_files},yaml/${fname},json/${json_fname}"
+  dockerfile_copy_lines+=("COPY yaml/${fname} /")
+  dockerfile_copy_lines+=("COPY json/${json_fname} /")
+done
 
 # Generate Dockerfile (escaped tokens prevent failure with set -u)
-cat > "${spec_dir}/Dockerfile" <<EOF
+cat > "${specs_dir}/Dockerfile" <<EOF
 FROM ${SPEC_PACKAGING_BASE_IMAGE}
 LABEL version="\${Version}"
 LABEL project.name="\${ProjectName}"
 LABEL image.name="\${DockerImageName}"
-COPY ${spec_yaml} /
-COPY ${spec_json} /
 EOF
-log "Generated: ${spec_dir}/Dockerfile"
+for copy_line in "${dockerfile_copy_lines[@]}"; do
+  echo "${copy_line}" >> "${specs_dir}/Dockerfile"
+done
+log "Generated: ${specs_dir}/Dockerfile"
 
 # Write outputs
 {
-  echo "SPEC_SUB_PATH=${spec_dir}"
-  echo "SPEC_YAML=${spec_yaml}"
-  echo "SPEC_JSON=${spec_json}"
-  echo "DOCKERFILE_SUB_PATH=${spec_dir}"
+  echo "SPEC_DOCKER_FILES=${docker_files}"
+  echo "DOCKERFILE_SUB_PATH=${specs_dir}"
 } >> "${GITHUB_OUTPUT:-/dev/stdout}"
 
 log "Done"

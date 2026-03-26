@@ -351,6 +351,7 @@ See [`examples/`](examples/) for more usage patterns.
 | `qc-require-conventional-commits` | boolean | `false` | Require commits use conventional commit format (feat:, fix:, etc.) |
 | `release-branch` | string | `main` | The release branch name |
 | `secrets-sub-path` | string | `src/secrets` | Source directory for encrypted secrets (relative) |
+| `spec-json-schema-url` | string | `""` | JSON Schema meta-schema URL used when validating schema-type specs |
 | `spec-packaging-base-image` | string | `scratch` | Base image for spec packaging |
 | `spec-type` | string | *required* | Type of spec (schema or api) |
 | `spec-validation-type` | string | `basic` | Schema validator to use (basic, python3-jsonschema) |

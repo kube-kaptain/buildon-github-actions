@@ -292,9 +292,11 @@ hook-post-versions-and-naming
 change-source-note-write
 release-change-data-generate
 release-change-data-oci-package
+hook-pre-docker-prepare
 spec-package-prepare
 docker-build-dockerfile
 spec-validate
+hook-post-docker-tests
 docker-multi-tag
 git-push-tag
 docker-push-all

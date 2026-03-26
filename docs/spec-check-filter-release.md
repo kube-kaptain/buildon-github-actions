@@ -20,6 +20,7 @@ Spec Check Filter Release
 | `docker-platform` | string | `linux/amd64` | Target platform (linux/amd64, linux/arm64, or both comma-separated) |
 | `spec-type` | string | *required* | Type of spec (schema or api) |
 | `spec-validation-type` | string | `basic` | Schema validator to use (basic, python3-jsonschema) |
+| `spec-json-schema-url` | string | `""` | JSON Schema meta-schema URL used when validating schema-type specs |
 | `spec-packaging-base-image` | string | `scratch` | Base image for spec packaging |
 | `token-delimiter-style` | string | `shell` | Token delimiter syntax for variables (shell, mustache, helm, erb, github-actions, blade, stringtemplate, ognl, t4, swift) |
 | `token-name-style` | string | `PascalCase` | Case style for token names (UPPER_SNAKE, lower_snake, lower-kebab, UPPER-KEBAB, camelCase, PascalCase, lower.dot, UPPER.DOT) |
@@ -51,6 +52,8 @@ Spec Check Filter Release
 | `qc-block-duplicate-commit-messages` | boolean | `true` | Block PRs where two or more commits have identical messages |
 | `hook-pre-build-script-sub-path` | string | `""` | Path to pre-build script relative to .github/ (e.g., bin/pre-build.bash) |
 | `hook-pre-tagging-tests-script-sub-path` | string | `""` | Path to pre-tagging test script relative to .github/ (e.g., bin/pre-tagging.bash) |
+| `hook-pre-docker-prepare-script-sub-path` | string | `""` | Path to pre-docker prepare script relative to .github/ (e.g., bin/pre-docker-prepare.bash) |
+| `hook-post-docker-tests-script-sub-path` | string | `""` | Path to post-docker test script relative to .github/ (e.g., bin/post-docker.bash) |
 | `hook-post-versions-and-naming-script-sub-path` | string | `""` | Path to post-versions-and-naming script relative to .github/ (e.g., bin/post-versions-and-naming.bash) |
 | `hook-post-build-script-sub-path` | string | `""` | Path to post-build script relative to .github/ (e.g., bin/post-build.bash) |
 | `change-source-note-enabled` | boolean | `true` | Write a git note with merge candidate metadata for release tracking |
@@ -85,5 +88,3 @@ Spec Check Filter Release
 | `is-release` | Whether this is a release build |
 | `docker-target-image-full-uri` | Full target image reference |
 | `images-pushed` | Number of images pushed |
-| `spec-yaml` | File name of spec YAML file |
-| `spec-json` | File name of spec JSON file |
