@@ -25,8 +25,8 @@ source "${SCRIPT_DIR}/../lib/output-var.bash"
 source "${SCRIPT_DIR}/../lib/log.bash"
 
 # Tool categories
-CORE_TOOLS="git awk grep find tr wc cmp cp mkdir basename zip date uname"
-BUILD_SERVER_TOOLS="sudo systemctl jq yq"
+CORE_TOOLS="git awk grep find tr wc cmp cp mkdir basename zip date uname yq jq"
+BUILD_SERVER_TOOLS="sudo systemctl"
 CLOUD_TOOLS="aws az gcloud"
 
 # Track missing tools
