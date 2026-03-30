@@ -118,6 +118,32 @@ for tool in ${BUILD_SERVER_TOOLS}; do
 done
 log ""
 
+# Check python3-jsonschema (required for spec validation)
+log "Checking python3-jsonschema..."
+if python3 -c "import jsonschema" &>/dev/null; then
+  log "  ✓ python3-jsonschema"
+elif [[ "${BUILD_MODE}" == "build_server" ]]; then
+  log "  python3-jsonschema not found — installing..."
+  if command -v apt-get &>/dev/null; then
+    sudo apt-get update
+    sudo apt-get install -y python3-jsonschema
+  elif command -v yum &>/dev/null; then
+    sudo yum install -y python3-jsonschema
+  else
+    log_error "No supported package manager found (need apt-get or yum)"
+  fi
+  if python3 -c "import jsonschema" &>/dev/null; then
+    log "  ✓ python3-jsonschema (installed)"
+  else
+    log_error "python3-jsonschema installation failed"
+    MISSING_CORE="${MISSING_CORE} python3-jsonschema"
+  fi
+else
+  log_error "python3-jsonschema not found — install it locally (e.g. pip install jsonschema)"
+  MISSING_CORE="${MISSING_CORE} python3-jsonschema"
+fi
+log ""
+
 # Check cloud CLIs (warn only)
 log "Checking cloud CLIs (optional)..."
 for tool in ${CLOUD_TOOLS}; do

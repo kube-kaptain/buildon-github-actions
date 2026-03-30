@@ -63,8 +63,6 @@ log "Type: ${SPEC_TYPE} | Validation: ${SPEC_VALIDATION_TYPE} | Files: ${#spec_f
 
 validate_with_python() {
   local spec_file="$1" schema_url="$2"
-  log "Installing python3-jsonschema..."
-  log "$(sudo apt-get update && sudo apt-get install -y python3-jsonschema 2>&1)"
   log "Validating with python3-jsonschema..."
   python3 -c "import json, jsonschema, urllib.request; jsonschema.validate(json.load(open('${spec_file}')), json.loads(urllib.request.urlopen('${schema_url}').read()))"
 }
