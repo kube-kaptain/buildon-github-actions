@@ -19,7 +19,7 @@ Spec Check Filter Release
 | `dockerfile-sub-path-linux-arm64` | string | `src/docker-linux-arm64` | Per-platform Dockerfile directory for linux/arm64 multi-platform builds |
 | `docker-platform` | string | `linux/amd64` | Target platform (linux/amd64, linux/arm64, or both comma-separated) |
 | `spec-type` | string | *required* | Type of spec (schema or api) |
-| `spec-json-schema-url` | string | `src/schemas/json-schema-draft-2020-12.json` | JSON Schema meta-schema file path or URL for validating schema-type specs |
+| `spec-json-schema-url` | string | `""` | JSON Schema meta-schema file path or URL for validating schema-type specs |
 | `spec-packaging-base-image` | string | `scratch` | Base image for spec packaging |
 | `token-delimiter-style` | string | `shell` | Token delimiter syntax for variables (shell, mustache, helm, erb, github-actions, blade, stringtemplate, ognl, t4, swift) |
 | `token-name-style` | string | `PascalCase` | Case style for token names (UPPER_SNAKE, lower_snake, lower-kebab, UPPER-KEBAB, camelCase, PascalCase, lower.dot, UPPER.DOT) |
