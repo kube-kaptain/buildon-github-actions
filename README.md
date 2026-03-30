@@ -351,7 +351,7 @@ See [`examples/`](examples/) for more usage patterns.
 | `qc-require-conventional-commits` | boolean | `false` | Require commits use conventional commit format (feat:, fix:, etc.) |
 | `release-branch` | string | `main` | The release branch name |
 | `secrets-sub-path` | string | `src/secrets` | Source directory for encrypted secrets (relative) |
-| `spec-json-schema-url` | string | `src/schemas/json-schema-draft-2020-12.json` | JSON Schema meta-schema file path or URL for validating schema-type specs |
+| `spec-json-schema-url` | string | `""` | JSON Schema meta-schema file path or URL for validating schema-type specs |
 | `spec-packaging-base-image` | string | `scratch` | Base image for spec packaging |
 | `spec-type` | string | *required* | Type of spec (schema or api) |
 | `tag-version-calculation-strategy` | string | `git-auto-closest-highest` | Strategy for calculating version (git-auto-closest-highest, file-pattern-match, compound-file-pattern-match) |
