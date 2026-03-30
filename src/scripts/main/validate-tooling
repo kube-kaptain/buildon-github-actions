@@ -118,29 +118,35 @@ for tool in ${BUILD_SERVER_TOOLS}; do
 done
 log ""
 
-# Check python3-jsonschema (required for spec validation)
-log "Checking python3-jsonschema..."
-if python3 -c "import jsonschema" &>/dev/null; then
-  log "  ✓ python3-jsonschema"
+# Check check-jsonschema CLI (required for spec/schema validation)
+log "Checking check-jsonschema..."
+if check_tool "check-jsonschema"; then
+  log "  ✓ check-jsonschema"
 elif [[ "${BUILD_MODE}" == "build_server" ]]; then
-  log "  python3-jsonschema not found — installing..."
-  if command -v apt-get &>/dev/null; then
-    sudo apt-get update
-    sudo apt-get install -y python3-jsonschema
-  elif command -v yum &>/dev/null; then
-    sudo yum install -y python3-jsonschema
-  else
-    log_error "No supported package manager found (need apt-get or yum)"
+  log "  check-jsonschema not found — installing..."
+  if ! check_tool "pip3"; then
+    log "  pip3 not found — installing..."
+    if command -v apt-get &>/dev/null; then
+      sudo apt-get update
+      sudo apt-get install -y python3-pip
+    elif command -v yum &>/dev/null; then
+      sudo yum install -y python3-pip
+    else
+      log_error "No supported package manager found (need apt-get or yum)"
+    fi
   fi
-  if python3 -c "import jsonschema" &>/dev/null; then
-    log "  ✓ python3-jsonschema (installed)"
+  if check_tool "pip3"; then
+    pip3 install check-jsonschema
+  fi
+  if check_tool "check-jsonschema"; then
+    log "  ✓ check-jsonschema (installed)"
   else
-    log_error "python3-jsonschema installation failed"
-    MISSING_CORE="${MISSING_CORE} python3-jsonschema"
+    log_error "check-jsonschema installation failed"
+    MISSING_CORE="${MISSING_CORE} check-jsonschema"
   fi
 else
-  log_error "python3-jsonschema not found — install it locally (e.g. pip install jsonschema)"
-  MISSING_CORE="${MISSING_CORE} python3-jsonschema"
+  log_error "check-jsonschema not found — install it locally (brew install check-jsonschema or pip3 install check-jsonschema)"
+  MISSING_CORE="${MISSING_CORE} check-jsonschema"
 fi
 log ""
 

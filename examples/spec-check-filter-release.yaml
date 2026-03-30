@@ -48,8 +48,7 @@ jobs:
 # └─────────────────────────────────────────────────────────────────────────┘
 #     with:
 #       spec-type: 'api'  # 'schema' for JSON Schema, 'api' for API specs (must declare $schema)
-#       spec-validation-type: 'python3-jsonschema'  # 'basic' (default, jq syntax check only), 'python3-jsonschema' (adds schema validation)
-#       spec-json-schema-url: 'https://json-schema.org/draft/2020-12/schema'  # Default is draft-07
+#       spec-json-schema-url: 'src/schemas/json-schema-draft-2020-12.json'  # Local path or URL to meta-schema
 #       spec-packaging-base-image: 'scratch'  # Default is scratch
 
 # ┌─────────────────────────────────────────────────────────────────────────┐
@@ -154,7 +153,7 @@ jobs:
 # │ Output Configuration                                                    │
 # └─────────────────────────────────────────────────────────────────────────┘
 #     with:
-#       output-sub-path: 'build'  # Default is 'target'
+#       output-sub-path: 'build'  # Default is 'kaptain-out'
 
 # ┌─────────────────────────────────────────────────────────────────────────┐
 # │ Multi-Registry Push                                                     │

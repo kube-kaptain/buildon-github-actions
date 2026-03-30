@@ -8,14 +8,14 @@
 # docker build has performed token substitution.
 #
 # Basic validation (always run): JSON syntax check via jq.
-# Schema validation (optional): validates against the spec's declared schema.
+# Schema validation (always run): validates against the spec's declared schema.
 #
 # Inputs via env vars (required):
 #   SPEC_TYPE         - Type of spec: "schema" or "api"
 #   OUTPUT_SUB_PATH   - Base directory for output files
 #
 # Inputs via env vars (optional):
-#   SPEC_VALIDATION_TYPE - Additional validation: python3-jsonschema (default: basic)
+#   SPEC_JSON_SCHEMA_URL - Schema file path or URL (default: src/schemas/json-schema-draft-2020-12.json)
 
 set -euo pipefail
 
@@ -43,12 +43,6 @@ if [[ "${SPEC_TYPE}" != "schema" && "${SPEC_TYPE}" != "api" ]]; then
   exit 1
 fi
 
-# Validate SPEC_VALIDATION_TYPE value
-case "${SPEC_VALIDATION_TYPE}" in
-  basic|python3-jsonschema) ;;
-  *) log_error "Unknown SPEC_VALIDATION_TYPE: ${SPEC_VALIDATION_TYPE}"; exit 1 ;;
-esac
-
 # Find all spec files
 spec_files=()
 for f in "${spec_sub_path}"/*.json; do
@@ -59,12 +53,12 @@ if [[ ${#spec_files[@]} -eq 0 ]]; then
   exit 1
 fi
 
-log "Type: ${SPEC_TYPE} | Validation: ${SPEC_VALIDATION_TYPE} | Files: ${#spec_files[@]}"
+log "Type: ${SPEC_TYPE} | Files: ${#spec_files[@]}"
 
-validate_with_python() {
+validate_with_check_jsonschema() {
   local spec_file="$1" schema_url="$2"
-  log "Validating with python3-jsonschema..."
-  python3 -c "import json, jsonschema, urllib.request; jsonschema.validate(json.load(open('${spec_file}')), json.loads(urllib.request.urlopen('${schema_url}').read()))"
+  log "Validating with check-jsonschema..."
+  check-jsonschema --schemafile "${schema_url}" "${spec_file}"
 }
 
 for spec_file in "${spec_files[@]}"; do
@@ -82,20 +76,18 @@ for spec_file in "${spec_files[@]}"; do
   fi
   log "JSON syntax valid: $(basename "${spec_file}")"
 
-  # Schema validation if configured
-  if [[ "${SPEC_VALIDATION_TYPE}" == "python3-jsonschema" ]]; then
-    if [[ "${SPEC_TYPE}" == "api" ]]; then
-      schema_url=$(jq -r '."$schema" // empty' "${spec_file}")
-      if [[ -z "${schema_url}" ]]; then
-        log_error "API spec must declare \$schema: $(basename "${spec_file}")"
-        exit 1
-      fi
-    else
-      schema_url="${SPEC_JSON_SCHEMA_URL}"
+  # Schema validation
+  if [[ "${SPEC_TYPE}" == "api" ]]; then
+    schema_url=$(jq -r '."$schema" // empty' "${spec_file}")
+    if [[ -z "${schema_url}" ]]; then
+      log_error "API spec must declare \$schema: $(basename "${spec_file}")"
+      exit 1
     fi
-    log "Schema: ${schema_url}"
-    validate_with_python "${spec_file}" "${schema_url}"
+  else
+    schema_url="${SPEC_JSON_SCHEMA_URL}"
   fi
+  log "Schema: ${schema_url}"
+  validate_with_check_jsonschema "${spec_file}" "${schema_url}"
 
   log "Validation passed: $(basename "${spec_file}")"
 done

@@ -1,0 +1,18 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
+#
+# Spec validation
+spec-type:
+  description: 'Type of spec (schema or api)'
+  required: true
+  type: string
+spec-json-schema-url:
+  description: 'JSON Schema meta-schema file path or URL for validating schema-type specs'
+  required: false
+  type: string
+  default: 'src/schemas/json-schema-draft-2020-12.json'
+spec-packaging-base-image:
+  description: 'Base image for spec packaging'
+  required: false
+  type: string
+  default: 'scratch'
