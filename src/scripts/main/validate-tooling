@@ -25,8 +25,8 @@ source "${SCRIPT_DIR}/../lib/output-var.bash"
 source "${SCRIPT_DIR}/../lib/log.bash"
 
 # Tool categories
-CORE_TOOLS="git awk grep find tr wc cmp cp mkdir basename zip date uname"
-BUILD_SERVER_TOOLS="sudo systemctl jq yq"
+CORE_TOOLS="git awk grep find tr wc cmp cp mkdir basename zip date uname yq jq"
+BUILD_SERVER_TOOLS="sudo systemctl"
 CLOUD_TOOLS="aws az gcloud"
 
 # Track missing tools
@@ -116,6 +116,38 @@ for tool in ${BUILD_SERVER_TOOLS}; do
     MISSING_BUILD_SERVER="${MISSING_BUILD_SERVER} ${tool}"
   fi
 done
+log ""
+
+# Check check-jsonschema CLI (required for spec/schema validation)
+log "Checking check-jsonschema..."
+if check_tool "check-jsonschema"; then
+  log "  ✓ check-jsonschema"
+elif [[ "${BUILD_MODE}" == "build_server" ]]; then
+  log "  check-jsonschema not found — installing..."
+  if ! check_tool "pip3"; then
+    log "  pip3 not found — installing..."
+    if command -v apt-get &>/dev/null; then
+      sudo apt-get update
+      sudo apt-get install -y python3-pip
+    elif command -v yum &>/dev/null; then
+      sudo yum install -y python3-pip
+    else
+      log_error "No supported package manager found (need apt-get or yum)"
+    fi
+  fi
+  if check_tool "pip3"; then
+    pip3 install check-jsonschema
+  fi
+  if check_tool "check-jsonschema"; then
+    log "  ✓ check-jsonschema (installed)"
+  else
+    log_error "check-jsonschema installation failed"
+    MISSING_CORE="${MISSING_CORE} check-jsonschema"
+  fi
+else
+  log_error "check-jsonschema not found — install it locally (brew install check-jsonschema or pip3 install check-jsonschema)"
+  MISSING_CORE="${MISSING_CORE} check-jsonschema"
+fi
 log ""
 
 # Check cloud CLIs (warn only)

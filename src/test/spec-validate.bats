@@ -26,8 +26,14 @@ MOCK
   chmod +x "${MOCK_BIN_DIR}/jq"
   export PATH="${MOCK_BIN_DIR}:${PATH}"
 
+  # Mock check-jsonschema: always succeeds
+  cat > "${MOCK_BIN_DIR}/check-jsonschema" << 'MOCK'
+#!/usr/bin/env bash
+exit 0
+MOCK
+  chmod +x "${MOCK_BIN_DIR}/check-jsonschema"
+
   export SPEC_TYPE="schema"
-  unset SPEC_VALIDATION_TYPE 2>/dev/null || true
 }
 
 teardown() {
@@ -57,14 +63,6 @@ teardown() {
   run "${SCRIPT}"
   [ "${status}" -ne 0 ]
   assert_output_contains "SPEC_TYPE must be"
-}
-
-@test "fails when SPEC_VALIDATION_TYPE is unknown" {
-  echo '{}' > "${SPEC_DIR}/my-spec-1.0.0.json"
-  export SPEC_VALIDATION_TYPE="unknown-validator"
-  run "${SCRIPT}"
-  [ "${status}" -ne 0 ]
-  assert_output_contains "Unknown SPEC_VALIDATION_TYPE"
 }
 
 # =============================================================================
@@ -137,7 +135,7 @@ MOCK
   [ "${status}" -eq 0 ]
 }
 
-@test "fails for api spec without schema field when using python3-jsonschema" {
+@test "fails for api spec without schema field" {
   cat > "${MOCK_BIN_DIR}/jq" << 'MOCK'
 #!/usr/bin/env bash
 if [[ "$*" == *'."$schema"'* ]]; then
@@ -149,7 +147,6 @@ MOCK
   chmod +x "${MOCK_BIN_DIR}/jq"
   echo '{}' > "${SPEC_DIR}/my-api-1.0.0.json"
   export SPEC_TYPE="api"
-  export SPEC_VALIDATION_TYPE="python3-jsonschema"
   run "${SCRIPT}"
   [ "${status}" -ne 0 ]
   assert_output_contains "must declare"

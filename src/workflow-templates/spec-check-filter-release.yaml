@@ -13,25 +13,7 @@ on:
       # INJECT-INPUT: docker-dockerfile
       # INJECT-INPUT: docker-platform
 
-      # Spec configuration
-      spec-type:
-        description: 'Type of spec (schema or api)'
-        required: true
-        type: string
-      spec-validation-type:
-        description: 'Schema validator to use (basic, python3-jsonschema)'
-        required: false
-        type: string
-        default: 'basic'
-      spec-json-schema-url:
-        description: 'JSON Schema meta-schema URL used when validating schema-type specs'
-        required: false
-        type: string
-      spec-packaging-base-image:
-        description: 'Base image for spec packaging'
-        required: false
-        type: string
-        default: 'scratch'
+      # INJECT-INPUT: spec-validate
 
       # INJECT-INPUT: token-substitution
 
@@ -244,7 +226,6 @@ jobs:
         shell: bash
         env:
           SPEC_TYPE: ${{ inputs.spec-type }}
-          SPEC_VALIDATION_TYPE: ${{ inputs.spec-validation-type }}
           SPEC_JSON_SCHEMA_URL: ${{ inputs.spec-json-schema-url }}
           OUTPUT_SUB_PATH: ${{ inputs.output-sub-path }}
           BUILD_PLATFORM: github-actions
