@@ -50,8 +50,8 @@ Docker Build Retag
 | `hook-post-build-script-sub-path` | string | `""` | Path to post-build script relative to .github/ (e.g., bin/post-build.bash) |
 | `change-source-note-enabled` | boolean | `true` | Write a git note with merge candidate metadata for release tracking |
 | `github-release-enabled` | boolean | `true` | Create a GitHub release on version tags |
-| `github-release-substituted-files` | string | `""` | Files with token substitution and version suffix (space-separated) |
-| `github-release-verbatim-files` | string | `""` | Files copied as-is with version suffix only (space-separated) |
+| `github-release-substituted-files` | string | `""` | Files with token substitution and version suffix (comma/space-separated) |
+| `github-release-verbatim-files` | string | `""` | Files copied as-is with version suffix only (comma/space-separated) |
 | `github-release-notes` | string | `""` | Inline release notes string (mutually exclusive with github-release-notes-file) |
 | `github-release-notes-file` | string | `""` | Path to release notes file (mutually exclusive with github-release-notes) |
 | `github-release-add-version-to-filenames` | boolean | `true` | Add version suffix to release filenames (e.g., file.yaml -> file-1.2.3.yaml) |

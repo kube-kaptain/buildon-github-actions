@@ -4,17 +4,29 @@ name: GitHub Release Prepare
 description: Prepares files for GitHub release with optional substitution and version suffix
 
 inputs:
-  # Release file inputs (subset of github-release - doesn't need enabled/notes)
+  # GitHub release
+  github-release-enabled:
+    description: 'Create a GitHub release on version tags'
+    required: false
+    default: 'true'
   github-release-substituted-files:
-    description: 'Files with token substitution and version suffix (space-separated)'
+    description: 'Files with token substitution and version suffix (comma/space-separated)'
     required: false
     default: ''
   github-release-verbatim-files:
-    description: 'Files copied as-is with version suffix only (space-separated)'
+    description: 'Files copied as-is with version suffix only (comma/space-separated)'
+    required: false
+    default: ''
+  github-release-notes:
+    description: 'Inline release notes string (mutually exclusive with github-release-notes-file)'
+    required: false
+    default: ''
+  github-release-notes-file:
+    description: 'Path to release notes file (mutually exclusive with github-release-notes)'
     required: false
     default: ''
   github-release-add-version-to-filenames:
-    description: 'Add version suffix to filenames'
+    description: 'Add version suffix to release filenames (e.g., file.yaml -> file-1.2.3.yaml)'
     required: false
     default: 'true'
 
@@ -189,6 +201,10 @@ runs:
           MANIFESTS_ZIP_FILE_NAME="${MANIFESTS_ZIP_FILE_NAME:-}" \
             "${UTIL_DIR}/prepare-substitution-tokens"
         fi
+
+        # Normalise comma-separated file lists to space-separated
+        GITHUB_RELEASE_SUBSTITUTED_FILES="${GITHUB_RELEASE_SUBSTITUTED_FILES//,/ }"
+        GITHUB_RELEASE_VERBATIM_FILES="${GITHUB_RELEASE_VERBATIM_FILES//,/ }"
 
         # Process substituted files (token replacement + version suffix)
         if [[ -n "${GITHUB_RELEASE_SUBSTITUTED_FILES}" ]]; then
