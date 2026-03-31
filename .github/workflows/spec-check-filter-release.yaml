@@ -1459,8 +1459,8 @@ jobs:
           config-value-trailing-newline: ${{ inputs.config-value-trailing-newline }}
           token-substitution-passes: ${{ inputs.token-substitution-passes }}
           docker-platform: ${{ inputs.docker-platform }}
-          dockerfile-sub-path-linux-amd64: ${{ inputs.dockerfile-sub-path-linux-amd64 }}
-          dockerfile-sub-path-linux-arm64: ${{ inputs.dockerfile-sub-path-linux-arm64 }}
+          dockerfile-sub-path-linux-amd64: ${{ steps.spec-package-prepare.outputs.DOCKERFILE_SUB_PATH_LINUX_AMD64 }}
+          dockerfile-sub-path-linux-arm64: ${{ steps.spec-package-prepare.outputs.DOCKERFILE_SUB_PATH_LINUX_ARM64 }}
       - name: Pass check - Docker Build
         if: success() && steps.check-docker-build.outputs.check-run-id != ''
         continue-on-error: true
@@ -1490,6 +1490,7 @@ jobs:
           SPEC_TYPE: ${{ inputs.spec-type }}
           SPEC_JSON_SCHEMA_URL: ${{ inputs.spec-json-schema-url }}
           OUTPUT_SUB_PATH: ${{ inputs.output-sub-path }}
+          DOCKER_PLATFORM: ${{ inputs.docker-platform }}
           BUILD_PLATFORM: github-actions
           BUILD_PLATFORM_LOG_PROVIDER: github-actions
         run: ./.github/buildon-github-actions/src/scripts/main/spec-validate
@@ -1685,52 +1686,6 @@ jobs:
           action: fail
           check-run-id: ${{ steps.check-post-docker.outputs.check-run-id }}
 
-      # === Spec GitHub Release Prepare ===
-      - name: Start check - Spec GitHub Release Prepare
-        if: inputs.github-release-enabled == true && success()
-        id: check-spec-github-release-prepare
-        continue-on-error: true
-        uses: ./.github/buildon-github-actions/src/actions/github-check-run
-        with:
-          action: start
-          check-name: 'Build & Push → Spec GitHub Release Prepare'
-      - name: Prepare spec files for release
-        id: prepare-spec-release
-        if: inputs.github-release-enabled == true
-        shell: bash
-        env:
-          OUTPUT_SUB_PATH: ${{ inputs.output-sub-path }}
-          SUBSTITUTED_SUB_PATH: ${{ inputs.output-sub-path }}/docker/substituted
-        run: |
-          set -euo pipefail
-          RELEASE_DIR="${OUTPUT_SUB_PATH}/github-release"
-          mkdir -p "${RELEASE_DIR}"
-
-          # Copy all substituted spec files (already versioned by spec-package-prepare)
-          for f in "${SUBSTITUTED_SUB_PATH}/yaml"/*.yaml; do
-            [[ -f "${f}" ]] || continue
-            cp "${f}" "${RELEASE_DIR}/"
-            echo "Prepared: $(basename "${f}")"
-          done
-          for f in "${SUBSTITUTED_SUB_PATH}/json"/*.json; do
-            [[ -f "${f}" ]] || continue
-            cp "${f}" "${RELEASE_DIR}/"
-            echo "Prepared: $(basename "${f}")"
-          done
-      - name: Pass check - Spec GitHub Release Prepare
-        if: inputs.github-release-enabled == true && success() && steps.check-spec-github-release-prepare.outputs.check-run-id != ''
-        continue-on-error: true
-        uses: ./.github/buildon-github-actions/src/actions/github-check-run
-        with:
-          action: pass
-          check-run-id: ${{ steps.check-spec-github-release-prepare.outputs.check-run-id }}
-      - name: Fail check - Spec GitHub Release Prepare
-        if: inputs.github-release-enabled == true && failure() && steps.check-spec-github-release-prepare.outputs.check-run-id != ''
-        uses: ./.github/buildon-github-actions/src/actions/github-check-run
-        with:
-          action: fail
-          check-run-id: ${{ steps.check-spec-github-release-prepare.outputs.check-run-id }}
-
       # === Docker Multi-Tag ===
       - name: Start check - Docker Multi-Tag
         if: inputs.docker-push-targets != '' && steps.versions.outputs.is-release == 'true' && success()
@@ -1786,6 +1741,35 @@ jobs:
             mkdir -p "${{ inputs.output-sub-path }}/github-release"
             cp "${RCD_FILE}" "${{ inputs.output-sub-path }}/github-release/release-change-data-${{ steps.versions.outputs.version }}.yaml"
           fi
+
+      # Copy substituted spec files to release directory with version suffixes
+      - name: Copy spec files to release directory
+        if: inputs.github-release-enabled == true && success()
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "${{ inputs.output-sub-path }}/github-release"
+          CONTEXT_DIR=""
+          if [[ "${{ inputs.docker-platform }}" == *,* ]]; then
+            CONTEXT_DIR="${{ inputs.output-sub-path }}/docker-linux-amd64/substituted"
+          else
+            CONTEXT_DIR="${{ inputs.output-sub-path }}/docker/substituted"
+          fi
+          VERSION="${{ steps.versions.outputs.version }}"
+          IFS=',' read -ra spec_files <<< "${{ steps.spec-package-prepare.outputs.SPEC_SUBSTITUTED_FILES }}"
+          for rel_path in "${spec_files[@]}"; do
+            src_file="${CONTEXT_DIR}/${rel_path}"
+            if [[ ! -f "${src_file}" ]]; then
+              echo "::error::Spec file not found: ${src_file}"
+              exit 1
+            fi
+            filename=$(basename "${src_file}")
+            base="${filename%.*}"
+            ext="${filename##*.}"
+            target="${base}-${VERSION}.${ext}"
+            cp "${src_file}" "${{ inputs.output-sub-path }}/github-release/${target}"
+            echo "Prepared: ${filename} -> ${target}"
+          done
 
       - name: Prepare release files
         id: github-release-prepare
@@ -1950,6 +1934,7 @@ jobs:
               echo "NOTES_EOF"
             } >> "${GITHUB_OUTPUT}"
           fi
+
       - name: GitHub Release
         if: inputs.github-release-enabled == true && steps.versions.outputs.is-release == 'true' && success()
         uses: ./.github/buildon-github-actions/src/actions/github-release

@@ -35,7 +35,14 @@ log "=== Spec Validate ==="
 # Validate inputs
 SPEC_TYPE="${SPEC_TYPE:?SPEC_TYPE is required}"
 OUTPUT_SUB_PATH="${OUTPUT_SUB_PATH:?OUTPUT_SUB_PATH is required}"
-spec_sub_path="${OUTPUT_SUB_PATH}/docker/substituted/json"
+DOCKER_PLATFORM="${DOCKER_PLATFORM:-linux/amd64}"
+if [[ "${DOCKER_PLATFORM}" == *,* ]]; then
+  # Multi-platform: use first platform's context (content is identical)
+  first_platform="${DOCKER_PLATFORM%%,*}"
+  spec_sub_path="${OUTPUT_SUB_PATH}/docker-${first_platform//\//-}/substituted/json"
+else
+  spec_sub_path="${OUTPUT_SUB_PATH}/docker/substituted/json"
+fi
 
 # Validate SPEC_TYPE value
 if [[ "${SPEC_TYPE}" != "schema" && "${SPEC_TYPE}" != "api" ]]; then

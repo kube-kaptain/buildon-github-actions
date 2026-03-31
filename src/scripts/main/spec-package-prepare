@@ -103,6 +103,7 @@ log "Processing ${#yaml_files[@]} spec file(s)"
 
 # Convert all yaml files to JSON and build Dockerfile entries
 docker_files="Dockerfile"
+spec_substituted_files=""
 dockerfile_copy_lines=()
 
 for yaml_file in "${yaml_files[@]}"; do
@@ -113,6 +114,11 @@ for yaml_file in "${yaml_files[@]}"; do
   yq eval -o=json '.' "${yaml_file}" > "${json_dir}/${json_fname}"
 
   docker_files="${docker_files},yaml/${fname},json/${json_fname}"
+  if [[ -z "${spec_substituted_files}" ]]; then
+    spec_substituted_files="yaml/${fname},json/${json_fname}"
+  else
+    spec_substituted_files="${spec_substituted_files},yaml/${fname},json/${json_fname}"
+  fi
   dockerfile_copy_lines+=("COPY yaml/${fname} /")
   dockerfile_copy_lines+=("COPY json/${json_fname} /")
 done
@@ -132,6 +138,7 @@ log "Generated: ${specs_dir}/Dockerfile"
 # Write outputs
 {
   echo "SPEC_DOCKER_FILES=${docker_files}"
+  echo "SPEC_SUBSTITUTED_FILES=${spec_substituted_files}"
   echo "DOCKERFILE_SUB_PATH=${specs_dir}"
   echo "DOCKERFILE_SUB_PATH_LINUX_AMD64=${specs_dir}"
   echo "DOCKERFILE_SUB_PATH_LINUX_ARM64=${specs_dir}"
