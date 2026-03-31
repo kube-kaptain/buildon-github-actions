@@ -133,6 +133,8 @@ log "Generated: ${specs_dir}/Dockerfile"
 {
   echo "SPEC_DOCKER_FILES=${docker_files}"
   echo "DOCKERFILE_SUB_PATH=${specs_dir}"
+  echo "DOCKERFILE_SUB_PATH_LINUX_AMD64=${specs_dir}"
+  echo "DOCKERFILE_SUB_PATH_LINUX_ARM64=${specs_dir}"
 } >> "${GITHUB_OUTPUT:-/dev/stdout}"
 
 log "Done"
