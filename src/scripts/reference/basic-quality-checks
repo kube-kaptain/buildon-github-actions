@@ -25,6 +25,8 @@ export QC_BLOCK_CONVENTIONAL_COMMITS="${QC_BLOCK_CONVENTIONAL_COMMITS:-false}"
 export QC_BLOCK_DUPLICATE_COMMIT_MESSAGES="${QC_BLOCK_DUPLICATE_COMMIT_MESSAGES:-true}"
 
 run_step "validate-tooling"
+run_step "hook-pre-build"
 run_step "basic-quality-checks"
+run_step "hook-post-build"
 
 print_build_complete

@@ -103,7 +103,9 @@ assert_call_order() {
   [ "$status" -eq 0 ]
 
   assert_call_order "validate-tooling
-basic-quality-checks"
+hook-pre-build
+basic-quality-checks
+hook-post-build"
 }
 
 @test "reference: basic-quality-and-versioning calls scripts in correct order" {

@@ -15,3 +15,5 @@ Basic Quality Checks
 | `qc-require-conventional-commits` | boolean | `false` | Require commits use conventional commit format (feat:, fix:, etc.) |
 | `qc-block-conventional-commits` | boolean | `false` | Block commits that use conventional commit format |
 | `qc-block-duplicate-commit-messages` | boolean | `true` | Block PRs where two or more commits have identical messages |
+| `hook-pre-build-script-sub-path` | string | `""` | Path to pre-build script relative to .github/ (e.g., bin/pre-build.bash) |
+| `hook-post-build-script-sub-path` | string | `""` | Path to post-build script relative to .github/ (e.g., bin/post-build.bash) |
