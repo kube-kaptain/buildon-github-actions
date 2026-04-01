@@ -34,19 +34,22 @@ set -euo pipefail
 
 SCRIPT_DIR="$(dirname "${0}")"
 
+# shellcheck source=src/scripts/defaults/output-sub-path.bash
+source "${SCRIPT_DIR}/../defaults/output-sub-path.bash"
 # shellcheck source=src/scripts/defaults/platform.bash
 source "${SCRIPT_DIR}/../defaults/platform.bash"
-
+# shellcheck source=src/scripts/defaults/spec-build.bash
+source "${SCRIPT_DIR}/../defaults/spec-build.bash"
 # shellcheck source=src/scripts/lib/log.bash
 source "${SCRIPT_DIR}/../lib/log.bash"
+# shellcheck source=src/scripts/lib/output-var.bash
+source "${SCRIPT_DIR}/../lib/output-var.bash"
 
 log "=== Spec Package Prepare ==="
 
 # Validate inputs
 PROJECT_NAME="${PROJECT_NAME:?PROJECT_NAME is required}"
 VERSION="${VERSION:?VERSION is required}"
-OUTPUT_SUB_PATH="${OUTPUT_SUB_PATH:?OUTPUT_SUB_PATH is required}"
-SPEC_PACKAGING_BASE_IMAGE="${SPEC_PACKAGING_BASE_IMAGE:-scratch}"
 
 # Setup directories
 specs_dir="${OUTPUT_SUB_PATH}/specs"
@@ -136,12 +139,11 @@ done
 log "Generated: ${specs_dir}/Dockerfile"
 
 # Write outputs
-{
-  echo "SPEC_DOCKER_FILES=${docker_files}"
-  echo "SPEC_SUBSTITUTED_FILES=${spec_substituted_files}"
-  echo "DOCKERFILE_SUB_PATH=${specs_dir}"
-  echo "DOCKERFILE_SUB_PATH_LINUX_AMD64=${specs_dir}"
-  echo "DOCKERFILE_SUB_PATH_LINUX_ARM64=${specs_dir}"
-} >> "${GITHUB_OUTPUT:-/dev/stdout}"
+output_var "SPEC_DOCKER_FILES" "${docker_files}"
+output_var "SPEC_SUBSTITUTED_FILES" "${spec_substituted_files}"
+output_var "DOCKERFILE_SUBSTITUTION_FILES" "${docker_files}"
+output_var "DOCKERFILE_SUB_PATH" "${specs_dir}"
+output_var "DOCKERFILE_SUB_PATH_LINUX_AMD64" "${specs_dir}"
+output_var "DOCKERFILE_SUB_PATH_LINUX_ARM64" "${specs_dir}"
 
 log "Done"
