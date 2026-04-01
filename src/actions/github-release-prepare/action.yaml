@@ -17,6 +17,10 @@ inputs:
     description: 'Files copied as-is with version suffix only (comma/space-separated)'
     required: false
     default: ''
+  github-release-raw-files:
+    description: 'Files already versioned, copied as-is with no renaming (comma/space-separated, filenames must end with -VERSION.ext)'
+    required: false
+    default: ''
   github-release-notes:
     description: 'Inline release notes string (mutually exclusive with github-release-notes-file)'
     required: false
@@ -29,6 +33,20 @@ inputs:
     description: 'Add version suffix to release filenames (e.g., file.yaml -> file-1.2.3.yaml)'
     required: false
     default: 'true'
+
+  # Internal file lists (set by workflow prepare fragments, not by users)
+  internal-substituted-files:
+    description: 'Workflow-generated files needing substitution + version suffix (comma-separated)'
+    required: false
+    default: ''
+  internal-verbatim-files:
+    description: 'Workflow-generated files needing version suffix only (comma-separated)'
+    required: false
+    default: ''
+  internal-raw-files:
+    description: 'Workflow-generated files already versioned, copied as-is (comma-separated, filenames must end with -VERSION.ext)'
+    required: false
+    default: ''
 
   # Build output
   output-sub-path:
@@ -109,6 +127,10 @@ runs:
       env:
         GITHUB_RELEASE_SUBSTITUTED_FILES: ${{ inputs.github-release-substituted-files }}
         GITHUB_RELEASE_VERBATIM_FILES: ${{ inputs.github-release-verbatim-files }}
+        GITHUB_RELEASE_RAW_FILES: ${{ inputs.github-release-raw-files }}
+        INTERNAL_SUBSTITUTED_FILES: ${{ inputs.internal-substituted-files }}
+        INTERNAL_VERBATIM_FILES: ${{ inputs.internal-verbatim-files }}
+        INTERNAL_RAW_FILES: ${{ inputs.internal-raw-files }}
         OUTPUT_SUB_PATH: ${{ inputs.output-sub-path }}
         VERSION: ${{ inputs.version }}
         PROJECT_NAME: ${{ inputs.project-name }}
@@ -164,6 +186,56 @@ runs:
           fi
         }
 
+        # Validate a raw file has the correct version suffix in its filename
+        validate_raw_filename() {
+          local filepath="$1"
+          local filename
+          filename=$(basename "${filepath}")
+          local base ext expected_suffix
+          if [[ "${filename}" == *.* ]]; then
+            base="${filename%.*}"
+            ext="${filename##*.}"
+            expected_suffix="-${VERSION}"
+            if [[ "${base}" != *"${expected_suffix}" ]]; then
+              echo "::error::Raw file '${filename}' must end with '-${VERSION}.${ext}' — use verbatim-files instead for automatic versioning"
+              exit 1
+            fi
+          else
+            if [[ "${filename}" != *"-${VERSION}" ]]; then
+              echo "::error::Raw file '${filename}' must end with '-${VERSION}' — use verbatim-files instead for automatic versioning"
+              exit 1
+            fi
+          fi
+        }
+
+        # Combine user + internal file lists
+        ALL_SUBSTITUTED="${GITHUB_RELEASE_SUBSTITUTED_FILES}"
+        if [[ -n "${INTERNAL_SUBSTITUTED_FILES}" ]]; then
+          if [[ -n "${ALL_SUBSTITUTED}" ]]; then
+            ALL_SUBSTITUTED="${ALL_SUBSTITUTED},${INTERNAL_SUBSTITUTED_FILES}"
+          else
+            ALL_SUBSTITUTED="${INTERNAL_SUBSTITUTED_FILES}"
+          fi
+        fi
+
+        ALL_VERBATIM="${GITHUB_RELEASE_VERBATIM_FILES}"
+        if [[ -n "${INTERNAL_VERBATIM_FILES}" ]]; then
+          if [[ -n "${ALL_VERBATIM}" ]]; then
+            ALL_VERBATIM="${ALL_VERBATIM},${INTERNAL_VERBATIM_FILES}"
+          else
+            ALL_VERBATIM="${INTERNAL_VERBATIM_FILES}"
+          fi
+        fi
+
+        ALL_RAW="${GITHUB_RELEASE_RAW_FILES}"
+        if [[ -n "${INTERNAL_RAW_FILES}" ]]; then
+          if [[ -n "${ALL_RAW}" ]]; then
+            ALL_RAW="${ALL_RAW},${INTERNAL_RAW_FILES}"
+          else
+            ALL_RAW="${INTERNAL_RAW_FILES}"
+          fi
+        fi
+
         echo "Preparing GitHub release files..."
         echo "  Output: ${RELEASE_OUTPUT_DIR}"
         echo "  Add version to filenames: ${ADD_VERSION_TO_FILENAMES}"
@@ -171,15 +243,15 @@ runs:
         # Create output directory
         mkdir -p "${RELEASE_OUTPUT_DIR}"
 
-        # If no files specified in either list, we're done
-        if [[ -z "${GITHUB_RELEASE_SUBSTITUTED_FILES}" ]] && [[ -z "${GITHUB_RELEASE_VERBATIM_FILES}" ]]; then
+        # If no files specified in any list, we're done
+        if [[ -z "${ALL_SUBSTITUTED}" ]] && [[ -z "${ALL_VERBATIM}" ]] && [[ -z "${ALL_RAW}" ]]; then
           echo "No files specified for release"
           exit 0
         fi
 
         # Prepare tokens if we have substituted files
         tokens_dir=""
-        if [[ -n "${GITHUB_RELEASE_SUBSTITUTED_FILES}" ]]; then
+        if [[ -n "${ALL_SUBSTITUTED}" ]]; then
           tokens_dir="${OUTPUT_SUB_PATH}/github-release-tokens"
           echo "Preparing substitution tokens..."
 
@@ -203,14 +275,15 @@ runs:
         fi
 
         # Normalise comma-separated file lists to space-separated
-        GITHUB_RELEASE_SUBSTITUTED_FILES="${GITHUB_RELEASE_SUBSTITUTED_FILES//,/ }"
-        GITHUB_RELEASE_VERBATIM_FILES="${GITHUB_RELEASE_VERBATIM_FILES//,/ }"
+        ALL_SUBSTITUTED="${ALL_SUBSTITUTED//,/ }"
+        ALL_VERBATIM="${ALL_VERBATIM//,/ }"
+        ALL_RAW="${ALL_RAW//,/ }"
 
         # Process substituted files (token replacement + version suffix)
-        if [[ -n "${GITHUB_RELEASE_SUBSTITUTED_FILES}" ]]; then
+        if [[ -n "${ALL_SUBSTITUTED}" ]]; then
           echo "Processing substituted files..."
           # shellcheck disable=SC2086 # Intentional word splitting
-          for source_file in ${GITHUB_RELEASE_SUBSTITUTED_FILES}; do
+          for source_file in ${ALL_SUBSTITUTED}; do
             if [[ ! -f "${source_file}" ]]; then
               echo "::error::Source file not found: ${source_file}"
               exit 1
@@ -237,10 +310,10 @@ runs:
         fi
 
         # Process verbatim files (version suffix only, no substitution)
-        if [[ -n "${GITHUB_RELEASE_VERBATIM_FILES}" ]]; then
+        if [[ -n "${ALL_VERBATIM}" ]]; then
           echo "Processing verbatim files..."
           # shellcheck disable=SC2086 # Intentional word splitting
-          for source_file in ${GITHUB_RELEASE_VERBATIM_FILES}; do
+          for source_file in ${ALL_VERBATIM}; do
             if [[ ! -f "${source_file}" ]]; then
               echo "::error::Source file not found: ${source_file}"
               exit 1
@@ -254,6 +327,26 @@ runs:
             fi
             target_path="${RELEASE_OUTPUT_DIR}/${target_filename}"
             echo "  ${source_file} -> ${target_filename} (verbatim)"
+
+            cp "${source_file}" "${target_path}"
+          done
+        fi
+
+        # Process raw files (copied as-is, no renaming — validate version in filename)
+        if [[ -n "${ALL_RAW}" ]]; then
+          echo "Processing raw files..."
+          # shellcheck disable=SC2086 # Intentional word splitting
+          for source_file in ${ALL_RAW}; do
+            if [[ ! -f "${source_file}" ]]; then
+              echo "::error::Source file not found: ${source_file}"
+              exit 1
+            fi
+
+            validate_raw_filename "${source_file}"
+
+            filename=$(basename "${source_file}")
+            target_path="${RELEASE_OUTPUT_DIR}/${filename}"
+            echo "  ${source_file} -> ${filename} (raw)"
 
             cp "${source_file}" "${target_path}"
           done
