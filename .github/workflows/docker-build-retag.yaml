@@ -256,6 +256,11 @@ on:
         required: false
         type: string
         default: ''
+      github-release-raw-files:
+        description: 'Files already versioned, copied as-is with no renaming (comma/space-separated, filenames must end with -VERSION.ext)'
+        required: false
+        type: string
+        default: ''
       github-release-notes:
         description: 'Inline release notes string (mutually exclusive with github-release-notes-file)'
         required: false
@@ -1263,16 +1268,14 @@ jobs:
         with:
           action: start
           check-name: 'Build & Push → GitHub Release Prepare'
-      # Copy release change data with version suffix
-      - name: Copy release change data to release directory
+      - name: Resolve internal release files
+        id: resolve-internal-release-files
         if: inputs.github-release-enabled == true && success()
         shell: bash
         run: |
-          RCD_FILE="${{ inputs.output-sub-path }}/release-change-data/release-change-data.yaml"
-          if [[ -f "${RCD_FILE}" ]]; then
-            mkdir -p "${{ inputs.output-sub-path }}/github-release"
-            cp "${RCD_FILE}" "${{ inputs.output-sub-path }}/github-release/release-change-data-${{ steps.versions.outputs.version }}.yaml"
-          fi
+          echo "verbatim-files=" >> "${GITHUB_OUTPUT}"
+          echo "substituted-files=" >> "${GITHUB_OUTPUT}"
+          echo "raw-files=" >> "${GITHUB_OUTPUT}"
 
       - name: Prepare release files
         id: github-release-prepare
@@ -1281,6 +1284,12 @@ jobs:
         with:
           github-release-substituted-files: ${{ inputs.github-release-substituted-files }}
           github-release-verbatim-files: ${{ inputs.github-release-verbatim-files }}
+          github-release-raw-files: ${{ inputs.github-release-raw-files }}
+          internal-verbatim-files: >-
+            ${{ inputs.output-sub-path }}/release-change-data/release-change-data.yaml,
+            ${{ steps.resolve-internal-release-files.outputs.verbatim-files }}
+          internal-substituted-files: ${{ steps.resolve-internal-release-files.outputs.substituted-files }}
+          internal-raw-files: ${{ steps.resolve-internal-release-files.outputs.raw-files }}
           output-sub-path: ${{ inputs.output-sub-path }}
           version: ${{ steps.versions.outputs.version }}
           project-name: ${{ steps.versions.outputs.project-name }}

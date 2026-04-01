@@ -215,8 +215,8 @@ jobs:
           config-value-trailing-newline: ${{ inputs.config-value-trailing-newline }}
           token-substitution-passes: ${{ inputs.token-substitution-passes }}
           docker-platform: ${{ inputs.docker-platform }}
-          dockerfile-sub-path-linux-amd64: ${{ inputs.dockerfile-sub-path-linux-amd64 }}
-          dockerfile-sub-path-linux-arm64: ${{ inputs.dockerfile-sub-path-linux-arm64 }}
+          dockerfile-sub-path-linux-amd64: ${{ steps.spec-package-prepare.outputs.DOCKERFILE_SUB_PATH_LINUX_AMD64 }}
+          dockerfile-sub-path-linux-arm64: ${{ steps.spec-package-prepare.outputs.DOCKERFILE_SUB_PATH_LINUX_ARM64 }}
       # INJECT: github-check-end(name="Docker Build", id="check-docker-build")
 
       # === Spec Validate ===
@@ -228,6 +228,7 @@ jobs:
           SPEC_TYPE: ${{ inputs.spec-type }}
           SPEC_JSON_SCHEMA_URL: ${{ inputs.spec-json-schema-url }}
           OUTPUT_SUB_PATH: ${{ inputs.output-sub-path }}
+          DOCKER_PLATFORM: ${{ inputs.docker-platform }}
           BUILD_PLATFORM: github-actions
           BUILD_PLATFORM_LOG_PROVIDER: github-actions
         run: ./.github/buildon-github-actions/src/scripts/main/spec-validate
@@ -238,33 +239,6 @@ jobs:
       # INJECT: hook-post-docker-tests
       # INJECT: github-check-end(name="Post-docker Tests", id="check-post-docker", if="inputs.hook-post-docker-tests-script-sub-path != ''")
 
-      # === Spec GitHub Release Prepare ===
-      # INJECT: github-check-start(name="Spec GitHub Release Prepare", id="check-spec-github-release-prepare", if="inputs.github-release-enabled == true")
-      - name: Prepare spec files for release
-        id: prepare-spec-release
-        if: inputs.github-release-enabled == true
-        shell: bash
-        env:
-          OUTPUT_SUB_PATH: ${{ inputs.output-sub-path }}
-          SUBSTITUTED_SUB_PATH: ${{ inputs.output-sub-path }}/docker/substituted
-        run: |
-          set -euo pipefail
-          RELEASE_DIR="${OUTPUT_SUB_PATH}/github-release"
-          mkdir -p "${RELEASE_DIR}"
-
-          # Copy all substituted spec files (already versioned by spec-package-prepare)
-          for f in "${SUBSTITUTED_SUB_PATH}/yaml"/*.yaml; do
-            [[ -f "${f}" ]] || continue
-            cp "${f}" "${RELEASE_DIR}/"
-            echo "Prepared: $(basename "${f}")"
-          done
-          for f in "${SUBSTITUTED_SUB_PATH}/json"/*.json; do
-            [[ -f "${f}" ]] || continue
-            cp "${f}" "${RELEASE_DIR}/"
-            echo "Prepared: $(basename "${f}")"
-          done
-      # INJECT: github-check-end(name="Spec GitHub Release Prepare", id="check-spec-github-release-prepare", if="inputs.github-release-enabled == true")
-
       # === Docker Multi-Tag ===
       # INJECT: github-check-start(name="Docker Multi-Tag", id="check-docker-multi-tag", if="inputs.docker-push-targets != '' && steps.versions.outputs.is-release == 'true'")
       # INJECT: docker-multi-tag
@@ -272,7 +246,7 @@ jobs:
 
       # === GitHub Release Prepare ===
       # INJECT: github-check-start(name="GitHub Release Prepare", id="check-github-release-prepare", if="inputs.github-release-enabled == true")
-      # INJECT: github-release-prepare-docker
+      # INJECT: github-release-prepare-spec
       # INJECT: github-check-end(name="GitHub Release Prepare", id="check-github-release-prepare", if="inputs.github-release-enabled == true")
 
       # === Git Tag Push ===
@@ -287,71 +261,7 @@ jobs:
 
       # === GitHub Release ===
       # INJECT: github-check-start(name="GitHub Release", id="check-github-release", if="inputs.github-release-enabled == true && steps.versions.outputs.is-release == 'true'")
-      - name: Compute release notes
-        id: release-notes
-        if: inputs.github-release-enabled == true && steps.versions.outputs.is-release == 'true' && success()
-        shell: bash
-        env:
-          USER_NOTES: ${{ inputs.github-release-notes }}
-          USER_NOTES_FILE: ${{ inputs.github-release-notes-file }}
-          VERSION: ${{ steps.versions.outputs.version }}
-          PROJECT_NAME: ${{ steps.versions.outputs.project-name }}
-          DOCKER_URI: ${{ steps.docker-build.outputs.docker-target-image-full-uri }}
-          RELEASE_CHANGE_DATA_URI: ${{ steps.release-change-data-oci-package.outputs.release-change-data-image-uri }}
-          SPEC_TYPE: ${{ inputs.spec-type }}
-          OUTPUT_SUB_PATH: ${{ inputs.output-sub-path }}
-          GITHUB_SERVER_URL: ${{ github.server_url }}
-          GITHUB_REPOSITORY: ${{ github.repository }}
-          BUILD_PLATFORM: github-actions
-          BUILD_PLATFORM_LOG_PROVIDER: github-actions
-        run: |
-          display_name=$(./.github/buildon-github-actions/src/scripts/util/format-project-title "${PROJECT_NAME}")
-          echo "title=${VERSION} — ${display_name}" >> "${GITHUB_OUTPUT}"
-
-          if [[ -n "${USER_NOTES_FILE}" ]]; then
-            # Notes come from file, skip inline notes computation
-            echo "notes=" >> "${GITHUB_OUTPUT}"
-          elif [[ -n "${USER_NOTES}" ]]; then
-            # User provided notes override entirely
-            {
-              echo "notes<<NOTES_EOF"
-              echo "${USER_NOTES}"
-              echo "NOTES_EOF"
-            } >> "${GITHUB_OUTPUT}"
-          else
-            # Default format
-            if [[ "${SPEC_TYPE}" == "schema" ]]; then
-              type_label="Schema"
-            else
-              type_label="API Spec"
-            fi
-            release_url="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/releases/download/${VERSION}"
-            {
-              echo "notes<<NOTES_EOF"
-              echo "Automatic ${type_label} release for version ${VERSION} of ${PROJECT_NAME} by Kaptain build script. This release includes both YAML and JSON formats of the spec, and a Docker image with both files bundled."
-              echo ""
-              echo "### Release Assets"
-              while IFS= read -r f; do
-                fname=$(basename "${f}")
-                echo "* ${type_label}: [${fname}](${release_url}/${fname})"
-              done < <(find "${OUTPUT_SUB_PATH}/github-release" \( -name "*.yaml" -o -name "*.json" \) ! -name "release-change-data-*" | sort)
-              echo "* Docker Image: [${DOCKER_URI}](https://${DOCKER_URI})"
-              echo "* Release Change Data: [release-change-data-${VERSION}.yaml](${release_url}/release-change-data-${VERSION}.yaml)"
-              echo "* Release Change Data Image: [${RELEASE_CHANGE_DATA_URI}](https://${RELEASE_CHANGE_DATA_URI})"
-              ./.github/buildon-github-actions/src/scripts/util/format-release-image-list "${OUTPUT_SUB_PATH}" "${VERSION}"
-              echo "NOTES_EOF"
-            } >> "${GITHUB_OUTPUT}"
-          fi
-      - name: GitHub Release
-        if: inputs.github-release-enabled == true && steps.versions.outputs.is-release == 'true' && success()
-        uses: ./.github/buildon-github-actions/src/actions/github-release
-        with:
-          github-release-enabled: ${{ inputs.github-release-enabled }}
-          output-sub-path: ${{ inputs.output-sub-path }}
-          github-release-tag: ${{ steps.versions.outputs.version }}
-          github-release-notes: ${{ steps.release-notes.outputs.notes }}
-          github-release-notes-file: ${{ inputs.github-release-notes-file }}
-          github-release-title: ${{ steps.release-notes.outputs.title }}
+      # INJECT: github-release-spec
       # INJECT: github-check-end(name="GitHub Release", id="check-github-release", if="inputs.github-release-enabled == true && steps.versions.outputs.is-release == 'true'")
 
       # === Post-Build ===

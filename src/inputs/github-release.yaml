@@ -17,6 +17,11 @@ github-release-verbatim-files:
   required: false
   type: string
   default: ''
+github-release-raw-files:
+  description: 'Files already versioned, copied as-is with no renaming (comma/space-separated, filenames must end with -VERSION.ext)'
+  required: false
+  type: string
+  default: ''
 github-release-notes:
   description: 'Inline release notes string (mutually exclusive with github-release-notes-file)'
   required: false

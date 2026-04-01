@@ -11,6 +11,9 @@ on:
 
       # INJECT-INPUT: basic-quality-checks
 
+      # INJECT-INPUT: hooks-pre-build
+      # INJECT-INPUT: hooks-post-build
+
 jobs:
   basic-quality-checks:
     name: Basic Quality Checks
@@ -23,4 +26,17 @@ jobs:
       # INJECT: validate-tooling
       # INJECT: github-check-end(name="Validate Tooling", id="check-validate-tooling")
 
+      # === Pre-Build ===
+      # INJECT: github-check-start(name="Pre-Build", id="check-pre-build", if="inputs.hook-pre-build-script-sub-path != ''")
+      # INJECT: hook-pre-build
+      # INJECT: github-check-end(name="Pre-Build", id="check-pre-build", if="inputs.hook-pre-build-script-sub-path != ''")
+
+      # === Basic Quality Checks ===
+      # INJECT: github-check-start(name="Basic Quality Checks", id="check-basic-quality", if="github.event_name == 'pull_request'")
       # INJECT: basic-quality-checks
+      # INJECT: github-check-end(name="Basic Quality Checks", id="check-basic-quality", if="github.event_name == 'pull_request'")
+
+      # === Post-Build ===
+      # INJECT: github-check-start(name="Post-Build", id="check-post-build", if="inputs.hook-post-build-script-sub-path != ''")
+      # INJECT: hook-post-build
+      # INJECT: github-check-end(name="Post-Build", id="check-post-build", if="inputs.hook-post-build-script-sub-path != ''")

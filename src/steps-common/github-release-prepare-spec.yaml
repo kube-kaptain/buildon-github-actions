@@ -1,12 +1,32 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
 
+# Build full spec file paths from the substituted docker context
 - name: Resolve internal release files
   id: resolve-internal-release-files
   if: inputs.github-release-enabled == true
   shell: bash
+  env:
+    OUTPUT_SUB_PATH: ${{ inputs.output-sub-path }}
+    DOCKER_PLATFORM: ${{ inputs.docker-platform }}
+    SPEC_SUBSTITUTED_FILES: ${{ steps.spec-package-prepare.outputs.SPEC_SUBSTITUTED_FILES }}
   run: |
-    echo "verbatim-files=" >> "${GITHUB_OUTPUT}"
+    set -euo pipefail
+    if [[ "${DOCKER_PLATFORM}" == *,* ]]; then
+      CONTEXT_DIR="${OUTPUT_SUB_PATH}/docker-linux-amd64/substituted"
+    else
+      CONTEXT_DIR="${OUTPUT_SUB_PATH}/docker/substituted"
+    fi
+    full_paths=""
+    IFS=',' read -ra files <<< "${SPEC_SUBSTITUTED_FILES}"
+    for rel_path in "${files[@]}"; do
+      if [[ -n "${full_paths}" ]]; then
+        full_paths="${full_paths},${CONTEXT_DIR}/${rel_path}"
+      else
+        full_paths="${CONTEXT_DIR}/${rel_path}"
+      fi
+    done
+    echo "verbatim-files=${full_paths}" >> "${GITHUB_OUTPUT}"
     echo "substituted-files=" >> "${GITHUB_OUTPUT}"
     echo "raw-files=" >> "${GITHUB_OUTPUT}"
 

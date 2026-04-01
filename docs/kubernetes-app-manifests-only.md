@@ -218,6 +218,7 @@ Kubernetes App - Manifests Only
 | `github-release-enabled` | boolean | `true` | Create a GitHub release on version tags |
 | `github-release-substituted-files` | string | `""` | Files with token substitution and version suffix (comma/space-separated) |
 | `github-release-verbatim-files` | string | `""` | Files copied as-is with version suffix only (comma/space-separated) |
+| `github-release-raw-files` | string | `""` | Files already versioned, copied as-is with no renaming (comma/space-separated, filenames must end with -VERSION.ext) |
 | `github-release-notes` | string | `""` | Inline release notes string (mutually exclusive with github-release-notes-file) |
 | `github-release-notes-file` | string | `""` | Path to release notes file (mutually exclusive with github-release-notes) |
 | `github-release-add-version-to-filenames` | boolean | `true` | Add version suffix to release filenames (e.g., file.yaml -> file-1.2.3.yaml) |
