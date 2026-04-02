@@ -13,6 +13,9 @@ setup() {
   export SPEC_DIR="${base_dir}/docker/substituted/json"
   mkdir -p "${SPEC_DIR}"
 
+  # Required by docker-common.bash
+  export IMAGE_BUILD_COMMAND="docker"
+
   # Mock jq: exit 0 for syntax checks, return schema URL for ."$schema" query
   mkdir -p "${MOCK_BIN_DIR}"
   cat > "${MOCK_BIN_DIR}/jq" << 'MOCK'

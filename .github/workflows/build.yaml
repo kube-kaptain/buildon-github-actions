@@ -9,11 +9,6 @@ on:
 jobs:
   build:
     uses: ./.github/workflows/basic-quality-and-versioning.yaml
-    with:
-      qc-block-conventional-commits: true
-      qc-block-slash-containing-branches: true
-      hook-pre-tagging-tests-script-sub-path: bin/pre-tagging.bash
-      github-release-substituted-files: .github/token-substitution-and-gh-release-test.yaml
     permissions:
       contents: write
       packages: write

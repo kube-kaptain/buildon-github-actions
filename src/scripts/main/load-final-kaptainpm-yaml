@@ -98,10 +98,10 @@ MAPPINGS=(
   # Docker
   "spec.main.docker.runtime:IMAGE_BUILD_COMMAND"
   "spec.main.docker.platform:DOCKER_PLATFORM"
-  # Note: registry.logins (DOCKER_REGISTRY_LOGINS) - scripts read KaptainPM.yaml directly
-  "spec.main.docker.registry.targetRegistry:DOCKER_TARGET_REGISTRY"
-  "spec.main.docker.registry.targetNamespace:DOCKER_TARGET_NAMESPACE"
-  # Note: registry.pushTargets (DOCKER_PUSH_TARGETS) - scripts read KaptainPM.yaml directly
+  # Note: logins exported separately as JSON below (multi-line YAML won't fit in output_var)
+  "spec.main.docker.targetRegistry:DOCKER_TARGET_REGISTRY"
+  "spec.main.docker.targetNamespace:DOCKER_TARGET_NAMESPACE"
+  # Note: pushTargets (DOCKER_PUSH_TARGETS) - scripts read KaptainPM.yaml directly
   "spec.main.docker.dockerfile.substitutionFiles:DOCKERFILE_SUBSTITUTION_FILES"
   "spec.main.docker.dockerfile.subPath:DOCKERFILE_SUB_PATH"
   "spec.main.docker.dockerfile.subPathLinuxAmd64:DOCKERFILE_SUB_PATH_LINUX_AMD64"
@@ -112,6 +112,10 @@ MAPPINGS=(
   "spec.main.docker.retag.sourceNamespace:DOCKER_SOURCE_NAMESPACE"
   "spec.main.docker.retag.sourceImageName:DOCKER_SOURCE_IMAGE_NAME"
   "spec.main.docker.retag.sourceTag:DOCKER_SOURCE_TAG"
+
+  # External image (manifests-only)
+  "spec.main.externalImage.name:DOCKER_IMAGE_NAME_OVERRIDE"
+  "spec.main.externalImage.tag:DOCKER_TAG_OVERRIDE"
 
   # Generators - common
   "spec.main.generators.common.additionalLabels:KUBERNETES_GLOBAL_ADDITIONAL_LABELS"
@@ -372,10 +376,19 @@ for mapping in "${MAPPINGS[@]}"; do
     continue
   fi
 
-  output_var "${env_var}" "${value}"
+  # Suppress output_var stdout — the log line below provides better context
+  output_var "${env_var}" "${value}" > /dev/null
   log "Field .${yaml_path} = \"${value}\" exported as ${env_var}"
   found_count=$((found_count + 1))
 done
 log ""
+
+# Export complex values that can't go through the simple mapping loop
+logins_json=$(yq -o=json -c '.spec.main.docker.logins // ""' "${PM_FILE}")
+if [[ -n "${logins_json}" && "${logins_json}" != "null" && "${logins_json}" != '""' ]]; then
+  output_var "DOCKER_REGISTRY_LOGINS" "${logins_json}" > /dev/null
+  log "Field .spec.main.docker.logins exported as DOCKER_REGISTRY_LOGINS (JSON)"
+  found_count=$((found_count + 1))
+fi
 
 log "Loaded ${found_count} value(s) from KaptainPM.yaml"

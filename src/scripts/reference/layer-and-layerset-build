@@ -2,11 +2,10 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
 #
-# Reference script: aws-eks-cluster-management workflow
+# Reference script: layer-and-layerset-build workflow
 #
-# Quality checks, versioning, EKS cluster config generation, Docker build,
-# and release publishing for EKS cluster management images.
-#
+# Layer/layerset validation and packaging: quality checks, versioning,
+# layer packaging, Docker build, validation, and release publishing.
 # All variables can be overridden via environment.
 #
 # CI providers can wrap each script call to expose individual
@@ -33,11 +32,10 @@ run_step "hook-post-versions-and-naming"
 run_step "change-source-note-write"
 run_step "release-change-data-generate"
 run_step "release-change-data-oci-package"
-run_step "aws-eks-cluster-management-prepare"
 run_step "hook-pre-docker-prepare"
-run_step "aws-eks-cluster-management-pre-build-validate"
+run_step "layer-package-prepare"
 run_step "docker-build-dockerfile"
-run_step "aws-eks-cluster-management-post-build-validate"
+run_step "layer-validate"
 run_step "hook-post-docker-tests"
 run_step "docker-multi-tag"
 run_step "git-push-tag"

@@ -1,0 +1,67 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
+#
+# oci-scratch-extract - Extract files from FROM scratch OCI images
+#
+# Reusable utility: given an OCI image URI, an output directory, and one or more
+# paths inside the image, pulls the image and copies the requested files out.
+# Image is pulled once regardless of how many paths are requested.
+#
+# Missing paths are warned and skipped (exit 0). The caller decides what was
+# required by checking for the file after extraction.
+#
+# Usage: oci-scratch-extract <image-uri> <output-dir> <path-in-image> [<path-in-image> ...]
+#
+# Env:
+#   IMAGE_BUILD_COMMAND - docker or podman (required)
+#
+set -euo pipefail
+
+image_uri="${1:?Usage: oci-scratch-extract <image-uri> <output-dir> <path-in-image> [...]}"
+output_dir="${2:?Usage: oci-scratch-extract <image-uri> <output-dir> <path-in-image> [...]}"
+shift 2
+
+if [[ $# -eq 0 ]]; then
+  echo "At least one path-in-image is required" >&2
+  exit 1
+fi
+
+IMAGE_BUILD_COMMAND="${IMAGE_BUILD_COMMAND:?IMAGE_BUILD_COMMAND is required}"
+
+mkdir -p "${output_dir}"
+
+# Use local image if available, otherwise pull
+if ${IMAGE_BUILD_COMMAND} image inspect "${image_uri}" &>/dev/null; then
+  echo "Using local image: ${image_uri}" >&2
+else
+  echo "Pulling image: ${image_uri}" >&2
+  if ! ${IMAGE_BUILD_COMMAND} pull "${image_uri}" >&2; then
+    echo "Failed to pull image: ${image_uri}" >&2
+    exit 1
+  fi
+fi
+
+# Create a container without running it
+container_id=$(${IMAGE_BUILD_COMMAND} create "${image_uri}" /bin/true 2>/dev/null)
+if [[ -z "${container_id}" ]]; then
+  echo "Failed to create container from image: ${image_uri}" >&2
+  exit 1
+fi
+
+# Extract each requested path
+exit_code=0
+for path_in_image in "$@"; do
+  if ${IMAGE_BUILD_COMMAND} cp "${container_id}:${path_in_image}" "${output_dir}/" 2>/dev/null; then
+    echo "Extracted: ${path_in_image}" >&2
+  else
+    echo "Warning: path not found in image, skipping: ${path_in_image}" >&2
+  fi
+done
+
+# Clean up the container
+if ! ${IMAGE_BUILD_COMMAND} rm "${container_id}" >/dev/null 2>&1; then
+  echo "Warning: failed to remove temporary container ${container_id}" >&2
+fi
+
+exit ${exit_code}

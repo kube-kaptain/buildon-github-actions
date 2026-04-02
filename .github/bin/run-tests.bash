@@ -366,6 +366,13 @@ check_example_freshness() {
   exit 1
 }
 
+# Download schemas from upstream OCI image and enforce no drift
+check_schemas() {
+  log_info "Downloading and enforcing schemas"
+  "$SCRIPT_DIR/download-and-enforce-schemas.bash"
+  log_info "Schemas match upstream"
+}
+
 main() {
   log_info "Starting test suite"
   log_info "Project root: ${PROJECT_ROOT}"
@@ -387,6 +394,9 @@ main() {
 
   # Run shellcheck
   run_shellcheck
+
+  # Download schemas and enforce no drift from upstream
+  check_schemas
 
   # Run BATS tests
   if has_bats; then

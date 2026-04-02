@@ -1,0 +1,375 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
+#
+# kaptain-init - Build initialisation and layer resolution
+#
+# Reads the project root KaptainPM.yaml, resolves layers (if any), merges them
+# in order (first = lowest priority, local = always wins), and writes the final
+# merged result to kaptainpm/final/KaptainPM.yaml.
+#
+# Every interpolation step is recorded in kaptainpm/interpolation/ for auditing.
+# Original layer files are preserved in kaptainpm/layers/ for debugging.
+#
+# For local builds, skips processing if kaptainpm/final/KaptainPM.yaml is newer
+# than the project root KaptainPM.yaml (no change, no point re-resolving).
+#
+# Inputs via env vars:
+#   BUILD_MODE           - "build_server" or "local"
+#   IMAGE_BUILD_COMMAND  - docker or podman (for layer pulls)
+#
+# Optional env vars (fallback for artifact resolution):
+#   DOCKER_TARGET_REGISTRY   - default OCI registry (file value wins if set)
+#   DOCKER_TARGET_NAMESPACE  - default OCI namespace (file value wins if set)
+#
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# shellcheck source=src/scripts/defaults/build-mode.bash
+source "${SCRIPT_DIR}/../defaults/build-mode.bash"
+# shellcheck source=src/scripts/defaults/platform.bash
+source "${SCRIPT_DIR}/../defaults/platform.bash"
+
+# shellcheck source=src/scripts/lib/log.bash
+source "${SCRIPT_DIR}/../lib/log.bash"
+# shellcheck source=src/scripts/lib/layer-merge.bash
+source "${SCRIPT_DIR}/../lib/layer-merge.bash"
+
+UTIL_DIR="${SCRIPT_DIR}/../util"
+
+PM_FILE="KaptainPM.yaml"
+KAPTAINPM_DIR="kaptainpm"
+INTERPOLATION_DIR="${KAPTAINPM_DIR}/interpolation"
+LAYERS_DIR="${KAPTAINPM_DIR}/layers"
+FINAL_DIR="${KAPTAINPM_DIR}/final"
+FINAL_FILE="${FINAL_DIR}/KaptainPM.yaml"
+
+# Schema files for validation
+SCHEMA_DIR="${SCRIPT_DIR}/../../schemas"
+SCHEMA_VERSION=$(cat "${SCHEMA_DIR}/version")
+SCHEMA_PROJECT="${SCHEMA_DIR}/spec-kaptainpm-schema.${SCHEMA_VERSION}.json"
+SCHEMA_LAYER="${SCHEMA_DIR}/spec-kaptainpm-schema-layer.${SCHEMA_VERSION}.json"
+SCHEMA_LAYERSET="${SCHEMA_DIR}/spec-kaptainpm-schema-layerset.${SCHEMA_VERSION}.json"
+SCHEMA_FINAL="${SCHEMA_DIR}/spec-kaptainpm-schema-final.${SCHEMA_VERSION}.json"
+
+log "=== Kaptain Init ==="
+
+# --- Clean previous output ---
+rm -rf "${KAPTAINPM_DIR}"
+
+# --- Validate project root KaptainPM.yaml ---
+if [[ ! -f "${PM_FILE}" ]]; then
+  log_error "KaptainPM.yaml not found in project root"
+  exit 1
+fi
+
+log "Validating ${PM_FILE}..."
+
+if ! yq eval '.' "${PM_FILE}" > /dev/null 2>&1; then
+  log_error "Invalid YAML syntax in ${PM_FILE}"
+  log "$(yq eval '.' "${PM_FILE}" 2>&1 | head -5)"
+  exit 1
+fi
+log "YAML syntax valid"
+
+if [[ ! -f "${SCHEMA_PROJECT}" ]]; then
+  log_error "Schema file not found: ${SCHEMA_PROJECT}"
+  exit 1
+fi
+log "Validating against schema: $(basename "${SCHEMA_PROJECT}")"
+check-jsonschema --schemafile "${SCHEMA_PROJECT}" "${PM_FILE}"
+log "Schema validation passed"
+
+mkdir -p "${INTERPOLATION_DIR}" "${FINAL_DIR}" "${LAYERS_DIR}"
+
+# --- Resolve registry/namespace: file wins over env var fallback ---
+file_registry=$(yq eval '.spec.main.docker.targetRegistry // ""' "${PM_FILE}")
+if [[ -n "${file_registry}" ]]; then
+  log "Registry from KaptainPM.yaml: ${file_registry}"
+  export DOCKER_TARGET_REGISTRY="${file_registry}"
+elif [[ -n "${DOCKER_TARGET_REGISTRY:-}" ]]; then
+  log "Registry from environment fallback: ${DOCKER_TARGET_REGISTRY}"
+else
+  log "No target registry configured (short-form layer refs will fail)"
+fi
+
+file_namespace=$(yq eval '.spec.main.docker.targetNamespace // ""' "${PM_FILE}")
+if [[ -n "${file_namespace}" ]]; then
+  log "Namespace from KaptainPM.yaml: ${file_namespace}"
+  export DOCKER_TARGET_NAMESPACE="${file_namespace}"
+elif [[ -n "${DOCKER_TARGET_NAMESPACE:-}" ]]; then
+  log "Namespace from environment fallback: ${DOCKER_TARGET_NAMESPACE}"
+else
+  log "No target namespace configured (short-form layer refs will fail)"
+fi
+
+# --- Read layers list ---
+layer_count=$(yq eval '.spec.layers // [] | length' "${PM_FILE}")
+log "Layers declared: ${layer_count}"
+
+if [[ "${layer_count}" -eq 0 ]]; then
+  log "No layers — copying project root to final"
+  cp "${PM_FILE}" "${FINAL_FILE}"
+  log "Final KaptainPM.yaml written to ${FINAL_FILE}"
+  exit 0
+fi
+
+# --- Resolve and fetch all layers ---
+# Tracks visited layer references for cycle/duplicate detection.
+# File-based: one line per visited layer as "identity=version"
+VISITED_FILE="${KAPTAINPM_DIR}/.visited-layers"
+: > "${VISITED_FILE}"
+
+# Ordered list of config layer files ready for merging (post-strip, post-expansion)
+# File-based: one path per line
+MERGE_STACK_FILE="${KAPTAINPM_DIR}/.merge-stack"
+: > "${MERGE_STACK_FILE}"
+
+# Tracks the first kind encountered during resolution — conflicts are fatal
+KIND_FILE="${KAPTAINPM_DIR}/.resolved-kind"
+: > "${KIND_FILE}"
+
+# Step counter for interpolation recording
+step=0
+
+# Resolve a single layer list recursively.
+# Handles both config layers and layersets (composite layers).
+#
+# Arguments:
+#   $1 - provider-prefixed or plain reference (e.g. "docker|quality-strict:1.0")
+#   $2 - recursion depth (for logging indentation)
+resolve_layer() {
+  local ref="${1}"
+  local depth="${2:-0}"
+  local indent=""
+  local i
+  for ((i = 0; i < depth; i++)); do indent="  ${indent}"; done
+
+  log "${indent}Resolving: ${ref}"
+
+  # Resolve to full URI via artifact-resolve
+  local resolved_uri
+  resolved_uri=$("${UTIL_DIR}/artifact-resolve" "${ref}")
+  log "${indent}Resolved: ${resolved_uri}"
+
+  # Extract identity for duplicate detection (URI without version)
+  local identity="${resolved_uri%:*}"
+  local resolved_version="${resolved_uri##*:}"
+
+  local previous_entry
+  previous_entry=$(grep "^${identity}=" "${VISITED_FILE}" || true)
+  if [[ -n "${previous_entry}" ]]; then
+    local previous_version="${previous_entry#*=}"
+    if [[ "${previous_version}" != "${resolved_version}" ]]; then
+      log_error "Duplicate layer with different version: ${identity} (${previous_version} vs ${resolved_version})"
+      exit 1
+    fi
+    log_error "Duplicate layer reference: ${identity}:${resolved_version}"
+    exit 1
+  fi
+  echo "${identity}=${resolved_version}" >> "${VISITED_FILE}"
+
+  # Determine layer storage path (registry/path/name without version)
+  # Strip provider prefix if present for the filesystem path
+  local fs_identity="${identity}"
+  if [[ "${fs_identity}" == *"|"* ]]; then
+    fs_identity="${fs_identity#*|}"
+  fi
+  local layer_dir="${LAYERS_DIR}/${fs_identity}"
+  mkdir -p "${layer_dir}"
+
+  # Fetch the layer image
+  log "${indent}Fetching: ${resolved_uri}"
+  "${UTIL_DIR}/artifact-fetch" "${resolved_uri}" "${layer_dir}" /KaptainPM.yaml
+
+  local layer_file="${layer_dir}/KaptainPM.yaml"
+  if [[ ! -f "${layer_file}" ]]; then
+    log_error "Layer image does not contain KaptainPM.yaml: ${resolved_uri}"
+    exit 1
+  fi
+
+  # Validate YAML syntax
+  if ! yq eval '.' "${layer_file}" > /dev/null 2>&1; then
+    log_error "Invalid YAML in layer: ${resolved_uri}"
+    exit 1
+  fi
+
+  # Check if this is a config layer or layerset
+  local layer_layers_count
+  layer_layers_count=$(yq eval '.spec.layers // [] | length' "${layer_file}")
+
+  if [[ "${layer_layers_count}" -gt 0 ]]; then
+    # --- Layerset (composite layer) ---
+    log "${indent}Layerset detected (${layer_layers_count} sub-layers)"
+
+    # Validate against layerset schema
+    if [[ -f "${SCHEMA_LAYERSET}" ]]; then
+      check-jsonschema --schemafile "${SCHEMA_LAYERSET}" "${layer_file}"
+    fi
+
+    # Validate type (no other spec.* content alongside spec.layers)
+    if ! layer_validate_type "${layer_file}"; then
+      log_error "Invalid layerset: ${resolved_uri}"
+      exit 1
+    fi
+
+    # Extract kind if declared by layerset — check for conflicts
+    local layerset_kind
+    layerset_kind=$(yq eval '.kind // ""' "${layer_file}")
+    if [[ -n "${layerset_kind}" ]]; then
+      log "${indent}Layerset declares kind: ${layerset_kind}"
+      local previous_kind
+      previous_kind=$(cat "${KIND_FILE}")
+      if [[ -n "${previous_kind}" && "${previous_kind}" != "${layerset_kind}" ]]; then
+        log_error "Kind conflict: previously resolved '${previous_kind}', but ${resolved_uri} declares '${layerset_kind}'"
+        exit 1
+      fi
+      echo "${layerset_kind}" > "${KIND_FILE}"
+      # Create a minimal file with just kind for merging
+      local kind_file="${layer_dir}/kind-only.yaml"
+      yq eval '{"apiVersion": .apiVersion, "kind": .kind}' "${layer_file}" > "${kind_file}"
+      layer_record_step "${step}" "layerset-kind-$(basename "${fs_identity}")" "${kind_file}" "${INTERPOLATION_DIR}"
+      step=$((step + 1))
+      echo "${kind_file}" >> "${MERGE_STACK_FILE}"
+    fi
+
+    # Recursively resolve sub-layers in order
+    local sub_ref
+    for ((j = 0; j < layer_layers_count; j++)); do
+      sub_ref=$(yq eval ".spec.layers[${j}]" "${layer_file}")
+      resolve_layer "${sub_ref}" "$((depth + 1))"
+    done
+  else
+    # --- Config layer ---
+    log "${indent}Config layer"
+
+    # Validate against layer schema
+    if [[ -f "${SCHEMA_LAYER}" ]]; then
+      check-jsonschema --schemafile "${SCHEMA_LAYER}" "${layer_file}"
+    fi
+
+    # Check kind conflict if layer declares one
+    local layer_kind
+    layer_kind=$(yq eval '.kind // ""' "${layer_file}")
+    if [[ -n "${layer_kind}" ]]; then
+      log "${indent}Layer declares kind: ${layer_kind}"
+      local previous_kind
+      previous_kind=$(cat "${KIND_FILE}")
+      if [[ -n "${previous_kind}" && "${previous_kind}" != "${layer_kind}" ]]; then
+        log_error "Kind conflict: previously resolved '${previous_kind}', but ${resolved_uri} declares '${layer_kind}'"
+        exit 1
+      fi
+      echo "${layer_kind}" > "${KIND_FILE}"
+    fi
+
+    # Strip layer-payload before merging
+    local stripped_file="${layer_dir}/stripped.yaml"
+    layer_strip_payload "${layer_file}" "${stripped_file}"
+
+    # Sanitise reference for filename (replace / and : with -)
+    local safe_name="${fs_identity//\//-}"
+    safe_name="${safe_name}:${resolved_version}"
+    safe_name="${safe_name//:/-}"
+
+    layer_record_step "${step}" "layer-${safe_name}" "${stripped_file}" "${INTERPOLATION_DIR}"
+    step=$((step + 1))
+
+    echo "${stripped_file}" >> "${MERGE_STACK_FILE}"
+    log "${indent}Added to merge stack"
+  fi
+}
+
+# Resolve each layer reference from the project root
+for ((idx = 0; idx < layer_count; idx++)); do
+  ref=$(yq eval ".spec.layers[${idx}]" "${PM_FILE}")
+  resolve_layer "${ref}" 0
+done
+
+merge_count=$(wc -l < "${MERGE_STACK_FILE}" | tr -d ' ')
+log ""
+log "All layers resolved: ${merge_count} config layer(s) in merge stack"
+
+# --- Merge layers in order ---
+if [[ "${merge_count}" -eq 0 ]]; then
+  log "No config layers to merge — copying project root to final"
+  cp "${PM_FILE}" "${FINAL_FILE}"
+  log "Final KaptainPM.yaml written to ${FINAL_FILE}"
+  exit 0
+fi
+
+log "Merging layers..."
+merged="${KAPTAINPM_DIR}/merged-working.yaml"
+merged_tmp="${KAPTAINPM_DIR}/merged-tmp.yaml"
+first=true
+while IFS= read -r stack_entry; do
+  if ${first}; then
+    cp "${stack_entry}" "${merged}"
+    first=false
+  else
+    layer_deep_merge "${merged}" "${stack_entry}" "${merged_tmp}"
+    mv "${merged_tmp}" "${merged}"
+  fi
+done < "${MERGE_STACK_FILE}"
+
+layer_record_step "${step}" "merged-layers" "${merged}" "${INTERPOLATION_DIR}"
+step=$((step + 1))
+
+# --- Check project root kind ---
+local_kind=$(yq eval '.kind // ""' "${PM_FILE}")
+if [[ -z "${local_kind}" ]]; then
+  log_warning "Project root KaptainPM.yaml does not declare a kind"
+else
+  resolved_kind=$(cat "${KIND_FILE}")
+  if [[ -n "${resolved_kind}" && "${resolved_kind}" != "${local_kind}" ]]; then
+    log_error "Kind conflict: layers resolved '${resolved_kind}', but project root declares '${local_kind}'"
+    exit 1
+  fi
+fi
+
+# --- Apply project root on top (always wins) ---
+log "Applying project root overrides..."
+
+# Strip spec.layers from project root before merging (layers are resolved, not passed through)
+local_overrides="${KAPTAINPM_DIR}/local-overrides.yaml"
+yq eval 'del(.spec.layers)' "${PM_FILE}" > "${local_overrides}"
+
+layer_deep_merge "${merged}" "${local_overrides}" "${FINAL_FILE}"
+
+layer_record_step "${step}" "project-applied" "${FINAL_FILE}" "${INTERPOLATION_DIR}"
+step=$((step + 1))
+
+# --- Strip build-injected metadata from resolved layers ---
+# The 6 build traceability fields belong to the layer that was built, not this project.
+# Custom labels/annotations from user or layers are preserved.
+log "Stripping build traceability metadata from resolved layers..."
+yq eval -i '
+  del(.metadata.labels["kaptain.org/version"]) |
+  del(.metadata.labels["kaptain.org/project-name"]) |
+  del(.metadata.labels["kaptain.org/owner"]) |
+  del(.metadata.annotations["kaptain.org/built-by"]) |
+  del(.metadata.annotations["kaptain.org/source-repository"]) |
+  del(.metadata.annotations["kaptain.org/image-uri"])
+' "${FINAL_FILE}"
+log "Build traceability metadata stripped"
+
+layer_record_step "${step}" "metadata-stripped" "${FINAL_FILE}" "${INTERPOLATION_DIR}"
+
+# --- Validate final merged file against schema ---
+if [[ ! -f "${SCHEMA_FINAL}" ]]; then
+  log_error "Final schema not found: ${SCHEMA_FINAL}"
+  exit 1
+fi
+log "Validating final merged KaptainPM.yaml against schema: $(basename "${SCHEMA_FINAL}")"
+check-jsonschema --schemafile "${SCHEMA_FINAL}" "${FINAL_FILE}"
+log "Final schema validation passed"
+
+final_kind=$(yq eval '.kind // ""' "${FINAL_FILE}")
+log "Final kind: ${final_kind}"
+
+# Clean up working files
+rm -f "${merged}" "${merged_tmp}" "${local_overrides}" "${VISITED_FILE}" "${MERGE_STACK_FILE}" "${KIND_FILE}"
+
+log ""
+log "Final KaptainPM.yaml written to ${FINAL_FILE}"
+log "Interpolation steps recorded in ${INTERPOLATION_DIR}/"

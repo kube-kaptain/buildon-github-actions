@@ -32,7 +32,7 @@ write_uris() {
   run "$SCRIPTS_DIR/docker-push-all"
   [ "$status" -eq 0 ]
   assert_docker_not_called "push"
-  assert_var_equals "IMAGES_PUSHED" "0"
+  grep -q "IMAGES_PUSHED=0" "$GITHUB_OUTPUT"
 }
 
 @test "defaults IS_RELEASE to false" {
@@ -42,7 +42,7 @@ write_uris() {
   run "$SCRIPTS_DIR/docker-push-all"
   [ "$status" -eq 0 ]
   assert_docker_not_called "push"
-  assert_var_equals "IMAGES_PUSHED" "0"
+  grep -q "IMAGES_PUSHED=0" "$GITHUB_OUTPUT"
 }
 
 # === File validation ===
@@ -141,7 +141,7 @@ write_uris() {
 
   run "$SCRIPTS_DIR/docker-push-all"
   [ "$status" -eq 0 ]
-  assert_output_contains "Skipping push"
+  assert_output_contains "Skipping docker push"
 }
 
 # === Manifest list handling ===
@@ -184,6 +184,7 @@ write_uris() {
     > "${OUTPUT_SUB_PATH}/docker-push-all/manifest-uris"
   export IS_RELEASE="true"
   export IMAGE_BUILD_COMMAND="podman"
+  export MOCK_DOCKER_MANIFEST_EXISTS="true"
 
   run "$SCRIPTS_DIR/docker-push-all"
   [ "$status" -eq 0 ]

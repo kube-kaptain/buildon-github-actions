@@ -41,7 +41,7 @@ IMAGES_TO_PUSH_FILE="${DOCKER_PUSH_IMAGE_LIST_FILE}"
 main() {
   if [[ "${IS_RELEASE}" != "true" ]]; then
     log "Skipping docker push (IS_RELEASE=${IS_RELEASE})"
-    output_var "IMAGES_PUSHED" "0"
+    output_var "IMAGES_PUSHED" "0" > /dev/null
     return 0
   fi
 

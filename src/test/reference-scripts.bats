@@ -44,6 +44,7 @@ setup() {
 
   # Create all main script mocks
   for script in \
+    load-project-kaptainpm-docker-logins kaptain-init load-final-kaptainpm-yaml \
     validate-tooling hook-pre-build basic-quality-checks docker-registry-logins docker-platform-setup \
     hook-pre-tagging-tests versions-and-naming hook-post-versions-and-naming change-source-note-write \
     release-change-data-generate release-change-data-oci-package \
@@ -54,7 +55,9 @@ setup() {
     kubernetes-manifests-repo-provider-package kubernetes-manifests-repo-provider-publish \
     spec-package-prepare spec-validate \
     aws-eks-cluster-management-prepare aws-eks-cluster-management-pre-build-validate \
-    aws-eks-cluster-management-post-build-validate hook-post-build; do
+    aws-eks-cluster-management-post-build-validate \
+    layer-package-prepare layer-validate \
+    hook-post-build; do
     create_mock_script "$MOCK_SCRIPTS_DIR/$script"
   done
 
@@ -103,6 +106,10 @@ assert_call_order() {
   [ "$status" -eq 0 ]
 
   assert_call_order "validate-tooling
+load-project-kaptainpm-docker-logins
+docker-registry-logins
+kaptain-init
+load-final-kaptainpm-yaml
 hook-pre-build
 basic-quality-checks
 hook-post-build"
@@ -113,6 +120,10 @@ hook-post-build"
   [ "$status" -eq 0 ]
 
   assert_call_order "validate-tooling
+load-project-kaptainpm-docker-logins
+docker-registry-logins
+kaptain-init
+load-final-kaptainpm-yaml
 hook-pre-build
 basic-quality-checks
 docker-registry-logins
@@ -134,6 +145,10 @@ hook-post-build"
   [ "$status" -eq 0 ]
 
   assert_call_order "validate-tooling
+load-project-kaptainpm-docker-logins
+docker-registry-logins
+kaptain-init
+load-final-kaptainpm-yaml
 hook-pre-build
 basic-quality-checks
 docker-registry-logins
@@ -158,6 +173,10 @@ hook-post-build"
   [ "$status" -eq 0 ]
 
   assert_call_order "validate-tooling
+load-project-kaptainpm-docker-logins
+docker-registry-logins
+kaptain-init
+load-final-kaptainpm-yaml
 hook-pre-build
 basic-quality-checks
 docker-registry-logins
@@ -180,6 +199,10 @@ hook-post-build"
   [ "$status" -eq 0 ]
 
   assert_call_order "validate-tooling
+load-project-kaptainpm-docker-logins
+docker-registry-logins
+kaptain-init
+load-final-kaptainpm-yaml
 hook-pre-build
 basic-quality-checks
 docker-registry-logins
@@ -216,6 +239,10 @@ hook-post-build"
   [ "$status" -eq 0 ]
 
   assert_call_order "validate-tooling
+load-project-kaptainpm-docker-logins
+docker-registry-logins
+kaptain-init
+load-final-kaptainpm-yaml
 hook-pre-build
 basic-quality-checks
 docker-registry-logins
@@ -250,8 +277,13 @@ hook-post-build"
   [ "$status" -eq 0 ]
 
   assert_call_order "validate-tooling
+load-project-kaptainpm-docker-logins
+docker-registry-logins
+kaptain-init
+load-final-kaptainpm-yaml
 hook-pre-build
 basic-quality-checks
+docker-registry-logins
 docker-platform-setup
 hook-pre-tagging-tests
 versions-and-naming
@@ -269,7 +301,6 @@ hook-pre-package-prepare
 kubernetes-manifests-package-only-token-override
 kubernetes-manifests-package-prepare
 kubernetes-manifests-package
-docker-registry-logins
 kubernetes-manifests-repo-provider-package
 hook-post-package-tests
 docker-multi-tag
@@ -284,6 +315,10 @@ hook-post-build"
   [ "$status" -eq 0 ]
 
   assert_call_order "validate-tooling
+load-project-kaptainpm-docker-logins
+docker-registry-logins
+kaptain-init
+load-final-kaptainpm-yaml
 hook-pre-build
 basic-quality-checks
 docker-registry-logins
@@ -310,6 +345,10 @@ hook-post-build"
   [ "$status" -eq 0 ]
 
   assert_call_order "validate-tooling
+load-project-kaptainpm-docker-logins
+docker-registry-logins
+kaptain-init
+load-final-kaptainpm-yaml
 hook-pre-build
 basic-quality-checks
 docker-registry-logins
@@ -325,6 +364,36 @@ hook-pre-docker-prepare
 aws-eks-cluster-management-pre-build-validate
 docker-build-dockerfile
 aws-eks-cluster-management-post-build-validate
+hook-post-docker-tests
+docker-multi-tag
+git-push-tag
+docker-push-all
+hook-post-build"
+}
+
+@test "reference: layer-and-layerset-build calls scripts in correct order" {
+  run bash "$REF_DIR/layer-and-layerset-build"
+  [ "$status" -eq 0 ]
+
+  assert_call_order "validate-tooling
+load-project-kaptainpm-docker-logins
+docker-registry-logins
+kaptain-init
+load-final-kaptainpm-yaml
+hook-pre-build
+basic-quality-checks
+docker-registry-logins
+docker-platform-setup
+hook-pre-tagging-tests
+versions-and-naming
+hook-post-versions-and-naming
+change-source-note-write
+release-change-data-generate
+release-change-data-oci-package
+hook-pre-docker-prepare
+layer-package-prepare
+docker-build-dockerfile
+layer-validate
 hook-post-docker-tests
 docker-multi-tag
 git-push-tag

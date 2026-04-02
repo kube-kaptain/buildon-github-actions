@@ -16,6 +16,11 @@ set -euo pipefail
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/../lib" && pwd)/setup-local-context.bash"
 
 run_step "validate-tooling"
+run_step "load-project-kaptainpm-docker-logins"
+run_step "docker-registry-logins"
+run_step "kaptain-init"
+export BUILD_KIND="${REFERENCE_SCRIPT_NAME}"
+run_step "load-final-kaptainpm-yaml"
 run_step "hook-pre-build"
 run_step "basic-quality-checks"
 run_step "docker-registry-logins"
