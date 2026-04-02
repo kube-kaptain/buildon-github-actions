@@ -39,16 +39,16 @@ IS_RELEASE="${IS_RELEASE:-false}"
 IMAGES_TO_PUSH_FILE="${DOCKER_PUSH_IMAGE_LIST_FILE}"
 
 main() {
+  if [[ "${IS_RELEASE}" != "true" ]]; then
+    log "Skipping docker push (IS_RELEASE=${IS_RELEASE})"
+    output_var "IMAGES_PUSHED" "0"
+    return 0
+  fi
+
   log "=== Docker Push All ==="
   log "Is Release: ${IS_RELEASE}"
   log "Image URIs file: ${IMAGES_TO_PUSH_FILE}"
   log "======================="
-
-  if [[ "${IS_RELEASE}" != "true" ]]; then
-    log "Skipping push (IS_RELEASE=${IS_RELEASE})"
-    output_var "IMAGES_PUSHED" "0"
-    return 0
-  fi
 
   if [[ ! -f "${IMAGES_TO_PUSH_FILE}" ]]; then
     log_error "Image URIs file not found: ${IMAGES_TO_PUSH_FILE}"
@@ -113,6 +113,11 @@ main() {
         # Docker: create manifest now (images have been pushed to registry)
         local amd64_uri="${manifest_uri}-linux-amd64"
         local arm64_uri="${manifest_uri}-linux-arm64"
+        # Local builds may re-run without a clean context — remove stale manifest
+        if [[ "${BUILD_MODE:-local}" != "build_server" ]]; then
+          log "Removing existing manifest before creating for local build: ${manifest_uri}"
+          ${IMAGE_BUILD_COMMAND} manifest rm "${manifest_uri}" &>/dev/null || true
+        fi
         log "Creating manifest: ${manifest_uri}"
         log "  amd64: ${amd64_uri}"
         log "  arm64: ${arm64_uri}"

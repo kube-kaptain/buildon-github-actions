@@ -74,6 +74,11 @@ create_local_manifest_if_supported() {
   local manifest_uri="${1}"
   if [[ "${IMAGE_BUILD_COMMAND}" == "podman" ]]; then
     log ""
+    # Local builds may re-run without a clean context — remove stale manifest
+    if [[ "${BUILD_MODE:-local}" != "build_server" ]]; then
+      log "Removing existing manifest before creating for local build: ${manifest_uri}"
+      ${IMAGE_BUILD_COMMAND} manifest rm "${manifest_uri}" &>/dev/null || true
+    fi
     log "Creating local manifest: ${manifest_uri}"
     if ${IMAGE_BUILD_COMMAND} manifest create "${manifest_uri}" \
         "${manifest_uri}-linux-amd64" \
