@@ -34,31 +34,35 @@ See [`examples/`](examples/) for more usage patterns.
 <!-- EXAMPLES-START -->
 | Example | Description |
 |---------|-------------|
-| [`additional-release-branches.yaml`](examples/additional-release-branches.yaml) | Support hotfix workflows by building on branches other than the default and still getting releases published |
-| [`aws-eks-cluster-management.yaml`](examples/aws-eks-cluster-management.yaml) | Builds an EKS cluster management image layering your cluster config on top of |
-| [`basic-quality-and-versioning.yaml`](examples/basic-quality-and-versioning.yaml) | Standard build setup |
-| [`cronjob-history-and-cleanup.yaml`](examples/cronjob-history-and-cleanup.yaml) | CronJobs in Kaptain use sensible defaults for history retention and cleanup |
-| [`daemonset-privileged-and-tolerations.yaml`](examples/daemonset-privileged-and-tolerations.yaml) | This example demonstrates a DaemonSet configured for system-level agents that |
-| [`docker-build-dockerfile-no-squash.yaml`](examples/docker-build-dockerfile-no-squash.yaml) | Build a Docker image without --squash, preserving layer history |
-| [`docker-build-dockerfile.yaml`](examples/docker-build-dockerfile.yaml) | Build a Docker image from a Dockerfile with --squash (default) to flatten |
-| [`docker-build-retag-custom-registry.yaml`](examples/docker-build-retag-custom-registry.yaml) | Push to a registry other than GHCR (Nexus, ECR, GCR, Harbor, etc) |
-| [`docker-build-retag-namespace.yaml`](examples/docker-build-retag-namespace.yaml) | Many registries use namespaces in addition to the normal image name for projects or teams |
-| [`docker-build-retag.yaml`](examples/docker-build-retag.yaml) | Pull an upstream image, retag with your name and new version, push to your registry |
-| [`docker-push-targets.yaml`](examples/docker-push-targets.yaml) | Push the same Docker image to multiple registries |
-| [`docker-registry-logins-explicit.yaml`](examples/docker-registry-logins-explicit.yaml) | docker-registry-logins-secrets |
-| [`docker-registry-logins-ghcr-pat.yaml`](examples/docker-registry-logins-ghcr-pat.yaml) |   - Push to packages in a different repo or org (GITHUB_TOKEN is scoped to current repo) |
-| [`github-release-options.yaml`](examples/github-release-options.yaml) | All workflows that include versions-and-naming create GitHub releases by default |
-| [`job-versioned-naming.yaml`](examples/job-versioned-naming.yaml) | Jobs in Kaptain use a unique naming strategy designed for "run once per version" |
-| [`kube-app-generators.yaml`](examples/kube-app-generators.yaml) | This example demonstrates how to use the Kubernetes manifest generators with |
-| [`optional-test-scripts.yaml`](examples/optional-test-scripts.yaml) | Shows how to add custom test scripts to workflows that support them |
-| [`quality-only.yaml`](examples/quality-only.yaml) | Enforce quality standards on PRs without automatic tagging |
-| [`spec-check-filter-release.yaml`](examples/spec-check-filter-release.yaml) | Build and release JSON Schema or API spec files |
-| [`version-exact-from-file.yaml`](examples/version-exact-from-file.yaml) | Use the version found in a source file as-is, without incrementing |
-| [`version-from-compound-sources.yaml`](examples/version-from-compound-sources.yaml) | Combine versions from TWO source files to create a compound version |
-| [`version-from-custom-pattern.yaml`](examples/version-from-custom-pattern.yaml) | Extract version from any file using a custom regex pattern |
-| [`version-from-dockerfile.yaml`](examples/version-from-dockerfile.yaml) | Extract version from an ENV variable in your Dockerfile rather than using git tags |
-| [`version-from-retag-source-tag.yaml`](examples/version-from-retag-source-tag.yaml) | Extract version from the source-tag input in a retag workflow file |
-| [`version-prefix-parts.yaml`](examples/version-prefix-parts.yaml) | Control how many parts of the source version become the prefix for auto-incrementing |
+| [`aws-eks-cluster-management.yaml`](examples/aws-eks-cluster-management.yaml) | Builds an EKS cluster management image with kubectl and AWS CLI baked in |
+| [`basic-quality-and-versioning.yaml`](examples/basic-quality-and-versioning.yaml) | Quality checks plus automatic version tagging |
+| [`basic-quality-checks.yaml`](examples/basic-quality-checks.yaml) | Enforces branch naming, commit message, and branch structure standards on PRs |
+| [`docker-build-dockerfile.yaml`](examples/docker-build-dockerfile.yaml) | Builds a Docker image from src/docker/Dockerfile with layer squashing |
+| [`docker-build-retag.yaml`](examples/docker-build-retag.yaml) | Pulls an upstream image, retags with your name and version, pushes to your |
+| [`kubernetes-app-docker-dockerfile.yaml`](examples/kubernetes-app-docker-dockerfile.yaml) | Full Kubernetes application pipeline |
+| [`kubernetes-app-docker-retag.yaml`](examples/kubernetes-app-docker-retag.yaml) | Kubernetes application pipeline using an upstream image |
+| [`kubernetes-app-manifests-only.yaml`](examples/kubernetes-app-manifests-only.yaml) | Packages Kubernetes manifests without building a Docker image |
+| [`spec-check-filter-release.yaml`](examples/spec-check-filter-release.yaml) | Validates and packages spec/schema files as OCI artifacts |
+
+### Guides
+
+| Guide | README | build.yaml | KaptainPM.yaml |
+|-------|--------|------------|----------------|
+| `build-hooks` | [README](examples/guides/build-hooks/README.md) | [build.yaml](examples/guides/build-hooks/build.yaml) | [KaptainPM.yaml](examples/guides/build-hooks/KaptainPM.yaml) |
+| `custom-registry-logins` | [README](examples/guides/custom-registry-logins/README.md) | [build.yaml](examples/guides/custom-registry-logins/build.yaml) | [KaptainPM.yaml](examples/guides/custom-registry-logins/KaptainPM.yaml) |
+| `custom-target-registry` | [README](examples/guides/custom-target-registry/README.md) | [build.yaml](examples/guides/custom-target-registry/build.yaml) | [KaptainPM.yaml](examples/guides/custom-target-registry/KaptainPM.yaml) |
+| `ghcr-pat-auth` | [README](examples/guides/ghcr-pat-auth/README.md) | [build.yaml](examples/guides/ghcr-pat-auth/build.yaml) | [KaptainPM.yaml](examples/guides/ghcr-pat-auth/KaptainPM.yaml) |
+| `github-release-options` | [README](examples/guides/github-release-options/README.md) | [build.yaml](examples/guides/github-release-options/build.yaml) | [KaptainPM.yaml](examples/guides/github-release-options/KaptainPM.yaml) |
+| `kubernetes-generators` | [README](examples/guides/kubernetes-generators/README.md) | [build.yaml](examples/guides/kubernetes-generators/build.yaml) | [KaptainPM.yaml](examples/guides/kubernetes-generators/KaptainPM.yaml) |
+| `manifests-only-external-image` | [README](examples/guides/manifests-only-external-image/README.md) | [build.yaml](examples/guides/manifests-only-external-image/build.yaml) | [KaptainPM.yaml](examples/guides/manifests-only-external-image/KaptainPM.yaml) |
+| `multi-registry-push` | [README](examples/guides/multi-registry-push/README.md) | [build.yaml](examples/guides/multi-registry-push/build.yaml) | [KaptainPM.yaml](examples/guides/multi-registry-push/KaptainPM.yaml) |
+| `release-branches` | [README](examples/guides/release-branches/README.md) | [build.yaml](examples/guides/release-branches/build.yaml) | [KaptainPM.yaml](examples/guides/release-branches/KaptainPM.yaml) |
+| `retag-upstream-image` | [README](examples/guides/retag-upstream-image/README.md) | [build.yaml](examples/guides/retag-upstream-image/build.yaml) | [KaptainPM.yaml](examples/guides/retag-upstream-image/KaptainPM.yaml) |
+| `token-substitution` | [README](examples/guides/token-substitution/README.md) | [build.yaml](examples/guides/token-substitution/build.yaml) | [KaptainPM.yaml](examples/guides/token-substitution/KaptainPM.yaml) |
+| `version-compound-sources` | [README](examples/guides/version-compound-sources/README.md) | [build.yaml](examples/guides/version-compound-sources/build.yaml) | [KaptainPM.yaml](examples/guides/version-compound-sources/KaptainPM.yaml) |
+| `version-from-custom-pattern` | [README](examples/guides/version-from-custom-pattern/README.md) | [build.yaml](examples/guides/version-from-custom-pattern/build.yaml) | [KaptainPM.yaml](examples/guides/version-from-custom-pattern/KaptainPM.yaml) |
+| `version-from-file` | [README](examples/guides/version-from-file/README.md) | [build.yaml](examples/guides/version-from-file/build.yaml) | [KaptainPM.yaml](examples/guides/version-from-file/KaptainPM.yaml) |
+| `version-prefix-parts` | [README](examples/guides/version-prefix-parts/README.md) | [build.yaml](examples/guides/version-prefix-parts/build.yaml) | [KaptainPM.yaml](examples/guides/version-prefix-parts/KaptainPM.yaml) |
 <!-- EXAMPLES-END -->
 
 ## Components

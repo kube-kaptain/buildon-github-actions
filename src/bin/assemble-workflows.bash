@@ -520,6 +520,25 @@ generate_examples_table() {
 
     echo "| [\`$ex_basename\`](examples/$ex_basename) | $description |"
   done
+
+  # Add guides if any exist
+  local guides_dir="$examples_dir/guides"
+  if [[ -d "$guides_dir" ]]; then
+    echo ""
+    echo "### Guides"
+    echo ""
+    echo "| Guide | README | build.yaml | KaptainPM.yaml |"
+    echo "|-------|--------|------------|----------------|"
+
+    for guide_dir in "$guides_dir"/*/; do
+      [[ -d "$guide_dir" ]] || continue
+      local guide_name
+      guide_name=$(basename "$guide_dir")
+      local base="examples/guides/$guide_name"
+
+      echo "| \`$guide_name\` | [README](${base}/README.md) | [build.yaml](${base}/build.yaml) | [KaptainPM.yaml](${base}/KaptainPM.yaml) |"
+    done
+  fi
 }
 
 # Generate workflows table for README (sorted by kaptain-order)

@@ -29,7 +29,19 @@ echo "Highest tag: ${highest}"
 echo "Updating examples to: @${expected}"
 
 updated=0
+
+# Update plain examples
 for file in "${EXAMPLES_DIR}"/*.yaml; do
+  [[ -f "${file}" ]] || continue
+  if grep -q '@[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*' "${file}"; then
+    sed -i.bak "s/@[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*/@${expected}/g" "${file}"
+    rm "${file}.bak"
+    updated=$((updated + 1))
+  fi
+done
+
+# Update guides (build.yaml in each guide subdirectory)
+for file in "${EXAMPLES_DIR}"/guides/*/build.yaml; do
   [[ -f "${file}" ]] || continue
   if grep -q '@[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*' "${file}"; then
     sed -i.bak "s/@[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*/@${expected}/g" "${file}"

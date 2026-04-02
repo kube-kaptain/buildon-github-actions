@@ -1,15 +1,7 @@
 # SPDX-License-Identifier: CC0-1.0
 # This example is released to the public domain. Use freely without attribution.
-#
-# Docker Build Dockerfile
-#
-# Builds a Docker image from src/docker/Dockerfile with layer squashing. PRs
-# build with PRERELEASE tag (not pushed), merges build with clean version and
-# push to GHCR.
-#
-# All configuration is in KaptainPM.yaml - see docs for available fields.
 
-name: Docker Build Dockerfile
+name: Version Compound Sources
 
 on:
   push:
