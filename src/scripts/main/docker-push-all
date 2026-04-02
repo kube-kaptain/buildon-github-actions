@@ -91,26 +91,37 @@ main() {
   done < "${IMAGES_TO_PUSH_FILE}"
 
   # === Manifest list handling ===
-  # After all arch-specific images are pushed, create and push manifest lists
+  # Podman: manifests were created locally during the build step — just push.
+  #         Fail if missing (upstream bug or custom build issue).
+  # Docker: manifests can't be created locally — create now (images are pushed).
   local manifest_uris_file="${OUTPUT_SUB_PATH}/docker-push-all/manifest-uris"
   if [[ -f "${manifest_uris_file}" ]] && [[ -s "${manifest_uris_file}" ]]; then
     log ""
-    log "=== Creating manifest lists ==="
+    log "=== Pushing manifest lists ==="
     while IFS= read -r manifest_uri; do
       [[ -z "${manifest_uri}" ]] && continue
 
-      local amd64_uri="${manifest_uri}-linux-amd64"
-      local arm64_uri="${manifest_uri}-linux-arm64"
-
-      log "Creating manifest: ${manifest_uri}"
-      log "  amd64: ${amd64_uri}"
-      log "  arm64: ${arm64_uri}"
-
-      if ! ${IMAGE_BUILD_COMMAND} manifest create "${manifest_uri}" "${amd64_uri}" "${arm64_uri}"; then
-        log_error "Failed to create manifest: ${manifest_uri}"
-        failed=$((failed + 1))
-        failed_uris="${failed_uris}  ${manifest_uri} (manifest create failed)"$'\n'
-        continue
+      if [[ "${IMAGE_BUILD_COMMAND}" == "podman" ]]; then
+        # Podman: manifest must already exist from build step
+        if ! ${IMAGE_BUILD_COMMAND} manifest inspect "${manifest_uri}" &>/dev/null; then
+          log_error "Manifest not found locally: ${manifest_uri} — should have been created during build"
+          failed=$((failed + 1))
+          failed_uris="${failed_uris}  ${manifest_uri} (manifest not found locally)"$'\n'
+          continue
+        fi
+      else
+        # Docker: create manifest now (images have been pushed to registry)
+        local amd64_uri="${manifest_uri}-linux-amd64"
+        local arm64_uri="${manifest_uri}-linux-arm64"
+        log "Creating manifest: ${manifest_uri}"
+        log "  amd64: ${amd64_uri}"
+        log "  arm64: ${arm64_uri}"
+        if ! ${IMAGE_BUILD_COMMAND} manifest create "${manifest_uri}" "${amd64_uri}" "${arm64_uri}"; then
+          log_error "Failed to create manifest: ${manifest_uri}"
+          failed=$((failed + 1))
+          failed_uris="${failed_uris}  ${manifest_uri} (manifest create failed)"$'\n'
+          continue
+        fi
       fi
 
       log "Pushing manifest: ${manifest_uri}"

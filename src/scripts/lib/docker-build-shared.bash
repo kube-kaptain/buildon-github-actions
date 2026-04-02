@@ -66,3 +66,27 @@ confirm_target_image_doesnt_exist() {
   log "Confirmed target image does not exist in registry (safe to build and push)"
   return 0
 }
+
+# Create a local multi-arch manifest list after a multi-platform build.
+# Only podman supports this — docker requires images to be pushed first,
+# so docker users get a warning and manifests are created during push instead.
+create_local_manifest_if_supported() {
+  local manifest_uri="${1}"
+  if [[ "${IMAGE_BUILD_COMMAND}" == "podman" ]]; then
+    log ""
+    log "Creating local manifest: ${manifest_uri}"
+    if ${IMAGE_BUILD_COMMAND} manifest create "${manifest_uri}" \
+        "${manifest_uri}-linux-amd64" \
+        "${manifest_uri}-linux-arm64"; then
+      log "Local multi-arch manifest created."
+    else
+      log_error "Failed to create local manifest for multi arch build, bailing."
+      return 1
+    fi
+  else
+    log ""
+    log_warning "Docker cannot create local multi-arch manifests without also pushing!"
+    log_warning "Only per-platform images are available. Switch to podman, for full builds."
+    log_warning "Docker is dead. No --squash, no local multi arch builds, no reason to keep."
+  fi
+}

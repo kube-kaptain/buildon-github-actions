@@ -124,8 +124,10 @@ main() {
       echo "${arch_uri}" >> "${DOCKER_PUSH_IMAGE_LIST_FILE}"
     done
 
-    # Register base URI for manifest list creation
+    # Register base URI for manifest list creation during push
     echo "${TARGET_IMAGE_FULL_URI}" >> "${manifest_uris_file}"
+
+    create_local_manifest_if_supported "${TARGET_IMAGE_FULL_URI}"
 
     output_var "DOCKER_SOURCE_IMAGE_FULL_URI" "${SOURCE_IMAGE_FULL_URI}"
     output_var "DOCKER_TARGET_IMAGE_FULL_URI" "${TARGET_IMAGE_FULL_URI}"
