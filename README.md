@@ -79,6 +79,7 @@ See [`examples/`](examples/) for more usage patterns.
 | `docker-build-retag.yaml` | Everything from quality and version above, but also pulls, retags, and republishes a docker image |
 | `kubernetes-app-manifests-only.yaml` | Everything from quality and version above, plus packages Kubernetes manifests with token substitution |
 | `kubernetes-app-docker-dockerfile.yaml` | Everything from both docker Dockerfile and Kubernetes manifest packaging - a full kube app build |
+| `layer-and-layerset-build.yaml` | Layer/layerset validation and OCI packaging - quality checks, versioning, layer packaging, Docker build, validation, and release publishing |
 | `kubernetes-app-docker-retag.yaml` | Everything from both docker retag and Kubernetes manifest packaging - for apps using upstream images |
 | `spec-check-filter-release.yaml` | Everything from quality and version above, but also validates and packages a JSON Schema or an API Spec |
 <!-- WORKFLOWS-END -->
@@ -122,6 +123,8 @@ See [`examples/`](examples/) for more usage patterns.
 | `kubernetes-manifests-package` | Packages Kubernetes manifests into a zip with variable substitution |
 | `kubernetes-manifests-repo-provider-package` | Packages manifests for repo provider (builds docker image). Does NOT publish. |
 | `kubernetes-manifests-repo-provider-publish` | Publishes manifests via pluggable repo provider. Requires package step to run first. |
+| `layer-package-prepare` | Prepares layer or layerset for OCI packaging - validates source, injects metadata, generates Dockerfile |
+| `layer-validate` | Validates substituted layer or layerset after docker build |
 | `release-change-data-generate` | Generates structured release change data YAML from commit history |
 | `release-change-data-oci-package` | Packages release change data as OCI image for consolidated push |
 | `resolve-target-registry-and-namespace` | Resolves target registry (defaults to ghcr.io) and computes namespace (auto-detects org/user for GHCR) |
@@ -156,6 +159,7 @@ All inputs to the system come from KaptainPM.yaml and layers, except secrets.
 | `kubernetes-app-docker-dockerfile.yaml` | Kubernetes App - Docker Dockerfile | [docs/kubernetes-app-docker-dockerfile.md](docs/kubernetes-app-docker-dockerfile.md) |
 | `kubernetes-app-docker-retag.yaml` | Kubernetes App - Docker Retag | [docs/kubernetes-app-docker-retag.md](docs/kubernetes-app-docker-retag.md) |
 | `kubernetes-app-manifests-only.yaml` | Kubernetes App - Manifests Only | [docs/kubernetes-app-manifests-only.md](docs/kubernetes-app-manifests-only.md) |
+| `layer-and-layerset-build.yaml` | Layer and Layerset Build | [docs/layer-and-layerset-build.md](docs/layer-and-layerset-build.md) |
 | `spec-check-filter-release.yaml` | Spec Check Filter Release | [docs/spec-check-filter-release.md](docs/spec-check-filter-release.md) |
 <!-- WORKFLOW-DOCS-END -->
 

@@ -1,0 +1,64 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
+
+name: 'Layer Package Prepare'
+description: 'Prepares layer or layerset for OCI packaging - validates source, injects metadata, generates Dockerfile'
+
+inputs:
+  project-name:
+    description: 'Project name (must start with layer- or layerset-)'
+    required: true
+  version:
+    description: 'Version string for metadata injection'
+    required: true
+  repository-owner:
+    description: 'Repository owner for metadata injection'
+    required: true
+  repository-name:
+    description: 'Repository name for metadata injection'
+    required: true
+
+  # Build output
+  output-sub-path:
+    description: 'Build output directory (relative)'
+    required: false
+    default: 'kaptain-out'
+
+  layer-packaging-base-image:
+    description: 'Base image for generated Dockerfile'
+    required: false
+    default: 'scratch'
+
+outputs:
+  LAYER_TYPE:
+    description: 'Detected layer type: layer or layerset'
+    value: ${{ steps.prepare.outputs.LAYER_TYPE }}
+  DOCKERFILE_SUBSTITUTION_FILES:
+    description: 'Comma-separated list of files needing token substitution'
+    value: ${{ steps.prepare.outputs.DOCKERFILE_SUBSTITUTION_FILES }}
+  DOCKERFILE_SUB_PATH:
+    description: 'Directory containing generated Dockerfile and context'
+    value: ${{ steps.prepare.outputs.DOCKERFILE_SUB_PATH }}
+  DOCKERFILE_SUB_PATH_LINUX_AMD64:
+    description: 'Dockerfile context for linux/amd64'
+    value: ${{ steps.prepare.outputs.DOCKERFILE_SUB_PATH_LINUX_AMD64 }}
+  DOCKERFILE_SUB_PATH_LINUX_ARM64:
+    description: 'Dockerfile context for linux/arm64'
+    value: ${{ steps.prepare.outputs.DOCKERFILE_SUB_PATH_LINUX_ARM64 }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Prepare layer package
+      id: prepare
+      shell: bash
+      env:
+        BUILD_PLATFORM: github-actions
+        BUILD_PLATFORM_LOG_PROVIDER: github-actions
+        PROJECT_NAME: ${{ inputs.project-name }}
+        VERSION: ${{ inputs.version }}
+        REPOSITORY_OWNER: ${{ inputs.repository-owner }}
+        REPOSITORY_NAME: ${{ inputs.repository-name }}
+        OUTPUT_SUB_PATH: ${{ inputs.output-sub-path }}
+        LAYER_PACKAGING_BASE_IMAGE: ${{ inputs.layer-packaging-base-image }}
+      run: "${{ github.action_path }}/../../scripts/main/layer-package-prepare"

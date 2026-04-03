@@ -1,0 +1,33 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
+
+- name: Build image
+  id: docker-build
+  uses: ./.github/buildon-github-actions/src/actions/docker-build-dockerfile
+  with:
+    docker-target-registry: ${{ steps.resolve-registry.outputs.docker-target-registry }}
+    docker-target-namespace: ${{ steps.resolve-registry.outputs.docker-target-namespace }}
+    docker-image-name: ${{ steps.versions.outputs.docker-image-name }}
+    docker-tag: ${{ steps.versions.outputs.docker-tag }}
+    version: ${{ steps.versions.outputs.version }}
+    project-name: ${{ steps.versions.outputs.project-name }}
+    is-release: ${{ steps.versions.outputs.is-release }}
+    repository-owner: ${{ steps.versions.outputs.repository-owner }}
+    repository-name: ${{ steps.versions.outputs.repository-name }}
+    dockerfile-sub-path: ${{ steps.layer-package-prepare.outputs.DOCKERFILE_SUB_PATH }}
+    dockerfile-substitution-files: ${{ steps.layer-package-prepare.outputs.DOCKERFILE_SUBSTITUTION_FILES }}
+    output-sub-path: ${{ steps.kpm.outputs.OUTPUT_SUB_PATH }}
+    docker-push-image-list-file: ${{ steps.docker-registry-logins.outputs.docker-push-image-list-file }}
+    dockerfile-squash: ${{ steps.kpm.outputs.DOCKERFILE_SQUASH }}
+    dockerfile-no-cache: ${{ steps.kpm.outputs.DOCKERFILE_NO_CACHE }}
+    token-delimiter-style: ${{ steps.kpm.outputs.TOKEN_DELIMITER_STYLE }}
+    token-name-style: ${{ steps.kpm.outputs.TOKEN_NAME_STYLE }}
+    token-name-validation: ${{ steps.kpm.outputs.TOKEN_NAME_VALIDATION }}
+    config-sub-path: ${{ steps.kpm.outputs.CONFIG_SUB_PATH }}
+    allow-builtin-token-override: ${{ steps.kpm.outputs.ALLOW_BUILTIN_TOKEN_OVERRIDE }}
+    config-value-trailing-newline: ${{ steps.kpm.outputs.CONFIG_VALUE_TRAILING_NEWLINE }}
+    token-substitution-passes: ${{ steps.kpm.outputs.TOKEN_SUBSTITUTION_PASSES }}
+    image-build-command: ${{ steps.validate-tooling.outputs.IMAGE_BUILD_COMMAND }}
+    docker-platform: ${{ steps.kpm.outputs.DOCKER_PLATFORM }}
+    dockerfile-sub-path-linux-amd64: ${{ steps.layer-package-prepare.outputs.DOCKERFILE_SUB_PATH_LINUX_AMD64 }}
+    dockerfile-sub-path-linux-arm64: ${{ steps.layer-package-prepare.outputs.DOCKERFILE_SUB_PATH_LINUX_ARM64 }}
