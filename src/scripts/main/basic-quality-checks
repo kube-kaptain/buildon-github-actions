@@ -52,10 +52,10 @@ FLAG_BAD_SETUP=16
 # shellcheck source=src/scripts/defaults/branch-inputs.bash
 source "${SCRIPT_DIR}/../defaults/branch-inputs.bash"
 
-# shellcheck source=src/scripts/lib/branch-setup-shared.bash
-source "${SCRIPT_DIR}/../lib/branch-setup-shared.bash"
 # shellcheck source=src/scripts/lib/log.bash
 source "${SCRIPT_DIR}/../lib/log.bash"
+# shellcheck source=src/scripts/lib/branch-setup-shared.bash
+source "${SCRIPT_DIR}/../lib/branch-setup-shared.bash"
 
 # Accumulated error code
 ERROR_CODE=0
