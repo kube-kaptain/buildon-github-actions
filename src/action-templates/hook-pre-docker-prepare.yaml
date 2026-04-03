@@ -305,14 +305,14 @@ runs:
         QC_BLOCK_DUPLICATE_COMMIT_MESSAGES: ${{ inputs.qc-block-duplicate-commit-messages }}
 
         # Workflow inputs - hook script paths
-        HOOK_PRE_BUILD_SCRIPT_SUB_PATH: .github/${{ inputs.hook-pre-build-script-sub-path }}
-        HOOK_PRE_TAGGING_TESTS_SCRIPT_SUB_PATH: .github/${{ inputs.hook-pre-tagging-tests-script-sub-path }}
-        HOOK_PRE_DOCKER_PREPARE_SCRIPT_SUB_PATH: .github/${{ inputs.hook-pre-docker-prepare-script-sub-path }}
-        HOOK_POST_DOCKER_TESTS_SCRIPT_SUB_PATH: .github/${{ inputs.hook-post-docker-tests-script-sub-path }}
-        HOOK_PRE_PACKAGE_PREPARE_SCRIPT_SUB_PATH: .github/${{ inputs.hook-pre-package-prepare-script-sub-path }}
+        HOOK_PRE_BUILD_SCRIPT_SUB_PATH: ${{ inputs.hook-pre-build-script-sub-path }}
+        HOOK_PRE_TAGGING_TESTS_SCRIPT_SUB_PATH: ${{ inputs.hook-pre-tagging-tests-script-sub-path }}
+        HOOK_PRE_DOCKER_PREPARE_SCRIPT_SUB_PATH: ${{ inputs.hook-pre-docker-prepare-script-sub-path }}
+        HOOK_POST_DOCKER_TESTS_SCRIPT_SUB_PATH: ${{ inputs.hook-post-docker-tests-script-sub-path }}
+        HOOK_PRE_PACKAGE_PREPARE_SCRIPT_SUB_PATH: ${{ inputs.hook-pre-package-prepare-script-sub-path }}
         HOOK_POST_PACKAGE_TESTS_SCRIPT_SUB_PATH: ${{ inputs.hook-post-package-tests-script-sub-path }}
-        HOOK_POST_VERSIONS_AND_NAMING_SCRIPT_SUB_PATH: .github/${{ inputs.hook-post-versions-and-naming-script-sub-path }}
-        HOOK_POST_BUILD_SCRIPT_SUB_PATH: .github/${{ inputs.hook-post-build-script-sub-path }}
+        HOOK_POST_VERSIONS_AND_NAMING_SCRIPT_SUB_PATH: ${{ inputs.hook-post-versions-and-naming-script-sub-path }}
+        HOOK_POST_BUILD_SCRIPT_SUB_PATH: ${{ inputs.hook-post-build-script-sub-path }}
 
         # Workflow inputs - github release
         GITHUB_RELEASE_ENABLED: ${{ inputs.github-release-enabled }}
