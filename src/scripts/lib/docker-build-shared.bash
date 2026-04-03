@@ -81,8 +81,8 @@ create_local_manifest_if_supported() {
     fi
     log "Creating local manifest: ${manifest_uri}"
     if ${IMAGE_BUILD_COMMAND} manifest create "${manifest_uri}" \
-        "${manifest_uri}-linux-amd64" \
-        "${manifest_uri}-linux-arm64"; then
+        "containers-storage:${manifest_uri}-linux-amd64" \
+        "containers-storage:${manifest_uri}-linux-arm64"; then
       log "Local multi-arch manifest created."
     else
       log_error "Failed to create local manifest for multi arch build, bailing."
