@@ -5,5 +5,5 @@
   id: docker-platform-setup
   uses: ./.github/buildon-github-actions/src/actions/docker-platform-setup
   with:
-    docker-platform: ${{ inputs.docker-platform }}
+    docker-platform: ${{ steps.kpm.outputs.DOCKER_PLATFORM }}
     image-build-command: ${{ steps.validate-tooling.outputs.IMAGE_BUILD_COMMAND }}

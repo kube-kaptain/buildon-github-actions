@@ -5,8 +5,8 @@
   id: manifest-repo-provider-package
   uses: ./.github/buildon-github-actions/src/actions/kubernetes-manifests-repo-provider-package
   with:
-    manifests-repo-provider-type: ${{ inputs.manifests-repo-provider-type }}
-    manifests-packaging-base-image: ${{ inputs.manifests-packaging-base-image }}
+    manifests-repo-provider-type: ${{ steps.kpm.outputs.MANIFESTS_REPO_PROVIDER_TYPE }}
+    manifests-packaging-base-image: ${{ steps.kpm.outputs.MANIFESTS_PACKAGING_BASE_IMAGE }}
     manifests-zip-sub-path: ${{ steps.manifest-package.outputs.manifests-zip-sub-path }}
     manifests-zip-file-name: ${{ steps.manifest-package.outputs.manifests-zip-file-name }}
     docker-target-registry: ${{ steps.resolve-registry.outputs.docker-target-registry }}
@@ -15,6 +15,6 @@
     docker-tag: ${{ steps.versions.outputs.docker-tag }}-manifests
     version: ${{ steps.versions.outputs.version }}
     project-name: ${{ steps.versions.outputs.project-name }}
-    output-sub-path: ${{ inputs.output-sub-path }}
+    output-sub-path: ${{ steps.kpm.outputs.OUTPUT_SUB_PATH }}
     docker-push-image-list-file: ${{ steps.docker-registry-logins.outputs.docker-push-image-list-file }}
     image-build-command: ${{ steps.validate-tooling.outputs.IMAGE_BUILD_COMMAND }}

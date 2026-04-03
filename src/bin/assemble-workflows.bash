@@ -257,27 +257,11 @@ process_template() {
       result+="${indent}${indented_chunk}"
       echo "  Injected: $injection_type (indent: ${#indent} spaces)"
 
-    # Input injection: # INJECT-INPUT: name
-    elif [[ "$line" =~ ^([[:space:]]*)#\ INJECT-INPUT:\ ([a-zA-Z0-9_-]+)$ ]]; then
-      local indent="${BASH_REMATCH[1]}"
-      local input_name="${BASH_REMATCH[2]}"
-      local input_file="$INPUTS_DIR/${input_name}.yaml"
-
-      if [[ ! -f "$input_file" ]]; then
-        echo "  ERROR: Input file not found: $input_file" >&2
-        exit 1
-      fi
-
-      # Read input file, strip SPDX header, and apply indentation
-      local chunk
-      chunk=$(cat "$input_file" | strip_spdx_header)
-
-      # Apply indentation to chunk (first line gets indent, others get indent prepended)
-      local indented_chunk
-      indented_chunk=$(echo "$chunk" | indent_chunk "$indent")
-
-      result+="${indent}${indented_chunk}"
-      echo "  Injected input: $input_name (indent: ${#indent} spaces)"
+    # INJECT-INPUT is not allowed in workflow templates (config comes from KaptainPM.yaml)
+    elif [[ "$line" =~ \#\ INJECT-INPUT: ]]; then
+      echo "  ERROR: INJECT-INPUT found in workflow template - inputs are no longer supported" >&2
+      echo "  Line: $line" >&2
+      exit 1
 
     # Simple injection: # INJECT: name
     elif [[ "$line" =~ ^([[:space:]]*)#\ INJECT:\ ([a-zA-Z0-9_-]+)$ ]]; then
@@ -361,16 +345,11 @@ process_action_template() {
   echo "  Written: $output"
 }
 
-lint_workflow_inputs() {
-  echo "Linting workflow inputs for consistency..."
-
-  local definitions_file
-  definitions_file=$(mktemp)
-  trap "rm -f '$definitions_file'" RETURN
+validate_no_workflow_inputs() {
+  echo "Validating no workflow inputs exist..."
 
   local errors=0
 
-  # Lint assembled output files (which have INJECT-INPUT expanded)
   for workflow in "$OUTPUT_DIR"/*.yaml; do
     [[ -f "$workflow" ]] || continue
     local wf_basename
@@ -378,94 +357,22 @@ lint_workflow_inputs() {
     # Skip workflows without a corresponding template
     [[ ! -f "$TEMPLATES_DIR/$wf_basename" ]] && continue
 
-    # Get all inputs from this workflow
     local inputs
     inputs=$(yq '.on.workflow_call.inputs | keys | .[]' "$workflow" 2>/dev/null) || continue
 
-    for input in $inputs; do
-      local type default description definition
-      type=$(yq ".on.workflow_call.inputs[\"$input\"].type // \"unset\"" "$workflow")
-      default=$(yq ".on.workflow_call.inputs[\"$input\"].default // \"unset\"" "$workflow")
-      description=$(yq ".on.workflow_call.inputs[\"$input\"].description // \"unset\"" "$workflow")
-      definition="${type}|${default}|${description}"
-
-      # Check if we've seen this input before
-      local existing
-      existing=$(grep "^${input}	" "$definitions_file" 2>/dev/null || true)
-
-      if [[ -z "$existing" ]]; then
-        # First time seeing this input - record it
-        printf '%s\t%s\t%s\n' "$input" "$wf_basename" "$definition" >> "$definitions_file"
-      else
-        # Compare with previous definition
-        local prev_workflow prev_definition
-        prev_workflow=$(echo "$existing" | cut -f2)
-        prev_definition=$(echo "$existing" | cut -f3-)
-
-        if [[ "$prev_definition" != "$definition" ]]; then
-          echo "  ERROR: Input '$input' differs between workflows" >&2
-          echo "    First defined in: $prev_workflow" >&2
-          echo "    Conflicts in: $wf_basename" >&2
-          echo "    Expected: $prev_definition" >&2
-          echo "    Got:      $definition" >&2
-          errors=$((errors + 1))
-        fi
-      fi
-    done
+    if [[ -n "$inputs" ]]; then
+      echo "  ERROR: $wf_basename has workflow inputs (all config comes from KaptainPM.yaml):" >&2
+      echo "$inputs" | sed 's/^/    /' >&2
+      errors=$((errors + 1))
+    fi
   done
 
   if [[ $errors -gt 0 ]]; then
-    echo "  FAILED: $errors input inconsistency error(s) found" >&2
+    echo "  FAILED: $errors workflow(s) have inputs — remove them" >&2
     exit 1
   fi
 
-  echo "  OK: All shared inputs are consistent"
-}
-
-# Generate all inputs table for README
-generate_inputs_table() {
-  local inputs_file
-  inputs_file=$(mktemp)
-
-  # Collect all unique inputs across assembled output files (which have INJECT-INPUT expanded)
-  for workflow in "$OUTPUT_DIR"/*.yaml; do
-    [[ -f "$workflow" ]] || continue
-    # Skip workflows without a corresponding template
-    [[ ! -f "$TEMPLATES_DIR/$(basename "$workflow")" ]] && continue
-    local inputs
-    inputs=$(yq '.on.workflow_call.inputs | keys | .[]' "$workflow" 2>/dev/null) || continue
-
-    for input in $inputs; do
-      # Skip if already recorded
-      grep -q "^${input}	" "$inputs_file" 2>/dev/null && continue
-
-      local type default description required
-      type=$(yq ".on.workflow_call.inputs[\"$input\"].type // \"string\"" "$workflow")
-      default=$(yq ".on.workflow_call.inputs[\"$input\"].default" "$workflow")
-      description=$(yq ".on.workflow_call.inputs[\"$input\"].description // \"\"" "$workflow")
-      required=$(yq ".on.workflow_call.inputs[\"$input\"].required // false" "$workflow")
-
-      # Format default value
-      if [[ "$required" == "true" ]]; then
-        default="*required*"
-      elif [[ "$default" == "null" ]] || [[ -z "$default" ]]; then
-        default='`""`'
-      else
-        default="\`$default\`"
-      fi
-
-      printf '%s\t%s\t%s\t%s\n' "$input" "$type" "$default" "$description" >> "$inputs_file"
-    done
-  done
-
-  # Output table
-  echo "| Input | Type | Default | Description |"
-  echo "|-------|------|---------|-------------|"
-  sort "$inputs_file" | while IFS=$'\t' read -r input type default description; do
-    echo "| \`$input\` | $type | $default | $description |"
-  done
-
-  rm -f "$inputs_file"
+  echo "  OK: No workflow inputs found"
 }
 
 # Generate secrets table for README
@@ -514,27 +421,7 @@ generate_workflow_doc() {
     echo ""
     echo "## Inputs"
     echo ""
-    echo "| Input | Type | Default | Description |"
-    echo "|-------|------|---------|-------------|"
-
-    local inputs
-    inputs=$(yq '.on.workflow_call.inputs | keys | .[]' "$workflow" 2>/dev/null) || true
-    for input in $inputs; do
-      local type default desc required
-      type=$(yq ".on.workflow_call.inputs[\"$input\"].type // \"string\"" "$workflow")
-      default=$(yq ".on.workflow_call.inputs[\"$input\"].default" "$workflow")
-      desc=$(yq ".on.workflow_call.inputs[\"$input\"].description // \"\"" "$workflow")
-      required=$(yq ".on.workflow_call.inputs[\"$input\"].required // false" "$workflow")
-
-      if [[ "$required" == "true" ]]; then
-        default="*required*"
-      elif [[ "$default" == "null" ]] || [[ -z "$default" ]]; then
-        default='`""`'
-      else
-        default="\`$default\`"
-      fi
-      echo "| \`$input\` | $type | $default | $desc |"
-    done
+    echo "All configuration comes from KaptainPM.yaml and layers, except secrets."
 
     # Secrets if any
     local secrets
@@ -754,12 +641,6 @@ generate_docs() {
   inject_between_markers "$README" "<!-- ACTIONS-START -->" "<!-- ACTIONS-END -->" "$actions_table"
   echo "  Injected: actions table"
 
-  # Generate and inject inputs table
-  local inputs_table
-  inputs_table=$(generate_inputs_table)
-  inject_between_markers "$README" "<!-- INPUTS-START -->" "<!-- INPUTS-END -->" "$inputs_table"
-  echo "  Injected: inputs table"
-
   # Generate and inject secrets table
   local secrets_table
   secrets_table=$(generate_secrets_table)
@@ -841,10 +722,10 @@ main() {
   echo "Processed $count template(s) in $((SECONDS - section_start)) seconds."
   echo
 
-  # Lint assembled outputs for input consistency
+  # Validate no workflow inputs exist (all config comes from KaptainPM.yaml)
   section_start=$SECONDS
-  lint_workflow_inputs
-  echo "Linted in $((SECONDS - section_start)) seconds."
+  validate_no_workflow_inputs
+  echo "Validated in $((SECONDS - section_start)) seconds."
   echo
 
   # Generate documentation

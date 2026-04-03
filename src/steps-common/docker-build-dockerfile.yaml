@@ -14,20 +14,20 @@
     is-release: ${{ steps.versions.outputs.is-release }}
     repository-owner: ${{ steps.versions.outputs.repository-owner }}
     repository-name: ${{ steps.versions.outputs.repository-name }}
-    dockerfile-sub-path: ${{ inputs.dockerfile-sub-path }}
-    dockerfile-substitution-files: ${{ inputs.dockerfile-substitution-files }}
-    output-sub-path: ${{ inputs.output-sub-path }}
+    dockerfile-sub-path: ${{ steps.kpm.outputs.DOCKERFILE_SUB_PATH }}
+    dockerfile-substitution-files: ${{ steps.kpm.outputs.DOCKERFILE_SUBSTITUTION_FILES }}
+    output-sub-path: ${{ steps.kpm.outputs.OUTPUT_SUB_PATH }}
     docker-push-image-list-file: ${{ steps.docker-registry-logins.outputs.docker-push-image-list-file }}
-    dockerfile-squash: ${{ inputs.dockerfile-squash }}
-    dockerfile-no-cache: ${{ inputs.dockerfile-no-cache }}
-    token-delimiter-style: ${{ inputs.token-delimiter-style }}
-    token-name-style: ${{ inputs.token-name-style }}
-    token-name-validation: ${{ inputs.token-name-validation }}
-    config-sub-path: ${{ inputs.config-sub-path }}
-    allow-builtin-token-override: ${{ inputs.allow-builtin-token-override }}
-    config-value-trailing-newline: ${{ inputs.config-value-trailing-newline }}
-    token-substitution-passes: ${{ inputs.token-substitution-passes }}
+    dockerfile-squash: ${{ steps.kpm.outputs.DOCKERFILE_SQUASH }}
+    dockerfile-no-cache: ${{ steps.kpm.outputs.DOCKERFILE_NO_CACHE }}
+    token-delimiter-style: ${{ steps.kpm.outputs.TOKEN_DELIMITER_STYLE }}
+    token-name-style: ${{ steps.kpm.outputs.TOKEN_NAME_STYLE }}
+    token-name-validation: ${{ steps.kpm.outputs.TOKEN_NAME_VALIDATION }}
+    config-sub-path: ${{ steps.kpm.outputs.CONFIG_SUB_PATH }}
+    allow-builtin-token-override: ${{ steps.kpm.outputs.ALLOW_BUILTIN_TOKEN_OVERRIDE }}
+    config-value-trailing-newline: ${{ steps.kpm.outputs.CONFIG_VALUE_TRAILING_NEWLINE }}
+    token-substitution-passes: ${{ steps.kpm.outputs.TOKEN_SUBSTITUTION_PASSES }}
     image-build-command: ${{ steps.validate-tooling.outputs.IMAGE_BUILD_COMMAND }}
-    docker-platform: ${{ inputs.docker-platform }}
-    dockerfile-sub-path-linux-amd64: ${{ inputs.dockerfile-sub-path-linux-amd64 }}
-    dockerfile-sub-path-linux-arm64: ${{ inputs.dockerfile-sub-path-linux-arm64 }}
+    docker-platform: ${{ steps.kpm.outputs.DOCKER_PLATFORM }}
+    dockerfile-sub-path-linux-amd64: ${{ steps.kpm.outputs.DOCKERFILE_SUB_PATH_LINUX_AMD64 }}
+    dockerfile-sub-path-linux-arm64: ${{ steps.kpm.outputs.DOCKERFILE_SUB_PATH_LINUX_ARM64 }}

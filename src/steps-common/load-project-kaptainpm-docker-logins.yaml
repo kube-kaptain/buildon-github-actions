@@ -1,0 +1,10 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
+
+- name: Load project KaptainPM docker logins
+  id: load-project-kpm
+  shell: bash
+  env:
+    BUILD_PLATFORM: github-actions
+    BUILD_PLATFORM_LOG_PROVIDER: github-actions
+  run: ./.github/buildon-github-actions/src/scripts/main/load-project-kaptainpm-docker-logins

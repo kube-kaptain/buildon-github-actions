@@ -3,31 +3,31 @@
 
 - name: Generate Service manifest
   id: generate-service
-  if: inputs.kubernetes-service-generation-enabled != 'false' && (inputs.kubernetes-service-generation-enabled == 'true' || inputs.kubernetes-workload-type == 'deployment' || inputs.kubernetes-workload-type == 'statefulset' || inputs.kubernetes-workload-type == 'daemonset')
+  if: steps.kpm.outputs.KUBERNETES_SERVICE_GENERATION_ENABLED != 'false' && (steps.kpm.outputs.KUBERNETES_SERVICE_GENERATION_ENABLED == 'true' || steps.kpm.outputs.KUBERNETES_WORKLOAD_TYPE == 'deployment' || steps.kpm.outputs.KUBERNETES_WORKLOAD_TYPE == 'statefulset' || steps.kpm.outputs.KUBERNETES_WORKLOAD_TYPE == 'daemonset')
   uses: ./.github/buildon-github-actions/src/actions/generate-kubernetes-service
   with:
     # Service settings
-    kubernetes-service-generation-enabled: ${{ inputs.kubernetes-service-generation-enabled }}
-    kubernetes-service-type: ${{ inputs.kubernetes-service-type }}
-    kubernetes-service-port: ${{ inputs.kubernetes-service-port }}
-    kubernetes-service-target-port: ${{ inputs.kubernetes-service-target-port }}
-    kubernetes-service-protocol: ${{ inputs.kubernetes-service-protocol }}
-    kubernetes-service-port-name: ${{ inputs.kubernetes-service-port-name }}
-    kubernetes-service-node-port: ${{ inputs.kubernetes-service-node-port }}
-    kubernetes-service-external-name: ${{ inputs.kubernetes-service-external-name }}
-    kubernetes-service-external-traffic-policy: ${{ inputs.kubernetes-service-external-traffic-policy }}
-    kubernetes-service-name-suffix: ${{ inputs.kubernetes-service-name-suffix }}
-    kubernetes-service-combined-sub-path: ${{ inputs.kubernetes-service-combined-sub-path }}
-    kubernetes-service-additional-labels: ${{ inputs.kubernetes-service-additional-labels }}
-    kubernetes-service-additional-annotations: ${{ inputs.kubernetes-service-additional-annotations }}
+    kubernetes-service-generation-enabled: ${{ steps.kpm.outputs.KUBERNETES_SERVICE_GENERATION_ENABLED }}
+    kubernetes-service-type: ${{ steps.kpm.outputs.KUBERNETES_SERVICE_TYPE }}
+    kubernetes-service-port: ${{ steps.kpm.outputs.KUBERNETES_SERVICE_PORT }}
+    kubernetes-service-target-port: ${{ steps.kpm.outputs.KUBERNETES_SERVICE_TARGET_PORT }}
+    kubernetes-service-protocol: ${{ steps.kpm.outputs.KUBERNETES_SERVICE_PROTOCOL }}
+    kubernetes-service-port-name: ${{ steps.kpm.outputs.KUBERNETES_SERVICE_PORT_NAME }}
+    kubernetes-service-node-port: ${{ steps.kpm.outputs.KUBERNETES_SERVICE_NODE_PORT }}
+    kubernetes-service-external-name: ${{ steps.kpm.outputs.KUBERNETES_SERVICE_EXTERNAL_NAME }}
+    kubernetes-service-external-traffic-policy: ${{ steps.kpm.outputs.KUBERNETES_SERVICE_EXTERNAL_TRAFFIC_POLICY }}
+    kubernetes-service-name-suffix: ${{ steps.kpm.outputs.KUBERNETES_SERVICE_NAME_SUFFIX }}
+    kubernetes-service-combined-sub-path: ${{ steps.kpm.outputs.KUBERNETES_SERVICE_COMBINED_SUB_PATH }}
+    kubernetes-service-additional-labels: ${{ steps.kpm.outputs.KUBERNETES_SERVICE_ADDITIONAL_LABELS }}
+    kubernetes-service-additional-annotations: ${{ steps.kpm.outputs.KUBERNETES_SERVICE_ADDITIONAL_ANNOTATIONS }}
     # Workload settings (for defaults)
-    kubernetes-workload-type: ${{ inputs.kubernetes-workload-type }}
-    kubernetes-workload-container-port: ${{ inputs.kubernetes-workload-container-port }}
+    kubernetes-workload-type: ${{ steps.kpm.outputs.KUBERNETES_WORKLOAD_TYPE }}
+    kubernetes-workload-container-port: ${{ steps.kpm.outputs.KUBERNETES_WORKLOAD_CONTAINER_PORT }}
     # Required context
     project-name: ${{ steps.versions.outputs.project-name }}
     # Global settings
-    output-sub-path: ${{ inputs.output-sub-path }}
-    token-name-style: ${{ inputs.token-name-style }}
-    token-delimiter-style: ${{ inputs.token-delimiter-style }}
-    kubernetes-global-additional-labels: ${{ inputs.kubernetes-global-additional-labels }}
-    kubernetes-global-additional-annotations: ${{ inputs.kubernetes-global-additional-annotations }}
+    output-sub-path: ${{ steps.kpm.outputs.OUTPUT_SUB_PATH }}
+    token-name-style: ${{ steps.kpm.outputs.TOKEN_NAME_STYLE }}
+    token-delimiter-style: ${{ steps.kpm.outputs.TOKEN_DELIMITER_STYLE }}
+    kubernetes-global-additional-labels: ${{ steps.kpm.outputs.KUBERNETES_GLOBAL_ADDITIONAL_LABELS }}
+    kubernetes-global-additional-annotations: ${{ steps.kpm.outputs.KUBERNETES_GLOBAL_ADDITIONAL_ANNOTATIONS }}

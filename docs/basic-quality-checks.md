@@ -4,16 +4,10 @@ Basic Quality Checks
 
 ## Inputs
 
-| Input | Type | Default | Description |
-|-------|------|---------|-------------|
-| `release-branch` | string | `main` | The release branch name |
-| `additional-release-branches` | string | `""` | Comma-separated list of additional release branches |
-| `block-slashes` | boolean | `false` | DEPRECATED: Use block-slash-containing-branches instead |
-| `qc-block-slash-containing-branches` | boolean | `false` | Block branch names containing slashes |
-| `qc-block-double-hyphen-containing-branches` | boolean | `true` | Block branch names containing double hyphens (typo detection) |
-| `qc-require-conventional-branches` | boolean | `false` | Require branch names start with feature/, fix/, etc. |
-| `qc-require-conventional-commits` | boolean | `false` | Require commits use conventional commit format (feat:, fix:, etc.) |
-| `qc-block-conventional-commits` | boolean | `false` | Block commits that use conventional commit format |
-| `qc-block-duplicate-commit-messages` | boolean | `true` | Block PRs where two or more commits have identical messages |
-| `hook-pre-build-script-sub-path` | string | `""` | Path to pre-build script relative to .github/ (e.g., bin/pre-build.bash) |
-| `hook-post-build-script-sub-path` | string | `""` | Path to post-build script relative to .github/ (e.g., bin/post-build.bash) |
+All configuration comes from KaptainPM.yaml and layers, except secrets.
+
+## Secrets
+
+| Secret | Description |
+|--------|-------------|
+| `docker-registry-logins-secrets` | JSON object of secrets for docker-registry-logins (e.g., {"DOCKER_USER": "x", "DOCKER_PASS": "y"}) |
