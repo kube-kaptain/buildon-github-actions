@@ -122,7 +122,7 @@ MAPPINGS=(
   "spec.main.generators.common.additionalAnnotations:KUBERNETES_GLOBAL_ADDITIONAL_ANNOTATIONS"
 
   # Generators - workload
-  "spec.main.generators.workload.type:KUBERNETES_WORKLOAD_TYPE"
+  # Note: KUBERNETES_WORKLOAD_TYPE handled separately below (has default)
   "spec.main.generators.workload.replicas:KUBERNETES_WORKLOAD_REPLICAS"
   "spec.main.generators.workload.revisionHistoryLimit:KUBERNETES_WORKLOAD_REVISION_HISTORY_LIMIT"
   "spec.main.generators.workload.minReadySeconds:KUBERNETES_WORKLOAD_MIN_READY_SECONDS"
@@ -354,7 +354,7 @@ MAPPINGS=(
   "spec.main.aws.eksClusterManagement.ciliumEbpfNetworking:EKS_CILIUM_EBPF_NETWORKING"
 
   # Platform - GitHub Actions
-  "spec.platform.githubActions.release.enabled:GITHUB_RELEASE_ENABLED"
+  # Note: GITHUB_RELEASE_ENABLED handled separately below (has default)
   "spec.platform.githubActions.release.addVersionToFilenames:GITHUB_RELEASE_ADD_VERSION_TO_FILENAMES"
   "spec.platform.githubActions.release.notes:GITHUB_RELEASE_NOTES"
   "spec.platform.githubActions.release.notesFile:GITHUB_RELEASE_NOTES_FILE"
@@ -390,5 +390,26 @@ if [[ -n "${logins_json}" && "${logins_json}" != "null" && "${logins_json}" != '
   log "Field .spec.main.docker.logins exported as DOCKER_REGISTRY_LOGINS (JSON)"
   found_count=$((found_count + 1))
 fi
+
+# Fields used in workflow if-conditions that need defaults when absent from yaml
+github_release_enabled=$(yq -r '.spec.platform.githubActions.release.enabled // ""' "${PM_FILE}")
+if [[ -z "${github_release_enabled}" || "${github_release_enabled}" == "null" ]]; then
+  github_release_enabled="true"
+  log "Field .spec.platform.githubActions.release.enabled not set, defaulted to ${github_release_enabled} to allow wrapper optimisations."
+else
+  found_count=$((found_count + 1))
+fi
+output_var "GITHUB_RELEASE_ENABLED" "${github_release_enabled}" > /dev/null
+log "Field .spec.platform.githubActions.release.enabled = \"${github_release_enabled}\" exported as GITHUB_RELEASE_ENABLED"
+
+workload_type=$(yq -r '.spec.main.generators.workload.type // ""' "${PM_FILE}")
+if [[ -z "${workload_type}" || "${workload_type}" == "null" ]]; then
+  workload_type="deployment"
+  log "Field .spec.main.generators.workload.type not set, defaulted to ${workload_type} to allow wrapper optimisations."
+else
+  found_count=$((found_count + 1))
+fi
+output_var "KUBERNETES_WORKLOAD_TYPE" "${workload_type}" > /dev/null
+log "Field .spec.main.generators.workload.type = \"${workload_type}\" exported as KUBERNETES_WORKLOAD_TYPE"
 
 log "Loaded ${found_count} value(s) from KaptainPM.yaml"
