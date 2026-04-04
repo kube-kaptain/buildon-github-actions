@@ -63,7 +63,8 @@ log "Kind matched: ${actual_kind}"
 # Format: "yaml.path:ENV_VAR_NAME"
 MAPPINGS=(
   # Global
-  "spec.global.outputSubPath:OUTPUT_SUB_PATH"
+  # Note: OUTPUT_SUB_PATH handled separately below (has default)
+
   "spec.global.configSubPath:CONFIG_SUB_PATH"
   "spec.global.secretsSubPath:SECRETS_SUB_PATH"
   "spec.global.tokens.delimiterStyle:TOKEN_DELIMITER_STYLE"
@@ -391,7 +392,17 @@ if [[ -n "${logins_json}" && "${logins_json}" != "null" && "${logins_json}" != '
   found_count=$((found_count + 1))
 fi
 
-# Fields used in workflow if-conditions that need defaults when absent from yaml
+# Fields used in workflow step inputs or if-conditions that need defaults when absent from yaml
+output_sub_path=$(yq -r '.spec.global.outputSubPath // ""' "${PM_FILE}")
+if [[ -z "${output_sub_path}" || "${output_sub_path}" == "null" ]]; then
+  output_sub_path="kaptain-out"
+  log "Field .spec.global.outputSubPath not set, defaulted to ${output_sub_path} to allow wrapper optimisations."
+else
+  found_count=$((found_count + 1))
+fi
+output_var "OUTPUT_SUB_PATH" "${output_sub_path}" > /dev/null
+log "Field .spec.global.outputSubPath = \"${output_sub_path}\" exported as OUTPUT_SUB_PATH"
+
 github_release_enabled=$(yq -r '.spec.platform.githubActions.release.enabled // ""' "${PM_FILE}")
 if [[ -z "${github_release_enabled}" || "${github_release_enabled}" == "null" ]]; then
   github_release_enabled="true"
