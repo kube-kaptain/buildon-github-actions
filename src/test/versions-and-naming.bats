@@ -419,20 +419,16 @@ ENV KUBECTL_VERSION=1.29.0' > custom/path/Dockerfile
 @test "file-pattern-match retag-workflow-source-tag allows custom pattern override" {
   TEST_REPO=$(clone_fixture "tag-none")
   cd "$TEST_REPO"
-  mkdir -p .github/workflows
-  # No docker-source-tag - use custom pattern with retag-workflow-source-tag defaults
-  echo 'name: Build
-on: push
-jobs:
-  build:
-    uses: example/workflow@v1
-    with:
-      image-version: 4.2.0' > .github/workflows/build.yaml
+  mkdir -p kaptainpm/final
+  # No sourceTag - use custom pattern with retag-workflow-source-tag defaults
+  echo 'spec:
+  docker:
+    imageVersion: 4.2.0' > kaptainpm/final/KaptainPM.yaml
 
   export TAG_VERSION_CALCULATION_STRATEGY=file-pattern-match
   export TAG_VERSION_PATTERN_TYPE=retag-workflow-source-tag
-  # Override the default source-tag pattern while keeping workflow path defaults
-  export TAG_VERSION_SOURCE_CUSTOM_PATTERN='^[[:space:]]*image-version:[[:space:]]*([0-9]+\.[0-9]+\.[0-9]+)'
+  # Override the default sourceTag pattern while keeping KaptainPM path defaults
+  export TAG_VERSION_SOURCE_CUSTOM_PATTERN='^[[:space:]]*imageVersion:[[:space:]]*([0-9]+\.[0-9]+\.[0-9]+)'
 
   run "$SCRIPTS_DIR/versions-and-naming"
   [ "$status" -eq 0 ]
@@ -485,17 +481,13 @@ ENV KUBECTL_VERSION=1.29.0' > src/docker/Dockerfile
   assert_var_equals "VERSION" "1.29.1"
 }
 
-@test "file-pattern-match retag-workflow-source-tag extracts from workflow file" {
+@test "file-pattern-match retag-workflow-source-tag extracts from KaptainPM file" {
   TEST_REPO=$(clone_fixture "tag-none")
   cd "$TEST_REPO"
-  mkdir -p .github/workflows
-  echo 'name: Build
-on: push
-jobs:
-  build:
-    uses: example/workflow@v1
-    with:
-      docker-source-tag: 3.10.1' > .github/workflows/build.yaml
+  mkdir -p kaptainpm/final
+  echo 'spec:
+  docker:
+    sourceTag: 3.10.1' > kaptainpm/final/KaptainPM.yaml
 
   export TAG_VERSION_CALCULATION_STRATEGY=file-pattern-match
   export TAG_VERSION_PATTERN_TYPE=retag-workflow-source-tag
@@ -508,14 +500,10 @@ jobs:
 @test "file-pattern-match retag-workflow-source-tag handles quoted values" {
   TEST_REPO=$(clone_fixture "tag-none")
   cd "$TEST_REPO"
-  mkdir -p .github/workflows
-  echo "name: Build
-on: push
-jobs:
-  build:
-    uses: example/workflow@v1
-    with:
-      docker-source-tag: '2.5.0'" > .github/workflows/build.yaml
+  mkdir -p kaptainpm/final
+  echo "spec:
+  docker:
+    sourceTag: '2.5.0'" > kaptainpm/final/KaptainPM.yaml
 
   export TAG_VERSION_CALCULATION_STRATEGY=file-pattern-match
   export TAG_VERSION_PATTERN_TYPE=retag-workflow-source-tag

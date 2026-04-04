@@ -23,9 +23,9 @@ set_defaults_for_type() {
       VERSION_PATTERN="${TAG_VERSION_SOURCE_CUSTOM_PATTERN:-^ENV KUBECTL_VERSION=([0-9]+\.[0-9]+\.[0-9]+)$}"
       ;;
     retag-workflow-source-tag)
-      SOURCE_SUB_PATH="${TAG_VERSION_SOURCE_SUB_PATH:-.github/workflows}"
-      SOURCE_FILE_NAME="${TAG_VERSION_SOURCE_FILE_NAME:-build.yaml}"
-      VERSION_PATTERN="${TAG_VERSION_SOURCE_CUSTOM_PATTERN:-^[[:space:]]*docker-source-tag:[[:space:]]*['\"]?([0-9]+\.[0-9]+\.[0-9]+)['\"]?$}"
+      SOURCE_SUB_PATH="${TAG_VERSION_SOURCE_SUB_PATH:-kaptainpm/final}"
+      SOURCE_FILE_NAME="${TAG_VERSION_SOURCE_FILE_NAME:-KaptainPM.yaml}"
+      VERSION_PATTERN="${TAG_VERSION_SOURCE_CUSTOM_PATTERN:-^[[:space:]]*sourceTag:[[:space:]]*['\"]?([0-9]+(\.[0-9]+)*)['\"]?$}"
       ;;
     custom)
       if [[ -z "${TAG_VERSION_SOURCE_SUB_PATH:-}" ]]; then
