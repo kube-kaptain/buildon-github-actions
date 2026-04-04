@@ -92,67 +92,28 @@ outputs:
     value: ${{ steps.package.outputs.MANIFESTS_ZIP_FILE_NAME }}
   version:
     description: 'Version/tag (pass through for publish step, for future non-docker providers)'
-    value: ${{ steps.computed.outputs.version }}
+    value: ${{ steps.package.outputs.REPO_PROVIDER_VERSION }}
 
   # --- REPO_PROVIDER_* outputs (for publish step) ---
   repo-provider-url:
     description: 'Computed REPO_PROVIDER_URL (for publish step)'
-    value: ${{ steps.computed.outputs.url }}
+    value: ${{ steps.package.outputs.REPO_PROVIDER_URL }}
   repo-provider-namespace:
     description: 'Computed REPO_PROVIDER_NAMESPACE (for publish step)'
-    value: ${{ steps.computed.outputs.namespace }}
+    value: ${{ steps.package.outputs.REPO_PROVIDER_NAMESPACE }}
   repo-provider-name:
     description: 'Computed REPO_PROVIDER_NAME (for publish step)'
-    value: ${{ steps.computed.outputs.name }}
+    value: ${{ steps.package.outputs.REPO_PROVIDER_NAME }}
   repo-provider-version:
     description: 'Computed REPO_PROVIDER_VERSION (for publish step)'
-    value: ${{ steps.computed.outputs.version }}
+    value: ${{ steps.package.outputs.REPO_PROVIDER_VERSION }}
 
 runs:
   using: 'composite'
   steps:
     # ==========================================================================
-    # Compute REPO_PROVIDER_* values from user-friendly inputs
-    # Registry and namespace are pre-resolved by workflow before calling this action
-    # ==========================================================================
-    - name: Compute repo provider values
-      id: computed
-      shell: bash
-      run: |
-        PROVIDER="${{ inputs.manifests-repo-provider-type }}"
-
-        # =====================================================================
-        # REPO_PROVIDER_URL (pre-resolved by workflow)
-        # =====================================================================
-        echo "url=${{ inputs.docker-target-registry }}" >> "$GITHUB_OUTPUT"
-
-        # =====================================================================
-        # REPO_PROVIDER_NAMESPACE (pre-resolved by workflow)
-        # =====================================================================
-        echo "namespace=${{ inputs.docker-target-namespace }}" >> "$GITHUB_OUTPUT"
-
-        # =====================================================================
-        # REPO_PROVIDER_NAME
-        # =====================================================================
-        if [[ "$PROVIDER" == "docker" ]]; then
-          NAME="${{ inputs.docker-image-name }}"
-        else
-          NAME="${{ inputs.project-name }}"
-        fi
-        echo "name=${NAME}" >> "$GITHUB_OUTPUT"
-
-        # =====================================================================
-        # REPO_PROVIDER_VERSION
-        # =====================================================================
-        if [[ "$PROVIDER" == "docker" ]]; then
-          VERSION="${{ inputs.docker-tag }}"
-        else
-          VERSION="${{ inputs.version }}"
-        fi
-        echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
-
-    # ==========================================================================
     # Package manifests for repo provider
+    # Script computes REPO_PROVIDER_* from docker/project inputs and outputs them
     # ==========================================================================
     - name: Package manifests for repo provider
       id: package
@@ -169,14 +130,16 @@ runs:
         MANIFESTS_ZIP_SUB_PATH: ${{ inputs.manifests-zip-sub-path }}
         MANIFESTS_ZIP_FILE_NAME: ${{ inputs.manifests-zip-file-name }}
 
-        # --- REPO_PROVIDER_* API (generic contract) ---
-        REPO_PROVIDER_URL: ${{ steps.computed.outputs.url }}
-        REPO_PROVIDER_NAMESPACE: ${{ steps.computed.outputs.namespace }}
-        REPO_PROVIDER_NAME: ${{ steps.computed.outputs.name }}
-        REPO_PROVIDER_VERSION: ${{ steps.computed.outputs.version }}
+        # --- Inputs for REPO_PROVIDER_* computation (done by script) ---
+        DOCKER_TARGET_REGISTRY: ${{ inputs.docker-target-registry }}
+        DOCKER_TARGET_NAMESPACE: ${{ inputs.docker-target-namespace }}
+        DOCKER_IMAGE_NAME: ${{ inputs.docker-image-name }}
+        DOCKER_TAG: ${{ inputs.docker-tag }}
+        PROJECT_NAME: ${{ inputs.project-name }}
+        VERSION: ${{ inputs.version }}
+
+        # --- Auth (not computable by script) ---
         REPO_PROVIDER_AUTH_TOKEN: ${{ github.token }}
         REPO_PROVIDER_AUTH_USER: ${{ github.actor }}
         IMAGE_BUILD_COMMAND: ${{ inputs.image-build-command }}
-        VERSION: ${{ inputs.version }}
-        PROJECT_NAME: ${{ inputs.project-name }}
       run: "${{ github.action_path }}/../../scripts/main/kubernetes-manifests-repo-provider-package"

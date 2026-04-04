@@ -27,6 +27,8 @@ source "${SCRIPT_DIR}/../defaults/platform.bash"
 
 # shellcheck source=src/scripts/lib/log.bash
 source "${SCRIPT_DIR}/../lib/log.bash"
+# shellcheck source=src/scripts/lib/output-var.bash
+source "${SCRIPT_DIR}/../lib/output-var.bash"
 
 PLUGINS_DIR="${SCRIPT_DIR}/../plugins"
 REPO_PROVIDERS_DIR="${PLUGINS_DIR}/kubernetes-manifests-repo-providers"
@@ -66,8 +68,32 @@ main() {
     exit 3
   fi
 
+  # =========================================================================
+  # Compute REPO_PROVIDER_* values from workflow/ref-script inputs
+  # Maps user-friendly docker/project inputs to the generic provider API
+  # =========================================================================
+  REPO_PROVIDER_URL="${DOCKER_TARGET_REGISTRY:?DOCKER_TARGET_REGISTRY is required}"
+  REPO_PROVIDER_NAMESPACE="${DOCKER_TARGET_NAMESPACE:-}"
+  if [[ "${MANIFESTS_REPO_PROVIDER_TYPE}" == "docker" ]]; then
+    REPO_PROVIDER_NAME="${DOCKER_IMAGE_NAME:?DOCKER_IMAGE_NAME is required}"
+    REPO_PROVIDER_VERSION="${DOCKER_TAG:?DOCKER_TAG is required}-manifests"
+  else
+    REPO_PROVIDER_NAME="${PROJECT_NAME:?PROJECT_NAME is required}"
+    REPO_PROVIDER_VERSION="${VERSION:?VERSION is required}"
+  fi
+  export REPO_PROVIDER_URL REPO_PROVIDER_NAMESPACE REPO_PROVIDER_NAME REPO_PROVIDER_VERSION
+
+  output_var "REPO_PROVIDER_URL" "${REPO_PROVIDER_URL}"
+  output_var "REPO_PROVIDER_NAMESPACE" "${REPO_PROVIDER_NAMESPACE}"
+  output_var "REPO_PROVIDER_NAME" "${REPO_PROVIDER_NAME}"
+  output_var "REPO_PROVIDER_VERSION" "${REPO_PROVIDER_VERSION}"
+
   log "=== Kubernetes Manifests Repo Provider Package ==="
   log "Selected repo provider: ${MANIFESTS_REPO_PROVIDER_TYPE}"
+  log "Provider URL: ${REPO_PROVIDER_URL}"
+  log "Provider namespace: ${REPO_PROVIDER_NAMESPACE}"
+  log "Provider name: ${REPO_PROVIDER_NAME}"
+  log "Provider version: ${REPO_PROVIDER_VERSION}"
   log "==================================================="
 
   # Execute repo provider script

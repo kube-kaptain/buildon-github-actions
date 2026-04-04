@@ -29,9 +29,9 @@ teardown() {
   unset MANIFESTS_REPO_PROVIDER_TYPE
   export MANIFESTS_ZIP_SUB_PATH="$TEST_ZIP_DIR"
   export MANIFESTS_ZIP_FILE_NAME="$TEST_ZIP_NAME"
-  export REPO_PROVIDER_URL="ghcr.io"
-  export REPO_PROVIDER_NAME="test/my-repo"
-  export REPO_PROVIDER_VERSION="1.0.0-manifests"
+  export DOCKER_TARGET_REGISTRY="ghcr.io"
+  export DOCKER_IMAGE_NAME="test/my-repo"
+  export DOCKER_TAG="1.0.0"
   export VERSION="1.0.0"
   export PROJECT_NAME="my-repo"
 
@@ -54,9 +54,9 @@ teardown() {
   export MANIFESTS_REPO_PROVIDER_TYPE="docker"
   export MANIFESTS_ZIP_SUB_PATH="$TEST_ZIP_DIR"
   export MANIFESTS_ZIP_FILE_NAME="$TEST_ZIP_NAME"
-  export REPO_PROVIDER_URL="ghcr.io"
-  export REPO_PROVIDER_NAME="test/my-repo"
-  export REPO_PROVIDER_VERSION="1.0.0-manifests"
+  export DOCKER_TARGET_REGISTRY="ghcr.io"
+  export DOCKER_IMAGE_NAME="test/my-repo"
+  export DOCKER_TAG="1.0.0"
   export VERSION="1.0.0"
   export PROJECT_NAME="my-repo"
 
