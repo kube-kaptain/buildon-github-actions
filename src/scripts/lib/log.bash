@@ -9,8 +9,7 @@
 #
 # Providers: github-actions, azure-devops, stdout (default)
 #
-
-BUILD_PLATFORM_LOG_PROVIDER="${BUILD_PLATFORM_LOG_PROVIDER:-stdout}"
+# shellcheck disable=SC2154 # BUILD_PLATFORM_LOG_PROVIDER set by platform.bash before sourcing
 
 _LOG_PROVIDER_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../plugins/log-providers" && pwd)"
 _LOG_PROVIDER_FILE="${_LOG_PROVIDER_DIR}/log-provider-${BUILD_PLATFORM_LOG_PROVIDER}"

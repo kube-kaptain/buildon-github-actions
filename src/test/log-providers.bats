@@ -216,6 +216,7 @@ LIB_DIR="$PROJECT_ROOT/src/scripts/lib"
 
 @test "log.bash defaults to stdout provider" {
   unset BUILD_PLATFORM_LOG_PROVIDER
+  source "$PROJECT_ROOT/src/scripts/defaults/platform.bash"
   source "$LIB_DIR/log.bash"
 
   stdout_output=$(log "test" 2>/dev/null)
