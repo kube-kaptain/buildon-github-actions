@@ -5,6 +5,9 @@ name: 'Basic Quality Checks'
 description: 'Basic quality checks for commits and branches'
 
 inputs:
+  build-kind:
+    description: 'Build kind identifier (workflow/reference script name)'
+    required: true
   # INJECT-INPUT: release-branches
   # INJECT-INPUT: basic-quality-checks
 
@@ -30,4 +33,5 @@ runs:
         QC_BLOCK_CONVENTIONAL_COMMITS: ${{ inputs.qc-block-conventional-commits }}
         QC_REQUIRE_CONVENTIONAL_COMMITS: ${{ inputs.qc-require-conventional-commits }}
         QC_BLOCK_DUPLICATE_COMMIT_MESSAGES: ${{ inputs.qc-block-duplicate-commit-messages }}
+        BUILD_KIND: ${{ inputs.build-kind }}
       run: "${{ github.action_path }}/../../scripts/main/basic-quality-checks"

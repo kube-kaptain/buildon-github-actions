@@ -418,6 +418,7 @@ jobs:
           qc-require-conventional-branches: ${{ steps.kpm.outputs.QC_REQUIRE_CONVENTIONAL_BRANCHES }}
           qc-require-conventional-commits: ${{ steps.kpm.outputs.QC_REQUIRE_CONVENTIONAL_COMMITS }}
           qc-block-conventional-commits: ${{ steps.kpm.outputs.QC_BLOCK_CONVENTIONAL_COMMITS }}
+          build-kind: basic-quality-checks
       - name: Pass check - Basic Quality Checks
         if: github.event_name == 'pull_request' && success() && steps.check-basic-quality.outputs.check-run-id != ''
         continue-on-error: true
@@ -581,19 +582,19 @@ jobs:
           github-release-add-version-to-filenames: ${{ steps.kpm.outputs.GITHUB_RELEASE_ADD_VERSION_TO_FILENAMES }}
 
           # === Step Outputs ===
-          # Version outputs (from versions-and-naming)
-          version: ${{ steps.versions.outputs.version }}
-          version-major: ${{ steps.versions.outputs.version-major }}
-          version-minor: ${{ steps.versions.outputs.version-minor }}
-          version-patch: ${{ steps.versions.outputs.version-patch }}
-          version-2-part: ${{ steps.versions.outputs.version-2-part }}
-          version-3-part: ${{ steps.versions.outputs.version-3-part }}
-          version-4-part: ${{ steps.versions.outputs.version-4-part }}
-          docker-tag: ${{ steps.versions.outputs.docker-tag }}
-          docker-image-name: ${{ steps.versions.outputs.docker-image-name }}
-          git-tag: ${{ steps.versions.outputs.git-tag }}
-          project-name: ${{ steps.versions.outputs.project-name }}
-          is-release: ${{ steps.versions.outputs.is-release }}
+          # Version outputs (from basic-quality-checks, not versions-and-naming)
+          version: ${{ steps.quality.outputs.VERSION }}
+          version-major: ${{ steps.quality.outputs.VERSION_MAJOR }}
+          version-minor: ${{ steps.quality.outputs.VERSION_MINOR }}
+          version-patch: ${{ steps.quality.outputs.VERSION_PATCH }}
+          version-2-part: ${{ steps.quality.outputs.VERSION_2_PART }}
+          version-3-part: ${{ steps.quality.outputs.VERSION_3_PART }}
+          version-4-part: ${{ steps.quality.outputs.VERSION_4_PART }}
+          docker-tag: ${{ steps.quality.outputs.DOCKER_TAG }}
+          docker-image-name: ${{ steps.quality.outputs.DOCKER_IMAGE_NAME }}
+          git-tag: ${{ steps.quality.outputs.GIT_TAG }}
+          project-name: ${{ steps.quality.outputs.PROJECT_NAME }}
+          is-release: ${{ steps.quality.outputs.IS_RELEASE }}
       - name: Pass check - Post-Build
         if: steps.kpm.outputs.HOOK_POST_BUILD_SCRIPT_SUB_PATH != '' && success() && steps.check-post-build.outputs.check-run-id != ''
         continue-on-error: true

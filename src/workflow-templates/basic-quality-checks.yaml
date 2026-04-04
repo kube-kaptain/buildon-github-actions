@@ -54,5 +54,5 @@ jobs:
 
       # === Post-Build ===
       # INJECT: github-check-start(name="Post-Build", id="check-post-build", if="steps.kpm.outputs.HOOK_POST_BUILD_SCRIPT_SUB_PATH != ''")
-      # INJECT: hook-post-build
+      # INJECT: hook-post-build-basic-quality
       # INJECT: github-check-end(name="Post-Build", id="check-post-build", if="steps.kpm.outputs.HOOK_POST_BUILD_SCRIPT_SUB_PATH != ''")

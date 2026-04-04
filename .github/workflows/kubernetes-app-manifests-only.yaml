@@ -491,6 +491,7 @@ jobs:
           qc-require-conventional-branches: ${{ steps.kpm.outputs.QC_REQUIRE_CONVENTIONAL_BRANCHES }}
           qc-require-conventional-commits: ${{ steps.kpm.outputs.QC_REQUIRE_CONVENTIONAL_COMMITS }}
           qc-block-conventional-commits: ${{ steps.kpm.outputs.QC_BLOCK_CONVENTIONAL_COMMITS }}
+          build-kind: kubernetes-app-manifests-only
       - name: Pass check - Basic Quality Checks
         if: github.event_name == 'pull_request' && success() && steps.check-basic-quality.outputs.check-run-id != ''
         continue-on-error: true
