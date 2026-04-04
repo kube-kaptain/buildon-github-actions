@@ -290,7 +290,7 @@ MAPPINGS=(
   "spec.main.generators.service.additionalAnnotations:KUBERNETES_SERVICE_ADDITIONAL_ANNOTATIONS"
 
   # Generators - configmap
-  "spec.main.generators.configmap.subPath:KUBERNETES_CONFIGMAP_SUB_PATH"
+  # Note: KUBERNETES_CONFIGMAP_SUB_PATH handled separately below (has default)
   "spec.main.generators.configmap.nameSuffix:KUBERNETES_CONFIGMAP_NAME_SUFFIX"
   "spec.main.generators.configmap.combinedSubPath:KUBERNETES_CONFIGMAP_COMBINED_SUB_PATH"
   "spec.main.generators.configmap.nameChecksumInjection:KUBERNETES_CONFIGMAP_NAME_CHECKSUM_INJECTION"
@@ -298,7 +298,7 @@ MAPPINGS=(
   "spec.main.generators.configmap.additionalAnnotations:KUBERNETES_CONFIGMAP_ADDITIONAL_ANNOTATIONS"
 
   # Generators - secretTemplate
-  "spec.main.generators.secretTemplate.subPath:KUBERNETES_SECRET_TEMPLATE_SUB_PATH"
+  # Note: KUBERNETES_SECRET_TEMPLATE_SUB_PATH handled separately below (has default)
   "spec.main.generators.secretTemplate.nameSuffix:KUBERNETES_SECRET_TEMPLATE_NAME_SUFFIX"
   "spec.main.generators.secretTemplate.combinedSubPath:KUBERNETES_SECRET_TEMPLATE_COMBINED_SUB_PATH"
   "spec.main.generators.secretTemplate.nameChecksumInjection:KUBERNETES_SECRET_TEMPLATE_NAME_CHECKSUM_INJECTION"
@@ -422,5 +422,25 @@ else
 fi
 output_var "KUBERNETES_WORKLOAD_TYPE" "${workload_type}" > /dev/null
 log "Field .spec.main.generators.workload.type = \"${workload_type}\" exported as KUBERNETES_WORKLOAD_TYPE"
+
+configmap_sub_path=$(yq -r '.spec.main.generators.configmap.subPath // ""' "${PM_FILE}")
+if [[ -z "${configmap_sub_path}" || "${configmap_sub_path}" == "null" ]]; then
+  configmap_sub_path="src/configmap"
+  log "Field .spec.main.generators.configmap.subPath not set, defaulted to ${configmap_sub_path} to allow wrapper optimisations."
+else
+  found_count=$((found_count + 1))
+fi
+output_var "KUBERNETES_CONFIGMAP_SUB_PATH" "${configmap_sub_path}" > /dev/null
+log "Field .spec.main.generators.configmap.subPath = \"${configmap_sub_path}\" exported as KUBERNETES_CONFIGMAP_SUB_PATH"
+
+secret_template_sub_path=$(yq -r '.spec.main.generators.secretTemplate.subPath // ""' "${PM_FILE}")
+if [[ -z "${secret_template_sub_path}" || "${secret_template_sub_path}" == "null" ]]; then
+  secret_template_sub_path="src/secret.template"
+  log "Field .spec.main.generators.secretTemplate.subPath not set, defaulted to ${secret_template_sub_path} to allow wrapper optimisations."
+else
+  found_count=$((found_count + 1))
+fi
+output_var "KUBERNETES_SECRET_TEMPLATE_SUB_PATH" "${secret_template_sub_path}" > /dev/null
+log "Field .spec.main.generators.secretTemplate.subPath = \"${secret_template_sub_path}\" exported as KUBERNETES_SECRET_TEMPLATE_SUB_PATH"
 
 log "Loaded ${found_count} value(s) from KaptainPM.yaml"
