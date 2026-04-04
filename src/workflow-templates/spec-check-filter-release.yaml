@@ -224,6 +224,7 @@ jobs:
           SPEC_JSON_SCHEMA_URL: ${{ steps.kpm.outputs.SPEC_JSON_SCHEMA_URL }}
           OUTPUT_SUB_PATH: ${{ steps.kpm.outputs.OUTPUT_SUB_PATH }}
           DOCKER_PLATFORM: ${{ steps.kpm.outputs.DOCKER_PLATFORM }}
+          IMAGE_BUILD_COMMAND: ${{ steps.validate-tooling.outputs.IMAGE_BUILD_COMMAND }}
           BUILD_PLATFORM: github-actions
           BUILD_PLATFORM_LOG_PROVIDER: github-actions
         run: ./.github/buildon-github-actions/src/scripts/main/spec-validate
