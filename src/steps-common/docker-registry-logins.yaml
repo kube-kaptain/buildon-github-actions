@@ -7,8 +7,8 @@
   if: steps.resolve-registry.outputs.docker-target-registry != ''
   uses: ./.github/buildon-github-actions/src/actions/docker-registry-logins
   with:
-    config: ${{ inputs.docker-registry-logins }}
+    config: ${{ steps.kpm.outputs.DOCKER_REGISTRY_LOGINS }}
     secrets-json: ${{ secrets.docker-registry-logins-secrets }}
     docker-target-registry: ${{ steps.resolve-registry.outputs.docker-target-registry }}
-    output-sub-path: ${{ inputs.output-sub-path }}
+    output-sub-path: ${{ steps.kpm.outputs.OUTPUT_SUB_PATH }}
     image-build-command: ${{ steps.validate-tooling.outputs.IMAGE_BUILD_COMMAND }}

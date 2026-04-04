@@ -1,0 +1,11 @@
+# SPDX-License-Identifier: CC0-1.0
+# This example is released to the public domain. Use freely without attribution.
+
+apiVersion: kaptain.org/v1
+kind: basic-quality-and-versioning
+
+spec:
+  global:
+    release:
+      branch: main
+      additionalBranches: main-1.x,main-2.x

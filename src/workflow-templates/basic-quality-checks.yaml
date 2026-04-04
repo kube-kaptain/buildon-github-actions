@@ -6,14 +6,10 @@ kaptain-order: 10
 kaptain-description: Enforces basic quality - blocks bad branch names, bad commit messages, and bad branch structure
 on:
   workflow_call:
-    inputs:
-      # INJECT-INPUT: release-branches
-
-      # INJECT-INPUT: basic-quality-checks
-
-      # INJECT-INPUT: hooks-pre-build
-      # INJECT-INPUT: hooks-post-build
-
+    secrets:
+      docker-registry-logins-secrets:
+        description: 'JSON object of secrets for docker-registry-logins (e.g., {"DOCKER_USER": "x", "DOCKER_PASS": "y"})'
+        required: false
 jobs:
   basic-quality-checks:
     name: Basic Quality Checks
@@ -26,10 +22,30 @@ jobs:
       # INJECT: validate-tooling
       # INJECT: github-check-end(name="Validate Tooling", id="check-validate-tooling")
 
+      # === Load Project KaptainPM Docker Logins ===
+      # INJECT: github-check-start(name="Load Project KaptainPM Docker Logins", id="check-load-project-kpm")
+      # INJECT: load-project-kaptainpm-docker-logins
+      # INJECT: github-check-end(name="Load Project KaptainPM Docker Logins", id="check-load-project-kpm")
+
+      # === Pre-Init Docker Registry Logins ===
+      # INJECT: github-check-start(name="Pre-Init Docker Registry Logins", id="check-docker-registry-logins-pre-init")
+      # INJECT: docker-registry-logins-pre-init
+      # INJECT: github-check-end(name="Pre-Init Docker Registry Logins", id="check-docker-registry-logins-pre-init")
+
+      # === Kaptain Init ===
+      # INJECT: github-check-start(name="Kaptain Init", id="check-kaptain-init")
+      # INJECT: kaptain-init
+      # INJECT: github-check-end(name="Kaptain Init", id="check-kaptain-init")
+
+      # === Load Final KaptainPM YAML ===
+      # INJECT: github-check-start(name="Load Final KaptainPM YAML", id="check-load-final-kpm")
+      # INJECT: load-final-kaptainpm-yaml
+      # INJECT: github-check-end(name="Load Final KaptainPM YAML", id="check-load-final-kpm")
+
       # === Pre-Build ===
-      # INJECT: github-check-start(name="Pre-Build", id="check-pre-build", if="inputs.hook-pre-build-script-sub-path != ''")
+      # INJECT: github-check-start(name="Pre-Build", id="check-pre-build", if="steps.kpm.outputs.HOOK_PRE_BUILD_SCRIPT_SUB_PATH != ''")
       # INJECT: hook-pre-build
-      # INJECT: github-check-end(name="Pre-Build", id="check-pre-build", if="inputs.hook-pre-build-script-sub-path != ''")
+      # INJECT: github-check-end(name="Pre-Build", id="check-pre-build", if="steps.kpm.outputs.HOOK_PRE_BUILD_SCRIPT_SUB_PATH != ''")
 
       # === Basic Quality Checks ===
       # INJECT: github-check-start(name="Basic Quality Checks", id="check-basic-quality", if="github.event_name == 'pull_request'")
@@ -37,6 +53,6 @@ jobs:
       # INJECT: github-check-end(name="Basic Quality Checks", id="check-basic-quality", if="github.event_name == 'pull_request'")
 
       # === Post-Build ===
-      # INJECT: github-check-start(name="Post-Build", id="check-post-build", if="inputs.hook-post-build-script-sub-path != ''")
-      # INJECT: hook-post-build
-      # INJECT: github-check-end(name="Post-Build", id="check-post-build", if="inputs.hook-post-build-script-sub-path != ''")
+      # INJECT: github-check-start(name="Post-Build", id="check-post-build", if="steps.kpm.outputs.HOOK_POST_BUILD_SCRIPT_SUB_PATH != ''")
+      # INJECT: hook-post-build-basic-quality
+      # INJECT: github-check-end(name="Post-Build", id="check-post-build", if="steps.kpm.outputs.HOOK_POST_BUILD_SCRIPT_SUB_PATH != ''")

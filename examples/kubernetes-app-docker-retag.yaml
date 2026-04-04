@@ -1,0 +1,26 @@
+# SPDX-License-Identifier: CC0-1.0
+# This example is released to the public domain. Use freely without attribution.
+#
+# Kubernetes App - Docker Retag
+#
+# Kubernetes application pipeline using an upstream image. Retags the source
+# image, generates Kubernetes manifests, packages as OCI artifacts. For
+# vendoring third-party images into your cluster.
+#
+# All configuration is in KaptainPM.yaml - see docs for available fields.
+
+name: Kubernetes App - Docker Retag
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    uses: kube-kaptain/buildon-github-actions/.github/workflows/kubernetes-app-docker-retag.yaml@1.1.1
+    permissions:
+      contents: write
+      packages: write
+      checks: write

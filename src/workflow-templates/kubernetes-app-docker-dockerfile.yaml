@@ -6,45 +6,6 @@ kaptain-order: 70
 kaptain-description: Everything from both docker Dockerfile and Kubernetes manifest packaging - a full kube app build
 on:
   workflow_call:
-    inputs:
-      # INJECT-INPUT: output-sub-path
-
-      # INJECT-INPUT: docker-build
-      # INJECT-INPUT: docker-dockerfile
-      # INJECT-INPUT: docker-platform
-
-      # INJECT-INPUT: kubernetes-app-manifests
-
-      # INJECT-INPUT: kubernetes-global
-      # INJECT-INPUT: kubernetes-configmap
-      # INJECT-INPUT: kubernetes-secret-template
-      # INJECT-INPUT: kubernetes-serviceaccount
-      # INJECT-INPUT: kubernetes-workload
-      # INJECT-INPUT: kubernetes-workload-deployment
-      # INJECT-INPUT: kubernetes-workload-statefulset
-      # INJECT-INPUT: kubernetes-workload-daemonset
-      # INJECT-INPUT: kubernetes-workload-job
-      # INJECT-INPUT: kubernetes-workload-cronjob
-      # INJECT-INPUT: kubernetes-poddisruptionbudget
-      # INJECT-INPUT: kubernetes-service
-
-      # INJECT-INPUT: token-substitution
-
-      # INJECT-INPUT: release-branches
-      # INJECT-INPUT: tag-version
-
-      # INJECT-INPUT: basic-quality-checks
-
-      # INJECT-INPUT: hooks-pre-build
-      # INJECT-INPUT: hooks-pre-tagging
-      # INJECT-INPUT: hooks-docker
-      # INJECT-INPUT: hooks-package
-      # INJECT-INPUT: hooks-post-versions-and-naming
-      # INJECT-INPUT: hooks-post-build
-
-      # INJECT-INPUT: change-source-note
-
-      # INJECT-INPUT: github-release
     secrets:
       docker-registry-logins-secrets:
         description: 'JSON object of secrets for docker-registry-logins (e.g., {"DOCKER_USER": "x", "DOCKER_PASS": "y"})'
@@ -146,10 +107,30 @@ jobs:
       # INJECT: validate-tooling
       # INJECT: github-check-end(name="Validate Tooling", id="check-validate-tooling")
 
+      # === Load Project KaptainPM Docker Logins ===
+      # INJECT: github-check-start(name="Load Project KaptainPM Docker Logins", id="check-load-project-kpm")
+      # INJECT: load-project-kaptainpm-docker-logins
+      # INJECT: github-check-end(name="Load Project KaptainPM Docker Logins", id="check-load-project-kpm")
+
+      # === Pre-Init Docker Registry Logins ===
+      # INJECT: github-check-start(name="Pre-Init Docker Registry Logins", id="check-docker-registry-logins-pre-init")
+      # INJECT: docker-registry-logins-pre-init
+      # INJECT: github-check-end(name="Pre-Init Docker Registry Logins", id="check-docker-registry-logins-pre-init")
+
+      # === Kaptain Init ===
+      # INJECT: github-check-start(name="Kaptain Init", id="check-kaptain-init")
+      # INJECT: kaptain-init
+      # INJECT: github-check-end(name="Kaptain Init", id="check-kaptain-init")
+
+      # === Load Final KaptainPM YAML ===
+      # INJECT: github-check-start(name="Load Final KaptainPM YAML", id="check-load-final-kpm")
+      # INJECT: load-final-kaptainpm-yaml
+      # INJECT: github-check-end(name="Load Final KaptainPM YAML", id="check-load-final-kpm")
+
       # === Pre-Build ===
-      # INJECT: github-check-start(name="Pre-Build", id="check-pre-build", if="inputs.hook-pre-build-script-sub-path != ''")
+      # INJECT: github-check-start(name="Pre-Build", id="check-pre-build", if="steps.kpm.outputs.HOOK_PRE_BUILD_SCRIPT_SUB_PATH != ''")
       # INJECT: hook-pre-build
-      # INJECT: github-check-end(name="Pre-Build", id="check-pre-build", if="inputs.hook-pre-build-script-sub-path != ''")
+      # INJECT: github-check-end(name="Pre-Build", id="check-pre-build", if="steps.kpm.outputs.HOOK_PRE_BUILD_SCRIPT_SUB_PATH != ''")
 
       # === Basic Quality Checks ===
       # INJECT: github-check-start(name="Basic Quality Checks", id="check-basic-quality", if="github.event_name == 'pull_request'")
@@ -170,9 +151,9 @@ jobs:
       # INJECT: github-check-end(name="Docker Platform Setup", id="check-docker-platform-setup")
 
       # === Pre-tagging Tests ===
-      # INJECT: github-check-start(name="Pre-tagging Tests", id="check-pre-tagging", if="inputs.hook-pre-tagging-tests-script-sub-path != ''")
+      # INJECT: github-check-start(name="Pre-tagging Tests", id="check-pre-tagging", if="steps.kpm.outputs.HOOK_PRE_TAGGING_TESTS_SCRIPT_SUB_PATH != ''")
       # INJECT: hook-pre-tagging-tests
-      # INJECT: github-check-end(name="Pre-tagging Tests", id="check-pre-tagging", if="inputs.hook-pre-tagging-tests-script-sub-path != ''")
+      # INJECT: github-check-end(name="Pre-tagging Tests", id="check-pre-tagging", if="steps.kpm.outputs.HOOK_PRE_TAGGING_TESTS_SCRIPT_SUB_PATH != ''")
 
       # === Versions & Naming ===
       # INJECT: github-check-start(name="Versions & Naming", id="check-versions")
@@ -180,9 +161,9 @@ jobs:
       # INJECT: github-check-end(name="Versions & Naming", id="check-versions")
 
       # === Post-Versions-and-Naming ===
-      # INJECT: github-check-start(name="Post-Versions-and-Naming", id="check-post-versions-and-naming", if="inputs.hook-post-versions-and-naming-script-sub-path != ''")
+      # INJECT: github-check-start(name="Post-Versions-and-Naming", id="check-post-versions-and-naming", if="steps.kpm.outputs.HOOK_POST_VERSIONS_AND_NAMING_SCRIPT_SUB_PATH != ''")
       # INJECT: hook-post-versions-and-naming
-      # INJECT: github-check-end(name="Post-Versions-and-Naming", id="check-post-versions-and-naming", if="inputs.hook-post-versions-and-naming-script-sub-path != ''")
+      # INJECT: github-check-end(name="Post-Versions-and-Naming", id="check-post-versions-and-naming", if="steps.kpm.outputs.HOOK_POST_VERSIONS_AND_NAMING_SCRIPT_SUB_PATH != ''")
 
       # === Change Source Note ===
       # INJECT: github-check-start(name="Change Source Note", id="check-change-source-note", if="steps.versions.outputs.is-release != 'true'")
@@ -200,9 +181,9 @@ jobs:
       # INJECT: github-check-end(name="Release Change Data OCI Package", id="check-release-change-data-oci-package")
 
       # === Pre-docker Prepare ===
-      # INJECT: github-check-start(name="Pre-docker Prepare", id="check-pre-docker-prepare", if="inputs.hook-pre-docker-prepare-script-sub-path != ''")
+      # INJECT: github-check-start(name="Pre-docker Prepare", id="check-pre-docker-prepare", if="steps.kpm.outputs.HOOK_PRE_DOCKER_PREPARE_SCRIPT_SUB_PATH != ''")
       # INJECT: hook-pre-docker-prepare
-      # INJECT: github-check-end(name="Pre-docker Prepare", id="check-pre-docker-prepare", if="inputs.hook-pre-docker-prepare-script-sub-path != ''")
+      # INJECT: github-check-end(name="Pre-docker Prepare", id="check-pre-docker-prepare", if="steps.kpm.outputs.HOOK_PRE_DOCKER_PREPARE_SCRIPT_SUB_PATH != ''")
 
       # === Docker Build ===
       # INJECT: github-check-start(name="Docker Build", id="check-docker-build")
@@ -210,44 +191,44 @@ jobs:
       # INJECT: github-check-end(name="Docker Build", id="check-docker-build")
 
       # === Post-docker Tests ===
-      # INJECT: github-check-start(name="Post-docker Tests", id="check-post-docker", if="inputs.hook-post-docker-tests-script-sub-path != ''")
+      # INJECT: github-check-start(name="Post-docker Tests", id="check-post-docker", if="steps.kpm.outputs.HOOK_POST_DOCKER_TESTS_SCRIPT_SUB_PATH != ''")
       # INJECT: hook-post-docker-tests
-      # INJECT: github-check-end(name="Post-docker Tests", id="check-post-docker", if="inputs.hook-post-docker-tests-script-sub-path != ''")
+      # INJECT: github-check-end(name="Post-docker Tests", id="check-post-docker", if="steps.kpm.outputs.HOOK_POST_DOCKER_TESTS_SCRIPT_SUB_PATH != ''")
 
       # === Generate ConfigMap ===
-      # INJECT: github-check-start(name="Generate ConfigMap", id="check-generate-configmap", if="inputs.kubernetes-configmap-sub-path != ''")
+      # INJECT: github-check-start(name="Generate ConfigMap", id="check-generate-configmap", if="steps.kpm.outputs.KUBERNETES_CONFIGMAP_SUB_PATH != ''")
       # INJECT: generate-kubernetes-configmap
-      # INJECT: github-check-end(name="Generate ConfigMap", id="check-generate-configmap", if="inputs.kubernetes-configmap-sub-path != ''")
+      # INJECT: github-check-end(name="Generate ConfigMap", id="check-generate-configmap", if="steps.kpm.outputs.KUBERNETES_CONFIGMAP_SUB_PATH != ''")
 
       # === Generate Secret Template ===
-      # INJECT: github-check-start(name="Generate Secret Template", id="check-generate-secret-template", if="inputs.kubernetes-secret-template-sub-path != ''")
+      # INJECT: github-check-start(name="Generate Secret Template", id="check-generate-secret-template", if="steps.kpm.outputs.KUBERNETES_SECRET_TEMPLATE_SUB_PATH != ''")
       # INJECT: generate-kubernetes-secret-template
-      # INJECT: github-check-end(name="Generate Secret Template", id="check-generate-secret-template", if="inputs.kubernetes-secret-template-sub-path != ''")
+      # INJECT: github-check-end(name="Generate Secret Template", id="check-generate-secret-template", if="steps.kpm.outputs.KUBERNETES_SECRET_TEMPLATE_SUB_PATH != ''")
 
       # === Generate ServiceAccount ===
-      # INJECT: github-check-start(name="Generate ServiceAccount", id="check-generate-serviceaccount", if="inputs.kubernetes-serviceaccount-generation-enabled == true")
+      # INJECT: github-check-start(name="Generate ServiceAccount", id="check-generate-serviceaccount", if="steps.kpm.outputs.KUBERNETES_SERVICEACCOUNT_GENERATION_ENABLED == 'true'")
       # INJECT: generate-kubernetes-serviceaccount
-      # INJECT: github-check-end(name="Generate ServiceAccount", id="check-generate-serviceaccount", if="inputs.kubernetes-serviceaccount-generation-enabled == true")
+      # INJECT: github-check-end(name="Generate ServiceAccount", id="check-generate-serviceaccount", if="steps.kpm.outputs.KUBERNETES_SERVICEACCOUNT_GENERATION_ENABLED == 'true'")
 
       # === Generate Workload ===
-      # INJECT: github-check-start(name="Generate Workload Manifest", id="check-generate-workload", if="inputs.kubernetes-workload-type != 'none'")
+      # INJECT: github-check-start(name="Generate Workload Manifest", id="check-generate-workload", if="steps.kpm.outputs.KUBERNETES_WORKLOAD_TYPE != 'none'")
       # INJECT: generate-kubernetes-workload
-      # INJECT: github-check-end(name="Generate Workload Manifest", id="check-generate-workload", if="inputs.kubernetes-workload-type != 'none'")
+      # INJECT: github-check-end(name="Generate Workload Manifest", id="check-generate-workload", if="steps.kpm.outputs.KUBERNETES_WORKLOAD_TYPE != 'none'")
 
       # === Generate PodDisruptionBudget ===
-      # INJECT: github-check-start(name="Generate PodDisruptionBudget", id="check-generate-poddisruptionbudget", if="inputs.kubernetes-poddisruptionbudget-generation-enabled != 'false' && (inputs.kubernetes-poddisruptionbudget-generation-enabled == 'true' || inputs.kubernetes-workload-type == 'deployment' || inputs.kubernetes-workload-type == 'statefulset')")
+      # INJECT: github-check-start(name="Generate PodDisruptionBudget", id="check-generate-poddisruptionbudget", if="steps.kpm.outputs.KUBERNETES_PODDISRUPTIONBUDGET_GENERATION_ENABLED != 'false' && (steps.kpm.outputs.KUBERNETES_PODDISRUPTIONBUDGET_GENERATION_ENABLED == 'true' || steps.kpm.outputs.KUBERNETES_WORKLOAD_TYPE == 'deployment' || steps.kpm.outputs.KUBERNETES_WORKLOAD_TYPE == 'statefulset')")
       # INJECT: generate-kubernetes-poddisruptionbudget
-      # INJECT: github-check-end(name="Generate PodDisruptionBudget", id="check-generate-poddisruptionbudget", if="inputs.kubernetes-poddisruptionbudget-generation-enabled != 'false' && (inputs.kubernetes-poddisruptionbudget-generation-enabled == 'true' || inputs.kubernetes-workload-type == 'deployment' || inputs.kubernetes-workload-type == 'statefulset')")
+      # INJECT: github-check-end(name="Generate PodDisruptionBudget", id="check-generate-poddisruptionbudget", if="steps.kpm.outputs.KUBERNETES_PODDISRUPTIONBUDGET_GENERATION_ENABLED != 'false' && (steps.kpm.outputs.KUBERNETES_PODDISRUPTIONBUDGET_GENERATION_ENABLED == 'true' || steps.kpm.outputs.KUBERNETES_WORKLOAD_TYPE == 'deployment' || steps.kpm.outputs.KUBERNETES_WORKLOAD_TYPE == 'statefulset')")
 
       # === Generate Service ===
-      # INJECT: github-check-start(name="Generate Service", id="check-generate-service", if="inputs.kubernetes-service-generation-enabled != 'false' && (inputs.kubernetes-service-generation-enabled == 'true' || inputs.kubernetes-workload-type == 'deployment' || inputs.kubernetes-workload-type == 'statefulset' || inputs.kubernetes-workload-type == 'daemonset')")
+      # INJECT: github-check-start(name="Generate Service", id="check-generate-service", if="steps.kpm.outputs.KUBERNETES_SERVICE_GENERATION_ENABLED != 'false' && (steps.kpm.outputs.KUBERNETES_SERVICE_GENERATION_ENABLED == 'true' || steps.kpm.outputs.KUBERNETES_WORKLOAD_TYPE == 'deployment' || steps.kpm.outputs.KUBERNETES_WORKLOAD_TYPE == 'statefulset' || steps.kpm.outputs.KUBERNETES_WORKLOAD_TYPE == 'daemonset')")
       # INJECT: generate-kubernetes-service
-      # INJECT: github-check-end(name="Generate Service", id="check-generate-service", if="inputs.kubernetes-service-generation-enabled != 'false' && (inputs.kubernetes-service-generation-enabled == 'true' || inputs.kubernetes-workload-type == 'deployment' || inputs.kubernetes-workload-type == 'statefulset' || inputs.kubernetes-workload-type == 'daemonset')")
+      # INJECT: github-check-end(name="Generate Service", id="check-generate-service", if="steps.kpm.outputs.KUBERNETES_SERVICE_GENERATION_ENABLED != 'false' && (steps.kpm.outputs.KUBERNETES_SERVICE_GENERATION_ENABLED == 'true' || steps.kpm.outputs.KUBERNETES_WORKLOAD_TYPE == 'deployment' || steps.kpm.outputs.KUBERNETES_WORKLOAD_TYPE == 'statefulset' || steps.kpm.outputs.KUBERNETES_WORKLOAD_TYPE == 'daemonset')")
 
       # === Pre-package Prepare ===
-      # INJECT: github-check-start(name="Pre-package Prepare", id="check-pre-package-prepare", if="inputs.hook-pre-package-prepare-script-sub-path != ''")
+      # INJECT: github-check-start(name="Pre-package Prepare", id="check-pre-package-prepare", if="steps.kpm.outputs.HOOK_PRE_PACKAGE_PREPARE_SCRIPT_SUB_PATH != ''")
       # INJECT: hook-pre-package-prepare
-      # INJECT: github-check-end(name="Pre-package Prepare", id="check-pre-package-prepare", if="inputs.hook-pre-package-prepare-script-sub-path != ''")
+      # INJECT: github-check-end(name="Pre-package Prepare", id="check-pre-package-prepare", if="steps.kpm.outputs.HOOK_PRE_PACKAGE_PREPARE_SCRIPT_SUB_PATH != ''")
 
       # === Manifest Package ===
       # INJECT: github-check-start(name="Package Manifests", id="check-manifest-package")
@@ -261,19 +242,19 @@ jobs:
       # INJECT: github-check-end(name="Package Manifests for Repo Provider", id="check-manifest-repo-provider-package")
 
       # === Post-package Tests ===
-      # INJECT: github-check-start(name="Post-package Tests", id="check-post-package", if="inputs.hook-post-package-tests-script-sub-path != ''")
+      # INJECT: github-check-start(name="Post-package Tests", id="check-post-package", if="steps.kpm.outputs.HOOK_POST_PACKAGE_TESTS_SCRIPT_SUB_PATH != ''")
       # INJECT: hook-post-package-tests
-      # INJECT: github-check-end(name="Post-package Tests", id="check-post-package", if="inputs.hook-post-package-tests-script-sub-path != ''")
+      # INJECT: github-check-end(name="Post-package Tests", id="check-post-package", if="steps.kpm.outputs.HOOK_POST_PACKAGE_TESTS_SCRIPT_SUB_PATH != ''")
 
       # === Docker Multi-Tag ===
-      # INJECT: github-check-start(name="Docker Multi-Tag", id="check-docker-multi-tag", if="inputs.docker-push-targets != '' && steps.versions.outputs.is-release == 'true'")
+      # INJECT: github-check-start(name="Docker Multi-Tag", id="check-docker-multi-tag", if="steps.kpm.outputs.DOCKER_PUSH_TARGETS != '' && steps.versions.outputs.is-release == 'true'")
       # INJECT: docker-multi-tag
-      # INJECT: github-check-end(name="Docker Multi-Tag", id="check-docker-multi-tag", if="inputs.docker-push-targets != '' && steps.versions.outputs.is-release == 'true'")
+      # INJECT: github-check-end(name="Docker Multi-Tag", id="check-docker-multi-tag", if="steps.kpm.outputs.DOCKER_PUSH_TARGETS != '' && steps.versions.outputs.is-release == 'true'")
 
       # === GitHub Release Prepare ===
-      # INJECT: github-check-start(name="GitHub Release Prepare", id="check-github-release-prepare", if="inputs.github-release-enabled == true")
+      # INJECT: github-check-start(name="GitHub Release Prepare", id="check-github-release-prepare", if="steps.kpm.outputs.GITHUB_RELEASE_ENABLED == 'true'")
       # INJECT: github-release-prepare-kube-app
-      # INJECT: github-check-end(name="GitHub Release Prepare", id="check-github-release-prepare", if="inputs.github-release-enabled == true")
+      # INJECT: github-check-end(name="GitHub Release Prepare", id="check-github-release-prepare", if="steps.kpm.outputs.GITHUB_RELEASE_ENABLED == 'true'")
 
       # === Git Tag Push ===
       # INJECT: github-check-start(name="Git Tag Push", id="check-git-push-tag", if="steps.versions.outputs.is-release == 'true'")
@@ -291,11 +272,11 @@ jobs:
       # INJECT: github-check-end(name="Docker Push All", id="check-docker-push-all", if="steps.versions.outputs.is-release == 'true'")
 
       # === GitHub Release ===
-      # INJECT: github-check-start(name="GitHub Release", id="check-github-release", if="inputs.github-release-enabled == true && steps.versions.outputs.is-release == 'true'")
+      # INJECT: github-check-start(name="GitHub Release", id="check-github-release", if="steps.kpm.outputs.GITHUB_RELEASE_ENABLED == 'true' && steps.versions.outputs.is-release == 'true'")
       # INJECT: github-release-kube-app
-      # INJECT: github-check-end(name="GitHub Release", id="check-github-release", if="inputs.github-release-enabled == true && steps.versions.outputs.is-release == 'true'")
+      # INJECT: github-check-end(name="GitHub Release", id="check-github-release", if="steps.kpm.outputs.GITHUB_RELEASE_ENABLED == 'true' && steps.versions.outputs.is-release == 'true'")
 
       # === Post-Build ===
-      # INJECT: github-check-start(name="Post-Build", id="check-post-build", if="inputs.hook-post-build-script-sub-path != ''")
+      # INJECT: github-check-start(name="Post-Build", id="check-post-build", if="steps.kpm.outputs.HOOK_POST_BUILD_SCRIPT_SUB_PATH != ''")
       # INJECT: hook-post-build
-      # INJECT: github-check-end(name="Post-Build", id="check-post-build", if="inputs.hook-post-build-script-sub-path != ''")
+      # INJECT: github-check-end(name="Post-Build", id="check-post-build", if="steps.kpm.outputs.HOOK_POST_BUILD_SCRIPT_SUB_PATH != ''")

@@ -5,18 +5,18 @@
   id: versions
   uses: ./.github/buildon-github-actions/src/actions/versions-and-naming
   with:
-    release-branch: ${{ inputs.release-branch }}
-    additional-release-branches: ${{ inputs.additional-release-branches }}
-    tag-version-max-parts: ${{ inputs.tag-version-max-parts }}
-    tag-version-calculation-strategy: ${{ inputs.tag-version-calculation-strategy }}
-    tag-version-pattern-type: ${{ inputs.tag-version-pattern-type }}
-    tag-version-prefix-parts: ${{ inputs.tag-version-prefix-parts }}
-    dockerfile-sub-path: ${{ inputs.dockerfile-sub-path }}
-    tag-version-source-sub-path: ${{ inputs.tag-version-source-sub-path }}
-    tag-version-source-file-name: ${{ inputs.tag-version-source-file-name }}
-    tag-version-source-custom-pattern: ${{ inputs.tag-version-source-custom-pattern }}
-    tag-version-source-two-sub-path: ${{ inputs.tag-version-source-two-sub-path }}
-    tag-version-source-two-file-name: ${{ inputs.tag-version-source-two-file-name }}
-    tag-version-source-two-pattern: ${{ inputs.tag-version-source-two-pattern }}
-    tag-version-source-two-prefix-parts: ${{ inputs.tag-version-source-two-prefix-parts }}
-    tag-version-use-source-version-exact: ${{ inputs.tag-version-use-source-version-exact }}
+    release-branch: ${{ steps.kpm.outputs.RELEASE_BRANCH }}
+    additional-release-branches: ${{ steps.kpm.outputs.ADDITIONAL_RELEASE_BRANCHES }}
+    tag-version-max-parts: ${{ steps.kpm.outputs.TAG_VERSION_MAX_PARTS }}
+    tag-version-calculation-strategy: ${{ steps.kpm.outputs.TAG_VERSION_CALCULATION_STRATEGY }}
+    tag-version-pattern-type: ${{ steps.kpm.outputs.TAG_VERSION_PATTERN_TYPE }}
+    tag-version-prefix-parts: ${{ steps.kpm.outputs.TAG_VERSION_PREFIX_PARTS }}
+    dockerfile-sub-path: ${{ steps.kpm.outputs.DOCKERFILE_SUB_PATH }}
+    tag-version-source-sub-path: ${{ steps.kpm.outputs.TAG_VERSION_SOURCE_SUB_PATH }}
+    tag-version-source-file-name: ${{ steps.kpm.outputs.TAG_VERSION_SOURCE_FILE_NAME }}
+    tag-version-source-custom-pattern: ${{ steps.kpm.outputs.TAG_VERSION_SOURCE_CUSTOM_PATTERN }}
+    tag-version-source-two-sub-path: ${{ steps.kpm.outputs.TAG_VERSION_SOURCE_TWO_SUB_PATH }}
+    tag-version-source-two-file-name: ${{ steps.kpm.outputs.TAG_VERSION_SOURCE_TWO_FILE_NAME }}
+    tag-version-source-two-pattern: ${{ steps.kpm.outputs.TAG_VERSION_SOURCE_TWO_PATTERN }}
+    tag-version-source-two-prefix-parts: ${{ steps.kpm.outputs.TAG_VERSION_SOURCE_TWO_PREFIX_PARTS }}
+    tag-version-use-source-version-exact: ${{ steps.kpm.outputs.TAG_VERSION_USE_SOURCE_VERSION_EXACT }}

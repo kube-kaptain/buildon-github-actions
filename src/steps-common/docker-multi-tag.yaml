@@ -3,14 +3,14 @@
 
 - name: Tag images for additional registries
   id: docker-multi-tag
-  if: inputs.docker-push-targets != '' && steps.versions.outputs.is-release == 'true'
+  if: steps.kpm.outputs.DOCKER_PUSH_TARGETS != '' && steps.versions.outputs.is-release == 'true'
   uses: ./.github/buildon-github-actions/src/actions/docker-multi-tag
   with:
     docker-push-image-list-file: ${{ steps.docker-registry-logins.outputs.docker-push-image-list-file }}
     docker-image-name: ${{ steps.versions.outputs.docker-image-name }}
     docker-tag: ${{ steps.versions.outputs.docker-tag }}
-    docker-push-targets: ${{ inputs.docker-push-targets }}
+    docker-push-targets: ${{ steps.kpm.outputs.DOCKER_PUSH_TARGETS }}
     docker-target-registry: ${{ steps.resolve-registry.outputs.docker-target-registry }}
     docker-target-namespace: ${{ steps.resolve-registry.outputs.docker-target-namespace }}
     image-build-command: ${{ steps.validate-tooling.outputs.IMAGE_BUILD_COMMAND }}
-    docker-platform: ${{ inputs.docker-platform }}
+    docker-platform: ${{ steps.kpm.outputs.DOCKER_PLATFORM }}

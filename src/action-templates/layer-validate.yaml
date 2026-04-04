@@ -1,0 +1,49 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
+
+name: 'Layer Validate'
+description: 'Validates substituted layer or layerset after docker build'
+
+inputs:
+  layer-type:
+    description: 'Layer type: layer or layerset (from layer-package-prepare)'
+    required: true
+  image-build-command:
+    description: 'Container runtime command (docker or podman)'
+    required: true
+  docker-platform:
+    description: 'Target platform(s) for docker build'
+    required: false
+    default: 'linux/amd64'
+  layer-dependency-validation:
+    description: 'Layerset dependency check mode: hard/soft/skip'
+    required: false
+    default: 'hard'
+  docker-target-registry:
+    description: 'Target registry for dependency resolution'
+    required: false
+    default: ''
+  docker-target-namespace:
+    description: 'Target namespace for dependency resolution'
+    required: false
+    default: ''
+
+  # INJECT-INPUT: output-sub-path
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Validate layer
+      id: validate
+      shell: bash
+      env:
+        BUILD_PLATFORM: github-actions
+        BUILD_PLATFORM_LOG_PROVIDER: github-actions
+        LAYER_TYPE: ${{ inputs.layer-type }}
+        IMAGE_BUILD_COMMAND: ${{ inputs.image-build-command }}
+        DOCKER_PLATFORM: ${{ inputs.docker-platform }}
+        LAYER_DEPENDENCY_VALIDATION: ${{ inputs.layer-dependency-validation }}
+        DOCKER_TARGET_REGISTRY: ${{ inputs.docker-target-registry }}
+        DOCKER_TARGET_NAMESPACE: ${{ inputs.docker-target-namespace }}
+        OUTPUT_SUB_PATH: ${{ inputs.output-sub-path }}
+      run: "${{ github.action_path }}/../../scripts/main/layer-validate"

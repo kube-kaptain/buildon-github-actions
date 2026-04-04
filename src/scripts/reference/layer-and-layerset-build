@@ -1,0 +1,47 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
+#
+# Reference script: layer-and-layerset-build workflow
+#
+# Layer/layerset validation and packaging: quality checks, versioning,
+# layer packaging, Docker build, validation, and release publishing.
+# All variables can be overridden via environment.
+#
+# CI providers can wrap each script call to expose individual
+# build step pass/fail status in their UI.
+#
+set -euo pipefail
+
+# shellcheck source=../lib/setup-local-context.bash
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")/../lib" && pwd)/setup-local-context.bash"
+
+run_step "validate-tooling"
+run_step "load-project-kaptainpm-docker-logins"
+run_step "docker-registry-logins"
+run_step "kaptain-init"
+export BUILD_KIND="${REFERENCE_SCRIPT_NAME}"
+run_step "load-final-kaptainpm-yaml"
+run_step "hook-pre-build"
+run_step "basic-quality-checks"
+run_step "docker-registry-logins"
+run_step "docker-platform-setup"
+run_step "hook-pre-tagging-tests"
+run_step "versions-and-naming"
+run_step "hook-post-versions-and-naming"
+run_step "change-source-note-write"
+run_step "release-change-data-generate"
+run_step "release-change-data-oci-package"
+run_step "hook-pre-docker-prepare"
+run_step "layer-package-prepare"
+run_step "docker-build-dockerfile"
+run_step "layer-validate"
+run_step "hook-post-docker-tests"
+run_step "docker-multi-tag"
+run_step "git-push-tag"
+run_step "docker-push-all"
+run_step "hook-post-build"
+
+# CI provider: release file preparation, release creation
+
+print_build_complete

@@ -1,0 +1,157 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
+#
+# artifact-providers/docker - Docker/OCI artifact resolution provider
+#
+# Resolves artifact references to fully qualified OCI image URIs.
+# Handles short, prefixed, and full reference forms with prefix validation.
+# Resolves version ranges by querying remote registry tags.
+#
+# Usage: docker <reference>
+#   reference: name:version, prefix/name:version, or registry/namespace/prefix/name:version
+#
+# Env (used when reference is incomplete):
+#   DOCKER_TARGET_REGISTRY   - default registry (e.g. ghcr.io)
+#   DOCKER_TARGET_NAMESPACE  - default namespace (e.g. kube-kaptain)
+#   IMAGE_BUILD_COMMAND      - docker or podman (for tag queries)
+#
+# stdout: fully qualified OCI image URI with resolved version
+#
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# shellcheck source=src/scripts/lib/version-range.bash
+source "${SCRIPT_DIR}/../../lib/version-range.bash"
+
+reference="${1:?Usage: docker <reference>}"
+
+# Split reference into name-part and version-part on last colon
+if [[ "${reference}" != *":"* ]]; then
+  echo "Invalid reference: missing version (no colon found): ${reference}" >&2
+  exit 1
+fi
+version_part="${reference##*:}"
+name_part="${reference%:*}"
+
+if [[ -z "${version_part}" ]]; then
+  echo "Invalid reference: empty version: ${reference}" >&2
+  exit 1
+fi
+if [[ -z "${name_part}" ]]; then
+  echo "Invalid reference: empty name: ${reference}" >&2
+  exit 1
+fi
+
+# Detect reference form:
+#   Full:     dot in the first segment (domain present)
+#   Prefixed: contains / but no dot in first segment
+#   Short:    no /
+first_segment="${name_part%%/*}"
+
+if [[ "${first_segment}" == *"."* ]]; then
+  # Full form: domain/[namespace/]prefix/name
+  form="full"
+elif [[ "${name_part}" == *"/"* ]]; then
+  # Prefixed form: prefix/name
+  form="prefixed"
+else
+  # Short form: just name
+  form="short"
+fi
+
+# Extract prefix from the artifact name (first segment before first hyphen)
+# e.g. quality-strict -> quality, java-web-service -> java
+extract_prefix() {
+  local name="${1}"
+  local base_name="${name##*/}"
+  echo "${base_name%%-*}"
+}
+
+# Validate that the prefix path segment matches the name's derived prefix
+validate_prefix() {
+  local prefix_segment="${1}"
+  local name="${2}"
+  local expected_prefix
+  expected_prefix=$(extract_prefix "${name}")
+  if [[ "${prefix_segment}" != "${expected_prefix}" ]]; then
+    echo "Prefix mismatch: path segment '${prefix_segment}' does not match name prefix '${expected_prefix}' derived from '${name}'" >&2
+    return 1
+  fi
+}
+
+case "${form}" in
+  short)
+    # name:version -> registry/namespace/prefix/name:version
+    if [[ -z "${DOCKER_TARGET_REGISTRY:-}" ]]; then
+      echo "DOCKER_TARGET_REGISTRY is required for short-form reference: ${reference}" >&2
+      exit 1
+    fi
+    if [[ -z "${DOCKER_TARGET_NAMESPACE:-}" ]]; then
+      echo "DOCKER_TARGET_NAMESPACE is required for short-form reference: ${reference}" >&2
+      exit 1
+    fi
+    prefix=$(extract_prefix "${name_part}")
+    full_name="${DOCKER_TARGET_REGISTRY}/${DOCKER_TARGET_NAMESPACE}/${prefix}/${name_part}"
+    ;;
+  prefixed)
+    # prefix/name:version -> registry/namespace/prefix/name:version
+    if [[ -z "${DOCKER_TARGET_REGISTRY:-}" ]]; then
+      echo "DOCKER_TARGET_REGISTRY is required for prefixed-form reference: ${reference}" >&2
+      exit 1
+    fi
+    if [[ -z "${DOCKER_TARGET_NAMESPACE:-}" ]]; then
+      echo "DOCKER_TARGET_NAMESPACE is required for prefixed-form reference: ${reference}" >&2
+      exit 1
+    fi
+    prefix_segment="${name_part%%/*}"
+    artifact_name="${name_part#*/}"
+    validate_prefix "${prefix_segment}" "${artifact_name}"
+    full_name="${DOCKER_TARGET_REGISTRY}/${DOCKER_TARGET_NAMESPACE}/${name_part}"
+    ;;
+  full)
+    # domain/[namespace/]prefix/name:version -> validate prefix, use as-is
+    # The prefix is the second-to-last path segment, the name is the last
+    parent_path="${name_part%/*}"
+    prefix_segment="${parent_path##*/}"
+    artifact_name="${name_part##*/}"
+    validate_prefix "${prefix_segment}" "${artifact_name}"
+    full_name="${name_part}"
+    ;;
+esac
+
+# Version resolution
+if version_is_exact "${version_part}"; then
+  # Exact version: no registry call needed
+  echo "${full_name}:${version_part}"
+else
+  # Range: query remote tags and resolve
+  if [[ -z "${IMAGE_BUILD_COMMAND:-}" ]]; then
+    echo "IMAGE_BUILD_COMMAND is required for version range resolution" >&2
+    exit 1
+  fi
+
+  # List tags from the remote registry
+  # skopeo would be ideal but docker/podman can list via manifest inspection
+  # For now, use the registry API via the container runtime
+  available_tags=$(${IMAGE_BUILD_COMMAND} image ls --format '{{.Tag}}' "${full_name}" 2>/dev/null || true)
+
+  # If local tags are empty, try pulling the tag list via skopeo or registry API
+  if [[ -z "${available_tags}" ]]; then
+    # Attempt skopeo if available
+    if command -v skopeo &>/dev/null; then
+      available_tags=$(skopeo list-tags "docker://${full_name}" 2>/dev/null \
+        | grep -o '"[0-9][0-9.]*"' \
+        | tr -d '"' || true)
+    fi
+  fi
+
+  if [[ -z "${available_tags}" ]]; then
+    echo "Unable to list tags for ${full_name} — cannot resolve version range ${version_part}" >&2
+    exit 1
+  fi
+
+  resolved_version=$(version_resolve_range "${version_part}" "${available_tags}")
+  echo "${full_name}:${resolved_version}"
+fi

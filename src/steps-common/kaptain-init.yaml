@@ -1,0 +1,23 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
+
+# GH-specific defaults for layer resolution (file values win inside the script)
+- name: Prepare registry defaults
+  id: registry-defaults
+  shell: bash
+  run: |
+    OWNER="${{ github.repository_owner }}"
+    echo "registry=ghcr.io" >> "$GITHUB_OUTPUT"
+    echo "namespace=${OWNER,,}" >> "$GITHUB_OUTPUT"
+
+- name: Kaptain init
+  id: kaptain-init
+  shell: bash
+  env:
+    BUILD_MODE: build_server
+    BUILD_PLATFORM: github-actions
+    BUILD_PLATFORM_LOG_PROVIDER: github-actions
+    IMAGE_BUILD_COMMAND: ${{ steps.validate-tooling.outputs.IMAGE_BUILD_COMMAND }}
+    DOCKER_TARGET_REGISTRY: ${{ steps.registry-defaults.outputs.registry }}
+    DOCKER_TARGET_NAMESPACE: ${{ steps.registry-defaults.outputs.namespace }}
+  run: ./.github/buildon-github-actions/src/scripts/main/kaptain-init

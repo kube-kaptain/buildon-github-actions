@@ -2,140 +2,140 @@
 # Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
 
 - name: Run pre-build
-  if: inputs.hook-pre-build-script-sub-path != ''
+  if: steps.kpm.outputs.HOOK_PRE_BUILD_SCRIPT_SUB_PATH != ''
   id: pre-build
   uses: ./.github/buildon-github-actions/src/actions/hook-pre-build
   with:
     image-build-command: ${{ steps.validate-tooling.outputs.IMAGE_BUILD_COMMAND }}
-    docker-platform: ${{ inputs.docker-platform }}
+    docker-platform: ${{ steps.kpm.outputs.DOCKER_PLATFORM }}
     # === Workflow Inputs ===
     # Build output
-    output-sub-path: ${{ inputs.output-sub-path }}
+    output-sub-path: ${{ steps.kpm.outputs.OUTPUT_SUB_PATH }}
     docker-push-image-list-file: ${{ steps.docker-registry-logins.outputs.docker-push-image-list-file }}
 
     # Docker registry logins
-    docker-registry-logins: ${{ inputs.docker-registry-logins }}
+    docker-registry-logins: ${{ steps.kpm.outputs.DOCKER_REGISTRY_LOGINS }}
     # Docker build options
-    dockerfile-sub-path: ${{ inputs.dockerfile-sub-path }}
-    dockerfile-squash: ${{ inputs.dockerfile-squash }}
-    dockerfile-no-cache: ${{ inputs.dockerfile-no-cache }}
+    dockerfile-sub-path: ${{ steps.kpm.outputs.DOCKERFILE_SUB_PATH }}
+    dockerfile-squash: ${{ steps.kpm.outputs.DOCKERFILE_SQUASH }}
+    dockerfile-no-cache: ${{ steps.kpm.outputs.DOCKERFILE_NO_CACHE }}
     # Docker target config (from early resolver)
     docker-target-registry: ${{ steps.resolve-registry.outputs.docker-target-registry }}
     docker-target-namespace: ${{ steps.resolve-registry.outputs.docker-target-namespace }}
     # Docker push targets
-    docker-push-targets: ${{ inputs.docker-push-targets }}
+    docker-push-targets: ${{ steps.kpm.outputs.DOCKER_PUSH_TARGETS }}
 
     # Manifests source
-    manifests-sub-path: ${{ inputs.manifests-sub-path }}
+    manifests-sub-path: ${{ steps.kpm.outputs.MANIFESTS_SUB_PATH }}
     # Manifests packaging
-    manifests-repo-provider-type: ${{ inputs.manifests-repo-provider-type }}
-    manifests-packaging-base-image: ${{ inputs.manifests-packaging-base-image }}
+    manifests-repo-provider-type: ${{ steps.kpm.outputs.MANIFESTS_REPO_PROVIDER_TYPE }}
+    manifests-packaging-base-image: ${{ steps.kpm.outputs.MANIFESTS_PACKAGING_BASE_IMAGE }}
 
     # Kubernetes Generation
-    kubernetes-global-additional-labels: ${{ inputs.kubernetes-global-additional-labels }}
-    kubernetes-global-additional-annotations: ${{ inputs.kubernetes-global-additional-annotations }}
+    kubernetes-global-additional-labels: ${{ steps.kpm.outputs.KUBERNETES_GLOBAL_ADDITIONAL_LABELS }}
+    kubernetes-global-additional-annotations: ${{ steps.kpm.outputs.KUBERNETES_GLOBAL_ADDITIONAL_ANNOTATIONS }}
     # Kubernetes ConfigMap Generation
-    kubernetes-configmap-sub-path: ${{ inputs.kubernetes-configmap-sub-path }}
-    kubernetes-configmap-name-checksum-injection: ${{ inputs.kubernetes-configmap-name-checksum-injection }}
-    kubernetes-configmap-additional-labels: ${{ inputs.kubernetes-configmap-additional-labels }}
-    kubernetes-configmap-additional-annotations: ${{ inputs.kubernetes-configmap-additional-annotations }}
+    kubernetes-configmap-sub-path: ${{ steps.kpm.outputs.KUBERNETES_CONFIGMAP_SUB_PATH }}
+    kubernetes-configmap-name-checksum-injection: ${{ steps.kpm.outputs.KUBERNETES_CONFIGMAP_NAME_CHECKSUM_INJECTION }}
+    kubernetes-configmap-additional-labels: ${{ steps.kpm.outputs.KUBERNETES_CONFIGMAP_ADDITIONAL_LABELS }}
+    kubernetes-configmap-additional-annotations: ${{ steps.kpm.outputs.KUBERNETES_CONFIGMAP_ADDITIONAL_ANNOTATIONS }}
     # Kubernetes Secret template generation
-    kubernetes-secret-template-sub-path: ${{ inputs.kubernetes-secret-template-sub-path }}
-    kubernetes-secret-template-name-checksum-injection: ${{ inputs.kubernetes-secret-template-name-checksum-injection }}
-    kubernetes-secret-template-additional-labels: ${{ inputs.kubernetes-secret-template-additional-labels }}
-    kubernetes-secret-template-additional-annotations: ${{ inputs.kubernetes-secret-template-additional-annotations }}
+    kubernetes-secret-template-sub-path: ${{ steps.kpm.outputs.KUBERNETES_SECRET_TEMPLATE_SUB_PATH }}
+    kubernetes-secret-template-name-checksum-injection: ${{ steps.kpm.outputs.KUBERNETES_SECRET_TEMPLATE_NAME_CHECKSUM_INJECTION }}
+    kubernetes-secret-template-additional-labels: ${{ steps.kpm.outputs.KUBERNETES_SECRET_TEMPLATE_ADDITIONAL_LABELS }}
+    kubernetes-secret-template-additional-annotations: ${{ steps.kpm.outputs.KUBERNETES_SECRET_TEMPLATE_ADDITIONAL_ANNOTATIONS }}
     # Kubernetes ServiceAccount generation
-    kubernetes-serviceaccount-generation-enabled: ${{ inputs.kubernetes-serviceaccount-generation-enabled }}
-    kubernetes-serviceaccount-name-suffix: ${{ inputs.kubernetes-serviceaccount-name-suffix }}
-    kubernetes-serviceaccount-combined-sub-path: ${{ inputs.kubernetes-serviceaccount-combined-sub-path }}
-    kubernetes-serviceaccount-additional-labels: ${{ inputs.kubernetes-serviceaccount-additional-labels }}
-    kubernetes-serviceaccount-additional-annotations: ${{ inputs.kubernetes-serviceaccount-additional-annotations }}
+    kubernetes-serviceaccount-generation-enabled: ${{ steps.kpm.outputs.KUBERNETES_SERVICEACCOUNT_GENERATION_ENABLED }}
+    kubernetes-serviceaccount-name-suffix: ${{ steps.kpm.outputs.KUBERNETES_SERVICEACCOUNT_NAME_SUFFIX }}
+    kubernetes-serviceaccount-combined-sub-path: ${{ steps.kpm.outputs.KUBERNETES_SERVICEACCOUNT_COMBINED_SUB_PATH }}
+    kubernetes-serviceaccount-additional-labels: ${{ steps.kpm.outputs.KUBERNETES_SERVICEACCOUNT_ADDITIONAL_LABELS }}
+    kubernetes-serviceaccount-additional-annotations: ${{ steps.kpm.outputs.KUBERNETES_SERVICEACCOUNT_ADDITIONAL_ANNOTATIONS }}
     # Kubernetes Workload generation
-    kubernetes-workload-type: ${{ inputs.kubernetes-workload-type }}
-    kubernetes-workload-name-suffix: ${{ inputs.kubernetes-workload-name-suffix }}
-    kubernetes-workload-combined-sub-path: ${{ inputs.kubernetes-workload-combined-sub-path }}
-    kubernetes-workload-env-sub-path: ${{ inputs.kubernetes-workload-env-sub-path }}
-    kubernetes-workload-additional-labels: ${{ inputs.kubernetes-workload-additional-labels }}
-    kubernetes-workload-additional-annotations: ${{ inputs.kubernetes-workload-additional-annotations }}
-    kubernetes-workload-container-port: ${{ inputs.kubernetes-workload-container-port }}
-    kubernetes-workload-image-reference-style: ${{ inputs.kubernetes-workload-image-reference-style }}
-    kubernetes-workload-readonly-root-filesystem: ${{ inputs.kubernetes-workload-readonly-root-filesystem }}
-    kubernetes-workload-seccomp-profile: ${{ inputs.kubernetes-workload-seccomp-profile }}
-    kubernetes-workload-automount-service-account-token: ${{ inputs.kubernetes-workload-automount-service-account-token }}
-    kubernetes-workload-image-pull-secrets: ${{ inputs.kubernetes-workload-image-pull-secrets }}
-    kubernetes-workload-resources-memory: ${{ inputs.kubernetes-workload-resources-memory }}
-    kubernetes-workload-resources-cpu-request: ${{ inputs.kubernetes-workload-resources-cpu-request }}
-    kubernetes-workload-resources-cpu-limit: ${{ inputs.kubernetes-workload-resources-cpu-limit }}
-    kubernetes-workload-configmap-mount-path: ${{ inputs.kubernetes-workload-configmap-mount-path }}
-    kubernetes-workload-secret-mount-path: ${{ inputs.kubernetes-workload-secret-mount-path }}
-    kubernetes-workload-termination-grace-period-seconds: ${{ inputs.kubernetes-workload-termination-grace-period-seconds }}
-    kubernetes-workload-prestop-command: ${{ inputs.kubernetes-workload-prestop-command }}
-    kubernetes-workload-affinity-strategy: ${{ inputs.kubernetes-workload-affinity-strategy }}
-    kubernetes-workload-probe-liveness-check-type: ${{ inputs.kubernetes-workload-probe-liveness-check-type }}
-    kubernetes-workload-probe-readiness-check-type: ${{ inputs.kubernetes-workload-probe-readiness-check-type }}
-    kubernetes-workload-probe-startup-check-type: ${{ inputs.kubernetes-workload-probe-startup-check-type }}
-    kubernetes-workload-probe-liveness-http-path: ${{ inputs.kubernetes-workload-probe-liveness-http-path }}
-    kubernetes-workload-probe-readiness-http-path: ${{ inputs.kubernetes-workload-probe-readiness-http-path }}
-    kubernetes-workload-probe-startup-http-path: ${{ inputs.kubernetes-workload-probe-startup-http-path }}
-    kubernetes-workload-replicas: ${{ inputs.kubernetes-workload-replicas }}
-    kubernetes-workload-revision-history-limit: ${{ inputs.kubernetes-workload-revision-history-limit }}
+    kubernetes-workload-type: ${{ steps.kpm.outputs.KUBERNETES_WORKLOAD_TYPE }}
+    kubernetes-workload-name-suffix: ${{ steps.kpm.outputs.KUBERNETES_WORKLOAD_NAME_SUFFIX }}
+    kubernetes-workload-combined-sub-path: ${{ steps.kpm.outputs.KUBERNETES_WORKLOAD_COMBINED_SUB_PATH }}
+    kubernetes-workload-env-sub-path: ${{ steps.kpm.outputs.KUBERNETES_WORKLOAD_ENV_SUB_PATH }}
+    kubernetes-workload-additional-labels: ${{ steps.kpm.outputs.KUBERNETES_WORKLOAD_ADDITIONAL_LABELS }}
+    kubernetes-workload-additional-annotations: ${{ steps.kpm.outputs.KUBERNETES_WORKLOAD_ADDITIONAL_ANNOTATIONS }}
+    kubernetes-workload-container-port: ${{ steps.kpm.outputs.KUBERNETES_WORKLOAD_CONTAINER_PORT }}
+    kubernetes-workload-image-reference-style: ${{ steps.kpm.outputs.KUBERNETES_WORKLOAD_IMAGE_REFERENCE_STYLE }}
+    kubernetes-workload-readonly-root-filesystem: ${{ steps.kpm.outputs.KUBERNETES_WORKLOAD_READONLY_ROOT_FILESYSTEM }}
+    kubernetes-workload-seccomp-profile: ${{ steps.kpm.outputs.KUBERNETES_WORKLOAD_SECCOMP_PROFILE }}
+    kubernetes-workload-automount-service-account-token: ${{ steps.kpm.outputs.KUBERNETES_WORKLOAD_AUTOMOUNT_SERVICE_ACCOUNT_TOKEN }}
+    kubernetes-workload-image-pull-secrets: ${{ steps.kpm.outputs.KUBERNETES_WORKLOAD_IMAGE_PULL_SECRETS }}
+    kubernetes-workload-resources-memory: ${{ steps.kpm.outputs.KUBERNETES_WORKLOAD_RESOURCES_MEMORY }}
+    kubernetes-workload-resources-cpu-request: ${{ steps.kpm.outputs.KUBERNETES_WORKLOAD_RESOURCES_CPU_REQUEST }}
+    kubernetes-workload-resources-cpu-limit: ${{ steps.kpm.outputs.KUBERNETES_WORKLOAD_RESOURCES_CPU_LIMIT }}
+    kubernetes-workload-configmap-mount-path: ${{ steps.kpm.outputs.KUBERNETES_WORKLOAD_CONFIGMAP_MOUNT_PATH }}
+    kubernetes-workload-secret-mount-path: ${{ steps.kpm.outputs.KUBERNETES_WORKLOAD_SECRET_MOUNT_PATH }}
+    kubernetes-workload-termination-grace-period-seconds: ${{ steps.kpm.outputs.KUBERNETES_WORKLOAD_TERMINATION_GRACE_PERIOD_SECONDS }}
+    kubernetes-workload-prestop-command: ${{ steps.kpm.outputs.KUBERNETES_WORKLOAD_PRESTOP_COMMAND }}
+    kubernetes-workload-affinity-strategy: ${{ steps.kpm.outputs.KUBERNETES_WORKLOAD_AFFINITY_STRATEGY }}
+    kubernetes-workload-probe-liveness-check-type: ${{ steps.kpm.outputs.KUBERNETES_WORKLOAD_PROBE_LIVENESS_CHECK_TYPE }}
+    kubernetes-workload-probe-readiness-check-type: ${{ steps.kpm.outputs.KUBERNETES_WORKLOAD_PROBE_READINESS_CHECK_TYPE }}
+    kubernetes-workload-probe-startup-check-type: ${{ steps.kpm.outputs.KUBERNETES_WORKLOAD_PROBE_STARTUP_CHECK_TYPE }}
+    kubernetes-workload-probe-liveness-http-path: ${{ steps.kpm.outputs.KUBERNETES_WORKLOAD_PROBE_LIVENESS_HTTP_PATH }}
+    kubernetes-workload-probe-readiness-http-path: ${{ steps.kpm.outputs.KUBERNETES_WORKLOAD_PROBE_READINESS_HTTP_PATH }}
+    kubernetes-workload-probe-startup-http-path: ${{ steps.kpm.outputs.KUBERNETES_WORKLOAD_PROBE_STARTUP_HTTP_PATH }}
+    kubernetes-workload-replicas: ${{ steps.kpm.outputs.KUBERNETES_WORKLOAD_REPLICAS }}
+    kubernetes-workload-revision-history-limit: ${{ steps.kpm.outputs.KUBERNETES_WORKLOAD_REVISION_HISTORY_LIMIT }}
     # Kubernetes Service generation
-    kubernetes-service-generation-enabled: ${{ inputs.kubernetes-service-generation-enabled }}
-    kubernetes-service-type: ${{ inputs.kubernetes-service-type }}
-    kubernetes-service-port: ${{ inputs.kubernetes-service-port }}
-    kubernetes-service-target-port: ${{ inputs.kubernetes-service-target-port }}
-    kubernetes-service-protocol: ${{ inputs.kubernetes-service-protocol }}
-    kubernetes-service-name-suffix: ${{ inputs.kubernetes-service-name-suffix }}
-    kubernetes-service-combined-sub-path: ${{ inputs.kubernetes-service-combined-sub-path }}
-    kubernetes-service-additional-labels: ${{ inputs.kubernetes-service-additional-labels }}
-    kubernetes-service-additional-annotations: ${{ inputs.kubernetes-service-additional-annotations }}
+    kubernetes-service-generation-enabled: ${{ steps.kpm.outputs.KUBERNETES_SERVICE_GENERATION_ENABLED }}
+    kubernetes-service-type: ${{ steps.kpm.outputs.KUBERNETES_SERVICE_TYPE }}
+    kubernetes-service-port: ${{ steps.kpm.outputs.KUBERNETES_SERVICE_PORT }}
+    kubernetes-service-target-port: ${{ steps.kpm.outputs.KUBERNETES_SERVICE_TARGET_PORT }}
+    kubernetes-service-protocol: ${{ steps.kpm.outputs.KUBERNETES_SERVICE_PROTOCOL }}
+    kubernetes-service-name-suffix: ${{ steps.kpm.outputs.KUBERNETES_SERVICE_NAME_SUFFIX }}
+    kubernetes-service-combined-sub-path: ${{ steps.kpm.outputs.KUBERNETES_SERVICE_COMBINED_SUB_PATH }}
+    kubernetes-service-additional-labels: ${{ steps.kpm.outputs.KUBERNETES_SERVICE_ADDITIONAL_LABELS }}
+    kubernetes-service-additional-annotations: ${{ steps.kpm.outputs.KUBERNETES_SERVICE_ADDITIONAL_ANNOTATIONS }}
 
     # Token substitution
-    token-delimiter-style: ${{ inputs.token-delimiter-style }}
-    token-name-style: ${{ inputs.token-name-style }}
-    token-name-validation: ${{ inputs.token-name-validation }}
-    allow-builtin-token-override: ${{ inputs.allow-builtin-token-override }}
-    config-sub-path: ${{ inputs.config-sub-path }}
-    config-value-trailing-newline: ${{ inputs.config-value-trailing-newline }}
-    token-substitution-passes: ${{ inputs.token-substitution-passes }}
+    token-delimiter-style: ${{ steps.kpm.outputs.TOKEN_DELIMITER_STYLE }}
+    token-name-style: ${{ steps.kpm.outputs.TOKEN_NAME_STYLE }}
+    token-name-validation: ${{ steps.kpm.outputs.TOKEN_NAME_VALIDATION }}
+    allow-builtin-token-override: ${{ steps.kpm.outputs.ALLOW_BUILTIN_TOKEN_OVERRIDE }}
+    config-sub-path: ${{ steps.kpm.outputs.CONFIG_SUB_PATH }}
+    config-value-trailing-newline: ${{ steps.kpm.outputs.CONFIG_VALUE_TRAILING_NEWLINE }}
+    token-substitution-passes: ${{ steps.kpm.outputs.TOKEN_SUBSTITUTION_PASSES }}
 
     # Naming, Versions, and Tags calculation
-    release-branch: ${{ inputs.release-branch }}
-    additional-release-branches: ${{ inputs.additional-release-branches }}
-    tag-version-max-parts: ${{ inputs.tag-version-max-parts }}
-    tag-version-calculation-strategy: ${{ inputs.tag-version-calculation-strategy }}
-    tag-version-pattern-type: ${{ inputs.tag-version-pattern-type }}
-    tag-version-prefix-parts: ${{ inputs.tag-version-prefix-parts }}
-    tag-version-source-sub-path: ${{ inputs.tag-version-source-sub-path }}
-    tag-version-source-file-name: ${{ inputs.tag-version-source-file-name }}
-    tag-version-source-custom-pattern: ${{ inputs.tag-version-source-custom-pattern }}
-    tag-version-source-two-sub-path: ${{ inputs.tag-version-source-two-sub-path }}
-    tag-version-source-two-file-name: ${{ inputs.tag-version-source-two-file-name }}
-    tag-version-source-two-pattern: ${{ inputs.tag-version-source-two-pattern }}
-    tag-version-source-two-prefix-parts: ${{ inputs.tag-version-source-two-prefix-parts }}
+    release-branch: ${{ steps.kpm.outputs.RELEASE_BRANCH }}
+    additional-release-branches: ${{ steps.kpm.outputs.ADDITIONAL_RELEASE_BRANCHES }}
+    tag-version-max-parts: ${{ steps.kpm.outputs.TAG_VERSION_MAX_PARTS }}
+    tag-version-calculation-strategy: ${{ steps.kpm.outputs.TAG_VERSION_CALCULATION_STRATEGY }}
+    tag-version-pattern-type: ${{ steps.kpm.outputs.TAG_VERSION_PATTERN_TYPE }}
+    tag-version-prefix-parts: ${{ steps.kpm.outputs.TAG_VERSION_PREFIX_PARTS }}
+    tag-version-source-sub-path: ${{ steps.kpm.outputs.TAG_VERSION_SOURCE_SUB_PATH }}
+    tag-version-source-file-name: ${{ steps.kpm.outputs.TAG_VERSION_SOURCE_FILE_NAME }}
+    tag-version-source-custom-pattern: ${{ steps.kpm.outputs.TAG_VERSION_SOURCE_CUSTOM_PATTERN }}
+    tag-version-source-two-sub-path: ${{ steps.kpm.outputs.TAG_VERSION_SOURCE_TWO_SUB_PATH }}
+    tag-version-source-two-file-name: ${{ steps.kpm.outputs.TAG_VERSION_SOURCE_TWO_FILE_NAME }}
+    tag-version-source-two-pattern: ${{ steps.kpm.outputs.TAG_VERSION_SOURCE_TWO_PATTERN }}
+    tag-version-source-two-prefix-parts: ${{ steps.kpm.outputs.TAG_VERSION_SOURCE_TWO_PREFIX_PARTS }}
 
     # Quality check options
-    block-slashes: ${{ inputs.block-slashes }}
-    qc-block-slash-containing-branches: ${{ inputs.qc-block-slash-containing-branches }}
-    qc-block-double-hyphen-containing-branches: ${{ inputs.qc-block-double-hyphen-containing-branches }}
-    qc-require-conventional-branches: ${{ inputs.qc-require-conventional-branches }}
-    qc-require-conventional-commits: ${{ inputs.qc-require-conventional-commits }}
-    qc-block-conventional-commits: ${{ inputs.qc-block-conventional-commits }}
+    block-slashes: ${{ steps.kpm.outputs.BLOCK_SLASHES }}
+    qc-block-slash-containing-branches: ${{ steps.kpm.outputs.QC_BLOCK_SLASH_CONTAINING_BRANCHES }}
+    qc-block-double-hyphen-containing-branches: ${{ steps.kpm.outputs.QC_BLOCK_DOUBLE_HYPHEN_CONTAINING_BRANCHES }}
+    qc-require-conventional-branches: ${{ steps.kpm.outputs.QC_REQUIRE_CONVENTIONAL_BRANCHES }}
+    qc-require-conventional-commits: ${{ steps.kpm.outputs.QC_REQUIRE_CONVENTIONAL_COMMITS }}
+    qc-block-conventional-commits: ${{ steps.kpm.outputs.QC_BLOCK_CONVENTIONAL_COMMITS }}
 
     # Hook script paths
-    hook-pre-build-script-sub-path: ${{ inputs.hook-pre-build-script-sub-path }}
-    hook-pre-tagging-tests-script-sub-path: ${{ inputs.hook-pre-tagging-tests-script-sub-path }}
-    hook-pre-docker-prepare-script-sub-path: ${{ inputs.hook-pre-docker-prepare-script-sub-path }}
-    hook-post-docker-tests-script-sub-path: ${{ inputs.hook-post-docker-tests-script-sub-path }}
-    hook-pre-package-prepare-script-sub-path: ${{ inputs.hook-pre-package-prepare-script-sub-path }}
-    hook-post-package-tests-script-sub-path: ${{ inputs.hook-post-package-tests-script-sub-path }}
-    hook-post-versions-and-naming-script-sub-path: ${{ inputs.hook-post-versions-and-naming-script-sub-path }}
-    hook-post-build-script-sub-path: ${{ inputs.hook-post-build-script-sub-path }}
+    hook-pre-build-script-sub-path: ${{ steps.kpm.outputs.HOOK_PRE_BUILD_SCRIPT_SUB_PATH }}
+    hook-pre-tagging-tests-script-sub-path: ${{ steps.kpm.outputs.HOOK_PRE_TAGGING_TESTS_SCRIPT_SUB_PATH }}
+    hook-pre-docker-prepare-script-sub-path: ${{ steps.kpm.outputs.HOOK_PRE_DOCKER_PREPARE_SCRIPT_SUB_PATH }}
+    hook-post-docker-tests-script-sub-path: ${{ steps.kpm.outputs.HOOK_POST_DOCKER_TESTS_SCRIPT_SUB_PATH }}
+    hook-pre-package-prepare-script-sub-path: ${{ steps.kpm.outputs.HOOK_PRE_PACKAGE_PREPARE_SCRIPT_SUB_PATH }}
+    hook-post-package-tests-script-sub-path: ${{ steps.kpm.outputs.HOOK_POST_PACKAGE_TESTS_SCRIPT_SUB_PATH }}
+    hook-post-versions-and-naming-script-sub-path: ${{ steps.kpm.outputs.HOOK_POST_VERSIONS_AND_NAMING_SCRIPT_SUB_PATH }}
+    hook-post-build-script-sub-path: ${{ steps.kpm.outputs.HOOK_POST_BUILD_SCRIPT_SUB_PATH }}
 
     # GitHub release
-    github-release-enabled: ${{ inputs.github-release-enabled }}
-    github-release-substituted-files: ${{ inputs.github-release-substituted-files }}
-    github-release-verbatim-files: ${{ inputs.github-release-verbatim-files }}
-    github-release-notes: ${{ inputs.github-release-notes }}
-    github-release-notes-file: ${{ inputs.github-release-notes-file }}
-    github-release-add-version-to-filenames: ${{ inputs.github-release-add-version-to-filenames }}
+    github-release-enabled: ${{ steps.kpm.outputs.GITHUB_RELEASE_ENABLED }}
+    github-release-substituted-files: ${{ steps.kpm.outputs.GITHUB_RELEASE_SUBSTITUTED_FILES }}
+    github-release-verbatim-files: ${{ steps.kpm.outputs.GITHUB_RELEASE_VERBATIM_FILES }}
+    github-release-notes: ${{ steps.kpm.outputs.GITHUB_RELEASE_NOTES }}
+    github-release-notes-file: ${{ steps.kpm.outputs.GITHUB_RELEASE_NOTES_FILE }}
+    github-release-add-version-to-filenames: ${{ steps.kpm.outputs.GITHUB_RELEASE_ADD_VERSION_TO_FILENAMES }}

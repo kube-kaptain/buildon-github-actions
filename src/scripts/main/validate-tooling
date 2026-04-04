@@ -25,7 +25,7 @@ source "${SCRIPT_DIR}/../lib/output-var.bash"
 source "${SCRIPT_DIR}/../lib/log.bash"
 
 # Tool categories
-CORE_TOOLS="git awk grep find tr wc cmp cp mkdir basename zip date uname yq jq"
+CORE_TOOLS="git grep yq jq find cmp awk tr wc cp mkdir basename date uname zip"
 BUILD_SERVER_TOOLS="sudo systemctl"
 CLOUD_TOOLS="aws az gcloud"
 
@@ -39,16 +39,48 @@ check_tool() {
   command -v "${tool}" &>/dev/null
 }
 
+# Extract a short version string from --version output
+tool_version() {
+  local tool="${1}"
+  local raw=""
+  raw=$("${tool}" --version 2>&1 | head -1) || true
+  if [[ "${raw}" =~ [0-9]+\.[0-9]+ ]]; then
+    local ver="${raw}"
+    # Strip "... version " prefix (git version, Sudo version, yq (...) version, etc.)
+    if [[ "${ver}" == *"version "* ]]; then
+      ver="${ver#*version }"
+    # Strip "toolname (description) X.Y.Z" pattern (grep)
+    elif [[ "${ver}" == *") "* ]]; then
+      ver="${ver##*) }"
+    fi
+    echo "${ver}"
+  fi
+}
+
+# Log a tool check result with aligned columns
+log_tool() {
+  local marker="${1}"
+  local name="${2}"
+  local info="${3}"
+  log "  ${marker} $(printf '%-17s' "${name}") - ${info}"
+}
+
 log "Validating tooling for BUILD_MODE=${BUILD_MODE}"
 log ""
 
 # Check core tools (always required)
 log "Checking core tools..."
+log_tool "✓" "bash" "${BASH_VERSION}"
 for tool in ${CORE_TOOLS}; do
   if check_tool "${tool}"; then
-    log "  ✓ ${tool}"
+    ver=$(tool_version "${tool}")
+    if [[ -n "${ver}" ]]; then
+      log_tool "✓" "${tool}" "${ver}"
+    else
+      log_tool "✓" "${tool}" "(POSIX built-in)"
+    fi
   else
-    log "  ✗ ${tool}"
+    log_tool "✗" "${tool}" "(missing)"
     MISSING_CORE="${MISSING_CORE} ${tool}"
   fi
 done
@@ -61,15 +93,15 @@ HAS_PODMAN=false
 HAS_DOCKER=false
 if check_tool "podman"; then
   HAS_PODMAN=true
-  log "  ✓ podman"
+  log_tool "✓" "podman" "$(tool_version podman)"
 else
-  log "  - podman (not found)"
+  log_tool "-" "podman" "(not found)"
 fi
 if check_tool "docker"; then
   HAS_DOCKER=true
-  log "  ✓ docker"
+  log_tool "✓" "docker" "$(tool_version docker)"
 else
-  log "  - docker (not found)"
+  log_tool "-" "docker" "(not found)"
 fi
 
 if [[ "${BUILD_MODE}" == "build_server" ]]; then
@@ -91,7 +123,7 @@ else
   # Local mode - accept either, no symlink
   if [[ "${HAS_PODMAN}" == "true" ]]; then
     IMAGE_BUILD_COMMAND="podman"
-    log_warning "Using podman locally - hook scripts targeting 'docker' command will not work, use 'podman' in hook scripts"
+    log_warning "Using podman locally - hook scripts targeting 'docker' command will not work, use '\${IMAGE_BUILD_COMMAND}' in hook scripts"
   elif [[ "${HAS_DOCKER}" == "true" ]]; then
     IMAGE_BUILD_COMMAND="docker"
     log_warning "Using docker locally - squash will be disabled (podman required for squash support)"
@@ -102,7 +134,7 @@ else
 fi
 
 if [[ -n "${IMAGE_BUILD_COMMAND}" ]]; then
-  log "  → IMAGE_BUILD_COMMAND=${IMAGE_BUILD_COMMAND}"
+  log "  → Set IMAGE_BUILD_COMMAND=${IMAGE_BUILD_COMMAND}"
 fi
 log ""
 
@@ -110,9 +142,14 @@ log ""
 log "Checking build server tools..."
 for tool in ${BUILD_SERVER_TOOLS}; do
   if check_tool "${tool}"; then
-    log "  ✓ ${tool}"
+    ver=$(tool_version "${tool}")
+    if [[ -n "${ver}" ]]; then
+      log_tool "✓" "${tool}" "${ver}"
+    else
+      log_tool "✓" "${tool}" "(available)"
+    fi
   else
-    log "  - ${tool} (not found)"
+    log_tool "-" "${tool}" "(not found)"
     MISSING_BUILD_SERVER="${MISSING_BUILD_SERVER} ${tool}"
   fi
 done
@@ -121,11 +158,11 @@ log ""
 # Check check-jsonschema CLI (required for spec/schema validation)
 log "Checking check-jsonschema..."
 if check_tool "check-jsonschema"; then
-  log "  ✓ check-jsonschema"
+  log_tool "✓" "check-jsonschema" "$(tool_version check-jsonschema)"
 elif [[ "${BUILD_MODE}" == "build_server" ]]; then
-  log "  check-jsonschema not found — installing..."
+  log "  check-jsonschema not found - installing..."
   if ! check_tool "pip3"; then
-    log "  pip3 not found — installing..."
+    log "  pip3 not found - installing..."
     if command -v apt-get &>/dev/null; then
       sudo apt-get update
       sudo apt-get install -y python3-pip
@@ -139,13 +176,13 @@ elif [[ "${BUILD_MODE}" == "build_server" ]]; then
     pip3 install check-jsonschema
   fi
   if check_tool "check-jsonschema"; then
-    log "  ✓ check-jsonschema (installed)"
+    log_tool "✓" "check-jsonschema" "$(tool_version check-jsonschema) (installed)"
   else
     log_error "check-jsonschema installation failed"
     MISSING_CORE="${MISSING_CORE} check-jsonschema"
   fi
 else
-  log_error "check-jsonschema not found — install it locally (brew install check-jsonschema or pip3 install check-jsonschema)"
+  log_error "check-jsonschema not found - install it locally (brew install check-jsonschema or pip3 install check-jsonschema)"
   MISSING_CORE="${MISSING_CORE} check-jsonschema"
 fi
 log ""
@@ -154,9 +191,14 @@ log ""
 log "Checking cloud CLIs (optional)..."
 for tool in ${CLOUD_TOOLS}; do
   if check_tool "${tool}"; then
-    log "  ✓ ${tool}"
+    ver=$(tool_version "${tool}")
+    if [[ -n "${ver}" ]]; then
+      log_tool "✓" "${tool}" "${ver}"
+    else
+      log_tool "✓" "${tool}" "(available)"
+    fi
   else
-    log "  - ${tool} (not found)"
+    log_tool "-" "${tool}" "(not found)"
     MISSING_CLOUD="${MISSING_CLOUD} ${tool}"
   fi
 done

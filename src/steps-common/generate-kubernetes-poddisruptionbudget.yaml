@@ -3,24 +3,24 @@
 
 - name: Generate PodDisruptionBudget manifest
   id: generate-poddisruptionbudget
-  if: inputs.kubernetes-poddisruptionbudget-generation-enabled != 'false' && (inputs.kubernetes-poddisruptionbudget-generation-enabled == 'true' || inputs.kubernetes-workload-type == 'deployment' || inputs.kubernetes-workload-type == 'statefulset')
+  if: steps.kpm.outputs.KUBERNETES_PODDISRUPTIONBUDGET_GENERATION_ENABLED != 'false' && (steps.kpm.outputs.KUBERNETES_PODDISRUPTIONBUDGET_GENERATION_ENABLED == 'true' || steps.kpm.outputs.KUBERNETES_WORKLOAD_TYPE == 'deployment' || steps.kpm.outputs.KUBERNETES_WORKLOAD_TYPE == 'statefulset')
   uses: ./.github/buildon-github-actions/src/actions/generate-kubernetes-poddisruptionbudget
   with:
     # PDB settings
-    kubernetes-poddisruptionbudget-generation-enabled: ${{ inputs.kubernetes-poddisruptionbudget-generation-enabled }}
-    kubernetes-poddisruptionbudget-strategy: ${{ inputs.kubernetes-poddisruptionbudget-strategy }}
-    kubernetes-poddisruptionbudget-value: ${{ inputs.kubernetes-poddisruptionbudget-value }}
-    kubernetes-poddisruptionbudget-name-suffix: ${{ inputs.kubernetes-poddisruptionbudget-name-suffix }}
-    kubernetes-poddisruptionbudget-combined-sub-path: ${{ inputs.kubernetes-poddisruptionbudget-combined-sub-path }}
-    kubernetes-poddisruptionbudget-additional-labels: ${{ inputs.kubernetes-poddisruptionbudget-additional-labels }}
-    kubernetes-poddisruptionbudget-additional-annotations: ${{ inputs.kubernetes-poddisruptionbudget-additional-annotations }}
+    kubernetes-poddisruptionbudget-generation-enabled: ${{ steps.kpm.outputs.KUBERNETES_PODDISRUPTIONBUDGET_GENERATION_ENABLED }}
+    kubernetes-poddisruptionbudget-strategy: ${{ steps.kpm.outputs.KUBERNETES_PODDISRUPTIONBUDGET_STRATEGY }}
+    kubernetes-poddisruptionbudget-value: ${{ steps.kpm.outputs.KUBERNETES_PODDISRUPTIONBUDGET_VALUE }}
+    kubernetes-poddisruptionbudget-name-suffix: ${{ steps.kpm.outputs.KUBERNETES_PODDISRUPTIONBUDGET_NAME_SUFFIX }}
+    kubernetes-poddisruptionbudget-combined-sub-path: ${{ steps.kpm.outputs.KUBERNETES_PODDISRUPTIONBUDGET_COMBINED_SUB_PATH }}
+    kubernetes-poddisruptionbudget-additional-labels: ${{ steps.kpm.outputs.KUBERNETES_PODDISRUPTIONBUDGET_ADDITIONAL_LABELS }}
+    kubernetes-poddisruptionbudget-additional-annotations: ${{ steps.kpm.outputs.KUBERNETES_PODDISRUPTIONBUDGET_ADDITIONAL_ANNOTATIONS }}
     # Workload settings (for smart defaulting)
-    kubernetes-workload-type: ${{ inputs.kubernetes-workload-type }}
+    kubernetes-workload-type: ${{ steps.kpm.outputs.KUBERNETES_WORKLOAD_TYPE }}
     # Required context
     project-name: ${{ steps.versions.outputs.project-name }}
     # Global settings
-    output-sub-path: ${{ inputs.output-sub-path }}
-    token-name-style: ${{ inputs.token-name-style }}
-    token-delimiter-style: ${{ inputs.token-delimiter-style }}
-    kubernetes-global-additional-labels: ${{ inputs.kubernetes-global-additional-labels }}
-    kubernetes-global-additional-annotations: ${{ inputs.kubernetes-global-additional-annotations }}
+    output-sub-path: ${{ steps.kpm.outputs.OUTPUT_SUB_PATH }}
+    token-name-style: ${{ steps.kpm.outputs.TOKEN_NAME_STYLE }}
+    token-delimiter-style: ${{ steps.kpm.outputs.TOKEN_DELIMITER_STYLE }}
+    kubernetes-global-additional-labels: ${{ steps.kpm.outputs.KUBERNETES_GLOBAL_ADDITIONAL_LABELS }}
+    kubernetes-global-additional-annotations: ${{ steps.kpm.outputs.KUBERNETES_GLOBAL_ADDITIONAL_ANNOTATIONS }}

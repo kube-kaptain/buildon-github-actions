@@ -126,18 +126,18 @@ runs:
           fi
         }
 
-        # Validate a raw file has the correct version suffix in its filename
+        # Validate a raw file has the correct version in its filename
         validate_raw_filename() {
           local filepath="$1"
           local filename
           filename=$(basename "${filepath}")
-          local base ext expected_suffix
+          local base ext
           if [[ "${filename}" == *.* ]]; then
             base="${filename%.*}"
             ext="${filename##*.}"
-            expected_suffix="-${VERSION}"
-            if [[ "${base}" != *"${expected_suffix}" ]]; then
-              echo "::error::Raw file '${filename}' must end with '-${VERSION}.${ext}' — use verbatim-files instead for automatic versioning"
+            # Accept -VERSION.ext or -VERSION-manifests.zip
+            if [[ "${base}" != *"-${VERSION}" ]] && ! [[ "${base}" == *"-${VERSION}-manifests" && "${ext}" == "zip" ]]; then
+              echo "::error::Raw file '${filename}' must end with '-${VERSION}.${ext}' or '-${VERSION}-manifests.zip' — use verbatim-files instead for automatic versioning"
               exit 1
             fi
           else

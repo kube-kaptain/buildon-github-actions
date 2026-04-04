@@ -3,13 +3,13 @@
 #
 # Basic Quality and Versioning
 #
-# Standard build setup:
-# - PRs: Enforce quality standards (branch names, commit messages, rebase)
-# - Push to main: Generate and push version tag
+# Quality checks plus automatic version tagging. PRs get quality enforcement,
+# merges to main get a version tag pushed. The standard foundation for most
+# projects.
 #
-# Copy this to .github/workflows/build.yaml in your repo.
+# All configuration is in KaptainPM.yaml - see docs for available fields.
 
-name: Basic Quality Checks And Tag 
+name: Basic Quality and Versioning
 
 on:
   push:
@@ -19,93 +19,8 @@ on:
 
 jobs:
   build:
-    uses: kube-kaptain/buildon-github-actions/.github/workflows/basic-quality-and-versioning.yaml@1.0.91
+    uses: kube-kaptain/buildon-github-actions/.github/workflows/basic-quality-and-versioning.yaml@1.1.1
     permissions:
       contents: write
       packages: write
       checks: write
-
-# ┌───────────────────────────────────────────────────────────────────────────┐
-# │ All Available Options                                                     │
-# │ Uncomment and add to the job above as needed                              │
-# └───────────────────────────────────────────────────────────────────────────┘
-
-# ┌─────────────────────────────────────────────────────────────────────────┐
-# │ Branch Configuration                                                    │
-# └─────────────────────────────────────────────────────────────────────────┘
-#     with:
-#       release-branch: 'master'  # Default is main, use whatever you want
-#       additional-release-branches: 'main-1.x,main-2.x'
-
-# ┌─────────────────────────────────────────────────────────────────────────┐
-# │ Quality Checks                                                          │
-# └─────────────────────────────────────────────────────────────────────────┘
-#     with:
-#       qc-block-slash-containing-branches: true           # Default is false
-#       qc-block-double-hyphen-containing-branches: false  # Default is true
-#       qc-require-conventional-branches: true             # Default is false
-#       qc-require-conventional-commits: true              # Default is false
-#       qc-block-conventional-commits: true                # Default is false
-
-# ┌─────────────────────────────────────────────────────────────────────────┐
-# │ Version & Tagging Configuration                                         │
-# └─────────────────────────────────────────────────────────────────────────┘
-# Default strategy: git-auto-closest-highest (finds closest tag, increments it)
-# Alternative: file-pattern-match (extracts version from a file)
-#
-#     with:
-#       tag-version-max-parts: 3                                # Max version parts allowed (fail if exceeded)
-#       tag-version-calculation-strategy: 'file-pattern-match'  # or 'git-auto-closest-highest' (default), 'compound-file-pattern-match'
-#       tag-version-pattern-type: 'dockerfile-env-kubectl'      # 'retag-workflow-source-tag', 'custom'
-#       tag-version-prefix-parts: '2'                           # Parts from source as prefix (output = prefix + 1)
-#       tag-version-source-sub-path: 'src/docker'               # Override path to source directory
-#       tag-version-source-file-name: 'Dockerfile'              # Override source file name
-#       tag-version-source-custom-pattern: '^VERSION=(.+)$'     # Regex with capture group (for custom type)
-
-# ┌─────────────────────────────────────────────────────────────────────────┐
-# │ Test Injection                                                          │
-# └─────────────────────────────────────────────────────────────────────────┘
-#     with:
-#       hook-pre-build-script-sub-path: 'bin/pre-build.bash'
-#       hook-pre-tagging-tests-script-sub-path: 'bin/run-tests.bash'
-#       hook-post-versions-and-naming-script-sub-path: 'bin/post-versions.bash'
-#       hook-post-build-script-sub-path: 'bin/post-build.bash'
-
-# ┌─────────────────────────────────────────────────────────────────────────┐
-# │ Change Source Tracking                                                  │
-# └─────────────────────────────────────────────────────────────────────────┘
-# Writes build provenance (source branch, PR author) as git notes during PR
-# builds, read back during release builds and included in release metadata.
-#
-#     with:
-#       change-source-note-enabled: false  # Default is true
-
-# ┌─────────────────────────────────────────────────────────────────────────┐
-# │ Token Substitution                                                      │
-# └─────────────────────────────────────────────────────────────────────────┘
-# Tokens like ${Version} are replaced in release files during processing.
-# Add custom tokens by creating files in src/config/ (e.g., src/config/MyToken)
-#
-#     with:
-#       token-delimiter-style: 'mustache'              # Default is 'shell' (${Token})
-#       token-name-style: 'UPPER_SNAKE'                # Default is 'PascalCase'
-#       token-name-validation: 'ALL'                   # Default is 'MATCH' (must match style)
-#       config-sub-path: 'config'                      # Default is 'src/config'
-#       allow-builtin-token-override: true             # Default is false
-#       config-value-trailing-newline: 'preserve-all'  # Default is 'strip-for-single-line'
-
-# ┌─────────────────────────────────────────────────────────────────────────┐
-# │ GitHub Release                                                          │
-# └─────────────────────────────────────────────────────────────────────────┘
-#     with:
-#       github-release-enabled: true                           # Default is true
-#       github-release-substituted-files: 'dist/output.txt'    # Tokens replaced
-#       github-release-verbatim-files: 'CHANGELOG.md'          # Copied as-is
-#       github-release-notes: 'Custom release notes'           # Leave empty for auto
-#       github-release-add-version-to-filenames: false         # Default is true
-
-# ┌─────────────────────────────────────────────────────────────────────────┐
-# │ Output Configuration                                                    │
-# └─────────────────────────────────────────────────────────────────────────┘
-#     with:
-#       output-sub-path: 'build'  # Default is 'target'

@@ -3,22 +3,10 @@
 #
 # Spec Check Filter Release
 #
-# Build and release JSON Schema or API spec files. Copies the spec to a versioned
-# filename, converts to JSON, packages both into a Docker image, and optionally
-# creates a GitHub release with the spec files attached.
+# Validates and packages spec/schema files as OCI artifacts. Used for publishing
+# versioned specifications that other projects consume as layers.
 #
-# Place spec files in src/specs/ named ${repo-name}*.yaml.
-# For example: src/specs/my-api-schema.yaml for a repo named my-api-schema.
-# Multiple spec files are supported (e.g., my-api-schema.yaml, my-api-schema-layer.yaml).
-# Spec files may also be generated into the output yaml dir via hook-post-versions-and-naming.
-#
-# Token substitution is handled by the docker build step, so you can use
-# ${Version}, ${ProjectName}, etc. in your spec files.
-#
-# - PRs: Build with version-PRERELEASE tag (not pushed)
-# - Push to main: Git tag, build, docker tag with clean version, push to GHCR
-#
-# Copy this to .github/workflows/build.yaml in your repo.
+# All configuration is in KaptainPM.yaml - see docs for available fields.
 
 name: Spec Check Filter Release
 
@@ -30,145 +18,8 @@ on:
 
 jobs:
   build:
-    uses: kube-kaptain/buildon-github-actions/.github/workflows/spec-check-filter-release.yaml@1.0.91
+    uses: kube-kaptain/buildon-github-actions/.github/workflows/spec-check-filter-release.yaml@1.1.1
     permissions:
       contents: write
       packages: write
       checks: write
-    with:
-      spec-type: 'schema'  # or 'api'
-
-# ┌───────────────────────────────────────────────────────────────────────────┐
-# │ All Available Options                                                     │
-# │ Uncomment and add to the job above as needed                              │
-# └───────────────────────────────────────────────────────────────────────────┘
-
-# ┌─────────────────────────────────────────────────────────────────────────┐
-# │ Spec Configuration                                                      │
-# └─────────────────────────────────────────────────────────────────────────┘
-#     with:
-#       spec-type: 'api'  # 'schema' for JSON Schema, 'api' for API specs (must declare $schema)
-#       spec-json-schema-url: 'src/schemas/json-schema-draft-2020-12.json'  # Local path or URL to meta-schema
-#       spec-packaging-base-image: 'scratch'  # Default is scratch
-
-# ┌─────────────────────────────────────────────────────────────────────────┐
-# │ Token Substitution                                                      │
-# └─────────────────────────────────────────────────────────────────────────┘
-# Tokens like ${Version} in your spec are replaced during docker build.
-# Add custom tokens by creating files in src/config/ (e.g., src/config/MyToken)
-#
-#     with:
-#       token-delimiter-style: 'mustache'              # Default is 'shell' (${Token})
-#       token-name-style: 'UPPER_SNAKE'                # Default is 'PascalCase'
-#       token-name-validation: 'ALL'                   # Default is 'MATCH' (must match style)
-#       config-sub-path: 'config'                      # Default is 'src/config'
-#       allow-builtin-token-override: true             # Default is false
-#       config-value-trailing-newline: 'preserve-all'  # Default is 'strip-for-single-line'
-
-# ┌─────────────────────────────────────────────────────────────────────────┐
-# │ Target Registry                                                         │
-# └─────────────────────────────────────────────────────────────────────────┘
-#     with:
-#       docker-target-registry: 'myregistry.example.com'
-#       docker-target-namespace: 'my-team/specs'
-
-# ┌─────────────────────────────────────────────────────────────────────────┐
-# │ Docker Platform                                                         │
-# └─────────────────────────────────────────────────────────────────────────┘
-# Default: linux/amd64. Spec packages are OCI images that benefit from
-# multi-platform support so consumers on any architecture can pull them.
-#
-#     with:
-#       docker-platform: 'linux/amd64'                      # Default, single platform
-#       docker-platform: 'linux/arm64'                      # ARM only
-#       docker-platform: 'linux/amd64,linux/arm64'          # Both (manifest list)
-
-# ┌─────────────────────────────────────────────────────────────────────────┐
-# │ GitHub Release                                                          │
-# └─────────────────────────────────────────────────────────────────────────┘
-# The spec files are automatically included in the release. Additional files
-# specified here are subject to the job's default behaviors: token substitution
-# (substituted-files) or no substitution (verbatim-files), and version suffix.
-#
-#     with:
-#       github-release-enabled: true                           # Default is true
-#       github-release-substituted-files: 'template.yaml'      # Tokens replaced
-#       github-release-verbatim-files: 'extra-file.txt'        # Copied as-is
-#       github-release-notes: 'Custom release notes'           # Leave empty for auto
-#       github-release-add-version-to-filenames: false         # Default is true
-
-# ┌─────────────────────────────────────────────────────────────────────────┐
-# │ Branch Configuration                                                    │
-# └─────────────────────────────────────────────────────────────────────────┘
-#     with:
-#       release-branch: 'master'
-#       additional-release-branches: 'main-1.x,main-2.x'
-
-# ┌─────────────────────────────────────────────────────────────────────────┐
-# │ Quality Checks                                                          │
-# └─────────────────────────────────────────────────────────────────────────┘
-#     with:
-#       qc-block-slash-containing-branches: true
-#       qc-block-double-hyphen-containing-branches: false
-#       qc-require-conventional-branches: true
-#       qc-require-conventional-commits: true
-#       qc-block-conventional-commits: true                # Default is false
-
-# ┌─────────────────────────────────────────────────────────────────────────┐
-# │ Version & Tagging Configuration                                         │
-# └─────────────────────────────────────────────────────────────────────────┘
-# Default strategy: git-auto-closest-highest (finds closest tag, increments it)
-# Alternative: file-pattern-match (extracts version from a file)
-#
-#     with:
-#       tag-version-max-parts: 3                                # Max version parts allowed (fail if exceeded)
-#       tag-version-calculation-strategy: 'file-pattern-match'  # or 'git-auto-closest-highest' (default), 'compound-file-pattern-match'
-#       tag-version-pattern-type: 'dockerfile-env-kubectl'      # 'retag-workflow-source-tag', 'custom'
-#       tag-version-prefix-parts: '2'                           # Parts from source as prefix (output = prefix + 1)
-#       tag-version-source-sub-path: 'src/docker'               # Override path to source directory
-#       tag-version-source-file-name: 'Dockerfile'              # Override source file name
-#       tag-version-source-custom-pattern: '^VERSION=(.+)$'     # Regex with capture group (for custom type)
-
-# ┌─────────────────────────────────────────────────────────────────────────┐
-# │ Test Injection                                                          │
-# └─────────────────────────────────────────────────────────────────────────┘
-#     with:
-#       hook-pre-build-script-sub-path: 'bin/pre-build.bash'
-#       hook-pre-tagging-tests-script-sub-path: 'bin/run-tests.bash'
-#       hook-post-versions-and-naming-script-sub-path: 'bin/post-versions.bash'  # Use this to generate spec files
-#       hook-pre-docker-prepare-script-sub-path: 'bin/pre-docker.bash'           # Runs before spec-package-prepare
-#       hook-post-docker-tests-script-sub-path: 'bin/post-docker.bash'           # Runs after spec-validate
-#       hook-post-build-script-sub-path: 'bin/post-build.bash'
-
-# ┌─────────────────────────────────────────────────────────────────────────┐
-# │ Change Source Tracking                                                  │
-# └─────────────────────────────────────────────────────────────────────────┘
-# Writes build provenance (source branch, PR author) as git notes during PR
-# builds, read back during release builds and included in release metadata.
-#
-#     with:
-#       change-source-note-enabled: false  # Default is true
-
-# ┌─────────────────────────────────────────────────────────────────────────┐
-# │ Output Configuration                                                    │
-# └─────────────────────────────────────────────────────────────────────────┘
-#     with:
-#       output-sub-path: 'build'  # Default is 'kaptain-out'
-
-# ┌─────────────────────────────────────────────────────────────────────────┐
-# │ Multi-Registry Push                                                     │
-# └─────────────────────────────────────────────────────────────────────────┘
-# Push the same image to additional registries (e.g., multiple AWS accounts)
-# See docker-push-targets.yaml example for full details
-#
-#     with:
-#       docker-push-targets: |
-#         [
-#           {"registry": "123456789012.dkr.ecr.us-east-1.amazonaws.com"},
-#           {"registry": "other.registry.com", "namespace": "my-team"}
-#         ]
-
-# ┌─────────────────────────────────────────────────────────────────────────┐
-# │ Registry Credentials                                                    │
-# └─────────────────────────────────────────────────────────────────────────┘
-# See docker-registry-logins-*.yaml examples for authentication options

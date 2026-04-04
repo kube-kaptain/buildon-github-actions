@@ -1,0 +1,180 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
+#
+# Layer Validate
+#
+# Validates substituted layer/layerset KaptainPM files after docker build.
+# Checks JSON syntax, validates against the appropriate schema, verifies
+# layer-payload paths (layers), and checks layerset dependencies (layersets).
+#
+# Inputs via env vars (required):
+#   LAYER_TYPE        - "layer" or "layerset" (from layer-package-prepare)
+#   OUTPUT_SUB_PATH   - Base directory for output files
+#
+# Inputs via env vars (optional):
+#   DOCKER_PLATFORM              - Target platform(s) (default: linux/amd64)
+#   LAYER_DEPENDENCY_VALIDATION  - Layerset dependency check mode: hard/soft/skip (default: hard)
+
+set -euo pipefail
+
+SCRIPT_DIR="$(dirname "${0}")"
+
+# shellcheck source=src/scripts/defaults/output-sub-path.bash
+source "${SCRIPT_DIR}/../defaults/output-sub-path.bash"
+# shellcheck source=src/scripts/defaults/platform.bash
+source "${SCRIPT_DIR}/../defaults/platform.bash"
+# shellcheck source=src/scripts/defaults/docker-common.bash
+source "${SCRIPT_DIR}/../defaults/docker-common.bash"
+# shellcheck source=src/scripts/defaults/layer-build.bash
+source "${SCRIPT_DIR}/../defaults/layer-build.bash"
+# shellcheck source=src/scripts/lib/log.bash
+source "${SCRIPT_DIR}/../lib/log.bash"
+
+log "=== Layer Validate ==="
+
+# Validate inputs
+LAYER_TYPE="${LAYER_TYPE:?LAYER_TYPE is required}"
+if [[ "${LAYER_TYPE}" != "layer" && "${LAYER_TYPE}" != "layerset" ]]; then
+  log_error "LAYER_TYPE must be 'layer' or 'layerset': ${LAYER_TYPE}"
+  exit 1
+fi
+
+# Locate substituted files from the docker build context
+if [[ "${DOCKER_PLATFORM}" == *,* ]]; then
+  first_platform="${DOCKER_PLATFORM%%,*}"
+  sub_dir="${OUTPUT_SUB_PATH}/docker-${first_platform//\//-}/substituted"
+else
+  sub_dir="${OUTPUT_SUB_PATH}/docker/substituted"
+fi
+
+json_file="${sub_dir}/KaptainPM.json"
+
+if [[ ! -f "${json_file}" ]]; then
+  log_error "Substituted KaptainPM.json not found: ${json_file}"
+  exit 1
+fi
+
+log "Type: ${LAYER_TYPE}"
+log "Validating: ${json_file}"
+
+# JSON syntax check
+if ! jq . "${json_file}" > /dev/null 2>&1; then
+  log_error "Invalid JSON syntax: ${json_file}"
+  exit 1
+fi
+log "JSON syntax valid"
+
+# Schema validation
+if [[ ! -f "${LAYER_SCHEMA_VERSION_FILE}" ]]; then
+  log_error "Schema version file not found: ${LAYER_SCHEMA_VERSION_FILE}"
+  exit 1
+fi
+schema_version=$(cat "${LAYER_SCHEMA_VERSION_FILE}")
+schemas_dir="${SCRIPT_DIR}/../../schemas"
+
+if [[ "${LAYER_TYPE}" == "layerset" ]]; then
+  schema_file="${schemas_dir}/spec-kaptainpm-schema-layerset.${schema_version}.json"
+else
+  schema_file="${schemas_dir}/spec-kaptainpm-schema-layer.${schema_version}.json"
+fi
+
+if [[ ! -f "${schema_file}" ]]; then
+  log_error "Schema file not found: ${schema_file}"
+  exit 1
+fi
+
+log "Schema: $(basename "${schema_file}")"
+check-jsonschema --schemafile "${schema_file}" "${json_file}"
+log "Schema validation passed"
+
+# Layer type: validate layer-payload source paths exist in substituted context
+if [[ "${LAYER_TYPE}" == "layer" ]]; then
+  payload_count=$(jq -r '.["layer-payload"] | length // 0' "${json_file}")
+  if [[ "${payload_count}" -gt 0 ]]; then
+    log "Validating ${payload_count} layer-payload source path(s)..."
+    for ((i = 0; i < payload_count; i++)); do
+      source_path=$(jq -r ".[\"layer-payload\"][${i}].source" "${json_file}")
+      if [[ -z "${source_path}" || "${source_path}" == "null" ]]; then
+        log_error "layer-payload[${i}] has no source path"
+        exit 1
+      fi
+      # Strip leading / for filesystem check (files are at context root)
+      check_path="${sub_dir}/${source_path#/}"
+      if [[ ! -f "${check_path}" ]]; then
+        log_error "layer-payload[${i}] source not found in context: ${source_path}"
+        exit 1
+      fi
+      log "  payload source ok: ${source_path}"
+    done
+  fi
+fi
+
+# Layerset type: validate referenced layer dependencies
+if [[ "${LAYER_TYPE}" == "layerset" ]]; then
+  if [[ "${LAYER_DEPENDENCY_VALIDATION}" == "skip" ]]; then
+    log "Layerset dependency validation: skipped (LAYER_DEPENDENCY_VALIDATION=skip)"
+  else
+    log "Layerset dependency validation: ${LAYER_DEPENDENCY_VALIDATION}"
+    UTIL_DIR="${SCRIPT_DIR}/../util"
+    OCI_EXTRACT="${UTIL_DIR}/oci-scratch-extract"
+
+    layer_count=$(jq -r '.spec.layers | length' "${json_file}")
+    if [[ "${layer_count}" -eq 0 ]]; then
+      log_error "Layerset has no entries in spec.layers"
+      exit 1
+    fi
+
+    validation_failed=false
+    for ((i = 0; i < layer_count; i++)); do
+      ref=$(jq -r ".spec.layers[${i}]" "${json_file}")
+      log "  Checking dependency: ${ref}"
+
+      # Extract to a temp dir and check for KaptainPM.yaml
+      dep_staging="${OUTPUT_SUB_PATH}/layer-validate/deps/${i}"
+      rm -rf "${dep_staging}"
+      mkdir -p "${dep_staging}"
+
+      # Build the full image reference — ref may be short form (name:version)
+      # artifact-resolve would give us the full URI but we need the image directly
+      # Use the same registry/namespace inference as artifact-resolve docker provider
+      if [[ "${ref}" == *"/"* && "${ref%%/*}" == *"."* ]]; then
+        image_ref="${ref}"
+      elif [[ "${ref}" == *"/"* ]]; then
+        image_ref="${DOCKER_TARGET_REGISTRY:-}/${DOCKER_TARGET_NAMESPACE:-}/${ref}"
+      else
+        ref_name="${ref%%:*}"
+        ref_prefix="${ref_name%%-*}"
+        image_ref="${DOCKER_TARGET_REGISTRY:-}/${DOCKER_TARGET_NAMESPACE:-}/${ref_prefix}/${ref}"
+      fi
+
+      if "${OCI_EXTRACT}" "${image_ref}" "${dep_staging}" /KaptainPM.yaml 2>/dev/null; then
+        if [[ -f "${dep_staging}/KaptainPM.yaml" ]]; then
+          log "  ok: ${ref}"
+        else
+          if [[ "${LAYER_DEPENDENCY_VALIDATION}" == "hard" ]]; then
+            log_error "Dependency ${ref} does not contain /KaptainPM.yaml"
+            validation_failed=true
+          else
+            log_warning "Dependency ${ref} does not contain /KaptainPM.yaml"
+          fi
+        fi
+      else
+        if [[ "${LAYER_DEPENDENCY_VALIDATION}" == "hard" ]]; then
+          log_error "Failed to pull dependency: ${ref} (${image_ref})"
+          validation_failed=true
+        else
+          log_warning "Failed to pull dependency: ${ref} (${image_ref}) — continuing (soft mode)"
+        fi
+      fi
+    done
+
+    if [[ "${validation_failed}" == "true" ]]; then
+      log_error "Layerset dependency validation failed"
+      exit 1
+    fi
+    log "Layerset dependency validation passed"
+  fi
+fi
+
+log "Validation complete"

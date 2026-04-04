@@ -8,6 +8,7 @@ setup() {
   export DEFAULT_BRANCH=main
   export TARGET_BRANCH=main
   export CURRENT_BRANCH=test-branch
+  export BUILD_KIND=basic-quality-checks
 }
 
 teardown() {

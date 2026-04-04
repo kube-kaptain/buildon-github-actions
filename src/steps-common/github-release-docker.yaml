@@ -3,16 +3,16 @@
 
 - name: Compute release notes
   id: release-notes
-  if: inputs.github-release-enabled == true && steps.versions.outputs.is-release == 'true'
+  if: steps.kpm.outputs.GITHUB_RELEASE_ENABLED == 'true' && steps.versions.outputs.is-release == 'true'
   shell: bash
   env:
-    USER_NOTES: ${{ inputs.github-release-notes }}
-    USER_NOTES_FILE: ${{ inputs.github-release-notes-file }}
+    USER_NOTES: ${{ steps.kpm.outputs.GITHUB_RELEASE_NOTES }}
+    USER_NOTES_FILE: ${{ steps.kpm.outputs.GITHUB_RELEASE_NOTES_FILE }}
     VERSION: ${{ steps.versions.outputs.version }}
     PROJECT_NAME: ${{ steps.versions.outputs.project-name }}
     DOCKER_URI: ${{ steps.docker-build.outputs.docker-target-image-full-uri }}
     RELEASE_CHANGE_DATA_URI: ${{ steps.release-change-data-oci-package.outputs.release-change-data-image-uri }}
-    OUTPUT_SUB_PATH: ${{ inputs.output-sub-path }}
+    OUTPUT_SUB_PATH: ${{ steps.kpm.outputs.OUTPUT_SUB_PATH }}
     GITHUB_SERVER_URL: ${{ github.server_url }}
     GITHUB_REPOSITORY: ${{ github.repository }}
     BUILD_PLATFORM: github-actions
@@ -48,12 +48,12 @@
     fi
 
 - name: GitHub Release
-  if: inputs.github-release-enabled == true && steps.versions.outputs.is-release == 'true'
+  if: steps.kpm.outputs.GITHUB_RELEASE_ENABLED == 'true' && steps.versions.outputs.is-release == 'true'
   uses: ./.github/buildon-github-actions/src/actions/github-release
   with:
-    github-release-enabled: ${{ inputs.github-release-enabled }}
-    output-sub-path: ${{ inputs.output-sub-path }}
+    github-release-enabled: ${{ steps.kpm.outputs.GITHUB_RELEASE_ENABLED }}
+    output-sub-path: ${{ steps.kpm.outputs.OUTPUT_SUB_PATH }}
     github-release-tag: ${{ steps.versions.outputs.version }}
     github-release-notes: ${{ steps.release-notes.outputs.notes }}
-    github-release-notes-file: ${{ inputs.github-release-notes-file }}
+    github-release-notes-file: ${{ steps.kpm.outputs.GITHUB_RELEASE_NOTES_FILE }}
     github-release-title: ${{ steps.release-notes.outputs.title }}

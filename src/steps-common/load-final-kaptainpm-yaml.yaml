@@ -1,0 +1,11 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
+
+- name: Load final KaptainPM YAML
+  id: kpm
+  shell: bash
+  env:
+    BUILD_KIND: ${WORKFLOW_NAME}
+    BUILD_PLATFORM: github-actions
+    BUILD_PLATFORM_LOG_PROVIDER: github-actions
+  run: ./.github/buildon-github-actions/src/scripts/main/load-final-kaptainpm-yaml

@@ -7,21 +7,21 @@
   with:
     version: ${{ steps.versions.outputs.version }}
     project-name: ${{ steps.versions.outputs.project-name }}
-    dockerfile-sub-path: ${{ inputs.dockerfile-sub-path }}
-    dockerfile-substitution-files: ${{ inputs.dockerfile-substitution-files }}
-    dockerfile-sub-path-linux-amd64: ${{ inputs.dockerfile-sub-path-linux-amd64 }}
-    dockerfile-sub-path-linux-arm64: ${{ inputs.dockerfile-sub-path-linux-arm64 }}
-    output-sub-path: ${{ inputs.output-sub-path }}
-    docker-platform: ${{ inputs.docker-platform }}
+    dockerfile-sub-path: ${{ steps.kpm.outputs.DOCKERFILE_SUB_PATH }}
+    dockerfile-substitution-files: ${{ steps.kpm.outputs.DOCKERFILE_SUBSTITUTION_FILES }}
+    dockerfile-sub-path-linux-amd64: ${{ steps.kpm.outputs.DOCKERFILE_SUB_PATH_LINUX_AMD64 }}
+    dockerfile-sub-path-linux-arm64: ${{ steps.kpm.outputs.DOCKERFILE_SUB_PATH_LINUX_ARM64 }}
+    output-sub-path: ${{ steps.kpm.outputs.OUTPUT_SUB_PATH }}
+    docker-platform: ${{ steps.kpm.outputs.DOCKER_PLATFORM }}
     image-build-command: ${{ steps.validate-tooling.outputs.IMAGE_BUILD_COMMAND }}
-    token-delimiter-style: ${{ inputs.token-delimiter-style }}
-    token-name-style: ${{ inputs.token-name-style }}
-    config-sub-path: ${{ inputs.config-sub-path }}
-    eks-base-image-registry: ${{ inputs.eks-base-image-registry }}
-    eks-base-image-namespace: ${{ inputs.eks-base-image-namespace }}
-    eks-base-image-name: ${{ inputs.eks-base-image-name }}
-    eks-base-image-tag: ${{ inputs.eks-base-image-tag }}
-    eks-private-networking: ${{ inputs.eks-private-networking }}
-    eks-public-networking: ${{ inputs.eks-public-networking }}
-    eks-cilium-ebpf-networking: ${{ inputs.eks-cilium-ebpf-networking }}
-    secrets-sub-path: ${{ inputs.secrets-sub-path }}
+    token-delimiter-style: ${{ steps.kpm.outputs.TOKEN_DELIMITER_STYLE }}
+    token-name-style: ${{ steps.kpm.outputs.TOKEN_NAME_STYLE }}
+    config-sub-path: ${{ steps.kpm.outputs.CONFIG_SUB_PATH }}
+    eks-base-image-registry: ${{ steps.kpm.outputs.EKS_BASE_IMAGE_REGISTRY }}
+    eks-base-image-namespace: ${{ steps.kpm.outputs.EKS_BASE_IMAGE_NAMESPACE }}
+    eks-base-image-name: ${{ steps.kpm.outputs.EKS_BASE_IMAGE_NAME }}
+    eks-base-image-tag: ${{ steps.kpm.outputs.EKS_BASE_IMAGE_TAG }}
+    eks-private-networking: ${{ steps.kpm.outputs.EKS_PRIVATE_NETWORKING }}
+    eks-public-networking: ${{ steps.kpm.outputs.EKS_PUBLIC_NETWORKING }}
+    eks-cilium-ebpf-networking: ${{ steps.kpm.outputs.EKS_CILIUM_EBPF_NETWORKING }}
+    secrets-sub-path: ${{ steps.kpm.outputs.SECRETS_SUB_PATH }}

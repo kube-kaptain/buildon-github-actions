@@ -1,0 +1,53 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
+#
+# artifact-resolve - Resolve artifact references via provider plugins
+#
+# Thin router: strips the provider prefix (if present), defaults to
+# ARTIFACT_RESOLUTION_PROVIDER, and dispatches to the matching plugin.
+#
+# Usage: artifact-resolve <reference>
+#   reference: [provider|]identifier:version
+#
+# Examples:
+#   artifact-resolve "docker|quality-strict:1.0"
+#   artifact-resolve "quality-strict:1.0"           # uses default provider
+#   artifact-resolve "docker|java/java-web:2.1"
+#
+# Env:
+#   ARTIFACT_RESOLUTION_PROVIDER - default provider (default: docker)
+#
+# stdout: whatever the provider plugin outputs (fully resolved reference)
+#
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PLUGINS_DIR="${SCRIPT_DIR}/../plugins/artifact-providers"
+
+# shellcheck source=src/scripts/defaults/artifact-resolution.bash
+source "${SCRIPT_DIR}/../defaults/artifact-resolution.bash"
+
+reference="${1:?Usage: artifact-resolve <reference>}"
+
+# Split on | to extract provider prefix
+if [[ "${reference}" == *"|"* ]]; then
+  provider="${reference%%|*}"
+  remainder="${reference#*|}"
+else
+  provider="${ARTIFACT_RESOLUTION_PROVIDER}"
+  remainder="${reference}"
+fi
+
+if [[ -z "${provider}" ]]; then
+  echo "Empty provider in reference: ${reference}" >&2
+  exit 1
+fi
+
+plugin="${PLUGINS_DIR}/${provider}"
+if [[ ! -x "${plugin}" ]]; then
+  echo "Unknown artifact provider: ${provider} (no plugin at ${plugin})" >&2
+  exit 1
+fi
+
+exec "${plugin}" "${remainder}"

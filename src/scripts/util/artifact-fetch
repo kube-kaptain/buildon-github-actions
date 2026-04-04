@@ -1,0 +1,54 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
+#
+# artifact-fetch - Download artifacts via provider plugins
+#
+# Thin router: strips the provider prefix (if present), defaults to
+# ARTIFACT_RESOLUTION_PROVIDER, and dispatches to the matching downloader plugin.
+#
+# Usage: artifact-fetch <reference> <dest-dir> [<path-in-artifact> ...]
+#   reference:        [provider|]resolved-uri
+#   dest-dir:         local directory to write files into
+#   path-in-artifact: optional paths to extract (provider-specific)
+#
+# Examples:
+#   artifact-fetch "docker|ghcr.io/org/quality/quality-strict:1.0" ./dest/ /KaptainPM.yaml
+#   artifact-fetch "ghcr.io/org/quality/quality-strict:1.0" ./dest/ /KaptainPM.yaml
+#
+# Env:
+#   ARTIFACT_RESOLUTION_PROVIDER - default provider (default: docker)
+#
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PLUGINS_DIR="${SCRIPT_DIR}/../plugins/artifact-downloaders"
+
+# shellcheck source=src/scripts/defaults/artifact-resolution.bash
+source "${SCRIPT_DIR}/../defaults/artifact-resolution.bash"
+
+reference="${1:?Usage: artifact-fetch <reference> <dest-dir> [<path-in-artifact> ...]}"
+dest_dir="${2:?Usage: artifact-fetch <reference> <dest-dir> [<path-in-artifact> ...]}"
+shift 2
+
+# Split on | to extract provider prefix
+if [[ "${reference}" == *"|"* ]]; then
+  provider="${reference%%|*}"
+  remainder="${reference#*|}"
+else
+  provider="${ARTIFACT_RESOLUTION_PROVIDER}"
+  remainder="${reference}"
+fi
+
+if [[ -z "${provider}" ]]; then
+  echo "Empty provider in reference: ${reference}" >&2
+  exit 1
+fi
+
+plugin="${PLUGINS_DIR}/${provider}"
+if [[ ! -x "${plugin}" ]]; then
+  echo "Unknown artifact downloader: ${provider} (no plugin at ${plugin})" >&2
+  exit 1
+fi
+
+exec "${plugin}" "${remainder}" "${dest_dir}" "$@"

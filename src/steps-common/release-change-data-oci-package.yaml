@@ -11,7 +11,7 @@
     docker-target-registry: ${{ steps.resolve-registry.outputs.docker-target-registry }}
     docker-target-namespace: ${{ steps.resolve-registry.outputs.docker-target-namespace }}
     project-name: ${{ steps.versions.outputs.project-name }}
-    output-sub-path: ${{ inputs.output-sub-path }}
+    output-sub-path: ${{ steps.kpm.outputs.OUTPUT_SUB_PATH }}
     docker-push-image-list-file: ${{ steps.docker-registry-logins.outputs.docker-push-image-list-file }}
     image-build-command: ${{ steps.validate-tooling.outputs.IMAGE_BUILD_COMMAND }}
-    docker-platform: ${{ inputs.docker-platform }}
+    docker-platform: ${{ steps.kpm.outputs.DOCKER_PLATFORM }}

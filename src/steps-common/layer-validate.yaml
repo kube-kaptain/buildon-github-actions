@@ -1,0 +1,14 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
+
+- name: Validate layer
+  id: layer-validate
+  uses: ./.github/buildon-github-actions/src/actions/layer-validate
+  with:
+    layer-type: ${{ steps.layer-package-prepare.outputs.LAYER_TYPE }}
+    image-build-command: ${{ steps.validate-tooling.outputs.IMAGE_BUILD_COMMAND }}
+    docker-platform: ${{ steps.kpm.outputs.DOCKER_PLATFORM }}
+    layer-dependency-validation: ${{ steps.kpm.outputs.LAYER_DEPENDENCY_VALIDATION }}
+    docker-target-registry: ${{ steps.resolve-registry.outputs.docker-target-registry }}
+    docker-target-namespace: ${{ steps.resolve-registry.outputs.docker-target-namespace }}
+    output-sub-path: ${{ steps.kpm.outputs.OUTPUT_SUB_PATH }}

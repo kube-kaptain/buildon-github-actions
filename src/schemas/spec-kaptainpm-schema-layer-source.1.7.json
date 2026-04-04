@@ -1,0 +1,1874 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/kube-kaptain/spec-kaptainpm-schema/releases/download/1.7/spec-kaptainpm-schema-layer-source-1.7.yaml",
+  "name": "spec-kaptainpm-schema",
+  "version": "1.7",
+  "source": "https://github.com/kube-kaptain/spec-kaptainpm-schema",
+  "latest": "https://raw.githubusercontent.com/kube-kaptain/spec-kaptainpm-schema/main/spec-kaptainpm-schema.yaml",
+  "tagged": "https://raw.githubusercontent.com/kube-kaptain/spec-kaptainpm-schema/1.7/spec-kaptainpm-schema.yaml",
+  "release": "https://github.com/kube-kaptain/spec-kaptainpm-schema/releases/download/1.7/spec-kaptainpm-schema-layer-source-1.7.yaml",
+  "validate-using": "https://github.com/kube-kaptain/spec-kaptainpm-schema/releases/download/1.7/spec-kaptainpm-schema-layer-source-1.7.json",
+  "title": "KaptainPM",
+  "description": "Kaptain project manifest schema (version 1.7).\n",
+  "type": "object",
+  "required": [
+    "apiVersion"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "apiVersion": {
+      "type": "string",
+      "pattern": "^kaptain\\.org/[0-9]+(\\.[0-9]+)*$",
+      "description": "API version - must be kaptain.org/ followed by the schema version (e.g. kaptain.org/1.2). Set via 1.7 token substitution at build time.\n"
+    },
+    "kind": {
+      "type": "string",
+      "description": "Build process name matching the workflow/reference script used (e.g. kubernetes-app-docker-dockerfile). Kebab-case, exact equality check against the build wrapper's BUILD_KIND. Mismatch is an immediate failure in the preamble.\n"
+    },
+    "metadata": {
+      "type": "object",
+      "additionalProperties": true,
+      "description": "Project metadata including build traceability labels and annotations. When present, label and annotation values must be strings.\n",
+      "properties": {
+        "description": {
+          "type": "string",
+          "description": "Human-readable project description."
+        },
+        "labels": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "Queryable build metadata labels. All values must be strings."
+        },
+        "annotations": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "Informational build metadata annotations. All values must be strings."
+        }
+      }
+    },
+    "user-data": {
+      "type": "object",
+      "description": "Free-form custom data for layer-provided tools. No enforced schema. Deep merged like any other map field - layers provide defaults, local overrides win.\n"
+    },
+    "spec": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Build configuration",
+      "properties": {
+        "credentials": {
+          "$ref": "#/$defs/credentials"
+        },
+        "templates": {
+          "$ref": "#/$defs/artifactReferenceList",
+          "description": "Manifest template sets pulled in and token-substituted to become this project's own manifest output. Replaces generators or hand-written manifests.\n"
+        },
+        "contents": {
+          "$ref": "#/$defs/artifactReferenceList",
+          "description": "Finished manifest artifacts from other projects bundled into this deliverable. Front and centre in product/environment builds.\n"
+        },
+        "data": {
+          "$ref": "#/$defs/specData"
+        },
+        "global": {
+          "$ref": "#/$defs/specGlobal"
+        },
+        "main": {
+          "$ref": "#/$defs/specMain"
+        },
+        "platform": {
+          "$ref": "#/$defs/specPlatform"
+        }
+      }
+    },
+    "layer-payload": {
+      "$ref": "#/$defs/layerPayload"
+    }
+  },
+  "$defs": {
+    "layerPayload": {
+      "type": "array",
+      "description": "Additional files the layer image carries alongside KaptainPM.yaml. Layer-only - the unknown-key validator rejects this in project root files.\n",
+      "items": {
+        "$ref": "#/$defs/layerPayloadItem"
+      }
+    },
+    "layerPayloadItem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source",
+        "destination"
+      ],
+      "description": "A file or directory entry in the layer image to be extracted",
+      "properties": {
+        "source": {
+          "type": "string",
+          "description": "Absolute path of the file or directory inside the image from container root (e.g. /scripts/build.bash)\n"
+        },
+        "destination": {
+          "type": "string",
+          "description": "Relative directory path from repo root where contents land. mkdir -p is run before any copy or unpack operation. (e.g. .kaptain/scripts/)\n"
+        },
+        "unpack": {
+          "type": "string",
+          "enum": [
+            "tar.gz",
+            "tar.bz2",
+            "tar.xz",
+            "tar",
+            "zip",
+            "gz",
+            "bz2",
+            "xz"
+          ],
+          "description": "Archive format for unpacking. Absent means plain copy. Invalid on directory sources.\n"
+        }
+      }
+    },
+    "credentials": {
+      "type": "array",
+      "description": "Build-time credential names. Names only - values are sourced from the platform (GitHub Actions secrets, local files, etc.). Validated early in the preamble; fails immediately if any declared credential is unavailable. Must be complete in the project root file before the wrapper can expose any secrets (runtime enforcement, not schema).\n",
+      "items": {
+        "type": "string",
+        "pattern": "^[A-Z][A-Z0-9_]*$",
+        "description": "Credential name as an uppercase env var name"
+      }
+    },
+    "artifactReferenceList": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/artifactReference"
+      }
+    },
+    "artifactReference": {
+      "description": "Artifact reference. Three forms are supported:\n\n  Short    name:version              (default registry and namespace)\n  Prefixed prefix/name:version       (default registry, explicit namespace)\n  Full     domain/path/name:version  (explicit registry - first segment contains a dot)\nVersion is either an exact version (one or more dot-separated integers, optional -PRERELEASE suffix) or a Maven-style range (e.g. [1.0,2.0), (1.0,), (,2.0]).\n",
+      "oneOf": [
+        {
+          "description": "Short form: name:version-or-range",
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]*:([0-9]+(\\.[0-9]+)*(-PRERELEASE)?|[\\[\\(][0-9]*(\\.[0-9]+)*,[0-9]*(\\.[0-9]+)*[\\]\\)])$"
+        },
+        {
+          "description": "Prefixed form: prefix/name:version-or-range",
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]*/[a-z][a-z0-9-]*:([0-9]+(\\.[0-9]+)*(-PRERELEASE)?|[\\[\\(][0-9]*(\\.[0-9]+)*,[0-9]*(\\.[0-9]+)*[\\]\\)])$"
+        },
+        {
+          "description": "Full form: domain/.../name:version-or-range (first segment contains a dot)",
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9.-]*\\.[a-z]{2,}(:[0-9]+)?(/[a-z0-9][a-z0-9._-]*)+:([0-9]+(\\.[0-9]+)*(-PRERELEASE)?|[\\[\\(][0-9]*(\\.[0-9]+)*,[0-9]*(\\.[0-9]+)*[\\]\\)])$"
+        }
+      ]
+    },
+    "artifactReferenceFixedList": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/artifactReferenceFixed"
+      }
+    },
+    "artifactReferenceFixed": {
+      "description": "Artifact reference with a pinned exact version (no ranges allowed). Used in resolved/built artifacts where all versions must be concrete. Same three forms as artifactReference but version must be exact.\n",
+      "oneOf": [
+        {
+          "description": "Short form: name:version",
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]*:[0-9]+(\\.[0-9]+)*(-PRERELEASE)?$"
+        },
+        {
+          "description": "Prefixed form: prefix/name:version",
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]*/[a-z][a-z0-9-]*:[0-9]+(\\.[0-9]+)*(-PRERELEASE)?$"
+        },
+        {
+          "description": "Full form: domain/.../name:version (first segment contains a dot)",
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9.-]*\\.[a-z]{2,}(:[0-9]+)?(/[a-z0-9][a-z0-9._-]*)+:[0-9]+(\\.[0-9]+)*(-PRERELEASE)?$"
+        }
+      ]
+    },
+    "specData": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Content that feeds into built artifacts",
+      "properties": {
+        "config": {
+          "type": "object",
+          "description": "Token values for all manifests. Field names are token names, field values are token values. Must not duplicate names declared in global.configSubPath files.\n",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "secrets": {
+          "type": "object",
+          "description": "Token values for k8s Secret manifest contents only. Applied last, after config substitution.\n",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "specGlobal": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Shared settings used across all pipeline stages",
+      "properties": {
+        "outputSubPath": {
+          "type": "string",
+          "description": "Build output directory (default: kaptain-out)"
+        },
+        "configSubPath": {
+          "type": "string",
+          "description": "Directory with user-defined token files (default: src/config)"
+        },
+        "secretsSubPath": {
+          "type": "string",
+          "description": "Directory with user-defined secret files (default: src/secrets)"
+        },
+        "tokens": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Token substitution configuration",
+          "properties": {
+            "delimiterStyle": {
+              "type": "string",
+              "enum": [
+                "shell",
+                "mustache",
+                "helm",
+                "double-curly",
+                "at-sign",
+                "dollar-sign",
+                "percent",
+                "hash",
+                "xml",
+                "erb",
+                "github-actions",
+                "blade",
+                "stringtemplate",
+                "ognl",
+                "t4",
+                "swift"
+              ],
+              "description": "Token syntax style (default: shell)"
+            },
+            "nameStyle": {
+              "type": "string",
+              "enum": [
+                "PascalCase",
+                "camelCase",
+                "UPPER_SNAKE",
+                "lower_snake",
+                "lower-kebab",
+                "UPPER-KEBAB",
+                "lower.dot",
+                "UPPER.DOT"
+              ],
+              "description": "Token name casing convention (default: PascalCase)"
+            },
+            "nameValidation": {
+              "type": "string",
+              "enum": [
+                "MATCH",
+                "ALL"
+              ],
+              "description": "MATCH enforces the nameStyle, ALL accepts any casing (default: MATCH)\n"
+            },
+            "allowBuiltinOverride": {
+              "type": "boolean",
+              "description": "Allow user tokens to override built-in tokens (default: false)"
+            },
+            "substitutionPasses": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Number of token substitution passes (default: 1)"
+            },
+            "valueTrailingNewline": {
+              "type": "string",
+              "enum": [
+                "strip-for-single-line",
+                "preserve-all",
+                "always-strip-one-newline"
+              ],
+              "description": "Trailing newline handling for token values (default: strip-for-single-line)"
+            }
+          }
+        },
+        "release": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Versioning and release branch configuration",
+          "properties": {
+            "branch": {
+              "type": "string",
+              "description": "Primary release branch (default: main)"
+            },
+            "additionalBranches": {
+              "type": "string",
+              "description": "Comma-separated additional release branches"
+            },
+            "versioning": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "maxParts": {
+                  "type": "string",
+                  "pattern": "^[0-9]+$",
+                  "description": "Maximum version parts allowed before failure (default: 3)"
+                },
+                "strategy": {
+                  "type": "string",
+                  "enum": [
+                    "git-auto-closest-highest",
+                    "file-pattern-match",
+                    "compound-file-pattern-match"
+                  ],
+                  "description": "Version calculation strategy (default: git-auto-closest-highest)"
+                },
+                "patternType": {
+                  "type": "string",
+                  "enum": [
+                    "dockerfile-env-kubectl",
+                    "retag-workflow-source-tag",
+                    "custom"
+                  ],
+                  "description": "Pattern type for file-pattern-match strategies"
+                },
+                "useSourceVersionExact": {
+                  "type": "boolean",
+                  "description": "Use the source version exactly without incrementing (default: false)"
+                },
+                "source": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "description": "Primary version source file configuration",
+                  "properties": {
+                    "subPath": {
+                      "type": "string",
+                      "description": "Override path to source directory"
+                    },
+                    "fileName": {
+                      "type": "string",
+                      "description": "Override source file name"
+                    },
+                    "pattern": {
+                      "type": "string",
+                      "description": "Regex with capture group for custom pattern type"
+                    },
+                    "prefixParts": {
+                      "type": "string",
+                      "pattern": "^[0-9]+$",
+                      "description": "Parts from source as prefix (output = prefix + 1)"
+                    }
+                  }
+                },
+                "sourceTwo": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "description": "Secondary version source file configuration (compound strategies)",
+                  "properties": {
+                    "subPath": {
+                      "type": "string",
+                      "description": "Override path to secondary source directory"
+                    },
+                    "fileName": {
+                      "type": "string",
+                      "description": "Override secondary source file name"
+                    },
+                    "pattern": {
+                      "type": "string",
+                      "description": "Regex with capture group for secondary source"
+                    },
+                    "prefixParts": {
+                      "type": "string",
+                      "pattern": "^[0-9]+$",
+                      "description": "Parts from secondary source as prefix"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "specPlatform": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Platform-specific build configuration",
+      "properties": {
+        "githubActions": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "GitHub Actions-specific configuration",
+          "properties": {
+            "release": {
+              "type": "object",
+              "additionalProperties": false,
+              "description": "GitHub Releases configuration",
+              "properties": {
+                "enabled": {
+                  "type": "string",
+                  "description": "Create a GitHub Release on version tags (default: true)"
+                },
+                "addVersionToFilenames": {
+                  "type": "string",
+                  "description": "Add version suffix to release artifact filenames (default: true)"
+                },
+                "notes": {
+                  "type": "string",
+                  "description": "Inline release notes (mutually exclusive with notesFile)"
+                },
+                "notesFile": {
+                  "type": "string",
+                  "description": "Path to a file containing release notes (mutually exclusive with notes)"
+                },
+                "substitutedFiles": {
+                  "type": "string",
+                  "description": "Comma-separated files to token-substitute before attaching to the release"
+                },
+                "verbatimFiles": {
+                  "type": "string",
+                  "description": "Comma-separated files to attach to the release as-is"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "specMain": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Pipeline stage configuration",
+      "properties": {
+        "quality": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Branch and commit naming enforcement",
+          "properties": {
+            "branches": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "blockSlashes": {
+                  "type": "boolean",
+                  "description": "Reject branch names containing forward slashes"
+                },
+                "blockDoubleHyphens": {
+                  "type": "boolean",
+                  "description": "Reject branch names containing double hyphens"
+                },
+                "requireConventional": {
+                  "type": "boolean",
+                  "description": "Require conventional branch naming convention"
+                }
+              }
+            },
+            "commits": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "requireConventional": {
+                  "type": "boolean",
+                  "description": "Require conventional commit message format"
+                },
+                "blockConventional": {
+                  "type": "boolean",
+                  "description": "Block conventional commit message format"
+                },
+                "blockDuplicateMessages": {
+                  "type": "boolean",
+                  "description": "Block duplicate commit messages in a PR"
+                }
+              }
+            }
+          }
+        },
+        "docker": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Container image build and retag configuration",
+          "properties": {
+            "runtime": {
+              "type": "string",
+              "enum": [
+                "podman",
+                "docker"
+              ],
+              "description": "Container runtime override. When omitted, auto-detected: build_server requires podman, local prefers podman but accepts docker. validate-tooling checks availability and creates a docker->podman symlink when podman is the runtime.\n"
+            },
+            "platform": {
+              "type": "string",
+              "description": "Docker build platform(s). Single value or comma-separated for multi-platform manifest list (e.g. linux/amd64,linux/arm64). Default: linux/amd64\n"
+            },
+            "logins": {
+              "type": "object",
+              "description": "Registry login configuration keyed by domain",
+              "additionalProperties": {
+                "$ref": "#/$defs/registryLogin"
+              }
+            },
+            "targetRegistry": {
+              "type": "string",
+              "description": "Target registry domain for built images"
+            },
+            "targetNamespace": {
+              "type": "string",
+              "description": "Target namespace/organisation for built images"
+            },
+            "pushTargets": {
+              "type": "array",
+              "description": "Additional registries to push the built image to",
+              "items": {
+                "$ref": "#/$defs/pushTarget"
+              }
+            },
+            "dockerfile": {
+              "type": "object",
+              "additionalProperties": false,
+              "description": "Dockerfile build configuration",
+              "properties": {
+                "substitutionFiles": {
+                  "type": "string",
+                  "description": "Files to perform token substitution on (default: Dockerfile)"
+                },
+                "subPath": {
+                  "type": "string",
+                  "description": "Directory containing the Dockerfile (default: src/docker)"
+                },
+                "subPathLinuxAmd64": {
+                  "type": "string",
+                  "description": "Platform-specific Dockerfile directory for linux/amd64 (default: src/docker-linux-amd64)"
+                },
+                "subPathLinuxArm64": {
+                  "type": "string",
+                  "description": "Platform-specific Dockerfile directory for linux/arm64 (default: src/docker-linux-arm64)"
+                },
+                "squash": {
+                  "type": "string",
+                  "description": "Squash image layers (podman only, default: squash)"
+                },
+                "noCache": {
+                  "type": "boolean",
+                  "description": "Disable docker build cache (default: true)"
+                }
+              }
+            },
+            "retag": {
+              "type": "object",
+              "additionalProperties": false,
+              "description": "Retag an upstream image rather than building from a Dockerfile",
+              "properties": {
+                "sourceRegistry": {
+                  "type": "string",
+                  "description": "Source registry domain (default: docker.io)"
+                },
+                "sourceNamespace": {
+                  "type": "string",
+                  "description": "Source namespace/organisation"
+                },
+                "sourceImageName": {
+                  "type": "string",
+                  "description": "Source image name"
+                },
+                "sourceTag": {
+                  "type": "string",
+                  "description": "Source image tag"
+                }
+              }
+            }
+          }
+        },
+        "externalImage": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "External image reference for manifests-only workflows (no docker build)",
+          "properties": {
+            "name": {
+              "type": "string",
+              "description": "Docker image name (if provided, substitutes into manifests; if empty, token remains for later substitution)"
+            },
+            "tag": {
+              "type": "string",
+              "description": "Docker image tag (if provided, substitutes into manifests; if empty, token remains for later substitution)"
+            }
+          }
+        },
+        "generators": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Kubernetes manifest generators",
+          "properties": {
+            "common": {
+              "type": "object",
+              "additionalProperties": false,
+              "description": "Labels and annotations applied to all generated manifests",
+              "properties": {
+                "additionalLabels": {
+                  "type": "string",
+                  "description": "Additional labels for all generated manifests"
+                },
+                "additionalAnnotations": {
+                  "type": "string",
+                  "description": "Additional annotations for all generated manifests"
+                }
+              }
+            },
+            "workload": {
+              "type": "object",
+              "additionalProperties": false,
+              "description": "Shared workload configuration. workload.type selects which type-specific sibling section applies.\n",
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "deployment",
+                    "statefulset",
+                    "daemonset",
+                    "cronjob",
+                    "job",
+                    "none"
+                  ],
+                  "description": "Workload type (default: deployment)"
+                },
+                "replicas": {
+                  "type": "string",
+                  "pattern": "^[0-9]+$",
+                  "description": "Desired replica count"
+                },
+                "revisionHistoryLimit": {
+                  "type": "string",
+                  "pattern": "^[0-9]+$",
+                  "description": "Number of old ReplicaSets to retain (default: 10)"
+                },
+                "minReadySeconds": {
+                  "type": "string",
+                  "pattern": "^[0-9]+$",
+                  "description": "Minimum seconds a pod must be ready (default: 0)"
+                },
+                "nameSuffix": {
+                  "type": "string",
+                  "description": "Suffix appended to generated workload name"
+                },
+                "combinedSubPath": {
+                  "type": "string",
+                  "description": "Combined sub-path for workload manifests"
+                },
+                "envSubPath": {
+                  "type": "string",
+                  "description": "Sub-path for workload environment files"
+                },
+                "additionalLabels": {
+                  "type": "string",
+                  "description": "Additional labels for workload manifests"
+                },
+                "additionalAnnotations": {
+                  "type": "string",
+                  "description": "Additional annotations for workload manifests"
+                },
+                "container": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "port": {
+                      "type": "string",
+                      "pattern": "^[0-9]+$",
+                      "description": "Primary container port (default: 1024)"
+                    },
+                    "command": {
+                      "type": "string",
+                      "description": "Container command override"
+                    },
+                    "args": {
+                      "type": "string",
+                      "description": "Container args override"
+                    },
+                    "imageReferenceStyle": {
+                      "type": "string",
+                      "enum": [
+                        "combined",
+                        "split"
+                      ],
+                      "description": "Image reference style (default: combined)"
+                    },
+                    "readonlyRootFilesystem": {
+                      "type": "boolean",
+                      "description": "Mount root filesystem read-only (default: true)"
+                    },
+                    "resources": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "memory": {
+                          "type": "string",
+                          "description": "Memory request and limit (default: 10Mi)"
+                        },
+                        "cpuRequest": {
+                          "type": "string",
+                          "description": "CPU request (default: 100m)"
+                        },
+                        "cpuLimit": {
+                          "type": "string",
+                          "description": "CPU limit (omitted by default)"
+                        },
+                        "ephemeralStorage": {
+                          "type": "string",
+                          "description": "Ephemeral storage request and limit (default: 10Mi)"
+                        }
+                      }
+                    },
+                    "mounts": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "configmap": {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "properties": {
+                            "path": {
+                              "type": "string",
+                              "description": "ConfigMap mount path (default: /configmap)"
+                            },
+                            "keysForEnv": {
+                              "type": "string",
+                              "description": "ConfigMap keys to expose as env vars"
+                            }
+                          }
+                        },
+                        "secret": {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "properties": {
+                            "path": {
+                              "type": "string",
+                              "description": "Secret mount path (default: /secret)"
+                            },
+                            "keysForEnv": {
+                              "type": "string",
+                              "description": "Secret keys to expose as env vars"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                "security": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "seccompProfile": {
+                      "type": "string",
+                      "description": "Seccomp profile (default: DISABLED)"
+                    },
+                    "automountServiceAccountToken": {
+                      "type": "boolean",
+                      "description": "Automount service account token (default: false)"
+                    },
+                    "imagePullSecrets": {
+                      "type": "string",
+                      "description": "Image pull secrets (default: ENABLED)"
+                    }
+                  }
+                },
+                "terminationGracePeriodSeconds": {
+                  "type": "string",
+                  "pattern": "^[0-9]+$",
+                  "description": "Pod termination grace period (default: 10)"
+                },
+                "prestopCommand": {
+                  "type": "string",
+                  "description": "PreStop lifecycle hook command"
+                },
+                "scheduling": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "affinityStrategy": {
+                      "type": "string",
+                      "description": "Pod affinity strategy (default: spread-nodes-and-zones-ha)"
+                    },
+                    "tolerations": {
+                      "type": "string",
+                      "description": "Pod tolerations (scripts read KaptainPM.yaml directly for complex values)"
+                    },
+                    "nodeSelector": {
+                      "type": "string",
+                      "description": "Node selector (scripts read KaptainPM.yaml directly for complex values)"
+                    },
+                    "dnsPolicy": {
+                      "type": "string",
+                      "description": "Pod DNS policy"
+                    },
+                    "priorityClassName": {
+                      "type": "string",
+                      "description": "Pod priority class name"
+                    }
+                  }
+                },
+                "probes": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "liveness": {
+                      "$ref": "#/$defs/probeConfig"
+                    },
+                    "readiness": {
+                      "$ref": "#/$defs/probeConfig"
+                    },
+                    "startup": {
+                      "$ref": "#/$defs/probeConfig"
+                    }
+                  }
+                }
+              }
+            },
+            "deployment": {
+              "type": "object",
+              "additionalProperties": false,
+              "description": "Deployment-specific settings (workload.type=deployment)",
+              "properties": {
+                "envSubPath": {
+                  "type": "string",
+                  "description": "Deployment environment files sub-path (default: src/deployment-env)"
+                },
+                "additionalLabels": {
+                  "type": "string",
+                  "description": "Additional labels for deployment manifests"
+                },
+                "additionalAnnotations": {
+                  "type": "string",
+                  "description": "Additional annotations for deployment manifests"
+                },
+                "rollingUpdate": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "maxSurge": {
+                      "type": "string",
+                      "description": "Max pods over desired during rolling update (default: 1)"
+                    },
+                    "maxUnavailable": {
+                      "type": "string",
+                      "description": "Max unavailable pods during rolling update (default: 0)"
+                    }
+                  }
+                }
+              }
+            },
+            "statefulset": {
+              "type": "object",
+              "additionalProperties": false,
+              "description": "StatefulSet-specific settings (workload.type=statefulset)",
+              "properties": {
+                "envSubPath": {
+                  "type": "string",
+                  "description": "StatefulSet environment files sub-path (default: src/statefulset-env)"
+                },
+                "additionalLabels": {
+                  "type": "string",
+                  "description": "Additional labels for statefulset manifests"
+                },
+                "additionalAnnotations": {
+                  "type": "string",
+                  "description": "Additional annotations for statefulset manifests"
+                },
+                "serviceName": {
+                  "type": "string",
+                  "description": "Governing headless service name"
+                },
+                "podManagementPolicy": {
+                  "type": "string",
+                  "enum": [
+                    "OrderedReady",
+                    "Parallel"
+                  ],
+                  "description": "Pod management policy (default: OrderedReady)"
+                },
+                "allowUnreliablePodManagementPolicy": {
+                  "type": "string",
+                  "description": "Allow unreliable pod management policy override"
+                },
+                "updateStrategy": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "enum": [
+                        "RollingUpdate",
+                        "OnDelete"
+                      ],
+                      "description": "Update strategy type (default: RollingUpdate)"
+                    },
+                    "partition": {
+                      "type": "string",
+                      "pattern": "^[0-9]+$",
+                      "description": "Partition ordinal for canary updates"
+                    }
+                  }
+                },
+                "pvc": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "description": "PersistentVolumeClaim configuration",
+                  "properties": {
+                    "enabled": {
+                      "type": "string",
+                      "description": "Enable PVC generation (default: true)"
+                    },
+                    "storageClass": {
+                      "type": "string",
+                      "description": "Storage class name"
+                    },
+                    "storageSize": {
+                      "type": "string",
+                      "description": "PVC storage size (default: 1Gi)"
+                    },
+                    "accessMode": {
+                      "type": "string",
+                      "enum": [
+                        "ReadWriteOnce",
+                        "ReadOnlyMany",
+                        "ReadWriteMany"
+                      ],
+                      "description": "PVC access mode (default: ReadWriteOnce)"
+                    },
+                    "volumeName": {
+                      "type": "string",
+                      "description": "Volume name (default: data)"
+                    },
+                    "mountPath": {
+                      "type": "string",
+                      "description": "Mount path in container (default: /data)"
+                    }
+                  }
+                }
+              }
+            },
+            "daemonset": {
+              "type": "object",
+              "additionalProperties": false,
+              "description": "DaemonSet-specific settings (workload.type=daemonset)",
+              "properties": {
+                "envSubPath": {
+                  "type": "string",
+                  "description": "DaemonSet environment files sub-path (default: src/daemonset-env)"
+                },
+                "additionalLabels": {
+                  "type": "string",
+                  "description": "Additional labels for daemonset manifests"
+                },
+                "additionalAnnotations": {
+                  "type": "string",
+                  "description": "Additional annotations for daemonset manifests"
+                },
+                "updateStrategy": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "enum": [
+                        "RollingUpdate",
+                        "OnDelete"
+                      ],
+                      "description": "Update strategy type (default: RollingUpdate)"
+                    },
+                    "maxUnavailable": {
+                      "type": "string",
+                      "description": "Max unavailable pods during rolling update (default: 1)"
+                    }
+                  }
+                },
+                "hostNetwork": {
+                  "type": "string",
+                  "description": "Use host network (default: false)"
+                },
+                "hostPid": {
+                  "type": "string",
+                  "description": "Use host PID namespace (default: false)"
+                },
+                "hostIpc": {
+                  "type": "string",
+                  "description": "Use host IPC namespace (default: false)"
+                },
+                "runAsNonRoot": {
+                  "type": "boolean",
+                  "description": "Run as non-root user (default: true)"
+                },
+                "privileged": {
+                  "type": "string",
+                  "description": "Run in privileged mode (default: false)"
+                },
+                "dnsPolicy": {
+                  "type": "string",
+                  "description": "Pod DNS policy"
+                },
+                "tolerations": {
+                  "type": "string",
+                  "description": "Pod tolerations"
+                },
+                "nodeSelector": {
+                  "type": "string",
+                  "description": "Node selector"
+                }
+              }
+            },
+            "cronjob": {
+              "type": "object",
+              "additionalProperties": false,
+              "description": "CronJob-specific settings (workload.type=cronjob)",
+              "properties": {
+                "nameSuffix": {
+                  "type": "string",
+                  "description": "Suffix appended to generated CronJob name"
+                },
+                "combinedSubPath": {
+                  "type": "string",
+                  "description": "Combined sub-path for CronJob manifests"
+                },
+                "concurrencyPolicy": {
+                  "type": "string",
+                  "enum": [
+                    "Allow",
+                    "Forbid",
+                    "Replace"
+                  ],
+                  "description": "How concurrent executions are handled (default: Forbid)"
+                },
+                "startingDeadlineSeconds": {
+                  "type": "string",
+                  "pattern": "^[0-9]+$",
+                  "description": "Deadline in seconds for starting the job"
+                },
+                "successfulJobsHistoryLimit": {
+                  "type": "string",
+                  "pattern": "^[0-9]+$",
+                  "description": "Successful jobs to retain (default: 1)"
+                },
+                "failedJobsHistoryLimit": {
+                  "type": "string",
+                  "pattern": "^[0-9]+$",
+                  "description": "Failed jobs to retain (default: 5)"
+                },
+                "backoffLimit": {
+                  "type": "string",
+                  "pattern": "^[0-9]+$",
+                  "description": "Retries before marking job failed (default: 0)"
+                },
+                "completions": {
+                  "type": "string",
+                  "pattern": "^[0-9]+$",
+                  "description": "Desired completions (default: 1)"
+                },
+                "parallelism": {
+                  "type": "string",
+                  "pattern": "^[0-9]+$",
+                  "description": "Max parallel pods (default: 1)"
+                },
+                "activeDeadlineSeconds": {
+                  "type": "string",
+                  "pattern": "^[0-9]+$",
+                  "description": "Active deadline in seconds"
+                },
+                "ttlSecondsAfterFinished": {
+                  "type": "string",
+                  "pattern": "^[0-9]+$",
+                  "description": "TTL seconds after job finished"
+                },
+                "restartPolicy": {
+                  "type": "string",
+                  "enum": [
+                    "Never",
+                    "OnFailure"
+                  ],
+                  "description": "Pod restart policy (default: Never)"
+                },
+                "envSubPath": {
+                  "type": "string",
+                  "description": "CronJob environment files sub-path"
+                },
+                "additionalLabels": {
+                  "type": "string",
+                  "description": "Additional labels for CronJob manifests"
+                },
+                "additionalAnnotations": {
+                  "type": "string",
+                  "description": "Additional annotations for CronJob manifests"
+                },
+                "portsEnabled": {
+                  "type": "string",
+                  "description": "Enable port definitions (default: false)"
+                },
+                "probes": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "livenessEnabled": {
+                      "type": "string",
+                      "description": "Enable liveness probe (default: false)"
+                    },
+                    "readinessEnabled": {
+                      "type": "string",
+                      "description": "Enable readiness probe (default: false)"
+                    },
+                    "startupEnabled": {
+                      "type": "string",
+                      "description": "Enable startup probe (default: false)"
+                    }
+                  }
+                }
+              }
+            },
+            "job": {
+              "type": "object",
+              "additionalProperties": false,
+              "description": "Job-specific settings (workload.type=job)",
+              "properties": {
+                "nameSuffix": {
+                  "type": "string",
+                  "description": "Suffix appended to generated Job name"
+                },
+                "combinedSubPath": {
+                  "type": "string",
+                  "description": "Combined sub-path for Job manifests"
+                },
+                "backoffLimit": {
+                  "type": "string",
+                  "pattern": "^[0-9]+$",
+                  "description": "Retries before marking job failed (default: 0)"
+                },
+                "completions": {
+                  "type": "string",
+                  "pattern": "^[0-9]+$",
+                  "description": "Desired completions (default: 1)"
+                },
+                "parallelism": {
+                  "type": "string",
+                  "pattern": "^[0-9]+$",
+                  "description": "Max parallel pods (default: 1)"
+                },
+                "activeDeadlineSeconds": {
+                  "type": "string",
+                  "pattern": "^[0-9]+$",
+                  "description": "Active deadline in seconds"
+                },
+                "ttlSecondsAfterFinished": {
+                  "type": "string",
+                  "pattern": "^[0-9]+$",
+                  "description": "TTL seconds after job finished (default: 86400)"
+                },
+                "restartPolicy": {
+                  "type": "string",
+                  "enum": [
+                    "Never",
+                    "OnFailure"
+                  ],
+                  "description": "Pod restart policy (default: Never)"
+                },
+                "envSubPath": {
+                  "type": "string",
+                  "description": "Job environment files sub-path"
+                },
+                "additionalLabels": {
+                  "type": "string",
+                  "description": "Additional labels for Job manifests"
+                },
+                "additionalAnnotations": {
+                  "type": "string",
+                  "description": "Additional annotations for Job manifests"
+                },
+                "portsEnabled": {
+                  "type": "string",
+                  "description": "Enable port definitions (default: false)"
+                },
+                "probes": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "livenessEnabled": {
+                      "type": "string",
+                      "description": "Enable liveness probe (default: false)"
+                    },
+                    "readinessEnabled": {
+                      "type": "string",
+                      "description": "Enable readiness probe (default: false)"
+                    },
+                    "startupEnabled": {
+                      "type": "string",
+                      "description": "Enable startup probe (default: false)"
+                    }
+                  }
+                }
+              }
+            },
+            "service": {
+              "type": "object",
+              "additionalProperties": false,
+              "description": "Service manifest generator configuration",
+              "properties": {
+                "enabled": {
+                  "type": "string",
+                  "description": "Enable service generation"
+                },
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "ClusterIP",
+                    "NodePort",
+                    "LoadBalancer",
+                    "ExternalName"
+                  ],
+                  "description": "Service type (default: ClusterIP)"
+                },
+                "port": {
+                  "type": "string",
+                  "pattern": "^[0-9]+$",
+                  "description": "Service port (default: 80)"
+                },
+                "targetPort": {
+                  "type": "string",
+                  "description": "Target port (defaults to container port)"
+                },
+                "protocol": {
+                  "type": "string",
+                  "enum": [
+                    "TCP",
+                    "UDP",
+                    "SCTP"
+                  ],
+                  "description": "Service protocol (default: TCP)"
+                },
+                "portName": {
+                  "type": "string",
+                  "description": "Named port"
+                },
+                "nodePort": {
+                  "type": "string",
+                  "pattern": "^[0-9]+$",
+                  "description": "Node port (NodePort type only)"
+                },
+                "externalName": {
+                  "type": "string",
+                  "description": "External name (ExternalName type only)"
+                },
+                "externalTrafficPolicy": {
+                  "type": "string",
+                  "enum": [
+                    "Cluster",
+                    "Local"
+                  ],
+                  "description": "External traffic policy"
+                },
+                "nameSuffix": {
+                  "type": "string",
+                  "description": "Suffix appended to generated service name"
+                },
+                "combinedSubPath": {
+                  "type": "string",
+                  "description": "Combined sub-path for service manifests"
+                },
+                "additionalLabels": {
+                  "type": "string",
+                  "description": "Additional labels for service manifests"
+                },
+                "additionalAnnotations": {
+                  "type": "string",
+                  "description": "Additional annotations for service manifests"
+                }
+              }
+            },
+            "configmap": {
+              "type": "object",
+              "additionalProperties": false,
+              "description": "ConfigMap manifest generator configuration",
+              "properties": {
+                "subPath": {
+                  "type": "string",
+                  "description": "Source directory (default: src/configmap)"
+                },
+                "nameSuffix": {
+                  "type": "string",
+                  "description": "Suffix appended to generated ConfigMap name"
+                },
+                "combinedSubPath": {
+                  "type": "string",
+                  "description": "Combined sub-path for ConfigMap manifests"
+                },
+                "nameChecksumInjection": {
+                  "type": "boolean",
+                  "description": "Inject ConfigMap checksum into workload annotations (default: true)"
+                },
+                "additionalLabels": {
+                  "type": "string",
+                  "description": "Additional labels for ConfigMap manifests"
+                },
+                "additionalAnnotations": {
+                  "type": "string",
+                  "description": "Additional annotations for ConfigMap manifests"
+                }
+              }
+            },
+            "secretTemplate": {
+              "type": "object",
+              "additionalProperties": false,
+              "description": "Secret template manifest generator configuration",
+              "properties": {
+                "subPath": {
+                  "type": "string",
+                  "description": "Source directory (default: src/secret.template)"
+                },
+                "nameSuffix": {
+                  "type": "string",
+                  "description": "Suffix appended to generated Secret template name"
+                },
+                "combinedSubPath": {
+                  "type": "string",
+                  "description": "Combined sub-path for Secret template manifests"
+                },
+                "nameChecksumInjection": {
+                  "type": "boolean",
+                  "description": "Inject Secret checksum into workload annotations (default: true)"
+                },
+                "additionalLabels": {
+                  "type": "string",
+                  "description": "Additional labels for Secret template manifests"
+                },
+                "additionalAnnotations": {
+                  "type": "string",
+                  "description": "Additional annotations for Secret template manifests"
+                }
+              }
+            },
+            "serviceAccount": {
+              "type": "object",
+              "additionalProperties": false,
+              "description": "ServiceAccount manifest generator configuration",
+              "properties": {
+                "enabled": {
+                  "type": "boolean",
+                  "description": "Whether to generate a ServiceAccount manifest (default: false)"
+                },
+                "nameSuffix": {
+                  "type": "string",
+                  "description": "Suffix appended to generated ServiceAccount name"
+                },
+                "combinedSubPath": {
+                  "type": "string",
+                  "description": "Combined sub-path for ServiceAccount manifests"
+                },
+                "additionalLabels": {
+                  "type": "string",
+                  "description": "Additional labels for ServiceAccount manifests"
+                },
+                "additionalAnnotations": {
+                  "type": "string",
+                  "description": "Additional annotations for ServiceAccount manifests"
+                }
+              }
+            },
+            "podDisruptionBudget": {
+              "type": "object",
+              "additionalProperties": false,
+              "description": "PodDisruptionBudget manifest generator configuration",
+              "properties": {
+                "enabled": {
+                  "type": "string",
+                  "description": "Enable PDB generation"
+                },
+                "nameSuffix": {
+                  "type": "string",
+                  "description": "Suffix appended to generated PDB name"
+                },
+                "combinedSubPath": {
+                  "type": "string",
+                  "description": "Combined sub-path for PDB manifests"
+                },
+                "strategy": {
+                  "type": "string",
+                  "enum": [
+                    "max-unavailable",
+                    "min-available"
+                  ],
+                  "description": "PDB strategy (default: max-unavailable)"
+                },
+                "value": {
+                  "type": "string",
+                  "description": "PDB value (default: 1)"
+                },
+                "additionalLabels": {
+                  "type": "string",
+                  "description": "Additional labels for PDB manifests"
+                },
+                "additionalAnnotations": {
+                  "type": "string",
+                  "description": "Additional annotations for PDB manifests"
+                }
+              }
+            }
+          }
+        },
+        "manifests": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Manifest packaging and publishing. Applies to all manifests regardless of source (generated, hand-written, or hook-produced).\n",
+          "properties": {
+            "subPath": {
+              "type": "string",
+              "description": "Directory containing manifests (default: src/kubernetes)"
+            },
+            "repoProvider": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "docker"
+                  ],
+                  "description": "Manifest storage provider type (default: docker)"
+                },
+                "packagingBaseImage": {
+                  "type": "string",
+                  "description": "Base image for manifest packaging (default: scratch)"
+                }
+              }
+            }
+          }
+        },
+        "changeSource": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Change source tracking configuration",
+          "properties": {
+            "noteEnabled": {
+              "type": "boolean",
+              "description": "Write git notes recording the source branch and PR author during PR builds, read back during release builds (default: true)\n"
+            }
+          }
+        },
+        "hooks": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Lifecycle hook script paths, relative to .github/. Hooks are injectable scripts that run at specific pipeline points.\n",
+          "properties": {
+            "preBuild": {
+              "type": "string",
+              "description": "Runs at the start of the build, before quality checks"
+            },
+            "preTaggingTests": {
+              "type": "string",
+              "description": "Runs before version tagging"
+            },
+            "postVersionsAndNaming": {
+              "type": "string",
+              "description": "Runs after version calculation completes"
+            },
+            "preDockerPrepare": {
+              "type": "string",
+              "description": "Runs before Docker build preparation"
+            },
+            "postDockerTests": {
+              "type": "string",
+              "description": "Runs after Docker build and validation"
+            },
+            "prePackagePrepare": {
+              "type": "string",
+              "description": "Runs before manifest packaging"
+            },
+            "postPackageTests": {
+              "type": "string",
+              "description": "Runs after manifest packaging"
+            },
+            "postBuild": {
+              "type": "string",
+              "description": "Runs at the end of the build"
+            }
+          }
+        },
+        "specBuild": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Spec build and validation configuration",
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "schema",
+                "api"
+              ],
+              "description": "Type of spec being built (schema or api)"
+            },
+            "jsonSchemaUrl": {
+              "type": "string",
+              "description": "JSON Schema meta-schema file path or URL (default: src/schemas/json-schema-draft-2020-12.json)"
+            },
+            "packagingBaseImage": {
+              "type": "string",
+              "description": "Base image for spec packaging (default: scratch)"
+            }
+          }
+        },
+        "aws": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "AWS build configuration",
+          "properties": {
+            "eksClusterManagement": {
+              "type": "object",
+              "additionalProperties": false,
+              "description": "EKS cluster management build configuration",
+              "properties": {
+                "baseImage": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "description": "Base image used for the EKS management build",
+                  "properties": {
+                    "registry": {
+                      "type": "string",
+                      "description": "Base image registry (default: ghcr.io)"
+                    },
+                    "namespace": {
+                      "type": "string",
+                      "description": "Base image namespace (default: kube-kaptain)"
+                    },
+                    "name": {
+                      "type": "string",
+                      "description": "Base image name (default: aws/aws-eks-cluster-management)"
+                    },
+                    "tag": {
+                      "type": "string",
+                      "description": "Base image tag"
+                    }
+                  }
+                },
+                "clusterYamlSubPath": {
+                  "type": "string",
+                  "description": "Source directory for cluster YAML files (default: src/eks)"
+                },
+                "privateNetworking": {
+                  "type": "boolean",
+                  "description": "Include private subnets section in cluster config (default: true)"
+                },
+                "publicNetworking": {
+                  "type": "boolean",
+                  "description": "Include public subnets section in cluster config (default: false)"
+                },
+                "ciliumEbpfNetworking": {
+                  "type": "boolean",
+                  "description": "Generate controlplane-only yaml for Cilium eBPF networking (default: false)"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "registryLogin": {
+      "description": "Registry authentication configuration. Type field selects the login method.",
+      "type": "object",
+      "required": [
+        "type"
+      ],
+      "oneOf": [
+        {
+          "description": "Username and password",
+          "additionalProperties": false,
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "username-password"
+            },
+            "usernameSecret": {
+              "type": "string",
+              "description": "Credential name containing the registry username"
+            },
+            "passwordSecret": {
+              "type": "string",
+              "description": "Credential name containing the registry password"
+            }
+          },
+          "required": [
+            "type",
+            "usernameSecret",
+            "passwordSecret"
+          ]
+        },
+        {
+          "description": "GitHub Actions implicit token (no secret needed)",
+          "additionalProperties": false,
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "github-token"
+            },
+            "token": {
+              "type": "string",
+              "description": "Token env var name (typically GITHUB_TOKEN)"
+            },
+            "actor": {
+              "type": "string",
+              "description": "Login actor (typically github-actions)"
+            }
+          },
+          "required": [
+            "type",
+            "token"
+          ]
+        },
+        {
+          "description": "AWS ECR with static IAM credentials",
+          "additionalProperties": false,
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "aws-ecr"
+            },
+            "region": {
+              "type": "string",
+              "description": "AWS region (e.g. us-east-1)"
+            },
+            "accessKeyIdSecret": {
+              "type": "string",
+              "description": "Credential name containing the AWS access key ID"
+            },
+            "secretAccessKeySecret": {
+              "type": "string",
+              "description": "Credential name containing the AWS secret access key"
+            }
+          },
+          "required": [
+            "type",
+            "region",
+            "accessKeyIdSecret",
+            "secretAccessKeySecret"
+          ]
+        },
+        {
+          "description": "AWS ECR with GitHub Actions OIDC (no long-lived credentials)",
+          "additionalProperties": false,
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "aws-ecr-github-actions-oidc"
+            },
+            "roleArn": {
+              "type": "string",
+              "description": "IAM role ARN to assume via OIDC"
+            },
+            "region": {
+              "type": "string",
+              "description": "AWS region (e.g. us-east-1)"
+            },
+            "sessionName": {
+              "type": "string",
+              "description": "Session name for the assumed role (default: github-actions)"
+            }
+          },
+          "required": [
+            "type",
+            "roleArn",
+            "region"
+          ]
+        },
+        {
+          "description": "GCP Artifact Registry with service account key",
+          "additionalProperties": false,
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "gcp-gar"
+            },
+            "serviceAccountKeySecret": {
+              "type": "string",
+              "description": "Credential name containing the GCP service account JSON key"
+            }
+          },
+          "required": [
+            "type",
+            "serviceAccountKeySecret"
+          ]
+        },
+        {
+          "description": "GCP Artifact Registry with GitHub Actions OIDC",
+          "additionalProperties": false,
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "gcp-gar-github-actions-oidc"
+            },
+            "workloadIdentityProvider": {
+              "type": "string",
+              "description": "Full workload identity provider resource name"
+            },
+            "serviceAccount": {
+              "type": "string",
+              "description": "Service account email to impersonate"
+            }
+          },
+          "required": [
+            "type",
+            "workloadIdentityProvider",
+            "serviceAccount"
+          ]
+        },
+        {
+          "description": "Azure Container Registry with service principal credentials",
+          "additionalProperties": false,
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "azure-acr"
+            },
+            "clientIdSecret": {
+              "type": "string",
+              "description": "Credential name containing the Azure client ID"
+            },
+            "clientSecretSecret": {
+              "type": "string",
+              "description": "Credential name containing the Azure client secret"
+            },
+            "tenantIdSecret": {
+              "type": "string",
+              "description": "Credential name containing the Azure tenant ID"
+            }
+          },
+          "required": [
+            "type",
+            "clientIdSecret",
+            "clientSecretSecret",
+            "tenantIdSecret"
+          ]
+        },
+        {
+          "description": "Azure Container Registry with GitHub Actions OIDC",
+          "additionalProperties": false,
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "azure-acr-github-actions-oidc"
+            },
+            "clientId": {
+              "type": "string",
+              "description": "Azure application (client) ID"
+            },
+            "tenantId": {
+              "type": "string",
+              "description": "Azure directory (tenant) ID"
+            },
+            "subscriptionId": {
+              "type": "string",
+              "description": "Azure subscription ID"
+            }
+          },
+          "required": [
+            "type",
+            "clientId",
+            "tenantId",
+            "subscriptionId"
+          ]
+        }
+      ]
+    },
+    "pushTarget": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "registry"
+      ],
+      "description": "Additional registry to push the built image to",
+      "properties": {
+        "registry": {
+          "type": "string",
+          "description": "Target registry domain"
+        },
+        "namespace": {
+          "type": "string",
+          "description": "Target namespace/organisation (default: matches primary push)"
+        }
+      }
+    },
+    "probeConfig": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Kubernetes health probe configuration",
+      "properties": {
+        "checkType": {
+          "type": "string",
+          "enum": [
+            "http-get",
+            "tcp-socket",
+            "exec",
+            "grpc"
+          ],
+          "description": "Probe mechanism (default: http-get)"
+        },
+        "httpPath": {
+          "type": "string",
+          "description": "HTTP path for http-get probes"
+        },
+        "httpScheme": {
+          "type": "string",
+          "enum": [
+            "HTTP",
+            "HTTPS"
+          ],
+          "description": "HTTP scheme for http-get probes (default: HTTP)"
+        },
+        "tcpPort": {
+          "type": "string",
+          "pattern": "^[0-9]+$",
+          "description": "TCP port for tcp-socket probes"
+        },
+        "execCommand": {
+          "type": "string",
+          "description": "Command for exec probes"
+        },
+        "grpcPort": {
+          "type": "string",
+          "pattern": "^[0-9]+$",
+          "description": "gRPC port for grpc probes"
+        },
+        "grpcService": {
+          "type": "string",
+          "description": "gRPC service name for grpc probes"
+        },
+        "initialDelaySeconds": {
+          "type": "string",
+          "pattern": "^[0-9]+$",
+          "description": "Seconds after container start before first probe"
+        },
+        "periodSeconds": {
+          "type": "string",
+          "pattern": "^[0-9]+$",
+          "description": "How often to perform the probe in seconds"
+        },
+        "timeoutSeconds": {
+          "type": "string",
+          "pattern": "^[0-9]+$",
+          "description": "Seconds after which the probe times out"
+        },
+        "failureThreshold": {
+          "type": "string",
+          "pattern": "^[0-9]+$",
+          "description": "Consecutive failures before the probe is considered failed"
+        },
+        "successThreshold": {
+          "type": "string",
+          "pattern": "^[0-9]+$",
+          "description": "Consecutive successes before the probe is considered successful"
+        },
+        "terminationGracePeriodSeconds": {
+          "type": "string",
+          "pattern": "^[0-9]+$",
+          "description": "Grace period override for pod termination on probe failure"
+        }
+      }
+    }
+  }
+}

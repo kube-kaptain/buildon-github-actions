@@ -34,31 +34,35 @@ See [`examples/`](examples/) for more usage patterns.
 <!-- EXAMPLES-START -->
 | Example | Description |
 |---------|-------------|
-| [`additional-release-branches.yaml`](examples/additional-release-branches.yaml) | Support hotfix workflows by building on branches other than the default and still getting releases published |
-| [`aws-eks-cluster-management.yaml`](examples/aws-eks-cluster-management.yaml) | Builds an EKS cluster management image layering your cluster config on top of |
-| [`basic-quality-and-versioning.yaml`](examples/basic-quality-and-versioning.yaml) | Standard build setup |
-| [`cronjob-history-and-cleanup.yaml`](examples/cronjob-history-and-cleanup.yaml) | CronJobs in Kaptain use sensible defaults for history retention and cleanup |
-| [`daemonset-privileged-and-tolerations.yaml`](examples/daemonset-privileged-and-tolerations.yaml) | This example demonstrates a DaemonSet configured for system-level agents that |
-| [`docker-build-dockerfile-no-squash.yaml`](examples/docker-build-dockerfile-no-squash.yaml) | Build a Docker image without --squash, preserving layer history |
-| [`docker-build-dockerfile.yaml`](examples/docker-build-dockerfile.yaml) | Build a Docker image from a Dockerfile with --squash (default) to flatten |
-| [`docker-build-retag-custom-registry.yaml`](examples/docker-build-retag-custom-registry.yaml) | Push to a registry other than GHCR (Nexus, ECR, GCR, Harbor, etc) |
-| [`docker-build-retag-namespace.yaml`](examples/docker-build-retag-namespace.yaml) | Many registries use namespaces in addition to the normal image name for projects or teams |
-| [`docker-build-retag.yaml`](examples/docker-build-retag.yaml) | Pull an upstream image, retag with your name and new version, push to your registry |
-| [`docker-push-targets.yaml`](examples/docker-push-targets.yaml) | Push the same Docker image to multiple registries |
-| [`docker-registry-logins-explicit.yaml`](examples/docker-registry-logins-explicit.yaml) | docker-registry-logins-secrets |
-| [`docker-registry-logins-ghcr-pat.yaml`](examples/docker-registry-logins-ghcr-pat.yaml) |   - Push to packages in a different repo or org (GITHUB_TOKEN is scoped to current repo) |
-| [`github-release-options.yaml`](examples/github-release-options.yaml) | All workflows that include versions-and-naming create GitHub releases by default |
-| [`job-versioned-naming.yaml`](examples/job-versioned-naming.yaml) | Jobs in Kaptain use a unique naming strategy designed for "run once per version" |
-| [`kube-app-generators.yaml`](examples/kube-app-generators.yaml) | This example demonstrates how to use the Kubernetes manifest generators with |
-| [`optional-test-scripts.yaml`](examples/optional-test-scripts.yaml) | Shows how to add custom test scripts to workflows that support them |
-| [`quality-only.yaml`](examples/quality-only.yaml) | Enforce quality standards on PRs without automatic tagging |
-| [`spec-check-filter-release.yaml`](examples/spec-check-filter-release.yaml) | Build and release JSON Schema or API spec files |
-| [`version-exact-from-file.yaml`](examples/version-exact-from-file.yaml) | Use the version found in a source file as-is, without incrementing |
-| [`version-from-compound-sources.yaml`](examples/version-from-compound-sources.yaml) | Combine versions from TWO source files to create a compound version |
-| [`version-from-custom-pattern.yaml`](examples/version-from-custom-pattern.yaml) | Extract version from any file using a custom regex pattern |
-| [`version-from-dockerfile.yaml`](examples/version-from-dockerfile.yaml) | Extract version from an ENV variable in your Dockerfile rather than using git tags |
-| [`version-from-retag-source-tag.yaml`](examples/version-from-retag-source-tag.yaml) | Extract version from the source-tag input in a retag workflow file |
-| [`version-prefix-parts.yaml`](examples/version-prefix-parts.yaml) | Control how many parts of the source version become the prefix for auto-incrementing |
+| [`aws-eks-cluster-management.yaml`](examples/aws-eks-cluster-management.yaml) | Builds an EKS cluster management image with kubectl and AWS CLI baked in |
+| [`basic-quality-and-versioning.yaml`](examples/basic-quality-and-versioning.yaml) | Quality checks plus automatic version tagging |
+| [`basic-quality-checks.yaml`](examples/basic-quality-checks.yaml) | Enforces branch naming, commit message, and branch structure standards on PRs |
+| [`docker-build-dockerfile.yaml`](examples/docker-build-dockerfile.yaml) | Builds a Docker image from src/docker/Dockerfile with layer squashing |
+| [`docker-build-retag.yaml`](examples/docker-build-retag.yaml) | Pulls an upstream image, retags with your name and version, pushes to your |
+| [`kubernetes-app-docker-dockerfile.yaml`](examples/kubernetes-app-docker-dockerfile.yaml) | Full Kubernetes application pipeline |
+| [`kubernetes-app-docker-retag.yaml`](examples/kubernetes-app-docker-retag.yaml) | Kubernetes application pipeline using an upstream image |
+| [`kubernetes-app-manifests-only.yaml`](examples/kubernetes-app-manifests-only.yaml) | Packages Kubernetes manifests without building a Docker image |
+| [`spec-check-filter-release.yaml`](examples/spec-check-filter-release.yaml) | Validates and packages spec/schema files as OCI artifacts |
+
+### Guides
+
+| Guide | README | build.yaml | KaptainPM.yaml |
+|-------|--------|------------|----------------|
+| `build-hooks` | [README](examples/guides/build-hooks/README.md) | [build.yaml](examples/guides/build-hooks/build.yaml) | [KaptainPM.yaml](examples/guides/build-hooks/KaptainPM.yaml) |
+| `custom-registry-logins` | [README](examples/guides/custom-registry-logins/README.md) | [build.yaml](examples/guides/custom-registry-logins/build.yaml) | [KaptainPM.yaml](examples/guides/custom-registry-logins/KaptainPM.yaml) |
+| `custom-target-registry` | [README](examples/guides/custom-target-registry/README.md) | [build.yaml](examples/guides/custom-target-registry/build.yaml) | [KaptainPM.yaml](examples/guides/custom-target-registry/KaptainPM.yaml) |
+| `ghcr-pat-auth` | [README](examples/guides/ghcr-pat-auth/README.md) | [build.yaml](examples/guides/ghcr-pat-auth/build.yaml) | [KaptainPM.yaml](examples/guides/ghcr-pat-auth/KaptainPM.yaml) |
+| `github-release-options` | [README](examples/guides/github-release-options/README.md) | [build.yaml](examples/guides/github-release-options/build.yaml) | [KaptainPM.yaml](examples/guides/github-release-options/KaptainPM.yaml) |
+| `kubernetes-generators` | [README](examples/guides/kubernetes-generators/README.md) | [build.yaml](examples/guides/kubernetes-generators/build.yaml) | [KaptainPM.yaml](examples/guides/kubernetes-generators/KaptainPM.yaml) |
+| `manifests-only-external-image` | [README](examples/guides/manifests-only-external-image/README.md) | [build.yaml](examples/guides/manifests-only-external-image/build.yaml) | [KaptainPM.yaml](examples/guides/manifests-only-external-image/KaptainPM.yaml) |
+| `multi-registry-push` | [README](examples/guides/multi-registry-push/README.md) | [build.yaml](examples/guides/multi-registry-push/build.yaml) | [KaptainPM.yaml](examples/guides/multi-registry-push/KaptainPM.yaml) |
+| `release-branches` | [README](examples/guides/release-branches/README.md) | [build.yaml](examples/guides/release-branches/build.yaml) | [KaptainPM.yaml](examples/guides/release-branches/KaptainPM.yaml) |
+| `retag-upstream-image` | [README](examples/guides/retag-upstream-image/README.md) | [build.yaml](examples/guides/retag-upstream-image/build.yaml) | [KaptainPM.yaml](examples/guides/retag-upstream-image/KaptainPM.yaml) |
+| `token-substitution` | [README](examples/guides/token-substitution/README.md) | [build.yaml](examples/guides/token-substitution/build.yaml) | [KaptainPM.yaml](examples/guides/token-substitution/KaptainPM.yaml) |
+| `version-compound-sources` | [README](examples/guides/version-compound-sources/README.md) | [build.yaml](examples/guides/version-compound-sources/build.yaml) | [KaptainPM.yaml](examples/guides/version-compound-sources/KaptainPM.yaml) |
+| `version-from-custom-pattern` | [README](examples/guides/version-from-custom-pattern/README.md) | [build.yaml](examples/guides/version-from-custom-pattern/build.yaml) | [KaptainPM.yaml](examples/guides/version-from-custom-pattern/KaptainPM.yaml) |
+| `version-from-file` | [README](examples/guides/version-from-file/README.md) | [build.yaml](examples/guides/version-from-file/build.yaml) | [KaptainPM.yaml](examples/guides/version-from-file/KaptainPM.yaml) |
+| `version-prefix-parts` | [README](examples/guides/version-prefix-parts/README.md) | [build.yaml](examples/guides/version-prefix-parts/build.yaml) | [KaptainPM.yaml](examples/guides/version-prefix-parts/KaptainPM.yaml) |
 <!-- EXAMPLES-END -->
 
 ## Components
@@ -75,6 +79,7 @@ See [`examples/`](examples/) for more usage patterns.
 | `docker-build-retag.yaml` | Everything from quality and version above, but also pulls, retags, and republishes a docker image |
 | `kubernetes-app-manifests-only.yaml` | Everything from quality and version above, plus packages Kubernetes manifests with token substitution |
 | `kubernetes-app-docker-dockerfile.yaml` | Everything from both docker Dockerfile and Kubernetes manifest packaging - a full kube app build |
+| `layer-and-layerset-build.yaml` | Layer/layerset validation and OCI packaging - quality checks, versioning, layer packaging, Docker build, validation, and release publishing |
 | `kubernetes-app-docker-retag.yaml` | Everything from both docker retag and Kubernetes manifest packaging - for apps using upstream images |
 | `spec-check-filter-release.yaml` | Everything from quality and version above, but also validates and packages a JSON Schema or an API Spec |
 <!-- WORKFLOWS-END -->
@@ -118,6 +123,8 @@ See [`examples/`](examples/) for more usage patterns.
 | `kubernetes-manifests-package` | Packages Kubernetes manifests into a zip with variable substitution |
 | `kubernetes-manifests-repo-provider-package` | Packages manifests for repo provider (builds docker image). Does NOT publish. |
 | `kubernetes-manifests-repo-provider-publish` | Publishes manifests via pluggable repo provider. Requires package step to run first. |
+| `layer-package-prepare` | Prepares layer or layerset for OCI packaging - validates source, injects metadata, generates Dockerfile |
+| `layer-validate` | Validates substituted layer or layerset after docker build |
 | `release-change-data-generate` | Generates structured release change data YAML from commit history |
 | `release-change-data-oci-package` | Packages release change data as OCI image for consolidated push |
 | `resolve-target-registry-and-namespace` | Resolves target registry (defaults to ghcr.io) and computes namespace (auto-detects org/user for GHCR) |
@@ -129,249 +136,7 @@ See [`examples/`](examples/) for more usage patterns.
 
 ### All Inputs
 
-<!-- INPUTS-START -->
-| Input | Type | Default | Description |
-|-------|------|---------|-------------|
-| `additional-release-branches` | string | `""` | Comma-separated list of additional release branches |
-| `allow-builtin-token-override` | boolean | `false` | Allow user tokens to override built-in tokens (for template/reusable projects) |
-| `block-slashes` | boolean | `false` | DEPRECATED: Use block-slash-containing-branches instead |
-| `change-source-note-enabled` | boolean | `true` | Write a git note with merge candidate metadata for release tracking |
-| `config-sub-path` | string | `src/config` | Directory containing user-defined token files (relative) |
-| `config-value-trailing-newline` | string | `strip-for-single-line` | How to handle trailing newlines in config values (strip-for-single-line, preserve-all, always-strip-one-newline) |
-| `docker-image-name-override` | string | `""` | Docker image name (if provided, substitutes into manifests; if empty, token remains for later substitution) |
-| `docker-image-tag-override` | string | `""` | Docker image tag (if provided, substitutes into manifests; if empty, token remains for later substitution) |
-| `docker-platform` | string | `linux/amd64` | Target platform (linux/amd64, linux/arm64, or both comma-separated) |
-| `docker-push-targets` | string | `""` | JSON array of additional push targets [{registry, namespace?}] |
-| `docker-registry-logins` | string | `""` | YAML config for Docker registry logins (registry URL as key) |
-| `docker-source-image-name` | string | *required* | Upstream image name (e.g., nginx) |
-| `docker-source-namespace` | string | `""` | Path segment between registry and image name (e.g., library) |
-| `docker-source-registry` | string | *required* | Upstream registry (e.g., docker.io) |
-| `docker-source-tag` | string | *required* | Upstream image tag (e.g., 1.25) |
-| `docker-target-namespace` | string | `""` | Path segment between registry and image name (defaults to lower cased org name or user ID on GH Actions) |
-| `docker-target-registry` | string | `""` | Target container registry domain (defaults to ghcr.io on GH Actions) |
-| `dockerfile-no-cache` | boolean | `true` | Disable layer caching for reproducible builds |
-| `dockerfile-squash` | string | `squash` | Squash mode: squash, squash-all, or no |
-| `dockerfile-sub-path` | string | `src/docker` | Directory containing Dockerfile, relative to repo root. |
-| `dockerfile-sub-path-linux-amd64` | string | `src/docker-linux-amd64` | Per-platform Dockerfile directory for linux/amd64 multi-platform builds |
-| `dockerfile-sub-path-linux-arm64` | string | `src/docker-linux-arm64` | Per-platform Dockerfile directory for linux/arm64 multi-platform builds |
-| `dockerfile-substitution-files` | string | `Dockerfile` | Comma-separated list of files to perform token substitution on (relative to dockerfile-sub-path and docker-context-sub-path) |
-| `eks-base-image-name` | string | `aws/aws-eks-cluster-management` | Base image name for EKS management image |
-| `eks-base-image-namespace` | string | `kube-kaptain` | Base image namespace for EKS management image |
-| `eks-base-image-registry` | string | `ghcr.io` | Base image registry for EKS management image |
-| `eks-base-image-tag` | string | `""` | Base image tag for EKS management image |
-| `eks-cilium-ebpf-networking` | boolean | `false` | Generate controlplane-only yaml for Cilium eBPF networking |
-| `eks-private-networking` | boolean | `true` | Include private subnets section in cluster config |
-| `eks-public-networking` | boolean | `false` | Include public subnets section in cluster config |
-| `github-release-add-version-to-filenames` | boolean | `true` | Add version suffix to release filenames (e.g., file.yaml -> file-1.2.3.yaml) |
-| `github-release-enabled` | boolean | `true` | Create a GitHub release on version tags |
-| `github-release-notes` | string | `""` | Inline release notes string (mutually exclusive with github-release-notes-file) |
-| `github-release-notes-file` | string | `""` | Path to release notes file (mutually exclusive with github-release-notes) |
-| `github-release-raw-files` | string | `""` | Files already versioned, copied as-is with no renaming (comma/space-separated, filenames must end with -VERSION.ext) |
-| `github-release-substituted-files` | string | `""` | Files with token substitution and version suffix (comma/space-separated) |
-| `github-release-verbatim-files` | string | `""` | Files copied as-is with version suffix only (comma/space-separated) |
-| `hook-post-build-script-sub-path` | string | `""` | Path to post-build script relative to .github/ (e.g., bin/post-build.bash) |
-| `hook-post-docker-tests-script-sub-path` | string | `""` | Path to post-docker test script relative to .github/ (e.g., bin/post-docker.bash) |
-| `hook-post-package-tests-script-sub-path` | string | `""` | Path to post-package test script relative to .github/ (e.g., bin/post-package.bash) |
-| `hook-post-versions-and-naming-script-sub-path` | string | `""` | Path to post-versions-and-naming script relative to .github/ (e.g., bin/post-versions-and-naming.bash) |
-| `hook-pre-build-script-sub-path` | string | `""` | Path to pre-build script relative to .github/ (e.g., bin/pre-build.bash) |
-| `hook-pre-docker-prepare-script-sub-path` | string | `""` | Path to pre-docker prepare script relative to .github/ (e.g., bin/pre-docker-prepare.bash) |
-| `hook-pre-package-prepare-script-sub-path` | string | `""` | Path to pre-package prepare script relative to .github/ (e.g., bin/pre-package-prepare.bash) |
-| `hook-pre-tagging-tests-script-sub-path` | string | `""` | Path to pre-tagging test script relative to .github/ (e.g., bin/pre-tagging.bash) |
-| `kubernetes-configmap-additional-annotations` | string | `""` | Additional annotations specific to ConfigMap (comma-separated key=value) |
-| `kubernetes-configmap-additional-labels` | string | `""` | Additional labels specific to ConfigMap (comma-separated key=value) |
-| `kubernetes-configmap-name-checksum-injection` | boolean | `true` | Enable checksum injection suffix in ConfigMap name |
-| `kubernetes-configmap-sub-path` | string | `src/configmap` | Directory containing ConfigMap data files (relative) |
-| `kubernetes-cronjob-active-deadline-seconds` | string | `""` | Maximum time in seconds the job can run (optional) |
-| `kubernetes-cronjob-additional-annotations` | string | `""` | Additional annotations for CronJob resources (key=value,key=value) |
-| `kubernetes-cronjob-additional-labels` | string | `""` | Additional labels for CronJob resources (key=value,key=value) |
-| `kubernetes-cronjob-backoff-limit` | string | `0` | Number of retries before marking job as failed (0 = fail immediately) |
-| `kubernetes-cronjob-combined-sub-path` | string | `""` | Sub-path within combined/ for output |
-| `kubernetes-cronjob-completions` | string | `1` | Number of successful completions needed |
-| `kubernetes-cronjob-concurrency-policy` | string | `Forbid` | How to handle concurrent job runs (Allow, Forbid, Replace) |
-| `kubernetes-cronjob-env-sub-path` | string | `""` | Path to CronJob environment variables directory |
-| `kubernetes-cronjob-failed-jobs-history-limit` | string | `5` | Number of failed jobs to retain to show failure patterns |
-| `kubernetes-cronjob-liveness-probe-enabled` | string | `false` | Enable liveness probe (uses workload probe settings when true) |
-| `kubernetes-cronjob-name-suffix` | string | `""` | Optional suffix for CronJob name and filename |
-| `kubernetes-cronjob-parallelism` | string | `1` | Number of pods running at any time |
-| `kubernetes-cronjob-readiness-probe-enabled` | string | `false` | Enable readiness probe (uses workload probe settings when true) |
-| `kubernetes-cronjob-restart-policy` | string | `Never` | Pod restart policy (Never or OnFailure) |
-| `kubernetes-cronjob-starting-deadline-seconds` | string | `""` | Deadline for starting job if missed scheduled time (optional) |
-| `kubernetes-cronjob-startup-probe-enabled` | string | `false` | Enable startup probe (uses workload probe settings when true) |
-| `kubernetes-cronjob-successful-jobs-history-limit` | string | `1` | Number of successful jobs to retain for log collection |
-| `kubernetes-daemonset-dns-policy` | string | `""` | DNS policy (ClusterFirst, ClusterFirstWithHostNet, Default, None) |
-| `kubernetes-daemonset-host-ipc` | string | `false` | Use host IPC namespace (true/false) |
-| `kubernetes-daemonset-host-network` | string | `false` | Use host network namespace (true/false) |
-| `kubernetes-daemonset-host-pid` | string | `false` | Use host PID namespace (true/false) |
-| `kubernetes-daemonset-max-unavailable` | string | `1` | Max unavailable pods during rolling update (number or percentage) |
-| `kubernetes-daemonset-node-selector` | string | `""` | Node selector labels (comma-separated key=value) |
-| `kubernetes-daemonset-privileged` | string | `false` | Run container in privileged mode (true/false) |
-| `kubernetes-daemonset-run-as-non-root` | boolean | `true` | Require non-root user (true/false, set false for system-level DaemonSets that need root) |
-| `kubernetes-daemonset-tolerations` | string | `""` | Tolerations as JSON array (e.g., [{"operator":"Exists"}] or [{"key":"node-role.kubernetes.io/control-plane","operator":"Exists","effect":"NoSchedule"}]) |
-| `kubernetes-daemonset-update-strategy-type` | string | `RollingUpdate` | Update strategy type (RollingUpdate or OnDelete) |
-| `kubernetes-deployment-additional-annotations` | string | `""` | Additional annotations for Deployment resources (key=value,key=value) |
-| `kubernetes-deployment-additional-labels` | string | `""` | Additional labels for Deployment resources (key=value,key=value) |
-| `kubernetes-deployment-env-sub-path` | string | `src/deployment-env` | Path to deployment environment variables directory |
-| `kubernetes-deployment-max-surge` | string | `1` | Max surge during rolling update (integer or percentage, e.g., 1 or 25%) |
-| `kubernetes-deployment-max-unavailable` | string | `0` | Max unavailable during rolling update (integer or percentage, e.g., 0 or 25%) |
-| `kubernetes-global-additional-annotations` | string | `""` | Additional annotations for all Kubernetes manifests (comma-separated key=value) |
-| `kubernetes-global-additional-labels` | string | `""` | Additional labels for all Kubernetes manifests (comma-separated key=value) |
-| `kubernetes-job-active-deadline-seconds` | string | `""` | Maximum time in seconds the Job can run (optional) |
-| `kubernetes-job-additional-annotations` | string | `""` | Additional annotations for Job resources (key=value,key=value) |
-| `kubernetes-job-additional-labels` | string | `""` | Additional labels for Job resources (key=value,key=value) |
-| `kubernetes-job-backoff-limit` | string | `0` | Number of retries before marking Job as failed (0 = fail immediately) |
-| `kubernetes-job-combined-sub-path` | string | `""` | Sub-path within combined/ for output |
-| `kubernetes-job-completions` | string | `1` | Number of successful completions needed |
-| `kubernetes-job-env-sub-path` | string | `""` | Path to Job environment variables directory |
-| `kubernetes-job-liveness-probe-enabled` | string | `false` | Enable liveness probe (uses workload probe settings when true) |
-| `kubernetes-job-name-suffix` | string | `""` | Optional suffix for Job name and filename |
-| `kubernetes-job-parallelism` | string | `1` | Number of pods running at any time |
-| `kubernetes-job-readiness-probe-enabled` | string | `false` | Enable readiness probe (uses workload probe settings when true) |
-| `kubernetes-job-restart-policy` | string | `Never` | Pod restart policy (Never or OnFailure) |
-| `kubernetes-job-startup-probe-enabled` | string | `false` | Enable startup probe (uses workload probe settings when true) |
-| `kubernetes-job-ttl-seconds-after-finished` | string | `86400` | Cleanup time after Job completion in seconds |
-| `kubernetes-poddisruptionbudget-additional-annotations` | string | `""` | Additional annotations specific to PodDisruptionBudget (comma-separated key=value) |
-| `kubernetes-poddisruptionbudget-additional-labels` | string | `""` | Additional labels specific to PodDisruptionBudget (comma-separated key=value) |
-| `kubernetes-poddisruptionbudget-combined-sub-path` | string | `""` | Sub-path within combined/ for output |
-| `kubernetes-poddisruptionbudget-generation-enabled` | string | `""` | Enable PodDisruptionBudget generation (true, false, or empty for auto based on workload type) |
-| `kubernetes-poddisruptionbudget-name-suffix` | string | `""` | Optional suffix for PDB name and filename |
-| `kubernetes-poddisruptionbudget-strategy` | string | `max-unavailable` | PDB constraint strategy (min-available or max-unavailable) |
-| `kubernetes-poddisruptionbudget-value` | string | `1` | Value for the chosen strategy (integer or percentage, e.g., 1, 50%) |
-| `kubernetes-secret-template-additional-annotations` | string | `""` | Additional annotations specific to Secret template (comma-separated key=value) |
-| `kubernetes-secret-template-additional-labels` | string | `""` | Additional labels specific to Secret template (comma-separated key=value) |
-| `kubernetes-secret-template-name-checksum-injection` | boolean | `true` | Enable checksum injection suffix in Secret name |
-| `kubernetes-secret-template-sub-path` | string | `src/secret.template` | Directory containing Secret template data files (relative) |
-| `kubernetes-service-additional-annotations` | string | `""` | Additional annotations specific to Service (comma-separated key=value) |
-| `kubernetes-service-additional-labels` | string | `""` | Additional labels specific to Service (comma-separated key=value) |
-| `kubernetes-service-combined-sub-path` | string | `""` | Sub-path within combined/ for output |
-| `kubernetes-service-external-name` | string | `""` | External DNS name (required for ExternalName type) |
-| `kubernetes-service-external-traffic-policy` | string | `""` | External traffic policy (Cluster or Local, NodePort/LoadBalancer only) |
-| `kubernetes-service-generation-enabled` | string | `""` | Enable Service generation (true, false, or empty for auto based on workload type) |
-| `kubernetes-service-name-suffix` | string | `""` | Optional suffix for Service name and filename |
-| `kubernetes-service-node-port` | string | `""` | Node port number (NodePort type only, empty for auto-assign) |
-| `kubernetes-service-port` | string | `80` | Service port (not used for ExternalName) |
-| `kubernetes-service-port-name` | string | `""` | Named port identifier (optional) |
-| `kubernetes-service-protocol` | string | `TCP` | Protocol (TCP, UDP, SCTP) |
-| `kubernetes-service-target-port` | string | `""` | Target port (defaults to container port, not used for ExternalName) |
-| `kubernetes-service-type` | string | `ClusterIP` | Service type (ClusterIP, Headless, NoSelector, NodePort, LoadBalancer, ExternalName) |
-| `kubernetes-serviceaccount-additional-annotations` | string | `""` | Additional annotations specific to ServiceAccount (comma-separated key=value) |
-| `kubernetes-serviceaccount-additional-labels` | string | `""` | Additional labels specific to ServiceAccount (comma-separated key=value) |
-| `kubernetes-serviceaccount-combined-sub-path` | string | `""` | Sub-path within combined/ for output |
-| `kubernetes-serviceaccount-generation-enabled` | boolean | `false` | Enable ServiceAccount generation |
-| `kubernetes-serviceaccount-name-suffix` | string | `""` | Optional suffix for ServiceAccount name and filename |
-| `kubernetes-statefulset-additional-annotations` | string | `""` | Additional annotations for StatefulSet resources (key=value,key=value) |
-| `kubernetes-statefulset-additional-labels` | string | `""` | Additional labels for StatefulSet resources (key=value,key=value) |
-| `kubernetes-statefulset-allow-unreliable-pod-management-policy` | string | `""` | Required acknowledgment to use Parallel pod management (must be I_LIKE_DOWNTIME) |
-| `kubernetes-statefulset-env-sub-path` | string | `src/statefulset-env` | Path to statefulset environment variables directory |
-| `kubernetes-statefulset-pod-management-policy` | string | `OrderedReady` | Pod management policy (OrderedReady or Parallel) |
-| `kubernetes-statefulset-pvc-access-mode` | string | `ReadWriteOnce` | PVC access mode (ReadWriteOnce, ReadOnlyMany, ReadWriteMany) |
-| `kubernetes-statefulset-pvc-enabled` | string | `true` | Enable persistent volume claim template (true/false) |
-| `kubernetes-statefulset-pvc-mount-path` | string | `/data` | Mount path for the persistent volume |
-| `kubernetes-statefulset-pvc-storage-class` | string | `""` | Storage class for PVC (empty for cluster default) |
-| `kubernetes-statefulset-pvc-storage-size` | string | `1Gi` | Storage size for PVC (e.g., 1Gi, 10Gi) |
-| `kubernetes-statefulset-pvc-volume-name` | string | `data` | Volume name for the PVC template |
-| `kubernetes-statefulset-service-name` | string | `""` | Headless service name (empty for auto-derived from project name) |
-| `kubernetes-statefulset-update-strategy-partition` | string | `""` | Partition for rolling updates (empty for none) |
-| `kubernetes-statefulset-update-strategy-type` | string | `RollingUpdate` | Update strategy type (RollingUpdate or OnDelete) |
-| `kubernetes-workload-additional-annotations` | string | `""` | Additional annotations specific to workload (comma-separated key=value) |
-| `kubernetes-workload-additional-labels` | string | `""` | Additional labels specific to workload (comma-separated key=value) |
-| `kubernetes-workload-affinity-strategy` | string | `spread-nodes-and-zones-ha` | Pod affinity strategy plugin name |
-| `kubernetes-workload-automount-service-account-token` | boolean | `false` | Automount service account token |
-| `kubernetes-workload-combined-sub-path` | string | `""` | Sub-path within combined/ for output |
-| `kubernetes-workload-configmap-keys-for-env` | string | `""` | Comma/space-separated ConfigMap keys to expose as env vars |
-| `kubernetes-workload-configmap-mount-path` | string | `/configmap` | ConfigMap mount path in container |
-| `kubernetes-workload-container-args` | string | `""` | Container args override (space-separated, respects quotes like shell) |
-| `kubernetes-workload-container-command` | string | `""` | Container command override (space-separated, respects quotes like shell) |
-| `kubernetes-workload-container-port` | string | `1024` | Container port |
-| `kubernetes-workload-dns-policy` | string | `""` | DNS policy (ClusterFirst, ClusterFirstWithHostNet, Default, None) |
-| `kubernetes-workload-env-sub-path` | string | `""` | Directory containing environment variable files (default per workload type) |
-| `kubernetes-workload-image-pull-secrets` | string | `ENABLED` | Include imagePullSecrets in pod spec (ENABLED/DISABLED) |
-| `kubernetes-workload-image-reference-style` | string | `combined` | Image reference style (combined, separate, project-name-prefixed-combined, project-name-prefixed-separate) |
-| `kubernetes-workload-min-ready-seconds` | string | `0` | Minimum seconds a pod must be ready before considered available (0 to disable) |
-| `kubernetes-workload-name-suffix` | string | `""` | Optional suffix for workload name and filename |
-| `kubernetes-workload-node-selector` | string | `""` | Node selector (comma-separated key=value pairs, e.g., disktype=ssd,zone=us-east-1a) |
-| `kubernetes-workload-prestop-command` | string | `""` | PreStop hook command (empty for none) |
-| `kubernetes-workload-priority-class-name` | string | `""` | Priority class name for pod scheduling priority |
-| `kubernetes-workload-probe-liveness-check-type` | string | `http-get` | Liveness probe type (http-get, tcp-socket, exec, grpc, none) |
-| `kubernetes-workload-probe-liveness-exec-command` | string | `""` | Liveness probe exec command |
-| `kubernetes-workload-probe-liveness-failure-threshold` | string | `3` | Liveness probe failure threshold |
-| `kubernetes-workload-probe-liveness-grpc-port` | string | `""` | Liveness probe gRPC port (defaults to container port) |
-| `kubernetes-workload-probe-liveness-grpc-service` | string | `""` | Liveness probe gRPC service name |
-| `kubernetes-workload-probe-liveness-http-path` | string | `/liveness` | Liveness probe HTTP path |
-| `kubernetes-workload-probe-liveness-http-scheme` | string | `HTTP` | Liveness probe HTTP scheme (HTTP, HTTPS) |
-| `kubernetes-workload-probe-liveness-initial-delay-seconds` | string | `10` | Liveness probe initial delay in seconds |
-| `kubernetes-workload-probe-liveness-period-seconds` | string | `10` | Liveness probe period in seconds |
-| `kubernetes-workload-probe-liveness-tcp-port` | string | `""` | Liveness probe TCP port (defaults to container port) |
-| `kubernetes-workload-probe-liveness-termination-grace-period-seconds` | string | `""` | Liveness probe termination grace period (empty for default) |
-| `kubernetes-workload-probe-liveness-timeout-seconds` | string | `5` | Liveness probe timeout in seconds |
-| `kubernetes-workload-probe-readiness-check-type` | string | `http-get` | Readiness probe type (http-get, tcp-socket, exec, grpc, none) |
-| `kubernetes-workload-probe-readiness-exec-command` | string | `""` | Readiness probe exec command |
-| `kubernetes-workload-probe-readiness-failure-threshold` | string | `3` | Readiness probe failure threshold |
-| `kubernetes-workload-probe-readiness-grpc-port` | string | `""` | Readiness probe gRPC port (defaults to container port) |
-| `kubernetes-workload-probe-readiness-grpc-service` | string | `""` | Readiness probe gRPC service name |
-| `kubernetes-workload-probe-readiness-http-path` | string | `/readiness` | Readiness probe HTTP path |
-| `kubernetes-workload-probe-readiness-http-scheme` | string | `HTTP` | Readiness probe HTTP scheme (HTTP, HTTPS) |
-| `kubernetes-workload-probe-readiness-initial-delay-seconds` | string | `5` | Readiness probe initial delay in seconds |
-| `kubernetes-workload-probe-readiness-period-seconds` | string | `5` | Readiness probe period in seconds |
-| `kubernetes-workload-probe-readiness-success-threshold` | string | `1` | Readiness probe success threshold |
-| `kubernetes-workload-probe-readiness-tcp-port` | string | `""` | Readiness probe TCP port (defaults to container port) |
-| `kubernetes-workload-probe-readiness-timeout-seconds` | string | `3` | Readiness probe timeout in seconds |
-| `kubernetes-workload-probe-startup-check-type` | string | `http-get` | Startup probe type (http-get, tcp-socket, exec, grpc, none) |
-| `kubernetes-workload-probe-startup-exec-command` | string | `""` | Startup probe exec command |
-| `kubernetes-workload-probe-startup-failure-threshold` | string | `30` | Startup probe failure threshold |
-| `kubernetes-workload-probe-startup-grpc-port` | string | `""` | Startup probe gRPC port (defaults to container port) |
-| `kubernetes-workload-probe-startup-grpc-service` | string | `""` | Startup probe gRPC service name |
-| `kubernetes-workload-probe-startup-http-path` | string | `/startup` | Startup probe HTTP path |
-| `kubernetes-workload-probe-startup-http-scheme` | string | `HTTP` | Startup probe HTTP scheme (HTTP, HTTPS) |
-| `kubernetes-workload-probe-startup-initial-delay-seconds` | string | `0` | Startup probe initial delay in seconds |
-| `kubernetes-workload-probe-startup-period-seconds` | string | `5` | Startup probe period in seconds |
-| `kubernetes-workload-probe-startup-tcp-port` | string | `""` | Startup probe TCP port (defaults to container port) |
-| `kubernetes-workload-probe-startup-termination-grace-period-seconds` | string | `""` | Startup probe termination grace period (empty for default) |
-| `kubernetes-workload-probe-startup-timeout-seconds` | string | `3` | Startup probe timeout in seconds |
-| `kubernetes-workload-readonly-root-filesystem` | boolean | `true` | Enable read-only root filesystem |
-| `kubernetes-workload-replicas` | string | `""` | Replica count (empty for token, NO for HPA management, number for fixed) |
-| `kubernetes-workload-resources-cpu-limit` | string | `""` | CPU limit (empty for no limit) |
-| `kubernetes-workload-resources-cpu-request` | string | `100m` | CPU request (e.g., 100m, 1) |
-| `kubernetes-workload-resources-ephemeral-storage` | string | `10Mi` | Ephemeral storage request/limit (e.g., 10Mi, 100Mi, 1Gi) |
-| `kubernetes-workload-resources-memory` | string | `10Mi` | Memory limit (e.g., 128Mi, 1Gi) |
-| `kubernetes-workload-revision-history-limit` | string | `10` | Number of revisions to retain (ReplicaSets for Deployment, ControllerRevisions for StatefulSet) |
-| `kubernetes-workload-seccomp-profile` | string | `DISABLED` | Seccomp profile (DISABLED, RuntimeDefault, Localhost, Unconfined) |
-| `kubernetes-workload-secret-keys-for-env` | string | `""` | Comma/space-separated Secret keys to expose as env vars |
-| `kubernetes-workload-secret-mount-path` | string | `/secret` | Secret mount path in container |
-| `kubernetes-workload-termination-grace-period-seconds` | string | `10` | Termination grace period in seconds |
-| `kubernetes-workload-tolerations` | string | `""` | Tolerations as JSON array (e.g., [{"key":"dedicated","operator":"Equal","value":"app","effect":"NoSchedule"}]) |
-| `kubernetes-workload-type` | string | `deployment` | Workload type to generate (deployment, statefulset, daemonset, none) |
-| `manifests-packaging-base-image` | string | `""` | Base image for manifest packaging (default: scratch) |
-| `manifests-repo-provider-type` | string | `docker` | Repo provider type for manifest storage (default: docker, currently the only supported provider) |
-| `manifests-sub-path` | string | `src/kubernetes` | Directory containing Kubernetes manifests (relative) |
-| `output-sub-path` | string | `kaptain-out` | Build output directory (relative) |
-| `qc-block-conventional-commits` | boolean | `false` | Block commits that use conventional commit format |
-| `qc-block-double-hyphen-containing-branches` | boolean | `true` | Block branch names containing double hyphens (typo detection) |
-| `qc-block-duplicate-commit-messages` | boolean | `true` | Block PRs where two or more commits have identical messages |
-| `qc-block-slash-containing-branches` | boolean | `false` | Block branch names containing slashes |
-| `qc-require-conventional-branches` | boolean | `false` | Require branch names start with feature/, fix/, etc. |
-| `qc-require-conventional-commits` | boolean | `false` | Require commits use conventional commit format (feat:, fix:, etc.) |
-| `release-branch` | string | `main` | The release branch name |
-| `secrets-sub-path` | string | `src/secrets` | Source directory for encrypted secrets (relative) |
-| `spec-json-schema-url` | string | `""` | JSON Schema meta-schema file path or URL for validating schema-type specs |
-| `spec-packaging-base-image` | string | `scratch` | Base image for spec packaging |
-| `spec-type` | string | *required* | Type of spec (schema or api) |
-| `tag-version-calculation-strategy` | string | `git-auto-closest-highest` | Strategy for calculating version (git-auto-closest-highest, file-pattern-match, compound-file-pattern-match) |
-| `tag-version-max-parts` | number | `3` | Maximum allowed version parts (fail if exceeded) |
-| `tag-version-pattern-type` | string | `dockerfile-env-kubectl` | Pattern type for file-pattern-match strategy (dockerfile-env-kubectl, retag-workflow-source-tag, custom) |
-| `tag-version-prefix-parts` | string | `""` | Number of parts from source version to use as prefix (default 2, output = prefix + 1 parts). Ignored when tag-version-use-source-version-exact is true. |
-| `tag-version-source-custom-pattern` | string | `""` | Regex with capture group for version extraction (required for custom pattern type) |
-| `tag-version-source-file-name` | string | `""` | Override source file name (defaults based on pattern type) |
-| `tag-version-source-sub-path` | string | `""` | Override path to source directory (takes precedence over dockerfile-sub-path) |
-| `tag-version-source-two-file-name` | string | `""` | Source TWO file name (defaults to source ONE file name) |
-| `tag-version-source-two-pattern` | string | `""` | Regex with capture group for source TWO (required if same file as source ONE) |
-| `tag-version-source-two-prefix-parts` | string | `""` | Number of parts from source TWO version to use in prefix (default 2). Ignored when tag-version-use-source-version-exact is true. |
-| `tag-version-source-two-sub-path` | string | `""` | Path to source TWO directory (defaults to source ONE path) |
-| `tag-version-use-source-version-exact` | boolean | `false` | Use the exact version found in source file(s) without incrementing (file-based strategies only) |
-| `token-delimiter-style` | string | `shell` | Token delimiter syntax for variables (shell, mustache, helm, erb, github-actions, blade, stringtemplate, ognl, t4, swift) |
-| `token-name-style` | string | `PascalCase` | Case style for token names (UPPER_SNAKE, lower_snake, lower-kebab, UPPER-KEBAB, camelCase, PascalCase, lower.dot, UPPER.DOT) |
-| `token-name-validation` | string | `MATCH` | How to validate user token names (MATCH = must match token-name-style, ALL = accept any valid name) |
-| `token-substitution-passes` | string | `1` | Number of times to run the token substitution pass (for nested token references) |
-<!-- INPUTS-END -->
+All inputs to the system come from KaptainPM.yaml and layers, except secrets.
 
 ### Secrets
 
@@ -394,6 +159,7 @@ See [`examples/`](examples/) for more usage patterns.
 | `kubernetes-app-docker-dockerfile.yaml` | Kubernetes App - Docker Dockerfile | [docs/kubernetes-app-docker-dockerfile.md](docs/kubernetes-app-docker-dockerfile.md) |
 | `kubernetes-app-docker-retag.yaml` | Kubernetes App - Docker Retag | [docs/kubernetes-app-docker-retag.md](docs/kubernetes-app-docker-retag.md) |
 | `kubernetes-app-manifests-only.yaml` | Kubernetes App - Manifests Only | [docs/kubernetes-app-manifests-only.md](docs/kubernetes-app-manifests-only.md) |
+| `layer-and-layerset-build.yaml` | Layer and Layerset Build | [docs/layer-and-layerset-build.md](docs/layer-and-layerset-build.md) |
 | `spec-check-filter-release.yaml` | Spec Check Filter Release | [docs/spec-check-filter-release.md](docs/spec-check-filter-release.md) |
 <!-- WORKFLOW-DOCS-END -->
 

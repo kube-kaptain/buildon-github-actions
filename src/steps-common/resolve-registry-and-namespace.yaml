@@ -8,5 +8,5 @@
   id: resolve-registry
   uses: ./.github/buildon-github-actions/src/actions/resolve-target-registry-and-namespace
   with:
-    docker-target-registry: ${{ inputs.docker-target-registry }}
-    docker-target-namespace: ${{ inputs.docker-target-namespace }}
+    docker-target-registry: ${{ steps.kpm.outputs.DOCKER_TARGET_REGISTRY }}
+    docker-target-namespace: ${{ steps.kpm.outputs.DOCKER_TARGET_NAMESPACE }}

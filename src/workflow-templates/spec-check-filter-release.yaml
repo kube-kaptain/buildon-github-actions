@@ -6,31 +6,6 @@ kaptain-order: 90
 kaptain-description: Everything from quality and version above, but also validates and packages a JSON Schema or an API Spec
 on:
   workflow_call:
-    inputs:
-      # INJECT-INPUT: output-sub-path
-
-      # INJECT-INPUT: docker-build
-      # INJECT-INPUT: docker-dockerfile
-      # INJECT-INPUT: docker-platform
-
-      # INJECT-INPUT: spec-validate
-
-      # INJECT-INPUT: token-substitution
-
-      # INJECT-INPUT: release-branches
-      # INJECT-INPUT: tag-version
-
-      # INJECT-INPUT: basic-quality-checks
-
-      # INJECT-INPUT: hooks-pre-build
-      # INJECT-INPUT: hooks-pre-tagging
-      # INJECT-INPUT: hooks-docker
-      # INJECT-INPUT: hooks-post-versions-and-naming
-      # INJECT-INPUT: hooks-post-build
-
-      # INJECT-INPUT: change-source-note
-
-      # INJECT-INPUT: github-release
     secrets:
       docker-registry-logins-secrets:
         description: 'JSON object of secrets for docker-registry-logins (e.g., {"DOCKER_USER": "x", "DOCKER_PASS": "y"})'
@@ -103,7 +78,7 @@ jobs:
       is-release: ${{ steps.versions.outputs.is-release }}
       docker-target-image-full-uri: ${{ steps.docker-build.outputs.docker-target-image-full-uri }}
       images-pushed: ${{ steps.docker-push-all.outputs.images-pushed }}
-      docker-context-sub-path: ${{ inputs.output-sub-path }}/docker/substituted
+      docker-context-sub-path: ${{ steps.kpm.outputs.OUTPUT_SUB_PATH }}/docker/substituted
     steps:
       # INJECT: parse-workflow-ref-and-checkout
 
@@ -112,10 +87,30 @@ jobs:
       # INJECT: validate-tooling
       # INJECT: github-check-end(name="Validate Tooling", id="check-validate-tooling")
 
+      # === Load Project KaptainPM Docker Logins ===
+      # INJECT: github-check-start(name="Load Project KaptainPM Docker Logins", id="check-load-project-kpm")
+      # INJECT: load-project-kaptainpm-docker-logins
+      # INJECT: github-check-end(name="Load Project KaptainPM Docker Logins", id="check-load-project-kpm")
+
+      # === Pre-Init Docker Registry Logins ===
+      # INJECT: github-check-start(name="Pre-Init Docker Registry Logins", id="check-docker-registry-logins-pre-init")
+      # INJECT: docker-registry-logins-pre-init
+      # INJECT: github-check-end(name="Pre-Init Docker Registry Logins", id="check-docker-registry-logins-pre-init")
+
+      # === Kaptain Init ===
+      # INJECT: github-check-start(name="Kaptain Init", id="check-kaptain-init")
+      # INJECT: kaptain-init
+      # INJECT: github-check-end(name="Kaptain Init", id="check-kaptain-init")
+
+      # === Load Final KaptainPM YAML ===
+      # INJECT: github-check-start(name="Load Final KaptainPM YAML", id="check-load-final-kpm")
+      # INJECT: load-final-kaptainpm-yaml
+      # INJECT: github-check-end(name="Load Final KaptainPM YAML", id="check-load-final-kpm")
+
       # === Pre-Build ===
-      # INJECT: github-check-start(name="Pre-Build", id="check-pre-build", if="inputs.hook-pre-build-script-sub-path != ''")
+      # INJECT: github-check-start(name="Pre-Build", id="check-pre-build", if="steps.kpm.outputs.HOOK_PRE_BUILD_SCRIPT_SUB_PATH != ''")
       # INJECT: hook-pre-build
-      # INJECT: github-check-end(name="Pre-Build", id="check-pre-build", if="inputs.hook-pre-build-script-sub-path != ''")
+      # INJECT: github-check-end(name="Pre-Build", id="check-pre-build", if="steps.kpm.outputs.HOOK_PRE_BUILD_SCRIPT_SUB_PATH != ''")
 
       # === Basic Quality Checks ===
       # INJECT: github-check-start(name="Basic Quality Checks", id="check-basic-quality", if="github.event_name == 'pull_request'")
@@ -136,9 +131,9 @@ jobs:
       # INJECT: github-check-end(name="Docker Platform Setup", id="check-docker-platform-setup")
 
       # === Pre-tagging Tests ===
-      # INJECT: github-check-start(name="Pre-tagging Tests", id="check-pre-tagging", if="inputs.hook-pre-tagging-tests-script-sub-path != ''")
+      # INJECT: github-check-start(name="Pre-tagging Tests", id="check-pre-tagging", if="steps.kpm.outputs.HOOK_PRE_TAGGING_TESTS_SCRIPT_SUB_PATH != ''")
       # INJECT: hook-pre-tagging-tests
-      # INJECT: github-check-end(name="Pre-tagging Tests", id="check-pre-tagging", if="inputs.hook-pre-tagging-tests-script-sub-path != ''")
+      # INJECT: github-check-end(name="Pre-tagging Tests", id="check-pre-tagging", if="steps.kpm.outputs.HOOK_PRE_TAGGING_TESTS_SCRIPT_SUB_PATH != ''")
 
       # === Versions & Naming ===
       # INJECT: github-check-start(name="Versions & Naming", id="check-versions")
@@ -146,9 +141,9 @@ jobs:
       # INJECT: github-check-end(name="Versions & Naming", id="check-versions")
 
       # === Post-Versions-and-Naming ===
-      # INJECT: github-check-start(name="Post-Versions-and-Naming", id="check-post-versions-and-naming", if="inputs.hook-post-versions-and-naming-script-sub-path != ''")
+      # INJECT: github-check-start(name="Post-Versions-and-Naming", id="check-post-versions-and-naming", if="steps.kpm.outputs.HOOK_POST_VERSIONS_AND_NAMING_SCRIPT_SUB_PATH != ''")
       # INJECT: hook-post-versions-and-naming
-      # INJECT: github-check-end(name="Post-Versions-and-Naming", id="check-post-versions-and-naming", if="inputs.hook-post-versions-and-naming-script-sub-path != ''")
+      # INJECT: github-check-end(name="Post-Versions-and-Naming", id="check-post-versions-and-naming", if="steps.kpm.outputs.HOOK_POST_VERSIONS_AND_NAMING_SCRIPT_SUB_PATH != ''")
 
       # === Change Source Note ===
       # INJECT: github-check-start(name="Change Source Note", id="check-change-source-note", if="steps.versions.outputs.is-release != 'true'")
@@ -166,9 +161,9 @@ jobs:
       # INJECT: github-check-end(name="Release Change Data OCI Package", id="check-release-change-data-oci-package")
 
       # === Pre-docker Prepare ===
-      # INJECT: github-check-start(name="Pre-docker Prepare", id="check-pre-docker-prepare", if="inputs.hook-pre-docker-prepare-script-sub-path != ''")
+      # INJECT: github-check-start(name="Pre-docker Prepare", id="check-pre-docker-prepare", if="steps.kpm.outputs.HOOK_PRE_DOCKER_PREPARE_SCRIPT_SUB_PATH != ''")
       # INJECT: hook-pre-docker-prepare
-      # INJECT: github-check-end(name="Pre-docker Prepare", id="check-pre-docker-prepare", if="inputs.hook-pre-docker-prepare-script-sub-path != ''")
+      # INJECT: github-check-end(name="Pre-docker Prepare", id="check-pre-docker-prepare", if="steps.kpm.outputs.HOOK_PRE_DOCKER_PREPARE_SCRIPT_SUB_PATH != ''")
 
       # === Spec Package Prepare ===
       # INJECT: github-check-start(name="Spec Package Prepare", id="check-spec-prepare")
@@ -178,8 +173,8 @@ jobs:
         env:
           PROJECT_NAME: ${{ steps.versions.outputs.project-name }}
           VERSION: ${{ steps.versions.outputs.version }}
-          OUTPUT_SUB_PATH: ${{ inputs.output-sub-path }}
-          SPEC_PACKAGING_BASE_IMAGE: ${{ inputs.spec-packaging-base-image }}
+          OUTPUT_SUB_PATH: ${{ steps.kpm.outputs.OUTPUT_SUB_PATH }}
+          SPEC_PACKAGING_BASE_IMAGE: ${{ steps.kpm.outputs.SPEC_PACKAGING_BASE_IMAGE }}
           BUILD_PLATFORM: github-actions
           BUILD_PLATFORM_LOG_PROVIDER: github-actions
         run: ./.github/buildon-github-actions/src/scripts/main/spec-package-prepare
@@ -203,18 +198,18 @@ jobs:
           repository-name: ${{ steps.versions.outputs.repository-name }}
           dockerfile-sub-path: ${{ steps.spec-package-prepare.outputs.DOCKERFILE_SUB_PATH }}
           dockerfile-substitution-files: ${{ steps.spec-package-prepare.outputs.SPEC_DOCKER_FILES }}
-          dockerfile-squash: ${{ inputs.dockerfile-squash }}
-          dockerfile-no-cache: ${{ inputs.dockerfile-no-cache }}
-          output-sub-path: ${{ inputs.output-sub-path }}
+          dockerfile-squash: ${{ steps.kpm.outputs.DOCKERFILE_SQUASH }}
+          dockerfile-no-cache: ${{ steps.kpm.outputs.DOCKERFILE_NO_CACHE }}
+          output-sub-path: ${{ steps.kpm.outputs.OUTPUT_SUB_PATH }}
           docker-push-image-list-file: ${{ steps.docker-registry-logins.outputs.docker-push-image-list-file }}
-          token-delimiter-style: ${{ inputs.token-delimiter-style }}
-          token-name-style: ${{ inputs.token-name-style }}
-          token-name-validation: ${{ inputs.token-name-validation }}
-          config-sub-path: ${{ inputs.config-sub-path }}
-          allow-builtin-token-override: ${{ inputs.allow-builtin-token-override }}
-          config-value-trailing-newline: ${{ inputs.config-value-trailing-newline }}
-          token-substitution-passes: ${{ inputs.token-substitution-passes }}
-          docker-platform: ${{ inputs.docker-platform }}
+          token-delimiter-style: ${{ steps.kpm.outputs.TOKEN_DELIMITER_STYLE }}
+          token-name-style: ${{ steps.kpm.outputs.TOKEN_NAME_STYLE }}
+          token-name-validation: ${{ steps.kpm.outputs.TOKEN_NAME_VALIDATION }}
+          config-sub-path: ${{ steps.kpm.outputs.CONFIG_SUB_PATH }}
+          allow-builtin-token-override: ${{ steps.kpm.outputs.ALLOW_BUILTIN_TOKEN_OVERRIDE }}
+          config-value-trailing-newline: ${{ steps.kpm.outputs.CONFIG_VALUE_TRAILING_NEWLINE }}
+          token-substitution-passes: ${{ steps.kpm.outputs.TOKEN_SUBSTITUTION_PASSES }}
+          docker-platform: ${{ steps.kpm.outputs.DOCKER_PLATFORM }}
           dockerfile-sub-path-linux-amd64: ${{ steps.spec-package-prepare.outputs.DOCKERFILE_SUB_PATH_LINUX_AMD64 }}
           dockerfile-sub-path-linux-arm64: ${{ steps.spec-package-prepare.outputs.DOCKERFILE_SUB_PATH_LINUX_ARM64 }}
       # INJECT: github-check-end(name="Docker Build", id="check-docker-build")
@@ -225,29 +220,30 @@ jobs:
         id: spec-validate
         shell: bash
         env:
-          SPEC_TYPE: ${{ inputs.spec-type }}
-          SPEC_JSON_SCHEMA_URL: ${{ inputs.spec-json-schema-url }}
-          OUTPUT_SUB_PATH: ${{ inputs.output-sub-path }}
-          DOCKER_PLATFORM: ${{ inputs.docker-platform }}
+          SPEC_TYPE: ${{ steps.kpm.outputs.SPEC_TYPE }}
+          SPEC_JSON_SCHEMA_URL: ${{ steps.kpm.outputs.SPEC_JSON_SCHEMA_URL }}
+          OUTPUT_SUB_PATH: ${{ steps.kpm.outputs.OUTPUT_SUB_PATH }}
+          DOCKER_PLATFORM: ${{ steps.kpm.outputs.DOCKER_PLATFORM }}
+          IMAGE_BUILD_COMMAND: ${{ steps.validate-tooling.outputs.IMAGE_BUILD_COMMAND }}
           BUILD_PLATFORM: github-actions
           BUILD_PLATFORM_LOG_PROVIDER: github-actions
         run: ./.github/buildon-github-actions/src/scripts/main/spec-validate
       # INJECT: github-check-end(name="Spec Validate", id="check-spec-validate")
 
       # === Post-docker Tests ===
-      # INJECT: github-check-start(name="Post-docker Tests", id="check-post-docker", if="inputs.hook-post-docker-tests-script-sub-path != ''")
+      # INJECT: github-check-start(name="Post-docker Tests", id="check-post-docker", if="steps.kpm.outputs.HOOK_POST_DOCKER_TESTS_SCRIPT_SUB_PATH != ''")
       # INJECT: hook-post-docker-tests
-      # INJECT: github-check-end(name="Post-docker Tests", id="check-post-docker", if="inputs.hook-post-docker-tests-script-sub-path != ''")
+      # INJECT: github-check-end(name="Post-docker Tests", id="check-post-docker", if="steps.kpm.outputs.HOOK_POST_DOCKER_TESTS_SCRIPT_SUB_PATH != ''")
 
       # === Docker Multi-Tag ===
-      # INJECT: github-check-start(name="Docker Multi-Tag", id="check-docker-multi-tag", if="inputs.docker-push-targets != '' && steps.versions.outputs.is-release == 'true'")
+      # INJECT: github-check-start(name="Docker Multi-Tag", id="check-docker-multi-tag", if="steps.kpm.outputs.DOCKER_PUSH_TARGETS != '' && steps.versions.outputs.is-release == 'true'")
       # INJECT: docker-multi-tag
-      # INJECT: github-check-end(name="Docker Multi-Tag", id="check-docker-multi-tag", if="inputs.docker-push-targets != '' && steps.versions.outputs.is-release == 'true'")
+      # INJECT: github-check-end(name="Docker Multi-Tag", id="check-docker-multi-tag", if="steps.kpm.outputs.DOCKER_PUSH_TARGETS != '' && steps.versions.outputs.is-release == 'true'")
 
       # === GitHub Release Prepare ===
-      # INJECT: github-check-start(name="GitHub Release Prepare", id="check-github-release-prepare", if="inputs.github-release-enabled == true")
+      # INJECT: github-check-start(name="GitHub Release Prepare", id="check-github-release-prepare", if="steps.kpm.outputs.GITHUB_RELEASE_ENABLED == 'true'")
       # INJECT: github-release-prepare-spec
-      # INJECT: github-check-end(name="GitHub Release Prepare", id="check-github-release-prepare", if="inputs.github-release-enabled == true")
+      # INJECT: github-check-end(name="GitHub Release Prepare", id="check-github-release-prepare", if="steps.kpm.outputs.GITHUB_RELEASE_ENABLED == 'true'")
 
       # === Git Tag Push ===
       # INJECT: github-check-start(name="Git Tag Push", id="check-git-push-tag", if="steps.versions.outputs.is-release == 'true'")
@@ -260,11 +256,11 @@ jobs:
       # INJECT: github-check-end(name="Docker Push All", id="check-docker-push-all", if="steps.versions.outputs.is-release == 'true'")
 
       # === GitHub Release ===
-      # INJECT: github-check-start(name="GitHub Release", id="check-github-release", if="inputs.github-release-enabled == true && steps.versions.outputs.is-release == 'true'")
+      # INJECT: github-check-start(name="GitHub Release", id="check-github-release", if="steps.kpm.outputs.GITHUB_RELEASE_ENABLED == 'true' && steps.versions.outputs.is-release == 'true'")
       # INJECT: github-release-spec
-      # INJECT: github-check-end(name="GitHub Release", id="check-github-release", if="inputs.github-release-enabled == true && steps.versions.outputs.is-release == 'true'")
+      # INJECT: github-check-end(name="GitHub Release", id="check-github-release", if="steps.kpm.outputs.GITHUB_RELEASE_ENABLED == 'true' && steps.versions.outputs.is-release == 'true'")
 
       # === Post-Build ===
-      # INJECT: github-check-start(name="Post-Build", id="check-post-build", if="inputs.hook-post-build-script-sub-path != ''")
+      # INJECT: github-check-start(name="Post-Build", id="check-post-build", if="steps.kpm.outputs.HOOK_POST_BUILD_SCRIPT_SUB_PATH != ''")
       # INJECT: hook-post-build
-      # INJECT: github-check-end(name="Post-Build", id="check-post-build", if="inputs.hook-post-build-script-sub-path != ''")
+      # INJECT: github-check-end(name="Post-Build", id="check-post-build", if="steps.kpm.outputs.HOOK_POST_BUILD_SCRIPT_SUB_PATH != ''")

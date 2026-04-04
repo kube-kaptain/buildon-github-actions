@@ -63,7 +63,8 @@ log "Kind matched: ${actual_kind}"
 # Format: "yaml.path:ENV_VAR_NAME"
 MAPPINGS=(
   # Global
-  "spec.global.outputSubPath:OUTPUT_SUB_PATH"
+  # Note: OUTPUT_SUB_PATH handled separately below (has default)
+
   "spec.global.configSubPath:CONFIG_SUB_PATH"
   "spec.global.secretsSubPath:SECRETS_SUB_PATH"
   "spec.global.tokens.delimiterStyle:TOKEN_DELIMITER_STYLE"
@@ -98,10 +99,10 @@ MAPPINGS=(
   # Docker
   "spec.main.docker.runtime:IMAGE_BUILD_COMMAND"
   "spec.main.docker.platform:DOCKER_PLATFORM"
-  # Note: registry.logins (DOCKER_REGISTRY_LOGINS) - scripts read KaptainPM.yaml directly
-  "spec.main.docker.registry.targetRegistry:DOCKER_TARGET_REGISTRY"
-  "spec.main.docker.registry.targetNamespace:DOCKER_TARGET_NAMESPACE"
-  # Note: registry.pushTargets (DOCKER_PUSH_TARGETS) - scripts read KaptainPM.yaml directly
+  # Note: logins exported separately as JSON below (multi-line YAML won't fit in output_var)
+  "spec.main.docker.targetRegistry:DOCKER_TARGET_REGISTRY"
+  "spec.main.docker.targetNamespace:DOCKER_TARGET_NAMESPACE"
+  # Note: pushTargets (DOCKER_PUSH_TARGETS) - scripts read KaptainPM.yaml directly
   "spec.main.docker.dockerfile.substitutionFiles:DOCKERFILE_SUBSTITUTION_FILES"
   "spec.main.docker.dockerfile.subPath:DOCKERFILE_SUB_PATH"
   "spec.main.docker.dockerfile.subPathLinuxAmd64:DOCKERFILE_SUB_PATH_LINUX_AMD64"
@@ -113,12 +114,16 @@ MAPPINGS=(
   "spec.main.docker.retag.sourceImageName:DOCKER_SOURCE_IMAGE_NAME"
   "spec.main.docker.retag.sourceTag:DOCKER_SOURCE_TAG"
 
+  # External image (manifests-only)
+  "spec.main.externalImage.name:DOCKER_IMAGE_NAME_OVERRIDE"
+  "spec.main.externalImage.tag:DOCKER_TAG_OVERRIDE"
+
   # Generators - common
   "spec.main.generators.common.additionalLabels:KUBERNETES_GLOBAL_ADDITIONAL_LABELS"
   "spec.main.generators.common.additionalAnnotations:KUBERNETES_GLOBAL_ADDITIONAL_ANNOTATIONS"
 
   # Generators - workload
-  "spec.main.generators.workload.type:KUBERNETES_WORKLOAD_TYPE"
+  # Note: KUBERNETES_WORKLOAD_TYPE handled separately below (has default)
   "spec.main.generators.workload.replicas:KUBERNETES_WORKLOAD_REPLICAS"
   "spec.main.generators.workload.revisionHistoryLimit:KUBERNETES_WORKLOAD_REVISION_HISTORY_LIMIT"
   "spec.main.generators.workload.minReadySeconds:KUBERNETES_WORKLOAD_MIN_READY_SECONDS"
@@ -285,7 +290,7 @@ MAPPINGS=(
   "spec.main.generators.service.additionalAnnotations:KUBERNETES_SERVICE_ADDITIONAL_ANNOTATIONS"
 
   # Generators - configmap
-  "spec.main.generators.configmap.subPath:KUBERNETES_CONFIGMAP_SUB_PATH"
+  # Note: KUBERNETES_CONFIGMAP_SUB_PATH handled separately below (has default)
   "spec.main.generators.configmap.nameSuffix:KUBERNETES_CONFIGMAP_NAME_SUFFIX"
   "spec.main.generators.configmap.combinedSubPath:KUBERNETES_CONFIGMAP_COMBINED_SUB_PATH"
   "spec.main.generators.configmap.nameChecksumInjection:KUBERNETES_CONFIGMAP_NAME_CHECKSUM_INJECTION"
@@ -293,7 +298,7 @@ MAPPINGS=(
   "spec.main.generators.configmap.additionalAnnotations:KUBERNETES_CONFIGMAP_ADDITIONAL_ANNOTATIONS"
 
   # Generators - secretTemplate
-  "spec.main.generators.secretTemplate.subPath:KUBERNETES_SECRET_TEMPLATE_SUB_PATH"
+  # Note: KUBERNETES_SECRET_TEMPLATE_SUB_PATH handled separately below (has default)
   "spec.main.generators.secretTemplate.nameSuffix:KUBERNETES_SECRET_TEMPLATE_NAME_SUFFIX"
   "spec.main.generators.secretTemplate.combinedSubPath:KUBERNETES_SECRET_TEMPLATE_COMBINED_SUB_PATH"
   "spec.main.generators.secretTemplate.nameChecksumInjection:KUBERNETES_SECRET_TEMPLATE_NAME_CHECKSUM_INJECTION"
@@ -350,7 +355,7 @@ MAPPINGS=(
   "spec.main.aws.eksClusterManagement.ciliumEbpfNetworking:EKS_CILIUM_EBPF_NETWORKING"
 
   # Platform - GitHub Actions
-  "spec.platform.githubActions.release.enabled:GITHUB_RELEASE_ENABLED"
+  # Note: GITHUB_RELEASE_ENABLED handled separately below (has default)
   "spec.platform.githubActions.release.addVersionToFilenames:GITHUB_RELEASE_ADD_VERSION_TO_FILENAMES"
   "spec.platform.githubActions.release.notes:GITHUB_RELEASE_NOTES"
   "spec.platform.githubActions.release.notesFile:GITHUB_RELEASE_NOTES_FILE"
@@ -372,10 +377,70 @@ for mapping in "${MAPPINGS[@]}"; do
     continue
   fi
 
-  output_var "${env_var}" "${value}"
+  # Suppress output_var stdout — the log line below provides better context
+  output_var "${env_var}" "${value}" > /dev/null
   log "Field .${yaml_path} = \"${value}\" exported as ${env_var}"
   found_count=$((found_count + 1))
 done
 log ""
+
+# Export complex values that can't go through the simple mapping loop
+logins_json=$(yq -o=json -c '.spec.main.docker.logins // ""' "${PM_FILE}")
+if [[ -n "${logins_json}" && "${logins_json}" != "null" && "${logins_json}" != '""' ]]; then
+  output_var "DOCKER_REGISTRY_LOGINS" "${logins_json}" > /dev/null
+  log "Field .spec.main.docker.logins exported as DOCKER_REGISTRY_LOGINS (JSON)"
+  found_count=$((found_count + 1))
+fi
+
+# Fields used in workflow step inputs or if-conditions that need defaults when absent from yaml
+output_sub_path=$(yq -r '.spec.global.outputSubPath // ""' "${PM_FILE}")
+if [[ -z "${output_sub_path}" || "${output_sub_path}" == "null" ]]; then
+  output_sub_path="kaptain-out"
+  log "Field .spec.global.outputSubPath not set, defaulted to ${output_sub_path} to allow wrapper optimisations."
+else
+  found_count=$((found_count + 1))
+fi
+output_var "OUTPUT_SUB_PATH" "${output_sub_path}" > /dev/null
+log "Field .spec.global.outputSubPath = \"${output_sub_path}\" exported as OUTPUT_SUB_PATH"
+
+github_release_enabled=$(yq -r '.spec.platform.githubActions.release.enabled // ""' "${PM_FILE}")
+if [[ -z "${github_release_enabled}" || "${github_release_enabled}" == "null" ]]; then
+  github_release_enabled="true"
+  log "Field .spec.platform.githubActions.release.enabled not set, defaulted to ${github_release_enabled} to allow wrapper optimisations."
+else
+  found_count=$((found_count + 1))
+fi
+output_var "GITHUB_RELEASE_ENABLED" "${github_release_enabled}" > /dev/null
+log "Field .spec.platform.githubActions.release.enabled = \"${github_release_enabled}\" exported as GITHUB_RELEASE_ENABLED"
+
+workload_type=$(yq -r '.spec.main.generators.workload.type // ""' "${PM_FILE}")
+if [[ -z "${workload_type}" || "${workload_type}" == "null" ]]; then
+  workload_type="deployment"
+  log "Field .spec.main.generators.workload.type not set, defaulted to ${workload_type} to allow wrapper optimisations."
+else
+  found_count=$((found_count + 1))
+fi
+output_var "KUBERNETES_WORKLOAD_TYPE" "${workload_type}" > /dev/null
+log "Field .spec.main.generators.workload.type = \"${workload_type}\" exported as KUBERNETES_WORKLOAD_TYPE"
+
+configmap_sub_path=$(yq -r '.spec.main.generators.configmap.subPath // ""' "${PM_FILE}")
+if [[ -z "${configmap_sub_path}" || "${configmap_sub_path}" == "null" ]]; then
+  configmap_sub_path="src/configmap"
+  log "Field .spec.main.generators.configmap.subPath not set, defaulted to ${configmap_sub_path} to allow wrapper optimisations."
+else
+  found_count=$((found_count + 1))
+fi
+output_var "KUBERNETES_CONFIGMAP_SUB_PATH" "${configmap_sub_path}" > /dev/null
+log "Field .spec.main.generators.configmap.subPath = \"${configmap_sub_path}\" exported as KUBERNETES_CONFIGMAP_SUB_PATH"
+
+secret_template_sub_path=$(yq -r '.spec.main.generators.secretTemplate.subPath // ""' "${PM_FILE}")
+if [[ -z "${secret_template_sub_path}" || "${secret_template_sub_path}" == "null" ]]; then
+  secret_template_sub_path="src/secret.template"
+  log "Field .spec.main.generators.secretTemplate.subPath not set, defaulted to ${secret_template_sub_path} to allow wrapper optimisations."
+else
+  found_count=$((found_count + 1))
+fi
+output_var "KUBERNETES_SECRET_TEMPLATE_SUB_PATH" "${secret_template_sub_path}" > /dev/null
+log "Field .spec.main.generators.secretTemplate.subPath = \"${secret_template_sub_path}\" exported as KUBERNETES_SECRET_TEMPLATE_SUB_PATH"
 
 log "Loaded ${found_count} value(s) from KaptainPM.yaml"

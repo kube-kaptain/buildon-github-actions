@@ -4,7 +4,7 @@
 #
 # docker-registry-logins - Router for multi-registry authentication
 #
-# Reads login configuration from CONFIG env var (inline YAML) and routes
+# Reads login configuration from DOCKER_REGISTRY_LOGINS env var (inline YAML) and routes
 # to the appropriate login script for each configured registry.
 #
 # Registry URL is the key - prevents duplicates and makes config explicit:
@@ -14,7 +14,7 @@
 #     password-secret: DOCKERHUB_PASS
 #
 # Inputs (environment variables):
-#   CONFIG - YAML config with registry logins (registry URL as key) - required
+#   DOCKER_REGISTRY_LOGINS - YAML config with registry logins (registry URL as key) - required
 #   SECRET_METHOD - Secret retrieval method (github, env) - required
 #   SECRETS_JSON - JSON object containing secret values keyed by secret name
 #   OUTPUT_SUB_PATH - Build output directory (default: kaptain-out)
@@ -38,8 +38,8 @@ source "${SCRIPT_DIR}/../lib/output-var.bash"
 source "${SCRIPT_DIR}/../lib/log.bash"
 
 # Config from inline YAML - required
-if [[ -z "${CONFIG:-}" ]]; then
-  log_error "CONFIG is required"
+if [[ -z "${DOCKER_REGISTRY_LOGINS:-}" ]]; then
+  log_error "DOCKER_REGISTRY_LOGINS is required"
   exit 1
 fi
 
@@ -69,14 +69,14 @@ validate_secret_method() {
 # Helper to extract config value with yq
 cfg() {
   local registry="${1}" key="${2}"
-  echo "${CONFIG}" | yq -r ".[\"${registry}\"][\"${key}\"]"
+  echo "${DOCKER_REGISTRY_LOGINS}" | yq -r ".[\"${registry}\"][\"${key}\"]"
 }
 
 # Get required secret names for a registry based on its type
 get_required_secrets() {
   local registry="${1}"
   local login_type
-  login_type=$(echo "${CONFIG}" | yq -r ".[\"${registry}\"].type")
+  login_type=$(echo "${DOCKER_REGISTRY_LOGINS}" | yq -r ".[\"${registry}\"].type")
 
   case "${login_type}" in
     username-password)
@@ -108,7 +108,7 @@ validate_all_secrets() {
   local missing_secrets=()
   local registries
 
-  registries=$(echo "${CONFIG}" | yq -r 'keys | .[]')
+  registries=$(echo "${DOCKER_REGISTRY_LOGINS}" | yq -r 'keys | .[]')
   [[ -z "${registries}" ]] && return 0
 
   # Collect all required secrets and check each one
@@ -153,7 +153,7 @@ validate_all_secrets() {
 route_login() {
   local registry="${1}"
   local login_type
-  login_type=$(echo "${CONFIG}" | yq -r ".[\"${registry}\"].type")
+  login_type=$(echo "${DOCKER_REGISTRY_LOGINS}" | yq -r ".[\"${registry}\"].type")
 
   local login_script="${PLUGINS_DIR}/docker-login-providers/docker-login-${login_type}"
   if [[ ! -x "${login_script}" ]]; then
@@ -185,7 +185,7 @@ route_login() {
 
     aws-ecr-github-actions-oidc)
       local session_name
-      session_name=$(echo "${CONFIG}" | yq -r ".[\"${registry}\"][\"session-name\"] // \"github-actions\"")
+      session_name=$(echo "${DOCKER_REGISTRY_LOGINS}" | yq -r ".[\"${registry}\"][\"session-name\"] // \"github-actions\"")
       "${login_script}" "${SECRET_METHOD}" "${registry}" \
         "$(cfg "${registry}" "role-arn")" \
         "$(cfg "${registry}" "region")" \
@@ -260,7 +260,7 @@ main() {
 
   # Get list of registries
   local registries
-  registries=$(echo "${CONFIG}" | yq -r 'keys | .[]')
+  registries=$(echo "${DOCKER_REGISTRY_LOGINS}" | yq -r 'keys | .[]')
 
   if [[ -z "${registries}" ]]; then
     log "No registries configured"

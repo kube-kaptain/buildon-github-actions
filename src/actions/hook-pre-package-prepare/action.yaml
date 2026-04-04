@@ -949,10 +949,6 @@ inputs:
     description: 'Full target image URI (registry/name:tag) - empty in manifests-only workflows'
     required: false
     default: ''
-  # Manifest outputs (computed path for this position)
-  manifests-substituted-sub-path:
-    description: 'Manifests substituted directory (where substituted manifests go)'
-    required: true
 
 runs:
   using: composite
@@ -1184,14 +1180,14 @@ runs:
         QC_BLOCK_DUPLICATE_COMMIT_MESSAGES: ${{ inputs.qc-block-duplicate-commit-messages }}
 
         # Workflow inputs - hook script paths
-        HOOK_PRE_BUILD_SCRIPT_SUB_PATH: .github/${{ inputs.hook-pre-build-script-sub-path }}
-        HOOK_PRE_TAGGING_TESTS_SCRIPT_SUB_PATH: .github/${{ inputs.hook-pre-tagging-tests-script-sub-path }}
-        HOOK_PRE_DOCKER_PREPARE_SCRIPT_SUB_PATH: .github/${{ inputs.hook-pre-docker-prepare-script-sub-path }}
-        HOOK_POST_DOCKER_TESTS_SCRIPT_SUB_PATH: .github/${{ inputs.hook-post-docker-tests-script-sub-path }}
-        HOOK_PRE_PACKAGE_PREPARE_SCRIPT_SUB_PATH: .github/${{ inputs.hook-pre-package-prepare-script-sub-path }}
-        HOOK_POST_PACKAGE_TESTS_SCRIPT_SUB_PATH: .github/${{ inputs.hook-post-package-tests-script-sub-path }}
-        HOOK_POST_VERSIONS_AND_NAMING_SCRIPT_SUB_PATH: .github/${{ inputs.hook-post-versions-and-naming-script-sub-path }}
-        HOOK_POST_BUILD_SCRIPT_SUB_PATH: .github/${{ inputs.hook-post-build-script-sub-path }}
+        HOOK_PRE_BUILD_SCRIPT_SUB_PATH: ${{ inputs.hook-pre-build-script-sub-path }}
+        HOOK_PRE_TAGGING_TESTS_SCRIPT_SUB_PATH: ${{ inputs.hook-pre-tagging-tests-script-sub-path }}
+        HOOK_PRE_DOCKER_PREPARE_SCRIPT_SUB_PATH: ${{ inputs.hook-pre-docker-prepare-script-sub-path }}
+        HOOK_POST_DOCKER_TESTS_SCRIPT_SUB_PATH: ${{ inputs.hook-post-docker-tests-script-sub-path }}
+        HOOK_PRE_PACKAGE_PREPARE_SCRIPT_SUB_PATH: ${{ inputs.hook-pre-package-prepare-script-sub-path }}
+        HOOK_POST_PACKAGE_TESTS_SCRIPT_SUB_PATH: ${{ inputs.hook-post-package-tests-script-sub-path }}
+        HOOK_POST_VERSIONS_AND_NAMING_SCRIPT_SUB_PATH: ${{ inputs.hook-post-versions-and-naming-script-sub-path }}
+        HOOK_POST_BUILD_SCRIPT_SUB_PATH: ${{ inputs.hook-post-build-script-sub-path }}
 
         # Workflow inputs - github release
         GITHUB_RELEASE_ENABLED: ${{ inputs.github-release-enabled }}
@@ -1217,5 +1213,4 @@ runs:
         # Step outputs - docker outputs
         DOCKER_TARGET_IMAGE_FULL_URI: ${{ inputs.docker-target-image-full-uri }}
         # Step outputs - manifest outputs
-        MANIFESTS_SUBSTITUTED_SUB_PATH: ${{ inputs.manifests-substituted-sub-path }}
       run: .github/buildon-github-actions/src/scripts/main/hook-pre-package-prepare

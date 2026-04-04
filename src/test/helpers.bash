@@ -426,10 +426,11 @@ verify_action_template_env_mappings() {
   local step_outputs="VERSION VERSION_MAJOR VERSION_MINOR VERSION_PATCH VERSION_2_PART VERSION_3_PART VERSION_4_PART"
   step_outputs="$step_outputs DOCKER_TAG DOCKER_IMAGE_NAME GIT_TAG PROJECT_NAME IS_RELEASE"
   step_outputs="$step_outputs TARGET_IMAGE_FULL_URI DOCKER_IMAGE_FULL_URI"
-  step_outputs="$step_outputs MANIFESTS_SUBSTITUTED_SUB_PATH MANIFESTS_ZIP_SUB_PATH MANIFESTS_ZIP_FILE_NAME"
+  step_outputs="$step_outputs MANIFESTS_ZIP_FILE_NAME"
 
   # Computed vars from defaults files - not wired via action inputs
   local computed_vars="DOCKER_CONTEXT_SUB_PATH DOCKER_CONTEXT_SUB_PATH_LINUX_AMD64 DOCKER_CONTEXT_SUB_PATH_LINUX_ARM64"
+  computed_vars="$computed_vars MANIFESTS_COMBINED_SUB_PATH MANIFESTS_CONFIG_SUB_PATH MANIFESTS_SUBSTITUTED_SUB_PATH MANIFESTS_ZIP_SUB_PATH"
 
   local missing=""
   while IFS= read -r export_var; do

@@ -9,5 +9,5 @@
     project-name: ${{ steps.versions.outputs.project-name }}
     git-tag: ${{ steps.versions.outputs.git-tag }}
     repository-owner: ${{ steps.versions.outputs.repository-owner }}
-    output-sub-path: ${{ inputs.output-sub-path }}
-    change-source-note-enabled: ${{ inputs.change-source-note-enabled }}
+    output-sub-path: ${{ steps.kpm.outputs.OUTPUT_SUB_PATH }}
+    change-source-note-enabled: ${{ steps.kpm.outputs.CHANGE_SOURCE_NOTE_ENABLED }}

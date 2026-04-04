@@ -1,0 +1,15 @@
+# SPDX-License-Identifier: CC0-1.0
+# This example is released to the public domain. Use freely without attribution.
+
+apiVersion: kaptain.org/v1
+kind: basic-quality-and-versioning
+
+spec:
+  main:
+    tokens:
+      delimiterStyle: shell
+      nameStyle: PascalCase
+      nameValidation: MATCH
+      configSubPath: src/config
+      allowBuiltinOverride: false
+      configValueTrailingNewline: strip-for-single-line

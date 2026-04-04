@@ -3,111 +3,111 @@
 
 - name: Generate workload manifest
   id: generate-workload
-  if: inputs.kubernetes-workload-type != 'none'
+  if: steps.kpm.outputs.KUBERNETES_WORKLOAD_TYPE != 'none'
   uses: ./.github/buildon-github-actions/src/actions/generate-kubernetes-workload
   with:
     # Required context
     project-name: ${{ steps.versions.outputs.project-name }}
     # Workload type
-    kubernetes-workload-type: ${{ inputs.kubernetes-workload-type }}
+    kubernetes-workload-type: ${{ steps.kpm.outputs.KUBERNETES_WORKLOAD_TYPE }}
     # Common workload settings
-    kubernetes-workload-replicas: ${{ inputs.kubernetes-workload-replicas }}
-    kubernetes-workload-revision-history-limit: ${{ inputs.kubernetes-workload-revision-history-limit }}
-    kubernetes-workload-min-ready-seconds: ${{ inputs.kubernetes-workload-min-ready-seconds }}
-    kubernetes-workload-name-suffix: ${{ inputs.kubernetes-workload-name-suffix }}
-    kubernetes-workload-combined-sub-path: ${{ inputs.kubernetes-workload-combined-sub-path }}
-    kubernetes-workload-env-sub-path: ${{ inputs.kubernetes-workload-env-sub-path }}
-    kubernetes-workload-additional-labels: ${{ inputs.kubernetes-workload-additional-labels }}
-    kubernetes-workload-additional-annotations: ${{ inputs.kubernetes-workload-additional-annotations }}
+    kubernetes-workload-replicas: ${{ steps.kpm.outputs.KUBERNETES_WORKLOAD_REPLICAS }}
+    kubernetes-workload-revision-history-limit: ${{ steps.kpm.outputs.KUBERNETES_WORKLOAD_REVISION_HISTORY_LIMIT }}
+    kubernetes-workload-min-ready-seconds: ${{ steps.kpm.outputs.KUBERNETES_WORKLOAD_MIN_READY_SECONDS }}
+    kubernetes-workload-name-suffix: ${{ steps.kpm.outputs.KUBERNETES_WORKLOAD_NAME_SUFFIX }}
+    kubernetes-workload-combined-sub-path: ${{ steps.kpm.outputs.KUBERNETES_WORKLOAD_COMBINED_SUB_PATH }}
+    kubernetes-workload-env-sub-path: ${{ steps.kpm.outputs.KUBERNETES_WORKLOAD_ENV_SUB_PATH }}
+    kubernetes-workload-additional-labels: ${{ steps.kpm.outputs.KUBERNETES_WORKLOAD_ADDITIONAL_LABELS }}
+    kubernetes-workload-additional-annotations: ${{ steps.kpm.outputs.KUBERNETES_WORKLOAD_ADDITIONAL_ANNOTATIONS }}
     # Container configuration
-    kubernetes-workload-container-port: ${{ inputs.kubernetes-workload-container-port }}
-    kubernetes-workload-image-reference-style: ${{ inputs.kubernetes-workload-image-reference-style }}
+    kubernetes-workload-container-port: ${{ steps.kpm.outputs.KUBERNETES_WORKLOAD_CONTAINER_PORT }}
+    kubernetes-workload-image-reference-style: ${{ steps.kpm.outputs.KUBERNETES_WORKLOAD_IMAGE_REFERENCE_STYLE }}
     # Security settings
-    kubernetes-workload-readonly-root-filesystem: ${{ inputs.kubernetes-workload-readonly-root-filesystem }}
-    kubernetes-workload-seccomp-profile: ${{ inputs.kubernetes-workload-seccomp-profile }}
-    kubernetes-workload-automount-service-account-token: ${{ inputs.kubernetes-workload-automount-service-account-token }}
-    kubernetes-workload-image-pull-secrets: ${{ inputs.kubernetes-workload-image-pull-secrets }}
+    kubernetes-workload-readonly-root-filesystem: ${{ steps.kpm.outputs.KUBERNETES_WORKLOAD_READONLY_ROOT_FILESYSTEM }}
+    kubernetes-workload-seccomp-profile: ${{ steps.kpm.outputs.KUBERNETES_WORKLOAD_SECCOMP_PROFILE }}
+    kubernetes-workload-automount-service-account-token: ${{ steps.kpm.outputs.KUBERNETES_WORKLOAD_AUTOMOUNT_SERVICE_ACCOUNT_TOKEN }}
+    kubernetes-workload-image-pull-secrets: ${{ steps.kpm.outputs.KUBERNETES_WORKLOAD_IMAGE_PULL_SECRETS }}
     # Resource limits
-    kubernetes-workload-resources-memory: ${{ inputs.kubernetes-workload-resources-memory }}
-    kubernetes-workload-resources-cpu-request: ${{ inputs.kubernetes-workload-resources-cpu-request }}
-    kubernetes-workload-resources-cpu-limit: ${{ inputs.kubernetes-workload-resources-cpu-limit }}
-    kubernetes-workload-resources-ephemeral-storage: ${{ inputs.kubernetes-workload-resources-ephemeral-storage }}
+    kubernetes-workload-resources-memory: ${{ steps.kpm.outputs.KUBERNETES_WORKLOAD_RESOURCES_MEMORY }}
+    kubernetes-workload-resources-cpu-request: ${{ steps.kpm.outputs.KUBERNETES_WORKLOAD_RESOURCES_CPU_REQUEST }}
+    kubernetes-workload-resources-cpu-limit: ${{ steps.kpm.outputs.KUBERNETES_WORKLOAD_RESOURCES_CPU_LIMIT }}
+    kubernetes-workload-resources-ephemeral-storage: ${{ steps.kpm.outputs.KUBERNETES_WORKLOAD_RESOURCES_EPHEMERAL_STORAGE }}
     # Mount paths
-    kubernetes-workload-configmap-mount-path: ${{ inputs.kubernetes-workload-configmap-mount-path }}
-    kubernetes-workload-secret-mount-path: ${{ inputs.kubernetes-workload-secret-mount-path }}
+    kubernetes-workload-configmap-mount-path: ${{ steps.kpm.outputs.KUBERNETES_WORKLOAD_CONFIGMAP_MOUNT_PATH }}
+    kubernetes-workload-secret-mount-path: ${{ steps.kpm.outputs.KUBERNETES_WORKLOAD_SECRET_MOUNT_PATH }}
     # Environment variable refs from ConfigMap/Secret keys
-    kubernetes-workload-configmap-keys-for-env: ${{ inputs.kubernetes-workload-configmap-keys-for-env }}
-    kubernetes-workload-secret-keys-for-env: ${{ inputs.kubernetes-workload-secret-keys-for-env }}
+    kubernetes-workload-configmap-keys-for-env: ${{ steps.kpm.outputs.KUBERNETES_WORKLOAD_CONFIGMAP_KEYS_FOR_ENV }}
+    kubernetes-workload-secret-keys-for-env: ${{ steps.kpm.outputs.KUBERNETES_WORKLOAD_SECRET_KEYS_FOR_ENV }}
     # Lifecycle
-    kubernetes-workload-termination-grace-period-seconds: ${{ inputs.kubernetes-workload-termination-grace-period-seconds }}
-    kubernetes-workload-prestop-command: ${{ inputs.kubernetes-workload-prestop-command }}
-    kubernetes-workload-affinity-strategy: ${{ inputs.kubernetes-workload-affinity-strategy }}
-    kubernetes-workload-tolerations: ${{ inputs.kubernetes-workload-tolerations }}
-    kubernetes-workload-priority-class-name: ${{ inputs.kubernetes-workload-priority-class-name }}
+    kubernetes-workload-termination-grace-period-seconds: ${{ steps.kpm.outputs.KUBERNETES_WORKLOAD_TERMINATION_GRACE_PERIOD_SECONDS }}
+    kubernetes-workload-prestop-command: ${{ steps.kpm.outputs.KUBERNETES_WORKLOAD_PRESTOP_COMMAND }}
+    kubernetes-workload-affinity-strategy: ${{ steps.kpm.outputs.KUBERNETES_WORKLOAD_AFFINITY_STRATEGY }}
+    kubernetes-workload-tolerations: ${{ steps.kpm.outputs.KUBERNETES_WORKLOAD_TOLERATIONS }}
+    kubernetes-workload-priority-class-name: ${{ steps.kpm.outputs.KUBERNETES_WORKLOAD_PRIORITY_CLASS_NAME }}
     # Liveness probe settings
-    kubernetes-workload-probe-liveness-check-type: ${{ inputs.kubernetes-workload-probe-liveness-check-type }}
-    kubernetes-workload-probe-liveness-http-path: ${{ inputs.kubernetes-workload-probe-liveness-http-path }}
-    kubernetes-workload-probe-liveness-http-scheme: ${{ inputs.kubernetes-workload-probe-liveness-http-scheme }}
-    kubernetes-workload-probe-liveness-tcp-port: ${{ inputs.kubernetes-workload-probe-liveness-tcp-port }}
-    kubernetes-workload-probe-liveness-exec-command: ${{ inputs.kubernetes-workload-probe-liveness-exec-command }}
-    kubernetes-workload-probe-liveness-grpc-port: ${{ inputs.kubernetes-workload-probe-liveness-grpc-port }}
-    kubernetes-workload-probe-liveness-grpc-service: ${{ inputs.kubernetes-workload-probe-liveness-grpc-service }}
-    kubernetes-workload-probe-liveness-initial-delay-seconds: ${{ inputs.kubernetes-workload-probe-liveness-initial-delay-seconds }}
-    kubernetes-workload-probe-liveness-period-seconds: ${{ inputs.kubernetes-workload-probe-liveness-period-seconds }}
-    kubernetes-workload-probe-liveness-timeout-seconds: ${{ inputs.kubernetes-workload-probe-liveness-timeout-seconds }}
-    kubernetes-workload-probe-liveness-failure-threshold: ${{ inputs.kubernetes-workload-probe-liveness-failure-threshold }}
-    kubernetes-workload-probe-liveness-termination-grace-period-seconds: ${{ inputs.kubernetes-workload-probe-liveness-termination-grace-period-seconds }}
+    kubernetes-workload-probe-liveness-check-type: ${{ steps.kpm.outputs.KUBERNETES_WORKLOAD_PROBE_LIVENESS_CHECK_TYPE }}
+    kubernetes-workload-probe-liveness-http-path: ${{ steps.kpm.outputs.KUBERNETES_WORKLOAD_PROBE_LIVENESS_HTTP_PATH }}
+    kubernetes-workload-probe-liveness-http-scheme: ${{ steps.kpm.outputs.KUBERNETES_WORKLOAD_PROBE_LIVENESS_HTTP_SCHEME }}
+    kubernetes-workload-probe-liveness-tcp-port: ${{ steps.kpm.outputs.KUBERNETES_WORKLOAD_PROBE_LIVENESS_TCP_PORT }}
+    kubernetes-workload-probe-liveness-exec-command: ${{ steps.kpm.outputs.KUBERNETES_WORKLOAD_PROBE_LIVENESS_EXEC_COMMAND }}
+    kubernetes-workload-probe-liveness-grpc-port: ${{ steps.kpm.outputs.KUBERNETES_WORKLOAD_PROBE_LIVENESS_GRPC_PORT }}
+    kubernetes-workload-probe-liveness-grpc-service: ${{ steps.kpm.outputs.KUBERNETES_WORKLOAD_PROBE_LIVENESS_GRPC_SERVICE }}
+    kubernetes-workload-probe-liveness-initial-delay-seconds: ${{ steps.kpm.outputs.KUBERNETES_WORKLOAD_PROBE_LIVENESS_INITIAL_DELAY_SECONDS }}
+    kubernetes-workload-probe-liveness-period-seconds: ${{ steps.kpm.outputs.KUBERNETES_WORKLOAD_PROBE_LIVENESS_PERIOD_SECONDS }}
+    kubernetes-workload-probe-liveness-timeout-seconds: ${{ steps.kpm.outputs.KUBERNETES_WORKLOAD_PROBE_LIVENESS_TIMEOUT_SECONDS }}
+    kubernetes-workload-probe-liveness-failure-threshold: ${{ steps.kpm.outputs.KUBERNETES_WORKLOAD_PROBE_LIVENESS_FAILURE_THRESHOLD }}
+    kubernetes-workload-probe-liveness-termination-grace-period-seconds: ${{ steps.kpm.outputs.KUBERNETES_WORKLOAD_PROBE_LIVENESS_TERMINATION_GRACE_PERIOD_SECONDS }}
     # Readiness probe settings
-    kubernetes-workload-probe-readiness-check-type: ${{ inputs.kubernetes-workload-probe-readiness-check-type }}
-    kubernetes-workload-probe-readiness-http-path: ${{ inputs.kubernetes-workload-probe-readiness-http-path }}
-    kubernetes-workload-probe-readiness-http-scheme: ${{ inputs.kubernetes-workload-probe-readiness-http-scheme }}
-    kubernetes-workload-probe-readiness-tcp-port: ${{ inputs.kubernetes-workload-probe-readiness-tcp-port }}
-    kubernetes-workload-probe-readiness-exec-command: ${{ inputs.kubernetes-workload-probe-readiness-exec-command }}
-    kubernetes-workload-probe-readiness-grpc-port: ${{ inputs.kubernetes-workload-probe-readiness-grpc-port }}
-    kubernetes-workload-probe-readiness-grpc-service: ${{ inputs.kubernetes-workload-probe-readiness-grpc-service }}
-    kubernetes-workload-probe-readiness-initial-delay-seconds: ${{ inputs.kubernetes-workload-probe-readiness-initial-delay-seconds }}
-    kubernetes-workload-probe-readiness-period-seconds: ${{ inputs.kubernetes-workload-probe-readiness-period-seconds }}
-    kubernetes-workload-probe-readiness-timeout-seconds: ${{ inputs.kubernetes-workload-probe-readiness-timeout-seconds }}
-    kubernetes-workload-probe-readiness-failure-threshold: ${{ inputs.kubernetes-workload-probe-readiness-failure-threshold }}
-    kubernetes-workload-probe-readiness-success-threshold: ${{ inputs.kubernetes-workload-probe-readiness-success-threshold }}
+    kubernetes-workload-probe-readiness-check-type: ${{ steps.kpm.outputs.KUBERNETES_WORKLOAD_PROBE_READINESS_CHECK_TYPE }}
+    kubernetes-workload-probe-readiness-http-path: ${{ steps.kpm.outputs.KUBERNETES_WORKLOAD_PROBE_READINESS_HTTP_PATH }}
+    kubernetes-workload-probe-readiness-http-scheme: ${{ steps.kpm.outputs.KUBERNETES_WORKLOAD_PROBE_READINESS_HTTP_SCHEME }}
+    kubernetes-workload-probe-readiness-tcp-port: ${{ steps.kpm.outputs.KUBERNETES_WORKLOAD_PROBE_READINESS_TCP_PORT }}
+    kubernetes-workload-probe-readiness-exec-command: ${{ steps.kpm.outputs.KUBERNETES_WORKLOAD_PROBE_READINESS_EXEC_COMMAND }}
+    kubernetes-workload-probe-readiness-grpc-port: ${{ steps.kpm.outputs.KUBERNETES_WORKLOAD_PROBE_READINESS_GRPC_PORT }}
+    kubernetes-workload-probe-readiness-grpc-service: ${{ steps.kpm.outputs.KUBERNETES_WORKLOAD_PROBE_READINESS_GRPC_SERVICE }}
+    kubernetes-workload-probe-readiness-initial-delay-seconds: ${{ steps.kpm.outputs.KUBERNETES_WORKLOAD_PROBE_READINESS_INITIAL_DELAY_SECONDS }}
+    kubernetes-workload-probe-readiness-period-seconds: ${{ steps.kpm.outputs.KUBERNETES_WORKLOAD_PROBE_READINESS_PERIOD_SECONDS }}
+    kubernetes-workload-probe-readiness-timeout-seconds: ${{ steps.kpm.outputs.KUBERNETES_WORKLOAD_PROBE_READINESS_TIMEOUT_SECONDS }}
+    kubernetes-workload-probe-readiness-failure-threshold: ${{ steps.kpm.outputs.KUBERNETES_WORKLOAD_PROBE_READINESS_FAILURE_THRESHOLD }}
+    kubernetes-workload-probe-readiness-success-threshold: ${{ steps.kpm.outputs.KUBERNETES_WORKLOAD_PROBE_READINESS_SUCCESS_THRESHOLD }}
     # Startup probe settings
-    kubernetes-workload-probe-startup-check-type: ${{ inputs.kubernetes-workload-probe-startup-check-type }}
-    kubernetes-workload-probe-startup-http-path: ${{ inputs.kubernetes-workload-probe-startup-http-path }}
-    kubernetes-workload-probe-startup-http-scheme: ${{ inputs.kubernetes-workload-probe-startup-http-scheme }}
-    kubernetes-workload-probe-startup-tcp-port: ${{ inputs.kubernetes-workload-probe-startup-tcp-port }}
-    kubernetes-workload-probe-startup-exec-command: ${{ inputs.kubernetes-workload-probe-startup-exec-command }}
-    kubernetes-workload-probe-startup-grpc-port: ${{ inputs.kubernetes-workload-probe-startup-grpc-port }}
-    kubernetes-workload-probe-startup-grpc-service: ${{ inputs.kubernetes-workload-probe-startup-grpc-service }}
-    kubernetes-workload-probe-startup-initial-delay-seconds: ${{ inputs.kubernetes-workload-probe-startup-initial-delay-seconds }}
-    kubernetes-workload-probe-startup-period-seconds: ${{ inputs.kubernetes-workload-probe-startup-period-seconds }}
-    kubernetes-workload-probe-startup-timeout-seconds: ${{ inputs.kubernetes-workload-probe-startup-timeout-seconds }}
-    kubernetes-workload-probe-startup-failure-threshold: ${{ inputs.kubernetes-workload-probe-startup-failure-threshold }}
-    kubernetes-workload-probe-startup-termination-grace-period-seconds: ${{ inputs.kubernetes-workload-probe-startup-termination-grace-period-seconds }}
+    kubernetes-workload-probe-startup-check-type: ${{ steps.kpm.outputs.KUBERNETES_WORKLOAD_PROBE_STARTUP_CHECK_TYPE }}
+    kubernetes-workload-probe-startup-http-path: ${{ steps.kpm.outputs.KUBERNETES_WORKLOAD_PROBE_STARTUP_HTTP_PATH }}
+    kubernetes-workload-probe-startup-http-scheme: ${{ steps.kpm.outputs.KUBERNETES_WORKLOAD_PROBE_STARTUP_HTTP_SCHEME }}
+    kubernetes-workload-probe-startup-tcp-port: ${{ steps.kpm.outputs.KUBERNETES_WORKLOAD_PROBE_STARTUP_TCP_PORT }}
+    kubernetes-workload-probe-startup-exec-command: ${{ steps.kpm.outputs.KUBERNETES_WORKLOAD_PROBE_STARTUP_EXEC_COMMAND }}
+    kubernetes-workload-probe-startup-grpc-port: ${{ steps.kpm.outputs.KUBERNETES_WORKLOAD_PROBE_STARTUP_GRPC_PORT }}
+    kubernetes-workload-probe-startup-grpc-service: ${{ steps.kpm.outputs.KUBERNETES_WORKLOAD_PROBE_STARTUP_GRPC_SERVICE }}
+    kubernetes-workload-probe-startup-initial-delay-seconds: ${{ steps.kpm.outputs.KUBERNETES_WORKLOAD_PROBE_STARTUP_INITIAL_DELAY_SECONDS }}
+    kubernetes-workload-probe-startup-period-seconds: ${{ steps.kpm.outputs.KUBERNETES_WORKLOAD_PROBE_STARTUP_PERIOD_SECONDS }}
+    kubernetes-workload-probe-startup-timeout-seconds: ${{ steps.kpm.outputs.KUBERNETES_WORKLOAD_PROBE_STARTUP_TIMEOUT_SECONDS }}
+    kubernetes-workload-probe-startup-failure-threshold: ${{ steps.kpm.outputs.KUBERNETES_WORKLOAD_PROBE_STARTUP_FAILURE_THRESHOLD }}
+    kubernetes-workload-probe-startup-termination-grace-period-seconds: ${{ steps.kpm.outputs.KUBERNETES_WORKLOAD_PROBE_STARTUP_TERMINATION_GRACE_PERIOD_SECONDS }}
     # StatefulSet-specific settings
-    kubernetes-statefulset-service-name: ${{ inputs.kubernetes-statefulset-service-name }}
-    kubernetes-statefulset-pod-management-policy: ${{ inputs.kubernetes-statefulset-pod-management-policy }}
-    kubernetes-statefulset-update-strategy-type: ${{ inputs.kubernetes-statefulset-update-strategy-type }}
-    kubernetes-statefulset-update-strategy-partition: ${{ inputs.kubernetes-statefulset-update-strategy-partition }}
-    kubernetes-statefulset-pvc-enabled: ${{ inputs.kubernetes-statefulset-pvc-enabled }}
-    kubernetes-statefulset-pvc-storage-class: ${{ inputs.kubernetes-statefulset-pvc-storage-class }}
-    kubernetes-statefulset-pvc-storage-size: ${{ inputs.kubernetes-statefulset-pvc-storage-size }}
-    kubernetes-statefulset-pvc-access-mode: ${{ inputs.kubernetes-statefulset-pvc-access-mode }}
-    kubernetes-statefulset-pvc-volume-name: ${{ inputs.kubernetes-statefulset-pvc-volume-name }}
-    kubernetes-statefulset-pvc-mount-path: ${{ inputs.kubernetes-statefulset-pvc-mount-path }}
+    kubernetes-statefulset-service-name: ${{ steps.kpm.outputs.KUBERNETES_STATEFULSET_SERVICE_NAME }}
+    kubernetes-statefulset-pod-management-policy: ${{ steps.kpm.outputs.KUBERNETES_STATEFULSET_POD_MANAGEMENT_POLICY }}
+    kubernetes-statefulset-update-strategy-type: ${{ steps.kpm.outputs.KUBERNETES_STATEFULSET_UPDATE_STRATEGY_TYPE }}
+    kubernetes-statefulset-update-strategy-partition: ${{ steps.kpm.outputs.KUBERNETES_STATEFULSET_UPDATE_STRATEGY_PARTITION }}
+    kubernetes-statefulset-pvc-enabled: ${{ steps.kpm.outputs.KUBERNETES_STATEFULSET_PVC_ENABLED }}
+    kubernetes-statefulset-pvc-storage-class: ${{ steps.kpm.outputs.KUBERNETES_STATEFULSET_PVC_STORAGE_CLASS }}
+    kubernetes-statefulset-pvc-storage-size: ${{ steps.kpm.outputs.KUBERNETES_STATEFULSET_PVC_STORAGE_SIZE }}
+    kubernetes-statefulset-pvc-access-mode: ${{ steps.kpm.outputs.KUBERNETES_STATEFULSET_PVC_ACCESS_MODE }}
+    kubernetes-statefulset-pvc-volume-name: ${{ steps.kpm.outputs.KUBERNETES_STATEFULSET_PVC_VOLUME_NAME }}
+    kubernetes-statefulset-pvc-mount-path: ${{ steps.kpm.outputs.KUBERNETES_STATEFULSET_PVC_MOUNT_PATH }}
     # DaemonSet-specific settings
-    kubernetes-daemonset-update-strategy-type: ${{ inputs.kubernetes-daemonset-update-strategy-type }}
-    kubernetes-daemonset-max-unavailable: ${{ inputs.kubernetes-daemonset-max-unavailable }}
-    kubernetes-daemonset-host-network: ${{ inputs.kubernetes-daemonset-host-network }}
-    kubernetes-daemonset-host-pid: ${{ inputs.kubernetes-daemonset-host-pid }}
-    kubernetes-daemonset-host-ipc: ${{ inputs.kubernetes-daemonset-host-ipc }}
-    kubernetes-daemonset-run-as-non-root: ${{ inputs.kubernetes-daemonset-run-as-non-root }}
-    kubernetes-daemonset-privileged: ${{ inputs.kubernetes-daemonset-privileged }}
-    kubernetes-daemonset-dns-policy: ${{ inputs.kubernetes-daemonset-dns-policy }}
-    kubernetes-daemonset-tolerations: ${{ inputs.kubernetes-daemonset-tolerations }}
-    kubernetes-daemonset-node-selector: ${{ inputs.kubernetes-daemonset-node-selector }}
+    kubernetes-daemonset-update-strategy-type: ${{ steps.kpm.outputs.KUBERNETES_DAEMONSET_UPDATE_STRATEGY_TYPE }}
+    kubernetes-daemonset-max-unavailable: ${{ steps.kpm.outputs.KUBERNETES_DAEMONSET_MAX_UNAVAILABLE }}
+    kubernetes-daemonset-host-network: ${{ steps.kpm.outputs.KUBERNETES_DAEMONSET_HOST_NETWORK }}
+    kubernetes-daemonset-host-pid: ${{ steps.kpm.outputs.KUBERNETES_DAEMONSET_HOST_PID }}
+    kubernetes-daemonset-host-ipc: ${{ steps.kpm.outputs.KUBERNETES_DAEMONSET_HOST_IPC }}
+    kubernetes-daemonset-run-as-non-root: ${{ steps.kpm.outputs.KUBERNETES_DAEMONSET_RUN_AS_NON_ROOT }}
+    kubernetes-daemonset-privileged: ${{ steps.kpm.outputs.KUBERNETES_DAEMONSET_PRIVILEGED }}
+    kubernetes-daemonset-dns-policy: ${{ steps.kpm.outputs.KUBERNETES_DAEMONSET_DNS_POLICY }}
+    kubernetes-daemonset-tolerations: ${{ steps.kpm.outputs.KUBERNETES_DAEMONSET_TOLERATIONS }}
+    kubernetes-daemonset-node-selector: ${{ steps.kpm.outputs.KUBERNETES_DAEMONSET_NODE_SELECTOR }}
     # Global settings
-    output-sub-path: ${{ inputs.output-sub-path }}
-    token-name-style: ${{ inputs.token-name-style }}
-    token-delimiter-style: ${{ inputs.token-delimiter-style }}
-    kubernetes-global-additional-labels: ${{ inputs.kubernetes-global-additional-labels }}
-    kubernetes-global-additional-annotations: ${{ inputs.kubernetes-global-additional-annotations }}
+    output-sub-path: ${{ steps.kpm.outputs.OUTPUT_SUB_PATH }}
+    token-name-style: ${{ steps.kpm.outputs.TOKEN_NAME_STYLE }}
+    token-delimiter-style: ${{ steps.kpm.outputs.TOKEN_DELIMITER_STYLE }}
+    kubernetes-global-additional-labels: ${{ steps.kpm.outputs.KUBERNETES_GLOBAL_ADDITIONAL_LABELS }}
+    kubernetes-global-additional-annotations: ${{ steps.kpm.outputs.KUBERNETES_GLOBAL_ADDITIONAL_ANNOTATIONS }}

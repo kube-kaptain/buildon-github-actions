@@ -3,80 +3,12 @@
 #
 # AWS EKS Cluster Management
 #
-# Builds an EKS cluster management image layering your cluster config on top of
-# the base aws-eks-cluster-management image. Generates cluster.yaml with tokenized
-# values, validates token placement pre-build, performs token substitution during
-# docker build, then validates substituted values and image integrity post-build.
+# Builds an EKS cluster management image with kubectl and AWS CLI baked in.
+# Used for cluster lifecycle operations (upgrades, node management, etc).
 #
-# Config files live in src/config/ (one value per file, PascalCase filename).
-# The default token style is PascalCase with shell delimiters: ${AwsRegion}
-# Adjust the file names if you change token-name-style.
-#
-# ── Required ──────────────────────────────────────────────────────────────────
-#   ClusterOrigin                         - Cluster origin: 'eksctl' (created by eksctl) or 'adopted' (existing cluster)
-#   NodegroupType                         - Nodegroup type: 'managed' (EKS managed) or 'unmanaged' (self-managed)
-#   KubernetesMajorVersion                - K8s major version (default: 1, rarely needs override)
-#   KubernetesMinorVersion                - K8s minor version (e.g., 32)
-#   AwsAccountId                          - AWS account ID (e.g., 123456789012)
-#   AwsRegion                             - AWS region (e.g., eu-west-1)
-#   VpcId                                 - VPC identifier (e.g., vpc-0123456789abcdef0)
-#   ClusterSecurityGroup                  - EKS cluster default security group ID (or sg-known-after-creation for new clusters)
-#   NodegroupInstanceType                 - EC2 instance type (e.g., t3.medium)
-#   SecretsEncryptionKeyArn               - KMS key ARN for Kubernetes secrets encryption
-#   PrivateSubnetIdA                      - Private subnet ID for AZ a (EKS_PRIVATE_NETWORKING=true)
-#   PrivateSubnetIdB                      - Private subnet ID for AZ b (EKS_PRIVATE_NETWORKING=true)
-#   PrivateSubnetIdC                      - Private subnet ID for AZ c (EKS_PRIVATE_NETWORKING=true)
-#   PublicSubnetIdA                       - Public subnet ID for AZ a (EKS_PUBLIC_NETWORKING=true)
-#   PublicSubnetIdB                       - Public subnet ID for AZ b (EKS_PUBLIC_NETWORKING=true)
-#   PublicSubnetIdC                       - Public subnet ID for AZ c (EKS_PUBLIC_NETWORKING=true)
-#
-# ── Conditional (required when related switch is on) ──────────────────────────
-#   AutoModeConfigNodePools               - Comma-separated node pool names (AutoModeConfigEnabled=true)
-#   VpcSecurityGroup                      - Control plane access SG ID, singular, mutually exclusive with VpcControlPlaneSecurityGroupIds (ClusterOrigin=adopted)
-#   VpcControlPlaneSecurityGroupIds       - Control plane access SG IDs, comma-separated, mutually exclusive with VpcSecurityGroup (ClusterOrigin=adopted)
-#
-# ── Optional (generates section when present, omitted when absent) ────────────
-#   PrivateClusterEnabled                 - Generates privateCluster block (e.g., true)
-#   NodegroupPrivateNetworking            - Adds privateNetworking to nodegroup (e.g., true)
-#   NodegroupIamInstanceRoleArn           - Adds iam.instanceRoleARN to nodegroup
-#   NodegroupSecurityGroupsAttachIds      - Additional SG IDs for nodegroup instances, comma-separated
-#   VpcSharedNodeSecurityGroup            - Shared node SG ID, unmanaged nodegroups only
-#   NodegroupVolumeKmsKeyId               - KMS key ARN for EBS volume encryption
-#   AutoModeConfigEnabled                 - Generates autoModeConfig block (e.g., true or false)
-#   NetworkConfigServiceIpV4Cidr          - Generates kubernetesNetworkConfig block with custom service CIDR
-#   MetadataTags                          - Additional cluster metadata tags (key: value per line)
-#   MetadataAnnotations                   - Additional cluster metadata annotations (key: value per line)
-#   NodegroupTags                         - Additional nodegroup tags (key: value per line)
-#   NodegroupLabels                       - Additional nodegroup labels (key: value per line)
-#   NodegroupTaints                       - Nodegroup taints (raw YAML list: - key/effect[/value] per entry)
-#   NodegroupAvailabilityZones            - Pin nodegroup to specific AZs, comma-separated (e.g., eu-west-1a,eu-west-1b)
-#   NodegroupSpot                         - Use Spot instances (true or false), managed nodegroups only
-#   AdditionalNodegroups                  - Additional nodegroups, comma-separated (e.g., kong,monitoring)
-#     Each field is shared unless overridden with a suffixed config file
-#     (e.g., NodegroupInstanceTypeKong overrides instanceType for the kong nodegroup)
-#     Base nodegroup uses KaptainDefaultNg suffix internally for tokens
-#     Unsuffixed config files (e.g., NodegroupInstanceType) are global defaults
-#     Suffixes starting with 'kaptain' are reserved and cannot be used
-#   Addons<Name>ServiceAccountRoleArn     - Per-addon IAM role (e.g., AddonsVpcCniServiceAccountRoleArn)
-#
-# ── Tokens with defaults (override by creating the file) ─────────────────────
-#   IamWithOidc                           - default: true
-#   VpcClusterEndpointsPrivateAccess      - default: true
-#   VpcClusterEndpointsPublicAccess       - default: false
-#   CloudWatchClusterLoggingEnableTypes   - default: api,audit,authenticator,controllerManager,scheduler
-#   NodegroupAmiFamily                    - default: AmazonLinux2023
-#   NodegroupVolumeSize                   - default: 20 (GB)
-#   NodegroupVolumeType                   - default: gp3 (gp2, gp3, io1, io2, st1, sc1, standard)
-#   NodegroupVolumeEncrypted              - default: true (true or false)
-#   NodegroupUpdateConfigMaxUnavailable   - default: 1 (must be > 0)
-#   NodegroupMinSize                      - default: 3
-#   NodegroupMaxSize                      - default: 12
-#   NodegroupDesiredCapacity              - default: same as NodegroupMinSize (must be min <= desired <= max)
-#   EksAddonsList                         - default: coredns,kube-proxy,vpc-cni,aws-ebs-csi-driver,aws-efs-csi-driver
-#
-# Copy this to .github/workflows/build.yaml in your repo.
+# All configuration is in KaptainPM.yaml - see docs for available fields.
 
-name: EKS Cluster Management
+name: AWS EKS Cluster Management
 
 on:
   push:
@@ -86,72 +18,8 @@ on:
 
 jobs:
   build:
-    uses: kube-kaptain/buildon-github-actions/.github/workflows/aws-eks-cluster-management.yaml@1.0.91
+    uses: kube-kaptain/buildon-github-actions/.github/workflows/aws-eks-cluster-management.yaml@1.1.1
     permissions:
       contents: write
       packages: write
       checks: write
-    with:
-      # ┌─────────────────────────────────────────────────────────────────────┐
-      # │ Networking                                                          │
-      # └─────────────────────────────────────────────────────────────────────┘
-      # Private networking is enabled by default. Public and Cilium are off.
-      # Each switch controls which subnets appear in the generated cluster.yaml
-      # and which config files are required in src/config/.
-      #
-      eks-private-networking: true     # Default: true  (requires PrivateSubnetIdA/B/C)
-      # eks-public-networking: false   # Default: false (requires PublicSubnetIdA/B/C)
-      # eks-cilium-ebpf-networking: false  # Default: false (generates controlplane-only yaml, removes kube-proxy and vpc-cni from addons)
-
-      # ┌─────────────────────────────────────────────────────────────────────┐
-      # │ Base Image                                                          │
-      # └─────────────────────────────────────────────────────────────────────┘
-      # The base image contains eksctl, kubectl, age, yq, and cluster management
-      # scripts. Override to use a custom or pinned version.
-      #
-      # eks-base-image-registry: 'ghcr.io'                          # Default
-      # eks-base-image-namespace: 'kube-kaptain'                    # Default
-      # eks-base-image-name: 'aws/aws-eks-cluster-management'       # Default
-      # eks-base-image-tag: '1.2'                                   # Default
-
-      # ┌─────────────────────────────────────────────────────────────────────┐
-      # │ Docker Platform                                                     │
-      # └─────────────────────────────────────────────────────────────────────┘
-      # Default is linux/amd64 (single platform). Set to
-      # 'linux/amd64,linux/arm64' for multi-platform builds.
-      #
-      # docker-platform: 'linux/amd64'                              # Default
-
-      # ┌─────────────────────────────────────────────────────────────────────┐
-      # │ Source Directories                                                  │
-      # └─────────────────────────────────────────────────────────────────────┘
-      # Place custom cluster.yaml in src/eks/ to override generation
-      # (three-tier: context dir > src/eks/ > generate).
-      # Place aws-credentials.age in secrets-sub-path for age-encrypted creds.
-      #
-      # secrets-sub-path: 'src/secrets'             # Default
-
-      # ┌─────────────────────────────────────────────────────────────────────┐
-      # │ Token Substitution                                                  │
-      # └─────────────────────────────────────────────────────────────────────┘
-      # token-delimiter-style: 'shell'       # Default: ${Token}
-      # token-name-style: 'PascalCase'       # Default: AwsRegion, VpcId, etc.
-      # config-sub-path: 'src/config'        # Default: where token files live
-
-      # ┌─────────────────────────────────────────────────────────────────────┐
-      # │ Test Injection                                                      │
-      # └─────────────────────────────────────────────────────────────────────┘
-      # hook-pre-build-script-sub-path: 'bin/pre-build.bash'
-      # hook-pre-tagging-tests-script-sub-path: 'bin/run-tests.bash'
-      # hook-post-versions-and-naming-script-sub-path: 'bin/post-versions.bash'
-      # hook-pre-docker-prepare-script-sub-path: 'bin/pre-docker.bash'
-      # hook-post-docker-tests-script-sub-path: 'bin/test-container.bash'
-      # hook-post-build-script-sub-path: 'bin/post-build.bash'
-
-      # ┌─────────────────────────────────────────────────────────────────────┐
-      # │ GitHub Release                                                      │
-      # └─────────────────────────────────────────────────────────────────────┘
-      # Release includes the Docker image and substituted cluster.yaml files
-      # as downloadable artifacts.
-      #
-      # github-release-enabled: true                                # Default

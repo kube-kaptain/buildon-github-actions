@@ -1,0 +1,24 @@
+# SPDX-License-Identifier: CC0-1.0
+# This example is released to the public domain. Use freely without attribution.
+
+apiVersion: kaptain.org/v1
+kind: kubernetes-app-docker-dockerfile
+
+spec:
+  main:
+    generators:
+      common:
+        additionalLabels: team=platform
+        additionalAnnotations: owner=platform-team
+      workload:
+        type: deployment
+        replicas: 3
+        revisionHistoryLimit: 5
+        container:
+          port: 8080
+          readonlyRootFilesystem: true
+      service:
+        enabled: true
+      serviceAccount:
+        generation:
+          enabled: true

@@ -41,11 +41,8 @@ source "${SCRIPT_DIR}/../lib/output-var.bash"
 # shellcheck source=src/scripts/lib/log.bash
 source "${SCRIPT_DIR}/../lib/log.bash"
 
-# Build output structure (sub-paths, relative to working directory)
-MANIFESTS_COMBINED_SUB_PATH="${OUTPUT_SUB_PATH}/manifests/combined"
-MANIFESTS_CONFIG_SUB_PATH="${OUTPUT_SUB_PATH}/manifests/config"
-MANIFESTS_SUBSTITUTED_SUB_PATH="${OUTPUT_SUB_PATH}/manifests/substituted"
-MANIFESTS_ZIP_SUB_PATH="${OUTPUT_SUB_PATH}/manifests/zip"
+# shellcheck source=src/scripts/defaults/manifests-sub-path.bash
+source "$(dirname "${BASH_SOURCE[0]}")/../defaults/manifests-sub-path.bash"
 
 main() {
   log "=== Kubernetes Manifest Package ==="

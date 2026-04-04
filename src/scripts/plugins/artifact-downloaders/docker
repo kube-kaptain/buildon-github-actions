@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
+#
+# artifact-downloaders/docker - Docker/OCI artifact download provider
+#
+# Downloads files from a FROM scratch OCI image to a local directory.
+# Wraps oci-scratch-extract for the common case of pulling a single image
+# and extracting all its contents.
+#
+# Usage: docker <image-uri> <dest-dir> [<path-in-image> ...]
+#   image-uri:     fully qualified OCI image reference
+#   dest-dir:      local directory to write extracted files into
+#   path-in-image: paths inside the image to extract (default: all)
+#
+# Env:
+#   IMAGE_BUILD_COMMAND - docker or podman
+#
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+UTIL_DIR="${SCRIPT_DIR}/../../util"
+
+image_uri="${1:?Usage: docker <image-uri> <dest-dir> [<path-in-image> ...]}"
+dest_dir="${2:?Usage: docker <image-uri> <dest-dir> [<path-in-image> ...]}"
+shift 2
+
+# Pass through to oci-scratch-extract
+exec "${UTIL_DIR}/oci-scratch-extract" "${image_uri}" "${dest_dir}" "$@"

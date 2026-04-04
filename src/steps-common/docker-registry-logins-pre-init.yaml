@@ -1,0 +1,14 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
+
+# Pre-init login for layer image pulls during kaptain-init
+# Config comes from project root KaptainPM.yaml via load-project-kpm step
+# GHCR merge handled by the action internally
+- name: Docker registry logins (pre-init)
+  id: docker-registry-logins-pre-init
+  uses: ./.github/buildon-github-actions/src/actions/docker-registry-logins
+  with:
+    config: ${{ steps.load-project-kpm.outputs.DOCKER_REGISTRY_LOGINS }}
+    secrets-json: ${{ secrets.docker-registry-logins-secrets }}
+    output-sub-path: kaptain-out
+    image-build-command: ${{ steps.validate-tooling.outputs.IMAGE_BUILD_COMMAND }}

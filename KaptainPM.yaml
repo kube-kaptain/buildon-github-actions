@@ -1,0 +1,17 @@
+apiVersion: kaptain.org/1.7
+kind: basic-quality-and-versioning
+metadata:
+  description: Reusable GitHub Actions workflow-only wrapper for Kaptain Build Scripts
+spec:
+  main:
+    quality:
+      branches:
+        blockSlashes: false
+      commits:
+        requireConventional: false
+    hooks:
+      preTaggingTests: .github/bin/pre-tagging.bash
+  platform:
+    githubActions:
+      release:
+        substitutedFiles: .github/token-substitution-and-gh-release-test.yaml

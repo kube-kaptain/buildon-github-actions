@@ -201,7 +201,7 @@ export BUILD_MODE="${BUILD_MODE:-local}"
 export BUILD_PLATFORM="${BUILD_PLATFORM:-local}"
 export BUILD_PLATFORM_LOG_PROVIDER="${BUILD_PLATFORM_LOG_PROVIDER:-stdout}"
 
-export CONFIG="{}"
+export DOCKER_REGISTRY_LOGINS="{}"
 export SECRET_METHOD='env'
 
 # =============================================================================

@@ -6,13 +6,13 @@
   uses: ./.github/buildon-github-actions/src/actions/docker-build-retag
   with:
     docker-push-image-list-file: ${{ steps.docker-registry-logins.outputs.docker-push-image-list-file }}
-    docker-source-registry: ${{ inputs.docker-source-registry }}
-    docker-source-namespace: ${{ inputs.docker-source-namespace }}
-    docker-source-image-name: ${{ inputs.docker-source-image-name }}
-    docker-source-tag: ${{ inputs.docker-source-tag }}
+    docker-source-registry: ${{ steps.kpm.outputs.DOCKER_SOURCE_REGISTRY }}
+    docker-source-namespace: ${{ steps.kpm.outputs.DOCKER_SOURCE_NAMESPACE }}
+    docker-source-image-name: ${{ steps.kpm.outputs.DOCKER_SOURCE_IMAGE_NAME }}
+    docker-source-tag: ${{ steps.kpm.outputs.DOCKER_SOURCE_TAG }}
     docker-target-registry: ${{ steps.resolve-registry.outputs.docker-target-registry }}
     docker-target-namespace: ${{ steps.resolve-registry.outputs.docker-target-namespace }}
     docker-image-name: ${{ steps.versions.outputs.docker-image-name }}
     docker-tag: ${{ steps.versions.outputs.docker-tag }}
     image-build-command: ${{ steps.validate-tooling.outputs.IMAGE_BUILD_COMMAND }}
-    docker-platform: ${{ inputs.docker-platform }}
+    docker-platform: ${{ steps.kpm.outputs.DOCKER_PLATFORM }}

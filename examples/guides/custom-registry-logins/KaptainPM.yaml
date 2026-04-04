@@ -1,0 +1,18 @@
+# SPDX-License-Identifier: CC0-1.0
+# This example is released to the public domain. Use freely without attribution.
+
+apiVersion: kaptain.org/v1
+kind: docker-build-dockerfile
+
+spec:
+  main:
+    docker:
+      logins:
+        docker.io:
+          type: username-password
+          usernameSecret: DOCKERHUB_USER
+          passwordSecret: DOCKERHUB_TOKEN
+        harbor.internal.example.com:
+          type: username-password
+          usernameSecret: HARBOR_USER
+          passwordSecret: HARBOR_PASS

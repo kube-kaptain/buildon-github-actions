@@ -1,0 +1,22 @@
+# SPDX-License-Identifier: CC0-1.0
+# This example is released to the public domain. Use freely without attribution.
+
+apiVersion: kaptain.org/v1
+kind: docker-build-dockerfile
+
+spec:
+  main:
+    hooks:
+      preBuild:              .github/bin/pre-build.bash
+      preTaggingTests:       .github/bin/run-tests.bash
+      postVersionsAndNaming: .github/bin/post-versions.bash
+      preDockerPrepare:      .github/bin/pre-docker-prepare.bash
+      postDockerTests:       .github/bin/test-container.bash
+      prePackagePrepare:     .github/bin/pre-package-prepare.bash
+      postPackageTests:      .github/bin/test-package.bash
+      postBuild:             .github/bin/post-build.bash
+
+# Note, it's recommended to place your scripts in .github/ so they're protected by
+# the push rules you should have in place to prevent arbitrary changes to workflows
+# and possible credential stealing or other malicious behaviour from disgruntled
+# employees or others who gain push access to your repos over time.

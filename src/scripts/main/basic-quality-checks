@@ -34,6 +34,7 @@ SCRIPT_DIR="$(dirname "${0}")"
 # Script-specific inputs
 TARGET_BRANCH="${TARGET_BRANCH:?Is required - quality checks only make sense in PR context}"
 MERGE_CANDIDATE_CREATOR="${MERGE_CANDIDATE_CREATOR:-}"
+BUILD_KIND="${BUILD_KIND:?BUILD_KIND is required}"
 
 # shellcheck source=src/scripts/defaults/quality-checks.bash
 source "${SCRIPT_DIR}/../defaults/quality-checks.bash"
@@ -52,10 +53,12 @@ FLAG_BAD_SETUP=16
 # shellcheck source=src/scripts/defaults/branch-inputs.bash
 source "${SCRIPT_DIR}/../defaults/branch-inputs.bash"
 
-# shellcheck source=src/scripts/lib/branch-setup-shared.bash
-source "${SCRIPT_DIR}/../lib/branch-setup-shared.bash"
 # shellcheck source=src/scripts/lib/log.bash
 source "${SCRIPT_DIR}/../lib/log.bash"
+# shellcheck source=src/scripts/lib/output-var.bash
+source "${SCRIPT_DIR}/../lib/output-var.bash"
+# shellcheck source=src/scripts/lib/branch-setup-shared.bash
+source "${SCRIPT_DIR}/../lib/branch-setup-shared.bash"
 
 # Accumulated error code
 ERROR_CODE=0
@@ -376,6 +379,24 @@ main() {
 
   if [[ ${ERROR_CODE} -eq 0 ]]; then
     log "All quality checks passed!"
+  fi
+
+  # When running as basic-quality-checks build kind, there is no versions-and-naming step
+  # Output safe defaults so hook-post-build doesn't fail on missing required vars
+  if [[ "${BUILD_KIND}" == "basic-quality-checks" ]]; then
+    log "Setting unversioned defaults for downstream hooks (build kind: basic-quality-checks)"
+    output_var "VERSION" "UNVERSIONED"
+    output_var "VERSION_MAJOR" "0"
+    output_var "VERSION_MINOR" "0"
+    output_var "VERSION_PATCH" "0"
+    output_var "VERSION_2_PART" "0.0"
+    output_var "VERSION_3_PART" "0.0.0"
+    output_var "VERSION_4_PART" "0.0.0.0"
+    output_var "DOCKER_TAG" "UNVERSIONED"
+    output_var "DOCKER_IMAGE_NAME" "UNVERSIONED"
+    output_var "GIT_TAG" "UNVERSIONED"
+    output_var "PROJECT_NAME" "${REPOSITORY_NAME:-UNKNOWN}"
+    output_var "IS_RELEASE" "UNKNOWN"
   fi
 
   exit ${ERROR_CODE}
