@@ -157,8 +157,6 @@
     # Docker outputs (from docker-build - empty in manifests-only workflows)
     docker-target-image-full-uri: ${{ steps.docker-build.outputs.docker-target-image-full-uri }}
     # Manifest outputs (from manifest-package)
-    manifests-substituted-sub-path: ${{ steps.kpm.outputs.OUTPUT_SUB_PATH }}/manifests/substituted/${{ steps.versions.outputs.project-name }}
-    manifests-zip-sub-path: ${{ steps.manifest-package.outputs.manifests-zip-sub-path }}
     manifests-zip-file-name: ${{ steps.manifest-package.outputs.manifests-zip-file-name }}
     # Manifest repo provider outputs (from manifest-repo-provider-package)
     manifests-uri: ${{ steps.manifest-repo-provider-package.outputs.manifests-uri }}

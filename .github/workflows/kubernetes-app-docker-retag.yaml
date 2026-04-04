@@ -1623,8 +1623,6 @@ jobs:
           is-release: ${{ steps.versions.outputs.is-release }}
           # Docker outputs (from docker-build - empty in manifests-only workflows)
           docker-target-image-full-uri: ${{ steps.docker-build.outputs.docker-target-image-full-uri }}
-          # Manifest outputs (computed path for this position)
-          manifests-substituted-sub-path: ${{ steps.kpm.outputs.OUTPUT_SUB_PATH }}/manifests/substituted/${{ steps.versions.outputs.project-name }}
       - name: Pass check - Pre-package Prepare
         if: steps.kpm.outputs.HOOK_PRE_PACKAGE_PREPARE_SCRIPT_SUB_PATH != '' && success() && steps.check-pre-package-prepare.outputs.check-run-id != ''
         continue-on-error: true
@@ -1896,8 +1894,6 @@ jobs:
           # Docker outputs (from docker-build - empty in manifests-only workflows)
           docker-target-image-full-uri: ${{ steps.docker-build.outputs.docker-target-image-full-uri }}
           # Manifest outputs (from manifest-package)
-          manifests-substituted-sub-path: ${{ steps.kpm.outputs.OUTPUT_SUB_PATH }}/manifests/substituted/${{ steps.versions.outputs.project-name }}
-          manifests-zip-sub-path: ${{ steps.manifest-package.outputs.manifests-zip-sub-path }}
           manifests-zip-file-name: ${{ steps.manifest-package.outputs.manifests-zip-file-name }}
           # Manifest repo provider outputs (from manifest-repo-provider-package)
           manifests-uri: ${{ steps.manifest-repo-provider-package.outputs.manifests-uri }}

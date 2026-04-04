@@ -950,12 +950,6 @@ inputs:
     required: false
     default: ''
   # Manifest outputs (from manifest-package)
-  manifests-substituted-sub-path:
-    description: 'Manifests substituted directory (for inspection)'
-    required: true
-  manifests-zip-sub-path:
-    description: 'Directory containing the zip file'
-    required: true
   manifests-zip-file-name:
     description: 'Name of the zip file'
     required: true
@@ -1228,8 +1222,6 @@ runs:
         # Step outputs - docker outputs
         DOCKER_TARGET_IMAGE_FULL_URI: ${{ inputs.docker-target-image-full-uri }}
         # Step outputs - manifest outputs
-        MANIFESTS_SUBSTITUTED_SUB_PATH: ${{ inputs.manifests-substituted-sub-path }}
-        MANIFESTS_ZIP_SUB_PATH: ${{ inputs.manifests-zip-sub-path }}
         MANIFESTS_ZIP_FILE_NAME: ${{ inputs.manifests-zip-file-name }}
         # Step outputs - manifest repo provider outputs
         MANIFESTS_URI: ${{ inputs.manifests-uri }}

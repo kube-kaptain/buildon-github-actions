@@ -156,5 +156,3 @@
     is-release: ${{ steps.versions.outputs.is-release }}
     # Docker outputs (from docker-build - empty in manifests-only workflows)
     docker-target-image-full-uri: ${{ steps.docker-build.outputs.docker-target-image-full-uri }}
-    # Manifest outputs (computed path for this position)
-    manifests-substituted-sub-path: ${{ steps.kpm.outputs.OUTPUT_SUB_PATH }}/manifests/substituted/${{ steps.versions.outputs.project-name }}
