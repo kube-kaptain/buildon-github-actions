@@ -20,15 +20,6 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 TEST_DIR="$PROJECT_ROOT/src/test"
 
-# Sanitize environment to prevent CI workflow inputs from bleeding into tests
-# Keep only essential system variables, unset everything else
-while IFS='=' read -r name _; do
-  case "$name" in
-    PATH|HOME|TMPDIR|TERM|USER|LANG|LC_*|SHELL) ;;
-    *) unset "$name" ;;
-  esac
-done < <(env)
-
 # Colors for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -383,6 +374,8 @@ main() {
   mkdir -p "${PROJECT_ROOT}/${output_sub_path}/test"
   log_info "Cleared ${output_sub_path}/test/ for test artifacts"
 
+  # === Fast checks first (fail fast before 10-minute BATS suite) ===
+
   # Check scripts are executable
   check_executables
 
@@ -398,6 +391,25 @@ main() {
   # Download schemas and enforce no drift from upstream
   check_schemas
 
+  # Check examples reference the next version (before regeneration which would fix them)
+  check_example_versions
+
+  # Check generated files are up to date (regenerates working tree)
+  check_generated_files
+
+  # Check examples are fresh (after regeneration — source is git tags, not template files)
+  check_example_freshness
+
+  # === Sanitize environment before BATS tests ===
+  # Prevent CI workflow inputs from bleeding into tests
+  log_info "Sanitizing environment for BATS tests"
+  while IFS='=' read -r name _; do
+    case "$name" in
+      PATH|HOME|TMPDIR|TERM|USER|LANG|LC_*|SHELL) ;;
+      *) unset "$name" ;;
+    esac
+  done < <(env)
+
   # Run BATS tests
   if has_bats; then
     run_local
@@ -407,15 +419,6 @@ main() {
     log_error "Neither BATS nor Docker available. Cannot run tests."
     exit 1
   fi
-
-  # Check examples reference the next version (before regeneration which would fix them)
-  check_example_versions
-
-  # Check generated files are up to date (regenerates working tree)
-  check_generated_files
-
-  # Check examples are fresh (after regeneration — source is git tags, not template files)
-  check_example_freshness
 
   log_info "All tests passed!"
 }
