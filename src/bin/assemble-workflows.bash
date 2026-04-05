@@ -673,9 +673,75 @@ generate_docs() {
   echo "  Injected: workflow links table"
 }
 
+# Validate that all action templates and steps-common files that set BUILD_PLATFORM
+# also set BUILD_MODE and BUILD_PLATFORM_LOG_PROVIDER. These three must travel together.
+validate_build_context_env_vars() {
+  echo "Validating build context env vars..."
+
+  local required_vars=("BUILD_PLATFORM" "BUILD_MODE" "BUILD_PLATFORM_LOG_PROVIDER")
+
+  # Files that have no env block and don't call kaptain scripts
+  local excluded_files=(
+    "github-check-run.yaml"
+    "github-release.yaml"
+    "resolve-target-registry-and-namespace.yaml"
+  )
+
+  # Files that have an env block but only use inline bash, not kaptain scripts
+  local inline_env_files=(
+    "parse-workflow-ref-and-checkout.yaml"
+    "github-release-prepare-eks.yaml"
+    "github-release-prepare-spec.yaml"
+  )
+
+  local errors=0
+
+  for dir in "$ACTION_TEMPLATES_DIR" "$STEPS_DIR"; do
+    local dir_label
+    dir_label=$(basename "$dir")
+    for file in "$dir"/*.yaml; do
+      [[ -f "$file" ]] || continue
+      local file_basename
+      file_basename=$(basename "$file")
+
+      # Skip files that don't need build context
+      local skip=false
+      for excluded in "${excluded_files[@]}" "${inline_env_files[@]}"; do
+        if [[ "$file_basename" == "$excluded" ]]; then
+          skip=true
+          break
+        fi
+      done
+      [[ "$skip" == "true" ]] && continue
+
+      # If the file has an env: block, it must have all three build context vars
+      if grep -q "^[[:space:]]*env:" "$file" 2>/dev/null; then
+        for var in "${required_vars[@]}"; do
+          if ! grep -q "^[[:space:]]*${var}:" "$file" 2>/dev/null; then
+            echo "  ERROR: $dir_label/$file_basename has env block but missing $var"
+            errors=$((errors + 1))
+          fi
+        done
+      fi
+    done
+  done
+
+  if [[ $errors -gt 0 ]]; then
+    echo "  FAILED: $errors missing build context env var(s)"
+    echo "  All files with BUILD_PLATFORM must also set BUILD_MODE and BUILD_PLATFORM_LOG_PROVIDER"
+    exit 1
+  fi
+
+  echo "  All build context env vars consistent"
+}
+
 main() {
   local start_time=$SECONDS
   local section_start
+
+  # Validate build context env vars before doing any work
+  validate_build_context_env_vars
+  echo
 
   # Process action templates first
   echo "Assembling actions..."
