@@ -12,6 +12,10 @@
 
 confirm_target_image_doesnt_exist() {
   local image_uri="${1:?Usage: confirm_target_image_doesnt_exist <image-uri>}"
+  if [[ "${BUILD_MODE}" == "local" ]]; then
+    log "Skipping registry existence check for local build: ${image_uri}"
+    return 0
+  fi
   if ${IMAGE_BUILD_COMMAND} manifest inspect "${image_uri}" &>/dev/null; then
     log_error "Target image already exists in registry: ${image_uri}"
     return 1

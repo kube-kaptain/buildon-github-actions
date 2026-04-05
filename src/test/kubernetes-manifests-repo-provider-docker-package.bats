@@ -37,6 +37,7 @@ set_required_env() {
   export REPO_PROVIDER_VERSION="1.0.0-manifests"
   export VERSION="1.0.0"
   export PROJECT_NAME="my-repo"
+  export BUILD_MODE="build_server"
 }
 
 @test "assembles target URI without namespace" {
@@ -166,6 +167,7 @@ set_required_env() {
 
 @test "always checks for existing image" {
   set_required_env
+  export BUILD_MODE="build_server"
 
   run "$REPO_PROVIDERS_DIR/kubernetes-manifests-repo-provider-docker-package"
   [ "$status" -eq 0 ]
@@ -174,6 +176,7 @@ set_required_env() {
 
 @test "fails when image already exists" {
   set_required_env
+  export BUILD_MODE="build_server"
   # Make docker manifest inspect succeed (image exists)
   echo '#!/bin/bash
 if [[ "$1" == "manifest" && "$2" == "inspect" ]]; then
@@ -186,6 +189,16 @@ exit 0' > "$MOCK_BIN_DIR/docker"
   run "$REPO_PROVIDERS_DIR/kubernetes-manifests-repo-provider-docker-package"
   [ "$status" -ne 0 ]
   assert_output_contains "already exists"
+}
+
+@test "skips registry existence check for local build" {
+  set_required_env
+  export BUILD_MODE="local"
+  export MOCK_DOCKER_MANIFEST_EXISTS="true"
+
+  run "$REPO_PROVIDERS_DIR/kubernetes-manifests-repo-provider-docker-package"
+  [ "$status" -eq 0 ]
+  assert_output_contains "Skipping registry existence check"
 }
 
 @test "uses scratch as default base image" {
