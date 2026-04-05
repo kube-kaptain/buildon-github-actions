@@ -43,6 +43,9 @@ source "$(dirname "${BASH_SOURCE[0]}")/../defaults/output-sub-path.bash"
 source "$(dirname "${BASH_SOURCE[0]}")/../defaults/branch-inputs.bash"
 # shellcheck source=src/scripts/defaults/manifests-sub-path.bash
 source "$(dirname "${BASH_SOURCE[0]}")/../defaults/manifests-sub-path.bash"
+if [[ -n "${BUILD_KIND:-}" && "${BUILD_KIND}" == "basic-quality-checks" ]]; then
+  SKIP_DOCKER_TARGET_VALIDATION=true
+fi
 # shellcheck source=src/scripts/defaults/docker-build.bash
 source "$(dirname "${BASH_SOURCE[0]}")/../defaults/docker-build.bash"
 # shellcheck source=src/scripts/defaults/docker-dockerfile.bash
