@@ -22,6 +22,8 @@
 # Missing parts are treated as 0 (1.2 == 1.2.0).
 
 # Compare two version strings numerically.
+# Handles suffixed versions (e.g. 1.1-PRERELEASE): suffix is stripped for
+# numeric comparison, then unsuffixed > suffixed at the same numeric version.
 # Returns via exit code: 0 = equal, 1 = v1 > v2, 2 = v1 < v2
 version_compare() {
   local v1="${1}" v2="${2}"
@@ -30,9 +32,15 @@ version_compare() {
     return 0
   fi
 
+  # Split off suffix (everything after first hyphen)
+  local v1_numeric="${v1%%-*}" v1_suffix=""
+  local v2_numeric="${v2%%-*}" v2_suffix=""
+  [[ "${v1}" == *-* ]] && v1_suffix="${v1#*-}"
+  [[ "${v2}" == *-* ]] && v2_suffix="${v2#*-}"
+
   local -a parts1 parts2
-  IFS='.' read -ra parts1 <<< "${v1}"
-  IFS='.' read -ra parts2 <<< "${v2}"
+  IFS='.' read -ra parts1 <<< "${v1_numeric}"
+  IFS='.' read -ra parts2 <<< "${v2_numeric}"
 
   local max=${#parts1[@]}
   if [[ ${#parts2[@]} -gt ${max} ]]; then
@@ -49,6 +57,13 @@ version_compare() {
       return 2
     fi
   done
+
+  # Numeric parts equal - unsuffixed wins over suffixed
+  if [[ -z "${v1_suffix}" && -n "${v2_suffix}" ]]; then
+    return 1
+  elif [[ -n "${v1_suffix}" && -z "${v2_suffix}" ]]; then
+    return 2
+  fi
 
   return 0
 }
