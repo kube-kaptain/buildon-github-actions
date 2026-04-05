@@ -61,6 +61,12 @@ MOCK
   export PATH="${MOCK_BIN_DIR}:${PATH}"
   export MOCK_LOCAL_TAGS=""
   export MOCK_REMOTE_TAGS_JSON='{"tags":[]}'
+
+  # Isolate from real docker/podman credentials on the host
+  export DOCKER_CONFIG="${TEST_DIR}/empty-docker-config"
+  mkdir -p "${DOCKER_CONFIG}"
+  export XDG_RUNTIME_DIR="${TEST_DIR}/empty-xdg-runtime"
+  mkdir -p "${XDG_RUNTIME_DIR}"
 }
 
 teardown() {
