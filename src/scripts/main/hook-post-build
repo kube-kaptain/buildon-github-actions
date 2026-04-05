@@ -32,16 +32,25 @@ set -euo pipefail
 # === User Project Inputs ===
 # Defaults and input conditioning sourced from defaults scripts - single source of truth
 
-# shellcheck source=src/scripts/defaults/branch-inputs.bash
-source "$(dirname "${BASH_SOURCE[0]}")/../defaults/branch-inputs.bash"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=src/scripts/defaults/platform.bash
+source "${SCRIPT_DIR}/../defaults/platform.bash"
+# shellcheck source=src/scripts/lib/log.bash
+source "${SCRIPT_DIR}/../lib/log.bash"
 # shellcheck source=src/scripts/defaults/output-sub-path.bash
 source "$(dirname "${BASH_SOURCE[0]}")/../defaults/output-sub-path.bash"
+# shellcheck source=src/scripts/defaults/branch-inputs.bash
+source "$(dirname "${BASH_SOURCE[0]}")/../defaults/branch-inputs.bash"
 # shellcheck source=src/scripts/defaults/manifests-sub-path.bash
 source "$(dirname "${BASH_SOURCE[0]}")/../defaults/manifests-sub-path.bash"
+if [[ -n "${BUILD_KIND:-}" && "${BUILD_KIND}" == "basic-quality-checks" ]]; then
+  SKIP_DOCKER_TARGET_VALIDATION=true
+fi
 # shellcheck source=src/scripts/defaults/docker-build.bash
 source "$(dirname "${BASH_SOURCE[0]}")/../defaults/docker-build.bash"
 # shellcheck source=src/scripts/defaults/docker-dockerfile.bash
 source "$(dirname "${BASH_SOURCE[0]}")/../defaults/docker-dockerfile.bash"
+SKIP_RETAG_SOURCE_VALIDATION=true
 # shellcheck source=src/scripts/defaults/docker-retag.bash
 source "$(dirname "${BASH_SOURCE[0]}")/../defaults/docker-retag.bash"
 # shellcheck source=src/scripts/defaults/tokens.bash
@@ -184,10 +193,5 @@ export VERSION VERSION_MAJOR VERSION_MINOR VERSION_PATCH
 export VERSION_2_PART VERSION_3_PART VERSION_4_PART
 export DOCKER_TAG DOCKER_IMAGE_NAME GIT_TAG PROJECT_NAME IS_RELEASE
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# shellcheck source=src/scripts/defaults/platform.bash
-source "${SCRIPT_DIR}/../defaults/platform.bash"
-# shellcheck source=src/scripts/lib/log.bash
-source "${SCRIPT_DIR}/../lib/log.bash"
 # shellcheck source=src/scripts/lib/hook-runner.bash
 source "${SCRIPT_DIR}/../lib/hook-runner.bash" "${HOOK_POST_BUILD_SCRIPT_SUB_PATH:-}"

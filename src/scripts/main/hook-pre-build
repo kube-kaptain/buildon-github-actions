@@ -33,18 +33,25 @@ set -euo pipefail
 # === User Project Inputs ===
 # Defaults and input conditioning sourced from defaults scripts - single source of truth
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=src/scripts/defaults/platform.bash
+source "${SCRIPT_DIR}/../defaults/platform.bash"
+# shellcheck source=src/scripts/lib/log.bash
+source "${SCRIPT_DIR}/../lib/log.bash"
+# shellcheck source=src/scripts/defaults/output-sub-path.bash
+source "$(dirname "${BASH_SOURCE[0]}")/../defaults/output-sub-path.bash"
 # shellcheck source=src/scripts/defaults/build-mode.bash
 source "$(dirname "${BASH_SOURCE[0]}")/../defaults/build-mode.bash"
 # shellcheck source=src/scripts/defaults/branch-inputs.bash
 source "$(dirname "${BASH_SOURCE[0]}")/../defaults/branch-inputs.bash"
-# shellcheck source=src/scripts/defaults/output-sub-path.bash
-source "$(dirname "${BASH_SOURCE[0]}")/../defaults/output-sub-path.bash"
 # shellcheck source=src/scripts/defaults/manifests-sub-path.bash
 source "$(dirname "${BASH_SOURCE[0]}")/../defaults/manifests-sub-path.bash"
+SKIP_DOCKER_TARGET_VALIDATION=true
 # shellcheck source=src/scripts/defaults/docker-build.bash
 source "$(dirname "${BASH_SOURCE[0]}")/../defaults/docker-build.bash"
 # shellcheck source=src/scripts/defaults/docker-dockerfile.bash
 source "$(dirname "${BASH_SOURCE[0]}")/../defaults/docker-dockerfile.bash"
+SKIP_RETAG_SOURCE_VALIDATION=true
 # shellcheck source=src/scripts/defaults/docker-retag.bash
 source "$(dirname "${BASH_SOURCE[0]}")/../defaults/docker-retag.bash"
 # shellcheck source=src/scripts/defaults/tokens.bash
@@ -172,11 +179,6 @@ export GITHUB_RELEASE_NOTES GITHUB_RELEASE_NOTES_FILE GITHUB_RELEASE_ADD_VERSION
 # PROJECT_NAME and IS_RELEASE calculated inline (same logic as versions-and-naming)
 # so user's hook script can make decisions before versioning runs.
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# shellcheck source=src/scripts/defaults/platform.bash
-source "${SCRIPT_DIR}/../defaults/platform.bash"
-# shellcheck source=src/scripts/lib/log.bash
-source "${SCRIPT_DIR}/../lib/log.bash"
 # shellcheck source=src/scripts/lib/branch-setup-shared.bash
 source "${SCRIPT_DIR}/../lib/branch-setup-shared.bash"
 

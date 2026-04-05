@@ -9,7 +9,8 @@ PROJECT_ROOT="${PROJECT_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd
 # Build platform for tests (scripts source platform.bash which requires this)
 export BUILD_PLATFORM="${BUILD_PLATFORM:-test}"
 
-# Source log functions (lib files sourced by tests use log/log_error/log_warning)
+# Source platform defaults then log functions (platform must come first)
+source "$PROJECT_ROOT/src/scripts/defaults/platform.bash"
 source "$PROJECT_ROOT/src/scripts/lib/log.bash"
 
 # Path to scripts, utilities, libraries, repo providers, and fixtures

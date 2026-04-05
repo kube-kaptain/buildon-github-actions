@@ -28,6 +28,10 @@ SCRIPT_DIR="$(dirname "${0}")"
 PLUGINS_DIR="${SCRIPT_DIR}/../plugins"
 
 # Apply defaults for inputs used directly in this script
+# shellcheck source=src/scripts/defaults/platform.bash
+source "${SCRIPT_DIR}/../defaults/platform.bash"
+# shellcheck source=src/scripts/lib/log.bash
+source "${SCRIPT_DIR}/../lib/log.bash"
 # shellcheck source=src/scripts/defaults/output-sub-path.bash
 source "${SCRIPT_DIR}/../defaults/output-sub-path.bash"
 # shellcheck source=src/scripts/defaults/build-mode.bash
@@ -38,12 +42,6 @@ source "${SCRIPT_DIR}/../defaults/tag-versioning.bash"
 source "${SCRIPT_DIR}/../defaults/docker-dockerfile.bash"
 # shellcheck source=src/scripts/defaults/branch-inputs.bash
 source "${SCRIPT_DIR}/../defaults/branch-inputs.bash"
-
-# shellcheck source=src/scripts/defaults/platform.bash
-source "${SCRIPT_DIR}/../defaults/platform.bash"
-
-# shellcheck source=src/scripts/lib/log.bash
-source "${SCRIPT_DIR}/../lib/log.bash"
 # shellcheck source=src/scripts/lib/output-var.bash
 source "${SCRIPT_DIR}/../lib/output-var.bash"
 

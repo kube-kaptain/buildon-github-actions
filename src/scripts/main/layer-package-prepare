@@ -31,14 +31,14 @@ set -euo pipefail
 
 SCRIPT_DIR="$(dirname "${0}")"
 
-# shellcheck source=src/scripts/defaults/output-sub-path.bash
-source "${SCRIPT_DIR}/../defaults/output-sub-path.bash"
 # shellcheck source=src/scripts/defaults/platform.bash
 source "${SCRIPT_DIR}/../defaults/platform.bash"
-# shellcheck source=src/scripts/defaults/layer-build.bash
-source "${SCRIPT_DIR}/../defaults/layer-build.bash"
 # shellcheck source=src/scripts/lib/log.bash
 source "${SCRIPT_DIR}/../lib/log.bash"
+# shellcheck source=src/scripts/defaults/output-sub-path.bash
+source "${SCRIPT_DIR}/../defaults/output-sub-path.bash"
+# shellcheck source=src/scripts/defaults/layer-build.bash
+source "${SCRIPT_DIR}/../defaults/layer-build.bash"
 # shellcheck source=src/scripts/lib/output-var.bash
 source "${SCRIPT_DIR}/../lib/output-var.bash"
 # shellcheck source=src/scripts/lib/version-range.bash
@@ -193,12 +193,29 @@ Dockerfile
 EOF
 log "Generated: ${context_dir}/.dockerignore"
 
-# Generate Dockerfile
+# Generate Dockerfile using build args passed by docker-build-dockerfile
 cat > "${context_dir}/Dockerfile" <<EOF
 FROM ${LAYER_PACKAGING_BASE_IMAGE}
-LABEL version="\${Version}"
-LABEL project.name="\${ProjectName}"
-LABEL image.name="\${DockerImageName}"
+ARG VERSION
+ARG PROJECT_NAME
+ARG DOCKER_TAG
+ARG DOCKER_IMAGE_NAME
+ARG DOCKER_REGISTRY
+ARG DOCKER_NAMESPACE
+ARG DOCKER_PLATFORM
+ARG DOCKER_PLATFORM_CPU_ARCHITECTURE
+ARG REPOSITORY_OWNER
+ARG REPOSITORY_NAME
+LABEL version=\${VERSION}
+LABEL project.name=\${PROJECT_NAME}
+LABEL docker.tag=\${DOCKER_TAG}
+LABEL image.name=\${DOCKER_IMAGE_NAME}
+LABEL docker.registry=\${DOCKER_REGISTRY}
+LABEL docker.namespace=\${DOCKER_NAMESPACE}
+LABEL docker.platform=\${DOCKER_PLATFORM}
+LABEL docker.platform.cpu.architecture=\${DOCKER_PLATFORM_CPU_ARCHITECTURE}
+LABEL repository.owner=\${REPOSITORY_OWNER}
+LABEL repository.name=\${REPOSITORY_NAME}
 COPY . /
 EOF
 log "Generated: ${context_dir}/Dockerfile"

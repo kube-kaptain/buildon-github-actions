@@ -42,6 +42,12 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 LIB_DIR="${SCRIPT_DIR}/../lib"
 
 # Source libraries
+# shellcheck source=src/scripts/defaults/platform.bash
+source "${SCRIPT_DIR}/../defaults/platform.bash"
+# shellcheck source=src/scripts/lib/log.bash
+source "${LIB_DIR}/log.bash"
+# shellcheck source=src/scripts/defaults/output-sub-path.bash
+source "${SCRIPT_DIR}/../defaults/output-sub-path.bash"
 # shellcheck source=src/scripts/lib/token-format.bash
 source "${LIB_DIR}/token-format.bash"
 # shellcheck source=src/scripts/lib/kubernetes-metadata.bash
@@ -58,17 +64,11 @@ source "${LIB_DIR}/kubernetes-pod-spec.bash"
 source "${LIB_DIR}/kubernetes-pod-placement.bash"
 # shellcheck source=src/scripts/lib/generator-input-validation.bash
 source "${LIB_DIR}/generator-input-validation.bash"
-# shellcheck source=src/scripts/defaults/platform.bash
-source "${SCRIPT_DIR}/../defaults/platform.bash"
-# shellcheck source=src/scripts/lib/log.bash
-source "${LIB_DIR}/log.bash"
 
 # =============================================================================
 # Inputs with defaults
 # =============================================================================
 
-# shellcheck source=src/scripts/defaults/output-sub-path.bash
-source "${SCRIPT_DIR}/../defaults/output-sub-path.bash"
 # shellcheck source=src/scripts/defaults/manifests-sub-path.bash
 source "${SCRIPT_DIR}/../defaults/manifests-sub-path.bash"
 # shellcheck source=src/scripts/defaults/tokens.bash

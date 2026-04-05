@@ -23,17 +23,17 @@ set -euo pipefail
 
 SCRIPT_DIR="$(dirname "${0}")"
 
+# shellcheck source=src/scripts/defaults/platform.bash
+source "${SCRIPT_DIR}/../defaults/platform.bash"
+# shellcheck source=src/scripts/lib/log.bash
+source "${SCRIPT_DIR}/../lib/log.bash"
 # shellcheck source=src/scripts/defaults/output-sub-path.bash
 source "${SCRIPT_DIR}/../defaults/output-sub-path.bash"
 # shellcheck source=src/scripts/defaults/release-change-data.bash
 source "${SCRIPT_DIR}/../defaults/release-change-data.bash"
-# shellcheck source=src/scripts/defaults/platform.bash
-source "${SCRIPT_DIR}/../defaults/platform.bash"
 
 # shellcheck source=src/scripts/lib/output-var.bash
 source "${SCRIPT_DIR}/../lib/output-var.bash"
-# shellcheck source=src/scripts/lib/log.bash
-source "${SCRIPT_DIR}/../lib/log.bash"
 
 # Output paths
 RELEASE_CHANGE_DATA_DIR="${OUTPUT_SUB_PATH}/release-change-data"

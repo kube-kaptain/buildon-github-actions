@@ -31,17 +31,18 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-# shellcheck source=src/scripts/defaults/docker-common.bash
-source "${SCRIPT_DIR}/../defaults/docker-common.bash"
-# shellcheck source=src/scripts/defaults/output-sub-path.bash
-source "${SCRIPT_DIR}/../defaults/output-sub-path.bash"
-# shellcheck source=src/scripts/defaults/docker-push-image-list.bash
-source "${SCRIPT_DIR}/../defaults/docker-push-image-list.bash"
 # shellcheck source=src/scripts/defaults/platform.bash
 source "${SCRIPT_DIR}/../defaults/platform.bash"
-
 # shellcheck source=src/scripts/lib/log.bash
 source "${SCRIPT_DIR}/../lib/log.bash"
+# shellcheck source=src/scripts/defaults/output-sub-path.bash
+source "${SCRIPT_DIR}/../defaults/output-sub-path.bash"
+# shellcheck source=src/scripts/defaults/docker-common.bash
+source "${SCRIPT_DIR}/../defaults/docker-common.bash"
+# shellcheck source=src/scripts/defaults/docker-push-image-list.bash
+source "${SCRIPT_DIR}/../defaults/docker-push-image-list.bash"
+# shellcheck source=src/scripts/lib/docker-build-shared.bash
+source "${SCRIPT_DIR}/../lib/docker-build-shared.bash"
 
 # Required env vars from versions-and-naming
 VERSION="${VERSION:?VERSION is required}"
@@ -100,10 +101,24 @@ log "Generated Dockerfile:"
 log "$(cat "${build_dir}/Dockerfile")"
 log ""
 
+# Confirm base image doesn't already exist (fail fast)
+if ${IMAGE_BUILD_COMMAND} manifest inspect "${base_image_uri}" &>/dev/null; then
+  log_error "Target image already exists in registry: ${base_image_uri}"
+  exit 1
+fi
+log "Confirmed target image does not exist in registry: ${base_image_uri}"
+
 # Build for each architecture
 for platform in "${PLATFORMS[@]}"; do
   platform_suffix="${platform//\//-}"
   arch_uri="${base_image_uri}-${platform_suffix}"
+
+  # Confirm arch-specific target doesn't exist (fail fast)
+  if ${IMAGE_BUILD_COMMAND} manifest inspect "${arch_uri}" &>/dev/null; then
+    log_error "Target image already exists in registry: ${arch_uri}"
+    exit 1
+  fi
+  log "Confirmed target image does not exist in registry: ${arch_uri}"
 
   log "Building ${arch_uri} for ${platform}..."
   ${IMAGE_BUILD_COMMAND} build \
@@ -120,5 +135,7 @@ done
 mkdir -p "$(dirname "${MANIFEST_URIS_FILE}")"
 echo "${base_image_uri}" >> "${MANIFEST_URIS_FILE}"
 log "Registered manifest: ${base_image_uri}"
+
+create_local_manifest_if_supported "${base_image_uri}"
 
 log "Docker package multi-arch complete"

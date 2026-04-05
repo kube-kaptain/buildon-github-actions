@@ -27,15 +27,14 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 LIB_DIR="${SCRIPT_DIR}/../lib"
 PLUGINS_DIR="${SCRIPT_DIR}/../plugins"
 
+# shellcheck source=src/scripts/defaults/platform.bash
+source "${SCRIPT_DIR}/../defaults/platform.bash"
+# shellcheck source=src/scripts/lib/log.bash
+source "${SCRIPT_DIR}/../lib/log.bash"
+
 # shellcheck disable=SC1091 # path not resolvable at static analysis time
 # Source the token formatting library
 source "${LIB_DIR}/token-format.bash"
-
-# shellcheck source=src/scripts/defaults/platform.bash
-source "${SCRIPT_DIR}/../defaults/platform.bash"
-
-# shellcheck source=src/scripts/lib/log.bash
-source "${SCRIPT_DIR}/../lib/log.bash"
 
 # Required inputs
 TOKENS_OUTPUT_SUB_PATH="${TOKENS_OUTPUT_SUB_PATH:?TOKENS_OUTPUT_SUB_PATH is required}"

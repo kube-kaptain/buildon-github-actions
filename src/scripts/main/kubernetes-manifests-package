@@ -27,10 +27,12 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_NAME="${PROJECT_NAME:?PROJECT_NAME is required}"
 VERSION="${VERSION:?VERSION is required}"
 
-# shellcheck source=src/scripts/defaults/output-sub-path.bash
-source "$(dirname "${BASH_SOURCE[0]}")/../defaults/output-sub-path.bash"
 # shellcheck source=src/scripts/defaults/platform.bash
 source "${SCRIPT_DIR}/../defaults/platform.bash"
+# shellcheck source=src/scripts/lib/log.bash
+source "${SCRIPT_DIR}/../lib/log.bash"
+# shellcheck source=src/scripts/defaults/output-sub-path.bash
+source "$(dirname "${BASH_SOURCE[0]}")/../defaults/output-sub-path.bash"
 
 # Token substitution defaults
 # shellcheck source=src/scripts/defaults/tokens.bash
@@ -38,8 +40,6 @@ source "$(dirname "${BASH_SOURCE[0]}")/../defaults/tokens.bash"
 
 # shellcheck source=src/scripts/lib/output-var.bash
 source "${SCRIPT_DIR}/../lib/output-var.bash"
-# shellcheck source=src/scripts/lib/log.bash
-source "${SCRIPT_DIR}/../lib/log.bash"
 
 # shellcheck source=src/scripts/defaults/manifests-sub-path.bash
 source "$(dirname "${BASH_SOURCE[0]}")/../defaults/manifests-sub-path.bash"

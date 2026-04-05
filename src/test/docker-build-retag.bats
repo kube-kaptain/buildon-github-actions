@@ -117,16 +117,14 @@ set_required_env() {
   assert_output_contains "DOCKER_TARGET_REGISTRY cannot contain slashes"
 }
 
-@test "warns and strips leading slash from image name" {
+@test "fails when source image name has leading slash" {
   set_required_env
   export DOCKER_SOURCE_IMAGE_NAME="/alpine"
   unset DOCKER_SOURCE_NAMESPACE
 
   run "$SCRIPTS_DIR/docker-build-retag"
-  [ "$status" -eq 0 ]
-  assert_output_contains "DOCKER_SOURCE_IMAGE_NAME has leading/trailing slashes"
-  assert_output_contains "Stripping"
-  assert_var_equals "DOCKER_SOURCE_IMAGE_FULL_URI" "docker.io/alpine:3.21"
+  [ "$status" -eq 1 ]
+  assert_output_contains "DOCKER_SOURCE_IMAGE_NAME cannot have leading or trailing slashes"
 }
 
 @test "allows internal slashes in image name" {
@@ -140,34 +138,32 @@ set_required_env() {
   assert_var_equals "DOCKER_SOURCE_IMAGE_FULL_URI" "docker.io/library/alpine:3.21"
 }
 
-@test "warns and strips leading slash from namespace" {
+@test "fails when source namespace has leading slash" {
   set_required_env
   export DOCKER_SOURCE_NAMESPACE="/library"
 
   run "$SCRIPTS_DIR/docker-build-retag"
-  [ "$status" -eq 0 ]
-  assert_output_contains "DOCKER_SOURCE_NAMESPACE has leading/trailing slashes"
-  assert_var_equals "DOCKER_SOURCE_IMAGE_FULL_URI" "docker.io/library/alpine:3.21"
+  [ "$status" -eq 1 ]
+  assert_output_contains "DOCKER_SOURCE_NAMESPACE cannot have leading or trailing slashes"
 }
 
-@test "warns and strips trailing slash from namespace" {
+@test "fails when target namespace has trailing slash" {
   set_required_env
   export DOCKER_TARGET_NAMESPACE="test/"
 
   run "$SCRIPTS_DIR/docker-build-retag"
-  [ "$status" -eq 0 ]
-  assert_output_contains "DOCKER_TARGET_NAMESPACE has leading/trailing slashes"
-  assert_var_equals "DOCKER_TARGET_IMAGE_FULL_URI" "ghcr.io/test/my-repo:1.0.0"
+  [ "$status" -eq 1 ]
+  assert_output_contains "DOCKER_TARGET_NAMESPACE cannot have leading or trailing slashes"
 }
 
-@test "warns about leading/trailing slashes in image name" {
+@test "fails when source image name has trailing slash" {
   set_required_env
-  export DOCKER_SOURCE_IMAGE_NAME="/alpine"
+  export DOCKER_SOURCE_IMAGE_NAME="alpine/"
   unset DOCKER_SOURCE_NAMESPACE
 
   run "$SCRIPTS_DIR/docker-build-retag"
-  [ "$status" -eq 0 ]
-  assert_output_contains "WARNING: DOCKER_SOURCE_IMAGE_NAME has leading/trailing slashes"
+  [ "$status" -eq 1 ]
+  assert_output_contains "DOCKER_SOURCE_IMAGE_NAME cannot have leading or trailing slashes"
 }
 
 @test "does not push (build only)" {
