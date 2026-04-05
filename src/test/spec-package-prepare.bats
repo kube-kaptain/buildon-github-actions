@@ -241,13 +241,17 @@ run_script() {
   grep -q "COPY json/my-spec-1.2.3.json /" "${OUTPUT_DIR}/specs/Dockerfile"
 }
 
-@test "Dockerfile contains label tokens for substitution" {
+@test "Dockerfile declares build args and uses them in labels" {
   mkdir -p "${SPECS_ROOT}/src/specs"
   touch "${SPECS_ROOT}/src/specs/my-spec.yaml"
   run_script
   [ "${status}" -eq 0 ]
-  grep -q 'LABEL version="\${Version}"' "${OUTPUT_DIR}/specs/Dockerfile"
-  grep -q 'LABEL project.name="\${ProjectName}"' "${OUTPUT_DIR}/specs/Dockerfile"
+  grep -q 'ARG VERSION' "${OUTPUT_DIR}/specs/Dockerfile"
+  grep -q 'ARG PROJECT_NAME' "${OUTPUT_DIR}/specs/Dockerfile"
+  grep -q 'ARG DOCKER_IMAGE_NAME' "${OUTPUT_DIR}/specs/Dockerfile"
+  grep -q 'LABEL version=${VERSION}' "${OUTPUT_DIR}/specs/Dockerfile"
+  grep -q 'LABEL project.name=${PROJECT_NAME}' "${OUTPUT_DIR}/specs/Dockerfile"
+  grep -q 'LABEL image.name=${DOCKER_IMAGE_NAME}' "${OUTPUT_DIR}/specs/Dockerfile"
 }
 
 @test "uses SPEC_PACKAGING_BASE_IMAGE when set" {

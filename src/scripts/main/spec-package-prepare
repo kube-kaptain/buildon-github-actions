@@ -126,12 +126,29 @@ for yaml_file in "${yaml_files[@]}"; do
   dockerfile_copy_lines+=("COPY json/${json_fname} /")
 done
 
-# Generate Dockerfile (escaped tokens prevent failure with set -u)
+# Generate Dockerfile using build args passed by docker-build-dockerfile
 cat > "${specs_dir}/Dockerfile" <<EOF
 FROM ${SPEC_PACKAGING_BASE_IMAGE}
-LABEL version="\${Version}"
-LABEL project.name="\${ProjectName}"
-LABEL image.name="\${DockerImageName}"
+ARG VERSION
+ARG PROJECT_NAME
+ARG DOCKER_TAG
+ARG DOCKER_IMAGE_NAME
+ARG DOCKER_REGISTRY
+ARG DOCKER_NAMESPACE
+ARG DOCKER_PLATFORM
+ARG DOCKER_PLATFORM_CPU_ARCHITECTURE
+ARG REPOSITORY_OWNER
+ARG REPOSITORY_NAME
+LABEL version=\${VERSION}
+LABEL project.name=\${PROJECT_NAME}
+LABEL docker.tag=\${DOCKER_TAG}
+LABEL image.name=\${DOCKER_IMAGE_NAME}
+LABEL docker.registry=\${DOCKER_REGISTRY}
+LABEL docker.namespace=\${DOCKER_NAMESPACE}
+LABEL docker.platform=\${DOCKER_PLATFORM}
+LABEL docker.platform.cpu.architecture=\${DOCKER_PLATFORM_CPU_ARCHITECTURE}
+LABEL repository.owner=\${REPOSITORY_OWNER}
+LABEL repository.name=\${REPOSITORY_NAME}
 EOF
 for copy_line in "${dockerfile_copy_lines[@]}"; do
   echo "${copy_line}" >> "${specs_dir}/Dockerfile"
