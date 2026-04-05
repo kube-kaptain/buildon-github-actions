@@ -32,6 +32,8 @@ source "${SCRIPT_DIR}/../../lib/log.bash"
 source "${SCRIPT_DIR}/../../defaults/output-sub-path.bash"
 # shellcheck source=src/scripts/defaults/docker-common.bash
 source "${SCRIPT_DIR}/../../defaults/docker-common.bash"
+# shellcheck source=src/scripts/lib/docker-build-shared.bash
+source "${SCRIPT_DIR}/../../lib/docker-build-shared.bash"
 
 # =============================================================================
 # Map REPO_PROVIDER_* → Docker terminology
@@ -61,18 +63,6 @@ else
   image_uri="${registry}/${image_name}:${tag}"
 fi
 
-confirm_image_doesnt_exist() {
-  local image="${1}"
-
-  if ${IMAGE_BUILD_COMMAND} manifest inspect "${image}" &>/dev/null; then
-    log_error "Target image already exists in registry: ${image}"
-    return 1
-  fi
-
-  log "Confirmed image does not exist in registry (safe to push)"
-  return 0
-}
-
 main() {
   log "=== Kubernetes Manifests Repo Provider Package: Docker ==="
   log "Manifests zip path: ${MANIFESTS_ZIP_SUB_PATH}"
@@ -88,7 +78,7 @@ main() {
   fi
 
   # Confirm target doesn't exist (fail fast)
-  confirm_image_doesnt_exist "${image_uri}" || exit 1
+  confirm_target_image_doesnt_exist "${image_uri}" || exit 1
 
   # Create publish build directory
   rm -rf "${PUBLISH_SUB_PATH}"

@@ -59,22 +59,21 @@ main() {
     local manifest_uris_file="${OUTPUT_SUB_PATH}/docker-push-all/manifest-uris"
     mkdir -p "$(dirname "${manifest_uris_file}")"
 
+    # Confirm base target doesn't exist before retagging any arch (fail fast)
+    confirm_target_image_doesnt_exist "${TARGET_IMAGE_FULL_URI}" || exit 1
+
     for platform in "${platforms[@]}"; do
       local platform_suffix="${platform//\//-}"
       local arch_uri="${TARGET_IMAGE_FULL_URI}-${platform_suffix}"
+
+      # Confirm arch-specific target doesn't exist (fail fast)
+      confirm_target_image_doesnt_exist "${arch_uri}" || exit 1
 
       log "Pulling source image: ${SOURCE_IMAGE_FULL_URI} (platform: ${platform})"
       if ! ${IMAGE_BUILD_COMMAND} pull --platform "${platform}" "${SOURCE_IMAGE_FULL_URI}"; then
         log_error "Source image does not support platform ${platform}: ${SOURCE_IMAGE_FULL_URI}"
         exit 1
       fi
-
-      # Confirm arch-specific target doesn't exist (fail fast)
-      if ${IMAGE_BUILD_COMMAND} manifest inspect "${arch_uri}" &>/dev/null; then
-        log_error "Target image already exists in registry: ${arch_uri}"
-        exit 1
-      fi
-      log "Confirmed target image does not exist in registry: ${arch_uri}"
 
       log "Tagging: ${SOURCE_IMAGE_FULL_URI} -> ${arch_uri}"
       ${IMAGE_BUILD_COMMAND} tag "${SOURCE_IMAGE_FULL_URI}" "${arch_uri}"
