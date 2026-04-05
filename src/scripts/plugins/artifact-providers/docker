@@ -16,7 +16,9 @@
 #   DOCKER_TARGET_NAMESPACE  - default namespace (e.g. kube-kaptain)
 #   IMAGE_BUILD_COMMAND      - docker or podman (for tag queries)
 #
-# stdout: fully qualified OCI image URI with resolved version
+# Args:
+#   $1 - reference (name:version, prefix/name:version, or full URI)
+#   $2 - output file path (resolved URI written here)
 #
 set -euo pipefail
 
@@ -29,7 +31,8 @@ source "${SCRIPT_DIR}/../../lib/log.bash"
 # shellcheck source=src/scripts/lib/version-range.bash
 source "${SCRIPT_DIR}/../../lib/version-range.bash"
 
-reference="${1:?Usage: docker <reference>}"
+reference="${1:?Usage: docker <reference> <output-file>}"
+output_file="${2:?Usage: docker <reference> <output-file>}"
 
 # Split reference into name-part and version-part on last colon
 if [[ "${reference}" != *":"* ]]; then
@@ -128,7 +131,7 @@ esac
 # Version resolution
 if version_is_exact "${version_part}"; then
   # Exact version: no registry call needed
-  echo "${full_name}:${version_part}"
+  echo "${full_name}:${version_part}" > "${output_file}"
 else
   # Range: query remote tags and resolve
   if [[ -z "${IMAGE_BUILD_COMMAND:-}" ]]; then
@@ -166,5 +169,5 @@ else
   fi
 
   resolved_version=$(version_resolve_range "${version_part}" "${available_tags}")
-  echo "${full_name}:${resolved_version}"
+  echo "${full_name}:${resolved_version}" > "${output_file}"
 fi

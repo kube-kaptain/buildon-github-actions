@@ -170,7 +170,10 @@ if [[ "${LAYER_TYPE}" == "layerset" ]]; then
     # Check if the reference contains range syntax
     if ! version_is_exact "${ref##*:}"; then
       log "Resolving range: ${ref}"
-      resolved=$("${UTIL_DIR}/artifact-resolve" "${ref}")
+      resolve_output_file="${OUTPUT_SUB_PATH}/artifact-resolve/${ref//[^a-zA-Z0-9._-]/_}"
+      mkdir -p "$(dirname "${resolve_output_file}")"
+      "${UTIL_DIR}/artifact-resolve" "${ref}" "${resolve_output_file}"
+      resolved=$(< "${resolve_output_file}")
       # Extract resolved version from fully qualified URI
       resolved_version="${resolved##*:}"
       ref_name="${ref%%:*}"

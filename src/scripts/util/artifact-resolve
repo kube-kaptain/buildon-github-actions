@@ -7,18 +7,16 @@
 # Thin router: strips the provider prefix (if present), defaults to
 # ARTIFACT_RESOLUTION_PROVIDER, and dispatches to the matching plugin.
 #
-# Usage: artifact-resolve <reference>
-#   reference: [provider|]identifier:version
+# Usage: artifact-resolve <reference> <output-file>
+#   reference:   [provider|]identifier:version
+#   output-file: path to write the resolved URI to
 #
 # Examples:
-#   artifact-resolve "docker|quality-strict:1.0"
-#   artifact-resolve "quality-strict:1.0"           # uses default provider
-#   artifact-resolve "docker|java/java-web:2.1"
+#   artifact-resolve "quality-strict:1.0" kaptainpm/resolve/quality-strict
+#   artifact-resolve "docker|java/java-web:2.1" kaptain-out/artifact-resolve/java-web
 #
 # Env:
 #   ARTIFACT_RESOLUTION_PROVIDER - default provider (default: docker)
-#
-# stdout: whatever the provider plugin outputs (fully resolved reference)
 #
 set -euo pipefail
 
@@ -32,7 +30,8 @@ source "${SCRIPT_DIR}/../lib/log.bash"
 # shellcheck source=src/scripts/defaults/artifact-resolution.bash
 source "${SCRIPT_DIR}/../defaults/artifact-resolution.bash"
 
-reference="${1:?Usage: artifact-resolve <reference>}"
+reference="${1:?Usage: artifact-resolve <reference> <output-file>}"
+output_file="${2:?Usage: artifact-resolve <reference> <output-file>}"
 
 # Split on | to extract provider prefix
 if [[ "${reference}" == *"|"* ]]; then
@@ -54,4 +53,4 @@ if [[ ! -x "${plugin}" ]]; then
   exit 1
 fi
 
-exec "${plugin}" "${remainder}"
+exec "${plugin}" "${remainder}" "${output_file}"
