@@ -34,14 +34,14 @@ set -euo pipefail
 
 SCRIPT_DIR="$(dirname "${0}")"
 
-# shellcheck source=src/scripts/defaults/output-sub-path.bash
-source "${SCRIPT_DIR}/../defaults/output-sub-path.bash"
 # shellcheck source=src/scripts/defaults/platform.bash
 source "${SCRIPT_DIR}/../defaults/platform.bash"
-# shellcheck source=src/scripts/defaults/spec-build.bash
-source "${SCRIPT_DIR}/../defaults/spec-build.bash"
 # shellcheck source=src/scripts/lib/log.bash
 source "${SCRIPT_DIR}/../lib/log.bash"
+# shellcheck source=src/scripts/defaults/output-sub-path.bash
+source "${SCRIPT_DIR}/../defaults/output-sub-path.bash"
+# shellcheck source=src/scripts/defaults/spec-build.bash
+source "${SCRIPT_DIR}/../defaults/spec-build.bash"
 # shellcheck source=src/scripts/lib/output-var.bash
 source "${SCRIPT_DIR}/../lib/output-var.bash"
 

@@ -39,10 +39,12 @@ VERSION="${VERSION:?VERSION is required}"
 DOCKER_TAG="${DOCKER_TAG:?DOCKER_TAG is required}"
 DOCKER_IMAGE_NAME="${DOCKER_IMAGE_NAME:?DOCKER_IMAGE_NAME is required}"
 
-# shellcheck source=src/scripts/defaults/output-sub-path.bash
-source "$(dirname "${BASH_SOURCE[0]}")/../defaults/output-sub-path.bash"
 # shellcheck source=src/scripts/defaults/platform.bash
 source "${SCRIPT_DIR}/../defaults/platform.bash"
+# shellcheck source=src/scripts/lib/log.bash
+source "${SCRIPT_DIR}/../lib/log.bash"
+# shellcheck source=src/scripts/defaults/output-sub-path.bash
+source "${SCRIPT_DIR}/../defaults/output-sub-path.bash"
 # shellcheck source=src/scripts/defaults/manifests-sub-path.bash
 source "$(dirname "${BASH_SOURCE[0]}")/../defaults/manifests-sub-path.bash"
 
@@ -57,8 +59,6 @@ source "$(dirname "${BASH_SOURCE[0]}")/../defaults/tokens.bash"
 
 # shellcheck source=src/scripts/lib/output-var.bash
 source "${SCRIPT_DIR}/../lib/output-var.bash"
-# shellcheck source=src/scripts/lib/log.bash
-source "${SCRIPT_DIR}/../lib/log.bash"
 
 # Build output structure (sub-paths, relative to working directory)
 MANIFESTS_COMBINED_SUB_PATH="${OUTPUT_SUB_PATH}/manifests/combined"

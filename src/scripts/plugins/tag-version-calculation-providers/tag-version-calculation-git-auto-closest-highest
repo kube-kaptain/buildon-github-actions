@@ -20,15 +20,15 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${0}")" && pwd)"
 
-# shellcheck disable=SC1091 # path not resolvable at static analysis time
-# shellcheck source=../../lib/tag-version-calculation.bash
-source "${SCRIPT_DIR}/../../lib/tag-version-calculation.bash"
-# shellcheck source=src/scripts/defaults/output-sub-path.bash
-source "${SCRIPT_DIR}/../../defaults/output-sub-path.bash"
 # shellcheck source=src/scripts/defaults/platform.bash
 source "${SCRIPT_DIR}/../../defaults/platform.bash"
 # shellcheck source=src/scripts/lib/log.bash
 source "${SCRIPT_DIR}/../../lib/log.bash"
+# shellcheck source=src/scripts/defaults/output-sub-path.bash
+source "${SCRIPT_DIR}/../../defaults/output-sub-path.bash"
+# shellcheck disable=SC1091 # path not resolvable at static analysis time
+# shellcheck source=../../lib/tag-version-calculation.bash
+source "${SCRIPT_DIR}/../../lib/tag-version-calculation.bash"
 
 # Required inputs
 if [[ -z "${TAG_VERSION_MAX_PARTS:-}" ]]; then

@@ -14,15 +14,15 @@ set -euo pipefail
 
 SCRIPT_DIR="$(dirname "${0}")"
 
-# shellcheck source=src/scripts/defaults/build-mode.bash
-source "${SCRIPT_DIR}/../defaults/build-mode.bash"
 # shellcheck source=src/scripts/defaults/platform.bash
 source "${SCRIPT_DIR}/../defaults/platform.bash"
+# shellcheck source=src/scripts/lib/log.bash
+source "${SCRIPT_DIR}/../lib/log.bash"
+# shellcheck source=src/scripts/defaults/build-mode.bash
+source "${SCRIPT_DIR}/../defaults/build-mode.bash"
 
 # shellcheck source=src/scripts/lib/output-var.bash
 source "${SCRIPT_DIR}/../lib/output-var.bash"
-# shellcheck source=src/scripts/lib/log.bash
-source "${SCRIPT_DIR}/../lib/log.bash"
 
 # Tool categories
 CORE_TOOLS="git grep yq jq find cmp awk tr wc cp mkdir basename date uname zip"

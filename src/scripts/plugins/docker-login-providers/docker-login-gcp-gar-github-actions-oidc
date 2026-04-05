@@ -18,12 +18,12 @@
 #
 set -euo pipefail
 
-# shellcheck source=src/scripts/defaults/docker-common.bash
-source "$(dirname "${BASH_SOURCE[0]}")/../../defaults/docker-common.bash"
 # shellcheck source=src/scripts/defaults/platform.bash
 source "$(dirname "${BASH_SOURCE[0]}")/../../defaults/platform.bash"
 # shellcheck source=src/scripts/lib/log.bash
 source "$(dirname "${BASH_SOURCE[0]}")/../../lib/log.bash"
+# shellcheck source=src/scripts/defaults/docker-common.bash
+source "$(dirname "${BASH_SOURCE[0]}")/../../defaults/docker-common.bash"
 
 # secret_method=$1 - unused for OIDC
 registry="${2}"
