@@ -18,12 +18,19 @@
 #
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# shellcheck source=src/scripts/defaults/platform.bash
+source "${SCRIPT_DIR}/../defaults/platform.bash"
+# shellcheck source=src/scripts/lib/log.bash
+source "${SCRIPT_DIR}/../lib/log.bash"
+
 image_uri="${1:?Usage: oci-scratch-extract <image-uri> <output-dir> <path-in-image> [...]}"
 output_dir="${2:?Usage: oci-scratch-extract <image-uri> <output-dir> <path-in-image> [...]}"
 shift 2
 
 if [[ $# -eq 0 ]]; then
-  echo "At least one path-in-image is required" >&2
+  log_error "At least one path-in-image is required"
   exit 1
 fi
 
@@ -33,11 +40,11 @@ mkdir -p "${output_dir}"
 
 # Use local image if available, otherwise pull
 if ${IMAGE_BUILD_COMMAND} image inspect "${image_uri}" &>/dev/null; then
-  echo "Using local image: ${image_uri}" >&2
+  log "Using local image: ${image_uri}"
 else
-  echo "Pulling image: ${image_uri}" >&2
+  log "Pulling image: ${image_uri}"
   if ! ${IMAGE_BUILD_COMMAND} pull "${image_uri}" >&2; then
-    echo "Failed to pull image: ${image_uri}" >&2
+    log_error "Failed to pull image: ${image_uri}"
     exit 1
   fi
 fi
@@ -45,7 +52,7 @@ fi
 # Create a container without running it
 container_id=$(${IMAGE_BUILD_COMMAND} create "${image_uri}" /bin/true 2>/dev/null)
 if [[ -z "${container_id}" ]]; then
-  echo "Failed to create container from image: ${image_uri}" >&2
+  log_error "Failed to create container from image: ${image_uri}"
   exit 1
 fi
 
@@ -53,15 +60,15 @@ fi
 exit_code=0
 for path_in_image in "$@"; do
   if ${IMAGE_BUILD_COMMAND} cp "${container_id}:${path_in_image}" "${output_dir}/" 2>/dev/null; then
-    echo "Extracted: ${path_in_image}" >&2
+    log "Extracted: ${path_in_image}"
   else
-    echo "Warning: path not found in image, skipping: ${path_in_image}" >&2
+    log_warning "Path not found in image, skipping: ${path_in_image}"
   fi
 done
 
 # Clean up the container
 if ! ${IMAGE_BUILD_COMMAND} rm "${container_id}" >/dev/null 2>&1; then
-  echo "Warning: failed to remove temporary container ${container_id}" >&2
+  log_warning "Failed to remove temporary container ${container_id}"
 fi
 
 exit ${exit_code}

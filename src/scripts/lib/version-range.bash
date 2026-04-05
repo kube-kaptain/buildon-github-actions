@@ -114,7 +114,7 @@ version_resolve_range() {
   local available="${2}"
 
   if [[ -z "${available}" ]]; then
-    echo "No available versions provided" >&2
+    log_error "No available versions provided"
     return 1
   fi
 
@@ -124,7 +124,7 @@ version_resolve_range() {
       echo "${range}"
       return 0
     else
-      echo "Exact version ${range} not found in available versions" >&2
+      log_error "Exact version ${range} not found in available versions"
       return 1
     fi
   fi
@@ -148,11 +148,11 @@ version_resolve_range() {
 
   # Validate bracket characters
   if [[ "${lower_bracket}" != "[" && "${lower_bracket}" != "(" ]]; then
-    echo "Invalid range syntax: must start with [ or ( : ${range}" >&2
+    log_error "Invalid range syntax: must start with [ or ( : ${range}"
     return 1
   fi
   if [[ "${upper_bracket}" != "]" && "${upper_bracket}" != ")" ]]; then
-    echo "Invalid range syntax: must end with ] or ) : ${range}" >&2
+    log_error "Invalid range syntax: must end with ] or ) : ${range}"
     return 1
   fi
 
@@ -189,7 +189,7 @@ version_resolve_range() {
   done <<< "${available}"
 
   if [[ -z "${best}" ]]; then
-    echo "No version matching range ${range} found in available versions" >&2
+    log_error "No version matching range ${range} found in available versions"
     return 1
   fi
 

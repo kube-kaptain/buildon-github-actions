@@ -22,6 +22,10 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
+# shellcheck source=src/scripts/defaults/platform.bash
+source "${SCRIPT_DIR}/../../defaults/platform.bash"
+# shellcheck source=src/scripts/lib/log.bash
+source "${SCRIPT_DIR}/../../lib/log.bash"
 # shellcheck source=src/scripts/lib/version-range.bash
 source "${SCRIPT_DIR}/../../lib/version-range.bash"
 
@@ -29,18 +33,18 @@ reference="${1:?Usage: docker <reference>}"
 
 # Split reference into name-part and version-part on last colon
 if [[ "${reference}" != *":"* ]]; then
-  echo "Invalid reference: missing version (no colon found): ${reference}" >&2
+  log_error "Invalid reference: missing version (no colon found): ${reference}"
   exit 1
 fi
 version_part="${reference##*:}"
 name_part="${reference%:*}"
 
 if [[ -z "${version_part}" ]]; then
-  echo "Invalid reference: empty version: ${reference}" >&2
+  log_error "Invalid reference: empty version: ${reference}"
   exit 1
 fi
 if [[ -z "${name_part}" ]]; then
-  echo "Invalid reference: empty name: ${reference}" >&2
+  log_error "Invalid reference: empty name: ${reference}"
   exit 1
 fi
 
@@ -76,7 +80,7 @@ validate_prefix() {
   local expected_prefix
   expected_prefix=$(extract_prefix "${name}")
   if [[ "${prefix_segment}" != "${expected_prefix}" ]]; then
-    echo "Prefix mismatch: path segment '${prefix_segment}' does not match name prefix '${expected_prefix}' derived from '${name}'" >&2
+    log_error "Prefix mismatch: path segment '${prefix_segment}' does not match name prefix '${expected_prefix}' derived from '${name}'"
     return 1
   fi
 }
@@ -85,11 +89,11 @@ case "${form}" in
   short)
     # name:version -> registry/namespace/prefix/name:version
     if [[ -z "${DOCKER_TARGET_REGISTRY:-}" ]]; then
-      echo "DOCKER_TARGET_REGISTRY is required for short-form reference: ${reference}" >&2
+      log_error "DOCKER_TARGET_REGISTRY is required for short-form reference: ${reference}"
       exit 1
     fi
     if [[ -z "${DOCKER_TARGET_NAMESPACE:-}" ]]; then
-      echo "DOCKER_TARGET_NAMESPACE is required for short-form reference: ${reference}" >&2
+      log_error "DOCKER_TARGET_NAMESPACE is required for short-form reference: ${reference}"
       exit 1
     fi
     prefix=$(extract_prefix "${name_part}")
@@ -98,11 +102,11 @@ case "${form}" in
   prefixed)
     # prefix/name:version -> registry/namespace/prefix/name:version
     if [[ -z "${DOCKER_TARGET_REGISTRY:-}" ]]; then
-      echo "DOCKER_TARGET_REGISTRY is required for prefixed-form reference: ${reference}" >&2
+      log_error "DOCKER_TARGET_REGISTRY is required for prefixed-form reference: ${reference}"
       exit 1
     fi
     if [[ -z "${DOCKER_TARGET_NAMESPACE:-}" ]]; then
-      echo "DOCKER_TARGET_NAMESPACE is required for prefixed-form reference: ${reference}" >&2
+      log_error "DOCKER_TARGET_NAMESPACE is required for prefixed-form reference: ${reference}"
       exit 1
     fi
     prefix_segment="${name_part%%/*}"
@@ -128,7 +132,7 @@ if version_is_exact "${version_part}"; then
 else
   # Range: query remote tags and resolve
   if [[ -z "${IMAGE_BUILD_COMMAND:-}" ]]; then
-    echo "IMAGE_BUILD_COMMAND is required for version range resolution" >&2
+    log_error "IMAGE_BUILD_COMMAND is required for version range resolution"
     exit 1
   fi
 
@@ -148,7 +152,7 @@ else
   fi
 
   if [[ -z "${available_tags}" ]]; then
-    echo "Unable to list tags for ${full_name} — cannot resolve version range ${version_part}" >&2
+    log_error "Unable to list tags for ${full_name} - cannot resolve version range ${version_part}"
     exit 1
   fi
 

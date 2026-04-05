@@ -71,7 +71,7 @@ canonical_error=0
 
 for canonical_file in project-name aws-region kubernetes-version nodegroup-prefix cluster-origin nodegroup-type; do
   if [[ ! -f "${expected_values_dir}/${canonical_file}" ]]; then
-    echo "ERROR: ${expected_values_dir}/${canonical_file} not found - was aws-eks-cluster-management-prepare run?" >&2
+    log_error "${expected_values_dir}/${canonical_file} not found - was aws-eks-cluster-management-prepare run?"
     canonical_error=1
   fi
 done

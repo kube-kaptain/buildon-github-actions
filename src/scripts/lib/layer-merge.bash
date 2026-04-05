@@ -75,7 +75,7 @@ layer_validate_type() {
   done <<< "${spec_keys}"
 
   if [[ -n "${other_keys}" ]]; then
-    echo "Invalid layer: has spec.layers (composite) but also has other spec content:${other_keys}" >&2
+    log_error "Invalid layer: has spec.layers (composite) but also has other spec content:${other_keys}"
     return 1
   fi
 
