@@ -65,6 +65,15 @@ version_compare() {
     return 2
   fi
 
+  # Both suffixed: shorter/alphabetically earlier suffix wins
+  if [[ -n "${v1_suffix}" && -n "${v2_suffix}" ]]; then
+    if [[ "${v1_suffix}" < "${v2_suffix}" ]]; then
+      return 1
+    elif [[ "${v1_suffix}" > "${v2_suffix}" ]]; then
+      return 2
+    fi
+  fi
+
   return 0
 }
 

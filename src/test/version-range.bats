@@ -436,6 +436,21 @@ teardown() {
   [[ "${VERSION_RESOLVE_RESULT}" == "1.1" ]]
 }
 
+@test "version_compare: shorter suffix wins over longer at same numeric" {
+  run version_compare "1.1-PRERELEASE" "1.1-PRERELEASE-linux-arm64"
+  [[ "$status" -eq 1 ]]
+}
+
+@test "version_compare: longer suffix loses to shorter at same numeric" {
+  run version_compare "1.1-PRERELEASE-linux-arm64" "1.1-PRERELEASE"
+  [[ "$status" -eq 2 ]]
+}
+
+@test "version_compare: suffix sorting is alphabetical" {
+  run version_compare "1.1-alpha" "1.1-beta"
+  [[ "$status" -eq 1 ]]
+}
+
 @test "version_is_exact: suffixed version is exact" {
   version_is_exact "1.2.3-PRERELEASE"
 }
