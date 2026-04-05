@@ -156,6 +156,15 @@ else
     exit 1
   fi
 
+  # For release builds, exclude suffixed versions (e.g. 1.1-PRERELEASE, 1.1-linux-amd64)
+  if [[ "${IS_RELEASE:-false}" == "true" ]]; then
+    available_tags=$(version_filter_release "${available_tags}")
+    if [[ -z "${available_tags}" ]]; then
+      log_error "No release versions available for ${full_name} after filtering suffixed tags - cannot resolve ${version_part}"
+      exit 1
+    fi
+  fi
+
   resolved_version=$(version_resolve_range "${version_part}" "${available_tags}")
   echo "${full_name}:${resolved_version}"
 fi

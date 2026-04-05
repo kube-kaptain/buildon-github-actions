@@ -96,6 +96,20 @@ version_le() {
   [[ ${rc} -eq 2 || ${rc} -eq 0 ]]
 }
 
+# Filter a newline-delimited version list to only pure numeric versions
+# (no hyphens). Removes suffixed versions like 1.1-PRERELEASE, 1.1-linux-amd64.
+# Usage: version_filter_release "<newline-delimited-versions>"
+# stdout: filtered list (newline-delimited)
+version_filter_release() {
+  local versions="${1}"
+  local version
+  while IFS= read -r version; do
+    [[ -z "${version}" ]] && continue
+    [[ "${version}" != *-* ]] && echo "${version}"
+  done <<< "${versions}"
+  return 0
+}
+
 # Check if a version is an exact version (no range syntax)
 version_is_exact() {
   local version="${1}"
