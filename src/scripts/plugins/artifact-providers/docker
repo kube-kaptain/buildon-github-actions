@@ -168,6 +168,6 @@ else
     fi
   fi
 
-  resolved_version=$(version_resolve_range "${version_part}" "${available_tags}")
-  echo "${full_name}:${resolved_version}" > "${output_file}"
+  version_resolve_range "${version_part}" "${available_tags}"
+  echo "${full_name}:${VERSION_RESOLVE_RESULT}" > "${output_file}"
 fi

@@ -121,7 +121,7 @@ version_is_exact() {
 # For ranges, returns the highest version satisfying the range.
 #
 # Usage: version_resolve_range "<range>" "<newline-delimited-versions>"
-# stdout: resolved version
+# Sets: VERSION_RESOLVE_RESULT - resolved version
 # exit 1: no match found
 version_resolve_range() {
   local range="${1}"
@@ -135,7 +135,8 @@ version_resolve_range() {
   # Exact version: just check it exists
   if version_is_exact "${range}"; then
     if echo "${available}" | grep -qx "${range}"; then
-      echo "${range}"
+      # shellcheck disable=SC2034  # Read by callers
+      VERSION_RESOLVE_RESULT="${range}"
       return 0
     else
       log_error "Exact version ${range} not found in available versions"
@@ -207,5 +208,6 @@ version_resolve_range() {
     return 1
   fi
 
-  echo "${best}"
+  # shellcheck disable=SC2034  # Read by callers
+  VERSION_RESOLVE_RESULT="${best}"
 }
