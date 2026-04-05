@@ -18,7 +18,7 @@ on:
 
 jobs:
   build:
-    uses: kube-kaptain/buildon-github-actions/.github/workflows/aws-eks-cluster-management.yaml@1.1.2
+    uses: kube-kaptain/buildon-github-actions/.github/workflows/aws-eks-cluster-management.yaml@1.1.3
     permissions:
       contents: write
       packages: write
