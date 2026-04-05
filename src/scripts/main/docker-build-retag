@@ -96,7 +96,7 @@ main() {
     ${IMAGE_BUILD_COMMAND} pull --platform "${DOCKER_PLATFORM}" "${SOURCE_IMAGE_FULL_URI}"
 
     # Confirm target doesn't exist (fail fast)
-    confirm_target_image_doesnt_exist || exit 1
+    confirm_target_image_doesnt_exist "${TARGET_IMAGE_FULL_URI}" || exit 1
 
     log "Tagging: ${SOURCE_IMAGE_FULL_URI} -> ${TARGET_IMAGE_FULL_URI}"
     ${IMAGE_BUILD_COMMAND} tag "${SOURCE_IMAGE_FULL_URI}" "${TARGET_IMAGE_FULL_URI}"
