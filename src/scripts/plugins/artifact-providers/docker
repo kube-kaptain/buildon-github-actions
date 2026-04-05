@@ -139,33 +139,166 @@ else
     exit 1
   fi
 
-  # List tags from the remote registry
-  # skopeo would be ideal but docker/podman can list via manifest inspection
-  # For now, use the registry API via the container runtime
-  available_tags=$(${IMAGE_BUILD_COMMAND} image ls --format '{{.Tag}}' "${full_name}" 2>/dev/null || true)
+  # Local tags from container runtime
+  log "Listing local tags for ${full_name}..."
+  local_tags=$(${IMAGE_BUILD_COMMAND} image ls --format '{{.Tag}}' "${full_name}" 2>/dev/null || true)
+  local_count=$(echo "${local_tags}" | grep -c . 2>/dev/null || echo "0")
+  if [[ -n "${local_tags}" ]]; then
+    log "Local tags: ${local_count} found"
+  else
+    log "Local tags: none"
+    local_count=0
+  fi
 
-  # If local tags are empty, try pulling the tag list via skopeo or registry API
-  if [[ -z "${available_tags}" ]]; then
-    # Attempt skopeo if available
-    if command -v skopeo &>/dev/null; then
-      available_tags=$(skopeo list-tags "docker://${full_name}" 2>/dev/null \
-        | grep -o '"[0-9][0-9.]*"' \
-        | tr -d '"' || true)
+  # Remote tags - skopeo first (handles auth transparently), curl fallback
+  remote_tags=""
+  auth_method=""
+  if command -v skopeo &>/dev/null; then
+    log "Listing remote tags via skopeo..."
+    remote_tags=$(skopeo list-tags "docker://${full_name}" 2>/dev/null \
+      | jq -r '.Tags[]' 2>/dev/null || true)
+    if [[ -n "${remote_tags}" ]]; then
+      auth_method="skopeo"
     fi
   fi
 
+  if [[ -z "${remote_tags}" ]]; then
+    if command -v skopeo &>/dev/null; then
+      log "Skopeo failed, falling back to OCI registry API"
+    else
+      log "Skopeo not available, falling back to OCI registry API"
+    fi
+
+    registry="${full_name%%/*}"
+    image_path="${full_name#*/}"
+
+    # Resolve auth: check docker/podman config files for stored credentials
+    auth_header=""
+    for config_file in \
+      "${DOCKER_CONFIG:-${HOME}/.docker}/config.json" \
+      "${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/containers/auth.json"; do
+      if [[ ! -f "${config_file}" ]]; then
+        log "Config file not found, skipping: ${config_file}"
+        continue
+      fi
+      log "Checking docker config: ${config_file}"
+
+      # Direct base64-encoded credentials
+      stored_auth=$(jq -r ".auths[\"${registry}\"].auth // empty" "${config_file}" 2>/dev/null || true)
+      if [[ -n "${stored_auth}" ]]; then
+        log "Found stored credentials for ${registry}"
+        auth_header="Authorization: Basic ${stored_auth}"
+        auth_method="stored-credentials"
+        break
+      fi
+      log "No stored credentials for ${registry}"
+
+      # Per-registry credential helper (credHelpers)
+      cred_helper=$(jq -r ".credHelpers[\"${registry}\"] // empty" "${config_file}" 2>/dev/null || true)
+      if [[ -n "${cred_helper}" ]]; then
+        log "Found credential helper for ${registry}: ${cred_helper}"
+      else
+        log "No credential helper for ${registry}"
+        # Fall back to default credential store (credsStore)
+        cred_helper=$(jq -r '.credsStore // empty' "${config_file}" 2>/dev/null || true)
+        if [[ -n "${cred_helper}" ]]; then
+          log "Found default credential store: ${cred_helper}"
+        else
+          log "No default credential store configured"
+        fi
+      fi
+      if [[ -n "${cred_helper}" ]]; then
+        helper_bin="docker-credential-${cred_helper}"
+        if command -v "${helper_bin}" &>/dev/null; then
+          log "Requesting credentials from ${helper_bin}..."
+          cred_json=$(echo "${registry}" | "${helper_bin}" get 2>/dev/null || true)
+          if [[ -n "${cred_json}" ]]; then
+            cred_user=$(echo "${cred_json}" | jq -r '.Username // empty' 2>/dev/null || true)
+            cred_secret=$(echo "${cred_json}" | jq -r '.Secret // empty' 2>/dev/null || true)
+            if [[ -n "${cred_user}" && -n "${cred_secret}" ]]; then
+              log "Credentials obtained for ${registry}"
+              stored_auth=$(printf '%s:%s' "${cred_user}" "${cred_secret}" | base64)
+              auth_header="Authorization: Basic ${stored_auth}"
+              auth_method="credential-helper"
+              break
+            fi
+          fi
+          log "Credential helper returned no credentials"
+        else
+          log_warning "${helper_bin} not found on PATH"
+        fi
+      fi
+    done
+
+    # No stored credentials - try anonymous token exchange
+    if [[ -z "${auth_header}" ]]; then
+      log "No stored credentials found, trying anonymous access"
+      log "Requesting token from ${registry} for ${image_path}..."
+      www_auth=$(curl -sS -o /dev/null -D - "https://${registry}/v2/" 2>/dev/null \
+        | grep -i '^www-authenticate' || true)
+      if [[ -n "${www_auth}" ]]; then
+        realm=$(echo "${www_auth}" | sed -n 's/.*realm="\([^"]*\)".*/\1/p')
+        service=$(echo "${www_auth}" | sed -n 's/.*service="\([^"]*\)".*/\1/p')
+        if [[ -n "${realm}" ]]; then
+          token_url="${realm}?scope=repository:${image_path}:pull"
+          [[ -n "${service}" ]] && token_url="${token_url}&service=${service}"
+          token=$(curl -sS "${token_url}" 2>/dev/null | jq -r '.token // empty' 2>/dev/null || true)
+          if [[ -n "${token}" ]]; then
+            log "Anonymous token obtained"
+            auth_header="Authorization: Bearer ${token}"
+            auth_method="anonymous"
+          else
+            log_warning "Anonymous token request returned no token"
+          fi
+        fi
+      else
+        log_warning "Registry ${registry} did not return authentication challenge"
+      fi
+    fi
+
+    # Query tags/list endpoint
+    log "Fetching tags from ${registry}/v2/${image_path}/tags/list..."
+    if [[ -n "${auth_header}" ]]; then
+      tags_response=$(curl -sS -H "${auth_header}" "https://${registry}/v2/${image_path}/tags/list" 2>/dev/null || true)
+    else
+      tags_response=$(curl -sS "https://${registry}/v2/${image_path}/tags/list" 2>/dev/null || true)
+    fi
+    if [[ -n "${tags_response}" ]]; then
+      remote_tags=$(echo "${tags_response}" | jq -r '.tags[]' 2>/dev/null || true)
+    fi
+  fi
+
+  if [[ -n "${remote_tags}" ]]; then
+    remote_count=$(echo "${remote_tags}" | grep -c . 2>/dev/null || echo "0")
+    log "Remote tags: ${remote_count} found"
+  else
+    log "Remote tags: none"
+  fi
+
+  # Combine local and remote, deduplicate
+  available_tags=$(printf '%s\n%s' "${local_tags}" "${remote_tags}" | sort -u | sed '/^$/d')
+  combined_count=$(echo "${available_tags}" | grep -c . 2>/dev/null || echo "0")
+
   if [[ -z "${available_tags}" ]]; then
-    log_error "Unable to list tags for ${full_name} - cannot resolve version range ${version_part}"
+    if [[ "${auth_method}" == "stored-credentials" || "${auth_method}" == "credential-helper" ]]; then
+      log_error "Failed to list tags for ${full_name} (authenticated request failed - check your credentials)"
+    else
+      log_error "Unable to anonymously list tags for ${full_name} - cannot resolve version range ${version_part}"
+    fi
     exit 1
   fi
+  log "Combined tags: ${combined_count} unique"
 
   # For release builds, exclude suffixed versions (e.g. 1.1-PRERELEASE, 1.1-linux-amd64)
   if [[ "${IS_RELEASE:-false}" == "true" ]]; then
+    log "Release build: filtering to release-only versions"
     available_tags=$(version_filter_release "${available_tags}")
     if [[ -z "${available_tags}" ]]; then
       log_error "No release versions available for ${full_name} after filtering suffixed tags - cannot resolve ${version_part}"
       exit 1
     fi
+    release_count=$(echo "${available_tags}" | grep -c . 2>/dev/null || echo "0")
+    log "Release versions: ${release_count} found"
   fi
 
   version_resolve_range "${version_part}" "${available_tags}"
