@@ -437,6 +437,84 @@ teardown() {
   [[ "$status" -eq 0 ]]
 }
 
+@test "resolve_range: local prerelease higher than latest release picks prerelease" {
+  # Scenario: 2.1 released remotely, 2.2-PRERELEASE built locally
+  # 2.2-PRERELEASE > 2.1 numerically, so it should be picked
+  local versions
+  versions=$(printf "2.0\n2.1\n2.2-PRERELEASE\n")
+  run version_resolve_range "[2.0,3.0)" "${versions}"
+  [[ "$status" -eq 0 ]]
+  [[ "$output" == "2.2-PRERELEASE" ]]
+}
+
+@test "resolve_range: release preferred over prerelease at same numeric" {
+  # Both 1.1 and 1.1-PRERELEASE exist - 1.1 wins (unsuffixed > suffixed)
+  local versions
+  versions=$(printf "1.1-PRERELEASE\n1.1\n")
+  run version_resolve_range "[1.0,2.0)" "${versions}"
+  [[ "$status" -eq 0 ]]
+  [[ "$output" == "1.1" ]]
+}
+
 @test "version_is_exact: suffixed version is exact" {
   version_is_exact "1.2.3-PRERELEASE"
+}
+
+# =============================================================================
+# version_filter_release - exclude suffixed versions for release builds
+# =============================================================================
+
+@test "version_filter_release: strips suffixed versions" {
+  local versions
+  versions=$(printf "1.0\n1.1-PRERELEASE\n1.1\n1.2-PRERELEASE\n2.0\n")
+  run version_filter_release "${versions}"
+  [[ "$status" -eq 0 ]]
+  [[ "$output" == "$(printf '1.0\n1.1\n2.0')" ]]
+}
+
+@test "version_filter_release: keeps all pure numeric versions" {
+  local versions
+  versions=$(printf "1.0\n1.1\n2.0\n")
+  run version_filter_release "${versions}"
+  [[ "$status" -eq 0 ]]
+  [[ "$output" == "$(printf '1.0\n1.1\n2.0')" ]]
+}
+
+@test "version_filter_release: returns empty when all suffixed" {
+  local versions
+  versions=$(printf "1.0-PRERELEASE\n1.1-SNAPSHOT\n")
+  run version_filter_release "${versions}"
+  [[ "$status" -eq 0 ]]
+  [[ -z "$output" ]]
+}
+
+@test "version_filter_release: strips arch-suffixed tags" {
+  local versions
+  versions=$(printf "1.1\n1.1-linux-amd64\n1.1-linux-arm64\n1.1-release-change-data\n")
+  run version_filter_release "${versions}"
+  [[ "$status" -eq 0 ]]
+  [[ "$output" == "1.1" ]]
+}
+
+@test "resolve_range: IS_RELEASE=true excludes suffixed versions" {
+  # When IS_RELEASE is true, only release (unsuffixed) versions should be candidates
+  export IS_RELEASE="true"
+  local versions
+  versions=$(printf "1.0\n1.1-PRERELEASE\n1.2-PRERELEASE\n")
+  local filtered
+  filtered=$(version_filter_release "${versions}")
+  run version_resolve_range "[1.0,2.0)" "${filtered}"
+  [[ "$status" -eq 0 ]]
+  [[ "$output" == "1.0" ]]
+}
+
+@test "resolve_range: IS_RELEASE=true picks highest release ignoring higher prerelease" {
+  export IS_RELEASE="true"
+  local versions
+  versions=$(printf "1.0\n1.1\n1.2-PRERELEASE\n2.0\n")
+  local filtered
+  filtered=$(version_filter_release "${versions}")
+  run version_resolve_range "[1.0,2.0)" "${filtered}"
+  [[ "$status" -eq 0 ]]
+  [[ "$output" == "1.1" ]]
 }
