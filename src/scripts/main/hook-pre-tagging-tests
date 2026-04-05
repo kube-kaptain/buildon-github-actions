@@ -46,6 +46,7 @@ SKIP_DOCKER_TARGET_VALIDATION=true
 source "$(dirname "${BASH_SOURCE[0]}")/../defaults/docker-build.bash"
 # shellcheck source=src/scripts/defaults/docker-dockerfile.bash
 source "$(dirname "${BASH_SOURCE[0]}")/../defaults/docker-dockerfile.bash"
+SKIP_RETAG_SOURCE_VALIDATION=true
 # shellcheck source=src/scripts/defaults/docker-retag.bash
 source "$(dirname "${BASH_SOURCE[0]}")/../defaults/docker-retag.bash"
 # shellcheck source=src/scripts/defaults/tokens.bash

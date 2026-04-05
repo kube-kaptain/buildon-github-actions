@@ -42,47 +42,6 @@ source "${SCRIPT_DIR}/../defaults/docker-common.bash"
 # shellcheck source=src/scripts/lib/output-var.bash
 source "${SCRIPT_DIR}/../lib/output-var.bash"
 
-# Validate required inputs
-if [[ -z "${DOCKER_SOURCE_REGISTRY}" ]]; then
-  log_error "DOCKER_SOURCE_REGISTRY is required"
-  exit 1
-fi
-if [[ -z "${DOCKER_SOURCE_IMAGE_NAME}" ]]; then
-  log_error "DOCKER_SOURCE_IMAGE_NAME is required"
-  exit 1
-fi
-if [[ -z "${DOCKER_SOURCE_TAG}" ]]; then
-  log_error "DOCKER_SOURCE_TAG is required"
-  exit 1
-fi
-
-# Source registry cannot contain slashes
-if [[ "${SOURCE_REGISTRY}" == */* ]]; then
-  log_error "DOCKER_SOURCE_REGISTRY cannot contain slashes - use DOCKER_SOURCE_NAMESPACE for paths"
-  exit 1
-fi
-
-# Strip leading/trailing slashes from source image name (internal slashes are valid)
-SOURCE_IMAGE_NAME="${INPUT_SOURCE_IMAGE_NAME#/}"
-SOURCE_IMAGE_NAME="${SOURCE_IMAGE_NAME%/}"
-if [[ "${INPUT_SOURCE_IMAGE_NAME}" != "${SOURCE_IMAGE_NAME}" ]]; then
-  log_warning "DOCKER_SOURCE_IMAGE_NAME has leading/trailing slashes. Stripping."
-fi
-
-# Strip leading/trailing slashes from source namespace
-SOURCE_NAMESPACE="${INPUT_SOURCE_NAMESPACE#/}"
-SOURCE_NAMESPACE="${SOURCE_NAMESPACE%/}"
-if [[ "${INPUT_SOURCE_NAMESPACE}" != "${SOURCE_NAMESPACE}" ]]; then
-  log_warning "DOCKER_SOURCE_NAMESPACE has leading/trailing slashes. Stripping."
-fi
-
-# === Assemble source image URI ===
-if [[ -n "${SOURCE_NAMESPACE}" ]]; then
-  SOURCE_IMAGE_FULL_URI="${SOURCE_REGISTRY}/${SOURCE_NAMESPACE}/${SOURCE_IMAGE_NAME}:${SOURCE_TAG}"
-else
-  SOURCE_IMAGE_FULL_URI="${SOURCE_REGISTRY}/${SOURCE_IMAGE_NAME}:${SOURCE_TAG}"
-fi
-
 # === Shared target validation, URI assembly, and utilities ===
 # shellcheck source=src/scripts/lib/docker-build-shared.bash
 source "${SCRIPT_DIR}/../lib/docker-build-shared.bash"
