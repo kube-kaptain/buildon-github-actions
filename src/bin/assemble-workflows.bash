@@ -716,11 +716,24 @@ main() {
 
   if [[ -d "$OUTPUT_DIR" ]]; then
     echo "Cleaning output directory..."
-    rm "$OUTPUT_DIR"/*
-    for file in "${preserved_files[@]}"; do
-      git checkout "$OUTPUT_DIR/$file" 2>/dev/null || true
+    for file in "$OUTPUT_DIR"/*; do
+      [[ -f "$file" ]] || continue
+      local basename
+      basename=$(basename "$file")
+      local preserve=false
+      for pf in "${preserved_files[@]}"; do
+        if [[ "$basename" == "$pf" ]]; then
+          echo "  Keeping ${file}"
+          preserve=true
+          break
+        fi
+      done
+      if [[ "$preserve" == "false" ]]; then
+        echo "  Removing ${file}"
+        rm "$file"
+      fi
     done
-    echo "  Removed existing files from $OUTPUT_DIR (restored: ${preserved_files[*]})"
+    echo "Removed generated files from $OUTPUT_DIR (preserved: ${preserved_files[*]})"
     echo
   fi
 

@@ -147,7 +147,7 @@ check_generated_files() {
   log_info "Checking generated files are up to date"
 
   # Run the assemble script
-  "$PROJECT_ROOT/src/bin/assemble-workflows.bash" > /dev/null
+  "$PROJECT_ROOT/src/bin/assemble-workflows.bash"
 
   # Check for modified files in generated locations
   local modified_generated
