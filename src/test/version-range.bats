@@ -390,3 +390,53 @@ teardown() {
   [[ "$status" -eq 0 ]]
   [[ "$output" == "1.11" ]]
 }
+
+# =============================================================================
+# Suffixed versions (e.g. 1.1-PRERELEASE) - must not crash
+# =============================================================================
+
+@test "version_compare: suffixed version produces valid exit code" {
+  # In real scripts with set -u, "1-PRERELEASE" in arithmetic causes unbound
+  # variable crash. Even without -u, the comparison must produce a valid result.
+  run version_compare "1.1-PRERELEASE" "1.1"
+  [[ "$status" -eq 0 ]] || [[ "$status" -eq 1 ]] || [[ "$status" -eq 2 ]]
+}
+
+@test "version_compare: suffixed less than unsuffixed at same numeric" {
+  run version_compare "1.1-PRERELEASE" "1.1"
+  [[ "$status" -eq 2 ]]
+}
+
+@test "version_compare: unsuffixed greater than suffixed at same numeric" {
+  run version_compare "1.1" "1.1-PRERELEASE"
+  [[ "$status" -eq 1 ]]
+}
+
+@test "version_compare: two identical suffixed versions are equal" {
+  run version_compare "1.1-PRERELEASE" "1.1-PRERELEASE"
+  [[ "$status" -eq 0 ]]
+}
+
+@test "version_compare: suffixed version with higher numeric still wins" {
+  run version_compare "1.2-PRERELEASE" "1.1"
+  [[ "$status" -eq 1 ]]
+}
+
+@test "resolve_range: available list with suffixed versions does not crash" {
+  local versions
+  versions=$(printf "1.0\n1.1-PRERELEASE\n1.1\n1.2\n")
+  run version_resolve_range "[1.1,2.0)" "${versions}"
+  [[ "$status" -eq 0 ]]
+  [[ "$output" == "1.2" ]]
+}
+
+@test "resolve_range: suffixed-only versions still resolve when in range" {
+  local versions
+  versions=$(printf "1.1-PRERELEASE\n1.2-PRERELEASE\n")
+  run version_resolve_range "[1.0,2.0)" "${versions}"
+  [[ "$status" -eq 0 ]]
+}
+
+@test "version_is_exact: suffixed version is exact" {
+  version_is_exact "1.2.3-PRERELEASE"
+}
