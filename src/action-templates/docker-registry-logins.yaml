@@ -36,6 +36,9 @@ runs:
       id: config
       shell: bash
       env:
+        BUILD_MODE: build_server
+        BUILD_PLATFORM: github-actions
+        BUILD_PLATFORM_LOG_PROVIDER: github-actions
         GH_TOKEN: ${{ github.token }}
         GH_ACTOR: ${{ github.actor }}
       run: |
@@ -82,10 +85,11 @@ runs:
       shell: bash
       run: ${{ github.action_path }}/../../scripts/main/docker-registry-logins
       env:
+        BUILD_MODE: build_server
+        BUILD_PLATFORM: github-actions
+        BUILD_PLATFORM_LOG_PROVIDER: github-actions
         SECRET_METHOD: ${{ inputs.secret-method }}
         DOCKER_REGISTRY_LOGINS: ${{ steps.config.outputs.FINAL_CONFIG }}
         SECRETS_JSON: ${{ inputs.secrets-json }}
         OUTPUT_SUB_PATH: ${{ inputs.output-sub-path }}
-        BUILD_PLATFORM: github-actions
-        BUILD_PLATFORM_LOG_PROVIDER: github-actions
         IMAGE_BUILD_COMMAND: ${{ inputs.image-build-command }}

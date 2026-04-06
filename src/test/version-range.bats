@@ -179,9 +179,8 @@ teardown() {
 @test "resolve_range: exact version found" {
   local versions
   versions=$(printf "1.0\n1.1\n1.2\n2.0\n")
-  run version_resolve_range "1.1" "${versions}"
-  [[ "$status" -eq 0 ]]
-  [[ "$output" == "1.1" ]]
+  version_resolve_range "1.1" "${versions}"
+  [[ "${VERSION_RESOLVE_RESULT}" == "1.1" ]]
 }
 
 @test "resolve_range: exact version not found" {
@@ -198,17 +197,15 @@ teardown() {
 @test "resolve_range: [1.0,2.0) returns highest below 2.0" {
   local versions
   versions=$(printf "0.9\n1.0\n1.5\n1.9\n2.0\n2.1\n")
-  run version_resolve_range "[1.0,2.0)" "${versions}"
-  [[ "$status" -eq 0 ]]
-  [[ "$output" == "1.9" ]]
+  version_resolve_range "[1.0,2.0)" "${versions}"
+  [[ "${VERSION_RESOLVE_RESULT}" == "1.9" ]]
 }
 
 @test "resolve_range: [1.0,2.0) includes lower bound" {
   local versions
   versions=$(printf "1.0\n2.0\n")
-  run version_resolve_range "[1.0,2.0)" "${versions}"
-  [[ "$status" -eq 0 ]]
-  [[ "$output" == "1.0" ]]
+  version_resolve_range "[1.0,2.0)" "${versions}"
+  [[ "${VERSION_RESOLVE_RESULT}" == "1.0" ]]
 }
 
 @test "resolve_range: [1.0,2.0) excludes upper bound" {
@@ -225,17 +222,15 @@ teardown() {
 @test "resolve_range: [1.0,2.0] includes upper bound" {
   local versions
   versions=$(printf "1.0\n1.5\n2.0\n2.1\n")
-  run version_resolve_range "[1.0,2.0]" "${versions}"
-  [[ "$status" -eq 0 ]]
-  [[ "$output" == "2.0" ]]
+  version_resolve_range "[1.0,2.0]" "${versions}"
+  [[ "${VERSION_RESOLVE_RESULT}" == "2.0" ]]
 }
 
 @test "resolve_range: [1.0,1.0] matches single version" {
   local versions
   versions=$(printf "0.9\n1.0\n1.1\n")
-  run version_resolve_range "[1.0,1.0]" "${versions}"
-  [[ "$status" -eq 0 ]]
-  [[ "$output" == "1.0" ]]
+  version_resolve_range "[1.0,1.0]" "${versions}"
+  [[ "${VERSION_RESOLVE_RESULT}" == "1.0" ]]
 }
 
 # =============================================================================
@@ -245,9 +240,8 @@ teardown() {
 @test "resolve_range: (1.0,2.0] excludes lower bound" {
   local versions
   versions=$(printf "1.0\n1.1\n2.0\n")
-  run version_resolve_range "(1.0,2.0]" "${versions}"
-  [[ "$status" -eq 0 ]]
-  [[ "$output" == "2.0" ]]
+  version_resolve_range "(1.0,2.0]" "${versions}"
+  [[ "${VERSION_RESOLVE_RESULT}" == "2.0" ]]
 }
 
 @test "resolve_range: (1.0,2.0] with only lower bound fails" {
@@ -264,9 +258,8 @@ teardown() {
 @test "resolve_range: (1.0,2.0) excludes both bounds" {
   local versions
   versions=$(printf "1.0\n1.5\n2.0\n")
-  run version_resolve_range "(1.0,2.0)" "${versions}"
-  [[ "$status" -eq 0 ]]
-  [[ "$output" == "1.5" ]]
+  version_resolve_range "(1.0,2.0)" "${versions}"
+  [[ "${VERSION_RESOLVE_RESULT}" == "1.5" ]]
 }
 
 @test "resolve_range: (1.0,2.0) with only bounds fails" {
@@ -283,33 +276,29 @@ teardown() {
 @test "resolve_range: [1.0,) returns highest >= 1.0" {
   local versions
   versions=$(printf "0.5\n1.0\n2.0\n3.5\n")
-  run version_resolve_range "[1.0,)" "${versions}"
-  [[ "$status" -eq 0 ]]
-  [[ "$output" == "3.5" ]]
+  version_resolve_range "[1.0,)" "${versions}"
+  [[ "${VERSION_RESOLVE_RESULT}" == "3.5" ]]
 }
 
 @test "resolve_range: (1.0,) returns highest > 1.0" {
   local versions
   versions=$(printf "1.0\n1.1\n5.0\n")
-  run version_resolve_range "(1.0,)" "${versions}"
-  [[ "$status" -eq 0 ]]
-  [[ "$output" == "5.0" ]]
+  version_resolve_range "(1.0,)" "${versions}"
+  [[ "${VERSION_RESOLVE_RESULT}" == "5.0" ]]
 }
 
 @test "resolve_range: (,2.0] returns highest <= 2.0" {
   local versions
   versions=$(printf "0.1\n1.0\n1.9\n2.0\n3.0\n")
-  run version_resolve_range "(,2.0]" "${versions}"
-  [[ "$status" -eq 0 ]]
-  [[ "$output" == "2.0" ]]
+  version_resolve_range "(,2.0]" "${versions}"
+  [[ "${VERSION_RESOLVE_RESULT}" == "2.0" ]]
 }
 
 @test "resolve_range: (,2.0) returns highest < 2.0" {
   local versions
   versions=$(printf "0.1\n1.0\n1.9\n2.0\n")
-  run version_resolve_range "(,2.0)" "${versions}"
-  [[ "$status" -eq 0 ]]
-  [[ "$output" == "1.9" ]]
+  version_resolve_range "(,2.0)" "${versions}"
+  [[ "${VERSION_RESOLVE_RESULT}" == "1.9" ]]
 }
 
 # =============================================================================
@@ -319,25 +308,22 @@ teardown() {
 @test "resolve_range: picks highest from multiple matches" {
   local versions
   versions=$(printf "1.0\n1.1\n1.2\n1.3\n1.4\n")
-  run version_resolve_range "[1.0,2.0)" "${versions}"
-  [[ "$status" -eq 0 ]]
-  [[ "$output" == "1.4" ]]
+  version_resolve_range "[1.0,2.0)" "${versions}"
+  [[ "${VERSION_RESOLVE_RESULT}" == "1.4" ]]
 }
 
 @test "resolve_range: handles unsorted input" {
   local versions
   versions=$(printf "1.3\n1.1\n1.4\n1.0\n1.2\n")
-  run version_resolve_range "[1.0,2.0)" "${versions}"
-  [[ "$status" -eq 0 ]]
-  [[ "$output" == "1.4" ]]
+  version_resolve_range "[1.0,2.0)" "${versions}"
+  [[ "${VERSION_RESOLVE_RESULT}" == "1.4" ]]
 }
 
 @test "resolve_range: handles multi-part versions in range" {
   local versions
   versions=$(printf "1.0.0\n1.0.1\n1.1.0\n1.2.0\n2.0.0\n")
-  run version_resolve_range "[1.0.0,1.2.0)" "${versions}"
-  [[ "$status" -eq 0 ]]
-  [[ "$output" == "1.1.0" ]]
+  version_resolve_range "[1.0.0,1.2.0)" "${versions}"
+  [[ "${VERSION_RESOLVE_RESULT}" == "1.1.0" ]]
 }
 
 # =============================================================================
@@ -370,23 +356,158 @@ teardown() {
 @test "resolve_range: single-part versions" {
   local versions
   versions=$(printf "1\n2\n3\n4\n")
-  run version_resolve_range "[2,4)" "${versions}"
-  [[ "$status" -eq 0 ]]
-  [[ "$output" == "3" ]]
+  version_resolve_range "[2,4)" "${versions}"
+  [[ "${VERSION_RESOLVE_RESULT}" == "3" ]]
 }
 
 @test "resolve_range: many-part versions" {
   local versions
   versions=$(printf "1.2.3.4\n1.2.3.5\n1.2.4.0\n")
-  run version_resolve_range "[1.2.3.4,1.2.4.0)" "${versions}"
-  [[ "$status" -eq 0 ]]
-  [[ "$output" == "1.2.3.5" ]]
+  version_resolve_range "[1.2.3.4,1.2.4.0)" "${versions}"
+  [[ "${VERSION_RESOLVE_RESULT}" == "1.2.3.5" ]]
 }
 
 @test "resolve_range: numeric comparison 1.10 > 1.9 in range" {
   local versions
   versions=$(printf "1.8\n1.9\n1.10\n1.11\n2.0\n")
-  run version_resolve_range "[1.0,2.0)" "${versions}"
+  version_resolve_range "[1.0,2.0)" "${versions}"
+  [[ "${VERSION_RESOLVE_RESULT}" == "1.11" ]]
+}
+
+# =============================================================================
+# Suffixed versions (e.g. 1.1-PRERELEASE) - must not crash
+# =============================================================================
+
+@test "version_compare: suffixed version produces valid exit code" {
+  # In real scripts with set -u, "1-PRERELEASE" in arithmetic causes unbound
+  # variable crash. Even without -u, the comparison must produce a valid result.
+  run version_compare "1.1-PRERELEASE" "1.1"
+  [[ "$status" -eq 0 ]] || [[ "$status" -eq 1 ]] || [[ "$status" -eq 2 ]]
+}
+
+@test "version_compare: suffixed less than unsuffixed at same numeric" {
+  run version_compare "1.1-PRERELEASE" "1.1"
+  [[ "$status" -eq 2 ]]
+}
+
+@test "version_compare: unsuffixed greater than suffixed at same numeric" {
+  run version_compare "1.1" "1.1-PRERELEASE"
+  [[ "$status" -eq 1 ]]
+}
+
+@test "version_compare: two identical suffixed versions are equal" {
+  run version_compare "1.1-PRERELEASE" "1.1-PRERELEASE"
   [[ "$status" -eq 0 ]]
-  [[ "$output" == "1.11" ]]
+}
+
+@test "version_compare: suffixed version with higher numeric still wins" {
+  run version_compare "1.2-PRERELEASE" "1.1"
+  [[ "$status" -eq 1 ]]
+}
+
+@test "resolve_range: available list with suffixed versions does not crash" {
+  local versions
+  versions=$(printf "1.0\n1.1-PRERELEASE\n1.1\n1.2\n")
+  version_resolve_range "[1.1,2.0)" "${versions}"
+  [[ "${VERSION_RESOLVE_RESULT}" == "1.2" ]]
+}
+
+@test "resolve_range: suffixed-only versions still resolve when in range" {
+  local versions
+  versions=$(printf "1.1-PRERELEASE\n1.2-PRERELEASE\n")
+  version_resolve_range "[1.0,2.0)" "${versions}"
+  [[ -n "${VERSION_RESOLVE_RESULT}" ]]
+}
+
+@test "resolve_range: local prerelease higher than latest release picks prerelease" {
+  # Scenario: 2.1 released remotely, 2.2-PRERELEASE built locally
+  # 2.2-PRERELEASE > 2.1 numerically, so it should be picked
+  local versions
+  versions=$(printf "2.0\n2.1\n2.2-PRERELEASE\n")
+  version_resolve_range "[2.0,3.0)" "${versions}"
+  [[ "${VERSION_RESOLVE_RESULT}" == "2.2-PRERELEASE" ]]
+}
+
+@test "resolve_range: release preferred over prerelease at same numeric" {
+  # Both 1.1 and 1.1-PRERELEASE exist - 1.1 wins (unsuffixed > suffixed)
+  local versions
+  versions=$(printf "1.1-PRERELEASE\n1.1\n")
+  version_resolve_range "[1.0,2.0)" "${versions}"
+  [[ "${VERSION_RESOLVE_RESULT}" == "1.1" ]]
+}
+
+@test "version_compare: shorter suffix wins over longer at same numeric" {
+  run version_compare "1.1-PRERELEASE" "1.1-PRERELEASE-linux-arm64"
+  [[ "$status" -eq 1 ]]
+}
+
+@test "version_compare: longer suffix loses to shorter at same numeric" {
+  run version_compare "1.1-PRERELEASE-linux-arm64" "1.1-PRERELEASE"
+  [[ "$status" -eq 2 ]]
+}
+
+@test "version_compare: suffix sorting is alphabetical" {
+  run version_compare "1.1-alpha" "1.1-beta"
+  [[ "$status" -eq 1 ]]
+}
+
+@test "version_is_exact: suffixed version is exact" {
+  version_is_exact "1.2.3-PRERELEASE"
+}
+
+# =============================================================================
+# version_filter_release - exclude suffixed versions for release builds
+# =============================================================================
+
+@test "version_filter_release: strips suffixed versions" {
+  local versions
+  versions=$(printf "1.0\n1.1-PRERELEASE\n1.1\n1.2-PRERELEASE\n2.0\n")
+  run version_filter_release "${versions}"
+  [[ "$status" -eq 0 ]]
+  [[ "$output" == "$(printf '1.0\n1.1\n2.0')" ]]
+}
+
+@test "version_filter_release: keeps all pure numeric versions" {
+  local versions
+  versions=$(printf "1.0\n1.1\n2.0\n")
+  run version_filter_release "${versions}"
+  [[ "$status" -eq 0 ]]
+  [[ "$output" == "$(printf '1.0\n1.1\n2.0')" ]]
+}
+
+@test "version_filter_release: returns empty when all suffixed" {
+  local versions
+  versions=$(printf "1.0-PRERELEASE\n1.1-SNAPSHOT\n")
+  run version_filter_release "${versions}"
+  [[ "$status" -eq 0 ]]
+  [[ -z "$output" ]]
+}
+
+@test "version_filter_release: strips arch-suffixed tags" {
+  local versions
+  versions=$(printf "1.1\n1.1-linux-amd64\n1.1-linux-arm64\n1.1-release-change-data\n")
+  run version_filter_release "${versions}"
+  [[ "$status" -eq 0 ]]
+  [[ "$output" == "1.1" ]]
+}
+
+@test "resolve_range: IS_RELEASE=true excludes suffixed versions" {
+  # When IS_RELEASE is true, only release (unsuffixed) versions should be candidates
+  export IS_RELEASE="true"
+  local versions
+  versions=$(printf "1.0\n1.1-PRERELEASE\n1.2-PRERELEASE\n")
+  local filtered
+  filtered=$(version_filter_release "${versions}")
+  version_resolve_range "[1.0,2.0)" "${filtered}"
+  [[ "${VERSION_RESOLVE_RESULT}" == "1.0" ]]
+}
+
+@test "resolve_range: IS_RELEASE=true picks highest release ignoring higher prerelease" {
+  export IS_RELEASE="true"
+  local versions
+  versions=$(printf "1.0\n1.1\n1.2-PRERELEASE\n2.0\n")
+  local filtered
+  filtered=$(version_filter_release "${versions}")
+  version_resolve_range "[1.0,2.0)" "${filtered}"
+  [[ "${VERSION_RESOLVE_RESULT}" == "1.1" ]]
 }

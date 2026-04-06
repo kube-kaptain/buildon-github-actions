@@ -6,6 +6,9 @@
   if: steps.kpm.outputs.GITHUB_RELEASE_ENABLED == 'true' && steps.versions.outputs.is-release == 'true'
   shell: bash
   env:
+    BUILD_MODE: build_server
+    BUILD_PLATFORM: github-actions
+    BUILD_PLATFORM_LOG_PROVIDER: github-actions
     USER_NOTES: ${{ steps.kpm.outputs.GITHUB_RELEASE_NOTES }}
     USER_NOTES_FILE: ${{ steps.kpm.outputs.GITHUB_RELEASE_NOTES_FILE }}
     VERSION: ${{ steps.versions.outputs.version }}
@@ -17,8 +20,6 @@
     OUTPUT_SUB_PATH: ${{ steps.kpm.outputs.OUTPUT_SUB_PATH }}
     GITHUB_SERVER_URL: ${{ github.server_url }}
     GITHUB_REPOSITORY: ${{ github.repository }}
-    BUILD_PLATFORM: github-actions
-    BUILD_PLATFORM_LOG_PROVIDER: github-actions
   run: |
     display_name=$(./.github/buildon-github-actions/src/scripts/util/format-project-title "${PROJECT_NAME}")
     echo "title=${VERSION} — ${display_name}" >> "${GITHUB_OUTPUT}"

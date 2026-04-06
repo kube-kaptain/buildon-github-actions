@@ -27,6 +27,7 @@ set_required_env() {
   export DOCKER_TARGET_NAMESPACE="test"
   export DOCKER_IMAGE_NAME="my-repo"
   export DOCKER_TAG="1.0.0"
+  export BUILD_MODE="build_server"
 }
 
 @test "assembles source URI correctly" {
@@ -203,6 +204,7 @@ set_required_env() {
 
 @test "fails when image already exists" {
   set_required_env
+  export BUILD_MODE="build_server"
   # Mock docker manifest inspect to return success (image exists)
   export MOCK_DOCKER_MANIFEST_EXISTS="true"
 
@@ -213,11 +215,22 @@ set_required_env() {
 
 @test "always checks for existing image" {
   set_required_env
+  export BUILD_MODE="build_server"
 
   run "$SCRIPTS_DIR/docker-build-retag"
   [ "$status" -eq 0 ]
   # Should have called manifest inspect (the mock returns non-zero by default)
   assert_docker_called "manifest inspect"
+}
+
+@test "skips registry existence check for local build" {
+  set_required_env
+  export BUILD_MODE="local"
+  export MOCK_DOCKER_MANIFEST_EXISTS="true"
+
+  run "$SCRIPTS_DIR/docker-build-retag"
+  [ "$status" -eq 0 ]
+  assert_output_contains "Skipping registry existence check"
 }
 
 @test "works with custom registry and namespace" {

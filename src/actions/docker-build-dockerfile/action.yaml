@@ -125,6 +125,7 @@ runs:
       id: build
       shell: bash
       env:
+        BUILD_MODE: build_server
         BUILD_PLATFORM: github-actions
         BUILD_PLATFORM_LOG_PROVIDER: github-actions
         DOCKER_TARGET_REGISTRY: ${{ inputs.docker-target-registry }}
@@ -139,7 +140,6 @@ runs:
         OUTPUT_SUB_PATH: ${{ inputs.output-sub-path }}
         DOCKER_PUSH_IMAGE_LIST_FILE: ${{ inputs.docker-push-image-list-file }}
         IMAGE_BUILD_COMMAND: ${{ inputs.image-build-command }}
-        BUILD_MODE: build_server
         # Docker build options
         DOCKERFILE_SQUASH: ${{ inputs.dockerfile-squash }}
         DOCKERFILE_NO_CACHE: ${{ inputs.dockerfile-no-cache }}

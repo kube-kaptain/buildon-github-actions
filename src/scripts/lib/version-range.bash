@@ -22,6 +22,8 @@
 # Missing parts are treated as 0 (1.2 == 1.2.0).
 
 # Compare two version strings numerically.
+# Handles suffixed versions (e.g. 1.1-PRERELEASE): suffix is stripped for
+# numeric comparison, then unsuffixed > suffixed at the same numeric version.
 # Returns via exit code: 0 = equal, 1 = v1 > v2, 2 = v1 < v2
 version_compare() {
   local v1="${1}" v2="${2}"
@@ -30,9 +32,15 @@ version_compare() {
     return 0
   fi
 
+  # Split off suffix (everything after first hyphen)
+  local v1_numeric="${v1%%-*}" v1_suffix=""
+  local v2_numeric="${v2%%-*}" v2_suffix=""
+  [[ "${v1}" == *-* ]] && v1_suffix="${v1#*-}"
+  [[ "${v2}" == *-* ]] && v2_suffix="${v2#*-}"
+
   local -a parts1 parts2
-  IFS='.' read -ra parts1 <<< "${v1}"
-  IFS='.' read -ra parts2 <<< "${v2}"
+  IFS='.' read -ra parts1 <<< "${v1_numeric}"
+  IFS='.' read -ra parts2 <<< "${v2_numeric}"
 
   local max=${#parts1[@]}
   if [[ ${#parts2[@]} -gt ${max} ]]; then
@@ -49,6 +57,22 @@ version_compare() {
       return 2
     fi
   done
+
+  # Numeric parts equal - unsuffixed wins over suffixed
+  if [[ -z "${v1_suffix}" && -n "${v2_suffix}" ]]; then
+    return 1
+  elif [[ -n "${v1_suffix}" && -z "${v2_suffix}" ]]; then
+    return 2
+  fi
+
+  # Both suffixed: shorter/alphabetically earlier suffix wins
+  if [[ -n "${v1_suffix}" && -n "${v2_suffix}" ]]; then
+    if [[ "${v1_suffix}" < "${v2_suffix}" ]]; then
+      return 1
+    elif [[ "${v1_suffix}" > "${v2_suffix}" ]]; then
+      return 2
+    fi
+  fi
 
   return 0
 }
@@ -81,6 +105,20 @@ version_le() {
   [[ ${rc} -eq 2 || ${rc} -eq 0 ]]
 }
 
+# Filter a newline-delimited version list to only pure numeric versions
+# (no hyphens). Removes suffixed versions like 1.1-PRERELEASE, 1.1-linux-amd64.
+# Usage: version_filter_release "<newline-delimited-versions>"
+# stdout: filtered list (newline-delimited)
+version_filter_release() {
+  local versions="${1}"
+  local version
+  while IFS= read -r version; do
+    [[ -z "${version}" ]] && continue
+    [[ "${version}" != *-* ]] && echo "${version}"
+  done <<< "${versions}"
+  return 0
+}
+
 # Check if a version is an exact version (no range syntax)
 version_is_exact() {
   local version="${1}"
@@ -92,24 +130,25 @@ version_is_exact() {
 # For ranges, returns the highest version satisfying the range.
 #
 # Usage: version_resolve_range "<range>" "<newline-delimited-versions>"
-# stdout: resolved version
+# Sets: VERSION_RESOLVE_RESULT - resolved version
 # exit 1: no match found
 version_resolve_range() {
   local range="${1}"
   local available="${2}"
 
   if [[ -z "${available}" ]]; then
-    echo "No available versions provided" >&2
+    log_error "No available versions provided"
     return 1
   fi
 
   # Exact version: just check it exists
   if version_is_exact "${range}"; then
     if echo "${available}" | grep -qx "${range}"; then
-      echo "${range}"
+      # shellcheck disable=SC2034  # Read by callers
+      VERSION_RESOLVE_RESULT="${range}"
       return 0
     else
-      echo "Exact version ${range} not found in available versions" >&2
+      log_error "Exact version ${range} not found in available versions"
       return 1
     fi
   fi
@@ -133,11 +172,11 @@ version_resolve_range() {
 
   # Validate bracket characters
   if [[ "${lower_bracket}" != "[" && "${lower_bracket}" != "(" ]]; then
-    echo "Invalid range syntax: must start with [ or ( : ${range}" >&2
+    log_error "Invalid range syntax: must start with [ or ( : ${range}"
     return 1
   fi
   if [[ "${upper_bracket}" != "]" && "${upper_bracket}" != ")" ]]; then
-    echo "Invalid range syntax: must end with ] or ) : ${range}" >&2
+    log_error "Invalid range syntax: must end with ] or ) : ${range}"
     return 1
   fi
 
@@ -174,9 +213,10 @@ version_resolve_range() {
   done <<< "${available}"
 
   if [[ -z "${best}" ]]; then
-    echo "No version matching range ${range} found in available versions" >&2
+    log_error "No version matching range ${range} found in available versions"
     return 1
   fi
 
-  echo "${best}"
+  # shellcheck disable=SC2034  # Read by callers
+  VERSION_RESOLVE_RESULT="${best}"
 }

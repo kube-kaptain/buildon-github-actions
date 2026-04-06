@@ -59,13 +59,13 @@ canonical_dir="${OUTPUT_SUB_PATH}/aws-eks-cluster-management"
 expected_values_dir="${canonical_dir}/expected-values"
 
 if [[ ! -f "${expected_values_dir}/cluster-origin" ]]; then
-  echo "ERROR: ${expected_values_dir}/cluster-origin not found - was aws-eks-cluster-management-prepare run?" >&2
+  log_error "${expected_values_dir}/cluster-origin not found - was aws-eks-cluster-management-prepare run?"
   exit 1
 fi
 cluster_origin=$(< "${expected_values_dir}/cluster-origin")
 
 if [[ ! -f "${expected_values_dir}/nodegroup-type" ]]; then
-  echo "ERROR: ${expected_values_dir}/nodegroup-type not found - was aws-eks-cluster-management-prepare run?" >&2
+  log_error "${expected_values_dir}/nodegroup-type not found - was aws-eks-cluster-management-prepare run?"
   exit 1
 fi
 nodegroup_type=$(< "${expected_values_dir}/nodegroup-type")

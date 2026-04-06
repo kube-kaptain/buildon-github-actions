@@ -6,4 +6,4 @@
 #
 # shellcheck disable=SC2034  # Variables used by sourcing scripts
 
-BUILD_MODE="${BUILD_MODE:-local}"
+BUILD_MODE="${BUILD_MODE:?BUILD_MODE is required (local or build_server)}"

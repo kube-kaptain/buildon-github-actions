@@ -26,6 +26,7 @@ set_required_env() {
   export DOCKER_IMAGE_NAME="test/my-repo"
   export DOCKER_TARGET_REGISTRY="ghcr.io"
   export IMAGE_BUILD_COMMAND="docker"
+  export BUILD_MODE="build_server"
   export PROJECT_NAME="my-repo"
 }
 

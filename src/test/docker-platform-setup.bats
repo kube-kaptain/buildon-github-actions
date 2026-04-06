@@ -5,6 +5,7 @@
 load helpers
 
 setup() {
+  export BUILD_MODE="build_server"
   export IMAGE_BUILD_COMMAND="docker"
   local base_dir=$(create_test_dir "docker-platform-setup")
   export GITHUB_OUTPUT="$base_dir/output"
@@ -100,6 +101,7 @@ teardown() {
 
 @test "skips QEMU install on non-Linux" {
   export DOCKER_PLATFORM="linux/amd64"
+  export BUILD_MODE="local"
 
   run "$SCRIPTS_DIR/docker-platform-setup"
   [ "$status" -eq 0 ]

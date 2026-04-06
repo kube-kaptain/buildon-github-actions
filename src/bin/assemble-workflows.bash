@@ -673,9 +673,121 @@ generate_docs() {
   echo "  Injected: workflow links table"
 }
 
+# Validate that all action templates and steps-common files that set BUILD_PLATFORM
+# also set BUILD_MODE and BUILD_PLATFORM_LOG_PROVIDER. These three must travel together.
+validate_build_context_env_vars() {
+  echo "Validating build context env vars..."
+
+  local required_vars=("BUILD_PLATFORM" "BUILD_MODE" "BUILD_PLATFORM_LOG_PROVIDER")
+
+  # Files that have no env block and don't call kaptain scripts
+  local excluded_files=(
+    "github-check-run.yaml"
+    "github-release.yaml"
+    "resolve-target-registry-and-namespace.yaml"
+  )
+
+  # Files that have an env block but only use inline bash, not kaptain scripts
+  local inline_env_files=(
+    "parse-workflow-ref-and-checkout.yaml"
+    "github-release-prepare-eks.yaml"
+    "github-release-prepare-spec.yaml"
+  )
+
+  local errors=0
+
+  for dir in "$ACTION_TEMPLATES_DIR" "$STEPS_DIR"; do
+    local dir_label
+    dir_label=$(basename "$dir")
+    for file in "$dir"/*.yaml; do
+      [[ -f "$file" ]] || continue
+      local file_basename
+      file_basename=$(basename "$file")
+
+      # Skip files that don't need build context
+      local skip=false
+      for excluded in "${excluded_files[@]}" "${inline_env_files[@]}"; do
+        if [[ "$file_basename" == "$excluded" ]]; then
+          skip=true
+          break
+        fi
+      done
+      [[ "$skip" == "true" ]] && continue
+
+      # Check each env: block individually (multi-step actions have multiple)
+      local block_num=0
+      local in_env_block=false
+      local env_indent=0
+      local block_vars=""
+
+      while IFS= read -r line; do
+        # Detect start of an env: block
+        if [[ "$line" =~ ^([[:space:]]*)env:[[:space:]]*$ ]]; then
+          # Flush previous block if any
+          if [[ "$in_env_block" == "true" ]]; then
+            for var in "${required_vars[@]}"; do
+              if [[ "$block_vars" != *"$var"* ]]; then
+                echo "  ERROR: $dir_label/$file_basename env block $block_num missing $var"
+                errors=$((errors + 1))
+              fi
+            done
+          fi
+          block_num=$((block_num + 1))
+          in_env_block=true
+          env_indent=${#BASH_REMATCH[1]}
+          block_vars=""
+          continue
+        fi
+
+        if [[ "$in_env_block" == "true" ]]; then
+          # Check if line is still inside the env block (indented deeper than env:)
+          if [[ "$line" =~ ^([[:space:]]*)[^[:space:]] ]]; then
+            local line_indent=${#BASH_REMATCH[1]}
+            if [[ $line_indent -le $env_indent ]]; then
+              # Left the env block - flush it
+              for var in "${required_vars[@]}"; do
+                if [[ "$block_vars" != *"$var"* ]]; then
+                  echo "  ERROR: $dir_label/$file_basename env block $block_num missing $var"
+                  errors=$((errors + 1))
+                fi
+              done
+              in_env_block=false
+            else
+              # Still in env block - collect var names
+              block_vars="${block_vars} ${line}"
+            fi
+          fi
+        fi
+      done < "$file"
+
+      # Flush final block if file ends inside one
+      if [[ "$in_env_block" == "true" ]]; then
+        for var in "${required_vars[@]}"; do
+          if [[ "$block_vars" != *"$var"* ]]; then
+            echo "  ERROR: $dir_label/$file_basename env block $block_num missing $var"
+            errors=$((errors + 1))
+          fi
+        done
+      fi
+    done
+  done
+
+  if [[ $errors -gt 0 ]]; then
+    echo "  FAILED: $errors missing build context env var(s)"
+    echo "  All env blocks must set BUILD_MODE, BUILD_PLATFORM, and BUILD_PLATFORM_LOG_PROVIDER"
+    exit 1
+  fi
+
+  echo "  All build context env vars consistent"
+}
+
 main() {
   local start_time=$SECONDS
   local section_start
+
+  # Validate build context env vars before doing any work
+  validate_build_context_env_vars
+  echo
 
   # Process action templates first
   echo "Assembling actions..."
@@ -716,11 +828,24 @@ main() {
 
   if [[ -d "$OUTPUT_DIR" ]]; then
     echo "Cleaning output directory..."
-    rm "$OUTPUT_DIR"/*
-    for file in "${preserved_files[@]}"; do
-      git checkout "$OUTPUT_DIR/$file" 2>/dev/null || true
+    for file in "$OUTPUT_DIR"/*; do
+      [[ -f "$file" ]] || continue
+      local basename
+      basename=$(basename "$file")
+      local preserve=false
+      for pf in "${preserved_files[@]}"; do
+        if [[ "$basename" == "$pf" ]]; then
+          echo "  Keeping ${file}"
+          preserve=true
+          break
+        fi
+      done
+      if [[ "$preserve" == "false" ]]; then
+        echo "  Removing ${file}"
+        rm "$file"
+      fi
     done
-    echo "  Removed existing files from $OUTPUT_DIR (restored: ${preserved_files[*]})"
+    echo "Removed generated files from $OUTPUT_DIR (preserved: ${preserved_files[*]})"
     echo
   fi
 

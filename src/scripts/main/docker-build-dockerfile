@@ -139,11 +139,7 @@ build_for_platform() {
   fi
 
   # Confirm target doesn't exist before building (fail fast)
-  if ${IMAGE_BUILD_COMMAND} manifest inspect "${image_uri}" &>/dev/null; then
-    log_error "Target image already exists in registry: ${image_uri}"
-    exit 1
-  fi
-  log "Confirmed target image does not exist in registry: ${image_uri}"
+  confirm_target_image_doesnt_exist "${image_uri}" || exit 1
 
   # Fail if no Dockerfile in context dir (neither from source nor from hook)
   if [[ ! -f "${context_dir}/Dockerfile" ]]; then
@@ -284,6 +280,9 @@ main() {
     IFS=',' read -ra platforms <<< "${DOCKER_PLATFORM}"
     local manifest_uris_file="${OUTPUT_SUB_PATH}/docker-push-all/manifest-uris"
     mkdir -p "$(dirname "${manifest_uris_file}")"
+
+    # Confirm base target doesn't exist before building any arch (fail fast)
+    confirm_target_image_doesnt_exist "${TARGET_IMAGE_FULL_URI}" || exit 1
 
     for platform in "${platforms[@]}"; do
       local platform_suffix="${platform//\//-}"

@@ -46,11 +46,11 @@ runs:
     - name: Run pre-build hook
       shell: bash
       env:
-        IMAGE_BUILD_COMMAND: ${{ inputs.image-build-command }}
+        BUILD_MODE: build_server
         BUILD_PLATFORM: github-actions
         BUILD_PLATFORM_LOG_PROVIDER: github-actions
+        IMAGE_BUILD_COMMAND: ${{ inputs.image-build-command }}
         # GitHub context - needed for PROJECT_NAME and IS_RELEASE calculation
-        BUILD_MODE: build_server
         REPOSITORY_NAME: ${{ github.event.repository.name }}
         REPOSITORY_OWNER: ${{ github.repository_owner }}
         CURRENT_BRANCH: ${{ github.head_ref || github.ref_name }}

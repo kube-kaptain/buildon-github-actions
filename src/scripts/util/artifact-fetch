@@ -24,6 +24,10 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PLUGINS_DIR="${SCRIPT_DIR}/../plugins/artifact-downloaders"
 
+# shellcheck source=src/scripts/defaults/platform.bash
+source "${SCRIPT_DIR}/../defaults/platform.bash"
+# shellcheck source=src/scripts/lib/log.bash
+source "${SCRIPT_DIR}/../lib/log.bash"
 # shellcheck source=src/scripts/defaults/artifact-resolution.bash
 source "${SCRIPT_DIR}/../defaults/artifact-resolution.bash"
 
@@ -41,13 +45,13 @@ else
 fi
 
 if [[ -z "${provider}" ]]; then
-  echo "Empty provider in reference: ${reference}" >&2
+  log_error "Empty provider in reference: ${reference}"
   exit 1
 fi
 
 plugin="${PLUGINS_DIR}/${provider}"
 if [[ ! -x "${plugin}" ]]; then
-  echo "Unknown artifact downloader: ${provider} (no plugin at ${plugin})" >&2
+  log_error "Unknown artifact downloader: ${provider} (no plugin at ${plugin})"
   exit 1
 fi
 

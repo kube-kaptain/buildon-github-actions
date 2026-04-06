@@ -147,9 +147,12 @@ resolve_layer() {
 
   log "${indent}Resolving: ${ref}"
 
-  # Resolve to full URI via artifact-resolve
+  # Resolve to full URI via artifact-resolve (file-based output so logging flows)
+  local resolve_output_file="${KAPTAINPM_DIR}/resolve/${ref//[^a-zA-Z0-9._-]/_}"
+  mkdir -p "$(dirname "${resolve_output_file}")"
+  "${UTIL_DIR}/artifact-resolve" "${ref}" "${resolve_output_file}"
   local resolved_uri
-  resolved_uri=$("${UTIL_DIR}/artifact-resolve" "${ref}")
+  resolved_uri=$(< "${resolve_output_file}")
   log "${indent}Resolved: ${resolved_uri}"
 
   # Extract identity for duplicate detection (URI without version)

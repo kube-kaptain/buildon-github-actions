@@ -122,9 +122,9 @@ runs:
       id: generate
       shell: bash
       env:
+        BUILD_MODE: build_server
         BUILD_PLATFORM: github-actions
         BUILD_PLATFORM_LOG_PROVIDER: github-actions
-        BUILD_MODE: build_server
         REPOSITORY_NAME: ${{ github.event.repository.name }}
         REPOSITORY_OWNER: ${{ github.repository_owner }}
         CURRENT_BRANCH: ${{ github.head_ref || github.ref_name }}

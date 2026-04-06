@@ -81,9 +81,10 @@ runs:
     - name: Run pre-docker prepare hook
       shell: bash
       env:
-        IMAGE_BUILD_COMMAND: ${{ inputs.image-build-command }}
+        BUILD_MODE: build_server
         BUILD_PLATFORM: github-actions
         BUILD_PLATFORM_LOG_PROVIDER: github-actions
+        IMAGE_BUILD_COMMAND: ${{ inputs.image-build-command }}
         # Workflow inputs - build output
         OUTPUT_SUB_PATH: ${{ inputs.output-sub-path }}
         DOCKER_PUSH_IMAGE_LIST_FILE: ${{ inputs.docker-push-image-list-file }}

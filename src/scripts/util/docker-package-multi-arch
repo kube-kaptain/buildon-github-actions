@@ -102,11 +102,7 @@ log "$(cat "${build_dir}/Dockerfile")"
 log ""
 
 # Confirm base image doesn't already exist (fail fast)
-if ${IMAGE_BUILD_COMMAND} manifest inspect "${base_image_uri}" &>/dev/null; then
-  log_error "Target image already exists in registry: ${base_image_uri}"
-  exit 1
-fi
-log "Confirmed target image does not exist in registry: ${base_image_uri}"
+confirm_target_image_doesnt_exist "${base_image_uri}" || exit 1
 
 # Build for each architecture
 for platform in "${PLATFORMS[@]}"; do
@@ -114,11 +110,7 @@ for platform in "${PLATFORMS[@]}"; do
   arch_uri="${base_image_uri}-${platform_suffix}"
 
   # Confirm arch-specific target doesn't exist (fail fast)
-  if ${IMAGE_BUILD_COMMAND} manifest inspect "${arch_uri}" &>/dev/null; then
-    log_error "Target image already exists in registry: ${arch_uri}"
-    exit 1
-  fi
-  log "Confirmed target image does not exist in registry: ${arch_uri}"
+  confirm_target_image_doesnt_exist "${arch_uri}" || exit 1
 
   log "Building ${arch_uri} for ${platform}..."
   ${IMAGE_BUILD_COMMAND} build \

@@ -139,17 +139,17 @@ if [[ -z "${REMOTE_NAME:-}" ]]; then
   all_remotes=$(git remote 2>/dev/null || true)
   remote_count=$(echo "${all_remotes}" | grep -c . 2>/dev/null || echo "0")
   if [[ "${remote_count}" -eq 0 ]]; then
-    echo "ERROR: No git remotes configured" >&2
+    log_error "No git remotes configured"
     exit 1
   elif echo "${all_remotes}" | grep -q '^origin$'; then
     REMOTE_NAME="origin"
   elif [[ "${remote_count}" -eq 1 ]]; then
     REMOTE_NAME="${all_remotes}"
   else
-    echo "ERROR: Multiple remotes found but none called 'origin':" >&2
+    log_error "Multiple remotes found but none called 'origin':"
     # shellcheck disable=SC2001  # Need sed to prepend to each line; bash parameter expansion can't do this
     echo "${all_remotes}" | sed 's/^/  /' >&2
-    echo "Set REMOTE_NAME to specify which remote to use" >&2
+    log_error "Set REMOTE_NAME to specify which remote to use"
     exit 1
   fi
 fi

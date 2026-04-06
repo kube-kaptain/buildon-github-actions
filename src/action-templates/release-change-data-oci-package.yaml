@@ -43,6 +43,7 @@ runs:
       id: package
       shell: bash
       env:
+        BUILD_MODE: build_server
         BUILD_PLATFORM: github-actions
         BUILD_PLATFORM_LOG_PROVIDER: github-actions
         VERSION: ${{ inputs.version }}

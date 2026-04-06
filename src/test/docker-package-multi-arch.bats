@@ -7,6 +7,7 @@ load helpers
 setup() {
   setup_mock_docker
   export IMAGE_BUILD_COMMAND="docker"
+  export BUILD_MODE="build_server"
   export VERSION="1.0.0"
   export PROJECT_NAME="my-repo"
   local base_dir=$(create_test_dir "docker-pkg-multi-arch")
