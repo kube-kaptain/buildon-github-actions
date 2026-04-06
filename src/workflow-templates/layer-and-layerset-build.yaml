@@ -199,7 +199,7 @@ jobs:
 
       # === GitHub Release Prepare ===
       # INJECT: github-check-start(name="GitHub Release Prepare", id="check-github-release-prepare", if="steps.kpm.outputs.GITHUB_RELEASE_ENABLED == 'true'")
-      # INJECT: github-release-prepare-docker
+      # INJECT: github-release-prepare-layer
       # INJECT: github-check-end(name="GitHub Release Prepare", id="check-github-release-prepare", if="steps.kpm.outputs.GITHUB_RELEASE_ENABLED == 'true'")
 
       # === Git Tag Push ===
