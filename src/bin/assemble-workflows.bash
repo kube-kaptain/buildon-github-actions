@@ -714,11 +714,57 @@ validate_build_context_env_vars() {
       done
       [[ "$skip" == "true" ]] && continue
 
-      # If the file has an env: block, it must have all three build context vars
-      if grep -q "^[[:space:]]*env:" "$file" 2>/dev/null; then
+      # Check each env: block individually (multi-step actions have multiple)
+      local block_num=0
+      local in_env_block=false
+      local env_indent=0
+      local block_vars=""
+
+      while IFS= read -r line; do
+        # Detect start of an env: block
+        if [[ "$line" =~ ^([[:space:]]*)env:[[:space:]]*$ ]]; then
+          # Flush previous block if any
+          if [[ "$in_env_block" == "true" ]]; then
+            for var in "${required_vars[@]}"; do
+              if [[ "$block_vars" != *"$var"* ]]; then
+                echo "  ERROR: $dir_label/$file_basename env block $block_num missing $var"
+                errors=$((errors + 1))
+              fi
+            done
+          fi
+          block_num=$((block_num + 1))
+          in_env_block=true
+          env_indent=${#BASH_REMATCH[1]}
+          block_vars=""
+          continue
+        fi
+
+        if [[ "$in_env_block" == "true" ]]; then
+          # Check if line is still inside the env block (indented deeper than env:)
+          if [[ "$line" =~ ^([[:space:]]*)[^[:space:]] ]]; then
+            local line_indent=${#BASH_REMATCH[1]}
+            if [[ $line_indent -le $env_indent ]]; then
+              # Left the env block - flush it
+              for var in "${required_vars[@]}"; do
+                if [[ "$block_vars" != *"$var"* ]]; then
+                  echo "  ERROR: $dir_label/$file_basename env block $block_num missing $var"
+                  errors=$((errors + 1))
+                fi
+              done
+              in_env_block=false
+            else
+              # Still in env block - collect var names
+              block_vars="${block_vars} ${line}"
+            fi
+          fi
+        fi
+      done < "$file"
+
+      # Flush final block if file ends inside one
+      if [[ "$in_env_block" == "true" ]]; then
         for var in "${required_vars[@]}"; do
-          if ! grep -q "^[[:space:]]*${var}:" "$file" 2>/dev/null; then
-            echo "  ERROR: $dir_label/$file_basename has env block but missing $var"
+          if [[ "$block_vars" != *"$var"* ]]; then
+            echo "  ERROR: $dir_label/$file_basename env block $block_num missing $var"
             errors=$((errors + 1))
           fi
         done
@@ -728,7 +774,7 @@ validate_build_context_env_vars() {
 
   if [[ $errors -gt 0 ]]; then
     echo "  FAILED: $errors missing build context env var(s)"
-    echo "  All files with BUILD_PLATFORM must also set BUILD_MODE and BUILD_PLATFORM_LOG_PROVIDER"
+    echo "  All env blocks must set BUILD_MODE, BUILD_PLATFORM, and BUILD_PLATFORM_LOG_PROVIDER"
     exit 1
   fi
 
