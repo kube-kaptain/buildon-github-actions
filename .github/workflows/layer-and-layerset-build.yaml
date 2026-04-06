@@ -1327,7 +1327,6 @@ jobs:
           layer-type: ${{ steps.layer-package-prepare.outputs.LAYER_TYPE }}
           image-build-command: ${{ steps.validate-tooling.outputs.IMAGE_BUILD_COMMAND }}
           docker-platform: ${{ steps.kpm.outputs.DOCKER_PLATFORM }}
-          layer-dependency-validation: ${{ steps.kpm.outputs.LAYER_DEPENDENCY_VALIDATION }}
           docker-target-registry: ${{ steps.resolve-registry.outputs.docker-target-registry }}
           docker-target-namespace: ${{ steps.resolve-registry.outputs.docker-target-namespace }}
           output-sub-path: ${{ steps.kpm.outputs.OUTPUT_SUB_PATH }}
@@ -1588,6 +1587,7 @@ jobs:
           internal-verbatim-files: >-
             ${{ steps.kpm.outputs.OUTPUT_SUB_PATH }}/release-change-data/release-change-data.yaml,
             ${{ steps.layer-package-prepare.outputs.DOCKERFILE_SUB_PATH }}/KaptainPM.yaml,
+            ${{ steps.layer-package-prepare.outputs.DOCKERFILE_SUB_PATH }}/KaptainPM.json,
             ${{ steps.resolve-internal-release-files.outputs.verbatim-files }}
           internal-substituted-files: ${{ steps.resolve-internal-release-files.outputs.substituted-files }}
           internal-raw-files: ${{ steps.resolve-internal-release-files.outputs.raw-files }}

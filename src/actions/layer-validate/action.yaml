@@ -15,10 +15,6 @@ inputs:
     description: 'Target platform(s) for docker build'
     required: false
     default: 'linux/amd64'
-  layer-dependency-validation:
-    description: 'Layerset dependency check mode: hard/soft/skip'
-    required: false
-    default: 'hard'
   docker-target-registry:
     description: 'Target registry for dependency resolution'
     required: false
@@ -47,7 +43,6 @@ runs:
         LAYER_TYPE: ${{ inputs.layer-type }}
         IMAGE_BUILD_COMMAND: ${{ inputs.image-build-command }}
         DOCKER_PLATFORM: ${{ inputs.docker-platform }}
-        LAYER_DEPENDENCY_VALIDATION: ${{ inputs.layer-dependency-validation }}
         DOCKER_TARGET_REGISTRY: ${{ inputs.docker-target-registry }}
         DOCKER_TARGET_NAMESPACE: ${{ inputs.docker-target-namespace }}
         OUTPUT_SUB_PATH: ${{ inputs.output-sub-path }}

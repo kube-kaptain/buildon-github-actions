@@ -13,8 +13,7 @@
 #   OUTPUT_SUB_PATH   - Base directory for output files
 #
 # Inputs via env vars (optional):
-#   DOCKER_PLATFORM              - Target platform(s) (default: linux/amd64)
-#   LAYER_DEPENDENCY_VALIDATION  - Layerset dependency check mode: hard/soft/skip (default: hard)
+#   DOCKER_PLATFORM   - Target platform(s) (default: linux/amd64)
 
 set -euo pipefail
 
@@ -110,71 +109,77 @@ if [[ "${LAYER_TYPE}" == "layer" ]]; then
   fi
 fi
 
-# Layerset type: validate referenced layer dependencies
+# Layerset type: validate referenced layer dependencies. Always-on, always strict.
+# For each dep we pull its image, confirm it contains /KaptainPM.yaml, and
+# validate that file against this build system's layer schema. Any failure is
+# a hard fail — there is no opt-out.
 if [[ "${LAYER_TYPE}" == "layerset" ]]; then
-  if [[ "${LAYER_DEPENDENCY_VALIDATION}" == "skip" ]]; then
-    log "Layerset dependency validation: skipped (LAYER_DEPENDENCY_VALIDATION=skip)"
-  else
-    log "Layerset dependency validation: ${LAYER_DEPENDENCY_VALIDATION}"
-    UTIL_DIR="${SCRIPT_DIR}/../util"
-    OCI_EXTRACT="${UTIL_DIR}/oci-scratch-extract"
+  log "Layerset dependency validation"
+  UTIL_DIR="${SCRIPT_DIR}/../util"
+  OCI_EXTRACT="${UTIL_DIR}/oci-scratch-extract"
 
-    layer_count=$(jq -r '.spec.layers | length' "${json_file}")
-    if [[ "${layer_count}" -eq 0 ]]; then
-      log_error "Layerset has no entries in spec.layers"
-      exit 1
-    fi
-
-    validation_failed=false
-    for ((i = 0; i < layer_count; i++)); do
-      ref=$(jq -r ".spec.layers[${i}]" "${json_file}")
-      log "  Checking dependency: ${ref}"
-
-      # Extract to a temp dir and check for KaptainPM.yaml
-      dep_staging="${OUTPUT_SUB_PATH}/layer-validate/deps/${i}"
-      rm -rf "${dep_staging}"
-      mkdir -p "${dep_staging}"
-
-      # Build the full image reference — ref may be short form (name:version)
-      # artifact-resolve would give us the full URI but we need the image directly
-      # Use the same registry/namespace inference as artifact-resolve docker provider
-      if [[ "${ref}" == *"/"* && "${ref%%/*}" == *"."* ]]; then
-        image_ref="${ref}"
-      elif [[ "${ref}" == *"/"* ]]; then
-        image_ref="${DOCKER_TARGET_REGISTRY:-}/${DOCKER_TARGET_NAMESPACE:-}/${ref}"
-      else
-        ref_name="${ref%%:*}"
-        ref_prefix="${ref_name%%-*}"
-        image_ref="${DOCKER_TARGET_REGISTRY:-}/${DOCKER_TARGET_NAMESPACE:-}/${ref_prefix}/${ref}"
-      fi
-
-      if "${OCI_EXTRACT}" "${image_ref}" "${dep_staging}" /KaptainPM.yaml 2>/dev/null; then
-        if [[ -f "${dep_staging}/KaptainPM.yaml" ]]; then
-          log "  ok: ${ref}"
-        else
-          if [[ "${LAYER_DEPENDENCY_VALIDATION}" == "hard" ]]; then
-            log_error "Dependency ${ref} does not contain /KaptainPM.yaml"
-            validation_failed=true
-          else
-            log_warning "Dependency ${ref} does not contain /KaptainPM.yaml"
-          fi
-        fi
-      else
-        if [[ "${LAYER_DEPENDENCY_VALIDATION}" == "hard" ]]; then
-          log_error "Failed to pull dependency: ${ref} (${image_ref})"
-          validation_failed=true
-        else
-          log_warning "Failed to pull dependency: ${ref} (${image_ref}) — continuing (soft mode)"
-        fi
-      fi
-    done
-
-    if [[ "${validation_failed}" == "true" ]]; then
-      log_error "Layerset dependency validation failed"
-      exit 1
-    fi
-    log "Layerset dependency validation passed"
+  dep_schema_file="${schemas_dir}/spec-kaptainpm-schema-layer.${schema_version}.json"
+  if [[ ! -f "${dep_schema_file}" ]]; then
+    log_error "Layer dependency schema file not found: ${dep_schema_file}"
+    exit 1
   fi
+
+  layer_count=$(jq -r '.spec.layers | length' "${json_file}")
+  if [[ "${layer_count}" -eq 0 ]]; then
+    log_error "Layerset has no entries in spec.layers"
+    exit 1
+  fi
+
+  validation_failed=false
+  for ((i = 0; i < layer_count; i++)); do
+    ref=$(jq -r ".spec.layers[${i}]" "${json_file}")
+    log "  Checking dependency: ${ref}"
+
+    # Extract to a temp dir and check for KaptainPM.yaml
+    dep_staging="${OUTPUT_SUB_PATH}/layer-validate/deps/${i}"
+    rm -rf "${dep_staging}"
+    mkdir -p "${dep_staging}"
+
+    # Build the full image reference — ref may be short form (name:version)
+    # artifact-resolve would give us the full URI but we need the image directly
+    # Use the same registry/namespace inference as artifact-resolve docker provider
+    if [[ "${ref}" == *"/"* && "${ref%%/*}" == *"."* ]]; then
+      image_ref="${ref}"
+    elif [[ "${ref}" == *"/"* ]]; then
+      image_ref="${DOCKER_TARGET_REGISTRY:-}/${DOCKER_TARGET_NAMESPACE:-}/${ref}"
+    else
+      ref_name="${ref%%:*}"
+      ref_prefix="${ref_name%%-*}"
+      image_ref="${DOCKER_TARGET_REGISTRY:-}/${DOCKER_TARGET_NAMESPACE:-}/${ref_prefix}/${ref}"
+    fi
+
+    if ! "${OCI_EXTRACT}" "${image_ref}" "${dep_staging}" /KaptainPM.yaml 2>/dev/null; then
+      log_error "Failed to pull dependency: ${ref} (${image_ref})"
+      validation_failed=true
+      continue
+    fi
+
+    if [[ ! -f "${dep_staging}/KaptainPM.yaml" ]]; then
+      log_error "Dependency ${ref} does not contain /KaptainPM.yaml"
+      validation_failed=true
+      continue
+    fi
+
+    # Validate the pulled dep against this build system's layer schema
+    if ! check-jsonschema --schemafile "${dep_schema_file}" "${dep_staging}/KaptainPM.yaml" >/dev/null 2>&1; then
+      log_error "Dependency ${ref} KaptainPM.yaml failed schema validation against $(basename "${dep_schema_file}")"
+      validation_failed=true
+      continue
+    fi
+
+    log "  ok: ${ref}"
+  done
+
+  if [[ "${validation_failed}" == "true" ]]; then
+    log_error "Layerset dependency validation failed"
+    exit 1
+  fi
+  log "Layerset dependency validation passed"
 fi
 
 log "Validation complete"
