@@ -129,6 +129,10 @@ case "${form}" in
 esac
 
 # Version resolution
+# Unwrap degenerate "[N]" form to "N" once up front so both branches see the
+# normalized value. Range forms pass through unchanged.
+version_part=$(version_unwrap_exact "${version_part}")
+
 if version_is_exact "${version_part}"; then
   # Exact version: no registry call needed
   echo "${full_name}:${version_part}" > "${output_file}"

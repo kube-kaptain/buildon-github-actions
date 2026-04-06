@@ -1,0 +1,55 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
+#
+# artifact-exists - Verify an artifact reference exists via provider plugins
+#
+# Thin router: strips the provider prefix (if present), defaults to
+# ARTIFACT_RESOLUTION_PROVIDER, and dispatches to the matching plugin.
+# The plugin exits 0 if the artifact exists at the remote, non-zero otherwise.
+#
+# Usage: artifact-exists <reference>
+#   reference: [provider|]fully-qualified-uri
+#
+# Examples:
+#   artifact-exists "ghcr.io/kube-kaptain/layer/quality-strict:1.0.0"
+#   artifact-exists "docker|ghcr.io/kube-kaptain/layer/quality-strict:1.0.0"
+#
+# Env:
+#   ARTIFACT_RESOLUTION_PROVIDER - default provider (default: docker)
+#
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PLUGINS_DIR="${SCRIPT_DIR}/../plugins/artifact-exists-providers"
+
+# shellcheck source=src/scripts/defaults/platform.bash
+source "${SCRIPT_DIR}/../defaults/platform.bash"
+# shellcheck source=src/scripts/lib/log.bash
+source "${SCRIPT_DIR}/../lib/log.bash"
+# shellcheck source=src/scripts/defaults/artifact-resolution.bash
+source "${SCRIPT_DIR}/../defaults/artifact-resolution.bash"
+
+reference="${1:?Usage: artifact-exists <reference>}"
+
+# Split on | to extract provider prefix
+if [[ "${reference}" == *"|"* ]]; then
+  provider="${reference%%|*}"
+  remainder="${reference#*|}"
+else
+  provider="${ARTIFACT_RESOLUTION_PROVIDER}"
+  remainder="${reference}"
+fi
+
+if [[ -z "${provider}" ]]; then
+  log_error "Empty provider in reference: ${reference}"
+  exit 1
+fi
+
+plugin="${PLUGINS_DIR}/${provider}"
+if [[ ! -x "${plugin}" ]]; then
+  log_error "Unknown artifact-exists provider: ${provider} (no plugin at ${plugin})"
+  exit 1
+fi
+
+exec "${plugin}" "${remainder}"

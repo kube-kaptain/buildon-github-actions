@@ -235,6 +235,20 @@ if [[ "${LAYER_TYPE}" == "layerset" ]]; then
     fi
   done
   log "Range resolution complete"
+
+  # Verification: every resolved layer reference must exist at the remote.
+  # Range resolutions already implicitly verified existence (the version came
+  # from the registry tag list), but exact references were trusted by the
+  # resolver and need explicit verification here.
+  log "Verifying remote existence of all spec.layers entries..."
+  for ((i = 0; i < layer_count; i++)); do
+    ref=$(yq -r ".spec.layers[${i}]" "${context_dir}/KaptainPM.yaml")
+    if ! "${UTIL_DIR}/artifact-exists" "${ref}"; then
+      log_error "Layer dependency does not exist at remote: ${ref}"
+      exit 1
+    fi
+  done
+  log "Remote existence verification complete"
 fi
 
 # Convert YAML to JSON

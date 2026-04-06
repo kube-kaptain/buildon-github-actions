@@ -34,6 +34,13 @@ MOCK
   chmod +x "${MOCK_BIN_DIR}/check-jsonschema"
   export PATH="${MOCK_BIN_DIR}:${PATH}"
 
+  # Mock docker for the layerset verification loop (artifact-exists). Defaults
+  # to "exists" so the happy-path tests don't need to opt in. Individual tests
+  # can flip MOCK_DOCKER_MANIFEST_EXISTS=false to exercise the failure path.
+  export IMAGE_BUILD_COMMAND="docker"
+  export MOCK_DOCKER_MANIFEST_EXISTS=true
+  setup_mock_docker
+
   if ! command -v yq &>/dev/null; then
     skip "yq not available"
   fi
@@ -234,6 +241,37 @@ EOF
 # =============================================================================
 # context_dir is not wiped at script start
 # =============================================================================
+
+# =============================================================================
+# Layerset remote-existence verification loop
+# =============================================================================
+
+@test "layerset verifies all spec.layers exist at remote" {
+  export PROJECT_NAME="layerset-foo"
+  export MOCK_DOCKER_MANIFEST_EXISTS=true
+  write_layerset_pm "src/layerset/KaptainPM.yaml"
+  run "$SCRIPT"
+  [[ "$status" -eq 0 ]]
+  [[ "$output" == *"Verifying remote existence"* ]]
+  [[ "$output" == *"Remote existence verification complete"* ]]
+}
+
+@test "layerset fails when a spec.layers entry does not exist at remote" {
+  export PROJECT_NAME="layerset-foo"
+  export MOCK_DOCKER_MANIFEST_EXISTS=false
+  write_layerset_pm "src/layerset/KaptainPM.yaml"
+  run "$SCRIPT"
+  [[ "$status" -ne 0 ]]
+  [[ "$output" == *"Layer dependency does not exist at remote"* ]]
+}
+
+@test "layer path does not run remote-existence verification" {
+  export PROJECT_NAME="layer-foo"
+  write_layer_pm "src/layer/KaptainPM.yaml"
+  run "$SCRIPT"
+  [[ "$status" -eq 0 ]]
+  [[ "$output" != *"Verifying remote existence"* ]]
+}
 
 @test "does not remove pre-existing files in context_dir (no rm-rf)" {
   export PROJECT_NAME="layer-foo"

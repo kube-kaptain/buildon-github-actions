@@ -1,0 +1,49 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
+#
+# artifact-exists-providers/docker - Docker/OCI artifact existence provider
+#
+# Verifies that a fully-qualified OCI image reference exists at the remote
+# registry without pulling any layers/blobs. Uses `docker manifest inspect`
+# (or podman equivalent) for a lightweight HEAD-style check.
+#
+# Usage: docker <fully-qualified-uri>
+#   reference: registry/namespace/.../name:version
+#
+# Exit:
+#   0 - artifact exists at the remote
+#   1 - artifact does not exist (or cannot be confirmed)
+#
+# Env:
+#   IMAGE_BUILD_COMMAND - podman or docker (required)
+#
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# shellcheck source=src/scripts/defaults/platform.bash
+source "${SCRIPT_DIR}/../../defaults/platform.bash"
+# shellcheck source=src/scripts/lib/log.bash
+source "${SCRIPT_DIR}/../../lib/log.bash"
+
+reference="${1:?Usage: docker <fully-qualified-uri>}"
+
+if [[ "${reference}" != *":"* ]]; then
+  log_error "Invalid reference: missing version (no colon): ${reference}"
+  exit 1
+fi
+
+if [[ -z "${IMAGE_BUILD_COMMAND:-}" ]]; then
+  log_error "IMAGE_BUILD_COMMAND is required for remote existence check"
+  exit 1
+fi
+
+log "Checking remote existence of ${reference} via ${IMAGE_BUILD_COMMAND} manifest inspect..."
+if "${IMAGE_BUILD_COMMAND}" manifest inspect "${reference}" >/dev/null 2>&1; then
+  log "Exists: ${reference}"
+  exit 0
+fi
+
+log_error "Does not exist at remote: ${reference}"
+exit 1
