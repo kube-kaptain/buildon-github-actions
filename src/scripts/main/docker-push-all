@@ -21,6 +21,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # shellcheck source=src/scripts/defaults/platform.bash
 source "${SCRIPT_DIR}/../defaults/platform.bash"
+# shellcheck source=src/scripts/defaults/build-mode.bash
+source "${SCRIPT_DIR}/../defaults/build-mode.bash"
 # shellcheck source=src/scripts/lib/log.bash
 source "${SCRIPT_DIR}/../lib/log.bash"
 # shellcheck source=src/scripts/defaults/output-sub-path.bash
@@ -114,7 +116,7 @@ main() {
         local amd64_uri="${manifest_uri}-linux-amd64"
         local arm64_uri="${manifest_uri}-linux-arm64"
         # Local builds may re-run without a clean context — remove stale manifest
-        if [[ "${BUILD_MODE:-local}" != "build_server" ]]; then
+        if [[ "${BUILD_MODE}" != "build_server" ]]; then
           log "Removing existing manifest before creating for local build: ${manifest_uri}"
           ${IMAGE_BUILD_COMMAND} manifest rm "${manifest_uri}" &>/dev/null || true
         fi
