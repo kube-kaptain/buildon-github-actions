@@ -34,6 +34,8 @@ source "${SCRIPT_DIR}/../lib/log.bash"
 source "${SCRIPT_DIR}/../defaults/build-mode.bash"
 # shellcheck source=src/scripts/lib/layer-merge.bash
 source "${SCRIPT_DIR}/../lib/layer-merge.bash"
+# shellcheck source=src/scripts/lib/validate-exact-file-exists.bash
+source "${SCRIPT_DIR}/../lib/validate-exact-file-exists.bash"
 
 UTIL_DIR="${SCRIPT_DIR}/../util"
 
@@ -58,7 +60,7 @@ log "=== Kaptain Init ==="
 rm -rf "${KAPTAINPM_DIR}"
 
 # --- Validate project root KaptainPM.yaml ---
-if [[ ! -f "${PM_FILE}" ]]; then
+if ! validate_exact_file_exists "." "KaptainPM.yaml"; then
   log_error "KaptainPM.yaml not found in project root"
   exit 1
 fi
@@ -186,7 +188,7 @@ resolve_layer() {
   "${UTIL_DIR}/artifact-fetch" "${resolved_uri}" "${layer_dir}" /KaptainPM.yaml
 
   local layer_file="${layer_dir}/KaptainPM.yaml"
-  if [[ ! -f "${layer_file}" ]]; then
+  if ! validate_exact_file_exists "${layer_dir}" "KaptainPM.yaml"; then
     log_error "Layer image does not contain KaptainPM.yaml: ${resolved_uri}"
     exit 1
   fi
