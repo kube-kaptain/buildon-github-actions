@@ -707,16 +707,14 @@ ENV KUBECTL_VERSION=1.28.5' > src/docker/Dockerfile
   assert_output_contains "Invalid BUILD_MODE"
 }
 
-@test "BUILD_MODE defaults to local when not set" {
+@test "fails when BUILD_MODE not set" {
   TEST_REPO=$(clone_fixture "tag-none")
   cd "$TEST_REPO"
   unset BUILD_MODE
 
   run "$SCRIPTS_DIR/versions-and-naming"
-  [ "$status" -eq 0 ]
-  # Without BUILD_MODE, defaults to local which forces IS_RELEASE=false
-  assert_var_equals "IS_RELEASE" "false"
-  assert_var_equals "DOCKER_TAG" "1.0.1-PRERELEASE"
+  [ "$status" -ne 0 ]
+  assert_output_contains "BUILD_MODE is required"
 }
 
 @test "BUILD_MODE=local forces IS_RELEASE=false on release branch" {

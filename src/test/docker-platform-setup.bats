@@ -5,6 +5,7 @@
 load helpers
 
 setup() {
+  export BUILD_MODE="build_server"
   export IMAGE_BUILD_COMMAND="docker"
   local base_dir=$(create_test_dir "docker-platform-setup")
   export GITHUB_OUTPUT="$base_dir/output"

@@ -96,6 +96,7 @@ set_required_env() {
 }
 
 @test "fails when DOCKER_TARGET_REGISTRY missing" {
+  export BUILD_MODE="build_server"
   export IMAGE_BUILD_COMMAND="docker"
   export DOCKER_IMAGE_NAME="test/my-repo"
   export DOCKER_TAG="1.0.0"
