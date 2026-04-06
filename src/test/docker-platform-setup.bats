@@ -101,6 +101,7 @@ teardown() {
 
 @test "skips QEMU install on non-Linux" {
   export DOCKER_PLATFORM="linux/amd64"
+  export BUILD_MODE="local"
 
   run "$SCRIPTS_DIR/docker-platform-setup"
   [ "$status" -eq 0 ]
