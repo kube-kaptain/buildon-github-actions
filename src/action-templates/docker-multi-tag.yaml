@@ -37,6 +37,9 @@ runs:
       id: tag
       shell: bash
       env:
+        BUILD_MODE: build_server
+        BUILD_PLATFORM: github-actions
+        BUILD_PLATFORM_LOG_PROVIDER: github-actions
         DOCKER_PUSH_IMAGE_LIST_FILE: ${{ inputs.docker-push-image-list-file }}
         DOCKER_IMAGE_NAME: ${{ inputs.docker-image-name }}
         DOCKER_TAG: ${{ inputs.docker-tag }}
@@ -45,6 +48,4 @@ runs:
         DOCKER_TARGET_NAMESPACE: ${{ inputs.docker-target-namespace }}
         IMAGE_BUILD_COMMAND: ${{ inputs.image-build-command }}
         DOCKER_PLATFORM: ${{ inputs.docker-platform }}
-        BUILD_PLATFORM: github-actions
-        BUILD_PLATFORM_LOG_PROVIDER: github-actions
       run: "${{ github.action_path }}/../../scripts/main/docker-multi-tag"

@@ -18,8 +18,9 @@ runs:
     - name: Push tag
       shell: bash
       env:
-        GIT_TAG: ${{ inputs.git-tag }}
-        IS_RELEASE: ${{ inputs.is-release }}
+        BUILD_MODE: build_server
         BUILD_PLATFORM: github-actions
         BUILD_PLATFORM_LOG_PROVIDER: github-actions
+        GIT_TAG: ${{ inputs.git-tag }}
+        IS_RELEASE: ${{ inputs.is-release }}
       run: "${{ github.action_path }}/../../scripts/main/git-push-tag"

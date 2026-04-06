@@ -22,9 +22,9 @@ runs:
       id: docker-platform-setup
       shell: bash
       env:
+        BUILD_MODE: build_server
         BUILD_PLATFORM: github-actions
         BUILD_PLATFORM_LOG_PROVIDER: github-actions
         DOCKER_PLATFORM: ${{ inputs.docker-platform }}
         IMAGE_BUILD_COMMAND: ${{ inputs.image-build-command }}
-        BUILD_MODE: build_server
       run: "${{ github.action_path }}/../../scripts/main/docker-platform-setup"

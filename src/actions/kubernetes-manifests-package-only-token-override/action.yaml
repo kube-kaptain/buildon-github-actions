@@ -57,6 +57,7 @@ runs:
       id: override
       shell: bash
       env:
+        BUILD_MODE: build_server
         BUILD_PLATFORM: github-actions
         BUILD_PLATFORM_LOG_PROVIDER: github-actions
         DOCKER_IMAGE_NAME_OVERRIDE: ${{ inputs.docker-image-name-override }}
