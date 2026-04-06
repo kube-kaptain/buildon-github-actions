@@ -116,7 +116,7 @@ fi
 if [[ "${LAYER_TYPE}" == "layerset" ]]; then
   log "Layerset dependency validation"
   UTIL_DIR="${SCRIPT_DIR}/../util"
-  OCI_EXTRACT="${UTIL_DIR}/oci-scratch-extract"
+  OCI_EXTRACT="${UTIL_DIR}/extract-oci-image"
 
   dep_schema_file="${schemas_dir}/spec-kaptainpm-schema-layer.${schema_version}.json"
   if [[ ! -f "${dep_schema_file}" ]]; then

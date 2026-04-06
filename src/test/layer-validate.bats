@@ -7,7 +7,7 @@
 # dep, confirm /KaptainPM.yaml is present, validate against the build's layer
 # schema. All failure modes are hard fails - there is no opt-out.
 #
-# To avoid clobbering the real util/oci-scratch-extract, the script is run
+# To avoid clobbering the real util/extract-oci-image, the script is run
 # from an isolated mirror under TEST_DIR with a stubbed util dir.
 
 load helpers
@@ -27,8 +27,8 @@ setup() {
   ln -s "${PROJECT_ROOT}/src/schemas" "${MIRROR_ROOT}/schemas"
   SCRIPT="${MIRROR_ROOT}/scripts/main/layer-validate"
 
-  # Stub oci-scratch-extract: behaviour controlled by MOCK_OCI_EXTRACT_MODE.
-  cat > "${MIRROR_ROOT}/scripts/util/oci-scratch-extract" << 'STUB'
+  # Stub extract-oci-image: behaviour controlled by MOCK_OCI_EXTRACT_MODE.
+  cat > "${MIRROR_ROOT}/scripts/util/extract-oci-image" << 'STUB'
 #!/usr/bin/env bash
 # Args: $1 = image_ref, $2 = staging_dir, $3 = path inside image
 # Modes:
@@ -61,7 +61,7 @@ YAML
 esac
 exit 1
 STUB
-  chmod +x "${MIRROR_ROOT}/scripts/util/oci-scratch-extract"
+  chmod +x "${MIRROR_ROOT}/scripts/util/extract-oci-image"
 
   REPO_DIR="${TEST_DIR}/repo"
   mkdir -p "${REPO_DIR}"
@@ -151,7 +151,7 @@ EOF
 # Layerset dependency validation - failure modes
 # =============================================================================
 
-@test "layerset: fails when oci-scratch-extract fails on a dep" {
+@test "layerset: fails when extract-oci-image fails on a dep" {
   export LAYER_TYPE="layerset"
   export MOCK_OCI_EXTRACT_MODE=fail
   write_layerset_json '["ghcr.io/kube-kaptain/layer/quality-strict:1.0.0"]'

@@ -5,7 +5,7 @@
 # artifact-downloaders/docker - Docker/OCI artifact download provider
 #
 # Downloads files from a FROM scratch OCI image to a local directory.
-# Wraps oci-scratch-extract for the common case of pulling a single image
+# Wraps extract-oci-image for the common case of pulling a single image
 # and extracting all its contents.
 #
 # Usage: docker <image-uri> <dest-dir> [<path-in-image> ...]
@@ -25,5 +25,5 @@ image_uri="${1:?Usage: docker <image-uri> <dest-dir> [<path-in-image> ...]}"
 dest_dir="${2:?Usage: docker <image-uri> <dest-dir> [<path-in-image> ...]}"
 shift 2
 
-# Pass through to oci-scratch-extract
-exec "${UTIL_DIR}/oci-scratch-extract" "${image_uri}" "${dest_dir}" "$@"
+# Pass through to extract-oci-image
+exec "${UTIL_DIR}/extract-oci-image" "${image_uri}" "${dest_dir}" "$@"

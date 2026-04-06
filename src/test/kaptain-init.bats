@@ -21,7 +21,7 @@ setup() {
   export DOCKER_TARGET_REGISTRY="ghcr.io"
   export DOCKER_TARGET_NAMESPACE="kube-kaptain"
 
-  # Mock docker for oci-scratch-extract
+  # Mock docker for extract-oci-image
   mkdir -p "${MOCK_BIN_DIR}"
   export MOCK_DOCKER_CALLS="${TEST_DIR}/docker-calls.log"
 
@@ -598,7 +598,7 @@ spec:
 EOF
   run "$SCRIPT"
   [[ "$status" -eq 1 ]]
-  [[ "$output" == *"does not contain KaptainPM.yaml"* ]]
+  [[ "$output" == *"Failed to extract /KaptainPM.yaml"* ]]
 }
 
 # =============================================================================
