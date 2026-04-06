@@ -43,6 +43,8 @@ source "${SCRIPT_DIR}/../defaults/layer-build.bash"
 source "${SCRIPT_DIR}/../lib/output-var.bash"
 # shellcheck source=src/scripts/lib/version-range.bash
 source "${SCRIPT_DIR}/../lib/version-range.bash"
+# shellcheck source=src/scripts/lib/validate-exact-file-exists.bash
+source "${SCRIPT_DIR}/../lib/validate-exact-file-exists.bash"
 
 log "=== Layer Package Prepare ==="
 
@@ -52,28 +54,62 @@ VERSION="${VERSION:?VERSION is required}"
 REPOSITORY_OWNER="${REPOSITORY_OWNER:?REPOSITORY_OWNER is required}"
 REPOSITORY_NAME="${REPOSITORY_NAME:?REPOSITORY_NAME is required}"
 
-# Detect layer type from project name prefix
-if [[ "${PROJECT_NAME}" == layerset-* ]]; then
+# Detect layer type from project name prefix or suffix.
+# Layerset is checked first so that a name like "my-layerset" is classified
+# as layerset rather than matching the "-layer" suffix.
+if [[ "${PROJECT_NAME}" == layerset-* || "${PROJECT_NAME}" == *-layerset ]]; then
   LAYER_TYPE="layerset"
   source_dir="src/layerset"
-elif [[ "${PROJECT_NAME}" == layer-* ]]; then
+elif [[ "${PROJECT_NAME}" == layer-* || "${PROJECT_NAME}" == *-layer ]]; then
   LAYER_TYPE="layer"
   source_dir="src/layer"
 else
-  log_error "PROJECT_NAME must start with 'layer-' or 'layerset-': ${PROJECT_NAME}"
+  log_error "PROJECT_NAME must start or end with 'layer' or 'layerset': ${PROJECT_NAME}"
   exit 1
 fi
 log "Layer type: ${LAYER_TYPE} (from project name: ${PROJECT_NAME})"
 
 # Setup context directory
 context_dir="${OUTPUT_SUB_PATH}/layer-build/context"
-rm -rf "${context_dir}"
 mkdir -p "${context_dir}"
 
-# Copy source files if source dir exists
-if [[ -d "${source_dir}" ]]; then
-  # Layerset: validate no extra files (only KaptainPM.yaml allowed)
-  if [[ "${LAYER_TYPE}" == "layerset" ]]; then
+# --- Locate KaptainPM.yaml: must be in exactly one of source_dir or context_dir ---
+# source_dir is static input (src/layer or src/layerset). context_dir may have
+# been populated by a generator/hook before this script runs. The file must
+# live in exactly one place - neither is a missing-input error, both is an
+# ambiguous-input error.
+source_has_pm=false
+context_has_pm=false
+file_exists_any_case "${source_dir}" "KaptainPM.yaml" && source_has_pm=true
+file_exists_any_case "${context_dir}" "KaptainPM.yaml" && context_has_pm=true
+
+if ! ${source_has_pm} && ! ${context_has_pm}; then
+  log_error "KaptainPM.yaml not found in ${source_dir}/ or ${context_dir}/"
+  log_error "Provide it as source in ${source_dir}/ or generate it into ${context_dir}/"
+  exit 1
+fi
+if ${source_has_pm} && ${context_has_pm}; then
+  log_error "KaptainPM.yaml present in both ${source_dir}/ and ${context_dir}/ - pick one"
+  exit 1
+fi
+
+# Validate exact case at whichever location has it
+if ${source_has_pm}; then
+  if ! validate_exact_file_exists "${source_dir}" "KaptainPM.yaml"; then
+    log_error "KaptainPM.yaml in ${source_dir}/ failed validation - fix the case or remove duplicate variants before building"
+    exit 1
+  fi
+else
+  if ! validate_exact_file_exists "${context_dir}" "KaptainPM.yaml"; then
+    log_error "KaptainPM.yaml in ${context_dir}/ failed validation - fix the case or remove duplicate variants before building"
+    exit 1
+  fi
+fi
+
+# Layerset input shape: only KaptainPM.yaml is allowed in source_dir/context_dir
+# at this point. The XOR above guarantees exactly one place has the file.
+if [[ "${LAYER_TYPE}" == "layerset" ]]; then
+  if [[ -d "${source_dir}" ]]; then
     for f in "${source_dir}"/*; do
       [[ -e "${f}" ]] || continue
       fname="${f##*/}"
@@ -83,14 +119,30 @@ if [[ -d "${source_dir}" ]]; then
       fi
     done
   fi
-
-  log "Copying source files from ${source_dir}/"
-  cp -a "${source_dir}"/. "${context_dir}/"
+  for f in "${context_dir}"/*; do
+    [[ -e "${f}" ]] || continue
+    fname="${f##*/}"
+    if [[ "${fname}" != "KaptainPM.yaml" ]]; then
+      log_error "Unexpected file in ${context_dir}/: ${fname} (layersets must contain only KaptainPM.yaml)"
+      exit 1
+    fi
+  done
 fi
 
-if [[ ! -f "${context_dir}/KaptainPM.yaml" ]]; then
-  log_error "KaptainPM.yaml not found in ${context_dir}/ (provide it in ${source_dir}/ or generate via hook)"
-  exit 1
+# Copy source files into context_dir (if source_dir exists and has content)
+# Layer: copy everything (static files plus KaptainPM.yaml if in source).
+#        Static files may collide with generated context - static wins, by design.
+# Layerset: copy only KaptainPM.yaml if it was in source_dir (nothing else allowed).
+if [[ -d "${source_dir}" ]]; then
+  if [[ "${LAYER_TYPE}" == "layerset" ]]; then
+    if ${source_has_pm}; then
+      log "Copying KaptainPM.yaml from ${source_dir}/"
+      cp "${source_dir}/KaptainPM.yaml" "${context_dir}/"
+    fi
+  else
+    log "Copying source files from ${source_dir}/"
+    cp -a "${source_dir}"/. "${context_dir}/"
+  fi
 fi
 
 # apiVersion enforcement: layer KaptainPM.yaml must declare apiVersion >= build schema version
@@ -222,22 +274,6 @@ LABEL repository.name=\${REPOSITORY_NAME}
 COPY . /
 EOF
 log "Generated: ${context_dir}/Dockerfile"
-
-# Layerset: validate no extra files in context (catches hook-injected extras)
-if [[ "${LAYER_TYPE}" == "layerset" ]]; then
-  for f in "${context_dir}"/*; do
-    [[ -e "${f}" ]] || continue
-    fname="${f##*/}"
-    case "${fname}" in
-      KaptainPM.yaml|KaptainPM.json|Dockerfile) ;;
-      *)
-        log_error "Unexpected file in layerset context: ${fname}"
-        log_error "Layersets must contain only KaptainPM.yaml, KaptainPM.json, Dockerfile, .dockerignore"
-        exit 1
-        ;;
-    esac
-  done
-fi
 
 # Build the docker files list (all files that need token substitution)
 docker_files="Dockerfile,KaptainPM.yaml,KaptainPM.json"
