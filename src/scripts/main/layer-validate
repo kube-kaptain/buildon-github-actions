@@ -29,6 +29,8 @@ source "${SCRIPT_DIR}/../defaults/output-sub-path.bash"
 source "${SCRIPT_DIR}/../defaults/docker-common.bash"
 # shellcheck source=src/scripts/defaults/layer-build.bash
 source "${SCRIPT_DIR}/../defaults/layer-build.bash"
+# shellcheck source=src/scripts/lib/validate-layer-payload.bash
+source "${SCRIPT_DIR}/../lib/validate-layer-payload.bash"
 
 log "=== Layer Validate ==="
 
@@ -97,47 +99,12 @@ log "Schema: $(basename "${schema_file}")"
 check-jsonschema --schemafile "${schema_file}" "${json_file}"
 log "Schema validation passed"
 
-# Layer type: validate layer-payload source paths exist in substituted context
+# Layer type: validate layer-payload declarations against the substituted
+# docker context directory (which is the image-root filesystem view at
+# build time). Delegated to the shared lib so the consumption side
+# (kaptain-init) can reuse the same checks against extracted layer dirs.
 if [[ "${LAYER_TYPE}" == "layer" ]]; then
-  payload_count=$(yq eval '.["layer-payload"] // [] | length' "${yaml_file}")
-  if [[ "${payload_count}" -gt 0 ]]; then
-    log "Validating ${payload_count} layer-payload entry/entries..."
-    for ((i = 0; i < payload_count; i++)); do
-      source_path=$(yq eval ".[\"layer-payload\"][${i}].source" "${yaml_file}")
-      if [[ -z "${source_path}" || "${source_path}" == "null" ]]; then
-        log_error "layer-payload[${i}] has no source path"
-        exit 1
-      fi
-      # Strip leading / for filesystem check (files are at context root)
-      check_path="${sub_dir}/${source_path#/}"
-      if [[ ! -f "${check_path}" ]]; then
-        log_error "layer-payload[${i}] source not found in context: ${source_path}"
-        exit 1
-      fi
-
-      # Destination path must be relative to consumer's repo root and contain
-      # no parent-traversal, so a layer cannot write outside the repo at
-      # install time.
-      dest_path=$(yq eval ".[\"layer-payload\"][${i}].destination" "${yaml_file}")
-      if [[ -z "${dest_path}" || "${dest_path}" == "null" ]]; then
-        log_error "layer-payload[${i}] has no destination path"
-        exit 1
-      fi
-      # Reject absolute paths.
-      if [[ "${dest_path}" == '/'* ]]; then
-        log_error "layer-payload[${i}] destination must be relative (no leading '/'): ${dest_path}"
-        exit 1
-      fi
-      # Reject any '..' component. Matches bare '..', leading '../x', middle
-      # 'x/../y', and trailing 'x/..'. Leading './' is allowed and untouched.
-      if [[ "${dest_path}" =~ (^|/)'..'($|/) ]]; then
-        log_error "layer-payload[${i}] destination contains parent-traversal '..': ${dest_path}"
-        exit 1
-      fi
-
-      log "  payload ok: ${source_path} -> ${dest_path}"
-    done
-  fi
+  validate_layer_payload "${yaml_file}" "${sub_dir}" || exit 1
 fi
 
 # Layerset type: validate referenced layer dependencies. Always-on, always strict.
