@@ -144,6 +144,30 @@ if [[ "${LAYER_TYPE}" == "layerset" ]]; then
     exit 1
   fi
 
+  # Reject duplicate layer references in spec.layers before we pull
+  # anything. "Duplicate" means the same layer name regardless of
+  # provider prefix (docker|...) or tag (:1.0 vs :1.1) - listing the
+  # same layer twice in any form is always a bug. The sed strips a
+  # leading 'provider|' and a trailing ':tag' (the tag pattern excludes
+  # '/' so it won't eat host:port like 'localhost:5000/foo').
+  #
+  # Best-effort: this catches identical refs, version drift, and prefix
+  # drift, but won't collapse refs at different qualification levels
+  # (e.g. 'name:1.0' vs 'group/name:1.0' vs 'reg/ns/group/name:1.0').
+  # Resolving those would require running each ref through the same
+  # registry/namespace inference the dep-pull loop below uses, which
+  # depends on env vars that may not be set at validate time.
+  duplicate_names=$(yq eval '.spec.layers[]' "${yaml_file}" \
+    | sed -E 's/^[^|]*\|//; s/:[^:/]+$//' \
+    | sort | uniq -d)
+  if [[ -n "${duplicate_names}" ]]; then
+    log_error "Layerset spec.layers contains duplicate layer references (ignoring provider prefix and version):"
+    while IFS= read -r dup_name; do
+      log_error "  ${dup_name}"
+    done <<< "${duplicate_names}"
+    exit 1
+  fi
+
   validation_failed=false
   for ((i = 0; i < layer_count; i++)); do
     ref=$(yq eval ".spec.layers[${i}]" "${yaml_file}")

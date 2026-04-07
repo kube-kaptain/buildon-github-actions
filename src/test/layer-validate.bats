@@ -252,6 +252,43 @@ touch_context_file() {
   [[ "$output" == *"Layerset has no entries in spec.layers"* ]]
 }
 
+@test "layerset: fails when spec.layers contains duplicate refs" {
+  export LAYER_TYPE="layerset"
+  write_layerset_json '["ghcr.io/kube-kaptain/layer/a:1.0.0", "ghcr.io/kube-kaptain/layer/a:1.0.0"]'
+  run "$SCRIPT"
+  [[ "$status" -ne 0 ]]
+  [[ "$output" == *"duplicate layer references"* ]]
+  [[ "$output" == *"ghcr.io/kube-kaptain/layer/a"* ]]
+}
+
+@test "layerset: fails listing all duplicates when multiple pairs repeat" {
+  export LAYER_TYPE="layerset"
+  write_layerset_json '["ghcr.io/kube-kaptain/layer/a:1.0.0", "ghcr.io/kube-kaptain/layer/b:1.0.0", "ghcr.io/kube-kaptain/layer/a:1.0.0", "ghcr.io/kube-kaptain/layer/c:1.0.0", "ghcr.io/kube-kaptain/layer/b:1.0.0"]'
+  run "$SCRIPT"
+  [[ "$status" -ne 0 ]]
+  [[ "$output" == *"duplicate layer references"* ]]
+  [[ "$output" == *"ghcr.io/kube-kaptain/layer/a"* ]]
+  [[ "$output" == *"ghcr.io/kube-kaptain/layer/b"* ]]
+}
+
+@test "layerset: fails when same layer appears at two different versions" {
+  export LAYER_TYPE="layerset"
+  write_layerset_json '["ghcr.io/kube-kaptain/layer/a:1.0.0", "ghcr.io/kube-kaptain/layer/a:1.1.0"]'
+  run "$SCRIPT"
+  [[ "$status" -ne 0 ]]
+  [[ "$output" == *"duplicate layer references"* ]]
+  [[ "$output" == *"ghcr.io/kube-kaptain/layer/a"* ]]
+}
+
+@test "layerset: fails when same layer appears with and without docker| prefix" {
+  export LAYER_TYPE="layerset"
+  write_layerset_json '["docker|ghcr.io/kube-kaptain/layer/a:1.0.0", "ghcr.io/kube-kaptain/layer/a:1.0.0"]'
+  run "$SCRIPT"
+  [[ "$status" -ne 0 ]]
+  [[ "$output" == *"duplicate layer references"* ]]
+  [[ "$output" == *"ghcr.io/kube-kaptain/layer/a"* ]]
+}
+
 @test "layerset: continues checking remaining deps after a failure (collects all errors)" {
   export LAYER_TYPE="layerset"
   export MOCK_OCI_EXTRACT_MODE=fail
