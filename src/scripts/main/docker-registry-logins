@@ -66,17 +66,17 @@ validate_secret_method() {
   fi
 }
 
-# Helper to extract config value with yq
+# Helper to extract config value with jq
 cfg() {
   local registry="${1}" key="${2}"
-  echo "${DOCKER_REGISTRY_LOGINS}" | yq -r ".[\"${registry}\"][\"${key}\"]"
+  echo "${DOCKER_REGISTRY_LOGINS}" | jq -r ".[\"${registry}\"][\"${key}\"]"
 }
 
 # Get required secret names for a registry based on its type
 get_required_secrets() {
   local registry="${1}"
   local login_type
-  login_type=$(echo "${DOCKER_REGISTRY_LOGINS}" | yq -r ".[\"${registry}\"].type")
+  login_type=$(echo "${DOCKER_REGISTRY_LOGINS}" | jq -r ".[\"${registry}\"].type")
 
   case "${login_type}" in
     username-password)
@@ -108,7 +108,7 @@ validate_all_secrets() {
   local missing_secrets=()
   local registries
 
-  registries=$(echo "${DOCKER_REGISTRY_LOGINS}" | yq -r 'keys | .[]')
+  registries=$(echo "${DOCKER_REGISTRY_LOGINS}" | jq -r 'keys | .[]')
   [[ -z "${registries}" ]] && return 0
 
   # Collect all required secrets and check each one
@@ -153,7 +153,7 @@ validate_all_secrets() {
 route_login() {
   local registry="${1}"
   local login_type
-  login_type=$(echo "${DOCKER_REGISTRY_LOGINS}" | yq -r ".[\"${registry}\"].type")
+  login_type=$(echo "${DOCKER_REGISTRY_LOGINS}" | jq -r ".[\"${registry}\"].type")
 
   local login_script="${PLUGINS_DIR}/docker-login-providers/docker-login-${login_type}"
   if [[ ! -x "${login_script}" ]]; then
@@ -185,7 +185,7 @@ route_login() {
 
     aws-ecr-github-actions-oidc)
       local session_name
-      session_name=$(echo "${DOCKER_REGISTRY_LOGINS}" | yq -r ".[\"${registry}\"][\"session-name\"] // \"github-actions\"")
+      session_name=$(echo "${DOCKER_REGISTRY_LOGINS}" | jq -r ".[\"${registry}\"][\"session-name\"] // \"github-actions\"")
       "${login_script}" "${SECRET_METHOD}" "${registry}" \
         "$(cfg "${registry}" "role-arn")" \
         "$(cfg "${registry}" "region")" \
@@ -236,7 +236,7 @@ main() {
 
   # Report available secrets (names only, never values)
   local secret_keys
-  secret_keys=$(echo "${SECRETS_JSON}" | yq -r 'keys | .[]' 2>/dev/null || true)
+  secret_keys=$(echo "${SECRETS_JSON}" | jq -r 'keys | .[]' 2>/dev/null || true)
   if [[ -z "${secret_keys}" ]]; then
     log "SECRETS_JSON contains 0 keys (empty or invalid JSON)"
     log "Raw SECRETS_JSON value:"
@@ -260,7 +260,7 @@ main() {
 
   # Get list of registries
   local registries
-  registries=$(echo "${DOCKER_REGISTRY_LOGINS}" | yq -r 'keys | .[]')
+  registries=$(echo "${DOCKER_REGISTRY_LOGINS}" | jq -r 'keys | .[]')
 
   if [[ -z "${registries}" ]]; then
     log "No registries configured"

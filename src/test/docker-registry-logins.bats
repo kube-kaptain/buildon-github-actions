@@ -32,7 +32,7 @@ setup() {
 #!/usr/bin/env bash
 set -euo pipefail
 name="${1}"
-# Simple JSON key lookup without yq dependency
+# Simple JSON key lookup without jq/yq dependency
 value=$(echo "${SECRETS_JSON}" | python3 -c "import sys,json; d=json.load(sys.stdin); v=d.get('${name}',''); print(v)" 2>/dev/null || echo "")
 if [[ -z "${value}" ]]; then
   echo "Secret not found: ${name}" >&2
