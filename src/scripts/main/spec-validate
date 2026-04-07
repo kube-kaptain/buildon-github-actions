@@ -7,7 +7,10 @@
 # Validates all substituted spec JSON files against their schema. Run after
 # docker build has performed token substitution.
 #
-# Basic validation (always run): JSON syntax check via jq.
+# Basic validation (always run): JSON syntax check via jq. The yaml-side
+# syntax is already gated upstream by the yq -o=json conversion in
+# spec-package-prepare, so a separate yaml syntax check here would be
+# redundant.
 # Schema validation (always run): validates against the spec's declared schema.
 #
 # Inputs via env vars (required):
