@@ -161,7 +161,36 @@ write_layer_with_payload() {
 }
 EOF
   yq -P '.' "${JSON_FILE}" > "${YAML_FILE}"
-  # Create the source file inside SUB_DIR (script strips leading / for fs check)
+  touch_context_file "${src}"
+}
+
+# Helper: write a layer with an arbitrary layer-payload array (JSON fragment).
+# Does NOT create any context files - the caller is responsible for touching
+# whatever sources it wants to exist in SUB_DIR via touch_context_file.
+write_layer_with_payloads() {
+  local payloads_json="${1}"
+  cat > "${JSON_FILE}" << EOF
+{
+  "apiVersion": "kaptain.org/1.7",
+  "kind": "KubeAppDockerDockerfile",
+  "metadata": {"labels": {}, "annotations": {}},
+  "layer-payload": ${payloads_json},
+  "spec": {
+    "main": {
+      "quality": {
+        "branches": {"blockSlashes": true}
+      }
+    }
+  }
+}
+EOF
+  yq -P '.' "${JSON_FILE}" > "${YAML_FILE}"
+}
+
+# Helper: create a zero-byte file inside SUB_DIR at the given image-absolute
+# path. The leading / is stripped so /foo/bar.txt lands at ${SUB_DIR}/foo/bar.txt.
+touch_context_file() {
+  local src="${1}"
   local src_fs="${SUB_DIR}/${src#/}"
   mkdir -p "$(dirname "${src_fs}")"
   : > "${src_fs}"
@@ -332,4 +361,101 @@ EOF
   run "$SCRIPT"
   [[ "$status" -eq 0 ]]
   [[ "$output" == *"payload ok: /src.txt -> ./foo"* ]]
+}
+
+# =============================================================================
+# Layer payload context-listing and uniqueness rules
+# =============================================================================
+#
+# The script walks the substituted docker context dir to build an in-image
+# path listing, then validates:
+#   - each declared source is a real file in that listing
+#   - sources MAY repeat (same file copied to multiple destinations)
+#   - destinations MUST be globally unique across all payload entries
+
+@test "layer-payload context: source not in context listing fails" {
+  export LAYER_TYPE="layer"
+  # Declare a source but do NOT create the underlying file in SUB_DIR
+  write_layer_with_payloads '[{"source":"/ghost.txt","destination":"foo"}]'
+  run "$SCRIPT"
+  [[ "$status" -ne 0 ]]
+  [[ "$output" == *"source not found in context listing"* ]]
+  [[ "$output" == *"/ghost.txt"* ]]
+}
+
+@test "layer-payload context: directory source is rejected (find -type f only)" {
+  export LAYER_TYPE="layer"
+  # Create a directory where the source would be - find -type f won't list it
+  mkdir -p "${SUB_DIR}/adir"
+  write_layer_with_payloads '[{"source":"/adir","destination":"foo"}]'
+  run "$SCRIPT"
+  [[ "$status" -ne 0 ]]
+  [[ "$output" == *"source not found in context listing"* ]]
+}
+
+@test "layer-payload context: nested source path is matched" {
+  export LAYER_TYPE="layer"
+  touch_context_file "/deep/nested/path/file.txt"
+  write_layer_with_payloads '[{"source":"/deep/nested/path/file.txt","destination":"out/file.txt"}]'
+  run "$SCRIPT"
+  [[ "$status" -eq 0 ]]
+  [[ "$output" == *"payload ok: /deep/nested/path/file.txt -> out/file.txt"* ]]
+}
+
+@test "layer-payload uniqueness: duplicate sources with unique destinations pass" {
+  export LAYER_TYPE="layer"
+  touch_context_file "/shared.txt"
+  write_layer_with_payloads '[
+    {"source":"/shared.txt","destination":"copy-a"},
+    {"source":"/shared.txt","destination":"copy-b"}
+  ]'
+  run "$SCRIPT"
+  [[ "$status" -eq 0 ]]
+  [[ "$output" == *"payload ok: /shared.txt -> copy-a"* ]]
+  [[ "$output" == *"payload ok: /shared.txt -> copy-b"* ]]
+}
+
+@test "layer-payload uniqueness: duplicate destinations fail" {
+  export LAYER_TYPE="layer"
+  touch_context_file "/a.txt"
+  touch_context_file "/b.txt"
+  write_layer_with_payloads '[
+    {"source":"/a.txt","destination":"conflict"},
+    {"source":"/b.txt","destination":"conflict"}
+  ]'
+  run "$SCRIPT"
+  [[ "$status" -ne 0 ]]
+  [[ "$output" == *"destination already used by an earlier entry"* ]]
+  [[ "$output" == *"conflict"* ]]
+}
+
+@test "layer-payload uniqueness: same source, same destination is rejected" {
+  export LAYER_TYPE="layer"
+  touch_context_file "/same.txt"
+  write_layer_with_payloads '[
+    {"source":"/same.txt","destination":"dest"},
+    {"source":"/same.txt","destination":"dest"}
+  ]'
+  run "$SCRIPT"
+  [[ "$status" -ne 0 ]]
+  # Caught by the destination-uniqueness check (first entry accepted, second rejected)
+  [[ "$output" == *"destination already used by an earlier entry"* ]]
+}
+
+@test "layer-payload uniqueness: three distinct entries all pass" {
+  export LAYER_TYPE="layer"
+  touch_context_file "/one.txt"
+  touch_context_file "/two.txt"
+  touch_context_file "/three.txt"
+  write_layer_with_payloads '[
+    {"source":"/one.txt","destination":"out/one"},
+    {"source":"/two.txt","destination":"out/two"},
+    {"source":"/three.txt","destination":"out/three"}
+  ]'
+  run "$SCRIPT"
+  [[ "$status" -eq 0 ]]
+  [[ "$output" == *"Validating 3 layer-payload entry/entries"* ]]
+  [[ "$output" == *"payload ok: /one.txt -> out/one"* ]]
+  [[ "$output" == *"payload ok: /two.txt -> out/two"* ]]
+  [[ "$output" == *"payload ok: /three.txt -> out/three"* ]]
 }

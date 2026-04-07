@@ -104,7 +104,7 @@ log "Schema validation passed"
 # build time). Delegated to the shared lib so the consumption side
 # (kaptain-init) can reuse the same checks against extracted layer dirs.
 if [[ "${LAYER_TYPE}" == "layer" ]]; then
-  validate_layer_payload "${yaml_file}" "${sub_dir}" || exit 1
+  validate_layer_payload "${yaml_file}" "${sub_dir}" "${OUTPUT_SUB_PATH}/layer-validate/payload"
 fi
 
 # Layerset type: validate referenced layer dependencies. Always-on, always strict.
