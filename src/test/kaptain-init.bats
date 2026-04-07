@@ -767,6 +767,10 @@ spec:
       branches:
         blockSlashes: true
 EOF
+  # The layer-payload source must exist in the mock layer so the consumption-
+  # time validate_layer_payload call doesn't fail. The actual content is
+  # irrelevant to this test - what matters is the preserved manifest below.
+  add_mock_layer_file "ghcr.io/kube-kaptain/quality/quality-strict" "/scripts/build.bash" <<< "dummy"
 
   cat > "${REPO_DIR}/KaptainPM.yaml" << 'EOF'
 apiVersion: kaptain.org/1.2
