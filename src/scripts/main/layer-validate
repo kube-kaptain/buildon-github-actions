@@ -101,7 +101,7 @@ log "Schema validation passed"
 if [[ "${LAYER_TYPE}" == "layer" ]]; then
   payload_count=$(yq eval '.["layer-payload"] // [] | length' "${yaml_file}")
   if [[ "${payload_count}" -gt 0 ]]; then
-    log "Validating ${payload_count} layer-payload source path(s)..."
+    log "Validating ${payload_count} layer-payload entry/entries..."
     for ((i = 0; i < payload_count; i++)); do
       source_path=$(yq eval ".[\"layer-payload\"][${i}].source" "${yaml_file}")
       if [[ -z "${source_path}" || "${source_path}" == "null" ]]; then
@@ -114,7 +114,28 @@ if [[ "${LAYER_TYPE}" == "layer" ]]; then
         log_error "layer-payload[${i}] source not found in context: ${source_path}"
         exit 1
       fi
-      log "  payload source ok: ${source_path}"
+
+      # Destination path must be relative to consumer's repo root and contain
+      # no parent-traversal, so a layer cannot write outside the repo at
+      # install time.
+      dest_path=$(yq eval ".[\"layer-payload\"][${i}].destination" "${yaml_file}")
+      if [[ -z "${dest_path}" || "${dest_path}" == "null" ]]; then
+        log_error "layer-payload[${i}] has no destination path"
+        exit 1
+      fi
+      # Reject absolute paths.
+      if [[ "${dest_path}" == '/'* ]]; then
+        log_error "layer-payload[${i}] destination must be relative (no leading '/'): ${dest_path}"
+        exit 1
+      fi
+      # Reject any '..' component. Matches bare '..', leading '../x', middle
+      # 'x/../y', and trailing 'x/..'. Leading './' is allowed and untouched.
+      if [[ "${dest_path}" =~ (^|/)'..'($|/) ]]; then
+        log_error "layer-payload[${i}] destination contains parent-traversal '..': ${dest_path}"
+        exit 1
+      fi
+
+      log "  payload ok: ${source_path} -> ${dest_path}"
     done
   fi
 fi

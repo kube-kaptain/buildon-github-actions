@@ -138,6 +138,35 @@ EOF
   yq -P '.' "${JSON_FILE}" > "${YAML_FILE}"
 }
 
+# Helper: write a layer with a single layer-payload entry having the given
+# source and destination. Also creates the source file under SUB_DIR so the
+# source-existence check passes (lets the destination validation actually run).
+write_layer_with_payload() {
+  local src="${1}" dest="${2}"
+  cat > "${JSON_FILE}" << EOF
+{
+  "apiVersion": "kaptain.org/1.7",
+  "kind": "KubeAppDockerDockerfile",
+  "metadata": {"labels": {}, "annotations": {}},
+  "layer-payload": [
+    {"source": "${src}", "destination": "${dest}"}
+  ],
+  "spec": {
+    "main": {
+      "quality": {
+        "branches": {"blockSlashes": true}
+      }
+    }
+  }
+}
+EOF
+  yq -P '.' "${JSON_FILE}" > "${YAML_FILE}"
+  # Create the source file inside SUB_DIR (script strips leading / for fs check)
+  local src_fs="${SUB_DIR}/${src#/}"
+  mkdir -p "$(dirname "${src_fs}")"
+  : > "${src_fs}"
+}
+
 # =============================================================================
 # Layerset dependency validation - happy path
 # =============================================================================
@@ -215,4 +244,92 @@ EOF
   run "$SCRIPT"
   [[ "$status" -eq 0 ]]
   [[ "$output" != *"Layerset dependency validation"* ]]
+}
+
+# =============================================================================
+# Layer payload destination path validation
+# =============================================================================
+#
+# The script rejects destination paths that are absolute or contain a '..'
+# path component. The '..' check uses the regex (^|/)..($|/) so it ONLY
+# matches '..' as a whole path component, never as a substring of a filename.
+
+@test "layer-payload destination: rejects bare '..'" {
+  export LAYER_TYPE="layer"
+  write_layer_with_payload "/src.txt" ".."
+  run "$SCRIPT"
+  [[ "$status" -ne 0 ]]
+  [[ "$output" == *"parent-traversal '..'"* ]]
+}
+
+@test "layer-payload destination: rejects leading '../'" {
+  export LAYER_TYPE="layer"
+  write_layer_with_payload "/src.txt" "../escape"
+  run "$SCRIPT"
+  [[ "$status" -ne 0 ]]
+  [[ "$output" == *"parent-traversal '..'"* ]]
+}
+
+@test "layer-payload destination: rejects middle '/../'" {
+  export LAYER_TYPE="layer"
+  write_layer_with_payload "/src.txt" "foo/../bar"
+  run "$SCRIPT"
+  [[ "$status" -ne 0 ]]
+  [[ "$output" == *"parent-traversal '..'"* ]]
+}
+
+@test "layer-payload destination: rejects trailing '/..'" {
+  export LAYER_TYPE="layer"
+  write_layer_with_payload "/src.txt" "foo/.."
+  run "$SCRIPT"
+  [[ "$status" -ne 0 ]]
+  [[ "$output" == *"parent-traversal '..'"* ]]
+}
+
+@test "layer-payload destination: rejects absolute path" {
+  export LAYER_TYPE="layer"
+  write_layer_with_payload "/src.txt" "/etc/passwd"
+  run "$SCRIPT"
+  [[ "$status" -ne 0 ]]
+  [[ "$output" == *"must be relative"* ]]
+}
+
+@test "layer-payload destination: accepts 'omg..wtf' (dots inside filename)" {
+  export LAYER_TYPE="layer"
+  write_layer_with_payload "/src.txt" "omg..wtf"
+  run "$SCRIPT"
+  [[ "$status" -eq 0 ]]
+  [[ "$output" == *"payload ok: /src.txt -> omg..wtf"* ]]
+}
+
+@test "layer-payload destination: accepts '..hidden' (leading dots in filename)" {
+  export LAYER_TYPE="layer"
+  write_layer_with_payload "/src.txt" "..hidden"
+  run "$SCRIPT"
+  [[ "$status" -eq 0 ]]
+  [[ "$output" == *"payload ok: /src.txt -> ..hidden"* ]]
+}
+
+@test "layer-payload destination: accepts 'version..1' (dots inside)" {
+  export LAYER_TYPE="layer"
+  write_layer_with_payload "/src.txt" "version..1"
+  run "$SCRIPT"
+  [[ "$status" -eq 0 ]]
+  [[ "$output" == *"payload ok: /src.txt -> version..1"* ]]
+}
+
+@test "layer-payload destination: accepts plain relative path 'foo/bar'" {
+  export LAYER_TYPE="layer"
+  write_layer_with_payload "/src.txt" "foo/bar"
+  run "$SCRIPT"
+  [[ "$status" -eq 0 ]]
+  [[ "$output" == *"payload ok: /src.txt -> foo/bar"* ]]
+}
+
+@test "layer-payload destination: accepts leading './'" {
+  export LAYER_TYPE="layer"
+  write_layer_with_payload "/src.txt" "./foo"
+  run "$SCRIPT"
+  [[ "$status" -eq 0 ]]
+  [[ "$output" == *"payload ok: /src.txt -> ./foo"* ]]
 }
