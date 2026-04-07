@@ -34,7 +34,7 @@ log "Authenticating to GCP via Workload Identity Federation..."
 
 # shellcheck disable=SC2154 # ACTIONS_ID_TOKEN_* are set by GitHub Actions runtime
 token=$(curl -s -H "Authorization: bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" \
-  "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=${workload_identity_provider}" | yq -r '.value')
+  "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=${workload_identity_provider}" | jq -r '.value')
 
 access_token=$(curl -s -X POST \
   "https://sts.googleapis.com/v1/token" \
@@ -46,13 +46,13 @@ access_token=$(curl -s -X POST \
     \"requested_token_type\": \"urn:ietf:params:oauth:token-type:access_token\",
     \"subject_token_type\": \"urn:ietf:params:oauth:token-type:jwt\",
     \"subject_token\": \"${token}\"
-  }" | yq -r '.access_token')
+  }" | jq -r '.access_token')
 
 sa_token=$(curl -s -X POST \
   "https://iamcredentials.googleapis.com/v1/projects/-/serviceAccounts/${service_account}:generateAccessToken" \
   -H "Authorization: Bearer ${access_token}" \
   -H "Content-Type: application/json" \
-  -d '{"scope": ["https://www.googleapis.com/auth/cloud-platform"]}' | yq -r '.accessToken')
+  -d '{"scope": ["https://www.googleapis.com/auth/cloud-platform"]}' | jq -r '.accessToken')
 
 log "Logging in to Google Artifact Registry ${registry}..."
 echo "${sa_token}" | ${IMAGE_BUILD_COMMAND} login -u oauth2accesstoken --password-stdin "https://${registry}"
