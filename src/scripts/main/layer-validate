@@ -31,6 +31,10 @@ source "${SCRIPT_DIR}/../defaults/docker-common.bash"
 source "${SCRIPT_DIR}/../defaults/layer-build.bash"
 # shellcheck source=src/scripts/lib/validate-layer-payload.bash
 source "${SCRIPT_DIR}/../lib/validate-layer-payload.bash"
+# shellcheck source=src/scripts/defaults/tokens.bash
+source "${SCRIPT_DIR}/../defaults/tokens.bash"
+# shellcheck source=src/scripts/lib/token-format.bash
+source "${SCRIPT_DIR}/../lib/token-format.bash"
 
 log "=== Layer Validate ==="
 
@@ -75,6 +79,30 @@ if ! jq . "${json_file}" > /dev/null 2>&1; then
   exit 1
 fi
 log "JSON syntax valid"
+
+# Scan our own substituted manifests for unresolved tokens. KaptainPM.yaml
+# and .json are entirely owned by this build system, so any leftover token
+# is always a substitution bug. User-supplied files in the wider build
+# substitution list may legitimately contain late-stage tokens (for
+# downstream kustomize/helm/runtime resolution) and are deliberately not
+# scanned here.
+unresolved_pattern=$(unresolved_token_regex "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}")
+token_errors=0
+for sf in "${yaml_file}" "${json_file}"; do
+  remnants=$(grep -E "${unresolved_pattern}" "${sf}" 2>/dev/null || true)
+  if [[ -n "${remnants}" ]]; then
+    log_error "Unsubstituted tokens found in $(basename "${sf}"):"
+    while IFS= read -r line; do
+      log_error "  ${line}"
+    done <<< "${remnants}"
+    token_errors=$((token_errors + 1))
+  fi
+done
+if [[ "${token_errors}" -gt 0 ]]; then
+  log_error "Unresolved-token scan failed: ${token_errors} file(s) with remnants"
+  exit 1
+fi
+log "Unresolved-token scan: clean"
 
 # Type-shaped structural checks. Redundant with the JSON schema, but surface
 # a clear error here before the schema validator's output. Schemas enforce

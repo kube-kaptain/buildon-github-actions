@@ -1329,6 +1329,8 @@ jobs:
           docker-platform: ${{ steps.kpm.outputs.DOCKER_PLATFORM }}
           docker-target-registry: ${{ steps.resolve-registry.outputs.docker-target-registry }}
           docker-target-namespace: ${{ steps.resolve-registry.outputs.docker-target-namespace }}
+          token-delimiter-style: ${{ steps.kpm.outputs.TOKEN_DELIMITER_STYLE }}
+          token-name-style: ${{ steps.kpm.outputs.TOKEN_NAME_STYLE }}
           output-sub-path: ${{ steps.kpm.outputs.OUTPUT_SUB_PATH }}
       - name: Pass check - Layer Validate
         if: success() && steps.check-layer-validate.outputs.check-run-id != ''

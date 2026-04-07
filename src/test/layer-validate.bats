@@ -420,6 +420,58 @@ EOF
 }
 
 # =============================================================================
+# Unresolved-token scan (KaptainPM.{yaml,json} only)
+# =============================================================================
+
+@test "unresolved-token scan: passes when KaptainPM.{yaml,json} have no remnants" {
+  export LAYER_TYPE="layer"
+  write_layer_json
+  run "$SCRIPT"
+  [[ "$status" -eq 0 ]]
+  [[ "$output" == *"Unresolved-token scan: clean"* ]]
+}
+
+@test "unresolved-token scan: fails when KaptainPM.yaml contains an unresolved \${PascalCase} token" {
+  export LAYER_TYPE="layer"
+  write_layer_json
+  # Inject an unresolved token as a valid annotation value (yaml only).
+  yq -i '.metadata.annotations.leftover = "${SomeUnresolvedToken}"' "${YAML_FILE}"
+  run "$SCRIPT"
+  [[ "$status" -ne 0 ]]
+  [[ "$output" == *"Unsubstituted tokens found in KaptainPM.yaml"* ]]
+  [[ "$output" == *"\${SomeUnresolvedToken}"* ]]
+  [[ "$output" == *"Unresolved-token scan failed: 1 file(s) with remnants"* ]]
+}
+
+@test "unresolved-token scan: fails when KaptainPM.json contains an unresolved \${PascalCase} token" {
+  export LAYER_TYPE="layer"
+  write_layer_json
+  # Inject an unresolved token as a valid annotation value (json only).
+  jq '.metadata.annotations.leftover = "${AnotherToken}"' "${JSON_FILE}" > "${JSON_FILE}.tmp"
+  mv "${JSON_FILE}.tmp" "${JSON_FILE}"
+  run "$SCRIPT"
+  [[ "$status" -ne 0 ]]
+  [[ "$output" == *"Unsubstituted tokens found in KaptainPM.json"* ]]
+  [[ "$output" == *"\${AnotherToken}"* ]]
+  [[ "$output" == *"Unresolved-token scan failed: 1 file(s) with remnants"* ]]
+}
+
+@test "unresolved-token scan: reports remnants in both files in one run" {
+  export LAYER_TYPE="layer"
+  write_layer_json
+  yq -i '.metadata.annotations.leftover = "${YamlToken}"' "${YAML_FILE}"
+  jq '.metadata.annotations.leftover = "${JsonToken}"' "${JSON_FILE}" > "${JSON_FILE}.tmp"
+  mv "${JSON_FILE}.tmp" "${JSON_FILE}"
+  run "$SCRIPT"
+  [[ "$status" -ne 0 ]]
+  [[ "$output" == *"Unsubstituted tokens found in KaptainPM.yaml"* ]]
+  [[ "$output" == *"\${YamlToken}"* ]]
+  [[ "$output" == *"Unsubstituted tokens found in KaptainPM.json"* ]]
+  [[ "$output" == *"\${JsonToken}"* ]]
+  [[ "$output" == *"Unresolved-token scan failed: 2 file(s) with remnants"* ]]
+}
+
+# =============================================================================
 # Layer payload destination path validation
 # =============================================================================
 #

@@ -24,6 +24,7 @@ inputs:
     required: false
     default: ''
 
+  # INJECT-INPUT: token-substitution
   # INJECT-INPUT: output-sub-path
 
 runs:
@@ -41,5 +42,7 @@ runs:
         DOCKER_PLATFORM: ${{ inputs.docker-platform }}
         DOCKER_TARGET_REGISTRY: ${{ inputs.docker-target-registry }}
         DOCKER_TARGET_NAMESPACE: ${{ inputs.docker-target-namespace }}
+        TOKEN_DELIMITER_STYLE: ${{ inputs.token-delimiter-style }}
+        TOKEN_NAME_STYLE: ${{ inputs.token-name-style }}
         OUTPUT_SUB_PATH: ${{ inputs.output-sub-path }}
       run: "${{ github.action_path }}/../../scripts/main/layer-validate"
