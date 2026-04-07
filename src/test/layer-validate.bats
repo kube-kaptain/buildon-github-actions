@@ -77,6 +77,7 @@ STUB
   SUB_DIR="${OUTPUT_SUB_PATH}/docker/substituted"
   mkdir -p "${SUB_DIR}"
   JSON_FILE="${SUB_DIR}/KaptainPM.json"
+  YAML_FILE="${SUB_DIR}/KaptainPM.yaml"
 
   # Mock check-jsonschema. Defaults to passing every call. Tests can flip
   # MOCK_JSONSCHEMA_FAIL_ON_DEPS=true to fail only for the per-dep validation
@@ -100,7 +101,8 @@ MOCK
   export PATH="${MOCK_BIN_DIR}:${PATH}"
 }
 
-# Helper: write a layerset substituted JSON file with the given layer refs
+# Helper: write substituted KaptainPM.{json,yaml} pair for a layerset with the
+# given layer refs. The yaml is mirrored from the json via yq.
 write_layerset_json() {
   local layers_json="${1}"
   cat > "${JSON_FILE}" << EOF
@@ -113,9 +115,11 @@ write_layerset_json() {
   }
 }
 EOF
+  yq -P '.' "${JSON_FILE}" > "${YAML_FILE}"
 }
 
-# Helper: write a layer (not layerset) substituted JSON file
+# Helper: write substituted KaptainPM.{json,yaml} pair for a layer (not
+# layerset). The yaml is mirrored from the json via yq.
 write_layer_json() {
   cat > "${JSON_FILE}" << 'EOF'
 {
@@ -131,6 +135,7 @@ write_layer_json() {
   }
 }
 EOF
+  yq -P '.' "${JSON_FILE}" > "${YAML_FILE}"
 }
 
 # =============================================================================

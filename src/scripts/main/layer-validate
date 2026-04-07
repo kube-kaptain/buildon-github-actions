@@ -38,6 +38,7 @@ if [[ "${LAYER_TYPE}" != "layer" && "${LAYER_TYPE}" != "layerset" ]]; then
   log_error "LAYER_TYPE must be 'layer' or 'layerset': ${LAYER_TYPE}"
   exit 1
 fi
+log "Type: ${LAYER_TYPE}"
 
 # Locate substituted files from the docker build context
 if [[ "${DOCKER_PLATFORM}" == *,* ]]; then
@@ -47,17 +48,26 @@ else
   sub_dir="${OUTPUT_SUB_PATH}/docker/substituted"
 fi
 
-json_file="${sub_dir}/KaptainPM.json"
+yaml_file="${sub_dir}/KaptainPM.yaml"
+if [[ ! -f "${yaml_file}" ]]; then
+  log_error "Substituted KaptainPM.yaml not found: ${yaml_file}"
+  exit 1
+fi
 
+json_file="${sub_dir}/KaptainPM.json"
 if [[ ! -f "${json_file}" ]]; then
   log_error "Substituted KaptainPM.json not found: ${json_file}"
   exit 1
 fi
 
-log "Type: ${LAYER_TYPE}"
-log "Validating: ${json_file}"
+log "Validating: ${yaml_file}"
+if ! yq eval '.' "${yaml_file}" > /dev/null 2>&1; then
+  log_error "Invalid YAML syntax: ${yaml_file}"
+  exit 1
+fi
+log "YAML syntax valid"
 
-# JSON syntax check
+log "Validating: ${json_file}"
 if ! jq . "${json_file}" > /dev/null 2>&1; then
   log_error "Invalid JSON syntax: ${json_file}"
   exit 1
@@ -89,11 +99,11 @@ log "Schema validation passed"
 
 # Layer type: validate layer-payload source paths exist in substituted context
 if [[ "${LAYER_TYPE}" == "layer" ]]; then
-  payload_count=$(jq -r '.["layer-payload"] | length // 0' "${json_file}")
+  payload_count=$(yq eval '.["layer-payload"] // [] | length' "${yaml_file}")
   if [[ "${payload_count}" -gt 0 ]]; then
     log "Validating ${payload_count} layer-payload source path(s)..."
     for ((i = 0; i < payload_count; i++)); do
-      source_path=$(jq -r ".[\"layer-payload\"][${i}].source" "${json_file}")
+      source_path=$(yq eval ".[\"layer-payload\"][${i}].source" "${yaml_file}")
       if [[ -z "${source_path}" || "${source_path}" == "null" ]]; then
         log_error "layer-payload[${i}] has no source path"
         exit 1
@@ -124,7 +134,7 @@ if [[ "${LAYER_TYPE}" == "layerset" ]]; then
     exit 1
   fi
 
-  layer_count=$(jq -r '.spec.layers | length' "${json_file}")
+  layer_count=$(yq eval '.spec.layers | length' "${yaml_file}")
   if [[ "${layer_count}" -eq 0 ]]; then
     log_error "Layerset has no entries in spec.layers"
     exit 1
@@ -132,7 +142,7 @@ if [[ "${LAYER_TYPE}" == "layerset" ]]; then
 
   validation_failed=false
   for ((i = 0; i < layer_count; i++)); do
-    ref=$(jq -r ".spec.layers[${i}]" "${json_file}")
+    ref=$(yq eval ".spec.layers[${i}]" "${yaml_file}")
     log "  Checking dependency: ${ref}"
 
     # Extract to a temp dir and check for KaptainPM.yaml
