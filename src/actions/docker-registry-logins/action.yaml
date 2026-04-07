@@ -51,41 +51,40 @@ runs:
       run: |
         USER_CONFIG='${{ inputs.config }}'
 
-        # GHCR default config block with token and actor injected
-        GHCR_DEFAULT="ghcr.io:
-          type: github-token
-          token: $GH_TOKEN
-          actor: $GH_ACTOR"
+        # GHCR default config block as compact JSON, with token and actor
+        # injected via jq --arg so values are always shell-safe.
+        GHCR_DEFAULT=$(jq -n -c \
+          --arg token "$GH_TOKEN" \
+          --arg actor "$GH_ACTOR" \
+          '{"ghcr.io": {type: "github-token", token: $token, actor: $actor}}')
 
-        # Check if user provided config and if it includes ghcr.io
+        # USER_CONFIG arrives as compact JSON from load-final-kaptainpm-yaml
+        # (.spec.main.docker.logins). Merge logic, all jq:
         if [[ -z "$USER_CONFIG" ]]; then
           # No user config - use GHCR default only
           FINAL_CONFIG="$GHCR_DEFAULT"
-        elif echo "$USER_CONFIG" | yq -e 'has("ghcr.io")' > /dev/null 2>&1; then
-          # User config includes ghcr.io - use as-is
+        elif echo "$USER_CONFIG" | jq -e 'has("ghcr.io")' > /dev/null 2>&1; then
+          # User config already includes ghcr.io - use as-is
           FINAL_CONFIG="$USER_CONFIG"
         else
-          # User config without ghcr.io - prepend GHCR default
-          FINAL_CONFIG="$GHCR_DEFAULT
-        $USER_CONFIG"
+          # User config without ghcr.io - merge GHCR default in. Both are flat
+          # objects keyed by registry URL with no overlap, so 'add' is enough.
+          FINAL_CONFIG=$(jq -c -s 'add' <(echo "$GHCR_DEFAULT") <(echo "$USER_CONFIG"))
         fi
 
         # Validate docker-target-registry is configured (if provided)
         TARGET_REGISTRY='${{ inputs.docker-target-registry }}'
         if [[ -n "$TARGET_REGISTRY" ]]; then
-          if ! echo "$FINAL_CONFIG" | yq -e "has(\"$TARGET_REGISTRY\")" > /dev/null 2>&1; then
+          if ! echo "$FINAL_CONFIG" | jq -e --arg r "$TARGET_REGISTRY" 'has($r)' > /dev/null 2>&1; then
             echo "::error::Target registry '$TARGET_REGISTRY' is not configured in docker-registry-logins."
             echo "::error::Add '$TARGET_REGISTRY' to your docker-registry-logins config."
             exit 1
           fi
         fi
 
-        # Export for next step
-        {
-          echo 'FINAL_CONFIG<<EOF'
-          echo "$FINAL_CONFIG"
-          echo 'EOF'
-        } >> "$GITHUB_OUTPUT"
+        # Export for next step. FINAL_CONFIG is single-line JSON so a plain
+        # KEY=VALUE write is fine - no heredoc needed.
+        echo "FINAL_CONFIG=$FINAL_CONFIG" >> "$GITHUB_OUTPUT"
 
     - name: Run docker-registry-logins
       id: logins
