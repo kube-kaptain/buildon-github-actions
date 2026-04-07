@@ -36,6 +36,7 @@ generate_tolerations() {
   done
 
   echo "${indent}tolerations:"
+  # Pretty print YAML from JSON using yq
   echo "${tolerations_json}" | yq -P '.' | while IFS= read -r line; do
     echo "${indent}${line}"
   done
