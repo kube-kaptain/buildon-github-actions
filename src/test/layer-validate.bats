@@ -28,6 +28,12 @@ setup() {
   SCRIPT="${MIRROR_ROOT}/scripts/main/layer-validate"
 
   # Stub extract-oci-image: behaviour controlled by MOCK_OCI_EXTRACT_MODE.
+  # Kind in the written manifest is controlled per-call:
+  #   MOCK_DEP_KIND_<safe_name> - per-ref override (safe_name is the trailing
+  #     name segment with - replaced by _, e.g. ref ".../layer/quality-strict:1.0"
+  #     -> MOCK_DEP_KIND_quality_strict). Set to "OMIT" to omit the kind line.
+  #   MOCK_DEP_KIND - fallback when no per-ref var is set. Same OMIT semantics.
+  #   default - "KubeAppDockerDockerfile"
   cat > "${MIRROR_ROOT}/scripts/util/extract-oci-image" << 'STUB'
 #!/usr/bin/env bash
 # Args: $1 = image_ref, $2 = staging_dir, $3 = path inside image
@@ -44,18 +50,25 @@ case "${mode}" in
     exit 0
     ;;
   success)
-    cat > "${2}/KaptainPM.yaml" << 'YAML'
-apiVersion: kaptain.org/1.7
-kind: KubeAppDockerDockerfile
-metadata:
-  labels: {}
-  annotations: {}
-spec:
-  main:
-    quality:
-      branches:
-        blockSlashes: true
-YAML
+    image_ref="${1}"
+    name="${image_ref##*/}"
+    name="${name%%:*}"
+    var="MOCK_DEP_KIND_${name//-/_}"
+    kind="${!var:-${MOCK_DEP_KIND:-KubeAppDockerDockerfile}}"
+    {
+      echo "apiVersion: kaptain.org/1.7"
+      if [[ "${kind}" != "OMIT" ]]; then
+        echo "kind: ${kind}"
+      fi
+      echo "metadata:"
+      echo "  labels: {}"
+      echo "  annotations: {}"
+      echo "spec:"
+      echo "  main:"
+      echo "    quality:"
+      echo "      branches:"
+      echo "        blockSlashes: true"
+    } > "${2}/KaptainPM.yaml"
     exit 0
     ;;
 esac
@@ -109,6 +122,22 @@ write_layerset_json() {
 {
   "apiVersion": "kaptain.org/1.7",
   "kind": "KubeAppDockerDockerfile",
+  "metadata": {"labels": {}, "annotations": {}},
+  "spec": {
+    "layers": ${layers_json}
+  }
+}
+EOF
+  yq -P '.' "${JSON_FILE}" > "${YAML_FILE}"
+}
+
+# Helper: write substituted KaptainPM.{json,yaml} pair for a layerset that
+# omits the top-level kind field. Used for kind-matching tests.
+write_layerset_json_no_kind() {
+  local layers_json="${1}"
+  cat > "${JSON_FILE}" << EOF
+{
+  "apiVersion": "kaptain.org/1.7",
   "metadata": {"labels": {}, "annotations": {}},
   "spec": {
     "layers": ${layers_json}
@@ -287,6 +316,41 @@ touch_context_file() {
   [[ "$status" -ne 0 ]]
   [[ "$output" == *"duplicate layer references"* ]]
   [[ "$output" == *"ghcr.io/kube-kaptain/layer/a"* ]]
+}
+
+@test "layerset: passes when neither layerset nor deps declare kind" {
+  export LAYER_TYPE="layerset"
+  export MOCK_DEP_KIND="OMIT"
+  write_layerset_json_no_kind '["ghcr.io/kube-kaptain/layer/quality-strict:1.0.0", "ghcr.io/kube-kaptain/layer/java-base:2.0.0"]'
+  run "$SCRIPT"
+  [[ "$status" -eq 0 ]]
+  [[ "$output" == *"Layerset dependency validation passed"* ]]
+}
+
+@test "layerset: fails when a dep declares a kind different from the layerset's kind" {
+  export LAYER_TYPE="layerset"
+  # Layerset's kind is KubeAppDockerDockerfile (default in write_layerset_json).
+  # Mock writes a different kind for all deps.
+  export MOCK_DEP_KIND="SomethingElse"
+  write_layerset_json '["ghcr.io/kube-kaptain/layer/quality-strict:1.0.0"]'
+  run "$SCRIPT"
+  [[ "$status" -ne 0 ]]
+  [[ "$output" == *"has kind 'SomethingElse', expected 'KubeAppDockerDockerfile'"* ]]
+  [[ "$output" == *"Layerset dependency validation failed"* ]]
+}
+
+@test "layerset: fails when two deps declare conflicting kinds and layerset has none" {
+  export LAYER_TYPE="layerset"
+  # Layerset omits kind. Per-ref kinds: dep 'a' has KindOne, dep 'b' has KindTwo.
+  # 'a' is processed first (no expected yet) -> sets expected to KindOne.
+  # 'b' clashes -> failure naming KindTwo vs KindOne.
+  export MOCK_DEP_KIND_a="KindOne"
+  export MOCK_DEP_KIND_b="KindTwo"
+  write_layerset_json_no_kind '["ghcr.io/kube-kaptain/layer/a:1.0.0", "ghcr.io/kube-kaptain/layer/b:1.0.0"]'
+  run "$SCRIPT"
+  [[ "$status" -ne 0 ]]
+  [[ "$output" == *"has kind 'KindTwo', expected 'KindOne'"* ]]
+  [[ "$output" == *"ghcr.io/kube-kaptain/layer/b:1.0.0"* ]]
 }
 
 @test "layerset: continues checking remaining deps after a failure (collects all errors)" {

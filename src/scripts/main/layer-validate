@@ -168,6 +168,12 @@ if [[ "${LAYER_TYPE}" == "layerset" ]]; then
     exit 1
   fi
 
+  # Kind matching across the layerset and its deps. Kind is optional on
+  # both the layerset and any layer, but where declared, all kinds must
+  # agree. The first non-empty kind we see (layerset's, or otherwise the
+  # first dep that declares one) becomes the reference for the rest.
+  expected_kind=$(yq eval '.kind // ""' "${yaml_file}")
+
   validation_failed=false
   for ((i = 0; i < layer_count; i++)); do
     ref=$(yq eval ".spec.layers[${i}]" "${yaml_file}")
@@ -208,6 +214,20 @@ if [[ "${LAYER_TYPE}" == "layerset" ]]; then
       log_error "Dependency ${ref} KaptainPM.yaml failed schema validation against $(basename "${dep_schema_file}")"
       validation_failed=true
       continue
+    fi
+
+    # Kind matching: if the dep declares a kind, it must agree with the
+    # first kind we've seen so far. If nothing has declared one yet, this
+    # dep's kind becomes the reference for any later deps.
+    dep_kind=$(yq eval '.kind // ""' "${dep_staging}/KaptainPM.yaml")
+    if [[ -n "${dep_kind}" ]]; then
+      if [[ -z "${expected_kind}" ]]; then
+        expected_kind="${dep_kind}"
+      elif [[ "${dep_kind}" != "${expected_kind}" ]]; then
+        log_error "Dependency ${ref} has kind '${dep_kind}', expected '${expected_kind}'"
+        validation_failed=true
+        continue
+      fi
     fi
 
     log "  ok: ${ref}"
