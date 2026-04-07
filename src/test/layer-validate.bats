@@ -276,6 +276,49 @@ touch_context_file() {
 }
 
 # =============================================================================
+# Type-shaped structural checks (redundant with schema, clearer error)
+# =============================================================================
+
+@test "layer: fails when spec.layers is declared" {
+  export LAYER_TYPE="layer"
+  cat > "${JSON_FILE}" << 'EOF'
+{
+  "apiVersion": "kaptain.org/1.7",
+  "kind": "KubeAppDockerDockerfile",
+  "metadata": {"labels": {}, "annotations": {}},
+  "spec": {
+    "layers": ["ghcr.io/kube-kaptain/layer/quality-strict:1.0.0"]
+  }
+}
+EOF
+  yq -P '.' "${JSON_FILE}" > "${YAML_FILE}"
+  run "$SCRIPT"
+  [[ "$status" -ne 0 ]]
+  [[ "$output" == *"Layer must not declare spec.layers"* ]]
+}
+
+@test "layerset: fails when layer-payload is declared" {
+  export LAYER_TYPE="layerset"
+  cat > "${JSON_FILE}" << 'EOF'
+{
+  "apiVersion": "kaptain.org/1.7",
+  "kind": "KubeAppDockerDockerfile",
+  "metadata": {"labels": {}, "annotations": {}},
+  "layer-payload": [
+    {"source": "/thing.txt", "destination": "dest/"}
+  ],
+  "spec": {
+    "layers": ["ghcr.io/kube-kaptain/layer/quality-strict:1.0.0"]
+  }
+}
+EOF
+  yq -P '.' "${JSON_FILE}" > "${YAML_FILE}"
+  run "$SCRIPT"
+  [[ "$status" -ne 0 ]]
+  [[ "$output" == *"Layerset must not declare layer-payload"* ]]
+}
+
+# =============================================================================
 # Layer payload destination path validation
 # =============================================================================
 #

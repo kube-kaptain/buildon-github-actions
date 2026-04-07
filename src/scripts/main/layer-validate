@@ -76,6 +76,22 @@ if ! jq . "${json_file}" > /dev/null 2>&1; then
 fi
 log "JSON syntax valid"
 
+# Type-shaped structural checks. Redundant with the JSON schema, but surface
+# a clear error here before the schema validator's output. Schemas enforce
+# these via additionalProperties: false; this block just makes the failure
+# message obvious to the reader.
+if [[ "${LAYER_TYPE}" == "layer" ]]; then
+  if [[ "$(yq eval '.spec // {} | has("layers")' "${yaml_file}")" == "true" ]]; then
+    log_error "Layer must not declare spec.layers (that's a layerset)"
+    exit 1
+  fi
+elif [[ "${LAYER_TYPE}" == "layerset" ]]; then
+  if [[ "$(yq eval 'has("layer-payload")' "${yaml_file}")" == "true" ]]; then
+    log_error "Layerset must not declare layer-payload (that's a layer)"
+    exit 1
+  fi
+fi
+
 # Schema validation
 if [[ ! -f "${LAYER_SCHEMA_VERSION_FILE}" ]]; then
   log_error "Schema version file not found: ${LAYER_SCHEMA_VERSION_FILE}"
