@@ -15,10 +15,6 @@ inputs:
     description: 'Target platform(s) for docker build'
     required: false
     default: 'linux/amd64'
-  layer-dependency-validation:
-    description: 'Layerset dependency check mode: hard/soft/skip'
-    required: false
-    default: 'hard'
   docker-target-registry:
     description: 'Target registry for dependency resolution'
     required: false
@@ -28,6 +24,35 @@ inputs:
     required: false
     default: ''
 
+  # Token substitution
+  token-delimiter-style:
+    description: 'Token delimiter syntax for variables (shell, mustache, helm, erb, github-actions, blade, stringtemplate, ognl, t4, swift)'
+    required: false
+    default: 'shell'
+  token-name-style:
+    description: 'Case style for token names (UPPER_SNAKE, lower_snake, lower-kebab, UPPER-KEBAB, camelCase, PascalCase, lower.dot, UPPER.DOT)'
+    required: false
+    default: 'PascalCase'
+  token-name-validation:
+    description: 'How to validate user token names (MATCH = must match token-name-style, ALL = accept any valid name)'
+    required: false
+    default: 'MATCH'
+  allow-builtin-token-override:
+    description: 'Allow user tokens to override built-in tokens (for template/reusable projects)'
+    required: false
+    default: 'false'
+  config-sub-path:
+    description: 'Directory containing user-defined token files (relative)'
+    required: false
+    default: 'src/config'
+  config-value-trailing-newline:
+    description: 'How to handle trailing newlines in config values (strip-for-single-line, preserve-all, always-strip-one-newline)'
+    required: false
+    default: 'strip-for-single-line'
+  token-substitution-passes:
+    description: 'Number of times to run the token substitution pass (for nested token references)'
+    required: false
+    default: '1'
   # Build output
   output-sub-path:
     description: 'Build output directory (relative)'
@@ -47,8 +72,9 @@ runs:
         LAYER_TYPE: ${{ inputs.layer-type }}
         IMAGE_BUILD_COMMAND: ${{ inputs.image-build-command }}
         DOCKER_PLATFORM: ${{ inputs.docker-platform }}
-        LAYER_DEPENDENCY_VALIDATION: ${{ inputs.layer-dependency-validation }}
         DOCKER_TARGET_REGISTRY: ${{ inputs.docker-target-registry }}
         DOCKER_TARGET_NAMESPACE: ${{ inputs.docker-target-namespace }}
+        TOKEN_DELIMITER_STYLE: ${{ inputs.token-delimiter-style }}
+        TOKEN_NAME_STYLE: ${{ inputs.token-name-style }}
         OUTPUT_SUB_PATH: ${{ inputs.output-sub-path }}
       run: "${{ github.action_path }}/../../scripts/main/layer-validate"

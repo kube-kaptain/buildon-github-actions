@@ -383,7 +383,9 @@ for mapping in "${MAPPINGS[@]}"; do
 done
 log ""
 
-# Export complex values that can't go through the simple mapping loop
+# Extract registry login config as a single-line JSON string for
+# docker-registry-logins. JSON is used (not YAML) because it collapses to one
+# line, which makes it safe to pass as a single env var / string argument.
 logins_json=$(yq -o=json -c '.spec.main.docker.logins // ""' "${PM_FILE}")
 if [[ -n "${logins_json}" && "${logins_json}" != "null" && "${logins_json}" != '""' ]]; then
   output_var "DOCKER_REGISTRY_LOGINS" "${logins_json}" > /dev/null

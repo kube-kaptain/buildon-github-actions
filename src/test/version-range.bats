@@ -172,6 +172,42 @@ teardown() {
   ! version_is_exact "[1.0,)"
 }
 
+@test "version_is_exact: true for degenerate single-value bracket [N]" {
+  version_is_exact "[1.0]"
+}
+
+@test "version_is_exact: true for degenerate single-value bracket three-part" {
+  version_is_exact "[1.2.3]"
+}
+
+@test "version_is_exact: false for two-value bracket range even if equal" {
+  ! version_is_exact "[1.0,1.0]"
+}
+
+# =============================================================================
+# version_unwrap_exact
+# =============================================================================
+
+@test "version_unwrap_exact: passes plain version through unchanged" {
+  result=$(version_unwrap_exact "1.2.3")
+  [[ "$result" == "1.2.3" ]]
+}
+
+@test "version_unwrap_exact: strips brackets from degenerate single-value range" {
+  result=$(version_unwrap_exact "[1.0]")
+  [[ "$result" == "1.0" ]]
+}
+
+@test "version_unwrap_exact: leaves multi-value range unchanged" {
+  result=$(version_unwrap_exact "[1.0,2.0)")
+  [[ "$result" == "[1.0,2.0)" ]]
+}
+
+@test "version_unwrap_exact: leaves open-ended range unchanged" {
+  result=$(version_unwrap_exact "[1.0,)")
+  [[ "$result" == "[1.0,)" ]]
+}
+
 # =============================================================================
 # version_resolve_range - exact match
 # =============================================================================
@@ -183,11 +219,20 @@ teardown() {
   [[ "${VERSION_RESOLVE_RESULT}" == "1.1" ]]
 }
 
-@test "resolve_range: exact version not found" {
+@test "resolve_range: exact version is trusted, no existence check" {
+  # Exact versions are trusted and returned as-is. Existence verification
+  # is a separate concern handled by callers via artifact-exists.
   local versions
   versions=$(printf "1.0\n1.1\n1.2\n")
-  run version_resolve_range "1.5" "${versions}"
-  [[ "$status" -eq 1 ]]
+  version_resolve_range "1.5" "${versions}"
+  [[ "${VERSION_RESOLVE_RESULT}" == "1.5" ]]
+}
+
+@test "resolve_range: degenerate [N] form unwraps to exact" {
+  local versions
+  versions=$(printf "1.0\n1.1\n1.2\n")
+  version_resolve_range "[1.1]" "${versions}"
+  [[ "${VERSION_RESOLVE_RESULT}" == "1.1" ]]
 }
 
 # =============================================================================

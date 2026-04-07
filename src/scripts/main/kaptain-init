@@ -8,6 +8,10 @@
 # in order (first = lowest priority, local = always wins), and writes the final
 # merged result to kaptainpm/final/KaptainPM.yaml.
 #
+# Each resolved config layer may carry a layer-payload list: files packaged
+# inside the layer image to be copied (or unpacked, for archives) into the
+# consumer's repo before the merge strips the field out of the config.
+#
 # Every interpolation step is recorded in kaptainpm/interpolation/ for auditing.
 # Original layer files are preserved in kaptainpm/layers/ for debugging.
 #
@@ -34,6 +38,10 @@ source "${SCRIPT_DIR}/../lib/log.bash"
 source "${SCRIPT_DIR}/../defaults/build-mode.bash"
 # shellcheck source=src/scripts/lib/layer-merge.bash
 source "${SCRIPT_DIR}/../lib/layer-merge.bash"
+# shellcheck source=src/scripts/lib/validate-exact-file-exists.bash
+source "${SCRIPT_DIR}/../lib/validate-exact-file-exists.bash"
+# shellcheck source=src/scripts/lib/validate-layer-payload.bash
+source "${SCRIPT_DIR}/../lib/validate-layer-payload.bash"
 
 UTIL_DIR="${SCRIPT_DIR}/../util"
 
@@ -58,7 +66,7 @@ log "=== Kaptain Init ==="
 rm -rf "${KAPTAINPM_DIR}"
 
 # --- Validate project root KaptainPM.yaml ---
-if [[ ! -f "${PM_FILE}" ]]; then
+if ! validate_exact_file_exists "." "KaptainPM.yaml"; then
   log_error "KaptainPM.yaml not found in project root"
   exit 1
 fi
@@ -186,7 +194,7 @@ resolve_layer() {
   "${UTIL_DIR}/artifact-fetch" "${resolved_uri}" "${layer_dir}" /KaptainPM.yaml
 
   local layer_file="${layer_dir}/KaptainPM.yaml"
-  if [[ ! -f "${layer_file}" ]]; then
+  if ! validate_exact_file_exists "${layer_dir}" "KaptainPM.yaml"; then
     log_error "Layer image does not contain KaptainPM.yaml: ${resolved_uri}"
     exit 1
   fi
@@ -263,6 +271,66 @@ resolve_layer() {
         exit 1
       fi
       echo "${layer_kind}" > "${KIND_FILE}"
+    fi
+
+    # Extract any layer-payload entries before stripping the field from the
+    # config that gets merged. The whole image is extracted once to a unique
+    # dir for this layer (via extract-oci-image), validated against the same
+    # rules the build side enforced, then each entry is copied from
+    # ${extracted}${source} into ${destination}/ - archives are unpacked
+    # rather than copied. The extracted tree is left in place for debugging;
+    # files are cp'd (not moved) to their destinations.
+    local payload_count p payload_source payload_dest payload_unpack
+    local layer_extracted staged_path staged_name
+    payload_count=$(yq eval '.["layer-payload"] // [] | length' "${layer_file}")
+    if [[ "${payload_count}" -gt 0 ]]; then
+      log "${indent}Extracting layer image for ${payload_count} layer-payload entry/entries"
+      layer_extracted="${layer_dir}/extracted"
+      rm -rf "${layer_extracted}"
+      mkdir -p "${layer_extracted}"
+      if ! "${UTIL_DIR}/extract-oci-image" "${resolved_uri}" "${layer_extracted}"; then
+        log_error "Failed to extract layer image for payload: ${resolved_uri}"
+        exit 1
+      fi
+
+      # Reuse the same validator the build side ran, now against the
+      # extracted tree. Covers source-in-listing, empty src/dest, absolute
+      # dest, '..' components, and destination uniqueness.
+      validate_layer_payload "${layer_file}" "${layer_extracted}" "${layer_dir}/payload-validate"
+
+      for ((p = 0; p < payload_count; p++)); do
+        payload_source=$(yq eval ".[\"layer-payload\"][${p}].source" "${layer_file}")
+        payload_dest=$(yq eval ".[\"layer-payload\"][${p}].destination" "${layer_file}")
+        payload_unpack=$(yq eval ".[\"layer-payload\"][${p}].unpack // \"\"" "${layer_file}")
+
+        staged_path="${layer_extracted}${payload_source}"
+
+        log "${indent}  payload[${p}]: ${payload_source} -> ${payload_dest}${payload_unpack:+ (unpack: ${payload_unpack})}"
+
+        mkdir -p "${payload_dest}"
+        staged_name=$(basename "${payload_source}")
+
+        if [[ -n "${payload_unpack}" ]]; then
+          case "${payload_unpack}" in
+            tar.gz)  tar -xzf "${staged_path}" -C "${payload_dest}" ;;
+            tar.bz2) tar -xjf "${staged_path}" -C "${payload_dest}" ;;
+            tar.xz)  tar -xJf "${staged_path}" -C "${payload_dest}" ;;
+            tar)     tar  -xf "${staged_path}" -C "${payload_dest}" ;;
+            zip)     unzip -q "${staged_path}" -d "${payload_dest}" ;;
+            gz)      gunzip  -c "${staged_path}" > "${payload_dest}/${staged_name%.gz}" ;;
+            bz2)     bunzip2 -c "${staged_path}" > "${payload_dest}/${staged_name%.bz2}" ;;
+            xz)      unxz    -c "${staged_path}" > "${payload_dest}/${staged_name%.xz}" ;;
+            *)
+              log_error "Unknown unpack format '${payload_unpack}' in layer-payload[${p}]"
+              exit 1
+              ;;
+          esac
+        else
+          # Plain copy: file goes to destination/basename. Directory sources
+          # are rejected by validate_layer_payload (find -type f only).
+          cp "${staged_path}" "${payload_dest}/"
+        fi
+      done
     fi
 
     # Strip layer-payload before merging

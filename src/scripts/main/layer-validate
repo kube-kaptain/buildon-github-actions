@@ -13,8 +13,7 @@
 #   OUTPUT_SUB_PATH   - Base directory for output files
 #
 # Inputs via env vars (optional):
-#   DOCKER_PLATFORM              - Target platform(s) (default: linux/amd64)
-#   LAYER_DEPENDENCY_VALIDATION  - Layerset dependency check mode: hard/soft/skip (default: hard)
+#   DOCKER_PLATFORM   - Target platform(s) (default: linux/amd64)
 
 set -euo pipefail
 
@@ -30,6 +29,12 @@ source "${SCRIPT_DIR}/../defaults/output-sub-path.bash"
 source "${SCRIPT_DIR}/../defaults/docker-common.bash"
 # shellcheck source=src/scripts/defaults/layer-build.bash
 source "${SCRIPT_DIR}/../defaults/layer-build.bash"
+# shellcheck source=src/scripts/lib/validate-layer-payload.bash
+source "${SCRIPT_DIR}/../lib/validate-layer-payload.bash"
+# shellcheck source=src/scripts/defaults/tokens.bash
+source "${SCRIPT_DIR}/../defaults/tokens.bash"
+# shellcheck source=src/scripts/lib/token-format.bash
+source "${SCRIPT_DIR}/../lib/token-format.bash"
 
 log "=== Layer Validate ==="
 
@@ -39,6 +44,7 @@ if [[ "${LAYER_TYPE}" != "layer" && "${LAYER_TYPE}" != "layerset" ]]; then
   log_error "LAYER_TYPE must be 'layer' or 'layerset': ${LAYER_TYPE}"
   exit 1
 fi
+log "Type: ${LAYER_TYPE}"
 
 # Locate substituted files from the docker build context
 if [[ "${DOCKER_PLATFORM}" == *,* ]]; then
@@ -48,22 +54,71 @@ else
   sub_dir="${OUTPUT_SUB_PATH}/docker/substituted"
 fi
 
-json_file="${sub_dir}/KaptainPM.json"
+yaml_file="${sub_dir}/KaptainPM.yaml"
+if [[ ! -f "${yaml_file}" ]]; then
+  log_error "Substituted KaptainPM.yaml not found: ${yaml_file}"
+  exit 1
+fi
 
+json_file="${sub_dir}/KaptainPM.json"
 if [[ ! -f "${json_file}" ]]; then
   log_error "Substituted KaptainPM.json not found: ${json_file}"
   exit 1
 fi
 
-log "Type: ${LAYER_TYPE}"
-log "Validating: ${json_file}"
+log "Validating: ${yaml_file}"
+if ! yq eval '.' "${yaml_file}" > /dev/null 2>&1; then
+  log_error "Invalid YAML syntax: ${yaml_file}"
+  exit 1
+fi
+log "YAML syntax valid"
 
-# JSON syntax check
+log "Validating: ${json_file}"
 if ! jq . "${json_file}" > /dev/null 2>&1; then
   log_error "Invalid JSON syntax: ${json_file}"
   exit 1
 fi
 log "JSON syntax valid"
+
+# Scan our own substituted manifests for unresolved tokens. KaptainPM.yaml
+# and .json are entirely owned by this build system, so any leftover token
+# is always a substitution bug. User-supplied files in the wider build
+# substitution list may legitimately contain late-stage tokens (for
+# downstream kustomize/helm/runtime resolution) and are deliberately not
+# scanned here.
+unresolved_pattern=$(unresolved_token_regex "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}")
+token_errors=0
+for sf in "${yaml_file}" "${json_file}"; do
+  remnants=$(grep -E "${unresolved_pattern}" "${sf}" 2>/dev/null || true)
+  if [[ -n "${remnants}" ]]; then
+    log_error "Unsubstituted tokens found in $(basename "${sf}"):"
+    while IFS= read -r line; do
+      log_error "  ${line}"
+    done <<< "${remnants}"
+    token_errors=$((token_errors + 1))
+  fi
+done
+if [[ "${token_errors}" -gt 0 ]]; then
+  log_error "Unresolved-token scan failed: ${token_errors} file(s) with remnants"
+  exit 1
+fi
+log "Unresolved-token scan: clean"
+
+# Type-shaped structural checks. Redundant with the JSON schema, but surface
+# a clear error here before the schema validator's output. Schemas enforce
+# these via additionalProperties: false; this block just makes the failure
+# message obvious to the reader.
+if [[ "${LAYER_TYPE}" == "layer" ]]; then
+  if [[ "$(yq eval '.spec // {} | has("layers")' "${yaml_file}")" == "true" ]]; then
+    log_error "Layer must not declare spec.layers (that's a layerset)"
+    exit 1
+  fi
+elif [[ "${LAYER_TYPE}" == "layerset" ]]; then
+  if [[ "$(yq eval 'has("layer-payload")' "${yaml_file}")" == "true" ]]; then
+    log_error "Layerset must not declare layer-payload (that's a layer)"
+    exit 1
+  fi
+fi
 
 # Schema validation
 if [[ ! -f "${LAYER_SCHEMA_VERSION_FILE}" ]]; then
@@ -88,93 +143,129 @@ log "Schema: $(basename "${schema_file}")"
 check-jsonschema --schemafile "${schema_file}" "${json_file}"
 log "Schema validation passed"
 
-# Layer type: validate layer-payload source paths exist in substituted context
+# Layer type: validate layer-payload declarations against the substituted
+# docker context directory (which is the image-root filesystem view at
+# build time). Delegated to the shared lib so the consumption side
+# (kaptain-init) can reuse the same checks against extracted layer dirs.
 if [[ "${LAYER_TYPE}" == "layer" ]]; then
-  payload_count=$(jq -r '.["layer-payload"] | length // 0' "${json_file}")
-  if [[ "${payload_count}" -gt 0 ]]; then
-    log "Validating ${payload_count} layer-payload source path(s)..."
-    for ((i = 0; i < payload_count; i++)); do
-      source_path=$(jq -r ".[\"layer-payload\"][${i}].source" "${json_file}")
-      if [[ -z "${source_path}" || "${source_path}" == "null" ]]; then
-        log_error "layer-payload[${i}] has no source path"
-        exit 1
-      fi
-      # Strip leading / for filesystem check (files are at context root)
-      check_path="${sub_dir}/${source_path#/}"
-      if [[ ! -f "${check_path}" ]]; then
-        log_error "layer-payload[${i}] source not found in context: ${source_path}"
-        exit 1
-      fi
-      log "  payload source ok: ${source_path}"
-    done
-  fi
+  validate_layer_payload "${yaml_file}" "${sub_dir}" "${OUTPUT_SUB_PATH}/layer-validate/payload"
 fi
 
-# Layerset type: validate referenced layer dependencies
+# Layerset type: validate referenced layer dependencies. Always-on, always strict.
+# For each dep we pull its image, confirm it contains /KaptainPM.yaml, and
+# validate that file against this build system's layer schema. Any failure is
+# a hard fail — there is no opt-out.
 if [[ "${LAYER_TYPE}" == "layerset" ]]; then
-  if [[ "${LAYER_DEPENDENCY_VALIDATION}" == "skip" ]]; then
-    log "Layerset dependency validation: skipped (LAYER_DEPENDENCY_VALIDATION=skip)"
-  else
-    log "Layerset dependency validation: ${LAYER_DEPENDENCY_VALIDATION}"
-    UTIL_DIR="${SCRIPT_DIR}/../util"
-    OCI_EXTRACT="${UTIL_DIR}/oci-scratch-extract"
+  log "Layerset dependency validation"
+  UTIL_DIR="${SCRIPT_DIR}/../util"
+  OCI_EXTRACT="${UTIL_DIR}/extract-oci-image"
 
-    layer_count=$(jq -r '.spec.layers | length' "${json_file}")
-    if [[ "${layer_count}" -eq 0 ]]; then
-      log_error "Layerset has no entries in spec.layers"
-      exit 1
-    fi
-
-    validation_failed=false
-    for ((i = 0; i < layer_count; i++)); do
-      ref=$(jq -r ".spec.layers[${i}]" "${json_file}")
-      log "  Checking dependency: ${ref}"
-
-      # Extract to a temp dir and check for KaptainPM.yaml
-      dep_staging="${OUTPUT_SUB_PATH}/layer-validate/deps/${i}"
-      rm -rf "${dep_staging}"
-      mkdir -p "${dep_staging}"
-
-      # Build the full image reference — ref may be short form (name:version)
-      # artifact-resolve would give us the full URI but we need the image directly
-      # Use the same registry/namespace inference as artifact-resolve docker provider
-      if [[ "${ref}" == *"/"* && "${ref%%/*}" == *"."* ]]; then
-        image_ref="${ref}"
-      elif [[ "${ref}" == *"/"* ]]; then
-        image_ref="${DOCKER_TARGET_REGISTRY:-}/${DOCKER_TARGET_NAMESPACE:-}/${ref}"
-      else
-        ref_name="${ref%%:*}"
-        ref_prefix="${ref_name%%-*}"
-        image_ref="${DOCKER_TARGET_REGISTRY:-}/${DOCKER_TARGET_NAMESPACE:-}/${ref_prefix}/${ref}"
-      fi
-
-      if "${OCI_EXTRACT}" "${image_ref}" "${dep_staging}" /KaptainPM.yaml 2>/dev/null; then
-        if [[ -f "${dep_staging}/KaptainPM.yaml" ]]; then
-          log "  ok: ${ref}"
-        else
-          if [[ "${LAYER_DEPENDENCY_VALIDATION}" == "hard" ]]; then
-            log_error "Dependency ${ref} does not contain /KaptainPM.yaml"
-            validation_failed=true
-          else
-            log_warning "Dependency ${ref} does not contain /KaptainPM.yaml"
-          fi
-        fi
-      else
-        if [[ "${LAYER_DEPENDENCY_VALIDATION}" == "hard" ]]; then
-          log_error "Failed to pull dependency: ${ref} (${image_ref})"
-          validation_failed=true
-        else
-          log_warning "Failed to pull dependency: ${ref} (${image_ref}) — continuing (soft mode)"
-        fi
-      fi
-    done
-
-    if [[ "${validation_failed}" == "true" ]]; then
-      log_error "Layerset dependency validation failed"
-      exit 1
-    fi
-    log "Layerset dependency validation passed"
+  dep_schema_file="${schemas_dir}/spec-kaptainpm-schema-layer.${schema_version}.json"
+  if [[ ! -f "${dep_schema_file}" ]]; then
+    log_error "Layer dependency schema file not found: ${dep_schema_file}"
+    exit 1
   fi
+
+  layer_count=$(yq eval '.spec.layers | length' "${yaml_file}")
+  if [[ "${layer_count}" -eq 0 ]]; then
+    log_error "Layerset has no entries in spec.layers"
+    exit 1
+  fi
+
+  # Reject duplicate layer references in spec.layers before we pull
+  # anything. "Duplicate" means the same layer name regardless of
+  # provider prefix (docker|...) or tag (:1.0 vs :1.1) - listing the
+  # same layer twice in any form is always a bug. The sed strips a
+  # leading 'provider|' and a trailing ':tag' (the tag pattern excludes
+  # '/' so it won't eat host:port like 'localhost:5000/foo').
+  #
+  # Best-effort: this catches identical refs, version drift, and prefix
+  # drift, but won't collapse refs at different qualification levels
+  # (e.g. 'name:1.0' vs 'group/name:1.0' vs 'reg/ns/group/name:1.0').
+  # Resolving those would require running each ref through the same
+  # registry/namespace inference the dep-pull loop below uses, which
+  # depends on env vars that may not be set at validate time.
+  duplicate_names=$(yq eval '.spec.layers[]' "${yaml_file}" \
+    | sed -E 's/^[^|]*\|//; s/:[^:/]+$//' \
+    | sort | uniq -d)
+  if [[ -n "${duplicate_names}" ]]; then
+    log_error "Layerset spec.layers contains duplicate layer references (ignoring provider prefix and version):"
+    while IFS= read -r dup_name; do
+      log_error "  ${dup_name}"
+    done <<< "${duplicate_names}"
+    exit 1
+  fi
+
+  # Kind matching across the layerset and its deps. Kind is optional on
+  # both the layerset and any layer, but where declared, all kinds must
+  # agree. The first non-empty kind we see (layerset's, or otherwise the
+  # first dep that declares one) becomes the reference for the rest.
+  expected_kind=$(yq eval '.kind // ""' "${yaml_file}")
+
+  validation_failed=false
+  for ((i = 0; i < layer_count; i++)); do
+    ref=$(yq eval ".spec.layers[${i}]" "${yaml_file}")
+    log "  Checking dependency: ${ref}"
+
+    # Extract to a temp dir and check for KaptainPM.yaml
+    dep_staging="${OUTPUT_SUB_PATH}/layer-validate/deps/${i}"
+    rm -rf "${dep_staging}"
+    mkdir -p "${dep_staging}"
+
+    # Build the full image reference — ref may be short form (name:version)
+    # artifact-resolve would give us the full URI but we need the image directly
+    # Use the same registry/namespace inference as artifact-resolve docker provider
+    if [[ "${ref}" == *"/"* && "${ref%%/*}" == *"."* ]]; then
+      image_ref="${ref}"
+    elif [[ "${ref}" == *"/"* ]]; then
+      image_ref="${DOCKER_TARGET_REGISTRY:-}/${DOCKER_TARGET_NAMESPACE:-}/${ref}"
+    else
+      ref_name="${ref%%:*}"
+      ref_prefix="${ref_name%%-*}"
+      image_ref="${DOCKER_TARGET_REGISTRY:-}/${DOCKER_TARGET_NAMESPACE:-}/${ref_prefix}/${ref}"
+    fi
+
+    if ! "${OCI_EXTRACT}" "${image_ref}" "${dep_staging}" /KaptainPM.yaml 2>/dev/null; then
+      log_error "Failed to pull dependency: ${ref} (${image_ref})"
+      validation_failed=true
+      continue
+    fi
+
+    if [[ ! -f "${dep_staging}/KaptainPM.yaml" ]]; then
+      log_error "Dependency ${ref} does not contain /KaptainPM.yaml"
+      validation_failed=true
+      continue
+    fi
+
+    # Validate the pulled dep against this build system's layer schema
+    if ! check-jsonschema --schemafile "${dep_schema_file}" "${dep_staging}/KaptainPM.yaml" >/dev/null 2>&1; then
+      log_error "Dependency ${ref} KaptainPM.yaml failed schema validation against $(basename "${dep_schema_file}")"
+      validation_failed=true
+      continue
+    fi
+
+    # Kind matching: if the dep declares a kind, it must agree with the
+    # first kind we've seen so far. If nothing has declared one yet, this
+    # dep's kind becomes the reference for any later deps.
+    dep_kind=$(yq eval '.kind // ""' "${dep_staging}/KaptainPM.yaml")
+    if [[ -n "${dep_kind}" ]]; then
+      if [[ -z "${expected_kind}" ]]; then
+        expected_kind="${dep_kind}"
+      elif [[ "${dep_kind}" != "${expected_kind}" ]]; then
+        log_error "Dependency ${ref} has kind '${dep_kind}', expected '${expected_kind}'"
+        validation_failed=true
+        continue
+      fi
+    fi
+
+    log "  ok: ${ref}"
+  done
+
+  if [[ "${validation_failed}" == "true" ]]; then
+    log_error "Layerset dependency validation failed"
+    exit 1
+  fi
+  log "Layerset dependency validation passed"
 fi
 
 log "Validation complete"

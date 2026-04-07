@@ -29,17 +29,20 @@ fi
 
 echo "Schema version: ${SCHEMA_VERSION}"
 
+# Supply defaults for direct local runs
 IMAGE_BUILD_COMMAND="${IMAGE_BUILD_COMMAND:-podman}"
 export IMAGE_BUILD_COMMAND
+BUILD_PLATFORM="${BUILD_PLATFORM:-local}"
+export BUILD_PLATFORM
 
 SCHEMA_IMAGE="ghcr.io/kube-kaptain/spec/spec-kaptainpm-schema:${SCHEMA_VERSION}"
 echo "Schema image: ${SCHEMA_IMAGE}"
 
 UTIL_DIR="src/scripts/util"
-OCI_EXTRACT="${UTIL_DIR}/oci-scratch-extract"
+OCI_EXTRACT="${UTIL_DIR}/extract-oci-image"
 
 if [[ ! -x "${OCI_EXTRACT}" ]]; then
-  echo "ERROR: oci-scratch-extract not found or not executable: ${OCI_EXTRACT}" >&2
+  echo "ERROR: extract-oci-image not found or not executable: ${OCI_EXTRACT}" >&2
   exit 1
 fi
 
@@ -52,13 +55,7 @@ mkdir -p "${STAGING_DIR}"
 echo "Extracting schemas to staging: ${STAGING_DIR}"
 
 # Extract all six schema files from the image
-"${OCI_EXTRACT}" "${SCHEMA_IMAGE}" "${STAGING_DIR}" \
-  /spec-kaptainpm-schema.json \
-  /spec-kaptainpm-schema-final.json \
-  /spec-kaptainpm-schema-layer-source.json \
-  /spec-kaptainpm-schema-layer.json \
-  /spec-kaptainpm-schema-layerset-source.json \
-  /spec-kaptainpm-schema-layerset.json
+"${OCI_EXTRACT}" "${SCHEMA_IMAGE}" "${STAGING_DIR}" 
 
 # Verify all expected files were extracted
 for schema in spec-kaptainpm-schema.json spec-kaptainpm-schema-final.json spec-kaptainpm-schema-layer-source.json spec-kaptainpm-schema-layer.json spec-kaptainpm-schema-layerset-source.json spec-kaptainpm-schema-layerset.json; do

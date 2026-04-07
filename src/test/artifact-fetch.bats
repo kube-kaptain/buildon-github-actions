@@ -15,7 +15,7 @@ setup() {
   export DEST_DIR="${TEST_DIR}/dest"
   mkdir -p "${DEST_DIR}"
 
-  # Mock docker for oci-scratch-extract
+  # Mock docker for extract-oci-image
   mkdir -p "${MOCK_BIN_DIR}"
   cat > "${MOCK_BIN_DIR}/docker" << 'MOCK'
 #!/usr/bin/env bash

@@ -119,9 +119,23 @@ version_filter_release() {
   return 0
 }
 
-# Check if a version is an exact version (no range syntax)
-version_is_exact() {
+# Unwrap a degenerate single-value bracket range "[N]" to "N". Other forms
+# pass through unchanged. Used so that "[1.0]" (a range with equal bounds)
+# can be treated as an exact version, skipping unnecessary resolution.
+version_unwrap_exact() {
   local version="${1}"
+  if [[ "${version}" == "["*"]" && "${version}" != *","* ]]; then
+    version="${version#[}"
+    version="${version%]}"
+  fi
+  printf '%s' "${version}"
+}
+
+# Check if a version is an exact version (no range syntax). Also returns true
+# for degenerate single-value bracketed form "[N]", which is equivalent to "N".
+version_is_exact() {
+  local version
+  version=$(version_unwrap_exact "${1}")
   [[ "${version}" != *"["* && "${version}" != *"("* && "${version}" != *"]"* && "${version}" != *")"* && "${version}" != *","* ]]
 }
 
@@ -141,16 +155,13 @@ version_resolve_range() {
     return 1
   fi
 
-  # Exact version: just check it exists
+  # Exact version: trust it, no existence check. Existence verification is a
+  # separate concern handled by callers via artifact-exists. Also handles the
+  # degenerate "[N]" form by unwrapping to "N".
   if version_is_exact "${range}"; then
-    if echo "${available}" | grep -qx "${range}"; then
-      # shellcheck disable=SC2034  # Read by callers
-      VERSION_RESOLVE_RESULT="${range}"
-      return 0
-    else
-      log_error "Exact version ${range} not found in available versions"
-      return 1
-    fi
+    # shellcheck disable=SC2034  # Read by callers
+    VERSION_RESOLVE_RESULT=$(version_unwrap_exact "${range}")
+    return 0
   fi
 
   # Parse range syntax

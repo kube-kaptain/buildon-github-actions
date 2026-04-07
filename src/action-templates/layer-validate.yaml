@@ -15,10 +15,6 @@ inputs:
     description: 'Target platform(s) for docker build'
     required: false
     default: 'linux/amd64'
-  layer-dependency-validation:
-    description: 'Layerset dependency check mode: hard/soft/skip'
-    required: false
-    default: 'hard'
   docker-target-registry:
     description: 'Target registry for dependency resolution'
     required: false
@@ -28,6 +24,7 @@ inputs:
     required: false
     default: ''
 
+  # INJECT-INPUT: token-substitution
   # INJECT-INPUT: output-sub-path
 
 runs:
@@ -43,8 +40,9 @@ runs:
         LAYER_TYPE: ${{ inputs.layer-type }}
         IMAGE_BUILD_COMMAND: ${{ inputs.image-build-command }}
         DOCKER_PLATFORM: ${{ inputs.docker-platform }}
-        LAYER_DEPENDENCY_VALIDATION: ${{ inputs.layer-dependency-validation }}
         DOCKER_TARGET_REGISTRY: ${{ inputs.docker-target-registry }}
         DOCKER_TARGET_NAMESPACE: ${{ inputs.docker-target-namespace }}
+        TOKEN_DELIMITER_STYLE: ${{ inputs.token-delimiter-style }}
+        TOKEN_NAME_STYLE: ${{ inputs.token-name-style }}
         OUTPUT_SUB_PATH: ${{ inputs.output-sub-path }}
       run: "${{ github.action_path }}/../../scripts/main/layer-validate"

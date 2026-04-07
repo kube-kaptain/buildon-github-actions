@@ -21,12 +21,12 @@ setup() {
   export DOCKER_TARGET_REGISTRY="ghcr.io"
   export DOCKER_TARGET_NAMESPACE="kube-kaptain"
 
-  # Mock docker for oci-scratch-extract
+  # Mock docker for artifact-fetch (file-level extraction via docker cp)
   mkdir -p "${MOCK_BIN_DIR}"
   export MOCK_DOCKER_CALLS="${TEST_DIR}/docker-calls.log"
 
-  # The mock docker will create files based on MOCK_LAYER_DIR
-  # Tests populate MOCK_LAYER_DIR/<image-path>/KaptainPM.yaml before running
+  # The mock docker (and mock extract-oci-image) read layer contents from
+  # MOCK_LAYER_DIR/<image-path>/... Tests populate this before running.
   export MOCK_LAYER_DIR="${TEST_DIR}/mock-layers"
   mkdir -p "${MOCK_LAYER_DIR}"
 
@@ -73,6 +73,69 @@ MOCK
   if ! command -v yq &>/dev/null; then
     skip "yq not available"
   fi
+
+  build_kaptain_init_shim
+}
+
+# Build a focused shim scripts tree so we can inject a mock extract-oci-image
+# without copying or mutating the real source tree. Everything kaptain-init
+# touches via ${SCRIPT_DIR}/.. is symlinked from the real tree except the
+# util/ directory, which is a real dir containing symlinks for the two other
+# utils kaptain-init calls (artifact-resolve, artifact-fetch) and a plain
+# mock file for extract-oci-image.
+build_kaptain_init_shim() {
+  local shim_root="${TEST_DIR}/shim"
+  local real_scripts="${PROJECT_ROOT}/src/scripts"
+  rm -rf "${shim_root}"
+  # main/ and util/ are real dirs so kaptain-init's SCRIPT_DIR (and the
+  # UTIL_DIR it derives) stay inside the shim. The scripts themselves are
+  # symlinked from the real tree - file-level symlinks don't affect bash
+  # path resolution, only directory-level ones do.
+  mkdir -p "${shim_root}/scripts/main" "${shim_root}/scripts/util"
+
+  ln -s "${real_scripts}/main/kaptain-init" "${shim_root}/scripts/main/kaptain-init"
+  ln -s "${real_scripts}/defaults" "${shim_root}/scripts/defaults"
+  ln -s "${real_scripts}/lib"      "${shim_root}/scripts/lib"
+  ln -s "${real_scripts}/plugins"  "${shim_root}/scripts/plugins"
+  ln -s "${PROJECT_ROOT}/src/schemas" "${shim_root}/schemas"
+
+  ln -s "${real_scripts}/util/artifact-resolve" "${shim_root}/scripts/util/artifact-resolve"
+  ln -s "${real_scripts}/util/artifact-fetch"   "${shim_root}/scripts/util/artifact-fetch"
+
+  cat > "${shim_root}/scripts/util/extract-oci-image" << 'MOCK'
+#!/usr/bin/env bash
+# Mock extract-oci-image for kaptain-init.bats. Reads MOCK_LAYER_DIR/<image>
+# and copies its contents into the output dir. Supports full-tree extract
+# (no path args) and selective extract (one or more in-image paths).
+image_ref="${1}"
+output_dir="${2}"
+shift 2
+image_no_tag="${image_ref%:*}"
+src="${MOCK_LAYER_DIR}/${image_no_tag}"
+mkdir -p "${output_dir}"
+if [[ $# -eq 0 ]]; then
+  if [[ -d "${src}" ]]; then
+    cp -R "${src}/." "${output_dir}/"
+  fi
+else
+  for p in "$@"; do
+    parent_dir="$(dirname "${p}")"
+    case "${parent_dir}" in
+      "/" | ".") dest_dir="${output_dir%/}" ;;
+      *)         dest_dir="${output_dir%/}/${parent_dir#/}" ;;
+    esac
+    mkdir -p "${dest_dir}"
+    if [[ -f "${src}${p}" ]]; then
+      cp "${src}${p}" "${dest_dir}/"
+    else
+      exit 1
+    fi
+  done
+fi
+MOCK
+  chmod +x "${shim_root}/scripts/util/extract-oci-image"
+
+  SCRIPT="${shim_root}/scripts/main/kaptain-init"
 }
 
 teardown() {
@@ -86,6 +149,16 @@ create_mock_layer() {
   local layer_dir="${MOCK_LAYER_DIR}/${image_path}"
   mkdir -p "${layer_dir}"
   cat > "${layer_dir}/KaptainPM.yaml"
+}
+
+# Helper: add an arbitrary file to a mock layer at an image-absolute path.
+# Usage: add_mock_layer_file <image-path> <image-abs-path> <<< "content"
+add_mock_layer_file() {
+  local image_path="${1}"
+  local file_path="${2}"
+  local full="${MOCK_LAYER_DIR}/${image_path}${file_path}"
+  mkdir -p "$(dirname "${full}")"
+  cat > "${full}"
 }
 
 # =============================================================================
@@ -309,6 +382,8 @@ spec:
       branches:
         blockSlashes: true
 EOF
+  add_mock_layer_file "ghcr.io/kube-kaptain/quality/quality-strict" /scripts/build.bash <<< '#!/bin/sh
+echo build'
 
   cat > "${REPO_DIR}/KaptainPM.yaml" << 'EOF'
 apiVersion: kaptain.org/1.2
@@ -327,6 +402,180 @@ EOF
   # Config values still there
   run yq eval '.spec.main.quality.branches.blockSlashes' "${REPO_DIR}/kaptainpm/final/KaptainPM.yaml"
   [[ "$output" == "true" ]]
+
+  # Payload file actually landed at destination
+  [[ -f "${REPO_DIR}/.kaptain/scripts/build.bash" ]]
+}
+
+@test "layer-payload: fails when source not in extracted layer" {
+  create_mock_layer "ghcr.io/kube-kaptain/quality/quality-strict" << 'EOF'
+apiVersion: kaptain.org/1.2
+layer-payload:
+  - source: /scripts/missing.bash
+    destination: .kaptain/scripts/
+spec:
+  main:
+    quality:
+      branches:
+        blockSlashes: true
+EOF
+
+  cat > "${REPO_DIR}/KaptainPM.yaml" << 'EOF'
+apiVersion: kaptain.org/1.2
+kind: KubeAppDockerDockerfile
+spec:
+  layers:
+    - quality-strict:1.0
+EOF
+  run "$SCRIPT"
+  [[ "$status" -ne 0 ]]
+  [[ "$output" == *"source not found in context listing"* ]]
+  [[ "$output" == *"/scripts/missing.bash"* ]]
+}
+
+@test "layer-payload: fails when destination contains '..'" {
+  create_mock_layer "ghcr.io/kube-kaptain/quality/quality-strict" << 'EOF'
+apiVersion: kaptain.org/1.2
+layer-payload:
+  - source: /scripts/build.bash
+    destination: ../escape/
+spec:
+  main:
+    quality:
+      branches:
+        blockSlashes: true
+EOF
+  add_mock_layer_file "ghcr.io/kube-kaptain/quality/quality-strict" /scripts/build.bash <<< 'x'
+
+  cat > "${REPO_DIR}/KaptainPM.yaml" << 'EOF'
+apiVersion: kaptain.org/1.2
+kind: KubeAppDockerDockerfile
+spec:
+  layers:
+    - quality-strict:1.0
+EOF
+  run "$SCRIPT"
+  [[ "$status" -ne 0 ]]
+  [[ "$output" == *"parent-traversal"* ]]
+}
+
+@test "layer-payload: fails when destination is absolute" {
+  create_mock_layer "ghcr.io/kube-kaptain/quality/quality-strict" << 'EOF'
+apiVersion: kaptain.org/1.2
+layer-payload:
+  - source: /scripts/build.bash
+    destination: /etc/evil/
+spec:
+  main:
+    quality:
+      branches:
+        blockSlashes: true
+EOF
+  add_mock_layer_file "ghcr.io/kube-kaptain/quality/quality-strict" /scripts/build.bash <<< 'x'
+
+  cat > "${REPO_DIR}/KaptainPM.yaml" << 'EOF'
+apiVersion: kaptain.org/1.2
+kind: KubeAppDockerDockerfile
+spec:
+  layers:
+    - quality-strict:1.0
+EOF
+  run "$SCRIPT"
+  [[ "$status" -ne 0 ]]
+  [[ "$output" == *"must be relative"* ]]
+}
+
+@test "layer-payload: fails when destinations are duplicated" {
+  create_mock_layer "ghcr.io/kube-kaptain/quality/quality-strict" << 'EOF'
+apiVersion: kaptain.org/1.2
+layer-payload:
+  - source: /scripts/build.bash
+    destination: .kaptain/scripts/
+  - source: /scripts/other.bash
+    destination: .kaptain/scripts/
+spec:
+  main:
+    quality:
+      branches:
+        blockSlashes: true
+EOF
+  add_mock_layer_file "ghcr.io/kube-kaptain/quality/quality-strict" /scripts/build.bash <<< 'x'
+  add_mock_layer_file "ghcr.io/kube-kaptain/quality/quality-strict" /scripts/other.bash <<< 'y'
+
+  cat > "${REPO_DIR}/KaptainPM.yaml" << 'EOF'
+apiVersion: kaptain.org/1.2
+kind: KubeAppDockerDockerfile
+spec:
+  layers:
+    - quality-strict:1.0
+EOF
+  run "$SCRIPT"
+  [[ "$status" -ne 0 ]]
+  [[ "$output" == *"destination already used"* ]]
+}
+
+@test "layer-payload: multiple entries all land at their destinations" {
+  create_mock_layer "ghcr.io/kube-kaptain/quality/quality-strict" << 'EOF'
+apiVersion: kaptain.org/1.2
+layer-payload:
+  - source: /scripts/build.bash
+    destination: .kaptain/scripts/
+  - source: /config/settings.yaml
+    destination: .kaptain/config/
+spec:
+  main:
+    quality:
+      branches:
+        blockSlashes: true
+EOF
+  add_mock_layer_file "ghcr.io/kube-kaptain/quality/quality-strict" /scripts/build.bash <<< '#!/bin/sh'
+  add_mock_layer_file "ghcr.io/kube-kaptain/quality/quality-strict" /config/settings.yaml <<< 'key: value'
+
+  cat > "${REPO_DIR}/KaptainPM.yaml" << 'EOF'
+apiVersion: kaptain.org/1.2
+kind: KubeAppDockerDockerfile
+spec:
+  layers:
+    - quality-strict:1.0
+EOF
+  run "$SCRIPT"
+  [[ "$status" -eq 0 ]]
+  [[ -f "${REPO_DIR}/.kaptain/scripts/build.bash" ]]
+  [[ -f "${REPO_DIR}/.kaptain/config/settings.yaml" ]]
+}
+
+@test "layer-payload: tar.gz unpack extracts archive into destination" {
+  create_mock_layer "ghcr.io/kube-kaptain/quality/quality-strict" << 'EOF'
+apiVersion: kaptain.org/1.2
+layer-payload:
+  - source: /bundles/tools.tar.gz
+    destination: .kaptain/tools/
+    unpack: tar.gz
+spec:
+  main:
+    quality:
+      branches:
+        blockSlashes: true
+EOF
+  # Build a real tar.gz containing two files and stash it at the layer path
+  local stage="${TEST_DIR}/tarball-stage"
+  mkdir -p "${stage}/bundle"
+  echo one > "${stage}/bundle/one.txt"
+  echo two > "${stage}/bundle/two.txt"
+  mkdir -p "${MOCK_LAYER_DIR}/ghcr.io/kube-kaptain/quality/quality-strict/bundles"
+  ( cd "${stage}/bundle" && tar -czf "${MOCK_LAYER_DIR}/ghcr.io/kube-kaptain/quality/quality-strict/bundles/tools.tar.gz" . )
+
+  cat > "${REPO_DIR}/KaptainPM.yaml" << 'EOF'
+apiVersion: kaptain.org/1.2
+kind: KubeAppDockerDockerfile
+spec:
+  layers:
+    - quality-strict:1.0
+EOF
+  run "$SCRIPT"
+  [[ "$status" -eq 0 ]]
+  [[ -f "${REPO_DIR}/.kaptain/tools/one.txt" ]]
+  [[ -f "${REPO_DIR}/.kaptain/tools/two.txt" ]]
 }
 
 # =============================================================================
@@ -518,6 +767,10 @@ spec:
       branches:
         blockSlashes: true
 EOF
+  # The layer-payload source must exist in the mock layer so the consumption-
+  # time validate_layer_payload call doesn't fail. The actual content is
+  # irrelevant to this test - what matters is the preserved manifest below.
+  add_mock_layer_file "ghcr.io/kube-kaptain/quality/quality-strict" "/scripts/build.bash" <<< "dummy"
 
   cat > "${REPO_DIR}/KaptainPM.yaml" << 'EOF'
 apiVersion: kaptain.org/1.2
@@ -598,7 +851,7 @@ spec:
 EOF
   run "$SCRIPT"
   [[ "$status" -eq 1 ]]
-  [[ "$output" == *"does not contain KaptainPM.yaml"* ]]
+  [[ "$output" == *"Failed to extract /KaptainPM.yaml"* ]]
 }
 
 # =============================================================================
