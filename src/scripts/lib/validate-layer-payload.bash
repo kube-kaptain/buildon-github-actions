@@ -22,6 +22,12 @@
 #   - destinations are globally unique across all layer-payload entries
 #     (sources may repeat; destinations may not)
 #
+# Failure handling:
+#   Validation failures do NOT short-circuit. Every entry is checked and
+#   every error is logged, then a summary line is emitted and the function
+#   returns non-zero. The caller gets one report with all issues instead
+#   of having to fix-and-retry one error at a time.
+#
 # Requires: yq, find, grep, sed, sort, and a log/log_error pair already
 # sourced by the caller.
 
@@ -72,48 +78,71 @@ validate_layer_payload() {
 
   : > "${seen_dests_file}"
 
-  local i source_path dest_path
+  local i source_path dest_path entry_ok error_count=0
   for ((i = 0; i < payload_count; i++)); do
     source_path=$(yq eval ".[\"layer-payload\"][${i}].source" "${yaml_file}")
+    dest_path=$(yq eval ".[\"layer-payload\"][${i}].destination" "${yaml_file}")
+    entry_ok=true
+
+    # Source checks. If source is empty we skip the listing lookup, but we
+    # still run all destination checks below so a single malformed entry
+    # surfaces as many errors as it has.
     if [[ -z "${source_path}" || "${source_path}" == "null" ]]; then
       log_error "layer-payload[${i}] has no source path"
-      return 1
-    fi
-    # Source must be a real file in the image context listing. Exact
-    # whole-line match via grep -Fxq.
-    if ! grep -Fxq "${source_path}" "${manifest_file}"; then
+      error_count=$((error_count + 1))
+      entry_ok=false
+    elif ! grep -Fxq "${source_path}" "${manifest_file}"; then
+      # Source must be a real file in the image context listing. Exact
+      # whole-line match via grep -Fxq.
       log_error "layer-payload[${i}] source not found in context listing of ${fs_root}: ${source_path}"
-      return 1
+      error_count=$((error_count + 1))
+      entry_ok=false
     fi
 
     # Destination path must be relative to consumer's repo root and contain
     # no parent-traversal, so a layer cannot write outside the repo at
     # install time.
-    dest_path=$(yq eval ".[\"layer-payload\"][${i}].destination" "${yaml_file}")
     if [[ -z "${dest_path}" || "${dest_path}" == "null" ]]; then
       log_error "layer-payload[${i}] has no destination path"
-      return 1
+      error_count=$((error_count + 1))
+      entry_ok=false
+    else
+      # Reject absolute paths.
+      if [[ "${dest_path}" == '/'* ]]; then
+        log_error "layer-payload[${i}] destination must be relative (no leading '/'): ${dest_path}"
+        error_count=$((error_count + 1))
+        entry_ok=false
+      fi
+      # Reject any '..' component. Matches bare '..', leading '../x', middle
+      # 'x/../y', and trailing 'x/..'. Leading './' is allowed and untouched.
+      if [[ "${dest_path}" =~ (^|/)'..'($|/) ]]; then
+        log_error "layer-payload[${i}] destination contains parent-traversal '..': ${dest_path}"
+        error_count=$((error_count + 1))
+        entry_ok=false
+      fi
+      # Destinations must be globally unique across the whole layer-payload.
+      # Sources may repeat (same file copied to multiple places); destinations
+      # may not (two entries writing to the same place is always a bug).
+      # Only track structurally-valid destinations, otherwise a malformed
+      # value would mask a later legit duplicate collision.
+      if ${entry_ok}; then
+        if grep -Fxq "${dest_path}" "${seen_dests_file}"; then
+          log_error "layer-payload[${i}] destination already used by an earlier entry: ${dest_path}"
+          error_count=$((error_count + 1))
+          entry_ok=false
+        else
+          echo "${dest_path}" >> "${seen_dests_file}"
+        fi
+      fi
     fi
-    # Reject absolute paths.
-    if [[ "${dest_path}" == '/'* ]]; then
-      log_error "layer-payload[${i}] destination must be relative (no leading '/'): ${dest_path}"
-      return 1
-    fi
-    # Reject any '..' component. Matches bare '..', leading '../x', middle
-    # 'x/../y', and trailing 'x/..'. Leading './' is allowed and untouched.
-    if [[ "${dest_path}" =~ (^|/)'..'($|/) ]]; then
-      log_error "layer-payload[${i}] destination contains parent-traversal '..': ${dest_path}"
-      return 1
-    fi
-    # Destinations must be globally unique across the whole layer-payload.
-    # Sources may repeat (same file copied to multiple places); destinations
-    # may not (two entries writing to the same place is always a bug).
-    if grep -Fxq "${dest_path}" "${seen_dests_file}"; then
-      log_error "layer-payload[${i}] destination already used by an earlier entry: ${dest_path}"
-      return 1
-    fi
-    echo "${dest_path}" >> "${seen_dests_file}"
 
-    log "  payload ok: ${source_path} -> ${dest_path}"
+    if ${entry_ok}; then
+      log "  payload ok: ${source_path} -> ${dest_path}"
+    fi
   done
+
+  if [[ "${error_count}" -gt 0 ]]; then
+    log_error "layer-payload validation failed: ${error_count} error(s)"
+    return 1
+  fi
 }

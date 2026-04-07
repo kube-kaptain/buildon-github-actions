@@ -502,3 +502,26 @@ EOF
   [[ "$output" == *"payload ok: /two.txt -> out/two"* ]]
   [[ "$output" == *"payload ok: /three.txt -> out/three"* ]]
 }
+
+@test "layer-payload accumulates multiple errors and reports the count" {
+  export LAYER_TYPE="layer"
+  # Four entries, each broken in a different way:
+  #   [0] source not in context listing
+  #   [1] absolute destination
+  #   [2] destination contains '..'
+  #   [3] valid entry (should still log ok)
+  touch_context_file "/present.txt"
+  write_layer_with_payloads '[
+    {"source":"/missing.txt","destination":"ok/a"},
+    {"source":"/present.txt","destination":"/etc/evil"},
+    {"source":"/present.txt","destination":"../escape"},
+    {"source":"/present.txt","destination":"ok/b"}
+  ]'
+  run "$SCRIPT"
+  [[ "$status" -ne 0 ]]
+  [[ "$output" == *"source not found in context listing"* ]]
+  [[ "$output" == *"destination must be relative"* ]]
+  [[ "$output" == *"parent-traversal"* ]]
+  [[ "$output" == *"payload ok: /present.txt -> ok/b"* ]]
+  [[ "$output" == *"layer-payload validation failed: 3 error(s)"* ]]
+}
