@@ -20,6 +20,18 @@ inputs:
 
   # INJECT-INPUT: output-sub-path
 
+  # Required for resolving short-form layer dep references (e.g.
+  # 'layer-foo:[1.1,2.0)') against the docker registry. Without these the
+  # version-range resolver can't expand the ref into a full image URI.
+  docker-target-registry:
+    description: 'Target registry for resolving short-form layer dep references'
+    required: false
+    default: ''
+  docker-target-namespace:
+    description: 'Target namespace for resolving short-form layer dep references'
+    required: false
+    default: ''
+
   layer-packaging-base-image:
     description: 'Base image for generated Dockerfile'
     required: false
@@ -57,5 +69,7 @@ runs:
         REPOSITORY_OWNER: ${{ inputs.repository-owner }}
         REPOSITORY_NAME: ${{ inputs.repository-name }}
         OUTPUT_SUB_PATH: ${{ inputs.output-sub-path }}
+        DOCKER_TARGET_REGISTRY: ${{ inputs.docker-target-registry }}
+        DOCKER_TARGET_NAMESPACE: ${{ inputs.docker-target-namespace }}
         LAYER_PACKAGING_BASE_IMAGE: ${{ inputs.layer-packaging-base-image }}
       run: "${{ github.action_path }}/../../scripts/main/layer-package-prepare"

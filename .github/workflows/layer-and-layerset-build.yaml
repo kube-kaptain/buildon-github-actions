@@ -1245,6 +1245,8 @@ jobs:
           repository-owner: ${{ steps.versions.outputs.repository-owner }}
           repository-name: ${{ steps.versions.outputs.repository-name }}
           output-sub-path: ${{ steps.kpm.outputs.OUTPUT_SUB_PATH }}
+          docker-target-registry: ${{ steps.resolve-registry.outputs.docker-target-registry }}
+          docker-target-namespace: ${{ steps.resolve-registry.outputs.docker-target-namespace }}
           layer-packaging-base-image: ${{ steps.kpm.outputs.LAYER_PACKAGING_BASE_IMAGE }}
       - name: Pass check - Layer Package Prepare
         if: success() && steps.check-layer-package-prepare.outputs.check-run-id != ''
