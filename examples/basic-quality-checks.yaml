@@ -18,6 +18,6 @@ on:
 
 jobs:
   build:
-    uses: kube-kaptain/buildon-github-actions/.github/workflows/basic-quality-checks.yaml@1.1.4
+    uses: kube-kaptain/buildon-github-actions/.github/workflows/basic-quality-checks.yaml@1.1.5
     permissions:
       checks: write
