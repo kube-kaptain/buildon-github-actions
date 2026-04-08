@@ -121,8 +121,12 @@ docker_ref_expand() {
       ;;
   esac
 
+  # shellcheck disable=SC2034  # Read by callers
   DOCKER_REF_NAME_PART="${name_part}"
+  # shellcheck disable=SC2034  # Read by callers
   DOCKER_REF_VERSION_PART="${version_part}"
+  # shellcheck disable=SC2034  # Read by callers
   DOCKER_REF_FULL_NAME="${full_name}"
+  # shellcheck disable=SC2034  # Read by callers
   DOCKER_REF_FORM="${form}"
 }

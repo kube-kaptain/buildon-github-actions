@@ -36,9 +36,8 @@ source "${SCRIPT_DIR}/../../lib/docker-ref-expand.bash"
 reference="${1:?Usage: docker <reference> <output-file>}"
 output_file="${2:?Usage: docker <reference> <output-file>}"
 
-# Parse and expand the reference into form/full_name/version_part
+# Parse and expand the reference into full_name/version_part
 docker_ref_expand "${reference}" || exit 1
-name_part="${DOCKER_REF_NAME_PART}"
 version_part="${DOCKER_REF_VERSION_PART}"
 full_name="${DOCKER_REF_FULL_NAME}"
 
