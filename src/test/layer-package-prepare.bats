@@ -76,7 +76,7 @@ metadata:
   annotations: {}
 spec:
   layers:
-    - ghcr.io/kube-kaptain/layer/quality-strict:1.0.0
+    - ghcr.io/kube-kaptain/quality/quality-strict:1.0.0
 EOF
 }
 
