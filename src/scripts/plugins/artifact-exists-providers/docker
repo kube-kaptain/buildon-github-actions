@@ -4,19 +4,24 @@
 #
 # artifact-exists-providers/docker - Docker/OCI artifact existence provider
 #
-# Verifies that a fully-qualified OCI image reference exists at the remote
-# registry without pulling any layers/blobs. Uses `docker manifest inspect`
-# (or podman equivalent) for a lightweight HEAD-style check.
+# Verifies that an OCI image reference exists at the remote registry without
+# pulling any layers/blobs. Uses `docker manifest inspect` (or podman
+# equivalent) for a lightweight HEAD-style check.
 #
-# Usage: docker <fully-qualified-uri>
-#   reference: registry/namespace/.../name:version
+# Accepts short, prefixed, or full reference forms - expansion is shared with
+# the resolve provider so both plugins treat refs identically.
+#
+# Usage: docker <reference>
+#   reference: name:version, prefix/name:version, or registry/namespace/prefix/name:version
 #
 # Exit:
 #   0 - artifact exists at the remote
 #   1 - artifact does not exist (or cannot be confirmed)
 #
 # Env:
-#   IMAGE_BUILD_COMMAND - podman or docker (required)
+#   IMAGE_BUILD_COMMAND      - podman or docker (required)
+#   DOCKER_TARGET_REGISTRY   - required for short/prefixed form expansion
+#   DOCKER_TARGET_NAMESPACE  - required for short/prefixed form expansion
 #
 set -euo pipefail
 
@@ -26,24 +31,27 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/../../defaults/platform.bash"
 # shellcheck source=src/scripts/lib/log.bash
 source "${SCRIPT_DIR}/../../lib/log.bash"
+# shellcheck source=src/scripts/lib/docker-ref-expand.bash
+source "${SCRIPT_DIR}/../../lib/docker-ref-expand.bash"
 
-reference="${1:?Usage: docker <fully-qualified-uri>}"
-
-if [[ "${reference}" != *":"* ]]; then
-  log_error "Invalid reference: missing version (no colon): ${reference}"
-  exit 1
-fi
+reference="${1:?Usage: docker <reference>}"
 
 if [[ -z "${IMAGE_BUILD_COMMAND:-}" ]]; then
   log_error "IMAGE_BUILD_COMMAND is required for remote existence check"
   exit 1
 fi
 
-log "Checking remote existence of ${reference} via ${IMAGE_BUILD_COMMAND} manifest inspect..."
-if "${IMAGE_BUILD_COMMAND}" manifest inspect "${reference}" >/dev/null 2>&1; then
-  log "Exists: ${reference}"
+# Expand the reference - handles short/prefixed/full the same way the resolve
+# plugin does, so a short-form ref (stored in KaptainPM.yaml) becomes the fully
+# qualified URI before we hand it to `manifest inspect`.
+docker_ref_expand "${reference}" || exit 1
+full_ref="${DOCKER_REF_FULL_NAME}:${DOCKER_REF_VERSION_PART}"
+
+log "Checking remote existence of ${full_ref} via ${IMAGE_BUILD_COMMAND} manifest inspect..."
+if "${IMAGE_BUILD_COMMAND}" manifest inspect "${full_ref}" >/dev/null 2>&1; then
+  log "Exists: ${full_ref}"
   exit 0
 fi
 
-log_error "Does not exist at remote: ${reference}"
+log_error "Does not exist at remote: ${full_ref}"
 exit 1

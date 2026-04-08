@@ -30,103 +30,17 @@ source "${SCRIPT_DIR}/../../defaults/platform.bash"
 source "${SCRIPT_DIR}/../../lib/log.bash"
 # shellcheck source=src/scripts/lib/version-range.bash
 source "${SCRIPT_DIR}/../../lib/version-range.bash"
+# shellcheck source=src/scripts/lib/docker-ref-expand.bash
+source "${SCRIPT_DIR}/../../lib/docker-ref-expand.bash"
 
 reference="${1:?Usage: docker <reference> <output-file>}"
 output_file="${2:?Usage: docker <reference> <output-file>}"
 
-# Split reference into name-part and version-part on last colon
-if [[ "${reference}" != *":"* ]]; then
-  log_error "Invalid reference: missing version (no colon found): ${reference}"
-  exit 1
-fi
-version_part="${reference##*:}"
-name_part="${reference%:*}"
-
-if [[ -z "${version_part}" ]]; then
-  log_error "Invalid reference: empty version: ${reference}"
-  exit 1
-fi
-if [[ -z "${name_part}" ]]; then
-  log_error "Invalid reference: empty name: ${reference}"
-  exit 1
-fi
-
-# Detect reference form:
-#   Full:     dot in the first segment (domain present)
-#   Prefixed: contains / but no dot in first segment
-#   Short:    no /
-first_segment="${name_part%%/*}"
-
-if [[ "${first_segment}" == *"."* ]]; then
-  # Full form: domain/[namespace/]prefix/name
-  form="full"
-elif [[ "${name_part}" == *"/"* ]]; then
-  # Prefixed form: prefix/name
-  form="prefixed"
-else
-  # Short form: just name
-  form="short"
-fi
-
-# Extract prefix from the artifact name (first segment before first hyphen)
-# e.g. quality-strict -> quality, java-web-service -> java
-extract_prefix() {
-  local name="${1}"
-  local base_name="${name##*/}"
-  echo "${base_name%%-*}"
-}
-
-# Validate that the prefix path segment matches the name's derived prefix
-validate_prefix() {
-  local prefix_segment="${1}"
-  local name="${2}"
-  local expected_prefix
-  expected_prefix=$(extract_prefix "${name}")
-  if [[ "${prefix_segment}" != "${expected_prefix}" ]]; then
-    log_error "Prefix mismatch: path segment '${prefix_segment}' does not match name prefix '${expected_prefix}' derived from '${name}'"
-    return 1
-  fi
-}
-
-case "${form}" in
-  short)
-    # name:version -> registry/namespace/prefix/name:version
-    if [[ -z "${DOCKER_TARGET_REGISTRY:-}" ]]; then
-      log_error "DOCKER_TARGET_REGISTRY is required for short-form reference: ${reference}"
-      exit 1
-    fi
-    if [[ -z "${DOCKER_TARGET_NAMESPACE:-}" ]]; then
-      log_error "DOCKER_TARGET_NAMESPACE is required for short-form reference: ${reference}"
-      exit 1
-    fi
-    prefix=$(extract_prefix "${name_part}")
-    full_name="${DOCKER_TARGET_REGISTRY}/${DOCKER_TARGET_NAMESPACE}/${prefix}/${name_part}"
-    ;;
-  prefixed)
-    # prefix/name:version -> registry/namespace/prefix/name:version
-    if [[ -z "${DOCKER_TARGET_REGISTRY:-}" ]]; then
-      log_error "DOCKER_TARGET_REGISTRY is required for prefixed-form reference: ${reference}"
-      exit 1
-    fi
-    if [[ -z "${DOCKER_TARGET_NAMESPACE:-}" ]]; then
-      log_error "DOCKER_TARGET_NAMESPACE is required for prefixed-form reference: ${reference}"
-      exit 1
-    fi
-    prefix_segment="${name_part%%/*}"
-    artifact_name="${name_part#*/}"
-    validate_prefix "${prefix_segment}" "${artifact_name}"
-    full_name="${DOCKER_TARGET_REGISTRY}/${DOCKER_TARGET_NAMESPACE}/${name_part}"
-    ;;
-  full)
-    # domain/[namespace/]prefix/name:version -> validate prefix, use as-is
-    # The prefix is the second-to-last path segment, the name is the last
-    parent_path="${name_part%/*}"
-    prefix_segment="${parent_path##*/}"
-    artifact_name="${name_part##*/}"
-    validate_prefix "${prefix_segment}" "${artifact_name}"
-    full_name="${name_part}"
-    ;;
-esac
+# Parse and expand the reference into form/full_name/version_part
+docker_ref_expand "${reference}" || exit 1
+name_part="${DOCKER_REF_NAME_PART}"
+version_part="${DOCKER_REF_VERSION_PART}"
+full_name="${DOCKER_REF_FULL_NAME}"
 
 # Version resolution
 # Unwrap degenerate "[N]" form to "N" once up front so both branches see the
