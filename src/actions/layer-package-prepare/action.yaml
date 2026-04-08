@@ -24,6 +24,12 @@ inputs:
     required: false
     default: 'kaptain-out'
 
+  # Required by the docker artifact provider when resolving short-form layer
+  # dep references (version-range or bare name) against the registry.
+  image-build-command:
+    description: 'Container runtime command (docker or podman) used by artifact resolver'
+    required: true
+
   # Required for resolving short-form layer dep references (e.g.
   # 'layer-foo:[1.1,2.0)') against the docker registry. Without these the
   # version-range resolver can't expand the ref into a full image URI.
@@ -73,6 +79,7 @@ runs:
         REPOSITORY_OWNER: ${{ inputs.repository-owner }}
         REPOSITORY_NAME: ${{ inputs.repository-name }}
         OUTPUT_SUB_PATH: ${{ inputs.output-sub-path }}
+        IMAGE_BUILD_COMMAND: ${{ inputs.image-build-command }}
         DOCKER_TARGET_REGISTRY: ${{ inputs.docker-target-registry }}
         DOCKER_TARGET_NAMESPACE: ${{ inputs.docker-target-namespace }}
         LAYER_PACKAGING_BASE_IMAGE: ${{ inputs.layer-packaging-base-image }}
