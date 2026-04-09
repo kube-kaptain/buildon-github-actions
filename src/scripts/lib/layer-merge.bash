@@ -16,7 +16,7 @@
 layer_strip_payload() {
   local input="${1}"
   local output="${2}"
-  yq eval 'del(.["layer-payload"])' "${input}" > "${output}"
+  yq eval -P 'del(.["layer-payload"])' "${input}" > "${output}"
 }
 
 # Deep merge two YAML files: overlay on top of base.
@@ -27,7 +27,7 @@ layer_deep_merge() {
   local base="${1}"
   local overlay="${2}"
   local output="${3}"
-  yq eval-all 'select(fileIndex == 0) * select(fileIndex == 1)' "${base}" "${overlay}" > "${output}"
+  yq eval-all -P 'select(fileIndex == 0) * select(fileIndex == 1)' "${base}" "${overlay}" > "${output}"
 }
 
 # Record an interpolation step as a numbered file for debugging and auditing.
