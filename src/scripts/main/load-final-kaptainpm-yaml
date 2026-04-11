@@ -328,6 +328,10 @@ MAPPINGS=(
   # Change source
   "spec.main.changeSource.noteEnabled:CHANGE_SOURCE_NOTE_ENABLED"
 
+  # Vendor Helm Rendered
+  "spec.main.vendorHelmRendered.repoUrl:VENDOR_HELM_RENDERED_REPO_URL"
+  "spec.main.vendorHelmRendered.chartName:VENDOR_HELM_RENDERED_CHART_NAME"
+  "spec.main.vendorHelmRendered.ociChart:VENDOR_HELM_RENDERED_OCI_CHART"
   # Hooks
   "spec.main.hooks.preBuild:HOOK_PRE_BUILD_SCRIPT_SUB_PATH"
   "spec.main.hooks.preTaggingTests:HOOK_PRE_TAGGING_TESTS_SCRIPT_SUB_PATH"
@@ -386,10 +390,42 @@ log ""
 # Extract registry login config as a single-line JSON string for
 # docker-registry-logins. JSON is used (not YAML) because it collapses to one
 # line, which makes it safe to pass as a single env var / string argument.
-logins_json=$(yq -o=json -c '.spec.main.docker.logins // ""' "${PM_FILE}")
+logins_json=$(yq -o=json '.spec.main.docker.logins // ""' "${PM_FILE}" | jq -c '.')
 if [[ -n "${logins_json}" && "${logins_json}" != "null" && "${logins_json}" != '""' ]]; then
   output_var "DOCKER_REGISTRY_LOGINS" "${logins_json}" > /dev/null
   log "Field .spec.main.docker.logins exported as DOCKER_REGISTRY_LOGINS (JSON)"
+  found_count=$((found_count + 1))
+fi
+
+# Extract vendorHelmRendered.moveFiles as a single-line JSON string
+move_files_json=$(yq -o=json '.spec.main.vendorHelmRendered.moveFiles // ""' "${PM_FILE}" | jq -c '.')
+if [[ -n "${move_files_json}" && "${move_files_json}" != "null" && "${move_files_json}" != '""' ]]; then
+  output_var "VENDOR_HELM_RENDERED_MOVE_FILES" "${move_files_json}" > /dev/null
+  log "Field .spec.main.vendorHelmRendered.moveFiles exported as VENDOR_HELM_RENDERED_MOVE_FILES (JSON)"
+  found_count=$((found_count + 1))
+fi
+
+# Extract vendorHelmRendered.sedReplace as a single-line JSON string
+sed_replace_json=$(yq -o=json '.spec.main.vendorHelmRendered.sedReplace // ""' "${PM_FILE}" | jq -c '.')
+if [[ -n "${sed_replace_json}" && "${sed_replace_json}" != "null" && "${sed_replace_json}" != '""' ]]; then
+  output_var "VENDOR_HELM_RENDERED_SED_REPLACE" "${sed_replace_json}" > /dev/null
+  log "Field .spec.main.vendorHelmRendered.sedReplace exported as VENDOR_HELM_RENDERED_SED_REPLACE (JSON)"
+  found_count=$((found_count + 1))
+fi
+
+# Extract vendorHelmRendered.yqTransform as a single-line JSON string
+yq_transform_json=$(yq -o=json '.spec.main.vendorHelmRendered.yqTransform // ""' "${PM_FILE}" | jq -c '.')
+if [[ -n "${yq_transform_json}" && "${yq_transform_json}" != "null" && "${yq_transform_json}" != '""' ]]; then
+  output_var "VENDOR_HELM_RENDERED_YQ_TRANSFORM" "${yq_transform_json}" > /dev/null
+  log "Field .spec.main.vendorHelmRendered.yqTransform exported as VENDOR_HELM_RENDERED_YQ_TRANSFORM (JSON)"
+  found_count=$((found_count + 1))
+fi
+
+# Extract vendorHelmRendered.imageRetags as a single-line JSON string
+image_retags_json=$(yq -o=json '.spec.main.vendorHelmRendered.imageRetags // ""' "${PM_FILE}" | jq -c '.')
+if [[ -n "${image_retags_json}" && "${image_retags_json}" != "null" && "${image_retags_json}" != '""' ]]; then
+  output_var "VENDOR_HELM_RENDERED_IMAGE_RETAGS" "${image_retags_json}" > /dev/null
+  log "Field .spec.main.vendorHelmRendered.imageRetags exported as VENDOR_HELM_RENDERED_IMAGE_RETAGS (JSON)"
   found_count=$((found_count + 1))
 fi
 

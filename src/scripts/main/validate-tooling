@@ -187,6 +187,16 @@ else
 fi
 log ""
 
+# Check helm (required)
+log "Checking helm..."
+if check_tool "helm"; then
+  log_tool "✓" "helm" "$(tool_version helm)"
+else
+  log_tool "✗" "helm" "(missing)"
+  MISSING_CORE="${MISSING_CORE} helm"
+fi
+log ""
+
 # Check cloud CLIs (warn only)
 log "Checking cloud CLIs (optional)..."
 for tool in ${CLOUD_TOOLS}; do

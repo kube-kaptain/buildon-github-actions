@@ -1,0 +1,432 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
+#
+# helm-render-and-process - Fetches a helm chart, renders it, and processes the
+# output into clean individual kubernetes manifests.
+#
+# Stages:
+#   A-chart/          fetched chart source
+#   B-rendered/       helm template output (preserves chart subdirs)
+#   C-split/          multi-doc split in place, one resource per file
+#   D-moved-files/    only moveFiles kept, renamed as specified
+#   E-sed-replaced/   sed replacements applied
+#   F-yq-transformed/ yq transforms (inline + file-based)
+#   G-annotated/      kaptain labels/annotations injected
+#   H-validated/      yq validation passed
+#
+set -euo pipefail
+
+SCRIPT_DIR="$(dirname "${0}")"
+
+# shellcheck source=src/scripts/defaults/platform.bash
+source "${SCRIPT_DIR}/../defaults/platform.bash"
+# shellcheck source=src/scripts/lib/log.bash
+source "${SCRIPT_DIR}/../lib/log.bash"
+# shellcheck source=src/scripts/lib/output-var.bash
+source "${SCRIPT_DIR}/../lib/output-var.bash"
+
+# Required inputs
+OUTPUT_SUB_PATH="${OUTPUT_SUB_PATH:?OUTPUT_SUB_PATH is required}"
+
+# Chart source - exactly one mode must be configured
+REPO_URL="${VENDOR_HELM_RENDERED_REPO_URL:-}"
+CHART_NAME="${VENDOR_HELM_RENDERED_CHART_NAME:-}"
+OCI_CHART="${VENDOR_HELM_RENDERED_OCI_CHART:-}"
+MOVE_FILES_JSON="${VENDOR_HELM_RENDERED_MOVE_FILES:-}"
+SED_REPLACE_JSON="${VENDOR_HELM_RENDERED_SED_REPLACE:-}"
+YQ_TRANSFORM_JSON="${VENDOR_HELM_RENDERED_YQ_TRANSFORM:-}"
+IMAGE_RETAGS_JSON="${VENDOR_HELM_RENDERED_IMAGE_RETAGS:-}"
+
+# Version from src/config/VendorHelmRenderedVersion
+VERSION_FILE="src/config/VendorHelmRenderedVersion"
+if [[ ! -f "${VERSION_FILE}" ]]; then
+  log_error "Version file not found: ${VERSION_FILE}"
+  exit 1
+fi
+VERSION="$(tr -d '[:space:]' < "${VERSION_FILE}")"
+log "Chart version: ${VERSION}"
+
+# Project name for helm release name
+PROJECT_NAME="${PROJECT_NAME:?PROJECT_NAME is required}"
+
+# Validate chart source mode
+HAS_REPO=false
+HAS_OCI=false
+if [[ -n "${REPO_URL}" && -n "${CHART_NAME}" ]]; then
+  HAS_REPO=true
+elif [[ -n "${REPO_URL}" && -z "${CHART_NAME}" ]]; then
+  log_error "repoUrl is set but chartName is missing"
+  exit 1
+elif [[ -z "${REPO_URL}" && -n "${CHART_NAME}" ]]; then
+  log_error "chartName is set but repoUrl is missing"
+  exit 1
+fi
+if [[ -n "${OCI_CHART}" ]]; then
+  HAS_OCI=true
+fi
+if [[ "${HAS_REPO}" == "true" && "${HAS_OCI}" == "true" ]]; then
+  log_error "Both repoUrl+chartName and ociChart are set - these are mutually exclusive"
+  exit 1
+fi
+if [[ "${HAS_REPO}" == "false" && "${HAS_OCI}" == "false" ]]; then
+  log_error "Neither repoUrl+chartName nor ociChart is set - one must be configured"
+  exit 1
+fi
+
+# Validate moveFiles
+if [[ -z "${MOVE_FILES_JSON}" || "${MOVE_FILES_JSON}" == "null" || "${MOVE_FILES_JSON}" == "[]" ]]; then
+  log_error "moveFiles must have at least one entry"
+  exit 1
+fi
+
+# Validate helm is available
+if ! command -v helm &>/dev/null; then
+  log_error "helm is required but not found"
+  exit 1
+fi
+
+# Setup directories
+HELM_DIR="${OUTPUT_SUB_PATH}/helm-processing"
+CHART_DIR="${HELM_DIR}/A-chart"
+RENDERED_DIR="${HELM_DIR}/B-rendered"
+SPLIT_DIR="${HELM_DIR}/C-split"
+MOVED_DIR="${HELM_DIR}/D-moved-files"
+SED_DIR="${HELM_DIR}/E-sed-replaced"
+YQ_DIR="${HELM_DIR}/F-yq-transformed"
+ANNOTATED_DIR="${HELM_DIR}/G-annotated"
+VALIDATED_DIR="${HELM_DIR}/H-validated"
+
+rm -rf "${HELM_DIR}"
+mkdir -p "${CHART_DIR}" "${RENDERED_DIR}" "${SPLIT_DIR}" "${MOVED_DIR}" "${SED_DIR}" "${YQ_DIR}" "${ANNOTATED_DIR}" "${VALIDATED_DIR}"
+
+# ==========================================================================
+# Stage 1: Fetch chart
+# ==========================================================================
+log ""
+log "Stage 1: Fetching chart..."
+
+if [[ "${HAS_REPO}" == "true" ]]; then
+  log "  Adding repo: ${REPO_URL}"
+  helm repo add vendor-chart "${REPO_URL}"
+  log "  Fetching chart: vendor-chart/${CHART_NAME} --version ${VERSION}"
+  helm fetch --version "${VERSION}" --destination "${CHART_DIR}" "vendor-chart/${CHART_NAME}" --untar
+  CHART_PATH="${CHART_DIR}/${CHART_NAME}"
+else
+  log "  Pulling OCI chart: ${OCI_CHART} --version ${VERSION}"
+  helm pull "${OCI_CHART}" --version "${VERSION}" --destination "${CHART_DIR}" --untar
+  # OCI charts extract to a directory named after the chart
+  CHART_PATH="$(find "${CHART_DIR}" -mindepth 1 -maxdepth 1 -type d | head -1)"
+  if [[ -z "${CHART_PATH}" ]]; then
+    log_error "No chart directory found after helm pull"
+    exit 1
+  fi
+fi
+log "  Chart extracted to: ${CHART_PATH}"
+
+# ==========================================================================
+# Stage 2: Render
+# ==========================================================================
+log ""
+log "Stage 2: Rendering chart..."
+
+VALUES_FILE="src/vendor-helm-rendered/values-${VERSION}.yaml"
+if [[ ! -f "${VALUES_FILE}" ]]; then
+  mkdir -p "$(dirname "${VALUES_FILE}")"
+  cp "${CHART_PATH}/values.yaml" "${VALUES_FILE}"
+  log_error "Values file not found: ${VALUES_FILE}"
+  log_error "The chart's default values.yaml has been copied to ${VALUES_FILE}"
+  log_error "Add and commit this file, then customise it as needed and commit again."
+  exit 1
+fi
+log "  Using values file: ${VALUES_FILE}"
+
+# shellcheck disable=SC2016 # ${Environment} is a literal token for later substitution
+helm template "${PROJECT_NAME}" "${CHART_PATH}" \
+  --namespace '${Environment}' \
+  -f "${VALUES_FILE}" \
+  --output-dir "${RENDERED_DIR}"
+
+log "  Rendered to ${RENDERED_DIR}"
+
+# ==========================================================================
+# Stage 3: Split multi-doc files
+# ==========================================================================
+log ""
+log "Stage 3: Splitting multi-doc files..."
+
+# Copy rendered output preserving subdirectory structure, stripping the chart root dir
+RENDERED_CHART_DIR="$(find "${RENDERED_DIR}" -mindepth 1 -maxdepth 1 -type d | head -1)"
+if [[ -z "${RENDERED_CHART_DIR}" ]]; then
+  log_error "No chart directory found in ${RENDERED_DIR}"
+  exit 1
+fi
+cp -r "${RENDERED_CHART_DIR}"/. "${SPLIT_DIR}/"
+
+while IFS= read -r split_file; do
+  rel_path="${split_file#"${SPLIT_DIR}"/}"
+  base_name="${rel_path%.yaml}"
+
+  doc_count=$(yq ea '[.] | length' "${split_file}")
+
+  if [[ ${doc_count} -le 1 ]]; then
+    log "  ${rel_path} (single doc)"
+    continue
+  fi
+
+  # Multi-doc: split into base-0.yaml, base-1.yaml, etc then remove original
+  yq eval-all --split-exp "\"${SPLIT_DIR}/${base_name}-\" + \$index + \".yaml\"" --no-doc -o yaml "${split_file}"
+  rm -f "${split_file}"
+  log "  ${rel_path} -> split into ${doc_count} files"
+done < <(find "${SPLIT_DIR}" -name '*.yaml' -type f)
+
+# Strip leading --- from all files (helm adds it, yq --no-doc only covers split files)
+while IFS= read -r yaml_file; do
+  sed -i '' '1{/^---$/d;}' "${yaml_file}"
+done < <(find "${SPLIT_DIR}" -name '*.yaml' -type f)
+
+# ==========================================================================
+# Stage 4: Move files (keep only moveFiles, discard the rest)
+# ==========================================================================
+log ""
+log "Stage 4: Moving files..."
+
+MOVE_COUNT=$(echo "${MOVE_FILES_JSON}" | jq length)
+MOVE_ERRORS=0
+for i in $(seq 0 $((MOVE_COUNT - 1))); do
+  SOURCE=$(echo "${MOVE_FILES_JSON}" | jq -r ".[${i}].source")
+  DEST=$(echo "${MOVE_FILES_JSON}" | jq -r ".[${i}].destination")
+
+  if [[ ! -f "${SPLIT_DIR}/${SOURCE}" ]]; then
+    log_error "  moveFiles source not found in C-split/: ${SOURCE}"
+    MOVE_ERRORS=$((MOVE_ERRORS + 1))
+    continue
+  fi
+
+  mkdir -p "$(dirname "${MOVED_DIR}/${DEST}")"
+  cp "${SPLIT_DIR}/${SOURCE}" "${MOVED_DIR}/${DEST}"
+  log "  ${SOURCE} -> ${DEST}"
+done
+
+if [[ ${MOVE_ERRORS} -gt 0 ]]; then
+  log_error "${MOVE_ERRORS} moveFiles source(s) not found"
+  log "Available files in C-split/:"
+  find "${SPLIT_DIR}" -name '*.yaml' -type f | sed "s|^${SPLIT_DIR}/||" | sort | sed 's/^/  /'
+  exit 1
+fi
+
+# ==========================================================================
+# Stage 5: Sed Replace
+# ==========================================================================
+log ""
+log "Stage 5: Applying sed replacements..."
+
+cp -r "${MOVED_DIR}"/. "${SED_DIR}/"
+
+if [[ -n "${SED_REPLACE_JSON}" && "${SED_REPLACE_JSON}" != "null" && "${SED_REPLACE_JSON}" != "{}" ]]; then
+  # Global sed patterns
+  GLOBAL_SED_COUNT=$(echo "${SED_REPLACE_JSON}" | jq '.global // [] | length')
+  for i in $(seq 0 $((GLOBAL_SED_COUNT - 1))); do
+    PATTERN=$(echo "${SED_REPLACE_JSON}" | jq -r ".global[${i}]")
+    log "  global: ${PATTERN}"
+    while IFS= read -r manifest; do
+      sed -i '' "${PATTERN}" "${manifest}"
+    done < <(find "${SED_DIR}" -name '*.yaml' -type f)
+  done
+
+  # Per-file sed patterns
+  PER_FILE_SED_COUNT=$(echo "${SED_REPLACE_JSON}" | jq '.perFile // [] | length')
+  for i in $(seq 0 $((PER_FILE_SED_COUNT - 1))); do
+    TARGET_FILE=$(echo "${SED_REPLACE_JSON}" | jq -r ".perFile[${i}].file")
+    PATTERN_COUNT=$(echo "${SED_REPLACE_JSON}" | jq ".perFile[${i}].patterns | length")
+
+    if [[ ! -f "${SED_DIR}/${TARGET_FILE}" ]]; then
+      log "  WARNING: sed perFile target '${TARGET_FILE}' not found in E-sed-replaced/"
+      continue
+    fi
+
+    for j in $(seq 0 $((PATTERN_COUNT - 1))); do
+      PATTERN=$(echo "${SED_REPLACE_JSON}" | jq -r ".perFile[${i}].patterns[${j}]")
+      log "  ${TARGET_FILE}: ${PATTERN}"
+      sed -i '' "${PATTERN}" "${SED_DIR}/${TARGET_FILE}"
+    done
+  done
+else
+  log "  No sed replacements configured"
+fi
+
+# ==========================================================================
+# Stage 6: yq Transform (inline yq, then file-based yq)
+# ==========================================================================
+log ""
+log "Stage 6: Applying yq transforms..."
+
+cp -r "${SED_DIR}"/. "${YQ_DIR}/"
+
+# Inline yq transforms (from KaptainPM.yaml yqTransform)
+if [[ -n "${YQ_TRANSFORM_JSON}" && "${YQ_TRANSFORM_JSON}" != "null" && "${YQ_TRANSFORM_JSON}" != "{}" ]]; then
+  # Global inline yq expressions
+  GLOBAL_YQ_COUNT=$(echo "${YQ_TRANSFORM_JSON}" | jq '.global // [] | length')
+  for i in $(seq 0 $((GLOBAL_YQ_COUNT - 1))); do
+    EXPRESSION=$(echo "${YQ_TRANSFORM_JSON}" | jq -r ".global[${i}]")
+    log "  inline global: ${EXPRESSION}"
+    while IFS= read -r manifest; do
+      yq eval -i "${EXPRESSION}" "${manifest}"
+    done < <(find "${YQ_DIR}" -name '*.yaml' -type f)
+  done
+
+  # Per-file inline yq expressions
+  PER_FILE_YQ_COUNT=$(echo "${YQ_TRANSFORM_JSON}" | jq '.perFile // [] | length')
+  for i in $(seq 0 $((PER_FILE_YQ_COUNT - 1))); do
+    TARGET_FILE=$(echo "${YQ_TRANSFORM_JSON}" | jq -r ".perFile[${i}].file")
+    EXPR_COUNT=$(echo "${YQ_TRANSFORM_JSON}" | jq ".perFile[${i}].expressions | length")
+
+    if [[ ! -f "${YQ_DIR}/${TARGET_FILE}" ]]; then
+      log "  WARNING: yq perFile target '${TARGET_FILE}' not found in F-yq-transformed/"
+      continue
+    fi
+
+    for j in $(seq 0 $((EXPR_COUNT - 1))); do
+      EXPRESSION=$(echo "${YQ_TRANSFORM_JSON}" | jq -r ".perFile[${i}].expressions[${j}]")
+      log "  inline ${TARGET_FILE}: ${EXPRESSION}"
+      yq eval -i "${EXPRESSION}" "${YQ_DIR}/${TARGET_FILE}"
+    done
+  done
+fi
+
+# File-based yq transforms (from src/vendor-helm-rendered/)
+TRANSFORMS_GLOBAL="src/vendor-helm-rendered/transforms-global"
+TRANSFORMS_PER_FILE="src/vendor-helm-rendered/transforms"
+
+if [[ -d "${TRANSFORMS_GLOBAL}" ]]; then
+  for transform in $(find "${TRANSFORMS_GLOBAL}" -name '*.yq' -type f | sort); do
+    transform_name="$(basename "${transform}")"
+    log "  file global: ${transform_name}"
+    while IFS= read -r manifest; do
+      yq eval -i "$(cat "${transform}")" "${manifest}"
+    done < <(find "${YQ_DIR}" -name '*.yaml' -type f)
+  done
+fi
+
+if [[ -d "${TRANSFORMS_PER_FILE}" ]]; then
+  for target_dir in "${TRANSFORMS_PER_FILE}"/*/; do
+    [[ -d "${target_dir}" ]] || continue
+    target_name="$(basename "${target_dir}")"
+    target_file="${YQ_DIR}/${target_name}.yaml"
+
+    if [[ ! -f "${target_file}" ]]; then
+      log "  WARNING: Transform dir '${target_name}' has no matching file in F-yq-transformed/"
+      continue
+    fi
+
+    for transform in $(find "${target_dir}" -name '*.yq' -type f | sort); do
+      transform_name="$(basename "${transform}")"
+      log "  file ${target_name}: ${transform_name}"
+      yq eval -i "$(cat "${transform}")" "${target_file}"
+    done
+  done
+fi
+
+# ==========================================================================
+# Stage 7: Annotate
+# ==========================================================================
+log ""
+log "Stage 7: Injecting kaptain labels and annotations..."
+
+cp -r "${YQ_DIR}"/. "${ANNOTATED_DIR}/"
+
+while IFS= read -r manifest; do
+  rel_path="${manifest#"${ANNOTATED_DIR}"/}"
+
+  # Determine if namespaced or cluster-scoped
+  KIND="$(yq eval '.kind' "${manifest}")"
+  IS_NAMESPACED=true
+  case "${KIND}" in
+    CustomResourceDefinition|ClusterRole|ClusterRoleBinding|Namespace|\
+    ValidatingAdmissionPolicy|ValidatingAdmissionPolicyBinding|\
+    ValidatingWebhookConfiguration|MutatingWebhookConfiguration|\
+    PriorityClass|StorageClass|IngressClass|RuntimeClass|PersistentVolume|\
+    APIService|CertificateSigningRequest|TokenReview|SelfSubjectAccessReview|\
+    SubjectAccessReview|ComponentStatus|Node)
+      IS_NAMESPACED=false
+      ;;
+  esac
+
+  # Add labels and annotations
+  # shellcheck disable=SC2016 # ${Environment} and ${Version} are literal tokens for later substitution
+  yq eval -i '
+    .metadata.labels."kaptain.org/environment" = "${Environment}" |
+    .metadata.labels."app.kubernetes.io/managed-by" = "Kaptain" |
+    .metadata.labels."app.kubernetes.io/version" = "${Version}" |
+    .metadata.annotations."kaptain.org/environment" = "${Environment}" |
+    .metadata.annotations."app.kubernetes.io/managed-by" = "Kaptain" |
+    .metadata.annotations."app.kubernetes.io/version" = "${Version}"
+  ' "${manifest}"
+
+  # Set namespace for namespaced resources
+  if [[ "${IS_NAMESPACED}" == "true" ]]; then
+    # shellcheck disable=SC2016 # ${Environment} is a literal token for later substitution
+    yq eval -i '.metadata.namespace = "${Environment}"' "${manifest}"
+  fi
+
+  log "  ${rel_path} ($(if [[ "${IS_NAMESPACED}" == "true" ]]; then echo "namespaced"; else echo "cluster-scoped"; fi))"
+done < <(find "${ANNOTATED_DIR}" -name '*.yaml' -type f)
+
+# ==========================================================================
+# Stage 8: Validate
+# ==========================================================================
+log ""
+log "Stage 8: Validating YAML..."
+
+VALIDATE_ERRORS=0
+while IFS= read -r manifest; do
+  rel_path="${manifest#"${ANNOTATED_DIR}"/}"
+
+  if yq eval '.' "${manifest}" > /dev/null 2>&1; then
+    log "  ✓ ${rel_path}"
+  else
+    log_error "  ✗ ${rel_path} - invalid YAML"
+    yq eval '.' "${manifest}" 2>&1 | head -3
+    VALIDATE_ERRORS=$((VALIDATE_ERRORS + 1))
+  fi
+done < <(find "${ANNOTATED_DIR}" -name '*.yaml' -type f)
+
+if [[ ${VALIDATE_ERRORS} -gt 0 ]]; then
+  log_error "${VALIDATE_ERRORS} file(s) failed YAML validation"
+  exit 1
+fi
+
+cp -r "${ANNOTATED_DIR}"/. "${VALIDATED_DIR}/"
+
+log ""
+log "Helm render and process complete. Output in ${VALIDATED_DIR}/"
+
+# ==========================================================================
+# Stage 9: Image Retags
+# ==========================================================================
+
+if [[ -n "${IMAGE_RETAGS_JSON}" && "${IMAGE_RETAGS_JSON}" != "null" && "${IMAGE_RETAGS_JSON}" != "[]" ]]; then
+  log ""
+  log "Stage 9: Retagging images..."
+
+  RETAG_COUNT=$(echo "${IMAGE_RETAGS_JSON}" | jq length)
+  for i in $(seq 0 $((RETAG_COUNT - 1))); do
+    SOURCE_IMAGE_URI=$(echo "${IMAGE_RETAGS_JSON}" | jq -r ".[${i}].sourceImageUri")
+    TAG_SUFFIX=$(echo "${IMAGE_RETAGS_JSON}" | jq -r ".[${i}].tagSuffix")
+
+    # Parse sourceImageUri into registry, image name, and tag
+    # Format: registry/image/path:tag
+    SOURCE_TAG="${SOURCE_IMAGE_URI##*:}"
+    SOURCE_REGISTRY_AND_IMAGE="${SOURCE_IMAGE_URI%:*}"
+    SOURCE_REGISTRY="${SOURCE_REGISTRY_AND_IMAGE%%/*}"
+    SOURCE_IMAGE_NAME="${SOURCE_REGISTRY_AND_IMAGE#*/}"
+
+    log "  Retag $((i + 1))/${RETAG_COUNT}: ${SOURCE_IMAGE_URI} -> tag suffix: ${TAG_SUFFIX}"
+
+    DOCKER_SOURCE_REGISTRY="${SOURCE_REGISTRY}" \
+    DOCKER_SOURCE_IMAGE_NAME="${SOURCE_IMAGE_NAME}" \
+    DOCKER_SOURCE_TAG="${SOURCE_TAG}" \
+    DOCKER_RETAG_TAG_SUFFIX="${TAG_SUFFIX}" \
+      "${SCRIPT_DIR}/docker-build-retag"
+  done
+fi

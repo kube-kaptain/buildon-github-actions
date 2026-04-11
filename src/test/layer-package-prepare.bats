@@ -51,8 +51,8 @@ write_layer_pm() {
   local target="${1}"
   mkdir -p "$(dirname "${target}")"
   cat > "${target}" << 'EOF'
-apiVersion: kaptain.org/1.7
-kind: KubeAppDockerDockerfile
+apiVersion: kaptain.org/1.8
+kind: kubernetes-app-docker-dockerfile
 metadata:
   labels: {}
   annotations: {}
@@ -69,8 +69,8 @@ write_layerset_pm() {
   local target="${1}"
   mkdir -p "$(dirname "${target}")"
   cat > "${target}" << 'EOF'
-apiVersion: kaptain.org/1.7
-kind: KubeAppDockerDockerfile
+apiVersion: kaptain.org/1.8
+kind: kubernetes-app-docker-dockerfile
 metadata:
   labels: {}
   annotations: {}

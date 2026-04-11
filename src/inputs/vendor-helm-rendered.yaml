@@ -1,0 +1,32 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
+#
+# Vendor Helm Rendered
+vendor-helm-rendered-repo-url:
+  description: 'Traditional helm repo URL (mutually exclusive with oci-chart)'
+  required: false
+  type: string
+vendor-helm-rendered-chart-name:
+  description: 'Chart name within the repo (required with repo-url)'
+  required: false
+  type: string
+vendor-helm-rendered-oci-chart:
+  description: 'OCI chart reference (mutually exclusive with repo-url+chart-name)'
+  required: false
+  type: string
+vendor-helm-rendered-move-files:
+  description: 'JSON array of {source, destination} file mappings'
+  required: false
+  type: string
+vendor-helm-rendered-sed-replace:
+  description: 'JSON object with global and perFile sed replacement patterns'
+  required: false
+  type: string
+vendor-helm-rendered-yq-transform:
+  description: 'JSON object with global and perFile inline yq expressions'
+  required: false
+  type: string
+vendor-helm-rendered-image-retags:
+  description: 'JSON array of {sourceImageUri, tagSuffix} image retag entries'
+  required: false
+  type: string

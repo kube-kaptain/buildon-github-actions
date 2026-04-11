@@ -78,6 +78,7 @@ See [`examples/`](examples/) for more usage patterns.
 | `aws-eks-cluster-management.yaml` | Everything from docker Dockerfile build plus EKS cluster config generation and three-phase validation |
 | `docker-build-retag.yaml` | Everything from quality and version above, but also pulls, retags, and republishes a docker image |
 | `kubernetes-app-manifests-only.yaml` | Everything from quality and version above, plus packages Kubernetes manifests with token substitution |
+| `kubernetes-app-vendor-helm-rendered.yaml` | Renders a vendor helm chart into individual manifests, processes and validates them, then packages with token substitution |
 | `kubernetes-app-docker-dockerfile.yaml` | Everything from both docker Dockerfile and Kubernetes manifest packaging - a full kube app build |
 | `layer-and-layerset-build.yaml` | Layer/layerset validation and OCI packaging - quality checks, versioning, layer packaging, Docker build, validation, and release publishing |
 | `kubernetes-app-docker-retag.yaml` | Everything from both docker retag and Kubernetes manifest packaging - for apps using upstream images |
@@ -129,6 +130,8 @@ See [`examples/`](examples/) for more usage patterns.
 | `release-change-data-oci-package` | Packages release change data as OCI image for consolidated push |
 | `resolve-target-registry-and-namespace` | Resolves target registry (defaults to ghcr.io) and computes namespace (auto-detects org/user for GHCR) |
 | `validate-tooling` | Validates required tools are available before build |
+| `vendor-helm-render-and-process` | Fetches a vendor helm chart, renders it, and processes output into individual kubernetes manifests |
+| `vendor-helm-render-validate` | Copies validated vendor helm-rendered manifests to src/kubernetes/ and checks for git diffs |
 | `versions-and-naming` | Generates version numbers, tags, and naming for releases |
 <!-- ACTIONS-END -->
 
@@ -159,6 +162,7 @@ All inputs to the system come from KaptainPM.yaml and layers, except secrets.
 | `kubernetes-app-docker-dockerfile.yaml` | Kubernetes App - Docker Dockerfile | [docs/kubernetes-app-docker-dockerfile.md](docs/kubernetes-app-docker-dockerfile.md) |
 | `kubernetes-app-docker-retag.yaml` | Kubernetes App - Docker Retag | [docs/kubernetes-app-docker-retag.md](docs/kubernetes-app-docker-retag.md) |
 | `kubernetes-app-manifests-only.yaml` | Kubernetes App - Manifests Only | [docs/kubernetes-app-manifests-only.md](docs/kubernetes-app-manifests-only.md) |
+| `kubernetes-app-vendor-helm-rendered.yaml` | Kubernetes App - Vendor Helm Rendered | [docs/kubernetes-app-vendor-helm-rendered.md](docs/kubernetes-app-vendor-helm-rendered.md) |
 | `layer-and-layerset-build.yaml` | Layer and Layerset Build | [docs/layer-and-layerset-build.md](docs/layer-and-layerset-build.md) |
 | `spec-check-filter-release.yaml` | Spec Check Filter Release | [docs/spec-check-filter-release.md](docs/spec-check-filter-release.md) |
 <!-- WORKFLOW-DOCS-END -->
