@@ -1,0 +1,44 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
+#
+# helm-render-validate - Copies validated helm-rendered manifests to src/kubernetes/
+# and checks for git diffs. Fails the build if committed files don't match generated.
+#
+set -euo pipefail
+
+SCRIPT_DIR="$(dirname "${0}")"
+
+# shellcheck source=src/scripts/defaults/platform.bash
+source "${SCRIPT_DIR}/../defaults/platform.bash"
+# shellcheck source=src/scripts/lib/log.bash
+source "${SCRIPT_DIR}/../lib/log.bash"
+
+OUTPUT_SUB_PATH="${OUTPUT_SUB_PATH:?OUTPUT_SUB_PATH is required}"
+VALIDATED_DIR="${OUTPUT_SUB_PATH}/helm-processing/H-validated"
+KUBERNETES_DIR="src/kubernetes"
+
+if [[ ! -d "${VALIDATED_DIR}" ]]; then
+  log_error "Validated directory not found: ${VALIDATED_DIR}"
+  log_error "Has helm-render-and-process run?"
+  exit 1
+fi
+
+# Copy validated manifests to src/kubernetes/
+rm -rf "${KUBERNETES_DIR}"
+cp -r "${VALIDATED_DIR}" "${KUBERNETES_DIR}"
+log "Copied validated manifests to ${KUBERNETES_DIR}/"
+
+# Check for git diffs
+if [[ -n "$(git diff --name-only -- "${KUBERNETES_DIR}/")" ]] || \
+   [[ -n "$(git ls-files --others --exclude-standard -- "${KUBERNETES_DIR}/")" ]]; then
+  log ""
+  log_error "Generated manifests differ from committed files:"
+  git diff --stat -- "${KUBERNETES_DIR}/"
+  git ls-files --others --exclude-standard -- "${KUBERNETES_DIR}/"
+  log ""
+  log_error "Run the helm render locally and commit the results."
+  exit 1
+fi
+
+log "All manifests match. Validation passed."

@@ -1,0 +1,60 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
+
+name: 'Vendor Helm Render and Process'
+description: 'Fetches a vendor helm chart, renders it, and processes output into individual kubernetes manifests'
+
+inputs:
+  # Build output
+  output-sub-path:
+    description: 'Build output directory (relative)'
+    required: false
+    default: 'kaptain-out'
+  # Vendor Helm Rendered
+  vendor-helm-rendered-repo-url:
+    description: 'Traditional helm repo URL (mutually exclusive with oci-chart)'
+    required: false
+  vendor-helm-rendered-chart-name:
+    description: 'Chart name within the repo (required with repo-url)'
+    required: false
+  vendor-helm-rendered-oci-chart:
+    description: 'OCI chart reference (mutually exclusive with repo-url+chart-name)'
+    required: false
+  vendor-helm-rendered-move-files:
+    description: 'JSON array of {source, destination} file mappings'
+    required: false
+  vendor-helm-rendered-sed-replace:
+    description: 'JSON object with global and perFile sed replacement patterns'
+    required: false
+  vendor-helm-rendered-yq-transform:
+    description: 'JSON object with global and perFile inline yq expressions'
+    required: false
+  vendor-helm-rendered-image-retags:
+    description: 'JSON array of {sourceImageUri, tagSuffix} image retag entries'
+    required: false
+
+  project-name:
+    description: 'Project name (used as helm release name)'
+    required: true
+    type: string
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Render and process helm chart
+      id: helm-render
+      shell: bash
+      env:
+        BUILD_MODE: build_server
+        BUILD_PLATFORM: github-actions
+        BUILD_PLATFORM_LOG_PROVIDER: github-actions
+        OUTPUT_SUB_PATH: ${{ inputs.output-sub-path }}
+        VENDOR_HELM_RENDERED_REPO_URL: ${{ inputs.vendor-helm-rendered-repo-url }}
+        VENDOR_HELM_RENDERED_CHART_NAME: ${{ inputs.vendor-helm-rendered-chart-name }}
+        VENDOR_HELM_RENDERED_OCI_CHART: ${{ inputs.vendor-helm-rendered-oci-chart }}
+        VENDOR_HELM_RENDERED_MOVE_FILES: ${{ inputs.vendor-helm-rendered-move-files }}
+        VENDOR_HELM_RENDERED_SED_REPLACE: ${{ inputs.vendor-helm-rendered-sed-replace }}
+        VENDOR_HELM_RENDERED_YQ_TRANSFORM: ${{ inputs.vendor-helm-rendered-yq-transform }}
+        VENDOR_HELM_RENDERED_IMAGE_RETAGS: ${{ inputs.vendor-helm-rendered-image-retags }}
+        PROJECT_NAME: ${{ inputs.project-name }}
+      run: "${{ github.action_path }}/../../scripts/main/vendor-helm-render-and-process"

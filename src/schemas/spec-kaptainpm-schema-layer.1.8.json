@@ -1,15 +1,15 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/kube-kaptain/spec-kaptainpm-schema/releases/download/1.7/spec-kaptainpm-schema-1.7.yaml",
+  "$id": "https://github.com/kube-kaptain/spec-kaptainpm-schema/releases/download/1.8/spec-kaptainpm-schema-layer-1.8.yaml",
   "name": "spec-kaptainpm-schema",
-  "version": "1.7",
+  "version": "1.8",
   "source": "https://github.com/kube-kaptain/spec-kaptainpm-schema",
   "latest": "https://raw.githubusercontent.com/kube-kaptain/spec-kaptainpm-schema/main/spec-kaptainpm-schema.yaml",
-  "tagged": "https://raw.githubusercontent.com/kube-kaptain/spec-kaptainpm-schema/1.7/spec-kaptainpm-schema.yaml",
-  "release": "https://github.com/kube-kaptain/spec-kaptainpm-schema/releases/download/1.7/spec-kaptainpm-schema-1.7.yaml",
-  "validate-using": "https://github.com/kube-kaptain/spec-kaptainpm-schema/releases/download/1.7/spec-kaptainpm-schema-1.7.json",
+  "tagged": "https://raw.githubusercontent.com/kube-kaptain/spec-kaptainpm-schema/1.8/spec-kaptainpm-schema.yaml",
+  "release": "https://github.com/kube-kaptain/spec-kaptainpm-schema/releases/download/1.8/spec-kaptainpm-schema-layer-1.8.yaml",
+  "validate-using": "https://github.com/kube-kaptain/spec-kaptainpm-schema/releases/download/1.8/spec-kaptainpm-schema-layer-1.8.json",
   "title": "KaptainPM",
-  "description": "Kaptain project manifest schema (version 1.7).\n",
+  "description": "Kaptain project manifest schema (version 1.8).\n",
   "type": "object",
   "required": [
     "apiVersion"
@@ -19,7 +19,7 @@
     "apiVersion": {
       "type": "string",
       "pattern": "^kaptain\\.org/[0-9]+(\\.[0-9]+)*$",
-      "description": "API version - must be kaptain.org/ followed by the schema version (e.g. kaptain.org/1.2). Set via 1.7 token substitution at build time.\n"
+      "description": "API version - must be kaptain.org/ followed by the schema version (e.g. kaptain.org/1.2). Set via 1.8 token substitution at build time.\n"
     },
     "kind": {
       "type": "string",
@@ -28,7 +28,7 @@
     "metadata": {
       "type": "object",
       "additionalProperties": true,
-      "description": "Project metadata including build traceability labels and annotations. When present, label and annotation values must be strings.\n",
+      "description": "Project metadata with required build traceability fields.",
       "properties": {
         "description": {
           "type": "string",
@@ -39,16 +39,30 @@
           "additionalProperties": {
             "type": "string"
           },
-          "description": "Queryable build metadata labels. All values must be strings."
+          "description": "Queryable build metadata labels. All values must be strings.",
+          "required": [
+            "kaptain.org/version",
+            "kaptain.org/project-name",
+            "kaptain.org/owner"
+          ]
         },
         "annotations": {
           "type": "object",
           "additionalProperties": {
             "type": "string"
           },
-          "description": "Informational build metadata annotations. All values must be strings."
+          "description": "Informational build metadata annotations. All values must be strings.",
+          "required": [
+            "kaptain.org/built-by",
+            "kaptain.org/source-repository",
+            "kaptain.org/image-uri"
+          ]
         }
-      }
+      },
+      "required": [
+        "labels",
+        "annotations"
+      ]
     },
     "user-data": {
       "type": "object",
@@ -61,10 +75,6 @@
       "properties": {
         "credentials": {
           "$ref": "#/$defs/credentials"
-        },
-        "layers": {
-          "$ref": "#/$defs/artifactReferenceList",
-          "description": "Configuration layers applied before this project's settings. Deep-merged in order; local settings always win. Bootstrap registry logins must be in the project root file (needed before layer resolution). Additional logins declared in layers are applied in a second login phase post-merge.\n"
         },
         "templates": {
           "$ref": "#/$defs/artifactReferenceList",
@@ -87,6 +97,9 @@
           "$ref": "#/$defs/specPlatform"
         }
       }
+    },
+    "layer-payload": {
+      "$ref": "#/$defs/layerPayload"
     }
   },
   "$defs": {
@@ -1563,6 +1576,148 @@
                 "ciliumEbpfNetworking": {
                   "type": "boolean",
                   "description": "Generate controlplane-only yaml for Cilium eBPF networking (default: false)"
+                }
+              }
+            }
+          }
+        },
+        "vendorHelmRendered": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Vendor helm chart rendered to plain kubernetes manifests at build time",
+          "properties": {
+            "repoUrl": {
+              "type": "string",
+              "description": "Traditional helm repo URL (mutually exclusive with ociChart)"
+            },
+            "chartName": {
+              "type": "string",
+              "description": "Chart name within the repo (required with repoUrl)"
+            },
+            "ociChart": {
+              "type": "string",
+              "description": "OCI chart reference (mutually exclusive with repoUrl+chartName)"
+            },
+            "moveFiles": {
+              "type": "array",
+              "description": "Explicit list of files to keep from rendered output and where to place them. Files not listed are discarded.\n",
+              "minItems": 1,
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "source",
+                  "destination"
+                ],
+                "properties": {
+                  "source": {
+                    "type": "string",
+                    "description": "Filename in C-split/ to copy"
+                  },
+                  "destination": {
+                    "type": "string",
+                    "description": "Target filename in D-moved-files/"
+                  }
+                }
+              }
+            },
+            "sedReplace": {
+              "type": "object",
+              "additionalProperties": false,
+              "description": "Sed in-place replacements applied after file mapping",
+              "properties": {
+                "global": {
+                  "type": "array",
+                  "description": "Sed patterns applied to all mapped files",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "perFile": {
+                  "type": "array",
+                  "description": "Sed patterns applied to specific files",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "file",
+                      "patterns"
+                    ],
+                    "properties": {
+                      "file": {
+                        "type": "string",
+                        "description": "Target filename in E-sed-replaced/"
+                      },
+                      "patterns": {
+                        "type": "array",
+                        "description": "Sed patterns to apply to this file",
+                        "items": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "yqTransform": {
+              "type": "object",
+              "additionalProperties": false,
+              "description": "Inline yq expressions applied after sed replacements",
+              "properties": {
+                "global": {
+                  "type": "array",
+                  "description": "yq expressions applied to all mapped files",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "perFile": {
+                  "type": "array",
+                  "description": "yq expressions applied to specific files",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "file",
+                      "expressions"
+                    ],
+                    "properties": {
+                      "file": {
+                        "type": "string",
+                        "description": "Target filename in F-yq-transformed/"
+                      },
+                      "expressions": {
+                        "type": "array",
+                        "description": "yq expressions to apply to this file",
+                        "items": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "imageRetags": {
+              "type": "array",
+              "description": "Docker images to pull and retag as part of this build",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "sourceImageUri",
+                  "tagSuffix"
+                ],
+                "properties": {
+                  "sourceImageUri": {
+                    "type": "string",
+                    "description": "Full source image URI including tag (e.g., docker.io/envoyproxy/gateway:v1.3.0)\n"
+                  },
+                  "tagSuffix": {
+                    "type": "string",
+                    "description": "Suffix appended to the build version for the target tag (e.g., gateway -> 1.2.3-gateway)\n"
+                  }
                 }
               }
             }

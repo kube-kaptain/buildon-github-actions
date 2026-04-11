@@ -402,7 +402,7 @@ log "Applying project root overrides..."
 
 # Strip spec.layers from project root before merging (layers are resolved, not passed through)
 local_overrides="${KAPTAINPM_DIR}/local-overrides.yaml"
-yq eval 'del(.spec.layers)' "${PM_FILE}" > "${local_overrides}"
+yq eval -P 'del(.spec.layers)' "${PM_FILE}" > "${local_overrides}"
 
 layer_deep_merge "${merged}" "${local_overrides}" "${FINAL_FILE}"
 
@@ -413,7 +413,7 @@ step=$((step + 1))
 # The 6 build traceability fields belong to the layer that was built, not this project.
 # Custom labels/annotations from user or layers are preserved.
 log "Stripping build traceability metadata from resolved layers..."
-yq eval -i '
+yq eval -i -P '
   del(.metadata.labels["kaptain.org/version"]) |
   del(.metadata.labels["kaptain.org/project-name"]) |
   del(.metadata.labels["kaptain.org/owner"]) |

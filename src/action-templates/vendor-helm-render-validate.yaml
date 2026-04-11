@@ -1,0 +1,21 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
+
+name: 'Vendor Helm Render Validate'
+description: 'Copies validated vendor helm-rendered manifests to src/kubernetes/ and checks for git diffs'
+
+inputs:
+  # INJECT-INPUT: output-sub-path
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Validate helm-rendered manifests match committed files
+      id: helm-validate
+      shell: bash
+      env:
+        BUILD_MODE: build_server
+        BUILD_PLATFORM: github-actions
+        BUILD_PLATFORM_LOG_PROVIDER: github-actions
+        OUTPUT_SUB_PATH: ${{ inputs.output-sub-path }}
+      run: "${{ github.action_path }}/../../scripts/main/vendor-helm-render-validate"
