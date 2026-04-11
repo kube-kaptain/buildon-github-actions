@@ -304,3 +304,41 @@ set_required_env() {
   [ "$status" -eq 0 ]
   assert_var_equals "DOCKER_TARGET_IMAGE_FULL_URI" "ghcr.io/test/my-repo:1.0.0"
 }
+
+# === Tag suffix tests ===
+
+@test "tag suffix appends to target tag" {
+  set_required_env
+  export DOCKER_RETAG_TAG_SUFFIX="gateway"
+
+  run "$SCRIPTS_DIR/docker-build-retag"
+  [ "$status" -eq 0 ]
+  assert_var_equals "DOCKER_TARGET_IMAGE_FULL_URI" "ghcr.io/test/my-repo:1.0.0-gateway"
+}
+
+@test "tag suffix applies to docker tag command" {
+  set_required_env
+  export DOCKER_RETAG_TAG_SUFFIX="gateway"
+
+  run "$SCRIPTS_DIR/docker-build-retag"
+  [ "$status" -eq 0 ]
+  assert_docker_called "tag docker.io/library/alpine:3.21 ghcr.io/test/my-repo:1.0.0-gateway"
+}
+
+@test "empty tag suffix does not modify target tag" {
+  set_required_env
+  export DOCKER_RETAG_TAG_SUFFIX=""
+
+  run "$SCRIPTS_DIR/docker-build-retag"
+  [ "$status" -eq 0 ]
+  assert_var_equals "DOCKER_TARGET_IMAGE_FULL_URI" "ghcr.io/test/my-repo:1.0.0"
+}
+
+@test "unset tag suffix does not modify target tag" {
+  set_required_env
+  unset DOCKER_RETAG_TAG_SUFFIX
+
+  run "$SCRIPTS_DIR/docker-build-retag"
+  [ "$status" -eq 0 ]
+  assert_var_equals "DOCKER_TARGET_IMAGE_FULL_URI" "ghcr.io/test/my-repo:1.0.0"
+}
