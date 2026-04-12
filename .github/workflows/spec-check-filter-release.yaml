@@ -1588,9 +1588,9 @@ jobs:
               full_paths="${CONTEXT_DIR}/${rel_path}"
             fi
           done
-          echo "verbatim-files=${full_paths}" >> "${GITHUB_OUTPUT}"
+          echo "verbatim-files=" >> "${GITHUB_OUTPUT}"
           echo "substituted-files=" >> "${GITHUB_OUTPUT}"
-          echo "raw-files=" >> "${GITHUB_OUTPUT}"
+          echo "raw-files=${full_paths}" >> "${GITHUB_OUTPUT}"
 
       - name: Prepare release files
         id: github-release-prepare
