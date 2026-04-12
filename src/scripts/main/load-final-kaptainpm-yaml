@@ -332,6 +332,7 @@ MAPPINGS=(
   "spec.main.vendorHelmRendered.repoUrl:VENDOR_HELM_RENDERED_REPO_URL"
   "spec.main.vendorHelmRendered.chartName:VENDOR_HELM_RENDERED_CHART_NAME"
   "spec.main.vendorHelmRendered.ociChart:VENDOR_HELM_RENDERED_OCI_CHART"
+  "spec.main.vendorHelmRendered.useProjectNameAsFullnameOverride:VENDOR_HELM_RENDERED_USE_PROJECT_NAME_AS_FULLNAME_OVERRIDE"
   # Hooks
   "spec.main.hooks.preBuild:HOOK_PRE_BUILD_SCRIPT_SUB_PATH"
   "spec.main.hooks.preTaggingTests:HOOK_PRE_TAGGING_TESTS_SCRIPT_SUB_PATH"

@@ -37,6 +37,7 @@ MOVE_FILES_JSON="${VENDOR_HELM_RENDERED_MOVE_FILES:-}"
 SED_REPLACE_JSON="${VENDOR_HELM_RENDERED_SED_REPLACE:-}"
 YQ_TRANSFORM_JSON="${VENDOR_HELM_RENDERED_YQ_TRANSFORM:-}"
 IMAGE_RETAGS_JSON="${VENDOR_HELM_RENDERED_IMAGE_RETAGS:-}"
+USE_PROJECT_NAME_AS_FULLNAME_OVERRIDE="${VENDOR_HELM_RENDERED_USE_PROJECT_NAME_AS_FULLNAME_OVERRIDE:-true}"
 
 # Version from src/config/VendorHelmRenderedVersion
 VERSION_FILE="src/config/VendorHelmRenderedVersion"
@@ -142,10 +143,20 @@ fi
 log "  Using values file: ${VALUES_FILE}"
 
 # shellcheck disable=SC2016 # ${Environment} is a literal token for later substitution
-helm template "${PROJECT_NAME}" "${CHART_PATH}" \
-  --namespace '${Environment}' \
-  -f "${VALUES_FILE}" \
-  --output-dir "${RENDERED_DIR}"
+if [[ "${USE_PROJECT_NAME_AS_FULLNAME_OVERRIDE}" == "true" ]]; then
+  log "  fullnameOverride set to ${PROJECT_NAME}"
+  helm template "${PROJECT_NAME}" "${CHART_PATH}" \
+    --namespace '${Environment}' \
+    -f "${VALUES_FILE}" \
+    --set "fullnameOverride=${PROJECT_NAME}" \
+    --output-dir "${RENDERED_DIR}"
+else
+  log "  fullnameOverride disabled by config"
+  helm template "${PROJECT_NAME}" "${CHART_PATH}" \
+    --namespace '${Environment}' \
+    -f "${VALUES_FILE}" \
+    --output-dir "${RENDERED_DIR}"
+fi
 
 log "  Rendered to ${RENDERED_DIR}"
 

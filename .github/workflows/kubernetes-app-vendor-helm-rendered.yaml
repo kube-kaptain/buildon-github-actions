@@ -1073,6 +1073,7 @@ jobs:
           vendor-helm-rendered-sed-replace: ${{ steps.kpm.outputs.VENDOR_HELM_RENDERED_SED_REPLACE }}
           vendor-helm-rendered-yq-transform: ${{ steps.kpm.outputs.VENDOR_HELM_RENDERED_YQ_TRANSFORM }}
           vendor-helm-rendered-image-retags: ${{ steps.kpm.outputs.VENDOR_HELM_RENDERED_IMAGE_RETAGS }}
+          vendor-helm-rendered-use-project-name-as-fullname-override: ${{ steps.kpm.outputs.VENDOR_HELM_RENDERED_USE_PROJECT_NAME_AS_FULLNAME_OVERRIDE }}
           project-name: ${{ steps.versions.outputs.project-name }}
       - name: Pass check - Helm Render and Process
         if: success() && steps.check-vendor-helm-render-and-process.outputs.check-run-id != ''
