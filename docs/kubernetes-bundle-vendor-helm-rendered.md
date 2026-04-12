@@ -1,6 +1,6 @@
-# kubernetes-app-vendor-helm-rendered
+# kubernetes-bundle-vendor-helm-rendered
 
-Kubernetes App - Vendor Helm Rendered
+Kubernetes Bundle - Vendor Helm Rendered
 
 ## Inputs
 

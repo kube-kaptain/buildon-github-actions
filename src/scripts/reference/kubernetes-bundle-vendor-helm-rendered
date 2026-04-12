@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
 #
-# Reference script: kubernetes-app-vendor-helm-rendered workflow
+# Reference script: kubernetes-bundle-vendor-helm-rendered workflow
 #
 # Renders a helm chart into individual manifests, processes and validates
 # them, then packages with token substitution. No helm runtime dependency
