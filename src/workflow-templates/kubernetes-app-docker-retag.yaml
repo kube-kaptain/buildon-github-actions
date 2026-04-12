@@ -230,6 +230,11 @@ jobs:
       # INJECT: manifest-package
       # INJECT: github-check-end(name="Package Manifests", id="check-manifest-package")
 
+      # === Manifest Contract Generate ===
+      # INJECT: github-check-start(name="Generate Manifests Contract", id="check-manifest-contract-generate")
+      # INJECT: manifest-contract-generate
+      # INJECT: github-check-end(name="Generate Manifests Contract", id="check-manifest-contract-generate")
+
       # === Manifest Repo Provider Package ===
       # INJECT: github-check-start(name="Package Manifests for Repo Provider", id="check-manifest-repo-provider-package")
       # INJECT: manifest-repo-provider-package

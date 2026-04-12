@@ -51,8 +51,10 @@ setup() {
     docker-build-dockerfile docker-build-retag docker-multi-tag git-push-tag docker-push-all \
     hook-pre-docker-prepare hook-post-docker-tests hook-pre-package-prepare hook-post-package-tests \
     kubernetes-manifests-package-prepare kubernetes-manifests-package \
+    kubernetes-manifests-contract-generate \
     kubernetes-manifests-package-only-token-override \
     kubernetes-manifests-repo-provider-package kubernetes-manifests-repo-provider-publish \
+    vendor-helm-render-and-process vendor-helm-render-validate \
     spec-package-prepare spec-validate \
     aws-eks-cluster-management-prepare aws-eks-cluster-management-pre-build-validate \
     aws-eks-cluster-management-post-build-validate \
@@ -225,6 +227,7 @@ generate-kubernetes-service
 hook-pre-package-prepare
 kubernetes-manifests-package-prepare
 kubernetes-manifests-package
+kubernetes-manifests-contract-generate
 kubernetes-manifests-repo-provider-package
 hook-post-package-tests
 docker-multi-tag
@@ -263,6 +266,7 @@ generate-kubernetes-service
 hook-pre-package-prepare
 kubernetes-manifests-package-prepare
 kubernetes-manifests-package
+kubernetes-manifests-contract-generate
 kubernetes-manifests-repo-provider-package
 hook-post-package-tests
 docker-multi-tag
@@ -298,9 +302,10 @@ generate-kubernetes-workload
 generate-kubernetes-poddisruptionbudget
 generate-kubernetes-service
 hook-pre-package-prepare
-kubernetes-manifests-package-only-token-override
 kubernetes-manifests-package-prepare
+kubernetes-manifests-package-only-token-override
 kubernetes-manifests-package
+kubernetes-manifests-contract-generate
 kubernetes-manifests-repo-provider-package
 hook-post-package-tests
 docker-multi-tag
@@ -401,6 +406,73 @@ docker-push-all
 hook-post-build"
 }
 
+@test "reference: kubernetes-bundle-resources calls scripts in correct order" {
+  run bash "$REF_DIR/kubernetes-bundle-resources"
+  [ "$status" -eq 0 ]
+
+  assert_call_order "validate-tooling
+load-project-kaptainpm-docker-logins
+docker-registry-logins
+kaptain-init
+load-final-kaptainpm-yaml
+hook-pre-build
+basic-quality-checks
+docker-registry-logins
+docker-platform-setup
+hook-pre-tagging-tests
+versions-and-naming
+hook-post-versions-and-naming
+change-source-note-write
+release-change-data-generate
+release-change-data-oci-package
+hook-pre-package-prepare
+kubernetes-manifests-package-prepare
+kubernetes-manifests-package-only-token-override
+kubernetes-manifests-package
+kubernetes-manifests-contract-generate
+kubernetes-manifests-repo-provider-package
+hook-post-package-tests
+docker-multi-tag
+git-push-tag
+kubernetes-manifests-repo-provider-publish
+docker-push-all
+hook-post-build"
+}
+
+@test "reference: kubernetes-bundle-vendor-helm-rendered calls scripts in correct order" {
+  run bash "$REF_DIR/kubernetes-bundle-vendor-helm-rendered"
+  [ "$status" -eq 0 ]
+
+  assert_call_order "validate-tooling
+load-project-kaptainpm-docker-logins
+docker-registry-logins
+kaptain-init
+load-final-kaptainpm-yaml
+hook-pre-build
+basic-quality-checks
+docker-registry-logins
+docker-platform-setup
+hook-pre-tagging-tests
+versions-and-naming
+hook-post-versions-and-naming
+change-source-note-write
+release-change-data-generate
+release-change-data-oci-package
+vendor-helm-render-and-process
+hook-pre-package-prepare
+vendor-helm-render-validate
+kubernetes-manifests-package-prepare
+kubernetes-manifests-package-only-token-override
+kubernetes-manifests-package
+kubernetes-manifests-contract-generate
+kubernetes-manifests-repo-provider-package
+hook-post-package-tests
+docker-multi-tag
+git-push-tag
+kubernetes-manifests-repo-provider-publish
+docker-push-all
+hook-post-build"
+}
 
 # =============================================================================
 # setup-local-context.bash Tests

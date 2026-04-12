@@ -1,0 +1,88 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
+#
+# assess-token-compatibility - Determines which token schemes a manifest set is compatible with
+#
+# For every permutation of delimiter style and name style (excluding the current
+# one), scans manifest content for patterns that would match that style's regex.
+# If matches are found, the scheme goes in repackageRequired (content would be
+# ambiguous). Otherwise it goes in automaticConversion.
+#
+# Usage: assess-token-compatibility <delimiter-style> <name-style> <directory>
+#
+# Arguments:
+#   delimiter-style  - Current token delimiter style (shell, mustache, etc.)
+#   name-style       - Current token name style (PascalCase, UPPER_SNAKE, etc.)
+#   directory        - Directory of substituted manifest files to scan
+#
+# Output (stdout):
+#   Two sections, each a list of scheme combinations (delimiterStyle-nameStyle):
+#     AUTOMATIC_CONVERSION:
+#     shell-camelCase
+#     ...
+#     REPACKAGE_REQUIRED:
+#     erb-PascalCase
+#     ...
+#
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# shellcheck source=src/scripts/defaults/platform.bash
+source "${SCRIPT_DIR}/../defaults/platform.bash"
+# shellcheck source=src/scripts/lib/log.bash
+source "${SCRIPT_DIR}/../lib/log.bash"
+# shellcheck source=src/scripts/lib/token-format.bash
+source "${SCRIPT_DIR}/../lib/token-format.bash"
+
+if [[ $# -ne 3 ]]; then
+  log_error "Usage: assess-token-compatibility <delimiter-style> <name-style> <directory>"
+  exit 1
+fi
+
+CURRENT_DELIMITER="${1}"
+CURRENT_NAME="${2}"
+SCAN_DIR="${3}"
+
+if [[ ! -d "${SCAN_DIR}" ]]; then
+  log_error "Directory not found: ${SCAN_DIR}"
+  exit 1
+fi
+
+# All supported styles (must match token-format.bash)
+DELIMITER_STYLES=(shell mustache helm erb github-actions blade stringtemplate ognl t4 swift)
+NAME_STYLES=(PascalCase camelCase UPPER_SNAKE lower_snake lower-kebab UPPER-KEBAB lower.dot UPPER.DOT)
+
+automatic=()
+repackage=()
+
+for delim in "${DELIMITER_STYLES[@]}"; do
+  for name in "${NAME_STYLES[@]}"; do
+    # Skip current scheme
+    if [[ "${delim}" == "${CURRENT_DELIMITER}" && "${name}" == "${CURRENT_NAME}" ]]; then
+      continue
+    fi
+
+    combo="${delim}-${name}"
+
+    # Get regex for this permutation
+    regex=$(unresolved_token_regex "${delim}" "${name}")
+
+    # Check if any content matches this style's pattern
+    if grep -rEq "${regex}" "${SCAN_DIR}" 2>/dev/null; then
+      repackage+=("${combo}")
+    else
+      automatic+=("${combo}")
+    fi
+  done
+done
+
+echo "AUTOMATIC_CONVERSION:"
+for combo in "${automatic[@]+"${automatic[@]}"}"; do
+  echo "${combo}"
+done
+echo "REPACKAGE_REQUIRED:"
+for combo in "${repackage[@]+"${repackage[@]}"}"; do
+  echo "${combo}"
+done

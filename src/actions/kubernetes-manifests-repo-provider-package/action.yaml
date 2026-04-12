@@ -71,6 +71,14 @@ inputs:
     description: 'Version tag (for future non-docker providers)'
     required: false
     default: ''
+  contract-zip-sub-path:
+    description: 'Directory containing the contract zip (optional)'
+    required: false
+    default: ''
+  contract-zip-file-name:
+    description: 'Filename of the contract zip (optional)'
+    required: false
+    default: ''
   # Container runtime
   image-build-command:
     description: 'Container runtime command (podman or docker)'
@@ -130,6 +138,8 @@ runs:
         # --- Pass-through inputs ---
         MANIFESTS_ZIP_SUB_PATH: ${{ inputs.manifests-zip-sub-path }}
         MANIFESTS_ZIP_FILE_NAME: ${{ inputs.manifests-zip-file-name }}
+        CONTRACT_ZIP_SUB_PATH: ${{ inputs.contract-zip-sub-path }}
+        CONTRACT_ZIP_FILE_NAME: ${{ inputs.contract-zip-file-name }}
 
         # --- Inputs for REPO_PROVIDER_* computation (done by script) ---
         DOCKER_TARGET_REGISTRY: ${{ inputs.docker-target-registry }}

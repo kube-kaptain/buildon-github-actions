@@ -1,0 +1,104 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
+#
+# scan-unresolved-tokens - Scans manifest files for unresolved token references
+#
+# Scans all files in a directory for remaining token patterns matching the
+# specified delimiter and name style. Outputs one token name per line (sorted,
+# deduplicated). Exit code 0 regardless of whether tokens are found.
+#
+# Usage: scan-unresolved-tokens <delimiter-style> <name-style> <directory>
+#
+# Arguments:
+#   delimiter-style  - Token delimiter style (shell, mustache, etc.)
+#   name-style       - Token name style (PascalCase, UPPER_SNAKE, etc.)
+#   directory        - Directory of files to scan
+#
+# Output (stdout):
+#   One token name per line, sorted and deduplicated.
+#   Empty output means no unresolved tokens found.
+#
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# shellcheck source=src/scripts/defaults/platform.bash
+source "${SCRIPT_DIR}/../defaults/platform.bash"
+# shellcheck source=src/scripts/lib/log.bash
+source "${SCRIPT_DIR}/../lib/log.bash"
+# shellcheck source=src/scripts/lib/token-format.bash
+source "${SCRIPT_DIR}/../lib/token-format.bash"
+
+if [[ $# -ne 3 ]]; then
+  log_error "Usage: scan-unresolved-tokens <delimiter-style> <name-style> <directory>"
+  exit 1
+fi
+
+DELIMITER_STYLE="${1}"
+NAME_STYLE="${2}"
+SCAN_DIR="${3}"
+
+if [[ ! -d "${SCAN_DIR}" ]]; then
+  log_error "Directory not found: ${SCAN_DIR}"
+  exit 1
+fi
+
+# Get the regex for this style pair
+TOKEN_REGEX=$(unresolved_token_regex "${DELIMITER_STYLE}" "${NAME_STYLE}")
+
+# Find all files and grep for token patterns
+# Extract just the token name (strip delimiters) from each match
+# grep returns 1 on no match - capture output first to avoid pipefail
+MATCHES=$(grep -rEoh "${TOKEN_REGEX}" "${SCAN_DIR}" 2>/dev/null || true)
+
+if [[ -z "${MATCHES}" ]]; then
+  exit 0
+fi
+
+echo "${MATCHES}" | while IFS= read -r match; do
+  # Strip delimiters to get the bare token name (regex capture groups, not simple replacement)
+  # shellcheck disable=SC2001
+  case "${DELIMITER_STYLE}" in
+    shell)
+      # ${Name} -> Name
+      echo "${match}" | sed 's/^\${\(.*\)}$/\1/'
+      ;;
+    mustache)
+      # {{ Name }} -> Name
+      echo "${match}" | sed 's/^{{ \(.*\) }}$/\1/'
+      ;;
+    helm)
+      # {{ .Values.Name }} -> Name
+      echo "${match}" | sed 's/^{{ \.Values\.\(.*\) }}$/\1/'
+      ;;
+    erb)
+      # <%= Name %> -> Name
+      echo "${match}" | sed 's/^<%= \(.*\) %>$/\1/'
+      ;;
+    github-actions)
+      # ${{ Name }} -> Name
+      echo "${match}" | sed 's/^\${{ \(.*\) }}$/\1/'
+      ;;
+    blade)
+      # {{ $Name }} -> Name
+      echo "${match}" | sed 's/^{{ \$\(.*\) }}$/\1/'
+      ;;
+    stringtemplate)
+      # $Name$ -> Name
+      echo "${match}" | sed 's/^\$\(.*\)\$$/\1/'
+      ;;
+    ognl)
+      # %{Name} -> Name
+      echo "${match}" | sed 's/^%{\(.*\)}$/\1/'
+      ;;
+    t4)
+      # <#= Name #> -> Name
+      echo "${match}" | sed 's/^<#= \(.*\) #>$/\1/'
+      ;;
+    swift)
+      # \(Name) -> Name
+      echo "${match}" | sed 's/^\\(\(.*\))$/\1/'
+      ;;
+  esac
+done | sort -u

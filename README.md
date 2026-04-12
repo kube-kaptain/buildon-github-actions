@@ -120,6 +120,7 @@ See [`examples/`](examples/) for more usage patterns.
 | `hook-pre-docker-prepare` | Runs user's hook script before Docker build preparation to modify Dockerfile, copy files, or perform setup |
 | `hook-pre-package-prepare` | Runs user's hook script before manifest packaging to generate ConfigMaps, modify manifests, or add files |
 | `hook-pre-tagging-tests` | Runs user's hook script before tagging/versioning for custom validation or preparation |
+| `kubernetes-manifests-contract-generate` | Generates a manifests contract file describing token scheme, required config, and compatibility |
 | `kubernetes-manifests-package-only-token-override` | Overrides docker image tokens for manifests-only workflow |
 | `kubernetes-manifests-package-prepare` | Prepares manifests and tokens for packaging |
 | `kubernetes-manifests-package` | Packages Kubernetes manifests into a zip with variable substitution |

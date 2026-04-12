@@ -1292,6 +1292,40 @@ jobs:
           action: fail
           check-run-id: ${{ steps.check-manifest-package.outputs.check-run-id }}
 
+      # === Manifest Contract Generate ===
+      - name: Start check - Generate Manifests Contract
+        id: check-manifest-contract-generate
+        continue-on-error: true
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
+        with:
+          action: start
+          check-name: 'Build & Publish → Generate Manifests Contract'
+      - name: Generate manifests contract
+        id: manifest-contract-generate
+        uses: ./.github/buildon-github-actions/src/actions/kubernetes-manifests-contract-generate
+        with:
+          project-name: ${{ steps.versions.outputs.project-name }}
+          version: ${{ steps.versions.outputs.version }}
+          build-kind: kubernetes-bundle-resources
+          token-delimiter-style: ${{ steps.kpm.outputs.TOKEN_DELIMITER_STYLE }}
+          token-name-style: ${{ steps.kpm.outputs.TOKEN_NAME_STYLE }}
+          metadata-description: ${{ steps.kpm.outputs.METADATA_DESCRIPTION }}
+          defaults-sub-path: ${{ steps.kpm.outputs.DEFAULTS_SUB_PATH }}
+          output-sub-path: ${{ steps.kpm.outputs.OUTPUT_SUB_PATH }}
+      - name: Pass check - Generate Manifests Contract
+        if: success() && steps.check-manifest-contract-generate.outputs.check-run-id != ''
+        continue-on-error: true
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
+        with:
+          action: pass
+          check-run-id: ${{ steps.check-manifest-contract-generate.outputs.check-run-id }}
+      - name: Fail check - Generate Manifests Contract
+        if: failure() && steps.check-manifest-contract-generate.outputs.check-run-id != ''
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
+        with:
+          action: fail
+          check-run-id: ${{ steps.check-manifest-contract-generate.outputs.check-run-id }}
+
       # === Manifest Repo Provider Package ===
       - name: Start check - Package Manifests for Repo Provider
         id: check-manifest-repo-provider-package
@@ -1308,6 +1342,8 @@ jobs:
           manifests-packaging-base-image: ${{ steps.kpm.outputs.MANIFESTS_PACKAGING_BASE_IMAGE }}
           manifests-zip-sub-path: ${{ steps.manifest-package.outputs.manifests-zip-sub-path }}
           manifests-zip-file-name: ${{ steps.manifest-package.outputs.manifests-zip-file-name }}
+          contract-zip-sub-path: ${{ steps.manifest-contract-generate.outputs.contract-zip-sub-path }}
+          contract-zip-file-name: ${{ steps.manifest-contract-generate.outputs.contract-zip-file-name }}
           docker-target-registry: ${{ steps.resolve-registry.outputs.docker-target-registry }}
           docker-target-namespace: ${{ steps.resolve-registry.outputs.docker-target-namespace }}
           docker-image-name: ${{ steps.versions.outputs.docker-image-name }}
