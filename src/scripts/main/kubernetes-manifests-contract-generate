@@ -206,7 +206,7 @@ main() {
       while IFS= read -r default_file; do
         [[ -z "${default_file}" ]] && continue
         local default_name
-        default_name=$(basename "${default_file}")
+        default_name="${default_file#"${defaults_dir}"/}"
         local default_value
         default_value=$(cat "${default_file}")
         export YQ_DEFAULT_NAME="${default_name}"

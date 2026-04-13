@@ -57,6 +57,9 @@ NAME_STYLES=(PascalCase camelCase UPPER_SNAKE lower_snake lower-kebab UPPER-KEBA
 automatic=()
 repackage=()
 
+# Pre-compute regex for the current (source) style
+CURRENT_REGEX=$(unresolved_token_regex "${CURRENT_DELIMITER}" "${CURRENT_NAME}")
+
 for delim in "${DELIMITER_STYLES[@]}"; do
   for name in "${NAME_STYLES[@]}"; do
     # Skip current scheme
@@ -69,11 +72,21 @@ for delim in "${DELIMITER_STYLES[@]}"; do
     # Get regex for this permutation
     regex=$(unresolved_token_regex "${delim}" "${name}")
 
-    # Check if any content matches this style's pattern
-    if grep -rEq "${regex}" "${SCAN_DIR}" 2>/dev/null; then
-      repackage+=("${combo}")
-    else
+    # Find matches for the candidate style
+    matches=$(grep -rEoh "${regex}" "${SCAN_DIR}" 2>/dev/null || true)
+
+    if [[ -z "${matches}" ]]; then
       automatic+=("${combo}")
+    else
+      # Filter out matches that are also matches for the source style.
+      # These are the source style's own tokens that happen to also match
+      # the candidate regex (e.g. single-word UPPER_SNAKE matching PascalCase).
+      novel_matches=$(echo "${matches}" | grep -Ev "${CURRENT_REGEX}" || true)
+      if [[ -z "${novel_matches}" ]]; then
+        automatic+=("${combo}")
+      else
+        repackage+=("${combo}")
+      fi
     fi
   done
 done

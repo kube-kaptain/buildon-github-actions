@@ -1,15 +1,15 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/kube-kaptain/spec-kaptainpm-schema/releases/download/1.9/spec-kaptainpm-schema-layer-1.9.yaml",
+  "$id": "https://github.com/kube-kaptain/spec-kaptainpm-schema/releases/download/1.10/spec-kaptainpm-schema-layer-source-1.10.yaml",
   "name": "spec-kaptainpm-schema",
-  "version": "1.9",
+  "version": "1.10",
   "source": "https://github.com/kube-kaptain/spec-kaptainpm-schema",
   "latest": "https://raw.githubusercontent.com/kube-kaptain/spec-kaptainpm-schema/main/spec-kaptainpm-schema.yaml",
-  "tagged": "https://raw.githubusercontent.com/kube-kaptain/spec-kaptainpm-schema/1.9/spec-kaptainpm-schema.yaml",
-  "release": "https://github.com/kube-kaptain/spec-kaptainpm-schema/releases/download/1.9/spec-kaptainpm-schema-layer-1.9.yaml",
-  "validate-using": "https://github.com/kube-kaptain/spec-kaptainpm-schema/releases/download/1.9/spec-kaptainpm-schema-layer-1.9.json",
+  "tagged": "https://raw.githubusercontent.com/kube-kaptain/spec-kaptainpm-schema/1.10/spec-kaptainpm-schema.yaml",
+  "release": "https://github.com/kube-kaptain/spec-kaptainpm-schema/releases/download/1.10/spec-kaptainpm-schema-layer-source-1.10.yaml",
+  "validate-using": "https://github.com/kube-kaptain/spec-kaptainpm-schema/releases/download/1.10/spec-kaptainpm-schema-layer-source-1.10.json",
   "title": "KaptainPM",
-  "description": "Kaptain project manifest schema (version 1.9).\n",
+  "description": "Kaptain project manifest schema (version 1.10).\n",
   "type": "object",
   "required": [
     "apiVersion"
@@ -19,7 +19,7 @@
     "apiVersion": {
       "type": "string",
       "pattern": "^kaptain\\.org/[0-9]+(\\.[0-9]+)*$",
-      "description": "API version - must be kaptain.org/ followed by the schema version (e.g. kaptain.org/1.2). Set via 1.9 token substitution at build time.\n"
+      "description": "API version - must be kaptain.org/ followed by the schema version (e.g. kaptain.org/1.2). Set via 1.10 token substitution at build time.\n"
     },
     "kind": {
       "type": "string",
@@ -28,7 +28,7 @@
     "metadata": {
       "type": "object",
       "additionalProperties": true,
-      "description": "Project metadata with required build traceability fields.",
+      "description": "Project metadata including build traceability labels and annotations. When present, label and annotation values must be strings.\n",
       "properties": {
         "description": {
           "type": "string",
@@ -39,30 +39,16 @@
           "additionalProperties": {
             "type": "string"
           },
-          "description": "Queryable build metadata labels. All values must be strings.",
-          "required": [
-            "kaptain.org/version",
-            "kaptain.org/project-name",
-            "kaptain.org/owner"
-          ]
+          "description": "Queryable build metadata labels. All values must be strings."
         },
         "annotations": {
           "type": "object",
           "additionalProperties": {
             "type": "string"
           },
-          "description": "Informational build metadata annotations. All values must be strings.",
-          "required": [
-            "kaptain.org/built-by",
-            "kaptain.org/source-repository",
-            "kaptain.org/image-uri"
-          ]
+          "description": "Informational build metadata annotations. All values must be strings."
         }
-      },
-      "required": [
-        "labels",
-        "annotations"
-      ]
+      }
     },
     "user-data": {
       "type": "object",
@@ -1435,6 +1421,16 @@
             "subPath": {
               "type": "string",
               "description": "Directory containing manifests (default: src/kubernetes)"
+            },
+            "defaults": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "subPath": {
+                  "type": "string",
+                  "description": "Directory containing default token values (default: src/defaults)"
+                }
+              }
             },
             "repoProvider": {
               "type": "object",

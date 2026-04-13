@@ -150,7 +150,9 @@ EOF
   [ "$status" -eq 0 ]
   local api_version
   api_version=$(yq '.apiVersion' "${OUTPUT_SUB_PATH}/manifests/contract/contract.yaml")
-  [ "$api_version" = "kaptain.org/manifests-contract/1.1" ]
+  local expected_version
+  expected_version=$(cat "$PROJECT_ROOT/src/schemas/manifests-contract/version")
+  [ "$api_version" = "kaptain.org/manifests-contract/${expected_version}" ]
 }
 
 @test "contract-generate: sets token scheme from env vars" {
@@ -199,6 +201,34 @@ EOF
   echo "$required" | grep -q "MemoryRequest"
 }
 
+@test "contract-generate: lists nested (path-based) tokens in config.required" {
+  cat > "${OUTPUT_SUB_PATH}/manifests/substituted/${PROJECT_NAME}/deployment.yaml" << 'EOF'
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: test-project
+  namespace: ${Environment}
+spec:
+  replicas: ${TestProject/Replicas}
+  template:
+    spec:
+      containers:
+        - resources:
+            requests:
+              memory: ${TestProject/Memory}
+              cpu: ${TestProject/Cpu}
+EOF
+  run "$CONTRACT_SCRIPT"
+  [ "$status" -eq 0 ]
+  local contract="${OUTPUT_SUB_PATH}/manifests/contract/contract.yaml"
+  local required
+  required=$(yq '.config.required[]' "$contract" | sort)
+  echo "$required" | grep -q "Environment"
+  echo "$required" | grep -q "TestProject/Replicas"
+  echo "$required" | grep -q "TestProject/Memory"
+  echo "$required" | grep -q "TestProject/Cpu"
+}
+
 @test "contract-generate: omits config section when no unresolved tokens" {
   write_clean_manifest
   run "$CONTRACT_SCRIPT"
@@ -225,21 +255,21 @@ EOF
 # Defaults handling
 # =============================================================================
 
-@test "contract-generate: copies defaults and sets inline values" {
+@test "contract-generate: copies defaults and sets inline values with nested paths" {
   write_manifest_with_tokens
   local defaults_dir="${TEST_DIR}/src-defaults"
-  mkdir -p "${defaults_dir}"
-  printf '256Mi' > "${defaults_dir}/MemoryRequest"
-  printf '100m' > "${defaults_dir}/CpuRequest"
+  mkdir -p "${defaults_dir}/TestProject"
+  printf '256Mi' > "${defaults_dir}/TestProject/MemoryRequest"
+  printf '100m' > "${defaults_dir}/TestProject/CpuRequest"
   export DEFAULTS_SUB_PATH="${defaults_dir}"
   run "$CONTRACT_SCRIPT"
   [ "$status" -eq 0 ]
   local contract="${OUTPUT_SUB_PATH}/manifests/contract/contract.yaml"
-  [ "$(yq '.config.defaults.MemoryRequest' "$contract")" = "256Mi" ]
-  [ "$(yq '.config.defaults.CpuRequest' "$contract")" = "100m" ]
+  [ "$(yq '.config.defaults["TestProject/MemoryRequest"]' "$contract")" = "256Mi" ]
+  [ "$(yq '.config.defaults["TestProject/CpuRequest"]' "$contract")" = "100m" ]
 }
 
-@test "contract-generate: tokens with defaults excluded from noDefault" {
+@test "contract-generate: tokens with flat defaults excluded from noDefault" {
   write_manifest_with_tokens
   local defaults_dir="${TEST_DIR}/src-defaults"
   mkdir -p "${defaults_dir}"
@@ -259,16 +289,16 @@ EOF
   echo "$no_defaults" | grep -q "EnvironmentDockerRegistryAndNamespace"
 }
 
-@test "contract-generate: defaults dir copied into contract dir" {
+@test "contract-generate: defaults dir copied into contract dir preserving structure" {
   write_manifest_with_tokens
   local defaults_dir="${TEST_DIR}/src-defaults"
-  mkdir -p "${defaults_dir}"
-  printf '256Mi' > "${defaults_dir}/MemoryRequest"
+  mkdir -p "${defaults_dir}/TestProject"
+  printf '256Mi' > "${defaults_dir}/TestProject/MemoryRequest"
   export DEFAULTS_SUB_PATH="${defaults_dir}"
   run "$CONTRACT_SCRIPT"
   [ "$status" -eq 0 ]
-  [ -f "${OUTPUT_SUB_PATH}/manifests/contract/defaults/MemoryRequest" ]
-  [ "$(cat "${OUTPUT_SUB_PATH}/manifests/contract/defaults/MemoryRequest")" = "256Mi" ]
+  [ -f "${OUTPUT_SUB_PATH}/manifests/contract/defaults/TestProject/MemoryRequest" ]
+  [ "$(cat "${OUTPUT_SUB_PATH}/manifests/contract/defaults/TestProject/MemoryRequest")" = "256Mi" ]
 }
 
 # =============================================================================
@@ -319,13 +349,13 @@ EOF
 @test "contract-generate: zip contains defaults dir when present" {
   write_manifest_with_tokens
   local defaults_dir="${TEST_DIR}/src-defaults"
-  mkdir -p "${defaults_dir}"
-  printf '256Mi' > "${defaults_dir}/MemoryRequest"
+  mkdir -p "${defaults_dir}/TestProject"
+  printf '256Mi' > "${defaults_dir}/TestProject/MemoryRequest"
   export DEFAULTS_SUB_PATH="${defaults_dir}"
   run "$CONTRACT_SCRIPT"
   [ "$status" -eq 0 ]
   local zip="${OUTPUT_SUB_PATH}/manifests/zip/test-project-1.2.3-contract.zip"
-  zipinfo -1 "$zip" | grep -q "defaults/MemoryRequest"
+  zipinfo -1 "$zip" | grep -q "defaults/TestProject/MemoryRequest"
 }
 
 @test "contract-generate: zip has no defaults dir when none present" {

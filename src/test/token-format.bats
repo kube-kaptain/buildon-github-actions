@@ -894,6 +894,75 @@ setup() {
   [ "$status" -ne 0 ]
 }
 
+# --- Nested token names (directory-based paths with /) ---
+
+@test "unresolved_token_regex: shell + PascalCase matches nested token" {
+  pattern=$(unresolved_token_regex shell PascalCase)
+  echo '${VendorEnvoyGateway/Cpu}' | grep -Eq "$pattern"
+}
+
+@test "unresolved_token_regex: shell + UPPER_SNAKE matches nested token" {
+  pattern=$(unresolved_token_regex shell UPPER_SNAKE)
+  echo '${VENDOR_ENVOY_GATEWAY/CPU}' | grep -Eq "$pattern"
+}
+
+@test "unresolved_token_regex: shell + camelCase matches nested token" {
+  pattern=$(unresolved_token_regex shell camelCase)
+  echo '${vendorEnvoyGateway/cpu}' | grep -Eq "$pattern"
+}
+
+@test "unresolved_token_regex: mustache + PascalCase matches nested token" {
+  pattern=$(unresolved_token_regex mustache PascalCase)
+  echo '{{ VendorEnvoyGateway/Cpu }}' | grep -Eq "$pattern"
+}
+
+@test "unresolved_token_regex: helm + PascalCase matches nested token" {
+  pattern=$(unresolved_token_regex helm PascalCase)
+  echo '{{ .Values.VendorEnvoyGateway/Cpu }}' | grep -Eq "$pattern"
+}
+
+@test "unresolved_token_regex: shell + PascalCase matches deeply nested token" {
+  pattern=$(unresolved_token_regex shell PascalCase)
+  echo '${Vendor/EnvoyGateway/Cpu}' | grep -Eq "$pattern"
+}
+
+# --- Nested token names - invalid patterns must NOT match ---
+
+@test "unresolved_token_regex: shell + PascalCase rejects trailing slash" {
+  pattern=$(unresolved_token_regex shell PascalCase)
+  ! echo '${VendorEnvoyGateway/}' | grep -Eq "$pattern"
+}
+
+@test "unresolved_token_regex: shell + PascalCase rejects leading slash" {
+  pattern=$(unresolved_token_regex shell PascalCase)
+  ! echo '${/VendorEnvoyGateway}' | grep -Eq "$pattern"
+}
+
+@test "unresolved_token_regex: shell + PascalCase rejects double slash" {
+  pattern=$(unresolved_token_regex shell PascalCase)
+  ! echo '${Vendor//Cpu}' | grep -Eq "$pattern"
+}
+
+@test "unresolved_token_regex: shell + UPPER_SNAKE rejects trailing slash" {
+  pattern=$(unresolved_token_regex shell UPPER_SNAKE)
+  ! echo '${VENDOR_ENVOY_GATEWAY/}' | grep -Eq "$pattern"
+}
+
+@test "unresolved_token_regex: shell + UPPER_SNAKE rejects double slash" {
+  pattern=$(unresolved_token_regex shell UPPER_SNAKE)
+  ! echo '${VENDOR//CPU}' | grep -Eq "$pattern"
+}
+
+@test "unresolved_token_regex: shell + PascalCase rejects wrong case after slash" {
+  pattern=$(unresolved_token_regex shell PascalCase)
+  ! echo '${Vendor/cpu}' | grep -Eq "$pattern"
+}
+
+@test "unresolved_token_regex: shell + camelCase rejects wrong case after slash" {
+  pattern=$(unresolved_token_regex shell camelCase)
+  ! echo '${vendor/Cpu}' | grep -Eq "$pattern"
+}
+
 # --- All style combinations produce output ---
 
 @test "unresolved_token_regex: all delimiter styles produce valid regex" {

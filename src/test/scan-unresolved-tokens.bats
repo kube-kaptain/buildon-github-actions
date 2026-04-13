@@ -243,6 +243,32 @@ EOF
   echo "$output" | grep -q "^RealToken$"
 }
 
+@test "scan-unresolved-tokens: finds nested (path-based) shell PascalCase tokens" {
+  cat > "$TEST_DIR/manifest.yaml" << 'EOF'
+replicas: ${VendorEnvoyGateway/Replicas}
+memory: ${VendorEnvoyGateway/Memory}
+cpu: ${VendorEnvoyGateway/Cpu}
+namespace: ${Environment}
+EOF
+  run "$SCAN_SCRIPT" shell PascalCase "$TEST_DIR"
+  [ "$status" -eq 0 ]
+  echo "$output" | grep -q "VendorEnvoyGateway/Replicas"
+  echo "$output" | grep -q "VendorEnvoyGateway/Memory"
+  echo "$output" | grep -q "VendorEnvoyGateway/Cpu"
+  echo "$output" | grep -q "Environment"
+}
+
+@test "scan-unresolved-tokens: finds nested shell UPPER_SNAKE tokens" {
+  cat > "$TEST_DIR/manifest.yaml" << 'EOF'
+replicas: ${VENDOR_ENVOY_GATEWAY/REPLICAS}
+namespace: ${ENVIRONMENT}
+EOF
+  run "$SCAN_SCRIPT" shell UPPER_SNAKE "$TEST_DIR"
+  [ "$status" -eq 0 ]
+  echo "$output" | grep -q "VENDOR_ENVOY_GATEWAY/REPLICAS"
+  echo "$output" | grep -q "ENVIRONMENT"
+}
+
 @test "scan-unresolved-tokens: output is sorted alphabetically" {
   cat > "$TEST_DIR/manifest.yaml" << 'EOF'
 z: ${Zebra}
