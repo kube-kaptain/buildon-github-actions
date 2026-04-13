@@ -197,7 +197,7 @@ done < <(find "${SPLIT_DIR}" -name '*.yaml' -type f)
 
 # Strip leading --- from all files (helm adds it, yq --no-doc only covers split files)
 while IFS= read -r yaml_file; do
-  sed -i '' '1{/^---$/d;}' "${yaml_file}"
+  sed -i.bak '1{/^---$/d;}' "${yaml_file}" && rm -f "${yaml_file}.bak"
 done < <(find "${SPLIT_DIR}" -name '*.yaml' -type f)
 
 # ==========================================================================
@@ -245,7 +245,7 @@ if [[ -n "${SED_REPLACE_JSON}" && "${SED_REPLACE_JSON}" != "null" && "${SED_REPL
     PATTERN=$(echo "${SED_REPLACE_JSON}" | jq -r ".global[${i}]")
     log "  global: ${PATTERN}"
     while IFS= read -r manifest; do
-      sed -i '' "${PATTERN}" "${manifest}"
+      sed -i.bak "${PATTERN}" "${manifest}" && rm -f "${manifest}.bak"
     done < <(find "${SED_DIR}" -name '*.yaml' -type f)
   done
 
@@ -263,7 +263,7 @@ if [[ -n "${SED_REPLACE_JSON}" && "${SED_REPLACE_JSON}" != "null" && "${SED_REPL
     for j in $(seq 0 $((PATTERN_COUNT - 1))); do
       PATTERN=$(echo "${SED_REPLACE_JSON}" | jq -r ".perFile[${i}].patterns[${j}]")
       log "  ${TARGET_FILE}: ${PATTERN}"
-      sed -i '' "${PATTERN}" "${SED_DIR}/${TARGET_FILE}"
+      sed -i.bak "${PATTERN}" "${SED_DIR}/${TARGET_FILE}" && rm -f "${SED_DIR}/${TARGET_FILE}.bak"
     done
   done
 else

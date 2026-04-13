@@ -295,6 +295,45 @@ check_bash_portability() {
   log_info "All scripts are Bash 3.2 compatible"
 }
 
+# Check for non-portable sed -i usage (must work on both macOS BSD sed and Linux GNU sed)
+# Only sed -i.suffix is portable. sed -i '' is macOS-only, bare sed -i is GNU-only.
+check_sed_portability() {
+  log_info "Checking for non-portable sed -i usage (must use -i.suffix)"
+  local scripts=()
+
+  while IFS= read -r file; do
+    [[ "${file}" == *.md ]] && continue
+    scripts+=("${file}")
+  done < <(find "${PROJECT_ROOT}/src/scripts" -type f)
+
+  local failed=()
+
+  for script in "${scripts[@]}"; do
+    # Find all sed -i lines
+    local sed_i_lines
+    sed_i_lines=$(grep -nE 'sed[[:space:]]+-i' "${script}" 2>/dev/null || true)
+    [[ -z "${sed_i_lines}" ]] && continue
+
+    # Filter out portable form: sed -i.suffix (dot immediately after -i)
+    local bad_lines
+    bad_lines=$(echo "${sed_i_lines}" | grep -vE 'sed[[:space:]]+-i\.[[:alnum:]]' || true)
+    if [[ -n "${bad_lines}" ]]; then
+      failed+=("${script}")
+      log_error "Non-portable sed -i in ${script#${PROJECT_ROOT}/}:"
+      echo "${bad_lines}" | while IFS= read -r line; do
+        log_error "  ${line}"
+      done
+    fi
+  done
+
+  if [[ ${#failed[@]} -gt 0 ]]; then
+    log_error "${#failed[@]} script(s) use non-portable sed -i (use sed -i.bak with cleanup instead)"
+    exit 1
+  fi
+
+  log_info "All sed -i usage is portable"
+}
+
 # Check example files reference the expected next version tag
 check_example_versions() {
   log_info "Checking example version references"
@@ -388,6 +427,9 @@ main() {
 
   # Check for Bash 4+ features
   check_bash_portability
+
+  # Check for non-portable sed -i
+  check_sed_portability
 
   # Run shellcheck
   run_shellcheck
