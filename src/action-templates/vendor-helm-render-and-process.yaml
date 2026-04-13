@@ -8,6 +8,15 @@ inputs:
   # INJECT-INPUT: output-sub-path
   # INJECT-INPUT: vendor-helm-rendered
   # INJECT-INPUT: docker-push-image-list
+  # INJECT-INPUT: image-build-command
+  # INJECT-INPUT: docker-platform
+
+  docker-target-registry:
+    description: 'Target container registry for retagged images (from resolve-registry)'
+    required: false
+  docker-target-namespace:
+    description: 'Target namespace for retagged images (from resolve-registry)'
+    required: false
 
   project-name:
     description: 'Project name (used as helm release name)'
@@ -52,4 +61,8 @@ runs:
         DOCKER_TAG: ${{ inputs.docker-tag }}
         DOCKER_IMAGE_NAME: ${{ inputs.docker-image-name }}
         DOCKER_IMAGE_NAME_OVERRIDE: ${{ inputs.docker-image-name-override }}
+        DOCKER_TARGET_REGISTRY: ${{ inputs.docker-target-registry }}
+        DOCKER_TARGET_NAMESPACE: ${{ inputs.docker-target-namespace }}
+        IMAGE_BUILD_COMMAND: ${{ inputs.image-build-command }}
+        DOCKER_PLATFORM: ${{ inputs.docker-platform }}
       run: "${{ github.action_path }}/../../scripts/main/vendor-helm-render-and-process"
