@@ -35,6 +35,10 @@ inputs:
   vendor-helm-rendered-use-project-name-as-fullname-override:
     description: 'Pass --set fullnameOverride=<project-name> to helm template (default true)'
     required: false
+  # Docker push image list file path
+  docker-push-image-list-file:
+    description: 'Path to file listing image URIs for docker-push-all (set by docker-registry-logins)'
+    required: true
 
   project-name:
     description: 'Project name (used as helm release name)'
@@ -66,6 +70,7 @@ runs:
         BUILD_PLATFORM: github-actions
         BUILD_PLATFORM_LOG_PROVIDER: github-actions
         OUTPUT_SUB_PATH: ${{ inputs.output-sub-path }}
+        DOCKER_PUSH_IMAGE_LIST_FILE: ${{ inputs.docker-push-image-list-file }}
         VENDOR_HELM_RENDERED_REPO_URL: ${{ inputs.vendor-helm-rendered-repo-url }}
         VENDOR_HELM_RENDERED_CHART_NAME: ${{ inputs.vendor-helm-rendered-chart-name }}
         VENDOR_HELM_RENDERED_OCI_CHART: ${{ inputs.vendor-helm-rendered-oci-chart }}

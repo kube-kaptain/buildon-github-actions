@@ -7,6 +7,7 @@ description: 'Fetches a vendor helm chart, renders it, and processes output into
 inputs:
   # INJECT-INPUT: output-sub-path
   # INJECT-INPUT: vendor-helm-rendered
+  # INJECT-INPUT: docker-push-image-list
 
   project-name:
     description: 'Project name (used as helm release name)'
@@ -38,6 +39,7 @@ runs:
         BUILD_PLATFORM: github-actions
         BUILD_PLATFORM_LOG_PROVIDER: github-actions
         OUTPUT_SUB_PATH: ${{ inputs.output-sub-path }}
+        DOCKER_PUSH_IMAGE_LIST_FILE: ${{ inputs.docker-push-image-list-file }}
         VENDOR_HELM_RENDERED_REPO_URL: ${{ inputs.vendor-helm-rendered-repo-url }}
         VENDOR_HELM_RENDERED_CHART_NAME: ${{ inputs.vendor-helm-rendered-chart-name }}
         VENDOR_HELM_RENDERED_OCI_CHART: ${{ inputs.vendor-helm-rendered-oci-chart }}
