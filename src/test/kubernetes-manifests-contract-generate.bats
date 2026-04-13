@@ -150,7 +150,9 @@ EOF
   [ "$status" -eq 0 ]
   local api_version
   api_version=$(yq '.apiVersion' "${OUTPUT_SUB_PATH}/manifests/contract/contract.yaml")
-  [ "$api_version" = "kaptain.org/manifests-contract/1.1" ]
+  local expected_version
+  expected_version=$(cat "$PROJECT_ROOT/src/schemas/manifests-contract/version")
+  [ "$api_version" = "kaptain.org/manifests-contract/${expected_version}" ]
 }
 
 @test "contract-generate: sets token scheme from env vars" {
