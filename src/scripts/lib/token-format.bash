@@ -104,20 +104,23 @@ unresolved_token_regex() {
 
   # Build name character class from name style
   local name_regex
+  local name_segment
   case "${name_style}" in
-    PascalCase)      name_regex='[A-Z][A-Za-z0-9]*' ;;
-    camelCase)       name_regex='[a-z][A-Za-z0-9]*' ;;
-    UPPER_SNAKE)     name_regex='[A-Z_][A-Z0-9_]*' ;;
-    lower_snake)     name_regex='[a-z_][a-z0-9_]*' ;;
-    lower-kebab)     name_regex='[a-z][a-z0-9-]*' ;;
-    UPPER-KEBAB)     name_regex='[A-Z][A-Z0-9-]*' ;;
-    lower.dot)       name_regex='[a-z][a-z0-9.]*' ;;
-    UPPER.DOT)       name_regex='[A-Z][A-Z0-9.]*' ;;
+    PascalCase)      name_segment='[A-Z][A-Za-z0-9]*' ;;
+    camelCase)       name_segment='[a-z][A-Za-z0-9]*' ;;
+    UPPER_SNAKE)     name_segment='[A-Z_][A-Z0-9_]*' ;;
+    lower_snake)     name_segment='[a-z_][a-z0-9_]*' ;;
+    lower-kebab)     name_segment='[a-z][a-z0-9-]*' ;;
+    UPPER-KEBAB)     name_segment='[A-Z][A-Z0-9-]*' ;;
+    lower.dot)       name_segment='[a-z][a-z0-9.]*' ;;
+    UPPER.DOT)       name_segment='[A-Z][A-Z0-9.]*' ;;
     *)
       log_error "Unknown name style: ${name_style}"
       return 1
       ;;
   esac
+
+  local name_regex="${name_segment}(/${name_segment})*"
 
   # Wrap with delimiter regex
   case "${delim_style}" in

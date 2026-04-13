@@ -313,6 +313,108 @@ EOF
 }
 
 # =============================================================================
+# Source tokens should not cause false positives for same-delimiter styles
+# =============================================================================
+
+@test "assess-token-compatibility: UPPER_SNAKE tokens do not falsely flag PascalCase/UPPER-KEBAB/UPPER.DOT" {
+  # Single-word UPPER_SNAKE tokens like ${REPLICAS} technically match PascalCase,
+  # UPPER-KEBAB, and UPPER.DOT regexes too. But they are the source style's own
+  # tokens and should not cause those schemes to appear in repackageRequired.
+  cat > "$TEST_DIR/manifest.yaml" << 'EOF'
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  namespace: ${ENVIRONMENT}
+spec:
+  replicas: ${REPLICAS}
+  template:
+    spec:
+      containers:
+        - resources:
+            requests:
+              memory: ${MEMORY}
+              cpu: ${CPU}
+EOF
+  run "$ASSESS_SCRIPT" shell UPPER_SNAKE "$TEST_DIR"
+  [ "$status" -eq 0 ]
+  repackage=$(get_repackage)
+  # These should NOT be in repackage - the matches are all source style tokens
+  ! echo "$repackage" | grep -q "shell-PascalCase"
+  ! echo "$repackage" | grep -q "shell-UPPER-KEBAB"
+  ! echo "$repackage" | grep -q 'shell-UPPER\.DOT'
+  # They should be in automatic
+  automatic=$(get_automatic)
+  echo "$automatic" | grep -q "shell-PascalCase"
+  echo "$automatic" | grep -q "shell-UPPER-KEBAB"
+  echo "$automatic" | grep -q 'shell-UPPER\.DOT'
+}
+
+@test "assess-token-compatibility: PascalCase tokens do not falsely flag other shell name styles" {
+  cat > "$TEST_DIR/manifest.yaml" << 'EOF'
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  namespace: ${Environment}
+spec:
+  replicas: ${Replicas}
+EOF
+  run "$ASSESS_SCRIPT" shell PascalCase "$TEST_DIR"
+  [ "$status" -eq 0 ]
+  repackage=$(get_repackage)
+  # shell-camelCase regex [a-z][A-Za-z0-9]* would NOT match Environment (starts uppercase)
+  # shell-UPPER_SNAKE regex [A-Z_][A-Z0-9_]* would NOT match Environment (has lowercase)
+  # So no false positives expected for those - but verify no shell styles are in repackage
+  # since Environment/Replicas only match PascalCase among name styles
+  ! echo "$repackage" | grep -q "shell-"
+}
+
+# =============================================================================
+# Nested (path-based) tokens with /
+# =============================================================================
+
+@test "assess-token-compatibility: nested PascalCase tokens cause shell repackage from other delimiters" {
+  # When assessing from mustache-PascalCase, shell-style nested tokens like
+  # ${VendorEnvoyGateway/Cpu} must be detected and cause shell-PascalCase
+  # to appear in repackageRequired
+  cat > "$TEST_DIR/manifest.yaml" << 'EOF'
+apiVersion: apps/v1
+kind: Deployment
+spec:
+  replicas: ${VendorEnvoyGateway/Replicas}
+  template:
+    spec:
+      containers:
+        - resources:
+            requests:
+              memory: ${VendorEnvoyGateway/Memory}
+              cpu: ${VendorEnvoyGateway/Cpu}
+EOF
+  run "$ASSESS_SCRIPT" mustache PascalCase "$TEST_DIR"
+  [ "$status" -eq 0 ]
+  repackage=$(get_repackage)
+  echo "$repackage" | grep -q "shell-PascalCase"
+}
+
+@test "assess-token-compatibility: nested UPPER_SNAKE tokens cause shell repackage from other delimiters" {
+  cat > "$TEST_DIR/manifest.yaml" << 'EOF'
+apiVersion: apps/v1
+kind: Deployment
+spec:
+  replicas: ${VENDOR_ENVOY_GATEWAY/REPLICAS}
+  template:
+    spec:
+      containers:
+        - resources:
+            requests:
+              memory: ${VENDOR_ENVOY_GATEWAY/MEMORY}
+EOF
+  run "$ASSESS_SCRIPT" mustache UPPER_SNAKE "$TEST_DIR"
+  [ "$status" -eq 0 ]
+  repackage=$(get_repackage)
+  echo "$repackage" | grep -q "shell-UPPER_SNAKE"
+}
+
+# =============================================================================
 # Sneaky scenario: blade vs mustache ambiguity
 # =============================================================================
 
