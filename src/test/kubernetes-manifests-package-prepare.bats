@@ -288,3 +288,64 @@ set_required_env() {
   [ "$status" -eq 0 ]
   assert_var_equals "MANIFESTS_ZIP_FILE_NAME" "my-project-1.2.3-manifests.zip"
 }
+
+@test "copies additional tokens from additional-tokens dir" {
+  set_required_env
+  create_manifest "deployment.yaml"
+  mkdir -p "$OUTPUT_SUB_PATH/manifests/additional-tokens"
+  printf '%s' "1.0.0-gateway" > "$OUTPUT_SUB_PATH/manifests/additional-tokens/DockerTagGateway"
+  printf '%s' "1.0.0-ratelimit" > "$OUTPUT_SUB_PATH/manifests/additional-tokens/DockerTagRatelimit"
+
+  run "$SCRIPTS_DIR/kubernetes-manifests-package-prepare"
+  [ "$status" -eq 0 ]
+  assert_output_contains "Copying 2 additional token(s)"
+
+  [ -f "$OUTPUT_SUB_PATH/manifests/config/DockerTagGateway" ]
+  [ -f "$OUTPUT_SUB_PATH/manifests/config/DockerTagRatelimit" ]
+  [ "$(cat "$OUTPUT_SUB_PATH/manifests/config/DockerTagGateway")" = "1.0.0-gateway" ]
+  [ "$(cat "$OUTPUT_SUB_PATH/manifests/config/DockerTagRatelimit")" = "1.0.0-ratelimit" ]
+}
+
+@test "succeeds when additional-tokens dir does not exist" {
+  set_required_env
+  create_manifest "deployment.yaml"
+
+  run "$SCRIPTS_DIR/kubernetes-manifests-package-prepare"
+  [ "$status" -eq 0 ]
+  assert_output_not_contains "additional token"
+}
+
+@test "fails when additional token collides with existing token" {
+  set_required_env
+  create_manifest "deployment.yaml"
+  mkdir -p "$OUTPUT_SUB_PATH/manifests/additional-tokens"
+  printf '%s' "collision" > "$OUTPUT_SUB_PATH/manifests/additional-tokens/ProjectName"
+
+  run "$SCRIPTS_DIR/kubernetes-manifests-package-prepare"
+  [ "$status" -ne 0 ]
+  assert_output_contains "collide"
+  assert_output_contains "ProjectName"
+}
+
+@test "fails when additional token collides with user config token" {
+  set_required_env
+  create_manifest "deployment.yaml"
+  create_config_token "CustomVar" "user-value"
+  mkdir -p "$OUTPUT_SUB_PATH/manifests/additional-tokens"
+  printf '%s' "additional-value" > "$OUTPUT_SUB_PATH/manifests/additional-tokens/CustomVar"
+
+  run "$SCRIPTS_DIR/kubernetes-manifests-package-prepare"
+  [ "$status" -ne 0 ]
+  assert_output_contains "collide"
+  assert_output_contains "CustomVar"
+}
+
+@test "succeeds when additional-tokens dir is empty" {
+  set_required_env
+  create_manifest "deployment.yaml"
+  mkdir -p "$OUTPUT_SUB_PATH/manifests/additional-tokens"
+
+  run "$SCRIPTS_DIR/kubernetes-manifests-package-prepare"
+  [ "$status" -eq 0 ]
+  assert_output_not_contains "additional token"
+}

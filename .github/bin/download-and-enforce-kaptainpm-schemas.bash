@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
 #
-# download-and-enforce-schemas.bash - Download KaptainPM schemas and enforce no drift
+# download-and-enforce-kaptainpm-schemas.bash - Download KaptainPM schemas and enforce no drift
 #
 # Pulls the spec-kaptainpm-schema OCI image for the version declared in
 # src/schemas/version, extracts the JSON schema files, copies them into

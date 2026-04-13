@@ -12,6 +12,20 @@ inputs:
     description: 'Project name (used as helm release name)'
     required: true
     type: string
+  docker-tag:
+    description: 'Docker tag from versions-and-naming (required when image-retags configured)'
+    required: false
+  docker-image-name:
+    description: 'Docker image name from versions-and-naming (required when image-retags configured)'
+    required: false
+  docker-image-name-override:
+    description: 'Inbound override from KaptainPM.yaml (passed through if set)'
+    required: false
+
+outputs:
+  DOCKER_IMAGE_NAME_OVERRIDE:
+    description: 'Docker image name override for the token override step'
+    value: ${{ steps.helm-render.outputs.DOCKER_IMAGE_NAME_OVERRIDE }}
 
 runs:
   using: 'composite'
@@ -31,5 +45,9 @@ runs:
         VENDOR_HELM_RENDERED_SED_REPLACE: ${{ inputs.vendor-helm-rendered-sed-replace }}
         VENDOR_HELM_RENDERED_YQ_TRANSFORM: ${{ inputs.vendor-helm-rendered-yq-transform }}
         VENDOR_HELM_RENDERED_IMAGE_RETAGS: ${{ inputs.vendor-helm-rendered-image-retags }}
+        VENDOR_HELM_RENDERED_USE_PROJECT_NAME_AS_FULLNAME_OVERRIDE: ${{ inputs.vendor-helm-rendered-use-project-name-as-fullname-override }}
         PROJECT_NAME: ${{ inputs.project-name }}
+        DOCKER_TAG: ${{ inputs.docker-tag }}
+        DOCKER_IMAGE_NAME: ${{ inputs.docker-image-name }}
+        DOCKER_IMAGE_NAME_OVERRIDE: ${{ inputs.docker-image-name-override }}
       run: "${{ github.action_path }}/../../scripts/main/vendor-helm-render-and-process"

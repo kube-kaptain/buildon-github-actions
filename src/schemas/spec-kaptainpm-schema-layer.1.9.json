@@ -1,15 +1,15 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/kube-kaptain/spec-kaptainpm-schema/releases/download/1.8/spec-kaptainpm-schema-layer-1.8.yaml",
+  "$id": "https://github.com/kube-kaptain/spec-kaptainpm-schema/releases/download/1.9/spec-kaptainpm-schema-layer-1.9.yaml",
   "name": "spec-kaptainpm-schema",
-  "version": "1.8",
+  "version": "1.9",
   "source": "https://github.com/kube-kaptain/spec-kaptainpm-schema",
   "latest": "https://raw.githubusercontent.com/kube-kaptain/spec-kaptainpm-schema/main/spec-kaptainpm-schema.yaml",
-  "tagged": "https://raw.githubusercontent.com/kube-kaptain/spec-kaptainpm-schema/1.8/spec-kaptainpm-schema.yaml",
-  "release": "https://github.com/kube-kaptain/spec-kaptainpm-schema/releases/download/1.8/spec-kaptainpm-schema-layer-1.8.yaml",
-  "validate-using": "https://github.com/kube-kaptain/spec-kaptainpm-schema/releases/download/1.8/spec-kaptainpm-schema-layer-1.8.json",
+  "tagged": "https://raw.githubusercontent.com/kube-kaptain/spec-kaptainpm-schema/1.9/spec-kaptainpm-schema.yaml",
+  "release": "https://github.com/kube-kaptain/spec-kaptainpm-schema/releases/download/1.9/spec-kaptainpm-schema-layer-1.9.yaml",
+  "validate-using": "https://github.com/kube-kaptain/spec-kaptainpm-schema/releases/download/1.9/spec-kaptainpm-schema-layer-1.9.json",
   "title": "KaptainPM",
-  "description": "Kaptain project manifest schema (version 1.8).\n",
+  "description": "Kaptain project manifest schema (version 1.9).\n",
   "type": "object",
   "required": [
     "apiVersion"
@@ -19,7 +19,7 @@
     "apiVersion": {
       "type": "string",
       "pattern": "^kaptain\\.org/[0-9]+(\\.[0-9]+)*$",
-      "description": "API version - must be kaptain.org/ followed by the schema version (e.g. kaptain.org/1.2). Set via 1.8 token substitution at build time.\n"
+      "description": "API version - must be kaptain.org/ followed by the schema version (e.g. kaptain.org/1.2). Set via 1.9 token substitution at build time.\n"
     },
     "kind": {
       "type": "string",
@@ -1720,6 +1720,11 @@
                   }
                 }
               }
+            },
+            "useProjectNameAsFullnameOverride": {
+              "type": "boolean",
+              "default": true,
+              "description": "Pass --set fullnameOverride=<project-name> to helm template so rendered resource names use the project name directly instead of the chart's release-name + chart-name concatenation. Set to false to use the chart's default naming or to control fullnameOverride via the values file instead.\n"
             }
           }
         }

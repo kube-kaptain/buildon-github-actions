@@ -1,9 +1,9 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
 
-name: Kubernetes App - Docker Dockerfile
-kaptain-order: 70
-kaptain-description: Everything from both docker Dockerfile and Kubernetes manifest packaging - a full kube app build
+name: Kubernetes Bundle - Resources
+kaptain-order: 62
+kaptain-description: Packages pre-existing kubernetes manifests from src/kubernetes/ with token substitution, no generators
 on:
   workflow_call:
     secrets:
@@ -48,17 +48,7 @@ on:
       is-release:
         description: 'Whether this is a release build'
         value: ${{ jobs.build.outputs.is-release }}
-      # Docker build outputs
-      docker-target-image-full-uri:
-        description: 'Full target image reference (action output name)'
-        value: ${{ jobs.build.outputs.docker-target-image-full-uri }}
-      docker-image-full-uri:
-        description: 'Full docker image reference (alias for docker-target-image-full-uri)'
-        value: ${{ jobs.build.outputs.docker-target-image-full-uri }}
-      images-pushed:
-        description: 'Number of images pushed'
-        value: ${{ jobs.build.outputs.images-pushed }}
-      # Manifest package outputs
+      # Package outputs
       manifests-zip-sub-path:
         description: 'Directory containing manifests zip file (relative)'
         value: ${{ jobs.build.outputs.manifests-zip-sub-path }}
@@ -93,8 +83,6 @@ jobs:
       git-tag: ${{ steps.versions.outputs.git-tag }}
       project-name: ${{ steps.versions.outputs.project-name }}
       is-release: ${{ steps.versions.outputs.is-release }}
-      docker-target-image-full-uri: ${{ steps.docker-build.outputs.docker-docker-target-image-full-uri }}
-      images-pushed: ${{ steps.docker-push-all.outputs.images-pushed }}
       manifests-zip-sub-path: ${{ steps.manifest-package.outputs.manifests-zip-sub-path }}
       manifests-zip-file-name: ${{ steps.manifest-package.outputs.manifests-zip-file-name }}
       manifests-uri: ${{ steps.manifest-repo-provider-publish.outputs.manifests-uri }}
@@ -180,51 +168,6 @@ jobs:
       # INJECT: release-change-data-oci-package
       # INJECT: github-check-end(name="Release Change Data OCI Package", id="check-release-change-data-oci-package")
 
-      # === Pre-docker Prepare ===
-      # INJECT: github-check-start(name="Pre-docker Prepare", id="check-pre-docker-prepare", if="steps.kpm.outputs.HOOK_PRE_DOCKER_PREPARE_SCRIPT_SUB_PATH != ''")
-      # INJECT: hook-pre-docker-prepare
-      # INJECT: github-check-end(name="Pre-docker Prepare", id="check-pre-docker-prepare", if="steps.kpm.outputs.HOOK_PRE_DOCKER_PREPARE_SCRIPT_SUB_PATH != ''")
-
-      # === Docker Build ===
-      # INJECT: github-check-start(name="Docker Build", id="check-docker-build")
-      # INJECT: docker-build-dockerfile
-      # INJECT: github-check-end(name="Docker Build", id="check-docker-build")
-
-      # === Post-docker Tests ===
-      # INJECT: github-check-start(name="Post-docker Tests", id="check-post-docker", if="steps.kpm.outputs.HOOK_POST_DOCKER_TESTS_SCRIPT_SUB_PATH != ''")
-      # INJECT: hook-post-docker-tests
-      # INJECT: github-check-end(name="Post-docker Tests", id="check-post-docker", if="steps.kpm.outputs.HOOK_POST_DOCKER_TESTS_SCRIPT_SUB_PATH != ''")
-
-      # === Generate ConfigMap ===
-      # INJECT: github-check-start(name="Generate ConfigMap", id="check-generate-configmap", if="steps.kpm.outputs.KUBERNETES_CONFIGMAP_SUB_PATH != ''")
-      # INJECT: generate-kubernetes-configmap
-      # INJECT: github-check-end(name="Generate ConfigMap", id="check-generate-configmap", if="steps.kpm.outputs.KUBERNETES_CONFIGMAP_SUB_PATH != ''")
-
-      # === Generate Secret Template ===
-      # INJECT: github-check-start(name="Generate Secret Template", id="check-generate-secret-template", if="steps.kpm.outputs.KUBERNETES_SECRET_TEMPLATE_SUB_PATH != ''")
-      # INJECT: generate-kubernetes-secret-template
-      # INJECT: github-check-end(name="Generate Secret Template", id="check-generate-secret-template", if="steps.kpm.outputs.KUBERNETES_SECRET_TEMPLATE_SUB_PATH != ''")
-
-      # === Generate ServiceAccount ===
-      # INJECT: github-check-start(name="Generate ServiceAccount", id="check-generate-serviceaccount", if="steps.kpm.outputs.KUBERNETES_SERVICEACCOUNT_GENERATION_ENABLED == 'true'")
-      # INJECT: generate-kubernetes-serviceaccount
-      # INJECT: github-check-end(name="Generate ServiceAccount", id="check-generate-serviceaccount", if="steps.kpm.outputs.KUBERNETES_SERVICEACCOUNT_GENERATION_ENABLED == 'true'")
-
-      # === Generate Workload ===
-      # INJECT: github-check-start(name="Generate Workload Manifest", id="check-generate-workload", if="steps.kpm.outputs.KUBERNETES_WORKLOAD_TYPE != 'none'")
-      # INJECT: generate-kubernetes-workload
-      # INJECT: github-check-end(name="Generate Workload Manifest", id="check-generate-workload", if="steps.kpm.outputs.KUBERNETES_WORKLOAD_TYPE != 'none'")
-
-      # === Generate PodDisruptionBudget ===
-      # INJECT: github-check-start(name="Generate PodDisruptionBudget", id="check-generate-poddisruptionbudget", if="steps.kpm.outputs.KUBERNETES_PODDISRUPTIONBUDGET_GENERATION_ENABLED != 'false' && (steps.kpm.outputs.KUBERNETES_PODDISRUPTIONBUDGET_GENERATION_ENABLED == 'true' || steps.kpm.outputs.KUBERNETES_WORKLOAD_TYPE == 'deployment' || steps.kpm.outputs.KUBERNETES_WORKLOAD_TYPE == 'statefulset')")
-      # INJECT: generate-kubernetes-poddisruptionbudget
-      # INJECT: github-check-end(name="Generate PodDisruptionBudget", id="check-generate-poddisruptionbudget", if="steps.kpm.outputs.KUBERNETES_PODDISRUPTIONBUDGET_GENERATION_ENABLED != 'false' && (steps.kpm.outputs.KUBERNETES_PODDISRUPTIONBUDGET_GENERATION_ENABLED == 'true' || steps.kpm.outputs.KUBERNETES_WORKLOAD_TYPE == 'deployment' || steps.kpm.outputs.KUBERNETES_WORKLOAD_TYPE == 'statefulset')")
-
-      # === Generate Service ===
-      # INJECT: github-check-start(name="Generate Service", id="check-generate-service", if="steps.kpm.outputs.KUBERNETES_SERVICE_GENERATION_ENABLED != 'false' && (steps.kpm.outputs.KUBERNETES_SERVICE_GENERATION_ENABLED == 'true' || steps.kpm.outputs.KUBERNETES_WORKLOAD_TYPE == 'deployment' || steps.kpm.outputs.KUBERNETES_WORKLOAD_TYPE == 'statefulset' || steps.kpm.outputs.KUBERNETES_WORKLOAD_TYPE == 'daemonset')")
-      # INJECT: generate-kubernetes-service
-      # INJECT: github-check-end(name="Generate Service", id="check-generate-service", if="steps.kpm.outputs.KUBERNETES_SERVICE_GENERATION_ENABLED != 'false' && (steps.kpm.outputs.KUBERNETES_SERVICE_GENERATION_ENABLED == 'true' || steps.kpm.outputs.KUBERNETES_WORKLOAD_TYPE == 'deployment' || steps.kpm.outputs.KUBERNETES_WORKLOAD_TYPE == 'statefulset' || steps.kpm.outputs.KUBERNETES_WORKLOAD_TYPE == 'daemonset')")
-
       # === Pre-package Prepare ===
       # INJECT: github-check-start(name="Pre-package Prepare", id="check-pre-package-prepare", if="steps.kpm.outputs.HOOK_PRE_PACKAGE_PREPARE_SCRIPT_SUB_PATH != ''")
       # INJECT: hook-pre-package-prepare
@@ -233,6 +176,7 @@ jobs:
       # === Manifest Package ===
       # INJECT: github-check-start(name="Package Manifests", id="check-manifest-package")
       # INJECT: manifest-package-prepare
+      # INJECT: manifest-package-only-token-override
       # INJECT: manifest-package
       # INJECT: github-check-end(name="Package Manifests", id="check-manifest-package")
 
@@ -278,7 +222,7 @@ jobs:
 
       # === GitHub Release ===
       # INJECT: github-check-start(name="GitHub Release", id="check-github-release", if="steps.kpm.outputs.GITHUB_RELEASE_ENABLED == 'true' && steps.versions.outputs.is-release == 'true'")
-      # INJECT: github-release-kube-app
+      # INJECT: github-release-kube-app-manifests-only
       # INJECT: github-check-end(name="GitHub Release", id="check-github-release", if="steps.kpm.outputs.GITHUB_RELEASE_ENABLED == 'true' && steps.versions.outputs.is-release == 'true'")
 
       # === Post-Build ===

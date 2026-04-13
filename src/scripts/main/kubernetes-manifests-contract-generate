@@ -1,0 +1,287 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
+#
+# kubernetes-manifests-contract-generate - Generates a manifests contract file and zip
+#
+# Scans substituted manifests for unresolved tokens, assesses compatibility with
+# other token schemes, copies defaults if present, and generates a contract YAML
+# file conforming to the manifests-contract schema. Packages into a contract zip.
+#
+# Inputs (environment variables):
+#   PROJECT_NAME          - Project name (required)
+#   VERSION               - Release version (required)
+#   TOKEN_DELIMITER_STYLE - Token delimiter style (default: shell)
+#   TOKEN_NAME_STYLE      - Token name style (default: PascalCase)
+#   OUTPUT_SUB_PATH       - Build output directory (default: kaptain-out)
+#   DEFAULTS_SUB_PATH     - Source directory for default values (default: src/defaults)
+#   METADATA_DESCRIPTION  - Description from KaptainPM.yaml (optional)
+#   BUILD_KIND            - Build kind for contract kind field (required)
+#
+# Outputs:
+#   CONTRACT_ZIP_SUB_PATH  - Relative path to directory containing the contract zip
+#   CONTRACT_ZIP_FILE_NAME - Filename of contract zip
+#
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Required inputs
+PROJECT_NAME="${PROJECT_NAME:?PROJECT_NAME is required}"
+VERSION="${VERSION:?VERSION is required}"
+BUILD_KIND="${BUILD_KIND:?BUILD_KIND is required}"
+
+# shellcheck source=src/scripts/defaults/platform.bash
+source "${SCRIPT_DIR}/../defaults/platform.bash"
+# shellcheck source=src/scripts/lib/log.bash
+source "${SCRIPT_DIR}/../lib/log.bash"
+# shellcheck source=src/scripts/defaults/output-sub-path.bash
+source "${SCRIPT_DIR}/../defaults/output-sub-path.bash"
+# shellcheck source=src/scripts/defaults/manifests-sub-path.bash
+source "${SCRIPT_DIR}/../defaults/manifests-sub-path.bash"
+# shellcheck source=src/scripts/defaults/tokens.bash
+source "${SCRIPT_DIR}/../defaults/tokens.bash"
+
+# shellcheck source=src/scripts/lib/output-var.bash
+source "${SCRIPT_DIR}/../lib/output-var.bash"
+
+# Optional inputs
+DEFAULTS_SUB_PATH="${DEFAULTS_SUB_PATH:-src/defaults}"
+METADATA_DESCRIPTION="${METADATA_DESCRIPTION:-}"
+
+# Contract schema version (read from version file alongside the schema)
+CONTRACT_SCHEMA_DIR="${SCRIPT_DIR}/../../schemas/manifests-contract"
+CONTRACT_SCHEMA_VERSION=$(cat "${CONTRACT_SCHEMA_DIR}/version")
+
+# Output paths
+CONTRACT_DIR="${OUTPUT_SUB_PATH}/manifests/contract"
+CONTRACT_ZIP_SUB_PATH="${OUTPUT_SUB_PATH}/manifests/zip"
+
+# Map BUILD_KIND to contract kind
+map_contract_kind() {
+  case "${BUILD_KIND}" in
+    kubernetes-app-*) echo "kubernetes-app" ;;
+    kubernetes-bundle-*) echo "kubernetes-bundle" ;;
+    kubernetes-product-*) echo "kubernetes-product" ;;
+    *)
+      log_error "Cannot map BUILD_KIND '${BUILD_KIND}' to contract kind"
+      exit 1
+      ;;
+  esac
+}
+
+main() {
+  log "=== Kubernetes Manifests Contract Generate ==="
+  log "Project: ${PROJECT_NAME}"
+  log "Version: ${VERSION}"
+  log "Build kind: ${BUILD_KIND}"
+  log "Token style: ${TOKEN_DELIMITER_STYLE}-${TOKEN_NAME_STYLE}"
+  log "Defaults source: ${DEFAULTS_SUB_PATH}"
+  log "================================================"
+
+  # Validate substituted manifests exist
+  if [[ ! -d "${MANIFESTS_SUBSTITUTED_SUB_PATH}/${PROJECT_NAME}" ]]; then
+    log_error "Substituted manifests not found: ${MANIFESTS_SUBSTITUTED_SUB_PATH}/${PROJECT_NAME}"
+    log_error "Did kubernetes-manifests-package run first?"
+    exit 1
+  fi
+
+  local contract_kind
+  contract_kind=$(map_contract_kind)
+  log "Contract kind: ${contract_kind}"
+
+  # Create output directories
+  mkdir -p "${CONTRACT_DIR}"
+  mkdir -p "${CONTRACT_ZIP_SUB_PATH}"
+
+  # --- Scan for unresolved tokens ---
+  log ""
+  log "Scanning for unresolved tokens..."
+  local unresolved_tokens
+  unresolved_tokens=$("${SCRIPT_DIR}/../util/scan-unresolved-tokens" \
+    "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" \
+    "${MANIFESTS_SUBSTITUTED_SUB_PATH}/${PROJECT_NAME}")
+
+  local token_count=0
+  if [[ -n "${unresolved_tokens}" ]]; then
+    token_count=$(echo "${unresolved_tokens}" | wc -l | tr -d ' ')
+  fi
+  log "Found ${token_count} unresolved token(s)"
+
+  # --- Assess compatibility ---
+  log ""
+  log "Assessing token scheme compatibility..."
+  local compat_output
+  compat_output=$("${SCRIPT_DIR}/../util/assess-token-compatibility" \
+    "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" \
+    "${MANIFESTS_SUBSTITUTED_SUB_PATH}/${PROJECT_NAME}")
+
+  local auto_list repackage_list
+  auto_list=$(echo "${compat_output}" | sed -n '/^AUTOMATIC_CONVERSION:$/,/^REPACKAGE_REQUIRED:$/p' | grep -v '^AUTOMATIC_CONVERSION:$' | grep -v '^REPACKAGE_REQUIRED:$' || true)
+  repackage_list=$(echo "${compat_output}" | sed -n '/^REPACKAGE_REQUIRED:$/,$p' | grep -v '^REPACKAGE_REQUIRED:$' || true)
+
+  local auto_count=0 repackage_count=0
+  if [[ -n "${auto_list}" ]]; then
+    auto_count=$(echo "${auto_list}" | wc -l | tr -d ' ')
+  fi
+  if [[ -n "${repackage_list}" ]]; then
+    repackage_count=$(echo "${repackage_list}" | wc -l | tr -d ' ')
+  fi
+  log "Auto-convertible: ${auto_count}, Repackage required: ${repackage_count}"
+
+  # --- Copy defaults ---
+  local has_defaults="false"
+  local defaults_dir="${CONTRACT_DIR}/defaults"
+  if [[ -d "${DEFAULTS_SUB_PATH}" ]]; then
+    local defaults_count
+    defaults_count=$(find "${DEFAULTS_SUB_PATH}" -type f | wc -l | tr -d ' ')
+    if [[ "${defaults_count}" -gt 0 ]]; then
+      log ""
+      log "Copying ${defaults_count} default(s) from ${DEFAULTS_SUB_PATH}"
+      mkdir -p "${defaults_dir}"
+      cp -R "${DEFAULTS_SUB_PATH}"/* "${defaults_dir}/"
+      has_defaults="true"
+    fi
+  fi
+
+  # --- Build contract YAML ---
+  log ""
+  log "Generating contract YAML..."
+  local contract_file="${CONTRACT_DIR}/contract.yaml"
+
+  # Base document
+  export YQ_API_VERSION="kaptain.org/manifests-contract/${CONTRACT_SCHEMA_VERSION}"
+  export YQ_KIND="${contract_kind}"
+
+  yq -n '
+    .apiVersion = strenv(YQ_API_VERSION) |
+    .kind = strenv(YQ_KIND)
+  ' > "${contract_file}"
+
+  # Metadata (optional)
+  if [[ -n "${METADATA_DESCRIPTION}" ]]; then
+    export YQ_DESCRIPTION="${METADATA_DESCRIPTION}"
+    yq -i '.metadata.description = strenv(YQ_DESCRIPTION)' "${contract_file}"
+  fi
+
+  # Tokens
+  export YQ_DELIMITER_STYLE="${TOKEN_DELIMITER_STYLE}"
+  export YQ_NAME_STYLE="${TOKEN_NAME_STYLE}"
+  yq -i '
+    .tokens.delimiterStyle = strenv(YQ_DELIMITER_STYLE) |
+    .tokens.nameStyle = strenv(YQ_NAME_STYLE)
+  ' "${contract_file}"
+
+  # Config section (only if there are unresolved tokens)
+  if [[ -n "${unresolved_tokens}" ]]; then
+    # Required: all unresolved tokens
+    yq -i '.config.required = []' "${contract_file}"
+    while IFS= read -r token_name; do
+      [[ -z "${token_name}" ]] && continue
+      export YQ_TOKEN="${token_name}"
+      yq -i '.config.required += [strenv(YQ_TOKEN)]' "${contract_file}"
+    done <<< "${unresolved_tokens}"
+
+    # noDefault: tokens that have no default file
+    local no_default_tokens=""
+    while IFS= read -r token_name; do
+      [[ -z "${token_name}" ]] && continue
+      if [[ "${has_defaults}" == "false" ]] || [[ ! -f "${defaults_dir}/${token_name}" ]]; then
+        no_default_tokens="${no_default_tokens}${token_name}"$'\n'
+      fi
+    done <<< "${unresolved_tokens}"
+
+    if [[ -n "${no_default_tokens}" ]]; then
+      yq -i '.config.noDefault = []' "${contract_file}"
+      while IFS= read -r token_name; do
+        [[ -z "${token_name}" ]] && continue
+        export YQ_TOKEN="${token_name}"
+        yq -i '.config.noDefault += [strenv(YQ_TOKEN)]' "${contract_file}"
+      done <<< "${no_default_tokens}"
+    fi
+
+    # Defaults: inline values from defaults files
+    if [[ "${has_defaults}" == "true" ]]; then
+      yq -i '.config.defaults = {}' "${contract_file}"
+      while IFS= read -r default_file; do
+        [[ -z "${default_file}" ]] && continue
+        local default_name
+        default_name=$(basename "${default_file}")
+        local default_value
+        default_value=$(cat "${default_file}")
+        export YQ_DEFAULT_NAME="${default_name}"
+        export YQ_DEFAULT_VALUE="${default_value}"
+        yq -i '.config.defaults[strenv(YQ_DEFAULT_NAME)] = strenv(YQ_DEFAULT_VALUE)' "${contract_file}"
+      done < <(find "${defaults_dir}" -type f | sort)
+    fi
+  fi
+
+  # Compatibility
+  if [[ -n "${auto_list}" ]]; then
+    yq -i '.compatibility.automaticConversion = []' "${contract_file}"
+    while IFS= read -r combo; do
+      [[ -z "${combo}" ]] && continue
+      export YQ_COMBO="${combo}"
+      yq -i '.compatibility.automaticConversion += [strenv(YQ_COMBO)]' "${contract_file}"
+    done <<< "${auto_list}"
+  fi
+
+  if [[ -n "${repackage_list}" ]]; then
+    yq -i '.compatibility.repackageRequired = []' "${contract_file}"
+    while IFS= read -r combo; do
+      [[ -z "${combo}" ]] && continue
+      export YQ_COMBO="${combo}"
+      yq -i '.compatibility.repackageRequired += [strenv(YQ_COMBO)]' "${contract_file}"
+    done <<< "${repackage_list}"
+  fi
+
+  # Ensure compatibility section exists even if both lists are empty
+  if [[ -z "${auto_list}" && -z "${repackage_list}" ]]; then
+    yq -i '.compatibility = {}' "${contract_file}"
+  fi
+
+  # --- Validate contract against schema ---
+  log ""
+  log "Validating contract against schema..."
+  local schema_file="${CONTRACT_SCHEMA_DIR}/spec-manifests-contract-schema-${CONTRACT_SCHEMA_VERSION}.json"
+  if [[ ! -f "${schema_file}" ]]; then
+    log_error "Schema not found: ${schema_file}"
+    exit 1
+  fi
+  check-jsonschema --schemafile "${schema_file}" "${contract_file}"
+  log "Contract validates against schema ${CONTRACT_SCHEMA_VERSION}"
+
+  # --- Create contract zip ---
+  local zip_name="${PROJECT_NAME}-${VERSION}-contract.zip"
+  log ""
+  log "Creating contract zip: ${CONTRACT_ZIP_SUB_PATH}/${zip_name}"
+
+  local repo_root
+  repo_root="$(pwd)"
+  (
+    cd "${CONTRACT_DIR}"
+    if [[ "${has_defaults}" == "true" ]]; then
+      zip -rq "${repo_root}/${CONTRACT_ZIP_SUB_PATH}/${zip_name}" contract.yaml defaults/
+    else
+      zip -rq "${repo_root}/${CONTRACT_ZIP_SUB_PATH}/${zip_name}" contract.yaml
+    fi
+  )
+
+  # Verify
+  if [[ ! -f "${CONTRACT_ZIP_SUB_PATH}/${zip_name}" ]]; then
+    log_error "Failed to create contract zip"
+    exit 1
+  fi
+
+  local zip_size
+  zip_size=$(wc -c < "${CONTRACT_ZIP_SUB_PATH}/${zip_name}" | tr -d ' ')
+  log "Created: ${zip_name} (${zip_size} bytes)"
+
+  output_var "CONTRACT_ZIP_SUB_PATH" "${CONTRACT_ZIP_SUB_PATH}"
+  output_var "CONTRACT_ZIP_FILE_NAME" "${zip_name}"
+
+  log ""
+  log "=== Contract Generate Complete ==="
+}
+
+main "$@"

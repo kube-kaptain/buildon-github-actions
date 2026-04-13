@@ -61,6 +61,9 @@ log "Kind matched: ${actual_kind}"
 # Mapping from YAML path to env var name
 # Format: "yaml.path:ENV_VAR_NAME"
 MAPPINGS=(
+  # Metadata
+  "metadata.description:METADATA_DESCRIPTION"
+
   # Global
   # Note: OUTPUT_SUB_PATH handled separately below (has default)
 
@@ -322,6 +325,7 @@ MAPPINGS=(
 
   # Manifests
   "spec.main.manifests.subPath:MANIFESTS_SUB_PATH"
+  "spec.main.manifests.defaults.subPath:DEFAULTS_SUB_PATH"
   "spec.main.manifests.repoProvider.type:MANIFESTS_REPO_PROVIDER_TYPE"
   "spec.main.manifests.repoProvider.packagingBaseImage:MANIFESTS_PACKAGING_BASE_IMAGE"
 
@@ -332,6 +336,7 @@ MAPPINGS=(
   "spec.main.vendorHelmRendered.repoUrl:VENDOR_HELM_RENDERED_REPO_URL"
   "spec.main.vendorHelmRendered.chartName:VENDOR_HELM_RENDERED_CHART_NAME"
   "spec.main.vendorHelmRendered.ociChart:VENDOR_HELM_RENDERED_OCI_CHART"
+  "spec.main.vendorHelmRendered.useProjectNameAsFullnameOverride:VENDOR_HELM_RENDERED_USE_PROJECT_NAME_AS_FULLNAME_OVERRIDE"
   # Hooks
   "spec.main.hooks.preBuild:HOOK_PRE_BUILD_SCRIPT_SUB_PATH"
   "spec.main.hooks.preTaggingTests:HOOK_PRE_TAGGING_TESTS_SCRIPT_SUB_PATH"

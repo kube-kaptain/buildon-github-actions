@@ -146,6 +146,33 @@ main() {
   MANIFESTS_ZIP_FILE_NAME="${zip_name}" \
   "${SCRIPT_DIR}/../util/prepare-substitution-tokens"
 
+  # Copy additional tokens written by prior steps (e.g. vendor-helm retag tokens)
+  local additional_tokens_dir="${OUTPUT_SUB_PATH}/manifests/additional-tokens"
+  if [[ -d "${additional_tokens_dir}" ]] && [[ -n "$(find "${additional_tokens_dir}" -type f 2>/dev/null)" ]]; then
+    local additional_count
+    additional_count=$(find "${additional_tokens_dir}" -type f | wc -l | tr -d ' ')
+
+    # Check for collisions against everything already in the config dir
+    local collisions=()
+    while IFS= read -r -d '' additional_file; do
+      local token_name="${additional_file#"${additional_tokens_dir}"/}"
+      if [[ -f "${MANIFESTS_CONFIG_SUB_PATH}/${token_name}" ]]; then
+        collisions+=("${token_name}")
+      fi
+    done < <(find "${additional_tokens_dir}" -type f -print0)
+
+    if [[ ${#collisions[@]} -gt 0 ]]; then
+      log_error "Additional tokens collide with existing tokens:"
+      for collision in "${collisions[@]}"; do
+        log "  ${collision}"
+      done
+      exit 1
+    fi
+
+    log "Copying ${additional_count} additional token(s) from ${additional_tokens_dir}"
+    cp -R "${additional_tokens_dir}"/* "${MANIFESTS_CONFIG_SUB_PATH}/"
+  fi
+
   output_var "MANIFESTS_ZIP_FILE_NAME" "${zip_name}"
 
   log ""

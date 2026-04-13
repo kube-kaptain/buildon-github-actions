@@ -78,7 +78,8 @@ See [`examples/`](examples/) for more usage patterns.
 | `aws-eks-cluster-management.yaml` | Everything from docker Dockerfile build plus EKS cluster config generation and three-phase validation |
 | `docker-build-retag.yaml` | Everything from quality and version above, but also pulls, retags, and republishes a docker image |
 | `kubernetes-app-manifests-only.yaml` | Everything from quality and version above, plus packages Kubernetes manifests with token substitution |
-| `kubernetes-app-vendor-helm-rendered.yaml` | Renders a vendor helm chart into individual manifests, processes and validates them, then packages with token substitution |
+| `kubernetes-bundle-resources.yaml` | Packages pre-existing kubernetes manifests from src/kubernetes/ with token substitution, no generators |
+| `kubernetes-bundle-vendor-helm-rendered.yaml` | Renders a vendor helm chart into individual manifests, processes and validates them, then packages with token substitution |
 | `kubernetes-app-docker-dockerfile.yaml` | Everything from both docker Dockerfile and Kubernetes manifest packaging - a full kube app build |
 | `layer-and-layerset-build.yaml` | Layer/layerset validation and OCI packaging - quality checks, versioning, layer packaging, Docker build, validation, and release publishing |
 | `kubernetes-app-docker-retag.yaml` | Everything from both docker retag and Kubernetes manifest packaging - for apps using upstream images |
@@ -119,6 +120,7 @@ See [`examples/`](examples/) for more usage patterns.
 | `hook-pre-docker-prepare` | Runs user's hook script before Docker build preparation to modify Dockerfile, copy files, or perform setup |
 | `hook-pre-package-prepare` | Runs user's hook script before manifest packaging to generate ConfigMaps, modify manifests, or add files |
 | `hook-pre-tagging-tests` | Runs user's hook script before tagging/versioning for custom validation or preparation |
+| `kubernetes-manifests-contract-generate` | Generates a manifests contract file describing token scheme, required config, and compatibility |
 | `kubernetes-manifests-package-only-token-override` | Overrides docker image tokens for manifests-only workflow |
 | `kubernetes-manifests-package-prepare` | Prepares manifests and tokens for packaging |
 | `kubernetes-manifests-package` | Packages Kubernetes manifests into a zip with variable substitution |
@@ -162,7 +164,8 @@ All inputs to the system come from KaptainPM.yaml and layers, except secrets.
 | `kubernetes-app-docker-dockerfile.yaml` | Kubernetes App - Docker Dockerfile | [docs/kubernetes-app-docker-dockerfile.md](docs/kubernetes-app-docker-dockerfile.md) |
 | `kubernetes-app-docker-retag.yaml` | Kubernetes App - Docker Retag | [docs/kubernetes-app-docker-retag.md](docs/kubernetes-app-docker-retag.md) |
 | `kubernetes-app-manifests-only.yaml` | Kubernetes App - Manifests Only | [docs/kubernetes-app-manifests-only.md](docs/kubernetes-app-manifests-only.md) |
-| `kubernetes-app-vendor-helm-rendered.yaml` | Kubernetes App - Vendor Helm Rendered | [docs/kubernetes-app-vendor-helm-rendered.md](docs/kubernetes-app-vendor-helm-rendered.md) |
+| `kubernetes-bundle-resources.yaml` | Kubernetes Bundle - Resources | [docs/kubernetes-bundle-resources.md](docs/kubernetes-bundle-resources.md) |
+| `kubernetes-bundle-vendor-helm-rendered.yaml` | Kubernetes Bundle - Vendor Helm Rendered | [docs/kubernetes-bundle-vendor-helm-rendered.md](docs/kubernetes-bundle-vendor-helm-rendered.md) |
 | `layer-and-layerset-build.yaml` | Layer and Layerset Build | [docs/layer-and-layerset-build.md](docs/layer-and-layerset-build.md) |
 | `spec-check-filter-release.yaml` | Spec Check Filter Release | [docs/spec-check-filter-release.md](docs/spec-check-filter-release.md) |
 <!-- WORKFLOW-DOCS-END -->

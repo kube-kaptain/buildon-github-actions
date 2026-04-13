@@ -30,3 +30,7 @@ vendor-helm-rendered-image-retags:
   description: 'JSON array of {sourceImageUri, tagSuffix} image retag entries'
   required: false
   type: string
+vendor-helm-rendered-use-project-name-as-fullname-override:
+  description: 'Pass --set fullnameOverride=<project-name> to helm template (default true)'
+  required: false
+  type: string

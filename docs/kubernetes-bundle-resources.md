@@ -1,6 +1,6 @@
-# kubernetes-app-vendor-helm-rendered
+# kubernetes-bundle-resources
 
-Kubernetes App - Vendor Helm Rendered
+Kubernetes Bundle - Resources
 
 ## Inputs
 

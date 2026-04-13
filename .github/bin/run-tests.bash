@@ -359,9 +359,13 @@ check_example_freshness() {
 
 # Download schemas from upstream OCI image and enforce no drift
 check_schemas() {
-  log_info "Downloading and enforcing schemas"
-  "$SCRIPT_DIR/download-and-enforce-schemas.bash"
-  log_info "Schemas match upstream"
+  log_info "Downloading and enforcing KaptainPM.yaml schemas"
+  "$SCRIPT_DIR/download-and-enforce-kaptainpm-schemas.bash"
+  log_info "Schemas for KaptainPM.yaml match upstream"
+
+  log_info "Downloading and enforcing contract.yaml schemas"
+  "$SCRIPT_DIR/download-and-enforce-contract-schemas.bash"
+  log_info "Schemas for contract.yaml match upstream"
 }
 
 main() {

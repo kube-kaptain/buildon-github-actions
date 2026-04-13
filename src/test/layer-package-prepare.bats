@@ -46,12 +46,15 @@ MOCK
   fi
 }
 
+# Read schema version once so fixtures always match the build system
+SCHEMA_VERSION=$(cat "$PROJECT_ROOT/src/schemas/version")
+
 # Helper: write a minimal valid layer KaptainPM.yaml to a given path
 write_layer_pm() {
   local target="${1}"
   mkdir -p "$(dirname "${target}")"
-  cat > "${target}" << 'EOF'
-apiVersion: kaptain.org/1.8
+  cat > "${target}" << EOF
+apiVersion: kaptain.org/${SCHEMA_VERSION}
 kind: kubernetes-app-docker-dockerfile
 metadata:
   labels: {}
@@ -68,8 +71,8 @@ EOF
 write_layerset_pm() {
   local target="${1}"
   mkdir -p "$(dirname "${target}")"
-  cat > "${target}" << 'EOF'
-apiVersion: kaptain.org/1.8
+  cat > "${target}" << EOF
+apiVersion: kaptain.org/${SCHEMA_VERSION}
 kind: kubernetes-app-docker-dockerfile
 metadata:
   labels: {}

@@ -25,6 +25,10 @@ source "${SCRIPT_DIR}/../defaults/platform.bash"
 source "${SCRIPT_DIR}/../lib/log.bash"
 # shellcheck source=src/scripts/lib/output-var.bash
 source "${SCRIPT_DIR}/../lib/output-var.bash"
+# shellcheck source=src/scripts/lib/token-format.bash
+source "${SCRIPT_DIR}/../lib/token-format.bash"
+# shellcheck source=src/scripts/defaults/tokens.bash
+source "${SCRIPT_DIR}/../defaults/tokens.bash"
 
 # Required inputs
 OUTPUT_SUB_PATH="${OUTPUT_SUB_PATH:?OUTPUT_SUB_PATH is required}"
@@ -37,6 +41,7 @@ MOVE_FILES_JSON="${VENDOR_HELM_RENDERED_MOVE_FILES:-}"
 SED_REPLACE_JSON="${VENDOR_HELM_RENDERED_SED_REPLACE:-}"
 YQ_TRANSFORM_JSON="${VENDOR_HELM_RENDERED_YQ_TRANSFORM:-}"
 IMAGE_RETAGS_JSON="${VENDOR_HELM_RENDERED_IMAGE_RETAGS:-}"
+USE_PROJECT_NAME_AS_FULLNAME_OVERRIDE="${VENDOR_HELM_RENDERED_USE_PROJECT_NAME_AS_FULLNAME_OVERRIDE:-true}"
 
 # Version from src/config/VendorHelmRenderedVersion
 VERSION_FILE="src/config/VendorHelmRenderedVersion"
@@ -142,10 +147,20 @@ fi
 log "  Using values file: ${VALUES_FILE}"
 
 # shellcheck disable=SC2016 # ${Environment} is a literal token for later substitution
-helm template "${PROJECT_NAME}" "${CHART_PATH}" \
-  --namespace '${Environment}' \
-  -f "${VALUES_FILE}" \
-  --output-dir "${RENDERED_DIR}"
+if [[ "${USE_PROJECT_NAME_AS_FULLNAME_OVERRIDE}" == "true" ]]; then
+  log "  fullnameOverride set to ${PROJECT_NAME}"
+  helm template "${PROJECT_NAME}" "${CHART_PATH}" \
+    --namespace '${Environment}' \
+    -f "${VALUES_FILE}" \
+    --set "fullnameOverride=${PROJECT_NAME}" \
+    --output-dir "${RENDERED_DIR}"
+else
+  log "  fullnameOverride disabled by config"
+  helm template "${PROJECT_NAME}" "${CHART_PATH}" \
+    --namespace '${Environment}' \
+    -f "${VALUES_FILE}" \
+    --output-dir "${RENDERED_DIR}"
+fi
 
 log "  Rendered to ${RENDERED_DIR}"
 
@@ -409,7 +424,14 @@ if [[ -n "${IMAGE_RETAGS_JSON}" && "${IMAGE_RETAGS_JSON}" != "null" && "${IMAGE_
   log ""
   log "Stage 9: Retagging images..."
 
+  DOCKER_TAG="${DOCKER_TAG:?DOCKER_TAG is required for image retags}"
+  DOCKER_IMAGE_NAME="${DOCKER_IMAGE_NAME:?DOCKER_IMAGE_NAME is required for image retags}"
+  DOCKER_IMAGE_NAME_OVERRIDE="${DOCKER_IMAGE_NAME_OVERRIDE:-}"
+
   RETAG_COUNT=$(echo "${IMAGE_RETAGS_JSON}" | jq length)
+  ADDITIONAL_TOKENS_DIR="${OUTPUT_SUB_PATH}/manifests/additional-tokens"
+  mkdir -p "${ADDITIONAL_TOKENS_DIR}"
+
   for i in $(seq 0 $((RETAG_COUNT - 1))); do
     SOURCE_IMAGE_URI=$(echo "${IMAGE_RETAGS_JSON}" | jq -r ".[${i}].sourceImageUri")
     TAG_SUFFIX=$(echo "${IMAGE_RETAGS_JSON}" | jq -r ".[${i}].tagSuffix")
@@ -428,5 +450,22 @@ if [[ -n "${IMAGE_RETAGS_JSON}" && "${IMAGE_RETAGS_JSON}" != "null" && "${IMAGE_
     DOCKER_SOURCE_TAG="${SOURCE_TAG}" \
     DOCKER_RETAG_TAG_SUFFIX="${TAG_SUFFIX}" \
       "${SCRIPT_DIR}/docker-build-retag"
+
+    # Write per-suffix DockerTag token for later substitution
+    # e.g. tagSuffix "gateway" -> canonical DOCKER_TAG_GATEWAY -> DockerTagGateway (PascalCase)
+    SUFFIX_UPPER=$(echo "${TAG_SUFFIX}" | tr '-' '_' | tr '[:lower:]' '[:upper:]')
+    TOKEN_NAME=$(convert_token_name "${TOKEN_NAME_STYLE}" "DOCKER_TAG_${SUFFIX_UPPER}")
+    TOKEN_VALUE="${DOCKER_TAG}-${TAG_SUFFIX}"
+
+    log "  Writing additional token: ${TOKEN_NAME}=${TOKEN_VALUE}"
+    printf '%s' "${TOKEN_VALUE}" > "${ADDITIONAL_TOKENS_DIR}/${TOKEN_NAME}"
   done
+
+  # Ensure DockerImageName survives the override step
+  # Prefer inbound override from KaptainPM.yaml if set, otherwise use build-time value
+  if [[ -n "${DOCKER_IMAGE_NAME_OVERRIDE}" ]]; then
+    output_var "DOCKER_IMAGE_NAME_OVERRIDE" "${DOCKER_IMAGE_NAME_OVERRIDE}"
+  else
+    output_var "DOCKER_IMAGE_NAME_OVERRIDE" "${DOCKER_IMAGE_NAME}"
+  fi
 fi

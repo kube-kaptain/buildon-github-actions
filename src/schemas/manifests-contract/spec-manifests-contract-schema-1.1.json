@@ -1,0 +1,137 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kaptain.org/schemas/manifests-contract/1.1",
+  "title": "Kaptain Manifests Contract v1.1",
+  "description": "Schema for manifests contract files that accompany Kaptain manifest packages. Documents the token scheme, required configuration, default values, and compatibility information for automatic consumption.\n",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "apiVersion",
+    "kind",
+    "tokens",
+    "compatibility"
+  ],
+  "properties": {
+    "apiVersion": {
+      "type": "string",
+      "pattern": "^kaptain\\.org/manifests-contract/[0-9]+\\.[0-9]+$",
+      "description": "API version - must be kaptain.org/manifests-contract/ followed by the schema version (e.g. kaptain.org/manifests-contract/1.1). Set via 1.1 token substitution at build time.\n"
+    },
+    "kind": {
+      "type": "string",
+      "enum": [
+        "kubernetes-app",
+        "kubernetes-bundle",
+        "kubernetes-product"
+      ],
+      "description": "The category of manifest package. Determines how consumers should handle this contract.\n"
+    },
+    "metadata": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Optional metadata about the manifest package",
+      "properties": {
+        "description": {
+          "type": "string",
+          "description": "Human-readable description of the manifest package. Copied from the project root KaptainPM.yaml metadata.description when present.\n"
+        }
+      }
+    },
+    "tokens": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "delimiterStyle",
+        "nameStyle"
+      ],
+      "description": "Token scheme used in the manifests. Matches the token configuration from the KaptainPM schema. Consumers use this to determine how to parse and substitute remaining tokens.\n",
+      "properties": {
+        "delimiterStyle": {
+          "type": "string",
+          "enum": [
+            "shell",
+            "mustache",
+            "helm",
+            "double-curly",
+            "at-sign",
+            "dollar-sign",
+            "percent",
+            "hash",
+            "xml",
+            "erb",
+            "github-actions",
+            "blade",
+            "stringtemplate",
+            "ognl",
+            "t4",
+            "swift"
+          ],
+          "description": "Token delimiter syntax used in the manifests"
+        },
+        "nameStyle": {
+          "type": "string",
+          "enum": [
+            "PascalCase",
+            "camelCase",
+            "UPPER_SNAKE",
+            "lower_snake",
+            "lower-kebab",
+            "UPPER-KEBAB",
+            "lower.dot",
+            "UPPER.DOT"
+          ],
+          "description": "Token name casing convention used in the manifests"
+        }
+      }
+    },
+    "config": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Configuration tokens that remain unresolved in the manifests. Required tokens must be supplied by the consumer. Defaults provide fallback values that consumers can use as-is or override. Omit this section entirely if the manifests have no unresolved tokens.\n",
+      "properties": {
+        "required": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Token names that remain unresolved and must be supplied at consumption time (or accepted from defaults). Produced by scanning the substituted manifests.\n"
+        },
+        "noDefault": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Token names that have no default value and MUST be provided by the consumer. These are tokens where a default is not appropriate, such as secrets, environment-specific endpoints, or other values that cannot be safely assumed.\n"
+        },
+        "defaults": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "Default values for unresolved tokens, keyed by token name. Not all tokens can have defaults (secrets cannot, some config values cannot). Tuneable values like memory and CPU limits can have defaults but remain overridable. When a defaults directory is also present in the contract package, values must not conflict. A future KaptainPM schema version will also support declaring defaults inline in the project manifest.\n"
+        }
+      }
+    },
+    "compatibility": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Compatibility assessment for consumers using different token schemes. Determined automatically by scanning manifests for patterns that would collide with other delimiter/name style combinations.\n",
+      "properties": {
+        "automaticConversion": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Token scheme combinations (delimiterStyle-nameStyle) that this package can be automatically converted to without loss or ambiguity.\n"
+        },
+        "repackageRequired": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Token scheme combinations (delimiterStyle-nameStyle) where automatic conversion is not possible due to conflicting patterns in the manifest content. These require a repackage project using the bundle flow or similar specialised transformation.\n"
+        }
+      }
+    }
+  }
+}

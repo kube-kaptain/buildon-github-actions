@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
 
-name: Kubernetes App - Vendor Helm Rendered
+name: Kubernetes Bundle - Vendor Helm Rendered
 kaptain-order: 65
 kaptain-description: Renders a vendor helm chart into individual manifests, processes and validates them, then packages with token substitution
 on:
@@ -189,6 +189,11 @@ jobs:
       # INJECT: manifest-package-only-token-override
       # INJECT: manifest-package
       # INJECT: github-check-end(name="Package Manifests", id="check-manifest-package")
+
+      # === Manifest Contract Generate ===
+      # INJECT: github-check-start(name="Generate Manifests Contract", id="check-manifest-contract-generate")
+      # INJECT: manifest-contract-generate
+      # INJECT: github-check-end(name="Generate Manifests Contract", id="check-manifest-contract-generate")
 
       # === Manifest Repo Provider Package ===
       # INJECT: github-check-start(name="Package Manifests for Repo Provider", id="check-manifest-repo-provider-package")

@@ -2,11 +2,10 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
 #
-# Reference script: kubernetes-app-vendor-helm-rendered workflow
+# Reference script: kubernetes-bundle-resources workflow
 #
-# Renders a helm chart into individual manifests, processes and validates
-# them, then packages with token substitution. No helm runtime dependency
-# in the output.
+# Packages pre-existing kubernetes manifests from src/kubernetes/ with
+# token substitution. No generators, no vendor helm, no Docker build.
 #
 # All variables can be overridden via environment.
 #
@@ -34,12 +33,11 @@ run_step "hook-post-versions-and-naming"
 run_step "change-source-note-write"
 run_step "release-change-data-generate"
 run_step "release-change-data-oci-package"
-run_step "vendor-helm-render-and-process"
 run_step "hook-pre-package-prepare"
-run_step "vendor-helm-render-validate"
 run_step "kubernetes-manifests-package-prepare"
 run_step "kubernetes-manifests-package-only-token-override"
 run_step "kubernetes-manifests-package"
+run_step "kubernetes-manifests-contract-generate"
 run_step "kubernetes-manifests-repo-provider-package"
 run_step "hook-post-package-tests"
 run_step "docker-multi-tag"
