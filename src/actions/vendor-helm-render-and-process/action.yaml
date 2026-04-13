@@ -35,6 +35,26 @@ inputs:
   vendor-helm-rendered-use-project-name-as-fullname-override:
     description: 'Pass --set fullnameOverride=<project-name> to helm template (default true)'
     required: false
+  # Docker push image list file path
+  docker-push-image-list-file:
+    description: 'Path to file listing image URIs for docker-push-all (set by docker-registry-logins)'
+    required: true
+  # Container runtime
+  image-build-command:
+    description: 'Container runtime command (podman or docker)'
+    required: true
+  # Target platform for docker/podman operations
+  docker-platform:
+    description: 'Target platform (linux/amd64, linux/arm64, or both comma-separated)'
+    required: false
+    default: 'linux/amd64'
+
+  docker-target-registry:
+    description: 'Target container registry for retagged images (from resolve-registry)'
+    required: false
+  docker-target-namespace:
+    description: 'Target namespace for retagged images (from resolve-registry)'
+    required: false
 
   project-name:
     description: 'Project name (used as helm release name)'
@@ -66,6 +86,7 @@ runs:
         BUILD_PLATFORM: github-actions
         BUILD_PLATFORM_LOG_PROVIDER: github-actions
         OUTPUT_SUB_PATH: ${{ inputs.output-sub-path }}
+        DOCKER_PUSH_IMAGE_LIST_FILE: ${{ inputs.docker-push-image-list-file }}
         VENDOR_HELM_RENDERED_REPO_URL: ${{ inputs.vendor-helm-rendered-repo-url }}
         VENDOR_HELM_RENDERED_CHART_NAME: ${{ inputs.vendor-helm-rendered-chart-name }}
         VENDOR_HELM_RENDERED_OCI_CHART: ${{ inputs.vendor-helm-rendered-oci-chart }}
@@ -78,4 +99,8 @@ runs:
         DOCKER_TAG: ${{ inputs.docker-tag }}
         DOCKER_IMAGE_NAME: ${{ inputs.docker-image-name }}
         DOCKER_IMAGE_NAME_OVERRIDE: ${{ inputs.docker-image-name-override }}
+        DOCKER_TARGET_REGISTRY: ${{ inputs.docker-target-registry }}
+        DOCKER_TARGET_NAMESPACE: ${{ inputs.docker-target-namespace }}
+        IMAGE_BUILD_COMMAND: ${{ inputs.image-build-command }}
+        DOCKER_PLATFORM: ${{ inputs.docker-platform }}
       run: "${{ github.action_path }}/../../scripts/main/vendor-helm-render-and-process"
