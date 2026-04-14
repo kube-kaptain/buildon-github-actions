@@ -53,6 +53,8 @@ PROJECT_NAME="${PROJECT_NAME:?PROJECT_NAME is required}"
 VERSION="${VERSION:?VERSION is required}"
 REPOSITORY_OWNER="${REPOSITORY_OWNER:?REPOSITORY_OWNER is required}"
 REPOSITORY_NAME="${REPOSITORY_NAME:?REPOSITORY_NAME is required}"
+DOCKER_TARGET_REGISTRY="${DOCKER_TARGET_REGISTRY:?DOCKER_TARGET_REGISTRY is required}"
+DOCKER_TARGET_NAMESPACE="${DOCKER_TARGET_NAMESPACE:-}"
 
 # Detect layer type from project name prefix or suffix.
 # Layerset is checked first so that a name like "my-layerset" is classified
@@ -288,7 +290,11 @@ EOF
 log "Generated: ${context_dir}/Dockerfile"
 
 # Build the docker files list (all files that need token substitution)
-docker_files="Dockerfile,KaptainPM.yaml,KaptainPM.json"
+if [[ "${LAYER_TOKEN_SUBSTITUTION}" == "true" ]]; then
+  docker_files="Dockerfile,KaptainPM.yaml,KaptainPM.json"
+else
+  docker_files="Dockerfile"
+fi
 
 # Write outputs
 output_var "LAYER_TYPE" "${LAYER_TYPE}"

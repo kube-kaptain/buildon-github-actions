@@ -352,6 +352,10 @@ MAPPINGS=(
   "spec.main.specBuild.jsonSchemaUrl:SPEC_JSON_SCHEMA_URL"
   "spec.main.specBuild.packagingBaseImage:SPEC_PACKAGING_BASE_IMAGE"
 
+  # Layer
+  "spec.main.layer.packagingBaseImage:LAYER_PACKAGING_BASE_IMAGE"
+  "spec.main.layer.tokenSubstitution:LAYER_TOKEN_SUBSTITUTION"
+
   # AWS EKS cluster management
   "spec.main.aws.eksClusterManagement.baseImage.registry:EKS_BASE_IMAGE_REGISTRY"
   "spec.main.aws.eksClusterManagement.baseImage.namespace:EKS_BASE_IMAGE_NAMESPACE"

@@ -5,9 +5,21 @@
   id: resolve-internal-release-files
   if: steps.kpm.outputs.GITHUB_RELEASE_ENABLED == 'true'
   shell: bash
+  env:
+    BUILD_MODE: build_server
+    BUILD_PLATFORM: github-actions
+    BUILD_PLATFORM_LOG_PROVIDER: github-actions
+    LAYER_TOKEN_SUBSTITUTION: ${{ steps.kpm.outputs.LAYER_TOKEN_SUBSTITUTION }}
+    DOCKERFILE_SUB_PATH: ${{ steps.layer-package-prepare.outputs.DOCKERFILE_SUB_PATH }}
   run: |
-    echo "verbatim-files=" >> "${GITHUB_OUTPUT}"
-    echo "substituted-files=" >> "${GITHUB_OUTPUT}"
+    kaptainpm_files="${DOCKERFILE_SUB_PATH}/KaptainPM.yaml,${DOCKERFILE_SUB_PATH}/KaptainPM.json"
+    if [[ "${LAYER_TOKEN_SUBSTITUTION}" == "false" ]]; then
+      echo "verbatim-files=${kaptainpm_files}" >> "${GITHUB_OUTPUT}"
+      echo "substituted-files=" >> "${GITHUB_OUTPUT}"
+    else
+      echo "verbatim-files=" >> "${GITHUB_OUTPUT}"
+      echo "substituted-files=${kaptainpm_files}" >> "${GITHUB_OUTPUT}"
+    fi
     echo "raw-files=" >> "${GITHUB_OUTPUT}"
 
 - name: Prepare release files
@@ -20,8 +32,6 @@
     github-release-raw-files: ${{ steps.kpm.outputs.GITHUB_RELEASE_RAW_FILES }}
     internal-verbatim-files: >-
       ${{ steps.kpm.outputs.OUTPUT_SUB_PATH }}/release-change-data/release-change-data.yaml,
-      ${{ steps.layer-package-prepare.outputs.DOCKERFILE_SUB_PATH }}/KaptainPM.yaml,
-      ${{ steps.layer-package-prepare.outputs.DOCKERFILE_SUB_PATH }}/KaptainPM.json,
       ${{ steps.resolve-internal-release-files.outputs.verbatim-files }}
     internal-substituted-files: ${{ steps.resolve-internal-release-files.outputs.substituted-files }}
     internal-raw-files: ${{ steps.resolve-internal-release-files.outputs.raw-files }}

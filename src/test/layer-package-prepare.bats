@@ -23,6 +23,9 @@ setup() {
   export OUTPUT_SUB_PATH="kaptain-out"
   export LAYER_PACKAGING_BASE_IMAGE="scratch"
   export BUILD_PLATFORM="test"
+  export DOCKER_IMAGE_NAME="layer/layer-test"
+  export DOCKER_TARGET_REGISTRY="ghcr.io"
+  export DOCKER_TARGET_NAMESPACE="kube-kaptain"
 
   # Mock check-jsonschema (schema files themselves are real; we don't want to
   # validate against them in these tests, just exercise the script's own logic)
