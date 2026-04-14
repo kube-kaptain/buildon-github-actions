@@ -1602,7 +1602,7 @@ jobs:
           docker-tag: ${{ steps.versions.outputs.docker-tag }}
           docker-image-name: ${{ steps.versions.outputs.docker-image-name }}
           is-release: ${{ steps.versions.outputs.is-release }}
-          github-release-add-version-to-filenames: ${{ steps.kpm.outputs.GITHUB_RELEASE_ADD_VERSION_TO_FILENAMES }}
+          github-release-add-version-to-filenames: 'true'
           token-delimiter-style: ${{ steps.kpm.outputs.TOKEN_DELIMITER_STYLE }}
           token-name-style: ${{ steps.kpm.outputs.TOKEN_NAME_STYLE }}
           token-name-validation: ${{ steps.kpm.outputs.TOKEN_NAME_VALIDATION }}
@@ -1733,9 +1733,11 @@ jobs:
             release_url="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/releases/download/${VERSION}"
             {
               echo "notes<<NOTES_EOF"
-              echo "Automatic Docker release for version ${VERSION} of ${PROJECT_NAME} by Kaptain build script."
+              echo "Automatic Layer(set) release for version ${VERSION} of ${PROJECT_NAME} by Kaptain build script."
               echo ""
               echo "### Release Assets"
+              echo "* KaptainPM.yaml: [KaptainPM-${VERSION}.yaml](${release_url}/KaptainPM-${VERSION}.yaml)"
+              echo "* KaptainPM.json: [KaptainPM-${VERSION}.json](${release_url}/KaptainPM-${VERSION}.json)"
               echo "* Docker Image: [${DOCKER_URI}](https://${DOCKER_URI})"
               echo "* Release Change Data: [release-change-data-${VERSION}.yaml](${release_url}/release-change-data-${VERSION}.yaml)"
               echo "* Release Change Data Image: [${RELEASE_CHANGE_DATA_URI}](https://${RELEASE_CHANGE_DATA_URI})"
