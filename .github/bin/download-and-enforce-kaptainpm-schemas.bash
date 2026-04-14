@@ -57,8 +57,8 @@ echo "Extracting schemas to staging: ${STAGING_DIR}"
 # Extract all six schema files from the image
 "${OCI_EXTRACT}" "${SCHEMA_IMAGE}" "${STAGING_DIR}" 
 
-# Verify all expected files were extracted
-for schema in spec-kaptainpm-schema.json spec-kaptainpm-schema-final.json spec-kaptainpm-schema-layer-source.json spec-kaptainpm-schema-layer.json spec-kaptainpm-schema-layerset-source.json spec-kaptainpm-schema-layerset.json; do
+# Verify all expected files were extracted (already versioned in filenames)
+for schema in spec-kaptainpm-schema-${SCHEMA_VERSION}.json spec-kaptainpm-schema-final-${SCHEMA_VERSION}.json spec-kaptainpm-schema-layer-source-${SCHEMA_VERSION}.json spec-kaptainpm-schema-layer-${SCHEMA_VERSION}.json spec-kaptainpm-schema-layerset-source-${SCHEMA_VERSION}.json spec-kaptainpm-schema-layerset-${SCHEMA_VERSION}.json; do
   if [[ ! -f "${STAGING_DIR}/${schema}" ]]; then
     echo "ERROR: Expected schema file not found after extraction: ${schema}" >&2
     exit 1
@@ -70,13 +70,15 @@ echo "All schema files extracted successfully"
 # Remove old spec-kaptainpm schema files (preserve json-schema-draft and version)
 rm -f "${SCHEMAS_DIR}"/spec-kaptainpm-schema*.json
 
-# Copy with version in the filename
-cp "${STAGING_DIR}/spec-kaptainpm-schema.json" "${SCHEMAS_DIR}/spec-kaptainpm-schema.${SCHEMA_VERSION}.json"
-cp "${STAGING_DIR}/spec-kaptainpm-schema-final.json" "${SCHEMAS_DIR}/spec-kaptainpm-schema-final.${SCHEMA_VERSION}.json"
-cp "${STAGING_DIR}/spec-kaptainpm-schema-layer-source.json" "${SCHEMAS_DIR}/spec-kaptainpm-schema-layer-source.${SCHEMA_VERSION}.json"
-cp "${STAGING_DIR}/spec-kaptainpm-schema-layer.json" "${SCHEMAS_DIR}/spec-kaptainpm-schema-layer.${SCHEMA_VERSION}.json"
-cp "${STAGING_DIR}/spec-kaptainpm-schema-layerset-source.json" "${SCHEMAS_DIR}/spec-kaptainpm-schema-layerset-source.${SCHEMA_VERSION}.json"
-cp "${STAGING_DIR}/spec-kaptainpm-schema-layerset.json" "${SCHEMAS_DIR}/spec-kaptainpm-schema-layerset.${SCHEMA_VERSION}.json"
+# Copy with dot-version format expected by consuming scripts
+# Image has: spec-kaptainpm-schema-final-1.12.json
+# Scripts expect: spec-kaptainpm-schema-final.1.12.json
+cp "${STAGING_DIR}/spec-kaptainpm-schema-${SCHEMA_VERSION}.json" "${SCHEMAS_DIR}/spec-kaptainpm-schema.${SCHEMA_VERSION}.json"
+cp "${STAGING_DIR}/spec-kaptainpm-schema-final-${SCHEMA_VERSION}.json" "${SCHEMAS_DIR}/spec-kaptainpm-schema-final.${SCHEMA_VERSION}.json"
+cp "${STAGING_DIR}/spec-kaptainpm-schema-layer-source-${SCHEMA_VERSION}.json" "${SCHEMAS_DIR}/spec-kaptainpm-schema-layer-source.${SCHEMA_VERSION}.json"
+cp "${STAGING_DIR}/spec-kaptainpm-schema-layer-${SCHEMA_VERSION}.json" "${SCHEMAS_DIR}/spec-kaptainpm-schema-layer.${SCHEMA_VERSION}.json"
+cp "${STAGING_DIR}/spec-kaptainpm-schema-layerset-source-${SCHEMA_VERSION}.json" "${SCHEMAS_DIR}/spec-kaptainpm-schema-layerset-source.${SCHEMA_VERSION}.json"
+cp "${STAGING_DIR}/spec-kaptainpm-schema-layerset-${SCHEMA_VERSION}.json" "${SCHEMAS_DIR}/spec-kaptainpm-schema-layerset.${SCHEMA_VERSION}.json"
 
 echo "Schemas installed to ${SCHEMAS_DIR}/"
 ls -la "${SCHEMAS_DIR}"/spec-kaptainpm-schema*.json
