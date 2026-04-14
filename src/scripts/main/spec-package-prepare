@@ -92,6 +92,21 @@ if [[ -d "${specs_src_dir}" ]]; then
   done
 fi
 
+# Version any unversioned yaml files (e.g., from hook-post-versions-and-naming)
+# Files from src/specs/ are already versioned by the copy loop above.
+for f in "${yaml_dir}"/*.yaml; do
+  [[ -f "${f}" ]] || continue
+  fname="${f##*/}"
+  stem="${fname%.yaml}"
+  # Skip if already versioned (ends with -VERSION)
+  if [[ "${stem}" == *"-${VERSION}" ]]; then
+    continue
+  fi
+  versioned_yaml="${stem}-${VERSION}.yaml"
+  log "Versioning: ${fname} -> ${versioned_yaml}"
+  mv "${f}" "${yaml_dir}/${versioned_yaml}"
+done
+
 # Fail early if nothing to package
 yaml_files=()
 for f in "${yaml_dir}"/*.yaml; do

@@ -1617,6 +1617,7 @@ jobs:
           internal-substituted-files: ${{ steps.resolve-internal-release-files.outputs.substituted-files }}
           internal-raw-files: >-
             ${{ steps.manifest-package.outputs.manifests-zip-sub-path }}/${{ steps.manifest-package.outputs.manifests-zip-file-name }},
+            ${{ steps.manifest-contract-generate.outputs.contract-zip-sub-path }}/${{ steps.manifest-contract-generate.outputs.contract-zip-file-name }},
             ${{ steps.resolve-internal-release-files.outputs.raw-files }}
           output-sub-path: ${{ steps.kpm.outputs.OUTPUT_SUB_PATH }}
           version: ${{ steps.versions.outputs.version }}
@@ -1772,6 +1773,7 @@ jobs:
           PROJECT_NAME: ${{ steps.versions.outputs.project-name }}
           MANIFESTS_URI: ${{ steps.manifest-repo-provider-publish.outputs.manifests-uri }}
           MANIFESTS_ZIP_FILE_NAME: ${{ steps.manifest-package.outputs.manifests-zip-file-name }}
+          CONTRACT_ZIP_FILE_NAME: ${{ steps.manifest-contract-generate.outputs.contract-zip-file-name }}
           RELEASE_CHANGE_DATA_URI: ${{ steps.release-change-data-oci-package.outputs.release-change-data-image-uri }}
           OUTPUT_SUB_PATH: ${{ steps.kpm.outputs.OUTPUT_SUB_PATH }}
           GITHUB_SERVER_URL: ${{ github.server_url }}
@@ -1799,6 +1801,7 @@ jobs:
               echo ""
               echo "### Release Assets"
               echo "* Kube Manifests: [${MANIFESTS_ZIP_FILE_NAME}](${release_url}/${MANIFESTS_ZIP_FILE_NAME})"
+              echo "* Manifests Contract: [${CONTRACT_ZIP_FILE_NAME}](${release_url}/${CONTRACT_ZIP_FILE_NAME})"
               echo "* Manifests Image: [${MANIFESTS_URI}](https://${MANIFESTS_URI})"
               echo "* Release Change Data: [release-change-data-${VERSION}.yaml](${release_url}/release-change-data-${VERSION}.yaml)"
               echo "* Release Change Data Image: [${RELEASE_CHANGE_DATA_URI}](https://${RELEASE_CHANGE_DATA_URI})"
