@@ -196,9 +196,9 @@ runs:
           if [[ "${filename}" == *.* ]]; then
             base="${filename%.*}"
             ext="${filename##*.}"
-            # Accept -VERSION.ext or -VERSION-manifests.zip
-            if [[ "${base}" != *"-${VERSION}" ]] && ! [[ "${base}" == *"-${VERSION}-manifests" && "${ext}" == "zip" ]]; then
-              echo "::error::Raw file '${filename}' must end with '-${VERSION}.${ext}' or '-${VERSION}-manifests.zip' — use verbatim-files instead for automatic versioning"
+            # Accept -VERSION.ext, -VERSION-manifests.zip, or -VERSION-contract.zip
+            if [[ "${base}" != *"-${VERSION}" ]] && ! [[ "${ext}" == "zip" && ("${base}" == *"-${VERSION}-manifests" || "${base}" == *"-${VERSION}-contract") ]]; then
+              echo "::error::Raw file '${filename}' must end with '-${VERSION}.${ext}', '-${VERSION}-manifests.zip', or '-${VERSION}-contract.zip' — use verbatim-files instead for automatic versioning"
               exit 1
             fi
           else
