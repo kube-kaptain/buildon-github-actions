@@ -11,6 +11,9 @@ inputs:
   version:
     description: 'Version string for metadata injection'
     required: true
+  docker-image-name:
+    description: 'Docker image name for metadata injection (e.g. layer/layer-project)'
+    required: true
   repository-owner:
     description: 'Repository owner for metadata injection'
     required: true
@@ -80,6 +83,7 @@ runs:
         REPOSITORY_NAME: ${{ inputs.repository-name }}
         OUTPUT_SUB_PATH: ${{ inputs.output-sub-path }}
         IMAGE_BUILD_COMMAND: ${{ inputs.image-build-command }}
+        DOCKER_IMAGE_NAME: ${{ inputs.docker-image-name }}
         DOCKER_TARGET_REGISTRY: ${{ inputs.docker-target-registry }}
         DOCKER_TARGET_NAMESPACE: ${{ inputs.docker-target-namespace }}
         LAYER_PACKAGING_BASE_IMAGE: ${{ inputs.layer-packaging-base-image }}

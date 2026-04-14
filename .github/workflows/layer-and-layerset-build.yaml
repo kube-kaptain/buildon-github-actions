@@ -1242,6 +1242,7 @@ jobs:
         with:
           project-name: ${{ steps.versions.outputs.project-name }}
           version: ${{ steps.versions.outputs.version }}
+          docker-image-name: ${{ steps.versions.outputs.docker-image-name }}
           repository-owner: ${{ steps.versions.outputs.repository-owner }}
           repository-name: ${{ steps.versions.outputs.repository-name }}
           output-sub-path: ${{ steps.kpm.outputs.OUTPUT_SUB_PATH }}
