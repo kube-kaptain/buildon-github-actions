@@ -214,7 +214,7 @@ jobs:
 
       # === GitHub Release ===
       # INJECT: github-check-start(name="GitHub Release", id="check-github-release", if="steps.kpm.outputs.GITHUB_RELEASE_ENABLED == 'true' && steps.versions.outputs.is-release == 'true'")
-      # INJECT: github-release-docker
+      # INJECT: github-release-layer
       # INJECT: github-check-end(name="GitHub Release", id="check-github-release", if="steps.kpm.outputs.GITHUB_RELEASE_ENABLED == 'true' && steps.versions.outputs.is-release == 'true'")
 
       # === Post-Build ===

@@ -1242,6 +1242,7 @@ jobs:
         with:
           project-name: ${{ steps.versions.outputs.project-name }}
           version: ${{ steps.versions.outputs.version }}
+          docker-image-name: ${{ steps.versions.outputs.docker-image-name }}
           repository-owner: ${{ steps.versions.outputs.repository-owner }}
           repository-name: ${{ steps.versions.outputs.repository-name }}
           output-sub-path: ${{ steps.kpm.outputs.OUTPUT_SUB_PATH }}
@@ -1576,9 +1577,21 @@ jobs:
         id: resolve-internal-release-files
         if: steps.kpm.outputs.GITHUB_RELEASE_ENABLED == 'true' && success()
         shell: bash
+        env:
+          BUILD_MODE: build_server
+          BUILD_PLATFORM: github-actions
+          BUILD_PLATFORM_LOG_PROVIDER: github-actions
+          LAYER_TOKEN_SUBSTITUTION: ${{ steps.kpm.outputs.LAYER_TOKEN_SUBSTITUTION }}
+          DOCKERFILE_SUB_PATH: ${{ steps.layer-package-prepare.outputs.DOCKERFILE_SUB_PATH }}
         run: |
-          echo "verbatim-files=" >> "${GITHUB_OUTPUT}"
-          echo "substituted-files=" >> "${GITHUB_OUTPUT}"
+          kaptainpm_files="${DOCKERFILE_SUB_PATH}/KaptainPM.yaml,${DOCKERFILE_SUB_PATH}/KaptainPM.json"
+          if [[ "${LAYER_TOKEN_SUBSTITUTION}" == "false" ]]; then
+            echo "verbatim-files=${kaptainpm_files}" >> "${GITHUB_OUTPUT}"
+            echo "substituted-files=" >> "${GITHUB_OUTPUT}"
+          else
+            echo "verbatim-files=" >> "${GITHUB_OUTPUT}"
+            echo "substituted-files=${kaptainpm_files}" >> "${GITHUB_OUTPUT}"
+          fi
           echo "raw-files=" >> "${GITHUB_OUTPUT}"
 
       - name: Prepare release files
@@ -1591,8 +1604,6 @@ jobs:
           github-release-raw-files: ${{ steps.kpm.outputs.GITHUB_RELEASE_RAW_FILES }}
           internal-verbatim-files: >-
             ${{ steps.kpm.outputs.OUTPUT_SUB_PATH }}/release-change-data/release-change-data.yaml,
-            ${{ steps.layer-package-prepare.outputs.DOCKERFILE_SUB_PATH }}/KaptainPM.yaml,
-            ${{ steps.layer-package-prepare.outputs.DOCKERFILE_SUB_PATH }}/KaptainPM.json,
             ${{ steps.resolve-internal-release-files.outputs.verbatim-files }}
           internal-substituted-files: ${{ steps.resolve-internal-release-files.outputs.substituted-files }}
           internal-raw-files: ${{ steps.resolve-internal-release-files.outputs.raw-files }}
@@ -1602,7 +1613,7 @@ jobs:
           docker-tag: ${{ steps.versions.outputs.docker-tag }}
           docker-image-name: ${{ steps.versions.outputs.docker-image-name }}
           is-release: ${{ steps.versions.outputs.is-release }}
-          github-release-add-version-to-filenames: ${{ steps.kpm.outputs.GITHUB_RELEASE_ADD_VERSION_TO_FILENAMES }}
+          github-release-add-version-to-filenames: 'true'
           token-delimiter-style: ${{ steps.kpm.outputs.TOKEN_DELIMITER_STYLE }}
           token-name-style: ${{ steps.kpm.outputs.TOKEN_NAME_STYLE }}
           token-name-validation: ${{ steps.kpm.outputs.TOKEN_NAME_VALIDATION }}
@@ -1733,9 +1744,11 @@ jobs:
             release_url="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/releases/download/${VERSION}"
             {
               echo "notes<<NOTES_EOF"
-              echo "Automatic Docker release for version ${VERSION} of ${PROJECT_NAME} by Kaptain build script."
+              echo "Automatic Layer(set) release for version ${VERSION} of ${PROJECT_NAME} by Kaptain build script."
               echo ""
               echo "### Release Assets"
+              echo "* KaptainPM.yaml: [KaptainPM-${VERSION}.yaml](${release_url}/KaptainPM-${VERSION}.yaml)"
+              echo "* KaptainPM.json: [KaptainPM-${VERSION}.json](${release_url}/KaptainPM-${VERSION}.json)"
               echo "* Docker Image: [${DOCKER_URI}](https://${DOCKER_URI})"
               echo "* Release Change Data: [release-change-data-${VERSION}.yaml](${release_url}/release-change-data-${VERSION}.yaml)"
               echo "* Release Change Data Image: [${RELEASE_CHANGE_DATA_URI}](https://${RELEASE_CHANGE_DATA_URI})"

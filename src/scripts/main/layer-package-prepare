@@ -53,6 +53,8 @@ PROJECT_NAME="${PROJECT_NAME:?PROJECT_NAME is required}"
 VERSION="${VERSION:?VERSION is required}"
 REPOSITORY_OWNER="${REPOSITORY_OWNER:?REPOSITORY_OWNER is required}"
 REPOSITORY_NAME="${REPOSITORY_NAME:?REPOSITORY_NAME is required}"
+DOCKER_TARGET_REGISTRY="${DOCKER_TARGET_REGISTRY:?DOCKER_TARGET_REGISTRY is required}"
+DOCKER_TARGET_NAMESPACE="${DOCKER_TARGET_NAMESPACE:-}"
 
 # Detect layer type from project name prefix or suffix.
 # Layerset is checked first so that a name like "my-layerset" is classified
@@ -183,25 +185,23 @@ log "Validating source against schema: $(basename "${source_schema}")"
 check-jsonschema --schemafile "${source_schema}" "${context_dir}/KaptainPM.yaml"
 log "Source schema validation passed"
 
-# Inject build metadata via yq
-# Token values (${Version}, ${ProjectName}, ${DockerImageName}) are resolved by
-# docker-build-dockerfile during token substitution. Direct values are injected now.
+# Inject build metadata via yq - all values injected directly
 log "Injecting build metadata..."
-export _OWNER="${REPOSITORY_OWNER}"
-export _BUILD_PLATFORM="${BUILD_PLATFORM}"
-export _SOURCE_REPO="${REPOSITORY_OWNER}/${REPOSITORY_NAME}"
-# ${Version}, ${ProjectName}, ${DockerImageName} are literal tokens
-# resolved later by docker-build-dockerfile during token substitution
-# shellcheck disable=SC2016
+DOCKER_IMAGE_NAME="${DOCKER_IMAGE_NAME:?DOCKER_IMAGE_NAME is required}"
+export SOURCE_REPO="${REPOSITORY_OWNER}/${REPOSITORY_NAME}"
+if [[ -n "${DOCKER_TARGET_NAMESPACE}" ]]; then
+  export IMAGE_URI="${DOCKER_TARGET_REGISTRY}/${DOCKER_TARGET_NAMESPACE}/${DOCKER_IMAGE_NAME}:${VERSION}"
+else
+  export IMAGE_URI="${DOCKER_TARGET_REGISTRY}/${DOCKER_IMAGE_NAME}:${VERSION}"
+fi
 yq eval -i '
-  .metadata.labels["kaptain.org/version"] = "${Version}" |
+  .metadata.labels["kaptain.org/version"] = strenv(VERSION) |
   .metadata.labels["kaptain.org/version"] style="double" |
-  .metadata.labels["kaptain.org/project-name"] = "${ProjectName}" |
-  .metadata.labels["kaptain.org/owner"] = strenv(_OWNER) |
-  .metadata.annotations["kaptain.org/built-by"] = strenv(_BUILD_PLATFORM) |
-  .metadata.annotations["kaptain.org/source-repository"] = strenv(_SOURCE_REPO) |
-  .metadata.annotations["kaptain.org/image-uri"] = "${DockerImageName}:${Version}" |
-  .metadata.annotations["kaptain.org/image-uri"] style="double"
+  .metadata.labels["kaptain.org/project-name"] = strenv(PROJECT_NAME) |
+  .metadata.labels["kaptain.org/owner"] = strenv(REPOSITORY_OWNER) |
+  .metadata.annotations["kaptain.org/built-by"] = strenv(BUILD_PLATFORM) |
+  .metadata.annotations["kaptain.org/source-repository"] = strenv(SOURCE_REPO) |
+  .metadata.annotations["kaptain.org/image-uri"] = strenv(IMAGE_URI)
 ' "${context_dir}/KaptainPM.yaml"
 log "Metadata injected"
 
@@ -290,7 +290,11 @@ EOF
 log "Generated: ${context_dir}/Dockerfile"
 
 # Build the docker files list (all files that need token substitution)
-docker_files="Dockerfile,KaptainPM.yaml,KaptainPM.json"
+if [[ "${LAYER_TOKEN_SUBSTITUTION}" == "true" ]]; then
+  docker_files="Dockerfile,KaptainPM.yaml,KaptainPM.json"
+else
+  docker_files="Dockerfile"
+fi
 
 # Write outputs
 output_var "LAYER_TYPE" "${LAYER_TYPE}"
