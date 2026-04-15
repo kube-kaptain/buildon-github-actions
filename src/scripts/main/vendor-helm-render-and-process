@@ -164,6 +164,22 @@ fi
 
 log "  Rendered to ${RENDERED_DIR}"
 
+# helm template only outputs templates/. Copy other chart directories (e.g. crds/)
+# into the rendered output so they flow through to C-split and beyond.
+RENDERED_CHART_NAME="$(find "${RENDERED_DIR}" -mindepth 1 -maxdepth 1 -type d | head -1)"
+while IFS= read -r chart_subdir; do
+  subdir_name="${chart_subdir##*/}"
+  if [[ "${subdir_name}" == "templates" ]]; then
+    continue
+  fi
+  if [[ -d "${RENDERED_CHART_NAME}/${subdir_name}" ]]; then
+    log "  ${subdir_name}/ already in rendered output, skipping"
+    continue
+  fi
+  log "  Copying non-template dir: ${subdir_name}/"
+  cp -r "${chart_subdir}" "${RENDERED_CHART_NAME}/${subdir_name}"
+done < <(find "${CHART_PATH}" -mindepth 1 -maxdepth 1 -type d)
+
 # ==========================================================================
 # Stage 3: Split multi-doc files
 # ==========================================================================
