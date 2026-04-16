@@ -66,7 +66,12 @@ if [[ "${RELEASE_BRANCH}" != "${DEFAULT_BRANCH}" ]]; then
   exit 1
 fi
 
-if [[ -n "${ADDITIONAL_RELEASE_BRANCHES}" ]]; then
+if [[ "${BUILD_MODE}" != "local" && "${BUILD_MODE}" != "build_server" ]]; then
+  log_error "Invalid BUILD_MODE: ${BUILD_MODE}. Valid values: local, build_server"
+  exit 1
+fi
+
+if [[ "${BUILD_MODE}" == "build_server" && -n "${ADDITIONAL_RELEASE_BRANCHES}" ]]; then
   IFS=',' read -ra additional_branches <<< "${ADDITIONAL_RELEASE_BRANCHES}"
   for additional in "${additional_branches[@]}"; do
     if [[ "${additional}" != "${RELEASE_BRANCH}" ]] && ! [[ "${additional}" =~ ^${RELEASE_BRANCH}[-._/+] ]]; then
@@ -74,11 +79,6 @@ if [[ -n "${ADDITIONAL_RELEASE_BRANCHES}" ]]; then
       exit 1
     fi
   done
-fi
-
-if [[ "${BUILD_MODE}" != "local" && "${BUILD_MODE}" != "build_server" ]]; then
-  log_error "Invalid BUILD_MODE: ${BUILD_MODE}. Valid values: local, build_server"
-  exit 1
 fi
 
 # Pad or truncate version to exactly N parts

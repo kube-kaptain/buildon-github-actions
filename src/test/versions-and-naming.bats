@@ -775,6 +775,18 @@ ENV KUBECTL_VERSION=1.28.5' > src/docker/Dockerfile
   assert_output_contains "must start with 'main' followed by a divider"
 }
 
+@test "skips additional-release-branch validation when BUILD_MODE=local" {
+  TEST_REPO=$(clone_fixture "tag-none")
+  cd "$TEST_REPO"
+
+  # Invalid prefix that would fail on build_server
+  export ADDITIONAL_RELEASE_BRANCHES="release-1.0.x"
+  export BUILD_MODE="local"
+  run "$SCRIPTS_DIR/versions-and-naming"
+  [ "$status" -eq 0 ]
+  assert_output_not_contains "must start with 'main' followed by a divider"
+}
+
 @test "accepts additional-release-branches with valid prefixes" {
   TEST_REPO=$(clone_fixture "tag-none")
   cd "$TEST_REPO"
