@@ -279,51 +279,56 @@ Verbose but explicit - you list exactly which secrets are passed to the workflow
 
 **Version formats:**
 
-| Output | Example | Use case |
-|--------|---------|----------|
-| `version` | `1.2.3` | Primary version |
-| `version-major` | `1` | Major component |
-| `version-minor` | `2` | Minor component |
-| `version-patch` | `3` | Patch component |
-| `version-2-part` | `1.2` | Two-part format |
-| `version-3-part` | `1.2.3` | Semver format |
-| `version-4-part` | `1.2.3.0` | Four-part format |
+| Output                    | Example   | Use case                              |
+|---------------------------|-----------|---------------------------------------|
+| `version`                 | `1.2.3`   | Primary version                       |
+| `version-major`           | `1`       | Major component                       |
+| `version-minor`           | `2`       | Minor component                       |
+| `version-patch`           | `3`       | Patch component                       |
+| `version-2-part`          | `1.2`     | Two-part format                       |
+| `version-3-part`          | `1.2.3`   | Semver format                         |
+| `version-4-part`          | `1.2.3.0` | Four-part format                      |
+| `version-dns-safe`        | `1-2-3`   | Version with dots replaced by hyphens |
+| `version-2-part-dns-safe` | `1-2`     | Two-part DNS-safe format              |
+| `version-3-part-dns-safe` | `1-2-3`   | Three-part DNS-safe format            |
+| `version-4-part-dns-safe` | `1-2-3-0` | Four-part DNS-safe format             |
 
 **Build metadata:**
 
-| Output | Example | Description |
-|--------|---------|-------------|
-| `docker-tag` | `1.2.3` or `1.2.3-PRERELEASE` | Ready-to-use image tag |
-| `docker-image-name` | `some/some-repo` | Image name from repo prefix |
-| `is-release` | `true` or `false` | Whether this is a release branch build |
-| `project-name` | `some-repo` | Contains repo name, to be used for all artifact names |
+| Output              | Example                       | Description                                           |
+|---------------------|-------------------------------|-------------------------------------------------------|
+| `git-tag`           | `v1.2.3`                      | Git tag for the version                               |
+| `docker-tag`        | `1.2.3` or `1.2.3-PRERELEASE` | Ready-to-use image tag                                |
+| `docker-image-name` | `some/some-repo`              | Image name from repo prefix                           |
+| `is-release`        | `true` or `false`             | Whether this is a release branch build                |
+| `project-name`      | `some-repo`                   | Contains repo name, to be used for all artifact names |
 
 ## Quality Checks
 
 ### Always On (cannot be disabled)
 
-| Check | Blocks | Why |
-|-------|--------|-----|
-| GitHub default branch names | `user-patch-1` patterns | Forces descriptive branch names |
-| GitHub UI commit messages | `Update filename`, `Create filename`, `Delete filename` | Forces descriptive commit messages |
-| Merge commits | Any commit with 2+ parents | Enforces rebase workflow |
-| Branch up to date | Branch that are out of date and need to be rebased | Must be fast-forward to guarantee correct test results |
-| Invalid PR target | PRs targeting non-allowed branches | Enforces release branch discipline |
+| Check                       | Blocks                                                  | Why                                                    |
+|-----------------------------|---------------------------------------------------------|--------------------------------------------------------|
+| GitHub default branch names | `user-patch-1` patterns                                 | Forces descriptive branch names                        |
+| GitHub UI commit messages   | `Update filename`, `Create filename`, `Delete filename` | Forces descriptive commit messages                     |
+| Merge commits               | Any commit with 2+ parents                              | Enforces rebase workflow                               |
+| Branch up to date           | Branch that are out of date and need to be rebased      | Must be fast-forward to guarantee correct test results |
+| Invalid PR target           | PRs targeting non-allowed branches                      | Enforces release branch discipline                     |
 
 ### Default On (can be disabled)
 
-| Check | Input | Default | Blocks |
-|-------|-------|---------|--------|
-| Double hyphens | `block-double-hyphens` | `true` | `--` in branch names (typo detection) |
+| Check          | Input                  | Default | Blocks                                |
+|----------------|------------------------|---------|---------------------------------------|
+| Double hyphens | `block-double-hyphens` | `true`  | `--` in branch names (typo detection) |
 
 ### Default Off (opt-in)
 
-| Check | Input | Default | Requires/Blocks |
-|-------|-------|---------|-----------------|
-| Slashes | `block-slashes` | `false` | Blocks `/` in branch names |
-| Conventional branches | `require-conventional-branches` | `false` | Requires `feature/`, `feat/`, `bugfix/`, `fix/`, `hotfix/`, `release/`, `chore/` prefix |
-| Conventional commits | `require-conventional-commits` | `false` | Requires `build:`, `chore:`, `ci:`, `docs:`, `feat:`, `fix:`, `perf:`, `refactor:`, `revert:`, `style:`, `test:` prefix |
-| Block conventional | `block-conventional-commits` | `false` | Blocks conventional commit format |
+| Check                 | Input                           | Default | Requires/Blocks                                                                                                         |
+|-----------------------|---------------------------------|---------|-------------------------------------------------------------------------------------------------------------------------|
+| Slashes               | `block-slashes`                 | `false` | Blocks `/` in branch names                                                                                              |
+| Conventional branches | `require-conventional-branches` | `false` | Requires `feature/`, `feat/`, `bugfix/`, `fix/`, `hotfix/`, `release/`, `chore/` prefix                                 |
+| Conventional commits  | `require-conventional-commits`  | `false` | Requires `build:`, `chore:`, `ci:`, `docs:`, `feat:`, `fix:`, `perf:`, `refactor:`, `revert:`, `style:`, `test:` prefix |
+| Block conventional    | `block-conventional-commits`    | `false` | Blocks conventional commit format                                                                                       |
 
 ## Development
 
@@ -344,11 +349,11 @@ Run after modifying templates. Commit the generated workflows, generated docs/ a
 
 This project uses multiple licenses:
 
-| Component | License | Terms |
-|-----------|---------|-------|
-| Source code and scripts | MIT | Free to use, modify, distribute with attribution |
-| Examples (`examples/`) | CC0-1.0 | Public domain, use freely without attribution |
-| Documentation (`*.md`) | CC-BY-SA-4.0 | Attribute to Kaptain contributors, share modifications under same license |
+| Component               | License      | Terms                                                                     |
+|-------------------------|--------------|---------------------------------------------------------------------------|
+| Source code and scripts | MIT          | Free to use, modify, distribute with attribution                          |
+| Examples (`examples/`)  | CC0-1.0      | Public domain, use freely without attribution                             |
+| Documentation (`*.md`)  | CC-BY-SA-4.0 | Attribute to Kaptain contributors, share modifications under same license |
 
 Forks must preserve license headers and attribution. See [LICENSE.txt](LICENSE.txt) for full details.
 

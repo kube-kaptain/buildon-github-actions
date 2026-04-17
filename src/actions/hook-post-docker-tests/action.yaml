@@ -907,18 +907,29 @@ inputs:
     default: 'linux/amd64'
 
   # === Step Outputs ===
-  # Version outputs (from versions-and-naming)
-  version:
-    description: 'Version string'
+  # Step outputs from the versions-and-naming action.
+  # Consumed by hook actions and any action that needs version/naming values.
+
+  # Core inputs for almost everything
+  project-name:
+    description: 'Project name'
     required: true
+  version:
+    description: 'Version in plain normal format'
+    required: true
+  docker-image-name:
+    description: 'Docker image name - project name prefix in front then a slash then project name'
+    required: true
+
+  # Subset/superset versions useful for certain situations
   version-major:
-    description: 'Major version number'
+    description: 'Major version part'
     required: true
   version-minor:
-    description: 'Minor version number'
+    description: 'Minor version part'
     required: true
   version-patch:
-    description: 'Patch version number'
+    description: 'Patch version part'
     required: true
   version-2-part:
     description: 'Version padded/truncated to 2 parts'
@@ -929,20 +940,30 @@ inputs:
   version-4-part:
     description: 'Version padded/truncated to 4 parts'
     required: true
-  docker-tag:
-    description: 'Docker tag'
+
+  # DNS safe versions for Kubernetes and other naming tasks
+  version-dns-safe:
+    description: 'VERSION with dots replaced by hyphens'
     required: true
-  docker-image-name:
-    description: 'Docker image name'
+  version-2-part-dns-safe:
+    description: 'VERSION_2_PART with dots replaced by hyphens'
     required: true
-  git-tag:
-    description: 'Git tag'
+  version-3-part-dns-safe:
+    description: 'VERSION_3_PART with dots replaced by hyphens'
     required: true
-  project-name:
-    description: 'Project name'
+  version-4-part-dns-safe:
+    description: 'VERSION_4_PART with dots replaced by hyphens'
     required: true
+
+  # PR/local vs release build inputs
   is-release:
     description: 'Whether this is a release build'
+    required: true
+  docker-tag:
+    description: 'Docker tag - separate for PR and local builds to not collide'
+    required: true
+  git-tag:
+    description: 'Git tag - separate for PR and local builds to not collide'
     required: true
   # Docker outputs (from docker-build)
   docker-target-image-full-uri:
@@ -1205,6 +1226,10 @@ runs:
         VERSION_2_PART: ${{ inputs.version-2-part }}
         VERSION_3_PART: ${{ inputs.version-3-part }}
         VERSION_4_PART: ${{ inputs.version-4-part }}
+        VERSION_DNS_SAFE: ${{ inputs.version-dns-safe }}
+        VERSION_2_PART_DNS_SAFE: ${{ inputs.version-2-part-dns-safe }}
+        VERSION_3_PART_DNS_SAFE: ${{ inputs.version-3-part-dns-safe }}
+        VERSION_4_PART_DNS_SAFE: ${{ inputs.version-4-part-dns-safe }}
         DOCKER_TAG: ${{ inputs.docker-tag }}
         DOCKER_IMAGE_NAME: ${{ inputs.docker-image-name }}
         GIT_TAG: ${{ inputs.git-tag }}

@@ -933,6 +933,10 @@ jobs:
           version-2-part: ${{ steps.versions.outputs.version-2-part }}
           version-3-part: ${{ steps.versions.outputs.version-3-part }}
           version-4-part: ${{ steps.versions.outputs.version-4-part }}
+          version-dns-safe: ${{ steps.versions.outputs.version-dns-safe }}
+          version-2-part-dns-safe: ${{ steps.versions.outputs.version-2-part-dns-safe }}
+          version-3-part-dns-safe: ${{ steps.versions.outputs.version-3-part-dns-safe }}
+          version-4-part-dns-safe: ${{ steps.versions.outputs.version-4-part-dns-safe }}
           docker-tag: ${{ steps.versions.outputs.docker-tag }}
           docker-image-name: ${{ steps.versions.outputs.docker-image-name }}
           git-tag: ${{ steps.versions.outputs.git-tag }}
@@ -1250,6 +1254,10 @@ jobs:
           version-2-part: ${{ steps.versions.outputs.version-2-part }}
           version-3-part: ${{ steps.versions.outputs.version-3-part }}
           version-4-part: ${{ steps.versions.outputs.version-4-part }}
+          version-dns-safe: ${{ steps.versions.outputs.version-dns-safe }}
+          version-2-part-dns-safe: ${{ steps.versions.outputs.version-2-part-dns-safe }}
+          version-3-part-dns-safe: ${{ steps.versions.outputs.version-3-part-dns-safe }}
+          version-4-part-dns-safe: ${{ steps.versions.outputs.version-4-part-dns-safe }}
           docker-tag: ${{ steps.versions.outputs.docker-tag }}
           docker-image-name: ${{ steps.versions.outputs.docker-image-name }}
           git-tag: ${{ steps.versions.outputs.git-tag }}
@@ -1320,6 +1328,17 @@ jobs:
           docker-image-name: ${{ steps.versions.outputs.docker-image-name }}
           docker-tag: ${{ steps.versions.outputs.docker-tag }}
           version: ${{ steps.versions.outputs.version }}
+          version-major: ${{ steps.versions.outputs.version-major }}
+          version-minor: ${{ steps.versions.outputs.version-minor }}
+          version-patch: ${{ steps.versions.outputs.version-patch }}
+          version-2-part: ${{ steps.versions.outputs.version-2-part }}
+          version-3-part: ${{ steps.versions.outputs.version-3-part }}
+          version-4-part: ${{ steps.versions.outputs.version-4-part }}
+          version-dns-safe: ${{ steps.versions.outputs.version-dns-safe }}
+          version-2-part-dns-safe: ${{ steps.versions.outputs.version-2-part-dns-safe }}
+          version-3-part-dns-safe: ${{ steps.versions.outputs.version-3-part-dns-safe }}
+          version-4-part-dns-safe: ${{ steps.versions.outputs.version-4-part-dns-safe }}
+          git-tag: ${{ steps.versions.outputs.git-tag }}
           project-name: ${{ steps.versions.outputs.project-name }}
           is-release: ${{ steps.versions.outputs.is-release }}
           repository-owner: ${{ steps.versions.outputs.repository-owner }}
@@ -1550,6 +1569,10 @@ jobs:
           version-2-part: ${{ steps.versions.outputs.version-2-part }}
           version-3-part: ${{ steps.versions.outputs.version-3-part }}
           version-4-part: ${{ steps.versions.outputs.version-4-part }}
+          version-dns-safe: ${{ steps.versions.outputs.version-dns-safe }}
+          version-2-part-dns-safe: ${{ steps.versions.outputs.version-2-part-dns-safe }}
+          version-3-part-dns-safe: ${{ steps.versions.outputs.version-3-part-dns-safe }}
+          version-4-part-dns-safe: ${{ steps.versions.outputs.version-4-part-dns-safe }}
           docker-tag: ${{ steps.versions.outputs.docker-tag }}
           docker-image-name: ${{ steps.versions.outputs.docker-image-name }}
           git-tag: ${{ steps.versions.outputs.git-tag }}
@@ -1660,6 +1683,17 @@ jobs:
           internal-raw-files: ${{ steps.resolve-internal-release-files.outputs.raw-files }}
           output-sub-path: ${{ steps.kpm.outputs.OUTPUT_SUB_PATH }}
           version: ${{ steps.versions.outputs.version }}
+          version-major: ${{ steps.versions.outputs.version-major }}
+          version-minor: ${{ steps.versions.outputs.version-minor }}
+          version-patch: ${{ steps.versions.outputs.version-patch }}
+          version-2-part: ${{ steps.versions.outputs.version-2-part }}
+          version-3-part: ${{ steps.versions.outputs.version-3-part }}
+          version-4-part: ${{ steps.versions.outputs.version-4-part }}
+          version-dns-safe: ${{ steps.versions.outputs.version-dns-safe }}
+          version-2-part-dns-safe: ${{ steps.versions.outputs.version-2-part-dns-safe }}
+          version-3-part-dns-safe: ${{ steps.versions.outputs.version-3-part-dns-safe }}
+          version-4-part-dns-safe: ${{ steps.versions.outputs.version-4-part-dns-safe }}
+          git-tag: ${{ steps.versions.outputs.git-tag }}
           project-name: ${{ steps.versions.outputs.project-name }}
           docker-tag: ${{ steps.versions.outputs.docker-tag }}
           docker-image-name: ${{ steps.versions.outputs.docker-image-name }}
@@ -1988,6 +2022,10 @@ jobs:
           version-2-part: ${{ steps.versions.outputs.version-2-part }}
           version-3-part: ${{ steps.versions.outputs.version-3-part }}
           version-4-part: ${{ steps.versions.outputs.version-4-part }}
+          version-dns-safe: ${{ steps.versions.outputs.version-dns-safe }}
+          version-2-part-dns-safe: ${{ steps.versions.outputs.version-2-part-dns-safe }}
+          version-3-part-dns-safe: ${{ steps.versions.outputs.version-3-part-dns-safe }}
+          version-4-part-dns-safe: ${{ steps.versions.outputs.version-4-part-dns-safe }}
           docker-tag: ${{ steps.versions.outputs.docker-tag }}
           docker-image-name: ${{ steps.versions.outputs.docker-image-name }}
           git-tag: ${{ steps.versions.outputs.git-tag }}

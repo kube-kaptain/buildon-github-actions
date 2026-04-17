@@ -8,19 +8,23 @@
 # standardized outputs for CI pipelines.
 #
 # Outputs:
-#   VERSION           - Numeric version (e.g., 1.2.3)
-#   VERSION_MAJOR     - Major version number
-#   VERSION_MINOR     - Minor version number
-#   VERSION_PATCH     - Patch version number
-#   VERSION_2_PART    - Version padded/truncated to 2 parts (e.g., 1.2)
-#   VERSION_3_PART    - Version padded/truncated to 3 parts (e.g., 1.2.3)
-#   VERSION_4_PART    - Version padded/truncated to 4 parts (e.g., 1.2.3.0)
-#   DOCKER_TAG        - Same as VERSION on release branch, suffixed otherwise
-#   DOCKER_IMAGE_NAME - Docker image name (prefix/project-name)
-#   GIT_TAG           - Tag for git (same as DOCKER_TAG)
-#   IS_RELEASE        - "true" if on release branch, "false" otherwise
-#   PROJECT_NAME      - Repository name
-#   REPOSITORY_OWNER  - Repository owner (org or user)
+#   VERSION                   - Numeric version (e.g., 1.2.3)
+#   VERSION_MAJOR             - Major version number
+#   VERSION_MINOR             - Minor version number
+#   VERSION_PATCH             - Patch version number
+#   VERSION_2_PART            - Version padded/truncated to 2 parts (e.g., 1.2)
+#   VERSION_3_PART            - Version padded/truncated to 3 parts (e.g., 1.2.3)
+#   VERSION_4_PART            - Version padded/truncated to 4 parts (e.g., 1.2.3.0)
+#   VERSION_DNS_SAFE          - VERSION with dots replaced by hyphens (e.g., 1-2-3)
+#   VERSION_2_PART_DNS_SAFE   - VERSION_2_PART with dots replaced by hyphens (e.g., 1-2)
+#   VERSION_3_PART_DNS_SAFE   - VERSION_3_PART with dots replaced by hyphens (e.g., 1-2-3)
+#   VERSION_4_PART_DNS_SAFE   - VERSION_4_PART with dots replaced by hyphens (e.g., 1-2-3-0)
+#   DOCKER_TAG                - Same as VERSION on release branch, suffixed otherwise
+#   DOCKER_IMAGE_NAME         - Docker image name (prefix/project-name)
+#   GIT_TAG                   - Tag for git (same as DOCKER_TAG)
+#   IS_RELEASE                - "true" if on release branch, "false" otherwise
+#   PROJECT_NAME              - Repository name
+#   REPOSITORY_OWNER          - Repository owner (org or user)
 #
 set -euo pipefail
 
@@ -203,6 +207,12 @@ main() {
   version_3_part=$(version_to_n_parts "${version}" 3)
   version_4_part=$(version_to_n_parts "${version}" 4)
 
+  # Generate DNS-safe variants (dots to hyphens) for use in k8s name fields
+  local version_dns_safe="${version//./-}"
+  local version_2_part_dns_safe="${version_2_part//./-}"
+  local version_3_part_dns_safe="${version_3_part//./-}"
+  local version_4_part_dns_safe="${version_4_part//./-}"
+
   # Extract individual parts (major.minor.patch...)
   local clean_version="${version#v}"
   IFS='.' read -ra version_parts <<< "${clean_version}"
@@ -222,6 +232,10 @@ main() {
   output_var "VERSION_2_PART" "${version_2_part}"
   output_var "VERSION_3_PART" "${version_3_part}"
   output_var "VERSION_4_PART" "${version_4_part}"
+  output_var "VERSION_DNS_SAFE" "${version_dns_safe}"
+  output_var "VERSION_2_PART_DNS_SAFE" "${version_2_part_dns_safe}"
+  output_var "VERSION_3_PART_DNS_SAFE" "${version_3_part_dns_safe}"
+  output_var "VERSION_4_PART_DNS_SAFE" "${version_4_part_dns_safe}"
   output_var "DOCKER_TAG" "${docker_tag}"
   output_var "DOCKER_IMAGE_NAME" "${docker_image_name}"
   output_var "GIT_TAG" "${git_tag}"

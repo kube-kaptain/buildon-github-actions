@@ -30,6 +30,10 @@ teardown() {
   assert_var_equals "VERSION_2_PART" "1.0"
   assert_var_equals "VERSION_3_PART" "1.0.1"
   assert_var_equals "VERSION_4_PART" "1.0.1.0"
+  assert_var_equals "VERSION_DNS_SAFE" "1-0-1"
+  assert_var_equals "VERSION_2_PART_DNS_SAFE" "1-0"
+  assert_var_equals "VERSION_3_PART_DNS_SAFE" "1-0-1"
+  assert_var_equals "VERSION_4_PART_DNS_SAFE" "1-0-1-0"
 }
 
 @test "seeds 1.1 for repo with no tags and MAX_PARTS=2" {
@@ -122,6 +126,9 @@ teardown() {
   assert_var_equals "VERSION" "1.2.3.5"
   assert_var_equals "VERSION_3_PART" "1.2.3"
   assert_var_equals "VERSION_4_PART" "1.2.3.5"
+  assert_var_equals "VERSION_DNS_SAFE" "1-2-3-5"
+  assert_var_equals "VERSION_3_PART_DNS_SAFE" "1-2-3"
+  assert_var_equals "VERSION_4_PART_DNS_SAFE" "1-2-3-5"
 }
 
 @test "increments ten-part version 1.2.3.4.5.6.7.8.9.0 to 1.2.3.4.5.6.7.8.9.1" {

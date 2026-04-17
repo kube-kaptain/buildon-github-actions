@@ -8,21 +8,32 @@
 # Called before kubernetes-manifests-package (the "do" step).
 #
 # Inputs (environment variables):
-#   MANIFESTS_SUB_PATH  - Source directory, relative (default: src/kubernetes)
-#   PROJECT_NAME    - For variable substitution (required)
-#   VERSION         - For variable substitution (required)
-#   OUTPUT_SUB_PATH - Build output directory, relative (default: kaptain-out)
-#   DOCKER_TAG      - Docker tag for substitution (required)
-#   DOCKER_IMAGE_NAME - Docker image name for substitution (required)
-#   DOCKER_IMAGE_FULL_URI - Full Docker image URI for substitution (optional)
-#   TARGET_REGISTRY - Target registry for substitution (optional)
-#   TARGET_NAMESPACE - Target namespace for substitution (optional)
-#   IS_RELEASE      - Release flag for substitution (optional)
-#   TOKEN_DELIMITER_STYLE - Token delimiter syntax (default: shell)
-#   TOKEN_NAME_STYLE - Case style for token names (default: PascalCase)
-#   TOKEN_NAME_VALIDATION - How to validate user token names (default: MATCH)
-#   ALLOW_BUILTIN_TOKEN_OVERRIDE - Allow user tokens to override built-ins (default: false)
-#   CONFIG_SUB_PATH - Source directory for user-defined tokens, relative (default: src/config)
+#   MANIFESTS_SUB_PATH            - Source directory, relative (default: src/kubernetes)
+#   PROJECT_NAME                  - For variable substitution (required)
+#   VERSION                       - For variable substitution (required)
+#   VERSION_MAJOR                 - Major version component (required)
+#   VERSION_MINOR                 - Minor version component (required)
+#   VERSION_PATCH                 - Patch version component (required)
+#   VERSION_2_PART                - Major.Minor version (required)
+#   VERSION_3_PART                - Major.Minor.Patch version (required)
+#   VERSION_4_PART                - 4-part version (required)
+#   VERSION_DNS_SAFE              - Version with dots replaced by hyphens (required)
+#   VERSION_2_PART_DNS_SAFE       - 2-part DNS-safe version (required)
+#   VERSION_3_PART_DNS_SAFE       - 3-part DNS-safe version (required)
+#   VERSION_4_PART_DNS_SAFE       - 4-part DNS-safe version (required)
+#   GIT_TAG                       - Git tag (required)
+#   IS_RELEASE                    - Release flag (required)
+#   OUTPUT_SUB_PATH               - Build output directory, relative (default: kaptain-out)
+#   DOCKER_TAG                    - Docker tag for substitution (required)
+#   DOCKER_IMAGE_NAME             - Docker image name for substitution (required)
+#   DOCKER_IMAGE_FULL_URI         - Full Docker image URI for substitution (optional)
+#   TARGET_REGISTRY               - Target registry for substitution (optional)
+#   TARGET_NAMESPACE              - Target namespace for substitution (optional)
+#   TOKEN_DELIMITER_STYLE         - Token delimiter syntax (default: shell)
+#   TOKEN_NAME_STYLE              - Case style for token names (default: PascalCase)
+#   TOKEN_NAME_VALIDATION         - How to validate user token names (default: MATCH)
+#   ALLOW_BUILTIN_TOKEN_OVERRIDE  - Allow user tokens to override built-ins (default: false)
+#   CONFIG_SUB_PATH               - Source directory for user-defined tokens, relative (default: src/config)
 #   CONFIG_VALUE_TRAILING_NEWLINE - Trailing newline handling (default: strip-for-single-line)
 #
 # Outputs:
@@ -36,6 +47,17 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # Required inputs
 PROJECT_NAME="${PROJECT_NAME:?PROJECT_NAME is required}"
 VERSION="${VERSION:?VERSION is required}"
+VERSION_MAJOR="${VERSION_MAJOR:?VERSION_MAJOR is required}"
+VERSION_MINOR="${VERSION_MINOR:?VERSION_MINOR is required}"
+VERSION_PATCH="${VERSION_PATCH:?VERSION_PATCH is required}"
+VERSION_2_PART="${VERSION_2_PART:?VERSION_2_PART is required}"
+VERSION_3_PART="${VERSION_3_PART:?VERSION_3_PART is required}"
+VERSION_4_PART="${VERSION_4_PART:?VERSION_4_PART is required}"
+VERSION_DNS_SAFE="${VERSION_DNS_SAFE:?VERSION_DNS_SAFE is required}"
+VERSION_2_PART_DNS_SAFE="${VERSION_2_PART_DNS_SAFE:?VERSION_2_PART_DNS_SAFE is required}"
+VERSION_3_PART_DNS_SAFE="${VERSION_3_PART_DNS_SAFE:?VERSION_3_PART_DNS_SAFE is required}"
+VERSION_4_PART_DNS_SAFE="${VERSION_4_PART_DNS_SAFE:?VERSION_4_PART_DNS_SAFE is required}"
+GIT_TAG="${GIT_TAG:?GIT_TAG is required}"
 DOCKER_TAG="${DOCKER_TAG:?DOCKER_TAG is required}"
 DOCKER_IMAGE_NAME="${DOCKER_IMAGE_NAME:?DOCKER_IMAGE_NAME is required}"
 
@@ -137,6 +159,17 @@ main() {
   TOKEN_SUBSTITUTION_PASSES="${TOKEN_SUBSTITUTION_PASSES}" \
   PROJECT_NAME="${PROJECT_NAME}" \
   VERSION="${VERSION}" \
+  VERSION_MAJOR="${VERSION_MAJOR}" \
+  VERSION_MINOR="${VERSION_MINOR}" \
+  VERSION_PATCH="${VERSION_PATCH}" \
+  VERSION_2_PART="${VERSION_2_PART}" \
+  VERSION_3_PART="${VERSION_3_PART}" \
+  VERSION_4_PART="${VERSION_4_PART}" \
+  VERSION_DNS_SAFE="${VERSION_DNS_SAFE}" \
+  VERSION_2_PART_DNS_SAFE="${VERSION_2_PART_DNS_SAFE}" \
+  VERSION_3_PART_DNS_SAFE="${VERSION_3_PART_DNS_SAFE}" \
+  VERSION_4_PART_DNS_SAFE="${VERSION_4_PART_DNS_SAFE}" \
+  GIT_TAG="${GIT_TAG}" \
   DOCKER_TAG="${DOCKER_TAG}" \
   DOCKER_IMAGE_NAME="${DOCKER_IMAGE_NAME}" \
   DOCKER_IMAGE_FULL_URI="${DOCKER_IMAGE_FULL_URI}" \

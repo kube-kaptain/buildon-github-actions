@@ -38,43 +38,7 @@ inputs:
   # INJECT-INPUT: docker-platform
 
   # === Step Outputs ===
-  # Version outputs (from versions-and-naming)
-  version:
-    description: 'Version string'
-    required: true
-  version-major:
-    description: 'Major version number'
-    required: true
-  version-minor:
-    description: 'Minor version number'
-    required: true
-  version-patch:
-    description: 'Patch version number'
-    required: true
-  version-2-part:
-    description: 'Version padded/truncated to 2 parts'
-    required: true
-  version-3-part:
-    description: 'Version padded/truncated to 3 parts'
-    required: true
-  version-4-part:
-    description: 'Version padded/truncated to 4 parts'
-    required: true
-  docker-tag:
-    description: 'Docker tag'
-    required: true
-  docker-image-name:
-    description: 'Docker image name'
-    required: true
-  git-tag:
-    description: 'Git tag'
-    required: true
-  project-name:
-    description: 'Project name'
-    required: true
-  is-release:
-    description: 'Whether this is a release build'
-    required: true
+  # INJECT-INPUT: versions-and-naming
 runs:
   using: composite
   steps:
@@ -331,6 +295,10 @@ runs:
         VERSION_2_PART: ${{ inputs.version-2-part }}
         VERSION_3_PART: ${{ inputs.version-3-part }}
         VERSION_4_PART: ${{ inputs.version-4-part }}
+        VERSION_DNS_SAFE: ${{ inputs.version-dns-safe }}
+        VERSION_2_PART_DNS_SAFE: ${{ inputs.version-2-part-dns-safe }}
+        VERSION_3_PART_DNS_SAFE: ${{ inputs.version-3-part-dns-safe }}
+        VERSION_4_PART_DNS_SAFE: ${{ inputs.version-4-part-dns-safe }}
         DOCKER_TAG: ${{ inputs.docker-tag }}
         DOCKER_IMAGE_NAME: ${{ inputs.docker-image-name }}
         GIT_TAG: ${{ inputs.git-tag }}

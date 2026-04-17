@@ -10,27 +10,14 @@ inputs:
   # INJECT-INPUT: docker-dockerfile
   # INJECT-INPUT: token-substitution
 
+  # INJECT-INPUT: versions-and-naming
+
   # Action-specific inputs (passed from workflow/version generator)
   docker-target-registry:
     description: 'Target container registry (pre-resolved by workflow)'
     required: true
   docker-target-namespace:
     description: 'Namespace between registry and image name (pre-resolved by workflow)'
-    required: true
-  docker-image-name:
-    description: 'Image name (from version generator docker-image-name)'
-    required: true
-  docker-tag:
-    description: 'Tag for target image (from version generator docker-tag)'
-    required: true
-  version:
-    description: 'Version number (from version generator, passed as build arg)'
-    required: true
-  project-name:
-    description: 'Project name (from version generator, passed as build arg)'
-    required: true
-  is-release:
-    description: 'Whether this is a release build (from version generator)'
     required: true
   repository-owner:
     description: 'Repository owner (from version generator)'
@@ -67,6 +54,17 @@ runs:
         DOCKER_IMAGE_NAME: ${{ inputs.docker-image-name }}
         DOCKER_TAG: ${{ inputs.docker-tag }}
         VERSION: ${{ inputs.version }}
+        VERSION_MAJOR: ${{ inputs.version-major }}
+        VERSION_MINOR: ${{ inputs.version-minor }}
+        VERSION_PATCH: ${{ inputs.version-patch }}
+        VERSION_2_PART: ${{ inputs.version-2-part }}
+        VERSION_3_PART: ${{ inputs.version-3-part }}
+        VERSION_4_PART: ${{ inputs.version-4-part }}
+        VERSION_DNS_SAFE: ${{ inputs.version-dns-safe }}
+        VERSION_2_PART_DNS_SAFE: ${{ inputs.version-2-part-dns-safe }}
+        VERSION_3_PART_DNS_SAFE: ${{ inputs.version-3-part-dns-safe }}
+        VERSION_4_PART_DNS_SAFE: ${{ inputs.version-4-part-dns-safe }}
+        GIT_TAG: ${{ inputs.git-tag }}
         PROJECT_NAME: ${{ inputs.project-name }}
         IS_RELEASE: ${{ inputs.is-release }}
         REPOSITORY_OWNER: ${{ inputs.repository-owner }}
