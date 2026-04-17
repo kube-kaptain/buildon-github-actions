@@ -56,6 +56,9 @@ source "${SCRIPT_DIR}/../lib/branch-setup-shared.bash"
 REPOSITORY_NAME="${REPOSITORY_NAME:?Is required}"
 REPOSITORY_OWNER="${REPOSITORY_OWNER:?Is required}"
 
+# Optional inputs
+STRIP_REPOSITORY_NAME_PREFIX="${STRIP_REPOSITORY_NAME_PREFIX:-}"
+
 log "Critical inputs:"
 log "  Repository name: ${REPOSITORY_NAME}"
 log "  Current branch:  ${CURRENT_BRANCH}"
@@ -121,7 +124,21 @@ create_tag() {
 
 main() {
   local current_branch="${CURRENT_BRANCH}"
-  local project_name="${REPOSITORY_NAME}"
+  local project_name
+  if [[ -n "${STRIP_REPOSITORY_NAME_PREFIX}" ]]; then
+    log_warning "Stripping repository name prefix '${STRIP_REPOSITORY_NAME_PREFIX}' from '${REPOSITORY_NAME}'."
+    log_warning "Do not use this configuration unless you have an isolated cluster set or other"
+    log_warning "runtime as it means you could get project name collisions if a repo is named the"
+    log_warning "same without the prefix or has a different prefix with that prefix stripped."
+    project_name="${REPOSITORY_NAME#"${STRIP_REPOSITORY_NAME_PREFIX}-"}"
+    if [[ "${project_name}" == "${REPOSITORY_NAME}" ]]; then
+      log_error "Repository name '${REPOSITORY_NAME}' does not start with prefix '${STRIP_REPOSITORY_NAME_PREFIX}-'"
+      exit 1
+    fi
+    log "Project name after prefix strip: ${project_name}"
+  else
+    project_name="${REPOSITORY_NAME}"
+  fi
 
   # Determine if this is a release build
   # Local builds are never releases, regardless of branch

@@ -198,13 +198,36 @@ teardown() {
   assert_var_equals "DOCKER_TAG" "1.0.1"
 }
 
-@test "outputs PROJECT_NAME from repo directory" {
+@test "project name equals repository name by default" {
   TEST_REPO=$(clone_fixture "tag-none")
   cd "$TEST_REPO"
+  export REPOSITORY_NAME=my-cool-app
 
   run "$SCRIPTS_DIR/versions-and-naming"
   [ "$status" -eq 0 ]
-  assert_output_contains "PROJECT_NAME="
+  assert_var_equals "PROJECT_NAME" "my-cool-app"
+}
+
+@test "project name has prefix stripped when strip-repository-name-prefix set" {
+  TEST_REPO=$(clone_fixture "tag-none")
+  cd "$TEST_REPO"
+  export REPOSITORY_NAME=teamname-my-cool-app
+  export STRIP_REPOSITORY_NAME_PREFIX=teamname
+
+  run "$SCRIPTS_DIR/versions-and-naming"
+  [ "$status" -eq 0 ]
+  assert_var_equals "PROJECT_NAME" "my-cool-app"
+}
+
+@test "fails when strip-repository-name-prefix does not match repository name" {
+  TEST_REPO=$(clone_fixture "tag-none")
+  cd "$TEST_REPO"
+  export REPOSITORY_NAME=other-my-cool-app
+  export STRIP_REPOSITORY_NAME_PREFIX=teamname
+
+  run "$SCRIPTS_DIR/versions-and-naming"
+  [ "$status" -ne 0 ]
+  assert_output_contains "does not start with prefix"
 }
 
 @test "respects ADDITIONAL_RELEASE_BRANCHES configuration" {

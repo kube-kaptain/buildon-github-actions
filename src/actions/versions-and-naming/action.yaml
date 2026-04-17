@@ -65,6 +65,12 @@ inputs:
     required: false
     default: 'false'
 
+  # Project name
+  strip-repository-name-prefix:
+    description: 'Prefix to strip from repository name to derive project name. The prefix and trailing hyphen are removed.'
+    required: false
+    default: ''
+
   # Docker dockerfile path (for pattern matching)
   dockerfile-sub-path:
     description: 'Directory containing Dockerfile, relative to repo root.'
@@ -137,6 +143,7 @@ runs:
         BUILD_MODE: build_server
         BUILD_PLATFORM: github-actions
         BUILD_PLATFORM_LOG_PROVIDER: github-actions
+        STRIP_REPOSITORY_NAME_PREFIX: ${{ inputs.strip-repository-name-prefix }}
         REPOSITORY_NAME: ${{ github.event.repository.name }}
         REPOSITORY_OWNER: ${{ github.repository_owner }}
         CURRENT_BRANCH: ${{ github.head_ref || github.ref_name }}

@@ -1,15 +1,15 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/kube-kaptain/spec-kaptainpm-schema/releases/download/1.11/spec-kaptainpm-schema-layerset-source-1.11.yaml",
+  "$id": "https://github.com/kube-kaptain/spec-kaptainpm-schema/releases/download/1.13/spec-kaptainpm-schema-1.13.yaml",
   "name": "spec-kaptainpm-schema",
-  "version": "1.11",
+  "version": "1.13",
   "source": "https://github.com/kube-kaptain/spec-kaptainpm-schema",
   "latest": "https://raw.githubusercontent.com/kube-kaptain/spec-kaptainpm-schema/main/spec-kaptainpm-schema.yaml",
-  "tagged": "https://raw.githubusercontent.com/kube-kaptain/spec-kaptainpm-schema/1.11/spec-kaptainpm-schema.yaml",
-  "release": "https://github.com/kube-kaptain/spec-kaptainpm-schema/releases/download/1.11/spec-kaptainpm-schema-layerset-source-1.11.yaml",
-  "validate-using": "https://github.com/kube-kaptain/spec-kaptainpm-schema/releases/download/1.11/spec-kaptainpm-schema-layerset-source-1.11.json",
+  "tagged": "https://raw.githubusercontent.com/kube-kaptain/spec-kaptainpm-schema/1.13/spec-kaptainpm-schema.yaml",
+  "release": "https://github.com/kube-kaptain/spec-kaptainpm-schema/releases/download/1.13/spec-kaptainpm-schema-1.13.yaml",
+  "validate-using": "https://github.com/kube-kaptain/spec-kaptainpm-schema/releases/download/1.13/spec-kaptainpm-schema-1.13.json",
   "title": "KaptainPM",
-  "description": "Kaptain project manifest schema (version 1.11).\n",
+  "description": "Kaptain project manifest schema (version 1.13).\n",
   "type": "object",
   "required": [
     "apiVersion"
@@ -19,7 +19,7 @@
     "apiVersion": {
       "type": "string",
       "pattern": "^kaptain\\.org/[0-9]+(\\.[0-9]+)*$",
-      "description": "API version - must be kaptain.org/ followed by the schema version (e.g. kaptain.org/1.2). Set via 1.11 token substitution at build time.\n"
+      "description": "API version - must be kaptain.org/ followed by the schema version (e.g. kaptain.org/1.2). Set via 1.13 token substitution at build time.\n"
     },
     "kind": {
       "type": "string",
@@ -50,19 +50,43 @@
         }
       }
     },
+    "user-data": {
+      "type": "object",
+      "description": "Free-form custom data for layer-provided tools. No enforced schema. Deep merged like any other map field - layers provide defaults, local overrides win.\n"
+    },
     "spec": {
       "type": "object",
       "additionalProperties": false,
       "description": "Build configuration",
       "properties": {
+        "credentials": {
+          "$ref": "#/$defs/credentials"
+        },
         "layers": {
           "$ref": "#/$defs/artifactReferenceList",
           "description": "Configuration layers applied before this project's settings. Deep-merged in order; local settings always win. Bootstrap registry logins must be in the project root file (needed before layer resolution). Additional logins declared in layers are applied in a second login phase post-merge.\n"
+        },
+        "templates": {
+          "$ref": "#/$defs/artifactReferenceList",
+          "description": "Manifest template sets pulled in and token-substituted to become this project's own manifest output. Replaces generators or hand-written manifests.\n"
+        },
+        "contents": {
+          "$ref": "#/$defs/artifactReferenceList",
+          "description": "Finished manifest artifacts from other projects bundled into this deliverable. Front and centre in product/environment builds.\n"
+        },
+        "data": {
+          "$ref": "#/$defs/specData"
+        },
+        "global": {
+          "$ref": "#/$defs/specGlobal"
+        },
+        "main": {
+          "$ref": "#/$defs/specMain"
+        },
+        "platform": {
+          "$ref": "#/$defs/specPlatform"
         }
-      },
-      "required": [
-        "layers"
-      ]
+      }
     }
   },
   "$defs": {
@@ -204,6 +228,18 @@
         "secretsSubPath": {
           "type": "string",
           "description": "Directory with user-defined secret files (default: src/secrets)"
+        },
+        "projectName": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Project name derivation from repository name",
+          "properties": {
+            "stripRepositoryNamePrefix": {
+              "type": "string",
+              "pattern": "^[a-z0-9]+([a-z0-9-]*[a-z0-9]+)?$",
+              "description": "WARNING: Do not use this configuration unless you have an isolated cluster set or other runtime as it means you could get project name collisions if a repo is named the same without the prefix or has a different prefix with that prefix stripped.\nPrefix to strip from repository name to derive project name. The prefix and its trailing hyphen are removed. For example, if the repository is teamname-api-user-service and this is set to teamname, the project name becomes api-user-service.\n"
+            }
+          }
         },
         "tokens": {
           "type": "object",
