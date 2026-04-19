@@ -25,6 +25,10 @@
 #   GIT_TAG - Git tag
 #   PROJECT_NAME - Project name
 #   IS_RELEASE - Whether this is a release build (true/false)
+#   REPOSITORY_NAME - Raw repository name (from CI provider)
+#   REPOSITORY_OWNER - Repository owner (from CI provider)
+#   CURRENT_BRANCH - Current branch name (PR head ref, or ref name for direct pushes)
+#   DEFAULT_BRANCH - Repository default branch
 #   DOCKER_CONTEXT_SUB_PATH - Docker build context directory
 #   ... and all workflow inputs
 #
@@ -194,7 +198,7 @@ export GITHUB_RELEASE_NOTES GITHUB_RELEASE_NOTES_FILE GITHUB_RELEASE_ADD_VERSION
 export VERSION VERSION_MAJOR VERSION_MINOR VERSION_PATCH
 export VERSION_2_PART VERSION_3_PART VERSION_4_PART
 export VERSION_DNS_SAFE VERSION_2_PART_DNS_SAFE VERSION_3_PART_DNS_SAFE VERSION_4_PART_DNS_SAFE
-export DOCKER_TAG DOCKER_IMAGE_NAME GIT_TAG PROJECT_NAME IS_RELEASE
+export DOCKER_TAG DOCKER_IMAGE_NAME GIT_TAG PROJECT_NAME IS_RELEASE REPOSITORY_NAME REPOSITORY_OWNER
 
 # shellcheck source=src/scripts/lib/hook-runner.bash
 source "${SCRIPT_DIR}/../lib/hook-runner.bash" "${HOOK_POST_VERSIONS_AND_NAMING_SCRIPT_SUB_PATH:-}"

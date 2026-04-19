@@ -19,6 +19,8 @@
 #   IS_RELEASE - Whether this is a release build (calculated inline)
 #   REPOSITORY_NAME - Raw repository name (from CI provider)
 #   REPOSITORY_OWNER - Repository owner (from CI provider)
+#   CURRENT_BRANCH - Current branch name (PR head ref, or ref name for direct pushes)
+#   DEFAULT_BRANCH - Repository default branch
 #   OUTPUT_SUB_PATH - Build output directory (default: kaptain-out)
 #   DOCKERFILE_SUB_PATH - Docker source directory (default: src/docker)
 #   MANIFESTS_SUB_PATH - Manifests source directory (default: src/kubernetes)

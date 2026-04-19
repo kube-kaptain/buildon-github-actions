@@ -20,6 +20,10 @@
 #   CONFIG_SUB_PATH - Config files directory (default: src/config)
 #   TOKEN_NAME_STYLE - Token name style (default: PascalCase)
 #   TOKEN_DELIMITER_STYLE - Token delimiter syntax (default: shell)
+#   REPOSITORY_NAME - Raw repository name (from CI provider)
+#   REPOSITORY_OWNER - Repository owner (from CI provider)
+#   CURRENT_BRANCH - Current branch name (PR head ref, or ref name for direct pushes)
+#   DEFAULT_BRANCH - Repository default branch
 #   ... and all other workflow inputs
 #
 # Available context (calculated inline):
@@ -184,7 +188,7 @@ STRIP_REPOSITORY_NAME_PREFIX="${STRIP_REPOSITORY_NAME_PREFIX:-}"
 # shellcheck source=src/scripts/lib/project-name-resolve.bash
 source "${SCRIPT_DIR}/../lib/project-name-resolve.bash"
 PROJECT_NAME="${project_name}"
-export PROJECT_NAME
+export PROJECT_NAME REPOSITORY_NAME REPOSITORY_OWNER
 
 # shellcheck source=src/scripts/lib/hook-runner.bash
 source "${SCRIPT_DIR}/../lib/hook-runner.bash" "${HOOK_PRE_TAGGING_TESTS_SCRIPT_SUB_PATH:-}"

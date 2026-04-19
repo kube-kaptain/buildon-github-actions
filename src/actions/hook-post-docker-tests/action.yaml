@@ -1174,8 +1174,11 @@ runs:
         TOKEN_SUBSTITUTION_PASSES: ${{ inputs.token-substitution-passes }}
 
         # Workflow inputs - naming, versions, and tags calculation
-        DEFAULT_BRANCH: ${{ inputs.default-branch }}
-        CURRENT_BRANCH: ${{ inputs.current-branch }}
+        DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        # GitHub context - raw repo identity
+        REPOSITORY_NAME: ${{ github.event.repository.name }}
+        REPOSITORY_OWNER: ${{ github.repository_owner }}
+        CURRENT_BRANCH: ${{ github.head_ref || github.ref_name }}
         RELEASE_BRANCH: ${{ inputs.release-branch }}
         ADDITIONAL_RELEASE_BRANCHES: ${{ inputs.additional-release-branches }}
         TAG_VERSION_MAX_PARTS: ${{ inputs.tag-version-max-parts }}

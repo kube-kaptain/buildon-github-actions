@@ -66,6 +66,8 @@ setup() {
   export RELEASE_BRANCH="main"
   export DEFAULT_BRANCH="main"
   export CURRENT_BRANCH="main"
+  export REPOSITORY_NAME="my-project"
+  export REPOSITORY_OWNER="kube-kaptain"
   export ADDITIONAL_RELEASE_BRANCHES=""
   export BUILD_MODE="build_server"
   export TAG_VERSION_MAX_PARTS="10"
