@@ -46,6 +46,7 @@ setup() {
   export CURRENT_BRANCH="main"
   export ADDITIONAL_RELEASE_BRANCHES=""
   export BUILD_MODE="build_server"
+  export BUILD_KIND="kubernetes-app-docker-dockerfile"
   export TAG_VERSION_MAX_PARTS="10"
   export TAG_VERSION_CALCULATION_STRATEGY="git-tag-semver"
   export TAG_VERSION_PATTERN_TYPE=""

@@ -5,6 +5,10 @@ name: Hook - Post-Docker Tests
 description: Runs user's hook script after Docker image is built for integration tests, security scans, or validation
 
 inputs:
+  build-kind:
+    description: 'Build kind identifier (workflow/reference script name)'
+    required: true
+
   # INJECT-INPUT: image-build-command
 
   # === Workflow Inputs ===
@@ -51,6 +55,7 @@ runs:
       shell: bash
       env:
         BUILD_MODE: build_server
+        BUILD_KIND: ${{ inputs.build-kind }}
         BUILD_PLATFORM: github-actions
         BUILD_PLATFORM_LOG_PROVIDER: github-actions
         IMAGE_BUILD_COMMAND: ${{ inputs.image-build-command }}

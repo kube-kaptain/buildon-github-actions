@@ -6,6 +6,7 @@
   id: pre-build
   uses: ./.github/buildon-github-actions/src/actions/hook-pre-build
   with:
+    build-kind: ${WORKFLOW_NAME}
     image-build-command: ${{ steps.validate-tooling.outputs.IMAGE_BUILD_COMMAND }}
     docker-platform: ${{ steps.kpm.outputs.DOCKER_PLATFORM }}
     strip-repository-name-prefix: ${{ steps.kpm.outputs.STRIP_REPOSITORY_NAME_PREFIX }}
