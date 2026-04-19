@@ -5,6 +5,10 @@ name: Hook - Pre-Tagging Tests
 description: Runs user's hook script before tagging/versioning for custom validation or preparation
 
 inputs:
+  build-kind:
+    description: 'Build kind identifier (workflow/reference script name)'
+    required: true
+
   # INJECT-INPUT: image-build-command
 
   # Project name
@@ -53,6 +57,7 @@ runs:
       shell: bash
       env:
         BUILD_MODE: build_server
+        BUILD_KIND: ${{ inputs.build-kind }}
         BUILD_PLATFORM: github-actions
         BUILD_PLATFORM_LOG_PROVIDER: github-actions
         IMAGE_BUILD_COMMAND: ${{ inputs.image-build-command }}

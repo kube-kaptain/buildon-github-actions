@@ -5,6 +5,10 @@ name: Hook - Pre-Build
 description: Runs user's hook script before build starts, after tooling validation
 
 inputs:
+  build-kind:
+    description: 'Build kind identifier (workflow/reference script name)'
+    required: true
+
   # Container runtime
   image-build-command:
     description: 'Container runtime command (podman or docker)'
@@ -922,6 +926,7 @@ runs:
       shell: bash
       env:
         BUILD_MODE: build_server
+        BUILD_KIND: ${{ inputs.build-kind }}
         BUILD_PLATFORM: github-actions
         BUILD_PLATFORM_LOG_PROVIDER: github-actions
         IMAGE_BUILD_COMMAND: ${{ inputs.image-build-command }}

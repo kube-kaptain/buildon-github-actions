@@ -329,6 +329,7 @@ jobs:
         id: pre-build
         uses: ./.github/buildon-github-actions/src/actions/hook-pre-build
         with:
+          build-kind: docker-build-dockerfile
           image-build-command: ${{ steps.validate-tooling.outputs.IMAGE_BUILD_COMMAND }}
           docker-platform: ${{ steps.kpm.outputs.DOCKER_PLATFORM }}
           strip-repository-name-prefix: ${{ steps.kpm.outputs.STRIP_REPOSITORY_NAME_PREFIX }}
@@ -589,6 +590,7 @@ jobs:
         id: pre-tagging-tests
         uses: ./.github/buildon-github-actions/src/actions/hook-pre-tagging-tests
         with:
+          build-kind: docker-build-dockerfile
           image-build-command: ${{ steps.validate-tooling.outputs.IMAGE_BUILD_COMMAND }}
           docker-platform: ${{ steps.kpm.outputs.DOCKER_PLATFORM }}
           strip-repository-name-prefix: ${{ steps.kpm.outputs.STRIP_REPOSITORY_NAME_PREFIX }}
@@ -793,6 +795,7 @@ jobs:
         id: post-versions-and-naming
         uses: ./.github/buildon-github-actions/src/actions/hook-post-versions-and-naming
         with:
+          build-kind: docker-build-dockerfile
           image-build-command: ${{ steps.validate-tooling.outputs.IMAGE_BUILD_COMMAND }}
           docker-platform: ${{ steps.kpm.outputs.DOCKER_PLATFORM }}
           # === Workflow Inputs ===
@@ -1068,6 +1071,7 @@ jobs:
         id: pre-docker-prepare
         uses: ./.github/buildon-github-actions/src/actions/hook-pre-docker-prepare
         with:
+          build-kind: docker-build-dockerfile
           image-build-command: ${{ steps.validate-tooling.outputs.IMAGE_BUILD_COMMAND }}
           docker-platform: ${{ steps.kpm.outputs.DOCKER_PLATFORM }}
           # === Workflow Inputs ===
@@ -1311,6 +1315,7 @@ jobs:
         id: post-docker-tests
         uses: ./.github/buildon-github-actions/src/actions/hook-post-docker-tests
         with:
+          build-kind: docker-build-dockerfile
           image-build-command: ${{ steps.validate-tooling.outputs.IMAGE_BUILD_COMMAND }}
           docker-platform: ${{ steps.kpm.outputs.DOCKER_PLATFORM }}
           # === Workflow Inputs ===
@@ -1743,6 +1748,7 @@ jobs:
         id: post-build
         uses: ./.github/buildon-github-actions/src/actions/hook-post-build
         with:
+          build-kind: docker-build-dockerfile
           image-build-command: ${{ steps.validate-tooling.outputs.IMAGE_BUILD_COMMAND }}
           docker-platform: ${{ steps.kpm.outputs.DOCKER_PLATFORM }}
           # === Workflow Inputs ===

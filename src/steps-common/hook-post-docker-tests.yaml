@@ -6,6 +6,7 @@
   id: post-docker-tests
   uses: ./.github/buildon-github-actions/src/actions/hook-post-docker-tests
   with:
+    build-kind: ${WORKFLOW_NAME}
     image-build-command: ${{ steps.validate-tooling.outputs.IMAGE_BUILD_COMMAND }}
     docker-platform: ${{ steps.kpm.outputs.DOCKER_PLATFORM }}
     # === Workflow Inputs ===
