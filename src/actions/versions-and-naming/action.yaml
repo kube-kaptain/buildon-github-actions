@@ -65,6 +65,12 @@ inputs:
     required: false
     default: 'false'
 
+  # Project name
+  strip-repository-name-prefix:
+    description: 'Prefix to strip from repository name to derive project name. The prefix and trailing hyphen are removed.'
+    required: false
+    default: ''
+
   # Docker dockerfile path (for pattern matching)
   dockerfile-sub-path:
     description: 'Directory containing Dockerfile, relative to repo root.'
@@ -93,6 +99,18 @@ outputs:
   version-4-part:
     description: 'Version padded/truncated to 4 parts (e.g., 1.2.3.0)'
     value: ${{ steps.generate.outputs.VERSION_4_PART }}
+  version-dns-safe:
+    description: 'VERSION with dots replaced by hyphens (e.g., 1-2-3)'
+    value: ${{ steps.generate.outputs.VERSION_DNS_SAFE }}
+  version-2-part-dns-safe:
+    description: 'VERSION_2_PART with dots replaced by hyphens (e.g., 1-2)'
+    value: ${{ steps.generate.outputs.VERSION_2_PART_DNS_SAFE }}
+  version-3-part-dns-safe:
+    description: 'VERSION_3_PART with dots replaced by hyphens (e.g., 1-2-3)'
+    value: ${{ steps.generate.outputs.VERSION_3_PART_DNS_SAFE }}
+  version-4-part-dns-safe:
+    description: 'VERSION_4_PART with dots replaced by hyphens (e.g., 1-2-3-0)'
+    value: ${{ steps.generate.outputs.VERSION_4_PART_DNS_SAFE }}
   docker-tag:
     description: 'Tag for Docker images (version or version-PRERELEASE)'
     value: ${{ steps.generate.outputs.DOCKER_TAG }}
@@ -125,6 +143,7 @@ runs:
         BUILD_MODE: build_server
         BUILD_PLATFORM: github-actions
         BUILD_PLATFORM_LOG_PROVIDER: github-actions
+        STRIP_REPOSITORY_NAME_PREFIX: ${{ inputs.strip-repository-name-prefix }}
         REPOSITORY_NAME: ${{ github.event.repository.name }}
         REPOSITORY_OWNER: ${{ github.repository_owner }}
         CURRENT_BRANCH: ${{ github.head_ref || github.ref_name }}

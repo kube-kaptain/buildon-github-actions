@@ -20,10 +20,17 @@
 #   CONFIG_SUB_PATH - Config files directory (default: src/config)
 #   TOKEN_NAME_STYLE - Token name style (default: PascalCase)
 #   TOKEN_DELIMITER_STYLE - Token delimiter syntax (default: shell)
+#   REPOSITORY_NAME - Raw repository name (from CI provider)
+#   REPOSITORY_OWNER - Repository owner (from CI provider)
+#   CURRENT_BRANCH - Current branch name (PR head ref, or ref name for direct pushes)
+#   DEFAULT_BRANCH - Repository default branch
 #   ... and all other workflow inputs
 #
+# Available context (calculated inline):
+#   PROJECT_NAME - Repository name with optional prefix strip applied
+#
 # NOT available at this lifecycle point:
-#   VERSION, DOCKER_TAG, PROJECT_NAME, DOCKER_TARGET_IMAGE_FULL_URI, MANIFESTS_*
+#   VERSION, DOCKER_TAG, DOCKER_TARGET_IMAGE_FULL_URI, MANIFESTS_*
 #
 set -euo pipefail
 
@@ -91,6 +98,7 @@ source "$(dirname "${BASH_SOURCE[0]}")/../defaults/kubernetes-service.bash"
 source "$(dirname "${BASH_SOURCE[0]}")/../defaults/manifests-repo-provider.bash"
 
 # Export all workflow inputs
+export BUILD_KIND
 export OUTPUT_SUB_PATH
 export DOCKER_PUSH_IMAGE_LIST_FILE
 export DOCKER_REGISTRY_LOGINS DOCKER_TARGET_REGISTRY DOCKER_TARGET_NAMESPACE DOCKER_PUSH_TARGETS
@@ -172,6 +180,16 @@ export GITHUB_RELEASE_NOTES GITHUB_RELEASE_NOTES_FILE GITHUB_RELEASE_ADD_VERSION
 # === Step Outputs ===
 # This hook runs BEFORE versions-and-naming - no step outputs available yet.
 # Only workflow inputs are available at this lifecycle point.
+
+# === Calculated Values ===
+# PROJECT_NAME calculated inline (same logic as versions-and-naming) so user's
+# hook script can make decisions before versioning runs.
+
+STRIP_REPOSITORY_NAME_PREFIX="${STRIP_REPOSITORY_NAME_PREFIX:-}"
+# shellcheck source=src/scripts/lib/project-name-resolve.bash
+source "${SCRIPT_DIR}/../lib/project-name-resolve.bash"
+PROJECT_NAME="${project_name}"
+export PROJECT_NAME REPOSITORY_NAME REPOSITORY_OWNER
 
 # shellcheck source=src/scripts/lib/hook-runner.bash
 source "${SCRIPT_DIR}/../lib/hook-runner.bash" "${HOOK_PRE_TAGGING_TESTS_SCRIPT_SUB_PATH:-}"

@@ -19,6 +19,8 @@
 #   IS_RELEASE - Whether this is a release build (calculated inline)
 #   REPOSITORY_NAME - Raw repository name (from CI provider)
 #   REPOSITORY_OWNER - Repository owner (from CI provider)
+#   CURRENT_BRANCH - Current branch name (PR head ref, or ref name for direct pushes)
+#   DEFAULT_BRANCH - Repository default branch
 #   OUTPUT_SUB_PATH - Build output directory (default: kaptain-out)
 #   DOCKERFILE_SUB_PATH - Docker source directory (default: src/docker)
 #   MANIFESTS_SUB_PATH - Manifests source directory (default: src/kubernetes)
@@ -96,6 +98,7 @@ source "$(dirname "${BASH_SOURCE[0]}")/../defaults/kubernetes-service.bash"
 source "$(dirname "${BASH_SOURCE[0]}")/../defaults/manifests-repo-provider.bash"
 
 # Export all workflow inputs
+export BUILD_KIND
 export OUTPUT_SUB_PATH
 export DOCKER_PUSH_IMAGE_LIST_FILE
 export DOCKER_REGISTRY_LOGINS DOCKER_TARGET_REGISTRY DOCKER_TARGET_NAMESPACE DOCKER_PUSH_TARGETS
@@ -182,7 +185,10 @@ export GITHUB_RELEASE_NOTES GITHUB_RELEASE_NOTES_FILE GITHUB_RELEASE_ADD_VERSION
 # shellcheck source=src/scripts/lib/branch-setup-shared.bash
 source "${SCRIPT_DIR}/../lib/branch-setup-shared.bash"
 
-PROJECT_NAME="${REPOSITORY_NAME}"
+STRIP_REPOSITORY_NAME_PREFIX="${STRIP_REPOSITORY_NAME_PREFIX:-}"
+# shellcheck source=src/scripts/lib/project-name-resolve.bash
+source "${SCRIPT_DIR}/../lib/project-name-resolve.bash"
+PROJECT_NAME="${project_name}"
 IS_RELEASE="false"
 if [[ "${BUILD_MODE}" == "build_server" ]] && is_release_branch "${CURRENT_BRANCH}"; then
   IS_RELEASE="true"

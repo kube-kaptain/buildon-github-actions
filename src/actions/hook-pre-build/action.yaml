@@ -5,10 +5,20 @@ name: Hook - Pre-Build
 description: Runs user's hook script before build starts, after tooling validation
 
 inputs:
+  build-kind:
+    description: 'Build kind identifier (workflow/reference script name)'
+    required: true
+
   # Container runtime
   image-build-command:
     description: 'Container runtime command (podman or docker)'
     required: true
+
+  # Project name
+  strip-repository-name-prefix:
+    description: 'Prefix to strip from repository name to derive project name. The prefix and trailing hyphen are removed.'
+    required: false
+    default: ''
 
   # === Workflow Inputs ===
   # Build output
@@ -916,6 +926,7 @@ runs:
       shell: bash
       env:
         BUILD_MODE: build_server
+        BUILD_KIND: ${{ inputs.build-kind }}
         BUILD_PLATFORM: github-actions
         BUILD_PLATFORM_LOG_PROVIDER: github-actions
         IMAGE_BUILD_COMMAND: ${{ inputs.image-build-command }}
@@ -924,6 +935,7 @@ runs:
         REPOSITORY_OWNER: ${{ github.repository_owner }}
         CURRENT_BRANCH: ${{ github.head_ref || github.ref_name }}
         DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        STRIP_REPOSITORY_NAME_PREFIX: ${{ inputs.strip-repository-name-prefix }}
         # Workflow inputs - build output
         OUTPUT_SUB_PATH: ${{ inputs.output-sub-path }}
         DOCKER_PUSH_IMAGE_LIST_FILE: ${{ inputs.docker-push-image-list-file }}

@@ -15,6 +15,8 @@ setup() {
 
   # Set required workflow inputs - these get defaults from sourced scripts
   # but we set explicit values to verify they're exported correctly
+  export REPOSITORY_NAME="my-project"
+  export REPOSITORY_OWNER="kube-kaptain"
   export DOCKER_TARGET_REGISTRY="ghcr.io"
   export DOCKER_TARGET_NAMESPACE="test"
   export DOCKER_PUSH_TARGETS=""
@@ -44,6 +46,7 @@ setup() {
   export CURRENT_BRANCH="main"
   export ADDITIONAL_RELEASE_BRANCHES=""
   export BUILD_MODE="build_server"
+  export BUILD_KIND="kubernetes-app-docker-dockerfile"
   export TAG_VERSION_MAX_PARTS="10"
   export TAG_VERSION_CALCULATION_STRATEGY="git-tag-semver"
   export TAG_VERSION_PATTERN_TYPE=""

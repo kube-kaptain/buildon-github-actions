@@ -251,8 +251,10 @@ jobs:
         id: pre-build
         uses: ./.github/buildon-github-actions/src/actions/hook-pre-build
         with:
+          build-kind: basic-quality-checks
           image-build-command: ${{ steps.validate-tooling.outputs.IMAGE_BUILD_COMMAND }}
           docker-platform: ${{ steps.kpm.outputs.DOCKER_PLATFORM }}
+          strip-repository-name-prefix: ${{ steps.kpm.outputs.STRIP_REPOSITORY_NAME_PREFIX }}
           # === Workflow Inputs ===
           # Build output
           output-sub-path: ${{ steps.kpm.outputs.OUTPUT_SUB_PATH }}
@@ -449,6 +451,7 @@ jobs:
         id: post-build
         uses: ./.github/buildon-github-actions/src/actions/hook-post-build
         with:
+          build-kind: basic-quality-checks
           image-build-command: ${{ steps.validate-tooling.outputs.IMAGE_BUILD_COMMAND }}
           docker-platform: ${{ steps.kpm.outputs.DOCKER_PLATFORM }}
           # === Workflow Inputs ===
@@ -592,6 +595,10 @@ jobs:
           version-2-part: ${{ steps.quality.outputs.VERSION_2_PART }}
           version-3-part: ${{ steps.quality.outputs.VERSION_3_PART }}
           version-4-part: ${{ steps.quality.outputs.VERSION_4_PART }}
+          version-dns-safe: ${{ steps.quality.outputs.VERSION_DNS_SAFE }}
+          version-2-part-dns-safe: ${{ steps.quality.outputs.VERSION_2_PART_DNS_SAFE }}
+          version-3-part-dns-safe: ${{ steps.quality.outputs.VERSION_3_PART_DNS_SAFE }}
+          version-4-part-dns-safe: ${{ steps.quality.outputs.VERSION_4_PART_DNS_SAFE }}
           docker-tag: ${{ steps.quality.outputs.DOCKER_TAG }}
           docker-image-name: ${{ steps.quality.outputs.DOCKER_IMAGE_NAME }}
           git-tag: ${{ steps.quality.outputs.GIT_TAG }}

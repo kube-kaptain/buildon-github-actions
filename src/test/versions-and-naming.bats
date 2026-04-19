@@ -30,6 +30,10 @@ teardown() {
   assert_var_equals "VERSION_2_PART" "1.0"
   assert_var_equals "VERSION_3_PART" "1.0.1"
   assert_var_equals "VERSION_4_PART" "1.0.1.0"
+  assert_var_equals "VERSION_DNS_SAFE" "1-0-1"
+  assert_var_equals "VERSION_2_PART_DNS_SAFE" "1-0"
+  assert_var_equals "VERSION_3_PART_DNS_SAFE" "1-0-1"
+  assert_var_equals "VERSION_4_PART_DNS_SAFE" "1-0-1-0"
 }
 
 @test "seeds 1.1 for repo with no tags and MAX_PARTS=2" {
@@ -122,6 +126,9 @@ teardown() {
   assert_var_equals "VERSION" "1.2.3.5"
   assert_var_equals "VERSION_3_PART" "1.2.3"
   assert_var_equals "VERSION_4_PART" "1.2.3.5"
+  assert_var_equals "VERSION_DNS_SAFE" "1-2-3-5"
+  assert_var_equals "VERSION_3_PART_DNS_SAFE" "1-2-3"
+  assert_var_equals "VERSION_4_PART_DNS_SAFE" "1-2-3-5"
 }
 
 @test "increments ten-part version 1.2.3.4.5.6.7.8.9.0 to 1.2.3.4.5.6.7.8.9.1" {
@@ -191,13 +198,36 @@ teardown() {
   assert_var_equals "DOCKER_TAG" "1.0.1"
 }
 
-@test "outputs PROJECT_NAME from repo directory" {
+@test "project name equals repository name by default" {
   TEST_REPO=$(clone_fixture "tag-none")
   cd "$TEST_REPO"
+  export REPOSITORY_NAME=my-cool-app
 
   run "$SCRIPTS_DIR/versions-and-naming"
   [ "$status" -eq 0 ]
-  assert_output_contains "PROJECT_NAME="
+  assert_var_equals "PROJECT_NAME" "my-cool-app"
+}
+
+@test "project name has prefix stripped when strip-repository-name-prefix set" {
+  TEST_REPO=$(clone_fixture "tag-none")
+  cd "$TEST_REPO"
+  export REPOSITORY_NAME=teamname-my-cool-app
+  export STRIP_REPOSITORY_NAME_PREFIX=teamname
+
+  run "$SCRIPTS_DIR/versions-and-naming"
+  [ "$status" -eq 0 ]
+  assert_var_equals "PROJECT_NAME" "my-cool-app"
+}
+
+@test "fails when strip-repository-name-prefix does not match repository name" {
+  TEST_REPO=$(clone_fixture "tag-none")
+  cd "$TEST_REPO"
+  export REPOSITORY_NAME=other-my-cool-app
+  export STRIP_REPOSITORY_NAME_PREFIX=teamname
+
+  run "$SCRIPTS_DIR/versions-and-naming"
+  [ "$status" -ne 0 ]
+  assert_output_contains "does not start with prefix"
 }
 
 @test "respects ADDITIONAL_RELEASE_BRANCHES configuration" {
@@ -773,6 +803,18 @@ ENV KUBECTL_VERSION=1.28.5' > src/docker/Dockerfile
   run "$SCRIPTS_DIR/versions-and-naming"
   [ "$status" -eq 1 ]
   assert_output_contains "must start with 'main' followed by a divider"
+}
+
+@test "skips additional-release-branch validation when BUILD_MODE=local" {
+  TEST_REPO=$(clone_fixture "tag-none")
+  cd "$TEST_REPO"
+
+  # Invalid prefix that would fail on build_server
+  export ADDITIONAL_RELEASE_BRANCHES="release-1.0.x"
+  export BUILD_MODE="local"
+  run "$SCRIPTS_DIR/versions-and-naming"
+  [ "$status" -eq 0 ]
+  assert_output_not_contains "must start with 'main' followed by a divider"
 }
 
 @test "accepts additional-release-branches with valid prefixes" {

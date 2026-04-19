@@ -5,7 +5,17 @@ name: Hook - Pre-Tagging Tests
 description: Runs user's hook script before tagging/versioning for custom validation or preparation
 
 inputs:
+  build-kind:
+    description: 'Build kind identifier (workflow/reference script name)'
+    required: true
+
   # INJECT-INPUT: image-build-command
+
+  # Project name
+  strip-repository-name-prefix:
+    description: 'Prefix to strip from repository name to derive project name. The prefix and trailing hyphen are removed.'
+    required: false
+    default: ''
 
   # === Workflow Inputs ===
   # INJECT-INPUT: output-sub-path
@@ -47,9 +57,14 @@ runs:
       shell: bash
       env:
         BUILD_MODE: build_server
+        BUILD_KIND: ${{ inputs.build-kind }}
         BUILD_PLATFORM: github-actions
         BUILD_PLATFORM_LOG_PROVIDER: github-actions
         IMAGE_BUILD_COMMAND: ${{ inputs.image-build-command }}
+        # GitHub context - needed for PROJECT_NAME calculation
+        REPOSITORY_NAME: ${{ github.event.repository.name }}
+        REPOSITORY_OWNER: ${{ github.repository_owner }}
+        STRIP_REPOSITORY_NAME_PREFIX: ${{ inputs.strip-repository-name-prefix }}
         # Workflow inputs - build output
         OUTPUT_SUB_PATH: ${{ inputs.output-sub-path }}
         DOCKER_PUSH_IMAGE_LIST_FILE: ${{ inputs.docker-push-image-list-file }}
@@ -244,8 +259,8 @@ runs:
         TOKEN_SUBSTITUTION_PASSES: ${{ inputs.token-substitution-passes }}
 
         # Workflow inputs - naming, versions, and tags calculation
-        DEFAULT_BRANCH: ${{ inputs.default-branch }}
-        CURRENT_BRANCH: ${{ inputs.current-branch }}
+        DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        CURRENT_BRANCH: ${{ github.head_ref || github.ref_name }}
         RELEASE_BRANCH: ${{ inputs.release-branch }}
         ADDITIONAL_RELEASE_BRANCHES: ${{ inputs.additional-release-branches }}
         TAG_VERSION_MAX_PARTS: ${{ inputs.tag-version-max-parts }}

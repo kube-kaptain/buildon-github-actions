@@ -25,6 +25,10 @@
 #   GIT_TAG - Git tag
 #   PROJECT_NAME - Project name
 #   IS_RELEASE - Whether this is a release build (true/false)
+#   REPOSITORY_NAME - Raw repository name (from CI provider)
+#   REPOSITORY_OWNER - Repository owner (from CI provider)
+#   CURRENT_BRANCH - Current branch name (PR head ref, or ref name for direct pushes)
+#   DEFAULT_BRANCH - Repository default branch
 #   DOCKER_TARGET_IMAGE_FULL_URI - Full image URI (registry/name:tag)
 #   DOCKER_IMAGE_FULL_URI - Alias for DOCKER_TARGET_IMAGE_FULL_URI
 #   DOCKER_CONTEXT_SUB_PATH - Docker build context directory
@@ -97,6 +101,7 @@ source "$(dirname "${BASH_SOURCE[0]}")/../defaults/kubernetes-service.bash"
 source "$(dirname "${BASH_SOURCE[0]}")/../defaults/manifests-repo-provider.bash"
 
 # Export all workflow inputs
+export BUILD_KIND
 export OUTPUT_SUB_PATH
 export DOCKER_PUSH_IMAGE_LIST_FILE
 export DOCKER_REGISTRY_LOGINS DOCKER_TARGET_REGISTRY DOCKER_TARGET_NAMESPACE DOCKER_PUSH_TARGETS
@@ -184,6 +189,10 @@ export GITHUB_RELEASE_NOTES GITHUB_RELEASE_NOTES_FILE GITHUB_RELEASE_ADD_VERSION
 : "${VERSION_2_PART:?VERSION_2_PART is required}"
 : "${VERSION_3_PART:?VERSION_3_PART is required}"
 : "${VERSION_4_PART:?VERSION_4_PART is required}"
+: "${VERSION_DNS_SAFE:?VERSION_DNS_SAFE is required}"
+: "${VERSION_2_PART_DNS_SAFE:?VERSION_2_PART_DNS_SAFE is required}"
+: "${VERSION_3_PART_DNS_SAFE:?VERSION_3_PART_DNS_SAFE is required}"
+: "${VERSION_4_PART_DNS_SAFE:?VERSION_4_PART_DNS_SAFE is required}"
 : "${DOCKER_TAG:?DOCKER_TAG is required}"
 : "${DOCKER_IMAGE_NAME:?DOCKER_IMAGE_NAME is required}"
 : "${GIT_TAG:?GIT_TAG is required}"
@@ -195,7 +204,8 @@ export GITHUB_RELEASE_NOTES GITHUB_RELEASE_NOTES_FILE GITHUB_RELEASE_ADD_VERSION
 # Export step outputs for hook script
 export VERSION VERSION_MAJOR VERSION_MINOR VERSION_PATCH
 export VERSION_2_PART VERSION_3_PART VERSION_4_PART
-export DOCKER_TAG DOCKER_IMAGE_NAME GIT_TAG PROJECT_NAME IS_RELEASE
+export VERSION_DNS_SAFE VERSION_2_PART_DNS_SAFE VERSION_3_PART_DNS_SAFE VERSION_4_PART_DNS_SAFE
+export DOCKER_TAG DOCKER_IMAGE_NAME GIT_TAG PROJECT_NAME IS_RELEASE REPOSITORY_NAME REPOSITORY_OWNER
 export DOCKER_TARGET_IMAGE_FULL_URI
 # User-friendly alias for DOCKER_TARGET_IMAGE_FULL_URI
 DOCKER_IMAGE_FULL_URI="${DOCKER_TARGET_IMAGE_FULL_URI}"

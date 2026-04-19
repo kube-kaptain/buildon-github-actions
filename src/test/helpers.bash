@@ -425,6 +425,7 @@ verify_action_template_env_mappings() {
   # Find exports not in action env (excluding step outputs which come from inputs)
   # Step outputs like VERSION, DOCKER_TAG, etc. are passed via action inputs, not defaults
   local step_outputs="VERSION VERSION_MAJOR VERSION_MINOR VERSION_PATCH VERSION_2_PART VERSION_3_PART VERSION_4_PART"
+  step_outputs="$step_outputs VERSION_DNS_SAFE VERSION_2_PART_DNS_SAFE VERSION_3_PART_DNS_SAFE VERSION_4_PART_DNS_SAFE"
   step_outputs="$step_outputs DOCKER_TAG DOCKER_IMAGE_NAME GIT_TAG PROJECT_NAME IS_RELEASE"
   step_outputs="$step_outputs TARGET_IMAGE_FULL_URI DOCKER_IMAGE_FULL_URI"
   step_outputs="$step_outputs MANIFESTS_ZIP_FILE_NAME"

@@ -127,6 +127,9 @@ jobs:
       # INJECT: load-final-kaptainpm-yaml
       # INJECT: github-check-end(name="Load Final KaptainPM YAML", id="check-load-final-kpm")
 
+      # === Resolve Registry ===
+      # INJECT: resolve-registry-and-namespace
+
       # === Pre-Build ===
       # INJECT: github-check-start(name="Pre-Build", id="check-pre-build", if="steps.kpm.outputs.HOOK_PRE_BUILD_SCRIPT_SUB_PATH != ''")
       # INJECT: hook-pre-build
@@ -136,9 +139,6 @@ jobs:
       # INJECT: github-check-start(name="Basic Quality Checks", id="check-basic-quality", if="github.event_name == 'pull_request'")
       # INJECT: basic-quality-checks
       # INJECT: github-check-end(name="Basic Quality Checks", id="check-basic-quality", if="github.event_name == 'pull_request'")
-
-      # === Resolve Registry ===
-      # INJECT: resolve-registry-and-namespace
 
       # === Docker Registry Logins ===
       # INJECT: github-check-start(name="Docker Registry Logins", id="check-docker-registry-logins")

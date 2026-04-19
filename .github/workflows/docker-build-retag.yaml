@@ -308,6 +308,17 @@ jobs:
           action: fail
           check-run-id: ${{ steps.check-load-final-kpm.outputs.check-run-id }}
 
+      # === Resolve Registry ===
+      # Resolve target registry and namespace early in workflow
+      # Must run before any hooks or docker operations that need these values
+      # All downstream steps should reference steps.resolve-registry.outputs.*
+      - name: Resolve target registry and namespace
+        id: resolve-registry
+        uses: ./.github/buildon-github-actions/src/actions/resolve-target-registry-and-namespace
+        with:
+          docker-target-registry: ${{ steps.kpm.outputs.DOCKER_TARGET_REGISTRY }}
+          docker-target-namespace: ${{ steps.kpm.outputs.DOCKER_TARGET_NAMESPACE }}
+
       # === Pre-Build ===
       - name: Start check - Pre-Build
         if: steps.kpm.outputs.HOOK_PRE_BUILD_SCRIPT_SUB_PATH != '' && success()
@@ -322,8 +333,10 @@ jobs:
         id: pre-build
         uses: ./.github/buildon-github-actions/src/actions/hook-pre-build
         with:
+          build-kind: docker-build-retag
           image-build-command: ${{ steps.validate-tooling.outputs.IMAGE_BUILD_COMMAND }}
           docker-platform: ${{ steps.kpm.outputs.DOCKER_PLATFORM }}
+          strip-repository-name-prefix: ${{ steps.kpm.outputs.STRIP_REPOSITORY_NAME_PREFIX }}
           # === Workflow Inputs ===
           # Build output
           output-sub-path: ${{ steps.kpm.outputs.OUTPUT_SUB_PATH }}
@@ -506,17 +519,6 @@ jobs:
           action: fail
           check-run-id: ${{ steps.check-basic-quality.outputs.check-run-id }}
 
-      # === Resolve Registry ===
-      # Resolve target registry and namespace early in workflow
-      # Must run before any hooks or docker operations that need these values
-      # All downstream steps should reference steps.resolve-registry.outputs.*
-      - name: Resolve target registry and namespace
-        id: resolve-registry
-        uses: ./.github/buildon-github-actions/src/actions/resolve-target-registry-and-namespace
-        with:
-          docker-target-registry: ${{ steps.kpm.outputs.DOCKER_TARGET_REGISTRY }}
-          docker-target-namespace: ${{ steps.kpm.outputs.DOCKER_TARGET_NAMESPACE }}
-
       # === Docker Registry Logins ===
       - name: Start check - Docker Registry Logins
         id: check-docker-registry-logins
@@ -592,8 +594,10 @@ jobs:
         id: pre-tagging-tests
         uses: ./.github/buildon-github-actions/src/actions/hook-pre-tagging-tests
         with:
+          build-kind: docker-build-retag
           image-build-command: ${{ steps.validate-tooling.outputs.IMAGE_BUILD_COMMAND }}
           docker-platform: ${{ steps.kpm.outputs.DOCKER_PLATFORM }}
+          strip-repository-name-prefix: ${{ steps.kpm.outputs.STRIP_REPOSITORY_NAME_PREFIX }}
           # === Workflow Inputs ===
           # Build output
           output-sub-path: ${{ steps.kpm.outputs.OUTPUT_SUB_PATH }}
@@ -751,6 +755,7 @@ jobs:
         id: versions
         uses: ./.github/buildon-github-actions/src/actions/versions-and-naming
         with:
+          strip-repository-name-prefix: ${{ steps.kpm.outputs.STRIP_REPOSITORY_NAME_PREFIX }}
           release-branch: ${{ steps.kpm.outputs.RELEASE_BRANCH }}
           additional-release-branches: ${{ steps.kpm.outputs.ADDITIONAL_RELEASE_BRANCHES }}
           tag-version-max-parts: ${{ steps.kpm.outputs.TAG_VERSION_MAX_PARTS }}
@@ -794,6 +799,7 @@ jobs:
         id: post-versions-and-naming
         uses: ./.github/buildon-github-actions/src/actions/hook-post-versions-and-naming
         with:
+          build-kind: docker-build-retag
           image-build-command: ${{ steps.validate-tooling.outputs.IMAGE_BUILD_COMMAND }}
           docker-platform: ${{ steps.kpm.outputs.DOCKER_PLATFORM }}
           # === Workflow Inputs ===
@@ -937,6 +943,10 @@ jobs:
           version-2-part: ${{ steps.versions.outputs.version-2-part }}
           version-3-part: ${{ steps.versions.outputs.version-3-part }}
           version-4-part: ${{ steps.versions.outputs.version-4-part }}
+          version-dns-safe: ${{ steps.versions.outputs.version-dns-safe }}
+          version-2-part-dns-safe: ${{ steps.versions.outputs.version-2-part-dns-safe }}
+          version-3-part-dns-safe: ${{ steps.versions.outputs.version-3-part-dns-safe }}
+          version-4-part-dns-safe: ${{ steps.versions.outputs.version-4-part-dns-safe }}
           docker-tag: ${{ steps.versions.outputs.docker-tag }}
           docker-image-name: ${{ steps.versions.outputs.docker-image-name }}
           git-tag: ${{ steps.versions.outputs.git-tag }}
@@ -1157,6 +1167,17 @@ jobs:
           internal-raw-files: ${{ steps.resolve-internal-release-files.outputs.raw-files }}
           output-sub-path: ${{ steps.kpm.outputs.OUTPUT_SUB_PATH }}
           version: ${{ steps.versions.outputs.version }}
+          version-major: ${{ steps.versions.outputs.version-major }}
+          version-minor: ${{ steps.versions.outputs.version-minor }}
+          version-patch: ${{ steps.versions.outputs.version-patch }}
+          version-2-part: ${{ steps.versions.outputs.version-2-part }}
+          version-3-part: ${{ steps.versions.outputs.version-3-part }}
+          version-4-part: ${{ steps.versions.outputs.version-4-part }}
+          version-dns-safe: ${{ steps.versions.outputs.version-dns-safe }}
+          version-2-part-dns-safe: ${{ steps.versions.outputs.version-2-part-dns-safe }}
+          version-3-part-dns-safe: ${{ steps.versions.outputs.version-3-part-dns-safe }}
+          version-4-part-dns-safe: ${{ steps.versions.outputs.version-4-part-dns-safe }}
+          git-tag: ${{ steps.versions.outputs.git-tag }}
           project-name: ${{ steps.versions.outputs.project-name }}
           docker-tag: ${{ steps.versions.outputs.docker-tag }}
           docker-image-name: ${{ steps.versions.outputs.docker-image-name }}
@@ -1341,6 +1362,7 @@ jobs:
         id: post-build
         uses: ./.github/buildon-github-actions/src/actions/hook-post-build
         with:
+          build-kind: docker-build-retag
           image-build-command: ${{ steps.validate-tooling.outputs.IMAGE_BUILD_COMMAND }}
           docker-platform: ${{ steps.kpm.outputs.DOCKER_PLATFORM }}
           # === Workflow Inputs ===
@@ -1484,6 +1506,10 @@ jobs:
           version-2-part: ${{ steps.versions.outputs.version-2-part }}
           version-3-part: ${{ steps.versions.outputs.version-3-part }}
           version-4-part: ${{ steps.versions.outputs.version-4-part }}
+          version-dns-safe: ${{ steps.versions.outputs.version-dns-safe }}
+          version-2-part-dns-safe: ${{ steps.versions.outputs.version-2-part-dns-safe }}
+          version-3-part-dns-safe: ${{ steps.versions.outputs.version-3-part-dns-safe }}
+          version-4-part-dns-safe: ${{ steps.versions.outputs.version-4-part-dns-safe }}
           docker-tag: ${{ steps.versions.outputs.docker-tag }}
           docker-image-name: ${{ steps.versions.outputs.docker-image-name }}
           git-tag: ${{ steps.versions.outputs.git-tag }}

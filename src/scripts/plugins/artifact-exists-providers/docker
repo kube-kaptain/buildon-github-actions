@@ -47,6 +47,21 @@ fi
 docker_ref_expand "${reference}" || exit 1
 full_ref="${DOCKER_REF_FULL_NAME}:${DOCKER_REF_VERSION_PART}"
 
+# PRERELEASE versions are local-only by convention - never published to the
+# remote. In local mode, check the local image store instead of the remote.
+# In server mode the provider keeps its remote-only contract; callers that
+# need to reject PRERELEASE deps outright gate on it before calling here
+# (see layer-package-prepare).
+if [[ "${BUILD_MODE:-}" == "local" && "${DOCKER_REF_VERSION_PART}" == *-PRERELEASE* ]]; then
+  log "Checking local existence of ${full_ref} (PRERELEASE version in BUILD_MODE=local, skipping remote)..."
+  if "${IMAGE_BUILD_COMMAND}" image exists "${full_ref}" 2>/dev/null; then
+    log "Exists locally: ${full_ref}"
+    exit 0
+  fi
+  log_error "PRERELEASE version not available in local image store: ${full_ref}"
+  exit 1
+fi
+
 log "Checking remote existence of ${full_ref} via ${IMAGE_BUILD_COMMAND} manifest inspect..."
 if "${IMAGE_BUILD_COMMAND}" manifest inspect "${full_ref}" >/dev/null 2>&1; then
   log "Exists: ${full_ref}"

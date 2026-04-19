@@ -21,24 +21,7 @@ inputs:
     default: ''
 
   # INJECT-INPUT: output-sub-path
-
-  # Action-specific inputs (passed from version generator)
-  version:
-    description: 'Version for filename suffix'
-    required: true
-  project-name:
-    description: 'Project name for token substitution'
-    required: true
-  docker-tag:
-    description: 'Docker tag for token substitution'
-    required: true
-  docker-image-name:
-    description: 'Docker image name for token substitution'
-    required: true
-  is-release:
-    description: 'Whether this is a release build'
-    required: true
-
+  # INJECT-INPUT: versions-and-naming
   # INJECT-INPUT: token-substitution
 
   # Optional built-in token values (action-specific)
@@ -76,6 +59,17 @@ runs:
         INTERNAL_RAW_FILES: ${{ inputs.internal-raw-files }}
         OUTPUT_SUB_PATH: ${{ inputs.output-sub-path }}
         VERSION: ${{ inputs.version }}
+        VERSION_MAJOR: ${{ inputs.version-major }}
+        VERSION_MINOR: ${{ inputs.version-minor }}
+        VERSION_PATCH: ${{ inputs.version-patch }}
+        VERSION_2_PART: ${{ inputs.version-2-part }}
+        VERSION_3_PART: ${{ inputs.version-3-part }}
+        VERSION_4_PART: ${{ inputs.version-4-part }}
+        VERSION_DNS_SAFE: ${{ inputs.version-dns-safe }}
+        VERSION_2_PART_DNS_SAFE: ${{ inputs.version-2-part-dns-safe }}
+        VERSION_3_PART_DNS_SAFE: ${{ inputs.version-3-part-dns-safe }}
+        VERSION_4_PART_DNS_SAFE: ${{ inputs.version-4-part-dns-safe }}
+        GIT_TAG: ${{ inputs.git-tag }}
         PROJECT_NAME: ${{ inputs.project-name }}
         DOCKER_TAG: ${{ inputs.docker-tag }}
         DOCKER_IMAGE_NAME: ${{ inputs.docker-image-name }}
@@ -205,6 +199,17 @@ runs:
           TOKEN_SUBSTITUTION_PASSES="${TOKEN_SUBSTITUTION_PASSES}" \
           PROJECT_NAME="${PROJECT_NAME}" \
           VERSION="${VERSION}" \
+          VERSION_MAJOR="${VERSION_MAJOR}" \
+          VERSION_MINOR="${VERSION_MINOR}" \
+          VERSION_PATCH="${VERSION_PATCH}" \
+          VERSION_2_PART="${VERSION_2_PART}" \
+          VERSION_3_PART="${VERSION_3_PART}" \
+          VERSION_4_PART="${VERSION_4_PART}" \
+          VERSION_DNS_SAFE="${VERSION_DNS_SAFE}" \
+          VERSION_2_PART_DNS_SAFE="${VERSION_2_PART_DNS_SAFE}" \
+          VERSION_3_PART_DNS_SAFE="${VERSION_3_PART_DNS_SAFE}" \
+          VERSION_4_PART_DNS_SAFE="${VERSION_4_PART_DNS_SAFE}" \
+          GIT_TAG="${GIT_TAG}" \
           IS_RELEASE="${IS_RELEASE}" \
           DOCKER_TAG="${DOCKER_TAG}" \
           DOCKER_IMAGE_NAME="${DOCKER_IMAGE_NAME}" \

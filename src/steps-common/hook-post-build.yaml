@@ -6,6 +6,7 @@
   id: post-build
   uses: ./.github/buildon-github-actions/src/actions/hook-post-build
   with:
+    build-kind: ${WORKFLOW_NAME}
     image-build-command: ${{ steps.validate-tooling.outputs.IMAGE_BUILD_COMMAND }}
     docker-platform: ${{ steps.kpm.outputs.DOCKER_PLATFORM }}
     # === Workflow Inputs ===
@@ -149,6 +150,10 @@
     version-2-part: ${{ steps.versions.outputs.version-2-part }}
     version-3-part: ${{ steps.versions.outputs.version-3-part }}
     version-4-part: ${{ steps.versions.outputs.version-4-part }}
+    version-dns-safe: ${{ steps.versions.outputs.version-dns-safe }}
+    version-2-part-dns-safe: ${{ steps.versions.outputs.version-2-part-dns-safe }}
+    version-3-part-dns-safe: ${{ steps.versions.outputs.version-3-part-dns-safe }}
+    version-4-part-dns-safe: ${{ steps.versions.outputs.version-4-part-dns-safe }}
     docker-tag: ${{ steps.versions.outputs.docker-tag }}
     docker-image-name: ${{ steps.versions.outputs.docker-image-name }}
     git-tag: ${{ steps.versions.outputs.git-tag }}

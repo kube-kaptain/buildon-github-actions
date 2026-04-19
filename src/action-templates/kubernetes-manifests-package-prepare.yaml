@@ -10,22 +10,11 @@ inputs:
     description: 'Directory containing Kubernetes manifests (relative)'
     required: false
     default: 'src/kubernetes'
-  project-name:
-    description: 'Project name for variable substitution'
-    required: true
-  version:
-    description: 'Version for variable substitution and naming'
-    required: true
 
+  # INJECT-INPUT: versions-and-naming
   # INJECT-INPUT: output-sub-path
 
-  # Action-specific inputs (passed from version generator/docker build)
-  docker-tag:
-    description: 'Docker tag for variable substitution'
-    required: true
-  docker-image-name:
-    description: 'Docker image name for variable substitution'
-    required: true
+  # Action-specific optional inputs (passed from docker build)
   docker-image-full-uri:
     description: 'Full Docker image URI for variable substitution (optional)'
     required: false
@@ -36,10 +25,6 @@ inputs:
     default: ''
   docker-target-namespace:
     description: 'Target namespace for variable substitution (optional)'
-    required: false
-    default: ''
-  is-release:
-    description: 'Release flag for variable substitution (optional)'
     required: false
     default: ''
 
@@ -63,6 +48,17 @@ runs:
         MANIFESTS_SUB_PATH: ${{ inputs.manifests-sub-path }}
         PROJECT_NAME: ${{ inputs.project-name }}
         VERSION: ${{ inputs.version }}
+        VERSION_MAJOR: ${{ inputs.version-major }}
+        VERSION_MINOR: ${{ inputs.version-minor }}
+        VERSION_PATCH: ${{ inputs.version-patch }}
+        VERSION_2_PART: ${{ inputs.version-2-part }}
+        VERSION_3_PART: ${{ inputs.version-3-part }}
+        VERSION_4_PART: ${{ inputs.version-4-part }}
+        VERSION_DNS_SAFE: ${{ inputs.version-dns-safe }}
+        VERSION_2_PART_DNS_SAFE: ${{ inputs.version-2-part-dns-safe }}
+        VERSION_3_PART_DNS_SAFE: ${{ inputs.version-3-part-dns-safe }}
+        VERSION_4_PART_DNS_SAFE: ${{ inputs.version-4-part-dns-safe }}
+        GIT_TAG: ${{ inputs.git-tag }}
         OUTPUT_SUB_PATH: ${{ inputs.output-sub-path }}
         DOCKER_TAG: ${{ inputs.docker-tag }}
         DOCKER_IMAGE_NAME: ${{ inputs.docker-image-name }}

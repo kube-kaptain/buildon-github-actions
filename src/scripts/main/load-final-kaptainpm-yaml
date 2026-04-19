@@ -67,6 +67,7 @@ MAPPINGS=(
   # Global
   # Note: OUTPUT_SUB_PATH handled separately below (has default)
 
+  "spec.global.projectName.stripRepositoryNamePrefix:STRIP_REPOSITORY_NAME_PREFIX"
   "spec.global.configSubPath:CONFIG_SUB_PATH"
   "spec.global.secretsSubPath:SECRETS_SUB_PATH"
   "spec.global.tokens.delimiterStyle:TOKEN_DELIMITER_STYLE"
@@ -217,9 +218,9 @@ MAPPINGS=(
   "spec.main.generators.statefulset.updateStrategy.type:KUBERNETES_STATEFULSET_UPDATE_STRATEGY_TYPE"
   "spec.main.generators.statefulset.updateStrategy.partition:KUBERNETES_STATEFULSET_UPDATE_STRATEGY_PARTITION"
   "spec.main.generators.statefulset.pvc.enabled:KUBERNETES_STATEFULSET_PVC_ENABLED"
-  "spec.main.generators.statefulset.pvc.storageClass:KUBERNETES_STATEFULSET_PVC_STORAGE_CLASS"
+  "spec.main.generators.statefulset.pvc.storageClassName:KUBERNETES_STATEFULSET_PVC_STORAGE_CLASS"
   "spec.main.generators.statefulset.pvc.storageSize:KUBERNETES_STATEFULSET_PVC_STORAGE_SIZE"
-  "spec.main.generators.statefulset.pvc.accessMode:KUBERNETES_STATEFULSET_PVC_ACCESS_MODE"
+  "spec.main.generators.statefulset.pvc.accessModes:KUBERNETES_STATEFULSET_PVC_ACCESS_MODE"
   "spec.main.generators.statefulset.pvc.volumeName:KUBERNETES_STATEFULSET_PVC_VOLUME_NAME"
   "spec.main.generators.statefulset.pvc.mountPath:KUBERNETES_STATEFULSET_PVC_MOUNT_PATH"
 
