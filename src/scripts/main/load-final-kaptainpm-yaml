@@ -218,9 +218,9 @@ MAPPINGS=(
   "spec.main.generators.statefulset.updateStrategy.type:KUBERNETES_STATEFULSET_UPDATE_STRATEGY_TYPE"
   "spec.main.generators.statefulset.updateStrategy.partition:KUBERNETES_STATEFULSET_UPDATE_STRATEGY_PARTITION"
   "spec.main.generators.statefulset.pvc.enabled:KUBERNETES_STATEFULSET_PVC_ENABLED"
-  "spec.main.generators.statefulset.pvc.storageClass:KUBERNETES_STATEFULSET_PVC_STORAGE_CLASS"
+  "spec.main.generators.statefulset.pvc.storageClassName:KUBERNETES_STATEFULSET_PVC_STORAGE_CLASS"
   "spec.main.generators.statefulset.pvc.storageSize:KUBERNETES_STATEFULSET_PVC_STORAGE_SIZE"
-  "spec.main.generators.statefulset.pvc.accessMode:KUBERNETES_STATEFULSET_PVC_ACCESS_MODE"
+  "spec.main.generators.statefulset.pvc.accessModes:KUBERNETES_STATEFULSET_PVC_ACCESS_MODE"
   "spec.main.generators.statefulset.pvc.volumeName:KUBERNETES_STATEFULSET_PVC_VOLUME_NAME"
   "spec.main.generators.statefulset.pvc.mountPath:KUBERNETES_STATEFULSET_PVC_MOUNT_PATH"
 
