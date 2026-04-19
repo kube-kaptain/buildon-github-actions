@@ -309,6 +309,17 @@ jobs:
           action: fail
           check-run-id: ${{ steps.check-load-final-kpm.outputs.check-run-id }}
 
+      # === Resolve Registry ===
+      # Resolve target registry and namespace early in workflow
+      # Must run before any hooks or docker operations that need these values
+      # All downstream steps should reference steps.resolve-registry.outputs.*
+      - name: Resolve target registry and namespace
+        id: resolve-registry
+        uses: ./.github/buildon-github-actions/src/actions/resolve-target-registry-and-namespace
+        with:
+          docker-target-registry: ${{ steps.kpm.outputs.DOCKER_TARGET_REGISTRY }}
+          docker-target-namespace: ${{ steps.kpm.outputs.DOCKER_TARGET_NAMESPACE }}
+
       # === Pre-Build ===
       - name: Start check - Pre-Build
         if: steps.kpm.outputs.HOOK_PRE_BUILD_SCRIPT_SUB_PATH != '' && success()
@@ -507,17 +518,6 @@ jobs:
         with:
           action: fail
           check-run-id: ${{ steps.check-basic-quality.outputs.check-run-id }}
-
-      # === Resolve Registry ===
-      # Resolve target registry and namespace early in workflow
-      # Must run before any hooks or docker operations that need these values
-      # All downstream steps should reference steps.resolve-registry.outputs.*
-      - name: Resolve target registry and namespace
-        id: resolve-registry
-        uses: ./.github/buildon-github-actions/src/actions/resolve-target-registry-and-namespace
-        with:
-          docker-target-registry: ${{ steps.kpm.outputs.DOCKER_TARGET_REGISTRY }}
-          docker-target-namespace: ${{ steps.kpm.outputs.DOCKER_TARGET_NAMESPACE }}
 
       # === Docker Registry Logins ===
       - name: Start check - Docker Registry Logins
