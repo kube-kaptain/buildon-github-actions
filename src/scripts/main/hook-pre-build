@@ -182,7 +182,10 @@ export GITHUB_RELEASE_NOTES GITHUB_RELEASE_NOTES_FILE GITHUB_RELEASE_ADD_VERSION
 # shellcheck source=src/scripts/lib/branch-setup-shared.bash
 source "${SCRIPT_DIR}/../lib/branch-setup-shared.bash"
 
-PROJECT_NAME="${REPOSITORY_NAME}"
+STRIP_REPOSITORY_NAME_PREFIX="${STRIP_REPOSITORY_NAME_PREFIX:-}"
+# shellcheck source=src/scripts/lib/project-name-resolve.bash
+source "${SCRIPT_DIR}/../lib/project-name-resolve.bash"
+PROJECT_NAME="${project_name}"
 IS_RELEASE="false"
 if [[ "${BUILD_MODE}" == "build_server" ]] && is_release_branch "${CURRENT_BRANCH}"; then
   IS_RELEASE="true"

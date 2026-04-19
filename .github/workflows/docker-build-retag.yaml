@@ -324,6 +324,7 @@ jobs:
         with:
           image-build-command: ${{ steps.validate-tooling.outputs.IMAGE_BUILD_COMMAND }}
           docker-platform: ${{ steps.kpm.outputs.DOCKER_PLATFORM }}
+          strip-repository-name-prefix: ${{ steps.kpm.outputs.STRIP_REPOSITORY_NAME_PREFIX }}
           # === Workflow Inputs ===
           # Build output
           output-sub-path: ${{ steps.kpm.outputs.OUTPUT_SUB_PATH }}
@@ -594,6 +595,7 @@ jobs:
         with:
           image-build-command: ${{ steps.validate-tooling.outputs.IMAGE_BUILD_COMMAND }}
           docker-platform: ${{ steps.kpm.outputs.DOCKER_PLATFORM }}
+          strip-repository-name-prefix: ${{ steps.kpm.outputs.STRIP_REPOSITORY_NAME_PREFIX }}
           # === Workflow Inputs ===
           # Build output
           output-sub-path: ${{ steps.kpm.outputs.OUTPUT_SUB_PATH }}

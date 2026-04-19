@@ -10,6 +10,12 @@ inputs:
     description: 'Container runtime command (podman or docker)'
     required: true
 
+  # Project name
+  strip-repository-name-prefix:
+    description: 'Prefix to strip from repository name to derive project name. The prefix and trailing hyphen are removed.'
+    required: false
+    default: ''
+
   # === Workflow Inputs ===
   # Build output
   output-sub-path:
@@ -919,6 +925,9 @@ runs:
         BUILD_PLATFORM: github-actions
         BUILD_PLATFORM_LOG_PROVIDER: github-actions
         IMAGE_BUILD_COMMAND: ${{ inputs.image-build-command }}
+        # GitHub context - needed for PROJECT_NAME calculation
+        REPOSITORY_NAME: ${{ github.event.repository.name }}
+        STRIP_REPOSITORY_NAME_PREFIX: ${{ inputs.strip-repository-name-prefix }}
         # Workflow inputs - build output
         OUTPUT_SUB_PATH: ${{ inputs.output-sub-path }}
         DOCKER_PUSH_IMAGE_LIST_FILE: ${{ inputs.docker-push-image-list-file }}

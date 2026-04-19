@@ -22,8 +22,11 @@
 #   TOKEN_DELIMITER_STYLE - Token delimiter syntax (default: shell)
 #   ... and all other workflow inputs
 #
+# Available context (calculated inline):
+#   PROJECT_NAME - Repository name with optional prefix strip applied
+#
 # NOT available at this lifecycle point:
-#   VERSION, DOCKER_TAG, PROJECT_NAME, DOCKER_TARGET_IMAGE_FULL_URI, MANIFESTS_*
+#   VERSION, DOCKER_TAG, DOCKER_TARGET_IMAGE_FULL_URI, MANIFESTS_*
 #
 set -euo pipefail
 
@@ -172,6 +175,16 @@ export GITHUB_RELEASE_NOTES GITHUB_RELEASE_NOTES_FILE GITHUB_RELEASE_ADD_VERSION
 # === Step Outputs ===
 # This hook runs BEFORE versions-and-naming - no step outputs available yet.
 # Only workflow inputs are available at this lifecycle point.
+
+# === Calculated Values ===
+# PROJECT_NAME calculated inline (same logic as versions-and-naming) so user's
+# hook script can make decisions before versioning runs.
+
+STRIP_REPOSITORY_NAME_PREFIX="${STRIP_REPOSITORY_NAME_PREFIX:-}"
+# shellcheck source=src/scripts/lib/project-name-resolve.bash
+source "${SCRIPT_DIR}/../lib/project-name-resolve.bash"
+PROJECT_NAME="${project_name}"
+export PROJECT_NAME
 
 # shellcheck source=src/scripts/lib/hook-runner.bash
 source "${SCRIPT_DIR}/../lib/hook-runner.bash" "${HOOK_PRE_TAGGING_TESTS_SCRIPT_SUB_PATH:-}"

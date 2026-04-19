@@ -15,6 +15,7 @@ setup() {
 
   # Set required workflow inputs - these get defaults from sourced scripts
   # but we set explicit values to verify they're exported correctly
+  export REPOSITORY_NAME="my-project"
   export DOCKER_TARGET_REGISTRY="ghcr.io"
   export DOCKER_TARGET_NAMESPACE="test"
   export DOCKER_PUSH_TARGETS=""
