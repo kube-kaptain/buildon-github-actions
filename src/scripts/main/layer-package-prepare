@@ -216,6 +216,26 @@ if [[ "${LAYER_TYPE}" == "layerset" ]]; then
     exit 1
   fi
 
+  # Server builds must not depend on PRERELEASE layers - those are local-only
+  # by convention and never reach the remote. Fail fast with all offenders
+  # listed before any resolve/exists calls.
+  if [[ "${BUILD_MODE:-}" != "local" ]]; then
+    offenders=()
+    for ((i = 0; i < layer_count; i++)); do
+      ref=$(yq -r ".spec.layers[${i}]" "${context_dir}/KaptainPM.yaml")
+      if [[ "${ref##*:}" == *-PRERELEASE* ]]; then
+        offenders+=("${ref}")
+      fi
+    done
+    if [[ ${#offenders[@]} -gt 0 ]]; then
+      log_error "PRERELEASE layer dependencies are not allowed in server builds (BUILD_MODE=${BUILD_MODE:-unset}):"
+      for ref in "${offenders[@]}"; do
+        log_error "  ${ref}"
+      done
+      exit 1
+    fi
+  fi
+
   for ((i = 0; i < layer_count; i++)); do
     ref=$(yq -r ".spec.layers[${i}]" "${context_dir}/KaptainPM.yaml")
 
