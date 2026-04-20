@@ -1,25 +1,26 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/kube-kaptain/spec-kaptainpm-schema/releases/download/1.14/spec-kaptainpm-schema-layerset-source-1.14.yaml",
-  "name": "spec-kaptainpm-schema",
-  "version": "1.14",
+  "$id": "https://github.com/kube-kaptain/spec-kaptainpm-schema/releases/download/1.15/spec-kaptainpm-schema-final-1.15.yaml",
+  "name": "spec-kaptainpm-schema-final",
+  "version": "1.15",
   "source": "https://github.com/kube-kaptain/spec-kaptainpm-schema",
   "latest": "https://raw.githubusercontent.com/kube-kaptain/spec-kaptainpm-schema/main/spec-kaptainpm-schema.yaml",
-  "tagged": "https://raw.githubusercontent.com/kube-kaptain/spec-kaptainpm-schema/1.14/spec-kaptainpm-schema.yaml",
-  "release": "https://github.com/kube-kaptain/spec-kaptainpm-schema/releases/download/1.14/spec-kaptainpm-schema-layerset-source-1.14.yaml",
-  "validate-using": "https://github.com/kube-kaptain/spec-kaptainpm-schema/releases/download/1.14/spec-kaptainpm-schema-layerset-source-1.14.json",
+  "tagged": "https://raw.githubusercontent.com/kube-kaptain/spec-kaptainpm-schema/1.15/spec-kaptainpm-schema.yaml",
+  "release": "https://github.com/kube-kaptain/spec-kaptainpm-schema/releases/download/1.15/spec-kaptainpm-schema-final-1.15.yaml",
+  "validate-using": "https://github.com/kube-kaptain/spec-kaptainpm-schema/releases/download/1.15/spec-kaptainpm-schema-final-1.15.json",
   "title": "KaptainPM",
-  "description": "Kaptain project manifest schema (version 1.14).\n",
+  "description": "Kaptain project manifest schema (version 1.15).\n",
   "type": "object",
   "required": [
-    "apiVersion"
+    "apiVersion",
+    "kind"
   ],
   "additionalProperties": false,
   "properties": {
     "apiVersion": {
       "type": "string",
       "pattern": "^kaptain\\.org/[0-9]+(\\.[0-9]+)*$",
-      "description": "API version - must be kaptain.org/ followed by the schema version (e.g. kaptain.org/1.2). Set via 1.14 token substitution at build time.\n"
+      "description": "API version - must be kaptain.org/ followed by the schema version (e.g. kaptain.org/1.2). Set via 1.15 token substitution at build time.\n"
     },
     "kind": {
       "type": "string",
@@ -39,30 +40,64 @@
           "additionalProperties": {
             "type": "string"
           },
-          "description": "Queryable build metadata labels. All values must be strings."
+          "description": "Queryable build metadata labels. All values must be strings.",
+          "properties": {
+            "kaptain.org/version": false,
+            "kaptain.org/project-name": false,
+            "kaptain.org/owner": false
+          }
         },
         "annotations": {
           "type": "object",
           "additionalProperties": {
             "type": "string"
           },
-          "description": "Informational build metadata annotations. All values must be strings."
+          "description": "Informational build metadata annotations. All values must be strings.",
+          "properties": {
+            "kaptain.org/built-by": false,
+            "kaptain.org/source-repository": false,
+            "kaptain.org/image-uri": false
+          }
         }
       }
+    },
+    "user-data": {
+      "type": "object",
+      "description": "Free-form custom data for layer-provided tools. No enforced schema. Deep merged like any other map field - layers provide defaults, local overrides win.\n"
     },
     "spec": {
       "type": "object",
       "additionalProperties": false,
       "description": "Build configuration",
       "properties": {
+        "credentials": {
+          "$ref": "#/$defs/credentials"
+        },
         "layers": {
           "$ref": "#/$defs/artifactReferenceList",
           "description": "Configuration layers applied before this project's settings. Deep-merged in order; local settings always win. Bootstrap registry logins must be in the project root file (needed before layer resolution). Additional logins declared in layers are applied in a second login phase post-merge.\n"
+        },
+        "templates": {
+          "$ref": "#/$defs/artifactReferenceList",
+          "description": "Manifest template sets pulled in and token-substituted to become this project's own manifest output. Replaces generators or hand-written manifests.\n"
+        },
+        "contents": {
+          "$ref": "#/$defs/artifactReferenceList",
+          "description": "Finished manifest artifacts from other projects bundled into this deliverable. Front and centre in product/environment builds.\n"
+        },
+        "data": {
+          "$ref": "#/$defs/specData"
+        },
+        "global": {
+          "$ref": "#/$defs/specGlobal"
+        },
+        "main": {
+          "$ref": "#/$defs/specMain"
+        },
+        "platform": {
+          "$ref": "#/$defs/specPlatform"
         }
-      },
-      "required": [
-        "layers"
-      ]
+      }
     }
   },
   "$defs": {
@@ -833,7 +868,9 @@
                       "type": "string",
                       "enum": [
                         "combined",
-                        "split"
+                        "separate",
+                        "project-name-prefixed-combined",
+                        "project-name-prefixed-separate"
                       ],
                       "description": "Image reference style (default: combined)"
                     },
