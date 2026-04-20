@@ -21,6 +21,8 @@
     kubernetes-workload-additional-annotations: ${{ steps.kpm.outputs.KUBERNETES_WORKLOAD_ADDITIONAL_ANNOTATIONS }}
     # Container configuration
     kubernetes-workload-container-port: ${{ steps.kpm.outputs.KUBERNETES_WORKLOAD_CONTAINER_PORT }}
+    kubernetes-workload-container-command: ${{ steps.kpm.outputs.KUBERNETES_WORKLOAD_CONTAINER_COMMAND }}
+    kubernetes-workload-container-args: ${{ steps.kpm.outputs.KUBERNETES_WORKLOAD_CONTAINER_ARGS }}
     kubernetes-workload-image-reference-style: ${{ steps.kpm.outputs.KUBERNETES_WORKLOAD_IMAGE_REFERENCE_STYLE }}
     # Security settings
     kubernetes-workload-readonly-root-filesystem: ${{ steps.kpm.outputs.KUBERNETES_WORKLOAD_READONLY_ROOT_FILESYSTEM }}
@@ -43,6 +45,8 @@
     kubernetes-workload-prestop-command: ${{ steps.kpm.outputs.KUBERNETES_WORKLOAD_PRESTOP_COMMAND }}
     kubernetes-workload-affinity-strategy: ${{ steps.kpm.outputs.KUBERNETES_WORKLOAD_AFFINITY_STRATEGY }}
     kubernetes-workload-tolerations: ${{ steps.kpm.outputs.KUBERNETES_WORKLOAD_TOLERATIONS }}
+    kubernetes-workload-node-selector: ${{ steps.kpm.outputs.KUBERNETES_WORKLOAD_NODE_SELECTOR }}
+    kubernetes-workload-dns-policy: ${{ steps.kpm.outputs.KUBERNETES_WORKLOAD_DNS_POLICY }}
     kubernetes-workload-priority-class-name: ${{ steps.kpm.outputs.KUBERNETES_WORKLOAD_PRIORITY_CLASS_NAME }}
     # Liveness probe settings
     kubernetes-workload-probe-liveness-check-type: ${{ steps.kpm.outputs.KUBERNETES_WORKLOAD_PROBE_LIVENESS_CHECK_TYPE }}
@@ -85,7 +89,11 @@
     kubernetes-workload-probe-startup-termination-grace-period-seconds: ${{ steps.kpm.outputs.KUBERNETES_WORKLOAD_PROBE_STARTUP_TERMINATION_GRACE_PERIOD_SECONDS }}
     # StatefulSet-specific settings
     kubernetes-statefulset-service-name: ${{ steps.kpm.outputs.KUBERNETES_STATEFULSET_SERVICE_NAME }}
+    kubernetes-statefulset-env-sub-path: ${{ steps.kpm.outputs.KUBERNETES_STATEFULSET_ENV_SUB_PATH }}
+    kubernetes-statefulset-additional-labels: ${{ steps.kpm.outputs.KUBERNETES_STATEFULSET_ADDITIONAL_LABELS }}
+    kubernetes-statefulset-additional-annotations: ${{ steps.kpm.outputs.KUBERNETES_STATEFULSET_ADDITIONAL_ANNOTATIONS }}
     kubernetes-statefulset-pod-management-policy: ${{ steps.kpm.outputs.KUBERNETES_STATEFULSET_POD_MANAGEMENT_POLICY }}
+    kubernetes-statefulset-allow-unreliable-pod-management-policy: ${{ steps.kpm.outputs.KUBERNETES_STATEFULSET_ALLOW_UNRELIABLE_POD_MANAGEMENT_POLICY }}
     kubernetes-statefulset-update-strategy-type: ${{ steps.kpm.outputs.KUBERNETES_STATEFULSET_UPDATE_STRATEGY_TYPE }}
     kubernetes-statefulset-update-strategy-partition: ${{ steps.kpm.outputs.KUBERNETES_STATEFULSET_UPDATE_STRATEGY_PARTITION }}
     kubernetes-statefulset-pvc-enabled: ${{ steps.kpm.outputs.KUBERNETES_STATEFULSET_PVC_ENABLED }}
@@ -105,9 +113,53 @@
     kubernetes-daemonset-dns-policy: ${{ steps.kpm.outputs.KUBERNETES_DAEMONSET_DNS_POLICY }}
     kubernetes-daemonset-tolerations: ${{ steps.kpm.outputs.KUBERNETES_DAEMONSET_TOLERATIONS }}
     kubernetes-daemonset-node-selector: ${{ steps.kpm.outputs.KUBERNETES_DAEMONSET_NODE_SELECTOR }}
+    # Deployment-specific settings
+    kubernetes-deployment-env-sub-path: ${{ steps.kpm.outputs.KUBERNETES_DEPLOYMENT_ENV_SUB_PATH }}
+    kubernetes-deployment-additional-labels: ${{ steps.kpm.outputs.KUBERNETES_DEPLOYMENT_ADDITIONAL_LABELS }}
+    kubernetes-deployment-additional-annotations: ${{ steps.kpm.outputs.KUBERNETES_DEPLOYMENT_ADDITIONAL_ANNOTATIONS }}
+    kubernetes-deployment-max-surge: ${{ steps.kpm.outputs.KUBERNETES_DEPLOYMENT_MAX_SURGE }}
+    kubernetes-deployment-max-unavailable: ${{ steps.kpm.outputs.KUBERNETES_DEPLOYMENT_MAX_UNAVAILABLE }}
+    # Job-specific settings
+    kubernetes-job-name-suffix: ${{ steps.kpm.outputs.KUBERNETES_JOB_NAME_SUFFIX }}
+    kubernetes-job-combined-sub-path: ${{ steps.kpm.outputs.KUBERNETES_JOB_COMBINED_SUB_PATH }}
+    kubernetes-job-backoff-limit: ${{ steps.kpm.outputs.KUBERNETES_JOB_BACKOFF_LIMIT }}
+    kubernetes-job-completions: ${{ steps.kpm.outputs.KUBERNETES_JOB_COMPLETIONS }}
+    kubernetes-job-parallelism: ${{ steps.kpm.outputs.KUBERNETES_JOB_PARALLELISM }}
+    kubernetes-job-active-deadline-seconds: ${{ steps.kpm.outputs.KUBERNETES_JOB_ACTIVE_DEADLINE_SECONDS }}
+    kubernetes-job-ttl-seconds-after-finished: ${{ steps.kpm.outputs.KUBERNETES_JOB_TTL_SECONDS_AFTER_FINISHED }}
+    kubernetes-job-restart-policy: ${{ steps.kpm.outputs.KUBERNETES_JOB_RESTART_POLICY }}
+    kubernetes-job-env-sub-path: ${{ steps.kpm.outputs.KUBERNETES_JOB_ENV_SUB_PATH }}
+    kubernetes-job-additional-labels: ${{ steps.kpm.outputs.KUBERNETES_JOB_ADDITIONAL_LABELS }}
+    kubernetes-job-additional-annotations: ${{ steps.kpm.outputs.KUBERNETES_JOB_ADDITIONAL_ANNOTATIONS }}
+    kubernetes-job-liveness-probe-enabled: ${{ steps.kpm.outputs.KUBERNETES_JOB_LIVENESS_PROBE_ENABLED }}
+    kubernetes-job-readiness-probe-enabled: ${{ steps.kpm.outputs.KUBERNETES_JOB_READINESS_PROBE_ENABLED }}
+    kubernetes-job-startup-probe-enabled: ${{ steps.kpm.outputs.KUBERNETES_JOB_STARTUP_PROBE_ENABLED }}
+    # CronJob-specific settings
+    kubernetes-cronjob-name-suffix: ${{ steps.kpm.outputs.KUBERNETES_CRONJOB_NAME_SUFFIX }}
+    kubernetes-cronjob-combined-sub-path: ${{ steps.kpm.outputs.KUBERNETES_CRONJOB_COMBINED_SUB_PATH }}
+    kubernetes-cronjob-concurrency-policy: ${{ steps.kpm.outputs.KUBERNETES_CRONJOB_CONCURRENCY_POLICY }}
+    kubernetes-cronjob-starting-deadline-seconds: ${{ steps.kpm.outputs.KUBERNETES_CRONJOB_STARTING_DEADLINE_SECONDS }}
+    kubernetes-cronjob-successful-jobs-history-limit: ${{ steps.kpm.outputs.KUBERNETES_CRONJOB_SUCCESSFUL_JOBS_HISTORY_LIMIT }}
+    kubernetes-cronjob-failed-jobs-history-limit: ${{ steps.kpm.outputs.KUBERNETES_CRONJOB_FAILED_JOBS_HISTORY_LIMIT }}
+    kubernetes-cronjob-backoff-limit: ${{ steps.kpm.outputs.KUBERNETES_CRONJOB_BACKOFF_LIMIT }}
+    kubernetes-cronjob-completions: ${{ steps.kpm.outputs.KUBERNETES_CRONJOB_COMPLETIONS }}
+    kubernetes-cronjob-parallelism: ${{ steps.kpm.outputs.KUBERNETES_CRONJOB_PARALLELISM }}
+    kubernetes-cronjob-active-deadline-seconds: ${{ steps.kpm.outputs.KUBERNETES_CRONJOB_ACTIVE_DEADLINE_SECONDS }}
+    kubernetes-cronjob-restart-policy: ${{ steps.kpm.outputs.KUBERNETES_CRONJOB_RESTART_POLICY }}
+    kubernetes-cronjob-env-sub-path: ${{ steps.kpm.outputs.KUBERNETES_CRONJOB_ENV_SUB_PATH }}
+    kubernetes-cronjob-additional-labels: ${{ steps.kpm.outputs.KUBERNETES_CRONJOB_ADDITIONAL_LABELS }}
+    kubernetes-cronjob-additional-annotations: ${{ steps.kpm.outputs.KUBERNETES_CRONJOB_ADDITIONAL_ANNOTATIONS }}
+    kubernetes-cronjob-liveness-probe-enabled: ${{ steps.kpm.outputs.KUBERNETES_CRONJOB_LIVENESS_PROBE_ENABLED }}
+    kubernetes-cronjob-readiness-probe-enabled: ${{ steps.kpm.outputs.KUBERNETES_CRONJOB_READINESS_PROBE_ENABLED }}
+    kubernetes-cronjob-startup-probe-enabled: ${{ steps.kpm.outputs.KUBERNETES_CRONJOB_STARTUP_PROBE_ENABLED }}
     # Global settings
     output-sub-path: ${{ steps.kpm.outputs.OUTPUT_SUB_PATH }}
     token-name-style: ${{ steps.kpm.outputs.TOKEN_NAME_STYLE }}
     token-delimiter-style: ${{ steps.kpm.outputs.TOKEN_DELIMITER_STYLE }}
+    token-name-validation: ${{ steps.kpm.outputs.TOKEN_NAME_VALIDATION }}
+    allow-builtin-token-override: ${{ steps.kpm.outputs.ALLOW_BUILTIN_TOKEN_OVERRIDE }}
+    config-sub-path: ${{ steps.kpm.outputs.CONFIG_SUB_PATH }}
+    config-value-trailing-newline: ${{ steps.kpm.outputs.CONFIG_VALUE_TRAILING_NEWLINE }}
+    token-substitution-passes: ${{ steps.kpm.outputs.TOKEN_SUBSTITUTION_PASSES }}
     kubernetes-global-additional-labels: ${{ steps.kpm.outputs.KUBERNETES_GLOBAL_ADDITIONAL_LABELS }}
     kubernetes-global-additional-annotations: ${{ steps.kpm.outputs.KUBERNETES_GLOBAL_ADDITIONAL_ANNOTATIONS }}
