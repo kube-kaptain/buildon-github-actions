@@ -189,6 +189,7 @@ assert_var_equals() {
 # Set up mock docker/podman that logs calls
 # Control behavior with environment variables:
 #   MOCK_DOCKER_MANIFEST_EXISTS=true  - manifest inspect returns success
+#   MOCK_DOCKER_PULL_FAILS=true       - pull returns failure (default: succeeds)
 setup_mock_docker() {
   export MOCK_DOCKER_CALLS=$(create_test_dir "mock-docker")/calls.log
   mkdir -p "$MOCK_BIN_DIR"
@@ -201,6 +202,12 @@ if [[ "$1" == "manifest" && "$2" == "inspect" ]]; then
   else
     exit 1
   fi
+fi
+if [[ "$1" == "pull" ]]; then
+  if [[ "${MOCK_DOCKER_PULL_FAILS:-false}" == "true" ]]; then
+    exit 1
+  fi
+  exit 0
 fi
 exit 0
 MOCKDOCKER

@@ -27,11 +27,20 @@ setup() {
   assert_output_contains "Exists:"
 }
 
-@test "exists: returns non-zero when manifest inspect fails" {
+@test "exists: returns non-zero when manifest inspect and pull both fail" {
   export MOCK_DOCKER_MANIFEST_EXISTS=false
+  export MOCK_DOCKER_PULL_FAILS=true
   run "$SCRIPT" "ghcr.io/kube-kaptain/quality/quality-strict:1.0.0"
   [[ "$status" -ne 0 ]]
   assert_output_contains "Does not exist at remote"
+}
+
+@test "exists: falls back to pull when manifest inspect fails (single-image tag)" {
+  export MOCK_DOCKER_MANIFEST_EXISTS=false
+  run "$SCRIPT" "ghcr.io/kube-kaptain/quality/quality-strict:1.0.0"
+  [[ "$status" -eq 0 ]]
+  assert_output_contains "Exists:"
+  assert_docker_called "pull --quiet ghcr.io/kube-kaptain/quality/quality-strict:1.0.0"
 }
 
 @test "exists: invokes docker manifest inspect with the reference" {

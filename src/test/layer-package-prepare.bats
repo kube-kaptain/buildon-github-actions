@@ -265,6 +265,7 @@ EOF
 @test "layerset fails when a spec.layers entry does not exist at remote" {
   export PROJECT_NAME="layerset-foo"
   export MOCK_DOCKER_MANIFEST_EXISTS=false
+  export MOCK_DOCKER_PULL_FAILS=true
   write_layerset_pm "src/layerset/KaptainPM.yaml"
   run "$SCRIPT"
   [[ "$status" -ne 0 ]]
