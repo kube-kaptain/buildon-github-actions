@@ -47,6 +47,56 @@ inputs:
     required: false
     default: 'true'
 
+outputs:
+  version:
+    description: 'The generated version (UNVERSIONED for quality-only builds)'
+    value: ${{ steps.check.outputs.VERSION }}
+  version-major:
+    description: 'Major version number'
+    value: ${{ steps.check.outputs.VERSION_MAJOR }}
+  version-minor:
+    description: 'Minor version number'
+    value: ${{ steps.check.outputs.VERSION_MINOR }}
+  version-patch:
+    description: 'Patch version number'
+    value: ${{ steps.check.outputs.VERSION_PATCH }}
+  version-2-part:
+    description: 'Version padded/truncated to 2 parts (e.g., 1.2)'
+    value: ${{ steps.check.outputs.VERSION_2_PART }}
+  version-3-part:
+    description: 'Version padded/truncated to 3 parts (e.g., 1.2.3)'
+    value: ${{ steps.check.outputs.VERSION_3_PART }}
+  version-4-part:
+    description: 'Version padded/truncated to 4 parts (e.g., 1.2.3.0)'
+    value: ${{ steps.check.outputs.VERSION_4_PART }}
+  version-dns-safe:
+    description: 'VERSION with dots replaced by hyphens (e.g., 1-2-3)'
+    value: ${{ steps.check.outputs.VERSION_DNS_SAFE }}
+  version-2-part-dns-safe:
+    description: 'VERSION_2_PART with dots replaced by hyphens (e.g., 1-2)'
+    value: ${{ steps.check.outputs.VERSION_2_PART_DNS_SAFE }}
+  version-3-part-dns-safe:
+    description: 'VERSION_3_PART with dots replaced by hyphens (e.g., 1-2-3)'
+    value: ${{ steps.check.outputs.VERSION_3_PART_DNS_SAFE }}
+  version-4-part-dns-safe:
+    description: 'VERSION_4_PART with dots replaced by hyphens (e.g., 1-2-3-0)'
+    value: ${{ steps.check.outputs.VERSION_4_PART_DNS_SAFE }}
+  docker-tag:
+    description: 'Tag for Docker images (UNVERSIONED for quality-only builds)'
+    value: ${{ steps.check.outputs.DOCKER_TAG }}
+  docker-image-name:
+    description: 'Docker image name (UNVERSIONED for quality-only builds)'
+    value: ${{ steps.check.outputs.DOCKER_IMAGE_NAME }}
+  git-tag:
+    description: 'Tag for git (UNVERSIONED for quality-only builds)'
+    value: ${{ steps.check.outputs.GIT_TAG }}
+  project-name:
+    description: 'The repository/project name'
+    value: ${{ steps.check.outputs.PROJECT_NAME }}
+  is-release:
+    description: 'Whether this is a release build (UNKNOWN for quality-only builds)'
+    value: ${{ steps.check.outputs.IS_RELEASE }}
+
 runs:
   using: 'composite'
   steps:
