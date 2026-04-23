@@ -68,5 +68,14 @@ if "${IMAGE_BUILD_COMMAND}" manifest inspect "${full_ref}" >/dev/null 2>&1; then
   exit 0
 fi
 
+# manifest inspect failed - could be a real 404, or a single-image tag that
+# the tool won't display as a manifest list. Fall back to pull, which works
+# for both docker and podman regardless of tag shape.
+log "manifest inspect failed; falling back to ${IMAGE_BUILD_COMMAND} pull..."
+if "${IMAGE_BUILD_COMMAND}" pull --quiet "${full_ref}" >/dev/null 2>&1; then
+  log "Exists: ${full_ref}"
+  exit 0
+fi
+
 log_error "Does not exist at remote: ${full_ref}"
 exit 1

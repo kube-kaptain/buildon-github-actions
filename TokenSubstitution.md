@@ -80,15 +80,26 @@ Always available:
 |-------|--------|
 | `PROJECT_NAME` | Input (required) |
 | `VERSION` | Input (required) |
+| `VERSION_MAJOR` | Input (required) - first part of `VERSION` |
+| `VERSION_MINOR` | Input (required) - second part of `VERSION` |
+| `VERSION_PATCH` | Input (required) - third part of `VERSION` |
+| `VERSION_2_PART` | Input (required) - `VERSION_MAJOR.VERSION_MINOR` |
+| `VERSION_3_PART` | Input (required) - `VERSION_MAJOR.VERSION_MINOR.VERSION_PATCH` |
+| `VERSION_4_PART` | Input (required) - 4-part form of `VERSION` |
+| `VERSION_DNS_SAFE` | Input (required) - `VERSION` with dots replaced by hyphens |
+| `VERSION_2_PART_DNS_SAFE` | Input (required) - `VERSION_2_PART` with dots replaced by hyphens |
+| `VERSION_3_PART_DNS_SAFE` | Input (required) - `VERSION_3_PART` with dots replaced by hyphens |
+| `VERSION_4_PART_DNS_SAFE` | Input (required) - `VERSION_4_PART` with dots replaced by hyphens |
+| `GIT_TAG` | Input (required) - Git tag (e.g. `v1.2.3`) |
 | `IS_RELEASE` | From versions step |
-| `MANIFESTS_ZIP_NAME` | Computed: `${PROJECT_NAME}-${VERSION}-manifests.zip` |
+| `DOCKER_TAG` | Input (required) |
+| `DOCKER_IMAGE_NAME` | Input (required) |
+| `MANIFESTS_ZIP_FILE_NAME` | Computed: `${PROJECT_NAME}-${VERSION}-manifests.zip` |
 
 Optional (when provided):
 
 | Token | Source |
 |-------|--------|
-| `DOCKER_TAG` | Input |
-| `DOCKER_IMAGE_NAME` | Input |
 | `DOCKER_IMAGE_FULL_URI` | Input (docker workflows) |
 | `TARGET_REGISTRY` | Input |
 | `TARGET_NAMESPACE` | Input |

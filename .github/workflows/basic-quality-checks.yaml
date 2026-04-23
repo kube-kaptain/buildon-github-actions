@@ -588,22 +588,22 @@ jobs:
 
           # === Step Outputs ===
           # Version outputs (from basic-quality-checks, not versions-and-naming)
-          version: ${{ steps.quality.outputs.VERSION }}
-          version-major: ${{ steps.quality.outputs.VERSION_MAJOR }}
-          version-minor: ${{ steps.quality.outputs.VERSION_MINOR }}
-          version-patch: ${{ steps.quality.outputs.VERSION_PATCH }}
-          version-2-part: ${{ steps.quality.outputs.VERSION_2_PART }}
-          version-3-part: ${{ steps.quality.outputs.VERSION_3_PART }}
-          version-4-part: ${{ steps.quality.outputs.VERSION_4_PART }}
-          version-dns-safe: ${{ steps.quality.outputs.VERSION_DNS_SAFE }}
-          version-2-part-dns-safe: ${{ steps.quality.outputs.VERSION_2_PART_DNS_SAFE }}
-          version-3-part-dns-safe: ${{ steps.quality.outputs.VERSION_3_PART_DNS_SAFE }}
-          version-4-part-dns-safe: ${{ steps.quality.outputs.VERSION_4_PART_DNS_SAFE }}
-          docker-tag: ${{ steps.quality.outputs.DOCKER_TAG }}
-          docker-image-name: ${{ steps.quality.outputs.DOCKER_IMAGE_NAME }}
-          git-tag: ${{ steps.quality.outputs.GIT_TAG }}
-          project-name: ${{ steps.quality.outputs.PROJECT_NAME }}
-          is-release: ${{ steps.quality.outputs.IS_RELEASE }}
+          version: ${{ steps.quality.outputs.version }}
+          version-major: ${{ steps.quality.outputs.version-major }}
+          version-minor: ${{ steps.quality.outputs.version-minor }}
+          version-patch: ${{ steps.quality.outputs.version-patch }}
+          version-2-part: ${{ steps.quality.outputs.version-2-part }}
+          version-3-part: ${{ steps.quality.outputs.version-3-part }}
+          version-4-part: ${{ steps.quality.outputs.version-4-part }}
+          version-dns-safe: ${{ steps.quality.outputs.version-dns-safe }}
+          version-2-part-dns-safe: ${{ steps.quality.outputs.version-2-part-dns-safe }}
+          version-3-part-dns-safe: ${{ steps.quality.outputs.version-3-part-dns-safe }}
+          version-4-part-dns-safe: ${{ steps.quality.outputs.version-4-part-dns-safe }}
+          docker-tag: ${{ steps.quality.outputs.docker-tag }}
+          docker-image-name: ${{ steps.quality.outputs.docker-image-name }}
+          git-tag: ${{ steps.quality.outputs.git-tag }}
+          project-name: ${{ steps.quality.outputs.project-name }}
+          is-release: ${{ steps.quality.outputs.is-release }}
       - name: Pass check - Post-Build
         if: steps.kpm.outputs.HOOK_POST_BUILD_SCRIPT_SUB_PATH != '' && success() && steps.check-post-build.outputs.check-run-id != ''
         continue-on-error: true
