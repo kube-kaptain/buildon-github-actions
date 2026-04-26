@@ -1,15 +1,15 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/kube-kaptain/spec-kaptainpm-schema/releases/download/1.15/spec-kaptainpm-schema-layerset-source-1.15.yaml",
+  "$id": "https://github.com/kube-kaptain/spec-kaptainpm-schema/releases/download/1.16/spec-kaptainpm-schema-layer-1.16.yaml",
   "name": "spec-kaptainpm-schema",
-  "version": "1.15",
+  "version": "1.16",
   "source": "https://github.com/kube-kaptain/spec-kaptainpm-schema",
   "latest": "https://raw.githubusercontent.com/kube-kaptain/spec-kaptainpm-schema/main/spec-kaptainpm-schema.yaml",
-  "tagged": "https://raw.githubusercontent.com/kube-kaptain/spec-kaptainpm-schema/1.15/spec-kaptainpm-schema.yaml",
-  "release": "https://github.com/kube-kaptain/spec-kaptainpm-schema/releases/download/1.15/spec-kaptainpm-schema-layerset-source-1.15.yaml",
-  "validate-using": "https://github.com/kube-kaptain/spec-kaptainpm-schema/releases/download/1.15/spec-kaptainpm-schema-layerset-source-1.15.json",
+  "tagged": "https://raw.githubusercontent.com/kube-kaptain/spec-kaptainpm-schema/1.16/spec-kaptainpm-schema.yaml",
+  "release": "https://github.com/kube-kaptain/spec-kaptainpm-schema/releases/download/1.16/spec-kaptainpm-schema-layer-1.16.yaml",
+  "validate-using": "https://github.com/kube-kaptain/spec-kaptainpm-schema/releases/download/1.16/spec-kaptainpm-schema-layer-1.16.json",
   "title": "KaptainPM",
-  "description": "Kaptain project manifest schema (version 1.15).\n",
+  "description": "Kaptain project manifest schema (version 1.16).\n",
   "type": "object",
   "required": [
     "apiVersion"
@@ -19,7 +19,7 @@
     "apiVersion": {
       "type": "string",
       "pattern": "^kaptain\\.org/[0-9]+(\\.[0-9]+)*$",
-      "description": "API version - must be kaptain.org/ followed by the schema version (e.g. kaptain.org/1.2). Set via 1.15 token substitution at build time.\n"
+      "description": "API version - must be kaptain.org/ followed by the schema version (e.g. kaptain.org/1.2). Set via 1.16 token substitution at build time.\n"
     },
     "kind": {
       "type": "string",
@@ -28,7 +28,7 @@
     "metadata": {
       "type": "object",
       "additionalProperties": true,
-      "description": "Project metadata including build traceability labels and annotations. When present, label and annotation values must be strings.\n",
+      "description": "Project metadata with required build traceability fields.",
       "properties": {
         "description": {
           "type": "string",
@@ -39,30 +39,67 @@
           "additionalProperties": {
             "type": "string"
           },
-          "description": "Queryable build metadata labels. All values must be strings."
+          "description": "Queryable build metadata labels. All values must be strings.",
+          "required": [
+            "kaptain.org/version",
+            "kaptain.org/project-name",
+            "kaptain.org/owner"
+          ]
         },
         "annotations": {
           "type": "object",
           "additionalProperties": {
             "type": "string"
           },
-          "description": "Informational build metadata annotations. All values must be strings."
+          "description": "Informational build metadata annotations. All values must be strings.",
+          "required": [
+            "kaptain.org/built-by",
+            "kaptain.org/source-repository",
+            "kaptain.org/image-uri"
+          ]
         }
-      }
+      },
+      "required": [
+        "labels",
+        "annotations"
+      ]
+    },
+    "user-data": {
+      "type": "object",
+      "description": "Free-form custom data for layer-provided tools. No enforced schema. Deep merged like any other map field - layers provide defaults, local overrides win.\n"
     },
     "spec": {
       "type": "object",
       "additionalProperties": false,
       "description": "Build configuration",
       "properties": {
-        "layers": {
+        "credentials": {
+          "$ref": "#/$defs/credentials"
+        },
+        "templates": {
           "$ref": "#/$defs/artifactReferenceList",
-          "description": "Configuration layers applied before this project's settings. Deep-merged in order; local settings always win. Bootstrap registry logins must be in the project root file (needed before layer resolution). Additional logins declared in layers are applied in a second login phase post-merge.\n"
+          "description": "Manifest template sets pulled in and token-substituted to become this project's own manifest output. Replaces generators or hand-written manifests.\n"
+        },
+        "contents": {
+          "$ref": "#/$defs/artifactReferenceList",
+          "description": "Finished manifest artifacts from other projects bundled into this deliverable. Front and centre in product/environment builds.\n"
+        },
+        "data": {
+          "$ref": "#/$defs/specData"
+        },
+        "global": {
+          "$ref": "#/$defs/specGlobal"
+        },
+        "main": {
+          "$ref": "#/$defs/specMain"
+        },
+        "platform": {
+          "$ref": "#/$defs/specPlatform"
         }
-      },
-      "required": [
-        "layers"
-      ]
+      }
+    },
+    "layer-payload": {
+      "$ref": "#/$defs/layerPayload"
     }
   },
   "$defs": {
@@ -1997,83 +2034,6 @@
                 }
               ],
               "description": "Apply token substitution to KaptainPM files in docker build and GitHub release (default: true)"
-            }
-          }
-        },
-        "aws": {
-          "type": "object",
-          "additionalProperties": false,
-          "description": "AWS build configuration",
-          "properties": {
-            "eksClusterManagement": {
-              "type": "object",
-              "additionalProperties": false,
-              "description": "EKS cluster management build configuration",
-              "properties": {
-                "baseImage": {
-                  "type": "object",
-                  "additionalProperties": false,
-                  "description": "Base image used for the EKS management build",
-                  "properties": {
-                    "registry": {
-                      "type": "string",
-                      "description": "Base image registry (default: ghcr.io)"
-                    },
-                    "namespace": {
-                      "type": "string",
-                      "description": "Base image namespace (default: kube-kaptain)"
-                    },
-                    "name": {
-                      "type": "string",
-                      "description": "Base image name (default: aws/aws-eks-cluster-management)"
-                    },
-                    "tag": {
-                      "type": "string",
-                      "description": "Base image tag"
-                    }
-                  }
-                },
-                "clusterYamlSubPath": {
-                  "type": "string",
-                  "description": "Source directory for cluster YAML files (default: src/eks)"
-                },
-                "privateNetworking": {
-                  "oneOf": [
-                    {
-                      "type": "boolean"
-                    },
-                    {
-                      "type": "string",
-                      "pattern": "^(true|false)$"
-                    }
-                  ],
-                  "description": "Include private subnets section in cluster config (default: true)"
-                },
-                "publicNetworking": {
-                  "oneOf": [
-                    {
-                      "type": "boolean"
-                    },
-                    {
-                      "type": "string",
-                      "pattern": "^(true|false)$"
-                    }
-                  ],
-                  "description": "Include public subnets section in cluster config (default: false)"
-                },
-                "ciliumEbpfNetworking": {
-                  "oneOf": [
-                    {
-                      "type": "boolean"
-                    },
-                    {
-                      "type": "string",
-                      "pattern": "^(true|false)$"
-                    }
-                  ],
-                  "description": "Generate controlplane-only yaml for Cilium eBPF networking (default: false)"
-                }
-              }
             }
           }
         },
