@@ -34,7 +34,6 @@ See [`examples/`](examples/) for more usage patterns.
 <!-- EXAMPLES-START -->
 | Example | Description |
 |---------|-------------|
-| [`aws-eks-cluster-management.yaml`](examples/aws-eks-cluster-management.yaml) | Builds an EKS cluster management image with kubectl and AWS CLI baked in |
 | [`basic-quality-and-versioning.yaml`](examples/basic-quality-and-versioning.yaml) | Quality checks plus automatic version tagging |
 | [`basic-quality-checks.yaml`](examples/basic-quality-checks.yaml) | Enforces branch naming, commit message, and branch structure standards on PRs |
 | [`docker-build-dockerfile.yaml`](examples/docker-build-dockerfile.yaml) | Builds a Docker image from src/docker/Dockerfile with layer squashing |
@@ -75,7 +74,6 @@ See [`examples/`](examples/) for more usage patterns.
 | `basic-quality-checks.yaml` | Enforces basic quality - blocks bad branch names, bad commit messages, and bad branch structure |
 | `basic-quality-and-versioning.yaml` | Quality checks and naming/versioning combined - the standard foundation for most projects |
 | `docker-build-dockerfile.yaml` | Everything from quality and versions above, but also builds a docker image from a Dockerfile |
-| `aws-eks-cluster-management.yaml` | Everything from docker Dockerfile build plus EKS cluster config generation and three-phase validation |
 | `docker-build-retag.yaml` | Everything from quality and version above, but also pulls, retags, and republishes a docker image |
 | `kubernetes-app-manifests-only.yaml` | Everything from quality and version above, plus packages Kubernetes manifests with token substitution |
 | `kubernetes-bundle-resources.yaml` | Packages pre-existing kubernetes manifests from src/kubernetes/ with token substitution, no generators |
@@ -92,9 +90,6 @@ See [`examples/`](examples/) for more usage patterns.
 <!-- ACTIONS-START -->
 | Action | Description |
 |--------|-------------|
-| `aws-eks-cluster-management-post-build-validate` | Validate substituted cluster yaml and image integrity after docker build |
-| `aws-eks-cluster-management-pre-build-validate` | Validate cluster yaml token placement before docker build |
-| `aws-eks-cluster-management-prepare` | Generate EKS cluster config and Dockerfile for cluster management image |
 | `basic-quality-checks` | Basic quality checks for commits and branches |
 | `change-source-note-write` | Writes merge candidate metadata as a git note for release tracking |
 | `docker-build-dockerfile` | Builds a Docker image from a Dockerfile with token substitution (build only, push handled by docker-push-all) |
@@ -157,7 +152,6 @@ All inputs to the system come from KaptainPM.yaml and layers, except secrets.
 <!-- WORKFLOW-DOCS-START -->
 | Workflow | Description | Documentation |
 |----------|-------------|---------------|
-| `aws-eks-cluster-management.yaml` | EKS Cluster Management | [docs/aws-eks-cluster-management.md](docs/aws-eks-cluster-management.md) |
 | `basic-quality-and-versioning.yaml` | Basic Quality and Versioning | [docs/basic-quality-and-versioning.md](docs/basic-quality-and-versioning.md) |
 | `basic-quality-checks.yaml` | Basic Quality Checks | [docs/basic-quality-checks.md](docs/basic-quality-checks.md) |
 | `docker-build-dockerfile.yaml` | Docker Build Dockerfile | [docs/docker-build-dockerfile.md](docs/docker-build-dockerfile.md) |

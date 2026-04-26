@@ -2,6 +2,19 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
 #
+# This layer and layerset system is inspired by the maven tiles plugin by
+# @talios AKA Mark Derricutt its originator and by far biggest contributor.
+# Thank you Mark, your work changed my life. Honorable mentions go to
+# @stickycode AKA Michael McCallum who taught me the power of tiles around
+# 2019 or so and @rvowles AKA Richard Vowles the second largest contributor
+# to the tiles plugin.
+#
+#   https://github.com/repaint-io/maven-tiles
+#
+#   - Mark Derricutt    (@talios)     https://github.com/talios
+#   - Michael McCallum  (@stickycode) https://github.com/stickycode
+#   - Richard Vowles    (@rvowles)    https://github.com/rvowles
+#
 # Load docker registry login config from the project root KaptainPM.yaml.
 #
 # Reads spec.main.docker.logins from the project root KaptainPM.yaml

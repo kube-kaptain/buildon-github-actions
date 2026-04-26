@@ -19,8 +19,10 @@
 #   - every layer-payload entry has a non-empty destination
 #   - destinations are relative (no leading '/')
 #   - destinations contain no '..' path component (leading './' is allowed)
-#   - destinations are globally unique across all layer-payload entries
-#     (sources may repeat; destinations may not)
+#   - (source, destination) pairs are globally unique across all layer-payload
+#     entries. Sources may repeat (same file copied to multiple destinations);
+#     destinations may repeat (multiple sources landing in the same target
+#     directory); only the exact same pair appearing twice is a duplicate.
 #
 # Failure handling:
 #   Validation failures do NOT short-circuit. Every entry is checked and
@@ -38,10 +40,11 @@
 # OUTPUT_SUB_PATH so the files land alongside the rest of the related output.
 # The work dir is wiped and recreated on every call, then populated with
 # layer-file-manifest.txt (sorted list of image-absolute paths that exist
-# under fs_root) and seen-destinations.txt (destinations consumed as the
-# loop progresses). Both files are left in place after return so they can
-# be inspected for debugging. If calling more than once, use a unique dir
-# for each run so all remain in place post run.
+# under fs_root) and seen-pairs.txt ((source, destination) pairs consumed
+# as the loop progresses, one tab-separated pair per line). Both files are
+# left in place after return so they can be inspected for debugging. If
+# calling more than once, use a unique dir for each run so all remain in
+# place post run.
 #
 # Usage: validate_layer_payload <yaml-manifest-file> <fs-root-dir> <work-dir>
 #
@@ -64,7 +67,7 @@ validate_layer_payload() {
   rm -rf "${work_dir}"
   mkdir -p "${work_dir}"
   local manifest_file="${work_dir}/layer-file-manifest.txt"
-  local seen_dests_file="${work_dir}/seen-destinations.txt"
+  local seen_pairs_file="${work_dir}/seen-pairs.txt"
 
   # Build an in-image path listing of every regular file under fs_root. Each
   # line is an image-absolute path (as the file would appear inside the
@@ -76,7 +79,7 @@ validate_layer_payload() {
     find . -type f
   ) 2>/dev/null | sed 's|^\.||' | sort > "${manifest_file}"
 
-  : > "${seen_dests_file}"
+  : > "${seen_pairs_file}"
 
   local i source_path dest_path entry_ok error_count=0
   for ((i = 0; i < payload_count; i++)); do
@@ -120,18 +123,20 @@ validate_layer_payload() {
         error_count=$((error_count + 1))
         entry_ok=false
       fi
-      # Destinations must be globally unique across the whole layer-payload.
-      # Sources may repeat (same file copied to multiple places); destinations
-      # may not (two entries writing to the same place is always a bug).
-      # Only track structurally-valid destinations, otherwise a malformed
-      # value would mask a later legit duplicate collision.
+      # (source, destination) pairs must be globally unique across the whole
+      # layer-payload. Sources may repeat (same file copied to multiple
+      # destinations) and destinations may repeat (multiple sources landing
+      # in the same target directory); only the exact same pair appearing
+      # twice is a true duplicate. Only track structurally-valid entries,
+      # otherwise a malformed value would mask a later legit pair collision.
       if ${entry_ok}; then
-        if grep -Fxq "${dest_path}" "${seen_dests_file}"; then
-          log_error "layer-payload[${i}] destination already used by an earlier entry: ${dest_path}"
+        local pair_line="${source_path}"$'\t'"${dest_path}"
+        if grep -Fxq "${pair_line}" "${seen_pairs_file}"; then
+          log_error "layer-payload[${i}] (source, destination) pair already used by an earlier entry: ${source_path} -> ${dest_path}"
           error_count=$((error_count + 1))
           entry_ok=false
         else
-          echo "${dest_path}" >> "${seen_dests_file}"
+          printf '%s\n' "${pair_line}" >> "${seen_pairs_file}"
         fi
       fi
     fi

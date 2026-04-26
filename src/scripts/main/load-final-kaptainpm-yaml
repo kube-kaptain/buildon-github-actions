@@ -2,6 +2,19 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
 #
+# This layer and layerset system is inspired by the maven tiles plugin by
+# @talios AKA Mark Derricutt its originator and by far biggest contributor.
+# Thank you Mark, your work changed my life. Honorable mentions go to
+# @stickycode AKA Michael McCallum who taught me the power of tiles around
+# 2019 or so and @rvowles AKA Richard Vowles the second largest contributor
+# to the tiles plugin.
+#
+#   https://github.com/repaint-io/maven-tiles
+#
+#   - Mark Derricutt    (@talios)     https://github.com/talios
+#   - Michael McCallum  (@stickycode) https://github.com/stickycode
+#   - Richard Vowles    (@rvowles)    https://github.com/rvowles
+#
 # Load the final merged KaptainPM.yaml and export values as environment variables.
 # Run from repo root after kaptain-init has written kaptainpm/final/KaptainPM.yaml.
 # Uses output_var() to export via GITHUB_OUTPUT, REFERENCE_SCRIPT_OUTPUT, and direct export.
@@ -356,16 +369,6 @@ MAPPINGS=(
   # Layer
   "spec.main.layer.packagingBaseImage:LAYER_PACKAGING_BASE_IMAGE"
   "spec.main.layer.tokenSubstitution:LAYER_TOKEN_SUBSTITUTION"
-
-  # AWS EKS cluster management
-  "spec.main.aws.eksClusterManagement.baseImage.registry:EKS_BASE_IMAGE_REGISTRY"
-  "spec.main.aws.eksClusterManagement.baseImage.namespace:EKS_BASE_IMAGE_NAMESPACE"
-  "spec.main.aws.eksClusterManagement.baseImage.name:EKS_BASE_IMAGE_NAME"
-  "spec.main.aws.eksClusterManagement.baseImage.tag:EKS_BASE_IMAGE_TAG"
-  "spec.main.aws.eksClusterManagement.clusterYamlSubPath:EKS_CLUSTER_YAML_SUB_PATH"
-  "spec.main.aws.eksClusterManagement.privateNetworking:EKS_PRIVATE_NETWORKING"
-  "spec.main.aws.eksClusterManagement.publicNetworking:EKS_PUBLIC_NETWORKING"
-  "spec.main.aws.eksClusterManagement.ciliumEbpfNetworking:EKS_CILIUM_EBPF_NETWORKING"
 
   # Platform - GitHub Actions
   # Note: GITHUB_RELEASE_ENABLED handled separately below (has default)

@@ -485,7 +485,7 @@ EOF
   [[ "$output" == *"must be relative"* ]]
 }
 
-@test "layer-payload: fails when destinations are duplicated" {
+@test "layer-payload: multiple files into same destination dir succeed" {
   create_mock_layer "ghcr.io/kube-kaptain/quality/quality-strict" << 'EOF'
 apiVersion: kaptain.org/1.2
 layer-payload:
@@ -510,8 +510,9 @@ spec:
     - quality-strict:1.0
 EOF
   run "$SCRIPT"
-  [[ "$status" -ne 0 ]]
-  [[ "$output" == *"destination already used"* ]]
+  [[ "$status" -eq 0 ]]
+  [[ "$output" == *"payload ok: /scripts/build.bash -> .kaptain/scripts/"* ]]
+  [[ "$output" == *"payload ok: /scripts/other.bash -> .kaptain/scripts/"* ]]
 }
 
 @test "layer-payload: multiple entries all land at their destinations" {

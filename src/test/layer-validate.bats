@@ -611,18 +611,18 @@ EOF
   [[ "$output" == *"payload ok: /shared.txt -> copy-b"* ]]
 }
 
-@test "layer-payload uniqueness: duplicate destinations fail" {
+@test "layer-payload uniqueness: different sources to same destination dir pass" {
   export LAYER_TYPE="layer"
   touch_context_file "/a.txt"
   touch_context_file "/b.txt"
   write_layer_with_payloads '[
-    {"source":"/a.txt","destination":"conflict"},
-    {"source":"/b.txt","destination":"conflict"}
+    {"source":"/a.txt","destination":"shared-dir"},
+    {"source":"/b.txt","destination":"shared-dir"}
   ]'
   run "$SCRIPT"
-  [[ "$status" -ne 0 ]]
-  [[ "$output" == *"destination already used by an earlier entry"* ]]
-  [[ "$output" == *"conflict"* ]]
+  [[ "$status" -eq 0 ]]
+  [[ "$output" == *"payload ok: /a.txt -> shared-dir"* ]]
+  [[ "$output" == *"payload ok: /b.txt -> shared-dir"* ]]
 }
 
 @test "layer-payload uniqueness: same source, same destination is rejected" {
@@ -634,8 +634,9 @@ EOF
   ]'
   run "$SCRIPT"
   [[ "$status" -ne 0 ]]
-  # Caught by the destination-uniqueness check (first entry accepted, second rejected)
-  [[ "$output" == *"destination already used by an earlier entry"* ]]
+  # Caught by the (source, destination) pair-uniqueness check (first entry accepted, second rejected)
+  [[ "$output" == *"(source, destination) pair already used by an earlier entry"* ]]
+  [[ "$output" == *"/same.txt -> dest"* ]]
 }
 
 @test "layer-payload uniqueness: three distinct entries all pass" {
