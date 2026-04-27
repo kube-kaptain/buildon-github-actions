@@ -99,6 +99,7 @@ source "$(dirname "${BASH_SOURCE[0]}")/../defaults/kubernetes-service.bash"
 source "$(dirname "${BASH_SOURCE[0]}")/../defaults/manifests-repo-provider.bash"
 
 # Export all workflow inputs
+export BUILD_SCRIPTS_REPO_ROOT
 export BUILD_KIND
 export OUTPUT_SUB_PATH
 export DOCKER_PUSH_IMAGE_LIST_FILE

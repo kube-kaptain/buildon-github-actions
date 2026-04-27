@@ -44,6 +44,7 @@ setup() {
   export CURRENT_BRANCH="main"
   export ADDITIONAL_RELEASE_BRANCHES=""
   export BUILD_MODE="build_server"
+  export BUILD_SCRIPTS_REPO_ROOT="/test/build-scripts-repo-root"
   export BUILD_KIND="kubernetes-app-docker-dockerfile"
   export REPOSITORY_NAME="my-project"
   export REPOSITORY_OWNER="kube-kaptain"

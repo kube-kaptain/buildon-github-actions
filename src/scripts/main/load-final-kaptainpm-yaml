@@ -36,6 +36,13 @@ source "${SCRIPT_DIR}/../lib/log.bash"
 # shellcheck source=src/scripts/lib/output-var.bash
 source "${SCRIPT_DIR}/../lib/output-var.bash"
 
+# Build scripts repo root - absolute path to the buildon checkout this script
+# is part of. Hooks need this so user hook scripts can locate the build's
+# defaults/libs after exec replaces the calling launcher's context.
+build_scripts_repo_root="$(cd "${SCRIPT_DIR}/../../.." && pwd)"
+output_var "BUILD_SCRIPTS_REPO_ROOT" "${build_scripts_repo_root}" > /dev/null
+log "BUILD_SCRIPTS_REPO_ROOT = \"${build_scripts_repo_root}\""
+
 PM_FILE="kaptainpm/final/KaptainPM.yaml"
 
 if [[ ! -f "${PM_FILE}" ]]; then
