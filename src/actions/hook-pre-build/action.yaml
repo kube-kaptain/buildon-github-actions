@@ -13,6 +13,10 @@ inputs:
   image-build-command:
     description: 'Container runtime command (podman or docker)'
     required: true
+  # Build scripts repo root (computed by load-final-kaptainpm-yaml)
+  build-scripts-repo-root:
+    description: 'Absolute path to the buildon checkout, propagated so user hook scripts can locate build defaults/libs'
+    required: true
 
   # Project name
   strip-repository-name-prefix:
@@ -930,6 +934,7 @@ runs:
         BUILD_PLATFORM: github-actions
         BUILD_PLATFORM_LOG_PROVIDER: github-actions
         IMAGE_BUILD_COMMAND: ${{ inputs.image-build-command }}
+        BUILD_SCRIPTS_REPO_ROOT: ${{ inputs.build-scripts-repo-root }}
         # GitHub context - needed for PROJECT_NAME and IS_RELEASE calculation
         REPOSITORY_NAME: ${{ github.event.repository.name }}
         REPOSITORY_OWNER: ${{ github.repository_owner }}

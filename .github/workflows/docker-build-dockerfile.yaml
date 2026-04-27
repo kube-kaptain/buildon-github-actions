@@ -331,6 +331,7 @@ jobs:
         with:
           build-kind: docker-build-dockerfile
           image-build-command: ${{ steps.validate-tooling.outputs.IMAGE_BUILD_COMMAND }}
+          build-scripts-repo-root: ${{ steps.kpm.outputs.BUILD_SCRIPTS_REPO_ROOT }}
           docker-platform: ${{ steps.kpm.outputs.DOCKER_PLATFORM }}
           strip-repository-name-prefix: ${{ steps.kpm.outputs.STRIP_REPOSITORY_NAME_PREFIX }}
           # === Workflow Inputs ===
@@ -592,6 +593,7 @@ jobs:
         with:
           build-kind: docker-build-dockerfile
           image-build-command: ${{ steps.validate-tooling.outputs.IMAGE_BUILD_COMMAND }}
+          build-scripts-repo-root: ${{ steps.kpm.outputs.BUILD_SCRIPTS_REPO_ROOT }}
           docker-platform: ${{ steps.kpm.outputs.DOCKER_PLATFORM }}
           strip-repository-name-prefix: ${{ steps.kpm.outputs.STRIP_REPOSITORY_NAME_PREFIX }}
           # === Workflow Inputs ===
@@ -797,6 +799,7 @@ jobs:
         with:
           build-kind: docker-build-dockerfile
           image-build-command: ${{ steps.validate-tooling.outputs.IMAGE_BUILD_COMMAND }}
+          build-scripts-repo-root: ${{ steps.kpm.outputs.BUILD_SCRIPTS_REPO_ROOT }}
           docker-platform: ${{ steps.kpm.outputs.DOCKER_PLATFORM }}
           # === Workflow Inputs ===
           # Build output
@@ -1073,6 +1076,7 @@ jobs:
         with:
           build-kind: docker-build-dockerfile
           image-build-command: ${{ steps.validate-tooling.outputs.IMAGE_BUILD_COMMAND }}
+          build-scripts-repo-root: ${{ steps.kpm.outputs.BUILD_SCRIPTS_REPO_ROOT }}
           docker-platform: ${{ steps.kpm.outputs.DOCKER_PLATFORM }}
           # === Workflow Inputs ===
           # Build output
@@ -1317,6 +1321,7 @@ jobs:
         with:
           build-kind: docker-build-dockerfile
           image-build-command: ${{ steps.validate-tooling.outputs.IMAGE_BUILD_COMMAND }}
+          build-scripts-repo-root: ${{ steps.kpm.outputs.BUILD_SCRIPTS_REPO_ROOT }}
           docker-platform: ${{ steps.kpm.outputs.DOCKER_PLATFORM }}
           # === Workflow Inputs ===
           # Build output
@@ -1750,6 +1755,7 @@ jobs:
         with:
           build-kind: docker-build-dockerfile
           image-build-command: ${{ steps.validate-tooling.outputs.IMAGE_BUILD_COMMAND }}
+          build-scripts-repo-root: ${{ steps.kpm.outputs.BUILD_SCRIPTS_REPO_ROOT }}
           docker-platform: ${{ steps.kpm.outputs.DOCKER_PLATFORM }}
           # === Workflow Inputs ===
           # Build output

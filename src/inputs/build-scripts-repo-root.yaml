@@ -1,0 +1,8 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
+#
+# Build scripts repo root (computed by load-final-kaptainpm-yaml)
+build-scripts-repo-root:
+  description: 'Absolute path to the buildon checkout, propagated so user hook scripts can locate build defaults/libs'
+  required: true
+  type: string
