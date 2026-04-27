@@ -51,3 +51,24 @@ for file in "${EXAMPLES_DIR}"/guides/*/build.yaml; do
 done
 
 echo "Updated ${updated} example file(s)"
+
+# Update KaptainPM.yaml apiVersion to current schema version
+SCHEMA_VERSION_FILE="${PROJECT_ROOT}/src/schemas/version"
+if [[ ! -f "${SCHEMA_VERSION_FILE}" ]]; then
+  echo "Schema version file not found: ${SCHEMA_VERSION_FILE}"
+  exit 1
+fi
+schema_version=$(head -n 1 "${SCHEMA_VERSION_FILE}")
+
+echo "Updating example KaptainPM.yaml apiVersion to: kaptain.org/${schema_version}"
+
+kpm_updated=0
+while IFS= read -r -d '' file; do
+  if grep -q '^apiVersion:[[:space:]]*kaptain\.org/' "${file}"; then
+    sed -i.bak -E "s|^apiVersion:[[:space:]]*kaptain\.org/[^[:space:]]+|apiVersion: kaptain.org/${schema_version}|" "${file}"
+    rm "${file}.bak"
+    kpm_updated=$((kpm_updated + 1))
+  fi
+done < <(find "${EXAMPLES_DIR}" -name 'KaptainPM.yaml' -print0)
+
+echo "Updated ${kpm_updated} KaptainPM.yaml file(s)"
