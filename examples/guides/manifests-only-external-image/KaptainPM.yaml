@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: CC0-1.0
 # This example is released to the public domain. Use freely without attribution.
 
-apiVersion: kaptain.org/v1
+apiVersion: kaptain.org/1.16
 kind: kubernetes-app-manifests-only
 
 spec:
