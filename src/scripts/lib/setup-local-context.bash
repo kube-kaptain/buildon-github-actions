@@ -137,7 +137,11 @@ print_build_started
 #   4. Multiple remotes, none called "origin" - fail
 if [[ -z "${REMOTE_NAME:-}" ]]; then
   all_remotes=$(git remote 2>/dev/null || true)
-  remote_count=$(echo "${all_remotes}" | grep -c . 2>/dev/null || echo "0")
+  if [[ -z "${all_remotes}" ]]; then
+    remote_count=0
+  else
+    remote_count=$(echo "${all_remotes}" | grep -c .)
+  fi
   if [[ "${remote_count}" -eq 0 ]]; then
     log_error "No git remotes configured"
     exit 1
@@ -170,7 +174,11 @@ if [[ -z "${UPSTREAM_BRANCH:-}" ]]; then
   UPSTREAM_BRANCH=$(git symbolic-ref "refs/remotes/${REMOTE_NAME}/HEAD" 2>/dev/null | sed 's@^refs/remotes/@@' || true)
   if [[ -z "${UPSTREAM_BRANCH}" ]]; then
     remote_branches=$(git branch -r 2>/dev/null | grep "^  ${REMOTE_NAME}/" | grep -v ' -> ' | sed 's/^[[:space:]]*//' || true)
-    branch_count=$(echo "${remote_branches}" | grep -c . 2>/dev/null || echo "0")
+    if [[ -z "${remote_branches}" ]]; then
+      branch_count=0
+    else
+      branch_count=$(echo "${remote_branches}" | grep -c .)
+    fi
     if [[ "${branch_count}" -eq 1 ]]; then
       UPSTREAM_BRANCH="${remote_branches}"
     elif echo "${remote_branches}" | grep -q "^${REMOTE_NAME}/main$"; then
