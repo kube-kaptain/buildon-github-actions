@@ -250,7 +250,7 @@ KUBERNETES_SERVICE_COMBINED_SUB_PATH="${COMBINED_SUB_PATH}" \
 KUBERNETES_SERVICE_PORT="${CONTAINER_PORT}" \
 KUBERNETES_SERVICE_TARGET_PORT="${CONTAINER_PORT}" \
 KUBERNETES_SERVICE_PROTOCOL="TCP" \
-KUBERNETES_SERVICE_ADDITIONAL_ANNOTATIONS="kaptain/generated-for=\"statefulset/${statefulset_name}\"" \
+KUBERNETES_SERVICE_ADDITIONAL_ANNOTATIONS="kaptain.org/generated-for=\"statefulset/${statefulset_name}\"" \
 "${SCRIPT_DIR}/generate-kubernetes-service"
 
 # =============================================================================

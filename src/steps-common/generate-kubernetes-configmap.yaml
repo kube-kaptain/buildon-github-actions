@@ -8,6 +8,7 @@
   with:
     # Required context
     project-name: ${{ steps.versions.outputs.project-name }}
+    image-uri: ${{ steps.docker-build.outputs.docker-target-image-full-uri }}
     # ConfigMap settings
     kubernetes-configmap-sub-path: ${{ steps.kpm.outputs.KUBERNETES_CONFIGMAP_SUB_PATH }}
     # Global settings

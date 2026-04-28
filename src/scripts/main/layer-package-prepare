@@ -199,6 +199,13 @@ check-jsonschema --schemafile "${source_schema}" "${context_dir}/KaptainPM.yaml"
 log "Source schema validation passed"
 
 # Inject build metadata via yq - all values injected directly
+#
+# Kaptain metadata sites: this is one of three places that emit `kaptain.org/*`
+# labels and annotations. When changing the key set or types here, also review
+# the others. See AnnotationLabelConsistency.md for the full set.
+#   1. src/scripts/lib/kubernetes-metadata.bash::generate_metadata
+#   2. src/scripts/main/layer-package-prepare (this block)
+#   3. src/scripts/main/vendor-helm-render-and-process (stage 7 yq block)
 log "Injecting build metadata..."
 DOCKER_IMAGE_NAME="${DOCKER_IMAGE_NAME:?DOCKER_IMAGE_NAME is required}"
 export SOURCE_REPO="${REPOSITORY_OWNER}/${REPOSITORY_NAME}"
@@ -207,11 +214,17 @@ if [[ -n "${DOCKER_TARGET_NAMESPACE}" ]]; then
 else
   export IMAGE_URI="${DOCKER_TARGET_REGISTRY}/${DOCKER_IMAGE_NAME}:${VERSION}"
 fi
+export BUILD_TIMESTAMP
+BUILD_TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 yq eval -i '
   .metadata.labels["kaptain.org/version"] = strenv(VERSION) |
   .metadata.labels["kaptain.org/version"] style="double" |
   .metadata.labels["kaptain.org/project-name"] = strenv(PROJECT_NAME) |
   .metadata.labels["kaptain.org/owner"] = strenv(REPOSITORY_OWNER) |
+  .metadata.annotations["kaptain.org/version"] = strenv(VERSION) |
+  .metadata.annotations["kaptain.org/version"] style="double" |
+  .metadata.annotations["kaptain.org/project-name"] = strenv(PROJECT_NAME) |
+  .metadata.annotations["kaptain.org/build-timestamp"] = strenv(BUILD_TIMESTAMP) |
   .metadata.annotations["kaptain.org/built-by"] = strenv(BUILD_PLATFORM) |
   .metadata.annotations["kaptain.org/source-repository"] = strenv(SOURCE_REPO) |
   .metadata.annotations["kaptain.org/image-uri"] = strenv(IMAGE_URI)

@@ -245,6 +245,39 @@ EOF
 }
 
 # =============================================================================
+# Metadata injection (kaptain.org/* labels and annotations)
+# =============================================================================
+
+@test "layer injects kaptain.org labels (version, project-name, owner)" {
+  export PROJECT_NAME="layer-foo"
+  write_layer_pm "src/layer/KaptainPM.yaml"
+  run "$SCRIPT"
+  [[ "$status" -eq 0 ]]
+
+  pm_yaml=$(cat "${OUTPUT_SUB_PATH}/layer-build/context/KaptainPM.yaml")
+  [[ "$pm_yaml" == *'kaptain.org/version: "1.0.0"'* ]]
+  [[ "$pm_yaml" == *"kaptain.org/project-name: layer-foo"* ]]
+  [[ "$pm_yaml" == *"kaptain.org/owner: kube-kaptain"* ]]
+}
+
+@test "layer injects kaptain.org annotations including build-timestamp" {
+  export PROJECT_NAME="layer-foo"
+  write_layer_pm "src/layer/KaptainPM.yaml"
+  run "$SCRIPT"
+  [[ "$status" -eq 0 ]]
+
+  pm_yaml=$(cat "${OUTPUT_SUB_PATH}/layer-build/context/KaptainPM.yaml")
+  # Annotation forms (mirrors of the labels) - symmetry with generator superset
+  [[ "$pm_yaml" == *'kaptain.org/version: "1.0.0"'* ]]
+  [[ "$pm_yaml" == *"kaptain.org/project-name: layer-foo"* ]]
+  # Build traceability annotations
+  [[ "$pm_yaml" == *"kaptain.org/build-timestamp:"* ]]
+  [[ "$pm_yaml" == *"kaptain.org/built-by: test"* ]]
+  [[ "$pm_yaml" == *"kaptain.org/source-repository: kube-kaptain/layer-test"* ]]
+  [[ "$pm_yaml" == *"kaptain.org/image-uri: ghcr.io/kube-kaptain/layer/layer-test:1.0.0"* ]]
+}
+
+# =============================================================================
 # context_dir is not wiped at script start
 # =============================================================================
 

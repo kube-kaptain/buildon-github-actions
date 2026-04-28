@@ -24,6 +24,7 @@ inputs:
     default: '1024'
 
   # INJECT-INPUT: kubernetes-service
+  # INJECT-INPUT: kubernetes-build-context
   # INJECT-INPUT: token-substitution
 
 runs:
@@ -36,6 +37,9 @@ runs:
         BUILD_MODE: build_server
         BUILD_PLATFORM: github-actions
         BUILD_PLATFORM_LOG_PROVIDER: github-actions
+        REPOSITORY_OWNER: ${{ github.repository_owner }}
+        SOURCE_REPO: ${{ github.repository }}
+        IMAGE_URI: ${{ inputs.image-uri }}
         # Required context
         PROJECT_NAME: ${{ inputs.project-name }}
         # Global settings

@@ -25,6 +25,7 @@
     kubernetes-workload-container-port: ${{ steps.kpm.outputs.KUBERNETES_WORKLOAD_CONTAINER_PORT }}
     # Required context
     project-name: ${{ steps.versions.outputs.project-name }}
+    image-uri: ${{ steps.docker-build.outputs.docker-target-image-full-uri }}
     # Global settings
     output-sub-path: ${{ steps.kpm.outputs.OUTPUT_SUB_PATH }}
     token-name-style: ${{ steps.kpm.outputs.TOKEN_NAME_STYLE }}
