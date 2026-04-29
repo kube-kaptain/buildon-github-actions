@@ -10,6 +10,7 @@ inputs:
   # INJECT-INPUT: docker-push-image-list
   # INJECT-INPUT: image-build-command
   # INJECT-INPUT: docker-platform
+  # INJECT-INPUT: token-substitution
 
   docker-target-registry:
     description: 'Target container registry for retagged images (from resolve-registry)'
@@ -67,4 +68,6 @@ runs:
         DOCKER_TARGET_NAMESPACE: ${{ inputs.docker-target-namespace }}
         IMAGE_BUILD_COMMAND: ${{ inputs.image-build-command }}
         DOCKER_PLATFORM: ${{ inputs.docker-platform }}
+        TOKEN_DELIMITER_STYLE: ${{ inputs.token-delimiter-style }}
+        TOKEN_NAME_STYLE: ${{ inputs.token-name-style }}
       run: "${{ github.action_path }}/../../scripts/main/vendor-helm-render-and-process"
