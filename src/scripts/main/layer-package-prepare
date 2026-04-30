@@ -265,20 +265,17 @@ if [[ "${LAYER_TYPE}" == "layerset" ]]; then
   for ((i = 0; i < layer_count; i++)); do
     ref=$(yq -r ".spec.layers[${i}]" "${context_dir}/KaptainPM.yaml")
 
-    # Check if the reference contains range syntax
-    if ! version_is_exact "${ref##*:}"; then
-      log "Resolving range: ${ref}"
-      resolve_output_file="${OUTPUT_SUB_PATH}/artifact-resolve/${ref//[^a-zA-Z0-9._-]/_}"
-      mkdir -p "$(dirname "${resolve_output_file}")"
-      "${UTIL_DIR}/artifact-resolve" "${ref}" "${resolve_output_file}"
-      resolved=$(< "${resolve_output_file}")
-      # Extract resolved version from fully qualified URI
-      resolved_version="${resolved##*:}"
-      ref_name="${ref%%:*}"
-      resolved_ref="${ref_name}:${resolved_version}"
-      log "Resolved: ${ref} -> ${resolved_ref}"
-      yq eval -i ".spec.layers[${i}] = \"${resolved_ref}\"" "${context_dir}/KaptainPM.yaml"
-    fi
+    # Always resolve+expand to the long form so the built layerset is portable
+    # without depending on consumer DOCKER_TARGET_REGISTRY/NAMESPACE. Range
+    # forms get a fixed version; exact short/prefixed forms get the name
+    # expanded to the full URI.
+    log "Resolving: ${ref}"
+    resolve_output_file="${OUTPUT_SUB_PATH}/artifact-resolve/${ref//[^a-zA-Z0-9._-]/_}"
+    mkdir -p "$(dirname "${resolve_output_file}")"
+    "${UTIL_DIR}/artifact-resolve" "${ref}" "${resolve_output_file}"
+    resolved_ref=$(< "${resolve_output_file}")
+    log "Resolved: ${ref} -> ${resolved_ref}"
+    yq eval -i ".spec.layers[${i}] = \"${resolved_ref}\"" "${context_dir}/KaptainPM.yaml"
   done
   log "Range resolution complete"
 
