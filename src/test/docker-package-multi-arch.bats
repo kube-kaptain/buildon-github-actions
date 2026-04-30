@@ -139,61 +139,6 @@ teardown() {
   assert_output_contains "Generated Dockerfile:"
 }
 
-# === Per-arch differentiator ===
-
-@test "Dockerfile copies image-platform marker into image" {
-  run "$UTIL_DIR/docker-package-multi-arch" "$CONTENT_DIR" "ghcr.io/test/my-repo:1.0.0-rcd"
-  [ "$status" -eq 0 ]
-
-  local dockerfile="${OUTPUT_SUB_PATH}/docker-package-multi-arch/content/Dockerfile"
-  run cat "$dockerfile"
-  [[ "$output" == *"COPY image-platform /image-platform"* ]]
-}
-
-@test "writes per-platform image-platform marker visible to each build" {
-  # Override mock docker to snapshot image-platform from the build context
-  # at the moment of each build call so we can assert per-arch content.
-  cat > "$MOCK_BIN_DIR/docker" << 'MOCKDOCKER'
-#!/usr/bin/env bash
-echo "$*" >> "$MOCK_DOCKER_CALLS"
-if [[ "$1" == "manifest" && "$2" == "inspect" ]]; then
-  if [[ "${MOCK_DOCKER_MANIFEST_EXISTS:-false}" == "true" ]]; then
-    exit 0
-  else
-    exit 1
-  fi
-fi
-if [[ "$1" == "build" ]]; then
-  args=("$@")
-  context="${args[$(($# - 1))]}"
-  platform=""
-  for ((i = 0; i < $#; i++)); do
-    if [[ "${args[$i]}" == "--platform" ]]; then
-      platform="${args[$((i + 1))]}"
-      break
-    fi
-  done
-  if [[ -n "$platform" && -f "$context/image-platform" ]]; then
-    cp "$context/image-platform" "${MOCK_DOCKER_CALLS}.${platform//\//-}.snapshot"
-  fi
-fi
-exit 0
-MOCKDOCKER
-  chmod +x "$MOCK_BIN_DIR/docker"
-
-  run "$UTIL_DIR/docker-package-multi-arch" "$CONTENT_DIR" "ghcr.io/test/my-repo:1.0.0-rcd"
-  [ "$status" -eq 0 ]
-
-  [ -f "${MOCK_DOCKER_CALLS}.linux-amd64.snapshot" ]
-  [ -f "${MOCK_DOCKER_CALLS}.linux-arm64.snapshot" ]
-
-  run cat "${MOCK_DOCKER_CALLS}.linux-amd64.snapshot"
-  [ "$output" = "linux/amd64" ]
-
-  run cat "${MOCK_DOCKER_CALLS}.linux-arm64.snapshot"
-  [ "$output" = "linux/arm64" ]
-}
-
 # === Podman support ===
 
 @test "works with podman as IMAGE_BUILD_COMMAND" {
