@@ -199,6 +199,13 @@ check-jsonschema --schemafile "${source_schema}" "${context_dir}/KaptainPM.yaml"
 log "Source schema validation passed"
 
 # Inject build metadata via yq - all values injected directly
+#
+# Kaptain metadata sites: this is one of three places that emit `kaptain.org/*`
+# labels and annotations. When changing the key set or types here, also review
+# the others. See AnnotationLabelConsistency.md for the full set.
+#   1. src/scripts/lib/kubernetes-metadata.bash::generate_metadata
+#   2. src/scripts/main/layer-package-prepare (this block)
+#   3. src/scripts/main/vendor-helm-render-and-process (stage 7 yq block)
 log "Injecting build metadata..."
 DOCKER_IMAGE_NAME="${DOCKER_IMAGE_NAME:?DOCKER_IMAGE_NAME is required}"
 export SOURCE_REPO="${REPOSITORY_OWNER}/${REPOSITORY_NAME}"
@@ -207,11 +214,17 @@ if [[ -n "${DOCKER_TARGET_NAMESPACE}" ]]; then
 else
   export IMAGE_URI="${DOCKER_TARGET_REGISTRY}/${DOCKER_IMAGE_NAME}:${VERSION}"
 fi
+export BUILD_TIMESTAMP
+BUILD_TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 yq eval -i '
   .metadata.labels["kaptain.org/version"] = strenv(VERSION) |
   .metadata.labels["kaptain.org/version"] style="double" |
   .metadata.labels["kaptain.org/project-name"] = strenv(PROJECT_NAME) |
   .metadata.labels["kaptain.org/owner"] = strenv(REPOSITORY_OWNER) |
+  .metadata.annotations["kaptain.org/version"] = strenv(VERSION) |
+  .metadata.annotations["kaptain.org/version"] style="double" |
+  .metadata.annotations["kaptain.org/project-name"] = strenv(PROJECT_NAME) |
+  .metadata.annotations["kaptain.org/build-timestamp"] = strenv(BUILD_TIMESTAMP) |
   .metadata.annotations["kaptain.org/built-by"] = strenv(BUILD_PLATFORM) |
   .metadata.annotations["kaptain.org/source-repository"] = strenv(SOURCE_REPO) |
   .metadata.annotations["kaptain.org/image-uri"] = strenv(IMAGE_URI)
@@ -252,20 +265,17 @@ if [[ "${LAYER_TYPE}" == "layerset" ]]; then
   for ((i = 0; i < layer_count; i++)); do
     ref=$(yq -r ".spec.layers[${i}]" "${context_dir}/KaptainPM.yaml")
 
-    # Check if the reference contains range syntax
-    if ! version_is_exact "${ref##*:}"; then
-      log "Resolving range: ${ref}"
-      resolve_output_file="${OUTPUT_SUB_PATH}/artifact-resolve/${ref//[^a-zA-Z0-9._-]/_}"
-      mkdir -p "$(dirname "${resolve_output_file}")"
-      "${UTIL_DIR}/artifact-resolve" "${ref}" "${resolve_output_file}"
-      resolved=$(< "${resolve_output_file}")
-      # Extract resolved version from fully qualified URI
-      resolved_version="${resolved##*:}"
-      ref_name="${ref%%:*}"
-      resolved_ref="${ref_name}:${resolved_version}"
-      log "Resolved: ${ref} -> ${resolved_ref}"
-      yq eval -i ".spec.layers[${i}] = \"${resolved_ref}\"" "${context_dir}/KaptainPM.yaml"
-    fi
+    # Always resolve+expand to the long form so the built layerset is portable
+    # without depending on consumer DOCKER_TARGET_REGISTRY/NAMESPACE. Range
+    # forms get a fixed version; exact short/prefixed forms get the name
+    # expanded to the full URI.
+    log "Resolving: ${ref}"
+    resolve_output_file="${OUTPUT_SUB_PATH}/artifact-resolve/${ref//[^a-zA-Z0-9._-]/_}"
+    mkdir -p "$(dirname "${resolve_output_file}")"
+    "${UTIL_DIR}/artifact-resolve" "${ref}" "${resolve_output_file}"
+    resolved_ref=$(< "${resolve_output_file}")
+    log "Resolved: ${ref} -> ${resolved_ref}"
+    yq eval -i ".spec.layers[${i}] = \"${resolved_ref}\"" "${context_dir}/KaptainPM.yaml"
   done
   log "Range resolution complete"
 

@@ -1096,6 +1096,8 @@ jobs:
           docker-target-namespace: ${{ steps.resolve-registry.outputs.docker-target-namespace }}
           image-build-command: ${{ steps.validate-tooling.outputs.IMAGE_BUILD_COMMAND }}
           docker-platform: ${{ steps.kpm.outputs.DOCKER_PLATFORM }}
+          token-delimiter-style: ${{ steps.kpm.outputs.TOKEN_DELIMITER_STYLE }}
+          token-name-style: ${{ steps.kpm.outputs.TOKEN_NAME_STYLE }}
       - name: Pass check - Helm Render and Process
         if: success() && steps.check-vendor-helm-render-and-process.outputs.check-run-id != ''
         continue-on-error: true

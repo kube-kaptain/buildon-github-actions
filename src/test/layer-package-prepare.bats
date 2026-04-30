@@ -86,6 +86,27 @@ spec:
 EOF
 }
 
+# Helper: write a layerset KaptainPM.yaml with a caller-supplied layers list.
+# Args: target_path, then one ref per remaining argument.
+write_layerset_pm_with_layers() {
+  local target="${1}"
+  shift
+  mkdir -p "$(dirname "${target}")"
+  {
+    echo "apiVersion: kaptain.org/${SCHEMA_VERSION}"
+    echo "kind: kubernetes-app-docker-dockerfile"
+    echo "metadata:"
+    echo "  labels: {}"
+    echo "  annotations: {}"
+    echo "spec:"
+    echo "  layers:"
+    local layer
+    for layer in "$@"; do
+      echo "    - ${layer}"
+    done
+  } > "${target}"
+}
+
 # =============================================================================
 # PROJECT_NAME detection - prefix and suffix
 # =============================================================================
@@ -245,6 +266,39 @@ EOF
 }
 
 # =============================================================================
+# Metadata injection (kaptain.org/* labels and annotations)
+# =============================================================================
+
+@test "layer injects kaptain.org labels (version, project-name, owner)" {
+  export PROJECT_NAME="layer-foo"
+  write_layer_pm "src/layer/KaptainPM.yaml"
+  run "$SCRIPT"
+  [[ "$status" -eq 0 ]]
+
+  pm_yaml=$(cat "${OUTPUT_SUB_PATH}/layer-build/context/KaptainPM.yaml")
+  [[ "$pm_yaml" == *'kaptain.org/version: "1.0.0"'* ]]
+  [[ "$pm_yaml" == *"kaptain.org/project-name: layer-foo"* ]]
+  [[ "$pm_yaml" == *"kaptain.org/owner: kube-kaptain"* ]]
+}
+
+@test "layer injects kaptain.org annotations including build-timestamp" {
+  export PROJECT_NAME="layer-foo"
+  write_layer_pm "src/layer/KaptainPM.yaml"
+  run "$SCRIPT"
+  [[ "$status" -eq 0 ]]
+
+  pm_yaml=$(cat "${OUTPUT_SUB_PATH}/layer-build/context/KaptainPM.yaml")
+  # Annotation forms (mirrors of the labels) - symmetry with generator superset
+  [[ "$pm_yaml" == *'kaptain.org/version: "1.0.0"'* ]]
+  [[ "$pm_yaml" == *"kaptain.org/project-name: layer-foo"* ]]
+  # Build traceability annotations
+  [[ "$pm_yaml" == *"kaptain.org/build-timestamp:"* ]]
+  [[ "$pm_yaml" == *"kaptain.org/built-by: test"* ]]
+  [[ "$pm_yaml" == *"kaptain.org/source-repository: kube-kaptain/layer-test"* ]]
+  [[ "$pm_yaml" == *"kaptain.org/image-uri: ghcr.io/kube-kaptain/layer/layer-test:1.0.0"* ]]
+}
+
+# =============================================================================
 # context_dir is not wiped at script start
 # =============================================================================
 
@@ -278,6 +332,46 @@ EOF
   run "$SCRIPT"
   [[ "$status" -eq 0 ]]
   [[ "$output" != *"Verifying remote existence"* ]]
+}
+
+# =============================================================================
+# Layerset spec.layers reference expansion (short/prefixed -> full URI)
+# =============================================================================
+
+@test "layerset expands short-form spec.layers ref to full URI" {
+  export PROJECT_NAME="layerset-foo"
+  write_layerset_pm_with_layers "src/layerset/KaptainPM.yaml" \
+    "quality-strict:1.0.0"
+  run "$SCRIPT"
+  [[ "$status" -eq 0 ]]
+
+  local resolved
+  resolved=$(yq -r '.spec.layers[0]' "${OUTPUT_SUB_PATH}/layer-build/context/KaptainPM.yaml")
+  [[ "${resolved}" == "ghcr.io/kube-kaptain/quality/quality-strict:1.0.0" ]]
+}
+
+@test "layerset expands prefixed-form spec.layers ref to full URI" {
+  export PROJECT_NAME="layerset-foo"
+  write_layerset_pm_with_layers "src/layerset/KaptainPM.yaml" \
+    "quality/quality-strict:1.0.0"
+  run "$SCRIPT"
+  [[ "$status" -eq 0 ]]
+
+  local resolved
+  resolved=$(yq -r '.spec.layers[0]' "${OUTPUT_SUB_PATH}/layer-build/context/KaptainPM.yaml")
+  [[ "${resolved}" == "ghcr.io/kube-kaptain/quality/quality-strict:1.0.0" ]]
+}
+
+@test "layerset preserves already-full-form spec.layers ref unchanged" {
+  export PROJECT_NAME="layerset-foo"
+  write_layerset_pm_with_layers "src/layerset/KaptainPM.yaml" \
+    "ghcr.io/kube-kaptain/quality/quality-strict:1.0.0"
+  run "$SCRIPT"
+  [[ "$status" -eq 0 ]]
+
+  local resolved
+  resolved=$(yq -r '.spec.layers[0]' "${OUTPUT_SUB_PATH}/layer-build/context/KaptainPM.yaml")
+  [[ "${resolved}" == "ghcr.io/kube-kaptain/quality/quality-strict:1.0.0" ]]
 }
 
 @test "does not remove pre-existing files in context_dir (no rm-rf)" {

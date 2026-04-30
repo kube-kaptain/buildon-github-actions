@@ -8,6 +8,7 @@
   with:
     # Required context
     project-name: ${{ steps.versions.outputs.project-name }}
+    image-uri: ${{ steps.docker-build.outputs.docker-target-image-full-uri }}
     # Workload type
     kubernetes-workload-type: ${{ steps.kpm.outputs.KUBERNETES_WORKLOAD_TYPE }}
     # Common workload settings
