@@ -30,8 +30,8 @@ teardown() {
 @test "builds both architectures" {
   run "$UTIL_DIR/docker-package-multi-arch" "$CONTENT_DIR" "ghcr.io/test/my-repo:1.0.0-rcd"
   [ "$status" -eq 0 ]
-  assert_docker_called "build --platform linux/amd64 -t ghcr.io/test/my-repo:1.0.0-rcd-linux-amd64"
-  assert_docker_called "build --platform linux/arm64 -t ghcr.io/test/my-repo:1.0.0-rcd-linux-arm64"
+  assert_docker_called "build --platform linux/amd64 .* -t ghcr.io/test/my-repo:1.0.0-rcd-linux-amd64"
+  assert_docker_called "build --platform linux/arm64 .* -t ghcr.io/test/my-repo:1.0.0-rcd-linux-arm64"
 }
 
 @test "registers arch-specific URIs in image-uris" {
@@ -146,5 +146,14 @@ teardown() {
 
   run "$UTIL_DIR/docker-package-multi-arch" "$CONTENT_DIR" "ghcr.io/test/my-repo:1.0.0-rcd"
   [ "$status" -eq 0 ]
-  assert_docker_called "build --platform linux/amd64 -t ghcr.io/test/my-repo:1.0.0-rcd-linux-amd64"
+  assert_docker_called "build --platform linux/amd64 .* -t ghcr.io/test/my-repo:1.0.0-rcd-linux-amd64"
+}
+
+# === Per-arch differentiator ===
+
+@test "passes per-platform --label to differentiate per-arch image digests" {
+  run "$UTIL_DIR/docker-package-multi-arch" "$CONTENT_DIR" "ghcr.io/test/my-repo:1.0.0-rcd"
+  [ "$status" -eq 0 ]
+  assert_docker_called "build --platform linux/amd64 --label kaptain.org/platform=linux/amd64"
+  assert_docker_called "build --platform linux/arm64 --label kaptain.org/platform=linux/arm64"
 }

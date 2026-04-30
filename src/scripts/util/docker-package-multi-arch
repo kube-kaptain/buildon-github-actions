@@ -113,8 +113,14 @@ for platform in "${PLATFORMS[@]}"; do
   confirm_target_image_doesnt_exist "${arch_uri}" || exit 1
 
   log "Building ${arch_uri} for ${platform}..."
+  # The platform label lands in the image config blob, giving each per-arch
+  # build a unique config digest and thus a unique manifest digest. Without it,
+  # FROM scratch + COPY of identical platform-agnostic files produces
+  # byte-identical images that the registry deduplicates, collapsing the
+  # multi-arch index to a single entry.
   ${IMAGE_BUILD_COMMAND} build \
     --platform "${platform}" \
+    --label "kaptain.org/platform=${platform}" \
     -t "${arch_uri}" \
     "${build_dir}"
 
