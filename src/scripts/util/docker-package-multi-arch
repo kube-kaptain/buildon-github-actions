@@ -95,12 +95,6 @@ cp -R "${content_dir}"/* "${build_dir}/"
     local_name="$(basename "${entry}")"
     echo "COPY ${local_name} /${local_name}"
   done
-  echo
-  # Per-arch differentiator: FROM scratch + COPY of identical platform-agnostic
-  # files produces byte-identical image digests across archs, which the registry
-  # deduplicates and collapses the multi-arch index to a single entry. Written
-  # per platform inside the build loop below.
-  echo "COPY image-platform /image-platform"
 } > "${build_dir}/Dockerfile"
 
 log "Generated Dockerfile:"
@@ -118,11 +112,15 @@ for platform in "${PLATFORMS[@]}"; do
   # Confirm arch-specific target doesn't exist (fail fast)
   confirm_target_image_doesnt_exist "${arch_uri}" || exit 1
 
-  echo "${platform}" > "${build_dir}/image-platform"
-
   log "Building ${arch_uri} for ${platform}..."
+  # The platform label lands in the image config blob, giving each per-arch
+  # build a unique config digest and thus a unique manifest digest. Without it,
+  # FROM scratch + COPY of identical platform-agnostic files produces
+  # byte-identical images that the registry deduplicates, collapsing the
+  # multi-arch index to a single entry.
   ${IMAGE_BUILD_COMMAND} build \
     --platform "${platform}" \
+    --label "kaptain.org/platform=${platform}" \
     -t "${arch_uri}" \
     "${build_dir}"
 

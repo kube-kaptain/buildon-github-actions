@@ -35,8 +35,8 @@ set_required_env() {
 
   run "$SCRIPTS_DIR/release-change-data-oci-package"
   [ "$status" -eq 0 ]
-  assert_docker_called "build --platform linux/amd64 -t ghcr.io/test/my-repo:1.0.1-release-change-data-linux-amd64"
-  assert_docker_called "build --platform linux/arm64 -t ghcr.io/test/my-repo:1.0.1-release-change-data-linux-arm64"
+  assert_docker_called "build --platform linux/amd64 .* -t ghcr.io/test/my-repo:1.0.1-release-change-data-linux-amd64"
+  assert_docker_called "build --platform linux/arm64 .* -t ghcr.io/test/my-repo:1.0.1-release-change-data-linux-arm64"
 }
 
 @test "uses -release-change-data tag suffix" {

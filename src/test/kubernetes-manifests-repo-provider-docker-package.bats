@@ -62,8 +62,8 @@ set_required_env() {
 
   run "$REPO_PROVIDERS_DIR/kubernetes-manifests-repo-provider-docker-package"
   [ "$status" -eq 0 ]
-  assert_docker_called "build --platform linux/amd64 -t ghcr.io/test/my-repo:1.0.0-manifests-linux-amd64"
-  assert_docker_called "build --platform linux/arm64 -t ghcr.io/test/my-repo:1.0.0-manifests-linux-arm64"
+  assert_docker_called "build --platform linux/amd64 .* -t ghcr.io/test/my-repo:1.0.0-manifests-linux-amd64"
+  assert_docker_called "build --platform linux/arm64 .* -t ghcr.io/test/my-repo:1.0.0-manifests-linux-arm64"
 }
 
 @test "creates publish directory with zip" {
