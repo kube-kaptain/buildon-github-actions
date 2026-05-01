@@ -70,6 +70,10 @@ metadata:
   name: test-chart
   labels:
     app: test-chart
+    helm.sh/chart: test-chart-1.0.0
+  annotations:
+    helm.sh/hook: post-install
+    helm.sh/hook-weight: "5"
 spec:
   replicas: 1
   selector:
@@ -382,10 +386,12 @@ run_script() {
   [[ "$status" -eq 0 ]]
 
   for f in deployment.yaml service.yaml clusterrole.yaml clusterrolebinding.yaml; do
-    local content
-    content=$(cat "${REPO_DIR}/kaptain-out/helm-processing/G-annotated/${f}")
+    local file="${REPO_DIR}/kaptain-out/helm-processing/G-annotated/${f}"
+    local content non_anno
+    content=$(cat "${file}")
+    non_anno=$(yq eval 'del(.metadata.annotations)' "${file}")
     [[ "${content}" == *"replaced-name"* ]]
-    [[ "${content}" != *"test-chart"* ]]
+    [[ "${non_anno}" != *"test-chart"* ]]
   done
 }
 
@@ -695,4 +701,50 @@ run_script() {
   [[ "${content}" != *'kaptain.org/build-timestamp'* ]]
   [[ "${content}" == *'kaptain.org/generated-by:'* ]]
   [[ "${content}" == *'kaptain.org/built-by: test'* ]]
+}
+
+@test "strips helm.sh/* from labels and annotations" {
+  export VENDOR_HELM_RENDERED_OCI_CHART="oci://example.com/test-chart"
+  export VENDOR_HELM_RENDERED_MOVE_FILES="${MOVE_FILES_JSON}"
+
+  run_script
+  [[ "$status" -eq 0 ]]
+
+  local dep_file="${REPO_DIR}/kaptain-out/helm-processing/G-annotated/deployment.yaml"
+  local label_keys annotation_keys
+  label_keys=$(yq eval '.metadata.labels | keys | .[]' "${dep_file}")
+  annotation_keys=$(yq eval '.metadata.annotations | keys | .[]' "${dep_file}")
+
+  [[ "${label_keys}" != *'helm.sh/'* ]]
+  [[ "${annotation_keys}" != *'helm.sh/'* ]]
+}
+
+@test "copies helm.sh/chart label value into kaptain.org/helm-upstream-chart annotation" {
+  export VENDOR_HELM_RENDERED_OCI_CHART="oci://example.com/test-chart"
+  export VENDOR_HELM_RENDERED_MOVE_FILES="${MOVE_FILES_JSON}"
+
+  run_script
+  [[ "$status" -eq 0 ]]
+
+  local dep_file="${REPO_DIR}/kaptain-out/helm-processing/G-annotated/deployment.yaml"
+  local upstream
+  upstream=$(yq eval '.metadata.annotations."kaptain.org/helm-upstream-chart"' "${dep_file}")
+
+  [[ "${upstream}" == "test-chart-1.0.0" ]]
+}
+
+@test "stamps kaptain.org/helm-upstream-chart from Chart.yaml even when source has no helm.sh/chart label" {
+  # The mock service.yaml fixture has no helm.sh/chart label, but the annotation
+  # is sourced from Chart.yaml so every manifest gets it regardless.
+  export VENDOR_HELM_RENDERED_OCI_CHART="oci://example.com/test-chart"
+  export VENDOR_HELM_RENDERED_MOVE_FILES="${MOVE_FILES_JSON}"
+
+  run_script
+  [[ "$status" -eq 0 ]]
+
+  local svc_file="${REPO_DIR}/kaptain-out/helm-processing/G-annotated/service.yaml"
+  local upstream
+  upstream=$(yq eval '.metadata.annotations."kaptain.org/helm-upstream-chart"' "${svc_file}")
+
+  [[ "${upstream}" == "test-chart-1.0.0" ]]
 }
