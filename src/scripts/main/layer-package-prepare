@@ -221,9 +221,6 @@ yq eval -i '
   .metadata.labels["kaptain.org/version"] style="double" |
   .metadata.labels["kaptain.org/project-name"] = strenv(PROJECT_NAME) |
   .metadata.labels["kaptain.org/owner"] = strenv(REPOSITORY_OWNER) |
-  .metadata.annotations["kaptain.org/version"] = strenv(VERSION) |
-  .metadata.annotations["kaptain.org/version"] style="double" |
-  .metadata.annotations["kaptain.org/project-name"] = strenv(PROJECT_NAME) |
   .metadata.annotations["kaptain.org/build-timestamp"] = strenv(BUILD_TIMESTAMP) |
   .metadata.annotations["kaptain.org/built-by"] = strenv(BUILD_PLATFORM) |
   .metadata.annotations["kaptain.org/source-repository"] = strenv(SOURCE_REPO) |

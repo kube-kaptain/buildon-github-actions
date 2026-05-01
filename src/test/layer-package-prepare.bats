@@ -288,9 +288,10 @@ write_layerset_pm_with_layers() {
   [[ "$status" -eq 0 ]]
 
   pm_yaml=$(cat "${OUTPUT_SUB_PATH}/layer-build/context/KaptainPM.yaml")
-  # Annotation forms (mirrors of the labels) - symmetry with generator superset
-  [[ "$pm_yaml" == *'kaptain.org/version: "1.0.0"'* ]]
-  [[ "$pm_yaml" == *"kaptain.org/project-name: layer-foo"* ]]
+  # project-name and version live on labels only, not annotations
+  annotation_keys=$(yq eval '.metadata.annotations | keys | .[]' "${OUTPUT_SUB_PATH}/layer-build/context/KaptainPM.yaml")
+  [[ "$annotation_keys" != *'kaptain.org/project-name'* ]]
+  [[ "$annotation_keys" != *'kaptain.org/version'* ]]
   # Build traceability annotations
   [[ "$pm_yaml" == *"kaptain.org/build-timestamp:"* ]]
   [[ "$pm_yaml" == *"kaptain.org/built-by: test"* ]]
