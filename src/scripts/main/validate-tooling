@@ -79,11 +79,34 @@ for tool in ${CORE_TOOLS}; do
     else
       log_tool "✓" "${tool}" "(POSIX built-in)"
     fi
+    # Floor 4.25.3 - earliest mikefarah/yq with -r short-flag alias for --unwrapScalar
+    if [[ "${tool}" == "yq" ]]; then
+      yq_ver="${ver#v}"
+      yq_ver="${yq_ver%% *}"
+      IFS=. read -r ymaj ymin ypat <<< "${yq_ver}"
+      if (( ymaj < 4 )) || (( ymaj == 4 && ymin < 25 )) || (( ymaj == 4 && ymin == 25 && ypat < 3 )); then
+        log_error "yq ${yq_ver} is too old - Kaptain requires mikefarah/yq v4.25.3+"
+        MISSING_CORE="${MISSING_CORE} yq-version"
+      fi
+    fi
   else
     log_tool "✗" "${tool}" "(missing)"
     MISSING_CORE="${MISSING_CORE} ${tool}"
   fi
 done
+
+# Verify yq is mikefarah/yq, not the kislyuk Python jq-wrapper that ships
+# under the same binary name in Debian/Ubuntu apt repos. Wrong-tool yq accepts
+# some commands but uses different syntax and silently produces wrong results.
+if check_tool "yq"; then
+  yq_banner=$(yq --version 2>&1 | head -1)
+  if [[ "${yq_banner}" != *"mikefarah"* ]]; then
+    log_error "yq is the wrong tool: ${yq_banner}"
+    log_error "Kaptain requires mikefarah/yq, not kislyuk/yq (the Python jq wrapper)."
+    log_error "Install from https://github.com/mikefarah/yq/releases - apt may ship the wrong one on Debian/Ubuntu."
+    MISSING_CORE="${MISSING_CORE} yq-mikefarah"
+  fi
+fi
 log ""
 
 # Check container runtime
