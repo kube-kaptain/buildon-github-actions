@@ -128,6 +128,7 @@ See [`examples/`](examples/) for more usage patterns.
 | `release-change-data-oci-package` | Packages release change data as OCI image for consolidated push |
 | `resolve-target-registry-and-namespace` | Resolves target registry (defaults to ghcr.io) and computes namespace (auto-detects org/user for GHCR) |
 | `validate-tooling` | Validates required tools are available before build |
+| `vendor-helm-inject-build-timestamp` | Stamps kaptain.org/build-timestamp into every manifest under kaptain-out/manifests/combined/ (vendor flow only - run after package-prepare and before token substitution to keep src/kubernetes/ stable) |
 | `vendor-helm-render-and-process` | Fetches a vendor helm chart, renders it, and processes output into individual kubernetes manifests |
 | `vendor-helm-render-validate` | Copies validated vendor helm-rendered manifests to src/kubernetes/ and checks for git diffs |
 | `versions-and-naming` | Generates version numbers, tags, and naming for releases |

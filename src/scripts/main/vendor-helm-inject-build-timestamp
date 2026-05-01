@@ -1,0 +1,52 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
+#
+# vendor-helm-inject-build-timestamp - Stamps kaptain.org/build-timestamp into
+# every manifest under kaptain-out/manifests/combined/.
+#
+# Why this is its own step (not in vendor-helm-render-and-process):
+# the vendor flow's render output is committed under src/kubernetes/ and a
+# subsequent diff check (vendor-helm-render-validate) fails the build if the
+# rendered output drifts from what is committed. A per-build timestamp would
+# always trip that check. Stamping into the packaged copy after the diff check
+# keeps src/kubernetes/ stable while still annotating the deployed manifests.
+#
+set -euo pipefail
+
+SCRIPT_DIR="$(dirname "${0}")"
+
+# shellcheck source=src/scripts/defaults/platform.bash
+source "${SCRIPT_DIR}/../defaults/platform.bash"
+# shellcheck source=src/scripts/lib/log.bash
+source "${SCRIPT_DIR}/../lib/log.bash"
+# shellcheck source=src/scripts/defaults/output-sub-path.bash
+source "${SCRIPT_DIR}/../defaults/output-sub-path.bash"
+
+COMBINED_DIR="${OUTPUT_SUB_PATH}/manifests/combined"
+
+if [[ ! -d "${COMBINED_DIR}" ]]; then
+  log_error "Combined manifests directory not found: ${COMBINED_DIR}"
+  log_error "Has kubernetes-manifests-package-prepare run?"
+  exit 1
+fi
+
+MANIFEST_COUNT=$(find "${COMBINED_DIR}" -type f -name '*.yaml' | wc -l | tr -d ' ')
+
+if [[ "${MANIFEST_COUNT}" -eq 0 ]]; then
+  log_error "No .yaml manifests under ${COMBINED_DIR}"
+  exit 1
+fi
+
+export BUILD_TIMESTAMP
+BUILD_TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+
+log "Stamping kaptain.org/build-timestamp=${BUILD_TIMESTAMP} into ${MANIFEST_COUNT} manifest(s)..."
+
+while IFS= read -r manifest; do
+  rel_path="${manifest#"${COMBINED_DIR}"/}"
+  yq eval -i '.metadata.annotations."kaptain.org/build-timestamp" = strenv(BUILD_TIMESTAMP)' "${manifest}"
+  log "  ✓ ${rel_path}"
+done < <(find "${COMBINED_DIR}" -type f -name '*.yaml')
+
+log "Build timestamp injection complete."
