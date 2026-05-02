@@ -30,6 +30,15 @@ source "${SCRIPT_DIR}/../lib/token-format.bash"
 # shellcheck source=src/scripts/defaults/tokens.bash
 source "${SCRIPT_DIR}/../defaults/tokens.bash"
 
+# Sentinel passed as helm's --namespace so .Release.Namespace gets a stable,
+# ASCII-only string with no `${...}` characters. Helm stamps this into every
+# field that references .Release.Namespace (.metadata.namespace, subjects[].namespace,
+# secretKeyRef.namespace, webhook clientConfig.service.namespace, etc.). Stage 7
+# swaps it for the project's correctly-styled environment token. Avoids the
+# helm/mustache vs shell-style token clash that would occur if we passed
+# `${Environment}` (or any `${...}` form) directly to helm.
+readonly NAMESPACE_PLACEHOLDER="KAPTAIN_HELM_RENDER_AND_PROCESS_NAMESPACE_PLACEHOLDER"
+
 # Required inputs
 OUTPUT_SUB_PATH="${OUTPUT_SUB_PATH:?OUTPUT_SUB_PATH is required}"
 
@@ -146,18 +155,17 @@ if [[ ! -f "${VALUES_FILE}" ]]; then
 fi
 log "  Using values file: ${VALUES_FILE}"
 
-# shellcheck disable=SC2016 # ${Environment} is a literal token for later substitution
 if [[ "${USE_PROJECT_NAME_AS_FULLNAME_OVERRIDE}" == "true" ]]; then
   log "  fullnameOverride set to ${PROJECT_NAME}"
   helm template "${PROJECT_NAME}" "${CHART_PATH}" \
-    --namespace '${Environment}' \
+    --namespace "${NAMESPACE_PLACEHOLDER}" \
     -f "${VALUES_FILE}" \
     --set "fullnameOverride=${PROJECT_NAME}" \
     --output-dir "${RENDERED_DIR}"
 else
   log "  fullnameOverride disabled by config"
   helm template "${PROJECT_NAME}" "${CHART_PATH}" \
-    --namespace '${Environment}' \
+    --namespace "${NAMESPACE_PLACEHOLDER}" \
     -f "${VALUES_FILE}" \
     --output-dir "${RENDERED_DIR}"
 fi
@@ -433,17 +441,23 @@ metadata_yq="${metadata_yq} |
 while IFS= read -r manifest; do
   rel_path="${manifest#"${ANNOTATED_DIR}"/}"
 
-  # Determine if namespaced or cluster-scoped
+  # Determine if namespaced or cluster-scoped. Allow-list of known namespaced
+  # built-in kinds. Unknown kinds (CRDs we don't have a mapping for) default to
+  # cluster-scoped here so we don't stamp a namespace onto something that
+  # rejects it. Charts that ship namespaced CRDs are expected to template
+  # `.Release.Namespace` themselves, which the sentinel sweep below resolves.
   KIND="$(yq eval '.kind' "${manifest}")"
-  IS_NAMESPACED=true
+  IS_NAMESPACED=false
   case "${KIND}" in
-    CustomResourceDefinition|ClusterRole|ClusterRoleBinding|Namespace|\
-    ValidatingAdmissionPolicy|ValidatingAdmissionPolicyBinding|\
-    ValidatingWebhookConfiguration|MutatingWebhookConfiguration|\
-    PriorityClass|StorageClass|IngressClass|RuntimeClass|PersistentVolume|\
-    APIService|CertificateSigningRequest|TokenReview|SelfSubjectAccessReview|\
-    SubjectAccessReview|ComponentStatus|Node)
-      IS_NAMESPACED=false
+    Pod|Deployment|StatefulSet|DaemonSet|ReplicaSet|ReplicationController|\
+    Job|CronJob|\
+    Service|Endpoints|EndpointSlice|Ingress|NetworkPolicy|\
+    ConfigMap|Secret|ServiceAccount|\
+    PersistentVolumeClaim|\
+    HorizontalPodAutoscaler|PodDisruptionBudget|LimitRange|ResourceQuota|\
+    Role|RoleBinding|\
+    Lease|Event|ControllerRevision)
+      IS_NAMESPACED=true
       ;;
   esac
 
@@ -452,11 +466,22 @@ while IFS= read -r manifest; do
 
   # Set namespace for namespaced resources
   if [[ "${IS_NAMESPACED}" == "true" ]]; then
-    # shellcheck disable=SC2016 # ${Environment} is a literal token for later substitution
-    yq eval -i '.metadata.namespace = "${Environment}"' "${manifest}"
+    yq eval -i '.metadata.namespace = strenv(ENVIRONMENT_TOKEN)' "${manifest}"
   fi
 
   log "  ${rel_path} ($(if [[ "${IS_NAMESPACED}" == "true" ]]; then echo "namespaced"; else echo "cluster-scoped"; fi))"
+done < <(find "${ANNOTATED_DIR}" -name '*.yaml' -type f)
+
+# Sentinel sweep: replace the namespace placeholder helm stamped from
+# .Release.Namespace into every other field (subjects[].namespace,
+# secretKeyRef.namespace, configMapKeyRef.namespace, webhook
+# clientConfig.service.namespace, etc.) with the project-styled environment
+# token. .metadata.namespace was already overwritten by the yq above; this
+# catches everything else.
+log "  Resolving namespace sentinel to ${ENVIRONMENT_TOKEN}"
+while IFS= read -r manifest; do
+  sed -i.bak "s|${NAMESPACE_PLACEHOLDER}|${ENVIRONMENT_TOKEN}|g" "${manifest}" \
+    && rm -f "${manifest}.bak"
 done < <(find "${ANNOTATED_DIR}" -name '*.yaml' -type f)
 
 # ==========================================================================
