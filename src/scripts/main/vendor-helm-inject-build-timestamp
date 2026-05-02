@@ -12,6 +12,16 @@
 # always trip that check. Stamping into the packaged copy after the diff check
 # keeps src/kubernetes/ stable while still annotating the deployed manifests.
 #
+# Why sed (not yq):
+# vendor-helm sed transforms can leave deploy-time tokens like ${Foo/Bar}
+# inside YAML flow sequences (`values: [${Foo/Bar}]`), which yq refuses to
+# parse (curly braces are flow-mapping indicators inside `[ ]`). sed-based
+# insertion sidesteps the parser entirely.
+#
+# Anchor: the first `annotations:` line. vendor-helm-render-and-process always
+# emits a top-level metadata.annotations block (kaptain.org/generated-by,
+# kaptain.org/helm-upstream-chart, etc) so it is guaranteed present.
+#
 set -euo pipefail
 
 SCRIPT_DIR="$(dirname "${0}")"
@@ -38,14 +48,39 @@ if [[ "${MANIFEST_COUNT}" -eq 0 ]]; then
   exit 1
 fi
 
-export BUILD_TIMESTAMP
 BUILD_TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 
 log "Stamping kaptain.org/build-timestamp=${BUILD_TIMESTAMP} into ${MANIFEST_COUNT} manifest(s)..."
 
 while IFS= read -r manifest; do
   rel_path="${manifest#"${COMBINED_DIR}"/}"
-  yq eval -i '.metadata.annotations."kaptain.org/build-timestamp" = strenv(BUILD_TIMESTAMP)' "${manifest}"
+
+  if grep -qE '^[[:space:]]*kaptain\.org/build-timestamp:' "${manifest}"; then
+    # Replace existing build-timestamp in place, preserving its indent
+    sed -i.bak -E "s|^([[:space:]]*)kaptain\.org/build-timestamp:.*|\1kaptain.org/build-timestamp: \"${BUILD_TIMESTAMP}\"|" "${manifest}"
+    rm -f "${manifest}.bak"
+  else
+    # Find first `annotations:` line; capture its line number and indent so we
+    # can address it positionally (portable across BSD/GNU sed) and reproduce
+    # the indent for the inserted child line.
+    anchor_info=$(grep -nE '^[[:space:]]*annotations:[[:space:]]*$' "${manifest}" | head -1 || true)
+    if [[ -z "${anchor_info}" ]]; then
+      log_error "No 'annotations:' line in ${manifest} (vendor-helm should always emit one)"
+      exit 1
+    fi
+    anchor_line="${anchor_info%%:*}"
+    anchor_text="${anchor_info#*:}"
+    parent_indent="${anchor_text%%annotations:*}"
+    child_indent="${parent_indent}  "
+
+    # `a\` followed by a literal newline + the inserted text is the BSD-portable
+    # form (also accepted by GNU sed). The trailing newline closes the insert.
+    sed -i.bak "${anchor_line}a\\
+${child_indent}kaptain.org/build-timestamp: \"${BUILD_TIMESTAMP}\"
+" "${manifest}"
+    rm -f "${manifest}.bak"
+  fi
+
   log "  ✓ ${rel_path}"
 done < <(find "${COMBINED_DIR}" -type f -name '*.yaml')
 

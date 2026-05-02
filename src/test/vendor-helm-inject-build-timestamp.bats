@@ -107,3 +107,19 @@ EOF
   [[ "$status" -ne 0 ]]
   [[ "$output" == *"No .yaml manifests"* ]]
 }
+
+@test "fails when a manifest has no annotations: anchor" {
+  mkdir -p "${COMBINED_DIR}"
+  cat > "${COMBINED_DIR}/no-anno.yaml" << 'EOF'
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: bare
+data:
+  key: value
+EOF
+
+  run "$SCRIPT"
+  [[ "$status" -ne 0 ]]
+  [[ "$output" == *"No 'annotations:' line"* ]]
+}
