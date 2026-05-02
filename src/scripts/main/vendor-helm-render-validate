@@ -30,12 +30,25 @@ cp -r "${VALIDATED_DIR}" "${KUBERNETES_DIR}"
 log "Copied validated manifests to ${KUBERNETES_DIR}/"
 
 # Check for git diffs
-if [[ -n "$(git diff --name-only -- "${KUBERNETES_DIR}/")" ]] || \
-   [[ -n "$(git ls-files --others --exclude-standard -- "${KUBERNETES_DIR}/")" ]]; then
+untracked_files=$(git ls-files --others --exclude-standard -- "${KUBERNETES_DIR}/")
+if [[ -n "$(git diff --name-only -- "${KUBERNETES_DIR}/")" ]] || [[ -n "${untracked_files}" ]]; then
   log ""
   log_error "Generated manifests differ from committed files:"
   git diff --stat -- "${KUBERNETES_DIR}/"
-  git ls-files --others --exclude-standard -- "${KUBERNETES_DIR}/"
+  if [[ -n "${untracked_files}" ]]; then
+    echo "${untracked_files}"
+  fi
+
+  log ""
+  log "Full diff:"
+  git --no-pager diff -- "${KUBERNETES_DIR}/"
+  if [[ -n "${untracked_files}" ]]; then
+    while IFS= read -r f; do
+      # `git diff --no-index` exits 1 when files differ (the normal case here).
+      git --no-pager diff --no-index --no-color /dev/null "${f}" || true
+    done <<< "${untracked_files}"
+  fi
+
   log ""
   log_error "Run the helm render locally and commit the results."
   exit 1
