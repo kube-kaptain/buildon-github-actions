@@ -441,17 +441,23 @@ metadata_yq="${metadata_yq} |
 while IFS= read -r manifest; do
   rel_path="${manifest#"${ANNOTATED_DIR}"/}"
 
-  # Determine if namespaced or cluster-scoped
+  # Determine if namespaced or cluster-scoped. Allow-list of known namespaced
+  # built-in kinds. Unknown kinds (CRDs we don't have a mapping for) default to
+  # cluster-scoped here so we don't stamp a namespace onto something that
+  # rejects it. Charts that ship namespaced CRDs are expected to template
+  # `.Release.Namespace` themselves, which the sentinel sweep below resolves.
   KIND="$(yq eval '.kind' "${manifest}")"
-  IS_NAMESPACED=true
+  IS_NAMESPACED=false
   case "${KIND}" in
-    CustomResourceDefinition|ClusterRole|ClusterRoleBinding|Namespace|\
-    ValidatingAdmissionPolicy|ValidatingAdmissionPolicyBinding|\
-    ValidatingWebhookConfiguration|MutatingWebhookConfiguration|\
-    PriorityClass|StorageClass|IngressClass|RuntimeClass|PersistentVolume|\
-    APIService|CertificateSigningRequest|TokenReview|SelfSubjectAccessReview|\
-    SubjectAccessReview|ComponentStatus|Node)
-      IS_NAMESPACED=false
+    Pod|Deployment|StatefulSet|DaemonSet|ReplicaSet|ReplicationController|\
+    Job|CronJob|\
+    Service|Endpoints|EndpointSlice|Ingress|NetworkPolicy|\
+    ConfigMap|Secret|ServiceAccount|\
+    PersistentVolumeClaim|\
+    HorizontalPodAutoscaler|PodDisruptionBudget|LimitRange|ResourceQuota|\
+    Role|RoleBinding|\
+    Lease|Event|ControllerRevision)
+      IS_NAMESPACED=true
       ;;
   esac
 
