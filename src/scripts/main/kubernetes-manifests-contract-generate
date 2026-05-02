@@ -94,6 +94,24 @@ main() {
   mkdir -p "${CONTRACT_DIR}"
   mkdir -p "${CONTRACT_ZIP_SUB_PATH}"
 
+  # --- Validate defaults filename style (independent: fail fast) ---
+  local defaults_present="false"
+  if [[ -d "${DEFAULTS_SUB_PATH}" ]] \
+     && [[ -n "$(find "${DEFAULTS_SUB_PATH}" -type f 2>/dev/null)" ]]; then
+    defaults_present="true"
+    log ""
+    log "Validating defaults filenames against ${TOKEN_NAME_STYLE} style..."
+    local validator_script="${SCRIPT_DIR}/../plugins/token-name-validators/${TOKEN_NAME_STYLE}"
+    if [[ ! -x "${validator_script}" ]]; then
+      log_error "Token-name validator not found: ${TOKEN_NAME_STYLE}"
+      exit 1
+    fi
+    if ! "${validator_script}" "${DEFAULTS_SUB_PATH}"; then
+      log_error "One or more defaults filenames in ${DEFAULTS_SUB_PATH} do not match the declared name style ${TOKEN_NAME_STYLE}"
+      exit 1
+    fi
+  fi
+
   # --- Scan for unresolved tokens ---
   log ""
   log "Scanning for unresolved tokens..."
@@ -107,6 +125,28 @@ main() {
     token_count=$(echo "${unresolved_tokens}" | wc -l | tr -d ' ')
   fi
   log "Found ${token_count} unresolved token(s)"
+
+  # --- Orphan defaults check (needs unresolved_tokens; fail before compat) ---
+  if [[ "${defaults_present}" == "true" ]]; then
+    log ""
+    log "Checking that every defaults file maps to an unresolved token..."
+    local orphans=()
+    local default_file rel
+    while IFS= read -r -d '' default_file; do
+      rel="${default_file#"${DEFAULTS_SUB_PATH}/"}"
+      if [[ -z "${unresolved_tokens}" ]] || ! grep -qxF "${rel}" <<< "${unresolved_tokens}"; then
+        orphans+=("${rel}")
+      fi
+    done < <(find "${DEFAULTS_SUB_PATH}" -type f -print0)
+    if [[ ${#orphans[@]} -gt 0 ]]; then
+      log_error "Defaults file(s) do not correspond to any unresolved token in the manifests:"
+      for rel in "${orphans[@]}"; do
+        log_error "  ${rel}"
+      done
+      log_error "Either remove these defaults or reference the tokens in your manifests."
+      exit 1
+    fi
+  fi
 
   # --- Assess compatibility ---
   log ""
