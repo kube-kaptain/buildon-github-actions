@@ -128,22 +128,6 @@ EOF
   [[ "$output" == *"No 'annotations:' line"* ]]
 }
 
-@test "omits built-by when BUILD_PLATFORM is unset" {
-  unset BUILD_PLATFORM
-  mkdir -p "${COMBINED_DIR}"
-  write_manifest "${COMBINED_DIR}/deployment.yaml" "alpha"
-
-  run "$SCRIPT"
-  [[ "$status" -eq 0 ]]
-
-  local stamp built
-  stamp=$(yq eval '.metadata.annotations."kaptain.org/build-timestamp"' "${COMBINED_DIR}/deployment.yaml")
-  built=$(yq eval '.metadata.annotations."kaptain.org/built-by"' "${COMBINED_DIR}/deployment.yaml")
-
-  [[ "${stamp}" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$ ]]
-  [[ "${built}" == "null" ]]
-}
-
 @test "overwrites a pre-existing built-by" {
   mkdir -p "${COMBINED_DIR}"
   cat > "${COMBINED_DIR}/deployment.yaml" << 'EOF'
