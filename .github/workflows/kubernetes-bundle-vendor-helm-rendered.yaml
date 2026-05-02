@@ -1363,9 +1363,9 @@ jobs:
           config-value-trailing-newline: ${{ steps.kpm.outputs.CONFIG_VALUE_TRAILING_NEWLINE }}
           token-substitution-passes: ${{ steps.kpm.outputs.TOKEN_SUBSTITUTION_PASSES }}
           output-sub-path: ${{ steps.kpm.outputs.OUTPUT_SUB_PATH }}
-      - name: Vendor helm inject build timestamp
-        id: vendor-helm-inject-build-timestamp
-        uses: ./.github/buildon-github-actions/src/actions/vendor-helm-inject-build-timestamp
+      - name: Vendor helm inject build details
+        id: vendor-helm-inject-build-details
+        uses: ./.github/buildon-github-actions/src/actions/vendor-helm-inject-build-details
         with:
           output-sub-path: ${{ steps.kpm.outputs.OUTPUT_SUB_PATH }}
       - name: Override docker image tokens

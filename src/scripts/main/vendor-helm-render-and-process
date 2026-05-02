@@ -417,9 +417,9 @@ metadata_yq='
 if [[ -n "${REPOSITORY_OWNER:-}" ]]; then
   metadata_yq="${metadata_yq} | .metadata.labels.\"kaptain.org/owner\" = strenv(REPOSITORY_OWNER)"
 fi
-if [[ -n "${BUILD_PLATFORM:-}" ]]; then
-  metadata_yq="${metadata_yq} | .metadata.annotations.\"kaptain.org/built-by\" = strenv(BUILD_PLATFORM)"
-fi
+# kaptain.org/built-by is stamped later by vendor-helm-inject-build-details so the
+# vendor render output stays identical between local and CI runs (and so it
+# doesn't trip vendor-helm-render-validate's diff check against src/kubernetes/).
 if [[ -n "${SOURCE_REPO:-}" ]]; then
   metadata_yq="${metadata_yq} | .metadata.annotations.\"kaptain.org/source-repository\" = strenv(SOURCE_REPO)"
 fi
