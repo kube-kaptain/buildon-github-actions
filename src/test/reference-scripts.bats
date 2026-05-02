@@ -54,7 +54,7 @@ setup() {
     kubernetes-manifests-contract-generate \
     kubernetes-manifests-package-only-token-override \
     kubernetes-manifests-repo-provider-package kubernetes-manifests-repo-provider-publish \
-    vendor-helm-render-and-process vendor-helm-render-validate vendor-helm-inject-build-timestamp \
+    vendor-helm-render-and-process vendor-helm-render-validate vendor-helm-inject-build-details \
     spec-package-prepare spec-validate \
     layer-package-prepare layer-validate \
     hook-post-build; do
@@ -429,7 +429,7 @@ vendor-helm-render-and-process
 hook-pre-package-prepare
 vendor-helm-render-validate
 kubernetes-manifests-package-prepare
-vendor-helm-inject-build-timestamp
+vendor-helm-inject-build-details
 kubernetes-manifests-package-only-token-override
 kubernetes-manifests-package
 kubernetes-manifests-contract-generate

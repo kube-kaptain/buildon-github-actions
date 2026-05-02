@@ -1,8 +1,8 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
 
-name: 'Vendor Helm Inject Build Timestamp'
-description: 'Stamps kaptain.org/build-timestamp into every manifest under kaptain-out/manifests/combined/ (vendor flow only - run after package-prepare and before token substitution to keep src/kubernetes/ stable)'
+name: 'Vendor Helm Inject Build Details'
+description: 'Stamps kaptain.org/build-timestamp and kaptain.org/built-by into every manifest under kaptain-out/manifests/combined/ (vendor flow only - run after package-prepare and before token substitution to keep src/kubernetes/ stable)'
 
 inputs:
   # Build output
@@ -14,12 +14,12 @@ inputs:
 runs:
   using: 'composite'
   steps:
-    - name: Inject build timestamp into combined manifests
-      id: inject-build-timestamp
+    - name: Inject build details into combined manifests
+      id: inject-build-details
       shell: bash
       env:
         BUILD_MODE: build_server
         BUILD_PLATFORM: github-actions
         BUILD_PLATFORM_LOG_PROVIDER: github-actions
         OUTPUT_SUB_PATH: ${{ inputs.output-sub-path }}
-      run: "${{ github.action_path }}/../../scripts/main/vendor-helm-inject-build-timestamp"
+      run: "${{ github.action_path }}/../../scripts/main/vendor-helm-inject-build-details"
