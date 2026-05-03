@@ -57,19 +57,6 @@ CONTRACT_SCHEMA_VERSION=$(cat "${CONTRACT_SCHEMA_DIR}/version")
 CONTRACT_DIR="${OUTPUT_SUB_PATH}/manifests/contract"
 CONTRACT_ZIP_SUB_PATH="${OUTPUT_SUB_PATH}/manifests/zip"
 
-# Map BUILD_KIND to contract kind
-map_contract_kind() {
-  case "${BUILD_KIND}" in
-    kubernetes-app-*) echo "kubernetes-app" ;;
-    kubernetes-bundle-*) echo "kubernetes-bundle" ;;
-    kubernetes-product-*) echo "kubernetes-product" ;;
-    *)
-      log_error "Cannot map BUILD_KIND '${BUILD_KIND}' to contract kind"
-      exit 1
-      ;;
-  esac
-}
-
 main() {
   log "=== Kubernetes Manifests Contract Generate ==="
   log "Project: ${PROJECT_NAME}"
@@ -86,8 +73,7 @@ main() {
     exit 1
   fi
 
-  local contract_kind
-  contract_kind=$(map_contract_kind)
+  local contract_kind="${BUILD_KIND}"
   log "Contract kind: ${contract_kind}"
 
   # Create output directories

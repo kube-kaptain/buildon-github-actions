@@ -112,7 +112,7 @@ EOF
 # Kind mapping
 # =============================================================================
 
-@test "contract-generate: maps kubernetes-bundle-resources to kubernetes-bundle" {
+@test "contract-generate: passes kubernetes-bundle-resources through as kind" {
   write_clean_manifest
   export BUILD_KIND="kubernetes-bundle-resources"
   run "$CONTRACT_SCRIPT"
@@ -121,44 +121,37 @@ EOF
   [ -f "$contract" ]
   local kind
   kind=$(yq '.kind' "$contract")
-  [ "$kind" = "kubernetes-bundle" ]
+  [ "$kind" = "$BUILD_KIND" ]
 }
 
-@test "contract-generate: maps kubernetes-bundle-vendor-helm-rendered to kubernetes-bundle" {
+@test "contract-generate: passes kubernetes-bundle-vendor-helm-rendered through as kind" {
   write_clean_manifest
   export BUILD_KIND="kubernetes-bundle-vendor-helm-rendered"
   run "$CONTRACT_SCRIPT"
   [ "$status" -eq 0 ]
   local kind
   kind=$(yq '.kind' "${OUTPUT_SUB_PATH}/manifests/contract/contract.yaml")
-  [ "$kind" = "kubernetes-bundle" ]
+  [ "$kind" = "$BUILD_KIND" ]
 }
 
-@test "contract-generate: maps kubernetes-app-manifests-only to kubernetes-app" {
+@test "contract-generate: passes kubernetes-app-manifests-only through as kind" {
   write_clean_manifest
   export BUILD_KIND="kubernetes-app-manifests-only"
   run "$CONTRACT_SCRIPT"
   [ "$status" -eq 0 ]
   local kind
   kind=$(yq '.kind' "${OUTPUT_SUB_PATH}/manifests/contract/contract.yaml")
-  [ "$kind" = "kubernetes-app" ]
+  [ "$kind" = "$BUILD_KIND" ]
 }
 
-@test "contract-generate: maps kubernetes-app-docker-dockerfile to kubernetes-app" {
+@test "contract-generate: passes kubernetes-app-docker-dockerfile through as kind" {
   write_clean_manifest
   export BUILD_KIND="kubernetes-app-docker-dockerfile"
   run "$CONTRACT_SCRIPT"
   [ "$status" -eq 0 ]
   local kind
   kind=$(yq '.kind' "${OUTPUT_SUB_PATH}/manifests/contract/contract.yaml")
-  [ "$kind" = "kubernetes-app" ]
-}
-
-@test "contract-generate: fails on unknown build kind" {
-  write_clean_manifest
-  export BUILD_KIND="something-else"
-  run "$CONTRACT_SCRIPT"
-  [ "$status" -ne 0 ]
+  [ "$kind" = "$BUILD_KIND" ]
 }
 
 # =============================================================================
