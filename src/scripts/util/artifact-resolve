@@ -7,13 +7,18 @@
 # Thin router: strips the provider prefix (if present), defaults to
 # ARTIFACT_RESOLUTION_PROVIDER, and dispatches to the matching plugin.
 #
-# Usage: artifact-resolve <reference> <output-file>
+# Usage: artifact-resolve <reference> <output-file> [variant]
 #   reference:   [provider|]identifier:version
 #   output-file: path to write the resolved URI to
+#   variant:     optional artifact-variant suffix (e.g. manifests). When set,
+#                the provider filters tags to those ending exactly in
+#                `-<variant>` before range matching, then reconstructs the
+#                resolved URI with the same suffix.
 #
 # Examples:
 #   artifact-resolve "quality-strict:1.0" kaptainpm/resolve/quality-strict
 #   artifact-resolve "docker|java/java-web:2.1" kaptain-out/artifact-resolve/java-web
+#   artifact-resolve "test-bundle:[1.0,2.0)" out/resolve/test-bundle manifests
 #
 # Env:
 #   ARTIFACT_RESOLUTION_PROVIDER - default provider (default: docker)
@@ -30,8 +35,9 @@ source "${SCRIPT_DIR}/../lib/log.bash"
 # shellcheck source=src/scripts/defaults/artifact-resolution.bash
 source "${SCRIPT_DIR}/../defaults/artifact-resolution.bash"
 
-reference="${1:?Usage: artifact-resolve <reference> <output-file>}"
-output_file="${2:?Usage: artifact-resolve <reference> <output-file>}"
+reference="${1:?Usage: artifact-resolve <reference> <output-file> [variant]}"
+output_file="${2:?Usage: artifact-resolve <reference> <output-file> [variant]}"
+variant="${3:-}"
 
 # Split on | to extract provider prefix
 if [[ "${reference}" == *"|"* ]]; then
@@ -53,4 +59,4 @@ if [[ ! -x "${plugin}" ]]; then
   exit 1
 fi
 
-exec "${plugin}" "${remainder}" "${output_file}"
+exec "${plugin}" "${remainder}" "${output_file}" "${variant}"

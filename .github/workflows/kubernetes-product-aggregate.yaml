@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
 
-name: Kubernetes Bundle - Resources
+name: Kubernetes Product Aggregate
 on:
   workflow_call:
     secrets:
@@ -46,6 +46,12 @@ on:
       is-release:
         description: 'Whether this is a release build'
         value: ${{ jobs.build.outputs.is-release }}
+      product-name:
+        description: 'PROJECT_NAME verbatim'
+        value: ${{ jobs.build.outputs.product-name }}
+      product-short-name:
+        description: 'PROJECT_NAME with product- prefix or -product suffix stripped'
+        value: ${{ jobs.build.outputs.product-short-name }}
       # Package outputs
       manifests-zip-sub-path:
         description: 'Directory containing manifests zip file (relative)'
@@ -81,6 +87,8 @@ jobs:
       git-tag: ${{ steps.versions.outputs.git-tag }}
       project-name: ${{ steps.versions.outputs.project-name }}
       is-release: ${{ steps.versions.outputs.is-release }}
+      product-name: ${{ steps.product-aggregate.outputs.product-name }}
+      product-short-name: ${{ steps.product-aggregate.outputs.product-short-name }}
       manifests-zip-sub-path: ${{ steps.manifest-package.outputs.manifests-zip-sub-path }}
       manifests-zip-file-name: ${{ steps.manifest-package.outputs.manifests-zip-file-name }}
       manifests-uri: ${{ steps.manifest-repo-provider-publish.outputs.manifests-uri }}
@@ -101,19 +109,19 @@ jobs:
           workflow_path="${GITHUB_WORKFLOW_REF%%@*}"
           workflow_file=".github/workflows/${workflow_path##*/}"
 
-          echo "Resolving ref for reusable workflow: kubernetes-bundle-resources.yaml"
+          echo "Resolving ref for reusable workflow: kubernetes-product-aggregate.yaml"
           echo "Caller workflow: $workflow_file"
 
           # Check for local call (dogfooding) - uses: ./.github/workflows/...
-          if grep -q 'uses:[[:space:]]*\./.github/workflows/kubernetes-bundle-resources\.yaml[[:space:]]*$' "$workflow_file" || \
-             grep -q 'uses:[[:space:]]*\./.github/workflows/kubernetes-bundle-resources\.yaml[[:space:]]*#' "$workflow_file"; then
+          if grep -q 'uses:[[:space:]]*\./.github/workflows/kubernetes-product-aggregate\.yaml[[:space:]]*$' "$workflow_file" || \
+             grep -q 'uses:[[:space:]]*\./.github/workflows/kubernetes-product-aggregate\.yaml[[:space:]]*#' "$workflow_file"; then
             echo "Local workflow call detected (dogfooding)"
             echo "ref=LOCAL" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
           # Find all uses lines that call this workflow and extract refs
-          refs=$(grep -o 'buildon-github-actions/.github/workflows/kubernetes-bundle-resources\.yaml@[^[:space:]"'"'"']*' "$workflow_file" | sed 's/.*@//')
+          refs=$(grep -o 'buildon-github-actions/.github/workflows/kubernetes-product-aggregate\.yaml@[^[:space:]"'"'"']*' "$workflow_file" | sed 's/.*@//')
 
           if [ -z "$refs" ]; then
             echo "::error::Could not find buildon-github-actions ref in $workflow_file"
@@ -294,7 +302,7 @@ jobs:
           BUILD_MODE: build_server
           BUILD_PLATFORM: github-actions
           BUILD_PLATFORM_LOG_PROVIDER: github-actions
-          BUILD_KIND: kubernetes-bundle-resources
+          BUILD_KIND: kubernetes-product-aggregate
         run: ./.github/buildon-github-actions/src/scripts/main/load-final-kaptainpm-yaml
       - name: Pass check - Load Final KaptainPM YAML
         if: success() && steps.check-load-final-kpm.outputs.check-run-id != ''
@@ -335,7 +343,7 @@ jobs:
         id: pre-build
         uses: ./.github/buildon-github-actions/src/actions/hook-pre-build
         with:
-          build-kind: kubernetes-bundle-resources
+          build-kind: kubernetes-product-aggregate
           image-build-command: ${{ steps.validate-tooling.outputs.IMAGE_BUILD_COMMAND }}
           build-scripts-repo-root: ${{ steps.kpm.outputs.BUILD_SCRIPTS_REPO_ROOT }}
           docker-platform: ${{ steps.kpm.outputs.DOCKER_PLATFORM }}
@@ -507,7 +515,7 @@ jobs:
           qc-require-conventional-branches: ${{ steps.kpm.outputs.QC_REQUIRE_CONVENTIONAL_BRANCHES }}
           qc-require-conventional-commits: ${{ steps.kpm.outputs.QC_REQUIRE_CONVENTIONAL_COMMITS }}
           qc-block-conventional-commits: ${{ steps.kpm.outputs.QC_BLOCK_CONVENTIONAL_COMMITS }}
-          build-kind: kubernetes-bundle-resources
+          build-kind: kubernetes-product-aggregate
       - name: Pass check - Basic Quality Checks
         if: github.event_name == 'pull_request' && success() && steps.check-basic-quality.outputs.check-run-id != ''
         continue-on-error: true
@@ -597,7 +605,7 @@ jobs:
         id: pre-tagging-tests
         uses: ./.github/buildon-github-actions/src/actions/hook-pre-tagging-tests
         with:
-          build-kind: kubernetes-bundle-resources
+          build-kind: kubernetes-product-aggregate
           image-build-command: ${{ steps.validate-tooling.outputs.IMAGE_BUILD_COMMAND }}
           build-scripts-repo-root: ${{ steps.kpm.outputs.BUILD_SCRIPTS_REPO_ROOT }}
           docker-platform: ${{ steps.kpm.outputs.DOCKER_PLATFORM }}
@@ -803,7 +811,7 @@ jobs:
         id: post-versions-and-naming
         uses: ./.github/buildon-github-actions/src/actions/hook-post-versions-and-naming
         with:
-          build-kind: kubernetes-bundle-resources
+          build-kind: kubernetes-product-aggregate
           image-build-command: ${{ steps.validate-tooling.outputs.IMAGE_BUILD_COMMAND }}
           build-scripts-repo-root: ${{ steps.kpm.outputs.BUILD_SCRIPTS_REPO_ROOT }}
           docker-platform: ${{ steps.kpm.outputs.DOCKER_PLATFORM }}
@@ -1080,7 +1088,7 @@ jobs:
         id: pre-package-prepare
         uses: ./.github/buildon-github-actions/src/actions/hook-pre-package-prepare
         with:
-          build-kind: kubernetes-bundle-resources
+          build-kind: kubernetes-product-aggregate
           image-build-command: ${{ steps.validate-tooling.outputs.IMAGE_BUILD_COMMAND }}
           build-scripts-repo-root: ${{ steps.kpm.outputs.BUILD_SCRIPTS_REPO_ROOT }}
           docker-platform: ${{ steps.kpm.outputs.DOCKER_PLATFORM }}
@@ -1250,6 +1258,44 @@ jobs:
           action: fail
           check-run-id: ${{ steps.check-pre-package-prepare.outputs.check-run-id }}
 
+      # === Product Aggregate ===
+      - name: Start check - Product Aggregate
+        id: check-product-aggregate
+        continue-on-error: true
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
+        with:
+          action: start
+          check-name: 'Build & Publish → Product Aggregate'
+      - name: Aggregate product
+        id: product-aggregate
+        uses: ./.github/buildon-github-actions/src/actions/kubernetes-product-aggregate
+        with:
+          project-name: ${{ steps.versions.outputs.project-name }}
+          output-sub-path: ${{ steps.kpm.outputs.OUTPUT_SUB_PATH }}
+          token-delimiter-style: ${{ steps.kpm.outputs.TOKEN_DELIMITER_STYLE }}
+          token-name-style: ${{ steps.kpm.outputs.TOKEN_NAME_STYLE }}
+          defaults-sub-path: ${{ steps.kpm.outputs.DEFAULTS_SUB_PATH }}
+          manifests-sub-path: ${{ steps.kpm.outputs.MANIFESTS_SUB_PATH }}
+          product-allow-local-defaults-override: ${{ steps.kpm.outputs.PRODUCT_ALLOW_LOCAL_DEFAULTS_OVERRIDE }}
+          product-allow-local-manifests-override: ${{ steps.kpm.outputs.PRODUCT_ALLOW_LOCAL_MANIFESTS_OVERRIDE }}
+          docker-target-registry: ${{ steps.resolve-registry.outputs.docker-target-registry }}
+          docker-target-namespace: ${{ steps.resolve-registry.outputs.docker-target-namespace }}
+          image-build-command: ${{ steps.validate-tooling.outputs.IMAGE_BUILD_COMMAND }}
+          is-release: ${{ steps.versions.outputs.is-release }}
+      - name: Pass check - Product Aggregate
+        if: success() && steps.check-product-aggregate.outputs.check-run-id != ''
+        continue-on-error: true
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
+        with:
+          action: pass
+          check-run-id: ${{ steps.check-product-aggregate.outputs.check-run-id }}
+      - name: Fail check - Product Aggregate
+        if: failure() && steps.check-product-aggregate.outputs.check-run-id != ''
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
+        with:
+          action: fail
+          check-run-id: ${{ steps.check-product-aggregate.outputs.check-run-id }}
+
       # === Manifest Substitute ===
       - name: Start check - Substitute Manifests
         id: check-manifest-substitute
@@ -1338,7 +1384,7 @@ jobs:
         with:
           project-name: ${{ steps.versions.outputs.project-name }}
           version: ${{ steps.versions.outputs.version }}
-          build-kind: kubernetes-bundle-resources
+          build-kind: kubernetes-product-aggregate
           token-delimiter-style: ${{ steps.kpm.outputs.TOKEN_DELIMITER_STYLE }}
           token-name-style: ${{ steps.kpm.outputs.TOKEN_NAME_STYLE }}
           metadata-description: ${{ steps.kpm.outputs.METADATA_DESCRIPTION }}
@@ -1357,6 +1403,42 @@ jobs:
         with:
           action: fail
           check-run-id: ${{ steps.check-manifest-contract-generate.outputs.check-run-id }}
+
+      # === Product Lineage Data Generate ===
+      - name: Start check - Generate Product Lineage Data ConfigMap
+        id: check-product-lineage-data-generate
+        continue-on-error: true
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
+        with:
+          action: start
+          check-name: 'Build & Publish → Generate Product Lineage Data ConfigMap'
+      - name: Generate product lineage data ConfigMap
+        id: manifest-product-lineage-data-generate
+        uses: ./.github/buildon-github-actions/src/actions/kubernetes-product-lineage-data-generate
+        with:
+          project-name: ${{ steps.versions.outputs.project-name }}
+          version: ${{ steps.versions.outputs.version }}
+          product-name: ${{ steps.product-aggregate.outputs.product-name }}
+          product-short-name: ${{ steps.product-aggregate.outputs.product-short-name }}
+          git-sha: ${{ github.sha }}
+          token-delimiter-style: ${{ steps.kpm.outputs.TOKEN_DELIMITER_STYLE }}
+          token-name-style: ${{ steps.kpm.outputs.TOKEN_NAME_STYLE }}
+          config-value-trailing-newline: ${{ steps.kpm.outputs.CONFIG_VALUE_TRAILING_NEWLINE }}
+          token-substitution-passes: ${{ steps.kpm.outputs.TOKEN_SUBSTITUTION_PASSES }}
+          output-sub-path: ${{ steps.kpm.outputs.OUTPUT_SUB_PATH }}
+      - name: Pass check - Generate Product Lineage Data ConfigMap
+        if: success() && steps.check-product-lineage-data-generate.outputs.check-run-id != ''
+        continue-on-error: true
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
+        with:
+          action: pass
+          check-run-id: ${{ steps.check-product-lineage-data-generate.outputs.check-run-id }}
+      - name: Fail check - Generate Product Lineage Data ConfigMap
+        if: failure() && steps.check-product-lineage-data-generate.outputs.check-run-id != ''
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
+        with:
+          action: fail
+          check-run-id: ${{ steps.check-product-lineage-data-generate.outputs.check-run-id }}
 
       # === Manifest Package ===
       - name: Start check - Package Manifests
@@ -1442,7 +1524,7 @@ jobs:
         id: post-package-tests
         uses: ./.github/buildon-github-actions/src/actions/hook-post-package-tests
         with:
-          build-kind: kubernetes-bundle-resources
+          build-kind: kubernetes-product-aggregate
           image-build-command: ${{ steps.validate-tooling.outputs.IMAGE_BUILD_COMMAND }}
           build-scripts-repo-root: ${{ steps.kpm.outputs.BUILD_SCRIPTS_REPO_ROOT }}
           docker-platform: ${{ steps.kpm.outputs.DOCKER_PLATFORM }}
@@ -1854,6 +1936,7 @@ jobs:
           CONTRACT_ZIP_FILE_NAME: ${{ steps.manifest-contract-generate.outputs.contract-zip-file-name }}
           RELEASE_CHANGE_DATA_URI: ${{ steps.release-change-data-oci-package.outputs.release-change-data-image-uri }}
           OUTPUT_SUB_PATH: ${{ steps.kpm.outputs.OUTPUT_SUB_PATH }}
+          PRODUCT_CONTENTS_FILE: ${{ steps.product-aggregate.outputs.product-contents-file }}
           GITHUB_SERVER_URL: ${{ github.server_url }}
           GITHUB_REPOSITORY: ${{ github.repository }}
         run: |
@@ -1871,11 +1954,18 @@ jobs:
               echo "NOTES_EOF"
             } >> "${GITHUB_OUTPUT}"
           else
-            # Default format
+            # Default product release format
             release_url="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/releases/download/${VERSION}"
             {
               echo "notes<<NOTES_EOF"
-              echo "Automatic Kube Manifests release for version ${VERSION} of ${PROJECT_NAME} by Kaptain build script. This release page has the manifest zip attached as well as the manifests docker image with the same zip inside for automatic consumption."
+              echo "Automatic Kube Product release for version ${VERSION} of ${PROJECT_NAME} by Kaptain build script. This release page has the manifests zip (with every bundle's manifests nested under the product) and the contract zip attached, alongside the manifests docker image with both inside for automatic consumption."
+              echo ""
+              echo "### Bundle Contents"
+              if [[ -s "${PRODUCT_CONTENTS_FILE}" ]]; then
+                cat "${PRODUCT_CONTENTS_FILE}"
+              else
+                echo "_(none)_"
+              fi
               echo ""
               echo "### Release Assets"
               echo "* Kube Manifests: [${MANIFESTS_ZIP_FILE_NAME}](${release_url}/${MANIFESTS_ZIP_FILE_NAME})"
@@ -1926,7 +2016,7 @@ jobs:
         id: post-build
         uses: ./.github/buildon-github-actions/src/actions/hook-post-build
         with:
-          build-kind: kubernetes-bundle-resources
+          build-kind: kubernetes-product-aggregate
           image-build-command: ${{ steps.validate-tooling.outputs.IMAGE_BUILD_COMMAND }}
           build-scripts-repo-root: ${{ steps.kpm.outputs.BUILD_SCRIPTS_REPO_ROOT }}
           docker-platform: ${{ steps.kpm.outputs.DOCKER_PLATFORM }}

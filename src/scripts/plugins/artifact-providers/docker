@@ -19,6 +19,10 @@
 # Args:
 #   $1 - reference (name:version, prefix/name:version, or full URI)
 #   $2 - output file path (resolved URI written here)
+#   $3 - optional artifact-variant suffix (e.g. manifests). When set, tags
+#        are filtered to those ending exactly in `-<variant>` (excluding
+#        per-platform sub-tags) before range matching, and the resolved
+#        URI is reconstructed with the same suffix.
 #
 set -euo pipefail
 
@@ -33,8 +37,9 @@ source "${SCRIPT_DIR}/../../lib/version-range.bash"
 # shellcheck source=src/scripts/lib/docker-ref-expand.bash
 source "${SCRIPT_DIR}/../../lib/docker-ref-expand.bash"
 
-reference="${1:?Usage: docker <reference> <output-file>}"
-output_file="${2:?Usage: docker <reference> <output-file>}"
+reference="${1:?Usage: docker <reference> <output-file> [variant]}"
+output_file="${2:?Usage: docker <reference> <output-file> [variant]}"
+variant="${3:-}"
 
 # Parse and expand the reference into full_name/version_part
 docker_ref_expand "${reference}" || exit 1
@@ -48,7 +53,11 @@ version_part=$(version_unwrap_exact "${version_part}")
 
 if version_is_exact "${version_part}"; then
   # Exact version: no registry call needed
-  echo "${full_name}:${version_part}" > "${output_file}"
+  if [[ -n "${variant}" ]]; then
+    echo "${full_name}:${version_part}-${variant}" > "${output_file}"
+  else
+    echo "${full_name}:${version_part}" > "${output_file}"
+  fi
 else
   # Range: query remote tags and resolve
   if [[ -z "${IMAGE_BUILD_COMMAND:-}" ]]; then
@@ -206,6 +215,21 @@ else
   fi
   log "Combined tags: ${combined_count} unique"
 
+  # If a variant suffix was requested, keep only tags ending exactly in
+  # `-<variant>` (the multi-arch index) and strip the suffix so range
+  # matching sees canonical versions. Per-platform sub-tags
+  # (-<variant>-linux-amd64, etc.) are dropped.
+  if [[ -n "${variant}" ]]; then
+    log "Filtering tags to variant: -${variant}"
+    available_tags=$(version_filter_variant "${variant}" "${available_tags}")
+    if [[ -z "${available_tags}" ]]; then
+      log_error "No tags matching variant -${variant} for ${full_name} - cannot resolve ${version_part}"
+      exit 1
+    fi
+    variant_count=$(echo "${available_tags}" | grep -c . 2>/dev/null || echo "0")
+    log "Variant tags: ${variant_count} found"
+  fi
+
   # For release builds, exclude suffixed versions (e.g. 1.1-PRERELEASE, 1.1-linux-amd64)
   if [[ "${IS_RELEASE:-false}" == "true" ]]; then
     log "Release build: filtering to release-only versions"
@@ -219,5 +243,9 @@ else
   fi
 
   version_resolve_range "${version_part}" "${available_tags}"
-  echo "${full_name}:${VERSION_RESOLVE_RESULT}" > "${output_file}"
+  if [[ -n "${variant}" ]]; then
+    echo "${full_name}:${VERSION_RESOLVE_RESULT}-${variant}" > "${output_file}"
+  else
+    echo "${full_name}:${VERSION_RESOLVE_RESULT}" > "${output_file}"
+  fi
 fi

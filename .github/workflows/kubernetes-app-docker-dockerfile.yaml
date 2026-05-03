@@ -2141,7 +2141,9 @@ jobs:
         id: manifest-package-prepare
         uses: ./.github/buildon-github-actions/src/actions/kubernetes-manifests-package-prepare
         with:
-          manifests-sub-path: ${{ steps.kpm.outputs.MANIFESTS_SUB_PATH }}
+          manifests-sub-path: ${{ steps.product-aggregate.outputs.manifests-sub-path || steps.kpm.outputs.MANIFESTS_SUB_PATH }}
+          product-name: ${{ steps.product-aggregate.outputs.product-name }}
+          product-short-name: ${{ steps.product-aggregate.outputs.product-short-name }}
           project-name: ${{ steps.versions.outputs.project-name }}
           version: ${{ steps.versions.outputs.version }}
           version-major: ${{ steps.versions.outputs.version-major }}
@@ -2211,7 +2213,7 @@ jobs:
           token-delimiter-style: ${{ steps.kpm.outputs.TOKEN_DELIMITER_STYLE }}
           token-name-style: ${{ steps.kpm.outputs.TOKEN_NAME_STYLE }}
           metadata-description: ${{ steps.kpm.outputs.METADATA_DESCRIPTION }}
-          defaults-sub-path: ${{ steps.kpm.outputs.DEFAULTS_SUB_PATH }}
+          defaults-sub-path: ${{ steps.product-aggregate.outputs.defaults-sub-path || steps.kpm.outputs.DEFAULTS_SUB_PATH }}
           output-sub-path: ${{ steps.kpm.outputs.OUTPUT_SUB_PATH }}
       - name: Pass check - Generate Manifests Contract
         if: success() && steps.check-manifest-contract-generate.outputs.check-run-id != ''

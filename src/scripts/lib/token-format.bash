@@ -8,6 +8,7 @@
 #   is_valid_token_name_style        - Check if name style is valid
 #   is_valid_substitution_token_style - Check if substitution style is valid
 #   convert_token_name               - Convert UPPER_SNAKE to target name style
+#   canonicalize_token_name          - Inverse of convert_token_name (any style -> UPPER_SNAKE)
 #   convert_kebab_name               - Convert lower-kebab to target name style
 #   format_token_reference           - Wrap name with substitution delimiters
 #   format_canonical_token           - Convenience combining both
@@ -18,6 +19,11 @@
 # Internal: lowercase a string (bash 3.2 compatible)
 _lowercase() {
   echo "$1" | tr '[:upper:]' '[:lower:]'
+}
+
+# Internal: uppercase a string (bash 3.2 compatible)
+_uppercase() {
+  echo "$1" | tr '[:lower:]' '[:upper:]'
 }
 
 # Internal: uppercase first char, lowercase rest (bash 3.2 compatible)
@@ -195,6 +201,65 @@ convert_token_name() {
   esac
 }
 
+# Inverse of convert_token_name: convert a name from any supported style back
+# to the canonical UPPER_SNAKE form. Preserves nested-path separators ('/').
+#
+# Usage: canonicalize_token_name <style> <name>
+# Example: canonicalize_token_name PascalCase MyToken         -> MY_TOKEN
+#          canonicalize_token_name camelCase  version2Part    -> VERSION_2_PART
+#          canonicalize_token_name lower-kebab my-token       -> MY_TOKEN
+#          canonicalize_token_name PascalCase Vendor/EnvoyCpu -> VENDOR/ENVOY_CPU
+canonicalize_token_name() {
+  if [[ $# -ne 2 ]]; then
+    log_error "canonicalize_token_name requires exactly 2 arguments, got $#"
+    return 1
+  fi
+
+  local style="${1:-}"
+  local name="${2:-}"
+
+  if [[ -z "${style}" ]]; then
+    log_error "name style is required"
+    return 1
+  fi
+  if [[ -z "${name}" || "${name}" =~ ^[[:space:]]+$ ]]; then
+    log_error "name is required and cannot be whitespace-only"
+    return 1
+  fi
+
+  case "${style}" in
+    PascalCase|camelCase)
+      # Insert _ at lowercase->uppercase, lowercase->digit, and digit->letter
+      # boundaries; the / path separator is left untouched. UC at the end.
+      echo "${name}" \
+        | sed -E 's/([a-z])([A-Z0-9])/\1_\2/g; s/([0-9])([A-Za-z])/\1_\2/g' \
+        | tr '[:lower:]' '[:upper:]'
+      ;;
+    UPPER_SNAKE)
+      echo "${name}"
+      ;;
+    lower_snake)
+      _uppercase "${name}"
+      ;;
+    lower-kebab)
+      _uppercase "${name}" | tr '-' '_'
+      ;;
+    UPPER-KEBAB)
+      echo "${name}" | tr '-' '_'
+      ;;
+    lower.dot)
+      _uppercase "${name}" | tr '.' '_'
+      ;;
+    UPPER.DOT)
+      echo "${name}" | tr '.' '_'
+      ;;
+    *)
+      log_error "Unknown name style: ${style}"
+      return 1
+      ;;
+  esac
+}
+
 # Format a name with substitution delimiters
 # Usage: format_token_reference <style> <name>
 # Styles: shell, mustache, helm, erb, github-actions, blade, stringtemplate, ognl, t4, swift
@@ -359,42 +424,72 @@ format_project_suffixed_token() {
   format_token_reference "${delim_style}" "${combined}"
 }
 
-# Internal: Convert UPPER_SNAKE to PascalCase
-_to_pascal_case() {
-  local input="$1"
+# Internal: PascalCase a single UPPER_SNAKE segment (no path separators)
+_pascal_case_segment() {
+  local segment="$1"
   local result=""
   local IFS='_'
   local word
-
-  for word in ${input}; do
+  for word in ${segment}; do
     if [[ -n "${word}" ]]; then
       result+=$(_capitalize "${word}")
     fi
   done
-
   echo "${result}"
 }
 
-# Internal: Convert UPPER_SNAKE to camelCase
-_to_camel_case() {
-  local input="$1"
+# Internal: camelCase a single UPPER_SNAKE segment (no path separators)
+_camel_case_segment() {
+  local segment="$1"
   local result=""
   local IFS='_'
   local word
   local first=true
-
-  for word in ${input}; do
+  for word in ${segment}; do
     if [[ -n "${word}" ]]; then
       if ${first}; then
-        # First word: all lowercase
         result+=$(_lowercase "${word}")
         first=false
       else
-        # Subsequent words: capitalize first letter, lowercase rest
         result+=$(_capitalize "${word}")
       fi
     fi
   done
+  echo "${result}"
+}
 
+# Internal: Convert UPPER_SNAKE to PascalCase, processing each /-separated
+# path segment independently. e.g. VENDOR_ENVOY/REPLICAS -> VendorEnvoy/Replicas
+_to_pascal_case() {
+  local input="$1"
+  local result=""
+  local IFS='/'
+  local segment
+  local first=true
+  for segment in ${input}; do
+    if ! ${first}; then
+      result+="/"
+    fi
+    first=false
+    result+=$(_pascal_case_segment "${segment}")
+  done
+  echo "${result}"
+}
+
+# Internal: Convert UPPER_SNAKE to camelCase, processing each /-separated
+# path segment independently. e.g. VENDOR_ENVOY/REPLICAS -> vendorEnvoy/replicas
+_to_camel_case() {
+  local input="$1"
+  local result=""
+  local IFS='/'
+  local segment
+  local first=true
+  for segment in ${input}; do
+    if ! ${first}; then
+      result+="/"
+    fi
+    first=false
+    result+=$(_camel_case_segment "${segment}")
+  done
   echo "${result}"
 }

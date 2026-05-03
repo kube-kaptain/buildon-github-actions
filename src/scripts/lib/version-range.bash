@@ -119,6 +119,25 @@ version_filter_release() {
   return 0
 }
 
+# Filter a newline-delimited tag list to those ending exactly in `-<variant>`,
+# and strip that suffix. Tags with anything after `-<variant>` (e.g. a
+# platform suffix `-<variant>-linux-amd64`) are dropped: those are per-arch
+# children of the multi-arch index, not the index itself.
+#
+# Usage: version_filter_variant <variant> "<newline-delimited-tags>"
+# stdout: canonical versions (newline-delimited)
+version_filter_variant() {
+  local variant="${1}"
+  local tags="${2}"
+  local suffix="-${variant}"
+  local tag
+  while IFS= read -r tag; do
+    [[ -z "${tag}" ]] && continue
+    [[ "${tag}" == *"${suffix}" ]] && echo "${tag%"${suffix}"}"
+  done <<< "${tags}"
+  return 0
+}
+
 # Unwrap a degenerate single-value bracket range "[N]" to "N". Other forms
 # pass through unchanged. Used so that "[1.0]" (a range with equal bounds)
 # can be treated as an exact version, skipping unnecessary resolution.

@@ -633,6 +633,7 @@ run_script() {
 
   # Labels from the design's Site 3 superset
   [[ "${content}" == *'kaptain.org/environment: ${Environment}'* ]]
+  [[ "${content}" == *'kaptain.org/product: ${ProductName}'* ]]
   [[ "${content}" == *'app.kubernetes.io/managed-by: Kaptain'* ]]
   [[ "${content}" == *'app.kubernetes.io/version: "${Version}"'* ]]
   [[ "${content}" == *'kaptain.org/version: "${Version}"'* ]]
@@ -661,7 +662,7 @@ run_script() {
   [[ "${content}" != *'kaptain.org/image-uri'* ]]
 }
 
-@test "drops annotation copies of label-only keys (environment, managed-by, app version)" {
+@test "drops annotation copies of label-only keys (environment, product, managed-by, app version)" {
   export VENDOR_HELM_RENDERED_OCI_CHART="oci://example.com/test-chart"
   export VENDOR_HELM_RENDERED_MOVE_FILES="${MOVE_FILES_JSON}"
   export REPOSITORY_OWNER="kube-kaptain"
@@ -675,6 +676,7 @@ run_script() {
   annotations=$(yq eval '.metadata.annotations | keys | .[]' "${dep_file}")
 
   [[ "${annotations}" != *'kaptain.org/environment'* ]]
+  [[ "${annotations}" != *'kaptain.org/product'* ]]
   [[ "${annotations}" != *'app.kubernetes.io/managed-by'* ]]
   [[ "${annotations}" != *'app.kubernetes.io/version'* ]]
 }

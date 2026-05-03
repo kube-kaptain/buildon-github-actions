@@ -978,3 +978,116 @@ setup() {
     [ -n "$result" ] || { echo "Empty result for name style: $name_style"; return 1; }
   done
 }
+
+# =============================================================================
+# canonicalize_token_name - inverse of convert_token_name
+# =============================================================================
+
+@test "canonicalize_token_name: PascalCase - MyToken" {
+  result=$(canonicalize_token_name PascalCase MyToken)
+  [ "$result" = "MY_TOKEN" ]
+}
+
+@test "canonicalize_token_name: PascalCase - single word" {
+  result=$(canonicalize_token_name PascalCase Version)
+  [ "$result" = "VERSION" ]
+}
+
+@test "canonicalize_token_name: PascalCase - three words" {
+  result=$(canonicalize_token_name PascalCase DockerImageName)
+  [ "$result" = "DOCKER_IMAGE_NAME" ]
+}
+
+@test "canonicalize_token_name: PascalCase - with digits in middle" {
+  result=$(canonicalize_token_name PascalCase Version2Part)
+  [ "$result" = "VERSION_2_PART" ]
+}
+
+@test "canonicalize_token_name: PascalCase - round-trips with convert_token_name" {
+  forward=$(convert_token_name PascalCase DOCKER_IMAGE_NAME)
+  back=$(canonicalize_token_name PascalCase "$forward")
+  [ "$back" = "DOCKER_IMAGE_NAME" ]
+}
+
+@test "canonicalize_token_name: camelCase - myToken" {
+  result=$(canonicalize_token_name camelCase myToken)
+  [ "$result" = "MY_TOKEN" ]
+}
+
+@test "canonicalize_token_name: camelCase - three words" {
+  result=$(canonicalize_token_name camelCase dockerImageName)
+  [ "$result" = "DOCKER_IMAGE_NAME" ]
+}
+
+@test "canonicalize_token_name: camelCase - with digits" {
+  result=$(canonicalize_token_name camelCase version2Part)
+  [ "$result" = "VERSION_2_PART" ]
+}
+
+@test "canonicalize_token_name: UPPER_SNAKE - identity" {
+  result=$(canonicalize_token_name UPPER_SNAKE PROJECT_NAME)
+  [ "$result" = "PROJECT_NAME" ]
+}
+
+@test "canonicalize_token_name: lower_snake - my_token" {
+  result=$(canonicalize_token_name lower_snake my_token)
+  [ "$result" = "MY_TOKEN" ]
+}
+
+@test "canonicalize_token_name: lower-kebab - my-token" {
+  result=$(canonicalize_token_name lower-kebab my-token)
+  [ "$result" = "MY_TOKEN" ]
+}
+
+@test "canonicalize_token_name: UPPER-KEBAB - MY-TOKEN" {
+  result=$(canonicalize_token_name UPPER-KEBAB MY-TOKEN)
+  [ "$result" = "MY_TOKEN" ]
+}
+
+@test "canonicalize_token_name: lower.dot - my.token" {
+  result=$(canonicalize_token_name lower.dot my.token)
+  [ "$result" = "MY_TOKEN" ]
+}
+
+@test "canonicalize_token_name: UPPER.DOT - MY.TOKEN" {
+  result=$(canonicalize_token_name UPPER.DOT MY.TOKEN)
+  [ "$result" = "MY_TOKEN" ]
+}
+
+@test "canonicalize_token_name: PascalCase nested path preserved" {
+  result=$(canonicalize_token_name PascalCase Vendor/EnvoyCpu)
+  [ "$result" = "VENDOR/ENVOY_CPU" ]
+}
+
+@test "canonicalize_token_name: lower-kebab nested path preserved" {
+  result=$(canonicalize_token_name lower-kebab vendor/envoy-cpu)
+  [ "$result" = "VENDOR/ENVOY_CPU" ]
+}
+
+@test "canonicalize_token_name: round-trip every style" {
+  for style in PascalCase camelCase UPPER_SNAKE lower_snake lower-kebab UPPER-KEBAB lower.dot UPPER.DOT; do
+    forward=$(convert_token_name "$style" DOCKER_IMAGE_NAME)
+    back=$(canonicalize_token_name "$style" "$forward")
+    [ "$back" = "DOCKER_IMAGE_NAME" ] || { echo "round-trip failed for $style: $forward -> $back"; return 1; }
+  done
+}
+
+@test "canonicalize_token_name: fails with no arguments" {
+  run canonicalize_token_name
+  [ "$status" -ne 0 ]
+}
+
+@test "canonicalize_token_name: fails with one argument" {
+  run canonicalize_token_name PascalCase
+  [ "$status" -ne 0 ]
+}
+
+@test "canonicalize_token_name: fails with empty name" {
+  run canonicalize_token_name PascalCase ""
+  [ "$status" -ne 0 ]
+}
+
+@test "canonicalize_token_name: fails with unknown style" {
+  run canonicalize_token_name BogusStyle MyToken
+  [ "$status" -ne 0 ]
+}

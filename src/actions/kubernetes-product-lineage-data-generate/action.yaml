@@ -1,0 +1,88 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
+
+name: 'Kubernetes Product Lineage Data Generate'
+description: 'Emits the product lineage data ConfigMap (presence + lineage record) into the substituted manifests tree'
+
+inputs:
+  # Build output
+  output-sub-path:
+    description: 'Build output directory (relative)'
+    required: false
+    default: 'kaptain-out'
+  # Token substitution
+  token-delimiter-style:
+    description: 'Token delimiter syntax for variables (shell, mustache, helm, erb, github-actions, blade, stringtemplate, ognl, t4, swift)'
+    required: false
+    default: 'shell'
+  token-name-style:
+    description: 'Case style for token names (UPPER_SNAKE, lower_snake, lower-kebab, UPPER-KEBAB, camelCase, PascalCase, lower.dot, UPPER.DOT)'
+    required: false
+    default: 'PascalCase'
+  token-name-validation:
+    description: 'How to validate user token names (MATCH = must match token-name-style, ALL = accept any valid name)'
+    required: false
+    default: 'MATCH'
+  allow-builtin-token-override:
+    description: 'Allow user tokens to override built-in tokens (for template/reusable projects)'
+    required: false
+    default: 'false'
+  config-sub-path:
+    description: 'Directory containing user-defined token files (relative)'
+    required: false
+    default: 'src/config'
+  config-value-trailing-newline:
+    description: 'How to handle trailing newlines in config values (strip-for-single-line, preserve-all, always-strip-one-newline)'
+    required: false
+    default: 'strip-for-single-line'
+  token-substitution-passes:
+    description: 'Number of times to run the token substitution pass (for nested token references)'
+    required: false
+    default: '1'
+
+  # Action-specific inputs
+  project-name:
+    description: 'Project name'
+    required: true
+  version:
+    description: 'Version'
+    required: true
+  product-name:
+    description: 'Product name (PROJECT_NAME verbatim)'
+    required: true
+  product-short-name:
+    description: 'Product short name (PROJECT_NAME with product- prefix or -product suffix stripped)'
+    required: true
+  git-sha:
+    description: 'Git SHA for the kaptain.org/git-sha annotation (optional)'
+    required: false
+    default: ''
+  kaptainpm-file:
+    description: 'Path to the final KaptainPM.yaml'
+    required: false
+    default: 'kaptainpm/final/KaptainPM.yaml'
+
+outputs: {}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Generate product lineage data ConfigMap
+      id: lineage-data
+      shell: bash
+      env:
+        BUILD_MODE: build_server
+        BUILD_PLATFORM: github-actions
+        BUILD_PLATFORM_LOG_PROVIDER: github-actions
+        PROJECT_NAME: ${{ inputs.project-name }}
+        VERSION: ${{ inputs.version }}
+        PRODUCT_NAME: ${{ inputs.product-name }}
+        PRODUCT_SHORT_NAME: ${{ inputs.product-short-name }}
+        GIT_SHA: ${{ inputs.git-sha }}
+        KAPTAINPM_FILE: ${{ inputs.kaptainpm-file }}
+        OUTPUT_SUB_PATH: ${{ inputs.output-sub-path }}
+        TOKEN_DELIMITER_STYLE: ${{ inputs.token-delimiter-style }}
+        TOKEN_NAME_STYLE: ${{ inputs.token-name-style }}
+        CONFIG_VALUE_TRAILING_NEWLINE: ${{ inputs.config-value-trailing-newline }}
+        TOKEN_SUBSTITUTION_PASSES: ${{ inputs.token-substitution-passes }}
+      run: "${{ github.action_path }}/../../scripts/main/kubernetes-product-lineage-data-generate"

@@ -392,10 +392,11 @@ fi
 
 # Resolve token literals once, respecting the project's configured delimiter
 # and name style (defaults: shell + PascalCase, e.g. ${ProjectName}).
-export PROJECT_NAME_TOKEN VERSION_TOKEN ENVIRONMENT_TOKEN
+export PROJECT_NAME_TOKEN VERSION_TOKEN ENVIRONMENT_TOKEN PRODUCT_NAME_TOKEN
 PROJECT_NAME_TOKEN=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "PROJECT_NAME")
 VERSION_TOKEN=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "VERSION")
 ENVIRONMENT_TOKEN=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "ENVIRONMENT")
+PRODUCT_NAME_TOKEN=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "PRODUCT_NAME")
 
 # Read the upstream chart name+version from the rendered Chart.yaml so the
 # kaptain.org/helm-upstream-chart annotation matches what helm itself would
@@ -412,10 +413,12 @@ HELM_UPSTREAM_CHART=$(yq eval '"\(.name)-\(.version)"' "${CHART_PATH}/Chart.yaml
 metadata_yq='
   .metadata.labels.app = .metadata.name |
   .metadata.labels."app.kubernetes.io/name" = .metadata.name |
-  .metadata.labels."app.kubernetes.io/managed-by" = "Kaptain" |
   .metadata.labels."app.kubernetes.io/version" = strenv(VERSION_TOKEN) |
   .metadata.labels."app.kubernetes.io/version" style = "double" |
+  .metadata.labels."app.kubernetes.io/managed-by" = "Kaptain" |
+  .metadata.labels."app.kubernetes.io/part-of" = strenv(PRODUCT_NAME_TOKEN) |
   .metadata.labels."kaptain.org/environment" = strenv(ENVIRONMENT_TOKEN) |
+  .metadata.labels."kaptain.org/product" = strenv(PRODUCT_NAME_TOKEN) |
   .metadata.labels."kaptain.org/project-name" = strenv(PROJECT_NAME_TOKEN) |
   .metadata.labels."kaptain.org/version" = strenv(VERSION_TOKEN) |
   .metadata.labels."kaptain.org/version" style = "double" |
