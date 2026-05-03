@@ -50,7 +50,7 @@ setup() {
     release-change-data-generate release-change-data-oci-package \
     docker-build-dockerfile docker-build-retag docker-multi-tag git-push-tag docker-push-all \
     hook-pre-docker-prepare hook-post-docker-tests hook-pre-package-prepare hook-post-package-tests \
-    kubernetes-manifests-package-prepare kubernetes-manifests-package \
+    kubernetes-manifests-package-prepare kubernetes-manifests-substitute kubernetes-manifests-package \
     kubernetes-manifests-contract-generate \
     kubernetes-manifests-package-only-token-override \
     kubernetes-manifests-repo-provider-package kubernetes-manifests-repo-provider-publish \
@@ -224,8 +224,9 @@ generate-kubernetes-poddisruptionbudget
 generate-kubernetes-service
 hook-pre-package-prepare
 kubernetes-manifests-package-prepare
-kubernetes-manifests-package
+kubernetes-manifests-substitute
 kubernetes-manifests-contract-generate
+kubernetes-manifests-package
 kubernetes-manifests-repo-provider-package
 hook-post-package-tests
 docker-multi-tag
@@ -263,8 +264,9 @@ generate-kubernetes-poddisruptionbudget
 generate-kubernetes-service
 hook-pre-package-prepare
 kubernetes-manifests-package-prepare
-kubernetes-manifests-package
+kubernetes-manifests-substitute
 kubernetes-manifests-contract-generate
+kubernetes-manifests-package
 kubernetes-manifests-repo-provider-package
 hook-post-package-tests
 docker-multi-tag
@@ -302,8 +304,9 @@ generate-kubernetes-service
 hook-pre-package-prepare
 kubernetes-manifests-package-prepare
 kubernetes-manifests-package-only-token-override
-kubernetes-manifests-package
+kubernetes-manifests-substitute
 kubernetes-manifests-contract-generate
+kubernetes-manifests-package
 kubernetes-manifests-repo-provider-package
 hook-post-package-tests
 docker-multi-tag
@@ -395,8 +398,9 @@ release-change-data-oci-package
 hook-pre-package-prepare
 kubernetes-manifests-package-prepare
 kubernetes-manifests-package-only-token-override
-kubernetes-manifests-package
+kubernetes-manifests-substitute
 kubernetes-manifests-contract-generate
+kubernetes-manifests-package
 kubernetes-manifests-repo-provider-package
 hook-post-package-tests
 docker-multi-tag
@@ -431,8 +435,9 @@ vendor-helm-render-validate
 kubernetes-manifests-package-prepare
 vendor-helm-inject-build-details
 kubernetes-manifests-package-only-token-override
-kubernetes-manifests-package
+kubernetes-manifests-substitute
 kubernetes-manifests-contract-generate
+kubernetes-manifests-package
 kubernetes-manifests-repo-provider-package
 hook-post-package-tests
 docker-multi-tag

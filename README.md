@@ -119,9 +119,10 @@ See [`examples/`](examples/) for more usage patterns.
 | `kubernetes-manifests-contract-generate` | Generates a manifests contract file describing token scheme, required config, and compatibility |
 | `kubernetes-manifests-package-only-token-override` | Overrides docker image tokens for manifests-only workflow |
 | `kubernetes-manifests-package-prepare` | Prepares manifests and tokens for packaging |
-| `kubernetes-manifests-package` | Packages Kubernetes manifests into a zip with variable substitution |
+| `kubernetes-manifests-package` | Phase B: zips the substituted manifests tree |
 | `kubernetes-manifests-repo-provider-package` | Packages manifests for repo provider (builds docker image). Does NOT publish. |
 | `kubernetes-manifests-repo-provider-publish` | Publishes manifests via pluggable repo provider. Requires package step to run first. |
+| `kubernetes-manifests-substitute` | Phase A: copies prepared manifests and runs token substitution |
 | `layer-package-prepare` | Prepares layer or layerset for OCI packaging - validates source, injects metadata, generates Dockerfile |
 | `layer-validate` | Validates substituted layer or layerset after docker build |
 | `release-change-data-generate` | Generates structured release change data YAML from commit history |

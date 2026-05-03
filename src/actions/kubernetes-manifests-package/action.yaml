@@ -2,15 +2,15 @@
 # Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
 
 name: 'Kubernetes Manifests Package'
-description: 'Packages Kubernetes manifests into a zip with variable substitution'
+description: 'Phase B: zips the substituted manifests tree'
 
 inputs:
   # Action-specific inputs
   project-name:
-    description: 'Project name for output naming'
+    description: 'Project name for zip naming and substituted dir lookup'
     required: true
   version:
-    description: 'Version for output naming'
+    description: 'Version for zip naming'
     required: true
 
   # Build output
@@ -18,35 +18,6 @@ inputs:
     description: 'Build output directory (relative)'
     required: false
     default: 'kaptain-out'
-  # Token substitution
-  token-delimiter-style:
-    description: 'Token delimiter syntax for variables (shell, mustache, helm, erb, github-actions, blade, stringtemplate, ognl, t4, swift)'
-    required: false
-    default: 'shell'
-  token-name-style:
-    description: 'Case style for token names (UPPER_SNAKE, lower_snake, lower-kebab, UPPER-KEBAB, camelCase, PascalCase, lower.dot, UPPER.DOT)'
-    required: false
-    default: 'PascalCase'
-  token-name-validation:
-    description: 'How to validate user token names (MATCH = must match token-name-style, ALL = accept any valid name)'
-    required: false
-    default: 'MATCH'
-  allow-builtin-token-override:
-    description: 'Allow user tokens to override built-in tokens (for template/reusable projects)'
-    required: false
-    default: 'false'
-  config-sub-path:
-    description: 'Directory containing user-defined token files (relative)'
-    required: false
-    default: 'src/config'
-  config-value-trailing-newline:
-    description: 'How to handle trailing newlines in config values (strip-for-single-line, preserve-all, always-strip-one-newline)'
-    required: false
-    default: 'strip-for-single-line'
-  token-substitution-passes:
-    description: 'Number of times to run the token substitution pass (for nested token references)'
-    required: false
-    default: '1'
 
 outputs:
   manifests-zip-sub-path:
@@ -69,7 +40,4 @@ runs:
         PROJECT_NAME: ${{ inputs.project-name }}
         VERSION: ${{ inputs.version }}
         OUTPUT_SUB_PATH: ${{ inputs.output-sub-path }}
-        TOKEN_DELIMITER_STYLE: ${{ inputs.token-delimiter-style }}
-        CONFIG_VALUE_TRAILING_NEWLINE: ${{ inputs.config-value-trailing-newline }}
-        TOKEN_SUBSTITUTION_PASSES: ${{ inputs.token-substitution-passes }}
       run: "${{ github.action_path }}/../../scripts/main/kubernetes-manifests-package"

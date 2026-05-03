@@ -2,8 +2,8 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
 #
-# Tests for kubernetes-manifests-package (substitution and zip creation)
-# Assumes kubernetes-manifests-package-prepare has already run.
+# Tests for kubernetes-manifests-package (phase B: zip the substituted tree).
+# Assumes kubernetes-manifests-substitute has already run.
 
 load helpers
 
@@ -15,35 +15,24 @@ setup() {
   export PROJECT_NAME="my-project"
   export VERSION="1.2.3"
 
-  # Simulate prepare has run - create directory structure
-  mkdir -p "$OUTPUT_SUB_PATH/manifests/combined"
-  mkdir -p "$OUTPUT_SUB_PATH/manifests/config"
-  mkdir -p "$OUTPUT_SUB_PATH/manifests/zip"
+  # Simulate substitute has run - create the substituted/<project>/ tree
+  mkdir -p "$OUTPUT_SUB_PATH/manifests/substituted/$PROJECT_NAME"
 }
 
 teardown() {
   :
 }
 
-# Create manifest in combined/ (simulating prepare has copied it)
-create_combined_manifest() {
+# Create manifest in substituted/<project>/ (simulating substitute has produced it)
+create_substituted_manifest() {
   local filename="$1"
   local content="${2:-apiVersion: v1}"
-  mkdir -p "$(dirname "$OUTPUT_SUB_PATH/manifests/combined/$filename")"
-  echo "$content" > "$OUTPUT_SUB_PATH/manifests/combined/$filename"
+  mkdir -p "$(dirname "$OUTPUT_SUB_PATH/manifests/substituted/$PROJECT_NAME/$filename")"
+  echo "$content" > "$OUTPUT_SUB_PATH/manifests/substituted/$PROJECT_NAME/$filename"
 }
 
-# Create token in config/ (simulating prepare has created it)
-create_token() {
-  local name="$1"
-  local value="$2"
-  mkdir -p "$(dirname "$OUTPUT_SUB_PATH/manifests/config/$name")"
-  printf '%s' "$value" > "$OUTPUT_SUB_PATH/manifests/config/$name"
-}
-
-@test "creates zip from prepared manifests" {
-  create_combined_manifest "deployment.yaml"
-  create_token "ProjectName" "my-project"
+@test "creates zip from substituted manifests" {
+  create_substituted_manifest "deployment.yaml"
 
   run "$SCRIPTS_DIR/kubernetes-manifests-package"
   [ "$status" -eq 0 ]
@@ -51,30 +40,9 @@ create_token() {
   [ -f "$OUTPUT_SUB_PATH/manifests/zip/my-project-1.2.3-manifests.zip" ]
 }
 
-@test "substitutes tokens in manifests" {
-  create_combined_manifest "deployment.yaml" 'name: ${ProjectName}-app'
-  create_token "ProjectName" "my-project"
-
-  run "$SCRIPTS_DIR/kubernetes-manifests-package"
-  [ "$status" -eq 0 ]
-
-  unzip -p "$OUTPUT_SUB_PATH/manifests/zip/my-project-1.2.3-manifests.zip" my-project/deployment.yaml | grep -q "name: my-project-app"
-}
-
-@test "substitutes multiple tokens" {
-  create_combined_manifest "deployment.yaml" 'image: ${DockerImageName}:${DockerTag}'
-  create_token "DockerImageName" "org/my-image"
-  create_token "DockerTag" "1.2.3"
-
-  run "$SCRIPTS_DIR/kubernetes-manifests-package"
-  [ "$status" -eq 0 ]
-
-  unzip -p "$OUTPUT_SUB_PATH/manifests/zip/my-project-1.2.3-manifests.zip" my-project/deployment.yaml | grep -q "image: org/my-image:1.2.3"
-}
-
 @test "preserves directory structure in zip" {
-  create_combined_manifest "base/deployment.yaml"
-  create_combined_manifest "overlays/prod/patch.yaml"
+  create_substituted_manifest "base/deployment.yaml"
+  create_substituted_manifest "overlays/prod/patch.yaml"
 
   run "$SCRIPTS_DIR/kubernetes-manifests-package"
   [ "$status" -eq 0 ]
@@ -84,7 +52,7 @@ create_token() {
 }
 
 @test "wraps contents in project-name directory" {
-  create_combined_manifest "deployment.yaml"
+  create_substituted_manifest "deployment.yaml"
 
   run "$SCRIPTS_DIR/kubernetes-manifests-package"
   [ "$status" -eq 0 ]
@@ -93,28 +61,18 @@ create_token() {
   unzip -l "$OUTPUT_SUB_PATH/manifests/zip/my-project-1.2.3-manifests.zip" | grep -q "my-project/deployment.yaml"
 }
 
-@test "fails when combined directory missing" {
-  rm -rf "$OUTPUT_SUB_PATH/manifests/combined"
+@test "fails when substituted directory missing" {
+  rm -rf "$OUTPUT_SUB_PATH/manifests/substituted"
 
   run "$SCRIPTS_DIR/kubernetes-manifests-package"
   [ "$status" -ne 0 ]
-  assert_output_contains "Combined manifests directory not found"
-  assert_output_contains "kubernetes-manifests-package-prepare"
-}
-
-@test "fails when config directory missing" {
-  rm -rf "$OUTPUT_SUB_PATH/manifests/config"
-  create_combined_manifest "deployment.yaml"
-
-  run "$SCRIPTS_DIR/kubernetes-manifests-package"
-  [ "$status" -ne 0 ]
-  assert_output_contains "Config/tokens directory not found"
-  assert_output_contains "kubernetes-manifests-package-prepare"
+  assert_output_contains "Substituted manifests directory not found"
+  assert_output_contains "kubernetes-manifests-substitute"
 }
 
 @test "fails when PROJECT_NAME missing" {
   unset PROJECT_NAME
-  create_combined_manifest "deployment.yaml"
+  create_substituted_manifest "deployment.yaml"
 
   run "$SCRIPTS_DIR/kubernetes-manifests-package"
   [ "$status" -ne 0 ]
@@ -123,45 +81,15 @@ create_token() {
 
 @test "fails when VERSION missing" {
   unset VERSION
-  create_combined_manifest "deployment.yaml"
+  create_substituted_manifest "deployment.yaml"
 
   run "$SCRIPTS_DIR/kubernetes-manifests-package"
   [ "$status" -ne 0 ]
   assert_output_contains "VERSION"
 }
 
-@test "uses mustache token style" {
-  export TOKEN_DELIMITER_STYLE="mustache"
-  create_combined_manifest "deployment.yaml" 'name: {{ ProjectName }}'
-  create_token "ProjectName" "my-project"
-
-  run "$SCRIPTS_DIR/kubernetes-manifests-package"
-  [ "$status" -eq 0 ]
-
-  unzip -p "$OUTPUT_SUB_PATH/manifests/zip/my-project-1.2.3-manifests.zip" my-project/deployment.yaml | grep -q "name: my-project"
-}
-
-@test "fails with unknown substitution token style" {
-  export TOKEN_DELIMITER_STYLE="unknown"
-  create_combined_manifest "deployment.yaml" 'name: {{ProjectName}}'
-  create_token "ProjectName" "my-project"
-
-  run "$SCRIPTS_DIR/kubernetes-manifests-package"
-  [ "$status" -ne 0 ]
-  assert_output_contains "Unknown token style"
-}
-
-@test "leaves unmatched tokens unchanged" {
-  create_combined_manifest "deployment.yaml" 'value: ${UndefinedToken}'
-
-  run "$SCRIPTS_DIR/kubernetes-manifests-package"
-  [ "$status" -eq 0 ]
-
-  unzip -p "$OUTPUT_SUB_PATH/manifests/zip/my-project-1.2.3-manifests.zip" my-project/deployment.yaml | grep -q 'value: ${UndefinedToken}'
-}
-
 @test "outputs zip path and filename" {
-  create_combined_manifest "deployment.yaml"
+  create_substituted_manifest "deployment.yaml"
 
   run "$SCRIPTS_DIR/kubernetes-manifests-package"
   [ "$status" -eq 0 ]

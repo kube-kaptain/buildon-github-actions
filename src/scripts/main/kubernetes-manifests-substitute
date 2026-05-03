@@ -1,0 +1,82 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
+#
+# kubernetes-manifests-substitute - Phase A of manifest packaging: copy and substitute
+#
+# Copies combined/ to substituted/<project>/ and runs token substitution.
+# Requires kubernetes-manifests-package-prepare to have run first.
+# kubernetes-manifests-package (phase B) zips the substituted tree afterwards.
+#
+# Inputs (environment variables):
+#   PROJECT_NAME    - For substituted directory naming (required)
+#   VERSION         - Carried for log clarity (required)
+#   OUTPUT_SUB_PATH - Build output directory, relative (default: kaptain-out)
+#   TOKEN_DELIMITER_STYLE - Token delimiter syntax (default: shell)
+#   CONFIG_VALUE_TRAILING_NEWLINE - Trailing newline handling (default: strip-for-single-line)
+#
+# Outputs: none
+#
+set -euo pipefail
+
+# Locate script directory for calling sibling scripts
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Required inputs
+PROJECT_NAME="${PROJECT_NAME:?PROJECT_NAME is required}"
+VERSION="${VERSION:?VERSION is required}"
+
+# shellcheck source=src/scripts/defaults/platform.bash
+source "${SCRIPT_DIR}/../defaults/platform.bash"
+# shellcheck source=src/scripts/lib/log.bash
+source "${SCRIPT_DIR}/../lib/log.bash"
+# shellcheck source=src/scripts/defaults/output-sub-path.bash
+source "$(dirname "${BASH_SOURCE[0]}")/../defaults/output-sub-path.bash"
+
+# Token substitution defaults
+# shellcheck source=src/scripts/defaults/tokens.bash
+source "$(dirname "${BASH_SOURCE[0]}")/../defaults/tokens.bash"
+
+# shellcheck source=src/scripts/defaults/manifests-sub-path.bash
+source "$(dirname "${BASH_SOURCE[0]}")/../defaults/manifests-sub-path.bash"
+
+main() {
+  log "=== Kubernetes Manifest Substitute ==="
+  log "Project: ${PROJECT_NAME}"
+  log "Version: ${VERSION}"
+  log "Output: ${OUTPUT_SUB_PATH}"
+  log "======================================"
+
+  # Validate prepare has run
+  if [[ ! -d "${MANIFESTS_COMBINED_SUB_PATH}" ]]; then
+    log_error "Combined manifests directory not found: ${MANIFESTS_COMBINED_SUB_PATH}"
+    log_error "Did kubernetes-manifests-package-prepare run first?"
+    exit 1
+  fi
+
+  if [[ ! -d "${MANIFESTS_CONFIG_SUB_PATH}" ]]; then
+    log_error "Config/tokens directory not found: ${MANIFESTS_CONFIG_SUB_PATH}"
+    log_error "Did kubernetes-manifests-package-prepare run first?"
+    exit 1
+  fi
+
+  # Copy manifests to substituted/<project-name>/
+  log ""
+  log "Preparing manifests for substitution..."
+  mkdir -p "${MANIFESTS_SUBSTITUTED_SUB_PATH}/${PROJECT_NAME}"
+  cp -R "${MANIFESTS_COMBINED_SUB_PATH}"/* "${MANIFESTS_SUBSTITUTED_SUB_PATH}/${PROJECT_NAME}/"
+
+  # Perform variable substitution
+  log "Performing variable substitution..."
+  CONFIG_VALUE_TRAILING_NEWLINE="${CONFIG_VALUE_TRAILING_NEWLINE}" \
+  TOKEN_SUBSTITUTION_PASSES="${TOKEN_SUBSTITUTION_PASSES}" \
+  "${SCRIPT_DIR}/../util/substitute-tokens-from-dir" \
+    "${TOKEN_DELIMITER_STYLE}" \
+    "${MANIFESTS_CONFIG_SUB_PATH}" \
+    "${MANIFESTS_SUBSTITUTED_SUB_PATH}/${PROJECT_NAME}"
+
+  log ""
+  log "=== Substitute Complete ==="
+}
+
+main "$@"
