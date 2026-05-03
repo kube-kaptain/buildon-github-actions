@@ -1,15 +1,15 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/kube-kaptain/spec-kaptainpm-schema/releases/download/1.16/spec-kaptainpm-schema-1.16.yaml",
+  "$id": "https://github.com/kube-kaptain/spec-kaptainpm-schema/releases/download/1.18/spec-kaptainpm-schema-1.18.yaml",
   "name": "spec-kaptainpm-schema",
-  "version": "1.16",
+  "version": "1.18",
   "source": "https://github.com/kube-kaptain/spec-kaptainpm-schema",
   "latest": "https://raw.githubusercontent.com/kube-kaptain/spec-kaptainpm-schema/main/spec-kaptainpm-schema.yaml",
-  "tagged": "https://raw.githubusercontent.com/kube-kaptain/spec-kaptainpm-schema/1.16/spec-kaptainpm-schema.yaml",
-  "release": "https://github.com/kube-kaptain/spec-kaptainpm-schema/releases/download/1.16/spec-kaptainpm-schema-1.16.yaml",
-  "validate-using": "https://github.com/kube-kaptain/spec-kaptainpm-schema/releases/download/1.16/spec-kaptainpm-schema-1.16.json",
+  "tagged": "https://raw.githubusercontent.com/kube-kaptain/spec-kaptainpm-schema/1.18/spec-kaptainpm-schema.yaml",
+  "release": "https://github.com/kube-kaptain/spec-kaptainpm-schema/releases/download/1.18/spec-kaptainpm-schema-1.18.yaml",
+  "validate-using": "https://github.com/kube-kaptain/spec-kaptainpm-schema/releases/download/1.18/spec-kaptainpm-schema-1.18.json",
   "title": "KaptainPM",
-  "description": "Kaptain project manifest schema (version 1.16).\n",
+  "description": "Kaptain project manifest schema (version 1.18).\n",
   "type": "object",
   "required": [
     "apiVersion"
@@ -19,7 +19,7 @@
     "apiVersion": {
       "type": "string",
       "pattern": "^kaptain\\.org/[0-9]+(\\.[0-9]+)*$",
-      "description": "API version - must be kaptain.org/ followed by the schema version (e.g. kaptain.org/1.2). Set via 1.16 token substitution at build time.\n"
+      "description": "API version - must be kaptain.org/ followed by the schema version (e.g. kaptain.org/1.2). Set via 1.18 token substitution at build time.\n"
     },
     "kind": {
       "type": "string",
@@ -146,22 +146,22 @@
       }
     },
     "artifactReference": {
-      "description": "Artifact reference. Three forms are supported:\n\n  Short    name:version              (default registry and namespace)\n  Prefixed prefix/name:version       (default registry, explicit namespace)\n  Full     domain/path/name:version  (explicit registry - first segment contains a dot)\nVersion is either an exact version (one or more dot-separated integers, optional -PRERELEASE suffix) or a Maven-style range (e.g. [1.0,2.0), (1.0,), (,2.0]).\n",
+      "description": "Artifact reference. Three forms are supported:\n\n  Short    name:version              (default registry and namespace)\n  Prefixed prefix/name:version       (default registry, explicit namespace)\n  Full     domain/path/name:version  (explicit registry - first segment contains a dot)\nVersion is one of: an exact version (one or more dot-separated integers, optional -PRERELEASE suffix); a Maven-style fixed bracket form pinning that exact version (e.g. [1.0.1]); or a Maven-style range (e.g. [1.0,2.0), (1.0,), (,2.0]).\n",
       "oneOf": [
         {
           "description": "Short form: name:version-or-range",
           "type": "string",
-          "pattern": "^[a-z][a-z0-9-]*:([0-9]+(\\.[0-9]+)*(-PRERELEASE)?|[\\[\\(][0-9]*(\\.[0-9]+)*,[0-9]*(\\.[0-9]+)*[\\]\\)])$"
+          "pattern": "^[a-z][a-z0-9-]*:([0-9]+(\\.[0-9]+)*(-PRERELEASE)?|\\[[0-9]+(\\.[0-9]+)*(-PRERELEASE)?\\]|[\\[\\(][0-9]*(\\.[0-9]+)*,[0-9]*(\\.[0-9]+)*[\\]\\)])$"
         },
         {
-          "description": "Prefixed form: prefix/name:version-or-range",
+          "description": "Prefixed form: prefix/prefix-name:version-or-range",
           "type": "string",
-          "pattern": "^[a-z][a-z0-9-]*/[a-z][a-z0-9-]*:([0-9]+(\\.[0-9]+)*(-PRERELEASE)?|[\\[\\(][0-9]*(\\.[0-9]+)*,[0-9]*(\\.[0-9]+)*[\\]\\)])$"
+          "pattern": "^[a-z][a-z0-9-]*/[a-z][a-z0-9-]*:([0-9]+(\\.[0-9]+)*(-PRERELEASE)?|\\[[0-9]+(\\.[0-9]+)*(-PRERELEASE)?\\]|[\\[\\(][0-9]*(\\.[0-9]+)*,[0-9]*(\\.[0-9]+)*[\\]\\)])$"
         },
         {
-          "description": "Full form: domain/.../name:version-or-range (first segment contains a dot)",
+          "description": "Full form: sub.domain/namespace/my/my-name:version-or-range (first segment contains a dot)",
           "type": "string",
-          "pattern": "^[a-z0-9][a-z0-9.-]*\\.[a-z]{2,}(:[0-9]+)?(/[a-z0-9][a-z0-9._-]*)+:([0-9]+(\\.[0-9]+)*(-PRERELEASE)?|[\\[\\(][0-9]*(\\.[0-9]+)*,[0-9]*(\\.[0-9]+)*[\\]\\)])$"
+          "pattern": "^[a-z0-9][a-z0-9.-]*\\.[a-z]{2,}(:[0-9]+)?(/[a-z0-9][a-z0-9._-]*)+:([0-9]+(\\.[0-9]+)*(-PRERELEASE)?|\\[[0-9]+(\\.[0-9]+)*(-PRERELEASE)?\\]|[\\[\\(][0-9]*(\\.[0-9]+)*,[0-9]*(\\.[0-9]+)*[\\]\\)])$"
         }
       ]
     },
@@ -172,22 +172,22 @@
       }
     },
     "artifactReferenceFixed": {
-      "description": "Artifact reference with a pinned exact version (no ranges allowed). Used in resolved/built artifacts where all versions must be concrete. Same three forms as artifactReference but version must be exact.\n",
+      "description": "Artifact reference with a pinned exact version (no ranges allowed). Used in resolved/built artifacts where all versions must be concrete. Same three forms as artifactReference. Version must be exact, written either bare (1.0.1) or in Maven-style fixed bracket form ([1.0.1]).\n",
       "oneOf": [
         {
           "description": "Short form: name:version",
           "type": "string",
-          "pattern": "^[a-z][a-z0-9-]*:[0-9]+(\\.[0-9]+)*(-PRERELEASE)?$"
+          "pattern": "^[a-z][a-z0-9-]*:([0-9]+(\\.[0-9]+)*(-PRERELEASE)?|\\[[0-9]+(\\.[0-9]+)*(-PRERELEASE)?\\])$"
         },
         {
-          "description": "Prefixed form: prefix/name:version",
+          "description": "Prefixed form: prefix/prefix-name:version",
           "type": "string",
-          "pattern": "^[a-z][a-z0-9-]*/[a-z][a-z0-9-]*:[0-9]+(\\.[0-9]+)*(-PRERELEASE)?$"
+          "pattern": "^[a-z][a-z0-9-]*/[a-z][a-z0-9-]*:([0-9]+(\\.[0-9]+)*(-PRERELEASE)?|\\[[0-9]+(\\.[0-9]+)*(-PRERELEASE)?\\])$"
         },
         {
-          "description": "Full form: domain/.../name:version (first segment contains a dot)",
+          "description": "Full form: sub.domain/namespace/my/my-name:version (first segment contains a dot)",
           "type": "string",
-          "pattern": "^[a-z0-9][a-z0-9.-]*\\.[a-z]{2,}(:[0-9]+)?(/[a-z0-9][a-z0-9._-]*)+:[0-9]+(\\.[0-9]+)*(-PRERELEASE)?$"
+          "pattern": "^[a-z0-9][a-z0-9.-]*\\.[a-z]{2,}(:[0-9]+)?(/[a-z0-9][a-z0-9._-]*)+:([0-9]+(\\.[0-9]+)*(-PRERELEASE)?|\\[[0-9]+(\\.[0-9]+)*(-PRERELEASE)?\\])$"
         }
       ]
     },
@@ -1917,6 +1917,37 @@
                   "description": "Base image for manifest packaging (default: scratch)"
                 }
               }
+            }
+          }
+        },
+        "product": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Product build configuration. Applies only to kubernetes-product builds which aggregate manifest bundles listed in spec.contents.\n",
+          "properties": {
+            "allowLocalDefaultsOverride": {
+              "oneOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "string",
+                  "pattern": "^(true|false)$"
+                }
+              ],
+              "description": "When true, defaults from the local src/defaults directory may override defaults contributed by referenced bundles, with a WARN log per override. When false (default), local defaults must be byte-identical to any bundle-contributed default of the same name or the build fails.\n"
+            },
+            "allowLocalManifestsOverride": {
+              "oneOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "string",
+                  "pattern": "^(true|false)$"
+                }
+              ],
+              "description": "When true, manifests from the local src/kubernetes directory may override manifests contributed by referenced bundles, with a WARN log per override. When false (default), local manifests must not collide with any bundle-contributed manifest of the same path or the build fails. The reserved filename kaptain-product-lineage-data.yaml is checked separately and always fails on collision regardless of this flag.\n"
             }
           }
         },
