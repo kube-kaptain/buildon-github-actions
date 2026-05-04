@@ -28,7 +28,7 @@
 #   3. src/scripts/main/vendor-helm-render-and-process (yq metadata block in stage 7)
 #      Per-rendered-helm-manifest. (1) minus kaptain.org/image-uri.
 #
-# shellcheck disable=SC2154 # app_name, version_token, environment_token, build_timestamp, script_name, project_name_token, default_container set by caller
+# shellcheck disable=SC2154 # app_name, version_token, environment_token, product_token, build_timestamp, script_name, project_name_token, default_container set by caller
 
 # Build hyphen-prefixed name fragment from combined sub-path and suffix
 # Usage: build_name_middle_fragment <combined_sub_path> <suffix>
@@ -312,6 +312,7 @@ generate_metadata_map() {
 #   app_name            - Full resource name for app labels (e.g., ${ProjectName}-backend-db)
 #   version_token       - Token for version (e.g., ${Version})
 #   environment_token   - Token for deploy-time environment (e.g., ${Environment})
+#   product_token       - Token for deploy-time product name (e.g., ${ProductName})
 #   build_timestamp     - ISO 8601 timestamp (annotations only)
 #   script_name         - Generator script name (annotations only)
 #   GLOBAL_LABELS       - Additional labels from global config (labels only)
@@ -345,8 +346,8 @@ generate_metadata() {
 
   case "${type}" in
     labels)
-      builtin="app=${app_name},app.kubernetes.io/name=${app_name},app.kubernetes.io/version=\"${version_token}\",app.kubernetes.io/managed-by=Kaptain"
-      builtin="${builtin},kaptain.org/environment=\"${environment_token}\",kaptain.org/project-name=${project_name_token},kaptain.org/version=\"${version_token}\""
+      builtin="app=${app_name},app.kubernetes.io/name=${app_name},app.kubernetes.io/version=\"${version_token}\",app.kubernetes.io/managed-by=Kaptain,app.kubernetes.io/part-of=${product_token}"
+      builtin="${builtin},kaptain.org/environment=${environment_token},kaptain.org/product=${product_token},kaptain.org/project-name=${project_name_token},kaptain.org/version=\"${version_token}\""
       if [[ -n "${REPOSITORY_OWNER:-}" ]]; then
         builtin="${builtin},kaptain.org/owner=${REPOSITORY_OWNER}"
       fi

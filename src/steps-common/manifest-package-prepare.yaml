@@ -5,7 +5,9 @@
   id: manifest-package-prepare
   uses: ./.github/buildon-github-actions/src/actions/kubernetes-manifests-package-prepare
   with:
-    manifests-sub-path: ${{ steps.kpm.outputs.MANIFESTS_SUB_PATH }}
+    manifests-sub-path: ${{ steps.product-aggregate.outputs.manifests-sub-path || steps.kpm.outputs.MANIFESTS_SUB_PATH }}
+    product-name: ${{ steps.product-aggregate.outputs.product-name }}
+    product-short-name: ${{ steps.product-aggregate.outputs.product-short-name }}
     project-name: ${{ steps.versions.outputs.project-name }}
     version: ${{ steps.versions.outputs.version }}
     version-major: ${{ steps.versions.outputs.version-major }}

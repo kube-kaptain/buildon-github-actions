@@ -1,0 +1,560 @@
+#!/usr/bin/env bats
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
+#
+# Tests for main/kubernetes-product-aggregate.
+#
+# Covers product-naming validation, products-in-products rejection, end-to-end
+# staging via mocked OCI fetches, per-bundle scheme conversion routing, and
+# cross-bundle defaults conflict detection / merge.
+
+load helpers
+
+SCRIPT="$SCRIPTS_DIR/kubernetes-product-aggregate"
+
+setup() {
+  TEST_DIR=$(create_test_dir "kubernetes-product-aggregate")
+  mkdir -p "${TEST_DIR}/kaptainpm/final"
+  export GITHUB_OUTPUT="${TEST_DIR}/github-output"
+  : > "${GITHUB_OUTPUT}"
+}
+
+# Write a KaptainPM.yaml with optional spec.contents entries.
+write_pm() {
+  local pm_file="${TEST_DIR}/kaptainpm/final/KaptainPM.yaml"
+  cat > "${pm_file}" << 'EOF'
+apiVersion: kaptain.org/v1
+kind: kubernetes-product
+spec:
+  global:
+    tokens:
+      delimiterStyle: shell
+      nameStyle: PascalCase
+EOF
+  if [[ $# -gt 0 ]]; then
+    {
+      echo "  contents:"
+      local entry
+      for entry in "$@"; do
+        echo "    - ${entry}"
+      done
+    } >> "${pm_file}"
+  fi
+}
+
+# Build a manifests zip with a single deployment.yaml that references one
+# token in the given scheme. Default token: ${Replicas} (shell-PascalCase).
+make_manifests_zip() {
+  local zip_path="$1"
+  local project="$2"
+  local token_ref="${3:-\${Replicas}}"
+  local stage="${TEST_DIR}/_stage-mz-$$-${RANDOM}"
+  mkdir -p "${stage}/${project}"
+  cat > "${stage}/${project}/deployment.yaml" << EOF
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ${project}
+spec:
+  replicas: ${token_ref}
+EOF
+  ( cd "${stage}" && zip -qr "${zip_path}" "${project}" )
+  rm -rf "${stage}"
+}
+
+# Build a contract zip carrying tokens.delimiterStyle / tokens.nameStyle and
+# optional defaults files. .config.required is always auto-populated with
+# 'Replicas' (the default token in make_manifests_zip) plus each default
+# name, so the bundle passes content_validate_bundle's defaults-orphan and
+# manifest-token-coverage checks.
+# Args: zip_path, delim, name, [token=value]...
+make_contract_zip() {
+  local zip_path="$1"
+  local delim="$2"
+  local name="$3"
+  shift 3
+  local stage="${TEST_DIR}/_stage-cz-$$-${RANDOM}"
+  mkdir -p "${stage}"
+  cat > "${stage}/contract.yaml" << EOF
+apiVersion: kaptain.org/manifests-contract/1.2
+kind: kubernetes-bundle
+tokens:
+  delimiterStyle: ${delim}
+  nameStyle: ${name}
+compatibility:
+  automaticConversion: []
+  repackageRequired: []
+config:
+  required:
+    - Replicas
+EOF
+  if [[ $# -gt 0 ]]; then
+    mkdir -p "${stage}/defaults"
+    local pair token value
+    for pair in "$@"; do
+      token="${pair%%=*}"
+      value="${pair#*=}"
+      if [[ "${token}" != "Replicas" ]]; then
+        printf '    - %s\n' "${token}" >> "${stage}/contract.yaml"
+      fi
+      printf '%s' "${value}" > "${stage}/defaults/${token}"
+    done
+  fi
+  ( cd "${stage}" && zip -qr "${zip_path}" . )
+  rm -rf "${stage}"
+}
+
+# Stand up mocks for util/artifact-resolve and util/extract-oci-image so the
+# library doesn't need to talk to a real registry. Returns paths via globals
+# MOCK_UTIL_DIR (for _CONTENT_RESOLVE_UTIL_DIR) and MOCK_OCI_DIR.
+setup_mock_oci() {
+  MOCK_UTIL_DIR="${TEST_DIR}/mock-util-bin"
+  MOCK_OCI_DIR="${TEST_DIR}/oci-fixtures"
+  mkdir -p "${MOCK_UTIL_DIR}" "${MOCK_OCI_DIR}"
+
+  cat > "${MOCK_UTIL_DIR}/artifact-resolve" << 'MOCK'
+#!/usr/bin/env bash
+ref="$1"
+out="$2"
+variant="${3:-}"
+if [[ -n "${variant}" ]]; then
+  echo "${ref}-${variant}" > "${out}"
+else
+  echo "${ref}" > "${out}"
+fi
+MOCK
+  chmod +x "${MOCK_UTIL_DIR}/artifact-resolve"
+
+  cat > "${MOCK_UTIL_DIR}/extract-oci-image" << 'MOCK'
+#!/usr/bin/env bash
+image_uri="$1"
+out_dir="$2"
+mkdir -p "${out_dir}"
+key=$(echo "${image_uri}" | tr '/:' '__')
+src="${MOCK_OCI_DIR}/${key}"
+if [[ ! -d "${src}" ]]; then
+  echo "mock extract-oci-image: no fixture for key ${key} (uri ${image_uri})" >&2
+  exit 1
+fi
+cp -R "${src}/." "${out_dir}/"
+MOCK
+  chmod +x "${MOCK_UTIL_DIR}/extract-oci-image"
+
+  # content_validate_bundle calls the real scan-unresolved-tokens utility via
+  # _CONTENT_RESOLVE_UTIL_DIR. It is pure local computation, not something
+  # that needs mocking, so symlink the real one into the mock util dir.
+  ln -sf "${SCRIPTS_DIR}/util/scan-unresolved-tokens" "${MOCK_UTIL_DIR}/scan-unresolved-tokens"
+}
+
+# Stage a fake OCI image fixture: pre-create the manifests + contract zips
+# inside MOCK_OCI_DIR keyed by the URI the library is going to ask for.
+# Args: manifests_uri, project, contract_delim, contract_name, [token=value]...
+stage_oci_fixture() {
+  local manifests_uri="$1"
+  local project="$2"
+  local delim="$3"
+  local name="$4"
+  shift 4
+  local key
+  key=$(echo "${manifests_uri}" | tr '/:' '__')
+  local fixture_dir="${MOCK_OCI_DIR}/${key}"
+  mkdir -p "${fixture_dir}"
+  make_manifests_zip "${fixture_dir}/${project}-1.0-manifests.zip" "${project}"
+  make_contract_zip "${fixture_dir}/${project}-1.0-contract.zip" \
+    "${delim}" "${name}" "$@"
+}
+
+run_script() {
+  : "${PROJECT_NAME=product-foo}"
+  : "${OUTPUT_SUB_PATH:=kaptain-out}"
+  : "${TOKEN_DELIMITER_STYLE:=shell}"
+  : "${TOKEN_NAME_STYLE:=PascalCase}"
+  : "${DEFAULTS_SUB_PATH:=src/defaults}"
+  : "${MANIFESTS_SUB_PATH:=src/kubernetes}"
+  : "${PRODUCT_ALLOW_LOCAL_DEFAULTS_OVERRIDE:=false}"
+  : "${PRODUCT_ALLOW_LOCAL_MANIFESTS_OVERRIDE:=false}"
+  run env \
+    PROJECT_NAME="${PROJECT_NAME}" \
+    OUTPUT_SUB_PATH="${OUTPUT_SUB_PATH}" \
+    TOKEN_DELIMITER_STYLE="${TOKEN_DELIMITER_STYLE}" \
+    TOKEN_NAME_STYLE="${TOKEN_NAME_STYLE}" \
+    DEFAULTS_SUB_PATH="${DEFAULTS_SUB_PATH}" \
+    MANIFESTS_SUB_PATH="${MANIFESTS_SUB_PATH}" \
+    PRODUCT_ALLOW_LOCAL_DEFAULTS_OVERRIDE="${PRODUCT_ALLOW_LOCAL_DEFAULTS_OVERRIDE}" \
+    PRODUCT_ALLOW_LOCAL_MANIFESTS_OVERRIDE="${PRODUCT_ALLOW_LOCAL_MANIFESTS_OVERRIDE}" \
+    BUILD_PLATFORM=test \
+    GITHUB_OUTPUT="${GITHUB_OUTPUT}" \
+    KAPTAINPM_FILE="${TEST_DIR}/kaptainpm/final/KaptainPM.yaml" \
+    _CONTENT_RESOLVE_UTIL_DIR="${MOCK_UTIL_DIR:-}" \
+    MOCK_OCI_DIR="${MOCK_OCI_DIR:-}" \
+    bash -c "cd '${TEST_DIR}' && '${SCRIPT}'"
+}
+
+# Write a local product defaults file at <TEST_DIR>/src/defaults/<token>.
+write_local_default() {
+  local token="$1"
+  local value="$2"
+  mkdir -p "${TEST_DIR}/src/defaults"
+  printf '%s' "${value}" > "${TEST_DIR}/src/defaults/${token}"
+}
+
+# Write a local product manifest file at <TEST_DIR>/src/kubernetes/<rel>.
+write_local_manifest() {
+  local rel="$1"
+  local content="$2"
+  local target="${TEST_DIR}/src/kubernetes/${rel}"
+  mkdir -p "$(dirname "${target}")"
+  printf '%s' "${content}" > "${target}"
+}
+
+github_output_value() {
+  grep "^${1}=" "${GITHUB_OUTPUT}" | tail -1 | cut -d= -f2-
+}
+
+# =============================================================================
+# Naming validation
+# =============================================================================
+
+@test "naming: accepts product- prefix" {
+  PROJECT_NAME=product-foo write_pm
+  PROJECT_NAME=product-foo run_script
+  [ "${status}" -eq 0 ]
+  [ "$(github_output_value PRODUCT_NAME)" = "product-foo" ]
+  [ "$(github_output_value PRODUCT_SHORT_NAME)" = "foo" ]
+}
+
+@test "naming: accepts -product suffix" {
+  PROJECT_NAME=foo-product write_pm
+  PROJECT_NAME=foo-product run_script
+  [ "${status}" -eq 0 ]
+  [ "$(github_output_value PRODUCT_NAME)" = "foo-product" ]
+  [ "$(github_output_value PRODUCT_SHORT_NAME)" = "foo" ]
+}
+
+@test "naming: rejects neither prefix nor suffix" {
+  PROJECT_NAME=foo write_pm
+  PROJECT_NAME=foo run_script
+  [ "${status}" -ne 0 ]
+  assert_output_contains "does not match the product naming rule"
+}
+
+@test "naming: rejects ambiguous product-foo-product" {
+  PROJECT_NAME=product-foo-product write_pm
+  PROJECT_NAME=product-foo-product run_script
+  [ "${status}" -ne 0 ]
+  assert_output_contains "ambiguous"
+}
+
+@test "naming: rejects empty PROJECT_NAME" {
+  write_pm
+  PROJECT_NAME="" run_script
+  [ "${status}" -ne 0 ]
+  assert_output_contains "PROJECT_NAME"
+}
+
+# =============================================================================
+# Products in products
+# =============================================================================
+
+@test "products-in-products: rejects entry whose repo starts with product-" {
+  write_pm "product-other:1.0"
+  run_script
+  [ "${status}" -ne 0 ]
+  assert_output_contains "Including a product inside another product"
+  assert_output_contains "product-other:1.0"
+}
+
+@test "products-in-products: rejects entry whose repo ends with -product" {
+  write_pm "ghcr.io/org/sub/some-product:9.9"
+  run_script
+  [ "${status}" -ne 0 ]
+  assert_output_contains "Including a product inside another product"
+  assert_output_contains "some-product"
+}
+
+@test "products-in-products: accepts non-product entries" {
+  setup_mock_oci
+  stage_oci_fixture "alpha:1.0-manifests" "alpha" shell PascalCase
+  write_pm "alpha:1.0"
+  run_script
+  [ "${status}" -eq 0 ]
+}
+
+# =============================================================================
+# Empty spec.contents
+# =============================================================================
+
+@test "spec.contents empty: still emits PRODUCT_NAME and clears staging" {
+  write_pm
+  setup_mock_oci
+  run_script
+  [ "${status}" -eq 0 ]
+  [ "$(github_output_value PRODUCT_NAME)" = "product-foo" ]
+  [ -d "${TEST_DIR}/kaptain-out/content/manifests" ]
+}
+
+# =============================================================================
+# End-to-end staging
+# =============================================================================
+
+@test "end-to-end: stages a single bundle and emits MANIFESTS_SUB_PATH + DEFAULTS_SUB_PATH" {
+  setup_mock_oci
+  stage_oci_fixture "alpha:1.0-manifests" "alpha" shell PascalCase "Replicas=2"
+  write_pm "alpha:1.0"
+  run_script
+  [ "${status}" -eq 0 ]
+  [ -f "${TEST_DIR}/kaptain-out/content/manifests/alpha/deployment.yaml" ]
+  [ -f "${TEST_DIR}/kaptain-out/product-aggregate/defaults-merged/Replicas" ]
+  [ "$(cat "${TEST_DIR}/kaptain-out/product-aggregate/defaults-merged/Replicas")" = "2" ]
+  [ "$(github_output_value MANIFESTS_SUB_PATH)" = "kaptain-out/product-aggregate/manifests-normalised" ]
+  [ "$(github_output_value DEFAULTS_SUB_PATH)" = "kaptain-out/product-aggregate/defaults-merged" ]
+}
+
+@test "end-to-end: stages two bundles into sibling subdirs" {
+  setup_mock_oci
+  stage_oci_fixture "alpha:1.0-manifests" "alpha" shell PascalCase "Replicas=2"
+  stage_oci_fixture "beta:2.0-manifests"  "beta"  shell PascalCase "MaxHeapSize=512Mi"
+  write_pm "alpha:1.0" "beta:2.0"
+  run_script
+  [ "${status}" -eq 0 ]
+  [ -f "${TEST_DIR}/kaptain-out/content/manifests/alpha/deployment.yaml" ]
+  [ -f "${TEST_DIR}/kaptain-out/content/manifests/beta/deployment.yaml" ]
+  [ -f "${TEST_DIR}/kaptain-out/product-aggregate/defaults-merged/Replicas" ]
+  [ -f "${TEST_DIR}/kaptain-out/product-aggregate/defaults-merged/MaxHeapSize" ]
+}
+
+# =============================================================================
+# Cross-bundle defaults conflict detection
+# =============================================================================
+
+@test "defaults: byte-identical values from two bundles collapse" {
+  setup_mock_oci
+  stage_oci_fixture "alpha:1.0-manifests" "alpha" shell PascalCase "Replicas=2"
+  stage_oci_fixture "beta:2.0-manifests"  "beta"  shell PascalCase "Replicas=2"
+  write_pm "alpha:1.0" "beta:2.0"
+  run_script
+  [ "${status}" -eq 0 ]
+  [ -f "${TEST_DIR}/kaptain-out/product-aggregate/defaults-merged/Replicas" ]
+  [ "$(cat "${TEST_DIR}/kaptain-out/product-aggregate/defaults-merged/Replicas")" = "2" ]
+}
+
+@test "defaults: differing values across bundles fails with diagnostic" {
+  setup_mock_oci
+  stage_oci_fixture "alpha:1.0-manifests" "alpha" shell PascalCase "Replicas=2"
+  stage_oci_fixture "beta:2.0-manifests"  "beta"  shell PascalCase "Replicas=3"
+  write_pm "alpha:1.0" "beta:2.0"
+  run_script
+  [ "${status}" -ne 0 ]
+  assert_output_contains "Default value collision for token 'Replicas'"
+  assert_output_contains "alpha"
+  assert_output_contains "beta"
+}
+
+# =============================================================================
+# Per-bundle scheme conversion
+# =============================================================================
+
+@test "scheme: bundle scheme matches product is a no-op" {
+  setup_mock_oci
+  stage_oci_fixture "alpha:1.0-manifests" "alpha" shell PascalCase "Replicas=2"
+  write_pm "alpha:1.0"
+  run_script
+  [ "${status}" -eq 0 ]
+  assert_output_contains "Token scheme matches."
+}
+
+@test "scheme: differing scheme that auto-converts is rewritten" {
+  setup_mock_oci
+  # Bundle was built in mustache-PascalCase: {{Replicas}}; product wants
+  # shell-PascalCase: ${Replicas}. assess-token-compatibility should rate
+  # this AUTOMATIC_CONVERSION.
+  local key="alpha:1.0-manifests"
+  local sanitised
+  sanitised=$(echo "${key}" | tr '/:' '__')
+  mkdir -p "${MOCK_OCI_DIR}/${sanitised}"
+  # Manifest with mustache-style token reference
+  local stage="${TEST_DIR}/_stage-alpha-mustache"
+  mkdir -p "${stage}/alpha"
+  cat > "${stage}/alpha/deployment.yaml" << 'EOF'
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: alpha
+spec:
+  replicas: {{ Replicas }}
+EOF
+  ( cd "${stage}" && zip -qr "${MOCK_OCI_DIR}/${sanitised}/alpha-1.0-manifests.zip" alpha )
+  rm -rf "${stage}"
+  make_contract_zip "${MOCK_OCI_DIR}/${sanitised}/alpha-1.0-contract.zip" \
+    mustache PascalCase "Replicas=2"
+
+  write_pm "alpha:1.0"
+  run_script
+  [ "${status}" -eq 0 ]
+  # Bundle's manifest should now use shell-style ${Replicas}, not {{Replicas}}.
+  grep -q '\${Replicas}' "${TEST_DIR}/kaptain-out/product-aggregate/manifests-normalised/alpha/deployment.yaml"
+  ! grep -q '{{ Replicas }}' "${TEST_DIR}/kaptain-out/product-aggregate/manifests-normalised/alpha/deployment.yaml"
+}
+
+@test "scheme: bundle missing contract.yaml fails the build" {
+  setup_mock_oci
+  # Only stage manifests zip; no contract zip — content_resolve_all itself
+  # will fail because both zips are required.
+  local key
+  key=$(echo "alpha:1.0-manifests" | tr '/:' '__')
+  mkdir -p "${MOCK_OCI_DIR}/${key}"
+  make_manifests_zip "${MOCK_OCI_DIR}/${key}/alpha-1.0-manifests.zip" "alpha"
+  write_pm "alpha:1.0"
+  run_script
+  [ "${status}" -ne 0 ]
+}
+
+# =============================================================================
+# Local defaults merge (src/defaults + override flag)
+# =============================================================================
+
+@test "local-defaults: token only in src/defaults is included in merged output" {
+  setup_mock_oci
+  stage_oci_fixture "alpha:1.0-manifests" "alpha" shell PascalCase "Replicas=2"
+  write_local_default "LocalOnly" "hello"
+  write_pm "alpha:1.0"
+  run_script
+  [ "${status}" -eq 0 ]
+  [ -f "${TEST_DIR}/kaptain-out/product-aggregate/defaults-merged/LocalOnly" ]
+  [ "$(cat "${TEST_DIR}/kaptain-out/product-aggregate/defaults-merged/LocalOnly")" = "hello" ]
+}
+
+@test "local-defaults: identical to bundle default is fine (no override needed)" {
+  setup_mock_oci
+  stage_oci_fixture "alpha:1.0-manifests" "alpha" shell PascalCase "Replicas=2"
+  write_local_default "Replicas" "2"
+  write_pm "alpha:1.0"
+  run_script
+  [ "${status}" -eq 0 ]
+  [ "$(cat "${TEST_DIR}/kaptain-out/product-aggregate/defaults-merged/Replicas")" = "2" ]
+}
+
+@test "local-defaults: differing from bundle with override=false fails with hint" {
+  setup_mock_oci
+  stage_oci_fixture "alpha:1.0-manifests" "alpha" shell PascalCase "Replicas=2"
+  write_local_default "Replicas" "5"
+  write_pm "alpha:1.0"
+  PRODUCT_ALLOW_LOCAL_DEFAULTS_OVERRIDE=false run_script
+  [ "${status}" -ne 0 ]
+  assert_output_contains "Default value collision for token 'Replicas'"
+  assert_output_contains "allowLocalDefaultsOverride: true"
+}
+
+# =============================================================================
+# Contents list for GitHub release notes
+# =============================================================================
+
+@test "contents-list: writes bullets for every spec.contents entry verbatim" {
+  setup_mock_oci
+  stage_oci_fixture "alpha:1.0-manifests" "alpha" shell PascalCase
+  stage_oci_fixture "ghcr.io/org/sub/beta:2.0-manifests" "beta" shell PascalCase
+  write_pm "alpha:1.0" "ghcr.io/org/sub/beta:2.0"
+  run_script
+  [ "${status}" -eq 0 ]
+  local list="${TEST_DIR}/kaptain-out/product-aggregate/contents-list.md"
+  [ -f "${list}" ]
+  [ "$(github_output_value PRODUCT_CONTENTS_FILE)" = "kaptain-out/product-aggregate/contents-list.md" ]
+  grep -qx -- "- alpha:1.0" "${list}"
+  grep -qx -- "- ghcr.io/org/sub/beta:2.0" "${list}"
+}
+
+@test "contents-list: empty contents writes empty file" {
+  setup_mock_oci
+  write_pm
+  run_script
+  [ "${status}" -eq 0 ]
+  local list="${TEST_DIR}/kaptain-out/product-aggregate/contents-list.md"
+  [ -f "${list}" ]
+  [ ! -s "${list}" ]
+}
+
+@test "local-defaults: differing from bundle with override=true wins and warns" {
+  setup_mock_oci
+  stage_oci_fixture "alpha:1.0-manifests" "alpha" shell PascalCase "Replicas=2"
+  write_local_default "Replicas" "5"
+  write_pm "alpha:1.0"
+  PRODUCT_ALLOW_LOCAL_DEFAULTS_OVERRIDE=true run_script
+  [ "${status}" -eq 0 ]
+  [ "$(cat "${TEST_DIR}/kaptain-out/product-aggregate/defaults-merged/Replicas")" = "5" ]
+  assert_output_contains "WARN: local default 'Replicas' overrides"
+}
+
+# =============================================================================
+# Local manifests merge (src/kubernetes + override flag) and reserved-filename squat
+# =============================================================================
+
+@test "local-manifests: standalone manifest is included in assembled tree" {
+  setup_mock_oci
+  stage_oci_fixture "alpha:1.0-manifests" "alpha" shell PascalCase "Replicas=2"
+  write_local_manifest "standalone-cm.yaml" $'apiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: standalone\n'
+  write_pm "alpha:1.0"
+  run_script
+  [ "${status}" -eq 0 ]
+  [ -f "${TEST_DIR}/kaptain-out/product-aggregate/manifests-normalised/standalone-cm.yaml" ]
+  [ -f "${TEST_DIR}/kaptain-out/product-aggregate/manifests-normalised/alpha/deployment.yaml" ]
+}
+
+@test "local-manifests: collides with bundle path with override=false fails" {
+  setup_mock_oci
+  stage_oci_fixture "alpha:1.0-manifests" "alpha" shell PascalCase "Replicas=2"
+  write_local_manifest "alpha/deployment.yaml" $'overridden\n'
+  write_pm "alpha:1.0"
+  PRODUCT_ALLOW_LOCAL_MANIFESTS_OVERRIDE=false run_script
+  [ "${status}" -ne 0 ]
+  assert_output_contains "Manifest path collision for 'alpha/deployment.yaml'"
+  assert_output_contains "allowLocalManifestsOverride: true"
+}
+
+@test "local-manifests: collides with bundle path with override=true wins and warns" {
+  setup_mock_oci
+  stage_oci_fixture "alpha:1.0-manifests" "alpha" shell PascalCase "Replicas=2"
+  write_local_manifest "alpha/deployment.yaml" $'overridden\n'
+  write_pm "alpha:1.0"
+  PRODUCT_ALLOW_LOCAL_MANIFESTS_OVERRIDE=true run_script
+  [ "${status}" -eq 0 ]
+  [ "$(cat "${TEST_DIR}/kaptain-out/product-aggregate/manifests-normalised/alpha/deployment.yaml")" = "overridden" ]
+  assert_output_contains "WARN: local manifest 'alpha/deployment.yaml' overrides"
+}
+
+@test "squat: local kaptain-product-lineage-data.yaml fails the build" {
+  setup_mock_oci
+  stage_oci_fixture "alpha:1.0-manifests" "alpha" shell PascalCase "Replicas=2"
+  write_local_manifest "kaptain-product-lineage-data.yaml" $'fake\n'
+  write_pm "alpha:1.0"
+  run_script
+  [ "${status}" -ne 0 ]
+  assert_output_contains "Reserved filename 'kaptain-product-lineage-data.yaml'"
+  assert_output_contains "local:"
+}
+
+@test "squat: bundle shipping kaptain-product-lineage-data.yaml fails the build" {
+  setup_mock_oci
+  local key
+  key=$(echo "alpha:1.0-manifests" | tr '/:' '__')
+  mkdir -p "${MOCK_OCI_DIR}/${key}"
+  local stage="${TEST_DIR}/_stage-alpha-squat"
+  mkdir -p "${stage}/alpha"
+  cat > "${stage}/alpha/deployment.yaml" << 'EOF'
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: alpha
+spec:
+  replicas: ${Replicas}
+EOF
+  printf 'fake\n' > "${stage}/alpha/kaptain-product-lineage-data.yaml"
+  ( cd "${stage}" && zip -qr "${MOCK_OCI_DIR}/${key}/alpha-1.0-manifests.zip" alpha )
+  rm -rf "${stage}"
+  make_contract_zip "${MOCK_OCI_DIR}/${key}/alpha-1.0-contract.zip" \
+    shell PascalCase "Replicas=2"
+  write_pm "alpha:1.0"
+  run_script
+  [ "${status}" -ne 0 ]
+  assert_output_contains "Reserved filename 'kaptain-product-lineage-data.yaml'"
+  assert_output_contains "bundle:"
+}

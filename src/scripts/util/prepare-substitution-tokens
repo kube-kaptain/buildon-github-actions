@@ -22,6 +22,7 @@
 #   VERSION_DNS_SAFE, VERSION_2_PART_DNS_SAFE, VERSION_3_PART_DNS_SAFE, VERSION_4_PART_DNS_SAFE
 #   TARGET_REGISTRY, TARGET_NAMESPACE, IS_RELEASE
 #   DOCKER_IMAGE_FULL_URI, MANIFESTS_ZIP_FILE_NAME
+#   PRODUCT_NAME, PRODUCT_SHORT_NAME (product builds only)
 #
 set -euo pipefail
 
@@ -142,6 +143,14 @@ main() {
   # Optional manifest packaging tokens (not available in docker-build-dockerfile)
   if [[ -n "${MANIFESTS_ZIP_FILE_NAME:-}" ]]; then
     write_builtin_token "MANIFESTS_ZIP_FILE_NAME" "${MANIFESTS_ZIP_FILE_NAME}"
+  fi
+
+  # Product tokens (only set during a product build)
+  if [[ -n "${PRODUCT_NAME:-}" ]]; then
+    write_builtin_token "PRODUCT_NAME" "${PRODUCT_NAME}"
+  fi
+  if [[ -n "${PRODUCT_SHORT_NAME:-}" ]]; then
+    write_builtin_token "PRODUCT_SHORT_NAME" "${PRODUCT_SHORT_NAME}"
   fi
 
   # Step 2: Validate and copy user config if it exists

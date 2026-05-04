@@ -46,6 +46,27 @@ spec:
 EOF
 }
 
+# Helper: create a manifest with nested (path-based) tokens, matching the
+# defaults that some tests stage under TestProject/.
+write_manifest_with_nested_tokens() {
+  cat > "${OUTPUT_SUB_PATH}/manifests/substituted/${PROJECT_NAME}/deployment.yaml" << 'EOF'
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: test-project
+  namespace: ${Environment}
+spec:
+  replicas: 3
+  template:
+    spec:
+      containers:
+        - resources:
+            requests:
+              memory: ${TestProject/MemoryRequest}
+              cpu: ${TestProject/CpuRequest}
+EOF
+}
+
 # Helper: create a clean manifest (no tokens)
 write_clean_manifest() {
   cat > "${OUTPUT_SUB_PATH}/manifests/substituted/${PROJECT_NAME}/service.yaml" << 'EOF'
@@ -91,7 +112,7 @@ EOF
 # Kind mapping
 # =============================================================================
 
-@test "contract-generate: maps kubernetes-bundle-resources to kubernetes-bundle" {
+@test "contract-generate: passes kubernetes-bundle-resources through as kind" {
   write_clean_manifest
   export BUILD_KIND="kubernetes-bundle-resources"
   run "$CONTRACT_SCRIPT"
@@ -100,44 +121,37 @@ EOF
   [ -f "$contract" ]
   local kind
   kind=$(yq '.kind' "$contract")
-  [ "$kind" = "kubernetes-bundle" ]
+  [ "$kind" = "$BUILD_KIND" ]
 }
 
-@test "contract-generate: maps kubernetes-bundle-vendor-helm-rendered to kubernetes-bundle" {
+@test "contract-generate: passes kubernetes-bundle-vendor-helm-rendered through as kind" {
   write_clean_manifest
   export BUILD_KIND="kubernetes-bundle-vendor-helm-rendered"
   run "$CONTRACT_SCRIPT"
   [ "$status" -eq 0 ]
   local kind
   kind=$(yq '.kind' "${OUTPUT_SUB_PATH}/manifests/contract/contract.yaml")
-  [ "$kind" = "kubernetes-bundle" ]
+  [ "$kind" = "$BUILD_KIND" ]
 }
 
-@test "contract-generate: maps kubernetes-app-manifests-only to kubernetes-app" {
+@test "contract-generate: passes kubernetes-app-manifests-only through as kind" {
   write_clean_manifest
   export BUILD_KIND="kubernetes-app-manifests-only"
   run "$CONTRACT_SCRIPT"
   [ "$status" -eq 0 ]
   local kind
   kind=$(yq '.kind' "${OUTPUT_SUB_PATH}/manifests/contract/contract.yaml")
-  [ "$kind" = "kubernetes-app" ]
+  [ "$kind" = "$BUILD_KIND" ]
 }
 
-@test "contract-generate: maps kubernetes-app-docker-dockerfile to kubernetes-app" {
+@test "contract-generate: passes kubernetes-app-docker-dockerfile through as kind" {
   write_clean_manifest
   export BUILD_KIND="kubernetes-app-docker-dockerfile"
   run "$CONTRACT_SCRIPT"
   [ "$status" -eq 0 ]
   local kind
   kind=$(yq '.kind' "${OUTPUT_SUB_PATH}/manifests/contract/contract.yaml")
-  [ "$kind" = "kubernetes-app" ]
-}
-
-@test "contract-generate: fails on unknown build kind" {
-  write_clean_manifest
-  export BUILD_KIND="something-else"
-  run "$CONTRACT_SCRIPT"
-  [ "$status" -ne 0 ]
+  [ "$kind" = "$BUILD_KIND" ]
 }
 
 # =============================================================================
@@ -256,7 +270,7 @@ EOF
 # =============================================================================
 
 @test "contract-generate: copies defaults and sets inline values with nested paths" {
-  write_manifest_with_tokens
+  write_manifest_with_nested_tokens
   local defaults_dir="${TEST_DIR}/src-defaults"
   mkdir -p "${defaults_dir}/TestProject"
   printf '256Mi' > "${defaults_dir}/TestProject/MemoryRequest"
@@ -290,7 +304,7 @@ EOF
 }
 
 @test "contract-generate: defaults dir copied into contract dir preserving structure" {
-  write_manifest_with_tokens
+  write_manifest_with_nested_tokens
   local defaults_dir="${TEST_DIR}/src-defaults"
   mkdir -p "${defaults_dir}/TestProject"
   printf '256Mi' > "${defaults_dir}/TestProject/MemoryRequest"
@@ -299,6 +313,31 @@ EOF
   [ "$status" -eq 0 ]
   [ -f "${OUTPUT_SUB_PATH}/manifests/contract/defaults/TestProject/MemoryRequest" ]
   [ "$(cat "${OUTPUT_SUB_PATH}/manifests/contract/defaults/TestProject/MemoryRequest")" = "256Mi" ]
+}
+
+@test "contract-generate: fails when defaults filename does not match declared name style" {
+  write_manifest_with_tokens
+  local defaults_dir="${TEST_DIR}/src-defaults"
+  mkdir -p "${defaults_dir}"
+  # PascalCase project, but defaults file uses lower-kebab - should fail validation
+  printf '256Mi' > "${defaults_dir}/memory-request"
+  export DEFAULTS_SUB_PATH="${defaults_dir}"
+  run "$CONTRACT_SCRIPT"
+  [ "$status" -ne 0 ]
+  [[ "${output}" == *"do not match the declared name style PascalCase"* ]]
+}
+
+@test "contract-generate: fails when a defaults file does not match any unresolved token" {
+  write_manifest_with_tokens
+  local defaults_dir="${TEST_DIR}/src-defaults"
+  mkdir -p "${defaults_dir}"
+  # Correct style but no matching token in the manifest - orphan
+  printf 'oops' > "${defaults_dir}/UnreferencedToken"
+  export DEFAULTS_SUB_PATH="${defaults_dir}"
+  run "$CONTRACT_SCRIPT"
+  [ "$status" -ne 0 ]
+  [[ "${output}" == *"do not correspond to any unresolved token"* ]]
+  [[ "${output}" == *"UnreferencedToken"* ]]
 }
 
 # =============================================================================
@@ -347,7 +386,7 @@ EOF
 }
 
 @test "contract-generate: zip contains defaults dir when present" {
-  write_manifest_with_tokens
+  write_manifest_with_nested_tokens
   local defaults_dir="${TEST_DIR}/src-defaults"
   mkdir -p "${defaults_dir}/TestProject"
   printf '256Mi' > "${defaults_dir}/TestProject/MemoryRequest"

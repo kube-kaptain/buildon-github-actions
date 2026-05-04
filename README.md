@@ -77,6 +77,7 @@ See [`examples/`](examples/) for more usage patterns.
 | `docker-build-retag.yaml` | Everything from quality and version above, but also pulls, retags, and republishes a docker image |
 | `kubernetes-app-manifests-only.yaml` | Everything from quality and version above, plus packages Kubernetes manifests with token substitution |
 | `kubernetes-bundle-resources.yaml` | Packages pre-existing kubernetes manifests from src/kubernetes/ with token substitution, no generators |
+| `kubernetes-product-aggregate.yaml` | Aggregates pre-built manifest bundles listed in spec.contents into a deployable product, with merged defaults and a unified contract |
 | `kubernetes-bundle-vendor-helm-rendered.yaml` | Renders a vendor helm chart into individual manifests, processes and validates them, then packages with token substitution |
 | `kubernetes-app-docker-dockerfile.yaml` | Everything from both docker Dockerfile and Kubernetes manifest packaging - a full kube app build |
 | `kubernetes-bundle-docker-retag.yaml` | Packages pre-existing kubernetes manifests from src/kubernetes/ with token substitution and retags an upstream docker image - for apps using upstream images with hand-maintained manifests |
@@ -119,9 +120,12 @@ See [`examples/`](examples/) for more usage patterns.
 | `kubernetes-manifests-contract-generate` | Generates a manifests contract file describing token scheme, required config, and compatibility |
 | `kubernetes-manifests-package-only-token-override` | Overrides docker image tokens for manifests-only workflow |
 | `kubernetes-manifests-package-prepare` | Prepares manifests and tokens for packaging |
-| `kubernetes-manifests-package` | Packages Kubernetes manifests into a zip with variable substitution |
+| `kubernetes-manifests-package` | Phase B: zips the substituted manifests tree |
 | `kubernetes-manifests-repo-provider-package` | Packages manifests for repo provider (builds docker image). Does NOT publish. |
 | `kubernetes-manifests-repo-provider-publish` | Publishes manifests via pluggable repo provider. Requires package step to run first. |
+| `kubernetes-manifests-substitute` | Phase A: copies prepared manifests and runs token substitution |
+| `kubernetes-product-aggregate` | Resolves spec.contents bundles, stages manifests/defaults, and emits paths for downstream packaging |
+| `kubernetes-product-lineage-data-generate` | Emits the product lineage data ConfigMap (presence + lineage record) into the substituted manifests tree |
 | `layer-package-prepare` | Prepares layer or layerset for OCI packaging - validates source, injects metadata, generates Dockerfile |
 | `layer-validate` | Validates substituted layer or layerset after docker build |
 | `release-change-data-generate` | Generates structured release change data YAML from commit history |
@@ -163,6 +167,7 @@ All inputs to the system come from KaptainPM.yaml and layers, except secrets.
 | `kubernetes-bundle-docker-retag.yaml` | Kubernetes Bundle - Docker Retag | [docs/kubernetes-bundle-docker-retag.md](docs/kubernetes-bundle-docker-retag.md) |
 | `kubernetes-bundle-resources.yaml` | Kubernetes Bundle - Resources | [docs/kubernetes-bundle-resources.md](docs/kubernetes-bundle-resources.md) |
 | `kubernetes-bundle-vendor-helm-rendered.yaml` | Kubernetes Bundle - Vendor Helm Rendered | [docs/kubernetes-bundle-vendor-helm-rendered.md](docs/kubernetes-bundle-vendor-helm-rendered.md) |
+| `kubernetes-product-aggregate.yaml` | Kubernetes Product Aggregate | [docs/kubernetes-product-aggregate.md](docs/kubernetes-product-aggregate.md) |
 | `layer-and-layerset-build.yaml` | Layer and Layerset Build | [docs/layer-and-layerset-build.md](docs/layer-and-layerset-build.md) |
 | `spec-check-filter-release.yaml` | Spec Check Filter Release | [docs/spec-check-filter-release.md](docs/spec-check-filter-release.md) |
 <!-- WORKFLOW-DOCS-END -->

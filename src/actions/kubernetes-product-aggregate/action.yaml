@@ -1,0 +1,130 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
+
+name: 'Kubernetes Product Aggregate'
+description: 'Resolves spec.contents bundles, stages manifests/defaults, and emits paths for downstream packaging'
+
+inputs:
+  # Build output
+  output-sub-path:
+    description: 'Build output directory (relative)'
+    required: false
+    default: 'kaptain-out'
+  # Token substitution
+  token-delimiter-style:
+    description: 'Token delimiter syntax for variables (shell, mustache, helm, erb, github-actions, blade, stringtemplate, ognl, t4, swift)'
+    required: false
+    default: 'shell'
+  token-name-style:
+    description: 'Case style for token names (UPPER_SNAKE, lower_snake, lower-kebab, UPPER-KEBAB, camelCase, PascalCase, lower.dot, UPPER.DOT)'
+    required: false
+    default: 'PascalCase'
+  token-name-validation:
+    description: 'How to validate user token names (MATCH = must match token-name-style, ALL = accept any valid name)'
+    required: false
+    default: 'MATCH'
+  allow-builtin-token-override:
+    description: 'Allow user tokens to override built-in tokens (for template/reusable projects)'
+    required: false
+    default: 'false'
+  config-sub-path:
+    description: 'Directory containing user-defined token files (relative)'
+    required: false
+    default: 'src/config'
+  config-value-trailing-newline:
+    description: 'How to handle trailing newlines in config values (strip-for-single-line, preserve-all, always-strip-one-newline)'
+    required: false
+    default: 'strip-for-single-line'
+  token-substitution-passes:
+    description: 'Number of times to run the token substitution pass (for nested token references)'
+    required: false
+    default: '1'
+  # Docker registry logins
+  docker-registry-logins:
+    description: 'YAML config for Docker registry logins (registry URL as key)'
+    required: false
+    default: ''
+  # Docker target config
+  docker-target-registry:
+    description: 'Target container registry domain (defaults to ghcr.io on GH Actions)'
+    required: false
+    default: ''
+  docker-target-namespace:
+    description: 'Path segment between registry and image name (defaults to lower cased org name or user ID on GH Actions)'
+    required: false
+    default: ''
+  # Docker push targets
+  docker-push-targets:
+    description: 'JSON array of additional push targets [{registry, namespace?}]'
+    required: false
+    default: ''
+  # Container runtime
+  image-build-command:
+    description: 'Container runtime command (podman or docker)'
+    required: true
+
+  # Action-specific inputs
+  project-name:
+    description: 'Project name (must satisfy product naming rule)'
+    required: true
+  defaults-sub-path:
+    description: 'Local product defaults directory (default: src/defaults)'
+    required: false
+    default: 'src/defaults'
+  manifests-sub-path:
+    description: 'Local product manifests directory (default: src/kubernetes)'
+    required: false
+    default: 'src/kubernetes'
+  product-allow-local-defaults-override:
+    description: 'When true, src/defaults overrides bundle-contributed defaults with WARN log; otherwise must be byte-identical'
+    required: false
+    default: 'false'
+  product-allow-local-manifests-override:
+    description: 'When true, src/kubernetes files override colliding bundle-contributed paths with WARN log; otherwise any path collision fails'
+    required: false
+    default: 'false'
+  is-release:
+    description: 'When true, content version ranges resolve to release-only bundle versions (excludes -PRERELEASE and platform-suffixed tags)'
+    required: false
+    default: 'false'
+
+outputs:
+  manifests-sub-path:
+    description: 'Assembled bundle manifests directory for downstream package-prepare'
+    value: ${{ steps.product-aggregate.outputs.MANIFESTS_SUB_PATH }}
+  defaults-sub-path:
+    description: 'Merged defaults directory for downstream contract-generate'
+    value: ${{ steps.product-aggregate.outputs.DEFAULTS_SUB_PATH }}
+  product-name:
+    description: 'PROJECT_NAME verbatim'
+    value: ${{ steps.product-aggregate.outputs.PRODUCT_NAME }}
+  product-short-name:
+    description: 'PROJECT_NAME with product- prefix or -product suffix stripped'
+    value: ${{ steps.product-aggregate.outputs.PRODUCT_SHORT_NAME }}
+  product-contents-file:
+    description: 'Path to markdown bullet list of spec.contents entries for release notes'
+    value: ${{ steps.product-aggregate.outputs.PRODUCT_CONTENTS_FILE }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Aggregate product
+      id: product-aggregate
+      shell: bash
+      env:
+        BUILD_MODE: build_server
+        BUILD_PLATFORM: github-actions
+        BUILD_PLATFORM_LOG_PROVIDER: github-actions
+        PROJECT_NAME: ${{ inputs.project-name }}
+        OUTPUT_SUB_PATH: ${{ inputs.output-sub-path }}
+        TOKEN_DELIMITER_STYLE: ${{ inputs.token-delimiter-style }}
+        TOKEN_NAME_STYLE: ${{ inputs.token-name-style }}
+        DEFAULTS_SUB_PATH: ${{ inputs.defaults-sub-path }}
+        MANIFESTS_SUB_PATH: ${{ inputs.manifests-sub-path }}
+        PRODUCT_ALLOW_LOCAL_DEFAULTS_OVERRIDE: ${{ inputs.product-allow-local-defaults-override }}
+        PRODUCT_ALLOW_LOCAL_MANIFESTS_OVERRIDE: ${{ inputs.product-allow-local-manifests-override }}
+        DOCKER_TARGET_REGISTRY: ${{ inputs.docker-target-registry }}
+        DOCKER_TARGET_NAMESPACE: ${{ inputs.docker-target-namespace }}
+        IMAGE_BUILD_COMMAND: ${{ inputs.image-build-command }}
+        IS_RELEASE: ${{ inputs.is-release }}
+      run: "${{ github.action_path }}/../../scripts/main/kubernetes-product-aggregate"

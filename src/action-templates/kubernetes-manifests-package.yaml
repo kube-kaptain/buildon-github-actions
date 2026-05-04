@@ -2,19 +2,18 @@
 # Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
 
 name: 'Kubernetes Manifests Package'
-description: 'Packages Kubernetes manifests into a zip with variable substitution'
+description: 'Phase B: zips the substituted manifests tree'
 
 inputs:
   # Action-specific inputs
   project-name:
-    description: 'Project name for output naming'
+    description: 'Project name for zip naming and substituted dir lookup'
     required: true
   version:
-    description: 'Version for output naming'
+    description: 'Version for zip naming'
     required: true
 
   # INJECT-INPUT: output-sub-path
-  # INJECT-INPUT: token-substitution
 
 outputs:
   manifests-zip-sub-path:
@@ -37,7 +36,4 @@ runs:
         PROJECT_NAME: ${{ inputs.project-name }}
         VERSION: ${{ inputs.version }}
         OUTPUT_SUB_PATH: ${{ inputs.output-sub-path }}
-        TOKEN_DELIMITER_STYLE: ${{ inputs.token-delimiter-style }}
-        CONFIG_VALUE_TRAILING_NEWLINE: ${{ inputs.config-value-trailing-newline }}
-        TOKEN_SUBSTITUTION_PASSES: ${{ inputs.token-substitution-passes }}
       run: "${{ github.action_path }}/../../scripts/main/kubernetes-manifests-package"

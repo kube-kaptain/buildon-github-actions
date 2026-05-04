@@ -536,6 +536,68 @@ teardown() {
   [[ "$output" == "1.1" ]]
 }
 
+# =============================================================================
+# version_filter_variant - keep -<variant> multi-arch indices, strip the suffix
+# =============================================================================
+
+@test "version_filter_variant: keeps and strips matching variant" {
+  local tags
+  tags=$(printf "1.1-manifests\n1.2-manifests\n2.0-manifests\n")
+  run version_filter_variant "manifests" "${tags}"
+  [[ "$status" -eq 0 ]]
+  [[ "$output" == "$(printf '1.1\n1.2\n2.0')" ]]
+}
+
+@test "version_filter_variant: drops other variants" {
+  local tags
+  tags=$(printf "1.1-manifests\n1.1-release-change-data\n1.1-contract\n")
+  run version_filter_variant "manifests" "${tags}"
+  [[ "$status" -eq 0 ]]
+  [[ "$output" == "1.1" ]]
+}
+
+@test "version_filter_variant: drops per-platform sub-tags of same variant" {
+  local tags
+  tags=$(printf "1.1-manifests\n1.1-manifests-linux-amd64\n1.1-manifests-linux-arm64\n")
+  run version_filter_variant "manifests" "${tags}"
+  [[ "$status" -eq 0 ]]
+  [[ "$output" == "1.1" ]]
+}
+
+@test "version_filter_variant: preserves PRERELEASE qualifier in stripped result" {
+  local tags
+  tags=$(printf "1.31.3.1-manifests\n1.31.3.1-PRERELEASE-manifests\n")
+  run version_filter_variant "manifests" "${tags}"
+  [[ "$status" -eq 0 ]]
+  [[ "$output" == "$(printf '1.31.3.1\n1.31.3.1-PRERELEASE')" ]]
+}
+
+@test "version_filter_variant: returns empty when nothing matches" {
+  local tags
+  tags=$(printf "1.1-contract\n1.2-release-change-data\n")
+  run version_filter_variant "manifests" "${tags}"
+  [[ "$status" -eq 0 ]]
+  [[ -z "$output" ]]
+}
+
+@test "version_filter_variant: skips empty lines" {
+  local tags
+  tags=$(printf "1.1-manifests\n\n1.2-manifests\n")
+  run version_filter_variant "manifests" "${tags}"
+  [[ "$status" -eq 0 ]]
+  [[ "$output" == "$(printf '1.1\n1.2')" ]]
+}
+
+@test "version_filter_variant + version_resolve_range: picks release over PRERELEASE" {
+  # End-to-end: replicate the real-world tag set from the user's product build.
+  local tags
+  tags=$(printf "1.31.3.1-manifests\n1.31.3.1-manifests-linux-amd64\n1.31.3.1-manifests-linux-arm64\n1.31.3.1-release-change-data\n1.31.3.1-PRERELEASE-manifests\n1.31.3.1-PRERELEASE-manifests-linux-amd64\n")
+  local canonical
+  canonical=$(version_filter_variant "manifests" "${tags}")
+  version_resolve_range "[1.0,1.31.4.0)" "${canonical}"
+  [[ "${VERSION_RESOLVE_RESULT}" == "1.31.3.1" ]]
+}
+
 @test "resolve_range: IS_RELEASE=true excludes suffixed versions" {
   # When IS_RELEASE is true, only release (unsuffixed) versions should be candidates
   export IS_RELEASE="true"

@@ -183,18 +183,23 @@ jobs:
       # INJECT: vendor-helm-render-validate
       # INJECT: github-check-end(name="Helm Render Validate", id="check-vendor-helm-render-validate")
 
-      # === Manifest Package ===
-      # INJECT: github-check-start(name="Package Manifests", id="check-manifest-package")
+      # === Manifest Substitute ===
+      # INJECT: github-check-start(name="Substitute Manifests", id="check-manifest-substitute")
       # INJECT: manifest-package-prepare
       # INJECT: vendor-helm-inject-build-details
       # INJECT: manifest-package-only-token-override
-      # INJECT: manifest-package
-      # INJECT: github-check-end(name="Package Manifests", id="check-manifest-package")
+      # INJECT: manifest-substitute
+      # INJECT: github-check-end(name="Substitute Manifests", id="check-manifest-substitute")
 
       # === Manifest Contract Generate ===
       # INJECT: github-check-start(name="Generate Manifests Contract", id="check-manifest-contract-generate")
       # INJECT: manifest-contract-generate
       # INJECT: github-check-end(name="Generate Manifests Contract", id="check-manifest-contract-generate")
+
+      # === Manifest Package ===
+      # INJECT: github-check-start(name="Package Manifests", id="check-manifest-package")
+      # INJECT: manifest-package
+      # INJECT: github-check-end(name="Package Manifests", id="check-manifest-package")
 
       # === Manifest Repo Provider Package ===
       # INJECT: github-check-start(name="Package Manifests for Repo Provider", id="check-manifest-repo-provider-package")

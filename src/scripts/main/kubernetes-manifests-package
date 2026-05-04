@@ -2,17 +2,16 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
 #
-# kubernetes-manifests-package - Packages Kubernetes manifests into a zip with variable substitution
+# kubernetes-manifests-package - Phase B of manifest packaging: zip the substituted tree
 #
-# Performs substitution and creates the final zip file.
-# Requires kubernetes-manifests-package-prepare to have run first.
+# Zips substituted/<project-name>/ into the manifests zip.
+# Requires kubernetes-manifests-substitute (and any in-between steps such as
+# kubernetes-manifests-contract-generate) to have run first.
 #
 # Inputs (environment variables):
-#   PROJECT_NAME    - For output naming (required)
-#   VERSION         - For output naming (required)
+#   PROJECT_NAME    - For zip naming and substituted dir lookup (required)
+#   VERSION         - For zip naming (required)
 #   OUTPUT_SUB_PATH - Build output directory, relative (default: kaptain-out)
-#   TOKEN_DELIMITER_STYLE - Token delimiter syntax (default: shell)
-#   CONFIG_VALUE_TRAILING_NEWLINE - Trailing newline handling (default: strip-for-single-line)
 #
 # Outputs:
 #   MANIFESTS_ZIP_SUB_PATH - Relative path to directory containing the zip file
@@ -34,10 +33,6 @@ source "${SCRIPT_DIR}/../lib/log.bash"
 # shellcheck source=src/scripts/defaults/output-sub-path.bash
 source "$(dirname "${BASH_SOURCE[0]}")/../defaults/output-sub-path.bash"
 
-# Token substitution defaults
-# shellcheck source=src/scripts/defaults/tokens.bash
-source "$(dirname "${BASH_SOURCE[0]}")/../defaults/tokens.bash"
-
 # shellcheck source=src/scripts/lib/output-var.bash
 source "${SCRIPT_DIR}/../lib/output-var.bash"
 
@@ -51,36 +46,17 @@ main() {
   log "Output: ${OUTPUT_SUB_PATH}"
   log "===================================="
 
-  # Validate prepare has run
-  if [[ ! -d "${MANIFESTS_COMBINED_SUB_PATH}" ]]; then
-    log_error "Combined manifests directory not found: ${MANIFESTS_COMBINED_SUB_PATH}"
-    log_error "Did kubernetes-manifests-package-prepare run first?"
+  # Validate substitute has run
+  if [[ ! -d "${MANIFESTS_SUBSTITUTED_SUB_PATH}/${PROJECT_NAME}" ]]; then
+    log_error "Substituted manifests directory not found: ${MANIFESTS_SUBSTITUTED_SUB_PATH}/${PROJECT_NAME}"
+    log_error "Did kubernetes-manifests-substitute run first?"
     exit 1
   fi
 
-  if [[ ! -d "${MANIFESTS_CONFIG_SUB_PATH}" ]]; then
-    log_error "Config/tokens directory not found: ${MANIFESTS_CONFIG_SUB_PATH}"
-    log_error "Did kubernetes-manifests-package-prepare run first?"
-    exit 1
-  fi
+  mkdir -p "${MANIFESTS_ZIP_SUB_PATH}"
 
   # Compute the zip filename
   local zip_name="${PROJECT_NAME}-${VERSION}-manifests.zip"
-
-  # Copy manifests to substituted/<project-name>/
-  log ""
-  log "Preparing manifests for substitution..."
-  mkdir -p "${MANIFESTS_SUBSTITUTED_SUB_PATH}/${PROJECT_NAME}"
-  cp -R "${MANIFESTS_COMBINED_SUB_PATH}"/* "${MANIFESTS_SUBSTITUTED_SUB_PATH}/${PROJECT_NAME}/"
-
-  # Perform variable substitution
-  log "Performing variable substitution..."
-  CONFIG_VALUE_TRAILING_NEWLINE="${CONFIG_VALUE_TRAILING_NEWLINE}" \
-  TOKEN_SUBSTITUTION_PASSES="${TOKEN_SUBSTITUTION_PASSES}" \
-  "${SCRIPT_DIR}/../util/substitute-tokens-from-dir" \
-    "${TOKEN_DELIMITER_STYLE}" \
-    "${MANIFESTS_CONFIG_SUB_PATH}" \
-    "${MANIFESTS_SUBSTITUTED_SUB_PATH}/${PROJECT_NAME}"
 
   # Create zip directly from substituted (project-name wrapper already in place)
   log ""

@@ -2129,19 +2129,21 @@ jobs:
           action: fail
           check-run-id: ${{ steps.check-pre-package-prepare.outputs.check-run-id }}
 
-      # === Manifest Package ===
-      - name: Start check - Package Manifests
-        id: check-manifest-package
+      # === Manifest Substitute ===
+      - name: Start check - Substitute Manifests
+        id: check-manifest-substitute
         continue-on-error: true
         uses: ./.github/buildon-github-actions/src/actions/github-check-run
         with:
           action: start
-          check-name: 'Build & Publish → Package Manifests'
+          check-name: 'Build & Publish → Substitute Manifests'
       - name: Prepare manifests for packaging
         id: manifest-package-prepare
         uses: ./.github/buildon-github-actions/src/actions/kubernetes-manifests-package-prepare
         with:
-          manifests-sub-path: ${{ steps.kpm.outputs.MANIFESTS_SUB_PATH }}
+          manifests-sub-path: ${{ steps.product-aggregate.outputs.manifests-sub-path || steps.kpm.outputs.MANIFESTS_SUB_PATH }}
+          product-name: ${{ steps.product-aggregate.outputs.product-name }}
+          product-short-name: ${{ steps.product-aggregate.outputs.product-short-name }}
           project-name: ${{ steps.versions.outputs.project-name }}
           version: ${{ steps.versions.outputs.version }}
           version-major: ${{ steps.versions.outputs.version-major }}
@@ -2169,9 +2171,9 @@ jobs:
           config-value-trailing-newline: ${{ steps.kpm.outputs.CONFIG_VALUE_TRAILING_NEWLINE }}
           token-substitution-passes: ${{ steps.kpm.outputs.TOKEN_SUBSTITUTION_PASSES }}
           output-sub-path: ${{ steps.kpm.outputs.OUTPUT_SUB_PATH }}
-      - name: Package manifests
-        id: manifest-package
-        uses: ./.github/buildon-github-actions/src/actions/kubernetes-manifests-package
+      - name: Substitute manifests
+        id: manifest-substitute
+        uses: ./.github/buildon-github-actions/src/actions/kubernetes-manifests-substitute
         with:
           project-name: ${{ steps.versions.outputs.project-name }}
           version: ${{ steps.versions.outputs.version }}
@@ -2179,19 +2181,19 @@ jobs:
           config-value-trailing-newline: ${{ steps.kpm.outputs.CONFIG_VALUE_TRAILING_NEWLINE }}
           token-substitution-passes: ${{ steps.kpm.outputs.TOKEN_SUBSTITUTION_PASSES }}
           output-sub-path: ${{ steps.kpm.outputs.OUTPUT_SUB_PATH }}
-      - name: Pass check - Package Manifests
-        if: success() && steps.check-manifest-package.outputs.check-run-id != ''
+      - name: Pass check - Substitute Manifests
+        if: success() && steps.check-manifest-substitute.outputs.check-run-id != ''
         continue-on-error: true
         uses: ./.github/buildon-github-actions/src/actions/github-check-run
         with:
           action: pass
-          check-run-id: ${{ steps.check-manifest-package.outputs.check-run-id }}
-      - name: Fail check - Package Manifests
-        if: failure() && steps.check-manifest-package.outputs.check-run-id != ''
+          check-run-id: ${{ steps.check-manifest-substitute.outputs.check-run-id }}
+      - name: Fail check - Substitute Manifests
+        if: failure() && steps.check-manifest-substitute.outputs.check-run-id != ''
         uses: ./.github/buildon-github-actions/src/actions/github-check-run
         with:
           action: fail
-          check-run-id: ${{ steps.check-manifest-package.outputs.check-run-id }}
+          check-run-id: ${{ steps.check-manifest-substitute.outputs.check-run-id }}
 
       # === Manifest Contract Generate ===
       - name: Start check - Generate Manifests Contract
@@ -2211,7 +2213,7 @@ jobs:
           token-delimiter-style: ${{ steps.kpm.outputs.TOKEN_DELIMITER_STYLE }}
           token-name-style: ${{ steps.kpm.outputs.TOKEN_NAME_STYLE }}
           metadata-description: ${{ steps.kpm.outputs.METADATA_DESCRIPTION }}
-          defaults-sub-path: ${{ steps.kpm.outputs.DEFAULTS_SUB_PATH }}
+          defaults-sub-path: ${{ steps.product-aggregate.outputs.defaults-sub-path || steps.kpm.outputs.DEFAULTS_SUB_PATH }}
           output-sub-path: ${{ steps.kpm.outputs.OUTPUT_SUB_PATH }}
       - name: Pass check - Generate Manifests Contract
         if: success() && steps.check-manifest-contract-generate.outputs.check-run-id != ''
@@ -2226,6 +2228,35 @@ jobs:
         with:
           action: fail
           check-run-id: ${{ steps.check-manifest-contract-generate.outputs.check-run-id }}
+
+      # === Manifest Package ===
+      - name: Start check - Package Manifests
+        id: check-manifest-package
+        continue-on-error: true
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
+        with:
+          action: start
+          check-name: 'Build & Publish → Package Manifests'
+      - name: Package manifests
+        id: manifest-package
+        uses: ./.github/buildon-github-actions/src/actions/kubernetes-manifests-package
+        with:
+          project-name: ${{ steps.versions.outputs.project-name }}
+          version: ${{ steps.versions.outputs.version }}
+          output-sub-path: ${{ steps.kpm.outputs.OUTPUT_SUB_PATH }}
+      - name: Pass check - Package Manifests
+        if: success() && steps.check-manifest-package.outputs.check-run-id != ''
+        continue-on-error: true
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
+        with:
+          action: pass
+          check-run-id: ${{ steps.check-manifest-package.outputs.check-run-id }}
+      - name: Fail check - Package Manifests
+        if: failure() && steps.check-manifest-package.outputs.check-run-id != ''
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
+        with:
+          action: fail
+          check-run-id: ${{ steps.check-manifest-package.outputs.check-run-id }}
 
       # === Manifest Repo Provider Package ===
       - name: Start check - Package Manifests for Repo Provider
