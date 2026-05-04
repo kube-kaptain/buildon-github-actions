@@ -40,22 +40,22 @@ has_docker() {
   command -v docker &>/dev/null
 }
 
-# Run tests with local BATS
-run_local() {
-  log_info "Running tests with local BATS"
-  cd "$TEST_DIR"
-  bats *.bats
+# Detect available CPU cores for parallel test execution.
+# Falls back to 4 on systems without nproc/sysctl.
+detect_jobs() {
+  nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 4
 }
 
-# Run tests with Docker
-run_docker() {
-  log_info "Running tests with Docker (bats/bats:1.13.0)"
-  docker run --rm \
-    -v "$PROJECT_ROOT:/workspace" \
-    -w /workspace/src/test \
-    -e "PROJECT_ROOT=/workspace" \
-    "bats/bats:1.13.0" \
-    --tap *.bats
+# Run tests with local BATS.
+# --jobs N runs separate .bats files in parallel (requires GNU parallel).
+# --no-parallelize-within-files keeps tests inside a file serial: fixtures
+# (mock docker, _TEST_DIR_COUNTER, env vars) are shared within a file.
+run_local() {
+  local jobs
+  jobs=$(detect_jobs)
+  log_info "Running tests with local BATS (--jobs ${jobs})"
+  cd "$TEST_DIR"
+  bats --jobs "${jobs}" --no-parallelize-within-files *.bats
 }
 
 # Check all scripts are executable
@@ -457,14 +457,11 @@ main() {
   done < <(env)
 
   # Run BATS tests
-  if has_bats; then
-    run_local
-  elif has_docker; then
-    run_docker
-  else
-    log_error "Neither BATS nor Docker available. Cannot run tests."
+  if ! has_bats; then
+    log_error "BATS not available. Install with: brew install bats-core (macOS) or apt-get install bats (Ubuntu)."
     exit 1
   fi
+  run_local
 
   log_info "All tests passed!"
 }
