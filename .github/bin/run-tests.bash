@@ -407,6 +407,13 @@ check_schemas() {
   log_info "Schemas for contract.yaml match upstream"
 }
 
+# Validate every examples/guides/*/KaptainPM.yaml against the pinned schema
+validate_guide_examples() {
+  log_info "Validating guide example KaptainPM.yaml files against schema"
+  ( cd "${PROJECT_ROOT}" && "${SCRIPT_DIR}/validate-guides-against-kaptainpm-schema.bash" )
+  log_info "Guide examples valid"
+}
+
 main() {
   log_info "Starting test suite"
   log_info "Project root: ${PROJECT_ROOT}"
@@ -436,6 +443,9 @@ main() {
 
   # Download schemas and enforce no drift from upstream
   check_schemas
+
+  # Validate guide example KaptainPM.yaml files against the pinned schema
+  validate_guide_examples
 
   # Check examples reference the next version (before regeneration which would fix them)
   check_example_versions
