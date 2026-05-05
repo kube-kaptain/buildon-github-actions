@@ -789,6 +789,17 @@ main() {
   validate_build_context_env_vars
   echo
 
+  # Update example versions early; fail fast if examples/ diverged
+  section_start=$SECONDS
+  "${SCRIPT_DIR}/updateExampleVersions.bash"
+  if ! git -C "$REPO_ROOT" diff --quiet -- examples/; then
+    echo "ERROR: examples/ have stale references - re-run after committing the update" >&2
+    git -C "$REPO_ROOT" diff --name-only -- examples/ >&2
+    exit 1
+  fi
+  echo "Examples updated in $((SECONDS - section_start)) seconds."
+  echo
+
   # Process action templates first
   echo "Assembling actions..."
   echo "  Templates: $ACTION_TEMPLATES_DIR"
@@ -877,11 +888,6 @@ main() {
   generate_docs
   echo "Docs generated in $((SECONDS - section_start)) seconds."
   echo
-
-  # Update example version references
-  section_start=$SECONDS
-  "${SCRIPT_DIR}/updateExampleVersions.bash"
-  echo "Examples updated in $((SECONDS - section_start)) seconds."
 
   echo
   echo "Done in $((SECONDS - start_time)) seconds."
