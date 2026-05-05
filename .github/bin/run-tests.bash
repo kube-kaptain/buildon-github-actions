@@ -334,48 +334,6 @@ check_sed_portability() {
   log_info "All sed -i usage is portable"
 }
 
-# Check example files reference the expected next version tag
-check_example_versions() {
-  log_info "Checking example version references"
-
-  # Find highest existing tag (this repo uses simple x.y.z tags)
-  local highest
-  highest=$(git -C "${PROJECT_ROOT}" tag --list '[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname | head -1)
-
-  if [[ -z "${highest}" ]]; then
-    log_warn "No version tags found, skipping example version check"
-    return 0
-  fi
-
-  # Parse and increment patch
-  local major minor patch
-  IFS='.' read -r major minor patch <<< "${highest}"
-  local expected="${major}.${minor}.$((patch + 1))"
-
-  log_info "Highest tag: ${highest}, expected in examples: @${expected}"
-
-  # Find all version references in examples that don't match
-  local mismatched=()
-  for file in "${PROJECT_ROOT}"/examples/*.yaml; do
-    [[ -f "${file}" ]] || continue
-    local bad_lines
-    bad_lines=$(grep -n '@[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*' "${file}" | grep -v "@${expected}" || true)
-    if [[ -n "${bad_lines}" ]]; then
-      mismatched+=("${file#${PROJECT_ROOT}/}")
-      echo "${bad_lines}" | while IFS= read -r line; do
-        log_error "  ${file#${PROJECT_ROOT}/}:${line}"
-      done
-    fi
-  done
-
-  if [[ ${#mismatched[@]} -gt 0 ]]; then
-    log_error "${#mismatched[@]} example file(s) have wrong version (expected @${expected})"
-    exit 1
-  fi
-
-  log_info "All examples reference @${expected}"
-}
-
 # Check that examples weren't modified by regeneration (source is git tags, not template files)
 check_example_freshness() {
   log_info "Checking example files are fresh"
@@ -446,9 +404,6 @@ main() {
 
   # Validate guide example KaptainPM.yaml files against the pinned schema
   validate_guide_examples
-
-  # Check examples reference the next version (before regeneration which would fix them)
-  check_example_versions
 
   # Check generated files are up to date (regenerates working tree)
   check_generated_files
