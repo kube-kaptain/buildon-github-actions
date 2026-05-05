@@ -20,11 +20,17 @@ setup() {
   # Mock bin directory - prepend to PATH so mocks override real commands
   mkdir -p "${MOCK_BIN_DIR}"
 
-  # Mock podman - returns local tags from MOCK_LOCAL_TAGS env var
+  # Mock podman - emits Repository+Tag rows so the plugin's awk filter sees
+  # them. MOCK_LOCAL_TAGS is one tag per line; MOCK_LOCAL_REPO defaults to the
+  # repo every range test resolves against.
   cat > "${MOCK_BIN_DIR}/podman" << 'MOCK'
 #!/usr/bin/env bash
 if [[ "$1" == "image" && "$2" == "ls" ]]; then
-  echo "${MOCK_LOCAL_TAGS:-}"
+  repo="${MOCK_LOCAL_REPO:-ghcr.io/kube-kaptain/quality/quality-strict}"
+  while IFS= read -r tag; do
+    [[ -z "${tag}" ]] && continue
+    echo "${repo} ${tag}"
+  done <<< "${MOCK_LOCAL_TAGS:-}"
 fi
 MOCK
   chmod +x "${MOCK_BIN_DIR}/podman"

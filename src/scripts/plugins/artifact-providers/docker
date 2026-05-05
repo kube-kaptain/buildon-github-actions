@@ -67,7 +67,11 @@ else
 
   # Local tags from container runtime
   log "Listing local tags for ${full_name}..."
-  local_tags=$(${IMAGE_BUILD_COMMAND} image ls --format '{{.Tag}}' "${full_name}" 2>/dev/null || true)
+  # Filter on Repository ourselves: passing the repo as an arg makes the engine
+  # expand to image IDs and print all references, leaking unrelated tags from
+  # any image that was retagged from this one.
+  local_tags=$(${IMAGE_BUILD_COMMAND} image ls --format '{{.Repository}} {{.Tag}}' 2>/dev/null \
+    | awk -v r="${full_name}" '$1 == r { print $2 }' || true)
   local_count=$(echo "${local_tags}" | grep -c . 2>/dev/null || echo "0")
   if [[ -n "${local_tags}" ]]; then
     log "Local tags: ${local_count} found"
