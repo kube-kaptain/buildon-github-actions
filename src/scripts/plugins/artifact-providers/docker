@@ -37,6 +37,43 @@ source "${SCRIPT_DIR}/../../lib/version-range.bash"
 # shellcheck source=src/scripts/lib/docker-ref-expand.bash
 source "${SCRIPT_DIR}/../../lib/docker-ref-expand.bash"
 
+# Dump every set considered during version range resolution.
+# Called from each failure exit so the operator sees what was filtered out.
+# Reads from caller's lexical scope: local_tags, remote_tags, variant_tags,
+# available_tags, variant.
+dump_resolution_sets() {
+  local local_count remote_count local_only remote_only local_only_count remote_only_count candidates_count
+  local_count=$(printf '%s' "${local_tags:-}" | grep -c . || true)
+  remote_count=$(printf '%s' "${remote_tags:-}" | grep -c . || true)
+  candidates_count=$(printf '%s' "${available_tags:-}" | grep -c . || true)
+
+  local_only=$(comm -23 \
+    <(printf '%s\n' "${local_tags:-}" | sort -u | sed '/^$/d') \
+    <(printf '%s\n' "${remote_tags:-}" | sort -u | sed '/^$/d'))
+  remote_only=$(comm -13 \
+    <(printf '%s\n' "${local_tags:-}" | sort -u | sed '/^$/d') \
+    <(printf '%s\n' "${remote_tags:-}" | sort -u | sed '/^$/d'))
+  local_only_count=$(printf '%s' "${local_only}" | grep -c . || true)
+  remote_only_count=$(printf '%s' "${remote_only}" | grep -c . || true)
+
+  log "Local tags (${local_count}):" >&2
+  [[ -n "${local_tags:-}" ]] && printf '%s\n' "${local_tags}" | sed 's/^/  /' >&2
+  log "Remote tags (${remote_count}):" >&2
+  [[ -n "${remote_tags:-}" ]] && printf '%s\n' "${remote_tags}" | sed 's/^/  /' >&2
+  log "Local-only (${local_only_count}):" >&2
+  [[ -n "${local_only}" ]] && printf '%s\n' "${local_only}" | sed 's/^/  /' >&2
+  log "Remote-only (${remote_only_count}):" >&2
+  [[ -n "${remote_only}" ]] && printf '%s\n' "${remote_only}" | sed 's/^/  /' >&2
+  if [[ -n "${variant:-}" ]]; then
+    local variant_count
+    variant_count=$(printf '%s' "${variant_tags:-}" | grep -c . || true)
+    log "After variant filter -${variant} (${variant_count}):" >&2
+    [[ -n "${variant_tags:-}" ]] && printf '%s\n' "${variant_tags}" | sed 's/^/  /' >&2
+  fi
+  log "Candidates resolved against (${candidates_count}):" >&2
+  [[ -n "${available_tags:-}" ]] && printf '%s\n' "${available_tags}" | sed 's/^/  /' >&2
+}
+
 reference="${1:?Usage: docker <reference> <output-file> [variant]}"
 output_file="${2:?Usage: docker <reference> <output-file> [variant]}"
 variant="${3:-}"
@@ -72,7 +109,7 @@ else
   # any image that was retagged from this one.
   local_tags=$(${IMAGE_BUILD_COMMAND} image ls --format '{{.Repository}} {{.Tag}}' 2>/dev/null \
     | awk -v r="${full_name}" '$1 == r { print $2 }' || true)
-  local_count=$(echo "${local_tags}" | grep -c . 2>/dev/null || echo "0")
+  local_count=$(echo "${local_tags}" | grep -c . || true)
   if [[ -n "${local_tags}" ]]; then
     log "Local tags: ${local_count} found"
   else
@@ -199,22 +236,26 @@ else
   fi
 
   if [[ -n "${remote_tags}" ]]; then
-    remote_count=$(echo "${remote_tags}" | grep -c . 2>/dev/null || echo "0")
+    remote_count=$(echo "${remote_tags}" | grep -c . || true)
     log "Remote tags: ${remote_count} found"
   else
     log "Remote tags: none"
   fi
 
   # Combine local and remote, deduplicate
-  available_tags=$(printf '%s\n%s' "${local_tags}" "${remote_tags}" | sort -u | sed '/^$/d')
-  combined_count=$(echo "${available_tags}" | grep -c . 2>/dev/null || echo "0")
+  combined_tags=$(printf '%s\n%s' "${local_tags}" "${remote_tags}" | sort -u | sed '/^$/d')
+  combined_count=$(echo "${combined_tags}" | grep -c . || true)
+  variant_tags="${combined_tags}"
+  available_tags="${combined_tags}"
 
-  if [[ -z "${available_tags}" ]]; then
+  if [[ -z "${combined_tags}" ]]; then
     if [[ "${auth_method}" == "stored-credentials" || "${auth_method}" == "credential-helper" ]]; then
       log_error "Failed to list tags for ${full_name} (authenticated request failed - check your credentials)"
     else
       log_error "Unable to anonymously list tags for ${full_name} - cannot resolve version range ${version_part}"
     fi
+    dump_resolution_sets
+    log_error "Resolution of ${version_part} failed - see lists above"
     exit 1
   fi
   log "Combined tags: ${combined_count} unique"
@@ -225,28 +266,37 @@ else
   # (-<variant>-linux-amd64, etc.) are dropped.
   if [[ -n "${variant}" ]]; then
     log "Filtering tags to variant: -${variant}"
-    available_tags=$(version_filter_variant "${variant}" "${available_tags}")
-    if [[ -z "${available_tags}" ]]; then
+    variant_tags=$(version_filter_variant "${variant}" "${combined_tags}")
+    available_tags="${variant_tags}"
+    if [[ -z "${variant_tags}" ]]; then
       log_error "No tags matching variant -${variant} for ${full_name} - cannot resolve ${version_part}"
+      dump_resolution_sets
+      log_error "Resolution of ${version_part} failed - see lists above"
       exit 1
     fi
-    variant_count=$(echo "${available_tags}" | grep -c . 2>/dev/null || echo "0")
+    variant_count=$(echo "${variant_tags}" | grep -c . || true)
     log "Variant tags: ${variant_count} found"
   fi
 
   # For release builds, exclude suffixed versions (e.g. 1.1-PRERELEASE, 1.1-linux-amd64)
   if [[ "${IS_RELEASE:-false}" == "true" ]]; then
     log "Release build: filtering to release-only versions"
-    available_tags=$(version_filter_release "${available_tags}")
+    available_tags=$(version_filter_release "${variant_tags}")
     if [[ -z "${available_tags}" ]]; then
       log_error "No release versions available for ${full_name} after filtering suffixed tags - cannot resolve ${version_part}"
+      dump_resolution_sets
+      log_error "Resolution of ${version_part} failed - see lists above"
       exit 1
     fi
-    release_count=$(echo "${available_tags}" | grep -c . 2>/dev/null || echo "0")
+    release_count=$(echo "${available_tags}" | grep -c . || true)
     log "Release versions: ${release_count} found"
   fi
 
-  version_resolve_range "${version_part}" "${available_tags}"
+  if ! version_resolve_range "${version_part}" "${available_tags}"; then
+    dump_resolution_sets
+    log_error "Resolution of ${version_part} failed for ${full_name} - see lists above"
+    exit 1
+  fi
   if [[ -n "${variant}" ]]; then
     echo "${full_name}:${VERSION_RESOLVE_RESULT}-${variant}" > "${output_file}"
   else

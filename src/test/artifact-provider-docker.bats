@@ -343,6 +343,43 @@ MOCK
   assert_output_contains "No version matching range"
 }
 
+@test "range failure dumps all resolution sets with counts" {
+  export MOCK_LOCAL_TAGS=$'3.0\n3.1'
+  export MOCK_REMOTE_TAGS_JSON='{"tags":["3.1","4.0"]}'
+  run "$PROVIDER" "quality-strict:[1.0,2.0)" "${OUTPUT_FILE}"
+  [[ "$status" -eq 1 ]]
+  assert_output_contains "Local tags (2):"
+  assert_output_contains "Remote tags (2):"
+  assert_output_contains "Local-only (1):"
+  assert_output_contains "Remote-only (1):"
+  assert_output_contains "Candidates resolved against (3):"
+  assert_output_contains "Resolution of [1.0,2.0) failed"
+}
+
+@test "range failure dumps zero-count rows when sets empty" {
+  export MOCK_REMOTE_TAGS_JSON='{"tags":["3.0","4.0"]}'
+  run "$PROVIDER" "quality-strict:[1.0,2.0)" "${OUTPUT_FILE}"
+  [[ "$status" -eq 1 ]]
+  assert_output_contains "Local tags (0):"
+  assert_output_contains "Local-only (0):"
+}
+
+@test "range failure with variant includes variant filter row in dump" {
+  export MOCK_LOCAL_TAGS=$'3.0-manifests\n3.1-manifests\n3.0\n3.1'
+  run "$PROVIDER" "quality-strict:[1.0,2.0)" "${OUTPUT_FILE}" "manifests"
+  [[ "$status" -eq 1 ]]
+  assert_output_contains "After variant filter -manifests (2):"
+}
+
+@test "range success does not emit resolution-set dump" {
+  export MOCK_LOCAL_TAGS=$'1.0\n1.1\n1.2'
+  run "$PROVIDER" "quality-strict:[1.0,2.0)" "${OUTPUT_FILE}"
+  [[ "$status" -eq 0 ]]
+  assert_output_not_contains "Local tags ("
+  assert_output_not_contains "Candidates resolved against"
+  assert_output_not_contains "see lists above"
+}
+
 # =============================================================================
 # Auth - direct credentials from docker config
 # =============================================================================
