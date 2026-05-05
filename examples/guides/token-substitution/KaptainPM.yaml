@@ -5,11 +5,11 @@ apiVersion: kaptain.org/1.18
 kind: basic-quality-and-versioning
 
 spec:
-  main:
+  global:
+    configSubPath: src/config
     tokens:
       delimiterStyle: shell
       nameStyle: PascalCase
       nameValidation: MATCH
-      configSubPath: src/config
       allowBuiltinOverride: false
-      configValueTrailingNewline: strip-for-single-line
+      valueTrailingNewline: strip-for-single-line

@@ -5,9 +5,9 @@ apiVersion: kaptain.org/1.18
 kind: basic-quality-and-versioning
 
 spec:
-  main:
-    release:
-      github:
+  platform:
+    githubActions:
+      release:
         enabled: true
         substitutedFiles: dist/output.txt
         verbatimFiles: CHANGELOG.md,LICENSE

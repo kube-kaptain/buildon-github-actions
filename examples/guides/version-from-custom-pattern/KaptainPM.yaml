@@ -10,7 +10,7 @@ spec:
       versioning:
         strategy: file-pattern-match
         patternType: custom
-        sourceOne:
+        source:
           subPath: .
           fileName: version.txt
           pattern: '^([0-9]+\.[0-9]+\.[0-9]+)$'

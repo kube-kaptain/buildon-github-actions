@@ -20,5 +20,4 @@ spec:
       service:
         enabled: true
       serviceAccount:
-        generation:
-          enabled: true
+        enabled: true

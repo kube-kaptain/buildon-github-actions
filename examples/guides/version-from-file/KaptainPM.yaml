@@ -10,6 +10,6 @@ spec:
       versioning:
         strategy: file-pattern-match
         patternType: dockerfile-env-kubectl
-        sourceOne:
+        source:
           subPath: src/docker
           fileName: Dockerfile
