@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: CC0-1.0
 # This example is released to the public domain. Use freely without attribution.
 
-apiVersion: kaptain.org/1.18
+apiVersion: kaptain.org/1.19
 kind: docker-build-dockerfile
 
 spec:
@@ -9,10 +9,10 @@ spec:
     release:
       versioning:
         strategy: compound-file-pattern-match
-        sourceOne:
+        patternType: dockerfile-env-kubectl
+        source:
           subPath: src/docker
           fileName: Dockerfile
-          patternType: dockerfile-env-kubectl
           prefixParts: 2
         sourceTwo:
           subPath: .

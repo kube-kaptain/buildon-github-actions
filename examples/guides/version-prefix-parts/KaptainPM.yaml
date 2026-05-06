@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: CC0-1.0
 # This example is released to the public domain. Use freely without attribution.
 
-apiVersion: kaptain.org/1.18
+apiVersion: kaptain.org/1.19
 kind: docker-build-retag
 
 spec:
@@ -17,5 +17,5 @@ spec:
       versioning:
         strategy: file-pattern-match
         patternType: retag-workflow-source-tag
-        sourceOne:
+        source:
           prefixParts: 2
