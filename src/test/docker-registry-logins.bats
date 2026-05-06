@@ -139,7 +139,7 @@ run_logins() {
 }
 
 @test "docker-registry-logins: username-password type with ghcr.io" {
-  export DOCKER_REGISTRY_LOGINS='{"ghcr.io":{"type":"username-password","username-secret":"GHCR_USER","password-secret":"GHCR_PASS"}}'
+  export DOCKER_REGISTRY_LOGINS='{"ghcr.io":{"type":"username-password","usernameSecret":"GHCR_USER","passwordSecret":"GHCR_PASS"}}'
   export SECRETS_JSON='{"GHCR_USER": "custom-user", "GHCR_PASS": "custom-pass"}'
 
   run_logins
@@ -158,7 +158,7 @@ run_logins() {
 }
 
 @test "docker-registry-logins: fails when required secret is missing" {
-  export DOCKER_REGISTRY_LOGINS='{"docker.io":{"type":"username-password","username-secret":"MISSING_USER","password-secret":"MISSING_PASS"}}'
+  export DOCKER_REGISTRY_LOGINS='{"docker.io":{"type":"username-password","usernameSecret":"MISSING_USER","passwordSecret":"MISSING_PASS"}}'
   export SECRETS_JSON='{}'
 
   run_logins
@@ -168,7 +168,7 @@ run_logins() {
 }
 
 @test "docker-registry-logins: processes multiple registries" {
-  export DOCKER_REGISTRY_LOGINS='{"docker.io":{"type":"username-password","username-secret":"DOCKER_USER","password-secret":"DOCKER_PASS"},"quay.io":{"type":"username-password","username-secret":"QUAY_USER","password-secret":"QUAY_PASS"}}'
+  export DOCKER_REGISTRY_LOGINS='{"docker.io":{"type":"username-password","usernameSecret":"DOCKER_USER","passwordSecret":"DOCKER_PASS"},"quay.io":{"type":"username-password","usernameSecret":"QUAY_USER","passwordSecret":"QUAY_PASS"}}'
   export SECRETS_JSON='{"DOCKER_USER": "user1", "DOCKER_PASS": "pass1", "QUAY_USER": "user2", "QUAY_PASS": "pass2"}'
 
   run_logins
@@ -181,7 +181,7 @@ run_logins() {
 }
 
 @test "docker-registry-logins: mixed github-token and username-password" {
-  export DOCKER_REGISTRY_LOGINS='{"ghcr.io":{"type":"github-token","token":"gh-token","actor":"gh-user"},"docker.io":{"type":"username-password","username-secret":"DOCKER_USER","password-secret":"DOCKER_PASS"}}'
+  export DOCKER_REGISTRY_LOGINS='{"ghcr.io":{"type":"github-token","token":"gh-token","actor":"gh-user"},"docker.io":{"type":"username-password","usernameSecret":"DOCKER_USER","passwordSecret":"DOCKER_PASS"}}'
   export SECRETS_JSON='{"DOCKER_USER": "myuser", "DOCKER_PASS": "mypass"}'
 
   run_logins
