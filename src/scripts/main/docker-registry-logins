@@ -80,20 +80,20 @@ get_required_secrets() {
 
   case "${login_type}" in
     username-password)
-      cfg "${registry}" "username-secret"
-      cfg "${registry}" "password-secret"
+      cfg "${registry}" "usernameSecret"
+      cfg "${registry}" "passwordSecret"
       ;;
     aws-ecr)
-      cfg "${registry}" "access-key-id-secret"
-      cfg "${registry}" "secret-access-key-secret"
+      cfg "${registry}" "accessKeyIdSecret"
+      cfg "${registry}" "secretAccessKeySecret"
       ;;
     gcp-gar)
-      cfg "${registry}" "service-account-key-secret"
+      cfg "${registry}" "serviceAccountKeySecret"
       ;;
     azure-acr)
-      cfg "${registry}" "client-id-secret"
-      cfg "${registry}" "client-secret-secret"
-      cfg "${registry}" "tenant-id-secret"
+      cfg "${registry}" "clientIdSecret"
+      cfg "${registry}" "clientSecretSecret"
+      cfg "${registry}" "tenantIdSecret"
       ;;
     # Types that don't use secrets from the secret store
     github-token|aws-ecr-github-actions-oidc|gcp-gar-github-actions-oidc|azure-acr-github-actions-oidc)
@@ -166,8 +166,8 @@ route_login() {
   case "${login_type}" in
     username-password)
       "${login_script}" "${SECRET_METHOD}" "${registry}" \
-        "$(cfg "${registry}" "username-secret")" \
-        "$(cfg "${registry}" "password-secret")"
+        "$(cfg "${registry}" "usernameSecret")" \
+        "$(cfg "${registry}" "passwordSecret")"
       ;;
 
     github-token)
@@ -179,42 +179,42 @@ route_login() {
     aws-ecr)
       "${login_script}" "${SECRET_METHOD}" "${registry}" \
         "$(cfg "${registry}" "region")" \
-        "$(cfg "${registry}" "access-key-id-secret")" \
-        "$(cfg "${registry}" "secret-access-key-secret")"
+        "$(cfg "${registry}" "accessKeyIdSecret")" \
+        "$(cfg "${registry}" "secretAccessKeySecret")"
       ;;
 
     aws-ecr-github-actions-oidc)
       local session_name
-      session_name=$(echo "${DOCKER_REGISTRY_LOGINS}" | jq -r ".[\"${registry}\"][\"session-name\"] // \"github-actions\"")
+      session_name=$(echo "${DOCKER_REGISTRY_LOGINS}" | jq -r ".[\"${registry}\"][\"sessionName\"] // \"github-actions\"")
       "${login_script}" "${SECRET_METHOD}" "${registry}" \
-        "$(cfg "${registry}" "role-arn")" \
+        "$(cfg "${registry}" "roleArn")" \
         "$(cfg "${registry}" "region")" \
         "${session_name}"
       ;;
 
     gcp-gar)
       "${login_script}" "${SECRET_METHOD}" "${registry}" \
-        "$(cfg "${registry}" "service-account-key-secret")"
+        "$(cfg "${registry}" "serviceAccountKeySecret")"
       ;;
 
     gcp-gar-github-actions-oidc)
       "${login_script}" "${SECRET_METHOD}" "${registry}" \
-        "$(cfg "${registry}" "workload-identity-provider")" \
-        "$(cfg "${registry}" "service-account")"
+        "$(cfg "${registry}" "workloadIdentityProvider")" \
+        "$(cfg "${registry}" "serviceAccount")"
       ;;
 
     azure-acr)
       "${login_script}" "${SECRET_METHOD}" "${registry}" \
-        "$(cfg "${registry}" "client-id-secret")" \
-        "$(cfg "${registry}" "client-secret-secret")" \
-        "$(cfg "${registry}" "tenant-id-secret")"
+        "$(cfg "${registry}" "clientIdSecret")" \
+        "$(cfg "${registry}" "clientSecretSecret")" \
+        "$(cfg "${registry}" "tenantIdSecret")"
       ;;
 
     azure-acr-github-actions-oidc)
       "${login_script}" "${SECRET_METHOD}" "${registry}" \
-        "$(cfg "${registry}" "client-id")" \
-        "$(cfg "${registry}" "tenant-id")" \
-        "$(cfg "${registry}" "subscription-id")"
+        "$(cfg "${registry}" "clientId")" \
+        "$(cfg "${registry}" "tenantId")" \
+        "$(cfg "${registry}" "subscriptionId")"
       ;;
 
     *)
