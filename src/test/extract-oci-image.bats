@@ -16,6 +16,7 @@ setup() {
   export OUTPUT_DIR="${base_dir}/output"
   export OUTPUT_SUB_PATH="${base_dir}/kaptain-out"
   export MOCK_DOCKER_CALLS="${base_dir}/calls.log"
+  export MOCK_DOCKER_SAVE_DIR="${base_dir}/docker-save-staging"
   export MOCK_IMAGE_EXISTS="true"
   export MOCK_CP_FAIL_PATHS=""
   export MOCK_SAVE_LAYER_FILES=""
@@ -33,9 +34,9 @@ case "$1" in
         if [[ "${MOCK_IMAGE_EXISTS:-true}" == "true" ]]; then exit 0; else exit 1; fi
         ;;
       save)
-        tmp_save=$(mktemp -d "$(dirname "${MOCK_DOCKER_CALLS}")/docker-save-XXXXXX")
-        mkdir -p "${tmp_save}/abc123"
-        layer_dir="${tmp_save}/layer_content"
+        rm -rf "${MOCK_DOCKER_SAVE_DIR}"
+        mkdir -p "${MOCK_DOCKER_SAVE_DIR}/abc123"
+        layer_dir="${MOCK_DOCKER_SAVE_DIR}/layer_content"
         mkdir -p "${layer_dir}"
         if [[ -n "${MOCK_SAVE_LAYER_FILES:-}" ]]; then
           for f in ${MOCK_SAVE_LAYER_FILES}; do
@@ -51,10 +52,9 @@ case "$1" in
             touch "${layer_dir}/${wh_dir}/.wh.${wh_base}"
           done
         fi
-        tar -c -C "${layer_dir}" -f "${tmp_save}/abc123/layer.tar" .
-        printf '[{"Config":"abc123.json","RepoTags":["mock:latest"],"Layers":["abc123/layer.tar"]}]\n' > "${tmp_save}/manifest.json"
-        tar -c -C "${tmp_save}" -f - manifest.json abc123/layer.tar
-        rm -rf "${tmp_save}"
+        tar -c -C "${layer_dir}" -f "${MOCK_DOCKER_SAVE_DIR}/abc123/layer.tar" .
+        printf '[{"Config":"abc123.json","RepoTags":["mock:latest"],"Layers":["abc123/layer.tar"]}]\n' > "${MOCK_DOCKER_SAVE_DIR}/manifest.json"
+        tar -c -C "${MOCK_DOCKER_SAVE_DIR}" -f - manifest.json abc123/layer.tar
         ;;
     esac
     ;;
