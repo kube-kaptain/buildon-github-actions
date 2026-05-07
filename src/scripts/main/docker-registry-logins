@@ -33,20 +33,30 @@ source "${SCRIPT_DIR}/../defaults/platform.bash"
 source "${SCRIPT_DIR}/../lib/log.bash"
 # shellcheck source=src/scripts/defaults/output-sub-path.bash
 source "${SCRIPT_DIR}/../defaults/output-sub-path.bash"
+# shellcheck source=src/scripts/defaults/build-mode.bash
+source "${SCRIPT_DIR}/../defaults/build-mode.bash"
 
 # shellcheck source=src/scripts/lib/output-var.bash
 source "${SCRIPT_DIR}/../lib/output-var.bash"
 
-# Config from inline YAML - required
+# Config from inline YAML - required (strict in build_server, soft in local)
 if [[ -z "${DOCKER_REGISTRY_LOGINS:-}" ]]; then
-  log_error "DOCKER_REGISTRY_LOGINS is required"
-  exit 1
+  if [[ "${BUILD_MODE}" == "build_server" ]]; then
+    log_error "DOCKER_REGISTRY_LOGINS is required"
+    exit 1
+  fi
+  log_warning "DOCKER_REGISTRY_LOGINS unset; skipping registry logins (BUILD_MODE=local)"
+  exit 0
 fi
 
-# Secret retrieval method - required
+# Secret retrieval method - required (strict in build_server, soft in local)
 if [[ -z "${SECRET_METHOD:-}" ]]; then
-  log_error "SECRET_METHOD is required (github, env)"
-  exit 1
+  if [[ "${BUILD_MODE}" == "build_server" ]]; then
+    log_error "SECRET_METHOD is required (github, env)"
+    exit 1
+  fi
+  log_warning "SECRET_METHOD unset; skipping registry logins (BUILD_MODE=local)"
+  exit 0
 fi
 
 # Secrets passed as JSON (exported for get-secret-github)
@@ -101,6 +111,9 @@ get_required_secrets() {
   esac
 }
 
+# Registries to skip due to missing secrets in BUILD_MODE=local
+REGISTRIES_TO_SKIP=()
+
 # Validate all secrets exist before attempting any logins
 validate_all_secrets() {
   local get_secret="${PLUGINS_DIR}/secret-value-providers/get-secret-${SECRET_METHOD}"
@@ -117,14 +130,20 @@ validate_all_secrets() {
     secrets=$(get_required_secrets "${registry}")
     [[ -z "${secrets}" ]] && continue
 
+    local registry_missing=0
     while IFS= read -r secret_name; do
       [[ -z "${secret_name}" ]] && continue
       if "${get_secret}" "${secret_name}" > /dev/null 2>&1; then
         found_secrets+=("${secret_name} (${registry})")
       else
         missing_secrets+=("${secret_name} (${registry})")
+        registry_missing=1
       fi
     done <<< "${secrets}"
+
+    if [[ "${registry_missing}" -eq 1 ]]; then
+      REGISTRIES_TO_SKIP+=("${registry}")
+    fi
   done <<< "${registries}"
 
   # Report results
@@ -141,10 +160,16 @@ validate_all_secrets() {
   done
   log ""
 
-  # Bail if anything we wanted isn't there.
+  # Bail if anything we wanted isn't there (strict in build_server, soft in local)
   if [[ ${#missing_secrets[@]} -gt 0 ]]; then
-    log_error "Secret validation failed"
-    return 1
+    if [[ "${BUILD_MODE}" == "build_server" ]]; then
+      log_error "Secret validation failed"
+      return 1
+    fi
+    log_warning "Secret validation incomplete; ${#REGISTRIES_TO_SKIP[@]} registry/registries will be skipped (BUILD_MODE=local)"
+    for r in ${REGISTRIES_TO_SKIP[@]+"${REGISTRIES_TO_SKIP[@]}"}; do
+      log_warning "  - ${r}"
+    done
   fi
   return 0
 }
@@ -222,7 +247,7 @@ route_login() {
       log_error "Unknown login type: ${login_type}"
       return 1
       ;;
-  esac
+  esac || return $?
 
   log "Successfully authenticated to ${registry}"
 }
@@ -269,12 +294,38 @@ main() {
 
   # Process each registry
   local count=0
+  local skipped=0
   while IFS= read -r registry; do
-    route_login "${registry}"
-    count=$((count + 1))
+    # Skip registries with missing secrets in BUILD_MODE=local
+    local skip_this=0
+    for sr in ${REGISTRIES_TO_SKIP[@]+"${REGISTRIES_TO_SKIP[@]}"}; do
+      if [[ "${sr}" == "${registry}" ]]; then
+        skip_this=1
+        break
+      fi
+    done
+    if [[ "${skip_this}" -eq 1 ]]; then
+      log_warning "Skipping ${registry}: missing secrets (BUILD_MODE=local)"
+      skipped=$((skipped + 1))
+      continue
+    fi
+
+    if route_login "${registry}"; then
+      count=$((count + 1))
+    else
+      if [[ "${BUILD_MODE}" == "build_server" ]]; then
+        exit 1
+      fi
+      log_warning "Login failed for ${registry}; continuing (BUILD_MODE=local)"
+      skipped=$((skipped + 1))
+    fi
   done <<< "${registries}"
 
-  log "Docker Logins complete - authenticated to ${count} registry/registries"
+  if [[ "${skipped}" -gt 0 ]]; then
+    log "Docker Logins complete - authenticated to ${count} registry/registries, skipped ${skipped}"
+  else
+    log "Docker Logins complete - authenticated to ${count} registry/registries"
+  fi
 }
 
 main "$@"

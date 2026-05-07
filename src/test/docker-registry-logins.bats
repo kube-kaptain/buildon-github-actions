@@ -13,6 +13,7 @@ setup() {
   export IMAGE_BUILD_COMMAND="docker"
   export BUILD_PLATFORM="github-actions"
   export BUILD_PLATFORM_LOG_PROVIDER="stdout"
+  export BUILD_MODE="build_server"
   export SECRET_METHOD="github"
   export SECRETS_JSON='{}'
 
@@ -192,4 +193,65 @@ run_logins() {
   assert_output_contains "Logging in to docker.io with username/password"
   assert_docker_called "login ghcr.io -u gh-user --password-stdin"
   assert_docker_called "login docker.io -u myuser --password-stdin"
+}
+
+@test "docker-registry-logins (local): warns and exits 0 when DOCKER_REGISTRY_LOGINS unset" {
+  export BUILD_MODE="local"
+  export DOCKER_REGISTRY_LOGINS=""
+
+  run_logins
+
+  [ "$status" -eq 0 ]
+  assert_output_contains "DOCKER_REGISTRY_LOGINS unset"
+  assert_output_contains "BUILD_MODE=local"
+}
+
+@test "docker-registry-logins (local): warns and exits 0 when SECRET_METHOD unset" {
+  export BUILD_MODE="local"
+  export DOCKER_REGISTRY_LOGINS='{"ghcr.io":{"type":"github-token","token":"x","actor":"y"}}'
+  export SECRET_METHOD=""
+
+  run_logins
+
+  [ "$status" -eq 0 ]
+  assert_output_contains "SECRET_METHOD unset"
+  assert_output_contains "BUILD_MODE=local"
+}
+
+@test "docker-registry-logins (local): warns and skips registry when its secrets are missing" {
+  export BUILD_MODE="local"
+  export DOCKER_REGISTRY_LOGINS='{"docker.io":{"type":"username-password","usernameSecret":"MISSING_USER","passwordSecret":"MISSING_PASS"}}'
+  export SECRETS_JSON='{}'
+
+  run_logins
+
+  [ "$status" -eq 0 ]
+  assert_output_contains "Skipping docker.io"
+  [[ "$output" != *"Logging in to docker.io"* ]]
+}
+
+@test "docker-registry-logins (local): mixed - logs in to one, skips the other" {
+  export BUILD_MODE="local"
+  export DOCKER_REGISTRY_LOGINS='{"docker.io":{"type":"username-password","usernameSecret":"DOCKER_USER","passwordSecret":"DOCKER_PASS"},"quay.io":{"type":"username-password","usernameSecret":"MISSING_USER","passwordSecret":"MISSING_PASS"}}'
+  export SECRETS_JSON='{"DOCKER_USER": "user1", "DOCKER_PASS": "pass1"}'
+
+  run_logins
+
+  [ "$status" -eq 0 ]
+  assert_output_contains "Logging in to docker.io with username/password"
+  assert_output_contains "Skipping quay.io"
+  assert_docker_called "login docker.io -u user1 --password-stdin"
+}
+
+@test "docker-registry-logins (local): warns and continues when route_login itself fails" {
+  export BUILD_MODE="local"
+  # github-token type bypasses secret validation; the login script fails when token is empty
+  export DOCKER_REGISTRY_LOGINS='{"ghcr.io":{"type":"github-token","token":"","actor":"u"},"quay.io":{"type":"username-password","usernameSecret":"QUAY_USER","passwordSecret":"QUAY_PASS"}}'
+  export SECRETS_JSON='{"QUAY_USER": "user1", "QUAY_PASS": "pass1"}'
+
+  run_logins
+
+  [ "$status" -eq 0 ]
+  assert_output_contains "Login failed for ghcr.io"
+  assert_output_contains "Logging in to quay.io with username/password"
 }
