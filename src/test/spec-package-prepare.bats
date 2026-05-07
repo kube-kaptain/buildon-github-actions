@@ -32,6 +32,7 @@ MOCK
 }
 
 teardown() {
+  dump_bats_result
   :
 }
 

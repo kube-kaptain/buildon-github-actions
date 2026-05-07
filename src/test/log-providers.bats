@@ -231,3 +231,7 @@ LIB_DIR="$PROJECT_ROOT/src/scripts/lib"
   [ "$status" -eq 1 ]
   assert_output_contains "Unknown log provider: nonexistent"
 }
+
+teardown() {
+  dump_bats_result
+}

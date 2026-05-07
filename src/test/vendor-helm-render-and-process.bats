@@ -751,3 +751,7 @@ run_script() {
 
   [[ "${upstream}" == "test-chart-1.0.0" ]]
 }
+
+teardown() {
+  dump_bats_result
+}

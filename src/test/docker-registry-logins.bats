@@ -95,6 +95,7 @@ MOCK
 }
 
 teardown() {
+  dump_bats_result
   cleanup_mock_docker
 }
 

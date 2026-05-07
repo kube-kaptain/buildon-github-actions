@@ -625,3 +625,7 @@ EOF
   [ "$status" -eq 1 ]
   [[ "$output" == *"requires exactly 8 arguments"* ]]
 }
+
+teardown() {
+  dump_bats_result
+}

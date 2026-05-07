@@ -26,6 +26,14 @@
 # Required environment variables:
 #   IMAGE_BUILD_COMMAND  - Container runtime: docker or podman
 #
+# When the whole image is extracted (no paths given), the raw image-save
+# output (manifest.json + per-layer tarballs) is preserved under
+# ${OUTPUT_SUB_PATH}/extract-oci-image/image-save-content/<slug>-N/ for
+# audit, where <slug> is the image URI with '/' and ':' replaced by '_',
+# and N is the lowest non-clashing integer (0, 1, 2, ...). A
+# caller-output-dir file inside that dir records the destination this
+# extract fed.
+#
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -34,6 +42,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/../defaults/platform.bash"
 # shellcheck source=src/scripts/lib/log.bash
 source "${SCRIPT_DIR}/../lib/log.bash"
+# shellcheck source=src/scripts/defaults/output-sub-path.bash
+source "${SCRIPT_DIR}/../defaults/output-sub-path.bash"
 
 image_uri="${1:?Usage: extract-oci-image <image-uri> <output-dir> [<path-in-image>...]}"
 output_dir="${2:?Usage: extract-oci-image <image-uri> <output-dir> [<path-in-image>...]}"
@@ -59,21 +69,31 @@ mkdir -p "${output_dir}"
 if [[ ${#paths[@]} -eq 0 ]]; then
   log "Extracting entire image filesystem to ${output_dir}..."
 
-  tmp_dir=$(mktemp -d)
-  cleanup() { rm -rf "${tmp_dir}"; }
-  trap cleanup EXIT
+  # Pick the next free slot under OUTPUT_SUB_PATH for the raw image-save
+  # output. Keeping it visible there gives an audit trail of what the
+  # registry actually served, separate from the merged FS in output_dir.
+  slug=$(echo "${image_uri}" | tr '/:' '__')
+  image_save_base="${OUTPUT_SUB_PATH}/extract-oci-image/image-save-content"
+  mkdir -p "${image_save_base}"
+  n=0
+  while [[ -e "${image_save_base}/${slug}-${n}" ]]; do
+    n=$((n + 1))
+  done
+  image_save_dir="${image_save_base}/${slug}-${n}"
+  mkdir -p "${image_save_dir}"
+  echo "${output_dir}" > "${image_save_dir}/caller-output-dir"
 
-  ${IMAGE_BUILD_COMMAND} image save "${image_uri}" | tar -x -C "${tmp_dir}"
+  ${IMAGE_BUILD_COMMAND} image save "${image_uri}" | tar -x -C "${image_save_dir}"
 
   while IFS= read -r layer; do
-    tar -x -C "${output_dir}" -f "${tmp_dir}/${layer}"
-  done < <(jq -r '.[0].Layers[]' "${tmp_dir}/manifest.json")
+    tar -x -C "${output_dir}" -f "${image_save_dir}/${layer}"
+  done < <(jq -r '.[0].Layers[]' "${image_save_dir}/manifest.json")
 
   while IFS= read -r wh_file; do
     log_warning "Whiteout file not applied: ${wh_file}"
   done < <(find "${output_dir}" -name '.wh.*')
 
-  log "Extraction complete"
+  log "Extraction complete (raw image at ${image_save_dir})"
 else
   # Create a temporary container for file extraction (not started)
   container_id=""

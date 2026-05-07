@@ -164,3 +164,7 @@ setup() {
   [[ "$status" -ne 0 ]]
   assert_output_contains "Prefix mismatch"
 }
+
+teardown() {
+  dump_bats_result
+}

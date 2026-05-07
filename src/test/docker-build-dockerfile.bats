@@ -18,6 +18,7 @@ setup() {
 }
 
 teardown() {
+  dump_bats_result
   :
 }
 

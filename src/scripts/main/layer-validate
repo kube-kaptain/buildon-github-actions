@@ -48,6 +48,8 @@ source "${SCRIPT_DIR}/../lib/validate-layer-payload.bash"
 source "${SCRIPT_DIR}/../defaults/tokens.bash"
 # shellcheck source=src/scripts/lib/token-format.bash
 source "${SCRIPT_DIR}/../lib/token-format.bash"
+# shellcheck source=src/scripts/lib/assert-unique-artifact-refs.bash
+source "${SCRIPT_DIR}/../lib/assert-unique-artifact-refs.bash"
 
 log "=== Layer Validate ==="
 
@@ -188,26 +190,19 @@ if [[ "${LAYER_TYPE}" == "layerset" ]]; then
   # Reject duplicate layer references in spec.layers before we pull
   # anything. "Duplicate" means the same layer name regardless of
   # provider prefix (docker|...) or tag (:1.0 vs :1.1) - listing the
-  # same layer twice in any form is always a bug. The sed strips a
-  # leading 'provider|' and a trailing ':tag' (the tag pattern excludes
-  # '/' so it won't eat host:port like 'localhost:5000/foo').
+  # same layer twice in any form is always a bug.
   #
-  # Best-effort: this catches identical refs, version drift, and prefix
-  # drift, but won't collapse refs at different qualification levels
-  # (e.g. 'name:1.0' vs 'group/name:1.0' vs 'reg/ns/group/name:1.0').
+  # 'path' mode (best-effort): catches identical refs, version drift,
+  # and prefix drift, but won't collapse refs at different qualification
+  # levels (e.g. 'name:1.0' vs 'group/name:1.0' vs 'reg/ns/group/name:1.0').
   # Resolving those would require running each ref through the same
   # registry/namespace inference the dep-pull loop below uses, which
-  # depends on env vars that may not be set at validate time.
-  duplicate_names=$(yq eval '.spec.layers[]' "${yaml_file}" \
-    | sed -E 's/^[^|]*\|//; s/:[^:/]+$//' \
-    | sort | uniq -d)
-  if [[ -n "${duplicate_names}" ]]; then
-    log_error "Layerset spec.layers contains duplicate layer references (ignoring provider prefix and version):"
-    while IFS= read -r dup_name; do
-      log_error "  ${dup_name}"
-    done <<< "${duplicate_names}"
-    exit 1
-  fi
+  # depends on env vars that may not be set at validate time. Layers can
+  # legitimately share a last-segment name across orgs, so 'name' mode
+  # would over-reject here.
+  assert_unique_artifact_refs "${yaml_file}" '.spec.layers[]' \
+      "Layerset spec.layers" path \
+    || exit 1
 
   # Kind matching across the layerset and its deps. Kind is optional on
   # both the layerset and any layer, but where declared, all kinds must

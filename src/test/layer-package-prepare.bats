@@ -386,3 +386,7 @@ write_layerset_pm_with_layers() {
   run cat "${OUTPUT_SUB_PATH}/layer-build/context/hook-generated.txt"
   [[ "$output" == "pre-existing" ]]
 }
+
+teardown() {
+  dump_bats_result
+}

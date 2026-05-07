@@ -217,3 +217,7 @@ assert_output_equals() {
   result=$(sort_versions "1.2" "1.2.0" | tail -n1)
   [ "$result" = "1.2.0" ]
 }
+
+teardown() {
+  dump_bats_result
+}

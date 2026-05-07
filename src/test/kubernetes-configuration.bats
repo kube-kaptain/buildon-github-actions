@@ -142,3 +142,7 @@ setup() {
   zebra_pos=$(echo "${result}" | grep -n "zebra.txt" | cut -d: -f1)
   [[ "${apple_pos}" -lt "${zebra_pos}" ]]
 }
+
+teardown() {
+  dump_bats_result
+}

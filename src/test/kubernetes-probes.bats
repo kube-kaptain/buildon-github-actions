@@ -426,3 +426,7 @@ setup() {
   assert_output_contains "exec:"
   assert_output_contains "/bin/check-health"
 }
+
+teardown() {
+  dump_bats_result
+}

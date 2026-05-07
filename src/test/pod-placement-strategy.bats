@@ -351,3 +351,7 @@ source_lib() {
   [ "$status" -eq 0 ]
   [ "$output" = "    dnsPolicy: None" ]
 }
+
+teardown() {
+  dump_bats_result
+}

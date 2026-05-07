@@ -286,7 +286,7 @@ touch_context_file() {
   write_layerset_json '["ghcr.io/kube-kaptain/layer/a:1.0.0", "ghcr.io/kube-kaptain/layer/a:1.0.0"]'
   run "$SCRIPT"
   [[ "$status" -ne 0 ]]
-  [[ "$output" == *"duplicate layer references"* ]]
+  assert_contains "$output" "duplicate artifact references"
   [[ "$output" == *"ghcr.io/kube-kaptain/layer/a"* ]]
 }
 
@@ -295,7 +295,7 @@ touch_context_file() {
   write_layerset_json '["ghcr.io/kube-kaptain/layer/a:1.0.0", "ghcr.io/kube-kaptain/layer/b:1.0.0", "ghcr.io/kube-kaptain/layer/a:1.0.0", "ghcr.io/kube-kaptain/layer/c:1.0.0", "ghcr.io/kube-kaptain/layer/b:1.0.0"]'
   run "$SCRIPT"
   [[ "$status" -ne 0 ]]
-  [[ "$output" == *"duplicate layer references"* ]]
+  assert_contains "$output" "duplicate artifact references"
   [[ "$output" == *"ghcr.io/kube-kaptain/layer/a"* ]]
   [[ "$output" == *"ghcr.io/kube-kaptain/layer/b"* ]]
 }
@@ -305,7 +305,7 @@ touch_context_file() {
   write_layerset_json '["ghcr.io/kube-kaptain/layer/a:1.0.0", "ghcr.io/kube-kaptain/layer/a:1.1.0"]'
   run "$SCRIPT"
   [[ "$status" -ne 0 ]]
-  [[ "$output" == *"duplicate layer references"* ]]
+  assert_contains "$output" "duplicate artifact references"
   [[ "$output" == *"ghcr.io/kube-kaptain/layer/a"* ]]
 }
 
@@ -314,7 +314,7 @@ touch_context_file() {
   write_layerset_json '["docker|ghcr.io/kube-kaptain/layer/a:1.0.0", "ghcr.io/kube-kaptain/layer/a:1.0.0"]'
   run "$SCRIPT"
   [[ "$status" -ne 0 ]]
-  [[ "$output" == *"duplicate layer references"* ]]
+  assert_contains "$output" "duplicate artifact references"
   [[ "$output" == *"ghcr.io/kube-kaptain/layer/a"* ]]
 }
 
@@ -678,4 +678,8 @@ EOF
   [[ "$output" == *"parent-traversal"* ]]
   [[ "$output" == *"payload ok: /present.txt -> ok/b"* ]]
   [[ "$output" == *"layer-payload validation failed: 3 error(s)"* ]]
+}
+
+teardown() {
+  dump_bats_result
 }

@@ -413,3 +413,7 @@ EOF
   assert_output_contains "CONTRACT_ZIP_SUB_PATH="
   assert_output_contains "CONTRACT_ZIP_FILE_NAME=test-project-1.2.3-contract.zip"
 }
+
+teardown() {
+  dump_bats_result
+}

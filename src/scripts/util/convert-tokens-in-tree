@@ -39,6 +39,8 @@ source "${SCRIPT_DIR}/../defaults/platform.bash"
 source "${SCRIPT_DIR}/../lib/log.bash"
 # shellcheck source=src/scripts/lib/token-format.bash
 source "${SCRIPT_DIR}/../lib/token-format.bash"
+# shellcheck source=src/scripts/defaults/output-sub-path.bash
+source "${SCRIPT_DIR}/../defaults/output-sub-path.bash"
 
 if [[ $# -lt 5 || $# -gt 6 ]]; then
   log_error "Usage: convert-tokens-in-tree <from-delim> <from-name> <to-delim> <to-name> <directory> [base-indent]"
@@ -89,10 +91,26 @@ if [[ -z "${TOKEN_NAMES}" ]]; then
   exit 0
 fi
 
-# Build TSV mapping: from-ref<TAB>to-ref, one per line.
-# A temp file keeps awk's argv compact and avoids shell quoting issues.
-MAPPING_FILE="$(mktemp -t convert-tokens-in-tree.XXXXXX)"
-trap 'rm -f "${MAPPING_FILE}"' EXIT
+# Build TSV mapping: from-ref<TAB>to-ref, one per line. The mapping file
+# (and a record of the conversion) is preserved under OUTPUT_SUB_PATH as
+# audit trail; the slug is the target dir as given (with '/' and ':'
+# turned into '_'), and N walks 0,1,2,... until a free slot is found.
+slug=$(echo "${TARGET_DIR}" | tr '/:' '__')
+mapping_base="${OUTPUT_SUB_PATH}/convert-tokens-in-tree/token-mappings"
+mkdir -p "${mapping_base}"
+n=0
+while [[ -e "${mapping_base}/${slug}-${n}" ]]; do
+  n=$((n + 1))
+done
+MAPPING_DIR="${mapping_base}/${slug}-${n}"
+mkdir -p "${MAPPING_DIR}"
+echo "${TARGET_DIR}" > "${MAPPING_DIR}/target-dir"
+echo "${FROM_DELIM}-${FROM_NAME}" > "${MAPPING_DIR}/from-scheme"
+echo "${TO_DELIM}-${TO_NAME}" > "${MAPPING_DIR}/to-scheme"
+MAPPING_FILE="${MAPPING_DIR}/mapping.tsv"
+: > "${MAPPING_FILE}"
+REPLACEMENTS_BY_FILE="${MAPPING_DIR}/replacements-by-file.tsv"
+: > "${REPLACEMENTS_BY_FILE}"
 
 while IFS= read -r from_name_raw; do
   [[ -z "${from_name_raw}" ]] && continue
@@ -177,6 +195,7 @@ while IFS= read -r -d '' file; do
     mv "${tmp}" "${file}"
     total_replacements=$((total_replacements + file_replacements))
     relative="${file#"${TARGET_DIR}"/}"
+    printf '%s\t%s\n' "${relative}" "${file_replacements}" >> "${REPLACEMENTS_BY_FILE}"
     plural="instances"
     [[ "${file_replacements}" -eq 1 ]] && plural="instance"
     log "${BASE_INDENT} - Converted ${file_replacements} token ${plural} in ${relative}"

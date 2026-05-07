@@ -341,3 +341,7 @@ EOF
   [ "${status}" -ne 0 ]
   assert_output_contains "PROJECT_NAME"
 }
+
+teardown() {
+  dump_bats_result
+}

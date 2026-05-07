@@ -430,3 +430,7 @@ EOF
   repackage=$(get_repackage)
   echo "$repackage" | grep -q "blade-PascalCase"
 }
+
+teardown() {
+  dump_bats_result
+}

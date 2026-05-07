@@ -281,6 +281,28 @@ github_output_value() {
 }
 
 # =============================================================================
+# Duplicate spec.contents
+# =============================================================================
+
+@test "duplicate spec.contents: same name different versions is rejected" {
+  setup_mock_oci
+  write_pm "alpha:1.0" "alpha:2.0"
+  run_script
+  [ "${status}" -ne 0 ]
+  assert_output_contains "Product spec.contents contains duplicate"
+  assert_output_contains "alpha"
+}
+
+@test "duplicate spec.contents: same name across different namespaces is rejected" {
+  setup_mock_oci
+  write_pm "ghcr.io/org-a/alpha:1.0" "ghcr.io/org-b/alpha:2.0"
+  run_script
+  [ "${status}" -ne 0 ]
+  assert_output_contains "Product spec.contents contains duplicate"
+  assert_output_contains "alpha"
+}
+
+# =============================================================================
 # Empty spec.contents
 # =============================================================================
 
@@ -321,6 +343,34 @@ github_output_value() {
   [ -f "${TEST_DIR}/kaptain-out/content/manifests/beta/deployment.yaml" ]
   [ -f "${TEST_DIR}/kaptain-out/product-aggregate/defaults-merged/Replicas" ]
   [ -f "${TEST_DIR}/kaptain-out/product-aggregate/defaults-merged/MaxHeapSize" ]
+}
+
+@test "end-to-end: leaves audit trail under content/extract and content/unzipped" {
+  setup_mock_oci
+  stage_oci_fixture "alpha:1.0-manifests" "alpha" shell PascalCase "Replicas=2"
+  stage_oci_fixture "beta:2.0-manifests"  "beta"  shell PascalCase "MaxHeapSize=512Mi"
+  write_pm "alpha:1.0" "beta:2.0"
+  run_script
+  [ "${status}" -eq 0 ]
+
+  local alpha_slug beta_slug
+  alpha_slug=$(echo "alpha:1.0-manifests" | tr '/:' '__')
+  beta_slug=$(echo "beta:2.0-manifests" | tr '/:' '__')
+
+  [ -d "${TEST_DIR}/kaptain-out/content/extract/${alpha_slug}" ]
+  [ -d "${TEST_DIR}/kaptain-out/content/extract/${beta_slug}" ]
+  [ -f "${TEST_DIR}/kaptain-out/content/extract/${alpha_slug}/alpha-1.0-manifests.zip" ]
+  [ -f "${TEST_DIR}/kaptain-out/content/extract/${alpha_slug}/alpha-1.0-contract.zip" ]
+  [ -f "${TEST_DIR}/kaptain-out/content/extract/${alpha_slug}/resolved-uri" ]
+  [ -f "${TEST_DIR}/kaptain-out/content/extract/${beta_slug}/beta-1.0-manifests.zip" ]
+  [ -f "${TEST_DIR}/kaptain-out/content/extract/${beta_slug}/beta-1.0-contract.zip" ]
+
+  [ -d "${TEST_DIR}/kaptain-out/content/unzipped/${alpha_slug}" ]
+  [ -d "${TEST_DIR}/kaptain-out/content/unzipped/${beta_slug}" ]
+  [ -f "${TEST_DIR}/kaptain-out/content/unzipped/${alpha_slug}/contract.yaml" ]
+  [ -f "${TEST_DIR}/kaptain-out/content/unzipped/${alpha_slug}/alpha/deployment.yaml" ]
+  [ -f "${TEST_DIR}/kaptain-out/content/unzipped/${beta_slug}/contract.yaml" ]
+  [ -f "${TEST_DIR}/kaptain-out/content/unzipped/${beta_slug}/beta/deployment.yaml" ]
 }
 
 # =============================================================================
@@ -557,4 +607,8 @@ EOF
   [ "${status}" -ne 0 ]
   assert_output_contains "Reserved filename 'kaptain-product-lineage-data.yaml'"
   assert_output_contains "bundle:"
+}
+
+teardown() {
+  dump_bats_result
 }

@@ -13,16 +13,22 @@
 # per-bundle subdirectories. Conflict detection across defaults, scheme
 # conversion decisions, and merging are caller concerns.
 #
-# Output layout:
-#   <out-manifests-dir>/<project>/...        - one subdir per content entry
-#   <out-defaults-dir>/<project>/<token>     - per-bundle default-value files
-#   <out-contracts-dir>/<project>/contract.yaml
+# Output layout (under <content-base> chosen by the caller):
+#   <out-extract-dir>/<artifact-slug>/      - OCI image contents incl. the zips,
+#                                             left in place as audit trail
+#   <out-unzipped-dir>/<artifact-slug>/     - contents of both zips, left in
+#                                             place as audit trail
+#   <out-manifests-dir>/<project>/...       - cp from unzipped/<slug>/<project>
+#   <out-defaults-dir>/<project>/<token>    - cp from unzipped/<slug>/defaults
+#   <out-contracts-dir>/<project>/contract.yaml  - cp from unzipped/<slug>
+#
+# <artifact-slug> is the resolved OCI URI with '/' and ':' replaced by '_'.
 #
 # Functions:
 #   content_resolve_all           - Orchestrator: resolve every entry in spec.contents
 #   content_find_zips             - Locate manifests + contract zips in an extracted tree
-#   content_unzip_manifests       - Unzip manifests zip; sets CONTENT_PROJECT_NAME
-#   content_unzip_contract        - Unzip contract zip into per-project layout
+#   content_unzip_manifests       - Unzip manifests zip into audit dir, cp project subdir to out
+#   content_unzip_contract        - Unzip contract zip into audit dir, cp contract+defaults to out
 #
 # Output variables (set by helpers, read by caller / orchestrator):
 #   CONTENT_MANIFESTS_ZIP   - absolute path to located manifests zip
@@ -39,6 +45,14 @@
 _CONTENT_RESOLVE_UTIL_DIR="${_CONTENT_RESOLVE_UTIL_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../util" && pwd)}"
 _CONTENT_RESOLVE_PLUGINS_DIR="${_CONTENT_RESOLVE_PLUGINS_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../plugins" && pwd)}"
 _CONTENT_RESOLVE_SCHEMAS_DIR="${_CONTENT_RESOLVE_SCHEMAS_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../../schemas" && pwd)}"
+
+# Reduce a resolved OCI URI to a filesystem-safe slug. Replaces '/' and ':'
+# with '_'. The slug names per-artifact subdirs under <out-extract-dir> and
+# <out-unzipped-dir> so the audit trail is keyed on the artifact identity.
+_content_artifact_slug() {
+  local uri="$1"
+  echo "${uri}" | tr '/:' '__'
+}
 
 # Locate the manifests and contract zips inside an extracted OCI image tree.
 # Sets CONTENT_MANIFESTS_ZIP and CONTENT_CONTRACT_ZIP to absolute paths.
@@ -78,18 +92,20 @@ content_find_zips() {
   CONTENT_CONTRACT_ZIP="${contract_zips[0]}"
 }
 
-# Unzip a manifests zip into <out-manifests-dir>. The zip contains a
-# single top-level <project>/ directory which becomes a sibling of any
+# Unzip a manifests zip into <unzipped-dir> (audit trail) and cp the
+# project subdir into <out-manifests-dir>. The zip contains a single
+# top-level <project>/ directory which becomes a sibling of any
 # previously staged bundle. Sets CONTENT_PROJECT_NAME.
 #
-# Usage: content_unzip_manifests <manifests-zip> <out-manifests-dir>
+# Usage: content_unzip_manifests <manifests-zip> <unzipped-dir> <out-manifests-dir>
 content_unzip_manifests() {
-  if [[ $# -ne 2 ]]; then
-    log_error "content_unzip_manifests requires exactly 2 arguments, got $#"
+  if [[ $# -ne 3 ]]; then
+    log_error "content_unzip_manifests requires exactly 3 arguments, got $#"
     return 1
   fi
   local zip="$1"
-  local out_dir="$2"
+  local unzipped_dir="$2"
+  local out_dir="$3"
   if [[ ! -f "${zip}" ]]; then
     log_error "Manifests zip not found: ${zip}"
     return 1
@@ -108,24 +124,34 @@ content_unzip_manifests() {
     return 1
   fi
 
-  unzip -q "${zip}" -d "${out_dir}"
+  mkdir -p "${unzipped_dir}"
+  unzip -q "${zip}" -d "${unzipped_dir}"
+
+  cp -R "${unzipped_dir}/${project}" "${out_dir}/${project}"
   CONTENT_PROJECT_NAME="${project}"
 }
 
-# Unzip a contract zip and split its contents into per-project layout.
+# Unzip a contract zip into <unzipped-dir> (audit trail) and cp its pieces
+# into the per-project layout:
 #   contract.yaml -> <out-contracts-dir>/<project>/contract.yaml
 #   defaults/*    -> <out-defaults-dir>/<project>/*
 #
-# Usage: content_unzip_contract <contract-zip> <out-contracts-dir> <out-defaults-dir> <project>
+# <unzipped-dir> may already contain unzipped manifests-zip output (the
+# orchestrator unzips both into the same audit dir); the contract zip's
+# top-level entries (contract.yaml and optional defaults/) do not collide
+# with the manifests zip's <project>/ subdir.
+#
+# Usage: content_unzip_contract <contract-zip> <unzipped-dir> <out-contracts-dir> <out-defaults-dir> <project>
 content_unzip_contract() {
-  if [[ $# -ne 4 ]]; then
-    log_error "content_unzip_contract requires exactly 4 arguments, got $#"
+  if [[ $# -ne 5 ]]; then
+    log_error "content_unzip_contract requires exactly 5 arguments, got $#"
     return 1
   fi
   local zip="$1"
-  local out_contracts_dir="$2"
-  local out_defaults_dir="$3"
-  local project="$4"
+  local unzipped_dir="$2"
+  local out_contracts_dir="$3"
+  local out_defaults_dir="$4"
+  local project="$5"
   if [[ ! -f "${zip}" ]]; then
     log_error "Contract zip not found: ${zip}"
     return 1
@@ -135,31 +161,27 @@ content_unzip_contract() {
     return 1
   fi
 
-  local tmp
-  tmp=$(mktemp -d -t content-contract.XXXXXX)
-  unzip -q "${zip}" -d "${tmp}"
+  mkdir -p "${unzipped_dir}"
+  unzip -q "${zip}" -d "${unzipped_dir}"
 
-  if [[ ! -f "${tmp}/contract.yaml" ]]; then
+  if [[ ! -f "${unzipped_dir}/contract.yaml" ]]; then
     log_error "contract.yaml not found inside ${zip}"
-    rm -rf "${tmp}"
     return 1
   fi
 
   mkdir -p "${out_contracts_dir}/${project}"
-  mv "${tmp}/contract.yaml" "${out_contracts_dir}/${project}/contract.yaml"
+  cp "${unzipped_dir}/contract.yaml" "${out_contracts_dir}/${project}/contract.yaml"
 
-  if [[ -d "${tmp}/defaults" ]]; then
+  if [[ -d "${unzipped_dir}/defaults" ]]; then
     mkdir -p "${out_defaults_dir}/${project}"
-    # Move every defaults file (including nested paths) into the per-project dir.
+    local src rel dest
     while IFS= read -r -d '' src; do
-      local rel="${src#"${tmp}/defaults/"}"
-      local dest="${out_defaults_dir}/${project}/${rel}"
+      rel="${src#"${unzipped_dir}/defaults/"}"
+      dest="${out_defaults_dir}/${project}/${rel}"
       mkdir -p "$(dirname "${dest}")"
-      mv "${src}" "${dest}"
-    done < <(find "${tmp}/defaults" -type f -print0)
+      cp "${src}" "${dest}"
+    done < <(find "${unzipped_dir}/defaults" -type f -print0)
   fi
-
-  rm -rf "${tmp}"
 }
 
 # Validate a staged bundle against its declared contract: contract conforms to
@@ -288,24 +310,27 @@ content_validate_bundle() {
 # corresponding -manifests OCI image, and stage the unzipped manifests,
 # contract, and defaults into the three given output directories.
 #
-# Output directories receive one subdirectory per resolved bundle, keyed
-# by the bundle's project name.
+# OCI image extraction lands in <out-extract-dir>/<artifact-slug>/ and
+# both zips are unzipped into <out-unzipped-dir>/<artifact-slug>/. Both
+# are kept after the run as the audit trail.
 #
 # When <out-resolved-yaml-file> is given, each entry's full resolved OCI
 # reference (registry/namespace/repo:concrete-version) is appended as a
 # YAML list item to that file. The file is truncated at the start.
 #
-# Usage: content_resolve_all <kaptainpm-file> <out-manifests-dir> <out-defaults-dir> <out-contracts-dir> [<out-resolved-yaml-file>]
+# Usage: content_resolve_all <kaptainpm-file> <out-manifests-dir> <out-defaults-dir> <out-contracts-dir> <out-extract-dir> <out-unzipped-dir> [<out-resolved-yaml-file>]
 content_resolve_all() {
-  if [[ $# -lt 4 || $# -gt 5 ]]; then
-    log_error "Usage: content_resolve_all <kaptainpm-file> <out-manifests-dir> <out-defaults-dir> <out-contracts-dir> [<out-resolved-yaml-file>]"
+  if [[ $# -lt 6 || $# -gt 7 ]]; then
+    log_error "Usage: content_resolve_all <kaptainpm-file> <out-manifests-dir> <out-defaults-dir> <out-contracts-dir> <out-extract-dir> <out-unzipped-dir> [<out-resolved-yaml-file>]"
     return 1
   fi
   local kaptainpm_file="$1"
   local out_manifests_dir="$2"
   local out_defaults_dir="$3"
   local out_contracts_dir="$4"
-  local out_resolved_yaml="${5:-}"
+  local out_extract_dir="$5"
+  local out_unzipped_dir="$6"
+  local out_resolved_yaml="${7:-}"
 
   if [[ ! -f "${kaptainpm_file}" ]]; then
     log_error "KaptainPM file not found: ${kaptainpm_file}"
@@ -321,7 +346,8 @@ content_resolve_all() {
     return 1
   fi
 
-  mkdir -p "${out_manifests_dir}" "${out_defaults_dir}" "${out_contracts_dir}"
+  mkdir -p "${out_manifests_dir}" "${out_defaults_dir}" "${out_contracts_dir}" \
+           "${out_extract_dir}" "${out_unzipped_dir}"
 
   if [[ -n "${out_resolved_yaml}" ]]; then
     mkdir -p "$(dirname "${out_resolved_yaml}")"
@@ -345,11 +371,6 @@ content_resolve_all() {
   done <<< "${entries}"
   log ""
 
-  # Per-entry work directory hidden under out_manifests_dir
-  local work_root="${out_manifests_dir}/.content-resolve-work"
-  rm -rf "${work_root}"
-  mkdir -p "${work_root}"
-
   local entry_index=0
   local entry
   while IFS= read -r entry; do
@@ -357,27 +378,34 @@ content_resolve_all() {
     entry_index=$((entry_index + 1))
     log "Resolving content entry ${entry_index}: ${entry}"
 
-    local entry_work="${work_root}/entry-${entry_index}"
-    mkdir -p "${entry_work}"
-
-    local resolved_file="${entry_work}/resolved-uri"
-    "${_CONTENT_RESOLVE_UTIL_DIR}/artifact-resolve" "${entry}" "${resolved_file}" manifests || return $?
+    # Resolve to the concrete OCI URI. Land the resolved-uri file at a
+    # known per-entry path, then move it into the slug-named extract dir
+    # once we know the slug. Keeping it makes the audit trail show what
+    # the entry actually resolved to at the moment of the build.
+    local resolve_seed="${out_extract_dir}/resolved-entry-${entry_index}.uri"
+    "${_CONTENT_RESOLVE_UTIL_DIR}/artifact-resolve" "${entry}" "${resolve_seed}" manifests || return $?
     local resolved_uri
-    resolved_uri=$(cat "${resolved_file}")
+    resolved_uri=$(cat "${resolve_seed}")
     log "  Resolved: ${resolved_uri}"
 
     if [[ -n "${out_resolved_yaml}" ]]; then
       printf -- '- %s\n' "${resolved_uri}" >> "${out_resolved_yaml}"
     fi
 
-    local extract_dir="${entry_work}/extract"
-    mkdir -p "${extract_dir}"
+    local slug
+    slug=$(_content_artifact_slug "${resolved_uri}")
+    local extract_dir="${out_extract_dir}/${slug}"
+    local unzipped_dir="${out_unzipped_dir}/${slug}"
+    mkdir -p "${extract_dir}" "${unzipped_dir}"
+    mv "${resolve_seed}" "${extract_dir}/resolved-uri"
+
     "${_CONTENT_RESOLVE_UTIL_DIR}/extract-oci-image" "${resolved_uri}" "${extract_dir}" || return $?
 
     content_find_zips "${extract_dir}" || return $?
-    content_unzip_manifests "${CONTENT_MANIFESTS_ZIP}" "${out_manifests_dir}" || return $?
+    content_unzip_manifests "${CONTENT_MANIFESTS_ZIP}" "${unzipped_dir}" "${out_manifests_dir}" || return $?
     local project="${CONTENT_PROJECT_NAME}"
-    content_unzip_contract "${CONTENT_CONTRACT_ZIP}" "${out_contracts_dir}" "${out_defaults_dir}" "${project}" || return $?
+    content_unzip_contract "${CONTENT_CONTRACT_ZIP}" "${unzipped_dir}" \
+      "${out_contracts_dir}" "${out_defaults_dir}" "${project}" || return $?
 
     content_validate_bundle "${project}" "${out_contracts_dir}" "${out_defaults_dir}" "${out_manifests_dir}" || return $?
 
@@ -385,6 +413,5 @@ content_resolve_all() {
     log ""
   done <<< "${entries}"
 
-  rm -rf "${work_root}"
   log "Resolved ${entry_index} content entr$([[ ${entry_index} -eq 1 ]] && echo y || echo ies)"
 }
