@@ -49,6 +49,8 @@ source "${SCRIPT_DIR}/../defaults/platform.bash"
 source "${SCRIPT_DIR}/../lib/log.bash"
 # shellcheck source=src/scripts/defaults/build-mode.bash
 source "${SCRIPT_DIR}/../defaults/build-mode.bash"
+# shellcheck source=src/scripts/defaults/output-sub-path.bash
+source "${SCRIPT_DIR}/../defaults/output-sub-path.bash"
 # shellcheck source=src/scripts/lib/layer-merge.bash
 source "${SCRIPT_DIR}/../lib/layer-merge.bash"
 # shellcheck source=src/scripts/lib/validate-exact-file-exists.bash

@@ -21,6 +21,9 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 UTIL_DIR="${SCRIPT_DIR}/../../util"
 
+# shellcheck source=src/scripts/defaults/output-sub-path.bash
+source "${SCRIPT_DIR}/../../defaults/output-sub-path.bash"
+
 image_uri="${1:?Usage: docker <image-uri> <dest-dir> [<path-in-image> ...]}"
 dest_dir="${2:?Usage: docker <image-uri> <dest-dir> [<path-in-image> ...]}"
 shift 2
