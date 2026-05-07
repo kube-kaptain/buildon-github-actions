@@ -345,6 +345,34 @@ github_output_value() {
   [ -f "${TEST_DIR}/kaptain-out/product-aggregate/defaults-merged/MaxHeapSize" ]
 }
 
+@test "end-to-end: leaves audit trail under content/extract and content/unzipped" {
+  setup_mock_oci
+  stage_oci_fixture "alpha:1.0-manifests" "alpha" shell PascalCase "Replicas=2"
+  stage_oci_fixture "beta:2.0-manifests"  "beta"  shell PascalCase "MaxHeapSize=512Mi"
+  write_pm "alpha:1.0" "beta:2.0"
+  run_script
+  [ "${status}" -eq 0 ]
+
+  local alpha_slug beta_slug
+  alpha_slug=$(echo "alpha:1.0-manifests" | tr '/:' '__')
+  beta_slug=$(echo "beta:2.0-manifests" | tr '/:' '__')
+
+  [ -d "${TEST_DIR}/kaptain-out/content/extract/${alpha_slug}" ]
+  [ -d "${TEST_DIR}/kaptain-out/content/extract/${beta_slug}" ]
+  [ -f "${TEST_DIR}/kaptain-out/content/extract/${alpha_slug}/alpha-1.0-manifests.zip" ]
+  [ -f "${TEST_DIR}/kaptain-out/content/extract/${alpha_slug}/alpha-1.0-contract.zip" ]
+  [ -f "${TEST_DIR}/kaptain-out/content/extract/${alpha_slug}/resolved-uri" ]
+  [ -f "${TEST_DIR}/kaptain-out/content/extract/${beta_slug}/beta-1.0-manifests.zip" ]
+  [ -f "${TEST_DIR}/kaptain-out/content/extract/${beta_slug}/beta-1.0-contract.zip" ]
+
+  [ -d "${TEST_DIR}/kaptain-out/content/unzipped/${alpha_slug}" ]
+  [ -d "${TEST_DIR}/kaptain-out/content/unzipped/${beta_slug}" ]
+  [ -f "${TEST_DIR}/kaptain-out/content/unzipped/${alpha_slug}/contract.yaml" ]
+  [ -f "${TEST_DIR}/kaptain-out/content/unzipped/${alpha_slug}/alpha/deployment.yaml" ]
+  [ -f "${TEST_DIR}/kaptain-out/content/unzipped/${beta_slug}/contract.yaml" ]
+  [ -f "${TEST_DIR}/kaptain-out/content/unzipped/${beta_slug}/beta/deployment.yaml" ]
+}
+
 # =============================================================================
 # Cross-bundle defaults conflict detection
 # =============================================================================

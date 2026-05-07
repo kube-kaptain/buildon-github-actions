@@ -143,42 +143,43 @@ EOF
 # =============================================================================
 
 @test "content_unzip_manifests: extracts and reports project name" {
-  mkdir -p "$TEST_DIR/zips" "$TEST_DIR/staged"
+  mkdir -p "$TEST_DIR/zips" "$TEST_DIR/unzipped/foo" "$TEST_DIR/staged"
   make_manifests_zip "$TEST_DIR/zips/foo-1.0-manifests.zip" "foo"
 
   run -0 bash -c "
     source '$LIB_DIR/content-resolve.bash'
-    content_unzip_manifests '$TEST_DIR/zips/foo-1.0-manifests.zip' '$TEST_DIR/staged'
+    content_unzip_manifests '$TEST_DIR/zips/foo-1.0-manifests.zip' '$TEST_DIR/unzipped/foo' '$TEST_DIR/staged'
     echo PROJECT=\${CONTENT_PROJECT_NAME}
   "
   echo "$output" | grep -q "PROJECT=foo"
   [ -f "$TEST_DIR/staged/foo/deployment.yaml" ]
+  [ -f "$TEST_DIR/unzipped/foo/foo/deployment.yaml" ]
 }
 
 @test "content_unzip_manifests: stages multiple bundles as siblings" {
-  mkdir -p "$TEST_DIR/zips" "$TEST_DIR/staged"
+  mkdir -p "$TEST_DIR/zips" "$TEST_DIR/unzipped/foo" "$TEST_DIR/unzipped/bar" "$TEST_DIR/staged"
   make_manifests_zip "$TEST_DIR/zips/foo-1.0-manifests.zip" "foo"
   make_manifests_zip "$TEST_DIR/zips/bar-2.0-manifests.zip" "bar"
 
   source "$LIB_DIR/content-resolve.bash"
-  content_unzip_manifests "$TEST_DIR/zips/foo-1.0-manifests.zip" "$TEST_DIR/staged"
-  content_unzip_manifests "$TEST_DIR/zips/bar-2.0-manifests.zip" "$TEST_DIR/staged"
+  content_unzip_manifests "$TEST_DIR/zips/foo-1.0-manifests.zip" "$TEST_DIR/unzipped/foo" "$TEST_DIR/staged"
+  content_unzip_manifests "$TEST_DIR/zips/bar-2.0-manifests.zip" "$TEST_DIR/unzipped/bar" "$TEST_DIR/staged"
 
   [ -f "$TEST_DIR/staged/foo/deployment.yaml" ]
   [ -f "$TEST_DIR/staged/bar/deployment.yaml" ]
 }
 
 @test "content_unzip_manifests: fails when project already staged" {
-  mkdir -p "$TEST_DIR/zips" "$TEST_DIR/staged/foo"
+  mkdir -p "$TEST_DIR/zips" "$TEST_DIR/unzipped/foo" "$TEST_DIR/staged/foo"
   touch "$TEST_DIR/staged/foo/preexisting"
   make_manifests_zip "$TEST_DIR/zips/foo-1.0-manifests.zip" "foo"
 
-  run content_unzip_manifests "$TEST_DIR/zips/foo-1.0-manifests.zip" "$TEST_DIR/staged"
+  run content_unzip_manifests "$TEST_DIR/zips/foo-1.0-manifests.zip" "$TEST_DIR/unzipped/foo" "$TEST_DIR/staged"
   [ "$status" -ne 0 ]
 }
 
 @test "content_unzip_manifests: fails on missing zip" {
-  run content_unzip_manifests "$TEST_DIR/nonexistent.zip" "$TEST_DIR/staged"
+  run content_unzip_manifests "$TEST_DIR/nonexistent.zip" "$TEST_DIR/unzipped" "$TEST_DIR/staged"
   [ "$status" -ne 0 ]
 }
 
@@ -187,39 +188,41 @@ EOF
 # =============================================================================
 
 @test "content_unzip_contract: extracts contract.yaml to per-project dir" {
-  mkdir -p "$TEST_DIR/zips" "$TEST_DIR/contracts" "$TEST_DIR/defaults"
+  mkdir -p "$TEST_DIR/zips" "$TEST_DIR/unzipped/foo" "$TEST_DIR/contracts" "$TEST_DIR/defaults"
   make_contract_zip "$TEST_DIR/zips/foo-1.0-contract.zip"
 
   source "$LIB_DIR/content-resolve.bash"
   content_unzip_contract "$TEST_DIR/zips/foo-1.0-contract.zip" \
-    "$TEST_DIR/contracts" "$TEST_DIR/defaults" "foo"
+    "$TEST_DIR/unzipped/foo" "$TEST_DIR/contracts" "$TEST_DIR/defaults" "foo"
 
   [ -f "$TEST_DIR/contracts/foo/contract.yaml" ]
   grep -q "kind: kubernetes-bundle" "$TEST_DIR/contracts/foo/contract.yaml"
+  [ -f "$TEST_DIR/unzipped/foo/contract.yaml" ]
 }
 
 @test "content_unzip_contract: stages defaults files into per-project dir" {
-  mkdir -p "$TEST_DIR/zips" "$TEST_DIR/contracts" "$TEST_DIR/defaults"
+  mkdir -p "$TEST_DIR/zips" "$TEST_DIR/unzipped/foo" "$TEST_DIR/contracts" "$TEST_DIR/defaults"
   make_contract_zip "$TEST_DIR/zips/foo-1.0-contract.zip" \
     "Replicas=3" "MaxHeapSize=512Mi"
 
   source "$LIB_DIR/content-resolve.bash"
   content_unzip_contract "$TEST_DIR/zips/foo-1.0-contract.zip" \
-    "$TEST_DIR/contracts" "$TEST_DIR/defaults" "foo"
+    "$TEST_DIR/unzipped/foo" "$TEST_DIR/contracts" "$TEST_DIR/defaults" "foo"
 
   [ -f "$TEST_DIR/defaults/foo/Replicas" ]
   [ "$(cat "$TEST_DIR/defaults/foo/Replicas")" = "3" ]
   [ -f "$TEST_DIR/defaults/foo/MaxHeapSize" ]
   [ "$(cat "$TEST_DIR/defaults/foo/MaxHeapSize")" = "512Mi" ]
+  [ -f "$TEST_DIR/unzipped/foo/defaults/Replicas" ]
 }
 
 @test "content_unzip_contract: handles zip without defaults dir" {
-  mkdir -p "$TEST_DIR/zips" "$TEST_DIR/contracts" "$TEST_DIR/defaults"
+  mkdir -p "$TEST_DIR/zips" "$TEST_DIR/unzipped/foo" "$TEST_DIR/contracts" "$TEST_DIR/defaults"
   make_contract_zip "$TEST_DIR/zips/foo-1.0-contract.zip"
 
   source "$LIB_DIR/content-resolve.bash"
   content_unzip_contract "$TEST_DIR/zips/foo-1.0-contract.zip" \
-    "$TEST_DIR/contracts" "$TEST_DIR/defaults" "foo"
+    "$TEST_DIR/unzipped/foo" "$TEST_DIR/contracts" "$TEST_DIR/defaults" "foo"
 
   [ -f "$TEST_DIR/contracts/foo/contract.yaml" ]
   [ ! -d "$TEST_DIR/defaults/foo" ]
@@ -228,7 +231,7 @@ EOF
 @test "content_unzip_contract: fails on missing zip" {
   run bash -c "
     source '$LIB_DIR/content-resolve.bash'
-    content_unzip_contract '$TEST_DIR/nope.zip' '$TEST_DIR/c' '$TEST_DIR/d' 'foo'
+    content_unzip_contract '$TEST_DIR/nope.zip' '$TEST_DIR/u' '$TEST_DIR/c' '$TEST_DIR/d' 'foo'
   "
   [ "$status" -ne 0 ]
 }
@@ -238,7 +241,7 @@ EOF
   make_contract_zip "$TEST_DIR/zips/foo-1.0-contract.zip"
   run bash -c "
     source '$LIB_DIR/content-resolve.bash'
-    content_unzip_contract '$TEST_DIR/zips/foo-1.0-contract.zip' '$TEST_DIR/c' '$TEST_DIR/d' ''
+    content_unzip_contract '$TEST_DIR/zips/foo-1.0-contract.zip' '$TEST_DIR/u' '$TEST_DIR/c' '$TEST_DIR/d' ''
   "
   [ "$status" -ne 0 ]
 }
@@ -312,10 +315,11 @@ metadata:
 spec:
   contents: []
 EOF
-  mkdir -p "$TEST_DIR/m" "$TEST_DIR/d" "$TEST_DIR/c"
+  mkdir -p "$TEST_DIR/m" "$TEST_DIR/d" "$TEST_DIR/c" "$TEST_DIR/e" "$TEST_DIR/u"
 
   source "$LIB_DIR/content-resolve.bash"
-  run content_resolve_all "$TEST_DIR/kp.yaml" "$TEST_DIR/m" "$TEST_DIR/d" "$TEST_DIR/c"
+  run content_resolve_all "$TEST_DIR/kp.yaml" "$TEST_DIR/m" "$TEST_DIR/d" "$TEST_DIR/c" \
+    "$TEST_DIR/e" "$TEST_DIR/u"
   [ "$status" -eq 0 ]
   echo "$output" | grep -q "No spec.contents entries"
 }
@@ -332,15 +336,17 @@ spec:
       delimiterStyle: shell
       nameStyle: PascalCase
 EOF
-  mkdir -p "$TEST_DIR/m" "$TEST_DIR/d" "$TEST_DIR/c"
+  mkdir -p "$TEST_DIR/m" "$TEST_DIR/d" "$TEST_DIR/c" "$TEST_DIR/e" "$TEST_DIR/u"
   source "$LIB_DIR/content-resolve.bash"
-  run content_resolve_all "$TEST_DIR/kp.yaml" "$TEST_DIR/m" "$TEST_DIR/d" "$TEST_DIR/c"
+  run content_resolve_all "$TEST_DIR/kp.yaml" "$TEST_DIR/m" "$TEST_DIR/d" "$TEST_DIR/c" \
+    "$TEST_DIR/e" "$TEST_DIR/u"
   [ "$status" -eq 0 ]
 }
 
 @test "content_resolve_all: fails when KaptainPM file missing" {
   source "$LIB_DIR/content-resolve.bash"
-  run content_resolve_all "$TEST_DIR/missing.yaml" "$TEST_DIR/m" "$TEST_DIR/d" "$TEST_DIR/c"
+  run content_resolve_all "$TEST_DIR/missing.yaml" "$TEST_DIR/m" "$TEST_DIR/d" "$TEST_DIR/c" \
+    "$TEST_DIR/e" "$TEST_DIR/u"
   [ "$status" -ne 0 ]
 }
 
@@ -367,14 +373,24 @@ spec:
   contents:
     - foo:1.0
 EOF
-  mkdir -p "$TEST_DIR/m" "$TEST_DIR/d" "$TEST_DIR/c"
+  mkdir -p "$TEST_DIR/m" "$TEST_DIR/d" "$TEST_DIR/c" "$TEST_DIR/e" "$TEST_DIR/u"
 
-  run content_resolve_all "$TEST_DIR/kp.yaml" "$TEST_DIR/m" "$TEST_DIR/d" "$TEST_DIR/c"
+  run content_resolve_all "$TEST_DIR/kp.yaml" "$TEST_DIR/m" "$TEST_DIR/d" "$TEST_DIR/c" \
+    "$TEST_DIR/e" "$TEST_DIR/u"
   [ "$status" -eq 0 ]
 
   [ -f "$TEST_DIR/m/foo/deployment.yaml" ]
   [ -f "$TEST_DIR/c/foo/contract.yaml" ]
   [ -f "$TEST_DIR/d/foo/Replicas" ]
+
+  # Audit trail preserved.
+  local slug
+  slug=$(echo "foo:1.0-manifests" | tr '/:' '__')
+  [ -f "$TEST_DIR/e/${slug}/foo-1.0-manifests.zip" ]
+  [ -f "$TEST_DIR/e/${slug}/foo-1.0-contract.zip" ]
+  [ -f "$TEST_DIR/e/${slug}/resolved-uri" ]
+  [ -f "$TEST_DIR/u/${slug}/contract.yaml" ]
+  [ -f "$TEST_DIR/u/${slug}/foo/deployment.yaml" ]
 }
 
 @test "content_resolve_all: stages two bundles into sibling subdirs" {
@@ -394,9 +410,10 @@ spec:
     - alpha:1.0
     - beta:2.0
 EOF
-  mkdir -p "$TEST_DIR/m" "$TEST_DIR/d" "$TEST_DIR/c"
+  mkdir -p "$TEST_DIR/m" "$TEST_DIR/d" "$TEST_DIR/c" "$TEST_DIR/e" "$TEST_DIR/u"
 
-  run content_resolve_all "$TEST_DIR/kp.yaml" "$TEST_DIR/m" "$TEST_DIR/d" "$TEST_DIR/c"
+  run content_resolve_all "$TEST_DIR/kp.yaml" "$TEST_DIR/m" "$TEST_DIR/d" "$TEST_DIR/c" \
+    "$TEST_DIR/e" "$TEST_DIR/u"
   [ "$status" -eq 0 ]
 
   [ -f "$TEST_DIR/m/alpha/deployment.yaml" ]
@@ -426,13 +443,14 @@ spec:
   contents:
     - broken:1.0
 EOF
-  mkdir -p "$TEST_DIR/m" "$TEST_DIR/d" "$TEST_DIR/c"
+  mkdir -p "$TEST_DIR/m" "$TEST_DIR/d" "$TEST_DIR/c" "$TEST_DIR/e" "$TEST_DIR/u"
 
-  run content_resolve_all "$TEST_DIR/kp.yaml" "$TEST_DIR/m" "$TEST_DIR/d" "$TEST_DIR/c"
+  run content_resolve_all "$TEST_DIR/kp.yaml" "$TEST_DIR/m" "$TEST_DIR/d" "$TEST_DIR/c" \
+    "$TEST_DIR/e" "$TEST_DIR/u"
   [ "$status" -ne 0 ]
 }
 
-@test "content_resolve_all: cleans up internal work directory" {
+@test "content_resolve_all: leaves audit trail under extract/ and unzipped/" {
   source "$LIB_DIR/content-resolve.bash"
   setup_mock_utils
   export MOCK_OCI_DIR="${TEST_DIR}/oci-fixtures"
@@ -447,9 +465,23 @@ spec:
   contents:
     - foo:1.0
 EOF
-  mkdir -p "$TEST_DIR/m" "$TEST_DIR/d" "$TEST_DIR/c"
+  mkdir -p "$TEST_DIR/m" "$TEST_DIR/d" "$TEST_DIR/c" "$TEST_DIR/e" "$TEST_DIR/u"
 
-  run content_resolve_all "$TEST_DIR/kp.yaml" "$TEST_DIR/m" "$TEST_DIR/d" "$TEST_DIR/c"
+  run content_resolve_all "$TEST_DIR/kp.yaml" "$TEST_DIR/m" "$TEST_DIR/d" "$TEST_DIR/c" \
+    "$TEST_DIR/e" "$TEST_DIR/u"
   [ "$status" -eq 0 ]
+
+  # The legacy hidden work dir is gone.
   [ ! -d "$TEST_DIR/m/.content-resolve-work" ]
+
+  # The new audit trail under extract/<slug> and unzipped/<slug> survived.
+  local slug
+  slug=$(echo "foo:1.0-manifests" | tr '/:' '__')
+  [ -d "$TEST_DIR/e/${slug}" ]
+  [ -d "$TEST_DIR/u/${slug}" ]
+  [ -f "$TEST_DIR/e/${slug}/foo-1.0-manifests.zip" ]
+  [ -f "$TEST_DIR/e/${slug}/foo-1.0-contract.zip" ]
+  [ -f "$TEST_DIR/e/${slug}/resolved-uri" ]
+  [ "$(cat "$TEST_DIR/e/${slug}/resolved-uri")" = "foo:1.0-manifests" ]
+  [ -f "$TEST_DIR/u/${slug}/contract.yaml" ]
 }

@@ -78,6 +78,8 @@ CONTENT_BASE="${OUTPUT_SUB_PATH}/content"
 CONTENT_MANIFESTS_DIR="${CONTENT_BASE}/manifests"
 CONTENT_DEFAULTS_DIR="${CONTENT_BASE}/defaults"
 CONTENT_CONTRACTS_DIR="${CONTENT_BASE}/contracts"
+CONTENT_EXTRACT_DIR="${CONTENT_BASE}/extract"
+CONTENT_UNZIPPED_DIR="${CONTENT_BASE}/unzipped"
 CONTENT_RESOLVED_FILE="${CONTENT_BASE}/contents-resolved.yaml"
 
 # Assembly artefacts — product-aggregate owns this dir.
@@ -512,7 +514,8 @@ main() {
       "Product spec.contents" name
 
   rm -rf "${CONTENT_BASE}" "${AGGREGATE_BASE}"
-  mkdir -p "${CONTENT_MANIFESTS_DIR}" "${CONTENT_DEFAULTS_DIR}" "${CONTENT_CONTRACTS_DIR}"
+  mkdir -p "${CONTENT_MANIFESTS_DIR}" "${CONTENT_DEFAULTS_DIR}" "${CONTENT_CONTRACTS_DIR}" \
+           "${CONTENT_EXTRACT_DIR}" "${CONTENT_UNZIPPED_DIR}"
   mkdir -p "${AGGREGATE_MANIFESTS_NORMALISED_DIR}" "${AGGREGATE_DEFAULTS_NORMALISED_DIR}"
 
   log ""
@@ -520,6 +523,7 @@ main() {
   log ""
   content_resolve_all "${KAPTAINPM_FILE}" \
     "${CONTENT_MANIFESTS_DIR}" "${CONTENT_DEFAULTS_DIR}" "${CONTENT_CONTRACTS_DIR}" \
+    "${CONTENT_EXTRACT_DIR}" "${CONTENT_UNZIPPED_DIR}" \
     "${CONTENT_RESOLVED_FILE}"
 
   log ""
