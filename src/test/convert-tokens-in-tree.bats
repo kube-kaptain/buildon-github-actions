@@ -14,6 +14,7 @@ CONVERT_SCRIPT="$UTIL_DIR/convert-tokens-in-tree"
 
 setup() {
   TEST_DIR=$(create_test_dir "convert-tokens")
+  export OUTPUT_SUB_PATH="${TEST_DIR}/kaptain-out"
 }
 
 # =============================================================================
@@ -358,4 +359,88 @@ EOF
   [ "$status" -eq 0 ]
   echo "$output" | grep -q "Converted 3 token instances in file.yaml"
   echo "$output" | grep -q "Total replacements: 3"
+}
+
+# =============================================================================
+# Audit trail under OUTPUT_SUB_PATH
+# =============================================================================
+
+# Helper: derive the slug for a target dir as the script does.
+slug_for() { echo "$1" | tr '/:' '__'; }
+
+@test "convert-tokens-in-tree: leaves mapping.tsv under OUTPUT_SUB_PATH" {
+  mkdir -p "$TEST_DIR/d"
+  cat > "$TEST_DIR/d/file.yaml" << 'EOF'
+a: ${One}
+b: ${Two}
+EOF
+  run "$CONVERT_SCRIPT" shell PascalCase mustache PascalCase "$TEST_DIR/d"
+  [ "$status" -eq 0 ]
+  local slug
+  slug=$(slug_for "$TEST_DIR/d")
+  local slot="${OUTPUT_SUB_PATH}/convert-tokens-in-tree/token-mappings/${slug}-0"
+  [ -d "${slot}" ]
+  [ -f "${slot}/mapping.tsv" ]
+  # Two tokens, both with a tab separator, mapped from shell ${X} to mustache form.
+  [ "$(wc -l < "${slot}/mapping.tsv" | tr -d ' ')" = "2" ]
+  awk -F'\t' '$1 == "${One}" { found = 1 } END { exit found ? 0 : 1 }' "${slot}/mapping.tsv"
+  awk -F'\t' '$1 == "${Two}" { found = 1 } END { exit found ? 0 : 1 }' "${slot}/mapping.tsv"
+  awk -F'\t' '$2 ~ /\{\{[[:space:]]*One[[:space:]]*\}\}/ { found = 1 } END { exit found ? 0 : 1 }' "${slot}/mapping.tsv"
+}
+
+@test "convert-tokens-in-tree: writes target-dir, from-scheme, to-scheme pointers" {
+  mkdir -p "$TEST_DIR/d"
+  echo 'a: ${One}' > "$TEST_DIR/d/file.yaml"
+  run "$CONVERT_SCRIPT" shell PascalCase mustache PascalCase "$TEST_DIR/d"
+  [ "$status" -eq 0 ]
+  local slug
+  slug=$(slug_for "$TEST_DIR/d")
+  local slot="${OUTPUT_SUB_PATH}/convert-tokens-in-tree/token-mappings/${slug}-0"
+  [ "$(cat "${slot}/target-dir")" = "$TEST_DIR/d" ]
+  [ "$(cat "${slot}/from-scheme")" = "shell-PascalCase" ]
+  [ "$(cat "${slot}/to-scheme")" = "mustache-PascalCase" ]
+}
+
+@test "convert-tokens-in-tree: replacements-by-file.tsv records every touched file with counts" {
+  mkdir -p "$TEST_DIR/d/sub"
+  cat > "$TEST_DIR/d/file.yaml" << 'EOF'
+a: ${One}
+b: ${Two}
+c: ${One}
+EOF
+  echo 'd: ${Two}' > "$TEST_DIR/d/sub/nested.yaml"
+  echo 'no tokens here' > "$TEST_DIR/d/untouched.txt"
+  run "$CONVERT_SCRIPT" shell PascalCase mustache PascalCase "$TEST_DIR/d"
+  [ "$status" -eq 0 ]
+  local slug
+  slug=$(slug_for "$TEST_DIR/d")
+  local rbf="${OUTPUT_SUB_PATH}/convert-tokens-in-tree/token-mappings/${slug}-0/replacements-by-file.tsv"
+  [ -f "${rbf}" ]
+  awk -F'\t' '$1 == "file.yaml" && $2 == "3" { found = 1 } END { exit found ? 0 : 1 }' "${rbf}"
+  awk -F'\t' '$1 == "sub/nested.yaml" && $2 == "1" { found = 1 } END { exit found ? 0 : 1 }' "${rbf}"
+  ! grep -q "untouched.txt" "${rbf}"
+}
+
+@test "convert-tokens-in-tree: second invocation against same tree lands at -1" {
+  mkdir -p "$TEST_DIR/d"
+  echo 'a: ${One}' > "$TEST_DIR/d/file.yaml"
+  run "$CONVERT_SCRIPT" shell PascalCase mustache PascalCase "$TEST_DIR/d"
+  [ "$status" -eq 0 ]
+  # Re-prime the file so the second pass has something to convert.
+  echo 'a: ${One}' > "$TEST_DIR/d/file.yaml"
+  run "$CONVERT_SCRIPT" shell PascalCase mustache PascalCase "$TEST_DIR/d"
+  [ "$status" -eq 0 ]
+  local slug
+  slug=$(slug_for "$TEST_DIR/d")
+  local base="${OUTPUT_SUB_PATH}/convert-tokens-in-tree/token-mappings"
+  [ -d "${base}/${slug}-0" ]
+  [ -d "${base}/${slug}-1" ]
+}
+
+@test "convert-tokens-in-tree: same-scheme no-op leaves no audit dir" {
+  mkdir -p "$TEST_DIR/d"
+  echo 'a: ${One}' > "$TEST_DIR/d/file.yaml"
+  run "$CONVERT_SCRIPT" shell PascalCase shell PascalCase "$TEST_DIR/d"
+  [ "$status" -eq 0 ]
+  [ ! -d "${OUTPUT_SUB_PATH}/convert-tokens-in-tree" ]
 }
