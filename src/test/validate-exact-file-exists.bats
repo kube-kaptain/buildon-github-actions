@@ -103,3 +103,7 @@ setup() {
   [[ "$status" -eq 0 ]]
   [[ -z "$output" ]]
 }
+
+teardown() {
+  dump_bats_result
+}

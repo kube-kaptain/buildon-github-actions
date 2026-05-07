@@ -608,3 +608,7 @@ EOF
   assert_output_contains "Reserved filename 'kaptain-product-lineage-data.yaml'"
   assert_output_contains "bundle:"
 }
+
+teardown() {
+  dump_bats_result
+}

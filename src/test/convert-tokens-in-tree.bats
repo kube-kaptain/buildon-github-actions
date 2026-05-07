@@ -444,3 +444,7 @@ EOF
   [ "$status" -eq 0 ]
   [ ! -d "${OUTPUT_SUB_PATH}/convert-tokens-in-tree" ]
 }
+
+teardown() {
+  dump_bats_result
+}

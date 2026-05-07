@@ -679,3 +679,7 @@ EOF
   [[ "$output" == *"payload ok: /present.txt -> ok/b"* ]]
   [[ "$output" == *"layer-payload validation failed: 3 error(s)"* ]]
 }
+
+teardown() {
+  dump_bats_result
+}

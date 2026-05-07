@@ -221,3 +221,7 @@ EOF
   [ "${status}" -ne 0 ]
   assert_output_contains "quality-strict"
 }
+
+teardown() {
+  dump_bats_result
+}

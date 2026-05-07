@@ -184,3 +184,7 @@ load helpers
   run "$UTIL_DIR/format-project-title"
   [ "$status" -ne 0 ]
 }
+
+teardown() {
+  dump_bats_result
+}

@@ -63,6 +63,7 @@ MOCKDOCKER
 }
 
 teardown() {
+  dump_bats_result
   :
 }
 

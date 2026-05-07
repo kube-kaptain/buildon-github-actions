@@ -515,3 +515,7 @@ metadata_caller_scope() {
   [ "$status" -ne 0 ]
 }
 
+
+teardown() {
+  dump_bats_result
+}

@@ -378,3 +378,7 @@ EOF
   [ "${status}" -eq 0 ]
   assert_github_output "LAYER_PACKAGING_BASE_IMAGE" "alpine:3.19"
 }
+
+teardown() {
+  dump_bats_result
+}

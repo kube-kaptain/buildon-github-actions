@@ -1091,3 +1091,7 @@ setup() {
   run canonicalize_token_name BogusStyle MyToken
   [ "$status" -ne 0 ]
 }
+
+teardown() {
+  dump_bats_result
+}

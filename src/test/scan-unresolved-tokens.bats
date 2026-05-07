@@ -281,3 +281,7 @@ EOF
   [ "$(echo "$output" | sed -n '2p')" = "Middle" ]
   [ "$(echo "$output" | tail -1)" = "Zebra" ]
 }
+
+teardown() {
+  dump_bats_result
+}

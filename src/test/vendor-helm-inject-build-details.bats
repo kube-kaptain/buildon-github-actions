@@ -146,3 +146,7 @@ EOF
   built=$(yq eval '.metadata.annotations."kaptain.org/built-by"' "${COMBINED_DIR}/deployment.yaml")
   [[ "${built}" == "test" ]]
 }
+
+teardown() {
+  dump_bats_result
+}

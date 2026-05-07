@@ -13,6 +13,7 @@ setup() {
 }
 
 teardown() {
+  dump_bats_result
   cleanup_test_repo "$TEST_REPO"
   cleanup_mock_git
 }

@@ -47,6 +47,22 @@ create_test_dir() {
   echo "$dir"
 }
 
+# Dump the most recent `run` invocation's status and output to disk under the
+# per-test directory used by create_test_dir. Call from teardown() in every
+# bats file so flaky failures leave evidence behind for inspection.
+dump_bats_result() {
+  local file_base test_dir
+  file_base=$(basename "${BATS_TEST_FILENAME:-unknown.bats}" .bats)
+  test_dir="${TEST_TARGET_DIR}/${file_base}/${BATS_TEST_NAME:-unknown}"
+  mkdir -p "${test_dir}"
+  {
+    echo "test: ${BATS_TEST_NAME:-unknown}"
+    echo "status: ${status:-N/A}"
+    echo "--- output ---"
+    echo "${output:-}"
+  } > "${test_dir}/bats-result.log"
+}
+
 # Set up mock git that filters push
 setup_mock_git() {
   mkdir -p "$MOCK_BIN_DIR"

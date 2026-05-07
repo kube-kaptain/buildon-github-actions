@@ -485,3 +485,7 @@ EOF
   [ "$(cat "$TEST_DIR/e/${slug}/resolved-uri")" = "foo:1.0-manifests" ]
   [ -f "$TEST_DIR/u/${slug}/contract.yaml" ]
 }
+
+teardown() {
+  dump_bats_result
+}
