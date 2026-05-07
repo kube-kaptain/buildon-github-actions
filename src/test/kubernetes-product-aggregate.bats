@@ -281,6 +281,28 @@ github_output_value() {
 }
 
 # =============================================================================
+# Duplicate spec.contents
+# =============================================================================
+
+@test "duplicate spec.contents: same name different versions is rejected" {
+  setup_mock_oci
+  write_pm "alpha:1.0" "alpha:2.0"
+  run_script
+  [ "${status}" -ne 0 ]
+  assert_output_contains "Product spec.contents contains duplicate"
+  assert_output_contains "alpha"
+}
+
+@test "duplicate spec.contents: same name across different namespaces is rejected" {
+  setup_mock_oci
+  write_pm "ghcr.io/org-a/alpha:1.0" "ghcr.io/org-b/alpha:2.0"
+  run_script
+  [ "${status}" -ne 0 ]
+  assert_output_contains "Product spec.contents contains duplicate"
+  assert_output_contains "alpha"
+}
+
+# =============================================================================
 # Empty spec.contents
 # =============================================================================
 

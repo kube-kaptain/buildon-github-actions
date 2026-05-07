@@ -61,6 +61,8 @@ source "${SCRIPT_DIR}/../lib/output-var.bash"
 source "${SCRIPT_DIR}/../lib/token-format.bash"
 # shellcheck source=src/scripts/lib/content-resolve.bash
 source "${SCRIPT_DIR}/../lib/content-resolve.bash"
+# shellcheck source=src/scripts/lib/assert-unique-artifact-refs.bash
+source "${SCRIPT_DIR}/../lib/assert-unique-artifact-refs.bash"
 
 PROJECT_NAME="${PROJECT_NAME:?PROJECT_NAME is required}"
 KAPTAINPM_FILE="${KAPTAINPM_FILE:-kaptainpm/final/KaptainPM.yaml}"
@@ -501,6 +503,13 @@ main() {
   fi
 
   assert_no_products_in_products "${KAPTAINPM_FILE}"
+
+  # Reject the same artifact appearing twice in spec.contents. 'name' mode
+  # collapses on the bare last-path segment (project name) because the
+  # bundle's metadata.name will collide downstream regardless of which
+  # registry/namespace it came from.
+  assert_unique_artifact_refs "${KAPTAINPM_FILE}" '.spec.contents[]' \
+      "Product spec.contents" name
 
   rm -rf "${CONTENT_BASE}" "${AGGREGATE_BASE}"
   mkdir -p "${CONTENT_MANIFESTS_DIR}" "${CONTENT_DEFAULTS_DIR}" "${CONTENT_CONTRACTS_DIR}"
