@@ -47,9 +47,22 @@ for arg in "$@"; do
 done
 if [[ "${url}" == */v2/ ]]; then
   if [[ "$*" == *"-D"* ]]; then
-    echo 'HTTP/1.1 401 Unauthorized'
-    echo 'www-authenticate: Bearer realm="https://mock-registry.example/token",service="mock-registry"'
-    echo ''
+    case "${MOCK_AUTH_CHALLENGE:-bearer}" in
+      bearer)
+        echo 'HTTP/1.1 401 Unauthorized'
+        echo 'www-authenticate: Bearer realm="https://mock-registry.example/token",service="mock-registry"'
+        echo ''
+        ;;
+      basic)
+        echo 'HTTP/1.1 401 Unauthorized'
+        echo 'www-authenticate: Basic realm="mock-registry"'
+        echo ''
+        ;;
+      none)
+        echo 'HTTP/1.1 200 OK'
+        echo ''
+        ;;
+    esac
   fi
   exit 0
 fi
@@ -509,6 +522,52 @@ MOCK
   run "$PROVIDER" "quality-strict:[1.0,2.0)" "${OUTPUT_FILE}"
   [[ "$status" -eq 0 ]]
   [[ "$(cat "${OUTPUT_FILE}")" == "ghcr.io/kube-kaptain/quality/quality-strict:1.5" ]]
+}
+
+@test "auth: stored creds drive Bearer-with-creds token exchange (not anonymous)" {
+  export DOCKER_CONFIG="${TEST_DIR}/docker-config"
+  mkdir -p "${DOCKER_CONFIG}"
+  cat > "${DOCKER_CONFIG}/config.json" << 'JSON'
+{"auths":{"ghcr.io":{"auth":"dXNlcjpwYXNz"}}}
+JSON
+
+  export MOCK_REMOTE_TAGS_JSON='{"tags":["1.0","1.7"]}'
+  run "$PROVIDER" "quality-strict:[1.0,2.0)" "${OUTPUT_FILE}"
+  [[ "$status" -eq 0 ]]
+  [[ "$(cat "${OUTPUT_FILE}")" == "ghcr.io/kube-kaptain/quality/quality-strict:1.7" ]]
+  assert_output_contains "Exchanging stored credentials for Bearer token"
+  assert_output_contains "bearer-with-creds"
+}
+
+@test "auth: anonymous Bearer exchange when no creds configured" {
+  export MOCK_REMOTE_TAGS_JSON='{"tags":["1.0","1.8"]}'
+  run "$PROVIDER" "quality-strict:[1.0,2.0)" "${OUTPUT_FILE}"
+  [[ "$status" -eq 0 ]]
+  assert_output_contains "Requesting anonymous Bearer token"
+  assert_output_contains "bearer-anonymous"
+}
+
+@test "auth: Basic challenge uses Basic header from stored creds" {
+  export DOCKER_CONFIG="${TEST_DIR}/docker-config"
+  mkdir -p "${DOCKER_CONFIG}"
+  cat > "${DOCKER_CONFIG}/config.json" << 'JSON'
+{"auths":{"ghcr.io":{"auth":"dXNlcjpwYXNz"}}}
+JSON
+
+  export MOCK_AUTH_CHALLENGE="basic"
+  export MOCK_REMOTE_TAGS_JSON='{"tags":["1.0","1.9"]}'
+  run "$PROVIDER" "quality-strict:[1.0,2.0)" "${OUTPUT_FILE}"
+  [[ "$status" -eq 0 ]]
+  [[ "$(cat "${OUTPUT_FILE}")" == "ghcr.io/kube-kaptain/quality/quality-strict:1.9" ]]
+  assert_output_contains "Using Basic auth for ghcr.io"
+}
+
+@test "auth: registry with no challenge uses no auth" {
+  export MOCK_AUTH_CHALLENGE="none"
+  export MOCK_REMOTE_TAGS_JSON='{"tags":["1.0","1.4"]}'
+  run "$PROVIDER" "quality-strict:[1.0,2.0)" "${OUTPUT_FILE}"
+  [[ "$status" -eq 0 ]]
+  assert_output_contains "no auth challenge"
 }
 
 @test "auth: credential helper only returns creds for matching registry" {
