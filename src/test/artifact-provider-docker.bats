@@ -58,7 +58,8 @@ if [[ "${url}" == *"/token?"* ]]; then
   exit 0
 fi
 if [[ "${url}" == */tags/list ]]; then
-  echo "${MOCK_REMOTE_TAGS_JSON:-{"tags":[]}}"
+  printf '%s' "${MOCK_REMOTE_TAGS_JSON:-{"tags":[]}}"
+  printf 'HTTP_STATUS:%s' "${MOCK_REMOTE_TAGS_STATUS:-200}"
   exit 0
 fi
 MOCK
@@ -335,6 +336,28 @@ MOCK
   run "$PROVIDER" "quality-strict:[1.0,2.0)" "${OUTPUT_FILE}"
   [[ "$status" -eq 1 ]]
   assert_output_contains "Unable to anonymously list tags"
+}
+
+@test "range: surfaces auth error when tags/list returns 401 with .errors[]" {
+  export MOCK_REMOTE_TAGS_JSON='{"errors":[{"code":"UNAUTHORIZED","message":"authentication required"}]}'
+  export MOCK_REMOTE_TAGS_STATUS='401'
+
+  run "$PROVIDER" "quality-strict:[1.0,2.0)" "${OUTPUT_FILE}"
+
+  [[ "$status" -eq 1 ]]
+  assert_output_contains "HTTP 401"
+  assert_output_contains "UNAUTHORIZED"
+  assert_output_contains "authentication required"
+}
+
+@test "range: reports HTTP code when tags/list fails without OCI error body" {
+  export MOCK_REMOTE_TAGS_JSON='Service Unavailable'
+  export MOCK_REMOTE_TAGS_STATUS='503'
+
+  run "$PROVIDER" "quality-strict:[1.0,2.0)" "${OUTPUT_FILE}"
+
+  [[ "$status" -eq 1 ]]
+  assert_output_contains "HTTP 503"
 }
 
 @test "range: fails when no versions match range" {

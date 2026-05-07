@@ -223,15 +223,29 @@ else
       fi
     fi
 
-    # Query tags/list endpoint
+    # Query tags/list endpoint. Capture HTTP status so we can distinguish
+    # "registry rejected our auth" from "no tags exist" - the OCI error
+    # response has no .tags key, which jq silently turns into an empty list.
     log "Fetching tags from ${registry}/v2/${image_path}/tags/list..."
     if [[ -n "${auth_header}" ]]; then
-      tags_response=$(curl -sS -H "${auth_header}" "https://${registry}/v2/${image_path}/tags/list" 2>/dev/null || true)
+      tags_response=$(curl -sS -H "${auth_header}" -w 'HTTP_STATUS:%{http_code}' "https://${registry}/v2/${image_path}/tags/list" 2>/dev/null || echo 'HTTP_STATUS:000')
     else
-      tags_response=$(curl -sS "https://${registry}/v2/${image_path}/tags/list" 2>/dev/null || true)
+      tags_response=$(curl -sS -w 'HTTP_STATUS:%{http_code}' "https://${registry}/v2/${image_path}/tags/list" 2>/dev/null || echo 'HTTP_STATUS:000')
     fi
-    if [[ -n "${tags_response}" ]]; then
-      remote_tags=$(echo "${tags_response}" | jq -r '.tags[]' 2>/dev/null || true)
+    http_code="${tags_response##*HTTP_STATUS:}"
+    tags_body="${tags_response%HTTP_STATUS:*}"
+
+    if [[ "${http_code}" =~ ^2[0-9][0-9]$ ]]; then
+      if [[ -n "${tags_body}" ]]; then
+        remote_tags=$(echo "${tags_body}" | jq -r '.tags[]' 2>/dev/null || true)
+      fi
+    else
+      err_detail=$(echo "${tags_body}" | jq -r '.errors[0] | "\(.code): \(.message)"' 2>/dev/null || true)
+      if [[ -n "${err_detail}" && "${err_detail}" != "null: null" ]]; then
+        log_error "Registry returned HTTP ${http_code} for tags/list: ${err_detail}"
+      else
+        log_error "Registry returned HTTP ${http_code} for tags/list"
+      fi
     fi
   fi
 
