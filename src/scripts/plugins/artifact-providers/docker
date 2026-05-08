@@ -139,8 +139,13 @@ else
     registry="${full_name%%/*}"
     image_path="${full_name#*/}"
 
-    # Resolve auth: check docker/podman config files for stored credentials
-    auth_header=""
+    # Collect raw user:pass from docker/podman config files. We don't build
+    # an Authorization header yet - the WWW-Authenticate probe below decides
+    # the actual scheme. Modern OCI registries reject Basic against tags/list
+    # and require a Bearer token from the realm endpoint, even when we have
+    # working credentials.
+    basic_user_pass=""
+    auth_method=""
     for config_file in \
       "${DOCKER_CONFIG:-${HOME}/.docker}/config.json" \
       "${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/containers/auth.json"; do
@@ -150,23 +155,27 @@ else
       fi
       log "Checking docker config: ${config_file}"
 
-      # Direct base64-encoded credentials
+      # Direct base64-encoded credentials in .auths.<reg>.auth
       stored_auth=$(jq -r ".auths[\"${registry}\"].auth // empty" "${config_file}" 2>/dev/null || true)
       if [[ -n "${stored_auth}" ]]; then
         log "Found stored credentials for ${registry}"
-        auth_header="Authorization: Basic ${stored_auth}"
-        auth_method="stored-credentials"
-        break
+        decoded=$(printf '%s' "${stored_auth}" | base64 -d 2>/dev/null || true)
+        if [[ -n "${decoded}" && "${decoded}" == *:* ]]; then
+          basic_user_pass="${decoded}"
+          auth_method="stored-credentials"
+          break
+        fi
+        log_warning "Stored credentials for ${registry} did not decode as user:pass"
+      else
+        log "No stored credentials for ${registry}"
       fi
-      log "No stored credentials for ${registry}"
 
-      # Per-registry credential helper (credHelpers)
+      # Per-registry credential helper (credHelpers), then default credsStore
       cred_helper=$(jq -r ".credHelpers[\"${registry}\"] // empty" "${config_file}" 2>/dev/null || true)
       if [[ -n "${cred_helper}" ]]; then
         log "Found credential helper for ${registry}: ${cred_helper}"
       else
         log "No credential helper for ${registry}"
-        # Fall back to default credential store (credsStore)
         cred_helper=$(jq -r '.credsStore // empty' "${config_file}" 2>/dev/null || true)
         if [[ -n "${cred_helper}" ]]; then
           log "Found default credential store: ${cred_helper}"
@@ -184,8 +193,7 @@ else
             cred_secret=$(echo "${cred_json}" | jq -r '.Secret // empty' 2>/dev/null || true)
             if [[ -n "${cred_user}" && -n "${cred_secret}" ]]; then
               log "Credentials obtained for ${registry}"
-              stored_auth=$(printf '%s:%s' "${cred_user}" "${cred_secret}" | base64)
-              auth_header="Authorization: Basic ${stored_auth}"
+              basic_user_pass="${cred_user}:${cred_secret}"
               auth_method="credential-helper"
               break
             fi
@@ -197,41 +205,84 @@ else
       fi
     done
 
-    # No stored credentials - try anonymous token exchange
-    if [[ -z "${auth_header}" ]]; then
-      log "No stored credentials found, trying anonymous access"
-      log "Requesting token from ${registry} for ${image_path}..."
-      www_auth=$(curl -sS -o /dev/null -D - "https://${registry}/v2/" 2>/dev/null \
-        | grep -i '^www-authenticate' || true)
-      if [[ -n "${www_auth}" ]]; then
-        realm=$(echo "${www_auth}" | sed -n 's/.*realm="\([^"]*\)".*/\1/p')
-        service=$(echo "${www_auth}" | sed -n 's/.*service="\([^"]*\)".*/\1/p')
-        if [[ -n "${realm}" ]]; then
-          token_url="${realm}?scope=repository:${image_path}:pull"
-          [[ -n "${service}" ]] && token_url="${token_url}&service=${service}"
-          token=$(curl -sS "${token_url}" 2>/dev/null | jq -r '.token // empty' 2>/dev/null || true)
-          if [[ -n "${token}" ]]; then
-            log "Anonymous token obtained"
-            auth_header="Authorization: Bearer ${token}"
-            auth_method="anonymous"
-          else
-            log_warning "Anonymous token request returned no token"
-          fi
-        fi
+    # Probe /v2/ for WWW-Authenticate. Drives auth choice for tags/list
+    # regardless of whether creds were found - Bearer-required registries
+    # don't accept Basic against tags/list, so creds need to be exchanged
+    # at the realm endpoint first.
+    auth_header=""
+    log "Probing ${registry}/v2/ for authentication challenge..."
+    www_auth=$(curl -sS -o /dev/null -D - "https://${registry}/v2/" 2>/dev/null \
+      | grep -i '^www-authenticate' || true)
+
+    if [[ -z "${www_auth}" ]]; then
+      log "Registry ${registry} returned no auth challenge - using no auth"
+      [[ -z "${auth_method}" ]] && auth_method="no-auth"
+    elif [[ "${www_auth}" == *[Bb]earer* ]]; then
+      realm=$(echo "${www_auth}" | sed -n 's/.*realm="\([^"]*\)".*/\1/p')
+      service=$(echo "${www_auth}" | sed -n 's/.*service="\([^"]*\)".*/\1/p')
+      scope=$(echo "${www_auth}" | sed -n 's/.*scope="\([^"]*\)".*/\1/p')
+      [[ -z "${scope}" ]] && scope="repository:${image_path}:pull"
+
+      if [[ -z "${realm}" ]]; then
+        log_warning "Bearer challenge from ${registry} had no realm; cannot exchange for token"
       else
-        log_warning "Registry ${registry} did not return authentication challenge"
+        token_url="${realm}?scope=${scope}"
+        [[ -n "${service}" ]] && token_url="${token_url}&service=${service}"
+
+        if [[ -n "${basic_user_pass}" ]]; then
+          log "Exchanging stored credentials for Bearer token at ${realm}..."
+          token_response=$(curl -sS -u "${basic_user_pass}" "${token_url}" 2>/dev/null || true)
+          new_auth_method="bearer-with-creds"
+        else
+          log "Requesting anonymous Bearer token from ${realm}..."
+          token_response=$(curl -sS "${token_url}" 2>/dev/null || true)
+          new_auth_method="bearer-anonymous"
+        fi
+        # Registries return either "token" or "access_token" per the spec
+        token=$(echo "${token_response}" | jq -r '.token // .access_token // empty' 2>/dev/null || true)
+        if [[ -n "${token}" ]]; then
+          log "Bearer token obtained (${new_auth_method})"
+          auth_header="Authorization: Bearer ${token}"
+          auth_method="${new_auth_method}"
+        else
+          log_warning "Token endpoint at ${realm} returned no token"
+        fi
       fi
+    elif [[ "${www_auth}" == *[Bb]asic* ]]; then
+      if [[ -n "${basic_user_pass}" ]]; then
+        log "Using Basic auth for ${registry}"
+        encoded=$(printf '%s' "${basic_user_pass}" | base64 | tr -d '\n')
+        auth_header="Authorization: Basic ${encoded}"
+      else
+        log_warning "Registry ${registry} requires Basic auth but no credentials configured"
+      fi
+    else
+      log_warning "Unrecognised auth challenge from ${registry}: ${www_auth}"
     fi
 
-    # Query tags/list endpoint
+    # Query tags/list endpoint. Capture HTTP status so we can distinguish
+    # "registry rejected our auth" from "no tags exist" - the OCI error
+    # response has no .tags key, which jq silently turns into an empty list.
     log "Fetching tags from ${registry}/v2/${image_path}/tags/list..."
     if [[ -n "${auth_header}" ]]; then
-      tags_response=$(curl -sS -H "${auth_header}" "https://${registry}/v2/${image_path}/tags/list" 2>/dev/null || true)
+      tags_response=$(curl -sS -H "${auth_header}" -w 'HTTP_STATUS:%{http_code}' "https://${registry}/v2/${image_path}/tags/list" 2>/dev/null || echo 'HTTP_STATUS:000')
     else
-      tags_response=$(curl -sS "https://${registry}/v2/${image_path}/tags/list" 2>/dev/null || true)
+      tags_response=$(curl -sS -w 'HTTP_STATUS:%{http_code}' "https://${registry}/v2/${image_path}/tags/list" 2>/dev/null || echo 'HTTP_STATUS:000')
     fi
-    if [[ -n "${tags_response}" ]]; then
-      remote_tags=$(echo "${tags_response}" | jq -r '.tags[]' 2>/dev/null || true)
+    http_code="${tags_response##*HTTP_STATUS:}"
+    tags_body="${tags_response%HTTP_STATUS:*}"
+
+    if [[ "${http_code}" =~ ^2[0-9][0-9]$ ]]; then
+      if [[ -n "${tags_body}" ]]; then
+        remote_tags=$(echo "${tags_body}" | jq -r '.tags[]' 2>/dev/null || true)
+      fi
+    else
+      err_detail=$(echo "${tags_body}" | jq -r '.errors[0] | "\(.code): \(.message)"' 2>/dev/null || true)
+      if [[ -n "${err_detail}" && "${err_detail}" != "null: null" ]]; then
+        log_error "Registry returned HTTP ${http_code} for tags/list: ${err_detail}"
+      else
+        log_error "Registry returned HTTP ${http_code} for tags/list"
+      fi
     fi
   fi
 
@@ -249,11 +300,14 @@ else
   available_tags="${combined_tags}"
 
   if [[ -z "${combined_tags}" ]]; then
-    if [[ "${auth_method}" == "stored-credentials" || "${auth_method}" == "credential-helper" ]]; then
-      log_error "Failed to list tags for ${full_name} (authenticated request failed - check your credentials)"
-    else
-      log_error "Unable to anonymously list tags for ${full_name} - cannot resolve version range ${version_part}"
-    fi
+    case "${auth_method}" in
+      stored-credentials|credential-helper|bearer-with-creds)
+        log_error "Failed to list tags for ${full_name} (authenticated request failed - check your credentials)"
+        ;;
+      *)
+        log_error "Unable to anonymously list tags for ${full_name} - cannot resolve version range ${version_part}"
+        ;;
+    esac
     dump_resolution_sets
     log_error "Resolution of ${version_part} failed - see lists above"
     exit 1
