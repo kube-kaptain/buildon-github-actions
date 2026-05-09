@@ -1,0 +1,296 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kaptain.org/schemas/manifests-env-report/1.1",
+  "title": "Kaptain Manifests Env Report v1.1",
+  "description": "Schema for env build report files that accompany Kaptain env (and run-platform) manifest packages. Documents the token scheme, the full set of resolved tokens, and how each token was filled. Informational only - consumers do not act on this file.\n",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "apiVersion",
+    "kind",
+    "tokens",
+    "config",
+    "metadata"
+  ],
+  "properties": {
+    "apiVersion": {
+      "type": "string",
+      "pattern": "^kaptain\\.org/manifests-env-report/[0-9]+\\.[0-9]+$",
+      "description": "API version - must be kaptain.org/manifests-env-report/ followed by the schema version (e.g. kaptain.org/manifests-env-report/1.0). Set via 1.1 token substitution at build time.\n"
+    },
+    "kind": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9]*(-[a-z0-9]+)+$",
+      "description": "The build kind that produced this report (e.g. kubernetes-run-environment, kubernetes-run-platform-meta-environment). Lowercase kebab-case; at least two hyphen-separated segments. Open by design - mirrors the BUILD_KIND of the upstream pipeline so future kinds drop in without a schema bump.\n"
+    },
+    "metadata": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "buildTimestamp",
+        "buildMode",
+        "buildPlatform",
+        "buildWrapperName"
+      ],
+      "description": "Metadata about the env build.",
+      "properties": {
+        "description": {
+          "type": "string",
+          "description": "Human-readable description, copied from the project root KaptainPM.yaml metadata.description when present.\n"
+        },
+        "buildTimestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "ISO 8601 timestamp of when the env build produced this report. Mirrors the kaptain.org/build-timestamp annotation stamped on all generated manifests.\n"
+        },
+        "buildMode": {
+          "type": "string",
+          "enum": [
+            "local",
+            "build_server"
+          ],
+          "description": "Behaviour mode of the build. 'local' for developer / dev-loop builds (relaxed checks, dev-only artifacts). 'build_server' for release-grade builds (strict checks, publishable outputs). This is the field that governs build behaviour - buildPlatform is just a label. A \"local release\" build is buildMode=build_server with buildPlatform=local.\n"
+        },
+        "buildPlatform": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9]*(-[a-z0-9]+)*$",
+          "description": "Runtime label naming where the build executed (e.g. 'github-actions', 'gitlab-ci', 'local', 'jenkins'). Lowercase kebab-case, at least one segment. Informational only - does not change behaviour; buildMode does.\n"
+        },
+        "buildWrapperName": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9]*(-[a-z0-9]+)*$",
+          "description": "Identifier of the build wrapper that invoked the Kaptain build scripts (e.g. 'buildon-github-actions', 'buildon-gitlab-ci'). Lowercase kebab-case, at least one segment; supplied to the build at kaptain init / load time as a required input from the wrapping system.\n"
+        },
+        "buildWrapperVersion": {
+          "type": "string",
+          "description": "Version of the build wrapper named in buildWrapperName. Optional until the version system is in place; will become required once available.\n"
+        },
+        "buildScriptsVersion": {
+          "type": "string",
+          "description": "Version of the Kaptain build scripts (buildon-*) that produced this report. Optional until the version system is in place; will become required once available.\n"
+        }
+      }
+    },
+    "tokens": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "delimiterStyle",
+        "nameStyle"
+      ],
+      "description": "Token scheme used in the manifests at the time of substitution. Same enums as the KaptainPM and contract schemas.\n",
+      "properties": {
+        "delimiterStyle": {
+          "type": "string",
+          "enum": [
+            "shell",
+            "mustache",
+            "helm",
+            "erb",
+            "github-actions",
+            "blade",
+            "stringtemplate",
+            "ognl",
+            "t4",
+            "swift"
+          ],
+          "description": "Token delimiter syntax used in the manifests"
+        },
+        "nameStyle": {
+          "type": "string",
+          "enum": [
+            "PascalCase",
+            "camelCase",
+            "UPPER_SNAKE",
+            "lower_snake",
+            "lower-kebab",
+            "UPPER-KEBAB",
+            "lower.dot",
+            "UPPER.DOT"
+          ],
+          "description": "Token name casing convention used in the manifests"
+        }
+      }
+    },
+    "config": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "required",
+        "resolved",
+        "fromDefaults",
+        "fromConfig",
+        "fromSecrets",
+        "totals"
+      ],
+      "description": "Token resolution data. The full token set that needed filling and where each value came from. Both representations are present by design - the by-token \"resolved\" map answers \"where did X come from?\" and the by-source \"fromDefaults / fromConfig / fromSecrets\" maps answer \"what came from Y?\". Keys across resolved and the from* maps must agree. All children are compulsory and present even when empty - readers can rely on the shape without null/missing-key handling.\n",
+      "properties": {
+        "totals": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "required",
+            "defaults",
+            "config",
+            "secrets"
+          ],
+          "properties": {
+            "required": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Count of token names in the required array."
+            },
+            "defaults": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Count of entries in fromDefaults."
+            },
+            "config": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Count of entries in fromConfig."
+            },
+            "secrets": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Count of entries in fromSecrets."
+            }
+          },
+          "description": "Counts for each of the sibling collections. Redundant with the collections themselves but included so readers (and dashboards) can see at-a-glance sizes without iterating. Sum of defaults + config + secrets equals required.\n"
+        },
+        "required": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Full set of token names that needed filling at aggregation time (same concept as contract.required). Same set as the keys of resolved (and the union of fromDefaults / fromConfig / fromSecrets keys); listed explicitly for ease of consumption.\n"
+        },
+        "resolved": {
+          "type": "object",
+          "additionalProperties": {
+            "oneOf": [
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "source",
+                  "value"
+                ],
+                "properties": {
+                  "source": {
+                    "const": "defaults"
+                  },
+                  "value": {
+                    "type": "string"
+                  }
+                }
+              },
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "source",
+                  "value"
+                ],
+                "properties": {
+                  "source": {
+                    "const": "config"
+                  },
+                  "value": {
+                    "type": "string"
+                  }
+                }
+              },
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "source",
+                  "type",
+                  "size",
+                  "sha512"
+                ],
+                "properties": {
+                  "source": {
+                    "const": "secrets"
+                  },
+                  "type": {
+                    "$ref": "#/$defs/secretType"
+                  },
+                  "size": {
+                    "$ref": "#/$defs/secretSize"
+                  },
+                  "sha512": {
+                    "$ref": "#/$defs/secretSha512"
+                  }
+                }
+              }
+            ]
+          },
+          "description": "By-token resolution map. Each entry carries source plus either a string value (for defaults and config) or secret metadata (type, size, sha512) for secrets. No plaintext secret value is ever recorded.\n"
+        },
+        "fromDefaults": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "Tokens whose value came from a defaults file (env's own src/environment/defaults/ or aggregated child defaults). Keys are token names; values are the resolved string values. Paths are implicit: the file is named after the token.\n"
+        },
+        "fromConfig": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "Tokens whose value came from src/config/. Keys are token names; values are the resolved string values.\n"
+        },
+        "fromSecrets": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "type",
+              "size",
+              "sha512"
+            ],
+            "properties": {
+              "type": {
+                "$ref": "#/$defs/secretType"
+              },
+              "size": {
+                "$ref": "#/$defs/secretSize"
+              },
+              "sha512": {
+                "$ref": "#/$defs/secretSha512"
+              }
+            }
+          },
+          "description": "Tokens whose value came from src/secrets/. Each entry records the encryption type, the encrypted blob size, and a SHA-512 hash of the encrypted blob. No plaintext secret value is ever recorded.\n"
+        }
+      }
+    }
+  },
+  "$defs": {
+    "secretType": {
+      "type": "string",
+      "enum": [
+        "age",
+        "sha256.aes256",
+        "sha256.aes256.10k",
+        "sha256.aes256.100k",
+        "sha256.aes256.600k"
+      ],
+      "description": "Secret encryption format on disk. Closed enum - only formats whose decrypt tooling is baked into the env deploy image is accepted. Each value mirrors the corresponding 'decrypt-<value>' helper shipped in the deploy image. New formats require a schema bump alongside the corresponding deploy-image addition.\n"
+    },
+    "secretSize": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Size in bytes of the encrypted secret blob on disk. Cheap sanity signal; useful for spotting \"did this secret get truncated\" without revealing content.\n"
+    },
+    "secretSha512": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{128}$",
+      "description": "SHA-512 of the encrypted secret blob, lowercase hex, no algorithm prefix (the field name pins the algorithm). Lets readers detect \"did this secret change between builds\" without revealing anything about its content.\n"
+    }
+  }
+}

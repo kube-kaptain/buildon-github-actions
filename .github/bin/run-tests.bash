@@ -363,6 +363,10 @@ check_schemas() {
   log_info "Downloading and enforcing contract.yaml schemas"
   "$SCRIPT_DIR/download-and-enforce-contract-schemas.bash"
   log_info "Schemas for contract.yaml match upstream"
+
+  log_info "Downloading and enforcing env-report.yaml schema"
+  "$SCRIPT_DIR/download-and-enforce-env-report-schema.bash"
+  log_info "Schema for env-report.yaml matches upstream"
 }
 
 # Validate every examples/guides/*/KaptainPM.yaml against the pinned schema
