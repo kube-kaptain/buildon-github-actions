@@ -1,0 +1,25 @@
+# SPDX-License-Identifier: CC0-1.0
+# This example is released to the public domain. Use freely without attribution.
+#
+# Layer and Layerset Build
+#
+# Layer/layerset validation and OCI packaging - quality checks, versioning,
+# layer packaging, Docker build, validation, and release publishing.
+#
+# All configuration is in KaptainPM.yaml - see docs for available fields.
+
+name: Layer and Layerset Build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    uses: kube-kaptain/buildon-github-actions/.github/workflows/layer-and-layerset-build.yaml@1.1.31
+    permissions:
+      contents: write
+      packages: write
+      checks: write

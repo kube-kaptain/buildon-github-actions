@@ -1,0 +1,25 @@
+# SPDX-License-Identifier: CC0-1.0
+# This example is released to the public domain. Use freely without attribution.
+#
+# Kubernetes Bundle - Vendor Helm Rendered
+#
+# Renders a vendor Helm chart into individual manifests, processes and
+# validates them, then packages with token substitution.
+#
+# All configuration is in KaptainPM.yaml - see docs for available fields.
+
+name: Kubernetes Bundle - Vendor Helm Rendered
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    uses: kube-kaptain/buildon-github-actions/.github/workflows/kubernetes-bundle-vendor-helm-rendered.yaml@1.1.31
+    permissions:
+      contents: write
+      packages: write
+      checks: write

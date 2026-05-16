@@ -41,6 +41,11 @@ See [`examples/`](examples/) for more usage patterns.
 | [`kubernetes-app-docker-dockerfile.yaml`](examples/kubernetes-app-docker-dockerfile.yaml) | Full Kubernetes application pipeline |
 | [`kubernetes-app-docker-retag.yaml`](examples/kubernetes-app-docker-retag.yaml) | Kubernetes application pipeline using an upstream image |
 | [`kubernetes-app-manifests-only.yaml`](examples/kubernetes-app-manifests-only.yaml) | Packages Kubernetes manifests without building a Docker image |
+| [`kubernetes-bundle-docker-retag.yaml`](examples/kubernetes-bundle-docker-retag.yaml) | Packages Kubernetes manifests and retags an upstream Docker image for |
+| [`kubernetes-bundle-resources.yaml`](examples/kubernetes-bundle-resources.yaml) | Packages Kubernetes manifests for third-party stacks whose hard-coded refs |
+| [`kubernetes-bundle-vendor-helm-rendered.yaml`](examples/kubernetes-bundle-vendor-helm-rendered.yaml) | Renders a vendor Helm chart into individual manifests, processes and |
+| [`kubernetes-product-aggregate.yaml`](examples/kubernetes-product-aggregate.yaml) | Aggregates pre-built manifest bundles listed in spec |
+| [`layer-and-layerset-build.yaml`](examples/layer-and-layerset-build.yaml) | Layer/layerset validation and OCI packaging - quality checks, versioning, |
 | [`spec-check-filter-release.yaml`](examples/spec-check-filter-release.yaml) | Validates and packages spec/schema files as OCI artifacts |
 
 ### Guides
