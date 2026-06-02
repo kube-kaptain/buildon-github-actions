@@ -663,13 +663,14 @@ EOF
   TOKEN_DELIMITER_STYLE="shell"
   TOKEN_NAME_STYLE="PascalCase"
   IMAGE_REFERENCE_STYLE="project-name-prefixed-combined"
+  PROJECT_NAME="my-app-web"
   local docker_image_name_token='${DockerImageName}'
   local docker_tag_token='${DockerTag}'
   local image_reference image_pull_secret_token
 
   build_image_reference
 
-  [ "$image_reference" = '${ProjectName}/${EnvironmentDockerRegistryAndNamespace}/${DockerImageName}:${DockerTag}' ]
+  [ "$image_reference" = '${MyAppWeb/EnvironmentDockerRegistryAndNamespace}/${DockerImageName}:${DockerTag}' ]
   [ "$image_pull_secret_token" = '${EnvironmentDockerRegistry}' ]
 }
 
@@ -677,13 +678,14 @@ EOF
   TOKEN_DELIMITER_STYLE="shell"
   TOKEN_NAME_STYLE="PascalCase"
   IMAGE_REFERENCE_STYLE="project-name-prefixed-separate"
+  PROJECT_NAME="my-app-web"
   local docker_image_name_token='${DockerImageName}'
   local docker_tag_token='${DockerTag}'
   local image_reference image_pull_secret_token
 
   build_image_reference
 
-  [ "$image_reference" = '${ProjectName}/${EnvironmentDockerRegistry}/${EnvironmentDockerNamespace}/${DockerImageName}:${DockerTag}' ]
+  [ "$image_reference" = '${MyAppWeb/EnvironmentDockerRegistry}/${MyAppWeb/EnvironmentDockerNamespace}/${DockerImageName}:${DockerTag}' ]
   [ "$image_pull_secret_token" = '${EnvironmentDockerRegistry}' ]
 }
 
@@ -691,13 +693,14 @@ EOF
   TOKEN_DELIMITER_STYLE="shell"
   TOKEN_NAME_STYLE="camelCase"
   IMAGE_REFERENCE_STYLE="project-name-prefixed-combined"
+  PROJECT_NAME="my-app-web"
   local docker_image_name_token='${dockerImageName}'
   local docker_tag_token='${dockerTag}'
   local image_reference image_pull_secret_token
 
   build_image_reference
 
-  [ "$image_reference" = '${projectName}/${environmentDockerRegistryAndNamespace}/${dockerImageName}:${dockerTag}' ]
+  [ "$image_reference" = '${myAppWeb/environmentDockerRegistryAndNamespace}/${dockerImageName}:${dockerTag}' ]
   [ "$image_pull_secret_token" = '${environmentDockerRegistry}' ]
 }
 
