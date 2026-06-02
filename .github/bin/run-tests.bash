@@ -334,6 +334,31 @@ check_sed_portability() {
   log_info "All sed -i usage is portable"
 }
 
+# Check every reusable workflow template has a matching consumer example
+check_example_coverage() {
+  log_info "Checking every workflow template has a matching example"
+
+  local missing=()
+  for template in "${PROJECT_ROOT}"/src/workflow-templates/*.yaml; do
+    [[ -f "${template}" ]] || continue
+    local name="${template##*/}"
+    if [[ ! -f "${PROJECT_ROOT}/examples/${name}" ]]; then
+      missing+=("${name}")
+    fi
+  done
+
+  if [[ ${#missing[@]} -eq 0 ]]; then
+    log_info "All workflow templates have examples"
+    return 0
+  fi
+
+  log_error "Workflow templates without an examples/<name>.yaml:"
+  for name in "${missing[@]}"; do
+    log_error "  - ${name}"
+  done
+  exit 1
+}
+
 # Check that examples weren't modified by regeneration (source is git tags, not template files)
 check_example_freshness() {
   log_info "Checking example files are fresh"
@@ -363,6 +388,10 @@ check_schemas() {
   log_info "Downloading and enforcing contract.yaml schemas"
   "$SCRIPT_DIR/download-and-enforce-contract-schemas.bash"
   log_info "Schemas for contract.yaml match upstream"
+
+  log_info "Downloading and enforcing env-report.yaml schema"
+  "$SCRIPT_DIR/download-and-enforce-env-report-schema.bash"
+  log_info "Schema for env-report.yaml matches upstream"
 }
 
 # Validate every examples/guides/*/KaptainPM.yaml against the pinned schema
@@ -389,6 +418,9 @@ main() {
 
   # Check sourced files are NOT executable
   check_sourced_not_executable
+
+  # Check every reusable workflow template has a consumer example (pure file-existence, sub-second)
+  check_example_coverage
 
   # Check for Bash 4+ features
   check_bash_portability

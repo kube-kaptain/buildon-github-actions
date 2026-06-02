@@ -1,14 +1,14 @@
 # SPDX-License-Identifier: CC0-1.0
 # This example is released to the public domain. Use freely without attribution.
 #
-# Docker Build Retag
+# Kubernetes Product Aggregate
 #
-# Pulls an upstream image, retags with your name and version, pushes to your
-# registry. Configure the source image in KaptainPM.yaml under docker.retag.
+# Aggregates pre-built manifest bundles listed in spec.contents into a
+# deployable product, with merged defaults and a unified contract.
 #
 # All configuration is in KaptainPM.yaml - see docs for available fields.
 
-name: Docker Build Retag
+name: Kubernetes Product Aggregate
 
 on:
   push:
@@ -18,7 +18,7 @@ on:
 
 jobs:
   build:
-    uses: kube-kaptain/buildon-github-actions/.github/workflows/docker-build-retag.yaml@1.1.32
+    uses: kube-kaptain/buildon-github-actions/.github/workflows/kubernetes-product-aggregate.yaml@1.1.32
     permissions:
       contents: write
       packages: write
