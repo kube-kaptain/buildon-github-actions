@@ -1713,13 +1713,10 @@ jobs:
         uses: ./.github/buildon-github-actions/src/actions/docker-multi-tag
         with:
           docker-push-image-list-file: ${{ steps.docker-registry-logins.outputs.docker-push-image-list-file }}
-          docker-image-name: ${{ steps.versions.outputs.docker-image-name }}
-          docker-tag: ${{ steps.versions.outputs.docker-tag }}
           docker-push-targets: ${{ steps.kpm.outputs.DOCKER_PUSH_TARGETS }}
           docker-target-registry: ${{ steps.resolve-registry.outputs.docker-target-registry }}
           docker-target-namespace: ${{ steps.resolve-registry.outputs.docker-target-namespace }}
           image-build-command: ${{ steps.validate-tooling.outputs.IMAGE_BUILD_COMMAND }}
-          docker-platform: ${{ steps.kpm.outputs.DOCKER_PLATFORM }}
       - name: Pass check - Docker Multi-Tag
         if: steps.kpm.outputs.DOCKER_PUSH_TARGETS != '' && success() && steps.check-docker-multi-tag.outputs.check-run-id != ''
         continue-on-error: true
