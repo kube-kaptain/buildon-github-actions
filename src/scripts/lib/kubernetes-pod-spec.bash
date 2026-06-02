@@ -35,6 +35,7 @@
 #   IMAGE_REFERENCE_STYLE   - combined, separate, project-name-prefixed-combined, or project-name-prefixed-separate
 #   TOKEN_DELIMITER_STYLE   - Token delimiter style
 #   TOKEN_NAME_STYLE        - Token name style
+#   PROJECT_NAME            - Required for project-name-prefixed-* styles (lower-kebab form)
 #   docker_image_name_token - Token for docker image name
 #   docker_tag_token        - Token for docker tag
 #
@@ -58,19 +59,22 @@ build_image_reference() {
       image_pull_secret_token="${docker_registry_token}"
       ;;
     project-name-prefixed-combined)
-      local project_name_token registry_and_namespace_token
-      project_name_token=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "PROJECT_NAME")
-      registry_and_namespace_token=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "ENVIRONMENT_DOCKER_REGISTRY_AND_NAMESPACE")
-      image_reference="${project_name_token}/${registry_and_namespace_token}/${docker_image_name_token}:${docker_tag_token}"
+      local project_in_style env_in_style registry_and_namespace_token
+      project_in_style=$(convert_kebab_name "${TOKEN_NAME_STYLE}" "${PROJECT_NAME}")
+      env_in_style=$(convert_token_name "${TOKEN_NAME_STYLE}" "ENVIRONMENT_DOCKER_REGISTRY_AND_NAMESPACE")
+      registry_and_namespace_token=$(format_token_reference "${TOKEN_DELIMITER_STYLE}" "${project_in_style}/${env_in_style}")
+      image_reference="${registry_and_namespace_token}/${docker_image_name_token}:${docker_tag_token}"
       image_pull_secret_token=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "ENVIRONMENT_DOCKER_REGISTRY")
       ;;
     project-name-prefixed-separate)
-      local project_name_token docker_registry_token docker_namespace_token
-      project_name_token=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "PROJECT_NAME")
-      docker_registry_token=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "ENVIRONMENT_DOCKER_REGISTRY")
-      docker_namespace_token=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "ENVIRONMENT_DOCKER_NAMESPACE")
-      image_reference="${project_name_token}/${docker_registry_token}/${docker_namespace_token}/${docker_image_name_token}:${docker_tag_token}"
-      image_pull_secret_token="${docker_registry_token}"
+      local project_in_style registry_in_style namespace_in_style docker_registry_token docker_namespace_token
+      project_in_style=$(convert_kebab_name "${TOKEN_NAME_STYLE}" "${PROJECT_NAME}")
+      registry_in_style=$(convert_token_name "${TOKEN_NAME_STYLE}" "ENVIRONMENT_DOCKER_REGISTRY")
+      namespace_in_style=$(convert_token_name "${TOKEN_NAME_STYLE}" "ENVIRONMENT_DOCKER_NAMESPACE")
+      docker_registry_token=$(format_token_reference "${TOKEN_DELIMITER_STYLE}" "${project_in_style}/${registry_in_style}")
+      docker_namespace_token=$(format_token_reference "${TOKEN_DELIMITER_STYLE}" "${project_in_style}/${namespace_in_style}")
+      image_reference="${docker_registry_token}/${docker_namespace_token}/${docker_image_name_token}:${docker_tag_token}"
+      image_pull_secret_token=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "ENVIRONMENT_DOCKER_REGISTRY")
       ;;
   esac
 }
