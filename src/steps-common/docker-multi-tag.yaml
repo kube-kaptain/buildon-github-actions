@@ -3,7 +3,7 @@
 
 - name: Tag images for additional registries
   id: docker-multi-tag
-  if: steps.kpm.outputs.DOCKER_PUSH_TARGETS != '' && steps.versions.outputs.is-release == 'true'
+  if: steps.kpm.outputs.DOCKER_PUSH_TARGETS != ''
   uses: ./.github/buildon-github-actions/src/actions/docker-multi-tag
   with:
     docker-push-image-list-file: ${{ steps.docker-registry-logins.outputs.docker-push-image-list-file }}

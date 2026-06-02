@@ -100,7 +100,7 @@ See [`examples/`](examples/) for more usage patterns.
 | `change-source-note-write` | Writes merge candidate metadata as a git note for release tracking |
 | `docker-build-dockerfile` | Builds a Docker image from a Dockerfile with token substitution (build only, push handled by docker-push-all) |
 | `docker-build-retag` | Pulls and retags Docker images (no push) |
-| `docker-multi-tag` | Discovers and tags all matching images for additional registries |
+| `docker-multi-tag` | Retags built images and manifest lists for additional push registries |
 | `docker-platform-setup` | Validates docker platform and installs QEMU on Linux CI |
 | `docker-push-all` | Pushes all Docker images registered during build/tag steps |
 | `docker-registry-logins` | Authenticate to container registries (GHCR by default, configure others as needed) |

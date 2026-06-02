@@ -1696,7 +1696,7 @@ jobs:
 
       # === Docker Multi-Tag ===
       - name: Start check - Docker Multi-Tag
-        if: steps.kpm.outputs.DOCKER_PUSH_TARGETS != '' && steps.versions.outputs.is-release == 'true' && success()
+        if: steps.kpm.outputs.DOCKER_PUSH_TARGETS != '' && success()
         id: check-docker-multi-tag
         continue-on-error: true
         uses: ./.github/buildon-github-actions/src/actions/github-check-run
@@ -1705,7 +1705,7 @@ jobs:
           check-name: 'Build & Publish → Docker Multi-Tag'
       - name: Tag images for additional registries
         id: docker-multi-tag
-        if: steps.kpm.outputs.DOCKER_PUSH_TARGETS != '' && steps.versions.outputs.is-release == 'true' && success()
+        if: steps.kpm.outputs.DOCKER_PUSH_TARGETS != '' && success()
         uses: ./.github/buildon-github-actions/src/actions/docker-multi-tag
         with:
           docker-push-image-list-file: ${{ steps.docker-registry-logins.outputs.docker-push-image-list-file }}
@@ -1717,14 +1717,14 @@ jobs:
           image-build-command: ${{ steps.validate-tooling.outputs.IMAGE_BUILD_COMMAND }}
           docker-platform: ${{ steps.kpm.outputs.DOCKER_PLATFORM }}
       - name: Pass check - Docker Multi-Tag
-        if: steps.kpm.outputs.DOCKER_PUSH_TARGETS != '' && steps.versions.outputs.is-release == 'true' && success() && steps.check-docker-multi-tag.outputs.check-run-id != ''
+        if: steps.kpm.outputs.DOCKER_PUSH_TARGETS != '' && success() && steps.check-docker-multi-tag.outputs.check-run-id != ''
         continue-on-error: true
         uses: ./.github/buildon-github-actions/src/actions/github-check-run
         with:
           action: pass
           check-run-id: ${{ steps.check-docker-multi-tag.outputs.check-run-id }}
       - name: Fail check - Docker Multi-Tag
-        if: steps.kpm.outputs.DOCKER_PUSH_TARGETS != '' && steps.versions.outputs.is-release == 'true' && failure() && steps.check-docker-multi-tag.outputs.check-run-id != ''
+        if: steps.kpm.outputs.DOCKER_PUSH_TARGETS != '' && failure() && steps.check-docker-multi-tag.outputs.check-run-id != ''
         uses: ./.github/buildon-github-actions/src/actions/github-check-run
         with:
           action: fail

@@ -7,9 +7,11 @@ load helpers
 setup() {
   setup_mock_docker
   export IMAGE_BUILD_COMMAND="docker"
+  export BUILD_MODE="build_server"
   local base_dir=$(create_test_dir "docker-multi-tag")
   export GITHUB_OUTPUT="$base_dir/output"
-  export DOCKER_PUSH_IMAGE_LIST_FILE="$base_dir/target/docker-push-all/image-uris"
+  export OUTPUT_SUB_PATH="$base_dir/target"
+  export DOCKER_PUSH_IMAGE_LIST_FILE="${OUTPUT_SUB_PATH}/docker-push-all/image-uris"
   mkdir -p "$(dirname "$DOCKER_PUSH_IMAGE_LIST_FILE")"
   export DOCKER_TARGET_REGISTRY="ghcr.io"
   export DOCKER_TARGET_NAMESPACE=""
@@ -28,35 +30,36 @@ set_required_env() {
   export DOCKER_TARGET_NAMESPACE=""
 }
 
-# Set up mock docker to return specific tags from images --filter
-# Usage: mock_image_tags "1.0.0" "1.0.0-release-change-data" "1.0.0-manifests"
+# Append image URIs (one per tag, using current registry/namespace/image-name)
+# to the image-uris file, mirroring what real build steps do before multi-tag.
+# Usage: mock_image_tags "1.0.0" "1.0.0-release-change-data"
 mock_image_tags() {
-  local tags_output=""
   for tag in "$@"; do
-    tags_output+="${tag}"$'\n'
-  done
-  # Remove trailing newline
-  tags_output="${tags_output%$'\n'}"
-
-  cat > "$MOCK_BIN_DIR/docker" << MOCKDOCKER
-#!/usr/bin/env bash
-echo "\$*" >> "\$MOCK_DOCKER_CALLS"
-if [[ "\$1" == "images" ]]; then
-  cat << 'TAGS'
-${tags_output}
-TAGS
-  exit 0
-fi
-exit 0
-MOCKDOCKER
-  chmod +x "$MOCK_BIN_DIR/docker"
-  cp "$MOCK_BIN_DIR/docker" "$MOCK_BIN_DIR/podman"
-  chmod +x "$MOCK_BIN_DIR/podman"
+    if [[ -n "${DOCKER_TARGET_NAMESPACE:-}" ]]; then
+      echo "${DOCKER_TARGET_REGISTRY}/${DOCKER_TARGET_NAMESPACE}/${DOCKER_IMAGE_NAME}:${tag}"
+    else
+      echo "${DOCKER_TARGET_REGISTRY}/${DOCKER_IMAGE_NAME}:${tag}"
+    fi
+  done >> "${DOCKER_PUSH_IMAGE_LIST_FILE}"
 }
 
-# === Discovery ===
+# Append manifest URIs to the manifest-uris file, mirroring what a
+# multi-platform build step does. Usage: mock_manifest_tags "1.0.0"
+mock_manifest_tags() {
+  local file="${OUTPUT_SUB_PATH}/docker-push-all/manifest-uris"
+  mkdir -p "$(dirname "$file")"
+  for tag in "$@"; do
+    if [[ -n "${DOCKER_TARGET_NAMESPACE:-}" ]]; then
+      echo "${DOCKER_TARGET_REGISTRY}/${DOCKER_TARGET_NAMESPACE}/${DOCKER_IMAGE_NAME}:${tag}"
+    else
+      echo "${DOCKER_TARGET_REGISTRY}/${DOCKER_IMAGE_NAME}:${tag}"
+    fi
+  done >> "${file}"
+}
 
-@test "discovers and retags single image to single registry" {
+# === Retagging images ===
+
+@test "retags single image to single registry" {
   set_required_env
   mock_image_tags "1.0.0"
   export DOCKER_PUSH_TARGETS='[{"registry": "docker.io"}]'
@@ -65,9 +68,10 @@ MOCKDOCKER
   [ "$status" -eq 0 ]
   assert_docker_called "tag ghcr.io/test/my-repo:1.0.0 docker.io/test/my-repo:1.0.0"
   assert_var_equals "IMAGES_TAGGED" "1"
+  assert_var_equals "MANIFESTS_TAGGED" "0"
 }
 
-@test "discovers and retags multiple images to single registry" {
+@test "retags multiple images to single registry" {
   set_required_env
   mock_image_tags "1.0.0" "1.0.0-release-change-data" "1.0.0-manifests"
   export DOCKER_PUSH_TARGETS='[{"registry": "docker.io"}]'
@@ -80,7 +84,7 @@ MOCKDOCKER
   assert_var_equals "IMAGES_TAGGED" "3"
 }
 
-@test "discovers and retags multiple images to multiple registries" {
+@test "retags multiple images to multiple registries" {
   set_required_env
   mock_image_tags "1.0.0" "1.0.0-manifests"
   export DOCKER_PUSH_TARGETS='[
@@ -97,17 +101,25 @@ MOCKDOCKER
   assert_var_equals "IMAGES_TAGGED" "4"
 }
 
-# === No images found ===
+# === Empty / missing image-uris ===
 
-@test "exits 0 with zero tagged when no images found" {
+@test "fails when image-uris file is empty" {
   set_required_env
-  mock_image_tags
+  touch "$DOCKER_PUSH_IMAGE_LIST_FILE"
   export DOCKER_PUSH_TARGETS='[{"registry": "docker.io"}]'
 
   run "$SCRIPTS_DIR/docker-multi-tag"
-  [ "$status" -eq 0 ]
-  assert_var_equals "IMAGES_TAGGED" "0"
-  assert_output_contains "No images found"
+  [ "$status" -ne 0 ]
+  assert_output_contains "Image URIs file is empty"
+}
+
+@test "fails when image-uris file is missing" {
+  set_required_env
+  export DOCKER_PUSH_TARGETS='[{"registry": "docker.io"}]'
+
+  run "$SCRIPTS_DIR/docker-multi-tag"
+  [ "$status" -ne 0 ]
+  assert_output_contains "Image URIs file not found"
 }
 
 # === Namespace handling ===
@@ -123,7 +135,7 @@ MOCKDOCKER
   assert_var_equals "IMAGES_TAGGED" "1"
 }
 
-@test "handles source namespace in filter" {
+@test "strips source namespace prefix correctly" {
   set_required_env
   export DOCKER_TARGET_NAMESPACE="kube-kaptain"
   mock_image_tags "1.0.0"
@@ -131,7 +143,6 @@ MOCKDOCKER
 
   run "$SCRIPTS_DIR/docker-multi-tag"
   [ "$status" -eq 0 ]
-  assert_docker_called "images --filter reference=ghcr.io/kube-kaptain/test/my-repo:1.0.0*"
   assert_docker_called "tag ghcr.io/kube-kaptain/test/my-repo:1.0.0 docker.io/test/my-repo:1.0.0"
 }
 
@@ -189,25 +200,7 @@ MOCKDOCKER
   [[ "$output" == *"docker.io/test/my-repo:1.0.0-manifests"* ]]
 }
 
-# === Error handling ===
-
-@test "fails when DOCKER_IMAGE_NAME missing" {
-  export DOCKER_TAG="1.0.0"
-  export DOCKER_PUSH_TARGETS='[{"registry": "docker.io"}]'
-
-  run "$SCRIPTS_DIR/docker-multi-tag"
-  [ "$status" -ne 0 ]
-  assert_output_contains "DOCKER_IMAGE_NAME"
-}
-
-@test "fails when DOCKER_TAG missing" {
-  export DOCKER_IMAGE_NAME="test/my-repo"
-  export DOCKER_PUSH_TARGETS='[{"registry": "docker.io"}]'
-
-  run "$SCRIPTS_DIR/docker-multi-tag"
-  [ "$status" -ne 0 ]
-  assert_output_contains "DOCKER_TAG"
-}
+# === Skip / error handling ===
 
 @test "skips when DOCKER_PUSH_TARGETS missing" {
   export DOCKER_IMAGE_NAME="test/my-repo"
@@ -216,6 +209,15 @@ MOCKDOCKER
   run "$SCRIPTS_DIR/docker-multi-tag"
   [ "$status" -eq 0 ]
   assert_output_contains "skipping multi-tag"
+}
+
+@test "skips when DOCKER_PUSH_TARGETS is empty array" {
+  set_required_env
+  export DOCKER_PUSH_TARGETS='[]'
+
+  run "$SCRIPTS_DIR/docker-multi-tag"
+  [ "$status" -eq 0 ]
+  assert_output_contains "empty array"
 }
 
 @test "fails when DOCKER_TARGET_REGISTRY missing" {
@@ -270,6 +272,7 @@ MOCKDOCKER
   [ "$status" -eq 0 ]
 
   grep -q "IMAGES_TAGGED=2" "$GITHUB_OUTPUT"
+  grep -q "MANIFESTS_TAGGED=0" "$GITHUB_OUTPUT"
 }
 
 @test "outputs progress messages to stderr" {
@@ -280,40 +283,16 @@ MOCKDOCKER
   run "$SCRIPTS_DIR/docker-multi-tag"
   [ "$status" -eq 0 ]
   assert_output_contains "Docker Multi-Tag"
-  assert_output_contains "Image name: test/my-repo"
-  assert_output_contains "Tagging:"
+  assert_output_contains "Source prefix:"
+  assert_output_contains "Tagging image:"
 }
 
-# === Filter construction ===
+# === Manifest list handling ===
 
-@test "constructs correct filter without namespace" {
+@test "retags manifest list to additional registry" {
   set_required_env
-  mock_image_tags "1.0.0"
-  export DOCKER_PUSH_TARGETS='[{"registry": "docker.io"}]'
-
-  run "$SCRIPTS_DIR/docker-multi-tag"
-  [ "$status" -eq 0 ]
-  assert_docker_called "images --filter reference=ghcr.io/test/my-repo:1.0.0*"
-}
-
-@test "constructs correct filter with namespace" {
-  set_required_env
-  export DOCKER_TARGET_NAMESPACE="myorg"
-  mock_image_tags "1.0.0"
-  export DOCKER_PUSH_TARGETS='[{"registry": "docker.io"}]'
-
-  run "$SCRIPTS_DIR/docker-multi-tag"
-  [ "$status" -eq 0 ]
-  assert_docker_called "images --filter reference=ghcr.io/myorg/test/my-repo:1.0.0*"
-}
-
-# === Multi-platform manifest-uris ===
-
-@test "writes manifest-uris for additional registries when multi-platform" {
-  set_required_env
-  export DOCKER_PLATFORM="linux/amd64,linux/arm64"
-  export OUTPUT_SUB_PATH="$(dirname "$DOCKER_PUSH_IMAGE_LIST_FILE")/.."
-  mock_image_tags "1.0.0"
+  mock_image_tags "1.0.0-linux-amd64" "1.0.0-linux-arm64"
+  mock_manifest_tags "1.0.0"
   export DOCKER_PUSH_TARGETS='[{"registry": "docker.io"}]'
 
   run "$SCRIPTS_DIR/docker-multi-tag"
@@ -325,11 +304,10 @@ MOCKDOCKER
   [[ "$output" == *"docker.io/test/my-repo:1.0.0"* ]]
 }
 
-@test "writes manifest-uris for multiple additional registries" {
+@test "retags manifest list to multiple registries with counts" {
   set_required_env
-  export DOCKER_PLATFORM="linux/amd64,linux/arm64"
-  export OUTPUT_SUB_PATH="$(dirname "$DOCKER_PUSH_IMAGE_LIST_FILE")/.."
-  mock_image_tags "1.0.0"
+  mock_image_tags "1.0.0-linux-amd64" "1.0.0-linux-arm64"
+  mock_manifest_tags "1.0.0"
   export DOCKER_PUSH_TARGETS='[
     {"registry": "docker.io"},
     {"registry": "quay.io", "namespace": "myorg"}
@@ -338,6 +316,10 @@ MOCKDOCKER
   run "$SCRIPTS_DIR/docker-multi-tag"
   [ "$status" -eq 0 ]
 
+  # Counts: 2 arch images × 2 targets = 4 image retags; 1 manifest × 2 targets = 2
+  assert_var_equals "IMAGES_TAGGED" "4"
+  assert_var_equals "MANIFESTS_TAGGED" "2"
+
   local manifest_file="${OUTPUT_SUB_PATH}/docker-push-all/manifest-uris"
   [ -f "$manifest_file" ]
   run cat "$manifest_file"
@@ -345,10 +327,8 @@ MOCKDOCKER
   [[ "$output" == *"quay.io/myorg/test/my-repo:1.0.0"* ]]
 }
 
-@test "does not write manifest-uris when single platform" {
+@test "does not write manifest-uris when no manifests seeded" {
   set_required_env
-  export DOCKER_PLATFORM="linux/amd64"
-  export OUTPUT_SUB_PATH="$(dirname "$DOCKER_PUSH_IMAGE_LIST_FILE")/.."
   mock_image_tags "1.0.0"
   export DOCKER_PUSH_TARGETS='[{"registry": "docker.io"}]'
 
@@ -357,4 +337,5 @@ MOCKDOCKER
 
   local manifest_file="${OUTPUT_SUB_PATH}/docker-push-all/manifest-uris"
   [ ! -f "$manifest_file" ]
+  assert_var_equals "MANIFESTS_TAGGED" "0"
 }
