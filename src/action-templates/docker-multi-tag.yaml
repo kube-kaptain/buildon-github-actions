@@ -2,7 +2,7 @@
 # Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
 
 name: 'Docker Multi-Tag'
-description: 'Discovers and tags all matching images for additional registries'
+description: 'Retags built images and manifest lists for additional push registries'
 
 inputs:
   # INJECT-INPUT: docker-push-image-list
@@ -27,8 +27,11 @@ inputs:
 
 outputs:
   images-tagged:
-    description: 'Number of images tagged'
+    description: 'Number of image retag operations'
     value: ${{ steps.tag.outputs.IMAGES_TAGGED }}
+  manifests-tagged:
+    description: 'Number of manifest list retag operations'
+    value: ${{ steps.tag.outputs.MANIFESTS_TAGGED }}
 
 runs:
   using: 'composite'
