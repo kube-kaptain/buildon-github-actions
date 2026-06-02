@@ -7,6 +7,7 @@
 load helpers
 
 setup() {
+  source "$LIB_DIR/token-format.bash"
   source "$LIB_DIR/kubernetes-pod-spec.bash"
 }
 
@@ -624,6 +625,80 @@ EOF
   run generate_container_env_all 8 "/env" "/cm.yaml" "cm"
   [ "$status" -eq 1 ]
   [[ "$output" == *"requires exactly 8 arguments"* ]]
+}
+
+# =============================================================================
+# build_image_reference
+# =============================================================================
+
+@test "build_image_reference: combined style" {
+  TOKEN_DELIMITER_STYLE="shell"
+  TOKEN_NAME_STYLE="PascalCase"
+  IMAGE_REFERENCE_STYLE="combined"
+  local docker_image_name_token='${DockerImageName}'
+  local docker_tag_token='${DockerTag}'
+  local image_reference image_pull_secret_token
+
+  build_image_reference
+
+  [ "$image_reference" = '${EnvironmentDockerRegistryAndNamespace}/${DockerImageName}:${DockerTag}' ]
+  [ "$image_pull_secret_token" = '${EnvironmentDockerRegistry}' ]
+}
+
+@test "build_image_reference: separate style" {
+  TOKEN_DELIMITER_STYLE="shell"
+  TOKEN_NAME_STYLE="PascalCase"
+  IMAGE_REFERENCE_STYLE="separate"
+  local docker_image_name_token='${DockerImageName}'
+  local docker_tag_token='${DockerTag}'
+  local image_reference image_pull_secret_token
+
+  build_image_reference
+
+  [ "$image_reference" = '${EnvironmentDockerRegistry}/${EnvironmentDockerNamespace}/${DockerImageName}:${DockerTag}' ]
+  [ "$image_pull_secret_token" = '${EnvironmentDockerRegistry}' ]
+}
+
+@test "build_image_reference: project-name-prefixed-combined style" {
+  TOKEN_DELIMITER_STYLE="shell"
+  TOKEN_NAME_STYLE="PascalCase"
+  IMAGE_REFERENCE_STYLE="project-name-prefixed-combined"
+  local docker_image_name_token='${DockerImageName}'
+  local docker_tag_token='${DockerTag}'
+  local image_reference image_pull_secret_token
+
+  build_image_reference
+
+  [ "$image_reference" = '${ProjectName}/${EnvironmentDockerRegistryAndNamespace}/${DockerImageName}:${DockerTag}' ]
+  [ "$image_pull_secret_token" = '${EnvironmentDockerRegistry}' ]
+}
+
+@test "build_image_reference: project-name-prefixed-separate style" {
+  TOKEN_DELIMITER_STYLE="shell"
+  TOKEN_NAME_STYLE="PascalCase"
+  IMAGE_REFERENCE_STYLE="project-name-prefixed-separate"
+  local docker_image_name_token='${DockerImageName}'
+  local docker_tag_token='${DockerTag}'
+  local image_reference image_pull_secret_token
+
+  build_image_reference
+
+  [ "$image_reference" = '${ProjectName}/${EnvironmentDockerRegistry}/${EnvironmentDockerNamespace}/${DockerImageName}:${DockerTag}' ]
+  [ "$image_pull_secret_token" = '${EnvironmentDockerRegistry}' ]
+}
+
+@test "build_image_reference: project-name-prefixed-combined respects camelCase token name style" {
+  TOKEN_DELIMITER_STYLE="shell"
+  TOKEN_NAME_STYLE="camelCase"
+  IMAGE_REFERENCE_STYLE="project-name-prefixed-combined"
+  local docker_image_name_token='${dockerImageName}'
+  local docker_tag_token='${dockerTag}'
+  local image_reference image_pull_secret_token
+
+  build_image_reference
+
+  [ "$image_reference" = '${projectName}/${environmentDockerRegistryAndNamespace}/${dockerImageName}:${dockerTag}' ]
+  [ "$image_pull_secret_token" = '${environmentDockerRegistry}' ]
 }
 
 teardown() {
