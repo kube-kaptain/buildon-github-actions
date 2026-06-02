@@ -174,8 +174,8 @@ MAPPINGS=(
   "spec.main.generators.workload.terminationGracePeriodSeconds:KUBERNETES_WORKLOAD_TERMINATION_GRACE_PERIOD_SECONDS"
   "spec.main.generators.workload.prestopCommand:KUBERNETES_WORKLOAD_PRESTOP_COMMAND"
   "spec.main.generators.workload.scheduling.affinityStrategy:KUBERNETES_WORKLOAD_AFFINITY_STRATEGY"
-  # Note: scheduling.tolerations (KUBERNETES_WORKLOAD_TOLERATIONS) - scripts read KaptainPM.yaml directly
-  # Note: scheduling.nodeSelector (KUBERNETES_WORKLOAD_NODE_SELECTOR) - scripts read KaptainPM.yaml directly
+  "spec.main.generators.workload.scheduling.tolerations:KUBERNETES_WORKLOAD_TOLERATIONS"
+  "spec.main.generators.workload.scheduling.nodeSelector:KUBERNETES_WORKLOAD_NODE_SELECTOR"
   "spec.main.generators.workload.scheduling.dnsPolicy:KUBERNETES_WORKLOAD_DNS_POLICY"
   "spec.main.generators.workload.scheduling.priorityClassName:KUBERNETES_WORKLOAD_PRIORITY_CLASS_NAME"
 
