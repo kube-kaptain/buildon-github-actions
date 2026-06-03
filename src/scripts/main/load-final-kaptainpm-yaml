@@ -397,7 +397,7 @@ for mapping in "${MAPPINGS[@]}"; do
   env_var="${mapping##*:}"
 
   # Extract value using yq (returns null for missing keys)
-  value=$(yq -r ".${yaml_path} // \"\"" "${PM_FILE}" )
+  value=$(yq -r ".${yaml_path}" "${PM_FILE}" )
 
   # Skip if value is empty, null, or an object/array marker
   if [[ -z "${value}" || "${value}" == "null" || "${value}" == "{}" || "${value}" == "[]" ]]; then

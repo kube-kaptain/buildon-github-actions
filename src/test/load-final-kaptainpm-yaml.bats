@@ -348,7 +348,7 @@ EOF
   assert_github_output "LAYER_TOKEN_SUBSTITUTION" "false"
 }
 
-@test "LAYER_TOKEN_SUBSTITUTION bare boolean false is skipped by mapping loop" {
+@test "exports LAYER_TOKEN_SUBSTITUTION bare boolean false from yaml" {
   cat > "${TEST_DIR}/kaptainpm/final/KaptainPM.yaml" << 'EOF'
 apiVersion: kaptain.org/1.10
 kind: test-build
@@ -359,10 +359,7 @@ spec:
 EOF
   run_script
   [ "${status}" -eq 0 ]
-  # bare false treated as falsy by yq //, so not exported
-  local value
-  value=$(github_output_value "LAYER_TOKEN_SUBSTITUTION")
-  [[ -z "${value}" ]]
+  assert_github_output "LAYER_TOKEN_SUBSTITUTION" "false"
 }
 
 @test "exports LAYER_PACKAGING_BASE_IMAGE from yaml" {
