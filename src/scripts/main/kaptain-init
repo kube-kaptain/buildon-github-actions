@@ -134,6 +134,29 @@ if [[ "${layer_count}" -eq 0 ]]; then
   log "No layers — copying project root to final"
   cp "${PM_FILE}" "${FINAL_FILE}"
   log "Final KaptainPM.yaml written to ${FINAL_FILE}"
+
+  # Kind must be declared: without it downstream wrappers can't pick a ref script
+  # and fail with confusing errors (e.g. BUILD_MODE unset).
+  no_layers_kind=$(yq eval '.kind // ""' "${FINAL_FILE}")
+  if [[ -z "${no_layers_kind}" ]]; then
+    log_error "KaptainPM.yaml does not declare a kind: must match a reference script name"
+    exit 1
+  fi
+
+  # Kind must name an existing reference script (1:1 mapping between kind and build flow).
+  if [[ ! -f "${SCRIPT_DIR}/../reference/${no_layers_kind}" ]]; then
+    log_error "Kind '${no_layers_kind}' does not match any reference script name"
+    exit 1
+  fi
+
+  if [[ ! -f "${SCHEMA_FINAL}" ]]; then
+    log_error "Final schema not found: ${SCHEMA_FINAL}"
+    exit 1
+  fi
+  log "Validating final KaptainPM.yaml against schema: $(basename "${SCHEMA_FINAL}")"
+  check-jsonschema --schemafile "${SCHEMA_FINAL}" "${FINAL_FILE}"
+  log "Final schema validation passed"
+
   exit 0
 fi
 
