@@ -9,9 +9,7 @@
     output-sub-path: ${{ steps.kpm.outputs.OUTPUT_SUB_PATH }}
     token-delimiter-style: ${{ steps.kpm.outputs.TOKEN_DELIMITER_STYLE }}
     token-name-style: ${{ steps.kpm.outputs.TOKEN_NAME_STYLE }}
-    defaults-sub-path: ${{ steps.kpm.outputs.DEFAULTS_SUB_PATH }}
     manifests-sub-path: ${{ steps.kpm.outputs.MANIFESTS_SUB_PATH }}
-    product-allow-local-defaults-override: ${{ steps.kpm.outputs.PRODUCT_ALLOW_LOCAL_DEFAULTS_OVERRIDE }}
     product-allow-local-manifests-override: ${{ steps.kpm.outputs.PRODUCT_ALLOW_LOCAL_MANIFESTS_OVERRIDE }}
     docker-target-registry: ${{ steps.resolve-registry.outputs.docker-target-registry }}
     docker-target-namespace: ${{ steps.resolve-registry.outputs.docker-target-namespace }}

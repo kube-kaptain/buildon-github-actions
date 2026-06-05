@@ -345,7 +345,6 @@ MAPPINGS=(
   "spec.main.generators.podDisruptionBudget.additionalAnnotations:KUBERNETES_PODDISRUPTIONBUDGET_ADDITIONAL_ANNOTATIONS"
 
   # Product
-  "spec.main.product.allowLocalDefaultsOverride:PRODUCT_ALLOW_LOCAL_DEFAULTS_OVERRIDE"
   "spec.main.product.allowLocalManifestsOverride:PRODUCT_ALLOW_LOCAL_MANIFESTS_OVERRIDE"
 
   # Manifests

@@ -8,15 +8,16 @@
 # products from including other products, then sources lib/content-resolve.bash
 # to fetch and stage every spec.contents entry. Per-bundle scheme conversion is
 # applied where automatic; cross-bundle defaults are merged byte-identical or
-# the build fails.
+# the build fails. The merged defaults are written to the foreign-contributor
+# drop dir ${OUTPUT_SUB_PATH}/manifests/additional-defaults/ for the downstream
+# kubernetes-manifests-package-prepare step to merge with the project's own
+# src/defaults.
 #
 # Outputs (env + GITHUB_OUTPUT):
 #   PRODUCT_NAME           - PROJECT_NAME verbatim
 #   PRODUCT_SHORT_NAME     - PROJECT_NAME with product- prefix or -product suffix stripped
 #   MANIFESTS_SUB_PATH     - Override pointing downstream package-prepare at the
 #                            assembled tree (bundles + product's own src/kubernetes)
-#   DEFAULTS_SUB_PATH      - Single merged defaults directory for the downstream
-#                            contract-generate step (existing single-dir interface)
 #   PRODUCT_CONTENTS_FILE  - Path to a markdown file (one bullet per
 #                            spec.contents entry, verbatim) for the GitHub
 #                            release notes step to splice into its output
@@ -26,11 +27,6 @@
 #   TOKEN_DELIMITER_STYLE                  - Product's token delimiter style (default shell)
 #   TOKEN_NAME_STYLE                       - Product's token name style (default PascalCase)
 #   OUTPUT_SUB_PATH                        - Build output dir (default kaptain-out)
-#   DEFAULTS_SUB_PATH                      - Local product defaults dir (default src/defaults)
-#   PRODUCT_ALLOW_LOCAL_DEFAULTS_OVERRIDE  - When 'true', src/defaults is applied
-#                                            last as authoritative (warn per replacement);
-#                                            when unset/false, local defaults must be
-#                                            byte-identical to bundle defaults or fail.
 #   MANIFESTS_SUB_PATH                     - Local product manifests dir (default src/kubernetes).
 #                                            Captured before the script overwrites this output
 #                                            with the assembled tree path; folded into the
@@ -53,6 +49,8 @@ source "${SCRIPT_DIR}/../defaults/platform.bash"
 source "${SCRIPT_DIR}/../lib/log.bash"
 # shellcheck source=src/scripts/defaults/output-sub-path.bash
 source "${SCRIPT_DIR}/../defaults/output-sub-path.bash"
+# shellcheck source=src/scripts/defaults/manifests-sub-path.bash
+source "${SCRIPT_DIR}/../defaults/manifests-sub-path.bash"
 # shellcheck source=src/scripts/defaults/tokens.bash
 source "${SCRIPT_DIR}/../defaults/tokens.bash"
 # shellcheck source=src/scripts/lib/output-var.bash
@@ -66,9 +64,7 @@ source "${SCRIPT_DIR}/../lib/assert-unique-artifact-refs.bash"
 
 PROJECT_NAME="${PROJECT_NAME:?PROJECT_NAME is required}"
 KAPTAINPM_FILE="${KAPTAINPM_FILE:-kaptainpm/final/KaptainPM.yaml}"
-LOCAL_DEFAULTS_SUB_PATH="${DEFAULTS_SUB_PATH:-src/defaults}"
 LOCAL_MANIFESTS_SUB_PATH="${MANIFESTS_SUB_PATH:-src/kubernetes}"
-PRODUCT_ALLOW_LOCAL_DEFAULTS_OVERRIDE="${PRODUCT_ALLOW_LOCAL_DEFAULTS_OVERRIDE:-false}"
 PRODUCT_ALLOW_LOCAL_MANIFESTS_OVERRIDE="${PRODUCT_ALLOW_LOCAL_MANIFESTS_OVERRIDE:-false}"
 PRODUCT_LINEAGE_DATA_FILENAME="kaptain-product-lineage-data.yaml"
 UTIL_DIR="${SCRIPT_DIR}/../util"
@@ -86,7 +82,6 @@ CONTENT_RESOLVED_FILE="${CONTENT_BASE}/contents-resolved.yaml"
 AGGREGATE_BASE="${OUTPUT_SUB_PATH}/product-aggregate"
 AGGREGATE_MANIFESTS_NORMALISED_DIR="${AGGREGATE_BASE}/manifests-normalised"
 AGGREGATE_DEFAULTS_NORMALISED_DIR="${AGGREGATE_BASE}/defaults-normalised"
-AGGREGATE_DEFAULTS_MERGED="${AGGREGATE_BASE}/defaults-merged"
 AGGREGATE_CONTENT_LIST_FILE="${AGGREGATE_BASE}/contents-list.md"
 
 PRODUCT_PREFIX="product-"
@@ -326,9 +321,11 @@ convert_bundle_defaults_if_needed() {
 }
 
 # Walk every per-bundle defaults directory and merge byte-identical files into
-# AGGREGATE_DEFAULTS_MERGED. Differing values fail with diagnostics.
+# MANIFESTS_ADDITIONAL_DEFAULTS_SUB_PATH (the foreign-contributor drop dir consumed
+# by kubernetes-manifests-package-prepare). Differing values fail with diagnostics.
 merge_bundle_defaults() {
-  mkdir -p "${AGGREGATE_DEFAULTS_MERGED}"
+  rm -rf "${MANIFESTS_ADDITIONAL_DEFAULTS_SUB_PATH}"
+  mkdir -p "${MANIFESTS_ADDITIONAL_DEFAULTS_SUB_PATH}"
   [[ -d "${AGGREGATE_DEFAULTS_NORMALISED_DIR}" ]] || return 0
 
   # Build a list of "<token-rel-path>\t<bundle>" lines across every bundle.
@@ -377,47 +374,11 @@ merge_bundle_defaults() {
       fi
     done
 
-    mkdir -p "$(dirname "${AGGREGATE_DEFAULTS_MERGED}/${token}")"
-    cp "${first_file}" "${AGGREGATE_DEFAULTS_MERGED}/${token}"
+    mkdir -p "$(dirname "${MANIFESTS_ADDITIONAL_DEFAULTS_SUB_PATH}/${token}")"
+    cp "${first_file}" "${MANIFESTS_ADDITIONAL_DEFAULTS_SUB_PATH}/${token}"
   done <<< "${tokens}"
 
   rm -f "${index_file}"
-}
-
-# Fold the product's own ${LOCAL_DEFAULTS_SUB_PATH} into AGGREGATE_DEFAULTS_MERGED.
-# When PRODUCT_ALLOW_LOCAL_DEFAULTS_OVERRIDE is true, local files overwrite any
-# bundle-contributed value (one WARN log line per replaced token). When false,
-# each local file is byte-identical-checked against the merged value and the
-# build fails on any difference.
-merge_local_defaults() {
-  [[ -d "${LOCAL_DEFAULTS_SUB_PATH}" ]] || return 0
-
-  local file rel target
-  while IFS= read -r -d '' file; do
-    rel="${file#"${LOCAL_DEFAULTS_SUB_PATH}/"}"
-    target="${AGGREGATE_DEFAULTS_MERGED}/${rel}"
-
-    if [[ ! -e "${target}" ]]; then
-      mkdir -p "$(dirname "${target}")"
-      cp "${file}" "${target}"
-      continue
-    fi
-
-    if [[ "${PRODUCT_ALLOW_LOCAL_DEFAULTS_OVERRIDE}" == "true" ]]; then
-      log "WARN: local default '${rel}' overrides a value contributed by an upstream bundle"
-      cp "${file}" "${target}"
-      continue
-    fi
-
-    if ! cmp -s "${file}" "${target}"; then
-      log_error "Default value collision for token '${rel}':"
-      log_error "  upstream bundle: $(cat "${target}")"
-      log_error "  local ${LOCAL_DEFAULTS_SUB_PATH}/${rel}: $(cat "${file}")"
-      log_error "Local defaults differ from a bundle's default. Either align the values or set"
-      log_error "spec.main.product.allowLocalDefaultsOverride: true if the override is intentional."
-      return 1
-    fi
-  done < <(find "${LOCAL_DEFAULTS_SUB_PATH}" -type f -print0)
 }
 
 # Walk the bundle-contributed normalised tree and the product's own
@@ -538,14 +499,9 @@ main() {
   done
 
   log ""
-  log "Merging per-bundle defaults..."
+  log "Merging per-bundle defaults into ${MANIFESTS_ADDITIONAL_DEFAULTS_SUB_PATH}..."
   log ""
   merge_bundle_defaults
-
-  log ""
-  log "Folding in local defaults (${LOCAL_DEFAULTS_SUB_PATH}, allowLocalDefaultsOverride=${PRODUCT_ALLOW_LOCAL_DEFAULTS_OVERRIDE})..."
-  log ""
-  merge_local_defaults
 
   log ""
   log "Asserting no squat on reserved product linearge data filename '${PRODUCT_LINEAGE_DATA_FILENAME}'..."
@@ -561,7 +517,6 @@ main() {
   write_contents_list "${KAPTAINPM_FILE}" "${AGGREGATE_CONTENT_LIST_FILE}"
 
   output_var "MANIFESTS_SUB_PATH" "${AGGREGATE_MANIFESTS_NORMALISED_DIR}"
-  output_var "DEFAULTS_SUB_PATH" "${AGGREGATE_DEFAULTS_MERGED}"
   output_var "PRODUCT_CONTENTS_FILE" "${AGGREGATE_CONTENT_LIST_FILE}"
 
   log ""

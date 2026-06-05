@@ -67,18 +67,10 @@ inputs:
   project-name:
     description: 'Project name (must satisfy product naming rule)'
     required: true
-  defaults-sub-path:
-    description: 'Local product defaults directory (default: src/defaults)'
-    required: false
-    default: 'src/defaults'
   manifests-sub-path:
     description: 'Local product manifests directory (default: src/kubernetes)'
     required: false
     default: 'src/kubernetes'
-  product-allow-local-defaults-override:
-    description: 'When true, src/defaults overrides bundle-contributed defaults with WARN log; otherwise must be byte-identical'
-    required: false
-    default: 'false'
   product-allow-local-manifests-override:
     description: 'When true, src/kubernetes files override colliding bundle-contributed paths with WARN log; otherwise any path collision fails'
     required: false
@@ -92,9 +84,6 @@ outputs:
   manifests-sub-path:
     description: 'Assembled bundle manifests directory for downstream package-prepare'
     value: ${{ steps.product-aggregate.outputs.MANIFESTS_SUB_PATH }}
-  defaults-sub-path:
-    description: 'Merged defaults directory for downstream contract-generate'
-    value: ${{ steps.product-aggregate.outputs.DEFAULTS_SUB_PATH }}
   product-name:
     description: 'PROJECT_NAME verbatim'
     value: ${{ steps.product-aggregate.outputs.PRODUCT_NAME }}
@@ -119,9 +108,7 @@ runs:
         OUTPUT_SUB_PATH: ${{ inputs.output-sub-path }}
         TOKEN_DELIMITER_STYLE: ${{ inputs.token-delimiter-style }}
         TOKEN_NAME_STYLE: ${{ inputs.token-name-style }}
-        DEFAULTS_SUB_PATH: ${{ inputs.defaults-sub-path }}
         MANIFESTS_SUB_PATH: ${{ inputs.manifests-sub-path }}
-        PRODUCT_ALLOW_LOCAL_DEFAULTS_OVERRIDE: ${{ inputs.product-allow-local-defaults-override }}
         PRODUCT_ALLOW_LOCAL_MANIFESTS_OVERRIDE: ${{ inputs.product-allow-local-manifests-override }}
         DOCKER_TARGET_REGISTRY: ${{ inputs.docker-target-registry }}
         DOCKER_TARGET_NAMESPACE: ${{ inputs.docker-target-namespace }}

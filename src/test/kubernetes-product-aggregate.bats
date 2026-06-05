@@ -169,18 +169,14 @@ run_script() {
   : "${OUTPUT_SUB_PATH:=kaptain-out}"
   : "${TOKEN_DELIMITER_STYLE:=shell}"
   : "${TOKEN_NAME_STYLE:=PascalCase}"
-  : "${DEFAULTS_SUB_PATH:=src/defaults}"
   : "${MANIFESTS_SUB_PATH:=src/kubernetes}"
-  : "${PRODUCT_ALLOW_LOCAL_DEFAULTS_OVERRIDE:=false}"
   : "${PRODUCT_ALLOW_LOCAL_MANIFESTS_OVERRIDE:=false}"
   run env \
     PROJECT_NAME="${PROJECT_NAME}" \
     OUTPUT_SUB_PATH="${OUTPUT_SUB_PATH}" \
     TOKEN_DELIMITER_STYLE="${TOKEN_DELIMITER_STYLE}" \
     TOKEN_NAME_STYLE="${TOKEN_NAME_STYLE}" \
-    DEFAULTS_SUB_PATH="${DEFAULTS_SUB_PATH}" \
     MANIFESTS_SUB_PATH="${MANIFESTS_SUB_PATH}" \
-    PRODUCT_ALLOW_LOCAL_DEFAULTS_OVERRIDE="${PRODUCT_ALLOW_LOCAL_DEFAULTS_OVERRIDE}" \
     PRODUCT_ALLOW_LOCAL_MANIFESTS_OVERRIDE="${PRODUCT_ALLOW_LOCAL_MANIFESTS_OVERRIDE}" \
     BUILD_PLATFORM=test \
     GITHUB_OUTPUT="${GITHUB_OUTPUT}" \
@@ -188,14 +184,6 @@ run_script() {
     _CONTENT_RESOLVE_UTIL_DIR="${MOCK_UTIL_DIR:-}" \
     MOCK_OCI_DIR="${MOCK_OCI_DIR:-}" \
     bash -c "cd '${TEST_DIR}' && '${SCRIPT}'"
-}
-
-# Write a local product defaults file at <TEST_DIR>/src/defaults/<token>.
-write_local_default() {
-  local token="$1"
-  local value="$2"
-  mkdir -p "${TEST_DIR}/src/defaults"
-  printf '%s' "${value}" > "${TEST_DIR}/src/defaults/${token}"
 }
 
 # Write a local product manifest file at <TEST_DIR>/src/kubernetes/<rel>.
@@ -319,17 +307,16 @@ github_output_value() {
 # End-to-end staging
 # =============================================================================
 
-@test "end-to-end: stages a single bundle and emits MANIFESTS_SUB_PATH + DEFAULTS_SUB_PATH" {
+@test "end-to-end: stages a single bundle and emits MANIFESTS_SUB_PATH + additional-defaults" {
   setup_mock_oci
   stage_oci_fixture "alpha:1.0-manifests" "alpha" shell PascalCase "Replicas=2"
   write_pm "alpha:1.0"
   run_script
   [ "${status}" -eq 0 ]
   [ -f "${TEST_DIR}/kaptain-out/content/manifests/alpha/deployment.yaml" ]
-  [ -f "${TEST_DIR}/kaptain-out/product-aggregate/defaults-merged/Replicas" ]
-  [ "$(cat "${TEST_DIR}/kaptain-out/product-aggregate/defaults-merged/Replicas")" = "2" ]
+  [ -f "${TEST_DIR}/kaptain-out/manifests/additional-defaults/Replicas" ]
+  [ "$(cat "${TEST_DIR}/kaptain-out/manifests/additional-defaults/Replicas")" = "2" ]
   [ "$(github_output_value MANIFESTS_SUB_PATH)" = "kaptain-out/product-aggregate/manifests-normalised" ]
-  [ "$(github_output_value DEFAULTS_SUB_PATH)" = "kaptain-out/product-aggregate/defaults-merged" ]
 }
 
 @test "end-to-end: stages two bundles into sibling subdirs" {
@@ -341,8 +328,8 @@ github_output_value() {
   [ "${status}" -eq 0 ]
   [ -f "${TEST_DIR}/kaptain-out/content/manifests/alpha/deployment.yaml" ]
   [ -f "${TEST_DIR}/kaptain-out/content/manifests/beta/deployment.yaml" ]
-  [ -f "${TEST_DIR}/kaptain-out/product-aggregate/defaults-merged/Replicas" ]
-  [ -f "${TEST_DIR}/kaptain-out/product-aggregate/defaults-merged/MaxHeapSize" ]
+  [ -f "${TEST_DIR}/kaptain-out/manifests/additional-defaults/Replicas" ]
+  [ -f "${TEST_DIR}/kaptain-out/manifests/additional-defaults/MaxHeapSize" ]
 }
 
 @test "end-to-end: leaves audit trail under content/extract and content/unzipped" {
@@ -384,8 +371,8 @@ github_output_value() {
   write_pm "alpha:1.0" "beta:2.0"
   run_script
   [ "${status}" -eq 0 ]
-  [ -f "${TEST_DIR}/kaptain-out/product-aggregate/defaults-merged/Replicas" ]
-  [ "$(cat "${TEST_DIR}/kaptain-out/product-aggregate/defaults-merged/Replicas")" = "2" ]
+  [ -f "${TEST_DIR}/kaptain-out/manifests/additional-defaults/Replicas" ]
+  [ "$(cat "${TEST_DIR}/kaptain-out/manifests/additional-defaults/Replicas")" = "2" ]
 }
 
 @test "defaults: differing values across bundles fails with diagnostic" {
@@ -460,42 +447,6 @@ EOF
 }
 
 # =============================================================================
-# Local defaults merge (src/defaults + override flag)
-# =============================================================================
-
-@test "local-defaults: token only in src/defaults is included in merged output" {
-  setup_mock_oci
-  stage_oci_fixture "alpha:1.0-manifests" "alpha" shell PascalCase "Replicas=2"
-  write_local_default "LocalOnly" "hello"
-  write_pm "alpha:1.0"
-  run_script
-  [ "${status}" -eq 0 ]
-  [ -f "${TEST_DIR}/kaptain-out/product-aggregate/defaults-merged/LocalOnly" ]
-  [ "$(cat "${TEST_DIR}/kaptain-out/product-aggregate/defaults-merged/LocalOnly")" = "hello" ]
-}
-
-@test "local-defaults: identical to bundle default is fine (no override needed)" {
-  setup_mock_oci
-  stage_oci_fixture "alpha:1.0-manifests" "alpha" shell PascalCase "Replicas=2"
-  write_local_default "Replicas" "2"
-  write_pm "alpha:1.0"
-  run_script
-  [ "${status}" -eq 0 ]
-  [ "$(cat "${TEST_DIR}/kaptain-out/product-aggregate/defaults-merged/Replicas")" = "2" ]
-}
-
-@test "local-defaults: differing from bundle with override=false fails with hint" {
-  setup_mock_oci
-  stage_oci_fixture "alpha:1.0-manifests" "alpha" shell PascalCase "Replicas=2"
-  write_local_default "Replicas" "5"
-  write_pm "alpha:1.0"
-  PRODUCT_ALLOW_LOCAL_DEFAULTS_OVERRIDE=false run_script
-  [ "${status}" -ne 0 ]
-  assert_output_contains "Default value collision for token 'Replicas'"
-  assert_output_contains "allowLocalDefaultsOverride: true"
-}
-
-# =============================================================================
 # Contents list for GitHub release notes
 # =============================================================================
 
@@ -521,17 +472,6 @@ EOF
   local list="${TEST_DIR}/kaptain-out/product-aggregate/contents-list.md"
   [ -f "${list}" ]
   [ ! -s "${list}" ]
-}
-
-@test "local-defaults: differing from bundle with override=true wins and warns" {
-  setup_mock_oci
-  stage_oci_fixture "alpha:1.0-manifests" "alpha" shell PascalCase "Replicas=2"
-  write_local_default "Replicas" "5"
-  write_pm "alpha:1.0"
-  PRODUCT_ALLOW_LOCAL_DEFAULTS_OVERRIDE=true run_script
-  [ "${status}" -eq 0 ]
-  [ "$(cat "${TEST_DIR}/kaptain-out/product-aggregate/defaults-merged/Replicas")" = "5" ]
-  assert_output_contains "WARN: local default 'Replicas' overrides"
 }
 
 # =============================================================================
