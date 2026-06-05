@@ -10,6 +10,14 @@ inputs:
     description: 'Directory containing Kubernetes manifests (relative)'
     required: false
     default: 'src/kubernetes'
+  defaults-sub-path:
+    description: 'Directory containing default values for unresolved tokens (relative)'
+    required: false
+    default: 'src/defaults'
+  allow-local-defaults-override:
+    description: 'When true, local defaults override foreign additional-defaults on collision (warn). When false, value collisions fail the build.'
+    required: false
+    default: 'false'
 
   # INJECT-INPUT: versions-and-naming
   # INJECT-INPUT: output-sub-path
@@ -56,6 +64,8 @@ runs:
         BUILD_PLATFORM: github-actions
         BUILD_PLATFORM_LOG_PROVIDER: github-actions
         MANIFESTS_SUB_PATH: ${{ inputs.manifests-sub-path }}
+        DEFAULTS_SUB_PATH: ${{ inputs.defaults-sub-path }}
+        ALLOW_LOCAL_DEFAULTS_OVERRIDE: ${{ inputs.allow-local-defaults-override }}
         PROJECT_NAME: ${{ inputs.project-name }}
         VERSION: ${{ inputs.version }}
         VERSION_MAJOR: ${{ inputs.version-major }}

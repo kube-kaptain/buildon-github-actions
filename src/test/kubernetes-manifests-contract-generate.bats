@@ -254,7 +254,6 @@ EOF
 
 @test "contract-generate: all tokens in noDefault when no defaults dir" {
   write_manifest_with_tokens
-  export DEFAULTS_SUB_PATH="${TEST_DIR}/nonexistent-defaults"
   run "$CONTRACT_SCRIPT"
   [ "$status" -eq 0 ]
   local contract="${OUTPUT_SUB_PATH}/manifests/contract/contract.yaml"
@@ -271,11 +270,10 @@ EOF
 
 @test "contract-generate: copies defaults and sets inline values with nested paths" {
   write_manifest_with_nested_tokens
-  local defaults_dir="${TEST_DIR}/src-defaults"
+  local defaults_dir="${OUTPUT_SUB_PATH}/manifests/defaults"
   mkdir -p "${defaults_dir}/TestProject"
   printf '256Mi' > "${defaults_dir}/TestProject/MemoryRequest"
   printf '100m' > "${defaults_dir}/TestProject/CpuRequest"
-  export DEFAULTS_SUB_PATH="${defaults_dir}"
   run "$CONTRACT_SCRIPT"
   [ "$status" -eq 0 ]
   local contract="${OUTPUT_SUB_PATH}/manifests/contract/contract.yaml"
@@ -285,11 +283,10 @@ EOF
 
 @test "contract-generate: tokens with flat defaults excluded from noDefault" {
   write_manifest_with_tokens
-  local defaults_dir="${TEST_DIR}/src-defaults"
+  local defaults_dir="${OUTPUT_SUB_PATH}/manifests/defaults"
   mkdir -p "${defaults_dir}"
   printf '256Mi' > "${defaults_dir}/MemoryRequest"
   printf '100m' > "${defaults_dir}/CpuRequest"
-  export DEFAULTS_SUB_PATH="${defaults_dir}"
   run "$CONTRACT_SCRIPT"
   [ "$status" -eq 0 ]
   local contract="${OUTPUT_SUB_PATH}/manifests/contract/contract.yaml"
@@ -305,10 +302,9 @@ EOF
 
 @test "contract-generate: defaults dir copied into contract dir preserving structure" {
   write_manifest_with_nested_tokens
-  local defaults_dir="${TEST_DIR}/src-defaults"
+  local defaults_dir="${OUTPUT_SUB_PATH}/manifests/defaults"
   mkdir -p "${defaults_dir}/TestProject"
   printf '256Mi' > "${defaults_dir}/TestProject/MemoryRequest"
-  export DEFAULTS_SUB_PATH="${defaults_dir}"
   run "$CONTRACT_SCRIPT"
   [ "$status" -eq 0 ]
   [ -f "${OUTPUT_SUB_PATH}/manifests/contract/defaults/TestProject/MemoryRequest" ]
@@ -317,11 +313,10 @@ EOF
 
 @test "contract-generate: fails when defaults filename does not match declared name style" {
   write_manifest_with_tokens
-  local defaults_dir="${TEST_DIR}/src-defaults"
+  local defaults_dir="${OUTPUT_SUB_PATH}/manifests/defaults"
   mkdir -p "${defaults_dir}"
   # PascalCase project, but defaults file uses lower-kebab - should fail validation
   printf '256Mi' > "${defaults_dir}/memory-request"
-  export DEFAULTS_SUB_PATH="${defaults_dir}"
   run "$CONTRACT_SCRIPT"
   [ "$status" -ne 0 ]
   [[ "${output}" == *"do not match the declared name style PascalCase"* ]]
@@ -329,11 +324,10 @@ EOF
 
 @test "contract-generate: fails when a defaults file does not match any unresolved token" {
   write_manifest_with_tokens
-  local defaults_dir="${TEST_DIR}/src-defaults"
+  local defaults_dir="${OUTPUT_SUB_PATH}/manifests/defaults"
   mkdir -p "${defaults_dir}"
   # Correct style but no matching token in the manifest - orphan
   printf 'oops' > "${defaults_dir}/UnreferencedToken"
-  export DEFAULTS_SUB_PATH="${defaults_dir}"
   run "$CONTRACT_SCRIPT"
   [ "$status" -ne 0 ]
   [[ "${output}" == *"do not correspond to any unresolved token"* ]]
@@ -387,10 +381,9 @@ EOF
 
 @test "contract-generate: zip contains defaults dir when present" {
   write_manifest_with_nested_tokens
-  local defaults_dir="${TEST_DIR}/src-defaults"
+  local defaults_dir="${OUTPUT_SUB_PATH}/manifests/defaults"
   mkdir -p "${defaults_dir}/TestProject"
   printf '256Mi' > "${defaults_dir}/TestProject/MemoryRequest"
-  export DEFAULTS_SUB_PATH="${defaults_dir}"
   run "$CONTRACT_SCRIPT"
   [ "$status" -eq 0 ]
   local zip="${OUTPUT_SUB_PATH}/manifests/zip/test-project-1.2.3-contract.zip"
@@ -399,7 +392,6 @@ EOF
 
 @test "contract-generate: zip has no defaults dir when none present" {
   write_clean_manifest
-  export DEFAULTS_SUB_PATH="${TEST_DIR}/nonexistent-defaults"
   run "$CONTRACT_SCRIPT"
   [ "$status" -eq 0 ]
   local zip="${OUTPUT_SUB_PATH}/manifests/zip/test-project-1.2.3-contract.zip"

@@ -11,5 +11,4 @@
     token-delimiter-style: ${{ steps.kpm.outputs.TOKEN_DELIMITER_STYLE }}
     token-name-style: ${{ steps.kpm.outputs.TOKEN_NAME_STYLE }}
     metadata-description: ${{ steps.kpm.outputs.METADATA_DESCRIPTION }}
-    defaults-sub-path: ${{ steps.product-aggregate.outputs.defaults-sub-path || steps.kpm.outputs.DEFAULTS_SUB_PATH }}
     output-sub-path: ${{ steps.kpm.outputs.OUTPUT_SUB_PATH }}
