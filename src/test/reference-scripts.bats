@@ -52,7 +52,7 @@ setup() {
     hook-pre-docker-prepare hook-post-docker-tests hook-pre-package-prepare hook-post-package-tests \
     kubernetes-manifests-package-prepare kubernetes-manifests-substitute kubernetes-manifests-package \
     kubernetes-product-aggregate \
-    kubernetes-product-lineage-data-generate \
+    kubernetes-lineage-data-generate \
     kubernetes-manifests-contract-generate \
     kubernetes-manifests-package-only-token-override \
     kubernetes-manifests-repo-provider-package kubernetes-manifests-repo-provider-publish \
@@ -229,6 +229,7 @@ hook-pre-package-prepare
 kubernetes-manifests-package-prepare
 kubernetes-manifests-substitute
 kubernetes-manifests-contract-generate
+kubernetes-lineage-data-generate
 kubernetes-manifests-package
 kubernetes-manifests-repo-provider-package
 hook-post-package-tests
@@ -269,6 +270,7 @@ hook-pre-package-prepare
 kubernetes-manifests-package-prepare
 kubernetes-manifests-substitute
 kubernetes-manifests-contract-generate
+kubernetes-lineage-data-generate
 kubernetes-manifests-package
 kubernetes-manifests-repo-provider-package
 hook-post-package-tests
@@ -309,6 +311,7 @@ kubernetes-manifests-package-prepare
 kubernetes-manifests-package-only-token-override
 kubernetes-manifests-substitute
 kubernetes-manifests-contract-generate
+kubernetes-lineage-data-generate
 kubernetes-manifests-package
 kubernetes-manifests-repo-provider-package
 hook-post-package-tests
@@ -403,6 +406,7 @@ kubernetes-manifests-package-prepare
 kubernetes-manifests-package-only-token-override
 kubernetes-manifests-substitute
 kubernetes-manifests-contract-generate
+kubernetes-lineage-data-generate
 kubernetes-manifests-package
 kubernetes-manifests-repo-provider-package
 hook-post-package-tests
@@ -438,7 +442,7 @@ kubernetes-manifests-package-prepare
 kubernetes-manifests-package-only-token-override
 kubernetes-manifests-substitute
 kubernetes-manifests-contract-generate
-kubernetes-product-lineage-data-generate
+kubernetes-lineage-data-generate
 kubernetes-manifests-package
 kubernetes-manifests-repo-provider-package
 hook-post-package-tests
@@ -476,6 +480,7 @@ vendor-helm-inject-build-details
 kubernetes-manifests-package-only-token-override
 kubernetes-manifests-substitute
 kubernetes-manifests-contract-generate
+kubernetes-lineage-data-generate
 kubernetes-manifests-package
 kubernetes-manifests-repo-provider-package
 hook-post-package-tests

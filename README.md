@@ -122,6 +122,7 @@ See [`examples/`](examples/) for more usage patterns.
 | `hook-pre-docker-prepare` | Runs user's hook script before Docker build preparation to modify Dockerfile, copy files, or perform setup |
 | `hook-pre-package-prepare` | Runs user's hook script before manifest packaging to generate ConfigMaps, modify manifests, or add files |
 | `hook-pre-tagging-tests` | Runs user's hook script before tagging/versioning for custom validation or preparation |
+| `kubernetes-lineage-data-generate` | Emits the build's lineage data ConfigMap (presence + lineage record) into the substituted manifests tree. Generic across product, app, bundle, and env/rp builds, dispatched by build-kind (plus env-build-section for env/rp). |
 | `kubernetes-manifests-contract-generate` | Generates a manifests contract file describing token scheme, required config, and compatibility |
 | `kubernetes-manifests-package-only-token-override` | Overrides docker image tokens for manifests-only workflow |
 | `kubernetes-manifests-package-prepare` | Prepares manifests and tokens for packaging |
@@ -130,7 +131,6 @@ See [`examples/`](examples/) for more usage patterns.
 | `kubernetes-manifests-repo-provider-publish` | Publishes manifests via pluggable repo provider. Requires package step to run first. |
 | `kubernetes-manifests-substitute` | Phase A: copies prepared manifests and runs token substitution |
 | `kubernetes-product-aggregate` | Resolves spec.contents bundles, stages manifests/defaults, and emits paths for downstream packaging |
-| `kubernetes-product-lineage-data-generate` | Emits the product lineage data ConfigMap (presence + lineage record) into the substituted manifests tree |
 | `layer-package-prepare` | Prepares layer or layerset for OCI packaging - validates source, injects metadata, generates Dockerfile |
 | `layer-validate` | Validates substituted layer or layerset after docker build |
 | `release-change-data-generate` | Generates structured release change data YAML from commit history |

@@ -1842,6 +1842,43 @@ jobs:
           action: fail
           check-run-id: ${{ steps.check-manifest-contract-generate.outputs.check-run-id }}
 
+      # === Lineage Data Generate ===
+      - name: Start check - Generate Lineage Data ConfigMap
+        id: check-lineage-data-generate
+        continue-on-error: true
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
+        with:
+          action: start
+          check-name: 'Build & Publish → Generate Lineage Data ConfigMap'
+      - name: Generate lineage data ConfigMap
+        id: manifest-lineage-data-generate
+        uses: ./.github/buildon-github-actions/src/actions/kubernetes-lineage-data-generate
+        with:
+          project-name: ${{ steps.versions.outputs.project-name }}
+          version: ${{ steps.versions.outputs.version }}
+          build-kind: kubernetes-app-docker-retag
+          product-name: ${{ steps.product-aggregate.outputs.product-name }}
+          product-short-name: ${{ steps.product-aggregate.outputs.product-short-name }}
+          git-sha: ${{ github.sha }}
+          token-delimiter-style: ${{ steps.kpm.outputs.TOKEN_DELIMITER_STYLE }}
+          token-name-style: ${{ steps.kpm.outputs.TOKEN_NAME_STYLE }}
+          config-value-trailing-newline: ${{ steps.kpm.outputs.CONFIG_VALUE_TRAILING_NEWLINE }}
+          token-substitution-passes: ${{ steps.kpm.outputs.TOKEN_SUBSTITUTION_PASSES }}
+          output-sub-path: ${{ steps.kpm.outputs.OUTPUT_SUB_PATH }}
+      - name: Pass check - Generate Lineage Data ConfigMap
+        if: success() && steps.check-lineage-data-generate.outputs.check-run-id != ''
+        continue-on-error: true
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
+        with:
+          action: pass
+          check-run-id: ${{ steps.check-lineage-data-generate.outputs.check-run-id }}
+      - name: Fail check - Generate Lineage Data ConfigMap
+        if: failure() && steps.check-lineage-data-generate.outputs.check-run-id != ''
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
+        with:
+          action: fail
+          check-run-id: ${{ steps.check-lineage-data-generate.outputs.check-run-id }}
+
       # === Manifest Package ===
       - name: Start check - Package Manifests
         id: check-manifest-package

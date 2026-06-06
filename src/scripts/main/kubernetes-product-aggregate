@@ -34,9 +34,7 @@
 #   PRODUCT_ALLOW_LOCAL_MANIFESTS_OVERRIDE - When 'true', src/kubernetes files override
 #                                            colliding bundle-contributed paths (warn per
 #                                            replacement); when unset/false, any path collision
-#                                            fails the build. The reserved filename
-#                                            kaptain-product-lineage-data.yaml is checked
-#                                            separately and always fails on collision.
+#                                            fails the build.
 #   KAPTAINPM_FILE                         - Override path for testing (default kaptainpm/final/KaptainPM.yaml)
 #
 set -euo pipefail
@@ -66,7 +64,6 @@ PROJECT_NAME="${PROJECT_NAME:?PROJECT_NAME is required}"
 KAPTAINPM_FILE="${KAPTAINPM_FILE:-kaptainpm/final/KaptainPM.yaml}"
 LOCAL_MANIFESTS_SUB_PATH="${MANIFESTS_SUB_PATH:-src/kubernetes}"
 PRODUCT_ALLOW_LOCAL_MANIFESTS_OVERRIDE="${PRODUCT_ALLOW_LOCAL_MANIFESTS_OVERRIDE:-false}"
-PRODUCT_LINEAGE_DATA_FILENAME="kaptain-product-lineage-data.yaml"
 UTIL_DIR="${SCRIPT_DIR}/../util"
 
 # Download/extract artefacts only — content-resolve owns this dir.
@@ -381,40 +378,10 @@ merge_bundle_defaults() {
   rm -f "${index_file}"
 }
 
-# Walk the bundle-contributed normalised tree and the product's own
-# LOCAL_MANIFESTS_SUB_PATH; fail if any file is named PRODUCT_LINEAGE_DATA_FILENAME
-# anywhere in either tree, regardless of position. The product lineage data
-# ConfigMap (see ProductPresenceConfigMap.md) owns this filename unconditionally.
-assert_no_lineage_data_squat() {
-  local found=()
-  local file
-  if [[ -d "${AGGREGATE_MANIFESTS_NORMALISED_DIR}" ]]; then
-    while IFS= read -r -d '' file; do
-      found+=("bundle: ${file}")
-    done < <(find "${AGGREGATE_MANIFESTS_NORMALISED_DIR}" -type f -name "${PRODUCT_LINEAGE_DATA_FILENAME}" -print0)
-  fi
-  if [[ -d "${LOCAL_MANIFESTS_SUB_PATH}" ]]; then
-    while IFS= read -r -d '' file; do
-      found+=("local:  ${file}")
-    done < <(find "${LOCAL_MANIFESTS_SUB_PATH}" -type f -name "${PRODUCT_LINEAGE_DATA_FILENAME}" -print0)
-  fi
-  if (( ${#found[@]} > 0 )); then
-    log_error "Reserved filename '${PRODUCT_LINEAGE_DATA_FILENAME}' is owned by the"
-    log_error "product lineage data ConfigMap and cannot appear in any bundle or in the product's"
-    log_error "own ${LOCAL_MANIFESTS_SUB_PATH} directory. Offending files:"
-    local entry
-    for entry in "${found[@]}"; do
-      log_error "  ${entry}"
-    done
-    return 1
-  fi
-}
-
 # Fold the product's own ${LOCAL_MANIFESTS_SUB_PATH} into AGGREGATE_MANIFESTS_NORMALISED_DIR.
 # When PRODUCT_ALLOW_LOCAL_MANIFESTS_OVERRIDE is true, local files overwrite any
 # bundle-contributed file at the same relative path (one WARN log line per
-# replacement). When false, any path collision fails the build. The reserved
-# product lineage data filename is enforced separately by assert_no_lineage_data_squat.
+# replacement). When false, any path collision fails the build.
 merge_local_manifests() {
   [[ -d "${LOCAL_MANIFESTS_SUB_PATH}" ]] || return 0
 
@@ -502,11 +469,6 @@ main() {
   log "Merging per-bundle defaults into ${MANIFESTS_ADDITIONAL_DEFAULTS_SUB_PATH}..."
   log ""
   merge_bundle_defaults
-
-  log ""
-  log "Asserting no squat on reserved product linearge data filename '${PRODUCT_LINEAGE_DATA_FILENAME}'..."
-  log ""
-  assert_no_lineage_data_squat
 
   log ""
   log "Folding in local manifests (${LOCAL_MANIFESTS_SUB_PATH}, allowLocalManifestsOverride=${PRODUCT_ALLOW_LOCAL_MANIFESTS_OVERRIDE})..."

@@ -1,0 +1,476 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
+#
+# kubernetes-lineage-data-generate - Emit the build's lineage data ConfigMap.
+#
+# Generic across product, app, bundle, and env/rp (kubernetes-run-environment
+# and kubernetes-run-platform-meta-environment) builds. Dispatches on BUILD_KIND
+# (plus ENV_BUILD_SECTION for env/rp) to pick the reserved filename, role label,
+# and the per-kind data files. Runs after manifest-contract-generate so the
+# contract artefact can be included verbatim as a data key. Owns the
+# reserved-filename squat check (per-kind).
+#
+# env and rp sections of env/rp builds run lineage twice per BUILD_KIND: once
+# as the inner app, once as the environment record. The env and rp environment
+# paths are stubbed (exit 42) pending those workflows; the app section is the
+# normal app happy path. Working dirs are namespaced under ENV_BUILD_SECTION so
+# the two runs do not collide when sharing OUTPUT_SUB_PATH.
+#
+# All data files are already-substituted artefacts; a sub-round substitute is
+# run over the data files (to resolve the self-reference token) and the result
+# is asserted to contain no remaining tokens before the CM is generated.
+#
+# Inputs (env):
+#   PROJECT_NAME            - Required; project's project name
+#   VERSION                 - Required; carried for log clarity
+#   BUILD_KIND              - Required; one of kubernetes-product-aggregate,
+#                             kubernetes-app-*, kubernetes-bundle-*,
+#                             kubernetes-run-environment,
+#                             kubernetes-run-platform-meta-environment. Other
+#                             values fail.
+#   ENV_BUILD_SECTION       - Required when BUILD_KIND is
+#                             kubernetes-run-environment (app|env) or
+#                             kubernetes-run-platform-meta-environment (app|rp).
+#                             Env-section builds run lineage twice: once as the
+#                             app being packaged, once as the environment
+#                             record. This input switches between them. env and
+#                             rp paths are stubbed pending those workflows.
+#   PRODUCT_NAME            - Required when BUILD_KIND=kubernetes-product-aggregate;
+#                             ignored otherwise
+#   PRODUCT_SHORT_NAME      - Required when BUILD_KIND=kubernetes-product-aggregate;
+#                             ignored otherwise
+#   TOKEN_DELIMITER_STYLE   - Token delimiter style (default shell)
+#   TOKEN_NAME_STYLE        - Token name style (default PascalCase)
+#   OUTPUT_SUB_PATH         - Build output dir (default kaptain-out)
+#   GIT_SHA                 - Optional; sets kaptain.org/git-sha annotation
+#   BUILD_PLATFORM          - Optional; flows through to generator's built-by annotation
+#
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# shellcheck source=src/scripts/defaults/platform.bash
+source "${SCRIPT_DIR}/../defaults/platform.bash"
+# shellcheck source=src/scripts/lib/log.bash
+source "${SCRIPT_DIR}/../lib/log.bash"
+# shellcheck source=src/scripts/defaults/output-sub-path.bash
+source "${SCRIPT_DIR}/../defaults/output-sub-path.bash"
+# shellcheck source=src/scripts/defaults/tokens.bash
+source "${SCRIPT_DIR}/../defaults/tokens.bash"
+# shellcheck source=src/scripts/defaults/manifests-sub-path.bash
+source "${SCRIPT_DIR}/../defaults/manifests-sub-path.bash"
+# shellcheck source=src/scripts/lib/token-format.bash
+source "${SCRIPT_DIR}/../lib/token-format.bash"
+
+PROJECT_NAME="${PROJECT_NAME:?PROJECT_NAME is required}"
+VERSION="${VERSION:?VERSION is required}"
+BUILD_KIND="${BUILD_KIND:?BUILD_KIND is required}"
+ENV_BUILD_SECTION="${ENV_BUILD_SECTION:-}"
+KAPTAINPM_FILE="kaptainpm/final/KaptainPM.yaml"
+GIT_SHA="${GIT_SHA:-}"
+
+SUBSTITUTED_PRODUCT_DIR="${MANIFESTS_SUBSTITUTED_SUB_PATH}/${PROJECT_NAME}"
+
+# Per-kind state (set by dispatch_kind). LINEAGE_FILENAME and LINEAGE_ROLE
+# carry the reserved filename and the kaptain.org/role label value; KIND_FAMILY
+# is product|app|bundle|env|rp and gates per-kind label emission and assembly
+# choices. env and rp are stub families pending the env/run-platform workflows.
+# Working dirs (LINEAGE_DATA_DIR, GENERATED_CONFIGMAP_BASE, SCRATCH_DIR) are
+# computed in main() after dispatch_kind because they may be namespaced under
+# ENV_BUILD_SECTION for env/rp builds where the same OUTPUT_SUB_PATH hosts two
+# lineage runs back-to-back.
+LINEAGE_FILENAME=""
+LINEAGE_ROLE=""
+KIND_FAMILY=""
+LINEAGE_DATA_DIR=""
+GENERATED_CONFIGMAP_BASE=""
+SCRATCH_DIR=""
+
+# Reject ENV_BUILD_SECTION on BUILD_KINDs that don't use it. The var is part of
+# the env/rp dispatch contract; setting it for product/app/bundle is almost
+# certainly a wiring mistake and silently ignoring it would hide the bug.
+assert_env_build_section_empty() {
+  if [[ -n "${ENV_BUILD_SECTION}" ]]; then
+    log_error "ENV_BUILD_SECTION must not be set for BUILD_KIND=${BUILD_KIND}"
+    log_error "It is only used for kubernetes-run-environment and kubernetes-run-platform-meta-environment builds."
+    log_error "Got ENV_BUILD_SECTION='${ENV_BUILD_SECTION}'"
+    exit 1
+  fi
+}
+
+dispatch_kind() {
+  case "${BUILD_KIND}" in
+    kubernetes-product-aggregate)
+      assert_env_build_section_empty
+      KIND_FAMILY="product"
+      LINEAGE_FILENAME="kaptain-product-lineage-data.yaml"
+      LINEAGE_ROLE="kaptain-product-lineage-data"
+      ;;
+    kubernetes-app-*)
+      assert_env_build_section_empty
+      KIND_FAMILY="app"
+      LINEAGE_FILENAME="kaptain-app-lineage-data.yaml"
+      LINEAGE_ROLE="kaptain-app-lineage-data"
+      ;;
+    kubernetes-bundle-*)
+      assert_env_build_section_empty
+      KIND_FAMILY="bundle"
+      LINEAGE_FILENAME="kaptain-bundle-lineage-data.yaml"
+      LINEAGE_ROLE="kaptain-bundle-lineage-data"
+      ;;
+    kubernetes-run-environment)
+      case "${ENV_BUILD_SECTION}" in
+        app)
+          KIND_FAMILY="app"
+          LINEAGE_FILENAME="kaptain-app-lineage-data.yaml"
+          LINEAGE_ROLE="kaptain-app-lineage-data"
+          ;;
+        env)
+          KIND_FAMILY="env"
+          LINEAGE_FILENAME="kaptain-environment-lineage-data.yaml"
+          LINEAGE_ROLE="kaptain-environment-lineage-data"
+          ;;
+        "")
+          log_error "ENV_BUILD_SECTION is required for BUILD_KIND=${BUILD_KIND}"
+          log_error "Expected one of: app, env"
+          exit 1
+          ;;
+        *)
+          log_error "Invalid ENV_BUILD_SECTION '${ENV_BUILD_SECTION}' for BUILD_KIND=${BUILD_KIND}"
+          log_error "Expected one of: app, env"
+          exit 1
+          ;;
+      esac
+      ;;
+    kubernetes-run-platform-meta-environment)
+      case "${ENV_BUILD_SECTION}" in
+        app)
+          KIND_FAMILY="app"
+          LINEAGE_FILENAME="kaptain-app-lineage-data.yaml"
+          LINEAGE_ROLE="kaptain-app-lineage-data"
+          ;;
+        rp)
+          KIND_FAMILY="rp"
+          LINEAGE_FILENAME="kaptain-environment-lineage-data.yaml"
+          LINEAGE_ROLE="kaptain-environment-lineage-data"
+          ;;
+        "")
+          log_error "ENV_BUILD_SECTION is required for BUILD_KIND=${BUILD_KIND}"
+          log_error "Expected one of: app, rp"
+          exit 1
+          ;;
+        *)
+          log_error "Invalid ENV_BUILD_SECTION '${ENV_BUILD_SECTION}' for BUILD_KIND=${BUILD_KIND}"
+          log_error "Expected one of: app, rp"
+          exit 1
+          ;;
+      esac
+      ;;
+    *)
+      log_error "Unknown BUILD_KIND for lineage data: ${BUILD_KIND}"
+      log_error "Supported: kubernetes-product-aggregate, kubernetes-app-*, kubernetes-bundle-*, kubernetes-run-environment, kubernetes-run-platform-meta-environment"
+      exit 1
+      ;;
+  esac
+}
+
+# Fail the build if the reserved filename appears anywhere in the substituted
+# tree before we write the lineage CM. Each kind only checks its own filename;
+# names are distinct per kind so co-located bundle/app/product CMs do not
+# collide.
+assert_no_squat() {
+  [[ -d "${SUBSTITUTED_PRODUCT_DIR}" ]] || return 0
+  local found=()
+  local file
+  while IFS= read -r -d '' file; do
+    found+=("${file}")
+  done < <(find "${SUBSTITUTED_PRODUCT_DIR}" -type f -name "${LINEAGE_FILENAME}" -print0)
+  if (( ${#found[@]} > 0 )); then
+    log_error "Reserved filename '${LINEAGE_FILENAME}' is owned by the"
+    log_error "${KIND_FAMILY} lineage data ConfigMap and cannot appear elsewhere in the"
+    log_error "substituted tree. Offending files:"
+    local entry
+    for entry in "${found[@]}"; do
+      log_error "  ${entry}"
+    done
+    exit 1
+  fi
+}
+
+# Build the resources.yaml inventory by walking the substituted tree.
+# Each yaml file may contain multiple documents; emit one entry per non-null
+# document with both kind and metadata.name. Sort by (path, kind, name) under
+# LC_ALL=C for deterministic, locale-independent order. Append the lineage data
+# CM's self-reference last using the project-name token so the sub-round
+# substitute resolves it to the same concrete name the rest of the resources
+# already have.
+build_resources_inventory() {
+  local product_dir="$1"
+  local out_file="$2"
+  local self_path="$3"
+  local self_name_token="$4"
+
+  local entries_tmp
+  entries_tmp="${SCRATCH_DIR}/$(basename "${out_file}").entries"
+  : > "${entries_tmp}"
+
+  if [[ -d "${product_dir}" ]]; then
+    local file rel docs line kind name
+    while IFS= read -r -d '' file; do
+      rel="${file#"${product_dir}/"}"
+      docs=$(yq eval '
+        select(.kind != null and .metadata.name != null)
+        | [.kind, .metadata.name] | @tsv
+      ' "${file}" 2>/dev/null || true)
+      [[ -z "${docs}" ]] && continue
+      while IFS= read -r line; do
+        [[ -z "${line}" ]] && continue
+        kind="${line%%$'\t'*}"
+        name="${line#*$'\t'}"
+        printf '%s\t%s\t%s\n' "${rel}" "${kind}" "${name}" >> "${entries_tmp}"
+      done <<< "${docs}"
+    done < <(find "${product_dir}" -type f -name '*.yaml' -print0)
+  fi
+
+  printf '%s\t%s\t%s\n' "${self_path}" "ConfigMap" "${self_name_token}" >> "${entries_tmp}"
+
+  : > "${out_file}"
+  local path kind name
+  while IFS=$'\t' read -r path kind name; do
+    [[ -z "${path}" ]] && continue
+    {
+      printf -- '- path: %s\n' "${path}"
+      printf -- '  kind: %s\n' "${kind}"
+      printf -- '  name: %s\n' "${name}"
+    } >> "${out_file}"
+  done < <(LC_ALL=C sort "${entries_tmp}")
+}
+
+# Write the spec.contents node from KaptainPM verbatim. Even an empty/null
+# .spec.contents emits a file so the CM data key exists for products.
+assemble_product() {
+  yq eval '.spec.contents' "${KAPTAINPM_FILE}" > "${LINEAGE_DATA_DIR}/contents.yaml"
+  local resolved="${OUTPUT_SUB_PATH}/content/contents-resolved.yaml"
+  if [[ ! -f "${resolved}" ]]; then
+    log_error "Resolved-contents file not found: ${resolved}"
+    log_error "Did kubernetes-product-aggregate run first?"
+    exit 1
+  fi
+  cp "${resolved}" "${LINEAGE_DATA_DIR}/contents-resolved.yaml"
+}
+
+# App and bundle write spec.templates verbatim (required) and optionally
+# templates-resolved.yaml from a known path. The resolve step that writes
+# templates-resolved.yaml does not yet exist; absent is fine for now.
+assemble_app_or_bundle() {
+  yq eval '.spec.templates' "${KAPTAINPM_FILE}" > "${LINEAGE_DATA_DIR}/templates.yaml"
+  local resolved="${OUTPUT_SUB_PATH}/templates/templates-resolved.yaml"
+  if [[ -f "${resolved}" ]]; then
+    cp "${resolved}" "${LINEAGE_DATA_DIR}/templates-resolved.yaml"
+  else
+    log "  templates-resolved.yaml not present at ${resolved} (templates-resolve step not run); skipping data key"
+  fi
+}
+
+# Copy the contract artefact written by kubernetes-manifests-contract-generate
+# (which runs immediately before this step) in as a data file. Both contract
+# and lineage are already substituted, so a verbatim copy is enough.
+assemble_contract() {
+  local contract="${OUTPUT_SUB_PATH}/manifests/contract/contract.yaml"
+  if [[ ! -f "${contract}" ]]; then
+    log_error "Contract file not found: ${contract}"
+    log_error "Did kubernetes-manifests-contract-generate run first?"
+    exit 1
+  fi
+  cp "${contract}" "${LINEAGE_DATA_DIR}/contract.yaml"
+}
+
+main() {
+  log "=== Kubernetes Lineage Data Generate ==="
+  log "Project: ${PROJECT_NAME}"
+  log "Version: ${VERSION}"
+  log "Build kind: ${BUILD_KIND}"
+  log "Output: ${OUTPUT_SUB_PATH}"
+  log "Token style: ${TOKEN_DELIMITER_STYLE}-${TOKEN_NAME_STYLE}"
+  log "==========================================="
+
+  dispatch_kind
+  log "Kind family: ${KIND_FAMILY}"
+  log "Reserved filename: ${LINEAGE_FILENAME}"
+  log "Role label: ${LINEAGE_ROLE}"
+
+  # env/rp builds invoke this script twice with the same OUTPUT_SUB_PATH (once
+  # as the inner app, once as the environment record). Insert ENV_BUILD_SECTION
+  # as a subdir so the two runs do not trample each other's working files.
+  local aggregate_base="${OUTPUT_SUB_PATH}/lineage-data"
+  if [[ -n "${ENV_BUILD_SECTION}" ]]; then
+    aggregate_base="${aggregate_base}/${ENV_BUILD_SECTION}"
+  fi
+  LINEAGE_DATA_DIR="${aggregate_base}/data-files"
+  GENERATED_CONFIGMAP_BASE="${aggregate_base}/generated-configmap"
+  # Scratch dir must be a peer of LINEAGE_DATA_DIR (not a child) because
+  # generate-kubernetes-configmap turns every file inside LINEAGE_DATA_DIR into
+  # a CM data key.
+  SCRATCH_DIR="${aggregate_base}/scratch"
+
+  case "${KIND_FAMILY}" in
+    env|rp)
+      log "Not implemented"
+      exit 42
+      ;;
+  esac
+
+  if [[ "${KIND_FAMILY}" == "product" ]]; then
+    PRODUCT_NAME="${PRODUCT_NAME:?PRODUCT_NAME is required for product builds}"
+    PRODUCT_SHORT_NAME="${PRODUCT_SHORT_NAME:?PRODUCT_SHORT_NAME is required for product builds}"
+  fi
+
+  if [[ ! -d "${SUBSTITUTED_PRODUCT_DIR}" ]]; then
+    log_error "Substituted product directory not found: ${SUBSTITUTED_PRODUCT_DIR}"
+    log_error "Did kubernetes-manifests-substitute run first?"
+    exit 1
+  fi
+  if [[ ! -f "${KAPTAINPM_FILE}" ]]; then
+    log_error "KaptainPM file not found: ${KAPTAINPM_FILE}"
+    exit 1
+  fi
+  if [[ ! -d "${MANIFESTS_CONFIG_SUB_PATH}" ]]; then
+    log_error "Tokens directory not found: ${MANIFESTS_CONFIG_SUB_PATH}"
+    log_error "Did kubernetes-manifests-package-prepare run first?"
+    exit 1
+  fi
+
+  log ""
+  log "Asserting no squat on reserved filename '${LINEAGE_FILENAME}'..."
+  assert_no_squat
+
+  rm -rf "${LINEAGE_DATA_DIR}" "${GENERATED_CONFIGMAP_BASE}" "${SCRATCH_DIR}"
+  mkdir -p "${LINEAGE_DATA_DIR}" "${SCRATCH_DIR}"
+
+  log ""
+  log "Assembling lineage data files (${KIND_FAMILY})..."
+  case "${KIND_FAMILY}" in
+    product) assemble_product ;;
+    app|bundle) assemble_app_or_bundle ;;
+  esac
+  assemble_contract
+
+  local project_name_token
+  project_name_token=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "PROJECT_NAME")
+  build_resources_inventory \
+    "${SUBSTITUTED_PRODUCT_DIR}" \
+    "${LINEAGE_DATA_DIR}/resources.yaml" \
+    "${LINEAGE_FILENAME}" \
+    "${project_name_token}"
+
+  local f
+  for f in "${LINEAGE_DATA_DIR}"/*; do
+    [[ -f "${f}" ]] || continue
+    log "  $(basename "${f}")          ($(wc -l < "${f}" | tr -d ' ') lines)"
+  done
+
+  log ""
+  log "Running sub-round token substitute against data files..."
+  CONFIG_VALUE_TRAILING_NEWLINE="${CONFIG_VALUE_TRAILING_NEWLINE}" \
+  TOKEN_SUBSTITUTION_PASSES="${TOKEN_SUBSTITUTION_PASSES}" \
+  "${SCRIPT_DIR}/../util/substitute-tokens-from-dir" \
+    "${TOKEN_DELIMITER_STYLE}" \
+    "${MANIFESTS_CONFIG_SUB_PATH}" \
+    "${LINEAGE_DATA_DIR}"
+
+  log ""
+  log "Asserting no unresolved tokens remain in lineage data files..."
+  # Build-time metadata (contract, contents, templates) must be fully resolved
+  # before the CM is written. Resource names in resources.yaml are different:
+  # reusable bundles intentionally leave a token (e.g. ${Environment},
+  # ${ProductName}) in metadata.name so the consuming app or env supplies the
+  # final value at deploy time. To enforce strict no-tokens everywhere except
+  # that one allowed location, scan a scratch copy of the lineage data with
+  # resources.yaml's name-field lines stripped out.
+  # TODO(env/rp): env and rp builds produce final deploy artefacts, not
+  # reusable templates, and must enforce strict no-tokens with no exceptions.
+  # When the env/rp workflows ship and remove the exit-42 stub above, gate the
+  # resources.yaml strip below on [[ "${KIND_FAMILY}" != "env" && "${KIND_FAMILY}" != "rp" ]].
+  local token_check_dir="${SCRATCH_DIR}/token-check"
+  rm -rf "${token_check_dir}"
+  mkdir -p "${token_check_dir}"
+  cp -R "${LINEAGE_DATA_DIR}/." "${token_check_dir}/"
+  if [[ -f "${token_check_dir}/resources.yaml" ]]; then
+    grep -v '^  name: ' "${token_check_dir}/resources.yaml" \
+      > "${token_check_dir}/resources.yaml.stripped" || true
+    mv "${token_check_dir}/resources.yaml.stripped" "${token_check_dir}/resources.yaml"
+  fi
+  local leftover_tokens
+  leftover_tokens=$("${SCRIPT_DIR}/../util/scan-unresolved-tokens" \
+    "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" \
+    "${token_check_dir}")
+  if [[ -n "${leftover_tokens}" ]]; then
+    log_error "Lineage data ConfigMap still contains unresolved token(s):"
+    while IFS= read -r token; do
+      log_error "  ${token}"
+    done <<< "${leftover_tokens}"
+    log_error "Unresolved tokens are only permitted on resources.yaml metadata.name field values."
+    log_error "All other locations (contract, contents, templates, paths, kinds) must be fully substituted."
+    exit 1
+  fi
+
+  local additional_labels="kaptain.org/role=${LINEAGE_ROLE}"
+  additional_labels="${additional_labels},kaptain.org/build-kind=${BUILD_KIND}"
+  additional_labels="${additional_labels},kaptain.org/project-name=${project_name_token}"
+  if [[ "${KIND_FAMILY}" == "product" ]]; then
+    local product_name_token product_short_name_token
+    product_name_token=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "PRODUCT_NAME")
+    product_short_name_token=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "PRODUCT_SHORT_NAME")
+    additional_labels="${additional_labels},kaptain.org/product-name=${product_name_token}"
+    additional_labels="${additional_labels},kaptain.org/product-short-name=${product_short_name_token}"
+  fi
+
+  local additional_annotations=""
+  if [[ -n "${GIT_SHA}" ]]; then
+    additional_annotations="kaptain.org/git-sha=${GIT_SHA}"
+  fi
+
+  log ""
+  log "Generating lineage data ConfigMap..."
+  PROJECT_NAME="${PROJECT_NAME}" \
+  VERSION="${VERSION}" \
+  PRODUCT_NAME="${PRODUCT_NAME:-${PROJECT_NAME}}" \
+  PRODUCT_SHORT_NAME="${PRODUCT_SHORT_NAME:-${PROJECT_NAME}}" \
+  TOKEN_DELIMITER_STYLE="${TOKEN_DELIMITER_STYLE}" \
+  TOKEN_NAME_STYLE="${TOKEN_NAME_STYLE}" \
+  OUTPUT_SUB_PATH="${GENERATED_CONFIGMAP_BASE}" \
+  KUBERNETES_CONFIGMAP_SUB_PATH="${LINEAGE_DATA_DIR}" \
+  KUBERNETES_CONFIGMAP_NAME_SUFFIX="" \
+  KUBERNETES_CONFIGMAP_COMBINED_SUB_PATH="" \
+  KUBERNETES_CONFIGMAP_NAME_CHECKSUM_INJECTION="false" \
+  KUBERNETES_CONFIGMAP_ADDITIONAL_LABELS="${additional_labels}" \
+  KUBERNETES_CONFIGMAP_ADDITIONAL_ANNOTATIONS="${additional_annotations}" \
+  BUILD_PLATFORM="${BUILD_PLATFORM:-}" \
+  "${SCRIPT_DIR}/../generators/generate-kubernetes-configmap"
+
+  local generated_configmap="${GENERATED_CONFIGMAP_BASE}/manifests/combined/configmap.yaml"
+  if [[ ! -f "${generated_configmap}" ]]; then
+    log_error "Lineage data ConfigMap not produced at expected path: ${generated_configmap}"
+    exit 1
+  fi
+
+  log ""
+  log "Substituting build-time tokens in CM labels/metadata..."
+  CONFIG_VALUE_TRAILING_NEWLINE="${CONFIG_VALUE_TRAILING_NEWLINE}" \
+  TOKEN_SUBSTITUTION_PASSES="${TOKEN_SUBSTITUTION_PASSES}" \
+  "${SCRIPT_DIR}/../util/substitute-tokens-from-dir" \
+    "${TOKEN_DELIMITER_STYLE}" \
+    "${MANIFESTS_CONFIG_SUB_PATH}" \
+    "${generated_configmap}"
+
+  log ""
+  log "Copying into substituted tree..."
+  local final_path="${SUBSTITUTED_PRODUCT_DIR}/${LINEAGE_FILENAME}"
+  cp "${generated_configmap}" "${final_path}"
+
+  log ""
+  log "=== Lineage Data Generate Complete ==="
+}
+
+main "$@"

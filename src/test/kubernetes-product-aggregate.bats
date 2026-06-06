@@ -475,7 +475,7 @@ EOF
 }
 
 # =============================================================================
-# Local manifests merge (src/kubernetes + override flag) and reserved-filename squat
+# Local manifests merge (src/kubernetes + override flag)
 # =============================================================================
 
 @test "local-manifests: standalone manifest is included in assembled tree" {
@@ -509,44 +509,6 @@ EOF
   [ "${status}" -eq 0 ]
   [ "$(cat "${TEST_DIR}/kaptain-out/product-aggregate/manifests-normalised/alpha/deployment.yaml")" = "overridden" ]
   assert_output_contains "WARN: local manifest 'alpha/deployment.yaml' overrides"
-}
-
-@test "squat: local kaptain-product-lineage-data.yaml fails the build" {
-  setup_mock_oci
-  stage_oci_fixture "alpha:1.0-manifests" "alpha" shell PascalCase "Replicas=2"
-  write_local_manifest "kaptain-product-lineage-data.yaml" $'fake\n'
-  write_pm "alpha:1.0"
-  run_script
-  [ "${status}" -ne 0 ]
-  assert_output_contains "Reserved filename 'kaptain-product-lineage-data.yaml'"
-  assert_output_contains "local:"
-}
-
-@test "squat: bundle shipping kaptain-product-lineage-data.yaml fails the build" {
-  setup_mock_oci
-  local key
-  key=$(echo "alpha:1.0-manifests" | tr '/:' '__')
-  mkdir -p "${MOCK_OCI_DIR}/${key}"
-  local stage="${TEST_DIR}/_stage-alpha-squat"
-  mkdir -p "${stage}/alpha"
-  cat > "${stage}/alpha/deployment.yaml" << 'EOF'
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: alpha
-spec:
-  replicas: ${Replicas}
-EOF
-  printf 'fake\n' > "${stage}/alpha/kaptain-product-lineage-data.yaml"
-  ( cd "${stage}" && zip -qr "${MOCK_OCI_DIR}/${key}/alpha-1.0-manifests.zip" alpha )
-  rm -rf "${stage}"
-  make_contract_zip "${MOCK_OCI_DIR}/${key}/alpha-1.0-contract.zip" \
-    shell PascalCase "Replicas=2"
-  write_pm "alpha:1.0"
-  run_script
-  [ "${status}" -ne 0 ]
-  assert_output_contains "Reserved filename 'kaptain-product-lineage-data.yaml'"
-  assert_output_contains "bundle:"
 }
 
 teardown() {

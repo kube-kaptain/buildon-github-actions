@@ -235,6 +235,11 @@ jobs:
       # INJECT: manifest-contract-generate
       # INJECT: github-check-end(name="Generate Manifests Contract", id="check-manifest-contract-generate")
 
+      # === Lineage Data Generate ===
+      # INJECT: github-check-start(name="Generate Lineage Data ConfigMap", id="check-lineage-data-generate")
+      # INJECT: manifest-lineage-data-generate
+      # INJECT: github-check-end(name="Generate Lineage Data ConfigMap", id="check-lineage-data-generate")
+
       # === Manifest Package ===
       # INJECT: github-check-start(name="Package Manifests", id="check-manifest-package")
       # INJECT: manifest-package
