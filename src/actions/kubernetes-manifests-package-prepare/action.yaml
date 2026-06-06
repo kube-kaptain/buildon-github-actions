@@ -18,6 +18,10 @@ inputs:
     description: 'When true, local defaults override foreign additional-defaults on collision (warn). When false, value collisions fail the build.'
     required: false
     default: 'false'
+  allow-local-manifests-override:
+    description: 'When true, local manifests override foreign additional-manifests on collision (warn). When false, any path collision fails the build (no byte-identical bypass).'
+    required: false
+    default: 'false'
 
   # Step outputs from the versions-and-naming action.
   # Consumed by hook actions and any action that needs version/naming values.
@@ -155,6 +159,7 @@ runs:
         MANIFESTS_SUB_PATH: ${{ inputs.manifests-sub-path }}
         DEFAULTS_SUB_PATH: ${{ inputs.defaults-sub-path }}
         ALLOW_LOCAL_DEFAULTS_OVERRIDE: ${{ inputs.allow-local-defaults-override }}
+        ALLOW_LOCAL_MANIFESTS_OVERRIDE: ${{ inputs.allow-local-manifests-override }}
         PROJECT_NAME: ${{ inputs.project-name }}
         VERSION: ${{ inputs.version }}
         VERSION_MAJOR: ${{ inputs.version-major }}

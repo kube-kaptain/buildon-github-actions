@@ -2,7 +2,7 @@
 # Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
 
 name: 'Kubernetes Product Aggregate'
-description: 'Resolves spec.contents bundles, stages manifests/defaults, and emits paths for downstream packaging'
+description: 'Resolves spec.contents bundles, stages manifests/defaults into the additional-manifests and additional-defaults drop dirs for downstream packaging'
 
 inputs:
   # INJECT-INPUT: output-sub-path
@@ -14,23 +14,12 @@ inputs:
   project-name:
     description: 'Project name (must satisfy product naming rule)'
     required: true
-  manifests-sub-path:
-    description: 'Local product manifests directory (default: src/kubernetes)'
-    required: false
-    default: 'src/kubernetes'
-  product-allow-local-manifests-override:
-    description: 'When true, src/kubernetes files override colliding bundle-contributed paths with WARN log; otherwise any path collision fails'
-    required: false
-    default: 'false'
   is-release:
     description: 'When true, content version ranges resolve to release-only bundle versions (excludes -PRERELEASE and platform-suffixed tags)'
     required: false
     default: 'false'
 
 outputs:
-  manifests-sub-path:
-    description: 'Assembled bundle manifests directory for downstream package-prepare'
-    value: ${{ steps.product-aggregate.outputs.MANIFESTS_SUB_PATH }}
   product-name:
     description: 'PROJECT_NAME verbatim'
     value: ${{ steps.product-aggregate.outputs.PRODUCT_NAME }}
@@ -55,8 +44,6 @@ runs:
         OUTPUT_SUB_PATH: ${{ inputs.output-sub-path }}
         TOKEN_DELIMITER_STYLE: ${{ inputs.token-delimiter-style }}
         TOKEN_NAME_STYLE: ${{ inputs.token-name-style }}
-        MANIFESTS_SUB_PATH: ${{ inputs.manifests-sub-path }}
-        PRODUCT_ALLOW_LOCAL_MANIFESTS_OVERRIDE: ${{ inputs.product-allow-local-manifests-override }}
         DOCKER_TARGET_REGISTRY: ${{ inputs.docker-target-registry }}
         DOCKER_TARGET_NAMESPACE: ${{ inputs.docker-target-namespace }}
         IMAGE_BUILD_COMMAND: ${{ inputs.image-build-command }}

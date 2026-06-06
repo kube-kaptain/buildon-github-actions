@@ -344,11 +344,9 @@ MAPPINGS=(
   "spec.main.generators.podDisruptionBudget.additionalLabels:KUBERNETES_PODDISRUPTIONBUDGET_ADDITIONAL_LABELS"
   "spec.main.generators.podDisruptionBudget.additionalAnnotations:KUBERNETES_PODDISRUPTIONBUDGET_ADDITIONAL_ANNOTATIONS"
 
-  # Product
-  "spec.main.product.allowLocalManifestsOverride:PRODUCT_ALLOW_LOCAL_MANIFESTS_OVERRIDE"
-
   # Manifests
   "spec.main.manifests.subPath:MANIFESTS_SUB_PATH"
+  "spec.main.manifests.allowLocalOverride:ALLOW_LOCAL_MANIFESTS_OVERRIDE"
   "spec.main.manifests.defaults.subPath:DEFAULTS_SUB_PATH"
   "spec.main.manifests.defaults.allowLocalOverride:ALLOW_LOCAL_DEFAULTS_OVERRIDE"
   "spec.main.manifests.repoProvider.type:MANIFESTS_REPO_PROVIDER_TYPE"

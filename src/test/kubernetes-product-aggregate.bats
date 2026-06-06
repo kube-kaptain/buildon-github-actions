@@ -169,30 +169,17 @@ run_script() {
   : "${OUTPUT_SUB_PATH:=kaptain-out}"
   : "${TOKEN_DELIMITER_STYLE:=shell}"
   : "${TOKEN_NAME_STYLE:=PascalCase}"
-  : "${MANIFESTS_SUB_PATH:=src/kubernetes}"
-  : "${PRODUCT_ALLOW_LOCAL_MANIFESTS_OVERRIDE:=false}"
   run env \
     PROJECT_NAME="${PROJECT_NAME}" \
     OUTPUT_SUB_PATH="${OUTPUT_SUB_PATH}" \
     TOKEN_DELIMITER_STYLE="${TOKEN_DELIMITER_STYLE}" \
     TOKEN_NAME_STYLE="${TOKEN_NAME_STYLE}" \
-    MANIFESTS_SUB_PATH="${MANIFESTS_SUB_PATH}" \
-    PRODUCT_ALLOW_LOCAL_MANIFESTS_OVERRIDE="${PRODUCT_ALLOW_LOCAL_MANIFESTS_OVERRIDE}" \
     BUILD_PLATFORM=test \
     GITHUB_OUTPUT="${GITHUB_OUTPUT}" \
     KAPTAINPM_FILE="${TEST_DIR}/kaptainpm/final/KaptainPM.yaml" \
     _CONTENT_RESOLVE_UTIL_DIR="${MOCK_UTIL_DIR:-}" \
     MOCK_OCI_DIR="${MOCK_OCI_DIR:-}" \
     bash -c "cd '${TEST_DIR}' && '${SCRIPT}'"
-}
-
-# Write a local product manifest file at <TEST_DIR>/src/kubernetes/<rel>.
-write_local_manifest() {
-  local rel="$1"
-  local content="$2"
-  local target="${TEST_DIR}/src/kubernetes/${rel}"
-  mkdir -p "$(dirname "${target}")"
-  printf '%s' "${content}" > "${target}"
 }
 
 github_output_value() {
@@ -307,7 +294,7 @@ github_output_value() {
 # End-to-end staging
 # =============================================================================
 
-@test "end-to-end: stages a single bundle and emits MANIFESTS_SUB_PATH + additional-defaults" {
+@test "end-to-end: stages a single bundle into additional-manifests + additional-defaults" {
   setup_mock_oci
   stage_oci_fixture "alpha:1.0-manifests" "alpha" shell PascalCase "Replicas=2"
   write_pm "alpha:1.0"
@@ -316,7 +303,7 @@ github_output_value() {
   [ -f "${TEST_DIR}/kaptain-out/content/manifests/alpha/deployment.yaml" ]
   [ -f "${TEST_DIR}/kaptain-out/manifests/additional-defaults/Replicas" ]
   [ "$(cat "${TEST_DIR}/kaptain-out/manifests/additional-defaults/Replicas")" = "2" ]
-  [ "$(github_output_value MANIFESTS_SUB_PATH)" = "kaptain-out/product-aggregate/manifests-normalised" ]
+  [ -f "${TEST_DIR}/kaptain-out/manifests/additional-manifests/alpha/deployment.yaml" ]
 }
 
 @test "end-to-end: stages two bundles into sibling subdirs" {
@@ -429,8 +416,8 @@ EOF
   run_script
   [ "${status}" -eq 0 ]
   # Bundle's manifest should now use shell-style ${Replicas}, not {{Replicas}}.
-  grep -q '\${Replicas}' "${TEST_DIR}/kaptain-out/product-aggregate/manifests-normalised/alpha/deployment.yaml"
-  ! grep -q '{{ Replicas }}' "${TEST_DIR}/kaptain-out/product-aggregate/manifests-normalised/alpha/deployment.yaml"
+  grep -q '\${Replicas}' "${TEST_DIR}/kaptain-out/manifests/additional-manifests/alpha/deployment.yaml"
+  ! grep -q '{{ Replicas }}' "${TEST_DIR}/kaptain-out/manifests/additional-manifests/alpha/deployment.yaml"
 }
 
 @test "scheme: bundle missing contract.yaml fails the build" {
@@ -472,43 +459,6 @@ EOF
   local list="${TEST_DIR}/kaptain-out/product-aggregate/contents-list.md"
   [ -f "${list}" ]
   [ ! -s "${list}" ]
-}
-
-# =============================================================================
-# Local manifests merge (src/kubernetes + override flag)
-# =============================================================================
-
-@test "local-manifests: standalone manifest is included in assembled tree" {
-  setup_mock_oci
-  stage_oci_fixture "alpha:1.0-manifests" "alpha" shell PascalCase "Replicas=2"
-  write_local_manifest "standalone-cm.yaml" $'apiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: standalone\n'
-  write_pm "alpha:1.0"
-  run_script
-  [ "${status}" -eq 0 ]
-  [ -f "${TEST_DIR}/kaptain-out/product-aggregate/manifests-normalised/standalone-cm.yaml" ]
-  [ -f "${TEST_DIR}/kaptain-out/product-aggregate/manifests-normalised/alpha/deployment.yaml" ]
-}
-
-@test "local-manifests: collides with bundle path with override=false fails" {
-  setup_mock_oci
-  stage_oci_fixture "alpha:1.0-manifests" "alpha" shell PascalCase "Replicas=2"
-  write_local_manifest "alpha/deployment.yaml" $'overridden\n'
-  write_pm "alpha:1.0"
-  PRODUCT_ALLOW_LOCAL_MANIFESTS_OVERRIDE=false run_script
-  [ "${status}" -ne 0 ]
-  assert_output_contains "Manifest path collision for 'alpha/deployment.yaml'"
-  assert_output_contains "allowLocalManifestsOverride: true"
-}
-
-@test "local-manifests: collides with bundle path with override=true wins and warns" {
-  setup_mock_oci
-  stage_oci_fixture "alpha:1.0-manifests" "alpha" shell PascalCase "Replicas=2"
-  write_local_manifest "alpha/deployment.yaml" $'overridden\n'
-  write_pm "alpha:1.0"
-  PRODUCT_ALLOW_LOCAL_MANIFESTS_OVERRIDE=true run_script
-  [ "${status}" -eq 0 ]
-  [ "$(cat "${TEST_DIR}/kaptain-out/product-aggregate/manifests-normalised/alpha/deployment.yaml")" = "overridden" ]
-  assert_output_contains "WARN: local manifest 'alpha/deployment.yaml' overrides"
 }
 
 teardown() {

@@ -12,6 +12,7 @@
 #   MANIFESTS_SUB_PATH             - Source directory, relative (default: src/kubernetes)
 #   DEFAULTS_SUB_PATH              - Source directory for default values (default: src/defaults)
 #   ALLOW_LOCAL_DEFAULTS_OVERRIDE  - Allow local defaults to override additional-defaults on collision (default: false)
+#   ALLOW_LOCAL_MANIFESTS_OVERRIDE - Allow local manifests to override additional-manifests on collision (default: false)
 #   PROJECT_NAME                   - For variable substitution (required)
 #   VERSION                        - For variable substitution (required)
 #   VERSION_MAJOR                  - Major version component (required)
@@ -92,6 +93,7 @@ main() {
   log "Config: ${CONFIG_SUB_PATH}"
   log "Defaults: ${DEFAULTS_SUB_PATH}"
   log "Allow local defaults override: ${ALLOW_LOCAL_DEFAULTS_OVERRIDE}"
+  log "Allow local manifests override: ${ALLOW_LOCAL_MANIFESTS_OVERRIDE}"
   log "Output: ${OUTPUT_SUB_PATH}"
   log "Project: ${PROJECT_NAME}"
   log "Version: ${VERSION}"
@@ -120,6 +122,48 @@ main() {
   else
     log ""
     log "Source directory not found: ${MANIFESTS_SUB_PATH}"
+  fi
+
+  # Foreign-contributor layer: merge additional-manifests/ into combined/.
+  # Strict policy: ALLOW_LOCAL_MANIFESTS_OVERRIDE=true => local wins on conflict (WARN).
+  # When false, any path collision fails the build — even byte-identical (unlike
+  # defaults, where duplicate paths between layers are expected by design).
+  if [[ -d "${MANIFESTS_ADDITIONAL_SUB_PATH}" ]] \
+     && [[ -n "$(find "${MANIFESTS_ADDITIONAL_SUB_PATH}" -type f 2>/dev/null)" ]]; then
+    local additional_manifests_count
+    additional_manifests_count=$(find "${MANIFESTS_ADDITIONAL_SUB_PATH}" -type f | wc -l | tr -d ' ')
+    log ""
+    log "Merging ${additional_manifests_count} additional manifest(s) from ${MANIFESTS_ADDITIONAL_SUB_PATH}"
+
+    local manifest_conflicts=()
+    local extra_manifest rel_manifest target_manifest
+    while IFS= read -r -d '' extra_manifest; do
+      rel_manifest="${extra_manifest#"${MANIFESTS_ADDITIONAL_SUB_PATH}/"}"
+      target_manifest="${MANIFESTS_COMBINED_SUB_PATH}/${rel_manifest}"
+
+      if [[ ! -e "${target_manifest}" ]]; then
+        mkdir -p "$(dirname "${target_manifest}")"
+        cp "${extra_manifest}" "${target_manifest}"
+        continue
+      fi
+
+      if [[ "${ALLOW_LOCAL_MANIFESTS_OVERRIDE}" == "true" ]]; then
+        log "WARN: local manifest '${rel_manifest}' overrides a file contributed via additional-manifests/"
+        continue
+      fi
+
+      manifest_conflicts+=("${rel_manifest}")
+    done < <(find "${MANIFESTS_ADDITIONAL_SUB_PATH}" -type f -print0)
+
+    if [[ ${#manifest_conflicts[@]} -gt 0 ]]; then
+      log_error "Manifest path collisions: files contributed via ${MANIFESTS_ADDITIONAL_SUB_PATH} already exist in the combined manifests (from ${MANIFESTS_SUB_PATH} or a pre-package-prepare hook):"
+      for rel_manifest in "${manifest_conflicts[@]}"; do
+        log_error "  ${rel_manifest}"
+      done
+      log_error "Either rename the colliding file, or set spec.main.manifests.allowLocalOverride: true"
+      log_error "(ALLOW_LOCAL_MANIFESTS_OVERRIDE=true) if the file in combined is intentionally authoritative."
+      exit 1
+    fi
   fi
 
   # Validate combined/ has files (from any source: hooks or src/kubernetes)

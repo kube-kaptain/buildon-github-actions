@@ -1274,8 +1274,6 @@ jobs:
           output-sub-path: ${{ steps.kpm.outputs.OUTPUT_SUB_PATH }}
           token-delimiter-style: ${{ steps.kpm.outputs.TOKEN_DELIMITER_STYLE }}
           token-name-style: ${{ steps.kpm.outputs.TOKEN_NAME_STYLE }}
-          manifests-sub-path: ${{ steps.kpm.outputs.MANIFESTS_SUB_PATH }}
-          product-allow-local-manifests-override: ${{ steps.kpm.outputs.PRODUCT_ALLOW_LOCAL_MANIFESTS_OVERRIDE }}
           docker-target-registry: ${{ steps.resolve-registry.outputs.docker-target-registry }}
           docker-target-namespace: ${{ steps.resolve-registry.outputs.docker-target-namespace }}
           image-build-command: ${{ steps.validate-tooling.outputs.IMAGE_BUILD_COMMAND }}
@@ -1306,9 +1304,10 @@ jobs:
         id: manifest-package-prepare
         uses: ./.github/buildon-github-actions/src/actions/kubernetes-manifests-package-prepare
         with:
-          manifests-sub-path: ${{ steps.product-aggregate.outputs.manifests-sub-path || steps.kpm.outputs.MANIFESTS_SUB_PATH }}
+          manifests-sub-path: ${{ steps.kpm.outputs.MANIFESTS_SUB_PATH }}
           defaults-sub-path: ${{ steps.kpm.outputs.DEFAULTS_SUB_PATH }}
           allow-local-defaults-override: ${{ steps.kpm.outputs.ALLOW_LOCAL_DEFAULTS_OVERRIDE }}
+          allow-local-manifests-override: ${{ steps.kpm.outputs.ALLOW_LOCAL_MANIFESTS_OVERRIDE }}
           product-name: ${{ steps.product-aggregate.outputs.product-name }}
           product-short-name: ${{ steps.product-aggregate.outputs.product-short-name }}
           project-name: ${{ steps.versions.outputs.project-name }}

@@ -1753,9 +1753,10 @@ jobs:
         id: manifest-package-prepare
         uses: ./.github/buildon-github-actions/src/actions/kubernetes-manifests-package-prepare
         with:
-          manifests-sub-path: ${{ steps.product-aggregate.outputs.manifests-sub-path || steps.kpm.outputs.MANIFESTS_SUB_PATH }}
+          manifests-sub-path: ${{ steps.kpm.outputs.MANIFESTS_SUB_PATH }}
           defaults-sub-path: ${{ steps.kpm.outputs.DEFAULTS_SUB_PATH }}
           allow-local-defaults-override: ${{ steps.kpm.outputs.ALLOW_LOCAL_DEFAULTS_OVERRIDE }}
+          allow-local-manifests-override: ${{ steps.kpm.outputs.ALLOW_LOCAL_MANIFESTS_OVERRIDE }}
           product-name: ${{ steps.product-aggregate.outputs.product-name }}
           product-short-name: ${{ steps.product-aggregate.outputs.product-short-name }}
           project-name: ${{ steps.versions.outputs.project-name }}

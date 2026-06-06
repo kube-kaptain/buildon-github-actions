@@ -8,34 +8,26 @@
 # products from including other products, then sources lib/content-resolve.bash
 # to fetch and stage every spec.contents entry. Per-bundle scheme conversion is
 # applied where automatic; cross-bundle defaults are merged byte-identical or
-# the build fails. The merged defaults are written to the foreign-contributor
-# drop dir ${OUTPUT_SUB_PATH}/manifests/additional-defaults/ for the downstream
-# kubernetes-manifests-package-prepare step to merge with the project's own
-# src/defaults.
+# the build fails.
+#
+# Outputs to the foreign-contributor drop dirs consumed by the downstream
+# kubernetes-manifests-package-prepare step:
+#   ${OUTPUT_SUB_PATH}/manifests/additional-manifests/ - normalised bundle manifest trees
+#   ${OUTPUT_SUB_PATH}/manifests/additional-defaults/  - merged bundle defaults
 #
 # Outputs (env + GITHUB_OUTPUT):
 #   PRODUCT_NAME           - PROJECT_NAME verbatim
 #   PRODUCT_SHORT_NAME     - PROJECT_NAME with product- prefix or -product suffix stripped
-#   MANIFESTS_SUB_PATH     - Override pointing downstream package-prepare at the
-#                            assembled tree (bundles + product's own src/kubernetes)
 #   PRODUCT_CONTENTS_FILE  - Path to a markdown file (one bullet per
 #                            spec.contents entry, verbatim) for the GitHub
 #                            release notes step to splice into its output
 #
 # Inputs (env vars):
-#   PROJECT_NAME                           - Required; must satisfy product naming rule
-#   TOKEN_DELIMITER_STYLE                  - Product's token delimiter style (default shell)
-#   TOKEN_NAME_STYLE                       - Product's token name style (default PascalCase)
-#   OUTPUT_SUB_PATH                        - Build output dir (default kaptain-out)
-#   MANIFESTS_SUB_PATH                     - Local product manifests dir (default src/kubernetes).
-#                                            Captured before the script overwrites this output
-#                                            with the assembled tree path; folded into the
-#                                            assembled tree before output.
-#   PRODUCT_ALLOW_LOCAL_MANIFESTS_OVERRIDE - When 'true', src/kubernetes files override
-#                                            colliding bundle-contributed paths (warn per
-#                                            replacement); when unset/false, any path collision
-#                                            fails the build.
-#   KAPTAINPM_FILE                         - Override path for testing (default kaptainpm/final/KaptainPM.yaml)
+#   PROJECT_NAME           - Required; must satisfy product naming rule
+#   TOKEN_DELIMITER_STYLE  - Product's token delimiter style (default shell)
+#   TOKEN_NAME_STYLE       - Product's token name style (default PascalCase)
+#   OUTPUT_SUB_PATH        - Build output dir (default kaptain-out)
+#   KAPTAINPM_FILE         - Override path for testing (default kaptainpm/final/KaptainPM.yaml)
 #
 set -euo pipefail
 
@@ -62,8 +54,6 @@ source "${SCRIPT_DIR}/../lib/assert-unique-artifact-refs.bash"
 
 PROJECT_NAME="${PROJECT_NAME:?PROJECT_NAME is required}"
 KAPTAINPM_FILE="${KAPTAINPM_FILE:-kaptainpm/final/KaptainPM.yaml}"
-LOCAL_MANIFESTS_SUB_PATH="${MANIFESTS_SUB_PATH:-src/kubernetes}"
-PRODUCT_ALLOW_LOCAL_MANIFESTS_OVERRIDE="${PRODUCT_ALLOW_LOCAL_MANIFESTS_OVERRIDE:-false}"
 UTIL_DIR="${SCRIPT_DIR}/../util"
 
 # Download/extract artefacts only — content-resolve owns this dir.
@@ -77,7 +67,6 @@ CONTENT_RESOLVED_FILE="${CONTENT_BASE}/contents-resolved.yaml"
 
 # Assembly artefacts — product-aggregate owns this dir.
 AGGREGATE_BASE="${OUTPUT_SUB_PATH}/product-aggregate"
-AGGREGATE_MANIFESTS_NORMALISED_DIR="${AGGREGATE_BASE}/manifests-normalised"
 AGGREGATE_DEFAULTS_NORMALISED_DIR="${AGGREGATE_BASE}/defaults-normalised"
 AGGREGATE_CONTENT_LIST_FILE="${AGGREGATE_BASE}/contents-list.md"
 
@@ -196,7 +185,7 @@ read_bundle_scheme() {
 convert_bundle_scheme_if_needed() {
   local bundle="$1"
   local manifests_dir="${CONTENT_MANIFESTS_DIR}/${bundle}"
-  local normalised_dir="${AGGREGATE_MANIFESTS_NORMALISED_DIR}/${bundle}"
+  local normalised_dir="${MANIFESTS_ADDITIONAL_SUB_PATH}/${bundle}"
   local contract_file="${CONTENT_CONTRACTS_DIR}/${bundle}/contract.yaml"
 
   read_bundle_scheme "${contract_file}"
@@ -321,7 +310,6 @@ convert_bundle_defaults_if_needed() {
 # MANIFESTS_ADDITIONAL_DEFAULTS_SUB_PATH (the foreign-contributor drop dir consumed
 # by kubernetes-manifests-package-prepare). Differing values fail with diagnostics.
 merge_bundle_defaults() {
-  rm -rf "${MANIFESTS_ADDITIONAL_DEFAULTS_SUB_PATH}"
   mkdir -p "${MANIFESTS_ADDITIONAL_DEFAULTS_SUB_PATH}"
   [[ -d "${AGGREGATE_DEFAULTS_NORMALISED_DIR}" ]] || return 0
 
@@ -378,40 +366,6 @@ merge_bundle_defaults() {
   rm -f "${index_file}"
 }
 
-# Fold the product's own ${LOCAL_MANIFESTS_SUB_PATH} into AGGREGATE_MANIFESTS_NORMALISED_DIR.
-# When PRODUCT_ALLOW_LOCAL_MANIFESTS_OVERRIDE is true, local files overwrite any
-# bundle-contributed file at the same relative path (one WARN log line per
-# replacement). When false, any path collision fails the build.
-merge_local_manifests() {
-  [[ -d "${LOCAL_MANIFESTS_SUB_PATH}" ]] || return 0
-
-  local file rel target
-  while IFS= read -r -d '' file; do
-    rel="${file#"${LOCAL_MANIFESTS_SUB_PATH}/"}"
-    target="${AGGREGATE_MANIFESTS_NORMALISED_DIR}/${rel}"
-
-    if [[ ! -e "${target}" ]]; then
-      mkdir -p "$(dirname "${target}")"
-      cp "${file}" "${target}"
-      continue
-    fi
-
-    if [[ "${PRODUCT_ALLOW_LOCAL_MANIFESTS_OVERRIDE}" == "true" ]]; then
-      log "WARN: local manifest '${rel}' overrides a file contributed by an upstream bundle"
-      cp "${file}" "${target}"
-      continue
-    fi
-
-    log_error "Manifest path collision for '${rel}':"
-    log_error "  upstream bundle: ${target}"
-    log_error "  local:           ${file}"
-    log_error "Local manifests collide with a bundle-contributed file. Either rename the"
-    log_error "local file or set spec.main.product.allowLocalManifestsOverride: true if the"
-    log_error "override is intentional."
-    return 1
-  done < <(find "${LOCAL_MANIFESTS_SUB_PATH}" -type f -print0)
-}
-
 main() {
   log "=== Kubernetes Product Aggregate ==="
   log "Project: ${PROJECT_NAME}"
@@ -444,7 +398,7 @@ main() {
   rm -rf "${CONTENT_BASE}" "${AGGREGATE_BASE}"
   mkdir -p "${CONTENT_MANIFESTS_DIR}" "${CONTENT_DEFAULTS_DIR}" "${CONTENT_CONTRACTS_DIR}" \
            "${CONTENT_EXTRACT_DIR}" "${CONTENT_UNZIPPED_DIR}"
-  mkdir -p "${AGGREGATE_MANIFESTS_NORMALISED_DIR}" "${AGGREGATE_DEFAULTS_NORMALISED_DIR}"
+  mkdir -p "${MANIFESTS_ADDITIONAL_SUB_PATH}" "${AGGREGATE_DEFAULTS_NORMALISED_DIR}"
 
   log ""
   log "Resolving spec.contents..."
@@ -470,15 +424,9 @@ main() {
   log ""
   merge_bundle_defaults
 
-  log ""
-  log "Folding in local manifests (${LOCAL_MANIFESTS_SUB_PATH}, allowLocalManifestsOverride=${PRODUCT_ALLOW_LOCAL_MANIFESTS_OVERRIDE})..."
-  log ""
-  merge_local_manifests
-
   mkdir -p "${AGGREGATE_BASE}"
   write_contents_list "${KAPTAINPM_FILE}" "${AGGREGATE_CONTENT_LIST_FILE}"
 
-  output_var "MANIFESTS_SUB_PATH" "${AGGREGATE_MANIFESTS_NORMALISED_DIR}"
   output_var "PRODUCT_CONTENTS_FILE" "${AGGREGATE_CONTENT_LIST_FILE}"
 
   log ""
