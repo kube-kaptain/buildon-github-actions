@@ -52,6 +52,7 @@ setup() {
     hook-pre-docker-prepare hook-post-docker-tests hook-pre-package-prepare hook-post-package-tests \
     kubernetes-manifests-package-prepare kubernetes-manifests-substitute kubernetes-manifests-package \
     kubernetes-product-aggregate \
+    kubernetes-templates-import \
     kubernetes-lineage-data-generate \
     kubernetes-manifests-contract-generate \
     kubernetes-manifests-package-only-token-override \
@@ -226,6 +227,7 @@ generate-kubernetes-serviceaccount
 generate-kubernetes-workload
 generate-kubernetes-poddisruptionbudget
 generate-kubernetes-service
+kubernetes-templates-import
 hook-pre-package-prepare
 kubernetes-manifests-package-prepare
 kubernetes-manifests-substitute
@@ -268,6 +270,7 @@ generate-kubernetes-serviceaccount
 generate-kubernetes-workload
 generate-kubernetes-poddisruptionbudget
 generate-kubernetes-service
+kubernetes-templates-import
 hook-pre-package-prepare
 kubernetes-manifests-package-prepare
 kubernetes-manifests-substitute
@@ -308,6 +311,7 @@ generate-kubernetes-serviceaccount
 generate-kubernetes-workload
 generate-kubernetes-poddisruptionbudget
 generate-kubernetes-service
+kubernetes-templates-import
 hook-pre-package-prepare
 kubernetes-manifests-package-prepare
 kubernetes-manifests-package-only-token-override
@@ -403,6 +407,7 @@ hook-post-versions-and-naming
 change-source-note-write
 release-change-data-generate
 release-change-data-oci-package
+kubernetes-templates-import
 hook-pre-package-prepare
 kubernetes-manifests-package-prepare
 kubernetes-manifests-package-only-token-override
@@ -476,6 +481,7 @@ release-change-data-generate
 release-change-data-oci-package
 docker-build-retag
 hook-post-docker-tests
+kubernetes-templates-import
 hook-pre-package-prepare
 kubernetes-manifests-package-prepare
 kubernetes-manifests-substitute
@@ -512,6 +518,7 @@ release-change-data-generate
 release-change-data-oci-package
 vendor-helm-render-and-process
 hook-post-docker-tests
+kubernetes-templates-import
 hook-pre-package-prepare
 vendor-helm-render-validate
 kubernetes-manifests-package-prepare

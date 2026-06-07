@@ -351,6 +351,7 @@ MAPPINGS=(
   "spec.main.manifests.defaults.allowLocalOverride:ALLOW_LOCAL_DEFAULTS_OVERRIDE"
   "spec.main.manifests.repoProvider.type:MANIFESTS_REPO_PROVIDER_TYPE"
   "spec.main.manifests.repoProvider.packagingBaseImage:MANIFESTS_PACKAGING_BASE_IMAGE"
+  "spec.main.manifests.templatesLayout:TEMPLATES_LAYOUT"
 
   # Change source
   "spec.main.changeSource.noteEnabled:CHANGE_SOURCE_NOTE_ENABLED"

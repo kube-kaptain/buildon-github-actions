@@ -1,0 +1,50 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
+
+name: 'Kubernetes Templates Import'
+description: 'Resolves spec.templates bundles and imports them into the additional-manifests and additional-defaults drop dirs (flat or hierarchy layout)'
+
+inputs:
+  # INJECT-INPUT: output-sub-path
+  # INJECT-INPUT: token-substitution
+  # INJECT-INPUT: docker-build
+  # INJECT-INPUT: image-build-command
+
+  # Action-specific inputs
+  project-name:
+    description: 'Project name (for log clarity)'
+    required: true
+  templates-layout:
+    description: 'Layout for imported template manifests: flat (default) or hierarchy'
+    required: false
+    default: 'flat'
+  is-release:
+    description: 'When true, template version ranges resolve to release-only bundle versions (excludes -PRERELEASE and platform-suffixed tags)'
+    required: false
+    default: 'false'
+
+outputs:
+  templates-list-file:
+    description: 'Path to markdown bullet list of spec.templates entries'
+    value: ${{ steps.templates-import.outputs.TEMPLATES_LIST_FILE }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Import templates
+      id: templates-import
+      shell: bash
+      env:
+        BUILD_MODE: build_server
+        BUILD_PLATFORM: github-actions
+        BUILD_PLATFORM_LOG_PROVIDER: github-actions
+        PROJECT_NAME: ${{ inputs.project-name }}
+        OUTPUT_SUB_PATH: ${{ inputs.output-sub-path }}
+        TOKEN_DELIMITER_STYLE: ${{ inputs.token-delimiter-style }}
+        TOKEN_NAME_STYLE: ${{ inputs.token-name-style }}
+        TEMPLATES_LAYOUT: ${{ inputs.templates-layout }}
+        DOCKER_TARGET_REGISTRY: ${{ inputs.docker-target-registry }}
+        DOCKER_TARGET_NAMESPACE: ${{ inputs.docker-target-namespace }}
+        IMAGE_BUILD_COMMAND: ${{ inputs.image-build-command }}
+        IS_RELEASE: ${{ inputs.is-release }}
+      run: "${{ github.action_path }}/../../scripts/main/kubernetes-templates-import"

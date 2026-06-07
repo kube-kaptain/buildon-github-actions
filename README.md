@@ -131,6 +131,7 @@ See [`examples/`](examples/) for more usage patterns.
 | `kubernetes-manifests-repo-provider-publish` | Publishes manifests via pluggable repo provider. Requires package step to run first. |
 | `kubernetes-manifests-substitute` | Phase A: copies prepared manifests and runs token substitution |
 | `kubernetes-product-aggregate` | Resolves spec.contents bundles, stages manifests/defaults into the additional-manifests and additional-defaults drop dirs for downstream packaging |
+| `kubernetes-templates-import` | Resolves spec.templates bundles and imports them into the additional-manifests and additional-defaults drop dirs (flat or hierarchy layout) |
 | `layer-package-prepare` | Prepares layer or layerset for OCI packaging - validates source, injects metadata, generates Dockerfile |
 | `layer-validate` | Validates substituted layer or layerset after docker build |
 | `release-change-data-generate` | Generates structured release change data YAML from commit history |
