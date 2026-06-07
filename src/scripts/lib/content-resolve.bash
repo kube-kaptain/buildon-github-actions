@@ -94,6 +94,10 @@ export CONTENT_BASE CONTENT_MANIFESTS_DIR CONTENT_DEFAULTS_DIR \
 log "content-resolve: flavour=${CONTENT_FLAVOUR}"
 log "content-resolve: base=${CONTENT_BASE}"
 
+# Sub-lib dependency: dedup check runs inside content_resolve_all.
+# shellcheck source=src/scripts/lib/assert-unique-artifact-refs.bash
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/assert-unique-artifact-refs.bash"
+
 _CONTENT_RESOLVE_UTIL_DIR="${_CONTENT_RESOLVE_UTIL_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../util" && pwd)}"
 _CONTENT_RESOLVE_PLUGINS_DIR="${_CONTENT_RESOLVE_PLUGINS_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../plugins" && pwd)}"
 _CONTENT_RESOLVE_SCHEMAS_DIR="${_CONTENT_RESOLVE_SCHEMAS_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../../schemas" && pwd)}"
@@ -400,6 +404,14 @@ content_resolve_all() {
     log_error "unzip is required for content_resolve_all"
     return 1
   fi
+
+  # Reject duplicate refs at the spec level before any fetch/extract work.
+  # 'name' mode collapses on the bare last-path segment because two refs that
+  # resolve to the same bundle/project metadata.name collide at staging
+  # regardless of where they were pulled from.
+  assert_unique_artifact_refs "${kaptainpm_file}" \
+    "${_CONTENT_RESOLVE_SPEC_EXPR}" \
+    "spec.${_CONTENT_RESOLVE_FILE_STEM}" name
 
   rm -rf "${CONTENT_BASE}"
   mkdir -p "${CONTENT_MANIFESTS_DIR}" "${CONTENT_DEFAULTS_DIR}" "${CONTENT_CONTRACTS_DIR}" \

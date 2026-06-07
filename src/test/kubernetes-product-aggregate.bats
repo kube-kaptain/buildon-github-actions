@@ -264,7 +264,7 @@ github_output_value() {
   write_pm "alpha:1.0" "alpha:2.0"
   run_script
   [ "${status}" -ne 0 ]
-  assert_output_contains "Product spec.contents contains duplicate"
+  assert_output_contains "spec.contents contains duplicate"
   assert_output_contains "alpha"
 }
 
@@ -273,7 +273,7 @@ github_output_value() {
   write_pm "ghcr.io/org-a/alpha:1.0" "ghcr.io/org-b/alpha:2.0"
   run_script
   [ "${status}" -ne 0 ]
-  assert_output_contains "Product spec.contents contains duplicate"
+  assert_output_contains "spec.contents contains duplicate"
   assert_output_contains "alpha"
 }
 
