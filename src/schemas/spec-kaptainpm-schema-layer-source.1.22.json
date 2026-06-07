@@ -1,15 +1,15 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/kube-kaptain/spec-kaptainpm-schema/releases/download/1.20/spec-kaptainpm-schema-layer-source-1.20.yaml",
+  "$id": "https://github.com/kube-kaptain/spec-kaptainpm-schema/releases/download/1.22/spec-kaptainpm-schema-layer-source-1.22.yaml",
   "name": "spec-kaptainpm-schema",
-  "version": "1.20",
+  "version": "1.22",
   "source": "https://github.com/kube-kaptain/spec-kaptainpm-schema",
   "latest": "https://raw.githubusercontent.com/kube-kaptain/spec-kaptainpm-schema/main/spec-kaptainpm-schema.yaml",
-  "tagged": "https://raw.githubusercontent.com/kube-kaptain/spec-kaptainpm-schema/1.20/spec-kaptainpm-schema.yaml",
-  "release": "https://github.com/kube-kaptain/spec-kaptainpm-schema/releases/download/1.20/spec-kaptainpm-schema-layer-source-1.20.yaml",
-  "validate-using": "https://github.com/kube-kaptain/spec-kaptainpm-schema/releases/download/1.20/spec-kaptainpm-schema-layer-source-1.20.json",
+  "tagged": "https://raw.githubusercontent.com/kube-kaptain/spec-kaptainpm-schema/1.22/spec-kaptainpm-schema.yaml",
+  "release": "https://github.com/kube-kaptain/spec-kaptainpm-schema/releases/download/1.22/spec-kaptainpm-schema-layer-source-1.22.yaml",
+  "validate-using": "https://github.com/kube-kaptain/spec-kaptainpm-schema/releases/download/1.22/spec-kaptainpm-schema-layer-source-1.22.json",
   "title": "KaptainPM",
-  "description": "Kaptain project manifest schema (version 1.20).\n",
+  "description": "Kaptain project manifest schema (version 1.22).\n",
   "type": "object",
   "required": [
     "apiVersion"
@@ -19,7 +19,7 @@
     "apiVersion": {
       "type": "string",
       "pattern": "^kaptain\\.org/[0-9]+(\\.[0-9]+)*$",
-      "description": "API version - must be kaptain.org/ followed by the schema version (e.g. kaptain.org/1.2). Set via 1.20 token substitution at build time.\n"
+      "description": "API version - must be kaptain.org/ followed by the schema version (e.g. kaptain.org/1.2). Set via 1.22 token substitution at build time.\n"
     },
     "kind": {
       "type": "string",
@@ -1943,6 +1943,14 @@
                   "description": "Base image for manifest packaging (default: scratch)"
                 }
               }
+            },
+            "templatesLayout": {
+              "type": "string",
+              "enum": [
+                "flat",
+                "hierarchy"
+              ],
+              "description": "How spec.templates entries land in the manifest tree of an app or bundle build. flat (default) merges every template's manifests into the shared foreign-contributor drop dirs with file-level collision detection, and each template's lineage CM is folded into this project's lineage CM as a data key. hierarchy keeps each template in its own per-bundle subdir, like spec.contents in a product or environment build. Has no effect on product or environment builds, where contents always land per-bundle and templates do not apply.\n"
             }
           }
         },
