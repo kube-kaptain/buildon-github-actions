@@ -6,6 +6,8 @@
 # This hook runs after docker build, before manifest packaging
 # Verifies that ALL exported variables are properly accessible
 
+bats_require_minimum_version 1.5.0
+
 load helpers
 
 setup() {
@@ -247,7 +249,7 @@ teardown() {
 
   run "$SCRIPTS_DIR/hook-pre-package-prepare"
   [ "$status" -eq 0 ]
-  [[ "$output" == *"No hook script configured"* ]]
+  [[ "$output" == *"No hook script configured"* ]] || return 1
 }
 
 @test "hook-pre-package-prepare exports all inputs from sourced defaults (self-validating)" {

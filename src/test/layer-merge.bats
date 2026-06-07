@@ -5,6 +5,8 @@
 # Tests for lib/layer-merge.bash
 # Covers strip payload, deep merge, record step, and validate type
 
+bats_require_minimum_version 1.5.0
+
 load helpers
 
 setup() {
@@ -37,7 +39,7 @@ EOF
   layer_strip_payload "${TEST_DIR}/input.yaml" "${TEST_DIR}/output.yaml"
   # layer-payload should be gone
   run yq eval '.["layer-payload"]' "${TEST_DIR}/output.yaml"
-  [[ "$output" == "null" ]]
+  [[ "$output" == "null" ]] || return 1
 }
 
 @test "strip_payload: preserves all other fields" {
@@ -57,13 +59,13 @@ user-data:
 EOF
   layer_strip_payload "${TEST_DIR}/input.yaml" "${TEST_DIR}/output.yaml"
   run yq eval '.apiVersion' "${TEST_DIR}/output.yaml"
-  [[ "$output" == "kaptain.org/1.2" ]]
+  [[ "$output" == "kaptain.org/1.2" ]] || return 1
   run yq eval '.kind' "${TEST_DIR}/output.yaml"
-  [[ "$output" == "KubeAppDockerDockerfile" ]]
+  [[ "$output" == "KubeAppDockerDockerfile" ]] || return 1
   run yq eval '.spec.main.quality.branches.blockSlashes' "${TEST_DIR}/output.yaml"
-  [[ "$output" == "true" ]]
+  [[ "$output" == "true" ]] || return 1
   run yq eval '.["user-data"].custom' "${TEST_DIR}/output.yaml"
-  [[ "$output" == "value" ]]
+  [[ "$output" == "value" ]] || return 1
 }
 
 @test "strip_payload: no-op when layer-payload absent" {
@@ -77,7 +79,7 @@ spec:
 EOF
   layer_strip_payload "${TEST_DIR}/input.yaml" "${TEST_DIR}/output.yaml"
   run yq eval '.spec.main.quality.branches.blockSlashes' "${TEST_DIR}/output.yaml"
-  [[ "$output" == "true" ]]
+  [[ "$output" == "true" ]] || return 1
 }
 
 # =============================================================================
@@ -103,9 +105,9 @@ spec:
 EOF
   layer_deep_merge "${TEST_DIR}/base.yaml" "${TEST_DIR}/overlay.yaml" "${TEST_DIR}/output.yaml"
   run yq eval '.kind' "${TEST_DIR}/output.yaml"
-  [[ "$output" == "OverlayKind" ]]
+  [[ "$output" == "OverlayKind" ]] || return 1
   run yq eval '.spec.main.quality.branches.blockSlashes' "${TEST_DIR}/output.yaml"
-  [[ "$output" == "true" ]]
+  [[ "$output" == "true" ]] || return 1
 }
 
 # =============================================================================
@@ -136,14 +138,14 @@ EOF
   layer_deep_merge "${TEST_DIR}/base.yaml" "${TEST_DIR}/overlay.yaml" "${TEST_DIR}/output.yaml"
   # Base fields preserved
   run yq eval '.spec.main.quality.branches.blockSlashes' "${TEST_DIR}/output.yaml"
-  [[ "$output" == "true" ]]
+  [[ "$output" == "true" ]] || return 1
   run yq eval '.spec.main.docker.dockerfile.squash' "${TEST_DIR}/output.yaml"
-  [[ "$output" == "squash" ]]
+  [[ "$output" == "squash" ]] || return 1
   # Overlay fields added
   run yq eval '.spec.main.quality.commits.requireConventional' "${TEST_DIR}/output.yaml"
-  [[ "$output" == "true" ]]
+  [[ "$output" == "true" ]] || return 1
   run yq eval '.spec.main.docker.dockerfile.noCache' "${TEST_DIR}/output.yaml"
-  [[ "$output" == "true" ]]
+  [[ "$output" == "true" ]] || return 1
 }
 
 @test "deep_merge: overlay adds new top-level keys" {
@@ -162,11 +164,11 @@ user-data:
 EOF
   layer_deep_merge "${TEST_DIR}/base.yaml" "${TEST_DIR}/overlay.yaml" "${TEST_DIR}/output.yaml"
   run yq eval '.apiVersion' "${TEST_DIR}/output.yaml"
-  [[ "$output" == "kaptain.org/1.2" ]]
+  [[ "$output" == "kaptain.org/1.2" ]] || return 1
   run yq eval '.kind' "${TEST_DIR}/output.yaml"
-  [[ "$output" == "KubeAppDockerDockerfile" ]]
+  [[ "$output" == "KubeAppDockerDockerfile" ]] || return 1
   run yq eval '.["user-data"].custom' "${TEST_DIR}/output.yaml"
-  [[ "$output" == "value" ]]
+  [[ "$output" == "value" ]] || return 1
 }
 
 # =============================================================================
@@ -187,9 +189,9 @@ spec:
 EOF
   layer_deep_merge "${TEST_DIR}/base.yaml" "${TEST_DIR}/overlay.yaml" "${TEST_DIR}/output.yaml"
   run yq eval '.spec.layers | length' "${TEST_DIR}/output.yaml"
-  [[ "$output" == "1" ]]
+  [[ "$output" == "1" ]] || return 1
   run yq eval '.spec.layers[0]' "${TEST_DIR}/output.yaml"
-  [[ "$output" == "ha-deployment:2.0" ]]
+  [[ "$output" == "ha-deployment:2.0" ]] || return 1
 }
 
 # =============================================================================
@@ -222,13 +224,13 @@ EOF
   layer_deep_merge "${TEST_DIR}/layer1.yaml" "${TEST_DIR}/layer2.yaml" "${TEST_DIR}/merged12.yaml"
   layer_deep_merge "${TEST_DIR}/merged12.yaml" "${TEST_DIR}/project.yaml" "${TEST_DIR}/final.yaml"
   run yq eval '.spec.main.quality.branches.blockSlashes' "${TEST_DIR}/final.yaml"
-  [[ "$output" == "true" ]]
+  [[ "$output" == "true" ]] || return 1
   run yq eval '.spec.main.quality.commits.requireConventional' "${TEST_DIR}/final.yaml"
-  [[ "$output" == "true" ]]
+  [[ "$output" == "true" ]] || return 1
   run yq eval '.spec.main.docker.dockerfile.subPath' "${TEST_DIR}/final.yaml"
-  [[ "$output" == "src/docker" ]]
+  [[ "$output" == "src/docker" ]] || return 1
   run yq eval '.kind' "${TEST_DIR}/final.yaml"
-  [[ "$output" == "KubeAppDockerDockerfile" ]]
+  [[ "$output" == "KubeAppDockerDockerfile" ]] || return 1
 }
 
 @test "deep_merge: later layer overrides earlier layer scalar" {
@@ -248,7 +250,7 @@ spec:
 EOF
   layer_deep_merge "${TEST_DIR}/layer1.yaml" "${TEST_DIR}/layer2.yaml" "${TEST_DIR}/output.yaml"
   run yq eval '.spec.main.generators.workload.replicas' "${TEST_DIR}/output.yaml"
-  [[ "$output" == "3" ]]
+  [[ "$output" == "3" ]] || return 1
 }
 
 # =============================================================================
@@ -262,7 +264,7 @@ apiVersion: kaptain.org/1.2
 kind: KubeAppDockerDockerfile
 EOF
   layer_record_step 0 "layer-quality-strict-1.0" "${TEST_DIR}/source.yaml" "${interp_dir}"
-  [[ -f "${interp_dir}/00-layer-quality-strict-1.0.yaml" ]]
+  [[ -f "${interp_dir}/00-layer-quality-strict-1.0.yaml" ]] || return 1
 }
 
 @test "record_step: zero-pads single digit step numbers" {
@@ -271,7 +273,7 @@ EOF
 test: data
 EOF
   layer_record_step 3 "something" "${TEST_DIR}/source.yaml" "${interp_dir}"
-  [[ -f "${interp_dir}/03-something.yaml" ]]
+  [[ -f "${interp_dir}/03-something.yaml" ]] || return 1
 }
 
 @test "record_step: handles double digit step numbers" {
@@ -280,7 +282,7 @@ EOF
 test: data
 EOF
   layer_record_step 12 "step-twelve" "${TEST_DIR}/source.yaml" "${interp_dir}"
-  [[ -f "${interp_dir}/12-step-twelve.yaml" ]]
+  [[ -f "${interp_dir}/12-step-twelve.yaml" ]] || return 1
 }
 
 @test "record_step: file content matches source" {
@@ -296,7 +298,7 @@ spec:
 EOF
   layer_record_step 0 "test" "${TEST_DIR}/source.yaml" "${interp_dir}"
   run diff "${TEST_DIR}/source.yaml" "${interp_dir}/00-test.yaml"
-  [[ "$status" -eq 0 ]]
+  [[ "$status" -eq 0 ]] || return 1
 }
 
 @test "record_step: creates interpolation directory if missing" {
@@ -305,8 +307,8 @@ EOF
 test: data
 EOF
   layer_record_step 0 "test" "${TEST_DIR}/source.yaml" "${interp_dir}"
-  [[ -d "${interp_dir}" ]]
-  [[ -f "${interp_dir}/00-test.yaml" ]]
+  [[ -d "${interp_dir}" ]] || return 1
+  [[ -f "${interp_dir}/00-test.yaml" ]] || return 1
 }
 
 # =============================================================================
@@ -380,8 +382,8 @@ spec:
         blockSlashes: true
 EOF
   run layer_validate_type "${TEST_DIR}/layer.yaml"
-  [[ "$status" -eq 1 ]]
-  [[ "$output" == *"main"* ]]
+  [[ "$status" -eq 1 ]] || return 1
+  [[ "$output" == *"main"* ]] || return 1
 }
 
 @test "validate_type: spec.layers with multiple other spec keys is invalid" {
@@ -400,7 +402,7 @@ spec:
         enabled: true
 EOF
   run layer_validate_type "${TEST_DIR}/layer.yaml"
-  [[ "$status" -eq 1 ]]
-  [[ "$output" == *"main"* ]]
-  [[ "$output" == *"platform"* ]]
+  [[ "$status" -eq 1 ]] || return 1
+  [[ "$output" == *"main"* ]] || return 1
+  [[ "$output" == *"platform"* ]] || return 1
 }

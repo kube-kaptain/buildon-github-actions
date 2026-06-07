@@ -8,6 +8,8 @@
 # staging via mocked OCI fetches, per-bundle scheme conversion routing, and
 # cross-bundle defaults conflict detection / merge.
 
+bats_require_minimum_version 1.5.0
+
 load helpers
 
 SCRIPT="$SCRIPTS_DIR/kubernetes-product-aggregate"

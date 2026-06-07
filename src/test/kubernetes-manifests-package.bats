@@ -5,6 +5,8 @@
 # Tests for kubernetes-manifests-package (phase B: zip the substituted tree).
 # Assumes kubernetes-manifests-substitute has already run.
 
+bats_require_minimum_version 1.5.0
+
 load helpers
 
 setup() {

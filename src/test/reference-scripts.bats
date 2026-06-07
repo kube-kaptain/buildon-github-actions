@@ -10,6 +10,8 @@
 # - Build type variations set TARGET_BRANCH correctly
 # - basic-quality-checks exports QC configuration variables
 
+bats_require_minimum_version 1.5.0
+
 load helpers
 
 # Create a mock script that logs its name and checks required env vars

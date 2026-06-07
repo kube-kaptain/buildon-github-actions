@@ -6,6 +6,8 @@
 #
 # Generates a manifests contract file and zip from substituted manifests.
 
+bats_require_minimum_version 1.5.0
+
 load helpers
 
 CONTRACT_SCRIPT="$SCRIPTS_DIR/kubernetes-manifests-contract-generate"
@@ -319,7 +321,7 @@ EOF
   printf '256Mi' > "${defaults_dir}/memory-request"
   run "$CONTRACT_SCRIPT"
   [ "$status" -ne 0 ]
-  [[ "${output}" == *"do not match the declared name style PascalCase"* ]]
+  [[ "${output}" == *"do not match the declared name style PascalCase"* ]] || return 1
 }
 
 @test "contract-generate: fails when a defaults file does not match any unresolved token" {
@@ -330,8 +332,8 @@ EOF
   printf 'oops' > "${defaults_dir}/UnreferencedToken"
   run "$CONTRACT_SCRIPT"
   [ "$status" -ne 0 ]
-  [[ "${output}" == *"do not correspond to any unresolved token"* ]]
-  [[ "${output}" == *"UnreferencedToken"* ]]
+  [[ "${output}" == *"do not correspond to any unresolved token"* ]] || return 1
+  [[ "${output}" == *"UnreferencedToken"* ]] || return 1
 }
 
 # =============================================================================

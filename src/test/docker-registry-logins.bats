@@ -4,6 +4,8 @@
 
 # Tests for docker-registry-logins script
 
+bats_require_minimum_version 1.5.0
+
 load helpers
 
 SCRIPT="$SCRIPTS_DIR/docker-registry-logins"
@@ -227,7 +229,7 @@ run_logins() {
 
   [ "$status" -eq 0 ]
   assert_output_contains "Skipping docker.io"
-  [[ "$output" != *"Logging in to docker.io"* ]]
+  [[ "$output" != *"Logging in to docker.io"* ]] || return 1
 }
 
 @test "docker-registry-logins (local): mixed - logs in to one, skips the other" {

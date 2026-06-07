@@ -7,6 +7,8 @@
 # source_dir and context_dir, case-sensitive filename validation, layerset
 # extras enforcement, copy behaviour.
 
+bats_require_minimum_version 1.5.0
+
 load helpers
 
 SCRIPT="$SCRIPTS_DIR/layer-package-prepare"
@@ -115,40 +117,40 @@ write_layerset_pm_with_layers() {
   export PROJECT_NAME="something-else"
   write_layer_pm "src/layer/KaptainPM.yaml"
   run "$SCRIPT"
-  [[ "$status" -ne 0 ]]
-  [[ "$output" == *"must start or end with"* ]]
+  [[ "$status" -ne 0 ]] || return 1
+  [[ "$output" == *"must start or end with"* ]] || return 1
 }
 
 @test "detects layer from prefix (layer-foo)" {
   export PROJECT_NAME="layer-foo"
   write_layer_pm "src/layer/KaptainPM.yaml"
   run "$SCRIPT"
-  [[ "$status" -eq 0 ]]
-  [[ "$output" == *"Layer type: layer"* ]]
+  [[ "$status" -eq 0 ]] || return 1
+  [[ "$output" == *"Layer type: layer"* ]] || return 1
 }
 
 @test "detects layer from suffix (foo-layer)" {
   export PROJECT_NAME="foo-layer"
   write_layer_pm "src/layer/KaptainPM.yaml"
   run "$SCRIPT"
-  [[ "$status" -eq 0 ]]
-  [[ "$output" == *"Layer type: layer"* ]]
+  [[ "$status" -eq 0 ]] || return 1
+  [[ "$output" == *"Layer type: layer"* ]] || return 1
 }
 
 @test "detects layerset from prefix (layerset-foo)" {
   export PROJECT_NAME="layerset-foo"
   write_layerset_pm "src/layerset/KaptainPM.yaml"
   run "$SCRIPT"
-  [[ "$status" -eq 0 ]]
-  [[ "$output" == *"Layer type: layerset"* ]]
+  [[ "$status" -eq 0 ]] || return 1
+  [[ "$output" == *"Layer type: layerset"* ]] || return 1
 }
 
 @test "detects layerset from suffix (foo-layerset)" {
   export PROJECT_NAME="foo-layerset"
   write_layerset_pm "src/layerset/KaptainPM.yaml"
   run "$SCRIPT"
-  [[ "$status" -eq 0 ]]
-  [[ "$output" == *"Layer type: layerset"* ]]
+  [[ "$status" -eq 0 ]] || return 1
+  [[ "$output" == *"Layer type: layerset"* ]] || return 1
 }
 
 @test "layerset suffix wins over layer suffix ambiguity (my-layerset)" {
@@ -157,8 +159,8 @@ write_layerset_pm_with_layers() {
   export PROJECT_NAME="my-layerset"
   write_layerset_pm "src/layerset/KaptainPM.yaml"
   run "$SCRIPT"
-  [[ "$status" -eq 0 ]]
-  [[ "$output" == *"Layer type: layerset"* ]]
+  [[ "$status" -eq 0 ]] || return 1
+  [[ "$output" == *"Layer type: layerset"* ]] || return 1
 }
 
 # =============================================================================
@@ -168,8 +170,8 @@ write_layerset_pm_with_layers() {
 @test "fails when KaptainPM.yaml is in neither source_dir nor context_dir" {
   export PROJECT_NAME="layer-foo"
   run "$SCRIPT"
-  [[ "$status" -ne 0 ]]
-  [[ "$output" == *"not found in src/layer/"* ]]
+  [[ "$status" -ne 0 ]] || return 1
+  [[ "$output" == *"not found in src/layer/"* ]] || return 1
 }
 
 @test "fails when KaptainPM.yaml is in both source_dir and context_dir" {
@@ -177,9 +179,9 @@ write_layerset_pm_with_layers() {
   write_layer_pm "src/layer/KaptainPM.yaml"
   write_layer_pm "${OUTPUT_SUB_PATH}/layer-build/context/KaptainPM.yaml"
   run "$SCRIPT"
-  [[ "$status" -ne 0 ]]
-  [[ "$output" == *"present in both"* ]]
-  [[ "$output" == *"pick one"* ]]
+  [[ "$status" -ne 0 ]] || return 1
+  [[ "$output" == *"present in both"* ]] || return 1
+  [[ "$output" == *"pick one"* ]] || return 1
 }
 
 # =============================================================================
@@ -190,9 +192,9 @@ write_layerset_pm_with_layers() {
   export PROJECT_NAME="layer-foo"
   write_layer_pm "src/layer/kaptainpm.yaml"
   run "$SCRIPT"
-  [[ "$status" -ne 0 ]]
-  [[ "$output" == *"case mismatch"* ]]
-  [[ "$output" == *"failed validation"* ]]
+  [[ "$status" -ne 0 ]] || return 1
+  [[ "$output" == *"case mismatch"* ]] || return 1
+  [[ "$output" == *"failed validation"* ]] || return 1
 }
 
 # =============================================================================
@@ -204,9 +206,9 @@ write_layerset_pm_with_layers() {
   write_layerset_pm "src/layerset/KaptainPM.yaml"
   echo "extra" > "src/layerset/unexpected.txt"
   run "$SCRIPT"
-  [[ "$status" -ne 0 ]]
-  [[ "$output" == *"Unexpected file in src/layerset/"* ]]
-  [[ "$output" == *"unexpected.txt"* ]]
+  [[ "$status" -ne 0 ]] || return 1
+  [[ "$output" == *"Unexpected file in src/layerset/"* ]] || return 1
+  [[ "$output" == *"unexpected.txt"* ]] || return 1
 }
 
 @test "layerset fails when context_dir has extra files alongside the manifest" {
@@ -215,9 +217,9 @@ write_layerset_pm_with_layers() {
   write_layerset_pm "${OUTPUT_SUB_PATH}/layer-build/context/KaptainPM.yaml"
   echo "extra" > "${OUTPUT_SUB_PATH}/layer-build/context/unexpected.txt"
   run "$SCRIPT"
-  [[ "$status" -ne 0 ]]
-  [[ "$output" == *"Unexpected file in"* ]]
-  [[ "$output" == *"unexpected.txt"* ]]
+  [[ "$status" -ne 0 ]] || return 1
+  [[ "$output" == *"Unexpected file in"* ]] || return 1
+  [[ "$output" == *"unexpected.txt"* ]] || return 1
 }
 
 # =============================================================================
@@ -229,9 +231,9 @@ write_layerset_pm_with_layers() {
   mkdir -p "${OUTPUT_SUB_PATH}/layer-build/context"
   write_layerset_pm "${OUTPUT_SUB_PATH}/layer-build/context/KaptainPM.yaml"
   run "$SCRIPT"
-  [[ "$status" -eq 0 ]]
-  [[ -f "${OUTPUT_SUB_PATH}/layer-build/context/KaptainPM.yaml" ]]
-  [[ -f "${OUTPUT_SUB_PATH}/layer-build/context/Dockerfile" ]]
+  [[ "$status" -eq 0 ]] || return 1
+  [[ -f "${OUTPUT_SUB_PATH}/layer-build/context/KaptainPM.yaml" ]] || return 1
+  [[ -f "${OUTPUT_SUB_PATH}/layer-build/context/Dockerfile" ]] || return 1
 }
 
 # =============================================================================
@@ -245,10 +247,10 @@ write_layerset_pm_with_layers() {
   mkdir -p "src/layer/subdir"
   echo "nested" > "src/layer/subdir/nested.txt"
   run "$SCRIPT"
-  [[ "$status" -eq 0 ]]
-  [[ -f "${OUTPUT_SUB_PATH}/layer-build/context/KaptainPM.yaml" ]]
-  [[ -f "${OUTPUT_SUB_PATH}/layer-build/context/extra-static.txt" ]]
-  [[ -f "${OUTPUT_SUB_PATH}/layer-build/context/subdir/nested.txt" ]]
+  [[ "$status" -eq 0 ]] || return 1
+  [[ -f "${OUTPUT_SUB_PATH}/layer-build/context/KaptainPM.yaml" ]] || return 1
+  [[ -f "${OUTPUT_SUB_PATH}/layer-build/context/extra-static.txt" ]] || return 1
+  [[ -f "${OUTPUT_SUB_PATH}/layer-build/context/subdir/nested.txt" ]] || return 1
 }
 
 # =============================================================================
@@ -260,9 +262,9 @@ write_layerset_pm_with_layers() {
   mkdir -p "${OUTPUT_SUB_PATH}/layer-build/context"
   write_layer_pm "${OUTPUT_SUB_PATH}/layer-build/context/KaptainPM.yaml"
   run "$SCRIPT"
-  [[ "$status" -eq 0 ]]
-  [[ -f "${OUTPUT_SUB_PATH}/layer-build/context/KaptainPM.yaml" ]]
-  [[ -f "${OUTPUT_SUB_PATH}/layer-build/context/Dockerfile" ]]
+  [[ "$status" -eq 0 ]] || return 1
+  [[ -f "${OUTPUT_SUB_PATH}/layer-build/context/KaptainPM.yaml" ]] || return 1
+  [[ -f "${OUTPUT_SUB_PATH}/layer-build/context/Dockerfile" ]] || return 1
 }
 
 # =============================================================================
@@ -273,30 +275,30 @@ write_layerset_pm_with_layers() {
   export PROJECT_NAME="layer-foo"
   write_layer_pm "src/layer/KaptainPM.yaml"
   run "$SCRIPT"
-  [[ "$status" -eq 0 ]]
+  [[ "$status" -eq 0 ]] || return 1
 
   pm_yaml=$(cat "${OUTPUT_SUB_PATH}/layer-build/context/KaptainPM.yaml")
-  [[ "$pm_yaml" == *'kaptain.org/version: "1.0.0"'* ]]
-  [[ "$pm_yaml" == *"kaptain.org/project-name: layer-foo"* ]]
-  [[ "$pm_yaml" == *"kaptain.org/owner: kube-kaptain"* ]]
+  [[ "$pm_yaml" == *'kaptain.org/version: "1.0.0"'* ]] || return 1
+  [[ "$pm_yaml" == *"kaptain.org/project-name: layer-foo"* ]] || return 1
+  [[ "$pm_yaml" == *"kaptain.org/owner: kube-kaptain"* ]] || return 1
 }
 
 @test "layer injects kaptain.org annotations including build-timestamp" {
   export PROJECT_NAME="layer-foo"
   write_layer_pm "src/layer/KaptainPM.yaml"
   run "$SCRIPT"
-  [[ "$status" -eq 0 ]]
+  [[ "$status" -eq 0 ]] || return 1
 
   pm_yaml=$(cat "${OUTPUT_SUB_PATH}/layer-build/context/KaptainPM.yaml")
   # project-name and version live on labels only, not annotations
   annotation_keys=$(yq eval '.metadata.annotations | keys | .[]' "${OUTPUT_SUB_PATH}/layer-build/context/KaptainPM.yaml")
-  [[ "$annotation_keys" != *'kaptain.org/project-name'* ]]
-  [[ "$annotation_keys" != *'kaptain.org/version'* ]]
+  [[ "$annotation_keys" != *'kaptain.org/project-name'* ]] || return 1
+  [[ "$annotation_keys" != *'kaptain.org/version'* ]] || return 1
   # Build traceability annotations
-  [[ "$pm_yaml" == *"kaptain.org/build-timestamp:"* ]]
-  [[ "$pm_yaml" == *"kaptain.org/built-by: test"* ]]
-  [[ "$pm_yaml" == *"kaptain.org/source-repository: kube-kaptain/layer-test"* ]]
-  [[ "$pm_yaml" == *"kaptain.org/image-uri: ghcr.io/kube-kaptain/layer/layer-test:1.0.0"* ]]
+  [[ "$pm_yaml" == *"kaptain.org/build-timestamp:"* ]] || return 1
+  [[ "$pm_yaml" == *"kaptain.org/built-by: test"* ]] || return 1
+  [[ "$pm_yaml" == *"kaptain.org/source-repository: kube-kaptain/layer-test"* ]] || return 1
+  [[ "$pm_yaml" == *"kaptain.org/image-uri: ghcr.io/kube-kaptain/layer/layer-test:1.0.0"* ]] || return 1
 }
 
 # =============================================================================
@@ -312,9 +314,9 @@ write_layerset_pm_with_layers() {
   export MOCK_DOCKER_MANIFEST_EXISTS=true
   write_layerset_pm "src/layerset/KaptainPM.yaml"
   run "$SCRIPT"
-  [[ "$status" -eq 0 ]]
-  [[ "$output" == *"Verifying remote existence"* ]]
-  [[ "$output" == *"Remote existence verification complete"* ]]
+  [[ "$status" -eq 0 ]] || return 1
+  [[ "$output" == *"Verifying remote existence"* ]] || return 1
+  [[ "$output" == *"Remote existence verification complete"* ]] || return 1
 }
 
 @test "layerset fails when a spec.layers entry does not exist at remote" {
@@ -323,16 +325,16 @@ write_layerset_pm_with_layers() {
   export MOCK_DOCKER_PULL_FAILS=true
   write_layerset_pm "src/layerset/KaptainPM.yaml"
   run "$SCRIPT"
-  [[ "$status" -ne 0 ]]
-  [[ "$output" == *"Layer dependency does not exist at remote"* ]]
+  [[ "$status" -ne 0 ]] || return 1
+  [[ "$output" == *"Layer dependency does not exist at remote"* ]] || return 1
 }
 
 @test "layer path does not run remote-existence verification" {
   export PROJECT_NAME="layer-foo"
   write_layer_pm "src/layer/KaptainPM.yaml"
   run "$SCRIPT"
-  [[ "$status" -eq 0 ]]
-  [[ "$output" != *"Verifying remote existence"* ]]
+  [[ "$status" -eq 0 ]] || return 1
+  [[ "$output" != *"Verifying remote existence"* ]] || return 1
 }
 
 # =============================================================================
@@ -344,11 +346,11 @@ write_layerset_pm_with_layers() {
   write_layerset_pm_with_layers "src/layerset/KaptainPM.yaml" \
     "quality-strict:1.0.0"
   run "$SCRIPT"
-  [[ "$status" -eq 0 ]]
+  [[ "$status" -eq 0 ]] || return 1
 
   local resolved
   resolved=$(yq -r '.spec.layers[0]' "${OUTPUT_SUB_PATH}/layer-build/context/KaptainPM.yaml")
-  [[ "${resolved}" == "ghcr.io/kube-kaptain/quality/quality-strict:1.0.0" ]]
+  [[ "${resolved}" == "ghcr.io/kube-kaptain/quality/quality-strict:1.0.0" ]] || return 1
 }
 
 @test "layerset expands prefixed-form spec.layers ref to full URI" {
@@ -356,11 +358,11 @@ write_layerset_pm_with_layers() {
   write_layerset_pm_with_layers "src/layerset/KaptainPM.yaml" \
     "quality/quality-strict:1.0.0"
   run "$SCRIPT"
-  [[ "$status" -eq 0 ]]
+  [[ "$status" -eq 0 ]] || return 1
 
   local resolved
   resolved=$(yq -r '.spec.layers[0]' "${OUTPUT_SUB_PATH}/layer-build/context/KaptainPM.yaml")
-  [[ "${resolved}" == "ghcr.io/kube-kaptain/quality/quality-strict:1.0.0" ]]
+  [[ "${resolved}" == "ghcr.io/kube-kaptain/quality/quality-strict:1.0.0" ]] || return 1
 }
 
 @test "layerset preserves already-full-form spec.layers ref unchanged" {
@@ -368,11 +370,11 @@ write_layerset_pm_with_layers() {
   write_layerset_pm_with_layers "src/layerset/KaptainPM.yaml" \
     "ghcr.io/kube-kaptain/quality/quality-strict:1.0.0"
   run "$SCRIPT"
-  [[ "$status" -eq 0 ]]
+  [[ "$status" -eq 0 ]] || return 1
 
   local resolved
   resolved=$(yq -r '.spec.layers[0]' "${OUTPUT_SUB_PATH}/layer-build/context/KaptainPM.yaml")
-  [[ "${resolved}" == "ghcr.io/kube-kaptain/quality/quality-strict:1.0.0" ]]
+  [[ "${resolved}" == "ghcr.io/kube-kaptain/quality/quality-strict:1.0.0" ]] || return 1
 }
 
 @test "does not remove pre-existing files in context_dir (no rm-rf)" {
@@ -381,10 +383,10 @@ write_layerset_pm_with_layers() {
   mkdir -p "${OUTPUT_SUB_PATH}/layer-build/context"
   echo "pre-existing" > "${OUTPUT_SUB_PATH}/layer-build/context/hook-generated.txt"
   run "$SCRIPT"
-  [[ "$status" -eq 0 ]]
-  [[ -f "${OUTPUT_SUB_PATH}/layer-build/context/hook-generated.txt" ]]
+  [[ "$status" -eq 0 ]] || return 1
+  [[ -f "${OUTPUT_SUB_PATH}/layer-build/context/hook-generated.txt" ]] || return 1
   run cat "${OUTPUT_SUB_PATH}/layer-build/context/hook-generated.txt"
-  [[ "$output" == "pre-existing" ]]
+  [[ "$output" == "pre-existing" ]] || return 1
 }
 
 teardown() {

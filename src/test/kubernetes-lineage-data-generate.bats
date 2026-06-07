@@ -15,6 +15,8 @@
 # env/rp builds the working dirs are namespaced under ENV_BUILD_SECTION so the
 # script can run twice against the same OUTPUT_SUB_PATH.
 
+bats_require_minimum_version 1.5.0
+
 load helpers
 
 SCRIPT="$SCRIPTS_DIR/kubernetes-lineage-data-generate"

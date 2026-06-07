@@ -8,6 +8,8 @@
 # name) scheme to another, in place. Built on the regex/format/canonical
 # primitives in lib/token-format.bash.
 
+bats_require_minimum_version 1.5.0
+
 load helpers
 
 CONVERT_SCRIPT="$UTIL_DIR/convert-tokens-in-tree"

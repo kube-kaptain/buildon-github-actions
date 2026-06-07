@@ -6,6 +6,8 @@
 # Covers routing, provider prefix parsing, default provider, and pass/fail
 # behaviour against a mocked `docker manifest inspect`.
 
+bats_require_minimum_version 1.5.0
+
 load helpers
 
 SCRIPT="$UTIL_DIR/artifact-exists"
@@ -23,7 +25,7 @@ setup() {
 @test "exists: routes to docker provider by default and returns 0 when present" {
   export MOCK_DOCKER_MANIFEST_EXISTS=true
   run "$SCRIPT" "ghcr.io/kube-kaptain/quality/quality-strict:1.0.0"
-  [[ "$status" -eq 0 ]]
+  [[ "$status" -eq 0 ]] || return 1
   assert_output_contains "Exists:"
 }
 
@@ -31,14 +33,14 @@ setup() {
   export MOCK_DOCKER_MANIFEST_EXISTS=false
   export MOCK_DOCKER_PULL_FAILS=true
   run "$SCRIPT" "ghcr.io/kube-kaptain/quality/quality-strict:1.0.0"
-  [[ "$status" -ne 0 ]]
+  [[ "$status" -ne 0 ]] || return 1
   assert_output_contains "Does not exist at remote"
 }
 
 @test "exists: falls back to pull when manifest inspect fails (single-image tag)" {
   export MOCK_DOCKER_MANIFEST_EXISTS=false
   run "$SCRIPT" "ghcr.io/kube-kaptain/quality/quality-strict:1.0.0"
-  [[ "$status" -eq 0 ]]
+  [[ "$status" -eq 0 ]] || return 1
   assert_output_contains "Exists:"
   assert_docker_called "pull --quiet ghcr.io/kube-kaptain/quality/quality-strict:1.0.0"
 }
@@ -46,7 +48,7 @@ setup() {
 @test "exists: invokes docker manifest inspect with the reference" {
   export MOCK_DOCKER_MANIFEST_EXISTS=true
   run "$SCRIPT" "ghcr.io/kube-kaptain/quality/quality-strict:1.0.0"
-  [[ "$status" -eq 0 ]]
+  [[ "$status" -eq 0 ]] || return 1
   assert_docker_called "manifest inspect ghcr.io/kube-kaptain/quality/quality-strict:1.0.0"
 }
 
@@ -57,7 +59,7 @@ setup() {
 @test "exists: docker| prefix routes to docker provider" {
   export MOCK_DOCKER_MANIFEST_EXISTS=true
   run "$SCRIPT" "docker|ghcr.io/kube-kaptain/quality/quality-strict:1.0.0"
-  [[ "$status" -eq 0 ]]
+  [[ "$status" -eq 0 ]] || return 1
 }
 
 # =============================================================================
@@ -66,7 +68,7 @@ setup() {
 
 @test "exists: fails for unknown explicit provider" {
   run "$SCRIPT" "nonexistent|ghcr.io/kube-kaptain/quality/quality-strict:1.0.0"
-  [[ "$status" -ne 0 ]]
+  [[ "$status" -ne 0 ]] || return 1
   assert_output_contains "Unknown artifact-exists provider: nonexistent"
 }
 
@@ -76,13 +78,13 @@ setup() {
 
 @test "exists: fails with no arguments" {
   run "$SCRIPT"
-  [[ "$status" -ne 0 ]]
+  [[ "$status" -ne 0 ]] || return 1
 }
 
 @test "exists: docker plugin fails on reference missing version" {
   export MOCK_DOCKER_MANIFEST_EXISTS=true
   run "$SCRIPT" "ghcr.io/kube-kaptain/quality/quality-strict"
-  [[ "$status" -ne 0 ]]
+  [[ "$status" -ne 0 ]] || return 1
   assert_output_contains "missing version"
 }
 
@@ -94,7 +96,7 @@ setup() {
   export IMAGE_BUILD_COMMAND="podman"
   export MOCK_DOCKER_MANIFEST_EXISTS=true
   run "$SCRIPT" "ghcr.io/kube-kaptain/quality/quality-strict:1.0.0"
-  [[ "$status" -eq 0 ]]
+  [[ "$status" -eq 0 ]] || return 1
 }
 
 # =============================================================================
@@ -109,7 +111,7 @@ setup() {
   export DOCKER_TARGET_REGISTRY="ghcr.io"
   export DOCKER_TARGET_NAMESPACE="kube-kaptain"
   run "$SCRIPT" "layer-github-flow-strict:1.1"
-  [[ "$status" -eq 0 ]]
+  [[ "$status" -eq 0 ]] || return 1
   assert_docker_called "manifest inspect ghcr.io/kube-kaptain/layer/layer-github-flow-strict:1.1"
 }
 
@@ -118,7 +120,7 @@ setup() {
   unset DOCKER_TARGET_REGISTRY || true
   export DOCKER_TARGET_NAMESPACE="kube-kaptain"
   run "$SCRIPT" "layer-github-flow-strict:1.1"
-  [[ "$status" -ne 0 ]]
+  [[ "$status" -ne 0 ]] || return 1
   assert_output_contains "DOCKER_TARGET_REGISTRY is required for short-form reference"
 }
 
@@ -127,7 +129,7 @@ setup() {
   export DOCKER_TARGET_REGISTRY="ghcr.io"
   unset DOCKER_TARGET_NAMESPACE || true
   run "$SCRIPT" "layer-github-flow-strict:1.1"
-  [[ "$status" -ne 0 ]]
+  [[ "$status" -ne 0 ]] || return 1
   assert_output_contains "DOCKER_TARGET_NAMESPACE is required for short-form reference"
 }
 
@@ -136,7 +138,7 @@ setup() {
   export DOCKER_TARGET_REGISTRY="ghcr.io"
   export DOCKER_TARGET_NAMESPACE="kube-kaptain"
   run "$SCRIPT" "quality/quality-strict:1.0.0"
-  [[ "$status" -eq 0 ]]
+  [[ "$status" -eq 0 ]] || return 1
   assert_docker_called "manifest inspect ghcr.io/kube-kaptain/quality/quality-strict:1.0.0"
 }
 
@@ -145,7 +147,7 @@ setup() {
   export DOCKER_TARGET_REGISTRY="ghcr.io"
   export DOCKER_TARGET_NAMESPACE="kube-kaptain"
   run "$SCRIPT" "wrongprefix/quality-strict:1.0.0"
-  [[ "$status" -ne 0 ]]
+  [[ "$status" -ne 0 ]] || return 1
   assert_output_contains "Prefix mismatch"
 }
 
@@ -154,14 +156,14 @@ setup() {
   unset DOCKER_TARGET_REGISTRY || true
   unset DOCKER_TARGET_NAMESPACE || true
   run "$SCRIPT" "ghcr.io/kube-kaptain/quality/quality-strict:1.0.0"
-  [[ "$status" -eq 0 ]]
+  [[ "$status" -eq 0 ]] || return 1
   assert_docker_called "manifest inspect ghcr.io/kube-kaptain/quality/quality-strict:1.0.0"
 }
 
 @test "exists: full-form ref fails on prefix mismatch" {
   export MOCK_DOCKER_MANIFEST_EXISTS=true
   run "$SCRIPT" "ghcr.io/kube-kaptain/wrongprefix/quality-strict:1.0.0"
-  [[ "$status" -ne 0 ]]
+  [[ "$status" -ne 0 ]] || return 1
   assert_output_contains "Prefix mismatch"
 }
 

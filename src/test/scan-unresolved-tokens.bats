@@ -7,6 +7,8 @@
 # Scans manifest files for unresolved token references matching a given
 # delimiter style and name style. Returns sorted, deduplicated token names.
 
+bats_require_minimum_version 1.5.0
+
 load helpers
 
 SCAN_SCRIPT="$UTIL_DIR/scan-unresolved-tokens"

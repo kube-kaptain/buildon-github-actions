@@ -6,6 +6,8 @@
 # This hook runs after manifest packaging, before publish
 # Verifies that ALL exported variables are properly accessible
 
+bats_require_minimum_version 1.5.0
+
 load helpers
 
 setup() {
@@ -249,7 +251,7 @@ teardown() {
 
   run "$SCRIPTS_DIR/hook-post-package-tests"
   [ "$status" -eq 0 ]
-  [[ "$output" == *"No hook script configured"* ]]
+  [[ "$output" == *"No hook script configured"* ]] || return 1
 }
 
 @test "hook-post-package-tests exports all inputs from sourced defaults (self-validating)" {

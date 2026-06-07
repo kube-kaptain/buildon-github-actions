@@ -6,6 +6,8 @@
 # Covers: multi-doc split (Stage 3), moveFiles (Stage 4), sed replace (Stage 5),
 # yq transform (Stage 6), YAML validation (Stage 8), and non-template dir copy.
 
+bats_require_minimum_version 1.5.0
+
 load helpers
 
 SCRIPT="$SCRIPTS_DIR/vendor-helm-render-and-process"
@@ -215,19 +217,19 @@ run_script() {
 
   # The deployment and service should still have their full content
   local dep_file="${REPO_DIR}/kaptain-out/helm-processing/G-annotated/deployment.yaml"
-  [[ -f "${dep_file}" ]]
+  [[ -f "${dep_file}" ]] || return 1
   local dep_content
   dep_content=$(cat "${dep_file}")
-  [[ "${dep_content}" == *"kind: Deployment"* ]]
-  [[ "${dep_content}" == *"spec:"* ]]
-  [[ "${dep_content}" == *"containers:"* ]]
+  [[ "${dep_content}" == *"kind: Deployment"* ]] || return 1
+  [[ "${dep_content}" == *"spec:"* ]] || return 1
+  [[ "${dep_content}" == *"containers:"* ]] || return 1
 
   local svc_file="${REPO_DIR}/kaptain-out/helm-processing/G-annotated/service.yaml"
-  [[ -f "${svc_file}" ]]
+  [[ -f "${svc_file}" ]] || return 1
   local svc_content
   svc_content=$(cat "${svc_file}")
-  [[ "${svc_content}" == *"kind: Service"* ]]
-  [[ "${svc_content}" == *"ports:"* ]]
+  [[ "${svc_content}" == *"kind: Service"* ]] || return 1
+  [[ "${svc_content}" == *"ports:"* ]] || return 1
 }
 
 @test "yq perFile-only transform applies expression to targeted file" {
@@ -238,14 +240,14 @@ run_script() {
   run_script
 
   local cr_file="${REPO_DIR}/kaptain-out/helm-processing/G-annotated/clusterrole.yaml"
-  [[ -f "${cr_file}" ]]
+  [[ -f "${cr_file}" ]] || return 1
   local cr_content
   cr_content=$(cat "${cr_file}")
   # The name should have been prefixed
-  [[ "${cr_content}" == *"prefix:test-chart-role"* ]]
+  [[ "${cr_content}" == *"prefix:test-chart-role"* ]] || return 1
   # But the rest of the document should still be intact
-  [[ "${cr_content}" == *"kind: ClusterRole"* ]]
-  [[ "${cr_content}" == *"rules:"* ]]
+  [[ "${cr_content}" == *"kind: ClusterRole"* ]] || return 1
+  [[ "${cr_content}" == *"rules:"* ]] || return 1
 }
 
 @test "yq perFile transform with multiple expressions on same file" {
@@ -256,13 +258,13 @@ run_script() {
   run_script
 
   local crb_file="${REPO_DIR}/kaptain-out/helm-processing/G-annotated/clusterrolebinding.yaml"
-  [[ -f "${crb_file}" ]]
+  [[ -f "${crb_file}" ]] || return 1
   local crb_content
   crb_content=$(cat "${crb_file}")
-  [[ "${crb_content}" == *"prefix:test-chart-rolebinding"* ]]
-  [[ "${crb_content}" == *"prefix:test-chart-role"* ]]
-  [[ "${crb_content}" == *"kind: ClusterRoleBinding"* ]]
-  [[ "${crb_content}" == *"subjects:"* ]]
+  [[ "${crb_content}" == *"prefix:test-chart-rolebinding"* ]] || return 1
+  [[ "${crb_content}" == *"prefix:test-chart-role"* ]] || return 1
+  [[ "${crb_content}" == *"kind: ClusterRoleBinding"* ]] || return 1
+  [[ "${crb_content}" == *"subjects:"* ]] || return 1
 }
 
 @test "yq global transform applies to all manifests without nuking" {
@@ -275,12 +277,12 @@ run_script() {
   # All manifests should have the label and still retain full content
   for f in deployment.yaml service.yaml clusterrole.yaml clusterrolebinding.yaml; do
     local file="${REPO_DIR}/kaptain-out/helm-processing/G-annotated/${f}"
-    [[ -f "${file}" ]]
+    [[ -f "${file}" ]] || return 1
     local content
     content=$(cat "${file}")
-    [[ "${content}" == *"custom-label"* ]]
-    [[ "${content}" == *"kind:"* ]]
-    [[ "${content}" == *"metadata:"* ]]
+    [[ "${content}" == *"custom-label"* ]] || return 1
+    [[ "${content}" == *"kind:"* ]] || return 1
+    [[ "${content}" == *"metadata:"* ]] || return 1
   done
 }
 
@@ -296,18 +298,18 @@ run_script() {
     local file="${REPO_DIR}/kaptain-out/helm-processing/G-annotated/${f}"
     local content
     content=$(cat "${file}")
-    [[ "${content}" == *"global-label"* ]]
+    [[ "${content}" == *"global-label"* ]] || return 1
   done
 
   # perFile only on clusterrole
   local cr_content
   cr_content=$(cat "${REPO_DIR}/kaptain-out/helm-processing/G-annotated/clusterrole.yaml")
-  [[ "${cr_content}" == *"env:test-chart-role"* ]]
+  [[ "${cr_content}" == *"env:test-chart-role"* ]] || return 1
 
   # Other files should NOT have the prefix
   local dep_content
   dep_content=$(cat "${REPO_DIR}/kaptain-out/helm-processing/G-annotated/deployment.yaml")
-  [[ "${dep_content}" != *"env:test-chart"* ]]
+  [[ "${dep_content}" != *"env:test-chart"* ]] || return 1
 }
 
 @test "no yq transforms preserves all manifest content" {
@@ -319,12 +321,12 @@ run_script() {
 
   # All manifests should pass through intact
   local dep_file="${REPO_DIR}/kaptain-out/helm-processing/G-annotated/deployment.yaml"
-  [[ -f "${dep_file}" ]]
+  [[ -f "${dep_file}" ]] || return 1
   local dep_content
   dep_content=$(cat "${dep_file}")
-  [[ "${dep_content}" == *"kind: Deployment"* ]]
-  [[ "${dep_content}" == *"containers:"* ]]
-  [[ "${dep_content}" == *"nginx:1.25"* ]]
+  [[ "${dep_content}" == *"kind: Deployment"* ]] || return 1
+  [[ "${dep_content}" == *"containers:"* ]] || return 1
+  [[ "${dep_content}" == *"nginx:1.25"* ]] || return 1
 }
 
 @test "empty yq transform object does not nuke manifests" {
@@ -335,11 +337,11 @@ run_script() {
   run_script
 
   local dep_file="${REPO_DIR}/kaptain-out/helm-processing/G-annotated/deployment.yaml"
-  [[ -f "${dep_file}" ]]
+  [[ -f "${dep_file}" ]] || return 1
   local dep_content
   dep_content=$(cat "${dep_file}")
-  [[ "${dep_content}" == *"kind: Deployment"* ]]
-  [[ "${dep_content}" == *"spec:"* ]]
+  [[ "${dep_content}" == *"kind: Deployment"* ]] || return 1
+  [[ "${dep_content}" == *"spec:"* ]] || return 1
 }
 
 @test "yq perFile warns on non-existent target file" {
@@ -348,8 +350,8 @@ run_script() {
   export VENDOR_HELM_RENDERED_YQ_TRANSFORM='{"perFile":[{"file":"nonexistent.yaml","expressions":[".metadata.name = \"foo\""]}]}'
 
   run_script
-  [[ "$status" -eq 0 ]]
-  [[ "$output" == *"WARNING: yq perFile target 'nonexistent.yaml' not found"* ]]
+  [[ "$status" -eq 0 ]] || return 1
+  [[ "$output" == *"WARNING: yq perFile target 'nonexistent.yaml' not found"* ]] || return 1
 }
 
 # =============================================================================
@@ -367,14 +369,14 @@ run_script() {
   local svc_file="${REPO_DIR}/kaptain-out/helm-processing/G-annotated/service.yaml"
   local svc_content
   svc_content=$(cat "${svc_file}")
-  [[ "${svc_content}" == *"NodePort"* ]]
+  [[ "${svc_content}" == *"NodePort"* ]] || return 1
 
   # deployment should be untouched
   local dep_file="${REPO_DIR}/kaptain-out/helm-processing/G-annotated/deployment.yaml"
   local dep_content
   dep_content=$(cat "${dep_file}")
-  [[ "${dep_content}" == *"kind: Deployment"* ]]
-  [[ "${dep_content}" == *"containers:"* ]]
+  [[ "${dep_content}" == *"kind: Deployment"* ]] || return 1
+  [[ "${dep_content}" == *"containers:"* ]] || return 1
 }
 
 @test "sed global-only replace applies to all manifests" {
@@ -383,15 +385,15 @@ run_script() {
   export VENDOR_HELM_RENDERED_SED_REPLACE='{"global":["s/test-chart/replaced-name/g"]}'
 
   run_script
-  [[ "$status" -eq 0 ]]
+  [[ "$status" -eq 0 ]] || return 1
 
   for f in deployment.yaml service.yaml clusterrole.yaml clusterrolebinding.yaml; do
     local file="${REPO_DIR}/kaptain-out/helm-processing/G-annotated/${f}"
     local content non_anno
     content=$(cat "${file}")
     non_anno=$(yq eval 'del(.metadata.annotations)' "${file}")
-    [[ "${content}" == *"replaced-name"* ]]
-    [[ "${non_anno}" != *"test-chart"* ]]
+    [[ "${content}" == *"replaced-name"* ]] || return 1
+    [[ "${non_anno}" != *"test-chart"* ]] || return 1
   done
 }
 
@@ -401,18 +403,18 @@ run_script() {
   export VENDOR_HELM_RENDERED_SED_REPLACE='{"global":["s/test-chart/global-replaced/g"],"perFile":[{"file":"service.yaml","patterns":["s/ClusterIP/NodePort/"]}]}'
 
   run_script
-  [[ "$status" -eq 0 ]]
+  [[ "$status" -eq 0 ]] || return 1
 
   # global applied everywhere
   local dep_content
   dep_content=$(cat "${REPO_DIR}/kaptain-out/helm-processing/G-annotated/deployment.yaml")
-  [[ "${dep_content}" == *"global-replaced"* ]]
+  [[ "${dep_content}" == *"global-replaced"* ]] || return 1
 
   # perFile applied only to service
   local svc_content
   svc_content=$(cat "${REPO_DIR}/kaptain-out/helm-processing/G-annotated/service.yaml")
-  [[ "${svc_content}" == *"NodePort"* ]]
-  [[ "${svc_content}" == *"global-replaced"* ]]
+  [[ "${svc_content}" == *"NodePort"* ]] || return 1
+  [[ "${svc_content}" == *"global-replaced"* ]] || return 1
 }
 
 @test "yq empty perFile array with global does not break" {
@@ -421,12 +423,12 @@ run_script() {
   export VENDOR_HELM_RENDERED_YQ_TRANSFORM='{"global":[".metadata.labels.\"test\" = \"yes\""],"perFile":[]}'
 
   run_script
-  [[ "$status" -eq 0 ]]
+  [[ "$status" -eq 0 ]] || return 1
 
   local dep_content
   dep_content=$(cat "${REPO_DIR}/kaptain-out/helm-processing/G-annotated/deployment.yaml")
-  [[ "${dep_content}" == *"test: \"yes\""* ]] || [[ "${dep_content}" == *"test: 'yes'"* ]] || [[ "${dep_content}" == *"test: yes"* ]]
-  [[ "${dep_content}" == *"kind: Deployment"* ]]
+  [[ "${dep_content}" == *"test: \"yes\""* ]] || [[ "${dep_content}" == *"test: 'yes'"* ]] || [[ "${dep_content}" == *"test: yes"* ]] || return 1
+  [[ "${dep_content}" == *"kind: Deployment"* ]] || return 1
 }
 
 @test "yq empty global array with perFile does not nuke" {
@@ -435,19 +437,19 @@ run_script() {
   export VENDOR_HELM_RENDERED_YQ_TRANSFORM='{"global":[],"perFile":[{"file":"clusterrole.yaml","expressions":[".metadata.name = \"env:\" + .metadata.name"]}]}'
 
   run_script
-  [[ "$status" -eq 0 ]]
+  [[ "$status" -eq 0 ]] || return 1
 
   # perFile target modified
   local cr_content
   cr_content=$(cat "${REPO_DIR}/kaptain-out/helm-processing/G-annotated/clusterrole.yaml")
-  [[ "${cr_content}" == *"env:test-chart-role"* ]]
-  [[ "${cr_content}" == *"rules:"* ]]
+  [[ "${cr_content}" == *"env:test-chart-role"* ]] || return 1
+  [[ "${cr_content}" == *"rules:"* ]] || return 1
 
   # untargeted files intact
   local dep_content
   dep_content=$(cat "${REPO_DIR}/kaptain-out/helm-processing/G-annotated/deployment.yaml")
-  [[ "${dep_content}" == *"kind: Deployment"* ]]
-  [[ "${dep_content}" == *"containers:"* ]]
+  [[ "${dep_content}" == *"kind: Deployment"* ]] || return 1
+  [[ "${dep_content}" == *"containers:"* ]] || return 1
 }
 
 @test "sed empty perFile array with global does not break" {
@@ -456,11 +458,11 @@ run_script() {
   export VENDOR_HELM_RENDERED_SED_REPLACE='{"global":["s/test-chart/sed-global/g"],"perFile":[]}'
 
   run_script
-  [[ "$status" -eq 0 ]]
+  [[ "$status" -eq 0 ]] || return 1
 
   local dep_content
   dep_content=$(cat "${REPO_DIR}/kaptain-out/helm-processing/G-annotated/deployment.yaml")
-  [[ "${dep_content}" == *"sed-global"* ]]
+  [[ "${dep_content}" == *"sed-global"* ]] || return 1
 }
 
 @test "sed empty global array with perFile does not break" {
@@ -469,15 +471,15 @@ run_script() {
   export VENDOR_HELM_RENDERED_SED_REPLACE='{"global":[],"perFile":[{"file":"service.yaml","patterns":["s/ClusterIP/NodePort/"]}]}'
 
   run_script
-  [[ "$status" -eq 0 ]]
+  [[ "$status" -eq 0 ]] || return 1
 
   local svc_content
   svc_content=$(cat "${REPO_DIR}/kaptain-out/helm-processing/G-annotated/service.yaml")
-  [[ "${svc_content}" == *"NodePort"* ]]
+  [[ "${svc_content}" == *"NodePort"* ]] || return 1
 
   local dep_content
   dep_content=$(cat "${REPO_DIR}/kaptain-out/helm-processing/G-annotated/deployment.yaml")
-  [[ "${dep_content}" == *"kind: Deployment"* ]]
+  [[ "${dep_content}" == *"kind: Deployment"* ]] || return 1
 }
 
 # =============================================================================
@@ -494,26 +496,26 @@ run_script() {
   ]'
 
   run_script
-  [[ "$status" -eq 0 ]]
+  [[ "$status" -eq 0 ]] || return 1
 
   # Each split file should contain exactly one resource
   local sa_file="${REPO_DIR}/kaptain-out/helm-processing/G-annotated/serviceaccount.yaml"
-  [[ -f "${sa_file}" ]]
+  [[ -f "${sa_file}" ]] || return 1
   local sa_content
   sa_content=$(cat "${sa_file}")
-  [[ "${sa_content}" == *"kind: ServiceAccount"* ]]
-  [[ "${sa_content}" == *"test-chart-sa"* ]]
+  [[ "${sa_content}" == *"kind: ServiceAccount"* ]] || return 1
+  [[ "${sa_content}" == *"test-chart-sa"* ]] || return 1
   # Should NOT contain the Role from the second doc
-  [[ "${sa_content}" != *"kind: Role"* ]]
+  [[ "${sa_content}" != *"kind: Role"* ]] || return 1
 
   local role_file="${REPO_DIR}/kaptain-out/helm-processing/G-annotated/role.yaml"
-  [[ -f "${role_file}" ]]
+  [[ -f "${role_file}" ]] || return 1
   local role_content
   role_content=$(cat "${role_file}")
-  [[ "${role_content}" == *"kind: Role"* ]]
-  [[ "${role_content}" == *"configmaps"* ]]
+  [[ "${role_content}" == *"kind: Role"* ]] || return 1
+  [[ "${role_content}" == *"configmaps"* ]] || return 1
   # Should NOT contain the ServiceAccount from the first doc
-  [[ "${role_content}" != *"kind: ServiceAccount"* ]]
+  [[ "${role_content}" != *"kind: ServiceAccount"* ]] || return 1
 }
 
 # =============================================================================
@@ -526,13 +528,13 @@ run_script() {
   export VENDOR_HELM_RENDERED_MOVE_FILES='[{"source":"templates/deployment.yaml","destination":"deployment.yaml"}]'
 
   run_script
-  [[ "$status" -eq 0 ]]
+  [[ "$status" -eq 0 ]] || return 1
 
   # deployment should exist
-  [[ -f "${REPO_DIR}/kaptain-out/helm-processing/D-moved-files/deployment.yaml" ]]
+  [[ -f "${REPO_DIR}/kaptain-out/helm-processing/D-moved-files/deployment.yaml" ]] || return 1
   # service, clusterrole etc should NOT exist in D-moved-files
-  [[ ! -f "${REPO_DIR}/kaptain-out/helm-processing/D-moved-files/service.yaml" ]]
-  [[ ! -f "${REPO_DIR}/kaptain-out/helm-processing/D-moved-files/clusterrole.yaml" ]]
+  [[ ! -f "${REPO_DIR}/kaptain-out/helm-processing/D-moved-files/service.yaml" ]] || return 1
+  [[ ! -f "${REPO_DIR}/kaptain-out/helm-processing/D-moved-files/clusterrole.yaml" ]] || return 1
 }
 
 @test "moveFiles fails when a source file does not exist" {
@@ -543,9 +545,9 @@ run_script() {
   ]'
 
   run_script
-  [[ "$status" -ne 0 ]]
-  [[ "$output" == *"moveFiles source not found"* ]]
-  [[ "$output" == *"nonexistent.yaml"* ]]
+  [[ "$status" -ne 0 ]] || return 1
+  [[ "$output" == *"moveFiles source not found"* ]] || return 1
+  [[ "$output" == *"nonexistent.yaml"* ]] || return 1
 }
 
 @test "moveFiles renames files to destination paths" {
@@ -553,13 +555,13 @@ run_script() {
   export VENDOR_HELM_RENDERED_MOVE_FILES='[{"source":"templates/service.yaml","destination":"renamed-service.yaml"}]'
 
   run_script
-  [[ "$status" -eq 0 ]]
+  [[ "$status" -eq 0 ]] || return 1
 
-  [[ -f "${REPO_DIR}/kaptain-out/helm-processing/D-moved-files/renamed-service.yaml" ]]
-  [[ ! -f "${REPO_DIR}/kaptain-out/helm-processing/D-moved-files/service.yaml" ]]
+  [[ -f "${REPO_DIR}/kaptain-out/helm-processing/D-moved-files/renamed-service.yaml" ]] || return 1
+  [[ ! -f "${REPO_DIR}/kaptain-out/helm-processing/D-moved-files/service.yaml" ]] || return 1
   local content
   content=$(cat "${REPO_DIR}/kaptain-out/helm-processing/D-moved-files/renamed-service.yaml")
-  [[ "${content}" == *"kind: Service"* ]]
+  [[ "${content}" == *"kind: Service"* ]] || return 1
 }
 
 # =============================================================================
@@ -573,7 +575,7 @@ run_script() {
   export VENDOR_HELM_RENDERED_SED_REPLACE='{"perFile":[{"file":"deployment.yaml","patterns":["s/name: test-chart/name: \"broken: [unbalanced/"]}]}'
 
   run_script
-  [[ "$status" -ne 0 ]]
+  [[ "$status" -ne 0 ]] || return 1
 }
 
 # =============================================================================
@@ -589,15 +591,15 @@ run_script() {
   ]'
 
   run_script
-  [[ "$status" -eq 0 ]]
+  [[ "$status" -eq 0 ]] || return 1
 
   # CRD should have flowed through the pipeline
   local crd_file="${REPO_DIR}/kaptain-out/helm-processing/G-annotated/gateway-crd.yaml"
-  [[ -f "${crd_file}" ]]
+  [[ -f "${crd_file}" ]] || return 1
   local crd_content
   crd_content=$(cat "${crd_file}")
-  [[ "${crd_content}" == *"kind: CustomResourceDefinition"* ]]
-  [[ "${crd_content}" == *"gateways.gateway.networking.k8s.io"* ]]
+  [[ "${crd_content}" == *"kind: CustomResourceDefinition"* ]] || return 1
+  [[ "${crd_content}" == *"gateways.gateway.networking.k8s.io"* ]] || return 1
 }
 
 @test "non-template dirs do not overwrite rendered template dirs" {
@@ -605,12 +607,12 @@ run_script() {
   export VENDOR_HELM_RENDERED_MOVE_FILES="${MOVE_FILES_JSON}"
 
   run_script
-  [[ "$status" -eq 0 ]]
+  [[ "$status" -eq 0 ]] || return 1
 
   # templates/ dir content should be from helm template, not raw chart copy
   # The script logs "already in rendered output, skipping" for templates/
   [[ "$output" == *"templates/ already in rendered output"* ]] || \
-    [[ "$output" != *"Copying non-template dir: templates/"* ]]
+    [[ "$output" != *"Copying non-template dir: templates/"* ]] || return 1
 }
 
 # =============================================================================
@@ -624,42 +626,42 @@ run_script() {
   export REPOSITORY_NAME="test-project"
 
   run_script
-  [[ "$status" -eq 0 ]]
+  [[ "$status" -eq 0 ]] || return 1
 
   local dep_file="${REPO_DIR}/kaptain-out/helm-processing/G-annotated/deployment.yaml"
-  [[ -f "${dep_file}" ]]
+  [[ -f "${dep_file}" ]] || return 1
   local content
   content=$(cat "${dep_file}")
 
   # Labels from the design's Site 3 superset
-  [[ "${content}" == *'kaptain.org/environment: ${Environment}'* ]]
-  [[ "${content}" == *'kaptain.org/product: ${ProductName}'* ]]
-  [[ "${content}" == *'app.kubernetes.io/managed-by: Kaptain'* ]]
-  [[ "${content}" == *'app.kubernetes.io/version: "${Version}"'* ]]
-  [[ "${content}" == *'kaptain.org/version: "${Version}"'* ]]
-  [[ "${content}" == *'kaptain.org/project-name: ${ProjectName}'* ]]
-  [[ "${content}" == *'kaptain.org/owner: kube-kaptain'* ]]
+  [[ "${content}" == *'kaptain.org/environment: ${Environment}'* ]] || return 1
+  [[ "${content}" == *'kaptain.org/product: ${ProductName}'* ]] || return 1
+  [[ "${content}" == *'app.kubernetes.io/managed-by: Kaptain'* ]] || return 1
+  [[ "${content}" == *'app.kubernetes.io/version: "${Version}"'* ]] || return 1
+  [[ "${content}" == *'kaptain.org/version: "${Version}"'* ]] || return 1
+  [[ "${content}" == *'kaptain.org/project-name: ${ProjectName}'* ]] || return 1
+  [[ "${content}" == *'kaptain.org/owner: kube-kaptain'* ]] || return 1
 
   # Annotations from the design's Site 3 superset
   # build-timestamp and built-by are stamped later by vendor-helm-inject-build-details
   # so the vendor render output stays stable across local and CI runs.
-  [[ "${content}" != *'kaptain.org/build-timestamp'* ]]
-  [[ "${content}" != *'kaptain.org/built-by'* ]]
-  [[ "${content}" == *'kaptain.org/generated-by: Generated by Kaptain vendor-helm-render-and-process'* ]]
-  [[ "${content}" == *'kaptain.org/source-repository: kube-kaptain/test-project'* ]]
+  [[ "${content}" != *'kaptain.org/build-timestamp'* ]] || return 1
+  [[ "${content}" != *'kaptain.org/built-by'* ]] || return 1
+  [[ "${content}" == *'kaptain.org/generated-by: Generated by Kaptain vendor-helm-render-and-process'* ]] || return 1
+  [[ "${content}" == *'kaptain.org/source-repository: kube-kaptain/test-project'* ]] || return 1
 
   # project-name and version live on labels only, not annotations
   local annotations
   annotations=$(yq eval '.metadata.annotations | keys | .[]' "${dep_file}")
-  [[ "${annotations}" != *'kaptain.org/project-name'* ]]
-  [[ "${annotations}" != *'kaptain.org/version'* ]]
+  [[ "${annotations}" != *'kaptain.org/project-name'* ]] || return 1
+  [[ "${annotations}" != *'kaptain.org/version'* ]] || return 1
 
   # app and app.kubernetes.io/name overwrite to match the rendered manifest's own .metadata.name
-  [[ $(yq eval '.metadata.labels.app' "${dep_file}") == "test-chart" ]]
-  [[ $(yq eval '.metadata.labels."app.kubernetes.io/name"' "${dep_file}") == "test-chart" ]]
+  [[ $(yq eval '.metadata.labels.app' "${dep_file}") == "test-chart" ]] || return 1
+  [[ $(yq eval '.metadata.labels."app.kubernetes.io/name"' "${dep_file}") == "test-chart" ]] || return 1
 
   # Vendor must NOT emit kaptain.org/image-uri (no IMAGE_URI in vendor pipeline)
-  [[ "${content}" != *'kaptain.org/image-uri'* ]]
+  [[ "${content}" != *'kaptain.org/image-uri'* ]] || return 1
 }
 
 @test "drops annotation copies of label-only keys (environment, product, managed-by, app version)" {
@@ -669,16 +671,16 @@ run_script() {
   export REPOSITORY_NAME="test-project"
 
   run_script
-  [[ "$status" -eq 0 ]]
+  [[ "$status" -eq 0 ]] || return 1
 
   local dep_file="${REPO_DIR}/kaptain-out/helm-processing/G-annotated/deployment.yaml"
   local annotations
   annotations=$(yq eval '.metadata.annotations | keys | .[]' "${dep_file}")
 
-  [[ "${annotations}" != *'kaptain.org/environment'* ]]
-  [[ "${annotations}" != *'kaptain.org/product'* ]]
-  [[ "${annotations}" != *'app.kubernetes.io/managed-by'* ]]
-  [[ "${annotations}" != *'app.kubernetes.io/version'* ]]
+  [[ "${annotations}" != *'kaptain.org/environment'* ]] || return 1
+  [[ "${annotations}" != *'kaptain.org/product'* ]] || return 1
+  [[ "${annotations}" != *'app.kubernetes.io/managed-by'* ]] || return 1
+  [[ "${annotations}" != *'app.kubernetes.io/version'* ]] || return 1
 }
 
 @test "omits env-conditional metadata keys when repo env vars unset" {
@@ -689,21 +691,21 @@ run_script() {
   unset REPOSITORY_OWNER REPOSITORY_NAME SOURCE_REPO
 
   run_script
-  [[ "$status" -eq 0 ]]
+  [[ "$status" -eq 0 ]] || return 1
 
   local dep_file="${REPO_DIR}/kaptain-out/helm-processing/G-annotated/deployment.yaml"
   local content
   content=$(cat "${dep_file}")
 
-  [[ "${content}" != *'kaptain.org/owner'* ]]
-  [[ "${content}" != *'kaptain.org/source-repository'* ]]
+  [[ "${content}" != *'kaptain.org/owner'* ]] || return 1
+  [[ "${content}" != *'kaptain.org/source-repository'* ]] || return 1
 
   # Required keys must still emit
-  [[ "${content}" == *'kaptain.org/version'* ]]
-  [[ "${content}" == *'kaptain.org/project-name'* ]]
-  [[ "${content}" != *'kaptain.org/build-timestamp'* ]]
-  [[ "${content}" != *'kaptain.org/built-by'* ]]
-  [[ "${content}" == *'kaptain.org/generated-by:'* ]]
+  [[ "${content}" == *'kaptain.org/version'* ]] || return 1
+  [[ "${content}" == *'kaptain.org/project-name'* ]] || return 1
+  [[ "${content}" != *'kaptain.org/build-timestamp'* ]] || return 1
+  [[ "${content}" != *'kaptain.org/built-by'* ]] || return 1
+  [[ "${content}" == *'kaptain.org/generated-by:'* ]] || return 1
 }
 
 @test "strips helm.sh/* from labels and annotations" {
@@ -711,15 +713,15 @@ run_script() {
   export VENDOR_HELM_RENDERED_MOVE_FILES="${MOVE_FILES_JSON}"
 
   run_script
-  [[ "$status" -eq 0 ]]
+  [[ "$status" -eq 0 ]] || return 1
 
   local dep_file="${REPO_DIR}/kaptain-out/helm-processing/G-annotated/deployment.yaml"
   local label_keys annotation_keys
   label_keys=$(yq eval '.metadata.labels | keys | .[]' "${dep_file}")
   annotation_keys=$(yq eval '.metadata.annotations | keys | .[]' "${dep_file}")
 
-  [[ "${label_keys}" != *'helm.sh/'* ]]
-  [[ "${annotation_keys}" != *'helm.sh/'* ]]
+  [[ "${label_keys}" != *'helm.sh/'* ]] || return 1
+  [[ "${annotation_keys}" != *'helm.sh/'* ]] || return 1
 }
 
 @test "copies helm.sh/chart label value into kaptain.org/helm-upstream-chart annotation" {
@@ -727,13 +729,13 @@ run_script() {
   export VENDOR_HELM_RENDERED_MOVE_FILES="${MOVE_FILES_JSON}"
 
   run_script
-  [[ "$status" -eq 0 ]]
+  [[ "$status" -eq 0 ]] || return 1
 
   local dep_file="${REPO_DIR}/kaptain-out/helm-processing/G-annotated/deployment.yaml"
   local upstream
   upstream=$(yq eval '.metadata.annotations."kaptain.org/helm-upstream-chart"' "${dep_file}")
 
-  [[ "${upstream}" == "test-chart-1.0.0" ]]
+  [[ "${upstream}" == "test-chart-1.0.0" ]] || return 1
 }
 
 @test "stamps kaptain.org/helm-upstream-chart from Chart.yaml even when source has no helm.sh/chart label" {
@@ -743,13 +745,13 @@ run_script() {
   export VENDOR_HELM_RENDERED_MOVE_FILES="${MOVE_FILES_JSON}"
 
   run_script
-  [[ "$status" -eq 0 ]]
+  [[ "$status" -eq 0 ]] || return 1
 
   local svc_file="${REPO_DIR}/kaptain-out/helm-processing/G-annotated/service.yaml"
   local upstream
   upstream=$(yq eval '.metadata.annotations."kaptain.org/helm-upstream-chart"' "${svc_file}")
 
-  [[ "${upstream}" == "test-chart-1.0.0" ]]
+  [[ "${upstream}" == "test-chart-1.0.0" ]] || return 1
 }
 
 teardown() {

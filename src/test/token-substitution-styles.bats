@@ -7,6 +7,8 @@
 # Each style uses different delimiters but the same substitution logic.
 # This file runs identical test cases across all styles to ensure consistent behavior.
 
+bats_require_minimum_version 1.5.0
+
 load helpers
 
 setup() {

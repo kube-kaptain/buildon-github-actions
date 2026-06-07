@@ -6,6 +6,8 @@
 # Covers: no-layers passthrough, layer resolution, layerset expansion,
 # merge order, cycle detection, duplicate detection, cache skip, schema validation
 
+bats_require_minimum_version 1.5.0
+
 load helpers
 
 SCRIPT="$SCRIPTS_DIR/kaptain-init"
@@ -177,12 +179,12 @@ spec:
         blockSlashes: true
 EOF
   run "$SCRIPT"
-  [[ "$status" -eq 0 ]]
-  [[ -f "${REPO_DIR}/kaptainpm/final/KaptainPM.yaml" ]]
+  [[ "$status" -eq 0 ]] || return 1
+  [[ -f "${REPO_DIR}/kaptainpm/final/KaptainPM.yaml" ]] || return 1
   run yq eval '.kind' "${REPO_DIR}/kaptainpm/final/KaptainPM.yaml"
-  [[ "$output" == "KubeAppDockerDockerfile" ]]
+  [[ "$output" == "KubeAppDockerDockerfile" ]] || return 1
   run yq eval '.spec.main.quality.branches.blockSlashes' "${REPO_DIR}/kaptainpm/final/KaptainPM.yaml"
-  [[ "$output" == "true" ]]
+  [[ "$output" == "true" ]] || return 1
 }
 
 @test "no layers: logs zero layers declared" {
@@ -196,8 +198,8 @@ spec:
         blockSlashes: true
 EOF
   run "$SCRIPT"
-  [[ "$status" -eq 0 ]]
-  [[ "$output" == *"Layers declared: 0"* ]]
+  [[ "$status" -eq 0 ]] || return 1
+  [[ "$output" == *"Layers declared: 0"* ]] || return 1
 }
 
 # =============================================================================
@@ -206,8 +208,8 @@ EOF
 
 @test "fails when KaptainPM.yaml not found" {
   run "$SCRIPT"
-  [[ "$status" -eq 1 ]]
-  [[ "$output" == *"KaptainPM.yaml not found"* ]]
+  [[ "$status" -eq 1 ]] || return 1
+  [[ "$output" == *"KaptainPM.yaml not found"* ]] || return 1
 }
 
 # =============================================================================
@@ -220,8 +222,8 @@ apiVersion: kaptain.org/1.2
   broken: [indentation
 EOF
   run "$SCRIPT"
-  [[ "$status" -eq 1 ]]
-  [[ "$output" == *"Invalid YAML"* ]]
+  [[ "$status" -eq 1 ]] || return 1
+  [[ "$output" == *"Invalid YAML"* ]] || return 1
 }
 
 # =============================================================================
@@ -253,20 +255,20 @@ spec:
         subPath: src/docker
 EOF
   run "$SCRIPT"
-  [[ "$status" -eq 0 ]]
-  [[ -f "${REPO_DIR}/kaptainpm/final/KaptainPM.yaml" ]]
+  [[ "$status" -eq 0 ]] || return 1
+  [[ -f "${REPO_DIR}/kaptainpm/final/KaptainPM.yaml" ]] || return 1
 
   # Layer values present
   run yq eval '.spec.main.quality.branches.blockSlashes' "${REPO_DIR}/kaptainpm/final/KaptainPM.yaml"
-  [[ "$output" == "true" ]]
+  [[ "$output" == "true" ]] || return 1
   run yq eval '.spec.main.quality.commits.requireConventional' "${REPO_DIR}/kaptainpm/final/KaptainPM.yaml"
-  [[ "$output" == "true" ]]
+  [[ "$output" == "true" ]] || return 1
 
   # Project overrides present
   run yq eval '.kind' "${REPO_DIR}/kaptainpm/final/KaptainPM.yaml"
-  [[ "$output" == "KubeAppDockerDockerfile" ]]
+  [[ "$output" == "KubeAppDockerDockerfile" ]] || return 1
   run yq eval '.spec.main.docker.dockerfile.subPath' "${REPO_DIR}/kaptainpm/final/KaptainPM.yaml"
-  [[ "$output" == "src/docker" ]]
+  [[ "$output" == "src/docker" ]] || return 1
 }
 
 @test "single layer: spec.layers removed from final output" {
@@ -287,9 +289,9 @@ spec:
     - quality-strict:1.0
 EOF
   run "$SCRIPT"
-  [[ "$status" -eq 0 ]]
+  [[ "$status" -eq 0 ]] || return 1
   run yq eval '.spec.layers' "${REPO_DIR}/kaptainpm/final/KaptainPM.yaml"
-  [[ "$output" == "null" ]]
+  [[ "$output" == "null" ]] || return 1
 }
 
 # =============================================================================
@@ -327,15 +329,15 @@ spec:
     - ha-deployment:2.0
 EOF
   run "$SCRIPT"
-  [[ "$status" -eq 0 ]]
+  [[ "$status" -eq 0 ]] || return 1
 
   # Second layer's replicas wins
   run yq eval '.spec.main.generators.workload.replicas' "${REPO_DIR}/kaptainpm/final/KaptainPM.yaml"
-  [[ "$output" == "3" ]]
+  [[ "$output" == "3" ]] || return 1
 
   # First layer's non-conflicting field preserved
   run yq eval '.spec.main.quality.branches.blockSlashes' "${REPO_DIR}/kaptainpm/final/KaptainPM.yaml"
-  [[ "$output" == "true" ]]
+  [[ "$output" == "true" ]] || return 1
 }
 
 @test "project root overrides all layers" {
@@ -360,11 +362,11 @@ spec:
         replicas: '5'
 EOF
   run "$SCRIPT"
-  [[ "$status" -eq 0 ]]
+  [[ "$status" -eq 0 ]] || return 1
 
   # Project root wins
   run yq eval '.spec.main.generators.workload.replicas' "${REPO_DIR}/kaptainpm/final/KaptainPM.yaml"
-  [[ "$output" == "5" ]]
+  [[ "$output" == "5" ]] || return 1
 }
 
 # =============================================================================
@@ -394,18 +396,18 @@ spec:
     - quality-strict:1.0
 EOF
   run "$SCRIPT"
-  [[ "$status" -eq 0 ]]
+  [[ "$status" -eq 0 ]] || return 1
 
   # layer-payload should not appear in final
   run yq eval '.["layer-payload"]' "${REPO_DIR}/kaptainpm/final/KaptainPM.yaml"
-  [[ "$output" == "null" ]]
+  [[ "$output" == "null" ]] || return 1
 
   # Config values still there
   run yq eval '.spec.main.quality.branches.blockSlashes' "${REPO_DIR}/kaptainpm/final/KaptainPM.yaml"
-  [[ "$output" == "true" ]]
+  [[ "$output" == "true" ]] || return 1
 
   # Payload file actually landed at destination
-  [[ -f "${REPO_DIR}/.kaptain/scripts/build.bash" ]]
+  [[ -f "${REPO_DIR}/.kaptain/scripts/build.bash" ]] || return 1
 }
 
 @test "layer-payload: fails when source not in extracted layer" {
@@ -429,9 +431,9 @@ spec:
     - quality-strict:1.0
 EOF
   run "$SCRIPT"
-  [[ "$status" -ne 0 ]]
-  [[ "$output" == *"source not found in context listing"* ]]
-  [[ "$output" == *"/scripts/missing.bash"* ]]
+  [[ "$status" -ne 0 ]] || return 1
+  [[ "$output" == *"source not found in context listing"* ]] || return 1
+  [[ "$output" == *"/scripts/missing.bash"* ]] || return 1
 }
 
 @test "layer-payload: fails when destination contains '..'" {
@@ -456,8 +458,8 @@ spec:
     - quality-strict:1.0
 EOF
   run "$SCRIPT"
-  [[ "$status" -ne 0 ]]
-  [[ "$output" == *"parent-traversal"* ]]
+  [[ "$status" -ne 0 ]] || return 1
+  [[ "$output" == *"parent-traversal"* ]] || return 1
 }
 
 @test "layer-payload: fails when destination is absolute" {
@@ -482,8 +484,8 @@ spec:
     - quality-strict:1.0
 EOF
   run "$SCRIPT"
-  [[ "$status" -ne 0 ]]
-  [[ "$output" == *"must be relative"* ]]
+  [[ "$status" -ne 0 ]] || return 1
+  [[ "$output" == *"must be relative"* ]] || return 1
 }
 
 @test "layer-payload: multiple files into same destination dir succeed" {
@@ -511,9 +513,9 @@ spec:
     - quality-strict:1.0
 EOF
   run "$SCRIPT"
-  [[ "$status" -eq 0 ]]
-  [[ "$output" == *"payload ok: /scripts/build.bash -> .kaptain/scripts/"* ]]
-  [[ "$output" == *"payload ok: /scripts/other.bash -> .kaptain/scripts/"* ]]
+  [[ "$status" -eq 0 ]] || return 1
+  [[ "$output" == *"payload ok: /scripts/build.bash -> .kaptain/scripts/"* ]] || return 1
+  [[ "$output" == *"payload ok: /scripts/other.bash -> .kaptain/scripts/"* ]] || return 1
 }
 
 @test "layer-payload: multiple entries all land at their destinations" {
@@ -541,9 +543,9 @@ spec:
     - quality-strict:1.0
 EOF
   run "$SCRIPT"
-  [[ "$status" -eq 0 ]]
-  [[ -f "${REPO_DIR}/.kaptain/scripts/build.bash" ]]
-  [[ -f "${REPO_DIR}/.kaptain/config/settings.yaml" ]]
+  [[ "$status" -eq 0 ]] || return 1
+  [[ -f "${REPO_DIR}/.kaptain/scripts/build.bash" ]] || return 1
+  [[ -f "${REPO_DIR}/.kaptain/config/settings.yaml" ]] || return 1
 }
 
 @test "layer-payload: tar.gz unpack extracts archive into destination" {
@@ -575,9 +577,9 @@ spec:
     - quality-strict:1.0
 EOF
   run "$SCRIPT"
-  [[ "$status" -eq 0 ]]
-  [[ -f "${REPO_DIR}/.kaptain/tools/one.txt" ]]
-  [[ -f "${REPO_DIR}/.kaptain/tools/two.txt" ]]
+  [[ "$status" -eq 0 ]] || return 1
+  [[ -f "${REPO_DIR}/.kaptain/tools/one.txt" ]] || return 1
+  [[ -f "${REPO_DIR}/.kaptain/tools/two.txt" ]] || return 1
 }
 
 # =============================================================================
@@ -626,21 +628,21 @@ spec:
         replicas: '2'
 EOF
   run "$SCRIPT"
-  [[ "$status" -eq 0 ]]
+  [[ "$status" -eq 0 ]] || return 1
 
   # Layerset's kind
   run yq eval '.kind' "${REPO_DIR}/kaptainpm/final/KaptainPM.yaml"
-  [[ "$output" == "KubeAppDockerDockerfile" ]]
+  [[ "$output" == "KubeAppDockerDockerfile" ]] || return 1
 
   # Sub-layer values merged
   run yq eval '.spec.main.quality.branches.blockSlashes' "${REPO_DIR}/kaptainpm/final/KaptainPM.yaml"
-  [[ "$output" == "true" ]]
+  [[ "$output" == "true" ]] || return 1
   run yq eval '.spec.main.docker.dockerfile.squash' "${REPO_DIR}/kaptainpm/final/KaptainPM.yaml"
-  [[ "$output" == "squash" ]]
+  [[ "$output" == "squash" ]] || return 1
 
   # Project root value
   run yq eval '.spec.main.generators.workload.replicas' "${REPO_DIR}/kaptainpm/final/KaptainPM.yaml"
-  [[ "$output" == "2" ]]
+  [[ "$output" == "2" ]] || return 1
 }
 
 # =============================================================================
@@ -666,8 +668,8 @@ spec:
     - quality-strict:1.0
 EOF
   run "$SCRIPT"
-  [[ "$status" -eq 1 ]]
-  [[ "$output" == *"Duplicate"* ]]
+  [[ "$status" -eq 1 ]] || return 1
+  [[ "$output" == *"Duplicate"* ]] || return 1
 }
 
 @test "fails on same layer different versions" {
@@ -689,8 +691,8 @@ spec:
     - quality-strict:2.0
 EOF
   run "$SCRIPT"
-  [[ "$status" -eq 1 ]]
-  [[ "$output" == *"Duplicate"* ]]
+  [[ "$status" -eq 1 ]] || return 1
+  [[ "$output" == *"Duplicate"* ]] || return 1
 }
 
 # =============================================================================
@@ -715,14 +717,14 @@ spec:
     - quality-strict:1.0
 EOF
   run "$SCRIPT"
-  [[ "$status" -eq 0 ]]
+  [[ "$status" -eq 0 ]] || return 1
 
   # Should have layer step, merged-layers step, and project-applied step
   local interp_dir="${REPO_DIR}/kaptainpm/interpolation"
-  [[ -d "${interp_dir}" ]]
+  [[ -d "${interp_dir}" ]] || return 1
   local file_count
   file_count=$(ls -1 "${interp_dir}"/*.yaml 2>/dev/null | wc -l | tr -d ' ')
-  [[ "${file_count}" -ge 2 ]]
+  [[ "${file_count}" -ge 2 ]] || return 1
 }
 
 @test "interpolation dir contains project-applied as final step" {
@@ -743,14 +745,14 @@ spec:
     - quality-strict:1.0
 EOF
   run "$SCRIPT"
-  [[ "$status" -eq 0 ]]
+  [[ "$status" -eq 0 ]] || return 1
 
   # project-applied should be in the interpolation steps (not necessarily last)
   ls -1 "${REPO_DIR}/kaptainpm/interpolation"/*.yaml | grep -q "project-applied"
   # Last interpolation step should be metadata-stripped
   local last_file
   last_file=$(ls -1 "${REPO_DIR}/kaptainpm/interpolation"/*.yaml | sort | tail -1)
-  [[ "$(basename "${last_file}")" == *"metadata-stripped"* ]]
+  [[ "$(basename "${last_file}")" == *"metadata-stripped"* ]] || return 1
 }
 
 # =============================================================================
@@ -782,13 +784,13 @@ spec:
     - quality-strict:1.0
 EOF
   run "$SCRIPT"
-  [[ "$status" -eq 0 ]]
+  [[ "$status" -eq 0 ]] || return 1
 
   # Original file with layer-payload intact
   local preserved="${REPO_DIR}/kaptainpm/layers/ghcr.io/kube-kaptain/quality/quality-strict/KaptainPM.yaml"
-  [[ -f "${preserved}" ]]
+  [[ -f "${preserved}" ]] || return 1
   run yq eval '.["layer-payload"] | length' "${preserved}"
-  [[ "$output" == "1" ]]
+  [[ "$output" == "1" ]] || return 1
 }
 
 # =============================================================================
@@ -812,8 +814,8 @@ EOF
   touch -t 202501010000 "${REPO_DIR}/kaptainpm/final/KaptainPM.yaml"
 
   run "$SCRIPT"
-  [[ "$status" -eq 0 ]]
-  [[ "$output" != *"skipping re-resolution"* ]]
+  [[ "$status" -eq 0 ]] || return 1
+  [[ "$output" != *"skipping re-resolution"* ]] || return 1
 }
 
 @test "build_server: always processes even when final is newer" {
@@ -832,8 +834,8 @@ EOF
   touch "${REPO_DIR}/kaptainpm/final/KaptainPM.yaml"
 
   run "$SCRIPT"
-  [[ "$status" -eq 0 ]]
-  [[ "$output" != *"skipping re-resolution"* ]]
+  [[ "$status" -eq 0 ]] || return 1
+  [[ "$output" != *"skipping re-resolution"* ]] || return 1
 }
 
 # =============================================================================
@@ -852,8 +854,8 @@ spec:
     - quality-strict:1.0
 EOF
   run "$SCRIPT"
-  [[ "$status" -eq 1 ]]
-  [[ "$output" == *"Failed to extract /KaptainPM.yaml"* ]]
+  [[ "$status" -eq 1 ]] || return 1
+  [[ "$output" == *"Failed to extract /KaptainPM.yaml"* ]] || return 1
 }
 
 # =============================================================================
@@ -885,15 +887,15 @@ spec:
     - quality-strict:1.0
 EOF
   run "$SCRIPT"
-  [[ "$status" -eq 0 ]]
+  [[ "$status" -eq 0 ]] || return 1
 
   # Layer default preserved
   run yq eval '.["user-data"]["code-analysis"].rules' "${REPO_DIR}/kaptainpm/final/KaptainPM.yaml"
-  [[ "$output" == "standard" ]]
+  [[ "$output" == "standard" ]] || return 1
 
   # Project override wins
   run yq eval '.["user-data"]["code-analysis"]["fail-on-warning"]' "${REPO_DIR}/kaptainpm/final/KaptainPM.yaml"
-  [[ "$output" == "true" ]]
+  [[ "$output" == "true" ]] || return 1
 }
 
 # =============================================================================
@@ -916,6 +918,6 @@ EOF
   echo "stale" > "${REPO_DIR}/kaptainpm/interpolation/99-stale.yaml"
 
   run "$SCRIPT"
-  [[ "$status" -eq 0 ]]
-  [[ ! -f "${REPO_DIR}/kaptainpm/interpolation/99-stale.yaml" ]]
+  [[ "$status" -eq 0 ]] || return 1
+  [[ ! -f "${REPO_DIR}/kaptainpm/interpolation/99-stale.yaml" ]] || return 1
 }

@@ -2,6 +2,8 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
 
+bats_require_minimum_version 1.5.0
+
 load helpers
 
 setup() {
@@ -112,11 +114,11 @@ create_rcd_repo() {
 
   local first_msg
   first_msg=$(yq '.change.commits[0].message' "$yaml_file")
-  [[ "$first_msg" == *"Change 1"* ]]
+  [[ "$first_msg" == *"Change 1"* ]] || return 1
 
   local last_msg
   last_msg=$(yq '.change.commits[2].message' "$yaml_file")
-  [[ "$last_msg" == *"Change 3"* ]]
+  [[ "$last_msg" == *"Change 3"* ]] || return 1
 }
 
 @test "commit has required fields" {
@@ -151,7 +153,7 @@ create_rcd_repo() {
   # author.date should be ISO 8601
   local author_date
   author_date=$(yq '.change.commits[0].author.date' "$yaml_file")
-  [[ "$author_date" =~ [0-9]{4}-[0-9]{2}-[0-9]{2}T ]]
+  [[ "$author_date" =~ [0-9]{4}-[0-9]{2}-[0-9]{2}T ]] || return 1
 
   # signature status should be present
   local sig_status
@@ -386,7 +388,7 @@ create_rcd_repo() {
 
   local generated
   generated=$(yq '.change.generated' "$yaml_file")
-  [[ "$generated" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\+00:00$ ]]
+  [[ "$generated" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\+00:00$ ]] || return 1
 }
 
 @test "fails when VERSION not set" {

@@ -5,6 +5,8 @@
 # Tests for kubernetes-manifests-repo-provider-docker-package
 # This script builds a Docker image containing the manifests zip.
 
+bats_require_minimum_version 1.5.0
+
 load helpers
 
 setup() {
@@ -88,8 +90,8 @@ set_required_env() {
   local push_file="$DOCKER_PUSH_IMAGE_LIST_FILE"
   [ -f "$push_file" ]
   run cat "$push_file"
-  [[ "$output" == *"ghcr.io/test/my-repo:1.0.0-manifests-linux-amd64"* ]]
-  [[ "$output" == *"ghcr.io/test/my-repo:1.0.0-manifests-linux-arm64"* ]]
+  [[ "$output" == *"ghcr.io/test/my-repo:1.0.0-manifests-linux-amd64"* ]] || return 1
+  [[ "$output" == *"ghcr.io/test/my-repo:1.0.0-manifests-linux-arm64"* ]] || return 1
 }
 
 @test "registers base URI in manifest-uris" {
@@ -101,7 +103,7 @@ set_required_env() {
   local manifest_file="$OUTPUT_SUB_PATH/docker-push-all/manifest-uris"
   [ -f "$manifest_file" ]
   run cat "$manifest_file"
-  [[ "$output" == *"ghcr.io/test/my-repo:1.0.0-manifests"* ]]
+  [[ "$output" == *"ghcr.io/test/my-repo:1.0.0-manifests"* ]] || return 1
 }
 
 @test "does not push (package only)" {

@@ -12,6 +12,8 @@
 #   format_project_suffixed_token - Combine project + suffix into delimited token
 #   unresolved_token_regex - grep-E regex matching unresolved tokens
 
+bats_require_minimum_version 1.5.0
+
 load helpers
 
 # Source the library under test

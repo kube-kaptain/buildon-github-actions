@@ -11,6 +11,8 @@
 # merge, OCI extraction, audit trail) is covered exhaustively in
 # kubernetes-product-aggregate.bats.
 
+bats_require_minimum_version 1.5.0
+
 load helpers
 
 SCRIPT="$SCRIPTS_DIR/kubernetes-templates-import"

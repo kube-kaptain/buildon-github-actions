@@ -2,6 +2,8 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
 
+bats_require_minimum_version 1.5.0
+
 load helpers
 
 setup() {
@@ -66,8 +68,8 @@ set_required_env() {
   local push_file="$DOCKER_PUSH_IMAGE_LIST_FILE"
   [ -f "$push_file" ]
   run cat "$push_file"
-  [[ "$output" == *"ghcr.io/test/my-repo:1.0.1-release-change-data-linux-amd64"* ]]
-  [[ "$output" == *"ghcr.io/test/my-repo:1.0.1-release-change-data-linux-arm64"* ]]
+  [[ "$output" == *"ghcr.io/test/my-repo:1.0.1-release-change-data-linux-amd64"* ]] || return 1
+  [[ "$output" == *"ghcr.io/test/my-repo:1.0.1-release-change-data-linux-arm64"* ]] || return 1
 }
 
 @test "registers base URI in manifest-uris" {
@@ -79,7 +81,7 @@ set_required_env() {
   local manifest_file="$OUTPUT_SUB_PATH/docker-push-all/manifest-uris"
   [ -f "$manifest_file" ]
   run cat "$manifest_file"
-  [[ "$output" == *"ghcr.io/test/my-repo:1.0.1-release-change-data"* ]]
+  [[ "$output" == *"ghcr.io/test/my-repo:1.0.1-release-change-data"* ]] || return 1
 }
 
 @test "generates Dockerfile via docker-package-multi-arch" {
@@ -92,8 +94,8 @@ set_required_env() {
   local dockerfile="$OUTPUT_SUB_PATH/docker-package-multi-arch/docker-context/Dockerfile"
   [ -f "$dockerfile" ]
   run cat "$dockerfile"
-  [[ "$output" == *"FROM scratch"* ]]
-  [[ "$output" == *"release-change-data-1.0.1.yaml"* ]]
+  [[ "$output" == *"FROM scratch"* ]] || return 1
+  [[ "$output" == *"release-change-data-1.0.1.yaml"* ]] || return 1
 }
 
 @test "fails when versioned YAML not found" {

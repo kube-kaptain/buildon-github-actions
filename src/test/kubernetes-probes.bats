@@ -4,6 +4,8 @@
 #
 # Tests for kubernetes-probes.bash library
 
+bats_require_minimum_version 1.5.0
+
 load helpers
 
 setup() {
@@ -25,8 +27,8 @@ setup() {
 
 @test "probe_check_http_get: respects indentation" {
   result=$(probe_check_http_get 4 /liveness 1024 HTTPS)
-  [[ "$result" == *"    httpGet:"* ]]
-  [[ "$result" == *"      path: /liveness"* ]]
+  [[ "$result" == *"    httpGet:"* ]] || return 1
+  [[ "$result" == *"      path: /liveness"* ]] || return 1
 }
 
 @test "probe_check_http_get: wrong arg count fails" {
@@ -48,8 +50,8 @@ setup() {
 
 @test "probe_check_tcp_socket: respects indentation" {
   result=$(probe_check_tcp_socket 2 3306)
-  [[ "$result" == *"  tcpSocket:"* ]]
-  [[ "$result" == *"    port: 3306"* ]]
+  [[ "$result" == *"  tcpSocket:"* ]] || return 1
+  [[ "$result" == *"    port: 3306"* ]] || return 1
 }
 
 @test "probe_check_tcp_socket: wrong arg count fails" {
@@ -74,8 +76,8 @@ setup() {
 
 @test "probe_check_exec: respects indentation" {
   result=$(probe_check_exec 4 "cat /tmp/ready")
-  [[ "$result" == *"    exec:"* ]]
-  [[ "$result" == *"      command:"* ]]
+  [[ "$result" == *"    exec:"* ]] || return 1
+  [[ "$result" == *"      command:"* ]] || return 1
 }
 
 @test "probe_check_exec: wrong arg count fails" {
@@ -106,8 +108,8 @@ setup() {
 
 @test "probe_check_grpc: respects indentation" {
   result=$(probe_check_grpc 2 50051 "")
-  [[ "$result" == *"  grpc:"* ]]
-  [[ "$result" == *"    port: 50051"* ]]
+  [[ "$result" == *"  grpc:"* ]] || return 1
+  [[ "$result" == *"    port: 50051"* ]] || return 1
 }
 
 @test "probe_check_grpc: wrong arg count fails" {
@@ -139,7 +141,7 @@ setup() {
 
 @test "probe_timing_fields: respects indentation" {
   result=$(probe_timing_fields 4 10 10 5 3)
-  [[ "$result" == *"    initialDelaySeconds: 10"* ]]
+  [[ "$result" == *"    initialDelaySeconds: 10"* ]] || return 1
 }
 
 @test "probe_timing_fields: wrong arg count fails" {
@@ -235,7 +237,7 @@ setup() {
   run generate_probe liveness http-get 10 /health 8080 HTTP -- 10 10 5 3
   [ "$status" -eq 0 ]
   first_line=$(echo "$output" | head -n1)
-  [[ "$first_line" == "          livenessProbe:" ]]
+  [[ "$first_line" == "          livenessProbe:" ]] || return 1
 }
 
 # =============================================================================

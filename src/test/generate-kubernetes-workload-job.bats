@@ -4,6 +4,8 @@
 #
 # Tests for generate-kubernetes-workload-job
 
+bats_require_minimum_version 1.5.0
+
 load helpers
 
 setup() {
@@ -45,11 +47,11 @@ read_manifest_in_subpath() {
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
-  [[ "$manifest" == *"apiVersion: batch/v1"* ]]
-  [[ "$manifest" == *"kind: Job"* ]]
-  [[ "$manifest" == *"metadata:"* ]]
-  [[ "$manifest" == *"spec:"* ]]
-  [[ "$manifest" == *"template:"* ]]
+  [[ "$manifest" == *"apiVersion: batch/v1"* ]] || return 1
+  [[ "$manifest" == *"kind: Job"* ]] || return 1
+  [[ "$manifest" == *"metadata:"* ]] || return 1
+  [[ "$manifest" == *"spec:"* ]] || return 1
+  [[ "$manifest" == *"template:"* ]] || return 1
 }
 
 @test "job name includes version token and job-checksum suffix" {
@@ -58,7 +60,7 @@ read_manifest_in_subpath() {
 
   manifest=$(read_manifest)
   # Pattern: ${ProjectName}-${Version}-job-checksum
-  [[ "$manifest" == *'name: ${ProjectName}-${Version}-job-checksum'* ]]
+  [[ "$manifest" == *'name: ${ProjectName}-${Version}-job-checksum'* ]] || return 1
 }
 
 @test "job name with suffix includes version before job-checksum" {
@@ -69,7 +71,7 @@ read_manifest_in_subpath() {
 
   manifest=$(read_manifest_with_suffix "migrate")
   # Pattern: ${ProjectName}-${suffix}-${Version}-job-checksum
-  [[ "$manifest" == *'name: ${ProjectName}-migrate-${Version}-job-checksum'* ]]
+  [[ "$manifest" == *'name: ${ProjectName}-migrate-${Version}-job-checksum'* ]] || return 1
 }
 
 @test "job name with combined-sub-path includes version before job-checksum" {
@@ -80,7 +82,7 @@ read_manifest_in_subpath() {
 
   manifest=$(read_manifest_in_subpath "db")
   # Pattern: ${ProjectName}-${dir}-${Version}-job-checksum
-  [[ "$manifest" == *'name: ${ProjectName}-db-${Version}-job-checksum'* ]]
+  [[ "$manifest" == *'name: ${ProjectName}-db-${Version}-job-checksum'* ]] || return 1
 }
 
 @test "job name with combined-sub-path and suffix includes version before job-checksum" {
@@ -93,7 +95,7 @@ read_manifest_in_subpath() {
   [ -f "$OUTPUT_SUB_PATH/manifests/combined/db/job-migrate.yaml" ]
   manifest=$(cat "$OUTPUT_SUB_PATH/manifests/combined/db/job-migrate.yaml")
   # Pattern: ${ProjectName}-${dir}-${suffix}-${Version}-job-checksum
-  [[ "$manifest" == *'name: ${ProjectName}-db-migrate-${Version}-job-checksum'* ]]
+  [[ "$manifest" == *'name: ${ProjectName}-db-migrate-${Version}-job-checksum'* ]] || return 1
 }
 
 @test "includes namespace token" {
@@ -101,7 +103,7 @@ read_manifest_in_subpath() {
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
-  [[ "$manifest" == *'namespace: ${Environment}'* ]]
+  [[ "$manifest" == *'namespace: ${Environment}'* ]] || return 1
 }
 
 # =============================================================================
@@ -113,7 +115,7 @@ read_manifest_in_subpath() {
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
-  [[ "$manifest" == *"backoffLimit: 0"* ]]
+  [[ "$manifest" == *"backoffLimit: 0"* ]] || return 1
 }
 
 @test "respects custom backoffLimit" {
@@ -123,7 +125,7 @@ read_manifest_in_subpath() {
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
-  [[ "$manifest" == *"backoffLimit: 3"* ]]
+  [[ "$manifest" == *"backoffLimit: 3"* ]] || return 1
 }
 
 @test "includes default completions" {
@@ -131,7 +133,7 @@ read_manifest_in_subpath() {
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
-  [[ "$manifest" == *"completions: 1"* ]]
+  [[ "$manifest" == *"completions: 1"* ]] || return 1
 }
 
 @test "respects custom completions" {
@@ -141,7 +143,7 @@ read_manifest_in_subpath() {
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
-  [[ "$manifest" == *"completions: 5"* ]]
+  [[ "$manifest" == *"completions: 5"* ]] || return 1
 }
 
 @test "includes default parallelism" {
@@ -149,7 +151,7 @@ read_manifest_in_subpath() {
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
-  [[ "$manifest" == *"parallelism: 1"* ]]
+  [[ "$manifest" == *"parallelism: 1"* ]] || return 1
 }
 
 @test "respects custom parallelism" {
@@ -159,7 +161,7 @@ read_manifest_in_subpath() {
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
-  [[ "$manifest" == *"parallelism: 3"* ]]
+  [[ "$manifest" == *"parallelism: 3"* ]] || return 1
 }
 
 @test "includes ttlSecondsAfterFinished by default" {
@@ -167,7 +169,7 @@ read_manifest_in_subpath() {
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
-  [[ "$manifest" == *"ttlSecondsAfterFinished: 86400"* ]]
+  [[ "$manifest" == *"ttlSecondsAfterFinished: 86400"* ]] || return 1
 }
 
 @test "respects custom ttlSecondsAfterFinished" {
@@ -177,7 +179,7 @@ read_manifest_in_subpath() {
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
-  [[ "$manifest" == *"ttlSecondsAfterFinished: 3600"* ]]
+  [[ "$manifest" == *"ttlSecondsAfterFinished: 3600"* ]] || return 1
 }
 
 @test "omits activeDeadlineSeconds when not set" {
@@ -185,7 +187,7 @@ read_manifest_in_subpath() {
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
-  [[ "$manifest" != *"activeDeadlineSeconds"* ]]
+  [[ "$manifest" != *"activeDeadlineSeconds"* ]] || return 1
 }
 
 @test "includes activeDeadlineSeconds when set" {
@@ -195,7 +197,7 @@ read_manifest_in_subpath() {
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
-  [[ "$manifest" == *"activeDeadlineSeconds: 600"* ]]
+  [[ "$manifest" == *"activeDeadlineSeconds: 600"* ]] || return 1
 }
 
 # =============================================================================
@@ -207,7 +209,7 @@ read_manifest_in_subpath() {
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
-  [[ "$manifest" == *"restartPolicy: Never"* ]]
+  [[ "$manifest" == *"restartPolicy: Never"* ]] || return 1
 }
 
 @test "allows OnFailure restart policy" {
@@ -217,7 +219,7 @@ read_manifest_in_subpath() {
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
-  [[ "$manifest" == *"restartPolicy: OnFailure"* ]]
+  [[ "$manifest" == *"restartPolicy: OnFailure"* ]] || return 1
 }
 
 @test "rejects Always restart policy" {
@@ -225,7 +227,7 @@ read_manifest_in_subpath() {
 
   run "$GENERATORS_DIR/generate-kubernetes-workload-job"
   [ "$status" -ne 0 ]
-  [[ "$output" == *"must be 'Never' or 'OnFailure'"* ]]
+  [[ "$output" == *"must be 'Never' or 'OnFailure'"* ]] || return 1
 }
 
 @test "rejects invalid restart policy" {
@@ -233,7 +235,7 @@ read_manifest_in_subpath() {
 
   run "$GENERATORS_DIR/generate-kubernetes-workload-job"
   [ "$status" -ne 0 ]
-  [[ "$output" == *"must be 'Never' or 'OnFailure'"* ]]
+  [[ "$output" == *"must be 'Never' or 'OnFailure'"* ]] || return 1
 }
 
 # =============================================================================
@@ -245,7 +247,7 @@ read_manifest_in_subpath() {
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
-  [[ "$manifest" != *"command:"* ]]
+  [[ "$manifest" != *"command:"* ]] || return 1
 }
 
 @test "includes command when set" {
@@ -255,9 +257,9 @@ read_manifest_in_subpath() {
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
-  [[ "$manifest" == *"command:"* ]]
-  [[ "$manifest" == *"/bin/sh"* ]]
-  [[ "$manifest" == *"-c"* ]]
+  [[ "$manifest" == *"command:"* ]] || return 1
+  [[ "$manifest" == *"/bin/sh"* ]] || return 1
+  [[ "$manifest" == *"-c"* ]] || return 1
 }
 
 @test "omits args when not set" {
@@ -265,7 +267,7 @@ read_manifest_in_subpath() {
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
-  [[ "$manifest" != *"args:"* ]]
+  [[ "$manifest" != *"args:"* ]] || return 1
 }
 
 @test "includes args when set" {
@@ -276,8 +278,8 @@ read_manifest_in_subpath() {
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
-  [[ "$manifest" == *"args:"* ]]
-  [[ "$manifest" == *"echo hello"* ]]
+  [[ "$manifest" == *"args:"* ]] || return 1
+  [[ "$manifest" == *"echo hello"* ]] || return 1
 }
 
 # =============================================================================
@@ -289,14 +291,14 @@ read_manifest_in_subpath() {
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
-  [[ "$manifest" == *"labels:"* ]]
+  [[ "$manifest" == *"labels:"* ]] || return 1
   # app label includes version in job name
-  [[ "$manifest" == *'app: ${ProjectName}-${Version}-job-checksum'* ]]
-  [[ "$manifest" == *'app.kubernetes.io/version: "${Version}"'* ]]
-  [[ "$manifest" == *"app.kubernetes.io/managed-by: Kaptain"* ]]
-  [[ "$manifest" == *'kaptain.org/version: "${Version}"'* ]]
-  [[ "$manifest" == *'kaptain.org/project-name: ${ProjectName}'* ]]
-  [[ "$manifest" == *'kaptain.org/owner: kube-kaptain'* ]]
+  [[ "$manifest" == *'app: ${ProjectName}-${Version}-job-checksum'* ]] || return 1
+  [[ "$manifest" == *'app.kubernetes.io/version: "${Version}"'* ]] || return 1
+  [[ "$manifest" == *"app.kubernetes.io/managed-by: Kaptain"* ]] || return 1
+  [[ "$manifest" == *'kaptain.org/version: "${Version}"'* ]] || return 1
+  [[ "$manifest" == *'kaptain.org/project-name: ${ProjectName}'* ]] || return 1
+  [[ "$manifest" == *'kaptain.org/owner: kube-kaptain'* ]] || return 1
 }
 
 @test "includes kaptain annotations" {
@@ -304,14 +306,14 @@ read_manifest_in_subpath() {
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
-  [[ "$manifest" == *"annotations:"* ]]
-  [[ "$manifest" == *'kaptain.org/project-name: ${ProjectName}'* ]]
-  [[ "$manifest" == *'kaptain.org/version: "${Version}"'* ]]
-  [[ "$manifest" == *"kaptain.org/build-timestamp:"* ]]
-  [[ "$manifest" == *'kaptain.org/generated-by: "Generated by Kaptain generate-kubernetes-workload-job"'* ]]
-  [[ "$manifest" == *'kaptain.org/built-by: test'* ]]
-  [[ "$manifest" == *'kaptain.org/source-repository: kube-kaptain/test-project'* ]]
-  [[ "$manifest" == *'kaptain.org/image-uri: ghcr.io/kube-kaptain/test-project:1.0.0'* ]]
+  [[ "$manifest" == *"annotations:"* ]] || return 1
+  [[ "$manifest" == *'kaptain.org/project-name: ${ProjectName}'* ]] || return 1
+  [[ "$manifest" == *'kaptain.org/version: "${Version}"'* ]] || return 1
+  [[ "$manifest" == *"kaptain.org/build-timestamp:"* ]] || return 1
+  [[ "$manifest" == *'kaptain.org/generated-by: "Generated by Kaptain generate-kubernetes-workload-job"'* ]] || return 1
+  [[ "$manifest" == *'kaptain.org/built-by: test'* ]] || return 1
+  [[ "$manifest" == *'kaptain.org/source-repository: kube-kaptain/test-project'* ]] || return 1
+  [[ "$manifest" == *'kaptain.org/image-uri: ghcr.io/kube-kaptain/test-project:1.0.0'* ]] || return 1
 }
 
 # =============================================================================
@@ -325,9 +327,9 @@ read_manifest_in_subpath() {
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
-  [[ "$manifest" == *'${ProjectName}'* ]]
-  [[ "$manifest" == *'${Version}'* ]]
-  [[ "$manifest" == *'${Environment}'* ]]
+  [[ "$manifest" == *'${ProjectName}'* ]] || return 1
+  [[ "$manifest" == *'${Version}'* ]] || return 1
+  [[ "$manifest" == *'${Environment}'* ]] || return 1
 }
 
 @test "respects lower-kebab token name style" {
@@ -337,9 +339,9 @@ read_manifest_in_subpath() {
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
-  [[ "$manifest" == *'${project-name}'* ]]
-  [[ "$manifest" == *'${version}'* ]]
-  [[ "$manifest" == *'${environment}'* ]]
+  [[ "$manifest" == *'${project-name}'* ]] || return 1
+  [[ "$manifest" == *'${version}'* ]] || return 1
+  [[ "$manifest" == *'${environment}'* ]] || return 1
 }
 
 @test "respects mustache substitution style" {
@@ -349,9 +351,9 @@ read_manifest_in_subpath() {
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
-  [[ "$manifest" == *'{{ ProjectName }}'* ]]
-  [[ "$manifest" == *'{{ Version }}'* ]]
-  [[ "$manifest" == *'{{ Environment }}'* ]]
+  [[ "$manifest" == *'{{ ProjectName }}'* ]] || return 1
+  [[ "$manifest" == *'{{ Version }}'* ]] || return 1
+  [[ "$manifest" == *'{{ Environment }}'* ]] || return 1
 }
 
 # =============================================================================
@@ -363,10 +365,10 @@ read_manifest_in_subpath() {
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
-  [[ "$manifest" == *"containers:"* ]]
-  [[ "$manifest" == *"- name: default-app"* ]]
-  [[ "$manifest" == *"image:"* ]]
-  [[ "$manifest" == *"imagePullPolicy:"* ]]
+  [[ "$manifest" == *"containers:"* ]] || return 1
+  [[ "$manifest" == *"- name: default-app"* ]] || return 1
+  [[ "$manifest" == *"image:"* ]] || return 1
+  [[ "$manifest" == *"imagePullPolicy:"* ]] || return 1
 }
 
 @test "includes termination grace period" {
@@ -374,7 +376,7 @@ read_manifest_in_subpath() {
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
-  [[ "$manifest" == *"terminationGracePeriodSeconds:"* ]]
+  [[ "$manifest" == *"terminationGracePeriodSeconds:"* ]] || return 1
 }
 
 @test "includes resource requests and limits" {
@@ -382,9 +384,9 @@ read_manifest_in_subpath() {
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
-  [[ "$manifest" == *"resources:"* ]]
-  [[ "$manifest" == *"requests:"* ]]
-  [[ "$manifest" == *"limits:"* ]]
+  [[ "$manifest" == *"resources:"* ]] || return 1
+  [[ "$manifest" == *"requests:"* ]] || return 1
+  [[ "$manifest" == *"limits:"* ]] || return 1
 }
 
 @test "includes security context" {
@@ -392,7 +394,7 @@ read_manifest_in_subpath() {
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
-  [[ "$manifest" == *"securityContext:"* ]]
+  [[ "$manifest" == *"securityContext:"* ]] || return 1
 }
 
 # =============================================================================
@@ -434,8 +436,8 @@ read_manifest_in_subpath() {
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
-  [[ "$manifest" == *"team: platform"* ]]
-  [[ "$manifest" == *"cost-center: 123"* ]]
+  [[ "$manifest" == *"team: platform"* ]] || return 1
+  [[ "$manifest" == *"cost-center: 123"* ]] || return 1
 }
 
 @test "adds job-specific additional labels" {
@@ -445,7 +447,7 @@ read_manifest_in_subpath() {
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
-  [[ "$manifest" == *"job-type: migration"* ]]
+  [[ "$manifest" == *"job-type: migration"* ]] || return 1
 }
 
 @test "job labels override global labels" {
@@ -456,8 +458,8 @@ read_manifest_in_subpath() {
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
-  [[ "$manifest" == *"team: override"* ]]
-  [[ "$manifest" != *"team: platform"* ]]
+  [[ "$manifest" == *"team: override"* ]] || return 1
+  [[ "$manifest" != *"team: platform"* ]] || return 1
 }
 
 # =============================================================================
@@ -469,9 +471,9 @@ read_manifest_in_subpath() {
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
-  [[ "$manifest" != *"livenessProbe:"* ]]
-  [[ "$manifest" != *"readinessProbe:"* ]]
-  [[ "$manifest" != *"startupProbe:"* ]]
+  [[ "$manifest" != *"livenessProbe:"* ]] || return 1
+  [[ "$manifest" != *"readinessProbe:"* ]] || return 1
+  [[ "$manifest" != *"startupProbe:"* ]] || return 1
 }
 
 @test "enables liveness probe when requested" {
@@ -481,11 +483,11 @@ read_manifest_in_subpath() {
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
-  [[ "$manifest" == *"livenessProbe:"* ]]
-  [[ "$manifest" == *"httpGet:"* ]]
-  [[ "$manifest" == *"path: /liveness"* ]]
-  [[ "$manifest" != *"readinessProbe:"* ]]
-  [[ "$manifest" != *"startupProbe:"* ]]
+  [[ "$manifest" == *"livenessProbe:"* ]] || return 1
+  [[ "$manifest" == *"httpGet:"* ]] || return 1
+  [[ "$manifest" == *"path: /liveness"* ]] || return 1
+  [[ "$manifest" != *"readinessProbe:"* ]] || return 1
+  [[ "$manifest" != *"startupProbe:"* ]] || return 1
 }
 
 @test "enables readiness probe when requested" {
@@ -495,11 +497,11 @@ read_manifest_in_subpath() {
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
-  [[ "$manifest" != *"livenessProbe:"* ]]
-  [[ "$manifest" == *"readinessProbe:"* ]]
-  [[ "$manifest" == *"httpGet:"* ]]
-  [[ "$manifest" == *"path: /readiness"* ]]
-  [[ "$manifest" != *"startupProbe:"* ]]
+  [[ "$manifest" != *"livenessProbe:"* ]] || return 1
+  [[ "$manifest" == *"readinessProbe:"* ]] || return 1
+  [[ "$manifest" == *"httpGet:"* ]] || return 1
+  [[ "$manifest" == *"path: /readiness"* ]] || return 1
+  [[ "$manifest" != *"startupProbe:"* ]] || return 1
 }
 
 @test "enables startup probe when requested" {
@@ -509,11 +511,11 @@ read_manifest_in_subpath() {
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
-  [[ "$manifest" != *"livenessProbe:"* ]]
-  [[ "$manifest" != *"readinessProbe:"* ]]
-  [[ "$manifest" == *"startupProbe:"* ]]
-  [[ "$manifest" == *"httpGet:"* ]]
-  [[ "$manifest" == *"path: /startup"* ]]
+  [[ "$manifest" != *"livenessProbe:"* ]] || return 1
+  [[ "$manifest" != *"readinessProbe:"* ]] || return 1
+  [[ "$manifest" == *"startupProbe:"* ]] || return 1
+  [[ "$manifest" == *"httpGet:"* ]] || return 1
+  [[ "$manifest" == *"path: /startup"* ]] || return 1
 }
 
 @test "enables all probes when requested" {
@@ -525,9 +527,9 @@ read_manifest_in_subpath() {
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
-  [[ "$manifest" == *"livenessProbe:"* ]]
-  [[ "$manifest" == *"readinessProbe:"* ]]
-  [[ "$manifest" == *"startupProbe:"* ]]
+  [[ "$manifest" == *"livenessProbe:"* ]] || return 1
+  [[ "$manifest" == *"readinessProbe:"* ]] || return 1
+  [[ "$manifest" == *"startupProbe:"* ]] || return 1
 }
 
 @test "probes use workload probe settings" {
@@ -540,10 +542,10 @@ read_manifest_in_subpath() {
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
-  [[ "$manifest" == *"livenessProbe:"* ]]
-  [[ "$manifest" == *"tcpSocket:"* ]]
-  [[ "$manifest" == *"port: 5432"* ]]
-  [[ "$manifest" == *"initialDelaySeconds: 15"* ]]
+  [[ "$manifest" == *"livenessProbe:"* ]] || return 1
+  [[ "$manifest" == *"tcpSocket:"* ]] || return 1
+  [[ "$manifest" == *"port: 5432"* ]] || return 1
+  [[ "$manifest" == *"initialDelaySeconds: 15"* ]] || return 1
 }
 
 # =============================================================================
@@ -555,8 +557,8 @@ read_manifest_in_subpath() {
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
-  [[ "$manifest" == *"affinity:"* ]]
-  [[ "$manifest" == *"podAntiAffinity:"* ]]
+  [[ "$manifest" == *"affinity:"* ]] || return 1
+  [[ "$manifest" == *"podAntiAffinity:"* ]] || return 1
 }
 
 @test "affinity strategy none omits affinity block" {
@@ -566,7 +568,7 @@ read_manifest_in_subpath() {
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
-  [[ "$manifest" != *"affinity:"* ]]
+  [[ "$manifest" != *"affinity:"* ]] || return 1
 }
 
 @test "affinity strategy spread-nodes generates node spread" {
@@ -576,8 +578,8 @@ read_manifest_in_subpath() {
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
-  [[ "$manifest" == *"affinity:"* ]]
-  [[ "$manifest" == *"topologyKey: kubernetes.io/hostname"* ]]
+  [[ "$manifest" == *"affinity:"* ]] || return 1
+  [[ "$manifest" == *"topologyKey: kubernetes.io/hostname"* ]] || return 1
 }
 
 @test "affinity strategy colocate-app generates pod affinity" {
@@ -588,8 +590,8 @@ read_manifest_in_subpath() {
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
-  [[ "$manifest" == *"affinity:"* ]]
-  [[ "$manifest" == *"podAffinity:"* ]]
+  [[ "$manifest" == *"affinity:"* ]] || return 1
+  [[ "$manifest" == *"podAffinity:"* ]] || return 1
 }
 
 # =============================================================================
@@ -601,8 +603,8 @@ read_manifest_in_subpath() {
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
-  [[ "$manifest" != *"ports:"* ]]
-  [[ "$manifest" != *"containerPort:"* ]]
+  [[ "$manifest" != *"ports:"* ]] || return 1
+  [[ "$manifest" != *"containerPort:"* ]] || return 1
 }
 
 @test "enables ports when requested" {
@@ -612,8 +614,8 @@ read_manifest_in_subpath() {
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
-  [[ "$manifest" == *"ports:"* ]]
-  [[ "$manifest" == *"containerPort:"* ]]
+  [[ "$manifest" == *"ports:"* ]] || return 1
+  [[ "$manifest" == *"containerPort:"* ]] || return 1
 }
 
 @test "ports use workload container port setting" {
@@ -624,7 +626,7 @@ read_manifest_in_subpath() {
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
-  [[ "$manifest" == *"containerPort: 9090"* ]]
+  [[ "$manifest" == *"containerPort: 9090"* ]] || return 1
 }
 
 # =============================================================================
@@ -636,8 +638,8 @@ read_manifest_in_subpath() {
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
-  [[ "$manifest" != *"lifecycle:"* ]]
-  [[ "$manifest" != *"preStop:"* ]]
+  [[ "$manifest" != *"lifecycle:"* ]] || return 1
+  [[ "$manifest" != *"preStop:"* ]] || return 1
 }
 
 @test "includes lifecycle hook when prestop command set" {
@@ -647,9 +649,9 @@ read_manifest_in_subpath() {
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
-  [[ "$manifest" == *"lifecycle:"* ]]
-  [[ "$manifest" == *"preStop:"* ]]
-  [[ "$manifest" == *"echo cleanup"* ]]
+  [[ "$manifest" == *"lifecycle:"* ]] || return 1
+  [[ "$manifest" == *"preStop:"* ]] || return 1
+  [[ "$manifest" == *"echo cleanup"* ]] || return 1
 }
 
 # =============================================================================
@@ -661,7 +663,7 @@ read_manifest_in_subpath() {
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
-  [[ "$manifest" != *"nodeSelector:"* ]]
+  [[ "$manifest" != *"nodeSelector:"* ]] || return 1
 }
 
 @test "includes node selector when set" {
@@ -671,8 +673,8 @@ read_manifest_in_subpath() {
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
-  [[ "$manifest" == *"nodeSelector:"* ]]
-  [[ "$manifest" == *'disktype: "ssd"'* ]]
+  [[ "$manifest" == *"nodeSelector:"* ]] || return 1
+  [[ "$manifest" == *'disktype: "ssd"'* ]] || return 1
 }
 
 @test "node selector supports multiple values" {
@@ -682,8 +684,8 @@ read_manifest_in_subpath() {
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
-  [[ "$manifest" == *'disktype: "ssd"'* ]]
-  [[ "$manifest" == *'zone: "us-east-1a"'* ]]
+  [[ "$manifest" == *'disktype: "ssd"'* ]] || return 1
+  [[ "$manifest" == *'zone: "us-east-1a"'* ]] || return 1
 }
 
 # =============================================================================
@@ -695,7 +697,7 @@ read_manifest_in_subpath() {
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
-  [[ "$manifest" != *"dnsPolicy:"* ]]
+  [[ "$manifest" != *"dnsPolicy:"* ]] || return 1
 }
 
 @test "includes dns policy when set" {
@@ -705,7 +707,7 @@ read_manifest_in_subpath() {
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
-  [[ "$manifest" == *"dnsPolicy: ClusterFirst"* ]]
+  [[ "$manifest" == *"dnsPolicy: ClusterFirst"* ]] || return 1
 }
 
 @test "rejects invalid dns policy" {
@@ -713,5 +715,5 @@ read_manifest_in_subpath() {
 
   run "$GENERATORS_DIR/generate-kubernetes-workload-job"
   [ "$status" -eq 4 ]
-  [[ "$output" == *"must be"* ]]
+  [[ "$output" == *"must be"* ]] || return 1
 }

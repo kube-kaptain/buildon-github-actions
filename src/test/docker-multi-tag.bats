@@ -2,6 +2,8 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
 
+bats_require_minimum_version 1.5.0
+
 load helpers
 
 setup() {
@@ -196,8 +198,8 @@ mock_manifest_tags() {
   local push_file="$DOCKER_PUSH_IMAGE_LIST_FILE"
   [ -f "$push_file" ]
   run cat "$push_file"
-  [[ "$output" == *"docker.io/test/my-repo:1.0.0"* ]]
-  [[ "$output" == *"docker.io/test/my-repo:1.0.0-manifests"* ]]
+  [[ "$output" == *"docker.io/test/my-repo:1.0.0"* ]] || return 1
+  [[ "$output" == *"docker.io/test/my-repo:1.0.0-manifests"* ]] || return 1
 }
 
 # === Skip / error handling ===
@@ -301,7 +303,7 @@ mock_manifest_tags() {
   local manifest_file="${OUTPUT_SUB_PATH}/docker-push-all/manifest-uris"
   [ -f "$manifest_file" ]
   run cat "$manifest_file"
-  [[ "$output" == *"docker.io/test/my-repo:1.0.0"* ]]
+  [[ "$output" == *"docker.io/test/my-repo:1.0.0"* ]] || return 1
 }
 
 @test "retags manifest list to multiple registries with counts" {
@@ -323,8 +325,8 @@ mock_manifest_tags() {
   local manifest_file="${OUTPUT_SUB_PATH}/docker-push-all/manifest-uris"
   [ -f "$manifest_file" ]
   run cat "$manifest_file"
-  [[ "$output" == *"docker.io/test/my-repo:1.0.0"* ]]
-  [[ "$output" == *"quay.io/myorg/test/my-repo:1.0.0"* ]]
+  [[ "$output" == *"docker.io/test/my-repo:1.0.0"* ]] || return 1
+  [[ "$output" == *"quay.io/myorg/test/my-repo:1.0.0"* ]] || return 1
 }
 
 @test "does not write manifest-uris when no manifests seeded" {

@@ -6,6 +6,8 @@
 # This hook runs AFTER versions-and-naming - version outputs available
 # Verifies that ALL exported workflow input variables are accessible
 
+bats_require_minimum_version 1.5.0
+
 load helpers
 
 setup() {
@@ -246,5 +248,5 @@ teardown() {
 
   run "$SCRIPTS_DIR/hook-post-versions-and-naming"
   [ "$status" -eq 0 ]
-  [[ "$output" == *"No hook script configured"* ]]
+  [[ "$output" == *"No hook script configured"* ]] || return 1
 }

@@ -4,6 +4,8 @@
 #
 # Tests for pod-placement-strategy plugin scripts
 
+bats_require_minimum_version 1.5.0
+
 load helpers
 
 PLUGIN_DIR="$PROJECT_ROOT/src/scripts/plugins/pod-placement-strategy"

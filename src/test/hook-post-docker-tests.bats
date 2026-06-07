@@ -6,6 +6,8 @@
 # Verifies that ALL exported variables are properly accessible to hook scripts
 # This test is self-validating: it parses the actual hook script exports
 
+bats_require_minimum_version 1.5.0
+
 load helpers
 
 setup() {
@@ -243,7 +245,7 @@ teardown() {
 
   run "$SCRIPTS_DIR/hook-post-docker-tests"
   [ "$status" -eq 0 ]
-  [[ "$output" == *"No hook script configured"* ]]
+  [[ "$output" == *"No hook script configured"* ]] || return 1
 }
 
 @test "hook-post-docker-tests fails when hook script not found" {
@@ -251,7 +253,7 @@ teardown() {
 
   run "$SCRIPTS_DIR/hook-post-docker-tests"
   [ "$status" -eq 2 ]
-  [[ "$output" == *"Hook script not found"* ]]
+  [[ "$output" == *"Hook script not found"* ]] || return 1
 }
 
 @test "hook-post-docker-tests fails when hook script not executable" {
@@ -265,7 +267,7 @@ EOF
 
   run "$SCRIPTS_DIR/hook-post-docker-tests"
   [ "$status" -eq 3 ]
-  [[ "$output" == *"Hook script not executable"* ]]
+  [[ "$output" == *"Hook script not executable"* ]] || return 1
 }
 
 @test "hook-post-docker-tests exports all inputs from sourced defaults (self-validating)" {

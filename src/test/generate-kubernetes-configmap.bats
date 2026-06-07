@@ -4,6 +4,8 @@
 #
 # Tests for generate-kubernetes-configmap
 
+bats_require_minimum_version 1.5.0
+
 load helpers
 
 setup() {
@@ -130,7 +132,7 @@ read_manifest() {
 
   manifest=$(read_manifest)
   assert_contains "$manifest" 'name: ${ProjectName}'
-  [[ "$manifest" != *"configmap-checksum"* ]]
+  [[ "$manifest" != *"configmap-checksum"* ]] || return 1
 }
 
 @test "uses Environment token for namespace" {
@@ -245,9 +247,9 @@ line3=value3"
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
-  [[ "$manifest" == *"line1=value1"* ]]
-  [[ "$manifest" == *"line2=value2"* ]]
-  [[ "$manifest" == *"line3=value3"* ]]
+  [[ "$manifest" == *"line1=value1"* ]] || return 1
+  [[ "$manifest" == *"line2=value2"* ]] || return 1
+  [[ "$manifest" == *"line3=value3"* ]] || return 1
 }
 
 @test "handles content with special characters" {
@@ -257,7 +259,7 @@ line3=value3"
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
-  [[ "$manifest" == *'url=http://example.com?foo=bar&baz=qux'* ]]
+  [[ "$manifest" == *'url=http://example.com?foo=bar&baz=qux'* ]] || return 1
 }
 
 @test "handles content with token-like strings" {
@@ -268,7 +270,7 @@ line3=value3"
 
   manifest=$(read_manifest)
   # Token-like strings in content should be preserved as-is
-  [[ "$manifest" == *'template=${SomeVar}'* ]]
+  [[ "$manifest" == *'template=${SomeVar}'* ]] || return 1
 }
 
 # =============================================================================
@@ -340,8 +342,8 @@ line3=value3"
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
-  [[ "$manifest" == *"team: platform"* ]]
-  [[ "$manifest" == *"cost-center: 123"* ]]
+  [[ "$manifest" == *"team: platform"* ]] || return 1
+  [[ "$manifest" == *"cost-center: 123"* ]] || return 1
 }
 
 @test "adds global additional annotations" {
@@ -352,7 +354,7 @@ line3=value3"
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
-  [[ "$manifest" == *"custom/note: hello"* ]]
+  [[ "$manifest" == *"custom/note: hello"* ]] || return 1
 }
 
 @test "adds configmap-specific additional labels" {
@@ -363,7 +365,7 @@ line3=value3"
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
-  [[ "$manifest" == *"config-type: app"* ]]
+  [[ "$manifest" == *"config-type: app"* ]] || return 1
 }
 
 @test "adds configmap-specific additional annotations" {
@@ -374,7 +376,7 @@ line3=value3"
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
-  [[ "$manifest" == *"configmap/source: generated"* ]]
+  [[ "$manifest" == *"configmap/source: generated"* ]] || return 1
 }
 
 @test "configmap labels override global labels" {
@@ -386,8 +388,8 @@ line3=value3"
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
-  [[ "$manifest" == *"team: configmap-team"* ]]
-  [[ "$manifest" != *"team: global-team"* ]]
+  [[ "$manifest" == *"team: configmap-team"* ]] || return 1
+  [[ "$manifest" != *"team: global-team"* ]] || return 1
 }
 
 @test "configmap annotations override global annotations" {
@@ -399,8 +401,8 @@ line3=value3"
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
-  [[ "$manifest" == *"custom/note: configmap"* ]]
-  [[ "$manifest" != *"custom/note: global"* ]]
+  [[ "$manifest" == *"custom/note: configmap"* ]] || return 1
+  [[ "$manifest" != *"custom/note: global"* ]] || return 1
 }
 
 @test "additional labels can override builtin labels" {
@@ -411,8 +413,8 @@ line3=value3"
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
-  [[ "$manifest" == *"app.kubernetes.io/managed-by: helm"* ]]
-  [[ "$manifest" != *"app.kubernetes.io/managed-by: Kaptain"* ]]
+  [[ "$manifest" == *"app.kubernetes.io/managed-by: helm"* ]] || return 1
+  [[ "$manifest" != *"app.kubernetes.io/managed-by: Kaptain"* ]] || return 1
 }
 
 @test "additional annotations can override builtin annotations" {
@@ -423,7 +425,7 @@ line3=value3"
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
-  [[ "$manifest" == *'kaptain.org/generated-by: "custom generator"'* ]]
+  [[ "$manifest" == *'kaptain.org/generated-by: "custom generator"'* ]] || return 1
 }
 
 # =============================================================================
@@ -452,7 +454,7 @@ line3=value3"
   [ "$status" -eq 0 ]
 
   manifest=$(cat "$OUTPUT_SUB_PATH/manifests/combined/configmap-nginx.yaml")
-  [[ "$manifest" == *'name: ${ProjectName}-nginx-configmap-checksum'* ]]
+  [[ "$manifest" == *'name: ${ProjectName}-nginx-configmap-checksum'* ]] || return 1
 }
 
 @test "suffix affects metadata.name without checksum" {
@@ -464,8 +466,8 @@ line3=value3"
   [ "$status" -eq 0 ]
 
   manifest=$(cat "$OUTPUT_SUB_PATH/manifests/combined/configmap-nginx.yaml")
-  [[ "$manifest" == *'name: ${ProjectName}-nginx'* ]]
-  [[ "$manifest" != *"configmap-checksum"* ]]
+  [[ "$manifest" == *'name: ${ProjectName}-nginx'* ]] || return 1
+  [[ "$manifest" != *"configmap-checksum"* ]] || return 1
 }
 
 @test "suffix affects output filename" {
@@ -501,7 +503,7 @@ line3=value3"
 
   # Name should include suffix
   manifest=$(cat "$OUTPUT_SUB_PATH/manifests/combined/configmap-custom.yaml")
-  [[ "$manifest" == *'name: ${ProjectName}-custom-configmap-checksum'* ]]
+  [[ "$manifest" == *'name: ${ProjectName}-custom-configmap-checksum'* ]] || return 1
 }
 
 @test "suffix appends to custom sub-path for source directory" {
@@ -520,8 +522,8 @@ line3=value3"
 
   # Should have read from the suffixed directory
   manifest=$(cat "$OUTPUT_SUB_PATH/manifests/combined/configmap-nginx.yaml")
-  [[ "$manifest" == *"nginx.conf:"* ]]
-  [[ "$manifest" == *"nginx=config"* ]]
+  [[ "$manifest" == *"nginx.conf:"* ]] || return 1
+  [[ "$manifest" == *"nginx=config"* ]] || return 1
 }
 
 @test "custom sub-path without suffix uses path as-is" {
@@ -536,8 +538,8 @@ line3=value3"
   [ "$status" -eq 0 ]
 
   manifest=$(cat "$OUTPUT_SUB_PATH/manifests/combined/configmap.yaml")
-  [[ "$manifest" == *"custom.properties:"* ]]
-  [[ "$manifest" == *"custom=value"* ]]
+  [[ "$manifest" == *"custom.properties:"* ]] || return 1
+  [[ "$manifest" == *"custom=value"* ]] || return 1
 }
 
 # =============================================================================
@@ -563,7 +565,7 @@ line3=value3"
   [ "$status" -eq 0 ]
 
   manifest=$(cat "$OUTPUT_SUB_PATH/manifests/combined/omg/configmap.yaml")
-  [[ "$manifest" == *'name: ${ProjectName}-omg-configmap-checksum'* ]]
+  [[ "$manifest" == *'name: ${ProjectName}-omg-configmap-checksum'* ]] || return 1
 }
 
 @test "combined sub-path affects metadata.name without checksum" {
@@ -575,8 +577,8 @@ line3=value3"
   [ "$status" -eq 0 ]
 
   manifest=$(cat "$OUTPUT_SUB_PATH/manifests/combined/omg/configmap.yaml")
-  [[ "$manifest" == *'name: ${ProjectName}-omg'* ]]
-  [[ "$manifest" != *"configmap-checksum"* ]]
+  [[ "$manifest" == *'name: ${ProjectName}-omg'* ]] || return 1
+  [[ "$manifest" != *"configmap-checksum"* ]] || return 1
 }
 
 @test "combined sub-path with suffix: name is ProjectName-combined-suffix-checksum" {
@@ -592,7 +594,7 @@ line3=value3"
 
   # Name includes both combined and suffix
   manifest=$(cat "$OUTPUT_SUB_PATH/manifests/combined/omg/configmap-wtf.yaml")
-  [[ "$manifest" == *'name: ${ProjectName}-omg-wtf-configmap-checksum'* ]]
+  [[ "$manifest" == *'name: ${ProjectName}-omg-wtf-configmap-checksum'* ]] || return 1
 }
 
 @test "combined sub-path with suffix, no checksum: name is ProjectName-combined-suffix" {
@@ -605,8 +607,8 @@ line3=value3"
   [ "$status" -eq 0 ]
 
   manifest=$(cat "$OUTPUT_SUB_PATH/manifests/combined/omg/configmap-wtf.yaml")
-  [[ "$manifest" == *'name: ${ProjectName}-omg-wtf'* ]]
-  [[ "$manifest" != *"configmap-checksum"* ]]
+  [[ "$manifest" == *'name: ${ProjectName}-omg-wtf'* ]] || return 1
+  [[ "$manifest" != *"configmap-checksum"* ]] || return 1
 }
 
 @test "no combined sub-path uses root combined directory" {
@@ -636,7 +638,7 @@ line3=value3"
   [ "$status" -eq 0 ]
 
   manifest=$(cat "$OUTPUT_SUB_PATH/manifests/combined/omg/wtf/configmap.yaml")
-  [[ "$manifest" == *'name: ${ProjectName}-omg-wtf-configmap-checksum'* ]]
+  [[ "$manifest" == *'name: ${ProjectName}-omg-wtf-configmap-checksum'* ]] || return 1
 }
 
 @test "nested combined sub-path with suffix: name is ProjectName-omg-wtf-suffix-checksum" {
@@ -650,7 +652,7 @@ line3=value3"
   [ -f "$OUTPUT_SUB_PATH/manifests/combined/omg/wtf/configmap-lol.yaml" ]
 
   manifest=$(cat "$OUTPUT_SUB_PATH/manifests/combined/omg/wtf/configmap-lol.yaml")
-  [[ "$manifest" == *'name: ${ProjectName}-omg-wtf-lol-configmap-checksum'* ]]
+  [[ "$manifest" == *'name: ${ProjectName}-omg-wtf-lol-configmap-checksum'* ]] || return 1
 }
 
 @test "combined sub-path validation rejects uppercase" {
@@ -708,5 +710,5 @@ line3=value3"
   [ -f "$OUTPUT_SUB_PATH/manifests/combined/omg-1/wtf-2/configmap.yaml" ]
 
   manifest=$(cat "$OUTPUT_SUB_PATH/manifests/combined/omg-1/wtf-2/configmap.yaml")
-  [[ "$manifest" == *'name: ${ProjectName}-omg-1-wtf-2-configmap-checksum'* ]]
+  [[ "$manifest" == *'name: ${ProjectName}-omg-1-wtf-2-configmap-checksum'* ]] || return 1
 }

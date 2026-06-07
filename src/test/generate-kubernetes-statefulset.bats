@@ -4,6 +4,8 @@
 #
 # Tests for generate-kubernetes-workload-statefulset
 
+bats_require_minimum_version 1.5.0
+
 load helpers
 
 setup() {
@@ -90,7 +92,7 @@ read_combined_suffixed_manifest() {
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
-  [[ "$manifest" != *"minReadySeconds:"* ]]
+  [[ "$manifest" != *"minReadySeconds:"* ]] || return 1
 }
 
 @test "includes minReadySeconds when non-zero" {
@@ -155,7 +157,7 @@ read_combined_suffixed_manifest() {
   assert_contains "$manifest" "matchLabels:"
   # The selector's app label should match the full resource name
   # Check for the pattern in selector context
-  [[ "$manifest" == *"selector:"*"matchLabels:"*"app: \${ProjectName}-cache"* ]]
+  [[ "$manifest" == *"selector:"*"matchLabels:"*"app: \${ProjectName}-cache"* ]] || return 1
 }
 
 @test "includes standard labels and kaptain annotations" {
@@ -193,7 +195,7 @@ read_combined_suffixed_manifest() {
   # kaptain.org/project-name should NOT include suffix/path
   assert_contains "$manifest" "kaptain.org/project-name: \${ProjectName}"
   # But should NOT contain the full path in this annotation
-  [[ "$manifest" != *"kaptain.org/project-name: \${ProjectName}-backend"* ]]
+  [[ "$manifest" != *"kaptain.org/project-name: \${ProjectName}-backend"* ]] || return 1
 }
 
 # =============================================================================
@@ -210,7 +212,7 @@ read_combined_suffixed_manifest() {
   # Affinity matchLabels should use full name
   assert_contains "$manifest" "podAntiAffinity:"
   # The affinity's app label should match the full resource name
-  [[ "$manifest" == *"affinity:"*"matchLabels:"*"app: \${ProjectName}-cache"* ]]
+  [[ "$manifest" == *"affinity:"*"matchLabels:"*"app: \${ProjectName}-cache"* ]] || return 1
 }
 
 # =============================================================================
@@ -230,7 +232,7 @@ read_combined_suffixed_manifest() {
   assert_contains "$manifest" "volumeMounts:"
   # Check that the mount appears AFTER volumeMounts header with proper indentation
   # This regex checks for volumeMounts followed eventually by the data mount
-  [[ "$manifest" == *"volumeMounts:"*"- name: \${ProjectName}-data"*"mountPath: /data"* ]]
+  [[ "$manifest" == *"volumeMounts:"*"- name: \${ProjectName}-data"*"mountPath: /data"* ]] || return 1
 }
 
 @test "PVC volume mount appears with configmap and secret mounts" {
@@ -389,7 +391,7 @@ EOF
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
-  [[ "$manifest" != *"tolerations:"* ]]
+  [[ "$manifest" != *"tolerations:"* ]] || return 1
 }
 
 @test "supports tolerations JSON" {
@@ -427,7 +429,7 @@ EOF
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
-  [[ "$manifest" != *"command:"* ]]
+  [[ "$manifest" != *"command:"* ]] || return 1
 }
 
 @test "includes command when set" {
@@ -447,7 +449,7 @@ EOF
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
-  [[ "$manifest" != *"args:"* ]]
+  [[ "$manifest" != *"args:"* ]] || return 1
 }
 
 @test "includes args when set" {

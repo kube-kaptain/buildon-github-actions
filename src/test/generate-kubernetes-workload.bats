@@ -4,6 +4,8 @@
 #
 # Tests for generate-kubernetes-workload (router)
 
+bats_require_minimum_version 1.5.0
+
 load helpers
 
 setup() {
@@ -43,7 +45,7 @@ teardown() {
 
   run "$GENERATORS_DIR/generate-kubernetes-workload"
   [ "$status" -eq 0 ]
-  [[ "$output" == *"Workload generation disabled"* ]]
+  [[ "$output" == *"Workload generation disabled"* ]] || return 1
   [ ! -f "$OUTPUT_SUB_PATH/manifests/combined/deployment.yaml" ]
 }
 
@@ -52,7 +54,7 @@ teardown() {
 
   run "$GENERATORS_DIR/generate-kubernetes-workload"
   [ "$status" -eq 1 ]
-  [[ "$output" == *"Unknown workload type 'unknown'"* ]]
+  [[ "$output" == *"Unknown workload type 'unknown'"* ]] || return 1
 }
 
 @test "lists available types on unknown type error" {
@@ -60,8 +62,8 @@ teardown() {
 
   run "$GENERATORS_DIR/generate-kubernetes-workload"
   [ "$status" -eq 1 ]
-  [[ "$output" == *"Available workload types:"* ]]
-  [[ "$output" == *"deployment"* ]]
+  [[ "$output" == *"Available workload types:"* ]] || return 1
+  [[ "$output" == *"deployment"* ]] || return 1
 }
 
 # =============================================================================
@@ -85,5 +87,5 @@ teardown() {
   [ "$status" -eq 0 ]
 
   manifest=$(cat "$OUTPUT_SUB_PATH/manifests/combined/deployment.yaml")
-  [[ "$manifest" == *"replicas: 3"* ]]
+  [[ "$manifest" == *"replicas: 3"* ]] || return 1
 }
