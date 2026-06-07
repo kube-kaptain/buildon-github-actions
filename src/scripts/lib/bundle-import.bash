@@ -62,12 +62,14 @@ bundle_import_read_bundle_scheme() {
 }
 
 # Per-bundle scheme conversion for manifests. Writes verbatim or
-# converted copy to ${MANIFESTS_ADDITIONAL_SUB_PATH}/<bundle>/.
+# converted copy to <manifests_target>/<bundle>/, where manifests_target
+# defaults to MANIFESTS_ADDITIONAL_SUB_PATH if not supplied.
 # Fails if the target subdir exists already (cross-pass collision).
 bundle_import_normalise_manifests() {
   local bundle="$1"
+  local manifests_target="${2:-${MANIFESTS_ADDITIONAL_SUB_PATH}}"
   local manifests_dir="${CONTENT_MANIFESTS_DIR}/${bundle}"
-  local normalised_dir="${MANIFESTS_ADDITIONAL_SUB_PATH}/${bundle}"
+  local normalised_dir="${manifests_target}/${bundle}"
   local contract_file="${CONTENT_CONTRACTS_DIR}/${bundle}/contract.yaml"
 
   if [[ -e "${normalised_dir}" ]]; then
@@ -279,11 +281,16 @@ bundle_import_combine_defaults() {
 # per-bundle scheme conversion for manifests and defaults, then cross-bundle
 # defaults combination.
 #
-# Does NOT clear MANIFESTS_ADDITIONAL_SUB_PATH or MANIFESTS_ADDITIONAL_DEFAULTS_SUB_PATH
+# Optional arg: manifests_target - per-bundle manifest output dir. Defaults to
+# MANIFESTS_ADDITIONAL_SUB_PATH. Callers that need an intermediate dir (e.g.
+# templates-import staging before flattening) pass it explicitly.
+#
+# Does NOT clear the manifest target or MANIFESTS_ADDITIONAL_DEFAULTS_SUB_PATH
 # because earlier import passes (other flavour) and other build stages may have
 # written into them; per-pass collisions are detected explicitly.
 bundle_import_all() {
-  mkdir -p "${MANIFESTS_ADDITIONAL_SUB_PATH}" "${BUNDLE_IMPORT_DEFAULTS_NORMALISED_DIR}"
+  local manifests_target="${1:-${MANIFESTS_ADDITIONAL_SUB_PATH}}"
+  mkdir -p "${manifests_target}" "${BUNDLE_IMPORT_DEFAULTS_NORMALISED_DIR}"
 
   log ""
   log "Per-bundle scheme conversion to ${TOKEN_DELIMITER_STYLE}-${TOKEN_NAME_STYLE} if needed..."
@@ -292,7 +299,7 @@ bundle_import_all() {
   for bundle_dir in "${CONTENT_MANIFESTS_DIR}"/*; do
     [[ -d "${bundle_dir}" ]] || continue
     bundle=$(basename "${bundle_dir}")
-    bundle_import_normalise_manifests "${bundle}"
+    bundle_import_normalise_manifests "${bundle}" "${manifests_target}"
     bundle_import_normalise_defaults "${bundle}"
   done
 
