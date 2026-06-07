@@ -497,6 +497,44 @@ docker-push-all
 hook-post-build"
 }
 
+@test "reference: kubernetes-bundle-docker-dockerfile calls scripts in correct order" {
+  run bash "$REF_DIR/kubernetes-bundle-docker-dockerfile"
+  [ "$status" -eq 0 ]
+
+  assert_call_order "validate-tooling
+load-project-kaptainpm-docker-logins
+docker-registry-logins
+kaptain-init
+load-final-kaptainpm-yaml
+hook-pre-build
+basic-quality-checks
+docker-registry-logins
+docker-platform-setup
+hook-pre-tagging-tests
+versions-and-naming
+hook-post-versions-and-naming
+change-source-note-write
+release-change-data-generate
+release-change-data-oci-package
+hook-pre-docker-prepare
+docker-build-dockerfile
+hook-post-docker-tests
+kubernetes-templates-import
+hook-pre-package-prepare
+kubernetes-manifests-package-prepare
+kubernetes-manifests-substitute
+kubernetes-manifests-contract-generate
+kubernetes-lineage-data-generate
+kubernetes-manifests-package
+kubernetes-manifests-repo-provider-package
+hook-post-package-tests
+docker-multi-tag
+git-push-tag
+kubernetes-manifests-repo-provider-publish
+docker-push-all
+hook-post-build"
+}
+
 @test "reference: kubernetes-bundle-vendor-helm-rendered calls scripts in correct order" {
   run bash "$REF_DIR/kubernetes-bundle-vendor-helm-rendered"
   [ "$status" -eq 0 ]
