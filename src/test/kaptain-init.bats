@@ -96,9 +96,10 @@ build_kaptain_init_shim() {
   mkdir -p "${shim_root}/scripts/main" "${shim_root}/scripts/util"
 
   ln -s "${real_scripts}/main/kaptain-init" "${shim_root}/scripts/main/kaptain-init"
-  ln -s "${real_scripts}/defaults" "${shim_root}/scripts/defaults"
-  ln -s "${real_scripts}/lib"      "${shim_root}/scripts/lib"
-  ln -s "${real_scripts}/plugins"  "${shim_root}/scripts/plugins"
+  ln -s "${real_scripts}/defaults"  "${shim_root}/scripts/defaults"
+  ln -s "${real_scripts}/lib"       "${shim_root}/scripts/lib"
+  ln -s "${real_scripts}/plugins"   "${shim_root}/scripts/plugins"
+  ln -s "${real_scripts}/reference" "${shim_root}/scripts/reference"
   ln -s "${PROJECT_ROOT}/src/schemas" "${shim_root}/schemas"
 
   ln -s "${real_scripts}/util/artifact-resolve" "${shim_root}/scripts/util/artifact-resolve"
@@ -171,7 +172,7 @@ add_mock_layer_file() {
 @test "no layers: copies project root to final unchanged" {
   cat > "${REPO_DIR}/KaptainPM.yaml" << 'EOF'
 apiVersion: kaptain.org/1.2
-kind: KubeAppDockerDockerfile
+kind: kubernetes-app-docker-dockerfile
 spec:
   main:
     quality:
@@ -182,7 +183,7 @@ EOF
   [[ "$status" -eq 0 ]] || return 1
   [[ -f "${REPO_DIR}/kaptainpm/final/KaptainPM.yaml" ]] || return 1
   run yq eval '.kind' "${REPO_DIR}/kaptainpm/final/KaptainPM.yaml"
-  [[ "$output" == "KubeAppDockerDockerfile" ]] || return 1
+  [[ "$output" == "kubernetes-app-docker-dockerfile" ]] || return 1
   run yq eval '.spec.main.quality.branches.blockSlashes' "${REPO_DIR}/kaptainpm/final/KaptainPM.yaml"
   [[ "$output" == "true" ]] || return 1
 }
@@ -190,7 +191,7 @@ EOF
 @test "no layers: logs zero layers declared" {
   cat > "${REPO_DIR}/KaptainPM.yaml" << 'EOF'
 apiVersion: kaptain.org/1.2
-kind: KubeAppDockerDockerfile
+kind: kubernetes-app-docker-dockerfile
 spec:
   main:
     quality:
@@ -245,7 +246,7 @@ EOF
 
   cat > "${REPO_DIR}/KaptainPM.yaml" << 'EOF'
 apiVersion: kaptain.org/1.2
-kind: KubeAppDockerDockerfile
+kind: kubernetes-app-docker-dockerfile
 spec:
   layers:
     - quality-strict:1.0
@@ -266,7 +267,7 @@ EOF
 
   # Project overrides present
   run yq eval '.kind' "${REPO_DIR}/kaptainpm/final/KaptainPM.yaml"
-  [[ "$output" == "KubeAppDockerDockerfile" ]] || return 1
+  [[ "$output" == "kubernetes-app-docker-dockerfile" ]] || return 1
   run yq eval '.spec.main.docker.dockerfile.subPath' "${REPO_DIR}/kaptainpm/final/KaptainPM.yaml"
   [[ "$output" == "src/docker" ]] || return 1
 }
@@ -283,7 +284,7 @@ EOF
 
   cat > "${REPO_DIR}/KaptainPM.yaml" << 'EOF'
 apiVersion: kaptain.org/1.2
-kind: KubeAppDockerDockerfile
+kind: kubernetes-app-docker-dockerfile
 spec:
   layers:
     - quality-strict:1.0
@@ -322,7 +323,7 @@ EOF
 
   cat > "${REPO_DIR}/KaptainPM.yaml" << 'EOF'
 apiVersion: kaptain.org/1.2
-kind: KubeAppDockerDockerfile
+kind: kubernetes-app-docker-dockerfile
 spec:
   layers:
     - quality-strict:1.0
@@ -352,7 +353,7 @@ EOF
 
   cat > "${REPO_DIR}/KaptainPM.yaml" << 'EOF'
 apiVersion: kaptain.org/1.2
-kind: KubeAppDockerDockerfile
+kind: kubernetes-app-docker-dockerfile
 spec:
   layers:
     - ha-deployment:2.0
@@ -390,7 +391,7 @@ echo build'
 
   cat > "${REPO_DIR}/KaptainPM.yaml" << 'EOF'
 apiVersion: kaptain.org/1.2
-kind: KubeAppDockerDockerfile
+kind: kubernetes-app-docker-dockerfile
 spec:
   layers:
     - quality-strict:1.0
@@ -425,7 +426,7 @@ EOF
 
   cat > "${REPO_DIR}/KaptainPM.yaml" << 'EOF'
 apiVersion: kaptain.org/1.2
-kind: KubeAppDockerDockerfile
+kind: kubernetes-app-docker-dockerfile
 spec:
   layers:
     - quality-strict:1.0
@@ -452,7 +453,7 @@ EOF
 
   cat > "${REPO_DIR}/KaptainPM.yaml" << 'EOF'
 apiVersion: kaptain.org/1.2
-kind: KubeAppDockerDockerfile
+kind: kubernetes-app-docker-dockerfile
 spec:
   layers:
     - quality-strict:1.0
@@ -478,7 +479,7 @@ EOF
 
   cat > "${REPO_DIR}/KaptainPM.yaml" << 'EOF'
 apiVersion: kaptain.org/1.2
-kind: KubeAppDockerDockerfile
+kind: kubernetes-app-docker-dockerfile
 spec:
   layers:
     - quality-strict:1.0
@@ -507,7 +508,7 @@ EOF
 
   cat > "${REPO_DIR}/KaptainPM.yaml" << 'EOF'
 apiVersion: kaptain.org/1.2
-kind: KubeAppDockerDockerfile
+kind: kubernetes-app-docker-dockerfile
 spec:
   layers:
     - quality-strict:1.0
@@ -537,7 +538,7 @@ EOF
 
   cat > "${REPO_DIR}/KaptainPM.yaml" << 'EOF'
 apiVersion: kaptain.org/1.2
-kind: KubeAppDockerDockerfile
+kind: kubernetes-app-docker-dockerfile
 spec:
   layers:
     - quality-strict:1.0
@@ -571,7 +572,7 @@ EOF
 
   cat > "${REPO_DIR}/KaptainPM.yaml" << 'EOF'
 apiVersion: kaptain.org/1.2
-kind: KubeAppDockerDockerfile
+kind: kubernetes-app-docker-dockerfile
 spec:
   layers:
     - quality-strict:1.0
@@ -610,7 +611,7 @@ EOF
   # java-web-service is a layerset referencing the above two
   create_mock_layer "ghcr.io/kube-kaptain/java/java-web-service" << 'EOF'
 apiVersion: kaptain.org/1.2
-kind: KubeAppDockerDockerfile
+kind: kubernetes-app-docker-dockerfile
 spec:
   layers:
     - quality-strict:1.0
@@ -632,7 +633,7 @@ EOF
 
   # Layerset's kind
   run yq eval '.kind' "${REPO_DIR}/kaptainpm/final/KaptainPM.yaml"
-  [[ "$output" == "KubeAppDockerDockerfile" ]] || return 1
+  [[ "$output" == "kubernetes-app-docker-dockerfile" ]] || return 1
 
   # Sub-layer values merged
   run yq eval '.spec.main.quality.branches.blockSlashes' "${REPO_DIR}/kaptainpm/final/KaptainPM.yaml"
@@ -661,7 +662,7 @@ EOF
 
   cat > "${REPO_DIR}/KaptainPM.yaml" << 'EOF'
 apiVersion: kaptain.org/1.2
-kind: KubeAppDockerDockerfile
+kind: kubernetes-app-docker-dockerfile
 spec:
   layers:
     - quality-strict:1.0
@@ -684,7 +685,7 @@ EOF
 
   cat > "${REPO_DIR}/KaptainPM.yaml" << 'EOF'
 apiVersion: kaptain.org/1.2
-kind: KubeAppDockerDockerfile
+kind: kubernetes-app-docker-dockerfile
 spec:
   layers:
     - quality-strict:1.0
@@ -711,7 +712,7 @@ EOF
 
   cat > "${REPO_DIR}/KaptainPM.yaml" << 'EOF'
 apiVersion: kaptain.org/1.2
-kind: KubeAppDockerDockerfile
+kind: kubernetes-app-docker-dockerfile
 spec:
   layers:
     - quality-strict:1.0
@@ -739,7 +740,7 @@ EOF
 
   cat > "${REPO_DIR}/KaptainPM.yaml" << 'EOF'
 apiVersion: kaptain.org/1.2
-kind: KubeAppDockerDockerfile
+kind: kubernetes-app-docker-dockerfile
 spec:
   layers:
     - quality-strict:1.0
@@ -778,7 +779,7 @@ EOF
 
   cat > "${REPO_DIR}/KaptainPM.yaml" << 'EOF'
 apiVersion: kaptain.org/1.2
-kind: KubeAppDockerDockerfile
+kind: kubernetes-app-docker-dockerfile
 spec:
   layers:
     - quality-strict:1.0
@@ -801,7 +802,7 @@ EOF
   export BUILD_MODE="local"
   cat > "${REPO_DIR}/KaptainPM.yaml" << 'EOF'
 apiVersion: kaptain.org/1.2
-kind: KubeAppDockerDockerfile
+kind: kubernetes-app-docker-dockerfile
 spec:
   main:
     quality:
@@ -822,7 +823,7 @@ EOF
   export BUILD_MODE="build_server"
   cat > "${REPO_DIR}/KaptainPM.yaml" << 'EOF'
 apiVersion: kaptain.org/1.2
-kind: KubeAppDockerDockerfile
+kind: kubernetes-app-docker-dockerfile
 spec:
   main:
     quality:
@@ -848,7 +849,7 @@ EOF
 
   cat > "${REPO_DIR}/KaptainPM.yaml" << 'EOF'
 apiVersion: kaptain.org/1.2
-kind: KubeAppDockerDockerfile
+kind: kubernetes-app-docker-dockerfile
 spec:
   layers:
     - quality-strict:1.0
@@ -878,7 +879,7 @@ EOF
 
   cat > "${REPO_DIR}/KaptainPM.yaml" << 'EOF'
 apiVersion: kaptain.org/1.2
-kind: KubeAppDockerDockerfile
+kind: kubernetes-app-docker-dockerfile
 user-data:
   code-analysis:
     fail-on-warning: true
@@ -905,7 +906,7 @@ EOF
 @test "cleans previous interpolation dir on re-run" {
   cat > "${REPO_DIR}/KaptainPM.yaml" << 'EOF'
 apiVersion: kaptain.org/1.2
-kind: KubeAppDockerDockerfile
+kind: kubernetes-app-docker-dockerfile
 spec:
   main:
     quality:
