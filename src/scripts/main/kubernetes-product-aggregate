@@ -161,6 +161,7 @@ main() {
   log ""
   content_resolve_all "${KAPTAINPM_FILE}"
 
+  # shellcheck disable=SC2119 # intentionally call with no args to use the function's default
   bundle_import_all
 
   output_var "PRODUCT_CONTENTS_FILE" "${CONTENT_LIST_FILE}"
