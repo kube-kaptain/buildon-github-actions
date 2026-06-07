@@ -189,6 +189,11 @@ jobs:
       # INJECT: docker-build-retag
       # INJECT: github-check-end(name="Docker Retag", id="check-docker-retag")
 
+      # === Post-docker Tests ===
+      # INJECT: github-check-start(name="Post-docker Tests", id="check-post-docker", if="steps.kpm.outputs.HOOK_POST_DOCKER_TESTS_SCRIPT_SUB_PATH != ''")
+      # INJECT: hook-post-docker-tests
+      # INJECT: github-check-end(name="Post-docker Tests", id="check-post-docker", if="steps.kpm.outputs.HOOK_POST_DOCKER_TESTS_SCRIPT_SUB_PATH != ''")
+
       # === Generate ConfigMap ===
       # INJECT: github-check-start(name="Generate ConfigMap", id="check-generate-configmap", if="steps.kpm.outputs.KUBERNETES_CONFIGMAP_SUB_PATH != ''")
       # INJECT: generate-kubernetes-configmap
