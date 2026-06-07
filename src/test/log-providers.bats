@@ -2,6 +2,8 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
 
+bats_require_minimum_version 1.5.0
+
 load helpers
 
 LIB_DIR="$PROJECT_ROOT/src/scripts/lib"
@@ -70,9 +72,9 @@ LIB_DIR="$PROJECT_ROOT/src/scripts/lib"
 
   # All three levels go to stdout
   stdout_output=$(test_func 2>/dev/null)
-  [[ "$stdout_output" == *"info message"* ]]
-  [[ "$stdout_output" == *"ERROR: error message"* ]]
-  [[ "$stdout_output" == *"WARNING: warning message"* ]]
+  [[ "$stdout_output" == *"info message"* ]] || return 1
+  [[ "$stdout_output" == *"ERROR: error message"* ]] || return 1
+  [[ "$stdout_output" == *"WARNING: warning message"* ]] || return 1
 
   # Nothing on stderr
   stderr_output=$(test_func 2>&1 1>/dev/null)
@@ -143,14 +145,14 @@ LIB_DIR="$PROJECT_ROOT/src/scripts/lib"
 
   # Only stdout captured - log and log_error both go to stderr
   captured=$(test_func 2>/dev/null)
-  [[ "$captured" == *"DATA=value"* ]]
-  [[ "$captured" != *"info message"* ]]
-  [[ "$captured" != *"::error::error message"* ]]
+  [[ "$captured" == *"DATA=value"* ]] || return 1
+  [[ "$captured" != *"info message"* ]] || return 1
+  [[ "$captured" != *"::error::error message"* ]] || return 1
 
   # Both log and log_error on stderr
   stderr_output=$(test_func 2>&1 1>/dev/null)
-  [[ "$stderr_output" == *"info message"* ]]
-  [[ "$stderr_output" == *"::error::error message"* ]]
+  [[ "$stderr_output" == *"info message"* ]] || return 1
+  [[ "$stderr_output" == *"::error::error message"* ]] || return 1
 }
 
 # =============================================================================
@@ -201,9 +203,9 @@ LIB_DIR="$PROJECT_ROOT/src/scripts/lib"
 
   # All three levels go to stdout (Azure agent parses ##vso from stdout)
   stdout_output=$(test_func 2>/dev/null)
-  [[ "$stdout_output" == *"info message"* ]]
-  [[ "$stdout_output" == *"##vso[task.logissue type=error]error message"* ]]
-  [[ "$stdout_output" == *"##vso[task.logissue type=warning]warning message"* ]]
+  [[ "$stdout_output" == *"info message"* ]] || return 1
+  [[ "$stdout_output" == *"##vso[task.logissue type=error]error message"* ]] || return 1
+  [[ "$stdout_output" == *"##vso[task.logissue type=warning]warning message"* ]] || return 1
 
   # Nothing on stderr
   stderr_output=$(test_func 2>&1 1>/dev/null)

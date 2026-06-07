@@ -4,6 +4,8 @@
 #
 # Tests for kubernetes-pod-spec.bash library
 
+bats_require_minimum_version 1.5.0
+
 load helpers
 
 setup() {
@@ -18,37 +20,37 @@ setup() {
 @test "generate_pod_security_context: basic with DISABLED seccomp" {
   run generate_pod_security_context 6 "DISABLED"
   [ "$status" -eq 0 ]
-  [[ "$output" == *"      securityContext:"* ]]
-  [[ "$output" == *"        runAsNonRoot: true"* ]]
-  [[ "$output" != *"seccompProfile"* ]]
+  [[ "$output" == *"      securityContext:"* ]] || return 1
+  [[ "$output" == *"        runAsNonRoot: true"* ]] || return 1
+  [[ "$output" != *"seccompProfile"* ]] || return 1
 }
 
 @test "generate_pod_security_context: with RuntimeDefault seccomp" {
   run generate_pod_security_context 6 "RuntimeDefault"
   [ "$status" -eq 0 ]
-  [[ "$output" == *"securityContext:"* ]]
-  [[ "$output" == *"runAsNonRoot: true"* ]]
-  [[ "$output" == *"seccompProfile:"* ]]
-  [[ "$output" == *"type: RuntimeDefault"* ]]
+  [[ "$output" == *"securityContext:"* ]] || return 1
+  [[ "$output" == *"runAsNonRoot: true"* ]] || return 1
+  [[ "$output" == *"seccompProfile:"* ]] || return 1
+  [[ "$output" == *"type: RuntimeDefault"* ]] || return 1
 }
 
 @test "generate_pod_security_context: with Localhost seccomp" {
   run generate_pod_security_context 4 "Localhost"
   [ "$status" -eq 0 ]
-  [[ "$output" == *"    securityContext:"* ]]
-  [[ "$output" == *"type: Localhost"* ]]
+  [[ "$output" == *"    securityContext:"* ]] || return 1
+  [[ "$output" == *"type: Localhost"* ]] || return 1
 }
 
 @test "generate_pod_security_context: respects indent" {
   run generate_pod_security_context 2 "DISABLED"
   [ "$status" -eq 0 ]
-  [[ "$output" == "  securityContext:"* ]]
+  [[ "$output" == "  securityContext:"* ]] || return 1
 }
 
 @test "generate_pod_security_context: fails with wrong arg count" {
   run generate_pod_security_context 6
   [ "$status" -eq 1 ]
-  [[ "$output" == *"requires exactly 2 arguments"* ]]
+  [[ "$output" == *"requires exactly 2 arguments"* ]] || return 1
 }
 
 # =============================================================================
@@ -58,30 +60,30 @@ setup() {
 @test "generate_container_security_context: basic with true" {
   run generate_container_security_context 10 "true"
   [ "$status" -eq 0 ]
-  [[ "$output" == *"securityContext:"* ]]
-  [[ "$output" == *"allowPrivilegeEscalation: false"* ]]
-  [[ "$output" == *"readOnlyRootFilesystem: true"* ]]
-  [[ "$output" == *"capabilities:"* ]]
-  [[ "$output" == *"drop:"* ]]
-  [[ "$output" == *"- ALL"* ]]
+  [[ "$output" == *"securityContext:"* ]] || return 1
+  [[ "$output" == *"allowPrivilegeEscalation: false"* ]] || return 1
+  [[ "$output" == *"readOnlyRootFilesystem: true"* ]] || return 1
+  [[ "$output" == *"capabilities:"* ]] || return 1
+  [[ "$output" == *"drop:"* ]] || return 1
+  [[ "$output" == *"- ALL"* ]] || return 1
 }
 
 @test "generate_container_security_context: with false" {
   run generate_container_security_context 10 "false"
   [ "$status" -eq 0 ]
-  [[ "$output" == *"readOnlyRootFilesystem: false"* ]]
+  [[ "$output" == *"readOnlyRootFilesystem: false"* ]] || return 1
 }
 
 @test "generate_container_security_context: respects indent" {
   run generate_container_security_context 4 "true"
   [ "$status" -eq 0 ]
-  [[ "$output" == "    securityContext:"* ]]
+  [[ "$output" == "    securityContext:"* ]] || return 1
 }
 
 @test "generate_container_security_context: fails with wrong arg count" {
   run generate_container_security_context 10
   [ "$status" -eq 1 ]
-  [[ "$output" == *"requires exactly 2 arguments"* ]]
+  [[ "$output" == *"requires exactly 2 arguments"* ]] || return 1
 }
 
 # =============================================================================
@@ -91,12 +93,12 @@ setup() {
 @test "generate_container_resources: basic without cpu limit" {
   run generate_container_resources 10 "512Mi" "128Mi" "100m"
   [ "$status" -eq 0 ]
-  [[ "$output" == *"resources:"* ]]
-  [[ "$output" == *"requests:"* ]]
-  [[ "$output" == *"ephemeral-storage: 512Mi"* ]]
-  [[ "$output" == *"memory: 128Mi"* ]]
-  [[ "$output" == *"cpu: 100m"* ]]
-  [[ "$output" == *"limits:"* ]]
+  [[ "$output" == *"resources:"* ]] || return 1
+  [[ "$output" == *"requests:"* ]] || return 1
+  [[ "$output" == *"ephemeral-storage: 512Mi"* ]] || return 1
+  [[ "$output" == *"memory: 128Mi"* ]] || return 1
+  [[ "$output" == *"cpu: 100m"* ]] || return 1
+  [[ "$output" == *"limits:"* ]] || return 1
   # ephemeral-storage and memory in both requests and limits
   local storage_count memory_count cpu_count
   storage_count=$(echo "$output" | grep -c "ephemeral-storage:")
@@ -111,10 +113,10 @@ setup() {
 @test "generate_container_resources: with cpu limit" {
   run generate_container_resources 10 "1Gi" "256Mi" "100m" "500m"
   [ "$status" -eq 0 ]
-  [[ "$output" == *"requests:"* ]]
-  [[ "$output" == *"ephemeral-storage: 1Gi"* ]]
-  [[ "$output" == *"memory: 256Mi"* ]]
-  [[ "$output" == *"limits:"* ]]
+  [[ "$output" == *"requests:"* ]] || return 1
+  [[ "$output" == *"ephemeral-storage: 1Gi"* ]] || return 1
+  [[ "$output" == *"memory: 256Mi"* ]] || return 1
+  [[ "$output" == *"limits:"* ]] || return 1
   # All resources in both requests and limits when cpu limit specified
   local storage_count memory_count cpu_count
   storage_count=$(echo "$output" | grep -c "ephemeral-storage:")
@@ -128,13 +130,13 @@ setup() {
 @test "generate_container_resources: respects indent" {
   run generate_container_resources 4 "256Mi" "64Mi" "50m"
   [ "$status" -eq 0 ]
-  [[ "$output" == "    resources:"* ]]
+  [[ "$output" == "    resources:"* ]] || return 1
 }
 
 @test "generate_container_resources: fails with wrong arg count" {
   run generate_container_resources 10 "512Mi" "128Mi"
   [ "$status" -eq 1 ]
-  [[ "$output" == *"requires 4-5 arguments"* ]]
+  [[ "$output" == *"requires 4-5 arguments"* ]] || return 1
 }
 
 # =============================================================================
@@ -144,28 +146,28 @@ setup() {
 @test "generate_container_ports: basic with default protocol" {
   run generate_container_ports 10 "8080"
   [ "$status" -eq 0 ]
-  [[ "$output" == *"ports:"* ]]
-  [[ "$output" == *"- containerPort: 8080"* ]]
-  [[ "$output" == *"protocol: TCP"* ]]
+  [[ "$output" == *"ports:"* ]] || return 1
+  [[ "$output" == *"- containerPort: 8080"* ]] || return 1
+  [[ "$output" == *"protocol: TCP"* ]] || return 1
 }
 
 @test "generate_container_ports: with custom protocol" {
   run generate_container_ports 10 "53" "UDP"
   [ "$status" -eq 0 ]
-  [[ "$output" == *"containerPort: 53"* ]]
-  [[ "$output" == *"protocol: UDP"* ]]
+  [[ "$output" == *"containerPort: 53"* ]] || return 1
+  [[ "$output" == *"protocol: UDP"* ]] || return 1
 }
 
 @test "generate_container_ports: respects indent" {
   run generate_container_ports 4 "3000"
   [ "$status" -eq 0 ]
-  [[ "$output" == "    ports:"* ]]
+  [[ "$output" == "    ports:"* ]] || return 1
 }
 
 @test "generate_container_ports: fails with wrong arg count" {
   run generate_container_ports 10
   [ "$status" -eq 1 ]
-  [[ "$output" == *"requires 2-3 arguments"* ]]
+  [[ "$output" == *"requires 2-3 arguments"* ]] || return 1
 }
 
 # =============================================================================
@@ -175,13 +177,13 @@ setup() {
 @test "generate_container_lifecycle: generates preStop hook" {
   run generate_container_lifecycle 10 "sleep 5"
   [ "$status" -eq 0 ]
-  [[ "$output" == *"lifecycle:"* ]]
-  [[ "$output" == *"preStop:"* ]]
-  [[ "$output" == *"exec:"* ]]
-  [[ "$output" == *"command:"* ]]
-  [[ "$output" == *"- /bin/sh"* ]]
-  [[ "$output" == *"- -c"* ]]
-  [[ "$output" == *"- sleep 5"* ]]
+  [[ "$output" == *"lifecycle:"* ]] || return 1
+  [[ "$output" == *"preStop:"* ]] || return 1
+  [[ "$output" == *"exec:"* ]] || return 1
+  [[ "$output" == *"command:"* ]] || return 1
+  [[ "$output" == *"- /bin/sh"* ]] || return 1
+  [[ "$output" == *"- -c"* ]] || return 1
+  [[ "$output" == *"- sleep 5"* ]] || return 1
 }
 
 @test "generate_container_lifecycle: outputs nothing when command empty" {
@@ -193,13 +195,13 @@ setup() {
 @test "generate_container_lifecycle: respects indent" {
   run generate_container_lifecycle 4 "exit 0"
   [ "$status" -eq 0 ]
-  [[ "$output" == "    lifecycle:"* ]]
+  [[ "$output" == "    lifecycle:"* ]] || return 1
 }
 
 @test "generate_container_lifecycle: fails with wrong arg count" {
   run generate_container_lifecycle 10
   [ "$status" -eq 1 ]
-  [[ "$output" == *"requires exactly 2 arguments"* ]]
+  [[ "$output" == *"requires exactly 2 arguments"* ]] || return 1
 }
 
 # =============================================================================
@@ -214,11 +216,11 @@ setup() {
 
   run generate_container_env_from_directory 10 "$test_dir"
   [ "$status" -eq 0 ]
-  [[ "$output" == *"env:"* ]]
-  [[ "$output" == *"- name: VAR1"* ]]
-  [[ "$output" == *"value: \"value1\""* ]]
-  [[ "$output" == *"- name: VAR2"* ]]
-  [[ "$output" == *"value: \"value2\""* ]]
+  [[ "$output" == *"env:"* ]] || return 1
+  [[ "$output" == *"- name: VAR1"* ]] || return 1
+  [[ "$output" == *"value: \"value1\""* ]] || return 1
+  [[ "$output" == *"- name: VAR2"* ]] || return 1
+  [[ "$output" == *"value: \"value2\""* ]] || return 1
 }
 
 @test "generate_container_env_from_directory: outputs nothing when dir missing" {
@@ -244,8 +246,8 @@ setup() {
 
   run generate_container_env_from_directory 10 "$test_dir"
   [ "$status" -eq 0 ]
-  [[ "$output" == *"VISIBLE"* ]]
-  [[ "$output" != *".hidden"* ]]
+  [[ "$output" == *"VISIBLE"* ]] || return 1
+  [[ "$output" != *".hidden"* ]] || return 1
 }
 
 @test "generate_container_env_from_directory: skip_header mode omits env header" {
@@ -255,15 +257,15 @@ setup() {
 
   run generate_container_env_from_directory 10 "$test_dir" "true"
   [ "$status" -eq 0 ]
-  [[ "$output" != *"env:"* ]]
-  [[ "$output" == *"- name: VAR1"* ]]
-  [[ "$output" == *"value: \"value1\""* ]]
+  [[ "$output" != *"env:"* ]] || return 1
+  [[ "$output" == *"- name: VAR1"* ]] || return 1
+  [[ "$output" == *"value: \"value1\""* ]] || return 1
 }
 
 @test "generate_container_env_from_directory: fails with wrong arg count" {
   run generate_container_env_from_directory 10
   [ "$status" -eq 1 ]
-  [[ "$output" == *"requires 2-3 arguments"* ]]
+  [[ "$output" == *"requires 2-3 arguments"* ]] || return 1
 }
 
 # =============================================================================
@@ -273,28 +275,28 @@ setup() {
 @test "generate_configmap_secret_volume_mounts: both configmap and secret" {
   run generate_configmap_secret_volume_mounts 10 "true" "true" "/config" "/secret"
   [ "$status" -eq 0 ]
-  [[ "$output" == *"volumeMounts:"* ]]
-  [[ "$output" == *"- name: configmap"* ]]
-  [[ "$output" == *"mountPath: /config"* ]]
-  [[ "$output" == *"- name: secret"* ]]
-  [[ "$output" == *"mountPath: /secret"* ]]
-  [[ "$output" == *"readOnly: true"* ]]
+  [[ "$output" == *"volumeMounts:"* ]] || return 1
+  [[ "$output" == *"- name: configmap"* ]] || return 1
+  [[ "$output" == *"mountPath: /config"* ]] || return 1
+  [[ "$output" == *"- name: secret"* ]] || return 1
+  [[ "$output" == *"mountPath: /secret"* ]] || return 1
+  [[ "$output" == *"readOnly: true"* ]] || return 1
 }
 
 @test "generate_configmap_secret_volume_mounts: only configmap" {
   run generate_configmap_secret_volume_mounts 10 "true" "false" "/config" "/secret"
   [ "$status" -eq 0 ]
-  [[ "$output" == *"volumeMounts:"* ]]
-  [[ "$output" == *"- name: configmap"* ]]
-  [[ "$output" != *"- name: secret"* ]]
+  [[ "$output" == *"volumeMounts:"* ]] || return 1
+  [[ "$output" == *"- name: configmap"* ]] || return 1
+  [[ "$output" != *"- name: secret"* ]] || return 1
 }
 
 @test "generate_configmap_secret_volume_mounts: only secret" {
   run generate_configmap_secret_volume_mounts 10 "false" "true" "/config" "/secret"
   [ "$status" -eq 0 ]
-  [[ "$output" == *"volumeMounts:"* ]]
-  [[ "$output" != *"- name: configmap"* ]]
-  [[ "$output" == *"- name: secret"* ]]
+  [[ "$output" == *"volumeMounts:"* ]] || return 1
+  [[ "$output" != *"- name: configmap"* ]] || return 1
+  [[ "$output" == *"- name: secret"* ]] || return 1
 }
 
 @test "generate_configmap_secret_volume_mounts: outputs nothing when neither" {
@@ -306,7 +308,7 @@ setup() {
 @test "generate_configmap_secret_volume_mounts: fails with wrong arg count" {
   run generate_configmap_secret_volume_mounts 10 "true" "true"
   [ "$status" -eq 1 ]
-  [[ "$output" == *"requires exactly 5 arguments"* ]]
+  [[ "$output" == *"requires exactly 5 arguments"* ]] || return 1
 }
 
 # =============================================================================
@@ -316,29 +318,29 @@ setup() {
 @test "generate_configmap_secret_volumes: both configmap and secret" {
   run generate_configmap_secret_volumes 6 "true" "true" "my-configmap" "my-secret"
   [ "$status" -eq 0 ]
-  [[ "$output" == *"volumes:"* ]]
-  [[ "$output" == *"- name: configmap"* ]]
-  [[ "$output" == *"configMap:"* ]]
-  [[ "$output" == *"name: my-configmap"* ]]
-  [[ "$output" == *"- name: secret"* ]]
-  [[ "$output" == *"secret:"* ]]
-  [[ "$output" == *"secretName: my-secret"* ]]
+  [[ "$output" == *"volumes:"* ]] || return 1
+  [[ "$output" == *"- name: configmap"* ]] || return 1
+  [[ "$output" == *"configMap:"* ]] || return 1
+  [[ "$output" == *"name: my-configmap"* ]] || return 1
+  [[ "$output" == *"- name: secret"* ]] || return 1
+  [[ "$output" == *"secret:"* ]] || return 1
+  [[ "$output" == *"secretName: my-secret"* ]] || return 1
 }
 
 @test "generate_configmap_secret_volumes: only configmap" {
   run generate_configmap_secret_volumes 6 "true" "false" "my-configmap" "my-secret"
   [ "$status" -eq 0 ]
-  [[ "$output" == *"volumes:"* ]]
-  [[ "$output" == *"configMap:"* ]]
-  [[ "$output" != *"secret:"* ]]
+  [[ "$output" == *"volumes:"* ]] || return 1
+  [[ "$output" == *"configMap:"* ]] || return 1
+  [[ "$output" != *"secret:"* ]] || return 1
 }
 
 @test "generate_configmap_secret_volumes: only secret" {
   run generate_configmap_secret_volumes 6 "false" "true" "my-configmap" "my-secret"
   [ "$status" -eq 0 ]
-  [[ "$output" == *"volumes:"* ]]
-  [[ "$output" != *"configMap:"* ]]
-  [[ "$output" == *"secret:"* ]]
+  [[ "$output" == *"volumes:"* ]] || return 1
+  [[ "$output" != *"configMap:"* ]] || return 1
+  [[ "$output" == *"secret:"* ]] || return 1
 }
 
 @test "generate_configmap_secret_volumes: outputs nothing when neither" {
@@ -350,7 +352,7 @@ setup() {
 @test "generate_configmap_secret_volumes: fails with wrong arg count" {
   run generate_configmap_secret_volumes 6 "true"
   [ "$status" -eq 1 ]
-  [[ "$output" == *"requires exactly 5 arguments"* ]]
+  [[ "$output" == *"requires exactly 5 arguments"* ]] || return 1
 }
 
 # =============================================================================
@@ -360,20 +362,20 @@ setup() {
 @test "generate_image_pull_secrets: generates block" {
   run generate_image_pull_secrets 6 "my-registry-secret"
   [ "$status" -eq 0 ]
-  [[ "$output" == *"imagePullSecrets:"* ]]
-  [[ "$output" == *"- name: my-registry-secret"* ]]
+  [[ "$output" == *"imagePullSecrets:"* ]] || return 1
+  [[ "$output" == *"- name: my-registry-secret"* ]] || return 1
 }
 
 @test "generate_image_pull_secrets: respects indent" {
   run generate_image_pull_secrets 2 "secret"
   [ "$status" -eq 0 ]
-  [[ "$output" == "  imagePullSecrets:"* ]]
+  [[ "$output" == "  imagePullSecrets:"* ]] || return 1
 }
 
 @test "generate_image_pull_secrets: fails with wrong arg count" {
   run generate_image_pull_secrets 6
   [ "$status" -eq 1 ]
-  [[ "$output" == *"requires exactly 2 arguments"* ]]
+  [[ "$output" == *"requires exactly 2 arguments"* ]] || return 1
 }
 
 # =============================================================================
@@ -383,27 +385,27 @@ setup() {
 @test "generate_service_account_config: with serviceaccount" {
   run generate_service_account_config 6 "true" "my-sa" "false"
   [ "$status" -eq 0 ]
-  [[ "$output" == *"serviceAccountName: my-sa"* ]]
-  [[ "$output" == *"automountServiceAccountToken: false"* ]]
+  [[ "$output" == *"serviceAccountName: my-sa"* ]] || return 1
+  [[ "$output" == *"automountServiceAccountToken: false"* ]] || return 1
 }
 
 @test "generate_service_account_config: without serviceaccount" {
   run generate_service_account_config 6 "false" "my-sa" "true"
   [ "$status" -eq 0 ]
-  [[ "$output" != *"serviceAccountName"* ]]
-  [[ "$output" == *"automountServiceAccountToken: true"* ]]
+  [[ "$output" != *"serviceAccountName"* ]] || return 1
+  [[ "$output" == *"automountServiceAccountToken: true"* ]] || return 1
 }
 
 @test "generate_service_account_config: respects indent" {
   run generate_service_account_config 2 "true" "sa" "false"
   [ "$status" -eq 0 ]
-  [[ "$output" == "  serviceAccountName: sa"* ]]
+  [[ "$output" == "  serviceAccountName: sa"* ]] || return 1
 }
 
 @test "generate_service_account_config: fails with wrong arg count" {
   run generate_service_account_config 6 "true"
   [ "$status" -eq 1 ]
-  [[ "$output" == *"requires exactly 4 arguments"* ]]
+  [[ "$output" == *"requires exactly 4 arguments"* ]] || return 1
 }
 
 # =============================================================================
@@ -413,29 +415,29 @@ setup() {
 @test "generate_container_start: basic with defaults" {
   run generate_container_start 8 "app" "nginx:latest"
   [ "$status" -eq 0 ]
-  [[ "$output" == *"- name: app"* ]]
-  [[ "$output" == *"image: nginx:latest"* ]]
-  [[ "$output" == *"imagePullPolicy: IfNotPresent"* ]]
+  [[ "$output" == *"- name: app"* ]] || return 1
+  [[ "$output" == *"image: nginx:latest"* ]] || return 1
+  [[ "$output" == *"imagePullPolicy: IfNotPresent"* ]] || return 1
 }
 
 @test "generate_container_start: with custom pull policy" {
   run generate_container_start 8 "sidecar" "busybox:1.0" "Always"
   [ "$status" -eq 0 ]
-  [[ "$output" == *"- name: sidecar"* ]]
-  [[ "$output" == *"image: busybox:1.0"* ]]
-  [[ "$output" == *"imagePullPolicy: Always"* ]]
+  [[ "$output" == *"- name: sidecar"* ]] || return 1
+  [[ "$output" == *"image: busybox:1.0"* ]] || return 1
+  [[ "$output" == *"imagePullPolicy: Always"* ]] || return 1
 }
 
 @test "generate_container_start: respects indent" {
   run generate_container_start 4 "test" "test:1"
   [ "$status" -eq 0 ]
-  [[ "$output" == "    - name: test"* ]]
+  [[ "$output" == "    - name: test"* ]] || return 1
 }
 
 @test "generate_container_start: fails with wrong arg count" {
   run generate_container_start 8 "app"
   [ "$status" -eq 1 ]
-  [[ "$output" == *"requires 3-4 arguments"* ]]
+  [[ "$output" == *"requires 3-4 arguments"* ]] || return 1
 }
 
 # =============================================================================
@@ -457,13 +459,13 @@ EOF
 
   run generate_container_env_refs 2 configmap "$test_dir/configmap.yaml" "test-cm" "DATABASE_HOST,DATABASE_PORT"
   [ "$status" -eq 0 ]
-  [[ "$output" == *"- name: DATABASE_HOST"* ]]
-  [[ "$output" == *"valueFrom:"* ]]
-  [[ "$output" == *"configMapKeyRef:"* ]]
-  [[ "$output" == *"name: test-cm"* ]]
-  [[ "$output" == *"key: DATABASE_HOST"* ]]
-  [[ "$output" == *"- name: DATABASE_PORT"* ]]
-  [[ "$output" == *"key: DATABASE_PORT"* ]]
+  [[ "$output" == *"- name: DATABASE_HOST"* ]] || return 1
+  [[ "$output" == *"valueFrom:"* ]] || return 1
+  [[ "$output" == *"configMapKeyRef:"* ]] || return 1
+  [[ "$output" == *"name: test-cm"* ]] || return 1
+  [[ "$output" == *"key: DATABASE_HOST"* ]] || return 1
+  [[ "$output" == *"- name: DATABASE_PORT"* ]] || return 1
+  [[ "$output" == *"key: DATABASE_PORT"* ]] || return 1
 }
 
 @test "generate_container_env_refs: generates secret refs" {
@@ -482,11 +484,11 @@ EOF
 
   run generate_container_env_refs 4 secret "$test_dir/secret.yaml" "test-secret" "DB_PASSWORD API_KEY"
   [ "$status" -eq 0 ]
-  [[ "$output" == *"- name: DB_PASSWORD"* ]]
-  [[ "$output" == *"secretKeyRef:"* ]]
-  [[ "$output" == *"name: test-secret"* ]]
-  [[ "$output" == *"key: DB_PASSWORD"* ]]
-  [[ "$output" == *"- name: API_KEY"* ]]
+  [[ "$output" == *"- name: DB_PASSWORD"* ]] || return 1
+  [[ "$output" == *"secretKeyRef:"* ]] || return 1
+  [[ "$output" == *"name: test-secret"* ]] || return 1
+  [[ "$output" == *"key: DB_PASSWORD"* ]] || return 1
+  [[ "$output" == *"- name: API_KEY"* ]] || return 1
 }
 
 @test "generate_container_env_refs: fails on missing key" {
@@ -503,7 +505,7 @@ EOF
 
   run generate_container_env_refs 2 configmap "$test_dir/configmap.yaml" "test-cm" "NONEXISTENT_KEY"
   [ "$status" -eq 1 ]
-  [[ "$output" == *"key 'NONEXISTENT_KEY' not found"* ]]
+  [[ "$output" == *"key 'NONEXISTENT_KEY' not found"* ]] || return 1
 }
 
 @test "generate_container_env_refs: outputs nothing when keys empty" {
@@ -530,13 +532,13 @@ EOF
 
   run generate_container_env_refs 2 invalid "$test_dir/file.yaml" "name" "key"
   [ "$status" -eq 1 ]
-  [[ "$output" == *"resource_type must be 'configmap' or 'secret'"* ]]
+  [[ "$output" == *"resource_type must be 'configmap' or 'secret'"* ]] || return 1
 }
 
 @test "generate_container_env_refs: fails with wrong arg count" {
   run generate_container_env_refs 2 configmap
   [ "$status" -eq 1 ]
-  [[ "$output" == *"requires exactly 5 arguments"* ]]
+  [[ "$output" == *"requires exactly 5 arguments"* ]] || return 1
 }
 
 # =============================================================================
@@ -580,14 +582,14 @@ EOF
   env_count=$(echo "$output" | grep -c "^        env:$" || true)
   [ "$env_count" -eq 1 ]
   # Plain env var
-  [[ "$output" == *"- name: PLAIN_VAR"* ]]
-  [[ "$output" == *"value: \"plain_value\""* ]]
+  [[ "$output" == *"- name: PLAIN_VAR"* ]] || return 1
+  [[ "$output" == *"value: \"plain_value\""* ]] || return 1
   # ConfigMap ref
-  [[ "$output" == *"- name: CM_KEY"* ]]
-  [[ "$output" == *"configMapKeyRef:"* ]]
+  [[ "$output" == *"- name: CM_KEY"* ]] || return 1
+  [[ "$output" == *"configMapKeyRef:"* ]] || return 1
   # Secret ref
-  [[ "$output" == *"- name: SECRET_KEY"* ]]
-  [[ "$output" == *"secretKeyRef:"* ]]
+  [[ "$output" == *"- name: SECRET_KEY"* ]] || return 1
+  [[ "$output" == *"secretKeyRef:"* ]] || return 1
 }
 
 @test "generate_container_env_all: outputs nothing when all empty" {
@@ -616,15 +618,15 @@ EOF
     "/nonexistent/secret.yaml" "secret" ""
 
   [ "$status" -eq 0 ]
-  [[ "$output" == *"env:"* ]]
-  [[ "$output" == *"- name: KEY1"* ]]
-  [[ "$output" == *"configMapKeyRef:"* ]]
+  [[ "$output" == *"env:"* ]] || return 1
+  [[ "$output" == *"- name: KEY1"* ]] || return 1
+  [[ "$output" == *"configMapKeyRef:"* ]] || return 1
 }
 
 @test "generate_container_env_all: fails with wrong arg count" {
   run generate_container_env_all 8 "/env" "/cm.yaml" "cm"
   [ "$status" -eq 1 ]
-  [[ "$output" == *"requires exactly 8 arguments"* ]]
+  [[ "$output" == *"requires exactly 8 arguments"* ]] || return 1
 }
 
 # =============================================================================

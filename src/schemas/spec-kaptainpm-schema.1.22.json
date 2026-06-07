@@ -1,15 +1,15 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/kube-kaptain/spec-kaptainpm-schema/releases/download/1.19/spec-kaptainpm-schema-final-1.19.yaml",
-  "name": "spec-kaptainpm-schema-final",
-  "version": "1.19",
+  "$id": "https://github.com/kube-kaptain/spec-kaptainpm-schema/releases/download/1.22/spec-kaptainpm-schema-1.22.yaml",
+  "name": "spec-kaptainpm-schema",
+  "version": "1.22",
   "source": "https://github.com/kube-kaptain/spec-kaptainpm-schema",
   "latest": "https://raw.githubusercontent.com/kube-kaptain/spec-kaptainpm-schema/main/spec-kaptainpm-schema.yaml",
-  "tagged": "https://raw.githubusercontent.com/kube-kaptain/spec-kaptainpm-schema/1.19/spec-kaptainpm-schema.yaml",
-  "release": "https://github.com/kube-kaptain/spec-kaptainpm-schema/releases/download/1.19/spec-kaptainpm-schema-final-1.19.yaml",
-  "validate-using": "https://github.com/kube-kaptain/spec-kaptainpm-schema/releases/download/1.19/spec-kaptainpm-schema-final-1.19.json",
+  "tagged": "https://raw.githubusercontent.com/kube-kaptain/spec-kaptainpm-schema/1.22/spec-kaptainpm-schema.yaml",
+  "release": "https://github.com/kube-kaptain/spec-kaptainpm-schema/releases/download/1.22/spec-kaptainpm-schema-1.22.yaml",
+  "validate-using": "https://github.com/kube-kaptain/spec-kaptainpm-schema/releases/download/1.22/spec-kaptainpm-schema-1.22.json",
   "title": "KaptainPM",
-  "description": "Kaptain project manifest schema (version 1.19).\n",
+  "description": "Kaptain project manifest schema (version 1.22).\n",
   "type": "object",
   "required": [
     "apiVersion",
@@ -20,7 +20,7 @@
     "apiVersion": {
       "type": "string",
       "pattern": "^kaptain\\.org/[0-9]+(\\.[0-9]+)*$",
-      "description": "API version - must be kaptain.org/ followed by the schema version (e.g. kaptain.org/1.2). Set via 1.19 token substitution at build time.\n"
+      "description": "API version - must be kaptain.org/ followed by the schema version (e.g. kaptain.org/1.2). Set via 1.22 token substitution at build time.\n"
     },
     "kind": {
       "type": "string",
@@ -40,24 +40,14 @@
           "additionalProperties": {
             "type": "string"
           },
-          "description": "Queryable build metadata labels. All values must be strings.",
-          "properties": {
-            "kaptain.org/version": false,
-            "kaptain.org/project-name": false,
-            "kaptain.org/owner": false
-          }
+          "description": "Queryable build metadata labels. All values must be strings."
         },
         "annotations": {
           "type": "object",
           "additionalProperties": {
             "type": "string"
           },
-          "description": "Informational build metadata annotations. All values must be strings.",
-          "properties": {
-            "kaptain.org/built-by": false,
-            "kaptain.org/source-repository": false,
-            "kaptain.org/image-uri": false
-          }
+          "description": "Informational build metadata annotations. All values must be strings."
         }
       }
     },
@@ -1905,6 +1895,18 @@
               "type": "string",
               "description": "Directory containing manifests (default: src/kubernetes)"
             },
+            "allowLocalOverride": {
+              "oneOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "string",
+                  "pattern": "^(true|false)$"
+                }
+              ],
+              "description": "When true, manifests from the local src/kubernetes directory may override manifests contributed by foreign sources (referenced bundles in a product build, vendor renderers, pre-package-prepare hooks) staged under ${OUTPUT_SUB_PATH}/manifests/additional-manifests/, with a WARN log per override. When false (default), any path collision between local and foreign manifests fails the build. The reserved kaptain-{product,app,bundle,environment}-lineage-data.yaml filenames are checked separately and always fail on collision regardless of this flag.\n"
+            },
             "defaults": {
               "type": "object",
               "additionalProperties": false,
@@ -1912,6 +1914,18 @@
                 "subPath": {
                   "type": "string",
                   "description": "Directory containing default token values (default: src/defaults)"
+                },
+                "allowLocalOverride": {
+                  "oneOf": [
+                    {
+                      "type": "boolean"
+                    },
+                    {
+                      "type": "string",
+                      "pattern": "^(true|false)$"
+                    }
+                  ],
+                  "description": "When true, defaults from the local src/defaults directory may override defaults contributed by foreign sources staged under ${OUTPUT_SUB_PATH}/manifests/additional-defaults/, with a WARN log per override. When false (default), local defaults must be byte-identical to any foreign default of the same name or the build fails.\n"
                 }
               }
             },
@@ -1931,37 +1945,14 @@
                   "description": "Base image for manifest packaging (default: scratch)"
                 }
               }
-            }
-          }
-        },
-        "product": {
-          "type": "object",
-          "additionalProperties": false,
-          "description": "Product build configuration. Applies only to kubernetes-product builds which aggregate manifest bundles listed in spec.contents.\n",
-          "properties": {
-            "allowLocalDefaultsOverride": {
-              "oneOf": [
-                {
-                  "type": "boolean"
-                },
-                {
-                  "type": "string",
-                  "pattern": "^(true|false)$"
-                }
-              ],
-              "description": "When true, defaults from the local src/defaults directory may override defaults contributed by referenced bundles, with a WARN log per override. When false (default), local defaults must be byte-identical to any bundle-contributed default of the same name or the build fails.\n"
             },
-            "allowLocalManifestsOverride": {
-              "oneOf": [
-                {
-                  "type": "boolean"
-                },
-                {
-                  "type": "string",
-                  "pattern": "^(true|false)$"
-                }
+            "templatesLayout": {
+              "type": "string",
+              "enum": [
+                "flat",
+                "hierarchy"
               ],
-              "description": "When true, manifests from the local src/kubernetes directory may override manifests contributed by referenced bundles, with a WARN log per override. When false (default), local manifests must not collide with any bundle-contributed manifest of the same path or the build fails. The reserved filename kaptain-product-lineage-data.yaml is checked separately and always fails on collision regardless of this flag.\n"
+              "description": "How spec.templates entries land in the manifest tree of an app or bundle build. flat (default) merges every template's manifests into the shared foreign-contributor drop dirs with file-level collision detection, and each template's lineage CM is folded into this project's lineage CM as a data key. hierarchy keeps each template in its own per-bundle subdir, like spec.contents in a product or environment build. Has no effect on product or environment builds, where contents always land per-bundle and templates do not apply.\n"
             }
           }
         },

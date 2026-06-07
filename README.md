@@ -41,6 +41,7 @@ See [`examples/`](examples/) for more usage patterns.
 | [`kubernetes-app-docker-dockerfile.yaml`](examples/kubernetes-app-docker-dockerfile.yaml) | Full Kubernetes application pipeline |
 | [`kubernetes-app-docker-retag.yaml`](examples/kubernetes-app-docker-retag.yaml) | Kubernetes application pipeline using an upstream image |
 | [`kubernetes-app-manifests-only.yaml`](examples/kubernetes-app-manifests-only.yaml) | Packages Kubernetes manifests without building a Docker image |
+| [`kubernetes-bundle-docker-dockerfile.yaml`](examples/kubernetes-bundle-docker-dockerfile.yaml) | Packages Kubernetes manifests and builds a Docker image from a Dockerfile |
 | [`kubernetes-bundle-docker-retag.yaml`](examples/kubernetes-bundle-docker-retag.yaml) | Packages Kubernetes manifests and retags an upstream Docker image for |
 | [`kubernetes-bundle-resources.yaml`](examples/kubernetes-bundle-resources.yaml) | Packages Kubernetes manifests for third-party stacks whose hard-coded refs |
 | [`kubernetes-bundle-vendor-helm-rendered.yaml`](examples/kubernetes-bundle-vendor-helm-rendered.yaml) | Renders a vendor Helm chart into individual manifests, processes and |
@@ -84,6 +85,7 @@ See [`examples/`](examples/) for more usage patterns.
 | `kubernetes-bundle-resources.yaml` | Packages pre-existing kubernetes manifests from src/kubernetes/ with token substitution, no generators |
 | `kubernetes-product-aggregate.yaml` | Aggregates pre-built manifest bundles listed in spec.contents into a deployable product, with merged defaults and a unified contract |
 | `kubernetes-bundle-vendor-helm-rendered.yaml` | Renders a vendor helm chart into individual manifests, processes and validates them, then packages with token substitution |
+| `kubernetes-bundle-docker-dockerfile.yaml` | Packages pre-existing kubernetes manifests from src/kubernetes/ with token substitution and builds a docker image from a Dockerfile - for apps with a Dockerfile and hand-maintained manifests |
 | `kubernetes-app-docker-dockerfile.yaml` | Everything from both docker Dockerfile and Kubernetes manifest packaging - a full kube app build |
 | `kubernetes-bundle-docker-retag.yaml` | Packages pre-existing kubernetes manifests from src/kubernetes/ with token substitution and retags an upstream docker image - for apps using upstream images with hand-maintained manifests |
 | `layer-and-layerset-build.yaml` | Layer/layerset validation and OCI packaging - quality checks, versioning, layer packaging, Docker build, validation, and release publishing |
@@ -122,6 +124,7 @@ See [`examples/`](examples/) for more usage patterns.
 | `hook-pre-docker-prepare` | Runs user's hook script before Docker build preparation to modify Dockerfile, copy files, or perform setup |
 | `hook-pre-package-prepare` | Runs user's hook script before manifest packaging to generate ConfigMaps, modify manifests, or add files |
 | `hook-pre-tagging-tests` | Runs user's hook script before tagging/versioning for custom validation or preparation |
+| `kubernetes-lineage-data-generate` | Emits the build's lineage data ConfigMap (presence + lineage record) into the substituted manifests tree. Generic across product, app, bundle, and env/rp builds, dispatched by build-kind (plus env-build-section for env/rp). |
 | `kubernetes-manifests-contract-generate` | Generates a manifests contract file describing token scheme, required config, and compatibility |
 | `kubernetes-manifests-package-only-token-override` | Overrides docker image tokens for manifests-only workflow |
 | `kubernetes-manifests-package-prepare` | Prepares manifests and tokens for packaging |
@@ -129,8 +132,8 @@ See [`examples/`](examples/) for more usage patterns.
 | `kubernetes-manifests-repo-provider-package` | Packages manifests for repo provider (builds docker image). Does NOT publish. |
 | `kubernetes-manifests-repo-provider-publish` | Publishes manifests via pluggable repo provider. Requires package step to run first. |
 | `kubernetes-manifests-substitute` | Phase A: copies prepared manifests and runs token substitution |
-| `kubernetes-product-aggregate` | Resolves spec.contents bundles, stages manifests/defaults, and emits paths for downstream packaging |
-| `kubernetes-product-lineage-data-generate` | Emits the product lineage data ConfigMap (presence + lineage record) into the substituted manifests tree |
+| `kubernetes-product-aggregate` | Resolves spec.contents bundles, stages manifests/defaults into the additional-manifests and additional-defaults drop dirs for downstream packaging |
+| `kubernetes-templates-import` | Resolves spec.templates bundles and imports them into the additional-manifests and additional-defaults drop dirs (flat or hierarchy layout) |
 | `layer-package-prepare` | Prepares layer or layerset for OCI packaging - validates source, injects metadata, generates Dockerfile |
 | `layer-validate` | Validates substituted layer or layerset after docker build |
 | `release-change-data-generate` | Generates structured release change data YAML from commit history |
@@ -169,6 +172,7 @@ All inputs to the system come from KaptainPM.yaml and layers, except secrets.
 | `kubernetes-app-docker-dockerfile.yaml` | Kubernetes App - Docker Dockerfile | [docs/kubernetes-app-docker-dockerfile.md](docs/kubernetes-app-docker-dockerfile.md) |
 | `kubernetes-app-docker-retag.yaml` | Kubernetes App - Docker Retag | [docs/kubernetes-app-docker-retag.md](docs/kubernetes-app-docker-retag.md) |
 | `kubernetes-app-manifests-only.yaml` | Kubernetes App - Manifests Only | [docs/kubernetes-app-manifests-only.md](docs/kubernetes-app-manifests-only.md) |
+| `kubernetes-bundle-docker-dockerfile.yaml` | Kubernetes Bundle - Docker Dockerfile | [docs/kubernetes-bundle-docker-dockerfile.md](docs/kubernetes-bundle-docker-dockerfile.md) |
 | `kubernetes-bundle-docker-retag.yaml` | Kubernetes Bundle - Docker Retag | [docs/kubernetes-bundle-docker-retag.md](docs/kubernetes-bundle-docker-retag.md) |
 | `kubernetes-bundle-resources.yaml` | Kubernetes Bundle - Resources | [docs/kubernetes-bundle-resources.md](docs/kubernetes-bundle-resources.md) |
 | `kubernetes-bundle-vendor-helm-rendered.yaml` | Kubernetes Bundle - Vendor Helm Rendered | [docs/kubernetes-bundle-vendor-helm-rendered.md](docs/kubernetes-bundle-vendor-helm-rendered.md) |

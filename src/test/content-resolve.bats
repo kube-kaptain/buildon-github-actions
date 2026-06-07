@@ -14,9 +14,12 @@ bats_require_minimum_version 1.5.0
 load helpers
 
 setup() {
-  # Source the library under test
-  source "$LIB_DIR/content-resolve.bash"
   TEST_DIR=$(create_test_dir "content-resolve")
+  # content-resolve.bash now validates these at source time. Tests use the
+  # 'content' flavour so the file stems / dir layout match the product path.
+  export OUTPUT_SUB_PATH="${TEST_DIR}"
+  export CONTENT_FLAVOUR=content
+  source "$LIB_DIR/content-resolve.bash"
   unset CONTENT_MANIFESTS_ZIP CONTENT_CONTRACT_ZIP CONTENT_PROJECT_NAME
 }
 
@@ -315,13 +318,16 @@ metadata:
 spec:
   contents: []
 EOF
-  mkdir -p "$TEST_DIR/m" "$TEST_DIR/d" "$TEST_DIR/c" "$TEST_DIR/e" "$TEST_DIR/u"
 
   source "$LIB_DIR/content-resolve.bash"
-  run content_resolve_all "$TEST_DIR/kp.yaml" "$TEST_DIR/m" "$TEST_DIR/d" "$TEST_DIR/c" \
-    "$TEST_DIR/e" "$TEST_DIR/u"
+  run content_resolve_all "$TEST_DIR/kp.yaml"
   [ "$status" -eq 0 ]
-  echo "$output" | grep -q "No spec.contents entries"
+  echo "$output" | grep -q "No contents entries"
+  # Empty list still produces the summary files for consumer reliability.
+  [ -f "$TEST_DIR/content/contents.yaml" ]
+  [ -f "$TEST_DIR/content/contents-resolved.yaml" ]
+  [ ! -s "$TEST_DIR/content/contents.yaml" ]
+  [ ! -s "$TEST_DIR/content/contents-resolved.yaml" ]
 }
 
 @test "content_resolve_all: missing spec.contents is a no-op" {
@@ -336,23 +342,20 @@ spec:
       delimiterStyle: shell
       nameStyle: PascalCase
 EOF
-  mkdir -p "$TEST_DIR/m" "$TEST_DIR/d" "$TEST_DIR/c" "$TEST_DIR/e" "$TEST_DIR/u"
   source "$LIB_DIR/content-resolve.bash"
-  run content_resolve_all "$TEST_DIR/kp.yaml" "$TEST_DIR/m" "$TEST_DIR/d" "$TEST_DIR/c" \
-    "$TEST_DIR/e" "$TEST_DIR/u"
+  run content_resolve_all "$TEST_DIR/kp.yaml"
   [ "$status" -eq 0 ]
 }
 
 @test "content_resolve_all: fails when KaptainPM file missing" {
   source "$LIB_DIR/content-resolve.bash"
-  run content_resolve_all "$TEST_DIR/missing.yaml" "$TEST_DIR/m" "$TEST_DIR/d" "$TEST_DIR/c" \
-    "$TEST_DIR/e" "$TEST_DIR/u"
+  run content_resolve_all "$TEST_DIR/missing.yaml"
   [ "$status" -ne 0 ]
 }
 
 @test "content_resolve_all: fails on missing arguments" {
   source "$LIB_DIR/content-resolve.bash"
-  run content_resolve_all "$TEST_DIR/kp.yaml" "$TEST_DIR/m" "$TEST_DIR/d"
+  run content_resolve_all
   [ "$status" -ne 0 ]
 }
 
@@ -373,24 +376,28 @@ spec:
   contents:
     - foo:1.0
 EOF
-  mkdir -p "$TEST_DIR/m" "$TEST_DIR/d" "$TEST_DIR/c" "$TEST_DIR/e" "$TEST_DIR/u"
 
-  run content_resolve_all "$TEST_DIR/kp.yaml" "$TEST_DIR/m" "$TEST_DIR/d" "$TEST_DIR/c" \
-    "$TEST_DIR/e" "$TEST_DIR/u"
+  run content_resolve_all "$TEST_DIR/kp.yaml"
   [ "$status" -eq 0 ]
 
-  [ -f "$TEST_DIR/m/foo/deployment.yaml" ]
-  [ -f "$TEST_DIR/c/foo/contract.yaml" ]
-  [ -f "$TEST_DIR/d/foo/Replicas" ]
+  [ -f "$TEST_DIR/content/manifests/foo/deployment.yaml" ]
+  [ -f "$TEST_DIR/content/contracts/foo/contract.yaml" ]
+  [ -f "$TEST_DIR/content/defaults/foo/Replicas" ]
+
+  # Summary files written.
+  [ -f "$TEST_DIR/content/contents.yaml" ]
+  [ -f "$TEST_DIR/content/contents-resolved.yaml" ]
+  grep -qx -- "- foo:1.0" "$TEST_DIR/content/contents.yaml"
+  grep -qx -- "- foo:1.0-manifests" "$TEST_DIR/content/contents-resolved.yaml"
 
   # Audit trail preserved.
   local slug
   slug=$(echo "foo:1.0-manifests" | tr '/:' '__')
-  [ -f "$TEST_DIR/e/${slug}/foo-1.0-manifests.zip" ]
-  [ -f "$TEST_DIR/e/${slug}/foo-1.0-contract.zip" ]
-  [ -f "$TEST_DIR/e/${slug}/resolved-uri" ]
-  [ -f "$TEST_DIR/u/${slug}/contract.yaml" ]
-  [ -f "$TEST_DIR/u/${slug}/foo/deployment.yaml" ]
+  [ -f "$TEST_DIR/content/extract/${slug}/foo-1.0-manifests.zip" ]
+  [ -f "$TEST_DIR/content/extract/${slug}/foo-1.0-contract.zip" ]
+  [ -f "$TEST_DIR/content/extract/${slug}/resolved-uri" ]
+  [ -f "$TEST_DIR/content/unzipped/${slug}/contract.yaml" ]
+  [ -f "$TEST_DIR/content/unzipped/${slug}/foo/deployment.yaml" ]
 }
 
 @test "content_resolve_all: stages two bundles into sibling subdirs" {
@@ -410,18 +417,16 @@ spec:
     - alpha:1.0
     - beta:2.0
 EOF
-  mkdir -p "$TEST_DIR/m" "$TEST_DIR/d" "$TEST_DIR/c" "$TEST_DIR/e" "$TEST_DIR/u"
 
-  run content_resolve_all "$TEST_DIR/kp.yaml" "$TEST_DIR/m" "$TEST_DIR/d" "$TEST_DIR/c" \
-    "$TEST_DIR/e" "$TEST_DIR/u"
+  run content_resolve_all "$TEST_DIR/kp.yaml"
   [ "$status" -eq 0 ]
 
-  [ -f "$TEST_DIR/m/alpha/deployment.yaml" ]
-  [ -f "$TEST_DIR/m/beta/deployment.yaml" ]
-  [ -f "$TEST_DIR/c/alpha/contract.yaml" ]
-  [ -f "$TEST_DIR/c/beta/contract.yaml" ]
-  [ -f "$TEST_DIR/d/alpha/Replicas" ]
-  [ -f "$TEST_DIR/d/beta/Replicas" ]
+  [ -f "$TEST_DIR/content/manifests/alpha/deployment.yaml" ]
+  [ -f "$TEST_DIR/content/manifests/beta/deployment.yaml" ]
+  [ -f "$TEST_DIR/content/contracts/alpha/contract.yaml" ]
+  [ -f "$TEST_DIR/content/contracts/beta/contract.yaml" ]
+  [ -f "$TEST_DIR/content/defaults/alpha/Replicas" ]
+  [ -f "$TEST_DIR/content/defaults/beta/Replicas" ]
 }
 
 @test "content_resolve_all: fails when extracted image is missing a zip" {
@@ -443,10 +448,8 @@ spec:
   contents:
     - broken:1.0
 EOF
-  mkdir -p "$TEST_DIR/m" "$TEST_DIR/d" "$TEST_DIR/c" "$TEST_DIR/e" "$TEST_DIR/u"
 
-  run content_resolve_all "$TEST_DIR/kp.yaml" "$TEST_DIR/m" "$TEST_DIR/d" "$TEST_DIR/c" \
-    "$TEST_DIR/e" "$TEST_DIR/u"
+  run content_resolve_all "$TEST_DIR/kp.yaml"
   [ "$status" -ne 0 ]
 }
 
@@ -465,25 +468,20 @@ spec:
   contents:
     - foo:1.0
 EOF
-  mkdir -p "$TEST_DIR/m" "$TEST_DIR/d" "$TEST_DIR/c" "$TEST_DIR/e" "$TEST_DIR/u"
 
-  run content_resolve_all "$TEST_DIR/kp.yaml" "$TEST_DIR/m" "$TEST_DIR/d" "$TEST_DIR/c" \
-    "$TEST_DIR/e" "$TEST_DIR/u"
+  run content_resolve_all "$TEST_DIR/kp.yaml"
   [ "$status" -eq 0 ]
 
-  # The legacy hidden work dir is gone.
-  [ ! -d "$TEST_DIR/m/.content-resolve-work" ]
-
-  # The new audit trail under extract/<slug> and unzipped/<slug> survived.
+  # The audit trail under content/extract/<slug> and content/unzipped/<slug>.
   local slug
   slug=$(echo "foo:1.0-manifests" | tr '/:' '__')
-  [ -d "$TEST_DIR/e/${slug}" ]
-  [ -d "$TEST_DIR/u/${slug}" ]
-  [ -f "$TEST_DIR/e/${slug}/foo-1.0-manifests.zip" ]
-  [ -f "$TEST_DIR/e/${slug}/foo-1.0-contract.zip" ]
-  [ -f "$TEST_DIR/e/${slug}/resolved-uri" ]
-  [ "$(cat "$TEST_DIR/e/${slug}/resolved-uri")" = "foo:1.0-manifests" ]
-  [ -f "$TEST_DIR/u/${slug}/contract.yaml" ]
+  [ -d "$TEST_DIR/content/extract/${slug}" ]
+  [ -d "$TEST_DIR/content/unzipped/${slug}" ]
+  [ -f "$TEST_DIR/content/extract/${slug}/foo-1.0-manifests.zip" ]
+  [ -f "$TEST_DIR/content/extract/${slug}/foo-1.0-contract.zip" ]
+  [ -f "$TEST_DIR/content/extract/${slug}/resolved-uri" ]
+  [ "$(cat "$TEST_DIR/content/extract/${slug}/resolved-uri")" = "foo:1.0-manifests" ]
+  [ -f "$TEST_DIR/content/unzipped/${slug}/contract.yaml" ]
 }
 
 teardown() {

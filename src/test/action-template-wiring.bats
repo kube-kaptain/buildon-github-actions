@@ -6,6 +6,8 @@
 # Verifies that action templates have env mappings for all variables
 # that the corresponding hook scripts export
 
+bats_require_minimum_version 1.5.0
+
 load helpers
 
 ACTION_TEMPLATES_DIR="$PROJECT_ROOT/src/action-templates"

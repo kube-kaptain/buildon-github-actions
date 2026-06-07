@@ -1066,6 +1066,41 @@ jobs:
           action: fail
           check-run-id: ${{ steps.check-release-change-data-oci-package.outputs.check-run-id }}
 
+      # === Templates Import ===
+      - name: Start check - Templates Import
+        id: check-templates-import
+        continue-on-error: true
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
+        with:
+          action: start
+          check-name: 'Build & Publish → Templates Import'
+      - name: Import templates
+        id: templates-import
+        uses: ./.github/buildon-github-actions/src/actions/kubernetes-templates-import
+        with:
+          project-name: ${{ steps.versions.outputs.project-name }}
+          output-sub-path: ${{ steps.kpm.outputs.OUTPUT_SUB_PATH }}
+          token-delimiter-style: ${{ steps.kpm.outputs.TOKEN_DELIMITER_STYLE }}
+          token-name-style: ${{ steps.kpm.outputs.TOKEN_NAME_STYLE }}
+          templates-layout: ${{ steps.kpm.outputs.TEMPLATES_LAYOUT }}
+          docker-target-registry: ${{ steps.resolve-registry.outputs.docker-target-registry }}
+          docker-target-namespace: ${{ steps.resolve-registry.outputs.docker-target-namespace }}
+          image-build-command: ${{ steps.validate-tooling.outputs.IMAGE_BUILD_COMMAND }}
+          is-release: ${{ steps.versions.outputs.is-release }}
+      - name: Pass check - Templates Import
+        if: success() && steps.check-templates-import.outputs.check-run-id != ''
+        continue-on-error: true
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
+        with:
+          action: pass
+          check-run-id: ${{ steps.check-templates-import.outputs.check-run-id }}
+      - name: Fail check - Templates Import
+        if: failure() && steps.check-templates-import.outputs.check-run-id != ''
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
+        with:
+          action: fail
+          check-run-id: ${{ steps.check-templates-import.outputs.check-run-id }}
+
       # === Pre-package Prepare ===
       - name: Start check - Pre-package Prepare
         if: steps.kpm.outputs.HOOK_PRE_PACKAGE_PREPARE_SCRIPT_SUB_PATH != '' && success()
@@ -1262,7 +1297,10 @@ jobs:
         id: manifest-package-prepare
         uses: ./.github/buildon-github-actions/src/actions/kubernetes-manifests-package-prepare
         with:
-          manifests-sub-path: ${{ steps.product-aggregate.outputs.manifests-sub-path || steps.kpm.outputs.MANIFESTS_SUB_PATH }}
+          manifests-sub-path: ${{ steps.kpm.outputs.MANIFESTS_SUB_PATH }}
+          defaults-sub-path: ${{ steps.kpm.outputs.DEFAULTS_SUB_PATH }}
+          allow-local-defaults-override: ${{ steps.kpm.outputs.ALLOW_LOCAL_DEFAULTS_OVERRIDE }}
+          allow-local-manifests-override: ${{ steps.kpm.outputs.ALLOW_LOCAL_MANIFESTS_OVERRIDE }}
           product-name: ${{ steps.product-aggregate.outputs.product-name }}
           product-short-name: ${{ steps.product-aggregate.outputs.product-short-name }}
           project-name: ${{ steps.versions.outputs.project-name }}
@@ -1342,7 +1380,6 @@ jobs:
           token-delimiter-style: ${{ steps.kpm.outputs.TOKEN_DELIMITER_STYLE }}
           token-name-style: ${{ steps.kpm.outputs.TOKEN_NAME_STYLE }}
           metadata-description: ${{ steps.kpm.outputs.METADATA_DESCRIPTION }}
-          defaults-sub-path: ${{ steps.product-aggregate.outputs.defaults-sub-path || steps.kpm.outputs.DEFAULTS_SUB_PATH }}
           output-sub-path: ${{ steps.kpm.outputs.OUTPUT_SUB_PATH }}
       - name: Pass check - Generate Manifests Contract
         if: success() && steps.check-manifest-contract-generate.outputs.check-run-id != ''
@@ -1357,6 +1394,43 @@ jobs:
         with:
           action: fail
           check-run-id: ${{ steps.check-manifest-contract-generate.outputs.check-run-id }}
+
+      # === Lineage Data Generate ===
+      - name: Start check - Generate Lineage Data ConfigMap
+        id: check-lineage-data-generate
+        continue-on-error: true
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
+        with:
+          action: start
+          check-name: 'Build & Publish → Generate Lineage Data ConfigMap'
+      - name: Generate lineage data ConfigMap
+        id: manifest-lineage-data-generate
+        uses: ./.github/buildon-github-actions/src/actions/kubernetes-lineage-data-generate
+        with:
+          project-name: ${{ steps.versions.outputs.project-name }}
+          version: ${{ steps.versions.outputs.version }}
+          build-kind: kubernetes-bundle-resources
+          product-name: ${{ steps.product-aggregate.outputs.product-name }}
+          product-short-name: ${{ steps.product-aggregate.outputs.product-short-name }}
+          git-sha: ${{ github.sha }}
+          token-delimiter-style: ${{ steps.kpm.outputs.TOKEN_DELIMITER_STYLE }}
+          token-name-style: ${{ steps.kpm.outputs.TOKEN_NAME_STYLE }}
+          config-value-trailing-newline: ${{ steps.kpm.outputs.CONFIG_VALUE_TRAILING_NEWLINE }}
+          token-substitution-passes: ${{ steps.kpm.outputs.TOKEN_SUBSTITUTION_PASSES }}
+          output-sub-path: ${{ steps.kpm.outputs.OUTPUT_SUB_PATH }}
+      - name: Pass check - Generate Lineage Data ConfigMap
+        if: success() && steps.check-lineage-data-generate.outputs.check-run-id != ''
+        continue-on-error: true
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
+        with:
+          action: pass
+          check-run-id: ${{ steps.check-lineage-data-generate.outputs.check-run-id }}
+      - name: Fail check - Generate Lineage Data ConfigMap
+        if: failure() && steps.check-lineage-data-generate.outputs.check-run-id != ''
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
+        with:
+          action: fail
+          check-run-id: ${{ steps.check-lineage-data-generate.outputs.check-run-id }}
 
       # === Manifest Package ===
       - name: Start check - Package Manifests

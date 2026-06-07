@@ -1,0 +1,37 @@
+# kubernetes-bundle-docker-dockerfile
+
+Kubernetes Bundle - Docker Dockerfile
+
+## Inputs
+
+All configuration comes from KaptainPM.yaml and layers, except secrets.
+
+## Secrets
+
+| Secret | Description |
+|--------|-------------|
+| `docker-registry-logins-secrets` | JSON object of secrets for docker-registry-logins (e.g., {"DOCKER_USER": "x", "DOCKER_PASS": "y"}) |
+
+## Outputs
+
+| Output | Description |
+|--------|-------------|
+| `version` | The generated version |
+| `version-major` | Major version number |
+| `version-minor` | Minor version number |
+| `version-patch` | Patch version number |
+| `version-2-part` | Version padded/truncated to 2 parts |
+| `version-3-part` | Version padded/truncated to 3 parts |
+| `version-4-part` | Version padded/truncated to 4 parts |
+| `docker-tag` | Tag for Docker images |
+| `docker-image-name` | Docker image name |
+| `git-tag` | Tag for git |
+| `project-name` | The repository/project name |
+| `is-release` | Whether this is a release build |
+| `docker-target-image-full-uri` | Full target image reference (action output name) |
+| `docker-image-full-uri` | Full docker image reference (alias for docker-target-image-full-uri) |
+| `images-pushed` | Number of images pushed |
+| `manifests-zip-sub-path` | Directory containing manifests zip file (relative) |
+| `manifests-zip-file-name` | Name of manifests zip file |
+| `manifests-uri` | Reference to published manifests (format depends on repo provider) |
+| `manifests-published` | Whether manifests were published |

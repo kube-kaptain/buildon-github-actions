@@ -2,6 +2,8 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
 
+bats_require_minimum_version 1.5.0
+
 load helpers
 
 setup() {
@@ -29,8 +31,8 @@ create_note_test_repo() {
 
   local note
   note=$(git notes --ref=kaptain-change-source show HEAD)
-  [[ "$note" == *"merge-candidate-branch: feature-test-branch"* ]]
-  [[ "$note" == *"merge-candidate-creator: testuser"* ]]
+  [[ "$note" == *"merge-candidate-branch: feature-test-branch"* ]] || return 1
+  [[ "$note" == *"merge-candidate-creator: testuser"* ]] || return 1
 }
 
 @test "writes note without creator when not set" {
@@ -42,8 +44,8 @@ create_note_test_repo() {
 
   local note
   note=$(git notes --ref=kaptain-change-source show HEAD)
-  [[ "$note" == *"merge-candidate-branch: feature-test-branch"* ]]
-  [[ "$note" != *"merge-candidate-creator"* ]]
+  [[ "$note" == *"merge-candidate-branch: feature-test-branch"* ]] || return 1
+  [[ "$note" != *"merge-candidate-creator"* ]] || return 1
 }
 
 @test "fails when CURRENT_BRANCH not set" {
@@ -69,7 +71,7 @@ create_note_test_repo() {
 
   local note
   note=$(git notes --ref=kaptain-change-source show HEAD)
-  [[ "$note" == *"merge-candidate-branch: updated-branch"* ]]
+  [[ "$note" == *"merge-candidate-branch: updated-branch"* ]] || return 1
 }
 
 @test "succeeds when push fails" {

@@ -2,33 +2,43 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
 #
-# content-resolve.bash - Resolve and stage spec.contents entries.
+# content-resolve.bash - Resolve and stage spec.contents / spec.templates entries.
 #
 # Sourced library exposing functions to resolve OCI artifact references,
 # fetch and unpack the manifests + contract zips that each entry contains,
 # and stage the result into per-entry directories. Used by product-aggregate
-# now and environment-build later.
+# (content flavour) and later by app/bundle and env/rp builds (templates
+# flavour). Layers do not use this lib — they have their own lib/layer-merge
+# and stage under a different tree entirely.
 #
-# Policy-free: the library only stages whatever is in spec.contents into
+# CONTENT_FLAVOUR contract (required, validated at source time):
+#   content    - read spec.contents[], stage under ${OUTPUT_SUB_PATH}/content/,
+#                produce contents.yaml + contents-resolved.yaml
+#   templates  - read spec.templates[], stage under ${OUTPUT_SUB_PATH}/templates/,
+#                produce templates.yaml + templates-resolved.yaml
+# A given script picks the flavour appropriate to its phase. env/rp builds will
+# run two passes (content then templates) in separate scripts.
+#
+# Required env to source this file:
+#   OUTPUT_SUB_PATH   - set by defaults/output-sub-path.bash before sourcing
+#   CONTENT_FLAVOUR   - set by caller before sourcing; one of content|templates
+#   log / log_error   - functions from lib/log.bash sourced before this file
+#
+# Exported by sourcing this file:
+#   CONTENT_BASE              - ${OUTPUT_SUB_PATH}/${CONTENT_FLAVOUR}
+#   CONTENT_MANIFESTS_DIR     - ${CONTENT_BASE}/manifests/<bundle>/
+#   CONTENT_DEFAULTS_DIR      - ${CONTENT_BASE}/defaults/<bundle>/
+#   CONTENT_CONTRACTS_DIR     - ${CONTENT_BASE}/contracts/<bundle>/contract.yaml
+#   CONTENT_EXTRACT_DIR       - ${CONTENT_BASE}/extract/<slug>/ (OCI audit trail)
+#   CONTENT_UNZIPPED_DIR      - ${CONTENT_BASE}/unzipped/<slug>/ (zip audit trail)
+#   CONTENT_LIST_FILE         - ${CONTENT_BASE}/contents.yaml | templates.yaml
+#                               (verbatim entries, one '- <entry>' per line)
+#   CONTENT_RESOLVED_FILE     - ${CONTENT_BASE}/contents-resolved.yaml |
+#                               templates-resolved.yaml (resolved OCI URIs)
+#
+# Policy-free: the library only stages whatever is in the spec field into
 # per-bundle subdirectories. Conflict detection across defaults, scheme
-# conversion decisions, and merging are caller concerns.
-#
-# Output layout (under <content-base> chosen by the caller):
-#   <out-extract-dir>/<artifact-slug>/      - OCI image contents incl. the zips,
-#                                             left in place as audit trail
-#   <out-unzipped-dir>/<artifact-slug>/     - contents of both zips, left in
-#                                             place as audit trail
-#   <out-manifests-dir>/<project>/...       - cp from unzipped/<slug>/<project>
-#   <out-defaults-dir>/<project>/<token>    - cp from unzipped/<slug>/defaults
-#   <out-contracts-dir>/<project>/contract.yaml  - cp from unzipped/<slug>
-#
-# <artifact-slug> is the resolved OCI URI with '/' and ':' replaced by '_'.
-#
-# Functions:
-#   content_resolve_all           - Orchestrator: resolve every entry in spec.contents
-#   content_find_zips             - Locate manifests + contract zips in an extracted tree
-#   content_unzip_manifests       - Unzip manifests zip into audit dir, cp project subdir to out
-#   content_unzip_contract        - Unzip contract zip into audit dir, cp contract+defaults to out
+# conversion decisions, and merging are caller concerns (see lib/bundle-import).
 #
 # Output variables (set by helpers, read by caller / orchestrator):
 #   CONTENT_MANIFESTS_ZIP   - absolute path to located manifests zip
@@ -41,6 +51,52 @@
 # Required tools: yq, unzip
 
 # shellcheck disable=SC2034 # Some helpers set output vars consumed by callers.
+
+if [[ -z "${OUTPUT_SUB_PATH:-}" ]]; then
+  log_error "OUTPUT_SUB_PATH is not set. Source defaults/output-sub-path.bash before content-resolve.bash."
+  # shellcheck disable=SC2317 # dual-mode: works whether sourced or executed
+  return 1 2>/dev/null || exit 1
+fi
+
+case "${CONTENT_FLAVOUR:-}" in
+  content)
+    _CONTENT_RESOLVE_SPEC_EXPR='.spec.contents[]'
+    _CONTENT_RESOLVE_FILE_STEM='contents'
+    ;;
+  templates)
+    _CONTENT_RESOLVE_SPEC_EXPR='.spec.templates[]'
+    _CONTENT_RESOLVE_FILE_STEM='templates'
+    ;;
+  "")
+    log_error "CONTENT_FLAVOUR must be set before sourcing content-resolve.bash (expected 'content' or 'templates')."
+    # shellcheck disable=SC2317 # dual-mode: works whether sourced or executed
+    return 1 2>/dev/null || exit 1
+    ;;
+  *)
+    log_error "CONTENT_FLAVOUR='${CONTENT_FLAVOUR}' invalid (expected 'content' or 'templates')."
+    # shellcheck disable=SC2317 # dual-mode: works whether sourced or executed
+    return 1 2>/dev/null || exit 1
+    ;;
+esac
+
+CONTENT_BASE="${OUTPUT_SUB_PATH}/${CONTENT_FLAVOUR}"
+CONTENT_MANIFESTS_DIR="${CONTENT_BASE}/manifests"
+CONTENT_DEFAULTS_DIR="${CONTENT_BASE}/defaults"
+CONTENT_CONTRACTS_DIR="${CONTENT_BASE}/contracts"
+CONTENT_EXTRACT_DIR="${CONTENT_BASE}/extract"
+CONTENT_UNZIPPED_DIR="${CONTENT_BASE}/unzipped"
+CONTENT_LIST_FILE="${CONTENT_BASE}/${_CONTENT_RESOLVE_FILE_STEM}.yaml"
+CONTENT_RESOLVED_FILE="${CONTENT_BASE}/${_CONTENT_RESOLVE_FILE_STEM}-resolved.yaml"
+export CONTENT_BASE CONTENT_MANIFESTS_DIR CONTENT_DEFAULTS_DIR \
+       CONTENT_CONTRACTS_DIR CONTENT_EXTRACT_DIR CONTENT_UNZIPPED_DIR \
+       CONTENT_LIST_FILE CONTENT_RESOLVED_FILE
+
+log "content-resolve: flavour=${CONTENT_FLAVOUR}"
+log "content-resolve: base=${CONTENT_BASE}"
+
+# Sub-lib dependency: dedup check runs inside content_resolve_all.
+# shellcheck source=src/scripts/lib/assert-unique-artifact-refs.bash
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/assert-unique-artifact-refs.bash"
 
 _CONTENT_RESOLVE_UTIL_DIR="${_CONTENT_RESOLVE_UTIL_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../util" && pwd)}"
 _CONTENT_RESOLVE_PLUGINS_DIR="${_CONTENT_RESOLVE_PLUGINS_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../plugins" && pwd)}"
@@ -306,31 +362,34 @@ content_validate_bundle() {
   fi
 }
 
-# Resolve every entry in spec.contents of <kaptainpm-file>, fetch the
+# Resolve every entry in the flavour's spec field (.spec.contents[] for
+# content, .spec.templates[] for templates) of <kaptainpm-file>, fetch the
 # corresponding -manifests OCI image, and stage the unzipped manifests,
-# contract, and defaults into the three given output directories.
+# contract, and defaults into the env-set CONTENT_* dirs (set at source time
+# based on CONTENT_FLAVOUR).
 #
-# OCI image extraction lands in <out-extract-dir>/<artifact-slug>/ and
-# both zips are unzipped into <out-unzipped-dir>/<artifact-slug>/. Both
+# Owns the lifecycle of CONTENT_BASE: rm -rf and recreate the full per-flavour
+# tree, so calling this is destructive to anything previously staged for the
+# same flavour. Two flavours stage under separate bases and do not interfere.
+#
+# OCI image extraction lands in ${CONTENT_EXTRACT_DIR}/<artifact-slug>/ and
+# both zips are unzipped into ${CONTENT_UNZIPPED_DIR}/<artifact-slug>/. Both
 # are kept after the run as the audit trail.
 #
-# When <out-resolved-yaml-file> is given, each entry's full resolved OCI
-# reference (registry/namespace/repo:concrete-version) is appended as a
-# YAML list item to that file. The file is truncated at the start.
+# Writes two summary files at ${CONTENT_BASE}:
+#   ${CONTENT_LIST_FILE}      - verbatim spec entries, one '- <entry>' per line
+#                               (valid YAML sequence and valid markdown bullets)
+#   ${CONTENT_RESOLVED_FILE}  - resolved OCI URIs, one '- <uri>' per line
+# Both files are truncated and rewritten on every call. Empty spec field
+# produces empty files (consumers can rely on the files always existing).
 #
-# Usage: content_resolve_all <kaptainpm-file> <out-manifests-dir> <out-defaults-dir> <out-contracts-dir> <out-extract-dir> <out-unzipped-dir> [<out-resolved-yaml-file>]
+# Usage: content_resolve_all <kaptainpm-file>
 content_resolve_all() {
-  if [[ $# -lt 6 || $# -gt 7 ]]; then
-    log_error "Usage: content_resolve_all <kaptainpm-file> <out-manifests-dir> <out-defaults-dir> <out-contracts-dir> <out-extract-dir> <out-unzipped-dir> [<out-resolved-yaml-file>]"
+  if [[ $# -ne 1 ]]; then
+    log_error "Usage: content_resolve_all <kaptainpm-file>"
     return 1
   fi
   local kaptainpm_file="$1"
-  local out_manifests_dir="$2"
-  local out_defaults_dir="$3"
-  local out_contracts_dir="$4"
-  local out_extract_dir="$5"
-  local out_unzipped_dir="$6"
-  local out_resolved_yaml="${7:-}"
 
   if [[ ! -f "${kaptainpm_file}" ]]; then
     log_error "KaptainPM file not found: ${kaptainpm_file}"
@@ -346,25 +405,37 @@ content_resolve_all() {
     return 1
   fi
 
-  mkdir -p "${out_manifests_dir}" "${out_defaults_dir}" "${out_contracts_dir}" \
-           "${out_extract_dir}" "${out_unzipped_dir}"
+  # Reject duplicate refs at the spec level before any fetch/extract work.
+  # 'name' mode collapses on the bare last-path segment because two refs that
+  # resolve to the same bundle/project metadata.name collide at staging
+  # regardless of where they were pulled from.
+  assert_unique_artifact_refs "${kaptainpm_file}" \
+    "${_CONTENT_RESOLVE_SPEC_EXPR}" \
+    "spec.${_CONTENT_RESOLVE_FILE_STEM}" name
 
-  if [[ -n "${out_resolved_yaml}" ]]; then
-    mkdir -p "$(dirname "${out_resolved_yaml}")"
-    : > "${out_resolved_yaml}"
-  fi
+  rm -rf "${CONTENT_BASE}"
+  mkdir -p "${CONTENT_MANIFESTS_DIR}" "${CONTENT_DEFAULTS_DIR}" "${CONTENT_CONTRACTS_DIR}" \
+           "${CONTENT_EXTRACT_DIR}" "${CONTENT_UNZIPPED_DIR}"
+
+  : > "${CONTENT_LIST_FILE}"
+  : > "${CONTENT_RESOLVED_FILE}"
 
   local entries
-  entries=$(yq eval '.spec.contents[]' "${kaptainpm_file}" 2>/dev/null || true)
+  entries=$(yq eval "${_CONTENT_RESOLVE_SPEC_EXPR}" "${kaptainpm_file}" 2>/dev/null || true)
   if [[ -z "${entries}" || "${entries}" == "null" ]]; then
-    log "No spec.contents entries to resolve"
+    log "No ${_CONTENT_RESOLVE_FILE_STEM} entries to resolve"
     return 0
   fi
 
+  local summary_entry
+  while IFS= read -r summary_entry; do
+    [[ -z "${summary_entry}" ]] && continue
+    printf -- '- %s\n' "${summary_entry}" >> "${CONTENT_LIST_FILE}"
+  done <<< "${entries}"
+
   local total
   total=$(echo "${entries}" | grep -c .)
-  log "Contents lists ${total} entr$([[ ${total} -eq 1 ]] && echo y || echo ies):"
-  local summary_entry
+  log "${_CONTENT_RESOLVE_FILE_STEM} lists ${total} entr$([[ ${total} -eq 1 ]] && echo y || echo ies):"
   while IFS= read -r summary_entry; do
     [[ -z "${summary_entry}" ]] && continue
     log "  ${summary_entry}"
@@ -376,42 +447,40 @@ content_resolve_all() {
   while IFS= read -r entry; do
     [[ -z "${entry}" ]] && continue
     entry_index=$((entry_index + 1))
-    log "Resolving content entry ${entry_index}: ${entry}"
+    log "Resolving ${_CONTENT_RESOLVE_FILE_STEM} entry ${entry_index}: ${entry}"
 
     # Resolve to the concrete OCI URI. Land the resolved-uri file at a
     # known per-entry path, then move it into the slug-named extract dir
     # once we know the slug. Keeping it makes the audit trail show what
     # the entry actually resolved to at the moment of the build.
-    local resolve_seed="${out_extract_dir}/resolved-entry-${entry_index}.uri"
+    local resolve_seed="${CONTENT_EXTRACT_DIR}/resolved-entry-${entry_index}.uri"
     "${_CONTENT_RESOLVE_UTIL_DIR}/artifact-resolve" "${entry}" "${resolve_seed}" manifests || return $?
     local resolved_uri
     resolved_uri=$(cat "${resolve_seed}")
     log "  Resolved: ${resolved_uri}"
 
-    if [[ -n "${out_resolved_yaml}" ]]; then
-      printf -- '- %s\n' "${resolved_uri}" >> "${out_resolved_yaml}"
-    fi
+    printf -- '- %s\n' "${resolved_uri}" >> "${CONTENT_RESOLVED_FILE}"
 
     local slug
     slug=$(_content_artifact_slug "${resolved_uri}")
-    local extract_dir="${out_extract_dir}/${slug}"
-    local unzipped_dir="${out_unzipped_dir}/${slug}"
+    local extract_dir="${CONTENT_EXTRACT_DIR}/${slug}"
+    local unzipped_dir="${CONTENT_UNZIPPED_DIR}/${slug}"
     mkdir -p "${extract_dir}" "${unzipped_dir}"
     mv "${resolve_seed}" "${extract_dir}/resolved-uri"
 
     "${_CONTENT_RESOLVE_UTIL_DIR}/extract-oci-image" "${resolved_uri}" "${extract_dir}" || return $?
 
     content_find_zips "${extract_dir}" || return $?
-    content_unzip_manifests "${CONTENT_MANIFESTS_ZIP}" "${unzipped_dir}" "${out_manifests_dir}" || return $?
+    content_unzip_manifests "${CONTENT_MANIFESTS_ZIP}" "${unzipped_dir}" "${CONTENT_MANIFESTS_DIR}" || return $?
     local project="${CONTENT_PROJECT_NAME}"
     content_unzip_contract "${CONTENT_CONTRACT_ZIP}" "${unzipped_dir}" \
-      "${out_contracts_dir}" "${out_defaults_dir}" "${project}" || return $?
+      "${CONTENT_CONTRACTS_DIR}" "${CONTENT_DEFAULTS_DIR}" "${project}" || return $?
 
-    content_validate_bundle "${project}" "${out_contracts_dir}" "${out_defaults_dir}" "${out_manifests_dir}" || return $?
+    content_validate_bundle "${project}" "${CONTENT_CONTRACTS_DIR}" "${CONTENT_DEFAULTS_DIR}" "${CONTENT_MANIFESTS_DIR}" || return $?
 
     log "  Staged ${project}"
     log ""
   done <<< "${entries}"
 
-  log "Resolved ${entry_index} content entr$([[ ${entry_index} -eq 1 ]] && echo y || echo ies)"
+  log "Resolved ${entry_index} ${_CONTENT_RESOLVE_FILE_STEM} entr$([[ ${entry_index} -eq 1 ]] && echo y || echo ies)"
 }

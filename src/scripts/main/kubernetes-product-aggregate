@@ -5,43 +5,28 @@
 # kubernetes-product-aggregate - Aggregate pre-built manifest bundles into a product.
 #
 # Validates product naming, derives PRODUCT_NAME / PRODUCT_SHORT_NAME, blocks
-# products from including other products, then sources lib/content-resolve.bash
-# to fetch and stage every spec.contents entry. Per-bundle scheme conversion is
-# applied where automatic; cross-bundle defaults are merged byte-identical or
-# the build fails.
+# products from including other products, then delegates fetching and staging
+# of every spec.contents entry to lib/content-resolve.bash and per-bundle
+# scheme conversion + defaults merging to lib/bundle-import.bash.
+#
+# Outputs to the foreign-contributor drop dirs consumed by the downstream
+# kubernetes-manifests-package-prepare step:
+#   ${OUTPUT_SUB_PATH}/manifests/additional-manifests/ - normalised bundle manifest trees
+#   ${OUTPUT_SUB_PATH}/manifests/additional-defaults/  - merged bundle defaults
 #
 # Outputs (env + GITHUB_OUTPUT):
 #   PRODUCT_NAME           - PROJECT_NAME verbatim
 #   PRODUCT_SHORT_NAME     - PROJECT_NAME with product- prefix or -product suffix stripped
-#   MANIFESTS_SUB_PATH     - Override pointing downstream package-prepare at the
-#                            assembled tree (bundles + product's own src/kubernetes)
-#   DEFAULTS_SUB_PATH      - Single merged defaults directory for the downstream
-#                            contract-generate step (existing single-dir interface)
-#   PRODUCT_CONTENTS_FILE  - Path to a markdown file (one bullet per
+#   PRODUCT_CONTENTS_FILE  - Path to a YAML file (one '- <entry>' line per
 #                            spec.contents entry, verbatim) for the GitHub
 #                            release notes step to splice into its output
 #
 # Inputs (env vars):
-#   PROJECT_NAME                           - Required; must satisfy product naming rule
-#   TOKEN_DELIMITER_STYLE                  - Product's token delimiter style (default shell)
-#   TOKEN_NAME_STYLE                       - Product's token name style (default PascalCase)
-#   OUTPUT_SUB_PATH                        - Build output dir (default kaptain-out)
-#   DEFAULTS_SUB_PATH                      - Local product defaults dir (default src/defaults)
-#   PRODUCT_ALLOW_LOCAL_DEFAULTS_OVERRIDE  - When 'true', src/defaults is applied
-#                                            last as authoritative (warn per replacement);
-#                                            when unset/false, local defaults must be
-#                                            byte-identical to bundle defaults or fail.
-#   MANIFESTS_SUB_PATH                     - Local product manifests dir (default src/kubernetes).
-#                                            Captured before the script overwrites this output
-#                                            with the assembled tree path; folded into the
-#                                            assembled tree before output.
-#   PRODUCT_ALLOW_LOCAL_MANIFESTS_OVERRIDE - When 'true', src/kubernetes files override
-#                                            colliding bundle-contributed paths (warn per
-#                                            replacement); when unset/false, any path collision
-#                                            fails the build. The reserved filename
-#                                            kaptain-product-lineage-data.yaml is checked
-#                                            separately and always fails on collision.
-#   KAPTAINPM_FILE                         - Override path for testing (default kaptainpm/final/KaptainPM.yaml)
+#   PROJECT_NAME           - Required; must satisfy product naming rule
+#   TOKEN_DELIMITER_STYLE  - Product's token delimiter style (default shell)
+#   TOKEN_NAME_STYLE       - Product's token name style (default PascalCase)
+#   OUTPUT_SUB_PATH        - Build output dir (default kaptain-out)
+#   KAPTAINPM_FILE         - Override path for testing (default kaptainpm/final/KaptainPM.yaml)
 #
 set -euo pipefail
 
@@ -53,41 +38,23 @@ source "${SCRIPT_DIR}/../defaults/platform.bash"
 source "${SCRIPT_DIR}/../lib/log.bash"
 # shellcheck source=src/scripts/defaults/output-sub-path.bash
 source "${SCRIPT_DIR}/../defaults/output-sub-path.bash"
+# shellcheck source=src/scripts/defaults/manifests-sub-path.bash
+source "${SCRIPT_DIR}/../defaults/manifests-sub-path.bash"
 # shellcheck source=src/scripts/defaults/tokens.bash
 source "${SCRIPT_DIR}/../defaults/tokens.bash"
 # shellcheck source=src/scripts/lib/output-var.bash
 source "${SCRIPT_DIR}/../lib/output-var.bash"
 # shellcheck source=src/scripts/lib/token-format.bash
 source "${SCRIPT_DIR}/../lib/token-format.bash"
+# content-resolve owns its dir layout based on CONTENT_FLAVOUR; set before sourcing.
+export CONTENT_FLAVOUR=content
 # shellcheck source=src/scripts/lib/content-resolve.bash
 source "${SCRIPT_DIR}/../lib/content-resolve.bash"
-# shellcheck source=src/scripts/lib/assert-unique-artifact-refs.bash
-source "${SCRIPT_DIR}/../lib/assert-unique-artifact-refs.bash"
+# shellcheck source=src/scripts/lib/bundle-import.bash
+source "${SCRIPT_DIR}/../lib/bundle-import.bash"
 
 PROJECT_NAME="${PROJECT_NAME:?PROJECT_NAME is required}"
 KAPTAINPM_FILE="${KAPTAINPM_FILE:-kaptainpm/final/KaptainPM.yaml}"
-LOCAL_DEFAULTS_SUB_PATH="${DEFAULTS_SUB_PATH:-src/defaults}"
-LOCAL_MANIFESTS_SUB_PATH="${MANIFESTS_SUB_PATH:-src/kubernetes}"
-PRODUCT_ALLOW_LOCAL_DEFAULTS_OVERRIDE="${PRODUCT_ALLOW_LOCAL_DEFAULTS_OVERRIDE:-false}"
-PRODUCT_ALLOW_LOCAL_MANIFESTS_OVERRIDE="${PRODUCT_ALLOW_LOCAL_MANIFESTS_OVERRIDE:-false}"
-PRODUCT_LINEAGE_DATA_FILENAME="kaptain-product-lineage-data.yaml"
-UTIL_DIR="${SCRIPT_DIR}/../util"
-
-# Download/extract artefacts only — content-resolve owns this dir.
-CONTENT_BASE="${OUTPUT_SUB_PATH}/content"
-CONTENT_MANIFESTS_DIR="${CONTENT_BASE}/manifests"
-CONTENT_DEFAULTS_DIR="${CONTENT_BASE}/defaults"
-CONTENT_CONTRACTS_DIR="${CONTENT_BASE}/contracts"
-CONTENT_EXTRACT_DIR="${CONTENT_BASE}/extract"
-CONTENT_UNZIPPED_DIR="${CONTENT_BASE}/unzipped"
-CONTENT_RESOLVED_FILE="${CONTENT_BASE}/contents-resolved.yaml"
-
-# Assembly artefacts — product-aggregate owns this dir.
-AGGREGATE_BASE="${OUTPUT_SUB_PATH}/product-aggregate"
-AGGREGATE_MANIFESTS_NORMALISED_DIR="${AGGREGATE_BASE}/manifests-normalised"
-AGGREGATE_DEFAULTS_NORMALISED_DIR="${AGGREGATE_BASE}/defaults-normalised"
-AGGREGATE_DEFAULTS_MERGED="${AGGREGATE_BASE}/defaults-merged"
-AGGREGATE_CONTENT_LIST_FILE="${AGGREGATE_BASE}/contents-list.md"
 
 PRODUCT_PREFIX="product-"
 PRODUCT_SUFFIX="-product"
@@ -167,323 +134,6 @@ assert_no_products_in_products() {
   done <<< "${entries}"
 }
 
-# Write a markdown bullet list of spec.contents entries (verbatim) for
-# inclusion in GitHub release notes. Empty contents list -> empty file.
-write_contents_list() {
-  local kaptainpm_file="$1"
-  local out_file="$2"
-  : > "${out_file}"
-  local entries
-  entries=$(yq eval '.spec.contents[]' "${kaptainpm_file}" 2>/dev/null || true)
-  [[ -z "${entries}" || "${entries}" == "null" ]] && return 0
-
-  local entry
-  while IFS= read -r entry; do
-    [[ -z "${entry}" ]] && continue
-    printf -- '- %s\n' "${entry}" >> "${out_file}"
-  done <<< "${entries}"
-}
-
-# Read tokens.delimiterStyle / tokens.nameStyle from a contract.yaml.
-# Sets BUNDLE_DELIM_STYLE and BUNDLE_NAME_STYLE.
-read_bundle_scheme() {
-  local contract="$1"
-  if [[ ! -f "${contract}" ]]; then
-    log_error "Contract file not found for bundle: ${contract}"
-    log_error "Bundles must be republished with a contract zip before being consumed by a product build."
-    return 1
-  fi
-  BUNDLE_DELIM_STYLE=$(yq -r '.tokens.delimiterStyle // ""' "${contract}")
-  BUNDLE_NAME_STYLE=$(yq -r '.tokens.nameStyle // ""' "${contract}")
-  if [[ -z "${BUNDLE_DELIM_STYLE}" || -z "${BUNDLE_NAME_STYLE}" ]]; then
-    log_error "Bundle contract is missing tokens.delimiterStyle or tokens.nameStyle: ${contract}"
-    return 1
-  fi
-}
-
-convert_bundle_scheme_if_needed() {
-  local bundle="$1"
-  local manifests_dir="${CONTENT_MANIFESTS_DIR}/${bundle}"
-  local normalised_dir="${AGGREGATE_MANIFESTS_NORMALISED_DIR}/${bundle}"
-  local contract_file="${CONTENT_CONTRACTS_DIR}/${bundle}/contract.yaml"
-
-  read_bundle_scheme "${contract_file}"
-  log "Bundle ${bundle}:"
-  log "  Path: ${manifests_dir}"
-  log "  Scheme: ${BUNDLE_DELIM_STYLE}-${BUNDLE_NAME_STYLE}"
-  if [[ "${BUNDLE_DELIM_STYLE}" == "${TOKEN_DELIMITER_STYLE}" \
-     && "${BUNDLE_NAME_STYLE}" == "${TOKEN_NAME_STYLE}" ]]; then
-    log "  Token scheme matches."
-    cp -R "${manifests_dir}" "${normalised_dir}"
-    log "  Copied verbatim to ${normalised_dir}"
-    log ""
-    return 0
-  else
-    log "  Token scheme mismatch."
-    local token_count
-    token_count=$(yq -r '(.config.required // []) | length' "${contract_file}")
-    log "  Tokens to convert: ${token_count}"
-  fi
-
-  if [[ "${token_count}" -eq 0 ]]; then
-    log "  No tokens to convert, consuming as is."
-    cp -R "${manifests_dir}" "${normalised_dir}"
-    log "  Copied verbatim to ${normalised_dir}"
-    log ""
-    return 0
-  fi
-
-  local target_combo="${TOKEN_DELIMITER_STYLE}-${TOKEN_NAME_STYLE}"
-
-  local assessment
-  assessment=$("${UTIL_DIR}/assess-token-compatibility" \
-      "${BUNDLE_DELIM_STYLE}" "${BUNDLE_NAME_STYLE}" "${manifests_dir}")
-
-  local section="" found_auto=false found_repackage=false
-  while IFS= read -r line; do
-    case "${line}" in
-      AUTOMATIC_CONVERSION:) section="auto" ;;
-      REPACKAGE_REQUIRED:)   section="repackage" ;;
-      "") ;;
-      *)
-        if [[ "${line}" == "${target_combo}" ]]; then
-          [[ "${section}" == "auto" ]]      && found_auto=true
-          [[ "${section}" == "repackage" ]] && found_repackage=true
-        fi
-        ;;
-    esac
-  done <<< "${assessment}"
-
-  if ${found_auto}; then
-    cp -R "${manifests_dir}" "${normalised_dir}"
-    "${UTIL_DIR}/convert-tokens-in-tree" \
-      "${BUNDLE_DELIM_STYLE}" "${BUNDLE_NAME_STYLE}" \
-      "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" \
-      "${normalised_dir}" \
-      "  "
-    log ""
-    return 0
-  fi
-
-  if ${found_repackage}; then
-    log_error "Bundle ${bundle} uses token substitution scheme ${BUNDLE_DELIM_STYLE}-${BUNDLE_NAME_STYLE},"
-    log_error "which cannot be automatically converted to the product's token substitution scheme"
-    log_error "${target_combo}. The bundle's manifests contain content that is declared as incompatible"
-    log_error "with this project's token substitution scheme by the contract supplied with the manifests."
-    log_error "Rebuild the upstream project to suit or repackage if you don't control it."
-    log ""
-    return 1
-  fi
-
-  log_error "assess-token-compatibility did not classify ${target_combo} for bundle ${bundle}"
-  log ""
-  return 1
-}
-
-# Mirror of convert_bundle_scheme_if_needed for the bundle's defaults dir.
-# Reads BUNDLE_NAME_STYLE populated by an earlier read_bundle_scheme call;
-# matches the product's TOKEN_NAME_STYLE by walking each defaults file,
-# canonicalising its relative path, and re-emitting it under the target style.
-# Empty/missing source -> log and skip; matching styles -> verbatim copy.
-convert_bundle_defaults_if_needed() {
-  local bundle="$1"
-  local source_dir="${CONTENT_DEFAULTS_DIR}/${bundle}"
-  local normalised_dir="${AGGREGATE_DEFAULTS_NORMALISED_DIR}/${bundle}"
-
-  log "Bundle ${bundle} defaults:"
-  if [[ ! -d "${source_dir}" ]] \
-     || [[ -z "$(find "${source_dir}" -type f 2>/dev/null)" ]]; then
-    log "  No defaults present"
-    log ""
-    return 0
-  fi
-
-  if [[ "${BUNDLE_NAME_STYLE}" == "${TOKEN_NAME_STYLE}" ]]; then
-    log "  Default names match."
-    cp -R "${source_dir}" "${normalised_dir}"
-    log "  Copied verbatim to ${normalised_dir}"
-    log ""
-    return 0
-  fi
-
-  local default_count
-  default_count=$(find "${source_dir}" -type f | wc -l | tr -d ' ')
-  log "  Default names mismatch."
-  log "  Renaming ${default_count} default(s) from ${BUNDLE_NAME_STYLE} to ${TOKEN_NAME_STYLE}"
-
-  mkdir -p "${normalised_dir}"
-  local file rel canonical target target_path
-  while IFS= read -r -d '' file; do
-    rel="${file#"${source_dir}/"}"
-    canonical=$(canonicalize_token_name "${BUNDLE_NAME_STYLE}" "${rel}")
-    target=$(convert_token_name "${TOKEN_NAME_STYLE}" "${canonical}")
-    target_path="${normalised_dir}/${target}"
-    mkdir -p "$(dirname "${target_path}")"
-    cp "${file}" "${target_path}"
-    log "   - Renamed ${rel} → ${target}"
-  done < <(find "${source_dir}" -type f -print0)
-  log ""
-}
-
-# Walk every per-bundle defaults directory and merge byte-identical files into
-# AGGREGATE_DEFAULTS_MERGED. Differing values fail with diagnostics.
-merge_bundle_defaults() {
-  mkdir -p "${AGGREGATE_DEFAULTS_MERGED}"
-  [[ -d "${AGGREGATE_DEFAULTS_NORMALISED_DIR}" ]] || return 0
-
-  # Build a list of "<token-rel-path>\t<bundle>" lines across every bundle.
-  local index_file="${AGGREGATE_BASE}/.defaults-index"
-  : > "${index_file}"
-  local bundle_dir bundle file rel
-  for bundle_dir in "${AGGREGATE_DEFAULTS_NORMALISED_DIR}"/*; do
-    [[ -d "${bundle_dir}" ]] || continue
-    bundle=$(basename "${bundle_dir}")
-    while IFS= read -r -d '' file; do
-      rel="${file#"${bundle_dir}/"}"
-      printf '%s\t%s\n' "${rel}" "${bundle}" >> "${index_file}"
-    done < <(find "${bundle_dir}" -type f -print0)
-  done
-
-  [[ -s "${index_file}" ]] || { rm -f "${index_file}"; return 0; }
-
-  # Group by token rel path and verify byte-identical contents.
-  local tokens
-  tokens=$(awk -F '\t' '{print $1}' "${index_file}" | sort -u)
-
-  local token first_bundle first_file other_bundle other_file
-  while IFS= read -r token; do
-    [[ -z "${token}" ]] && continue
-    local bundles=()
-    while IFS=$'\t' read -r t b; do
-      [[ "${t}" == "${token}" ]] && bundles+=("${b}")
-    done < "${index_file}"
-
-    first_bundle="${bundles[0]}"
-    first_file="${AGGREGATE_DEFAULTS_NORMALISED_DIR}/${first_bundle}/${token}"
-
-    local i
-    for ((i = 1; i < ${#bundles[@]}; i++)); do
-      other_bundle="${bundles[i]}"
-      other_file="${AGGREGATE_DEFAULTS_NORMALISED_DIR}/${other_bundle}/${token}"
-      if ! cmp -s "${first_file}" "${other_file}"; then
-        log_error "Default value collision for token '${token}':"
-        log_error "  ${first_bundle}: $(cat "${first_file}")"
-        log_error "  ${other_bundle}: $(cat "${other_file}")"
-        log_error "Bundles ship different defaults for the same token name. Either align the"
-        log_error "values upstream or prefix the token with the project name in one bundle to"
-        log_error "disambiguate."
-        rm -f "${index_file}"
-        return 1
-      fi
-    done
-
-    mkdir -p "$(dirname "${AGGREGATE_DEFAULTS_MERGED}/${token}")"
-    cp "${first_file}" "${AGGREGATE_DEFAULTS_MERGED}/${token}"
-  done <<< "${tokens}"
-
-  rm -f "${index_file}"
-}
-
-# Fold the product's own ${LOCAL_DEFAULTS_SUB_PATH} into AGGREGATE_DEFAULTS_MERGED.
-# When PRODUCT_ALLOW_LOCAL_DEFAULTS_OVERRIDE is true, local files overwrite any
-# bundle-contributed value (one WARN log line per replaced token). When false,
-# each local file is byte-identical-checked against the merged value and the
-# build fails on any difference.
-merge_local_defaults() {
-  [[ -d "${LOCAL_DEFAULTS_SUB_PATH}" ]] || return 0
-
-  local file rel target
-  while IFS= read -r -d '' file; do
-    rel="${file#"${LOCAL_DEFAULTS_SUB_PATH}/"}"
-    target="${AGGREGATE_DEFAULTS_MERGED}/${rel}"
-
-    if [[ ! -e "${target}" ]]; then
-      mkdir -p "$(dirname "${target}")"
-      cp "${file}" "${target}"
-      continue
-    fi
-
-    if [[ "${PRODUCT_ALLOW_LOCAL_DEFAULTS_OVERRIDE}" == "true" ]]; then
-      log "WARN: local default '${rel}' overrides a value contributed by an upstream bundle"
-      cp "${file}" "${target}"
-      continue
-    fi
-
-    if ! cmp -s "${file}" "${target}"; then
-      log_error "Default value collision for token '${rel}':"
-      log_error "  upstream bundle: $(cat "${target}")"
-      log_error "  local ${LOCAL_DEFAULTS_SUB_PATH}/${rel}: $(cat "${file}")"
-      log_error "Local defaults differ from a bundle's default. Either align the values or set"
-      log_error "spec.main.product.allowLocalDefaultsOverride: true if the override is intentional."
-      return 1
-    fi
-  done < <(find "${LOCAL_DEFAULTS_SUB_PATH}" -type f -print0)
-}
-
-# Walk the bundle-contributed normalised tree and the product's own
-# LOCAL_MANIFESTS_SUB_PATH; fail if any file is named PRODUCT_LINEAGE_DATA_FILENAME
-# anywhere in either tree, regardless of position. The product lineage data
-# ConfigMap (see ProductPresenceConfigMap.md) owns this filename unconditionally.
-assert_no_lineage_data_squat() {
-  local found=()
-  local file
-  if [[ -d "${AGGREGATE_MANIFESTS_NORMALISED_DIR}" ]]; then
-    while IFS= read -r -d '' file; do
-      found+=("bundle: ${file}")
-    done < <(find "${AGGREGATE_MANIFESTS_NORMALISED_DIR}" -type f -name "${PRODUCT_LINEAGE_DATA_FILENAME}" -print0)
-  fi
-  if [[ -d "${LOCAL_MANIFESTS_SUB_PATH}" ]]; then
-    while IFS= read -r -d '' file; do
-      found+=("local:  ${file}")
-    done < <(find "${LOCAL_MANIFESTS_SUB_PATH}" -type f -name "${PRODUCT_LINEAGE_DATA_FILENAME}" -print0)
-  fi
-  if (( ${#found[@]} > 0 )); then
-    log_error "Reserved filename '${PRODUCT_LINEAGE_DATA_FILENAME}' is owned by the"
-    log_error "product lineage data ConfigMap and cannot appear in any bundle or in the product's"
-    log_error "own ${LOCAL_MANIFESTS_SUB_PATH} directory. Offending files:"
-    local entry
-    for entry in "${found[@]}"; do
-      log_error "  ${entry}"
-    done
-    return 1
-  fi
-}
-
-# Fold the product's own ${LOCAL_MANIFESTS_SUB_PATH} into AGGREGATE_MANIFESTS_NORMALISED_DIR.
-# When PRODUCT_ALLOW_LOCAL_MANIFESTS_OVERRIDE is true, local files overwrite any
-# bundle-contributed file at the same relative path (one WARN log line per
-# replacement). When false, any path collision fails the build. The reserved
-# product lineage data filename is enforced separately by assert_no_lineage_data_squat.
-merge_local_manifests() {
-  [[ -d "${LOCAL_MANIFESTS_SUB_PATH}" ]] || return 0
-
-  local file rel target
-  while IFS= read -r -d '' file; do
-    rel="${file#"${LOCAL_MANIFESTS_SUB_PATH}/"}"
-    target="${AGGREGATE_MANIFESTS_NORMALISED_DIR}/${rel}"
-
-    if [[ ! -e "${target}" ]]; then
-      mkdir -p "$(dirname "${target}")"
-      cp "${file}" "${target}"
-      continue
-    fi
-
-    if [[ "${PRODUCT_ALLOW_LOCAL_MANIFESTS_OVERRIDE}" == "true" ]]; then
-      log "WARN: local manifest '${rel}' overrides a file contributed by an upstream bundle"
-      cp "${file}" "${target}"
-      continue
-    fi
-
-    log_error "Manifest path collision for '${rel}':"
-    log_error "  upstream bundle: ${target}"
-    log_error "  local:           ${file}"
-    log_error "Local manifests collide with a bundle-contributed file. Either rename the"
-    log_error "local file or set spec.main.product.allowLocalManifestsOverride: true if the"
-    log_error "override is intentional."
-    return 1
-  done < <(find "${LOCAL_MANIFESTS_SUB_PATH}" -type f -print0)
-}
-
 main() {
   log "=== Kubernetes Product Aggregate ==="
   log "Project: ${PROJECT_NAME}"
@@ -506,63 +156,15 @@ main() {
 
   assert_no_products_in_products "${KAPTAINPM_FILE}"
 
-  # Reject the same artifact appearing twice in spec.contents. 'name' mode
-  # collapses on the bare last-path segment (project name) because the
-  # bundle's metadata.name will collide downstream regardless of which
-  # registry/namespace it came from.
-  assert_unique_artifact_refs "${KAPTAINPM_FILE}" '.spec.contents[]' \
-      "Product spec.contents" name
-
-  rm -rf "${CONTENT_BASE}" "${AGGREGATE_BASE}"
-  mkdir -p "${CONTENT_MANIFESTS_DIR}" "${CONTENT_DEFAULTS_DIR}" "${CONTENT_CONTRACTS_DIR}" \
-           "${CONTENT_EXTRACT_DIR}" "${CONTENT_UNZIPPED_DIR}"
-  mkdir -p "${AGGREGATE_MANIFESTS_NORMALISED_DIR}" "${AGGREGATE_DEFAULTS_NORMALISED_DIR}"
-
   log ""
   log "Resolving spec.contents..."
   log ""
-  content_resolve_all "${KAPTAINPM_FILE}" \
-    "${CONTENT_MANIFESTS_DIR}" "${CONTENT_DEFAULTS_DIR}" "${CONTENT_CONTRACTS_DIR}" \
-    "${CONTENT_EXTRACT_DIR}" "${CONTENT_UNZIPPED_DIR}" \
-    "${CONTENT_RESOLVED_FILE}"
+  content_resolve_all "${KAPTAINPM_FILE}"
 
-  log ""
-  log "Per-bundle scheme conversion to ${TOKEN_DELIMITER_STYLE}-${TOKEN_NAME_STYLE} if needed..."
-  log ""
-  local bundle_dir bundle
-  for bundle_dir in "${CONTENT_MANIFESTS_DIR}"/*; do
-    [[ -d "${bundle_dir}" ]] || continue
-    bundle=$(basename "${bundle_dir}")
-    convert_bundle_scheme_if_needed "${bundle}"
-    convert_bundle_defaults_if_needed "${bundle}"
-  done
+  # shellcheck disable=SC2119 # intentionally call with no args to use the function's default
+  bundle_import_all
 
-  log ""
-  log "Merging per-bundle defaults..."
-  log ""
-  merge_bundle_defaults
-
-  log ""
-  log "Folding in local defaults (${LOCAL_DEFAULTS_SUB_PATH}, allowLocalDefaultsOverride=${PRODUCT_ALLOW_LOCAL_DEFAULTS_OVERRIDE})..."
-  log ""
-  merge_local_defaults
-
-  log ""
-  log "Asserting no squat on reserved product linearge data filename '${PRODUCT_LINEAGE_DATA_FILENAME}'..."
-  log ""
-  assert_no_lineage_data_squat
-
-  log ""
-  log "Folding in local manifests (${LOCAL_MANIFESTS_SUB_PATH}, allowLocalManifestsOverride=${PRODUCT_ALLOW_LOCAL_MANIFESTS_OVERRIDE})..."
-  log ""
-  merge_local_manifests
-
-  mkdir -p "${AGGREGATE_BASE}"
-  write_contents_list "${KAPTAINPM_FILE}" "${AGGREGATE_CONTENT_LIST_FILE}"
-
-  output_var "MANIFESTS_SUB_PATH" "${AGGREGATE_MANIFESTS_NORMALISED_DIR}"
-  output_var "DEFAULTS_SUB_PATH" "${AGGREGATE_DEFAULTS_MERGED}"
-  output_var "PRODUCT_CONTENTS_FILE" "${AGGREGATE_CONTENT_LIST_FILE}"
+  output_var "PRODUCT_CONTENTS_FILE" "${CONTENT_LIST_FILE}"
 
   log ""
   log "=== Product Aggregate Staging Complete ==="

@@ -4,6 +4,8 @@
 #
 # Tests for kubernetes-configuration.bash library
 
+bats_require_minimum_version 1.5.0
+
 load helpers
 
 setup() {
@@ -95,7 +97,7 @@ setup() {
 
   result=$(generate_configuration_entries "${test_dir}")
 
-  [[ "${result}" == *"single.txt: simple-value"* ]]
+  [[ "${result}" == *"single.txt: simple-value"* ]] || return 1
 }
 
 @test "generate_configuration_entries: multi-line file uses block scalar format" {
@@ -105,7 +107,7 @@ setup() {
 
   result=$(generate_configuration_entries "${test_dir}")
 
-  [[ "${result}" == *"multi.txt: |"* ]]
+  [[ "${result}" == *"multi.txt: |"* ]] || return 1
 }
 
 @test "generate_configuration_entries: file with trailing newline uses inline format" {
@@ -115,7 +117,7 @@ setup() {
 
   result=$(generate_configuration_entries "${test_dir}")
 
-  [[ "${result}" == *"trailing.txt: value"* ]]
+  [[ "${result}" == *"trailing.txt: value"* ]] || return 1
 }
 
 @test "generate_configuration_entries: preserves content in multi-line files" {
@@ -125,9 +127,9 @@ setup() {
 
   result=$(generate_configuration_entries "${test_dir}")
 
-  [[ "${result}" == *"first"* ]]
-  [[ "${result}" == *"second"* ]]
-  [[ "${result}" == *"third"* ]]
+  [[ "${result}" == *"first"* ]] || return 1
+  [[ "${result}" == *"second"* ]] || return 1
+  [[ "${result}" == *"third"* ]] || return 1
 }
 
 @test "generate_configuration_entries: multiple files sorted alphabetically" {
@@ -140,7 +142,7 @@ setup() {
 
   apple_pos=$(echo "${result}" | grep -n "apple.txt" | cut -d: -f1)
   zebra_pos=$(echo "${result}" | grep -n "zebra.txt" | cut -d: -f1)
-  [[ "${apple_pos}" -lt "${zebra_pos}" ]]
+  [[ "${apple_pos}" -lt "${zebra_pos}" ]] || return 1
 }
 
 teardown() {

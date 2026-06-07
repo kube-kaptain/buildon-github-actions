@@ -4,6 +4,8 @@
 #
 # Tests for main/vendor-helm-inject-build-details
 
+bats_require_minimum_version 1.5.0
+
 load helpers
 
 SCRIPT="$SCRIPTS_DIR/vendor-helm-inject-build-details"
@@ -47,7 +49,7 @@ EOF
   write_manifest "${COMBINED_DIR}/sub/service.yaml" "beta"
 
   run "$SCRIPT"
-  [[ "$status" -eq 0 ]]
+  [[ "$status" -eq 0 ]] || return 1
 
   local stamp_a stamp_b built_a built_b
   stamp_a=$(yq eval '.metadata.annotations."kaptain.org/build-timestamp"' "${COMBINED_DIR}/deployment.yaml")
@@ -55,10 +57,10 @@ EOF
   built_a=$(yq eval '.metadata.annotations."kaptain.org/built-by"' "${COMBINED_DIR}/deployment.yaml")
   built_b=$(yq eval '.metadata.annotations."kaptain.org/built-by"' "${COMBINED_DIR}/sub/service.yaml")
 
-  [[ "${stamp_a}" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$ ]]
-  [[ "${stamp_a}" == "${stamp_b}" ]]
-  [[ "${built_a}" == "test" ]]
-  [[ "${built_b}" == "test" ]]
+  [[ "${stamp_a}" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$ ]] || return 1
+  [[ "${stamp_a}" == "${stamp_b}" ]] || return 1
+  [[ "${built_a}" == "test" ]] || return 1
+  [[ "${built_b}" == "test" ]] || return 1
 }
 
 @test "preserves pre-existing annotations and other content" {
@@ -66,16 +68,16 @@ EOF
   write_manifest "${COMBINED_DIR}/deployment.yaml" "alpha"
 
   run "$SCRIPT"
-  [[ "$status" -eq 0 ]]
+  [[ "$status" -eq 0 ]] || return 1
 
   local generated_by replicas app_label
   generated_by=$(yq eval '.metadata.annotations."kaptain.org/generated-by"' "${COMBINED_DIR}/deployment.yaml")
   replicas=$(yq eval '.spec.replicas' "${COMBINED_DIR}/deployment.yaml")
   app_label=$(yq eval '.metadata.labels.app' "${COMBINED_DIR}/deployment.yaml")
 
-  [[ "${generated_by}" == "pre-existing" ]]
-  [[ "${replicas}" == "1" ]]
-  [[ "${app_label}" == "alpha" ]]
+  [[ "${generated_by}" == "pre-existing" ]] || return 1
+  [[ "${replicas}" == "1" ]] || return 1
+  [[ "${app_label}" == "alpha" ]] || return 1
 }
 
 @test "overwrites a pre-existing build-timestamp" {
@@ -90,26 +92,26 @@ metadata:
 EOF
 
   run "$SCRIPT"
-  [[ "$status" -eq 0 ]]
+  [[ "$status" -eq 0 ]] || return 1
 
   local stamp
   stamp=$(yq eval '.metadata.annotations."kaptain.org/build-timestamp"' "${COMBINED_DIR}/deployment.yaml")
-  [[ "${stamp}" != "1999-01-01T00:00:00Z" ]]
-  [[ "${stamp}" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$ ]]
+  [[ "${stamp}" != "1999-01-01T00:00:00Z" ]] || return 1
+  [[ "${stamp}" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$ ]] || return 1
 }
 
 @test "fails when combined/ directory is missing" {
   run "$SCRIPT"
-  [[ "$status" -ne 0 ]]
-  [[ "$output" == *"Combined manifests directory not found"* ]]
+  [[ "$status" -ne 0 ]] || return 1
+  [[ "$output" == *"Combined manifests directory not found"* ]] || return 1
 }
 
 @test "fails when combined/ directory is empty" {
   mkdir -p "${COMBINED_DIR}"
 
   run "$SCRIPT"
-  [[ "$status" -ne 0 ]]
-  [[ "$output" == *"No .yaml manifests"* ]]
+  [[ "$status" -ne 0 ]] || return 1
+  [[ "$output" == *"No .yaml manifests"* ]] || return 1
 }
 
 @test "fails when a manifest has no annotations: anchor" {
@@ -124,8 +126,8 @@ data:
 EOF
 
   run "$SCRIPT"
-  [[ "$status" -ne 0 ]]
-  [[ "$output" == *"No 'annotations:' line"* ]]
+  [[ "$status" -ne 0 ]] || return 1
+  [[ "$output" == *"No 'annotations:' line"* ]] || return 1
 }
 
 @test "overwrites a pre-existing built-by" {
@@ -140,11 +142,11 @@ metadata:
 EOF
 
   run "$SCRIPT"
-  [[ "$status" -eq 0 ]]
+  [[ "$status" -eq 0 ]] || return 1
 
   local built
   built=$(yq eval '.metadata.annotations."kaptain.org/built-by"' "${COMBINED_DIR}/deployment.yaml")
-  [[ "${built}" == "test" ]]
+  [[ "${built}" == "test" ]] || return 1
 }
 
 teardown() {

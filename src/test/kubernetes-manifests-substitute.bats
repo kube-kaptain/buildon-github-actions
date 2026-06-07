@@ -5,6 +5,8 @@
 # Tests for kubernetes-manifests-substitute (phase A: copy + token substitution).
 # Assumes kubernetes-manifests-package-prepare has already run.
 
+bats_require_minimum_version 1.5.0
+
 load helpers
 
 setup() {

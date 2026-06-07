@@ -4,6 +4,8 @@
 #
 # Tests for generate-kubernetes-workload-daemonset
 
+bats_require_minimum_version 1.5.0
+
 load helpers
 
 setup() {
@@ -64,7 +66,7 @@ read_combined_manifest() {
 
   manifest=$(read_manifest)
   # DaemonSets don't have replicas
-  [[ "$manifest" != *"replicas:"* ]]
+  [[ "$manifest" != *"replicas:"* ]] || return 1
 }
 
 @test "does not include revisionHistoryLimit field" {
@@ -73,7 +75,7 @@ read_combined_manifest() {
 
   manifest=$(read_manifest)
   # DaemonSets don't use revisionHistoryLimit
-  [[ "$manifest" != *"revisionHistoryLimit:"* ]]
+  [[ "$manifest" != *"revisionHistoryLimit:"* ]] || return 1
 }
 
 # =============================================================================
@@ -119,7 +121,7 @@ read_combined_manifest() {
   manifest=$(read_manifest)
   assert_contains "$manifest" "type: OnDelete"
   # OnDelete doesn't have rollingUpdate section
-  [[ "$manifest" != *"maxUnavailable:"* ]]
+  [[ "$manifest" != *"maxUnavailable:"* ]] || return 1
 }
 
 @test "rejects invalid update strategy type" {
@@ -138,7 +140,7 @@ read_combined_manifest() {
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
-  [[ "$manifest" != *"hostNetwork: true"* ]]
+  [[ "$manifest" != *"hostNetwork: true"* ]] || return 1
 }
 
 @test "can enable host network" {
@@ -218,7 +220,7 @@ read_combined_manifest() {
 
   manifest=$(read_manifest)
   assert_contains "$manifest" "dnsPolicy: ClusterFirst"
-  [[ "$manifest" != *"dnsPolicy: ClusterFirstWithHostNet"* ]]
+  [[ "$manifest" != *"dnsPolicy: ClusterFirstWithHostNet"* ]] || return 1
 }
 
 @test "rejects invalid DNS policy" {
@@ -268,7 +270,7 @@ read_combined_manifest() {
 
   manifest=$(read_manifest)
   # Capabilities are not dropped when root is allowed (may need them)
-  [[ "$manifest" != *"drop:"* ]]
+  [[ "$manifest" != *"drop:"* ]] || return 1
 }
 
 # =============================================================================
@@ -280,7 +282,7 @@ read_combined_manifest() {
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
-  [[ "$manifest" != *"privileged: true"* ]]
+  [[ "$manifest" != *"privileged: true"* ]] || return 1
   assert_contains "$manifest" "allowPrivilegeEscalation: false"
 }
 
@@ -293,7 +295,7 @@ read_combined_manifest() {
   manifest=$(read_manifest)
   assert_contains "$manifest" "privileged: true"
   # When privileged, allowPrivilegeEscalation is implicit
-  [[ "$manifest" != *"allowPrivilegeEscalation:"* ]]
+  [[ "$manifest" != *"allowPrivilegeEscalation:"* ]] || return 1
 }
 
 # =============================================================================
@@ -305,7 +307,7 @@ read_combined_manifest() {
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
-  [[ "$manifest" != *"nodeSelector:"* ]]
+  [[ "$manifest" != *"nodeSelector:"* ]] || return 1
 }
 
 @test "supports single node selector" {
@@ -340,7 +342,7 @@ read_combined_manifest() {
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
-  [[ "$manifest" != *"tolerations:"* ]]
+  [[ "$manifest" != *"tolerations:"* ]] || return 1
 }
 
 @test "supports tolerations JSON" {
@@ -365,7 +367,7 @@ read_combined_manifest() {
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
-  [[ "$manifest" != *"minReadySeconds:"* ]]
+  [[ "$manifest" != *"minReadySeconds:"* ]] || return 1
 }
 
 @test "includes minReadySeconds when non-zero" {
@@ -412,7 +414,7 @@ read_combined_manifest() {
 
   manifest=$(read_suffixed_manifest "agent")
   assert_contains "$manifest" "matchLabels:"
-  [[ "$manifest" == *"selector:"*"matchLabels:"*"app: \${ProjectName}-agent"* ]]
+  [[ "$manifest" == *"selector:"*"matchLabels:"*"app: \${ProjectName}-agent"* ]] || return 1
 }
 
 # =============================================================================
@@ -485,7 +487,7 @@ EOF
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
-  [[ "$manifest" != *"command:"* ]]
+  [[ "$manifest" != *"command:"* ]] || return 1
 }
 
 @test "includes command when set" {
@@ -505,7 +507,7 @@ EOF
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
-  [[ "$manifest" != *"args:"* ]]
+  [[ "$manifest" != *"args:"* ]] || return 1
 }
 
 @test "includes args when set" {

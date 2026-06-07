@@ -2,6 +2,8 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
 
+bats_require_minimum_version 1.5.0
+
 load helpers
 
 SCRIPT="$SCRIPTS_DIR/load-final-kaptainpm-yaml"
@@ -215,8 +217,8 @@ EOF
   assert_output_contains "DOCKER_REGISTRY_LOGINS"
   local value
   value=$(github_output_value "DOCKER_REGISTRY_LOGINS")
-  [[ -n "${value}" ]]
-  [[ "${value}" == *"ghcr.io"* ]]
+  [[ -n "${value}" ]] || return 1
+  [[ "${value}" == *"ghcr.io"* ]] || return 1
 }
 
 @test "DOCKER_REGISTRY_LOGINS not exported when absent" {
@@ -241,8 +243,8 @@ EOF
   [ "${status}" -eq 0 ]
   local value
   value=$(github_output_value "VENDOR_HELM_RENDERED_MOVE_FILES")
-  [[ -n "${value}" ]]
-  [[ "${value}" == *"a.yaml"* ]]
+  [[ -n "${value}" ]] || return 1
+  [[ "${value}" == *"a.yaml"* ]] || return 1
 }
 
 @test "VENDOR_HELM_RENDERED_SED_REPLACE exported as JSON when present" {
@@ -261,8 +263,8 @@ EOF
   [ "${status}" -eq 0 ]
   local value
   value=$(github_output_value "VENDOR_HELM_RENDERED_SED_REPLACE")
-  [[ -n "${value}" ]]
-  [[ "${value}" == *"foo"* ]]
+  [[ -n "${value}" ]] || return 1
+  [[ "${value}" == *"foo"* ]] || return 1
 }
 
 @test "VENDOR_HELM_RENDERED_YQ_TRANSFORM exported as JSON when present" {
@@ -280,7 +282,7 @@ EOF
   [ "${status}" -eq 0 ]
   local value
   value=$(github_output_value "VENDOR_HELM_RENDERED_YQ_TRANSFORM")
-  [[ -n "${value}" ]]
+  [[ -n "${value}" ]] || return 1
 }
 
 @test "VENDOR_HELM_RENDERED_IMAGE_RETAGS exported as JSON when present" {
@@ -298,8 +300,8 @@ EOF
   [ "${status}" -eq 0 ]
   local value
   value=$(github_output_value "VENDOR_HELM_RENDERED_IMAGE_RETAGS")
-  [[ -n "${value}" ]]
-  [[ "${value}" == *"foo:1.0"* ]]
+  [[ -n "${value}" ]] || return 1
+  [[ "${value}" == *"foo:1.0"* ]] || return 1
 }
 
 # =============================================================================

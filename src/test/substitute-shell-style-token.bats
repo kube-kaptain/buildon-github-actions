@@ -4,6 +4,8 @@
 #
 # Tests for substitute-shell-style-token (new file-based API)
 
+bats_require_minimum_version 1.5.0
+
 load helpers
 
 setup() {
@@ -251,7 +253,7 @@ label: ${Version}'
   local content
   content=$(cat "$TARGET_DIR/test.yaml")
   [[ "$content" == *$'\n'* ]]  # Contains newline
-  [[ "$content" == "key: my-value"$'\n'"suffix" ]]
+  [[ "$content" == "key: my-value"$'\n'"suffix" ]] || return 1
 }
 
 @test "always-strip-one-newline mode on single newline" {
@@ -281,5 +283,5 @@ label: ${Version}'
   local content
   content=$(cat "$TARGET_DIR/test.yaml")
   [[ "$content" == *$'\n'* ]]  # Contains newline
-  [[ "$content" == "key: my-value"$'\n'"suffix" ]]
+  [[ "$content" == "key: my-value"$'\n'"suffix" ]] || return 1
 }

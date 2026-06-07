@@ -1,8 +1,8 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
 
-name: 'Kubernetes Product Lineage Data Generate'
-description: 'Emits the product lineage data ConfigMap (presence + lineage record) into the substituted manifests tree'
+name: 'Kubernetes Templates Import'
+description: 'Resolves spec.templates bundles and imports them into the additional-manifests and additional-defaults drop dirs (flat or hierarchy layout)'
 
 inputs:
   # Build output
@@ -39,50 +39,65 @@ inputs:
     description: 'Number of times to run the token substitution pass (for nested token references)'
     required: false
     default: '1'
+  # Docker registry logins
+  docker-registry-logins:
+    description: 'YAML config for Docker registry logins (registry URL as key)'
+    required: false
+    default: ''
+  # Docker target config
+  docker-target-registry:
+    description: 'Target container registry domain (defaults to ghcr.io on GH Actions)'
+    required: false
+    default: ''
+  docker-target-namespace:
+    description: 'Path segment between registry and image name (defaults to lower cased org name or user ID on GH Actions)'
+    required: false
+    default: ''
+  # Docker push targets
+  docker-push-targets:
+    description: 'JSON array of additional push targets [{registry, namespace?}]'
+    required: false
+    default: ''
+  # Container runtime
+  image-build-command:
+    description: 'Container runtime command (podman or docker)'
+    required: true
 
   # Action-specific inputs
   project-name:
-    description: 'Project name'
+    description: 'Project name (for log clarity)'
     required: true
-  version:
-    description: 'Version'
-    required: true
-  product-name:
-    description: 'Product name (PROJECT_NAME verbatim)'
-    required: true
-  product-short-name:
-    description: 'Product short name (PROJECT_NAME with product- prefix or -product suffix stripped)'
-    required: true
-  git-sha:
-    description: 'Git SHA for the kaptain.org/git-sha annotation (optional)'
+  templates-layout:
+    description: 'Layout for imported template manifests: flat (default) or hierarchy'
     required: false
-    default: ''
-  kaptainpm-file:
-    description: 'Path to the final KaptainPM.yaml'
+    default: 'flat'
+  is-release:
+    description: 'When true, template version ranges resolve to release-only bundle versions (excludes -PRERELEASE and platform-suffixed tags)'
     required: false
-    default: 'kaptainpm/final/KaptainPM.yaml'
+    default: 'false'
 
-outputs: {}
+outputs:
+  templates-list-file:
+    description: 'Path to markdown bullet list of spec.templates entries'
+    value: ${{ steps.templates-import.outputs.TEMPLATES_LIST_FILE }}
 
 runs:
   using: 'composite'
   steps:
-    - name: Generate product lineage data ConfigMap
-      id: lineage-data
+    - name: Import templates
+      id: templates-import
       shell: bash
       env:
         BUILD_MODE: build_server
         BUILD_PLATFORM: github-actions
         BUILD_PLATFORM_LOG_PROVIDER: github-actions
         PROJECT_NAME: ${{ inputs.project-name }}
-        VERSION: ${{ inputs.version }}
-        PRODUCT_NAME: ${{ inputs.product-name }}
-        PRODUCT_SHORT_NAME: ${{ inputs.product-short-name }}
-        GIT_SHA: ${{ inputs.git-sha }}
-        KAPTAINPM_FILE: ${{ inputs.kaptainpm-file }}
         OUTPUT_SUB_PATH: ${{ inputs.output-sub-path }}
         TOKEN_DELIMITER_STYLE: ${{ inputs.token-delimiter-style }}
         TOKEN_NAME_STYLE: ${{ inputs.token-name-style }}
-        CONFIG_VALUE_TRAILING_NEWLINE: ${{ inputs.config-value-trailing-newline }}
-        TOKEN_SUBSTITUTION_PASSES: ${{ inputs.token-substitution-passes }}
-      run: "${{ github.action_path }}/../../scripts/main/kubernetes-product-lineage-data-generate"
+        TEMPLATES_LAYOUT: ${{ inputs.templates-layout }}
+        DOCKER_TARGET_REGISTRY: ${{ inputs.docker-target-registry }}
+        DOCKER_TARGET_NAMESPACE: ${{ inputs.docker-target-namespace }}
+        IMAGE_BUILD_COMMAND: ${{ inputs.image-build-command }}
+        IS_RELEASE: ${{ inputs.is-release }}
+      run: "${{ github.action_path }}/../../scripts/main/kubernetes-templates-import"

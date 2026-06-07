@@ -10,6 +10,8 @@
 # To avoid clobbering the real util/extract-oci-image, the script is run
 # from an isolated mirror under TEST_DIR with a stubbed util dir.
 
+bats_require_minimum_version 1.5.0
+
 load helpers
 
 setup() {
@@ -233,10 +235,10 @@ touch_context_file() {
   export LAYER_TYPE="layerset"
   write_layerset_json '["ghcr.io/kube-kaptain/layer/quality-strict:1.0.0", "ghcr.io/kube-kaptain/layer/java-base:2.0.0"]'
   run "$SCRIPT"
-  [[ "$status" -eq 0 ]]
-  [[ "$output" == *"Layerset dependency validation passed"* ]]
-  [[ "$output" == *"ok: ghcr.io/kube-kaptain/layer/quality-strict:1.0.0"* ]]
-  [[ "$output" == *"ok: ghcr.io/kube-kaptain/layer/java-base:2.0.0"* ]]
+  [[ "$status" -eq 0 ]] || return 1
+  [[ "$output" == *"Layerset dependency validation passed"* ]] || return 1
+  [[ "$output" == *"ok: ghcr.io/kube-kaptain/layer/quality-strict:1.0.0"* ]] || return 1
+  [[ "$output" == *"ok: ghcr.io/kube-kaptain/layer/java-base:2.0.0"* ]] || return 1
 }
 
 # =============================================================================
@@ -248,9 +250,9 @@ touch_context_file() {
   export MOCK_OCI_EXTRACT_MODE=fail
   write_layerset_json '["ghcr.io/kube-kaptain/layer/quality-strict:1.0.0"]'
   run "$SCRIPT"
-  [[ "$status" -ne 0 ]]
-  [[ "$output" == *"Failed to pull dependency"* ]]
-  [[ "$output" == *"Layerset dependency validation failed"* ]]
+  [[ "$status" -ne 0 ]] || return 1
+  [[ "$output" == *"Failed to pull dependency"* ]] || return 1
+  [[ "$output" == *"Layerset dependency validation failed"* ]] || return 1
 }
 
 @test "layerset: fails when extract succeeds but writes no KaptainPM.yaml" {
@@ -258,9 +260,9 @@ touch_context_file() {
   export MOCK_OCI_EXTRACT_MODE=empty
   write_layerset_json '["ghcr.io/kube-kaptain/layer/quality-strict:1.0.0"]'
   run "$SCRIPT"
-  [[ "$status" -ne 0 ]]
-  [[ "$output" == *"does not contain /KaptainPM.yaml"* ]]
-  [[ "$output" == *"Layerset dependency validation failed"* ]]
+  [[ "$status" -ne 0 ]] || return 1
+  [[ "$output" == *"does not contain /KaptainPM.yaml"* ]] || return 1
+  [[ "$output" == *"Layerset dependency validation failed"* ]] || return 1
 }
 
 @test "layerset: fails when dep KaptainPM.yaml fails schema validation" {
@@ -268,54 +270,54 @@ touch_context_file() {
   export MOCK_JSONSCHEMA_FAIL_ON_DEPS=true
   write_layerset_json '["ghcr.io/kube-kaptain/layer/quality-strict:1.0.0"]'
   run "$SCRIPT"
-  [[ "$status" -ne 0 ]]
-  [[ "$output" == *"failed schema validation"* ]]
-  [[ "$output" == *"Layerset dependency validation failed"* ]]
+  [[ "$status" -ne 0 ]] || return 1
+  [[ "$output" == *"failed schema validation"* ]] || return 1
+  [[ "$output" == *"Layerset dependency validation failed"* ]] || return 1
 }
 
 @test "layerset: fails when spec.layers is empty" {
   export LAYER_TYPE="layerset"
   write_layerset_json '[]'
   run "$SCRIPT"
-  [[ "$status" -ne 0 ]]
-  [[ "$output" == *"Layerset has no entries in spec.layers"* ]]
+  [[ "$status" -ne 0 ]] || return 1
+  [[ "$output" == *"Layerset has no entries in spec.layers"* ]] || return 1
 }
 
 @test "layerset: fails when spec.layers contains duplicate refs" {
   export LAYER_TYPE="layerset"
   write_layerset_json '["ghcr.io/kube-kaptain/layer/a:1.0.0", "ghcr.io/kube-kaptain/layer/a:1.0.0"]'
   run "$SCRIPT"
-  [[ "$status" -ne 0 ]]
+  [[ "$status" -ne 0 ]] || return 1
   assert_contains "$output" "duplicate artifact references"
-  [[ "$output" == *"ghcr.io/kube-kaptain/layer/a"* ]]
+  [[ "$output" == *"ghcr.io/kube-kaptain/layer/a"* ]] || return 1
 }
 
 @test "layerset: fails listing all duplicates when multiple pairs repeat" {
   export LAYER_TYPE="layerset"
   write_layerset_json '["ghcr.io/kube-kaptain/layer/a:1.0.0", "ghcr.io/kube-kaptain/layer/b:1.0.0", "ghcr.io/kube-kaptain/layer/a:1.0.0", "ghcr.io/kube-kaptain/layer/c:1.0.0", "ghcr.io/kube-kaptain/layer/b:1.0.0"]'
   run "$SCRIPT"
-  [[ "$status" -ne 0 ]]
+  [[ "$status" -ne 0 ]] || return 1
   assert_contains "$output" "duplicate artifact references"
-  [[ "$output" == *"ghcr.io/kube-kaptain/layer/a"* ]]
-  [[ "$output" == *"ghcr.io/kube-kaptain/layer/b"* ]]
+  [[ "$output" == *"ghcr.io/kube-kaptain/layer/a"* ]] || return 1
+  [[ "$output" == *"ghcr.io/kube-kaptain/layer/b"* ]] || return 1
 }
 
 @test "layerset: fails when same layer appears at two different versions" {
   export LAYER_TYPE="layerset"
   write_layerset_json '["ghcr.io/kube-kaptain/layer/a:1.0.0", "ghcr.io/kube-kaptain/layer/a:1.1.0"]'
   run "$SCRIPT"
-  [[ "$status" -ne 0 ]]
+  [[ "$status" -ne 0 ]] || return 1
   assert_contains "$output" "duplicate artifact references"
-  [[ "$output" == *"ghcr.io/kube-kaptain/layer/a"* ]]
+  [[ "$output" == *"ghcr.io/kube-kaptain/layer/a"* ]] || return 1
 }
 
 @test "layerset: fails when same layer appears with and without docker| prefix" {
   export LAYER_TYPE="layerset"
   write_layerset_json '["docker|ghcr.io/kube-kaptain/layer/a:1.0.0", "ghcr.io/kube-kaptain/layer/a:1.0.0"]'
   run "$SCRIPT"
-  [[ "$status" -ne 0 ]]
+  [[ "$status" -ne 0 ]] || return 1
   assert_contains "$output" "duplicate artifact references"
-  [[ "$output" == *"ghcr.io/kube-kaptain/layer/a"* ]]
+  [[ "$output" == *"ghcr.io/kube-kaptain/layer/a"* ]] || return 1
 }
 
 @test "layerset: passes when neither layerset nor deps declare kind" {
@@ -323,8 +325,8 @@ touch_context_file() {
   export MOCK_DEP_KIND="OMIT"
   write_layerset_json_no_kind '["ghcr.io/kube-kaptain/layer/quality-strict:1.0.0", "ghcr.io/kube-kaptain/layer/java-base:2.0.0"]'
   run "$SCRIPT"
-  [[ "$status" -eq 0 ]]
-  [[ "$output" == *"Layerset dependency validation passed"* ]]
+  [[ "$status" -eq 0 ]] || return 1
+  [[ "$output" == *"Layerset dependency validation passed"* ]] || return 1
 }
 
 @test "layerset: fails when a dep declares a kind different from the layerset's kind" {
@@ -334,9 +336,9 @@ touch_context_file() {
   export MOCK_DEP_KIND="SomethingElse"
   write_layerset_json '["ghcr.io/kube-kaptain/layer/quality-strict:1.0.0"]'
   run "$SCRIPT"
-  [[ "$status" -ne 0 ]]
-  [[ "$output" == *"has kind 'SomethingElse', expected 'KubeAppDockerDockerfile'"* ]]
-  [[ "$output" == *"Layerset dependency validation failed"* ]]
+  [[ "$status" -ne 0 ]] || return 1
+  [[ "$output" == *"has kind 'SomethingElse', expected 'KubeAppDockerDockerfile'"* ]] || return 1
+  [[ "$output" == *"Layerset dependency validation failed"* ]] || return 1
 }
 
 @test "layerset: fails when two deps declare conflicting kinds and layerset has none" {
@@ -348,9 +350,9 @@ touch_context_file() {
   export MOCK_DEP_KIND_b="KindTwo"
   write_layerset_json_no_kind '["ghcr.io/kube-kaptain/layer/a:1.0.0", "ghcr.io/kube-kaptain/layer/b:1.0.0"]'
   run "$SCRIPT"
-  [[ "$status" -ne 0 ]]
-  [[ "$output" == *"has kind 'KindTwo', expected 'KindOne'"* ]]
-  [[ "$output" == *"ghcr.io/kube-kaptain/layer/b:1.0.0"* ]]
+  [[ "$status" -ne 0 ]] || return 1
+  [[ "$output" == *"has kind 'KindTwo', expected 'KindOne'"* ]] || return 1
+  [[ "$output" == *"ghcr.io/kube-kaptain/layer/b:1.0.0"* ]] || return 1
 }
 
 @test "layerset: continues checking remaining deps after a failure (collects all errors)" {
@@ -358,10 +360,10 @@ touch_context_file() {
   export MOCK_OCI_EXTRACT_MODE=fail
   write_layerset_json '["ghcr.io/kube-kaptain/layer/a:1.0.0", "ghcr.io/kube-kaptain/layer/b:1.0.0"]'
   run "$SCRIPT"
-  [[ "$status" -ne 0 ]]
+  [[ "$status" -ne 0 ]] || return 1
   # Both refs should appear in output - script doesn't bail on first failure
-  [[ "$output" == *"ghcr.io/kube-kaptain/layer/a:1.0.0"* ]]
-  [[ "$output" == *"ghcr.io/kube-kaptain/layer/b:1.0.0"* ]]
+  [[ "$output" == *"ghcr.io/kube-kaptain/layer/a:1.0.0"* ]] || return 1
+  [[ "$output" == *"ghcr.io/kube-kaptain/layer/b:1.0.0"* ]] || return 1
 }
 
 # =============================================================================
@@ -372,8 +374,8 @@ touch_context_file() {
   export LAYER_TYPE="layer"
   write_layer_json
   run "$SCRIPT"
-  [[ "$status" -eq 0 ]]
-  [[ "$output" != *"Layerset dependency validation"* ]]
+  [[ "$status" -eq 0 ]] || return 1
+  [[ "$output" != *"Layerset dependency validation"* ]] || return 1
 }
 
 # =============================================================================
@@ -394,8 +396,8 @@ touch_context_file() {
 EOF
   yq -P '.' "${JSON_FILE}" > "${YAML_FILE}"
   run "$SCRIPT"
-  [[ "$status" -ne 0 ]]
-  [[ "$output" == *"Layer must not declare spec.layers"* ]]
+  [[ "$status" -ne 0 ]] || return 1
+  [[ "$output" == *"Layer must not declare spec.layers"* ]] || return 1
 }
 
 @test "layerset: fails when layer-payload is declared" {
@@ -415,8 +417,8 @@ EOF
 EOF
   yq -P '.' "${JSON_FILE}" > "${YAML_FILE}"
   run "$SCRIPT"
-  [[ "$status" -ne 0 ]]
-  [[ "$output" == *"Layerset must not declare layer-payload"* ]]
+  [[ "$status" -ne 0 ]] || return 1
+  [[ "$output" == *"Layerset must not declare layer-payload"* ]] || return 1
 }
 
 # =============================================================================
@@ -427,8 +429,8 @@ EOF
   export LAYER_TYPE="layer"
   write_layer_json
   run "$SCRIPT"
-  [[ "$status" -eq 0 ]]
-  [[ "$output" == *"Unresolved-token scan: clean"* ]]
+  [[ "$status" -eq 0 ]] || return 1
+  [[ "$output" == *"Unresolved-token scan: clean"* ]] || return 1
 }
 
 @test "unresolved-token scan: fails when KaptainPM.yaml contains an unresolved \${PascalCase} token" {
@@ -437,10 +439,10 @@ EOF
   # Inject an unresolved token as a valid annotation value (yaml only).
   yq -i '.metadata.annotations.leftover = "${SomeUnresolvedToken}"' "${YAML_FILE}"
   run "$SCRIPT"
-  [[ "$status" -ne 0 ]]
-  [[ "$output" == *"Unsubstituted tokens found in KaptainPM.yaml"* ]]
-  [[ "$output" == *"\${SomeUnresolvedToken}"* ]]
-  [[ "$output" == *"Unresolved-token scan failed: 1 file(s) with remnants"* ]]
+  [[ "$status" -ne 0 ]] || return 1
+  [[ "$output" == *"Unsubstituted tokens found in KaptainPM.yaml"* ]] || return 1
+  [[ "$output" == *"\${SomeUnresolvedToken}"* ]] || return 1
+  [[ "$output" == *"Unresolved-token scan failed: 1 file(s) with remnants"* ]] || return 1
 }
 
 @test "unresolved-token scan: fails when KaptainPM.json contains an unresolved \${PascalCase} token" {
@@ -450,10 +452,10 @@ EOF
   jq '.metadata.annotations.leftover = "${AnotherToken}"' "${JSON_FILE}" > "${JSON_FILE}.tmp"
   mv "${JSON_FILE}.tmp" "${JSON_FILE}"
   run "$SCRIPT"
-  [[ "$status" -ne 0 ]]
-  [[ "$output" == *"Unsubstituted tokens found in KaptainPM.json"* ]]
-  [[ "$output" == *"\${AnotherToken}"* ]]
-  [[ "$output" == *"Unresolved-token scan failed: 1 file(s) with remnants"* ]]
+  [[ "$status" -ne 0 ]] || return 1
+  [[ "$output" == *"Unsubstituted tokens found in KaptainPM.json"* ]] || return 1
+  [[ "$output" == *"\${AnotherToken}"* ]] || return 1
+  [[ "$output" == *"Unresolved-token scan failed: 1 file(s) with remnants"* ]] || return 1
 }
 
 @test "unresolved-token scan: reports remnants in both files in one run" {
@@ -463,12 +465,12 @@ EOF
   jq '.metadata.annotations.leftover = "${JsonToken}"' "${JSON_FILE}" > "${JSON_FILE}.tmp"
   mv "${JSON_FILE}.tmp" "${JSON_FILE}"
   run "$SCRIPT"
-  [[ "$status" -ne 0 ]]
-  [[ "$output" == *"Unsubstituted tokens found in KaptainPM.yaml"* ]]
-  [[ "$output" == *"\${YamlToken}"* ]]
-  [[ "$output" == *"Unsubstituted tokens found in KaptainPM.json"* ]]
-  [[ "$output" == *"\${JsonToken}"* ]]
-  [[ "$output" == *"Unresolved-token scan failed: 2 file(s) with remnants"* ]]
+  [[ "$status" -ne 0 ]] || return 1
+  [[ "$output" == *"Unsubstituted tokens found in KaptainPM.yaml"* ]] || return 1
+  [[ "$output" == *"\${YamlToken}"* ]] || return 1
+  [[ "$output" == *"Unsubstituted tokens found in KaptainPM.json"* ]] || return 1
+  [[ "$output" == *"\${JsonToken}"* ]] || return 1
+  [[ "$output" == *"Unresolved-token scan failed: 2 file(s) with remnants"* ]] || return 1
 }
 
 # =============================================================================
@@ -483,80 +485,80 @@ EOF
   export LAYER_TYPE="layer"
   write_layer_with_payload "/src.txt" ".."
   run "$SCRIPT"
-  [[ "$status" -ne 0 ]]
-  [[ "$output" == *"parent-traversal '..'"* ]]
+  [[ "$status" -ne 0 ]] || return 1
+  [[ "$output" == *"parent-traversal '..'"* ]] || return 1
 }
 
 @test "layer-payload destination: rejects leading '../'" {
   export LAYER_TYPE="layer"
   write_layer_with_payload "/src.txt" "../escape"
   run "$SCRIPT"
-  [[ "$status" -ne 0 ]]
-  [[ "$output" == *"parent-traversal '..'"* ]]
+  [[ "$status" -ne 0 ]] || return 1
+  [[ "$output" == *"parent-traversal '..'"* ]] || return 1
 }
 
 @test "layer-payload destination: rejects middle '/../'" {
   export LAYER_TYPE="layer"
   write_layer_with_payload "/src.txt" "foo/../bar"
   run "$SCRIPT"
-  [[ "$status" -ne 0 ]]
-  [[ "$output" == *"parent-traversal '..'"* ]]
+  [[ "$status" -ne 0 ]] || return 1
+  [[ "$output" == *"parent-traversal '..'"* ]] || return 1
 }
 
 @test "layer-payload destination: rejects trailing '/..'" {
   export LAYER_TYPE="layer"
   write_layer_with_payload "/src.txt" "foo/.."
   run "$SCRIPT"
-  [[ "$status" -ne 0 ]]
-  [[ "$output" == *"parent-traversal '..'"* ]]
+  [[ "$status" -ne 0 ]] || return 1
+  [[ "$output" == *"parent-traversal '..'"* ]] || return 1
 }
 
 @test "layer-payload destination: rejects absolute path" {
   export LAYER_TYPE="layer"
   write_layer_with_payload "/src.txt" "/etc/passwd"
   run "$SCRIPT"
-  [[ "$status" -ne 0 ]]
-  [[ "$output" == *"must be relative"* ]]
+  [[ "$status" -ne 0 ]] || return 1
+  [[ "$output" == *"must be relative"* ]] || return 1
 }
 
 @test "layer-payload destination: accepts 'omg..wtf' (dots inside filename)" {
   export LAYER_TYPE="layer"
   write_layer_with_payload "/src.txt" "omg..wtf"
   run "$SCRIPT"
-  [[ "$status" -eq 0 ]]
-  [[ "$output" == *"payload ok: /src.txt -> omg..wtf"* ]]
+  [[ "$status" -eq 0 ]] || return 1
+  [[ "$output" == *"payload ok: /src.txt -> omg..wtf"* ]] || return 1
 }
 
 @test "layer-payload destination: accepts '..hidden' (leading dots in filename)" {
   export LAYER_TYPE="layer"
   write_layer_with_payload "/src.txt" "..hidden"
   run "$SCRIPT"
-  [[ "$status" -eq 0 ]]
-  [[ "$output" == *"payload ok: /src.txt -> ..hidden"* ]]
+  [[ "$status" -eq 0 ]] || return 1
+  [[ "$output" == *"payload ok: /src.txt -> ..hidden"* ]] || return 1
 }
 
 @test "layer-payload destination: accepts 'version..1' (dots inside)" {
   export LAYER_TYPE="layer"
   write_layer_with_payload "/src.txt" "version..1"
   run "$SCRIPT"
-  [[ "$status" -eq 0 ]]
-  [[ "$output" == *"payload ok: /src.txt -> version..1"* ]]
+  [[ "$status" -eq 0 ]] || return 1
+  [[ "$output" == *"payload ok: /src.txt -> version..1"* ]] || return 1
 }
 
 @test "layer-payload destination: accepts plain relative path 'foo/bar'" {
   export LAYER_TYPE="layer"
   write_layer_with_payload "/src.txt" "foo/bar"
   run "$SCRIPT"
-  [[ "$status" -eq 0 ]]
-  [[ "$output" == *"payload ok: /src.txt -> foo/bar"* ]]
+  [[ "$status" -eq 0 ]] || return 1
+  [[ "$output" == *"payload ok: /src.txt -> foo/bar"* ]] || return 1
 }
 
 @test "layer-payload destination: accepts leading './'" {
   export LAYER_TYPE="layer"
   write_layer_with_payload "/src.txt" "./foo"
   run "$SCRIPT"
-  [[ "$status" -eq 0 ]]
-  [[ "$output" == *"payload ok: /src.txt -> ./foo"* ]]
+  [[ "$status" -eq 0 ]] || return 1
+  [[ "$output" == *"payload ok: /src.txt -> ./foo"* ]] || return 1
 }
 
 # =============================================================================
@@ -574,9 +576,9 @@ EOF
   # Declare a source but do NOT create the underlying file in SUB_DIR
   write_layer_with_payloads '[{"source":"/ghost.txt","destination":"foo"}]'
   run "$SCRIPT"
-  [[ "$status" -ne 0 ]]
-  [[ "$output" == *"source not found in context listing"* ]]
-  [[ "$output" == *"/ghost.txt"* ]]
+  [[ "$status" -ne 0 ]] || return 1
+  [[ "$output" == *"source not found in context listing"* ]] || return 1
+  [[ "$output" == *"/ghost.txt"* ]] || return 1
 }
 
 @test "layer-payload context: directory source is rejected (find -type f only)" {
@@ -585,8 +587,8 @@ EOF
   mkdir -p "${SUB_DIR}/adir"
   write_layer_with_payloads '[{"source":"/adir","destination":"foo"}]'
   run "$SCRIPT"
-  [[ "$status" -ne 0 ]]
-  [[ "$output" == *"source not found in context listing"* ]]
+  [[ "$status" -ne 0 ]] || return 1
+  [[ "$output" == *"source not found in context listing"* ]] || return 1
 }
 
 @test "layer-payload context: nested source path is matched" {
@@ -594,8 +596,8 @@ EOF
   touch_context_file "/deep/nested/path/file.txt"
   write_layer_with_payloads '[{"source":"/deep/nested/path/file.txt","destination":"out/file.txt"}]'
   run "$SCRIPT"
-  [[ "$status" -eq 0 ]]
-  [[ "$output" == *"payload ok: /deep/nested/path/file.txt -> out/file.txt"* ]]
+  [[ "$status" -eq 0 ]] || return 1
+  [[ "$output" == *"payload ok: /deep/nested/path/file.txt -> out/file.txt"* ]] || return 1
 }
 
 @test "layer-payload uniqueness: duplicate sources with unique destinations pass" {
@@ -606,9 +608,9 @@ EOF
     {"source":"/shared.txt","destination":"copy-b"}
   ]'
   run "$SCRIPT"
-  [[ "$status" -eq 0 ]]
-  [[ "$output" == *"payload ok: /shared.txt -> copy-a"* ]]
-  [[ "$output" == *"payload ok: /shared.txt -> copy-b"* ]]
+  [[ "$status" -eq 0 ]] || return 1
+  [[ "$output" == *"payload ok: /shared.txt -> copy-a"* ]] || return 1
+  [[ "$output" == *"payload ok: /shared.txt -> copy-b"* ]] || return 1
 }
 
 @test "layer-payload uniqueness: different sources to same destination dir pass" {
@@ -620,9 +622,9 @@ EOF
     {"source":"/b.txt","destination":"shared-dir"}
   ]'
   run "$SCRIPT"
-  [[ "$status" -eq 0 ]]
-  [[ "$output" == *"payload ok: /a.txt -> shared-dir"* ]]
-  [[ "$output" == *"payload ok: /b.txt -> shared-dir"* ]]
+  [[ "$status" -eq 0 ]] || return 1
+  [[ "$output" == *"payload ok: /a.txt -> shared-dir"* ]] || return 1
+  [[ "$output" == *"payload ok: /b.txt -> shared-dir"* ]] || return 1
 }
 
 @test "layer-payload uniqueness: same source, same destination is rejected" {
@@ -633,10 +635,10 @@ EOF
     {"source":"/same.txt","destination":"dest"}
   ]'
   run "$SCRIPT"
-  [[ "$status" -ne 0 ]]
+  [[ "$status" -ne 0 ]] || return 1
   # Caught by the (source, destination) pair-uniqueness check (first entry accepted, second rejected)
-  [[ "$output" == *"(source, destination) pair already used by an earlier entry"* ]]
-  [[ "$output" == *"/same.txt -> dest"* ]]
+  [[ "$output" == *"(source, destination) pair already used by an earlier entry"* ]] || return 1
+  [[ "$output" == *"/same.txt -> dest"* ]] || return 1
 }
 
 @test "layer-payload uniqueness: three distinct entries all pass" {
@@ -650,11 +652,11 @@ EOF
     {"source":"/three.txt","destination":"out/three"}
   ]'
   run "$SCRIPT"
-  [[ "$status" -eq 0 ]]
-  [[ "$output" == *"Validating 3 layer-payload entry/entries"* ]]
-  [[ "$output" == *"payload ok: /one.txt -> out/one"* ]]
-  [[ "$output" == *"payload ok: /two.txt -> out/two"* ]]
-  [[ "$output" == *"payload ok: /three.txt -> out/three"* ]]
+  [[ "$status" -eq 0 ]] || return 1
+  [[ "$output" == *"Validating 3 layer-payload entry/entries"* ]] || return 1
+  [[ "$output" == *"payload ok: /one.txt -> out/one"* ]] || return 1
+  [[ "$output" == *"payload ok: /two.txt -> out/two"* ]] || return 1
+  [[ "$output" == *"payload ok: /three.txt -> out/three"* ]] || return 1
 }
 
 @test "layer-payload accumulates multiple errors and reports the count" {
@@ -672,12 +674,12 @@ EOF
     {"source":"/present.txt","destination":"ok/b"}
   ]'
   run "$SCRIPT"
-  [[ "$status" -ne 0 ]]
-  [[ "$output" == *"source not found in context listing"* ]]
-  [[ "$output" == *"destination must be relative"* ]]
-  [[ "$output" == *"parent-traversal"* ]]
-  [[ "$output" == *"payload ok: /present.txt -> ok/b"* ]]
-  [[ "$output" == *"layer-payload validation failed: 3 error(s)"* ]]
+  [[ "$status" -ne 0 ]] || return 1
+  [[ "$output" == *"source not found in context listing"* ]] || return 1
+  [[ "$output" == *"destination must be relative"* ]] || return 1
+  [[ "$output" == *"parent-traversal"* ]] || return 1
+  [[ "$output" == *"payload ok: /present.txt -> ok/b"* ]] || return 1
+  [[ "$output" == *"layer-payload validation failed: 3 error(s)"* ]] || return 1
 }
 
 teardown() {

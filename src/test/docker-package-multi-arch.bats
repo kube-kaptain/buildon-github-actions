@@ -2,6 +2,8 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
 
+bats_require_minimum_version 1.5.0
+
 load helpers
 
 setup() {
@@ -41,8 +43,8 @@ teardown() {
 
   [ -f "$DOCKER_PUSH_IMAGE_LIST_FILE" ]
   run cat "$DOCKER_PUSH_IMAGE_LIST_FILE"
-  [[ "$output" == *"ghcr.io/test/my-repo:1.0.0-rcd-linux-amd64"* ]]
-  [[ "$output" == *"ghcr.io/test/my-repo:1.0.0-rcd-linux-arm64"* ]]
+  [[ "$output" == *"ghcr.io/test/my-repo:1.0.0-rcd-linux-amd64"* ]] || return 1
+  [[ "$output" == *"ghcr.io/test/my-repo:1.0.0-rcd-linux-arm64"* ]] || return 1
 }
 
 @test "registers base URI in manifest-uris" {
@@ -52,7 +54,7 @@ teardown() {
   local manifest_file="${OUTPUT_SUB_PATH}/docker-push-all/manifest-uris"
   [ -f "$manifest_file" ]
   run cat "$manifest_file"
-  [[ "$output" == *"ghcr.io/test/my-repo:1.0.0-rcd"* ]]
+  [[ "$output" == *"ghcr.io/test/my-repo:1.0.0-rcd"* ]] || return 1
 }
 
 # === Dockerfile generation ===
@@ -64,7 +66,7 @@ teardown() {
   local dockerfile="${OUTPUT_SUB_PATH}/docker-package-multi-arch/content/Dockerfile"
   [ -f "$dockerfile" ]
   run cat "$dockerfile"
-  [[ "$output" == *"FROM scratch"* ]]
+  [[ "$output" == *"FROM scratch"* ]] || return 1
 }
 
 @test "generates COPY entries for all content files" {
@@ -75,8 +77,8 @@ teardown() {
 
   local dockerfile="${OUTPUT_SUB_PATH}/docker-package-multi-arch/content/Dockerfile"
   run cat "$dockerfile"
-  [[ "$output" == *"COPY data.yaml /data.yaml"* ]]
-  [[ "$output" == *"COPY extra.txt /extra.txt"* ]]
+  [[ "$output" == *"COPY data.yaml /data.yaml"* ]] || return 1
+  [[ "$output" == *"COPY extra.txt /extra.txt"* ]] || return 1
 }
 
 @test "uses custom base image when PACKAGE_BASE_IMAGE set" {
@@ -87,7 +89,7 @@ teardown() {
 
   local dockerfile="${OUTPUT_SUB_PATH}/docker-package-multi-arch/content/Dockerfile"
   run cat "$dockerfile"
-  [[ "$output" == *"FROM alpine:3.21"* ]]
+  [[ "$output" == *"FROM alpine:3.21"* ]] || return 1
 }
 
 # === Labels ===
@@ -98,11 +100,11 @@ teardown() {
 
   local dockerfile="${OUTPUT_SUB_PATH}/docker-package-multi-arch/content/Dockerfile"
   run cat "$dockerfile"
-  [[ "$output" == *'LABEL version="1.0.0"'* ]]
-  [[ "$output" == *'LABEL project.name="my-repo"'* ]]
-  [[ "$output" == *'LABEL image.name="test/my-repo"'* ]]
-  [[ "$output" == *'LABEL image.tag="1.0.0-rcd"'* ]]
-  [[ "$output" == *'LABEL image.uri="ghcr.io/test/my-repo:1.0.0-rcd"'* ]]
+  [[ "$output" == *'LABEL version="1.0.0"'* ]] || return 1
+  [[ "$output" == *'LABEL project.name="my-repo"'* ]] || return 1
+  [[ "$output" == *'LABEL image.name="test/my-repo"'* ]] || return 1
+  [[ "$output" == *'LABEL image.tag="1.0.0-rcd"'* ]] || return 1
+  [[ "$output" == *'LABEL image.uri="ghcr.io/test/my-repo:1.0.0-rcd"'* ]] || return 1
 }
 
 # === Error handling ===

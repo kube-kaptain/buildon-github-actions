@@ -5,6 +5,8 @@
 # Tests for util/artifact-resolve
 # Covers routing, provider prefix parsing, default provider, and error handling
 
+bats_require_minimum_version 1.5.0
+
 load helpers
 
 SCRIPT="$UTIL_DIR/artifact-resolve"
@@ -38,20 +40,20 @@ teardown() {
 
 @test "routes to docker provider by default" {
   run "$SCRIPT" "quality-strict:1.0" "${OUTPUT_FILE}"
-  [[ "$status" -eq 0 ]]
-  [[ "$(cat "${OUTPUT_FILE}")" == "ghcr.io/kube-kaptain/quality/quality-strict:1.0" ]]
+  [[ "$status" -eq 0 ]] || return 1
+  [[ "$(cat "${OUTPUT_FILE}")" == "ghcr.io/kube-kaptain/quality/quality-strict:1.0" ]] || return 1
 }
 
 @test "routes to docker provider for prefixed form" {
   run "$SCRIPT" "java/java-web-service:2.1" "${OUTPUT_FILE}"
-  [[ "$status" -eq 0 ]]
-  [[ "$(cat "${OUTPUT_FILE}")" == "ghcr.io/kube-kaptain/java/java-web-service:2.1" ]]
+  [[ "$status" -eq 0 ]] || return 1
+  [[ "$(cat "${OUTPUT_FILE}")" == "ghcr.io/kube-kaptain/java/java-web-service:2.1" ]] || return 1
 }
 
 @test "routes to docker provider for full form" {
   run "$SCRIPT" "docker.io/other/ha/ha-deployment:3.0" "${OUTPUT_FILE}"
-  [[ "$status" -eq 0 ]]
-  [[ "$(cat "${OUTPUT_FILE}")" == "docker.io/other/ha/ha-deployment:3.0" ]]
+  [[ "$status" -eq 0 ]] || return 1
+  [[ "$(cat "${OUTPUT_FILE}")" == "docker.io/other/ha/ha-deployment:3.0" ]] || return 1
 }
 
 # =============================================================================
@@ -60,20 +62,20 @@ teardown() {
 
 @test "docker| prefix routes to docker provider" {
   run "$SCRIPT" "docker|quality-strict:1.0" "${OUTPUT_FILE}"
-  [[ "$status" -eq 0 ]]
-  [[ "$(cat "${OUTPUT_FILE}")" == "ghcr.io/kube-kaptain/quality/quality-strict:1.0" ]]
+  [[ "$status" -eq 0 ]] || return 1
+  [[ "$(cat "${OUTPUT_FILE}")" == "ghcr.io/kube-kaptain/quality/quality-strict:1.0" ]] || return 1
 }
 
 @test "docker| prefix with prefixed form" {
   run "$SCRIPT" "docker|java/java-web-service:2.1" "${OUTPUT_FILE}"
-  [[ "$status" -eq 0 ]]
-  [[ "$(cat "${OUTPUT_FILE}")" == "ghcr.io/kube-kaptain/java/java-web-service:2.1" ]]
+  [[ "$status" -eq 0 ]] || return 1
+  [[ "$(cat "${OUTPUT_FILE}")" == "ghcr.io/kube-kaptain/java/java-web-service:2.1" ]] || return 1
 }
 
 @test "docker| prefix with full form" {
   run "$SCRIPT" "docker|ghcr.io/org/quality/quality-strict:1.0" "${OUTPUT_FILE}"
-  [[ "$status" -eq 0 ]]
-  [[ "$(cat "${OUTPUT_FILE}")" == "ghcr.io/org/quality/quality-strict:1.0" ]]
+  [[ "$status" -eq 0 ]] || return 1
+  [[ "$(cat "${OUTPUT_FILE}")" == "ghcr.io/org/quality/quality-strict:1.0" ]] || return 1
 }
 
 # =============================================================================
@@ -84,7 +86,7 @@ teardown() {
   # Since we can't easily override PLUGINS_DIR, test via explicit prefix instead
   run "$SCRIPT" "custom|some-ref:1.0" "${OUTPUT_FILE}"
   # This will fail because "custom" provider doesn't exist in the real plugins dir
-  [[ "$status" -eq 1 ]]
+  [[ "$status" -eq 1 ]] || return 1
   assert_output_contains "Unknown artifact provider: custom"
 }
 
@@ -94,7 +96,7 @@ teardown() {
 
 @test "fails for unknown explicit provider" {
   run "$SCRIPT" "nonexistent|quality-strict:1.0" "${OUTPUT_FILE}"
-  [[ "$status" -eq 1 ]]
+  [[ "$status" -eq 1 ]] || return 1
   assert_output_contains "Unknown artifact provider: nonexistent"
 }
 
@@ -104,12 +106,12 @@ teardown() {
 
 @test "fails with no arguments" {
   run "$SCRIPT"
-  [[ "$status" -ne 0 ]]
+  [[ "$status" -ne 0 ]] || return 1
 }
 
 @test "propagates provider failure" {
   # Force prefix mismatch to cause docker provider to fail
   run "$SCRIPT" "docker|wrong/quality-strict:1.0" "${OUTPUT_FILE}"
-  [[ "$status" -eq 1 ]]
+  [[ "$status" -eq 1 ]] || return 1
   assert_output_contains "Prefix mismatch"
 }

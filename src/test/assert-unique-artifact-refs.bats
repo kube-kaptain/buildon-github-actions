@@ -7,6 +7,8 @@
 # Covers both identity modes ('name' last-segment-only, 'path' keeps
 # registry/path qualification) and the no-duplicate / duplicate paths.
 
+bats_require_minimum_version 1.5.0
+
 load helpers
 
 # shellcheck source=src/scripts/lib/assert-unique-artifact-refs.bash

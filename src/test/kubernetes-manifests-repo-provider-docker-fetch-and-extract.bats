@@ -5,6 +5,8 @@
 # Tests for kubernetes-manifests-repo-provider-docker-fetch-and-extract
 # This script pulls a Docker image and extracts the manifests zip.
 
+bats_require_minimum_version 1.5.0
+
 load helpers
 
 setup() {

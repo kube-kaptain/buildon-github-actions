@@ -2,6 +2,8 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
 
+bats_require_minimum_version 1.5.0
+
 load helpers
 
 setup() {
@@ -13,8 +15,8 @@ setup() {
 
 @test "fails when directory does not exist" {
   run validate_exact_file_exists "${TEST_DIR}/nonexistent" "KaptainPM.yaml"
-  [[ "$status" -eq 1 ]]
-  [[ "$output" == *"Directory"*"does not exist"* ]]
+  [[ "$status" -eq 1 ]] || return 1
+  [[ "$output" == *"Directory"*"does not exist"* ]] || return 1
 }
 
 # === File not found ===
@@ -22,8 +24,8 @@ setup() {
 @test "fails when file not found" {
   mkdir -p "${TEST_DIR}/empty"
   run validate_exact_file_exists "${TEST_DIR}/empty" "KaptainPM.yaml"
-  [[ "$status" -eq 1 ]]
-  [[ "$output" == *"not found"* ]]
+  [[ "$status" -eq 1 ]] || return 1
+  [[ "$output" == *"not found"* ]] || return 1
 }
 
 # === Case mismatch ===
@@ -32,8 +34,8 @@ setup() {
   mkdir -p "${TEST_DIR}/wrongcase"
   echo "test" > "${TEST_DIR}/wrongcase/kaptainpm.yaml"
   run validate_exact_file_exists "${TEST_DIR}/wrongcase" "KaptainPM.yaml"
-  [[ "$status" -eq 1 ]]
-  [[ "$output" == *"case mismatch"* ]]
+  [[ "$status" -eq 1 ]] || return 1
+  [[ "$output" == *"case mismatch"* ]] || return 1
 }
 
 # === Exact match ===
@@ -42,7 +44,7 @@ setup() {
   mkdir -p "${TEST_DIR}/correct"
   echo "test" > "${TEST_DIR}/correct/KaptainPM.yaml"
   run validate_exact_file_exists "${TEST_DIR}/correct" "KaptainPM.yaml"
-  [[ "$status" -eq 0 ]]
+  [[ "$status" -eq 0 ]] || return 1
 }
 
 # === Duplicate detection (Linux only - case-insensitive FS cannot create both) ===
@@ -60,39 +62,39 @@ setup() {
     skip "case-insensitive filesystem cannot create duplicate case variants"
   fi
   run validate_exact_file_exists "${TEST_DIR}/dupes" "KaptainPM.yaml"
-  [[ "$status" -eq 1 ]]
-  [[ "$output" == *"Multiple files"* ]]
+  [[ "$status" -eq 1 ]] || return 1
+  [[ "$output" == *"Multiple files"* ]] || return 1
 }
 
 # === file_exists_any_case ===
 
 @test "file_exists_any_case: returns 1 when directory does not exist" {
   run file_exists_any_case "${TEST_DIR}/nonexistent-any" "KaptainPM.yaml"
-  [[ "$status" -eq 1 ]]
-  [[ -z "$output" ]]
+  [[ "$status" -eq 1 ]] || return 1
+  [[ -z "$output" ]] || return 1
 }
 
 @test "file_exists_any_case: returns 1 when file not found" {
   mkdir -p "${TEST_DIR}/empty-any"
   run file_exists_any_case "${TEST_DIR}/empty-any" "KaptainPM.yaml"
-  [[ "$status" -eq 1 ]]
-  [[ -z "$output" ]]
+  [[ "$status" -eq 1 ]] || return 1
+  [[ -z "$output" ]] || return 1
 }
 
 @test "file_exists_any_case: returns 0 on exact match" {
   mkdir -p "${TEST_DIR}/exact-any"
   echo "test" > "${TEST_DIR}/exact-any/KaptainPM.yaml"
   run file_exists_any_case "${TEST_DIR}/exact-any" "KaptainPM.yaml"
-  [[ "$status" -eq 0 ]]
-  [[ -z "$output" ]]
+  [[ "$status" -eq 0 ]] || return 1
+  [[ -z "$output" ]] || return 1
 }
 
 @test "file_exists_any_case: returns 0 on case-mismatched match" {
   mkdir -p "${TEST_DIR}/mismatch-any"
   echo "test" > "${TEST_DIR}/mismatch-any/kaptainpm.yaml"
   run file_exists_any_case "${TEST_DIR}/mismatch-any" "KaptainPM.yaml"
-  [[ "$status" -eq 0 ]]
-  [[ -z "$output" ]]
+  [[ "$status" -eq 0 ]] || return 1
+  [[ -z "$output" ]] || return 1
 }
 
 @test "file_exists_any_case: returns 0 when sibling files are present and a case variant matches" {
@@ -100,8 +102,8 @@ setup() {
   echo "test" > "${TEST_DIR}/siblings-any/other.txt"
   echo "test" > "${TEST_DIR}/siblings-any/KAPTAINPM.YAML"
   run file_exists_any_case "${TEST_DIR}/siblings-any" "KaptainPM.yaml"
-  [[ "$status" -eq 0 ]]
-  [[ -z "$output" ]]
+  [[ "$status" -eq 0 ]] || return 1
+  [[ -z "$output" ]] || return 1
 }
 
 teardown() {

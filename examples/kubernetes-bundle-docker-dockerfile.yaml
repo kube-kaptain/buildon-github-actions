@@ -1,0 +1,28 @@
+# SPDX-License-Identifier: CC0-1.0
+# This example is released to the public domain. Use freely without attribution.
+#
+# Kubernetes Bundle - Docker Dockerfile
+#
+# Packages Kubernetes manifests and builds a Docker image from a Dockerfile
+# for third-party stacks whose hard-coded refs can't be made to fit Kaptain's
+# naming conventions.
+#
+# Kaptain manifest generators don't run automatically in this process.
+#
+# All configuration is in KaptainPM.yaml - see docs for available fields.
+
+name: Kubernetes Bundle - Docker Dockerfile
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    uses: kube-kaptain/buildon-github-actions/.github/workflows/kubernetes-bundle-docker-dockerfile.yaml@1.1.38
+    permissions:
+      contents: write
+      packages: write
+      checks: write

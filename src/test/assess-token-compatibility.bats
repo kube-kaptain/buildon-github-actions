@@ -8,6 +8,8 @@
 # delimiter/name style combinations. Produces automaticConversion and
 # repackageRequired lists.
 
+bats_require_minimum_version 1.5.0
+
 load helpers
 
 ASSESS_SCRIPT="$UTIL_DIR/assess-token-compatibility"

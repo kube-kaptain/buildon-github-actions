@@ -2,6 +2,8 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
 
+bats_require_minimum_version 1.5.0
+
 load helpers
 
 setup() {
@@ -308,7 +310,7 @@ set_required_env() {
   # Check that substitution happened in the copied file
   run cat "$OUTPUT_DIR/docker/substituted/Dockerfile"
   [ "$status" -eq 0 ]
-  [[ "$output" == *"ghcr.io/my-org/base:1.0"* ]]
+  [[ "$output" == *"ghcr.io/my-org/base:1.0"* ]] || return 1
 }
 
 @test "copies all files from docker directory" {
@@ -349,7 +351,7 @@ set_required_env() {
   # Check substitution in config file
   run cat "$OUTPUT_DIR/docker/substituted/config.sh"
   [ "$status" -eq 0 ]
-  [[ "$output" == *"REGISTRY=ghcr.io"* ]]
+  [[ "$output" == *"REGISTRY=ghcr.io"* ]] || return 1
 }
 
 @test "only substitutes files in substitution list" {
@@ -365,7 +367,7 @@ set_required_env() {
   # config.sh should NOT be substituted (not in list)
   run cat "$OUTPUT_DIR/docker/substituted/config.sh"
   [ "$status" -eq 0 ]
-  [[ "$output" == *'REGISTRY=${TargetRegistry}'* ]]
+  [[ "$output" == *'REGISTRY=${TargetRegistry}'* ]] || return 1
 }
 
 @test "uses user config tokens from src/config" {
@@ -382,7 +384,7 @@ set_required_env() {
   # Check substitution happened
   run cat "$OUTPUT_DIR/docker/substituted/Dockerfile"
   [ "$status" -eq 0 ]
-  [[ "$output" == *"ENV MY_VAR=my-custom-value"* ]]
+  [[ "$output" == *"ENV MY_VAR=my-custom-value"* ]] || return 1
 
 }
 
@@ -418,8 +420,8 @@ set_required_env() {
 
   [ -f "$DOCKER_PUSH_IMAGE_LIST_FILE" ]
   run cat "$DOCKER_PUSH_IMAGE_LIST_FILE"
-  [[ "$output" == *"ghcr.io/test/my-repo:1.0.0-linux-amd64"* ]]
-  [[ "$output" == *"ghcr.io/test/my-repo:1.0.0-linux-arm64"* ]]
+  [[ "$output" == *"ghcr.io/test/my-repo:1.0.0-linux-amd64"* ]] || return 1
+  [[ "$output" == *"ghcr.io/test/my-repo:1.0.0-linux-arm64"* ]] || return 1
 }
 
 @test "multi-platform registers base URI in manifest-uris" {
@@ -434,7 +436,7 @@ set_required_env() {
   local manifest_file="${OUTPUT_SUB_PATH}/docker-push-all/manifest-uris"
   [ -f "$manifest_file" ]
   run cat "$manifest_file"
-  [[ "$output" == *"ghcr.io/test/my-repo:1.0.0"* ]]
+  [[ "$output" == *"ghcr.io/test/my-repo:1.0.0"* ]] || return 1
 }
 
 @test "multi-platform outputs base URI as DOCKER_TARGET_IMAGE_FULL_URI" {

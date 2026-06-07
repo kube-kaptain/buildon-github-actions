@@ -8,13 +8,16 @@
 # other token schemes, copies defaults if present, and generates a contract YAML
 # file conforming to the manifests-contract schema. Packages into a contract zip.
 #
+# Reads defaults from ${OUTPUT_SUB_PATH}/manifests/defaults/ - the final merged
+# defaults dir assembled by kubernetes-manifests-package-prepare from the project's
+# source defaults plus any foreign-contributor entries in additional-defaults/.
+#
 # Inputs (environment variables):
 #   PROJECT_NAME          - Project name (required)
 #   VERSION               - Release version (required)
 #   TOKEN_DELIMITER_STYLE - Token delimiter style (default: shell)
 #   TOKEN_NAME_STYLE      - Token name style (default: PascalCase)
 #   OUTPUT_SUB_PATH       - Build output directory (default: kaptain-out)
-#   DEFAULTS_SUB_PATH     - Source directory for default values (default: src/defaults)
 #   METADATA_DESCRIPTION  - Description from KaptainPM.yaml (optional)
 #   BUILD_KIND            - Build kind for contract kind field (required)
 #
@@ -46,7 +49,6 @@ source "${SCRIPT_DIR}/../defaults/tokens.bash"
 source "${SCRIPT_DIR}/../lib/output-var.bash"
 
 # Optional inputs
-DEFAULTS_SUB_PATH="${DEFAULTS_SUB_PATH:-src/defaults}"
 METADATA_DESCRIPTION="${METADATA_DESCRIPTION:-}"
 
 # Contract schema version (read from version file alongside the schema)
@@ -63,7 +65,7 @@ main() {
   log "Version: ${VERSION}"
   log "Build kind: ${BUILD_KIND}"
   log "Token style: ${TOKEN_DELIMITER_STYLE}-${TOKEN_NAME_STYLE}"
-  log "Defaults source: ${DEFAULTS_SUB_PATH}"
+  log "Defaults source: ${MANIFESTS_DEFAULTS_SUB_PATH}"
   log "================================================"
 
   # Validate substituted manifests exist
@@ -82,8 +84,8 @@ main() {
 
   # --- Validate defaults filename style (independent: fail fast) ---
   local defaults_present="false"
-  if [[ -d "${DEFAULTS_SUB_PATH}" ]] \
-     && [[ -n "$(find "${DEFAULTS_SUB_PATH}" -type f 2>/dev/null)" ]]; then
+  if [[ -d "${MANIFESTS_DEFAULTS_SUB_PATH}" ]] \
+     && [[ -n "$(find "${MANIFESTS_DEFAULTS_SUB_PATH}" -type f 2>/dev/null)" ]]; then
     defaults_present="true"
     log ""
     log "Validating defaults filenames against ${TOKEN_NAME_STYLE} style..."
@@ -92,8 +94,8 @@ main() {
       log_error "Token-name validator not found: ${TOKEN_NAME_STYLE}"
       exit 1
     fi
-    if ! "${validator_script}" "${DEFAULTS_SUB_PATH}"; then
-      log_error "One or more defaults filenames in ${DEFAULTS_SUB_PATH} do not match the declared name style ${TOKEN_NAME_STYLE}"
+    if ! "${validator_script}" "${MANIFESTS_DEFAULTS_SUB_PATH}"; then
+      log_error "One or more defaults filenames in ${MANIFESTS_DEFAULTS_SUB_PATH} do not match the declared name style ${TOKEN_NAME_STYLE}"
       exit 1
     fi
   fi
@@ -119,11 +121,11 @@ main() {
     local orphans=()
     local default_file rel
     while IFS= read -r -d '' default_file; do
-      rel="${default_file#"${DEFAULTS_SUB_PATH}/"}"
+      rel="${default_file#"${MANIFESTS_DEFAULTS_SUB_PATH}/"}"
       if [[ -z "${unresolved_tokens}" ]] || ! grep -qxF "${rel}" <<< "${unresolved_tokens}"; then
         orphans+=("${rel}")
       fi
-    done < <(find "${DEFAULTS_SUB_PATH}" -type f -print0)
+    done < <(find "${MANIFESTS_DEFAULTS_SUB_PATH}" -type f -print0)
     if [[ ${#orphans[@]} -gt 0 ]]; then
       log_error "Defaults file(s) do not correspond to any unresolved token in the manifests:"
       for rel in "${orphans[@]}"; do
@@ -158,14 +160,14 @@ main() {
   # --- Copy defaults ---
   local has_defaults="false"
   local defaults_dir="${CONTRACT_DIR}/defaults"
-  if [[ -d "${DEFAULTS_SUB_PATH}" ]]; then
+  if [[ -d "${MANIFESTS_DEFAULTS_SUB_PATH}" ]]; then
     local defaults_count
-    defaults_count=$(find "${DEFAULTS_SUB_PATH}" -type f | wc -l | tr -d ' ')
+    defaults_count=$(find "${MANIFESTS_DEFAULTS_SUB_PATH}" -type f | wc -l | tr -d ' ')
     if [[ "${defaults_count}" -gt 0 ]]; then
       log ""
-      log "Copying ${defaults_count} default(s) from ${DEFAULTS_SUB_PATH}"
+      log "Copying ${defaults_count} default(s) from ${MANIFESTS_DEFAULTS_SUB_PATH}"
       mkdir -p "${defaults_dir}"
-      cp -R "${DEFAULTS_SUB_PATH}"/* "${defaults_dir}/"
+      cp -R "${MANIFESTS_DEFAULTS_SUB_PATH}"/* "${defaults_dir}/"
       has_defaults="true"
     fi
   fi

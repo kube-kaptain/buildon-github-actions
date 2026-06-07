@@ -198,10 +198,10 @@ jobs:
       # INJECT: manifest-contract-generate
       # INJECT: github-check-end(name="Generate Manifests Contract", id="check-manifest-contract-generate")
 
-      # === Product Lineage Data Generate ===
-      # INJECT: github-check-start(name="Generate Product Lineage Data ConfigMap", id="check-product-lineage-data-generate")
-      # INJECT: manifest-product-lineage-data-generate
-      # INJECT: github-check-end(name="Generate Product Lineage Data ConfigMap", id="check-product-lineage-data-generate")
+      # === Lineage Data Generate ===
+      # INJECT: github-check-start(name="Generate Lineage Data ConfigMap", id="check-lineage-data-generate")
+      # INJECT: manifest-lineage-data-generate
+      # INJECT: github-check-end(name="Generate Lineage Data ConfigMap", id="check-lineage-data-generate")
 
       # === Manifest Package ===
       # INJECT: github-check-start(name="Package Manifests", id="check-manifest-package")

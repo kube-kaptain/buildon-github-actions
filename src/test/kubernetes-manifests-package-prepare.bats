@@ -2,6 +2,8 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
 
+bats_require_minimum_version 1.5.0
+
 load helpers
 
 setup() {
@@ -67,6 +69,7 @@ set_required_env() {
   [ -d "$OUTPUT_SUB_PATH/manifests/combined" ]
   [ -d "$OUTPUT_SUB_PATH/manifests/config" ]
   [ -d "$OUTPUT_SUB_PATH/manifests/zip" ]
+  [ -d "$OUTPUT_SUB_PATH/manifests/defaults" ]
 }
 
 @test "writes built-in tokens as files" {
@@ -371,4 +374,205 @@ set_required_env() {
   run "$SCRIPTS_DIR/kubernetes-manifests-package-prepare"
   [ "$status" -eq 0 ]
   assert_output_not_contains "additional token"
+}
+
+# =============================================================================
+# Defaults merge — source defaults + additional-defaults → manifests/defaults/
+# =============================================================================
+
+# Stage a file under the local defaults source dir
+stage_local_default() {
+  local name="$1"
+  local value="$2"
+  mkdir -p "$(dirname "$LOCAL_DEFAULTS_DIR/$name")"
+  printf '%s' "$value" > "$LOCAL_DEFAULTS_DIR/$name"
+}
+
+# Stage a file under the additional-defaults staging dir (foreign contributor)
+stage_additional_default() {
+  local name="$1"
+  local value="$2"
+  mkdir -p "$(dirname "$OUTPUT_SUB_PATH/manifests/additional-defaults/$name")"
+  printf '%s' "$value" > "$OUTPUT_SUB_PATH/manifests/additional-defaults/$name"
+}
+
+@test "defaults: copies DEFAULTS_SUB_PATH into manifests/defaults/" {
+  set_required_env
+  create_manifest "deployment.yaml"
+  export LOCAL_DEFAULTS_DIR="defaults-src"
+  export DEFAULTS_SUB_PATH="$LOCAL_DEFAULTS_DIR"
+  stage_local_default "MemoryRequest" "256Mi"
+  stage_local_default "TestProject/CpuRequest" "100m"
+
+  run "$SCRIPTS_DIR/kubernetes-manifests-package-prepare"
+  [ "$status" -eq 0 ]
+  [ "$(cat "$OUTPUT_SUB_PATH/manifests/defaults/MemoryRequest")" = "256Mi" ]
+  [ "$(cat "$OUTPUT_SUB_PATH/manifests/defaults/TestProject/CpuRequest")" = "100m" ]
+}
+
+@test "defaults: copies additional-defaults entries when no local collision" {
+  set_required_env
+  create_manifest "deployment.yaml"
+  stage_additional_default "ForeignToken" "from-foreign"
+
+  run "$SCRIPTS_DIR/kubernetes-manifests-package-prepare"
+  [ "$status" -eq 0 ]
+  [ "$(cat "$OUTPUT_SUB_PATH/manifests/defaults/ForeignToken")" = "from-foreign" ]
+}
+
+@test "defaults: byte-identical local + additional merge is a no-op" {
+  set_required_env
+  create_manifest "deployment.yaml"
+  export LOCAL_DEFAULTS_DIR="defaults-src"
+  export DEFAULTS_SUB_PATH="$LOCAL_DEFAULTS_DIR"
+  stage_local_default "SharedToken" "same-value"
+  stage_additional_default "SharedToken" "same-value"
+
+  run "$SCRIPTS_DIR/kubernetes-manifests-package-prepare"
+  [ "$status" -eq 0 ]
+  [ "$(cat "$OUTPUT_SUB_PATH/manifests/defaults/SharedToken")" = "same-value" ]
+}
+
+@test "defaults: differing local + additional fails when override flag unset" {
+  set_required_env
+  create_manifest "deployment.yaml"
+  export LOCAL_DEFAULTS_DIR="defaults-src"
+  export DEFAULTS_SUB_PATH="$LOCAL_DEFAULTS_DIR"
+  stage_local_default "Conflicting" "local-value"
+  stage_additional_default "Conflicting" "additional-value"
+
+  run "$SCRIPTS_DIR/kubernetes-manifests-package-prepare"
+  [ "$status" -ne 0 ]
+  assert_output_contains "Default value collisions"
+  assert_output_contains "Conflicting"
+  assert_output_contains "local-value"
+  assert_output_contains "additional-value"
+}
+
+@test "defaults: differing local + additional WARNs and keeps local when override=true" {
+  set_required_env
+  create_manifest "deployment.yaml"
+  export LOCAL_DEFAULTS_DIR="defaults-src"
+  export DEFAULTS_SUB_PATH="$LOCAL_DEFAULTS_DIR"
+  export ALLOW_LOCAL_DEFAULTS_OVERRIDE="true"
+  stage_local_default "Conflicting" "local-value"
+  stage_additional_default "Conflicting" "additional-value"
+
+  run "$SCRIPTS_DIR/kubernetes-manifests-package-prepare"
+  [ "$status" -eq 0 ]
+  assert_output_contains "WARN: local default 'Conflicting' overrides"
+  [ "$(cat "$OUTPUT_SUB_PATH/manifests/defaults/Conflicting")" = "local-value" ]
+}
+
+@test "defaults: succeeds with no DEFAULTS_SUB_PATH dir and no additional-defaults" {
+  set_required_env
+  create_manifest "deployment.yaml"
+  export DEFAULTS_SUB_PATH="nonexistent-defaults"
+
+  run "$SCRIPTS_DIR/kubernetes-manifests-package-prepare"
+  [ "$status" -eq 0 ]
+  assert_output_contains "No source defaults found"
+  [ -d "$OUTPUT_SUB_PATH/manifests/defaults" ]
+}
+
+@test "defaults: succeeds with empty additional-defaults dir" {
+  set_required_env
+  create_manifest "deployment.yaml"
+  mkdir -p "$OUTPUT_SUB_PATH/manifests/additional-defaults"
+
+  run "$SCRIPTS_DIR/kubernetes-manifests-package-prepare"
+  [ "$status" -eq 0 ]
+  assert_output_not_contains "additional default"
+}
+
+@test "defaults: reports counts when both sources contribute" {
+  set_required_env
+  create_manifest "deployment.yaml"
+  export LOCAL_DEFAULTS_DIR="defaults-src"
+  export DEFAULTS_SUB_PATH="$LOCAL_DEFAULTS_DIR"
+  stage_local_default "LocalA" "a"
+  stage_local_default "LocalB" "b"
+  stage_additional_default "ForeignC" "c"
+
+  run "$SCRIPTS_DIR/kubernetes-manifests-package-prepare"
+  [ "$status" -eq 0 ]
+  assert_output_contains "Copying 2 default(s) from $LOCAL_DEFAULTS_DIR"
+  assert_output_contains "Merging 1 additional default(s)"
+}
+
+# =============================================================================
+# Manifests merge — source manifests + additional-manifests → manifests/combined/
+# =============================================================================
+
+# Stage a file under the additional-manifests staging dir (foreign contributor)
+stage_additional_manifest() {
+  local rel="$1"
+  local content="$2"
+  mkdir -p "$(dirname "$OUTPUT_SUB_PATH/manifests/additional-manifests/$rel")"
+  printf '%s' "$content" > "$OUTPUT_SUB_PATH/manifests/additional-manifests/$rel"
+}
+
+@test "manifests: copies additional-manifests entries when no local collision" {
+  set_required_env
+  create_manifest "deployment.yaml"
+  stage_additional_manifest "alpha/foreign.yaml" $'apiVersion: v1\nkind: ConfigMap\n'
+
+  run "$SCRIPTS_DIR/kubernetes-manifests-package-prepare"
+  [ "$status" -eq 0 ]
+  [ -f "$OUTPUT_SUB_PATH/manifests/combined/alpha/foreign.yaml" ]
+  [ -f "$OUTPUT_SUB_PATH/manifests/combined/deployment.yaml" ]
+}
+
+@test "manifests: byte-identical local + additional collision fails when override unset" {
+  set_required_env
+  create_manifest "shared.yaml" $'apiVersion: v1\nkind: ConfigMap\n'
+  stage_additional_manifest "shared.yaml" $'apiVersion: v1\nkind: ConfigMap\n'
+
+  run "$SCRIPTS_DIR/kubernetes-manifests-package-prepare"
+  [ "$status" -ne 0 ]
+  assert_output_contains "Manifest path collisions"
+  assert_output_contains "shared.yaml"
+}
+
+@test "manifests: differing local + additional collision fails when override unset" {
+  set_required_env
+  create_manifest "alpha/deployment.yaml" $'name: from-local\n'
+  stage_additional_manifest "alpha/deployment.yaml" $'name: from-foreign\n'
+
+  run "$SCRIPTS_DIR/kubernetes-manifests-package-prepare"
+  [ "$status" -ne 0 ]
+  assert_output_contains "Manifest path collisions"
+  assert_output_contains "alpha/deployment.yaml"
+  assert_output_contains "allowLocalOverride: true"
+}
+
+@test "manifests: differing local + additional WARNs and keeps local when override=true" {
+  set_required_env
+  export ALLOW_LOCAL_MANIFESTS_OVERRIDE="true"
+  create_manifest "alpha/deployment.yaml" $'name: from-local\n'
+  stage_additional_manifest "alpha/deployment.yaml" $'name: from-foreign\n'
+
+  run "$SCRIPTS_DIR/kubernetes-manifests-package-prepare"
+  [ "$status" -eq 0 ]
+  assert_output_contains "WARN: local manifest 'alpha/deployment.yaml' overrides"
+  grep -q "name: from-local" "$OUTPUT_SUB_PATH/manifests/combined/alpha/deployment.yaml"
+}
+
+@test "manifests: succeeds with no additional-manifests dir" {
+  set_required_env
+  create_manifest "deployment.yaml"
+
+  run "$SCRIPTS_DIR/kubernetes-manifests-package-prepare"
+  [ "$status" -eq 0 ]
+  assert_output_not_contains "additional manifest"
+}
+
+@test "manifests: succeeds with empty additional-manifests dir" {
+  set_required_env
+  create_manifest "deployment.yaml"
+  mkdir -p "$OUTPUT_SUB_PATH/manifests/additional-manifests"
+
+  run "$SCRIPTS_DIR/kubernetes-manifests-package-prepare"
+  [ "$status" -eq 0 ]
+  assert_output_not_contains "additional manifest"
 }

@@ -54,10 +54,6 @@ inputs:
     description: 'Description from KaptainPM.yaml metadata'
     required: false
     default: ''
-  defaults-sub-path:
-    description: 'Source directory for default values'
-    required: false
-    default: 'src/defaults'
 
 outputs:
   contract-zip-sub-path:
@@ -84,5 +80,4 @@ runs:
         TOKEN_DELIMITER_STYLE: ${{ inputs.token-delimiter-style }}
         TOKEN_NAME_STYLE: ${{ inputs.token-name-style }}
         METADATA_DESCRIPTION: ${{ inputs.metadata-description }}
-        DEFAULTS_SUB_PATH: ${{ inputs.defaults-sub-path }}
       run: "${{ github.action_path }}/../../scripts/main/kubernetes-manifests-contract-generate"

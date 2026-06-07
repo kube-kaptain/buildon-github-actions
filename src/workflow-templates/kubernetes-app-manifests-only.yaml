@@ -198,6 +198,11 @@ jobs:
       # INJECT: generate-kubernetes-service
       # INJECT: github-check-end(name="Generate Service", id="check-generate-service", if="steps.kpm.outputs.KUBERNETES_SERVICE_GENERATION_ENABLED != 'false' && (steps.kpm.outputs.KUBERNETES_SERVICE_GENERATION_ENABLED == 'true' || steps.kpm.outputs.KUBERNETES_WORKLOAD_TYPE == 'deployment' || steps.kpm.outputs.KUBERNETES_WORKLOAD_TYPE == 'statefulset' || steps.kpm.outputs.KUBERNETES_WORKLOAD_TYPE == 'daemonset')")
 
+      # === Templates Import ===
+      # INJECT: github-check-start(name="Templates Import", id="check-templates-import")
+      # INJECT: kubernetes-templates-import
+      # INJECT: github-check-end(name="Templates Import", id="check-templates-import")
+
       # === Pre-package Prepare ===
       # INJECT: github-check-start(name="Pre-package Prepare", id="check-pre-package-prepare", if="steps.kpm.outputs.HOOK_PRE_PACKAGE_PREPARE_SCRIPT_SUB_PATH != ''")
       # INJECT: hook-pre-package-prepare
@@ -214,6 +219,11 @@ jobs:
       # INJECT: github-check-start(name="Generate Manifests Contract", id="check-manifest-contract-generate")
       # INJECT: manifest-contract-generate
       # INJECT: github-check-end(name="Generate Manifests Contract", id="check-manifest-contract-generate")
+
+      # === Lineage Data Generate ===
+      # INJECT: github-check-start(name="Generate Lineage Data ConfigMap", id="check-lineage-data-generate")
+      # INJECT: manifest-lineage-data-generate
+      # INJECT: github-check-end(name="Generate Lineage Data ConfigMap", id="check-lineage-data-generate")
 
       # === Manifest Package ===
       # INJECT: github-check-start(name="Package Manifests", id="check-manifest-package")

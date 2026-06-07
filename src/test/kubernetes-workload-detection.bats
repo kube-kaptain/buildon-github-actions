@@ -4,6 +4,8 @@
 #
 # Tests for kubernetes-workload-detection.bash library
 
+bats_require_minimum_version 1.5.0
+
 load helpers
 
 setup() {

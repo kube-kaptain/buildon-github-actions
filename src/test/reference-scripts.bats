@@ -10,6 +10,8 @@
 # - Build type variations set TARGET_BRANCH correctly
 # - basic-quality-checks exports QC configuration variables
 
+bats_require_minimum_version 1.5.0
+
 load helpers
 
 # Create a mock script that logs its name and checks required env vars
@@ -52,7 +54,8 @@ setup() {
     hook-pre-docker-prepare hook-post-docker-tests hook-pre-package-prepare hook-post-package-tests \
     kubernetes-manifests-package-prepare kubernetes-manifests-substitute kubernetes-manifests-package \
     kubernetes-product-aggregate \
-    kubernetes-product-lineage-data-generate \
+    kubernetes-templates-import \
+    kubernetes-lineage-data-generate \
     kubernetes-manifests-contract-generate \
     kubernetes-manifests-package-only-token-override \
     kubernetes-manifests-repo-provider-package kubernetes-manifests-repo-provider-publish \
@@ -191,6 +194,7 @@ change-source-note-write
 release-change-data-generate
 release-change-data-oci-package
 docker-build-retag
+hook-post-docker-tests
 docker-multi-tag
 git-push-tag
 docker-push-all
@@ -225,10 +229,12 @@ generate-kubernetes-serviceaccount
 generate-kubernetes-workload
 generate-kubernetes-poddisruptionbudget
 generate-kubernetes-service
+kubernetes-templates-import
 hook-pre-package-prepare
 kubernetes-manifests-package-prepare
 kubernetes-manifests-substitute
 kubernetes-manifests-contract-generate
+kubernetes-lineage-data-generate
 kubernetes-manifests-package
 kubernetes-manifests-repo-provider-package
 hook-post-package-tests
@@ -259,16 +265,19 @@ change-source-note-write
 release-change-data-generate
 release-change-data-oci-package
 docker-build-retag
+hook-post-docker-tests
 generate-kubernetes-configmap
 generate-kubernetes-secret-template
 generate-kubernetes-serviceaccount
 generate-kubernetes-workload
 generate-kubernetes-poddisruptionbudget
 generate-kubernetes-service
+kubernetes-templates-import
 hook-pre-package-prepare
 kubernetes-manifests-package-prepare
 kubernetes-manifests-substitute
 kubernetes-manifests-contract-generate
+kubernetes-lineage-data-generate
 kubernetes-manifests-package
 kubernetes-manifests-repo-provider-package
 hook-post-package-tests
@@ -304,11 +313,13 @@ generate-kubernetes-serviceaccount
 generate-kubernetes-workload
 generate-kubernetes-poddisruptionbudget
 generate-kubernetes-service
+kubernetes-templates-import
 hook-pre-package-prepare
 kubernetes-manifests-package-prepare
 kubernetes-manifests-package-only-token-override
 kubernetes-manifests-substitute
 kubernetes-manifests-contract-generate
+kubernetes-lineage-data-generate
 kubernetes-manifests-package
 kubernetes-manifests-repo-provider-package
 hook-post-package-tests
@@ -398,11 +409,13 @@ hook-post-versions-and-naming
 change-source-note-write
 release-change-data-generate
 release-change-data-oci-package
+kubernetes-templates-import
 hook-pre-package-prepare
 kubernetes-manifests-package-prepare
 kubernetes-manifests-package-only-token-override
 kubernetes-manifests-substitute
 kubernetes-manifests-contract-generate
+kubernetes-lineage-data-generate
 kubernetes-manifests-package
 kubernetes-manifests-repo-provider-package
 hook-post-package-tests
@@ -438,7 +451,82 @@ kubernetes-manifests-package-prepare
 kubernetes-manifests-package-only-token-override
 kubernetes-manifests-substitute
 kubernetes-manifests-contract-generate
-kubernetes-product-lineage-data-generate
+kubernetes-lineage-data-generate
+kubernetes-manifests-package
+kubernetes-manifests-repo-provider-package
+hook-post-package-tests
+docker-multi-tag
+git-push-tag
+kubernetes-manifests-repo-provider-publish
+docker-push-all
+hook-post-build"
+}
+
+@test "reference: kubernetes-bundle-docker-retag calls scripts in correct order" {
+  run bash "$REF_DIR/kubernetes-bundle-docker-retag"
+  [ "$status" -eq 0 ]
+
+  assert_call_order "validate-tooling
+load-project-kaptainpm-docker-logins
+docker-registry-logins
+kaptain-init
+load-final-kaptainpm-yaml
+hook-pre-build
+basic-quality-checks
+docker-registry-logins
+docker-platform-setup
+hook-pre-tagging-tests
+versions-and-naming
+hook-post-versions-and-naming
+change-source-note-write
+release-change-data-generate
+release-change-data-oci-package
+docker-build-retag
+hook-post-docker-tests
+kubernetes-templates-import
+hook-pre-package-prepare
+kubernetes-manifests-package-prepare
+kubernetes-manifests-substitute
+kubernetes-manifests-contract-generate
+kubernetes-lineage-data-generate
+kubernetes-manifests-package
+kubernetes-manifests-repo-provider-package
+hook-post-package-tests
+docker-multi-tag
+git-push-tag
+kubernetes-manifests-repo-provider-publish
+docker-push-all
+hook-post-build"
+}
+
+@test "reference: kubernetes-bundle-docker-dockerfile calls scripts in correct order" {
+  run bash "$REF_DIR/kubernetes-bundle-docker-dockerfile"
+  [ "$status" -eq 0 ]
+
+  assert_call_order "validate-tooling
+load-project-kaptainpm-docker-logins
+docker-registry-logins
+kaptain-init
+load-final-kaptainpm-yaml
+hook-pre-build
+basic-quality-checks
+docker-registry-logins
+docker-platform-setup
+hook-pre-tagging-tests
+versions-and-naming
+hook-post-versions-and-naming
+change-source-note-write
+release-change-data-generate
+release-change-data-oci-package
+hook-pre-docker-prepare
+docker-build-dockerfile
+hook-post-docker-tests
+kubernetes-templates-import
+hook-pre-package-prepare
+kubernetes-manifests-package-prepare
+kubernetes-manifests-substitute
+kubernetes-manifests-contract-generate
+kubernetes-lineage-data-generate
 kubernetes-manifests-package
 kubernetes-manifests-repo-provider-package
 hook-post-package-tests
@@ -469,6 +557,8 @@ change-source-note-write
 release-change-data-generate
 release-change-data-oci-package
 vendor-helm-render-and-process
+hook-post-docker-tests
+kubernetes-templates-import
 hook-pre-package-prepare
 vendor-helm-render-validate
 kubernetes-manifests-package-prepare
@@ -476,6 +566,7 @@ vendor-helm-inject-build-details
 kubernetes-manifests-package-only-token-override
 kubernetes-manifests-substitute
 kubernetes-manifests-contract-generate
+kubernetes-lineage-data-generate
 kubernetes-manifests-package
 kubernetes-manifests-repo-provider-package
 hook-post-package-tests

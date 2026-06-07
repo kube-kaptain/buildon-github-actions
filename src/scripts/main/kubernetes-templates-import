@@ -1,0 +1,231 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
+#
+# kubernetes-templates-import - Import spec.templates bundles into the
+# app/bundle build's foreign-contributor drop dirs.
+#
+# Delegates fetching and per-entry staging to lib/content-resolve.bash
+# (CONTENT_FLAVOUR=templates) and per-bundle scheme conversion + defaults
+# merging to lib/bundle-import.bash. Layout decision is driven by
+# TEMPLATES_LAYOUT (default flat):
+#
+#   hierarchy - bundle_import_all writes each template's manifests into a
+#               per-bundle subdir under ${MANIFESTS_ADDITIONAL_SUB_PATH}/<bundle>/.
+#               Each template's own lineage CM travels inside its subdir.
+#
+#   flat     - bundle_import_all writes per-bundle subdirs into the
+#              intermediate dir ${OUTPUT_SUB_PATH}/templates-import/staging/.
+#              Each template's lineage CM (kaptain-{app,bundle,product}-lineage-data.yaml)
+#              is then lifted into ${LINEAGE_DATA_DIR} renamed with the bundle
+#              prefix so it becomes a data key on the parent's lineage CM.
+#              Everything else is flattened into ${MANIFESTS_ADDITIONAL_SUB_PATH}
+#              (no per-bundle subdir); collisions across bundles fail fast.
+#
+# Includes a product as a template? Rejected. Products are deployable units,
+# not reusable manifest bases.
+#
+# Outputs to the foreign-contributor drop dirs consumed by the downstream
+# kubernetes-manifests-package-prepare step:
+#   ${OUTPUT_SUB_PATH}/manifests/additional-manifests/ - normalised template manifest tree
+#   ${OUTPUT_SUB_PATH}/manifests/additional-defaults/  - merged template defaults
+# And, in flat mode, lifted lineage data files for the downstream
+# kubernetes-lineage-data-generate step:
+#   ${OUTPUT_SUB_PATH}/lineage-data/data-files/<bundle>-kaptain-*-lineage-data.yaml
+#
+# Outputs (env + GITHUB_OUTPUT):
+#   TEMPLATES_LIST_FILE - Path to the verbatim spec.templates list file
+#                         (one '- <entry>' per line) written by content_resolve_all.
+#
+# Inputs (env vars):
+#   PROJECT_NAME           - Required; for log clarity
+#   TOKEN_DELIMITER_STYLE  - Token delimiter style (default shell)
+#   TOKEN_NAME_STYLE       - Token name style (default PascalCase)
+#   TEMPLATES_LAYOUT       - flat | hierarchy (default flat)
+#   OUTPUT_SUB_PATH        - Build output dir (default kaptain-out)
+#   KAPTAINPM_FILE         - Override path for testing (default kaptainpm/final/KaptainPM.yaml)
+#
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# shellcheck source=src/scripts/defaults/platform.bash
+source "${SCRIPT_DIR}/../defaults/platform.bash"
+# shellcheck source=src/scripts/lib/log.bash
+source "${SCRIPT_DIR}/../lib/log.bash"
+# shellcheck source=src/scripts/defaults/output-sub-path.bash
+source "${SCRIPT_DIR}/../defaults/output-sub-path.bash"
+# shellcheck source=src/scripts/defaults/manifests-sub-path.bash
+source "${SCRIPT_DIR}/../defaults/manifests-sub-path.bash"
+# shellcheck source=src/scripts/defaults/templates-layout.bash
+source "${SCRIPT_DIR}/../defaults/templates-layout.bash"
+# shellcheck source=src/scripts/defaults/tokens.bash
+source "${SCRIPT_DIR}/../defaults/tokens.bash"
+# shellcheck source=src/scripts/lib/output-var.bash
+source "${SCRIPT_DIR}/../lib/output-var.bash"
+# shellcheck source=src/scripts/lib/token-format.bash
+source "${SCRIPT_DIR}/../lib/token-format.bash"
+# content-resolve owns its dir layout based on CONTENT_FLAVOUR; set before sourcing.
+export CONTENT_FLAVOUR=templates
+# shellcheck source=src/scripts/lib/content-resolve.bash
+source "${SCRIPT_DIR}/../lib/content-resolve.bash"
+# shellcheck source=src/scripts/lib/bundle-import.bash
+source "${SCRIPT_DIR}/../lib/bundle-import.bash"
+
+PROJECT_NAME="${PROJECT_NAME:?PROJECT_NAME is required}"
+KAPTAINPM_FILE="${KAPTAINPM_FILE:-kaptainpm/final/KaptainPM.yaml}"
+
+PRODUCTS_IN_TEMPLATES_MESSAGE="Including a product as a template does not make sense.
+Templates are reusable manifest bases meant to be aggregated by an app or
+bundle build; products are deployable units. Use an app or bundle instead."
+
+LINEAGE_FILENAMES=(
+  "kaptain-app-lineage-data.yaml"
+  "kaptain-bundle-lineage-data.yaml"
+  "kaptain-product-lineage-data.yaml"
+)
+
+# Reject any template entry whose repo name starts with product- or ends with
+# -product. Mirrors the symmetric block in kubernetes-product-aggregate
+# (products-in-products).
+assert_no_products_in_templates() {
+  local kaptainpm_file="$1"
+  local entries
+  entries=$(yq eval '.spec.templates[]' "${kaptainpm_file}" 2>/dev/null || true)
+  [[ -z "${entries}" || "${entries}" == "null" ]] && return 0
+
+  local entry last repo
+  while IFS= read -r entry; do
+    [[ -z "${entry}" ]] && continue
+    last="${entry##*/}"
+    repo="${last%%:*}"
+    case "${repo}" in
+      product-*|*-product)
+        log_error "${PRODUCTS_IN_TEMPLATES_MESSAGE}"
+        log_error "Offending entry: ${entry}"
+        return 1
+        ;;
+    esac
+  done <<< "${entries}"
+}
+
+# Flat-mode helper: for each bundle subdir under <intermediate>, find any
+# lineage-data CM file by reserved name and cp it (verbatim) into
+# LINEAGE_DATA_DIR renamed with the bundle prefix. Remove the source from the
+# intermediate so it does not also flatten as a regular manifest. Cross-bundle
+# collisions on the same prefixed name fail.
+lift_lineage_files() {
+  local intermediate_dir="$1"
+  mkdir -p "${LINEAGE_DATA_DIR}"
+
+  local bundle_dir bundle name file target
+  for bundle_dir in "${intermediate_dir}"/*; do
+    [[ -d "${bundle_dir}" ]] || continue
+    bundle=$(basename "${bundle_dir}")
+    for name in "${LINEAGE_FILENAMES[@]}"; do
+      while IFS= read -r -d '' file; do
+        target="${LINEAGE_DATA_DIR}/${bundle}-${name}"
+        if [[ -e "${target}" ]]; then
+          log_error "Lineage file collision lifting ${file}"
+          log_error "Target already exists: ${target}"
+          return 1
+        fi
+        cp "${file}" "${target}"
+        rm "${file}"
+        log "Lifted lineage: ${file#"${intermediate_dir}/"} -> ${target#"${LINEAGE_DATA_DIR}/"}"
+      done < <(find "${bundle_dir}" -type f -name "${name}" -print0)
+    done
+  done
+}
+
+# Flat-mode helper: walk <intermediate>/<bundle>/<rel> and copy each remaining
+# file to ${MANIFESTS_ADDITIONAL_SUB_PATH}/<rel>. Strips the per-bundle subdir.
+# Collisions across bundles, against prior import passes, or against the
+# parent's local manifests already staged by package-prepare fail with
+# diagnostics.
+flatten_to_additional() {
+  local intermediate_dir="$1"
+  local target_root="${MANIFESTS_ADDITIONAL_SUB_PATH}"
+  mkdir -p "${target_root}"
+
+  local file rest rel target_path
+  while IFS= read -r -d '' file; do
+    rest="${file#"${intermediate_dir}/"}"
+    rel="${rest#*/}"
+    target_path="${target_root}/${rel}"
+    if [[ -e "${target_path}" ]]; then
+      log_error "Flat-mode templates import: file collision at ${target_path}"
+      log_error "Source: ${file}"
+      log_error "Two templates contributed the same manifest path, or the path collides with a sibling import pass."
+      return 1
+    fi
+    mkdir -p "$(dirname "${target_path}")"
+    cp "${file}" "${target_path}"
+  done < <(find "${intermediate_dir}" -type f -print0)
+}
+
+main() {
+  log "=== Kubernetes Templates Import ==="
+  log "Project: ${PROJECT_NAME}"
+  log "Layout: ${TEMPLATES_LAYOUT}"
+  log "KaptainPM: ${KAPTAINPM_FILE}"
+  log "Output: ${OUTPUT_SUB_PATH}"
+  log "Token scheme: ${TOKEN_DELIMITER_STYLE}-${TOKEN_NAME_STYLE}"
+  log "==================================="
+
+  if [[ ! -f "${KAPTAINPM_FILE}" ]]; then
+    log_error "KaptainPM file not found: ${KAPTAINPM_FILE}"
+    exit 1
+  fi
+
+  assert_no_products_in_templates "${KAPTAINPM_FILE}"
+
+  log ""
+  log "Resolving spec.templates..."
+  log ""
+  content_resolve_all "${KAPTAINPM_FILE}"
+
+  # Honour ENV_BUILD_SECTION the same way kubernetes-lineage-data-generate does
+  # so flat-mode lifting lands in the dir lineage-data-generate will later look
+  # at. Empty in app/bundle builds; set for env/rp builds (not wired yet).
+  local lineage_base="${OUTPUT_SUB_PATH}/lineage-data"
+  if [[ -n "${ENV_BUILD_SECTION:-}" ]]; then
+    lineage_base="${lineage_base}/${ENV_BUILD_SECTION}"
+  fi
+  LINEAGE_DATA_DIR="${lineage_base}/data-files"
+
+  case "${TEMPLATES_LAYOUT}" in
+    flat)
+      local intermediate_dir="${OUTPUT_SUB_PATH}/templates-import/staging"
+      rm -rf "${intermediate_dir}"
+      mkdir -p "${intermediate_dir}"
+      log ""
+      log "Importing bundles into intermediate dir: ${intermediate_dir}"
+      bundle_import_all "${intermediate_dir}"
+
+      log ""
+      log "Lifting per-template lineage CMs into ${LINEAGE_DATA_DIR}..."
+      lift_lineage_files "${intermediate_dir}"
+
+      log ""
+      log "Flattening templates into ${MANIFESTS_ADDITIONAL_SUB_PATH}..."
+      flatten_to_additional "${intermediate_dir}"
+      ;;
+    hierarchy)
+      log ""
+      log "Importing bundles into ${MANIFESTS_ADDITIONAL_SUB_PATH} (per-bundle subdirs)..."
+      bundle_import_all
+      ;;
+    *)
+      log_error "Invalid TEMPLATES_LAYOUT='${TEMPLATES_LAYOUT}' (expected flat or hierarchy)"
+      exit 1
+      ;;
+  esac
+
+  output_var "TEMPLATES_LIST_FILE" "${CONTENT_LIST_FILE}"
+
+  log ""
+  log "=== Templates Import Complete ==="
+}
+
+main "$@"

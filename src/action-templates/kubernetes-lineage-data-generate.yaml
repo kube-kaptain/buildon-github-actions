@@ -1,0 +1,60 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
+
+name: 'Kubernetes Lineage Data Generate'
+description: 'Emits the build''s lineage data ConfigMap (presence + lineage record) into the substituted manifests tree. Generic across product, app, bundle, and env/rp builds, dispatched by build-kind (plus env-build-section for env/rp).'
+
+inputs:
+  # INJECT-INPUT: output-sub-path
+  # INJECT-INPUT: token-substitution
+
+  # Action-specific inputs
+  project-name:
+    description: 'Project name'
+    required: true
+  version:
+    description: 'Version'
+    required: true
+  build-kind:
+    description: 'Build kind, one of kubernetes-product-aggregate, kubernetes-app-*, kubernetes-bundle-*, kubernetes-run-environment, kubernetes-run-platform-meta-environment'
+    required: true
+  env-build-section:
+    description: 'Required for env/rp builds (kubernetes-run-environment: app|env; kubernetes-run-platform-meta-environment: app|rp). Selects which of the two lineage runs this is. Must be empty for product/app/bundle builds.'
+    required: false
+    default: ''
+  product-name:
+    description: 'Product name (PROJECT_NAME verbatim). Required for product builds, ignored otherwise.'
+    required: false
+    default: ''
+  product-short-name:
+    description: 'Product short name (PROJECT_NAME with product- prefix or -product suffix stripped). Required for product builds, ignored otherwise.'
+    required: false
+    default: ''
+  git-sha:
+    description: 'Git SHA for the kaptain.org/git-sha annotation (optional)'
+    required: false
+    default: ''
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Generate lineage data ConfigMap
+      id: lineage-data
+      shell: bash
+      env:
+        BUILD_MODE: build_server
+        BUILD_PLATFORM: github-actions
+        BUILD_PLATFORM_LOG_PROVIDER: github-actions
+        PROJECT_NAME: ${{ inputs.project-name }}
+        VERSION: ${{ inputs.version }}
+        BUILD_KIND: ${{ inputs.build-kind }}
+        ENV_BUILD_SECTION: ${{ inputs.env-build-section }}
+        PRODUCT_NAME: ${{ inputs.product-name }}
+        PRODUCT_SHORT_NAME: ${{ inputs.product-short-name }}
+        GIT_SHA: ${{ inputs.git-sha }}
+        OUTPUT_SUB_PATH: ${{ inputs.output-sub-path }}
+        TOKEN_DELIMITER_STYLE: ${{ inputs.token-delimiter-style }}
+        TOKEN_NAME_STYLE: ${{ inputs.token-name-style }}
+        CONFIG_VALUE_TRAILING_NEWLINE: ${{ inputs.config-value-trailing-newline }}
+        TOKEN_SUBSTITUTION_PASSES: ${{ inputs.token-substitution-passes }}
+      run: "${{ github.action_path }}/../../scripts/main/kubernetes-lineage-data-generate"

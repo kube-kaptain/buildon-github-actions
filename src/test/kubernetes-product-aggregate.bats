@@ -8,6 +8,8 @@
 # staging via mocked OCI fetches, per-bundle scheme conversion routing, and
 # cross-bundle defaults conflict detection / merge.
 
+bats_require_minimum_version 1.5.0
+
 load helpers
 
 SCRIPT="$SCRIPTS_DIR/kubernetes-product-aggregate"
@@ -169,42 +171,17 @@ run_script() {
   : "${OUTPUT_SUB_PATH:=kaptain-out}"
   : "${TOKEN_DELIMITER_STYLE:=shell}"
   : "${TOKEN_NAME_STYLE:=PascalCase}"
-  : "${DEFAULTS_SUB_PATH:=src/defaults}"
-  : "${MANIFESTS_SUB_PATH:=src/kubernetes}"
-  : "${PRODUCT_ALLOW_LOCAL_DEFAULTS_OVERRIDE:=false}"
-  : "${PRODUCT_ALLOW_LOCAL_MANIFESTS_OVERRIDE:=false}"
   run env \
     PROJECT_NAME="${PROJECT_NAME}" \
     OUTPUT_SUB_PATH="${OUTPUT_SUB_PATH}" \
     TOKEN_DELIMITER_STYLE="${TOKEN_DELIMITER_STYLE}" \
     TOKEN_NAME_STYLE="${TOKEN_NAME_STYLE}" \
-    DEFAULTS_SUB_PATH="${DEFAULTS_SUB_PATH}" \
-    MANIFESTS_SUB_PATH="${MANIFESTS_SUB_PATH}" \
-    PRODUCT_ALLOW_LOCAL_DEFAULTS_OVERRIDE="${PRODUCT_ALLOW_LOCAL_DEFAULTS_OVERRIDE}" \
-    PRODUCT_ALLOW_LOCAL_MANIFESTS_OVERRIDE="${PRODUCT_ALLOW_LOCAL_MANIFESTS_OVERRIDE}" \
     BUILD_PLATFORM=test \
     GITHUB_OUTPUT="${GITHUB_OUTPUT}" \
     KAPTAINPM_FILE="${TEST_DIR}/kaptainpm/final/KaptainPM.yaml" \
     _CONTENT_RESOLVE_UTIL_DIR="${MOCK_UTIL_DIR:-}" \
     MOCK_OCI_DIR="${MOCK_OCI_DIR:-}" \
     bash -c "cd '${TEST_DIR}' && '${SCRIPT}'"
-}
-
-# Write a local product defaults file at <TEST_DIR>/src/defaults/<token>.
-write_local_default() {
-  local token="$1"
-  local value="$2"
-  mkdir -p "${TEST_DIR}/src/defaults"
-  printf '%s' "${value}" > "${TEST_DIR}/src/defaults/${token}"
-}
-
-# Write a local product manifest file at <TEST_DIR>/src/kubernetes/<rel>.
-write_local_manifest() {
-  local rel="$1"
-  local content="$2"
-  local target="${TEST_DIR}/src/kubernetes/${rel}"
-  mkdir -p "$(dirname "${target}")"
-  printf '%s' "${content}" > "${target}"
 }
 
 github_output_value() {
@@ -289,7 +266,7 @@ github_output_value() {
   write_pm "alpha:1.0" "alpha:2.0"
   run_script
   [ "${status}" -ne 0 ]
-  assert_output_contains "Product spec.contents contains duplicate"
+  assert_output_contains "spec.contents contains duplicate"
   assert_output_contains "alpha"
 }
 
@@ -298,7 +275,7 @@ github_output_value() {
   write_pm "ghcr.io/org-a/alpha:1.0" "ghcr.io/org-b/alpha:2.0"
   run_script
   [ "${status}" -ne 0 ]
-  assert_output_contains "Product spec.contents contains duplicate"
+  assert_output_contains "spec.contents contains duplicate"
   assert_output_contains "alpha"
 }
 
@@ -319,17 +296,16 @@ github_output_value() {
 # End-to-end staging
 # =============================================================================
 
-@test "end-to-end: stages a single bundle and emits MANIFESTS_SUB_PATH + DEFAULTS_SUB_PATH" {
+@test "end-to-end: stages a single bundle into additional-manifests + additional-defaults" {
   setup_mock_oci
   stage_oci_fixture "alpha:1.0-manifests" "alpha" shell PascalCase "Replicas=2"
   write_pm "alpha:1.0"
   run_script
   [ "${status}" -eq 0 ]
   [ -f "${TEST_DIR}/kaptain-out/content/manifests/alpha/deployment.yaml" ]
-  [ -f "${TEST_DIR}/kaptain-out/product-aggregate/defaults-merged/Replicas" ]
-  [ "$(cat "${TEST_DIR}/kaptain-out/product-aggregate/defaults-merged/Replicas")" = "2" ]
-  [ "$(github_output_value MANIFESTS_SUB_PATH)" = "kaptain-out/product-aggregate/manifests-normalised" ]
-  [ "$(github_output_value DEFAULTS_SUB_PATH)" = "kaptain-out/product-aggregate/defaults-merged" ]
+  [ -f "${TEST_DIR}/kaptain-out/manifests/additional-defaults/Replicas" ]
+  [ "$(cat "${TEST_DIR}/kaptain-out/manifests/additional-defaults/Replicas")" = "2" ]
+  [ -f "${TEST_DIR}/kaptain-out/manifests/additional-manifests/alpha/deployment.yaml" ]
 }
 
 @test "end-to-end: stages two bundles into sibling subdirs" {
@@ -341,8 +317,8 @@ github_output_value() {
   [ "${status}" -eq 0 ]
   [ -f "${TEST_DIR}/kaptain-out/content/manifests/alpha/deployment.yaml" ]
   [ -f "${TEST_DIR}/kaptain-out/content/manifests/beta/deployment.yaml" ]
-  [ -f "${TEST_DIR}/kaptain-out/product-aggregate/defaults-merged/Replicas" ]
-  [ -f "${TEST_DIR}/kaptain-out/product-aggregate/defaults-merged/MaxHeapSize" ]
+  [ -f "${TEST_DIR}/kaptain-out/manifests/additional-defaults/Replicas" ]
+  [ -f "${TEST_DIR}/kaptain-out/manifests/additional-defaults/MaxHeapSize" ]
 }
 
 @test "end-to-end: leaves audit trail under content/extract and content/unzipped" {
@@ -384,8 +360,8 @@ github_output_value() {
   write_pm "alpha:1.0" "beta:2.0"
   run_script
   [ "${status}" -eq 0 ]
-  [ -f "${TEST_DIR}/kaptain-out/product-aggregate/defaults-merged/Replicas" ]
-  [ "$(cat "${TEST_DIR}/kaptain-out/product-aggregate/defaults-merged/Replicas")" = "2" ]
+  [ -f "${TEST_DIR}/kaptain-out/manifests/additional-defaults/Replicas" ]
+  [ "$(cat "${TEST_DIR}/kaptain-out/manifests/additional-defaults/Replicas")" = "2" ]
 }
 
 @test "defaults: differing values across bundles fails with diagnostic" {
@@ -442,8 +418,8 @@ EOF
   run_script
   [ "${status}" -eq 0 ]
   # Bundle's manifest should now use shell-style ${Replicas}, not {{Replicas}}.
-  grep -q '\${Replicas}' "${TEST_DIR}/kaptain-out/product-aggregate/manifests-normalised/alpha/deployment.yaml"
-  ! grep -q '{{ Replicas }}' "${TEST_DIR}/kaptain-out/product-aggregate/manifests-normalised/alpha/deployment.yaml"
+  grep -q '\${Replicas}' "${TEST_DIR}/kaptain-out/manifests/additional-manifests/alpha/deployment.yaml"
+  ! grep -q '{{ Replicas }}' "${TEST_DIR}/kaptain-out/manifests/additional-manifests/alpha/deployment.yaml"
 }
 
 @test "scheme: bundle missing contract.yaml fails the build" {
@@ -460,42 +436,6 @@ EOF
 }
 
 # =============================================================================
-# Local defaults merge (src/defaults + override flag)
-# =============================================================================
-
-@test "local-defaults: token only in src/defaults is included in merged output" {
-  setup_mock_oci
-  stage_oci_fixture "alpha:1.0-manifests" "alpha" shell PascalCase "Replicas=2"
-  write_local_default "LocalOnly" "hello"
-  write_pm "alpha:1.0"
-  run_script
-  [ "${status}" -eq 0 ]
-  [ -f "${TEST_DIR}/kaptain-out/product-aggregate/defaults-merged/LocalOnly" ]
-  [ "$(cat "${TEST_DIR}/kaptain-out/product-aggregate/defaults-merged/LocalOnly")" = "hello" ]
-}
-
-@test "local-defaults: identical to bundle default is fine (no override needed)" {
-  setup_mock_oci
-  stage_oci_fixture "alpha:1.0-manifests" "alpha" shell PascalCase "Replicas=2"
-  write_local_default "Replicas" "2"
-  write_pm "alpha:1.0"
-  run_script
-  [ "${status}" -eq 0 ]
-  [ "$(cat "${TEST_DIR}/kaptain-out/product-aggregate/defaults-merged/Replicas")" = "2" ]
-}
-
-@test "local-defaults: differing from bundle with override=false fails with hint" {
-  setup_mock_oci
-  stage_oci_fixture "alpha:1.0-manifests" "alpha" shell PascalCase "Replicas=2"
-  write_local_default "Replicas" "5"
-  write_pm "alpha:1.0"
-  PRODUCT_ALLOW_LOCAL_DEFAULTS_OVERRIDE=false run_script
-  [ "${status}" -ne 0 ]
-  assert_output_contains "Default value collision for token 'Replicas'"
-  assert_output_contains "allowLocalDefaultsOverride: true"
-}
-
-# =============================================================================
 # Contents list for GitHub release notes
 # =============================================================================
 
@@ -506,9 +446,9 @@ EOF
   write_pm "alpha:1.0" "ghcr.io/org/sub/beta:2.0"
   run_script
   [ "${status}" -eq 0 ]
-  local list="${TEST_DIR}/kaptain-out/product-aggregate/contents-list.md"
+  local list="${TEST_DIR}/kaptain-out/content/contents.yaml"
   [ -f "${list}" ]
-  [ "$(github_output_value PRODUCT_CONTENTS_FILE)" = "kaptain-out/product-aggregate/contents-list.md" ]
+  [ "$(github_output_value PRODUCT_CONTENTS_FILE)" = "kaptain-out/content/contents.yaml" ]
   grep -qx -- "- alpha:1.0" "${list}"
   grep -qx -- "- ghcr.io/org/sub/beta:2.0" "${list}"
 }
@@ -518,95 +458,9 @@ EOF
   write_pm
   run_script
   [ "${status}" -eq 0 ]
-  local list="${TEST_DIR}/kaptain-out/product-aggregate/contents-list.md"
+  local list="${TEST_DIR}/kaptain-out/content/contents.yaml"
   [ -f "${list}" ]
   [ ! -s "${list}" ]
-}
-
-@test "local-defaults: differing from bundle with override=true wins and warns" {
-  setup_mock_oci
-  stage_oci_fixture "alpha:1.0-manifests" "alpha" shell PascalCase "Replicas=2"
-  write_local_default "Replicas" "5"
-  write_pm "alpha:1.0"
-  PRODUCT_ALLOW_LOCAL_DEFAULTS_OVERRIDE=true run_script
-  [ "${status}" -eq 0 ]
-  [ "$(cat "${TEST_DIR}/kaptain-out/product-aggregate/defaults-merged/Replicas")" = "5" ]
-  assert_output_contains "WARN: local default 'Replicas' overrides"
-}
-
-# =============================================================================
-# Local manifests merge (src/kubernetes + override flag) and reserved-filename squat
-# =============================================================================
-
-@test "local-manifests: standalone manifest is included in assembled tree" {
-  setup_mock_oci
-  stage_oci_fixture "alpha:1.0-manifests" "alpha" shell PascalCase "Replicas=2"
-  write_local_manifest "standalone-cm.yaml" $'apiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: standalone\n'
-  write_pm "alpha:1.0"
-  run_script
-  [ "${status}" -eq 0 ]
-  [ -f "${TEST_DIR}/kaptain-out/product-aggregate/manifests-normalised/standalone-cm.yaml" ]
-  [ -f "${TEST_DIR}/kaptain-out/product-aggregate/manifests-normalised/alpha/deployment.yaml" ]
-}
-
-@test "local-manifests: collides with bundle path with override=false fails" {
-  setup_mock_oci
-  stage_oci_fixture "alpha:1.0-manifests" "alpha" shell PascalCase "Replicas=2"
-  write_local_manifest "alpha/deployment.yaml" $'overridden\n'
-  write_pm "alpha:1.0"
-  PRODUCT_ALLOW_LOCAL_MANIFESTS_OVERRIDE=false run_script
-  [ "${status}" -ne 0 ]
-  assert_output_contains "Manifest path collision for 'alpha/deployment.yaml'"
-  assert_output_contains "allowLocalManifestsOverride: true"
-}
-
-@test "local-manifests: collides with bundle path with override=true wins and warns" {
-  setup_mock_oci
-  stage_oci_fixture "alpha:1.0-manifests" "alpha" shell PascalCase "Replicas=2"
-  write_local_manifest "alpha/deployment.yaml" $'overridden\n'
-  write_pm "alpha:1.0"
-  PRODUCT_ALLOW_LOCAL_MANIFESTS_OVERRIDE=true run_script
-  [ "${status}" -eq 0 ]
-  [ "$(cat "${TEST_DIR}/kaptain-out/product-aggregate/manifests-normalised/alpha/deployment.yaml")" = "overridden" ]
-  assert_output_contains "WARN: local manifest 'alpha/deployment.yaml' overrides"
-}
-
-@test "squat: local kaptain-product-lineage-data.yaml fails the build" {
-  setup_mock_oci
-  stage_oci_fixture "alpha:1.0-manifests" "alpha" shell PascalCase "Replicas=2"
-  write_local_manifest "kaptain-product-lineage-data.yaml" $'fake\n'
-  write_pm "alpha:1.0"
-  run_script
-  [ "${status}" -ne 0 ]
-  assert_output_contains "Reserved filename 'kaptain-product-lineage-data.yaml'"
-  assert_output_contains "local:"
-}
-
-@test "squat: bundle shipping kaptain-product-lineage-data.yaml fails the build" {
-  setup_mock_oci
-  local key
-  key=$(echo "alpha:1.0-manifests" | tr '/:' '__')
-  mkdir -p "${MOCK_OCI_DIR}/${key}"
-  local stage="${TEST_DIR}/_stage-alpha-squat"
-  mkdir -p "${stage}/alpha"
-  cat > "${stage}/alpha/deployment.yaml" << 'EOF'
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: alpha
-spec:
-  replicas: ${Replicas}
-EOF
-  printf 'fake\n' > "${stage}/alpha/kaptain-product-lineage-data.yaml"
-  ( cd "${stage}" && zip -qr "${MOCK_OCI_DIR}/${key}/alpha-1.0-manifests.zip" alpha )
-  rm -rf "${stage}"
-  make_contract_zip "${MOCK_OCI_DIR}/${key}/alpha-1.0-contract.zip" \
-    shell PascalCase "Replicas=2"
-  write_pm "alpha:1.0"
-  run_script
-  [ "${status}" -ne 0 ]
-  assert_output_contains "Reserved filename 'kaptain-product-lineage-data.yaml'"
-  assert_output_contains "bundle:"
 }
 
 teardown() {

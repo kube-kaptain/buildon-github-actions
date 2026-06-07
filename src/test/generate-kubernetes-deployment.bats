@@ -4,6 +4,8 @@
 #
 # Tests for generate-kubernetes-workload-deployment
 
+bats_require_minimum_version 1.5.0
+
 load helpers
 
 setup() {
@@ -144,7 +146,7 @@ read_manifest_with_suffix() {
   assert_contains "$manifest" "drop:"
   assert_contains "$manifest" "- ALL"
   # seccompProfile omitted by default (DISABLED)
-  [[ "$manifest" != *"seccompProfile:"* ]]
+  [[ "$manifest" != *"seccompProfile:"* ]] || return 1
 }
 
 @test "includes seccomp profile when configured" {
@@ -203,7 +205,7 @@ read_manifest_with_suffix() {
   assert_contains "$manifest" "limits:"
   # Check that limits section only has memory (no cpu: line)
   limits_section=$(echo "$manifest" | grep -A5 "limits:")
-  [[ "$limits_section" != *"cpu:"* ]]
+  [[ "$limits_section" != *"cpu:"* ]] || return 1
 }
 
 @test "includes CPU limit when configured" {
@@ -235,7 +237,7 @@ read_manifest_with_suffix() {
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
-  [[ "$manifest" != *"replicas:"* ]]
+  [[ "$manifest" != *"replicas:"* ]] || return 1
 }
 
 @test "generates revision history limit" {
@@ -251,7 +253,7 @@ read_manifest_with_suffix() {
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
-  [[ "$manifest" != *"minReadySeconds:"* ]]
+  [[ "$manifest" != *"minReadySeconds:"* ]] || return 1
 }
 
 @test "includes minReadySeconds when non-zero" {
@@ -376,8 +378,8 @@ read_manifest_with_suffix() {
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
-  [[ "$manifest" != *"lifecycle:"* ]]
-  [[ "$manifest" != *"preStop:"* ]]
+  [[ "$manifest" != *"lifecycle:"* ]] || return 1
+  [[ "$manifest" != *"preStop:"* ]] || return 1
 }
 
 @test "includes preStop hook when configured" {
@@ -416,7 +418,7 @@ read_manifest_with_suffix() {
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
-  [[ "$manifest" != *"affinity:"* ]]
+  [[ "$manifest" != *"affinity:"* ]] || return 1
 }
 
 @test "rejects unknown affinity strategy" {
@@ -477,7 +479,7 @@ read_manifest_with_suffix() {
   manifest=$(read_manifest_with_suffix "cache")
   # Selector matchLabels should use full name
   assert_contains "$manifest" "matchLabels:"
-  [[ "$manifest" == *"selector:"*"matchLabels:"*'app: ${ProjectName}-cache'* ]]
+  [[ "$manifest" == *"selector:"*"matchLabels:"*'app: ${ProjectName}-cache'* ]] || return 1
 }
 
 @test "kaptain.org/project-name annotation uses only project name" {
@@ -491,7 +493,7 @@ read_manifest_with_suffix() {
   # kaptain.org/project-name should NOT include suffix/path
   assert_contains "$manifest" 'kaptain.org/project-name: ${ProjectName}'
   # But should NOT contain the full path in this annotation
-  [[ "$manifest" != *'kaptain.org/project-name: ${ProjectName}-backend'* ]]
+  [[ "$manifest" != *'kaptain.org/project-name: ${ProjectName}-backend'* ]] || return 1
 }
 
 @test "affinity uses full resource name with suffix" {
@@ -503,7 +505,7 @@ read_manifest_with_suffix() {
   manifest=$(read_manifest_with_suffix "cache")
   # Affinity matchLabels should use full name
   assert_contains "$manifest" "podAntiAffinity:"
-  [[ "$manifest" == *"affinity:"*"matchLabels:"*'app: ${ProjectName}-cache'* ]]
+  [[ "$manifest" == *"affinity:"*"matchLabels:"*'app: ${ProjectName}-cache'* ]] || return 1
 }
 
 # =============================================================================
@@ -629,8 +631,8 @@ read_manifest_with_suffix() {
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
-  [[ "$manifest" != *"volumeMounts:"* ]]
-  [[ "$manifest" != *"volumes:"* ]] || [[ "$manifest" == *"volumes:"*"imagePullSecrets:"* ]]
+  [[ "$manifest" != *"volumeMounts:"* ]] || return 1
+  [[ "$manifest" != *"volumes:"* ]] || [[ "$manifest" == *"volumes:"*"imagePullSecrets:"* ]] || return 1
 }
 
 # =============================================================================
@@ -660,7 +662,7 @@ read_manifest_with_suffix() {
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
-  [[ "$manifest" != *"env:"* ]] || [[ "$manifest" == *"env:"*"volumeMounts:"* ]]
+  [[ "$manifest" != *"env:"* ]] || [[ "$manifest" == *"env:"*"volumeMounts:"* ]] || return 1
 }
 
 # =============================================================================
@@ -778,7 +780,7 @@ read_manifest_with_suffix() {
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
-  [[ "$manifest" != *"tolerations:"* ]]
+  [[ "$manifest" != *"tolerations:"* ]] || return 1
 }
 
 @test "supports tolerations JSON" {
@@ -816,7 +818,7 @@ read_manifest_with_suffix() {
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
-  [[ "$manifest" != *"command:"* ]]
+  [[ "$manifest" != *"command:"* ]] || return 1
 }
 
 @test "includes command when set" {
@@ -836,7 +838,7 @@ read_manifest_with_suffix() {
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
-  [[ "$manifest" != *"args:"* ]]
+  [[ "$manifest" != *"args:"* ]] || return 1
 }
 
 @test "includes args when set" {

@@ -456,6 +456,7 @@ verify_action_template_env_mappings() {
   # Computed vars from defaults files - not wired via action inputs
   local computed_vars="DOCKER_CONTEXT_SUB_PATH DOCKER_CONTEXT_SUB_PATH_LINUX_AMD64 DOCKER_CONTEXT_SUB_PATH_LINUX_ARM64"
   computed_vars="$computed_vars MANIFESTS_COMBINED_SUB_PATH MANIFESTS_CONFIG_SUB_PATH MANIFESTS_SUBSTITUTED_SUB_PATH MANIFESTS_ZIP_SUB_PATH"
+  computed_vars="$computed_vars MANIFESTS_DEFAULTS_SUB_PATH MANIFESTS_ADDITIONAL_DEFAULTS_SUB_PATH MANIFESTS_ADDITIONAL_SUB_PATH"
 
   local missing=""
   while IFS= read -r export_var; do

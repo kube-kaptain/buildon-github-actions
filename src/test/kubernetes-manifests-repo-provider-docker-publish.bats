@@ -6,6 +6,8 @@
 # This script is now a no-op - actual push handled by docker-push-all.
 # Kept for repo provider plugin interface compatibility.
 
+bats_require_minimum_version 1.5.0
+
 load helpers
 
 setup() {
