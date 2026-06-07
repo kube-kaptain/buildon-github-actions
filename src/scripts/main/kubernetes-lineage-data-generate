@@ -359,7 +359,7 @@ main() {
   log "Asserting no squat on reserved filename '${LINEAGE_FILENAME}'..."
   assert_no_squat
 
-  rm -rf "${LINEAGE_DATA_DIR}" "${GENERATED_CONFIGMAP_BASE}" "${SCRATCH_DIR}"
+  rm -rf "${GENERATED_CONFIGMAP_BASE}" "${SCRATCH_DIR}"
   mkdir -p "${LINEAGE_DATA_DIR}" "${SCRATCH_DIR}"
 
   log ""
