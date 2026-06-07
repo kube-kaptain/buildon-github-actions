@@ -51,6 +51,10 @@ spec:
 EOF
 
   mkdir -p "${out}/content"
+  cat > "${out}/content/contents.yaml" << 'EOF'
+- alpha:1.0
+- beta:2.0
+EOF
   cat > "${out}/content/contents-resolved.yaml" << 'EOF'
 - ghcr.io/org/alpha:1.0.0-manifests
 - ghcr.io/org/beta:2.0.0-manifests
@@ -59,8 +63,10 @@ EOF
   stage_tokens_and_substituted_tree "product-foo"
 }
 
-# Stage a typical app or bundle build. spec.templates is required for both;
-# templates-resolved.yaml is staged optionally (the resolve step is future work).
+# Stage a typical app or bundle build. spec.templates is staged via the
+# templates content-resolve pass (templates.yaml, optionally
+# templates-resolved.yaml). Both are currently soft-fail in lineage; the
+# fixture stages templates.yaml so the lineage CM has a populated data key.
 stage_app_or_bundle_preconditions() {
   local project="$1"
   local out="${TEST_DIR}/kaptain-out"
@@ -77,6 +83,12 @@ spec:
   templates:
     - upstream/base:7.0
     - upstream/extras:7.0
+EOF
+
+  mkdir -p "${out}/templates"
+  cat > "${out}/templates/templates.yaml" << 'EOF'
+- upstream/base:7.0
+- upstream/extras:7.0
 EOF
 
   stage_tokens_and_substituted_tree "${project}"
@@ -507,6 +519,15 @@ EOF
   run_script
   [ "${status}" -ne 0 ]
   assert_output_contains "Resolved-contents file not found"
+  assert_output_contains "kubernetes-product-aggregate"
+}
+
+@test "validation (product): missing contents.yaml fails with diagnostic" {
+  stage_product_preconditions
+  rm -f "${TEST_DIR}/kaptain-out/content/contents.yaml"
+  run_script
+  [ "${status}" -ne 0 ]
+  assert_output_contains "Contents list file not found"
   assert_output_contains "kubernetes-product-aggregate"
 }
 

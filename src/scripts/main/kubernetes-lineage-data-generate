@@ -247,25 +247,39 @@ build_resources_inventory() {
   done < <(LC_ALL=C sort "${entries_tmp}")
 }
 
-# Write the spec.contents node from KaptainPM verbatim. Even an empty/null
-# .spec.contents emits a file so the CM data key exists for products.
+# Copy the contents.yaml and contents-resolved.yaml files written by
+# kubernetes-product-aggregate's content-resolve pass. Both required for
+# product builds; missing means content-resolve did not run.
 assemble_product() {
-  yq eval '.spec.contents' "${KAPTAINPM_FILE}" > "${LINEAGE_DATA_DIR}/contents.yaml"
+  local list="${OUTPUT_SUB_PATH}/content/contents.yaml"
   local resolved="${OUTPUT_SUB_PATH}/content/contents-resolved.yaml"
+  if [[ ! -f "${list}" ]]; then
+    log_error "Contents list file not found: ${list}"
+    log_error "Did kubernetes-product-aggregate run first?"
+    exit 1
+  fi
   if [[ ! -f "${resolved}" ]]; then
     log_error "Resolved-contents file not found: ${resolved}"
     log_error "Did kubernetes-product-aggregate run first?"
     exit 1
   fi
+  cp "${list}" "${LINEAGE_DATA_DIR}/contents.yaml"
   cp "${resolved}" "${LINEAGE_DATA_DIR}/contents-resolved.yaml"
 }
 
-# App and bundle write spec.templates verbatim (required) and optionally
-# templates-resolved.yaml from a known path. The resolve step that writes
-# templates-resolved.yaml does not yet exist; absent is fine for now.
+# App and bundle copy templates.yaml and templates-resolved.yaml from the
+# content-resolve templates pass. The templates-resolve step is not yet wired
+# into app/bundle workflows; for now both files are optional with warn+skip.
+# TODO: once templates-resolve runs in app/bundle workflows, tighten to
+# hard-fail (same shape as assemble_product).
 assemble_app_or_bundle() {
-  yq eval '.spec.templates' "${KAPTAINPM_FILE}" > "${LINEAGE_DATA_DIR}/templates.yaml"
+  local list="${OUTPUT_SUB_PATH}/templates/templates.yaml"
   local resolved="${OUTPUT_SUB_PATH}/templates/templates-resolved.yaml"
+  if [[ -f "${list}" ]]; then
+    cp "${list}" "${LINEAGE_DATA_DIR}/templates.yaml"
+  else
+    log "  templates.yaml not present at ${list} (templates-resolve step not run); skipping data key"
+  fi
   if [[ -f "${resolved}" ]]; then
     cp "${resolved}" "${LINEAGE_DATA_DIR}/templates-resolved.yaml"
   else
@@ -431,12 +445,18 @@ main() {
     additional_annotations="kaptain.org/git-sha=${GIT_SHA}"
   fi
 
+  # Pre-compute the PRODUCT_NAME/PRODUCT_SHORT_NAME fallbacks so the inline env
+  # assignments below don't reference an env var being assigned on the same
+  # command line (shellcheck SC2097/SC2098 false alarm).
+  local product_name_for_cm="${PRODUCT_NAME:-${PROJECT_NAME}}"
+  local product_short_name_for_cm="${PRODUCT_SHORT_NAME:-${PROJECT_NAME}}"
+
   log ""
   log "Generating lineage data ConfigMap..."
   PROJECT_NAME="${PROJECT_NAME}" \
   VERSION="${VERSION}" \
-  PRODUCT_NAME="${PRODUCT_NAME:-${PROJECT_NAME}}" \
-  PRODUCT_SHORT_NAME="${PRODUCT_SHORT_NAME:-${PROJECT_NAME}}" \
+  PRODUCT_NAME="${product_name_for_cm}" \
+  PRODUCT_SHORT_NAME="${product_short_name_for_cm}" \
   TOKEN_DELIMITER_STYLE="${TOKEN_DELIMITER_STYLE}" \
   TOKEN_NAME_STYLE="${TOKEN_NAME_STYLE}" \
   OUTPUT_SUB_PATH="${GENERATED_CONFIGMAP_BASE}" \

@@ -444,9 +444,9 @@ EOF
   write_pm "alpha:1.0" "ghcr.io/org/sub/beta:2.0"
   run_script
   [ "${status}" -eq 0 ]
-  local list="${TEST_DIR}/kaptain-out/product-aggregate/contents-list.md"
+  local list="${TEST_DIR}/kaptain-out/content/contents.yaml"
   [ -f "${list}" ]
-  [ "$(github_output_value PRODUCT_CONTENTS_FILE)" = "kaptain-out/product-aggregate/contents-list.md" ]
+  [ "$(github_output_value PRODUCT_CONTENTS_FILE)" = "kaptain-out/content/contents.yaml" ]
   grep -qx -- "- alpha:1.0" "${list}"
   grep -qx -- "- ghcr.io/org/sub/beta:2.0" "${list}"
 }
@@ -456,7 +456,7 @@ EOF
   write_pm
   run_script
   [ "${status}" -eq 0 ]
-  local list="${TEST_DIR}/kaptain-out/product-aggregate/contents-list.md"
+  local list="${TEST_DIR}/kaptain-out/content/contents.yaml"
   [ -f "${list}" ]
   [ ! -s "${list}" ]
 }
