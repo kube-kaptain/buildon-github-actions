@@ -394,14 +394,14 @@ main() {
     "${LINEAGE_DATA_DIR}"
 
   log ""
-  log "Asserting no unresolved tokens remain in lineage data files..."
-  # Build-time metadata (contract, contents, templates) must be fully resolved
-  # before the CM is written. Resource names in resources.yaml are different:
-  # reusable bundles intentionally leave a token (e.g. ${Environment},
-  # ${ProductName}) in metadata.name so the consuming app or env supplies the
-  # final value at deploy time. To enforce strict no-tokens everywhere except
-  # that one allowed location, scan a scratch copy of the lineage data with
-  # resources.yaml's name-field lines stripped out.
+  log "Asserting no unresolved tokens remain in lineage data bookkeeping files..."
+  # Only kaptain-controlled bookkeeping files (contract, contents, templates,
+  # resources) must be fully resolved before the CM is written - anything else
+  # copied into the lineage dir (user payloads, etc) may freely contain tokens.
+  # Resource names in resources.yaml are a further exception: reusable bundles
+  # intentionally leave a token (e.g. ${Environment}, ${ProductName}) in
+  # metadata.name so the consuming app or env supplies the final value at
+  # deploy time, so resources.yaml's name-field lines are stripped before scan.
   # TODO(env/rp): env and rp builds produce final deploy artefacts, not
   # reusable templates, and must enforce strict no-tokens with no exceptions.
   # When the env/rp workflows ship and remove the exit-42 stub above, gate the
@@ -409,7 +409,18 @@ main() {
   local token_check_dir="${SCRATCH_DIR}/token-check"
   rm -rf "${token_check_dir}"
   mkdir -p "${token_check_dir}"
-  cp -R "${LINEAGE_DATA_DIR}/." "${token_check_dir}/"
+  local bookkeeping_file
+  for bookkeeping_file in \
+    contract.yaml \
+    contents.yaml \
+    contents-resolved.yaml \
+    templates.yaml \
+    templates-resolved.yaml \
+    resources.yaml; do
+    if [[ -f "${LINEAGE_DATA_DIR}/${bookkeeping_file}" ]]; then
+      cp "${LINEAGE_DATA_DIR}/${bookkeeping_file}" "${token_check_dir}/${bookkeeping_file}"
+    fi
+  done
   if [[ -f "${token_check_dir}/resources.yaml" ]]; then
     grep -v '^  name: ' "${token_check_dir}/resources.yaml" \
       > "${token_check_dir}/resources.yaml.stripped" || true
