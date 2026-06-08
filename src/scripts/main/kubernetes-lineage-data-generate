@@ -394,14 +394,14 @@ main() {
     "${LINEAGE_DATA_DIR}"
 
   log ""
-  log "Asserting no unresolved tokens remain in lineage data files..."
-  # Build-time metadata (contract, contents, templates) must be fully resolved
-  # before the CM is written. Resource names in resources.yaml are different:
-  # reusable bundles intentionally leave a token (e.g. ${Environment},
-  # ${ProductName}) in metadata.name so the consuming app or env supplies the
-  # final value at deploy time. To enforce strict no-tokens everywhere except
-  # that one allowed location, scan a scratch copy of the lineage data with
-  # resources.yaml's name-field lines stripped out.
+  log "Asserting no unresolved tokens remain in lineage data bookkeeping files..."
+  # Only kaptain-controlled bookkeeping files (contract, contents, templates,
+  # resources) must be fully resolved before the CM is written - anything else
+  # copied into the lineage dir (user payloads, etc) may freely contain tokens.
+  # Resource names in resources.yaml are a further exception: reusable bundles
+  # intentionally leave a token (e.g. ${Environment}, ${ProductName}) in
+  # metadata.name so the consuming app or env supplies the final value at
+  # deploy time, so resources.yaml's name-field lines are stripped before scan.
   # TODO(env/rp): env and rp builds produce final deploy artefacts, not
   # reusable templates, and must enforce strict no-tokens with no exceptions.
   # When the env/rp workflows ship and remove the exit-42 stub above, gate the
@@ -409,7 +409,18 @@ main() {
   local token_check_dir="${SCRATCH_DIR}/token-check"
   rm -rf "${token_check_dir}"
   mkdir -p "${token_check_dir}"
-  cp -R "${LINEAGE_DATA_DIR}/." "${token_check_dir}/"
+  local bookkeeping_file
+  for bookkeeping_file in \
+    contract.yaml \
+    contents.yaml \
+    contents-resolved.yaml \
+    templates.yaml \
+    templates-resolved.yaml \
+    resources.yaml; do
+    if [[ -f "${LINEAGE_DATA_DIR}/${bookkeeping_file}" ]]; then
+      cp "${LINEAGE_DATA_DIR}/${bookkeeping_file}" "${token_check_dir}/${bookkeeping_file}"
+    fi
+  done
   if [[ -f "${token_check_dir}/resources.yaml" ]]; then
     grep -v '^  name: ' "${token_check_dir}/resources.yaml" \
       > "${token_check_dir}/resources.yaml.stripped" || true
@@ -421,11 +432,38 @@ main() {
     "${token_check_dir}")
   if [[ -n "${leftover_tokens}" ]]; then
     log_error "Lineage data ConfigMap still contains unresolved token(s):"
-    while IFS= read -r token; do
-      log_error "  ${token}"
-    done <<< "${leftover_tokens}"
-    log_error "Unresolved tokens are only permitted on resources.yaml metadata.name field values."
-    log_error "All other locations (contract, contents, templates, paths, kinds) must be fully substituted."
+    log_error ""
+    local token_regex
+    token_regex=$(unresolved_token_regex "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}")
+    local scanned_file file_matches file_token_count file_occurrence_count max_token_width token_line
+    for scanned_file in \
+      contract.yaml \
+      contents.yaml \
+      contents-resolved.yaml \
+      templates.yaml \
+      templates-resolved.yaml \
+      resources.yaml; do
+      [[ -f "${token_check_dir}/${scanned_file}" ]] || continue
+      file_matches=$(grep -Eo "${token_regex}" "${token_check_dir}/${scanned_file}" 2>/dev/null || true)
+      [[ -n "${file_matches}" ]] || continue
+      file_occurrence_count=$(printf '%s\n' "${file_matches}" | wc -l | tr -d ' ')
+      file_token_count=$(printf '%s\n' "${file_matches}" | sort -u | wc -l | tr -d ' ')
+      max_token_width=$(printf '%s\n' "${file_matches}" | sort -u | awk '{ if (length > m) m = length } END { print m }')
+      log_error "  ${scanned_file} (${file_occurrence_count} occurrences across ${file_token_count} tokens):"
+      while IFS= read -r token_line; do
+        # token_line: "<count> <token>" from sort | uniq -c
+        local count token
+        count=$(echo "${token_line}" | awk '{ print $1 }')
+        token=$(echo "${token_line}" | awk '{ $1 = ""; sub(/^ /, ""); print }')
+        printf -v padded '%s%*s' "${token}" "$(( max_token_width - ${#token} ))" ""
+        log_error "    ${padded}  x${count}"
+      done < <(printf '%s\n' "${file_matches}" | sort | uniq -c | sed 's/^[[:space:]]*//')
+      log_error ""
+    done
+    log_error "Only required files are policed (contract.yaml, resources.yaml, contents.yaml,"
+    log_error "contents-resolved.yaml, templates.yaml, templates-resolved.yaml)."
+    log_error "Other files in the lineage data dir may contain arbitrary unresolved tokens."
+    log_error "Exception: resources.yaml name field values may carry specific unresolved tokens."
     exit 1
   fi
 

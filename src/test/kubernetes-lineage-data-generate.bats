@@ -597,6 +597,25 @@ EOF
   assert_output_contains "BadPath"
 }
 
+@test "tokens: unresolved tokens in non-bookkeeping lineage files are allowed" {
+  stage_app_or_bundle_preconditions "mybundle"
+  # Only the kaptain-controlled bookkeeping files (contract, contents,
+  # templates, resources) are scanned. Other files landing in the lineage data
+  # dir - e.g. user payloads from a flat build with templates - may freely
+  # contain unresolved tokens.
+  mkdir -p "${TEST_DIR}/kaptain-out/lineage-data/data-files"
+  cat > "${TEST_DIR}/kaptain-out/lineage-data/data-files/random-file-unresolved-tokens.yaml" << 'EOF'
+some-key: ${SomeRandomToken}
+other-key: ${AnotherFreshToken}
+EOF
+  BUILD_KIND=kubernetes-bundle-resources PROJECT_NAME=mybundle \
+    PRODUCT_NAME="" PRODUCT_SHORT_NAME="" \
+    run_script
+  [ "${status}" -eq 0 ]
+  grep -qF '${SomeRandomToken}' \
+    "${TEST_DIR}/kaptain-out/lineage-data/data-files/random-file-unresolved-tokens.yaml"
+}
+
 @test "validation: missing tokens directory fails with diagnostic" {
   stage_product_preconditions
   rm -rf "${TEST_DIR}/kaptain-out/manifests/config"
