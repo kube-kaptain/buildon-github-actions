@@ -18,7 +18,7 @@ on:
 
 jobs:
   build:
-    uses: kube-kaptain/buildon-github-actions/.github/workflows/kubernetes-product-aggregate.yaml@1.1.39
+    uses: kube-kaptain/buildon-github-actions/.github/workflows/kubernetes-product-aggregate.yaml@1.1.40
     permissions:
       contents: write
       packages: write
