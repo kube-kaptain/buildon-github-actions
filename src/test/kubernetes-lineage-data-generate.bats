@@ -182,17 +182,17 @@ final_lineage_data_path() {
   run_script
   [ "${status}" -eq 0 ]
   [ -f "$(final_lineage_data_path "product-foo" "kaptain-product-lineage-data.yaml")" ]
-  [ -f "${TEST_DIR}/kaptain-out/lineage-data/data-files/contents.yaml" ]
-  [ -f "${TEST_DIR}/kaptain-out/lineage-data/data-files/contents-resolved.yaml" ]
-  [ -f "${TEST_DIR}/kaptain-out/lineage-data/data-files/resources.yaml" ]
-  [ -f "${TEST_DIR}/kaptain-out/lineage-data/generated-configmap/manifests/combined/configmap.yaml" ]
+  [ -f "${TEST_DIR}/kaptain-out/lineage-data/keys-for-lineage-data/contents.yaml" ]
+  [ -f "${TEST_DIR}/kaptain-out/lineage-data/keys-for-lineage-data/contents-resolved.yaml" ]
+  [ -f "${TEST_DIR}/kaptain-out/lineage-data/keys-for-lineage-data/resources.yaml" ]
+  [ -f "${TEST_DIR}/kaptain-out/lineage-data/generated-configmap/manifests/combined/configmap-lineage-data.yaml" ]
 }
 
 @test "product happy path: contract.yaml is included verbatim as a data file" {
   stage_product_preconditions
   run_script
   [ "${status}" -eq 0 ]
-  local file="${TEST_DIR}/kaptain-out/lineage-data/data-files/contract.yaml"
+  local file="${TEST_DIR}/kaptain-out/lineage-data/keys-for-lineage-data/contract.yaml"
   [ -f "${file}" ]
   diff -q "${TEST_DIR}/kaptain-out/manifests/contract/contract.yaml" "${file}"
 }
@@ -201,7 +201,7 @@ final_lineage_data_path() {
   stage_product_preconditions
   run_script
   [ "${status}" -eq 0 ]
-  local file="${TEST_DIR}/kaptain-out/lineage-data/data-files/contents.yaml"
+  local file="${TEST_DIR}/kaptain-out/lineage-data/keys-for-lineage-data/contents.yaml"
   grep -q "alpha:1.0" "${file}"
   grep -q "beta:2.0" "${file}"
 }
@@ -210,7 +210,7 @@ final_lineage_data_path() {
   stage_product_preconditions
   run_script
   [ "${status}" -eq 0 ]
-  local file="${TEST_DIR}/kaptain-out/lineage-data/data-files/contents-resolved.yaml"
+  local file="${TEST_DIR}/kaptain-out/lineage-data/keys-for-lineage-data/contents-resolved.yaml"
   grep -q "ghcr.io/org/alpha:1.0.0-manifests" "${file}"
   grep -q "ghcr.io/org/beta:2.0.0-manifests" "${file}"
 }
@@ -226,9 +226,9 @@ final_lineage_data_path() {
     run_script
   [ "${status}" -eq 0 ]
   [ -f "$(final_lineage_data_path "myapp" "kaptain-app-lineage-data.yaml")" ]
-  [ -f "${TEST_DIR}/kaptain-out/lineage-data/data-files/templates.yaml" ]
+  [ -f "${TEST_DIR}/kaptain-out/lineage-data/keys-for-lineage-data/templates.yaml" ]
   # No contents.yaml on app builds
-  [ ! -f "${TEST_DIR}/kaptain-out/lineage-data/data-files/contents.yaml" ]
+  [ ! -f "${TEST_DIR}/kaptain-out/lineage-data/keys-for-lineage-data/contents.yaml" ]
 }
 
 @test "app happy path: templates.yaml mirrors spec.templates from KaptainPM" {
@@ -237,7 +237,7 @@ final_lineage_data_path() {
     PRODUCT_NAME="" PRODUCT_SHORT_NAME="" \
     run_script
   [ "${status}" -eq 0 ]
-  local file="${TEST_DIR}/kaptain-out/lineage-data/data-files/templates.yaml"
+  local file="${TEST_DIR}/kaptain-out/lineage-data/keys-for-lineage-data/templates.yaml"
   grep -q "upstream/base:7.0" "${file}"
   grep -q "upstream/extras:7.0" "${file}"
 }
@@ -253,7 +253,7 @@ EOF
     PRODUCT_NAME="" PRODUCT_SHORT_NAME="" \
     run_script
   [ "${status}" -eq 0 ]
-  local file="${TEST_DIR}/kaptain-out/lineage-data/data-files/templates-resolved.yaml"
+  local file="${TEST_DIR}/kaptain-out/lineage-data/keys-for-lineage-data/templates-resolved.yaml"
   [ -f "${file}" ]
   grep -q "ghcr.io/upstream/base:7.0.1-manifests" "${file}"
 }
@@ -264,7 +264,7 @@ EOF
     PRODUCT_NAME="" PRODUCT_SHORT_NAME="" \
     run_script
   [ "${status}" -eq 0 ]
-  [ ! -f "${TEST_DIR}/kaptain-out/lineage-data/data-files/templates-resolved.yaml" ]
+  [ ! -f "${TEST_DIR}/kaptain-out/lineage-data/keys-for-lineage-data/templates-resolved.yaml" ]
 }
 
 @test "bundle happy path: produces lineage data CM with templates.yaml data file" {
@@ -274,7 +274,7 @@ EOF
     run_script
   [ "${status}" -eq 0 ]
   [ -f "$(final_lineage_data_path "mybundle" "kaptain-bundle-lineage-data.yaml")" ]
-  [ -f "${TEST_DIR}/kaptain-out/lineage-data/data-files/templates.yaml" ]
+  [ -f "${TEST_DIR}/kaptain-out/lineage-data/keys-for-lineage-data/templates.yaml" ]
 }
 
 # =============================================================================
@@ -285,7 +285,7 @@ EOF
   stage_product_preconditions
   run_script
   [ "${status}" -eq 0 ]
-  local file="${TEST_DIR}/kaptain-out/lineage-data/data-files/resources.yaml"
+  local file="${TEST_DIR}/kaptain-out/lineage-data/keys-for-lineage-data/resources.yaml"
   grep -q "path: deployment.yaml" "${file}"
   grep -q "path: service.yaml" "${file}"
   grep -q "kind: Deployment" "${file}"
@@ -296,7 +296,7 @@ EOF
   stage_product_preconditions
   run_script
   [ "${status}" -eq 0 ]
-  local file="${TEST_DIR}/kaptain-out/lineage-data/data-files/resources.yaml"
+  local file="${TEST_DIR}/kaptain-out/lineage-data/keys-for-lineage-data/resources.yaml"
   grep -q "path: kaptain-product-lineage-data.yaml" "${file}"
   grep -q "kind: ConfigMap" "${file}"
 }
@@ -305,11 +305,12 @@ EOF
   stage_product_preconditions
   run_script
   [ "${status}" -eq 0 ]
-  # After sub-round substitute the data file should hold concrete name.
+  # After sub-round substitute the data file should hold the concrete CM name,
+  # which is ${ProjectName}-lineage-data (the lineage CM's actual metadata.name).
   ! grep -q '\${ProjectName}' \
-    "${TEST_DIR}/kaptain-out/lineage-data/data-files/resources.yaml"
-  grep -q "name: product-foo" \
-    "${TEST_DIR}/kaptain-out/lineage-data/data-files/resources.yaml"
+    "${TEST_DIR}/kaptain-out/lineage-data/keys-for-lineage-data/resources.yaml"
+  grep -q "name: product-foo-lineage-data" \
+    "${TEST_DIR}/kaptain-out/lineage-data/keys-for-lineage-data/resources.yaml"
   ! grep -q '\${ProjectName}' \
     "$(final_lineage_data_path "product-foo" "kaptain-product-lineage-data.yaml")"
 }
@@ -329,7 +330,7 @@ metadata:
 EOF
   run_script
   [ "${status}" -eq 0 ]
-  local file="${TEST_DIR}/kaptain-out/lineage-data/data-files/resources.yaml"
+  local file="${TEST_DIR}/kaptain-out/lineage-data/keys-for-lineage-data/resources.yaml"
   grep -q "name: product-foo-extra-cm" "${file}"
   grep -q "name: product-foo-extra-secret" "${file}"
 }
@@ -452,11 +453,11 @@ EOF
   grep -q "^  contract.yaml:" "${final}"
 }
 
-@test "data keys (product): CM metadata.name resolves to project name" {
+@test "data keys (product): CM metadata.name resolves to project name with lineage-data suffix" {
   stage_product_preconditions
   run_script
   [ "${status}" -eq 0 ]
-  grep -q "^  name: product-foo$" \
+  grep -q "^  name: product-foo-lineage-data$" \
     "$(final_lineage_data_path "product-foo" "kaptain-product-lineage-data.yaml")"
 }
 
@@ -573,7 +574,7 @@ EOF
     run_script
   [ "${status}" -eq 0 ]
   grep -qF 'name: mybundle-${Environment}-template' \
-    "${TEST_DIR}/kaptain-out/lineage-data/data-files/resources.yaml"
+    "${TEST_DIR}/kaptain-out/lineage-data/keys-for-lineage-data/resources.yaml"
   grep -qF 'mybundle-${Environment}-template' \
     "$(final_lineage_data_path "mybundle" "kaptain-bundle-lineage-data.yaml")"
 }
@@ -603,8 +604,8 @@ EOF
   # templates, resources) are scanned. Other files landing in the lineage data
   # dir - e.g. user payloads from a flat build with templates - may freely
   # contain unresolved tokens.
-  mkdir -p "${TEST_DIR}/kaptain-out/lineage-data/data-files"
-  cat > "${TEST_DIR}/kaptain-out/lineage-data/data-files/random-file-unresolved-tokens.yaml" << 'EOF'
+  mkdir -p "${TEST_DIR}/kaptain-out/lineage-data/keys-for-lineage-data"
+  cat > "${TEST_DIR}/kaptain-out/lineage-data/keys-for-lineage-data/random-file-unresolved-tokens.yaml" << 'EOF'
 some-key: ${SomeRandomToken}
 other-key: ${AnotherFreshToken}
 EOF
@@ -613,7 +614,7 @@ EOF
     run_script
   [ "${status}" -eq 0 ]
   grep -qF '${SomeRandomToken}' \
-    "${TEST_DIR}/kaptain-out/lineage-data/data-files/random-file-unresolved-tokens.yaml"
+    "${TEST_DIR}/kaptain-out/lineage-data/keys-for-lineage-data/random-file-unresolved-tokens.yaml"
 }
 
 @test "validation: missing tokens directory fails with diagnostic" {
@@ -660,11 +661,11 @@ EOF
     PRODUCT_NAME="" PRODUCT_SHORT_NAME="" \
     run_script
   [ "${status}" -eq 0 ]
-  [ -d "${TEST_DIR}/kaptain-out/lineage-data/app/data-files" ]
+  [ -d "${TEST_DIR}/kaptain-out/lineage-data/app/keys-for-lineage-data" ]
   [ -d "${TEST_DIR}/kaptain-out/lineage-data/app/generated-configmap" ]
-  [ -f "${TEST_DIR}/kaptain-out/lineage-data/app/data-files/templates.yaml" ]
+  [ -f "${TEST_DIR}/kaptain-out/lineage-data/app/keys-for-lineage-data/templates.yaml" ]
   # Flat layout (no section subdir) must not exist on env-section builds
-  [ ! -d "${TEST_DIR}/kaptain-out/lineage-data/data-files" ]
+  [ ! -d "${TEST_DIR}/kaptain-out/lineage-data/keys-for-lineage-data" ]
 }
 
 @test "env-section: kubernetes-run-environment + env stubs with exit 42" {

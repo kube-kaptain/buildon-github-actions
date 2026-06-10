@@ -202,9 +202,9 @@ assert_no_squat() {
 # Each yaml file may contain multiple documents; emit one entry per non-null
 # document with both kind and metadata.name. Sort by (path, kind, name) under
 # LC_ALL=C for deterministic, locale-independent order. Append the lineage data
-# CM's self-reference last using the project-name token so the sub-round
-# substitute resolves it to the same concrete name the rest of the resources
-# already have.
+# CM's self-reference last using the project-name token plus the -lineage-data
+# suffix so the sub-round substitute resolves it to the CM's actual
+# metadata.name (which is ${ProjectName}-lineage-data).
 build_resources_inventory() {
   local product_dir="$1"
   local out_file="$2"
@@ -321,7 +321,7 @@ main() {
   if [[ -n "${ENV_BUILD_SECTION}" ]]; then
     aggregate_base="${aggregate_base}/${ENV_BUILD_SECTION}"
   fi
-  LINEAGE_DATA_DIR="${aggregate_base}/data-files"
+  LINEAGE_DATA_DIR="${aggregate_base}/keys-for-lineage-data"
   GENERATED_CONFIGMAP_BASE="${aggregate_base}/generated-configmap"
   # Scratch dir must be a peer of LINEAGE_DATA_DIR (not a child) because
   # generate-kubernetes-configmap turns every file inside LINEAGE_DATA_DIR into
@@ -376,7 +376,7 @@ main() {
     "${SUBSTITUTED_PRODUCT_DIR}" \
     "${LINEAGE_DATA_DIR}/resources.yaml" \
     "${LINEAGE_FILENAME}" \
-    "${project_name_token}"
+    "${project_name_token}-lineage-data"
 
   local f
   for f in "${LINEAGE_DATA_DIR}"/*; do
@@ -498,8 +498,8 @@ main() {
   TOKEN_DELIMITER_STYLE="${TOKEN_DELIMITER_STYLE}" \
   TOKEN_NAME_STYLE="${TOKEN_NAME_STYLE}" \
   OUTPUT_SUB_PATH="${GENERATED_CONFIGMAP_BASE}" \
-  KUBERNETES_CONFIGMAP_SUB_PATH="${LINEAGE_DATA_DIR}" \
-  KUBERNETES_CONFIGMAP_NAME_SUFFIX="" \
+  KUBERNETES_CONFIGMAP_SUB_PATH="${LINEAGE_DATA_DIR%-lineage-data}" \
+  KUBERNETES_CONFIGMAP_NAME_SUFFIX="lineage-data" \
   KUBERNETES_CONFIGMAP_COMBINED_SUB_PATH="" \
   KUBERNETES_CONFIGMAP_NAME_CHECKSUM_INJECTION="false" \
   KUBERNETES_CONFIGMAP_ADDITIONAL_LABELS="${additional_labels}" \
@@ -507,7 +507,7 @@ main() {
   BUILD_PLATFORM="${BUILD_PLATFORM:-}" \
   "${SCRIPT_DIR}/../generators/generate-kubernetes-configmap"
 
-  local generated_configmap="${GENERATED_CONFIGMAP_BASE}/manifests/combined/configmap.yaml"
+  local generated_configmap="${GENERATED_CONFIGMAP_BASE}/manifests/combined/configmap-lineage-data.yaml"
   if [[ ! -f "${generated_configmap}" ]]; then
     log_error "Lineage data ConfigMap not produced at expected path: ${generated_configmap}"
     exit 1
