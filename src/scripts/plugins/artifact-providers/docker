@@ -260,29 +260,72 @@ else
       log_warning "Unrecognised auth challenge from ${registry}: ${www_auth}"
     fi
 
-    # Query tags/list endpoint. Capture HTTP status so we can distinguish
-    # "registry rejected our auth" from "no tags exist" - the OCI error
-    # response has no .tags key, which jq silently turns into an empty list.
+    # Query tags/list, paginating via Link rel="next". Some registries
+    # (ghcr.io, docker.io) cap each page at ~100 entries returned in
+    # lexicographic order - so without following pagination we silently
+    # see only the oldest tags and fail to resolve ranges that point at
+    # newer versions. Spec: https://github.com/opencontainers/distribution-spec/blob/main/spec.md#listing-tags
     log "Fetching tags from ${registry}/v2/${image_path}/tags/list..."
-    if [[ -n "${auth_header}" ]]; then
-      tags_response=$(curl -sS -H "${auth_header}" -w 'HTTP_STATUS:%{http_code}' "https://${registry}/v2/${image_path}/tags/list" 2>/dev/null || echo 'HTTP_STATUS:000')
-    else
-      tags_response=$(curl -sS -w 'HTTP_STATUS:%{http_code}' "https://${registry}/v2/${image_path}/tags/list" 2>/dev/null || echo 'HTTP_STATUS:000')
-    fi
-    http_code="${tags_response##*HTTP_STATUS:}"
-    tags_body="${tags_response%HTTP_STATUS:*}"
-
-    if [[ "${http_code}" =~ ^2[0-9][0-9]$ ]]; then
-      if [[ -n "${tags_body}" ]]; then
-        remote_tags=$(echo "${tags_body}" | jq -r '.tags[]' 2>/dev/null || true)
-      fi
-    else
-      err_detail=$(echo "${tags_body}" | jq -r '.errors[0] | "\(.code): \(.message)"' 2>/dev/null || true)
-      if [[ -n "${err_detail}" && "${err_detail}" != "null: null" ]]; then
-        log_error "Registry returned HTTP ${http_code} for tags/list: ${err_detail}"
+    headers_file=$(mktemp)
+    next_url="https://${registry}/v2/${image_path}/tags/list"
+    page_num=0
+    accumulated_tags=""
+    paginate_ok=true
+    while [[ -n "${next_url}" ]]; do
+      page_num=$((page_num + 1))
+      [[ "${page_num}" -gt 1 ]] && log "Fetching tags page ${page_num}: ${next_url}"
+      : > "${headers_file}"
+      if [[ -n "${auth_header}" ]]; then
+        tags_response=$(curl -sS -H "${auth_header}" -D "${headers_file}" -w 'HTTP_STATUS:%{http_code}' "${next_url}" 2>/dev/null || echo 'HTTP_STATUS:000')
       else
-        log_error "Registry returned HTTP ${http_code} for tags/list"
+        tags_response=$(curl -sS -D "${headers_file}" -w 'HTTP_STATUS:%{http_code}' "${next_url}" 2>/dev/null || echo 'HTTP_STATUS:000')
       fi
+      http_code="${tags_response##*HTTP_STATUS:}"
+      tags_body="${tags_response%HTTP_STATUS:*}"
+
+      if [[ ! "${http_code}" =~ ^2[0-9][0-9]$ ]]; then
+        err_detail=$(echo "${tags_body}" | jq -r '.errors[0] | "\(.code): \(.message)"' 2>/dev/null || true)
+        if [[ -n "${err_detail}" && "${err_detail}" != "null: null" ]]; then
+          log_error "Registry returned HTTP ${http_code} for tags/list (page ${page_num}): ${err_detail}"
+        else
+          log_error "Registry returned HTTP ${http_code} for tags/list (page ${page_num})"
+        fi
+        paginate_ok=false
+        break
+      fi
+
+      if [[ -n "${tags_body}" ]]; then
+        page_tags=$(echo "${tags_body}" | jq -r '.tags[]' 2>/dev/null || true)
+        if [[ -n "${page_tags}" ]]; then
+          if [[ -n "${accumulated_tags}" ]]; then
+            accumulated_tags="${accumulated_tags}"$'\n'"${page_tags}"
+          else
+            accumulated_tags="${page_tags}"
+          fi
+        fi
+      fi
+
+      # Link header format: `Link: <url>; rel="next"` (RFC 5988). Registries
+      # typically return a relative URL like `</v2/foo/tags/list?last=tag&n=100>`.
+      link_next=$(grep -i '^link:' "${headers_file}" 2>/dev/null \
+        | tr ',' '\n' \
+        | grep -i 'rel="\?next"\?' \
+        | sed -n 's/.*<\([^>]*\)>.*/\1/p' \
+        | head -n1 || true)
+      if [[ -z "${link_next}" ]]; then
+        next_url=""
+      elif [[ "${link_next}" == http* ]]; then
+        next_url="${link_next}"
+      elif [[ "${link_next}" == /* ]]; then
+        next_url="https://${registry}${link_next}"
+      else
+        next_url="https://${registry}/${link_next}"
+      fi
+    done
+    rm -f "${headers_file}"
+    if [[ "${paginate_ok}" == "true" ]]; then
+      remote_tags="${accumulated_tags}"
+      [[ "${page_num}" -gt 1 ]] && log "Fetched ${page_num} pages of remote tags"
     fi
   fi
 

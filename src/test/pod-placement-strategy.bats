@@ -205,7 +205,7 @@ PLUGIN_DIR="$PROJECT_ROOT/src/scripts/plugins/pod-placement-strategy"
   assert_output_contains "podAffinity:"
   assert_output_contains "preferredDuringSchedulingIgnoredDuringExecution:"
   assert_output_contains "weight: 100"
-  assert_output_contains 'app: ${MyServiceAffinityColocateApp}'
+  assert_output_contains 'app: ${MyService/AffinityColocateApp}'
   assert_output_contains "topologyKey: kubernetes.io/hostname"
 }
 
@@ -219,13 +219,13 @@ PLUGIN_DIR="$PROJECT_ROOT/src/scripts/plugins/pod-placement-strategy"
 @test "pod-placement-strategy/colocate-app: compound token with camelCase" {
   run env TOKEN_NAME_STYLE=camelCase TOKEN_DELIMITER_STYLE=mustache PROJECT_NAME=my-cool-service "$PLUGIN_DIR/colocate-app"
   [ "$status" -eq 0 ]
-  assert_output_contains "app: {{ myCoolServiceAffinityColocateApp }}"
+  assert_output_contains "app: {{ myCoolService/AffinityColocateApp }}"
 }
 
 @test "pod-placement-strategy/colocate-app: compound token with helm style" {
   run env TOKEN_NAME_STYLE=PascalCase TOKEN_DELIMITER_STYLE=helm PROJECT_NAME=my-service "$PLUGIN_DIR/colocate-app"
   [ "$status" -eq 0 ]
-  assert_output_contains "app: {{ .Values.MyServiceAffinityColocateApp }}"
+  assert_output_contains "app: {{ .Values.MyService/AffinityColocateApp }}"
 }
 
 # =============================================================================

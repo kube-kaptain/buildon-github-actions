@@ -102,7 +102,7 @@ read_manifest_in_subpath() {
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
-  [[ "$manifest" == *'schedule: ${MyProjectCronjobSchedule}'* ]] || return 1
+  [[ "$manifest" == *'schedule: ${MyProject/CronjobSchedule}'* ]] || return 1
 }
 
 @test "suspend is a token with project name prefix" {
@@ -110,7 +110,7 @@ read_manifest_in_subpath() {
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
-  [[ "$manifest" == *'suspend: ${MyProjectCronjobSuspend}'* ]] || return 1
+  [[ "$manifest" == *'suspend: ${MyProject/CronjobSuspend}'* ]] || return 1
 }
 
 @test "schedule token includes project name and suffix" {
@@ -120,8 +120,8 @@ read_manifest_in_subpath() {
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest_with_suffix "backup")
-  [[ "$manifest" == *'schedule: ${MyProjectBackupCronjobSchedule}'* ]] || return 1
-  [[ "$manifest" == *'suspend: ${MyProjectBackupCronjobSuspend}'* ]] || return 1
+  [[ "$manifest" == *'schedule: ${MyProject/BackupCronjobSchedule}'* ]] || return 1
+  [[ "$manifest" == *'suspend: ${MyProject/BackupCronjobSuspend}'* ]] || return 1
 }
 
 @test "schedule token includes project name and path" {
@@ -131,8 +131,8 @@ read_manifest_in_subpath() {
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest_in_subpath "db/primary")
-  [[ "$manifest" == *'schedule: ${MyProjectDbPrimaryCronjobSchedule}'* ]] || return 1
-  [[ "$manifest" == *'suspend: ${MyProjectDbPrimaryCronjobSuspend}'* ]] || return 1
+  [[ "$manifest" == *'schedule: ${MyProject/DbPrimaryCronjobSchedule}'* ]] || return 1
+  [[ "$manifest" == *'suspend: ${MyProject/DbPrimaryCronjobSuspend}'* ]] || return 1
 }
 
 @test "schedule token includes project name, path and suffix" {
@@ -144,8 +144,8 @@ read_manifest_in_subpath() {
 
   [ -f "$OUTPUT_SUB_PATH/manifests/combined/db/cronjob-migrate.yaml" ]
   manifest=$(cat "$OUTPUT_SUB_PATH/manifests/combined/db/cronjob-migrate.yaml")
-  [[ "$manifest" == *'schedule: ${MyProjectDbMigrateCronjobSchedule}'* ]] || return 1
-  [[ "$manifest" == *'suspend: ${MyProjectDbMigrateCronjobSuspend}'* ]] || return 1
+  [[ "$manifest" == *'schedule: ${MyProject/DbMigrateCronjobSchedule}'* ]] || return 1
+  [[ "$manifest" == *'suspend: ${MyProject/DbMigrateCronjobSuspend}'* ]] || return 1
 }
 
 # =============================================================================
@@ -419,8 +419,8 @@ read_manifest_in_subpath() {
 
   manifest=$(read_manifest)
   [[ "$manifest" == *'${ProjectName}'* ]] || return 1
-  [[ "$manifest" == *'${MyProjectCronjobSchedule}'* ]] || return 1
-  [[ "$manifest" == *'${MyProjectCronjobSuspend}'* ]] || return 1
+  [[ "$manifest" == *'${MyProject/CronjobSchedule}'* ]] || return 1
+  [[ "$manifest" == *'${MyProject/CronjobSuspend}'* ]] || return 1
 }
 
 @test "respects lower-kebab token name style" {
@@ -431,8 +431,8 @@ read_manifest_in_subpath() {
 
   manifest=$(read_manifest)
   [[ "$manifest" == *'${project-name}'* ]] || return 1
-  [[ "$manifest" == *'${my-project-cronjob-schedule}'* ]] || return 1
-  [[ "$manifest" == *'${my-project-cronjob-suspend}'* ]] || return 1
+  [[ "$manifest" == *'${my-project/cronjob-schedule}'* ]] || return 1
+  [[ "$manifest" == *'${my-project/cronjob-suspend}'* ]] || return 1
 }
 
 @test "respects mustache substitution style" {
@@ -443,8 +443,8 @@ read_manifest_in_subpath() {
 
   manifest=$(read_manifest)
   [[ "$manifest" == *'{{ ProjectName }}'* ]] || return 1
-  [[ "$manifest" == *'{{ MyProjectCronjobSchedule }}'* ]] || return 1
-  [[ "$manifest" == *'{{ MyProjectCronjobSuspend }}'* ]] || return 1
+  [[ "$manifest" == *'{{ MyProject/CronjobSchedule }}'* ]] || return 1
+  [[ "$manifest" == *'{{ MyProject/CronjobSuspend }}'* ]] || return 1
 }
 
 # =============================================================================

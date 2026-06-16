@@ -41,28 +41,44 @@ MOCK
   cat > "${MOCK_BIN_DIR}/curl" << 'MOCK'
 #!/usr/bin/env bash
 url=""
+headers_dest=""
+prev=""
 for arg in "$@"; do
+  if [[ "${prev}" == "-D" ]]; then
+    headers_dest="${arg}"
+    prev=""
+    continue
+  fi
+  prev=""
   case "${arg}" in
+    -D)  prev="-D" ;;
     -*)  ;;
     *)   url="${arg}" ;;
   esac
 done
+emit_header() {
+  if [[ -z "${headers_dest}" || "${headers_dest}" == "-" ]]; then
+    echo "$1"
+  else
+    echo "$1" >> "${headers_dest}"
+  fi
+}
 if [[ "${url}" == */v2/ ]]; then
-  if [[ "$*" == *"-D"* ]]; then
+  if [[ -n "${headers_dest}" ]]; then
     case "${MOCK_AUTH_CHALLENGE:-bearer}" in
       bearer)
-        echo 'HTTP/1.1 401 Unauthorized'
-        echo 'www-authenticate: Bearer realm="https://mock-registry.example/token",service="mock-registry"'
-        echo ''
+        emit_header 'HTTP/1.1 401 Unauthorized'
+        emit_header 'www-authenticate: Bearer realm="https://mock-registry.example/token",service="mock-registry"'
+        emit_header ''
         ;;
       basic)
-        echo 'HTTP/1.1 401 Unauthorized'
-        echo 'www-authenticate: Basic realm="mock-registry"'
-        echo ''
+        emit_header 'HTTP/1.1 401 Unauthorized'
+        emit_header 'www-authenticate: Basic realm="mock-registry"'
+        emit_header ''
         ;;
       none)
-        echo 'HTTP/1.1 200 OK'
-        echo ''
+        emit_header 'HTTP/1.1 200 OK'
+        emit_header ''
         ;;
     esac
   fi
@@ -72,9 +88,26 @@ if [[ "${url}" == *"/token?"* ]]; then
   echo '{"token":"mock-anon-token"}'
   exit 0
 fi
-if [[ "${url}" == */tags/list ]]; then
-  printf '%s' "${MOCK_REMOTE_TAGS_JSON:-{"tags":[]}}"
-  printf 'HTTP_STATUS:%s' "${MOCK_REMOTE_TAGS_STATUS:-200}"
+if [[ "${url}" == */tags/list* ]]; then
+  # Pagination: if ?last=<cursor> is present, return page 2; otherwise page 1.
+  # When MOCK_REMOTE_TAGS_NEXT_LAST is set on page 1, emit a Link rel="next"
+  # header pointing at the same endpoint with ?last=<cursor>.
+  if [[ "${url}" == *"?last="* ]]; then
+    body="${MOCK_REMOTE_TAGS_PAGE_2_JSON:-{"tags":[]}}"
+    status="${MOCK_REMOTE_TAGS_PAGE_2_STATUS:-200}"
+  else
+    body="${MOCK_REMOTE_TAGS_JSON:-{"tags":[]}}"
+    status="${MOCK_REMOTE_TAGS_STATUS:-200}"
+    if [[ -n "${MOCK_REMOTE_TAGS_NEXT_LAST:-}" ]]; then
+      base="${url%%\?*}"
+      base_path="${base#*://*/}"
+      emit_header "HTTP/1.1 ${status} OK"
+      emit_header "link: </${base_path}?last=${MOCK_REMOTE_TAGS_NEXT_LAST}&n=100>; rel=\"next\""
+      emit_header ''
+    fi
+  fi
+  printf '%s' "${body}"
+  printf 'HTTP_STATUS:%s' "${status}"
   exit 0
 fi
 MOCK
@@ -351,6 +384,34 @@ MOCK
   run "$PROVIDER" "quality-strict:[1.0,2.0)" "${OUTPUT_FILE}"
   [[ "$status" -eq 1 ]] || return 1
   assert_output_contains "Unable to anonymously list tags"
+}
+
+@test "range: follows Link rel=next pagination to see newer tags" {
+  # Regression: without pagination we only saw the first ~100 lexicographic
+  # tags returned by ghcr.io/docker.io and silently missed newer versions.
+  # Page 1 contains only old tags that would resolve to 1.0; the actual
+  # newest matching version is on page 2.
+  export MOCK_REMOTE_TAGS_JSON='{"tags":["1.0","1.1"]}'
+  export MOCK_REMOTE_TAGS_NEXT_LAST='1.1'
+  export MOCK_REMOTE_TAGS_PAGE_2_JSON='{"tags":["1.7","1.9"]}'
+  run "$PROVIDER" "quality-strict:[1.0,2.0)" "${OUTPUT_FILE}"
+  [[ "$status" -eq 0 ]] || return 1
+  [[ "$(cat "${OUTPUT_FILE}")" == "ghcr.io/kube-kaptain/quality/quality-strict:1.9" ]] || return 1
+  assert_output_contains "Fetching tags page 2"
+  assert_output_contains "Fetched 2 pages"
+}
+
+@test "range: pagination failure on page 2 drops partial page 1 results" {
+  # If page 2 fails after page 1 succeeded, we must NOT silently resolve to
+  # the best tag from page 1 - we'd be picking a stale version.
+  export MOCK_REMOTE_TAGS_JSON='{"tags":["1.0","1.1"]}'
+  export MOCK_REMOTE_TAGS_NEXT_LAST='1.1'
+  export MOCK_REMOTE_TAGS_PAGE_2_JSON='{"errors":[{"code":"UNAVAILABLE","message":"service unavailable"}]}'
+  export MOCK_REMOTE_TAGS_PAGE_2_STATUS='503'
+  run "$PROVIDER" "quality-strict:[1.0,2.0)" "${OUTPUT_FILE}"
+  [[ "$status" -eq 1 ]] || return 1
+  assert_output_contains "HTTP 503"
+  assert_output_contains "page 2"
 }
 
 @test "range: surfaces auth error when tags/list returns 401 with .errors[]" {

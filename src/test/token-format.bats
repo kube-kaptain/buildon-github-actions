@@ -498,33 +498,33 @@ setup() {
 
 @test "format_project_suffixed_token: shell + PascalCase" {
   result=$(format_project_suffixed_token shell PascalCase my-project AFFINITY_COLOCATE_APP)
-  [ "$result" = "\${MyProjectAffinityColocateApp}" ]
+  [ "$result" = "\${MyProject/AffinityColocateApp}" ]
 }
 
 @test "format_project_suffixed_token: mustache + PascalCase" {
   result=$(format_project_suffixed_token mustache PascalCase my-project AFFINITY_COLOCATE_APP)
-  [ "$result" = "{{ MyProjectAffinityColocateApp }}" ]
+  [ "$result" = "{{ MyProject/AffinityColocateApp }}" ]
 }
 
 @test "format_project_suffixed_token: shell + camelCase" {
   result=$(format_project_suffixed_token shell camelCase my-project AFFINITY_COLOCATE_APP)
-  [ "$result" = "\${myProjectAffinityColocateApp}" ]
+  [ "$result" = "\${myProject/AffinityColocateApp}" ]
 }
 
 @test "format_project_suffixed_token: helm + PascalCase" {
   result=$(format_project_suffixed_token helm PascalCase my-cool-service DATABASE_URL)
-  [ "$result" = "{{ .Values.MyCoolServiceDatabaseUrl }}" ]
+  [ "$result" = "{{ .Values.MyCoolService/DatabaseUrl }}" ]
 }
 
 @test "format_project_suffixed_token: shell + lower_snake" {
   result=$(format_project_suffixed_token shell lower_snake my-project SOME_CONFIG)
-  [ "$result" = "\${my_projectSomeConfig}" ]
+  [ "$result" = "\${my_project/SomeConfig}" ]
 }
 
 @test "format_project_suffixed_token: suffix always PascalCase when joining" {
   # Even with camelCase, suffix joins with capital letter
   result=$(format_project_suffixed_token shell camelCase my-service CONFIG_VALUE)
-  [ "$result" = "\${myServiceConfigValue}" ]
+  [ "$result" = "\${myService/ConfigValue}" ]
 }
 
 # --- Error cases ---
