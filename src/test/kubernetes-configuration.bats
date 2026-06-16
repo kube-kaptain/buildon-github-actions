@@ -90,14 +90,17 @@ setup() {
 # generate_configuration_entries
 # =============================================================================
 
-@test "generate_configuration_entries: single-line file uses inline format" {
+@test "generate_configuration_entries: short value round-trips through a YAML parser" {
   local test_dir
   test_dir="$(create_test_dir "config")"
   echo "simple-value" > "${test_dir}/single.txt"
 
   result=$(generate_configuration_entries "${test_dir}")
 
-  [[ "${result}" == *"single.txt: simple-value"* ]] || return 1
+  # Wrap under data: and parse the round-trip value back out via yq.
+  local parsed
+  parsed=$(printf 'data:\n%s\n' "${result}" | yq '.data."single.txt"')
+  [ "${parsed}" = "simple-value" ]
 }
 
 @test "generate_configuration_entries: multi-line file uses block scalar format" {
@@ -110,14 +113,19 @@ setup() {
   [[ "${result}" == *"multi.txt: |"* ]] || return 1
 }
 
-@test "generate_configuration_entries: file with trailing newline uses inline format" {
+@test "generate_configuration_entries: value starting with '- ' parses back unambiguously" {
+  # Regression: the old hand-rolled emitter inlined single-line values as
+  # 'key: value', which produced ambiguous/invalid YAML when the value started
+  # with a YAML indicator like '- '. yq always picks a safe scalar style.
   local test_dir
   test_dir="$(create_test_dir "config")"
-  printf "value\n" > "${test_dir}/trailing.txt"
+  printf -- '- somepackage:1.2.4.4\n' > "${test_dir}/contents.yaml"
 
   result=$(generate_configuration_entries "${test_dir}")
 
-  [[ "${result}" == *"trailing.txt: value"* ]] || return 1
+  local parsed
+  parsed=$(printf 'data:\n%s\n' "${result}" | yq '.data."contents.yaml"')
+  [ "${parsed}" = "- somepackage:1.2.4.4" ]
 }
 
 @test "generate_configuration_entries: preserves content in multi-line files" {

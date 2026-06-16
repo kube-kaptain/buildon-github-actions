@@ -95,48 +95,26 @@ validate_configuration_entries_directory() {
 # Usage: generate_configuration_entries <directory>
 #
 # Outputs YAML entries suitable for ConfigMap data: or Secret stringData: sections.
-# Each file becomes a key-value entry.
+# Each file becomes a key-value entry. yq picks a safe scalar style per value
+# (plain when unambiguous, single/double quoted or block scalar otherwise) and
+# selects the right chomping indicator based on trailing newlines.
 #
 # Arguments:
 #   directory - Path to the configuration entries directory
 #
-# Output format (to stdout):
-#   Single-line files:
-#     filename: value
-#   Multi-line files:
-#     filename: |
-#       content line 1
-#       content line 2
-#
 # Notes:
 #   - Files are sorted alphabetically for deterministic output
 #   - Dotfiles are excluded
-#   - Single-line content uses inline format for cleaner output
-#   - Multi-line content uses block scalar with 4-space indent
+#   - Output is prefixed with 2 spaces so it nests directly under
+#     data: / stringData: in the surrounding manifest
 #
 generate_configuration_entries() {
   local directory="$1"
-
+  local filepath filename
   while IFS= read -r -d '' filepath; do
-    local filename content line_count
     filename=$(basename "${filepath}")
-    content=$(cat "${filepath}")
-
-    # Count actual lines (excluding trailing newline)
-    line_count=$(printf '%s' "${content}" | grep -c '' || true)
-
-    if [[ "${line_count}" -le 1 ]]; then
-      # Single line: use inline format
-      # Trim trailing newline if present
-      content="${content%$'\n'}"
-      echo "  ${filename}: ${content}"
-    else
-      # Multi-line: use block scalar format
-      echo "  ${filename}: |"
-      # Indent each line of content by 4 spaces
-      while IFS= read -r line || [[ -n "${line}" ]]; do
-        echo "    ${line}"
-      done <<< "${content}"
-    fi
+    KEY="${filename}" FILE="${filepath}" \
+      yq -n '.[strenv(KEY)] = load_str(strenv(FILE))' \
+      | sed 's/^/  /'
   done < <(find "${directory}" -type f -not -name '.*' -print0 | sort -z)
 }
