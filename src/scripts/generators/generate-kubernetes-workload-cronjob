@@ -116,12 +116,12 @@ docker_image_name_token=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${T
 
 # Build environment-specific token names for schedule and suspend
 # Token name includes project name and resource name parts so each cronjob instance has unique tokens
-# E.g., project="my-app" → MY_APP_CRONJOB_SCHEDULE → ${MyAppCronjobSchedule}
-# E.g., project="db-backup" suffix="nightly" → DB_BACKUP_NIGHTLY_CRONJOB_SCHEDULE → ${DbBackupNightlyCronjobSchedule}
-# Convert project name (kebab-case) to UPPER_SNAKE for token prefix
+# E.g., project="my-app" → MY_APP/CRONJOB_SCHEDULE → ${MyApp/CronjobSchedule}
+# E.g., project="db-backup" suffix="nightly" → DB_BACKUP/NIGHTLY_CRONJOB_SCHEDULE → ${DbBackup/NightlyCronjobSchedule}
+# Convert project name (kebab-case) to UPPER_SNAKE for token prefix, with / separator before the rest
 token_prefix="${PROJECT_NAME//-/_}"
 token_prefix=$(echo "${token_prefix}" | tr '[:lower:]' '[:upper:]')
-token_prefix="${token_prefix}_"
+token_prefix="${token_prefix}/"
 if [[ -n "${COMBINED_SUB_PATH}" ]]; then
   # Convert path/to/dir → PATH_TO_DIR
   path_part="${COMBINED_SUB_PATH//\//_}"

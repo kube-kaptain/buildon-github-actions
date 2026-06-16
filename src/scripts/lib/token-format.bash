@@ -382,9 +382,9 @@ convert_kebab_name() {
 
 # Combine project name with suffix into a formatted, delimited token
 # Usage: format_project_suffixed_token <delimiter-style> <name-style> <project-name-kebab> <SUFFIX_UPPER_SNAKE>
-# Useful for creating compound tokens like ${MyProjectAffinityColocateApp}
+# Useful for creating compound tokens like ${MyProject/AffinityColocateApp}
 # Example: format_project_suffixed_token "shell" "PascalCase" "my-project" "AFFINITY_COLOCATE_APP"
-#          Returns: ${MyProjectAffinityColocateApp}
+#          Returns: ${MyProject/AffinityColocateApp}
 format_project_suffixed_token() {
   if [[ $# -ne 4 ]]; then
     log_error "format_project_suffixed_token requires exactly 4 arguments, got $#"
@@ -417,9 +417,9 @@ format_project_suffixed_token() {
   local project_converted suffix_converted combined
   project_converted=$(convert_kebab_name "${name_style}" "${project_kebab}") || return 1
   # Suffix is always PascalCase when joining - ensures proper compound identifier
-  # e.g., myProject + AffinityColocateApp = myProjectAffinityColocateApp
+  # e.g., myProject + AffinityColocateApp = myProject/AffinityColocateApp
   suffix_converted=$(convert_token_name "PascalCase" "${suffix_upper_snake}") || return 1
-  combined="${project_converted}${suffix_converted}"
+  combined="${project_converted}/${suffix_converted}"
 
   format_token_reference "${delim_style}" "${combined}"
 }

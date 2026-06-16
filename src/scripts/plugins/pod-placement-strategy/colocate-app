@@ -55,7 +55,7 @@ fi
 POD_PLACEMENT_INDENT="${POD_PLACEMENT_INDENT:-0}"
 
 # Generate compound token for colocate app target
-# This creates a token like ${MyProjectAffinityColocateApp} that can be
+# This creates a token like ${MyProject/AffinityColocateApp} that can be
 # defined at build or deployment time
 colocate_app_token=$(format_project_suffixed_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "${PROJECT_NAME}" "AFFINITY_COLOCATE_APP")
 
