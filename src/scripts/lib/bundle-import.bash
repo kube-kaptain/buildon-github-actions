@@ -42,7 +42,7 @@ fi
 BUNDLE_IMPORT_DEFAULTS_NORMALISED_DIR="${CONTENT_BASE}/import/defaults-normalised"
 export BUNDLE_IMPORT_DEFAULTS_NORMALISED_DIR
 
-_BUNDLE_IMPORT_UTIL_DIR="${_BUNDLE_IMPORT_UTIL_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../util" && pwd)}"
+BUNDLE_IMPORT_UTIL_DIR="${BUNDLE_IMPORT_UTIL_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../util" && pwd)}"
 
 # Read tokens.delimiterStyle / tokens.nameStyle from a contract.yaml.
 # Sets BUNDLE_DELIM_STYLE and BUNDLE_NAME_STYLE.
@@ -107,7 +107,7 @@ bundle_import_normalise_manifests() {
   local target_combo="${TOKEN_DELIMITER_STYLE}-${TOKEN_NAME_STYLE}"
 
   local assessment
-  assessment=$("${_BUNDLE_IMPORT_UTIL_DIR}/assess-token-compatibility" \
+  assessment=$("${BUNDLE_IMPORT_UTIL_DIR}/assess-token-compatibility" \
       "${BUNDLE_DELIM_STYLE}" "${BUNDLE_NAME_STYLE}" "${manifests_dir}")
 
   local section="" found_auto=false found_repackage=false
@@ -127,7 +127,7 @@ bundle_import_normalise_manifests() {
 
   if ${found_auto}; then
     cp -R "${manifests_dir}" "${normalised_dir}"
-    "${_BUNDLE_IMPORT_UTIL_DIR}/convert-tokens-in-tree" \
+    "${BUNDLE_IMPORT_UTIL_DIR}/convert-tokens-in-tree" \
       "${BUNDLE_DELIM_STYLE}" "${BUNDLE_NAME_STYLE}" \
       "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" \
       "${normalised_dir}" \
