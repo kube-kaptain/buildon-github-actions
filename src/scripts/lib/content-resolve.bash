@@ -61,11 +61,9 @@ fi
 case "${CONTENT_FLAVOUR:-}" in
   contents)
     _CONTENT_RESOLVE_SPEC_EXPR='.spec.contents[]'
-    _CONTENT_RESOLVE_FILE_STEM='contents'
     ;;
   templates)
     _CONTENT_RESOLVE_SPEC_EXPR='.spec.templates[]'
-    _CONTENT_RESOLVE_FILE_STEM='templates'
     ;;
   "")
     log_error "CONTENT_FLAVOUR must be set before sourcing content-resolve.bash (expected 'contents' or 'templates')."
@@ -85,8 +83,8 @@ CONTENT_DEFAULTS_DIR="${CONTENT_BASE}/defaults"
 CONTENT_CONTRACTS_DIR="${CONTENT_BASE}/contracts"
 CONTENT_EXTRACT_DIR="${CONTENT_BASE}/extract"
 CONTENT_UNZIPPED_DIR="${CONTENT_BASE}/unzipped"
-CONTENT_LIST_FILE="${CONTENT_BASE}/${_CONTENT_RESOLVE_FILE_STEM}.yaml"
-CONTENT_RESOLVED_FILE="${CONTENT_BASE}/${_CONTENT_RESOLVE_FILE_STEM}-resolved.yaml"
+CONTENT_LIST_FILE="${CONTENT_BASE}/${CONTENT_FLAVOUR}.yaml"
+CONTENT_RESOLVED_FILE="${CONTENT_BASE}/${CONTENT_FLAVOUR}-resolved.yaml"
 export CONTENT_BASE CONTENT_MANIFESTS_DIR CONTENT_DEFAULTS_DIR \
        CONTENT_CONTRACTS_DIR CONTENT_EXTRACT_DIR CONTENT_UNZIPPED_DIR \
        CONTENT_LIST_FILE CONTENT_RESOLVED_FILE
@@ -413,7 +411,7 @@ content_resolve_all() {
   # regardless of where they were pulled from.
   assert_unique_artifact_refs "${kaptainpm_file}" \
     "${_CONTENT_RESOLVE_SPEC_EXPR}" \
-    "spec.${_CONTENT_RESOLVE_FILE_STEM}" name
+    "spec.${CONTENT_FLAVOUR}" name
 
   rm -rf "${CONTENT_BASE}"
   mkdir -p "${CONTENT_MANIFESTS_DIR}" "${CONTENT_DEFAULTS_DIR}" "${CONTENT_CONTRACTS_DIR}" \
@@ -425,7 +423,7 @@ content_resolve_all() {
   local entries
   entries=$(yq eval "${_CONTENT_RESOLVE_SPEC_EXPR}" "${kaptainpm_file}" 2>/dev/null || true)
   if [[ -z "${entries}" || "${entries}" == "null" ]]; then
-    log "No ${_CONTENT_RESOLVE_FILE_STEM} entries to resolve"
+    log "No ${CONTENT_FLAVOUR} entries to resolve"
     return 0
   fi
 
@@ -437,7 +435,7 @@ content_resolve_all() {
 
   local total
   total=$(echo "${entries}" | grep -c .)
-  log "${_CONTENT_RESOLVE_FILE_STEM} lists ${total} entr$([[ ${total} -eq 1 ]] && echo y || echo ies):"
+  log "${CONTENT_FLAVOUR} lists ${total} entr$([[ ${total} -eq 1 ]] && echo y || echo ies):"
   while IFS= read -r summary_entry; do
     [[ -z "${summary_entry}" ]] && continue
     log "  ${summary_entry}"
@@ -449,7 +447,7 @@ content_resolve_all() {
   while IFS= read -r entry; do
     [[ -z "${entry}" ]] && continue
     entry_index=$((entry_index + 1))
-    log "Resolving ${_CONTENT_RESOLVE_FILE_STEM} entry ${entry_index}: ${entry}"
+    log "Resolving ${CONTENT_FLAVOUR} entry ${entry_index}: ${entry}"
 
     # Resolve to the concrete OCI URI. Land the resolved-uri file at a
     # known per-entry path, then move it into the slug-named extract dir
@@ -465,7 +463,7 @@ content_resolve_all() {
 
     # Auto-builtin tokens: pinned version comes from the resolved URI's tag.
     local resolved_version="${resolved_uri##*:}"
-    emit_builtin_tokens_for_entry "${entry}" "${resolved_version}" "${_CONTENT_RESOLVE_FILE_STEM}"
+    emit_builtin_tokens_for_entry "${entry}" "${resolved_version}" "${CONTENT_FLAVOUR}"
 
     local slug
     slug=$(_content_artifact_slug "${resolved_uri}")
@@ -488,5 +486,5 @@ content_resolve_all() {
     log ""
   done <<< "${entries}"
 
-  log "Resolved ${entry_index} ${_CONTENT_RESOLVE_FILE_STEM} entr$([[ ${entry_index} -eq 1 ]] && echo y || echo ies)"
+  log "Resolved ${entry_index} ${CONTENT_FLAVOUR} entr$([[ ${entry_index} -eq 1 ]] && echo y || echo ies)"
 }
