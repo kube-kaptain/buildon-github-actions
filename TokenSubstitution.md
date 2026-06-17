@@ -95,6 +95,17 @@ Always available:
 | `DOCKER_TAG` | Input (required) |
 | `DOCKER_IMAGE_NAME` | Input (required) |
 | `MANIFESTS_ZIP_FILE_NAME` | Computed: `${PROJECT_NAME}-${VERSION}-manifests.zip` |
+| `BUILD_TIMESTAMP` | ISO 8601 UTC pinned at build start by `kaptain-init` (e.g. `2026-06-17T14:32:15Z`) |
+| `BUILD_MODE` | `build_server` or `local` (from env, pinned by `kaptain-init`) |
+| `BUILD_PLATFORM` | Runtime label (e.g. `github-actions`, `local`); pinned by `kaptain-init` |
+| `IMAGE_BUILD_COMMAND` | `docker` or `podman`; pinned by `kaptain-init` |
+| `GIT_HASH_FULL` | `git rev-parse HEAD` at build start; pinned by `kaptain-init` |
+| `GIT_HASH_SHORT` | `git rev-parse --short=7 HEAD` at build start; pinned by `kaptain-init` |
+| `GIT_BRANCH` | `git rev-parse --abbrev-ref HEAD` at build start; pinned by `kaptain-init` |
+| `GIT_REPOSITORY_NAME` | Always set; written by `versions-and-naming` |
+| `GIT_REPOSITORY_OWNER` | Empty if not available; written by `versions-and-naming` |
+| `KAPTAINPM_KIND` | `.kind` of the final merged `KaptainPM.yaml`; written by `kaptain-init` |
+| `KAPTAINPM_METADATA_DESCRIPTION` | `.metadata.description` of the final merged `KaptainPM.yaml` (empty if absent) |
 
 Optional (when provided):
 
@@ -125,6 +136,10 @@ Names use a fixed prefix per kind and a slug derived from the entry's URI:
 | `CONTENT_` | `spec.contents` entries |
 | `TEMPLATE_` | `spec.templates` entries |
 | `LAYER_` | `spec.layers` entries (both layers and layersets) |
+| `BUILD_` | Build-scoped scalars pinned at build start by `kaptain-init` (e.g. `BUILD_TIMESTAMP`, `BUILD_MODE`, `BUILD_PLATFORM`) |
+| `IMAGE_` | Image-tooling scalars pinned by `kaptain-init` (e.g. `IMAGE_BUILD_COMMAND`) |
+| `GIT_` | Git-derived scalars pinned by `kaptain-init` and `versions-and-naming` (e.g. `GIT_HASH_FULL`, `GIT_HASH_SHORT`, `GIT_BRANCH`, `GIT_REPOSITORY_NAME`, `GIT_REPOSITORY_OWNER`) |
+| `KAPTAINPM_` | Fields from the final merged `KaptainPM.yaml`, written by `kaptain-init` after merge (e.g. `KAPTAINPM_KIND`, `KAPTAINPM_METADATA_DESCRIPTION`) |
 
 The slug is derived from the entry-as-written: optional `<provider>|` prefix is
 stripped, the trailing `:<version-spec>` is removed, then the URI is split on

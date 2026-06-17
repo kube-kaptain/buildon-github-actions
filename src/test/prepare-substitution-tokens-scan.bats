@@ -122,17 +122,101 @@ seed_auto_token() {
   [ -f "${TOKENS_OUTPUT_SUB_PATH}/LayerLayerFooVersion" ]
 }
 
-@test "all three dirs scanned in one run" {
+@test "all seven dirs scanned in one run" {
   export TOKEN_NAME_STYLE="PascalCase"
-  seed_auto_token contents  "CONTENT_C_VERSION"  "1.0"
-  seed_auto_token templates "TEMPLATE_T_VERSION" "2.0"
-  seed_auto_token layers    "LAYER_L_VERSION"    "3.0"
+  seed_auto_token contents  "CONTENT_C_VERSION"            "1.0"
+  seed_auto_token templates "TEMPLATE_T_VERSION"           "2.0"
+  seed_auto_token layers    "LAYER_L_VERSION"              "3.0"
+  seed_auto_token build     "BUILD_TIMESTAMP"              "2026-06-17T14:32:15Z"
+  seed_auto_token image     "IMAGE_BUILD_COMMAND"          "docker"
+  seed_auto_token git       "GIT_BRANCH"                   "main"
+  seed_auto_token kaptainpm "KAPTAINPM_KIND"               "kubernetes-app-docker-dockerfile"
 
   run "$PSUB"
   [ "$status" -eq 0 ]
   [ -f "${TOKENS_OUTPUT_SUB_PATH}/ContentCVersion" ]
   [ -f "${TOKENS_OUTPUT_SUB_PATH}/TemplateTVersion" ]
   [ -f "${TOKENS_OUTPUT_SUB_PATH}/LayerLVersion" ]
+  [ -f "${TOKENS_OUTPUT_SUB_PATH}/BuildTimestamp" ]
+  [ -f "${TOKENS_OUTPUT_SUB_PATH}/ImageBuildCommand" ]
+  [ -f "${TOKENS_OUTPUT_SUB_PATH}/GitBranch" ]
+  [ -f "${TOKENS_OUTPUT_SUB_PATH}/KaptainpmKind" ]
+}
+
+@test "build/ file with BUILD_ prefix is copied" {
+  export TOKEN_NAME_STYLE="PascalCase"
+  seed_auto_token build "BUILD_TIMESTAMP" "2026-06-17T14:32:15Z"
+
+  run "$PSUB"
+  [ "$status" -eq 0 ]
+  [ -f "${TOKENS_OUTPUT_SUB_PATH}/BuildTimestamp" ]
+  [ "$(cat "${TOKENS_OUTPUT_SUB_PATH}/BuildTimestamp")" = "2026-06-17T14:32:15Z" ]
+}
+
+@test "image/ file with IMAGE_ prefix is copied" {
+  export TOKEN_NAME_STYLE="PascalCase"
+  seed_auto_token image "IMAGE_BUILD_COMMAND" "podman"
+
+  run "$PSUB"
+  [ "$status" -eq 0 ]
+  [ -f "${TOKENS_OUTPUT_SUB_PATH}/ImageBuildCommand" ]
+  [ "$(cat "${TOKENS_OUTPUT_SUB_PATH}/ImageBuildCommand")" = "podman" ]
+}
+
+@test "git/ file with GIT_ prefix is copied" {
+  export TOKEN_NAME_STYLE="PascalCase"
+  seed_auto_token git "GIT_HASH_FULL" "abc1234deadbeef"
+
+  run "$PSUB"
+  [ "$status" -eq 0 ]
+  [ -f "${TOKENS_OUTPUT_SUB_PATH}/GitHashFull" ]
+  [ "$(cat "${TOKENS_OUTPUT_SUB_PATH}/GitHashFull")" = "abc1234deadbeef" ]
+}
+
+@test "kaptainpm/ file with KAPTAINPM_ prefix is copied" {
+  export TOKEN_NAME_STYLE="PascalCase"
+  seed_auto_token kaptainpm "KAPTAINPM_KIND" "kubernetes-app-docker-dockerfile"
+
+  run "$PSUB"
+  [ "$status" -eq 0 ]
+  [ -f "${TOKENS_OUTPUT_SUB_PATH}/KaptainpmKind" ]
+  [ "$(cat "${TOKENS_OUTPUT_SUB_PATH}/KaptainpmKind")" = "kubernetes-app-docker-dockerfile" ]
+}
+
+@test "file in build/ without BUILD_ prefix -> fail" {
+  export TOKEN_NAME_STYLE="PascalCase"
+  seed_auto_token build "CONTENT_WRONG_TIMESTAMP" "x"
+
+  run "$PSUB"
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"does not start with required prefix 'BUILD_'"* ]]
+}
+
+@test "file in image/ without IMAGE_ prefix -> fail" {
+  export TOKEN_NAME_STYLE="PascalCase"
+  seed_auto_token image "BUILD_WRONG_COMMAND" "x"
+
+  run "$PSUB"
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"does not start with required prefix 'IMAGE_'"* ]]
+}
+
+@test "file in git/ without GIT_ prefix -> fail" {
+  export TOKEN_NAME_STYLE="PascalCase"
+  seed_auto_token git "BUILD_WRONG_HASH" "x"
+
+  run "$PSUB"
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"does not start with required prefix 'GIT_'"* ]]
+}
+
+@test "file in kaptainpm/ without KAPTAINPM_ prefix -> fail" {
+  export TOKEN_NAME_STYLE="PascalCase"
+  seed_auto_token kaptainpm "BUILD_WRONG_KIND" "x"
+
+  run "$PSUB"
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"does not start with required prefix 'KAPTAINPM_'"* ]]
 }
 
 # =============================================================================

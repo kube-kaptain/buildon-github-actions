@@ -101,7 +101,14 @@ scan_auto_builtin_tokens() {
   fi
 
   local flavour_pair flavour expected_prefix dir file name target
-  for flavour_pair in "contents:CONTENT" "templates:TEMPLATE" "layers:LAYER"; do
+  for flavour_pair in \
+    "contents:CONTENT" \
+    "templates:TEMPLATE" \
+    "layers:LAYER" \
+    "build:BUILD" \
+    "image:IMAGE" \
+    "git:GIT" \
+    "kaptainpm:KAPTAINPM"; do
     flavour="${flavour_pair%:*}"
     expected_prefix="${flavour_pair#*:}"
     dir="${base_dir}/${flavour}"
