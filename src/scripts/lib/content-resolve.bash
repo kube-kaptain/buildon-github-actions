@@ -7,21 +7,21 @@
 # Sourced library exposing functions to resolve OCI artifact references,
 # fetch and unpack the manifests + contract zips that each entry contains,
 # and stage the result into per-entry directories. Used by product-aggregate
-# (content flavour) and later by app/bundle and env/rp builds (templates
+# (contents flavour) and later by app/bundle and env/rp builds (templates
 # flavour). Layers do not use this lib — they have their own lib/layer-merge
 # and stage under a different tree entirely.
 #
 # CONTENT_FLAVOUR contract (required, validated at source time):
-#   content    - read spec.contents[], stage under ${OUTPUT_SUB_PATH}/content/,
+#   contents   - read spec.contents[], stage under ${OUTPUT_SUB_PATH}/contents/,
 #                produce contents.yaml + contents-resolved.yaml
 #   templates  - read spec.templates[], stage under ${OUTPUT_SUB_PATH}/templates/,
 #                produce templates.yaml + templates-resolved.yaml
 # A given script picks the flavour appropriate to its phase. env/rp builds will
-# run two passes (content then templates) in separate scripts.
+# run two passes (contents then templates) in separate scripts.
 #
 # Required env to source this file:
 #   OUTPUT_SUB_PATH   - set by defaults/output-sub-path.bash before sourcing
-#   CONTENT_FLAVOUR   - set by caller before sourcing; one of content|templates
+#   CONTENT_FLAVOUR   - set by caller before sourcing; one of contents|templates
 #   log / log_error   - functions from lib/log.bash sourced before this file
 #
 # Exported by sourcing this file:
@@ -59,7 +59,7 @@ if [[ -z "${OUTPUT_SUB_PATH:-}" ]]; then
 fi
 
 case "${CONTENT_FLAVOUR:-}" in
-  content)
+  contents)
     _CONTENT_RESOLVE_SPEC_EXPR='.spec.contents[]'
     _CONTENT_RESOLVE_FILE_STEM='contents'
     ;;
@@ -68,12 +68,12 @@ case "${CONTENT_FLAVOUR:-}" in
     _CONTENT_RESOLVE_FILE_STEM='templates'
     ;;
   "")
-    log_error "CONTENT_FLAVOUR must be set before sourcing content-resolve.bash (expected 'content' or 'templates')."
+    log_error "CONTENT_FLAVOUR must be set before sourcing content-resolve.bash (expected 'contents' or 'templates')."
     # shellcheck disable=SC2317 # dual-mode: works whether sourced or executed
     return 1 2>/dev/null || exit 1
     ;;
   *)
-    log_error "CONTENT_FLAVOUR='${CONTENT_FLAVOUR}' invalid (expected 'content' or 'templates')."
+    log_error "CONTENT_FLAVOUR='${CONTENT_FLAVOUR}' invalid (expected 'contents' or 'templates')."
     # shellcheck disable=SC2317 # dual-mode: works whether sourced or executed
     return 1 2>/dev/null || exit 1
     ;;

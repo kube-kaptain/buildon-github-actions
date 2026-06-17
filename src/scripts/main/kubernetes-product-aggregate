@@ -47,7 +47,7 @@ source "${SCRIPT_DIR}/../lib/output-var.bash"
 # shellcheck source=src/scripts/lib/token-format.bash
 source "${SCRIPT_DIR}/../lib/token-format.bash"
 # content-resolve owns its dir layout based on CONTENT_FLAVOUR; set before sourcing.
-export CONTENT_FLAVOUR=content
+export CONTENT_FLAVOUR=contents
 # shellcheck source=src/scripts/lib/content-resolve.bash
 source "${SCRIPT_DIR}/../lib/content-resolve.bash"
 # shellcheck source=src/scripts/lib/bundle-import.bash
