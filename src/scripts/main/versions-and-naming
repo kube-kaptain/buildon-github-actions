@@ -247,6 +247,14 @@ main() {
   output_var "PROJECT_NAME" "${project_name}"
   output_var "REPOSITORY_OWNER" "${REPOSITORY_OWNER}"
   output_var "REPOSITORY_NAME" "${REPOSITORY_NAME}"
+
+  # Builtin tokens for the git/ scan in prepare-substitution-tokens. Written
+  # here because REPOSITORY_NAME/OWNER are not in kaptain-init's step env;
+  # versions-and-naming owns them and runs before any substitution.
+  local git_builtins_dir="${OUTPUT_SUB_PATH}/builtin-resolved-tokens/git"
+  mkdir -p "${git_builtins_dir}"
+  printf '%s' "${REPOSITORY_NAME}"  > "${git_builtins_dir}/GIT_REPOSITORY_NAME"
+  printf '%s' "${REPOSITORY_OWNER}" > "${git_builtins_dir}/GIT_REPOSITORY_OWNER"
 }
 
 main "$@"

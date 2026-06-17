@@ -52,12 +52,12 @@ spec:
     - beta:2.0
 EOF
 
-  mkdir -p "${out}/content"
-  cat > "${out}/content/contents.yaml" << 'EOF'
+  mkdir -p "${out}/contents"
+  cat > "${out}/contents/contents.yaml" << 'EOF'
 - alpha:1.0
 - beta:2.0
 EOF
-  cat > "${out}/content/contents-resolved.yaml" << 'EOF'
+  cat > "${out}/contents/contents-resolved.yaml" << 'EOF'
 - ghcr.io/org/alpha:1.0.0-manifests
 - ghcr.io/org/beta:2.0.0-manifests
 EOF
@@ -518,7 +518,7 @@ EOF
 
 @test "validation (product): missing contents-resolved.yaml fails with diagnostic" {
   stage_product_preconditions
-  rm -f "${TEST_DIR}/kaptain-out/content/contents-resolved.yaml"
+  rm -f "${TEST_DIR}/kaptain-out/contents/contents-resolved.yaml"
   run_script
   [ "${status}" -ne 0 ]
   assert_output_contains "Resolved-contents file not found"
@@ -527,7 +527,7 @@ EOF
 
 @test "validation (product): missing contents.yaml fails with diagnostic" {
   stage_product_preconditions
-  rm -f "${TEST_DIR}/kaptain-out/content/contents.yaml"
+  rm -f "${TEST_DIR}/kaptain-out/contents/contents.yaml"
   run_script
   [ "${status}" -ne 0 ]
   assert_output_contains "Contents list file not found"

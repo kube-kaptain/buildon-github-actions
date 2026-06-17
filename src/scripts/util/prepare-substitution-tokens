@@ -35,6 +35,8 @@ PLUGINS_DIR="${SCRIPT_DIR}/../plugins"
 source "${SCRIPT_DIR}/../defaults/platform.bash"
 # shellcheck source=src/scripts/lib/log.bash
 source "${SCRIPT_DIR}/../lib/log.bash"
+# shellcheck source=src/scripts/defaults/output-sub-path.bash
+source "${SCRIPT_DIR}/../defaults/output-sub-path.bash"
 
 # shellcheck disable=SC1091 # path not resolvable at static analysis time
 # Source the token formatting library
@@ -79,6 +81,49 @@ write_builtin_token() {
   target_name=$(convert_token_name "${TOKEN_NAME_STYLE}" "${name}")
 
   printf '%s' "${value}" > "${TOKENS_OUTPUT_SUB_PATH}/${target_name}"
+}
+
+# Scan the auto-emitted per-entry builtin tokens dirs and copy each file into
+# TOKENS_OUTPUT_SUB_PATH using the consumer's TOKEN_NAME_STYLE.
+#
+# Source dirs are produced by lib/builtin-tokens-from-entry.bash via
+# content-resolve.bash and kaptain-init. Each dir has a required filename
+# prefix (CONTENT_, TEMPLATE_, LAYER_); files not matching their dir's prefix
+# are a hard failure (catches malformed bundles or future writers that skip
+# the emitter).
+#
+# Missing dirs are silently skipped (the resolver may run before this, or not
+# at all for this build kind).
+scan_auto_builtin_tokens() {
+  local base_dir="${OUTPUT_SUB_PATH}/builtin-resolved-tokens"
+  if [[ ! -d "${base_dir}" ]]; then
+    return 0
+  fi
+
+  local flavour_pair flavour expected_prefix dir file name target
+  for flavour_pair in \
+    "contents:CONTENT" \
+    "templates:TEMPLATE" \
+    "layers:LAYER" \
+    "build:BUILD" \
+    "image:IMAGE" \
+    "git:GIT" \
+    "kaptainpm:KAPTAINPM"; do
+    flavour="${flavour_pair%:*}"
+    expected_prefix="${flavour_pair#*:}"
+    dir="${base_dir}/${flavour}"
+    [[ ! -d "${dir}" ]] && continue
+
+    while IFS= read -r -d '' file; do
+      name=$(basename "${file}")
+      if [[ "${name}" != "${expected_prefix}_"* ]]; then
+        log_error "Auto-emitted token '${name}' in ${dir} does not start with required prefix '${expected_prefix}_'"
+        exit 1
+      fi
+      target=$(convert_token_name "${TOKEN_NAME_STYLE}" "${name}")
+      cp "${file}" "${TOKENS_OUTPUT_SUB_PATH}/${target}"
+    done < <(find "${dir}" -type f -print0)
+  done
 }
 
 main() {
@@ -152,6 +197,11 @@ main() {
   if [[ -n "${PRODUCT_SHORT_NAME:-}" ]]; then
     write_builtin_token "PRODUCT_SHORT_NAME" "${PRODUCT_SHORT_NAME}"
   fi
+
+  # Auto-emitted per-entry builtins (contents/templates/layers). Treated as
+  # built-ins for the override conflict check below: user config that tries
+  # to redefine them fails the build.
+  scan_auto_builtin_tokens
 
   # Step 2: Validate and copy user config if it exists
   if [[ -d "${CONFIG_SUB_PATH}" ]] && [[ -n "$(find "${CONFIG_SUB_PATH}" -type f 2>/dev/null)" ]]; then

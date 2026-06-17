@@ -108,7 +108,7 @@ EOF
 
 # Stand up mocks for util/artifact-resolve and util/extract-oci-image so the
 # library doesn't need to talk to a real registry. Returns paths via globals
-# MOCK_UTIL_DIR (for _CONTENT_RESOLVE_UTIL_DIR) and MOCK_OCI_DIR.
+# MOCK_UTIL_DIR (for CONTENT_RESOLVE_UTIL_DIR) and MOCK_OCI_DIR.
 setup_mock_oci() {
   MOCK_UTIL_DIR="${TEST_DIR}/mock-util-bin"
   MOCK_OCI_DIR="${TEST_DIR}/oci-fixtures"
@@ -143,7 +143,7 @@ MOCK
   chmod +x "${MOCK_UTIL_DIR}/extract-oci-image"
 
   # content_validate_bundle calls the real scan-unresolved-tokens utility via
-  # _CONTENT_RESOLVE_UTIL_DIR. It is pure local computation, not something
+  # CONTENT_RESOLVE_UTIL_DIR. It is pure local computation, not something
   # that needs mocking, so symlink the real one into the mock util dir.
   ln -sf "${SCRIPTS_DIR}/util/scan-unresolved-tokens" "${MOCK_UTIL_DIR}/scan-unresolved-tokens"
 }
@@ -179,7 +179,7 @@ run_script() {
     BUILD_PLATFORM=test \
     GITHUB_OUTPUT="${GITHUB_OUTPUT}" \
     KAPTAINPM_FILE="${TEST_DIR}/kaptainpm/final/KaptainPM.yaml" \
-    _CONTENT_RESOLVE_UTIL_DIR="${MOCK_UTIL_DIR:-}" \
+    CONTENT_RESOLVE_UTIL_DIR="${MOCK_UTIL_DIR:-}" \
     MOCK_OCI_DIR="${MOCK_OCI_DIR:-}" \
     bash -c "cd '${TEST_DIR}' && '${SCRIPT}'"
 }
@@ -289,7 +289,7 @@ github_output_value() {
   run_script
   [ "${status}" -eq 0 ]
   [ "$(github_output_value PRODUCT_NAME)" = "product-foo" ]
-  [ -d "${TEST_DIR}/kaptain-out/content/manifests" ]
+  [ -d "${TEST_DIR}/kaptain-out/contents/manifests" ]
 }
 
 # =============================================================================
@@ -302,7 +302,7 @@ github_output_value() {
   write_pm "alpha:1.0"
   run_script
   [ "${status}" -eq 0 ]
-  [ -f "${TEST_DIR}/kaptain-out/content/manifests/alpha/deployment.yaml" ]
+  [ -f "${TEST_DIR}/kaptain-out/contents/manifests/alpha/deployment.yaml" ]
   [ -f "${TEST_DIR}/kaptain-out/manifests/additional-defaults/Replicas" ]
   [ "$(cat "${TEST_DIR}/kaptain-out/manifests/additional-defaults/Replicas")" = "2" ]
   [ -f "${TEST_DIR}/kaptain-out/manifests/additional-manifests/alpha/deployment.yaml" ]
@@ -315,13 +315,13 @@ github_output_value() {
   write_pm "alpha:1.0" "beta:2.0"
   run_script
   [ "${status}" -eq 0 ]
-  [ -f "${TEST_DIR}/kaptain-out/content/manifests/alpha/deployment.yaml" ]
-  [ -f "${TEST_DIR}/kaptain-out/content/manifests/beta/deployment.yaml" ]
+  [ -f "${TEST_DIR}/kaptain-out/contents/manifests/alpha/deployment.yaml" ]
+  [ -f "${TEST_DIR}/kaptain-out/contents/manifests/beta/deployment.yaml" ]
   [ -f "${TEST_DIR}/kaptain-out/manifests/additional-defaults/Replicas" ]
   [ -f "${TEST_DIR}/kaptain-out/manifests/additional-defaults/MaxHeapSize" ]
 }
 
-@test "end-to-end: leaves audit trail under content/extract and content/unzipped" {
+@test "end-to-end: leaves audit trail under contents/extract and contents/unzipped" {
   setup_mock_oci
   stage_oci_fixture "alpha:1.0-manifests" "alpha" shell PascalCase "Replicas=2"
   stage_oci_fixture "beta:2.0-manifests"  "beta"  shell PascalCase "MaxHeapSize=512Mi"
@@ -333,20 +333,20 @@ github_output_value() {
   alpha_slug=$(echo "alpha:1.0-manifests" | tr '/:' '__')
   beta_slug=$(echo "beta:2.0-manifests" | tr '/:' '__')
 
-  [ -d "${TEST_DIR}/kaptain-out/content/extract/${alpha_slug}" ]
-  [ -d "${TEST_DIR}/kaptain-out/content/extract/${beta_slug}" ]
-  [ -f "${TEST_DIR}/kaptain-out/content/extract/${alpha_slug}/alpha-1.0-manifests.zip" ]
-  [ -f "${TEST_DIR}/kaptain-out/content/extract/${alpha_slug}/alpha-1.0-contract.zip" ]
-  [ -f "${TEST_DIR}/kaptain-out/content/extract/${alpha_slug}/resolved-uri" ]
-  [ -f "${TEST_DIR}/kaptain-out/content/extract/${beta_slug}/beta-1.0-manifests.zip" ]
-  [ -f "${TEST_DIR}/kaptain-out/content/extract/${beta_slug}/beta-1.0-contract.zip" ]
+  [ -d "${TEST_DIR}/kaptain-out/contents/extract/${alpha_slug}" ]
+  [ -d "${TEST_DIR}/kaptain-out/contents/extract/${beta_slug}" ]
+  [ -f "${TEST_DIR}/kaptain-out/contents/extract/${alpha_slug}/alpha-1.0-manifests.zip" ]
+  [ -f "${TEST_DIR}/kaptain-out/contents/extract/${alpha_slug}/alpha-1.0-contract.zip" ]
+  [ -f "${TEST_DIR}/kaptain-out/contents/extract/${alpha_slug}/resolved-uri" ]
+  [ -f "${TEST_DIR}/kaptain-out/contents/extract/${beta_slug}/beta-1.0-manifests.zip" ]
+  [ -f "${TEST_DIR}/kaptain-out/contents/extract/${beta_slug}/beta-1.0-contract.zip" ]
 
-  [ -d "${TEST_DIR}/kaptain-out/content/unzipped/${alpha_slug}" ]
-  [ -d "${TEST_DIR}/kaptain-out/content/unzipped/${beta_slug}" ]
-  [ -f "${TEST_DIR}/kaptain-out/content/unzipped/${alpha_slug}/contract.yaml" ]
-  [ -f "${TEST_DIR}/kaptain-out/content/unzipped/${alpha_slug}/alpha/deployment.yaml" ]
-  [ -f "${TEST_DIR}/kaptain-out/content/unzipped/${beta_slug}/contract.yaml" ]
-  [ -f "${TEST_DIR}/kaptain-out/content/unzipped/${beta_slug}/beta/deployment.yaml" ]
+  [ -d "${TEST_DIR}/kaptain-out/contents/unzipped/${alpha_slug}" ]
+  [ -d "${TEST_DIR}/kaptain-out/contents/unzipped/${beta_slug}" ]
+  [ -f "${TEST_DIR}/kaptain-out/contents/unzipped/${alpha_slug}/contract.yaml" ]
+  [ -f "${TEST_DIR}/kaptain-out/contents/unzipped/${alpha_slug}/alpha/deployment.yaml" ]
+  [ -f "${TEST_DIR}/kaptain-out/contents/unzipped/${beta_slug}/contract.yaml" ]
+  [ -f "${TEST_DIR}/kaptain-out/contents/unzipped/${beta_slug}/beta/deployment.yaml" ]
 }
 
 # =============================================================================
@@ -446,9 +446,9 @@ EOF
   write_pm "alpha:1.0" "ghcr.io/org/sub/beta:2.0"
   run_script
   [ "${status}" -eq 0 ]
-  local list="${TEST_DIR}/kaptain-out/content/contents.yaml"
+  local list="${TEST_DIR}/kaptain-out/contents/contents.yaml"
   [ -f "${list}" ]
-  [ "$(github_output_value PRODUCT_CONTENTS_FILE)" = "kaptain-out/content/contents.yaml" ]
+  [ "$(github_output_value PRODUCT_CONTENTS_FILE)" = "kaptain-out/contents/contents.yaml" ]
   grep -qx -- "- alpha:1.0" "${list}"
   grep -qx -- "- ghcr.io/org/sub/beta:2.0" "${list}"
 }
@@ -458,7 +458,7 @@ EOF
   write_pm
   run_script
   [ "${status}" -eq 0 ]
-  local list="${TEST_DIR}/kaptain-out/content/contents.yaml"
+  local list="${TEST_DIR}/kaptain-out/contents/contents.yaml"
   [ -f "${list}" ]
   [ ! -s "${list}" ]
 }

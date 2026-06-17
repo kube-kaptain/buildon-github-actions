@@ -251,8 +251,8 @@ build_resources_inventory() {
 # kubernetes-product-aggregate's content-resolve pass. Both required for
 # product builds; missing means content-resolve did not run.
 assemble_product() {
-  local list="${OUTPUT_SUB_PATH}/content/contents.yaml"
-  local resolved="${OUTPUT_SUB_PATH}/content/contents-resolved.yaml"
+  local list="${OUTPUT_SUB_PATH}/contents/contents.yaml"
+  local resolved="${OUTPUT_SUB_PATH}/contents/contents-resolved.yaml"
   if [[ ! -f "${list}" ]]; then
     log_error "Contents list file not found: ${list}"
     log_error "Did kubernetes-product-aggregate run first?"

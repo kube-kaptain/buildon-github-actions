@@ -57,6 +57,50 @@ source "${SCRIPT_DIR}/../lib/layer-merge.bash"
 source "${SCRIPT_DIR}/../lib/validate-exact-file-exists.bash"
 # shellcheck source=src/scripts/lib/validate-layer-payload.bash
 source "${SCRIPT_DIR}/../lib/validate-layer-payload.bash"
+# shellcheck source=src/scripts/lib/builtin-tokens-from-entry.bash
+source "${SCRIPT_DIR}/../lib/builtin-tokens-from-entry.bash"
+
+# IMAGE_BUILD_COMMAND is required because it's both written as a builtin token
+# below and consumed later by artifact-fetch when resolving layers. Same source
+# of truth as defaults/docker-common.bash.
+IMAGE_BUILD_COMMAND="${IMAGE_BUILD_COMMAND:?IMAGE_BUILD_COMMAND is required - run validate-tooling first}"
+
+# Builtin scalars pinned at build start. Written here, immediately after all
+# sources, so downstream prepare-substitution-tokens scans the build/ image/
+# git/ kaptainpm/ subdirs alongside contents/templates/layers and exposes these
+# as canonical builtin tokens. Files carry no trailing newline so they round-trip
+# cleanly into mid-string substitutions.
+BUILD_BUILTINS_DIR="${OUTPUT_SUB_PATH}/builtin-resolved-tokens/build"
+IMAGE_BUILTINS_DIR="${OUTPUT_SUB_PATH}/builtin-resolved-tokens/image"
+GIT_BUILTINS_DIR="${OUTPUT_SUB_PATH}/builtin-resolved-tokens/git"
+mkdir -p "${BUILD_BUILTINS_DIR}" "${IMAGE_BUILTINS_DIR}" "${GIT_BUILTINS_DIR}"
+
+printf '%s' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > "${BUILD_BUILTINS_DIR}/BUILD_TIMESTAMP"
+printf '%s' "${BUILD_MODE}" > "${BUILD_BUILTINS_DIR}/BUILD_MODE"
+printf '%s' "${BUILD_PLATFORM}" > "${BUILD_BUILTINS_DIR}/BUILD_PLATFORM"
+
+printf '%s' "${IMAGE_BUILD_COMMAND}" > "${IMAGE_BUILTINS_DIR}/IMAGE_BUILD_COMMAND"
+
+# Git tokens hard-fail on git failure: kaptain is git-centric and basic-checks
+# runs before this, so HEAD is always present in real pipelines. The `|| { ... }`
+# form is needed for bash 3.2.57 where `set -e` does not catch failure inside
+# `$(...)` command substitution during assignment.
+git_hash_full=$(git rev-parse HEAD) || { log_error "git rev-parse HEAD failed"; exit 1; }
+git_hash_short=$(git rev-parse --short=7 HEAD) || { log_error "git rev-parse --short=7 HEAD failed"; exit 1; }
+git_branch=$(git rev-parse --abbrev-ref HEAD) || { log_error "git rev-parse --abbrev-ref HEAD failed"; exit 1; }
+printf '%s' "${git_hash_full}"  > "${GIT_BUILTINS_DIR}/GIT_HASH_FULL"
+printf '%s' "${git_hash_short}" > "${GIT_BUILTINS_DIR}/GIT_HASH_SHORT"
+printf '%s' "${git_branch}"     > "${GIT_BUILTINS_DIR}/GIT_BRANCH"
+
+# Helper for KAPTAINPM_* tokens (deferred to each exit path, since the final
+# yaml is produced at three different points).
+write_kaptainpm_builtin_tokens() {
+  local final_file="$1"
+  local out_dir="${OUTPUT_SUB_PATH}/builtin-resolved-tokens/kaptainpm"
+  mkdir -p "${out_dir}"
+  printf '%s' "$(yq eval '.kind // ""' "${final_file}")" > "${out_dir}/KAPTAINPM_KIND"
+  printf '%s' "$(yq eval '.metadata.description // ""' "${final_file}")" > "${out_dir}/KAPTAINPM_METADATA_DESCRIPTION"
+}
 
 UTIL_DIR="${SCRIPT_DIR}/../util"
 
@@ -157,6 +201,8 @@ if [[ "${layer_count}" -eq 0 ]]; then
   check-jsonschema --schemafile "${SCHEMA_FINAL}" "${FINAL_FILE}"
   log "Final schema validation passed"
 
+  write_kaptainpm_builtin_tokens "${FINAL_FILE}"
+
   exit 0
 fi
 
@@ -217,6 +263,12 @@ resolve_layer() {
     exit 1
   fi
   echo "${identity}=${resolved_version}" >> "${VISITED_FILE}"
+
+  # Auto-builtin tokens: emit LAYER_<slug>_{REF,VERSION_SPEC,VERSION} for every
+  # resolved layer (including layersets) so downstream substitution can pin to
+  # the same version/spec the build saw. Slug is derived from the entry as
+  # written, so short and long ref forms produce distinct slugs as authored.
+  emit_builtin_tokens_for_entry "${ref}" "${resolved_version}" "layers"
 
   # Determine layer storage path (registry/path/name without version)
   # Strip provider prefix if present for the filesystem path
@@ -403,6 +455,7 @@ if [[ "${merge_count}" -eq 0 ]]; then
   log "No config layers to merge — copying project root to final"
   cp "${PM_FILE}" "${FINAL_FILE}"
   log "Final KaptainPM.yaml written to ${FINAL_FILE}"
+  write_kaptainpm_builtin_tokens "${FINAL_FILE}"
   exit 0
 fi
 
@@ -477,6 +530,8 @@ fi
 log "Validating final merged KaptainPM.yaml against schema: $(basename "${SCHEMA_FINAL}")"
 check-jsonschema --schemafile "${SCHEMA_FINAL}" "${FINAL_FILE}"
 log "Final schema validation passed"
+
+write_kaptainpm_builtin_tokens "${FINAL_FILE}"
 
 final_kind=$(yq eval '.kind // ""' "${FINAL_FILE}")
 log "Final kind: ${final_kind}"
