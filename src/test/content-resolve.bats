@@ -293,7 +293,7 @@ MOCK
   chmod +x "${MOCK_BIN_DIR}/extract-oci-image"
 
   # Override the library's util dir to point at our mocks
-  _CONTENT_RESOLVE_UTIL_DIR="${MOCK_BIN_DIR}"
+  CONTENT_RESOLVE_UTIL_DIR="${MOCK_BIN_DIR}"
 }
 
 # Stage a fake OCI image fixture under MOCK_OCI_DIR keyed by URI.

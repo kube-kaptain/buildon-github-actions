@@ -108,7 +108,7 @@ EOF
 
 # Stand up mocks for util/artifact-resolve and util/extract-oci-image so the
 # library doesn't need to talk to a real registry. Returns paths via globals
-# MOCK_UTIL_DIR (for _CONTENT_RESOLVE_UTIL_DIR) and MOCK_OCI_DIR.
+# MOCK_UTIL_DIR (for CONTENT_RESOLVE_UTIL_DIR) and MOCK_OCI_DIR.
 setup_mock_oci() {
   MOCK_UTIL_DIR="${TEST_DIR}/mock-util-bin"
   MOCK_OCI_DIR="${TEST_DIR}/oci-fixtures"
@@ -143,7 +143,7 @@ MOCK
   chmod +x "${MOCK_UTIL_DIR}/extract-oci-image"
 
   # content_validate_bundle calls the real scan-unresolved-tokens utility via
-  # _CONTENT_RESOLVE_UTIL_DIR. It is pure local computation, not something
+  # CONTENT_RESOLVE_UTIL_DIR. It is pure local computation, not something
   # that needs mocking, so symlink the real one into the mock util dir.
   ln -sf "${SCRIPTS_DIR}/util/scan-unresolved-tokens" "${MOCK_UTIL_DIR}/scan-unresolved-tokens"
 }
@@ -179,7 +179,7 @@ run_script() {
     BUILD_PLATFORM=test \
     GITHUB_OUTPUT="${GITHUB_OUTPUT}" \
     KAPTAINPM_FILE="${TEST_DIR}/kaptainpm/final/KaptainPM.yaml" \
-    _CONTENT_RESOLVE_UTIL_DIR="${MOCK_UTIL_DIR:-}" \
+    CONTENT_RESOLVE_UTIL_DIR="${MOCK_UTIL_DIR:-}" \
     MOCK_OCI_DIR="${MOCK_OCI_DIR:-}" \
     bash -c "cd '${TEST_DIR}' && '${SCRIPT}'"
 }

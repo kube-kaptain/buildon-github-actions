@@ -202,7 +202,7 @@ run_script() {
     BUILD_PLATFORM=test \
     GITHUB_OUTPUT="${GITHUB_OUTPUT}" \
     KAPTAINPM_FILE="${KAPTAINPM_FILE}" \
-    _CONTENT_RESOLVE_UTIL_DIR="${MOCK_UTIL_DIR:-}" \
+    CONTENT_RESOLVE_UTIL_DIR="${MOCK_UTIL_DIR:-}" \
     MOCK_OCI_DIR="${MOCK_OCI_DIR:-}" \
     bash -c "cd '${TEST_DIR}' && '${SCRIPT}'"
 }

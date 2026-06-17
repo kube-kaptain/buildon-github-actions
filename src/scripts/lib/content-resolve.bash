@@ -60,10 +60,10 @@ fi
 
 case "${CONTENT_FLAVOUR:-}" in
   contents)
-    _CONTENT_RESOLVE_SPEC_EXPR='.spec.contents[]'
+    CONTENT_RESOLVE_SPEC_EXPR='.spec.contents[]'
     ;;
   templates)
-    _CONTENT_RESOLVE_SPEC_EXPR='.spec.templates[]'
+    CONTENT_RESOLVE_SPEC_EXPR='.spec.templates[]'
     ;;
   "")
     log_error "CONTENT_FLAVOUR must be set before sourcing content-resolve.bash (expected 'contents' or 'templates')."
@@ -98,9 +98,9 @@ source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/assert-unique-artifact-ref
 # shellcheck source=src/scripts/lib/builtin-tokens-from-entry.bash
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/builtin-tokens-from-entry.bash"
 
-_CONTENT_RESOLVE_UTIL_DIR="${_CONTENT_RESOLVE_UTIL_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../util" && pwd)}"
-_CONTENT_RESOLVE_PLUGINS_DIR="${_CONTENT_RESOLVE_PLUGINS_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../plugins" && pwd)}"
-_CONTENT_RESOLVE_SCHEMAS_DIR="${_CONTENT_RESOLVE_SCHEMAS_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../../schemas" && pwd)}"
+CONTENT_RESOLVE_UTIL_DIR="${CONTENT_RESOLVE_UTIL_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../util" && pwd)}"
+CONTENT_RESOLVE_PLUGINS_DIR="${CONTENT_RESOLVE_PLUGINS_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../plugins" && pwd)}"
+CONTENT_RESOLVE_SCHEMAS_DIR="${CONTENT_RESOLVE_SCHEMAS_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../../schemas" && pwd)}"
 
 # Reduce a resolved OCI URI to a filesystem-safe slug. Replaces '/' and ':'
 # with '_'. The slug names per-artifact subdirs under <out-extract-dir> and
@@ -276,7 +276,7 @@ content_validate_bundle() {
   # truth; older bundles whose payload still satisfies the current schema keep
   # working, ones that don't fail with a clear validation error.
   local schema_dir schema_version schema_file
-  schema_dir="${_CONTENT_RESOLVE_SCHEMAS_DIR}/manifests-contract"
+  schema_dir="${CONTENT_RESOLVE_SCHEMAS_DIR}/manifests-contract"
   schema_version=$(cat "${schema_dir}/version")
   schema_file="${schema_dir}/spec-manifests-contract-schema-${schema_version}.json"
   if [[ ! -f "${schema_file}" ]]; then
@@ -305,7 +305,7 @@ content_validate_bundle() {
   # Defaults filenames must pass the contract's declared name style validator.
   # Catches producers that lied about their style or hand-edited the bundle.
   if [[ "${has_defaults}" == "true" ]]; then
-    local validator_script="${_CONTENT_RESOLVE_PLUGINS_DIR}/token-name-validators/${bundle_name_style}"
+    local validator_script="${CONTENT_RESOLVE_PLUGINS_DIR}/token-name-validators/${bundle_name_style}"
     if [[ ! -x "${validator_script}" ]]; then
       log_error "Bundle ${project}: token-name validator not found for style ${bundle_name_style}"
       return 1
@@ -341,7 +341,7 @@ content_validate_bundle() {
   # Every unresolved token actually present in the manifests must appear in
   # .config.required. Producer claims to enumerate everything; verify by scan.
   local unresolved_tokens
-  unresolved_tokens=$("${_CONTENT_RESOLVE_UTIL_DIR}/scan-unresolved-tokens" \
+  unresolved_tokens=$("${CONTENT_RESOLVE_UTIL_DIR}/scan-unresolved-tokens" \
     "${bundle_delim_style}" "${bundle_name_style}" "${manifests_dir}")
   if [[ -n "${unresolved_tokens}" ]]; then
     local missing=()
@@ -410,7 +410,7 @@ content_resolve_all() {
   # resolve to the same bundle/project metadata.name collide at staging
   # regardless of where they were pulled from.
   assert_unique_artifact_refs "${kaptainpm_file}" \
-    "${_CONTENT_RESOLVE_SPEC_EXPR}" \
+    "${CONTENT_RESOLVE_SPEC_EXPR}" \
     "spec.${CONTENT_FLAVOUR}" name
 
   rm -rf "${CONTENT_BASE}"
@@ -421,7 +421,7 @@ content_resolve_all() {
   : > "${CONTENT_RESOLVED_FILE}"
 
   local entries
-  entries=$(yq eval "${_CONTENT_RESOLVE_SPEC_EXPR}" "${kaptainpm_file}" 2>/dev/null || true)
+  entries=$(yq eval "${CONTENT_RESOLVE_SPEC_EXPR}" "${kaptainpm_file}" 2>/dev/null || true)
   if [[ -z "${entries}" || "${entries}" == "null" ]]; then
     log "No ${CONTENT_FLAVOUR} entries to resolve"
     return 0
@@ -454,7 +454,7 @@ content_resolve_all() {
     # once we know the slug. Keeping it makes the audit trail show what
     # the entry actually resolved to at the moment of the build.
     local resolve_seed="${CONTENT_EXTRACT_DIR}/resolved-entry-${entry_index}.uri"
-    "${_CONTENT_RESOLVE_UTIL_DIR}/artifact-resolve" "${entry}" "${resolve_seed}" manifests || return $?
+    "${CONTENT_RESOLVE_UTIL_DIR}/artifact-resolve" "${entry}" "${resolve_seed}" manifests || return $?
     local resolved_uri
     resolved_uri=$(cat "${resolve_seed}")
     log "  Resolved: ${resolved_uri}"
@@ -472,7 +472,7 @@ content_resolve_all() {
     mkdir -p "${extract_dir}" "${unzipped_dir}"
     mv "${resolve_seed}" "${extract_dir}/resolved-uri"
 
-    "${_CONTENT_RESOLVE_UTIL_DIR}/extract-oci-image" "${resolved_uri}" "${extract_dir}" || return $?
+    "${CONTENT_RESOLVE_UTIL_DIR}/extract-oci-image" "${resolved_uri}" "${extract_dir}" || return $?
 
     content_find_zips "${extract_dir}" || return $?
     content_unzip_manifests "${CONTENT_MANIFESTS_ZIP}" "${unzipped_dir}" "${CONTENT_MANIFESTS_DIR}" || return $?
