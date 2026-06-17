@@ -57,6 +57,8 @@ source "${SCRIPT_DIR}/../lib/layer-merge.bash"
 source "${SCRIPT_DIR}/../lib/validate-exact-file-exists.bash"
 # shellcheck source=src/scripts/lib/validate-layer-payload.bash
 source "${SCRIPT_DIR}/../lib/validate-layer-payload.bash"
+# shellcheck source=src/scripts/lib/builtin-tokens-from-entry.bash
+source "${SCRIPT_DIR}/../lib/builtin-tokens-from-entry.bash"
 
 UTIL_DIR="${SCRIPT_DIR}/../util"
 
@@ -217,6 +219,12 @@ resolve_layer() {
     exit 1
   fi
   echo "${identity}=${resolved_version}" >> "${VISITED_FILE}"
+
+  # Auto-builtin tokens: emit LAYER_<slug>_{REF,VERSION_SPEC,VERSION} for every
+  # resolved layer (including layersets) so downstream substitution can pin to
+  # the same version/spec the build saw. Slug is derived from the entry as
+  # written, so short and long ref forms produce distinct slugs as authored.
+  emit_builtin_tokens_for_entry "${ref}" "${resolved_version}" "layers"
 
   # Determine layer storage path (registry/path/name without version)
   # Strip provider prefix if present for the filesystem path

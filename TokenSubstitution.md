@@ -106,6 +106,45 @@ Optional (when provided):
 
 Built-in token names are converted to match `token-name-style` (e.g., `PROJECT_NAME` becomes `ProjectName` with PascalCase).
 
+### Per-entry auto-builtins (contents, templates, layers)
+
+Every entry in `spec.contents`, `spec.templates`, and `spec.layers` automatically
+produces three built-in tokens, available to every substitution site the project
+performs:
+
+| Token suffix | Value |
+|--------------|-------|
+| `_REF` | The entry as written, verbatim (e.g. `ghcr.io/org/app-foo:[1.2.3]`) |
+| `_VERSION_SPEC` | The version part as written (e.g. `[1.2.3]`, `>=1.0.0`) |
+| `_VERSION` | The single version pinned by artifact resolution (e.g. `1.2.3`) |
+
+Names use a fixed prefix per kind and a slug derived from the entry's URI:
+
+| Prefix | Source |
+|--------|--------|
+| `CONTENT_` | `spec.contents` entries |
+| `TEMPLATE_` | `spec.templates` entries |
+| `LAYER_` | `spec.layers` entries (both layers and layersets) |
+
+The slug is derived from the entry-as-written: optional `<provider>|` prefix is
+stripped, the trailing `:<version-spec>` is removed, then the URI is split on
+`/` and `.` with each segment passed through the kebab-to-UPPER_SNAKE converter
+and joined with `_`.
+
+Examples:
+
+| Entry | Token names (canonical UPPER_SNAKE) |
+|-------|--------------------------------------|
+| `app-foo:1.2.3` | `CONTENT_APP_FOO_{REF,VERSION_SPEC,VERSION}` |
+| `ghcr.io/something/app/app-foo:1.2.3` | `CONTENT_GHCR_IO_SOMETHING_APP_APP_FOO_{REF,VERSION_SPEC,VERSION}` |
+| `docker\|app-foo:[1.2.3]` | `CONTENT_APP_FOO_{REF,VERSION_SPEC,VERSION}` |
+| `layer-foo:1.0` (as a layer) | `LAYER_LAYER_FOO_{REF,VERSION_SPEC,VERSION}` |
+| `layerset-foo:1.0` (as a layer) | `LAYER_LAYERSET_FOO_{REF,VERSION_SPEC,VERSION}` |
+
+These names are converted to `token-name-style` like any other built-in, and
+user config that tries to redefine one fails the build under
+`allow-builtin-token-override: false`.
+
 ## User Tokens
 
 Place files in `src/config/` (or configured `config-sub-path`):

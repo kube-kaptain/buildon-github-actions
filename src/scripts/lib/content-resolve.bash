@@ -97,6 +97,8 @@ log "content-resolve: base=${CONTENT_BASE}"
 # Sub-lib dependency: dedup check runs inside content_resolve_all.
 # shellcheck source=src/scripts/lib/assert-unique-artifact-refs.bash
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/assert-unique-artifact-refs.bash"
+# shellcheck source=src/scripts/lib/builtin-tokens-from-entry.bash
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/builtin-tokens-from-entry.bash"
 
 _CONTENT_RESOLVE_UTIL_DIR="${_CONTENT_RESOLVE_UTIL_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../util" && pwd)}"
 _CONTENT_RESOLVE_PLUGINS_DIR="${_CONTENT_RESOLVE_PLUGINS_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../plugins" && pwd)}"
@@ -460,6 +462,10 @@ content_resolve_all() {
     log "  Resolved: ${resolved_uri}"
 
     printf -- '- %s\n' "${resolved_uri}" >> "${CONTENT_RESOLVED_FILE}"
+
+    # Auto-builtin tokens: pinned version comes from the resolved URI's tag.
+    local resolved_version="${resolved_uri##*:}"
+    emit_builtin_tokens_for_entry "${entry}" "${resolved_version}" "${_CONTENT_RESOLVE_FILE_STEM}"
 
     local slug
     slug=$(_content_artifact_slug "${resolved_uri}")
