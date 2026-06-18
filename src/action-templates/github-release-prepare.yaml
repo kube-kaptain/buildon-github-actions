@@ -188,7 +188,6 @@ runs:
         tokens_dir=""
         if [[ -n "${ALL_SUBSTITUTED}" ]]; then
           tokens_dir="${OUTPUT_SUB_PATH}/github-release-tokens"
-          echo "Preparing substitution tokens..."
 
           TOKENS_OUTPUT_SUB_PATH="${tokens_dir}" \
           CONFIG_SUB_PATH="${CONFIG_SUB_PATH}" \

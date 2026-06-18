@@ -927,9 +927,10 @@ ENV KUBECTL_VERSION=1.28.3' > src/docker/Dockerfile
   run "$SCRIPTS_DIR/versions-and-naming"
   [ "$status" -eq 0 ]
 
+  # Filenames are written in the configured TOKEN_NAME_STYLE (PascalCase by default)
   local git_dir="${TEST_REPO}/kaptain-out/builtin-resolved-tokens/git"
-  [ -f "${git_dir}/GIT_REPOSITORY_NAME" ]
-  [ "$(cat "${git_dir}/GIT_REPOSITORY_NAME")" = "test-repo" ]
-  [ -f "${git_dir}/GIT_REPOSITORY_OWNER" ]
-  [ "$(cat "${git_dir}/GIT_REPOSITORY_OWNER")" = "kube-kaptain" ]
+  [ -f "${git_dir}/GitRepositoryName" ]
+  [ "$(cat "${git_dir}/GitRepositoryName")" = "test-repo" ]
+  [ -f "${git_dir}/GitRepositoryOwner" ]
+  [ "$(cat "${git_dir}/GitRepositoryOwner")" = "kube-kaptain" ]
 }

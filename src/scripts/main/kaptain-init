@@ -68,18 +68,16 @@ IMAGE_BUILD_COMMAND="${IMAGE_BUILD_COMMAND:?IMAGE_BUILD_COMMAND is required - ru
 # Builtin scalars pinned at build start. Written here, immediately after all
 # sources, so downstream prepare-substitution-tokens scans the build/ image/
 # git/ kaptainpm/ subdirs alongside contents/templates/layers and exposes these
-# as canonical builtin tokens. Files carry no trailing newline so they round-trip
-# cleanly into mid-string substitutions.
-BUILD_BUILTINS_DIR="${OUTPUT_SUB_PATH}/builtin-resolved-tokens/build"
-IMAGE_BUILTINS_DIR="${OUTPUT_SUB_PATH}/builtin-resolved-tokens/image"
-GIT_BUILTINS_DIR="${OUTPUT_SUB_PATH}/builtin-resolved-tokens/git"
-mkdir -p "${BUILD_BUILTINS_DIR}" "${IMAGE_BUILTINS_DIR}" "${GIT_BUILTINS_DIR}"
+# as builtin tokens. Filenames land in the consumer's TOKEN_NAME_STYLE (the
+# scalar emitter handles the conversion) and carry no trailing newline so they
+# round-trip cleanly into mid-string substitutions.
+log "Auto-builtin tokens for build:"
+emit_builtin_token_scalar BUILD_TIMESTAMP "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+emit_builtin_token_scalar BUILD_MODE      "${BUILD_MODE}"
+emit_builtin_token_scalar BUILD_PLATFORM  "${BUILD_PLATFORM}"
 
-printf '%s' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > "${BUILD_BUILTINS_DIR}/BUILD_TIMESTAMP"
-printf '%s' "${BUILD_MODE}" > "${BUILD_BUILTINS_DIR}/BUILD_MODE"
-printf '%s' "${BUILD_PLATFORM}" > "${BUILD_BUILTINS_DIR}/BUILD_PLATFORM"
-
-printf '%s' "${IMAGE_BUILD_COMMAND}" > "${IMAGE_BUILTINS_DIR}/IMAGE_BUILD_COMMAND"
+log "Auto-builtin tokens for image:"
+emit_builtin_token_scalar IMAGE_BUILD_COMMAND "${IMAGE_BUILD_COMMAND}"
 
 # Git tokens hard-fail on git failure: kaptain is git-centric and basic-checks
 # runs before this, so HEAD is always present in real pipelines. The `|| { ... }`
@@ -88,18 +86,18 @@ printf '%s' "${IMAGE_BUILD_COMMAND}" > "${IMAGE_BUILTINS_DIR}/IMAGE_BUILD_COMMAN
 git_hash_full=$(git rev-parse HEAD) || { log_error "git rev-parse HEAD failed"; exit 1; }
 git_hash_short=$(git rev-parse --short=7 HEAD) || { log_error "git rev-parse --short=7 HEAD failed"; exit 1; }
 git_branch=$(git rev-parse --abbrev-ref HEAD) || { log_error "git rev-parse --abbrev-ref HEAD failed"; exit 1; }
-printf '%s' "${git_hash_full}"  > "${GIT_BUILTINS_DIR}/GIT_HASH_FULL"
-printf '%s' "${git_hash_short}" > "${GIT_BUILTINS_DIR}/GIT_HASH_SHORT"
-printf '%s' "${git_branch}"     > "${GIT_BUILTINS_DIR}/GIT_BRANCH"
+log "Auto-builtin tokens for git:"
+emit_builtin_token_scalar GIT_HASH_FULL  "${git_hash_full}"
+emit_builtin_token_scalar GIT_HASH_SHORT "${git_hash_short}"
+emit_builtin_token_scalar GIT_BRANCH     "${git_branch}"
 
 # Helper for KAPTAINPM_* tokens (deferred to each exit path, since the final
 # yaml is produced at three different points).
 write_kaptainpm_builtin_tokens() {
   local final_file="$1"
-  local out_dir="${OUTPUT_SUB_PATH}/builtin-resolved-tokens/kaptainpm"
-  mkdir -p "${out_dir}"
-  printf '%s' "$(yq eval '.kind // ""' "${final_file}")" > "${out_dir}/KAPTAINPM_KIND"
-  printf '%s' "$(yq eval '.metadata.description // ""' "${final_file}")" > "${out_dir}/KAPTAINPM_METADATA_DESCRIPTION"
+  log "Auto-builtin tokens for kaptainpm:"
+  emit_builtin_token_scalar KAPTAINPM_KIND "$(yq eval '.kind // ""' "${final_file}")"
+  emit_builtin_token_scalar KAPTAINPM_METADATA_DESCRIPTION "$(yq eval '.metadata.description // ""' "${final_file}")"
 }
 
 UTIL_DIR="${SCRIPT_DIR}/../util"
@@ -268,6 +266,7 @@ resolve_layer() {
   # resolved layer (including layersets) so downstream substitution can pin to
   # the same version/spec the build saw. Slug is derived from the entry as
   # written, so short and long ref forms produce distinct slugs as authored.
+  log "${indent}Auto-builtin tokens for layers:"
   emit_builtin_tokens_for_entry "${ref}" "${resolved_version}" "layers"
 
   # Determine layer storage path (registry/path/name without version)

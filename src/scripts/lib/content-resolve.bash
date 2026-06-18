@@ -463,6 +463,7 @@ content_resolve_all() {
 
     # Auto-builtin tokens: pinned version comes from the resolved URI's tag.
     local resolved_version="${resolved_uri##*:}"
+    log "  Auto-builtin tokens for ${CONTENT_FLAVOUR}:"
     emit_builtin_tokens_for_entry "${entry}" "${resolved_version}" "${CONTENT_FLAVOUR}"
 
     local slug

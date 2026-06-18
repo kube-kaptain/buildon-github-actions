@@ -48,6 +48,8 @@ source "${SCRIPT_DIR}/../defaults/docker-dockerfile.bash"
 source "${SCRIPT_DIR}/../defaults/branch-inputs.bash"
 # shellcheck source=src/scripts/lib/output-var.bash
 source "${SCRIPT_DIR}/../lib/output-var.bash"
+# shellcheck source=src/scripts/lib/builtin-tokens-from-entry.bash
+source "${SCRIPT_DIR}/../lib/builtin-tokens-from-entry.bash"
 
 # shellcheck source=src/scripts/lib/branch-setup-shared.bash
 source "${SCRIPT_DIR}/../lib/branch-setup-shared.bash"
@@ -251,10 +253,8 @@ main() {
   # Builtin tokens for the git/ scan in prepare-substitution-tokens. Written
   # here because REPOSITORY_NAME/OWNER are not in kaptain-init's step env;
   # versions-and-naming owns them and runs before any substitution.
-  local git_builtins_dir="${OUTPUT_SUB_PATH}/builtin-resolved-tokens/git"
-  mkdir -p "${git_builtins_dir}"
-  printf '%s' "${REPOSITORY_NAME}"  > "${git_builtins_dir}/GIT_REPOSITORY_NAME"
-  printf '%s' "${REPOSITORY_OWNER}" > "${git_builtins_dir}/GIT_REPOSITORY_OWNER"
+  emit_builtin_token_scalar GIT_REPOSITORY_NAME  "${REPOSITORY_NAME}"
+  emit_builtin_token_scalar GIT_REPOSITORY_OWNER "${REPOSITORY_OWNER}"
 }
 
 main "$@"

@@ -14,9 +14,10 @@
 # emitter constructs the full path. The consumer (util/prepare-substitution-tokens)
 # knows the same parent layout.
 #
-# Files on disk are always written in UPPER_SNAKE form. The downstream
-# prepare-substitution-tokens utility converts each name to the consumer's
-# TOKEN_NAME_STYLE when copying into the substitution tokens dir.
+# Filenames are written in the consumer's TOKEN_NAME_STYLE (PascalCase by
+# default) so the downstream prepare-substitution-tokens utility just copies
+# them verbatim. The canonical UPPER_SNAKE names below are converted via
+# convert_token_name before the printf write.
 #
 # Files per entry, under ${OUTPUT_SUB_PATH}/builtin-resolved-tokens/<subdir>/:
 #   ${PREFIX}_${SLUG}_REF           - entry as written, verbatim
@@ -50,10 +51,51 @@
 #
 # Requires:
 #   log_error from lib/log.bash (sourced by caller before this file)
-#   convert_kebab_name from lib/token-format.bash (sourced by this file)
+#   convert_kebab_name, convert_token_name from lib/token-format.bash (sourced
+#   by this file)
+#   TOKEN_NAME_STYLE from defaults/tokens.bash (sourced by this file)
 
 # shellcheck source=src/scripts/lib/token-format.bash
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/token-format.bash"
+# shellcheck source=src/scripts/defaults/tokens.bash
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/../defaults/tokens.bash"
+
+# Emit a single scalar builtin token. Used for the fixed name+value scalars
+# (BUILD_*/IMAGE_*/GIT_*/KAPTAINPM_*) that have no entry/version/spec triple.
+# The subdir is derived from the canonical name's prefix (BUILD->build,
+# IMAGE->image, GIT->git, KAPTAINPM->kaptainpm; CONTENT/TEMPLATE/LAYER go via
+# emit_builtin_tokens_for_entry, not here).
+#
+# Usage: emit_builtin_token_scalar <CANONICAL_UPPER_SNAKE_NAME> <value>
+# Requires: OUTPUT_SUB_PATH set in the environment.
+emit_builtin_token_scalar() {
+  if [[ $# -ne 2 ]]; then
+    log_error "emit_builtin_token_scalar requires exactly 2 arguments, got $#"
+    return 1
+  fi
+
+  local name="$1"
+  local value="$2"
+
+  if [[ -z "${name}" ]]; then
+    log_error "emit_builtin_token_scalar: name is required"
+    return 1
+  fi
+  if [[ -z "${OUTPUT_SUB_PATH:-}" ]]; then
+    log_error "emit_builtin_token_scalar: OUTPUT_SUB_PATH is required"
+    return 1
+  fi
+
+  local subdir
+  subdir=$(printf '%s' "${name%%_*}" | tr '[:upper:]' '[:lower:]')
+  local out_dir="${OUTPUT_SUB_PATH}/builtin-resolved-tokens/${subdir}"
+  local converted
+  converted=$(convert_token_name "${TOKEN_NAME_STYLE}" "${name}") || return 1
+
+  mkdir -p "${out_dir}"
+  printf '%s' "${value}" > "${out_dir}/${converted}"
+  log "  builtin token: ${subdir}/${converted} = ${value}"
+}
 
 # Emit the three builtin token files for a single entry.
 #
@@ -132,7 +174,15 @@ emit_builtin_tokens_for_entry() {
   mkdir -p "${out_dir}"
 
   local base="${prefix}_${slug}"
-  printf '%s' "${entry}" > "${out_dir}/${base}_REF"
-  printf '%s' "${version_spec}" > "${out_dir}/${base}_VERSION_SPEC"
-  printf '%s' "${resolved_version}" > "${out_dir}/${base}_VERSION"
+  local ref_name spec_name version_name
+  ref_name=$(convert_token_name "${TOKEN_NAME_STYLE}" "${base}_REF") || return 1
+  spec_name=$(convert_token_name "${TOKEN_NAME_STYLE}" "${base}_VERSION_SPEC") || return 1
+  version_name=$(convert_token_name "${TOKEN_NAME_STYLE}" "${base}_VERSION") || return 1
+
+  printf '%s' "${entry}" > "${out_dir}/${ref_name}"
+  log "  builtin token: ${subdir}/${ref_name} = ${entry}"
+  printf '%s' "${version_spec}" > "${out_dir}/${spec_name}"
+  log "  builtin token: ${subdir}/${spec_name} = ${version_spec}"
+  printf '%s' "${resolved_version}" > "${out_dir}/${version_name}"
+  log "  builtin token: ${subdir}/${version_name} = ${resolved_version}"
 }

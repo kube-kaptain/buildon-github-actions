@@ -39,45 +39,45 @@ read_token() {
 # Slug derivation: simple short form
 # =============================================================================
 
-@test "short form: app-foo:1.2.3 -> CONTENT_APP_FOO_*" {
+@test "short form: app-foo:1.2.3 -> ContentAppFoo*" {
   emit_builtin_tokens_for_entry "app-foo:1.2.3" "1.2.3" "contents"
 
-  [ "$(read_token "$CONTENTS_DIR/CONTENT_APP_FOO_REF")" = "app-foo:1.2.3" ]
-  [ "$(read_token "$CONTENTS_DIR/CONTENT_APP_FOO_VERSION_SPEC")" = "1.2.3" ]
-  [ "$(read_token "$CONTENTS_DIR/CONTENT_APP_FOO_VERSION")" = "1.2.3" ]
+  [ "$(read_token "$CONTENTS_DIR/ContentAppFooRef")" = "app-foo:1.2.3" ]
+  [ "$(read_token "$CONTENTS_DIR/ContentAppFooVersionSpec")" = "1.2.3" ]
+  [ "$(read_token "$CONTENTS_DIR/ContentAppFooVersion")" = "1.2.3" ]
 }
 
-@test "short form: single segment app:1.0 -> CONTENT_APP_*" {
+@test "short form: single segment app:1.0 -> ContentApp*" {
   emit_builtin_tokens_for_entry "app:1.0" "1.0" "contents"
 
-  [ -f "$CONTENTS_DIR/CONTENT_APP_REF" ]
-  [ "$(read_token "$CONTENTS_DIR/CONTENT_APP_REF")" = "app:1.0" ]
+  [ -f "$CONTENTS_DIR/ContentAppRef" ]
+  [ "$(read_token "$CONTENTS_DIR/ContentAppRef")" = "app:1.0" ]
 }
 
 # =============================================================================
 # Slug derivation: full URI with dots and slashes
 # =============================================================================
 
-@test "long form: ghcr.io/org/group/projectname:1.2.3 -> CONTENT_GHCR_IO_ORG_GROUP_PROJECTNAME_*" {
+@test "long form: ghcr.io/org/group/projectname:1.2.3 -> ContentGhcrIoOrgGroupProjectname*" {
   emit_builtin_tokens_for_entry \
     "ghcr.io/org/group/projectname:1.2.3" "1.2.3" "contents"
 
-  [ -f "$CONTENTS_DIR/CONTENT_GHCR_IO_ORG_GROUP_PROJECTNAME_REF" ]
-  [ "$(read_token "$CONTENTS_DIR/CONTENT_GHCR_IO_ORG_GROUP_PROJECTNAME_VERSION")" = "1.2.3" ]
+  [ -f "$CONTENTS_DIR/ContentGhcrIoOrgGroupProjectnameRef" ]
+  [ "$(read_token "$CONTENTS_DIR/ContentGhcrIoOrgGroupProjectnameVersion")" = "1.2.3" ]
 }
 
 @test "long form: hyphenated last segment ghcr.io/org/app-foo:1.0 -> _APP_FOO_" {
   emit_builtin_tokens_for_entry \
     "ghcr.io/org/app-foo:1.0" "1.0" "contents"
 
-  [ -f "$CONTENTS_DIR/CONTENT_GHCR_IO_ORG_APP_FOO_REF" ]
+  [ -f "$CONTENTS_DIR/ContentGhcrIoOrgAppFooRef" ]
 }
 
 @test "long form: digit in segment api-2 -> API_2" {
   emit_builtin_tokens_for_entry \
     "ghcr.io/org/api-2:1.0" "1.0" "contents"
 
-  [ -f "$CONTENTS_DIR/CONTENT_GHCR_IO_ORG_API_2_REF" ]
+  [ -f "$CONTENTS_DIR/ContentGhcrIoOrgApi2Ref" ]
 }
 
 # =============================================================================
@@ -87,35 +87,35 @@ read_token() {
 @test "version spec: bracketed range [1.2.3] preserved" {
   emit_builtin_tokens_for_entry "app-foo:[1.2.3]" "1.2.3" "contents"
 
-  [ "$(read_token "$CONTENTS_DIR/CONTENT_APP_FOO_VERSION_SPEC")" = "[1.2.3]" ]
-  [ "$(read_token "$CONTENTS_DIR/CONTENT_APP_FOO_VERSION")" = "1.2.3" ]
-  [ "$(read_token "$CONTENTS_DIR/CONTENT_APP_FOO_REF")" = "app-foo:[1.2.3]" ]
+  [ "$(read_token "$CONTENTS_DIR/ContentAppFooVersionSpec")" = "[1.2.3]" ]
+  [ "$(read_token "$CONTENTS_DIR/ContentAppFooVersion")" = "1.2.3" ]
+  [ "$(read_token "$CONTENTS_DIR/ContentAppFooRef")" = "app-foo:[1.2.3]" ]
 }
 
 @test "version spec: open range >=1.0.0 preserved" {
   emit_builtin_tokens_for_entry "app-foo:>=1.0.0" "1.4.2" "contents"
 
-  [ "$(read_token "$CONTENTS_DIR/CONTENT_APP_FOO_VERSION_SPEC")" = ">=1.0.0" ]
-  [ "$(read_token "$CONTENTS_DIR/CONTENT_APP_FOO_VERSION")" = "1.4.2" ]
+  [ "$(read_token "$CONTENTS_DIR/ContentAppFooVersionSpec")" = ">=1.0.0" ]
+  [ "$(read_token "$CONTENTS_DIR/ContentAppFooVersion")" = "1.4.2" ]
 }
 
 @test "no version spec: app-foo without : -> empty VERSION_SPEC" {
   emit_builtin_tokens_for_entry "app-foo" "1.0.0" "contents"
 
-  [ -f "$CONTENTS_DIR/CONTENT_APP_FOO_VERSION_SPEC" ]
-  [ "$(read_token "$CONTENTS_DIR/CONTENT_APP_FOO_VERSION_SPEC")" = "" ]
-  [ "$(read_token "$CONTENTS_DIR/CONTENT_APP_FOO_VERSION")" = "1.0.0" ]
+  [ -f "$CONTENTS_DIR/ContentAppFooVersionSpec" ]
+  [ "$(read_token "$CONTENTS_DIR/ContentAppFooVersionSpec")" = "" ]
+  [ "$(read_token "$CONTENTS_DIR/ContentAppFooVersion")" = "1.0.0" ]
 }
 
 # =============================================================================
 # Provider prefix stripped
 # =============================================================================
 
-@test "provider prefix: docker|app-foo:1.0 -> CONTENT_APP_FOO_*" {
+@test "provider prefix: docker|app-foo:1.0 -> ContentAppFoo*" {
   emit_builtin_tokens_for_entry "docker|app-foo:1.0" "1.0" "contents"
 
-  [ -f "$CONTENTS_DIR/CONTENT_APP_FOO_REF" ]
-  [ "$(read_token "$CONTENTS_DIR/CONTENT_APP_FOO_REF")" = "docker|app-foo:1.0" ]
+  [ -f "$CONTENTS_DIR/ContentAppFooRef" ]
+  [ "$(read_token "$CONTENTS_DIR/ContentAppFooRef")" = "docker|app-foo:1.0" ]
 }
 
 # =============================================================================
@@ -125,33 +125,33 @@ read_token() {
 @test "subdir templates derives TEMPLATE_ prefix" {
   emit_builtin_tokens_for_entry "tpl-foo:1.0" "1.0" "templates"
 
-  [ -f "$TEMPLATES_DIR/TEMPLATE_TPL_FOO_REF" ]
-  [ -f "$TEMPLATES_DIR/TEMPLATE_TPL_FOO_VERSION_SPEC" ]
-  [ -f "$TEMPLATES_DIR/TEMPLATE_TPL_FOO_VERSION" ]
+  [ -f "$TEMPLATES_DIR/TemplateTplFooRef" ]
+  [ -f "$TEMPLATES_DIR/TemplateTplFooVersionSpec" ]
+  [ -f "$TEMPLATES_DIR/TemplateTplFooVersion" ]
 }
 
 @test "subdir layers derives LAYER_ prefix" {
   emit_builtin_tokens_for_entry "layer-foo:1.0" "1.0" "layers"
 
-  [ -f "$LAYERS_DIR/LAYER_LAYER_FOO_REF" ]
+  [ -f "$LAYERS_DIR/LayerLayerFooRef" ]
 }
 
 @test "layerset entry distinct from layer entry under same LAYER_ prefix" {
   emit_builtin_tokens_for_entry "layerset-foo:1.0" "1.0" "layers"
   emit_builtin_tokens_for_entry "layer-foo:1.0" "1.0" "layers"
 
-  [ -f "$LAYERS_DIR/LAYER_LAYER_FOO_REF" ]
-  [ -f "$LAYERS_DIR/LAYER_LAYERSET_FOO_REF" ]
+  [ -f "$LAYERS_DIR/LayerLayerFooRef" ]
+  [ -f "$LAYERS_DIR/LayerLayersetFooRef" ]
 }
 
 @test "subdir routes files to its own dir and prefix" {
   emit_builtin_tokens_for_entry "app-foo:1.0" "1.0" "contents"
   emit_builtin_tokens_for_entry "tpl-foo:1.0" "1.0" "templates"
 
-  [ -f "$CONTENTS_DIR/CONTENT_APP_FOO_REF" ]
-  [ -f "$TEMPLATES_DIR/TEMPLATE_TPL_FOO_REF" ]
-  [ ! -f "$CONTENTS_DIR/TEMPLATE_TPL_FOO_REF" ]
-  [ ! -f "$TEMPLATES_DIR/CONTENT_APP_FOO_REF" ]
+  [ -f "$CONTENTS_DIR/ContentAppFooRef" ]
+  [ -f "$TEMPLATES_DIR/TemplateTplFooRef" ]
+  [ ! -f "$CONTENTS_DIR/TemplateTplFooRef" ]
+  [ ! -f "$TEMPLATES_DIR/ContentAppFooRef" ]
 }
 
 # =============================================================================
@@ -161,7 +161,7 @@ read_token() {
 @test "REF: verbatim, includes provider prefix and version spec" {
   emit_builtin_tokens_for_entry "docker|app-foo:[1.2.3]" "1.2.3" "contents"
 
-  [ "$(read_token "$CONTENTS_DIR/CONTENT_APP_FOO_REF")" = "docker|app-foo:[1.2.3]" ]
+  [ "$(read_token "$CONTENTS_DIR/ContentAppFooRef")" = "docker|app-foo:[1.2.3]" ]
 }
 
 # =============================================================================
@@ -173,8 +173,8 @@ read_token() {
 
   # Each file's size should equal its content length, no trailing \n.
   local ref_size version_size
-  ref_size=$(wc -c < "$CONTENTS_DIR/CONTENT_APP_FOO_REF" | tr -d ' ')
-  version_size=$(wc -c < "$CONTENTS_DIR/CONTENT_APP_FOO_VERSION" | tr -d ' ')
+  ref_size=$(wc -c < "$CONTENTS_DIR/ContentAppFooRef" | tr -d ' ')
+  version_size=$(wc -c < "$CONTENTS_DIR/ContentAppFooVersion" | tr -d ' ')
   [ "$ref_size" = "11" ]      # "app-foo:1.0"
   [ "$version_size" = "3" ]   # "1.0"
 }
@@ -214,5 +214,5 @@ read_token() {
   [ ! -d "$CONTENTS_DIR" ]
   emit_builtin_tokens_for_entry "app-foo:1.0" "1.0" "contents"
 
-  [ -f "$CONTENTS_DIR/CONTENT_APP_FOO_REF" ]
+  [ -f "$CONTENTS_DIR/ContentAppFooRef" ]
 }
