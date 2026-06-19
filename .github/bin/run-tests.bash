@@ -76,6 +76,10 @@ check_executables() {
     for file in $glob; do
       # Skip markdown files - they're documentation, not scripts
       [[ "$file" == *.md ]] && continue
+      # Skip the token-substitution-providers plugin dir - these are
+      # sourced libs, not executable plugins. Checked by
+      # check_sourced_not_executable instead.
+      [[ "$file" == *"/plugins/token-substitution-providers/"* ]] && continue
       [[ -f "$file" ]] && scripts+=("$file")
     done
   done
@@ -110,10 +114,13 @@ check_sourced_not_executable() {
   local globs=(
     "$PROJECT_ROOT/src/scripts/lib/*"
     "$PROJECT_ROOT/src/scripts/defaults/*"
+    "$PROJECT_ROOT/src/scripts/plugins/token-substitution-providers/*"
   )
 
   for glob in "${globs[@]}"; do
     for file in $glob; do
+      # Skip markdown docs
+      [[ "$file" == *.md ]] && continue
       [[ -f "$file" ]] && sourced_files+=("$file")
     done
   done

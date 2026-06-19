@@ -35,6 +35,8 @@ source "${SCRIPT_DIR}/../defaults/platform.bash"
 source "${SCRIPT_DIR}/../lib/log.bash"
 # shellcheck source=src/scripts/defaults/tokens.bash
 source "${SCRIPT_DIR}/../defaults/tokens.bash"
+# shellcheck source=src/scripts/lib/prepare-token-name-and-value.bash
+source "${SCRIPT_DIR}/../lib/prepare-token-name-and-value.bash"
 export CONFIG_VALUE_TRAILING_NEWLINE
 export TOKEN_SUBSTITUTION_PASSES
 
@@ -48,12 +50,19 @@ TOKEN_STYLE="${1:-shell}"
 TOKENS_DIR="${2}"
 TARGET="${3}"
 
-# Validate token style script exists
+# Validate token style provider exists (sourced, not executed - no -x)
 PROVIDER_SCRIPT="${PLUGINS_DIR}/token-substitution-providers/substitute-${TOKEN_STYLE}-style-token"
-if [[ ! -x "${PROVIDER_SCRIPT}" ]]; then
-  log_error "Unknown token style: ${TOKEN_STYLE} (script not found: substitute-${TOKEN_STYLE}-style-token)"
+if [[ ! -f "${PROVIDER_SCRIPT}" ]]; then
+  log_error "Unknown token style: ${TOKEN_STYLE} (provider not found: substitute-${TOKEN_STYLE}-style-token)"
   exit 1
 fi
+
+# Source the provider so its function is callable in the hot loop without
+# fork+exec per (token, file). Function name mirrors the script name with
+# hyphens replaced by underscores so it's a valid identifier.
+# shellcheck source=/dev/null
+source "${PROVIDER_SCRIPT}"
+PROVIDER_FN="substitute_${TOKEN_STYLE//-/_}_style_token"
 
 # Validate tokens directory exists
 if [[ ! -d "${TOKENS_DIR}" ]]; then
@@ -142,8 +151,9 @@ while [[ ${passes} -lt ${TOKEN_SUBSTITUTION_PASSES} ]]; do
     # Apply all tokens to this file (skip if no tokens)
     if [[ ${#TOKEN_FILES[@]} -gt 0 ]]; then
       for token_file in "${TOKEN_FILES[@]}"; do
-        count=$("${PROVIDER_SCRIPT}" "${token_file}" "${target_file}")
-        file_count=$((file_count + count))
+        "${PROVIDER_FN}" "${token_file}" "${target_file}"
+        # shellcheck disable=SC2154 # SUBSTITUTE_TOKEN_COUNT set by dynamically-sourced provider
+        file_count=$((file_count + SUBSTITUTE_TOKEN_COUNT))
       done
     fi
 

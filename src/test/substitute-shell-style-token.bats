@@ -2,11 +2,21 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
 #
-# Tests for substitute-shell-style-token (new file-based API)
+# Tests for substitute-shell-style-token (sourced-lib API)
+#
+# The provider is sourced once; tests invoke substitute_shell_style_token
+# directly via `run`. Per-replacement count lands in SUBSTITUTE_TOKEN_COUNT
+# (not asserted here - tests check file content and exit status).
 
 bats_require_minimum_version 1.5.0
 
 load helpers
+
+# Source the prepare-lib (defines prepare_token_name_and_value) and then
+# the provider (defines substitute_shell_style_token). Order matters: the
+# provider's function calls prepare_token_name_and_value.
+source "$LIB_DIR/prepare-token-name-and-value.bash"
+source "$PLUGINS_DIR/token-substitution-providers/substitute-shell-style-token"
 
 setup() {
   export TOKENS_DIR=$(create_test_dir "tokens")
@@ -41,7 +51,7 @@ create_target() {
   create_target "test.yaml" 'name: ${ProjectName}'
 
   cd "$TOKENS_DIR"
-  run "$PLUGINS_DIR/token-substitution-providers/substitute-shell-style-token" "ProjectName" "$TARGET_DIR/test.yaml"
+  run substitute_shell_style_token "ProjectName" "$TARGET_DIR/test.yaml"
   [ "$status" -eq 0 ]
 
   result=$(cat "$TARGET_DIR/test.yaml")
@@ -53,7 +63,7 @@ create_target() {
   create_target "test.yaml" 'name: ${project-name}'
 
   cd "$TOKENS_DIR"
-  run "$PLUGINS_DIR/token-substitution-providers/substitute-shell-style-token" "project-name" "$TARGET_DIR/test.yaml"
+  run substitute_shell_style_token "project-name" "$TARGET_DIR/test.yaml"
   [ "$status" -eq 0 ]
 
   result=$(cat "$TARGET_DIR/test.yaml")
@@ -66,7 +76,7 @@ create_target() {
 version: ${Version}'
 
   cd "$TOKENS_DIR"
-  run "$PLUGINS_DIR/token-substitution-providers/substitute-shell-style-token" "ProjectName" "$TARGET_DIR/test.yaml"
+  run substitute_shell_style_token "ProjectName" "$TARGET_DIR/test.yaml"
   [ "$status" -eq 0 ]
 
   grep -q "name: my-app" "$TARGET_DIR/test.yaml"
@@ -78,7 +88,7 @@ version: ${Version}'
   create_target "test.yaml" 'image: ${DockerImageName}'
 
   cd "$TOKENS_DIR"
-  run "$PLUGINS_DIR/token-substitution-providers/substitute-shell-style-token" "DockerImageName" "$TARGET_DIR/test.yaml"
+  run substitute_shell_style_token "DockerImageName" "$TARGET_DIR/test.yaml"
   [ "$status" -eq 0 ]
 
   result=$(cat "$TARGET_DIR/test.yaml")
@@ -90,7 +100,7 @@ version: ${Version}'
   create_target "test.yaml" 'tags: ${Tags}'
 
   cd "$TOKENS_DIR"
-  run "$PLUGINS_DIR/token-substitution-providers/substitute-shell-style-token" "Tags" "$TARGET_DIR/test.yaml"
+  run substitute_shell_style_token "Tags" "$TARGET_DIR/test.yaml"
   [ "$status" -eq 0 ]
 
   result=$(cat "$TARGET_DIR/test.yaml")
@@ -101,7 +111,7 @@ version: ${Version}'
   create_target "test.yaml" 'name: ${ProjectName}'
 
   cd "$TOKENS_DIR"
-  run "$PLUGINS_DIR/token-substitution-providers/substitute-shell-style-token" "nonexistent" "$TARGET_DIR/test.yaml"
+  run substitute_shell_style_token "nonexistent" "$TARGET_DIR/test.yaml"
   [ "$status" -ne 0 ]
   assert_output_contains "not found"
 }
@@ -110,7 +120,7 @@ version: ${Version}'
   create_token "ProjectName" "my-app"
 
   cd "$TOKENS_DIR"
-  run "$PLUGINS_DIR/token-substitution-providers/substitute-shell-style-token" "ProjectName" "/nonexistent/path/file.yaml"
+  run substitute_shell_style_token "ProjectName" "/nonexistent/path/file.yaml"
   [ "$status" -ne 0 ]
   assert_output_contains "not found"
 }
@@ -120,7 +130,7 @@ version: ${Version}'
   create_target "test.yaml" 'name: ${ProjectNameExtra}'
 
   cd "$TOKENS_DIR"
-  run "$PLUGINS_DIR/token-substitution-providers/substitute-shell-style-token" "ProjectName" "$TARGET_DIR/test.yaml"
+  run substitute_shell_style_token "ProjectName" "$TARGET_DIR/test.yaml"
   [ "$status" -eq 0 ]
 
   result=$(cat "$TARGET_DIR/test.yaml")
@@ -134,7 +144,7 @@ tag: ${Version}
 label: ${Version}'
 
   cd "$TOKENS_DIR"
-  run "$PLUGINS_DIR/token-substitution-providers/substitute-shell-style-token" "Version" "$TARGET_DIR/test.yaml"
+  run substitute_shell_style_token "Version" "$TARGET_DIR/test.yaml"
   [ "$status" -eq 0 ]
 
   grep -q "name: 1.2.3" "$TARGET_DIR/test.yaml"
@@ -148,7 +158,7 @@ label: ${Version}'
   create_target "test.yaml" 'value: ${category/sub-var}'
 
   cd "$TOKENS_DIR"
-  run "$PLUGINS_DIR/token-substitution-providers/substitute-shell-style-token" "category/sub-var" "$TARGET_DIR/test.yaml"
+  run substitute_shell_style_token "category/sub-var" "$TARGET_DIR/test.yaml"
   [ "$status" -eq 0 ]
 
   result=$(cat "$TARGET_DIR/test.yaml")
@@ -160,7 +170,7 @@ label: ${Version}'
   create_target "test.yaml" 'name: ${ProjectName}'
 
   cd "$TOKENS_DIR"
-  run "$PLUGINS_DIR/token-substitution-providers/substitute-shell-style-token" "ProjectName" "$TARGET_DIR/test.yaml"
+  run substitute_shell_style_token "ProjectName" "$TARGET_DIR/test.yaml"
   [ "$status" -eq 0 ]
 
   result=$(cat "$TARGET_DIR/test.yaml")
@@ -172,7 +182,7 @@ label: ${Version}'
   create_target "test.yaml" 'prefix-${EmptyVar}-suffix'
 
   cd "$TOKENS_DIR"
-  run "$PLUGINS_DIR/token-substitution-providers/substitute-shell-style-token" "EmptyVar" "$TARGET_DIR/test.yaml"
+  run substitute_shell_style_token "EmptyVar" "$TARGET_DIR/test.yaml"
   [ "$status" -eq 0 ]
 
   result=$(cat "$TARGET_DIR/test.yaml")
@@ -184,7 +194,7 @@ label: ${Version}'
   printf 'no newline: ${Var}' > "$TARGET_DIR/test.txt"
 
   cd "$TOKENS_DIR"
-  run "$PLUGINS_DIR/token-substitution-providers/substitute-shell-style-token" "Var" "$TARGET_DIR/test.txt"
+  run substitute_shell_style_token "Var" "$TARGET_DIR/test.txt"
   [ "$status" -eq 0 ]
 
   # File should not have trailing newline
@@ -202,7 +212,7 @@ label: ${Version}'
   printf 'with newline: ${Var}\n' > "$TARGET_DIR/test.txt"
 
   cd "$TOKENS_DIR"
-  run "$PLUGINS_DIR/token-substitution-providers/substitute-shell-style-token" "Var" "$TARGET_DIR/test.txt"
+  run substitute_shell_style_token "Var" "$TARGET_DIR/test.txt"
   [ "$status" -eq 0 ]
 
   # File should have trailing newline preserved
@@ -218,7 +228,7 @@ label: ${Version}'
 
   cd "$TOKENS_DIR"
   CONFIG_VALUE_TRAILING_NEWLINE="strip-for-single-line" \
-  run "$PLUGINS_DIR/token-substitution-providers/substitute-shell-style-token" "SingleLine" "$TARGET_DIR/test.yaml"
+  run substitute_shell_style_token "SingleLine" "$TARGET_DIR/test.yaml"
   [ "$status" -eq 0 ]
 
   result=$(cat "$TARGET_DIR/test.yaml")
@@ -232,7 +242,7 @@ label: ${Version}'
 
   cd "$TOKENS_DIR"
   CONFIG_VALUE_TRAILING_NEWLINE="strip-for-single-line" \
-  run "$PLUGINS_DIR/token-substitution-providers/substitute-shell-style-token" "MultiLine" "$TARGET_DIR/test.yaml"
+  run substitute_shell_style_token "MultiLine" "$TARGET_DIR/test.yaml"
   [ "$status" -eq 0 ]
 
   # Multi-line content should preserve trailing newline
@@ -245,7 +255,7 @@ label: ${Version}'
 
   cd "$TOKENS_DIR"
   CONFIG_VALUE_TRAILING_NEWLINE="preserve-all" \
-  run "$PLUGINS_DIR/token-substitution-providers/substitute-shell-style-token" "SingleLine" "$TARGET_DIR/test.yaml"
+  run substitute_shell_style_token "SingleLine" "$TARGET_DIR/test.yaml"
   [ "$status" -eq 0 ]
 
   # The newline should push suffix to next line
@@ -262,7 +272,7 @@ label: ${Version}'
 
   cd "$TOKENS_DIR"
   CONFIG_VALUE_TRAILING_NEWLINE="always-strip-one-newline" \
-  run "$PLUGINS_DIR/token-substitution-providers/substitute-shell-style-token" "SingleLine" "$TARGET_DIR/test.yaml"
+  run substitute_shell_style_token "SingleLine" "$TARGET_DIR/test.yaml"
   [ "$status" -eq 0 ]
 
   result=$(cat "$TARGET_DIR/test.yaml")
@@ -275,7 +285,7 @@ label: ${Version}'
 
   cd "$TOKENS_DIR"
   CONFIG_VALUE_TRAILING_NEWLINE="always-strip-one-newline" \
-  run "$PLUGINS_DIR/token-substitution-providers/substitute-shell-style-token" "DoubleNewline" "$TARGET_DIR/test.yaml"
+  run substitute_shell_style_token "DoubleNewline" "$TARGET_DIR/test.yaml"
   [ "$status" -eq 0 ]
 
   # Should strip one newline, leaving one
