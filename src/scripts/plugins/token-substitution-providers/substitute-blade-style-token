@@ -1,58 +1,41 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
 #
-# substitute-blade-style-token - Substitutes {{ $TOKEN }} tokens in a file
+# substitute-blade-style-token - Substitutes {{ $TOKEN }} in a content buffer
 #
 # Sourced by substitute-tokens-from-dir. Defines substitute_blade_style_token()
-# which writes the replacement count into SUBSTITUTE_TOKEN_COUNT.
+# which mutates a caller-supplied string buffer in place (no file I/O).
 
 # shellcheck shell=bash
 # shellcheck disable=SC2034  # SUBSTITUTE_TOKEN_COUNT consumed by sourcing router
 
 substitute_blade_style_token() {
-  local TOKEN_FILE="${1}"
-  local TARGET="${2}"
+  local token_name="${1}"
+  local token_value="${2}"
+  local content_var="${3}"
 
-  if [[ ! -f "${TOKEN_FILE}" ]]; then
-    log_error "Token file not found: ${TOKEN_FILE}"
-    return 1
-  fi
-  if [[ ! -f "${TARGET}" ]]; then
-    log_error "Target file not found: ${TARGET}"
-    return 1
-  fi
+  local subst_buf="${!content_var}"
+  local subst_pattern="{{ \$${token_name} }}"
 
-  local TOKEN_NAME TOKEN_VALUE
-  prepare_token_name_and_value "${TOKEN_FILE}"
-
-  local file="${TARGET}"
-  local token_name="${TOKEN_NAME}"
-  local value="${TOKEN_VALUE}"
-  local count=0
-  local content
-  content=$(cat "${file}" && echo x)
-  content="${content%x}"
-
-  # Pattern: {{ $TOKEN_NAME }}
-  local pattern="{{ \$${token_name} }}"
-  if [[ "${content}" != *"${pattern}"* ]]; then
-    SUBSTITUTE_TOKEN_COUNT="${count}"
+  if [[ "${subst_buf}" != *"${subst_pattern}"* ]]; then
+    SUBSTITUTE_TOKEN_COUNT=0
     return 0
   fi
 
-  local result=""
-  local remainder="${content}"
-  while [[ "${remainder}" == *"${pattern}"* ]]; do
+  local subst_count=0
+  local subst_result=""
+  local subst_remainder="${subst_buf}"
+  while [[ "${subst_remainder}" == *"${subst_pattern}"* ]]; do
     # shellcheck disable=SC2295 # token_name is validated (no glob chars)
-    local prefix="${remainder%%\{\{ \$${token_name} \}\}*}"
+    local subst_prefix="${subst_remainder%%\{\{ \$${token_name} \}\}*}"
     # shellcheck disable=SC2295 # token_name is validated (no glob chars)
-    local suffix="${remainder#*\{\{ \$${token_name} \}\}}"
-    result="${result}${prefix}${value}"
-    remainder="${suffix}"
-    count=$((count + 1))
+    local subst_suffix="${subst_remainder#*\{\{ \$${token_name} \}\}}"
+    subst_result="${subst_result}${subst_prefix}${token_value}"
+    subst_remainder="${subst_suffix}"
+    subst_count=$((subst_count + 1))
   done
-  result="${result}${remainder}"
+  subst_result="${subst_result}${subst_remainder}"
 
-  printf '%s' "${result}" > "${file}"
-  SUBSTITUTE_TOKEN_COUNT="${count}"
+  printf -v "${content_var}" '%s' "${subst_result}"
+  SUBSTITUTE_TOKEN_COUNT="${subst_count}"
 }

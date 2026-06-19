@@ -2,296 +2,167 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
 #
-# Tests for substitute-shell-style-token (sourced-lib API)
+# Tests for substitute-shell-style-token (in-place string transform API)
 #
-# The provider is sourced once; tests invoke substitute_shell_style_token
-# directly via `run`. Per-replacement count lands in SUBSTITUTE_TOKEN_COUNT
-# (not asserted here - tests check file content and exit status).
+# The provider mutates a caller-supplied string buffer in place via
+# indirect expansion + printf -v. Tests stage a content variable, call
+# the function, then assert on the variable. No file I/O involved.
 
 bats_require_minimum_version 1.5.0
 
 load helpers
 
-# Source the prepare-lib (defines prepare_token_name_and_value) and then
-# the provider (defines substitute_shell_style_token). Order matters: the
-# provider's function calls prepare_token_name_and_value.
 source "$LIB_DIR/prepare-token-name-and-value.bash"
 source "$PLUGINS_DIR/token-substitution-providers/substitute-shell-style-token"
-
-setup() {
-  export TOKENS_DIR=$(create_test_dir "tokens")
-  export TARGET_DIR=$(create_test_dir "target")
-  # Simulate what substitute-tokens-from-dir (the orchestrator) provides
-  export CONFIG_VALUE_TRAILING_NEWLINE="strip-for-single-line"
-}
 
 teardown() {
   dump_bats_result
   :
 }
 
-# Create a token file
-create_token() {
-  local name="$1"
-  local value="$2"
-  mkdir -p "$(dirname "$TOKENS_DIR/$name")"
-  printf '%s' "$value" > "$TOKENS_DIR/$name"
-}
-
-# Create a target file
-create_target() {
-  local filename="$1"
-  local content="$2"
-  mkdir -p "$(dirname "$TARGET_DIR/$filename")"
-  printf '%s' "$content" > "$TARGET_DIR/$filename"
-}
-
 @test "substitutes exact variable name" {
-  create_token "ProjectName" "my-app"
-  create_target "test.yaml" 'name: ${ProjectName}'
-
-  cd "$TOKENS_DIR"
-  run substitute_shell_style_token "ProjectName" "$TARGET_DIR/test.yaml"
-  [ "$status" -eq 0 ]
-
-  result=$(cat "$TARGET_DIR/test.yaml")
-  [ "$result" = "name: my-app" ]
+  content='name: ${ProjectName}'
+  substitute_shell_style_token "ProjectName" "my-app" content
+  [ "$content" = "name: my-app" ]
+  [ "$SUBSTITUTE_TOKEN_COUNT" -eq 1 ]
 }
 
 @test "substitutes lower-kebab token name" {
-  create_token "project-name" "my-app"
-  create_target "test.yaml" 'name: ${project-name}'
-
-  cd "$TOKENS_DIR"
-  run substitute_shell_style_token "project-name" "$TARGET_DIR/test.yaml"
-  [ "$status" -eq 0 ]
-
-  result=$(cat "$TARGET_DIR/test.yaml")
-  [ "$result" = "name: my-app" ]
+  content='name: ${project-name}'
+  substitute_shell_style_token "project-name" "my-app" content
+  [ "$content" = "name: my-app" ]
+  [ "$SUBSTITUTE_TOKEN_COUNT" -eq 1 ]
 }
 
 @test "leaves other variables untouched" {
-  create_token "ProjectName" "my-app"
-  create_target "test.yaml" 'name: ${ProjectName}
+  content='name: ${ProjectName}
 version: ${Version}'
-
-  cd "$TOKENS_DIR"
-  run substitute_shell_style_token "ProjectName" "$TARGET_DIR/test.yaml"
-  [ "$status" -eq 0 ]
-
-  grep -q "name: my-app" "$TARGET_DIR/test.yaml"
-  grep -q 'version: ${Version}' "$TARGET_DIR/test.yaml"
+  substitute_shell_style_token "ProjectName" "my-app" content
+  [[ "$content" == *"name: my-app"* ]]
+  [[ "$content" == *'version: ${Version}'* ]]
 }
 
 @test "handles values with slashes" {
-  create_token "DockerImageName" "org/my-image"
-  create_target "test.yaml" 'image: ${DockerImageName}'
-
-  cd "$TOKENS_DIR"
-  run substitute_shell_style_token "DockerImageName" "$TARGET_DIR/test.yaml"
-  [ "$status" -eq 0 ]
-
-  result=$(cat "$TARGET_DIR/test.yaml")
-  [ "$result" = "image: org/my-image" ]
+  content='image: ${DockerImageName}'
+  substitute_shell_style_token "DockerImageName" "org/my-image" content
+  [ "$content" = "image: org/my-image" ]
 }
 
 @test "handles values with commas" {
-  create_token "Tags" "tag1,tag2,tag3"
-  create_target "test.yaml" 'tags: ${Tags}'
-
-  cd "$TOKENS_DIR"
-  run substitute_shell_style_token "Tags" "$TARGET_DIR/test.yaml"
-  [ "$status" -eq 0 ]
-
-  result=$(cat "$TARGET_DIR/test.yaml")
-  [ "$result" = "tags: tag1,tag2,tag3" ]
-}
-
-@test "fails when token file not found" {
-  create_target "test.yaml" 'name: ${ProjectName}'
-
-  cd "$TOKENS_DIR"
-  run substitute_shell_style_token "nonexistent" "$TARGET_DIR/test.yaml"
-  [ "$status" -ne 0 ]
-  assert_output_contains "not found"
-}
-
-@test "fails when target file not found" {
-  create_token "ProjectName" "my-app"
-
-  cd "$TOKENS_DIR"
-  run substitute_shell_style_token "ProjectName" "/nonexistent/path/file.yaml"
-  [ "$status" -ne 0 ]
-  assert_output_contains "not found"
+  content='tags: ${Tags}'
+  substitute_shell_style_token "Tags" "tag1,tag2,tag3" content
+  [ "$content" = "tags: tag1,tag2,tag3" ]
 }
 
 @test "does not substitute partial matches" {
-  create_token "ProjectName" "my-app"
-  create_target "test.yaml" 'name: ${ProjectNameExtra}'
-
-  cd "$TOKENS_DIR"
-  run substitute_shell_style_token "ProjectName" "$TARGET_DIR/test.yaml"
-  [ "$status" -eq 0 ]
-
-  result=$(cat "$TARGET_DIR/test.yaml")
-  [ "$result" = 'name: ${ProjectNameExtra}' ]
+  content='name: ${ProjectNameExtra}'
+  substitute_shell_style_token "ProjectName" "my-app" content
+  [ "$content" = 'name: ${ProjectNameExtra}' ]
+  [ "$SUBSTITUTE_TOKEN_COUNT" -eq 0 ]
 }
 
-@test "substitutes multiple occurrences in same file" {
-  create_token "Version" "1.2.3"
-  create_target "test.yaml" 'name: ${Version}
+@test "substitutes multiple occurrences in same buffer" {
+  content='name: ${Version}
 tag: ${Version}
 label: ${Version}'
-
-  cd "$TOKENS_DIR"
-  run substitute_shell_style_token "Version" "$TARGET_DIR/test.yaml"
-  [ "$status" -eq 0 ]
-
-  grep -q "name: 1.2.3" "$TARGET_DIR/test.yaml"
-  grep -q "tag: 1.2.3" "$TARGET_DIR/test.yaml"
-  grep -q "label: 1.2.3" "$TARGET_DIR/test.yaml"
+  substitute_shell_style_token "Version" "1.2.3" content
+  [[ "$content" == *"name: 1.2.3"* ]]
+  [[ "$content" == *"tag: 1.2.3"* ]]
+  [[ "$content" == *"label: 1.2.3"* ]]
+  [ "$SUBSTITUTE_TOKEN_COUNT" -eq 3 ]
 }
 
-@test "handles nested token path" {
-  mkdir -p "$TOKENS_DIR/category"
-  printf '%s' "nested-value" > "$TOKENS_DIR/category/sub-var"
-  create_target "test.yaml" 'value: ${category/sub-var}'
-
-  cd "$TOKENS_DIR"
-  run substitute_shell_style_token "category/sub-var" "$TARGET_DIR/test.yaml"
-  [ "$status" -eq 0 ]
-
-  result=$(cat "$TARGET_DIR/test.yaml")
-  [ "$result" = "value: nested-value" ]
+@test "handles nested token path as name" {
+  content='value: ${category/sub-var}'
+  substitute_shell_style_token "category/sub-var" "nested-value" content
+  [ "$content" = "value: nested-value" ]
 }
 
 @test "self-referential token does not cause infinite loop" {
-  create_token "ProjectName" '${ProjectName}'
-  create_target "test.yaml" 'name: ${ProjectName}'
-
-  cd "$TOKENS_DIR"
-  run substitute_shell_style_token "ProjectName" "$TARGET_DIR/test.yaml"
-  [ "$status" -eq 0 ]
-
-  result=$(cat "$TARGET_DIR/test.yaml")
-  [ "$result" = 'name: ${ProjectName}' ]
+  content='name: ${ProjectName}'
+  substitute_shell_style_token "ProjectName" '${ProjectName}' content
+  [ "$content" = 'name: ${ProjectName}' ]
+  [ "$SUBSTITUTE_TOKEN_COUNT" -eq 1 ]
 }
 
-@test "empty token file substitutes empty string" {
-  printf '' > "$TOKENS_DIR/EmptyVar"
-  create_target "test.yaml" 'prefix-${EmptyVar}-suffix'
-
-  cd "$TOKENS_DIR"
-  run substitute_shell_style_token "EmptyVar" "$TARGET_DIR/test.yaml"
-  [ "$status" -eq 0 ]
-
-  result=$(cat "$TARGET_DIR/test.yaml")
-  [ "$result" = "prefix--suffix" ]
+@test "empty value substitutes empty string" {
+  content='prefix-${EmptyVar}-suffix'
+  substitute_shell_style_token "EmptyVar" "" content
+  [ "$content" = "prefix--suffix" ]
 }
 
-@test "preserves file without trailing newline" {
-  create_token "Var" "value"
-  printf 'no newline: ${Var}' > "$TARGET_DIR/test.txt"
-
-  cd "$TOKENS_DIR"
-  run substitute_shell_style_token "Var" "$TARGET_DIR/test.txt"
-  [ "$status" -eq 0 ]
-
-  # File should not have trailing newline
-  result=$(cat "$TARGET_DIR/test.txt")
-  [ "$result" = "no newline: value" ]
-
-  # Verify no trailing newline was added
-  # "no newline: value" = 17 characters
-  local size=$(wc -c < "$TARGET_DIR/test.txt" | tr -d ' ')
-  [ "$size" -eq 17 ]
-}
-
-@test "preserves file with trailing newline" {
-  create_token "Var" "value"
-  printf 'with newline: ${Var}\n' > "$TARGET_DIR/test.txt"
-
-  cd "$TOKENS_DIR"
-  run substitute_shell_style_token "Var" "$TARGET_DIR/test.txt"
-  [ "$status" -eq 0 ]
-
-  # File should have trailing newline preserved
-  local content
-  content=$(cat "$TARGET_DIR/test.txt" && echo x)
-  content="${content%x}"
+@test "preserves buffer with trailing newline" {
+  content=$'with newline: ${Var}\n'
+  substitute_shell_style_token "Var" "value" content
   [ "$content" = $'with newline: value\n' ]
 }
 
-@test "strips trailing newline from single-line token by default" {
-  printf 'my-value\n' > "$TOKENS_DIR/SingleLine"
-  create_target "test.yaml" 'key: ${SingleLine}'
-
-  cd "$TOKENS_DIR"
-  CONFIG_VALUE_TRAILING_NEWLINE="strip-for-single-line" \
-  run substitute_shell_style_token "SingleLine" "$TARGET_DIR/test.yaml"
-  [ "$status" -eq 0 ]
-
-  result=$(cat "$TARGET_DIR/test.yaml")
-  [ "$result" = "key: my-value" ]
+@test "preserves buffer without trailing newline" {
+  content='no newline: ${Var}'
+  substitute_shell_style_token "Var" "value" content
+  [ "$content" = "no newline: value" ]
 }
 
-@test "preserves trailing newlines in multi-line token" {
-  printf 'line1\nline2\n' > "$TOKENS_DIR/MultiLine"
-  create_target "test.yaml" 'data: |
-  ${MultiLine}done'
+# Trailing-newline handling now lives in prepare_token_name_and_value
+# (called by the router before invoking the provider). These tests
+# exercise that helper directly to confirm semantics survive the refactor.
 
-  cd "$TOKENS_DIR"
-  CONFIG_VALUE_TRAILING_NEWLINE="strip-for-single-line" \
-  run substitute_shell_style_token "MultiLine" "$TARGET_DIR/test.yaml"
-  [ "$status" -eq 0 ]
+@test "prepare: strips trailing newline from single-line token by default" {
+  export CONFIG_VALUE_TRAILING_NEWLINE="strip-for-single-line"
+  local tokens_dir
+  tokens_dir=$(create_test_dir "tokens")
+  printf 'my-value\n' > "$tokens_dir/SingleLine"
+  cd "$tokens_dir"
 
-  # Multi-line content should preserve trailing newline
-  grep -q 'line2' "$TARGET_DIR/test.yaml"
+  TOKEN_NAME=""; TOKEN_VALUE=""
+  prepare_token_name_and_value "SingleLine"
+  [ "$TOKEN_VALUE" = "my-value" ]
 }
 
-@test "preserve-all mode keeps trailing newline on single-line" {
-  printf 'my-value\n' > "$TOKENS_DIR/SingleLine"
-  create_target "test.yaml" 'key: ${SingleLine}suffix'
+@test "prepare: preserves trailing newlines in multi-line token" {
+  export CONFIG_VALUE_TRAILING_NEWLINE="strip-for-single-line"
+  local tokens_dir
+  tokens_dir=$(create_test_dir "tokens")
+  printf 'line1\nline2\n' > "$tokens_dir/MultiLine"
+  cd "$tokens_dir"
 
-  cd "$TOKENS_DIR"
-  CONFIG_VALUE_TRAILING_NEWLINE="preserve-all" \
-  run substitute_shell_style_token "SingleLine" "$TARGET_DIR/test.yaml"
-  [ "$status" -eq 0 ]
-
-  # The newline should push suffix to next line
-  # Content should be: "key: my-value\nsuffix"
-  local content
-  content=$(cat "$TARGET_DIR/test.yaml")
-  [[ "$content" == *$'\n'* ]]  # Contains newline
-  [[ "$content" == "key: my-value"$'\n'"suffix" ]] || return 1
+  TOKEN_NAME=""; TOKEN_VALUE=""
+  prepare_token_name_and_value "MultiLine"
+  [ "$TOKEN_VALUE" = $'line1\nline2\n' ]
 }
 
-@test "always-strip-one-newline mode on single newline" {
-  printf 'my-value\n' > "$TOKENS_DIR/SingleLine"
-  create_target "test.yaml" 'key: ${SingleLine}'
+@test "prepare: preserve-all keeps trailing newline on single-line" {
+  export CONFIG_VALUE_TRAILING_NEWLINE="preserve-all"
+  local tokens_dir
+  tokens_dir=$(create_test_dir "tokens")
+  printf 'my-value\n' > "$tokens_dir/SingleLine"
+  cd "$tokens_dir"
 
-  cd "$TOKENS_DIR"
-  CONFIG_VALUE_TRAILING_NEWLINE="always-strip-one-newline" \
-  run substitute_shell_style_token "SingleLine" "$TARGET_DIR/test.yaml"
-  [ "$status" -eq 0 ]
-
-  result=$(cat "$TARGET_DIR/test.yaml")
-  [ "$result" = "key: my-value" ]
+  TOKEN_NAME=""; TOKEN_VALUE=""
+  prepare_token_name_and_value "SingleLine"
+  [ "$TOKEN_VALUE" = $'my-value\n' ]
 }
 
-@test "always-strip-one-newline mode on double newline" {
-  printf 'my-value\n\n' > "$TOKENS_DIR/DoubleNewline"
-  create_target "test.yaml" 'key: ${DoubleNewline}suffix'
+@test "prepare: always-strip-one-newline strips a single trailing newline" {
+  export CONFIG_VALUE_TRAILING_NEWLINE="always-strip-one-newline"
+  local tokens_dir
+  tokens_dir=$(create_test_dir "tokens")
+  printf 'my-value\n' > "$tokens_dir/SingleLine"
+  cd "$tokens_dir"
 
-  cd "$TOKENS_DIR"
-  CONFIG_VALUE_TRAILING_NEWLINE="always-strip-one-newline" \
-  run substitute_shell_style_token "DoubleNewline" "$TARGET_DIR/test.yaml"
-  [ "$status" -eq 0 ]
+  TOKEN_NAME=""; TOKEN_VALUE=""
+  prepare_token_name_and_value "SingleLine"
+  [ "$TOKEN_VALUE" = "my-value" ]
+}
 
-  # Should strip one newline, leaving one
-  # Content should be: "key: my-value\nsuffix"
-  local content
-  content=$(cat "$TARGET_DIR/test.yaml")
-  [[ "$content" == *$'\n'* ]]  # Contains newline
-  [[ "$content" == "key: my-value"$'\n'"suffix" ]] || return 1
+@test "prepare: always-strip-one-newline strips exactly one of two trailing newlines" {
+  export CONFIG_VALUE_TRAILING_NEWLINE="always-strip-one-newline"
+  local tokens_dir
+  tokens_dir=$(create_test_dir "tokens")
+  printf 'my-value\n\n' > "$tokens_dir/DoubleNewline"
+  cd "$tokens_dir"
+
+  TOKEN_NAME=""; TOKEN_VALUE=""
+  prepare_token_name_and_value "DoubleNewline"
+  [ "$TOKEN_VALUE" = $'my-value\n' ]
 }

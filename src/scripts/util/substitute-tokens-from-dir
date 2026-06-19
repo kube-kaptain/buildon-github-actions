@@ -138,26 +138,47 @@ while IFS= read -r token_file; do
   TOKEN_FILES+=("${token_file#./}")
 done < <(find . -type f | LC_ALL=C sort)
 
+# Pre-read every token file once into parallel arrays. Token files don't
+# change between passes (we never write them), so this is a one-time cost
+# instead of a per-(token, file) cat fork inside the hot loop.
+TOKEN_NAMES=()
+TOKEN_VALUES=()
+if [[ ${#TOKEN_FILES[@]} -gt 0 ]]; then
+  for token_file in "${TOKEN_FILES[@]}"; do
+    TOKEN_NAME=""
+    TOKEN_VALUE=""
+    prepare_token_name_and_value "${token_file}"
+    TOKEN_NAMES+=("${TOKEN_NAME}")
+    TOKEN_VALUES+=("${TOKEN_VALUE}")
+  done
+fi
+
 # Output header first (real-time output for debugging)
 echo "Substituting tokens in ${TARGET}:"
 
-# Process each target file, outputting count as we go
-# Outer loop: passes, Middle loop: files, Inner loop: tokens
+# Hot loop: read each target file ONCE per pass, apply all tokens against
+# the in-memory buffer, write ONCE. Providers are pure string transforms
+# now; they mutate the buffer via printf -v + indirect expansion.
 passes=0
 while [[ ${passes} -lt ${TOKEN_SUBSTITUTION_PASSES} ]]; do
   for target_file in "${TARGET_FILES[@]}"; do
-    file_count=0
+    # Read once, preserving trailing newlines via sentinel
+    target_content=$(cat "${target_file}" && echo x)
+    target_content="${target_content%x}"
 
-    # Apply all tokens to this file (skip if no tokens)
-    if [[ ${#TOKEN_FILES[@]} -gt 0 ]]; then
-      for token_file in "${TOKEN_FILES[@]}"; do
-        "${PROVIDER_FN}" "${token_file}" "${target_file}"
+    file_count=0
+    if [[ ${#TOKEN_NAMES[@]} -gt 0 ]]; then
+      for i in "${!TOKEN_NAMES[@]}"; do
+        "${PROVIDER_FN}" "${TOKEN_NAMES[${i}]}" "${TOKEN_VALUES[${i}]}" target_content
         # shellcheck disable=SC2154 # SUBSTITUTE_TOKEN_COUNT set by dynamically-sourced provider
         file_count=$((file_count + SUBSTITUTE_TOKEN_COUNT))
       done
     fi
 
-    # Output immediately after processing each file
+    # Write once
+    printf '%s' "${target_content}" > "${target_file}"
+
+    # Per-file output (real-time for debugging)
     if [[ "${TARGET_MODE}" == "dir" ]]; then
       relative_path="${target_file#"${TARGET_ABS}"/}"
     else
