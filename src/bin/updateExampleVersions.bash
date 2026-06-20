@@ -30,25 +30,14 @@ echo "Updating examples to: @${expected}"
 
 updated=0
 
-# Update plain examples
-for file in "${EXAMPLES_DIR}"/*.yaml; do
-  [[ -f "${file}" ]] || continue
+# Update every build.yaml under examples/ (top-level examples and guides).
+while IFS= read -r -d '' file; do
   if grep -q '@[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*' "${file}"; then
     sed -i.bak "s/@[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*/@${expected}/g" "${file}"
     rm "${file}.bak"
     updated=$((updated + 1))
   fi
-done
-
-# Update guides (build.yaml in each guide subdirectory)
-for file in "${EXAMPLES_DIR}"/guides/*/build.yaml; do
-  [[ -f "${file}" ]] || continue
-  if grep -q '@[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*' "${file}"; then
-    sed -i.bak "s/@[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*/@${expected}/g" "${file}"
-    rm "${file}.bak"
-    updated=$((updated + 1))
-  fi
-done
+done < <(find "${EXAMPLES_DIR}" -name 'build.yaml' -print0)
 
 echo "Updated ${updated} example file(s)"
 

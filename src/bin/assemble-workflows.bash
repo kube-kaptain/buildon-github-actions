@@ -477,7 +477,7 @@ generate_workflow_links_table() {
 }
 
 # Generate examples table for README
-# Extracts description from comment header in each example file
+# Extracts description from comment header in each examples/<name>/build.yaml
 # Format: line 1-2 SPDX, line 3 empty #, line 4 title, line 5 empty #, lines 6+ description
 generate_examples_table() {
   local examples_dir="$REPO_ROOT/examples"
@@ -485,10 +485,11 @@ generate_examples_table() {
   echo "| Example | Description |"
   echo "|---------|-------------|"
 
-  for example in "$examples_dir"/*.yaml; do
-    [[ -f "$example" ]] || continue
-    local ex_basename description
-    ex_basename=$(basename "$example")
+  for build_file in "$examples_dir"/*/build.yaml; do
+    [[ -f "$build_file" ]] || continue
+    local ex_dir ex_name description
+    ex_dir=$(dirname "$build_file")
+    ex_name=$(basename "$ex_dir")
 
     # Extract first description line (line 6 typically has description start)
     description=""
@@ -510,7 +511,7 @@ generate_examples_table() {
         description="$content"
         break
       fi
-    done < "$example"
+    done < "$build_file"
 
     # Clean up description - take first sentence
     description="${description%%.*}"
@@ -518,7 +519,7 @@ generate_examples_table() {
     description="${description%:}"
     [[ -z "$description" ]] && description="Example workflow"
 
-    echo "| [\`$ex_basename\`](examples/$ex_basename) | $description |"
+    echo "| [\`$ex_name\`](examples/$ex_name/README.md) | $description |"
   done
 
   # Add guides if any exist

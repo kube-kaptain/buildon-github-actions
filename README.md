@@ -34,20 +34,20 @@ See [`examples/`](examples/) for more usage patterns.
 <!-- EXAMPLES-START -->
 | Example | Description |
 |---------|-------------|
-| [`basic-quality-and-versioning.yaml`](examples/basic-quality-and-versioning.yaml) | Quality checks plus automatic version tagging |
-| [`basic-quality-checks.yaml`](examples/basic-quality-checks.yaml) | Enforces branch naming, commit message, and branch structure standards on PRs |
-| [`docker-build-dockerfile.yaml`](examples/docker-build-dockerfile.yaml) | Builds a Docker image from src/docker/Dockerfile with layer squashing |
-| [`docker-build-retag.yaml`](examples/docker-build-retag.yaml) | Pulls an upstream image, retags with your name and version, pushes to your |
-| [`kubernetes-app-docker-dockerfile.yaml`](examples/kubernetes-app-docker-dockerfile.yaml) | Full Kubernetes application pipeline |
-| [`kubernetes-app-docker-retag.yaml`](examples/kubernetes-app-docker-retag.yaml) | Kubernetes application pipeline using an upstream image |
-| [`kubernetes-app-manifests-only.yaml`](examples/kubernetes-app-manifests-only.yaml) | Packages Kubernetes manifests without building a Docker image |
-| [`kubernetes-bundle-docker-dockerfile.yaml`](examples/kubernetes-bundle-docker-dockerfile.yaml) | Packages Kubernetes manifests and builds a Docker image from a Dockerfile |
-| [`kubernetes-bundle-docker-retag.yaml`](examples/kubernetes-bundle-docker-retag.yaml) | Packages Kubernetes manifests and retags an upstream Docker image for |
-| [`kubernetes-bundle-resources.yaml`](examples/kubernetes-bundle-resources.yaml) | Packages Kubernetes manifests for third-party stacks whose hard-coded refs |
-| [`kubernetes-bundle-vendor-helm-rendered.yaml`](examples/kubernetes-bundle-vendor-helm-rendered.yaml) | Renders a vendor Helm chart into individual manifests, processes and |
-| [`kubernetes-product-aggregate.yaml`](examples/kubernetes-product-aggregate.yaml) | Aggregates pre-built manifest bundles listed in spec |
-| [`layer-and-layerset-build.yaml`](examples/layer-and-layerset-build.yaml) | Layer/layerset validation and OCI packaging - quality checks, versioning, |
-| [`spec-check-filter-release.yaml`](examples/spec-check-filter-release.yaml) | Validates and packages spec/schema files as OCI artifacts |
+| [`basic-quality-and-versioning`](examples/basic-quality-and-versioning/README.md) | Quality checks plus automatic version tagging |
+| [`basic-quality-checks`](examples/basic-quality-checks/README.md) | Enforces branch naming, commit message, and branch structure standards on PRs |
+| [`docker-build-dockerfile`](examples/docker-build-dockerfile/README.md) | Builds a Docker image from src/docker/Dockerfile with layer squashing |
+| [`docker-build-retag`](examples/docker-build-retag/README.md) | Pulls an upstream image, retags with your name and version, pushes to your |
+| [`kubernetes-app-docker-dockerfile`](examples/kubernetes-app-docker-dockerfile/README.md) | Full Kubernetes application pipeline |
+| [`kubernetes-app-docker-retag`](examples/kubernetes-app-docker-retag/README.md) | Kubernetes application pipeline using an upstream image |
+| [`kubernetes-app-manifests-only`](examples/kubernetes-app-manifests-only/README.md) | Packages Kubernetes manifests without building a Docker image |
+| [`kubernetes-bundle-docker-dockerfile`](examples/kubernetes-bundle-docker-dockerfile/README.md) | Packages Kubernetes manifests and builds a Docker image from a Dockerfile |
+| [`kubernetes-bundle-docker-retag`](examples/kubernetes-bundle-docker-retag/README.md) | Packages Kubernetes manifests and retags an upstream Docker image for |
+| [`kubernetes-bundle-resources`](examples/kubernetes-bundle-resources/README.md) | Packages Kubernetes manifests for third-party stacks whose hard-coded refs |
+| [`kubernetes-bundle-vendor-helm-rendered`](examples/kubernetes-bundle-vendor-helm-rendered/README.md) | Renders a vendor Helm chart into individual manifests, processes and |
+| [`kubernetes-product-aggregate`](examples/kubernetes-product-aggregate/README.md) | Aggregates pre-built manifest bundles listed in spec |
+| [`layer-and-layerset-build`](examples/layer-and-layerset-build/README.md) | Layer/layerset validation and OCI packaging - quality checks, versioning, |
+| [`spec-check-filter-release`](examples/spec-check-filter-release/README.md) | Validates and packages spec/schema files as OCI artifacts |
 
 ### Guides
 
