@@ -83,14 +83,16 @@ write_builtin_token() {
   printf '%s' "${value}" > "${TOKENS_OUTPUT_SUB_PATH}/${target_name}"
 }
 
-# Scan the auto-emitted per-entry builtin tokens dirs and copy each file into
-# TOKENS_OUTPUT_SUB_PATH using the consumer's TOKEN_NAME_STYLE.
+# Scan the auto-emitted builtin token dirs and copy each file verbatim into
+# TOKENS_OUTPUT_SUB_PATH. Filenames are already in the consumer's
+# TOKEN_NAME_STYLE on disk (lib/builtin-tokens-from-entry.bash writes them that
+# way), so no name conversion is needed here.
 #
 # Source dirs are produced by lib/builtin-tokens-from-entry.bash via
 # content-resolve.bash and kaptain-init. Each dir has a required filename
-# prefix (CONTENT_, TEMPLATE_, LAYER_); files not matching their dir's prefix
-# are a hard failure (catches malformed bundles or future writers that skip
-# the emitter).
+# prefix derived from the subdir (e.g. contents -> Content, BUILD -> Build);
+# files not matching their dir's prefix are a hard failure (catches malformed
+# bundles or future writers that skip the emitter).
 #
 # Missing dirs are silently skipped (the resolver may run before this, or not
 # at all for this build kind).
@@ -100,28 +102,23 @@ scan_auto_builtin_tokens() {
     return 0
   fi
 
-  local flavour_pair flavour expected_prefix dir file name target
-  for flavour_pair in \
-    "contents:CONTENT" \
-    "templates:TEMPLATE" \
-    "layers:LAYER" \
-    "build:BUILD" \
-    "image:IMAGE" \
-    "git:GIT" \
-    "kaptainpm:KAPTAINPM"; do
-    flavour="${flavour_pair%:*}"
-    expected_prefix="${flavour_pair#*:}"
+  local flavour upper_prefix expected_prefix dir file name
+  for flavour in contents templates layers build image git kaptainpm; do
     dir="${base_dir}/${flavour}"
     [[ ! -d "${dir}" ]] && continue
 
+    # contents -> CONTENT, templates -> TEMPLATE, layers -> LAYER,
+    # build/image/git/kaptainpm -> BUILD/IMAGE/GIT/KAPTAINPM (no 's' to strip).
+    upper_prefix=$(printf '%s' "${flavour%s}" | tr '[:lower:]' '[:upper:]')
+    expected_prefix=$(convert_token_name "${TOKEN_NAME_STYLE}" "${upper_prefix}")
+
     while IFS= read -r -d '' file; do
       name=$(basename "${file}")
-      if [[ "${name}" != "${expected_prefix}_"* ]]; then
-        log_error "Auto-emitted token '${name}' in ${dir} does not start with required prefix '${expected_prefix}_'"
+      if [[ "${name}" != "${expected_prefix}"* ]]; then
+        log_error "Auto-emitted token '${name}' in ${dir} does not start with required prefix '${expected_prefix}'"
         exit 1
       fi
-      target=$(convert_token_name "${TOKEN_NAME_STYLE}" "${name}")
-      cp "${file}" "${TOKENS_OUTPUT_SUB_PATH}/${target}"
+      cp "${file}" "${TOKENS_OUTPUT_SUB_PATH}/${name}"
     done < <(find "${dir}" -type f -print0)
   done
 }

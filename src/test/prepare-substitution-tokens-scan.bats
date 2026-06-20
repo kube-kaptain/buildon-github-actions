@@ -85,9 +85,9 @@ seed_auto_token() {
 # Copy + TOKEN_NAME_STYLE conversion
 # =============================================================================
 
-@test "contents/ file copied and converted to PascalCase" {
+@test "contents/ PascalCase file copied verbatim" {
   export TOKEN_NAME_STYLE="PascalCase"
-  seed_auto_token contents "CONTENT_APP_FOO_VERSION" "1.2.3"
+  seed_auto_token contents "ContentAppFooVersion" "1.2.3"
 
   run "$PSUB"
   [ "$status" -eq 0 ]
@@ -104,18 +104,18 @@ seed_auto_token() {
   [ -f "${TOKENS_OUTPUT_SUB_PATH}/CONTENT_APP_FOO_VERSION" ]
 }
 
-@test "templates/ file with TEMPLATE_ prefix is copied" {
+@test "templates/ file with Template prefix is copied" {
   export TOKEN_NAME_STYLE="PascalCase"
-  seed_auto_token templates "TEMPLATE_TPL_FOO_VERSION" "2.0.0"
+  seed_auto_token templates "TemplateTplFooVersion" "2.0.0"
 
   run "$PSUB"
   [ "$status" -eq 0 ]
   [ -f "${TOKENS_OUTPUT_SUB_PATH}/TemplateTplFooVersion" ]
 }
 
-@test "layers/ file with LAYER_ prefix is copied" {
+@test "layers/ file with Layer prefix is copied" {
   export TOKEN_NAME_STYLE="PascalCase"
-  seed_auto_token layers "LAYER_LAYER_FOO_VERSION" "3.0.0"
+  seed_auto_token layers "LayerLayerFooVersion" "3.0.0"
 
   run "$PSUB"
   [ "$status" -eq 0 ]
@@ -124,13 +124,13 @@ seed_auto_token() {
 
 @test "all seven dirs scanned in one run" {
   export TOKEN_NAME_STYLE="PascalCase"
-  seed_auto_token contents  "CONTENT_C_VERSION"            "1.0"
-  seed_auto_token templates "TEMPLATE_T_VERSION"           "2.0"
-  seed_auto_token layers    "LAYER_L_VERSION"              "3.0"
-  seed_auto_token build     "BUILD_TIMESTAMP"              "2026-06-17T14:32:15Z"
-  seed_auto_token image     "IMAGE_BUILD_COMMAND"          "docker"
-  seed_auto_token git       "GIT_BRANCH"                   "main"
-  seed_auto_token kaptainpm "KAPTAINPM_KIND"               "kubernetes-app-docker-dockerfile"
+  seed_auto_token contents  "ContentCVersion"     "1.0"
+  seed_auto_token templates "TemplateTVersion"    "2.0"
+  seed_auto_token layers    "LayerLVersion"       "3.0"
+  seed_auto_token build     "BuildTimestamp"      "2026-06-17T14:32:15Z"
+  seed_auto_token image     "ImageBuildCommand"   "docker"
+  seed_auto_token git       "GitBranch"           "main"
+  seed_auto_token kaptainpm "KaptainpmKind"       "kubernetes-app-docker-dockerfile"
 
   run "$PSUB"
   [ "$status" -eq 0 ]
@@ -143,9 +143,9 @@ seed_auto_token() {
   [ -f "${TOKENS_OUTPUT_SUB_PATH}/KaptainpmKind" ]
 }
 
-@test "build/ file with BUILD_ prefix is copied" {
+@test "build/ file with Build prefix is copied" {
   export TOKEN_NAME_STYLE="PascalCase"
-  seed_auto_token build "BUILD_TIMESTAMP" "2026-06-17T14:32:15Z"
+  seed_auto_token build "BuildTimestamp" "2026-06-17T14:32:15Z"
 
   run "$PSUB"
   [ "$status" -eq 0 ]
@@ -153,9 +153,9 @@ seed_auto_token() {
   [ "$(cat "${TOKENS_OUTPUT_SUB_PATH}/BuildTimestamp")" = "2026-06-17T14:32:15Z" ]
 }
 
-@test "image/ file with IMAGE_ prefix is copied" {
+@test "image/ file with Image prefix is copied" {
   export TOKEN_NAME_STYLE="PascalCase"
-  seed_auto_token image "IMAGE_BUILD_COMMAND" "podman"
+  seed_auto_token image "ImageBuildCommand" "podman"
 
   run "$PSUB"
   [ "$status" -eq 0 ]
@@ -163,9 +163,9 @@ seed_auto_token() {
   [ "$(cat "${TOKENS_OUTPUT_SUB_PATH}/ImageBuildCommand")" = "podman" ]
 }
 
-@test "git/ file with GIT_ prefix is copied" {
+@test "git/ file with Git prefix is copied" {
   export TOKEN_NAME_STYLE="PascalCase"
-  seed_auto_token git "GIT_HASH_FULL" "abc1234deadbeef"
+  seed_auto_token git "GitHashFull" "abc1234deadbeef"
 
   run "$PSUB"
   [ "$status" -eq 0 ]
@@ -173,9 +173,9 @@ seed_auto_token() {
   [ "$(cat "${TOKENS_OUTPUT_SUB_PATH}/GitHashFull")" = "abc1234deadbeef" ]
 }
 
-@test "kaptainpm/ file with KAPTAINPM_ prefix is copied" {
+@test "kaptainpm/ file with Kaptainpm prefix is copied" {
   export TOKEN_NAME_STYLE="PascalCase"
-  seed_auto_token kaptainpm "KAPTAINPM_KIND" "kubernetes-app-docker-dockerfile"
+  seed_auto_token kaptainpm "KaptainpmKind" "kubernetes-app-docker-dockerfile"
 
   run "$PSUB"
   [ "$status" -eq 0 ]
@@ -183,62 +183,62 @@ seed_auto_token() {
   [ "$(cat "${TOKENS_OUTPUT_SUB_PATH}/KaptainpmKind")" = "kubernetes-app-docker-dockerfile" ]
 }
 
-@test "file in build/ without BUILD_ prefix -> fail" {
+@test "file in build/ without Build prefix -> fail" {
   export TOKEN_NAME_STYLE="PascalCase"
-  seed_auto_token build "CONTENT_WRONG_TIMESTAMP" "x"
+  seed_auto_token build "ContentWrongTimestamp" "x"
 
   run "$PSUB"
   [ "$status" -ne 0 ]
-  [[ "$output" == *"does not start with required prefix 'BUILD_'"* ]]
+  [[ "$output" == *"does not start with required prefix 'Build'"* ]]
 }
 
-@test "file in image/ without IMAGE_ prefix -> fail" {
+@test "file in image/ without Image prefix -> fail" {
   export TOKEN_NAME_STYLE="PascalCase"
-  seed_auto_token image "BUILD_WRONG_COMMAND" "x"
+  seed_auto_token image "BuildWrongCommand" "x"
 
   run "$PSUB"
   [ "$status" -ne 0 ]
-  [[ "$output" == *"does not start with required prefix 'IMAGE_'"* ]]
+  [[ "$output" == *"does not start with required prefix 'Image'"* ]]
 }
 
-@test "file in git/ without GIT_ prefix -> fail" {
+@test "file in git/ without Git prefix -> fail" {
   export TOKEN_NAME_STYLE="PascalCase"
-  seed_auto_token git "BUILD_WRONG_HASH" "x"
+  seed_auto_token git "BuildWrongHash" "x"
 
   run "$PSUB"
   [ "$status" -ne 0 ]
-  [[ "$output" == *"does not start with required prefix 'GIT_'"* ]]
+  [[ "$output" == *"does not start with required prefix 'Git'"* ]]
 }
 
-@test "file in kaptainpm/ without KAPTAINPM_ prefix -> fail" {
+@test "file in kaptainpm/ without Kaptainpm prefix -> fail" {
   export TOKEN_NAME_STYLE="PascalCase"
-  seed_auto_token kaptainpm "BUILD_WRONG_KIND" "x"
+  seed_auto_token kaptainpm "BuildWrongKind" "x"
 
   run "$PSUB"
   [ "$status" -ne 0 ]
-  [[ "$output" == *"does not start with required prefix 'KAPTAINPM_'"* ]]
+  [[ "$output" == *"does not start with required prefix 'Kaptainpm'"* ]]
 }
 
 # =============================================================================
 # Prefix mismatch: hard-fail
 # =============================================================================
 
-@test "file in contents/ without CONTENT_ prefix -> fail" {
+@test "file in contents/ without Content prefix -> fail" {
   export TOKEN_NAME_STYLE="PascalCase"
-  seed_auto_token contents "TEMPLATE_WRONG_VERSION" "x"
+  seed_auto_token contents "TemplateWrongVersion" "x"
 
   run "$PSUB"
   [ "$status" -ne 0 ]
-  [[ "$output" == *"does not start with required prefix 'CONTENT_'"* ]]
+  [[ "$output" == *"does not start with required prefix 'Content'"* ]]
 }
 
-@test "file in layers/ without LAYER_ prefix -> fail" {
+@test "file in layers/ without Layer prefix -> fail" {
   export TOKEN_NAME_STYLE="PascalCase"
-  seed_auto_token layers "CONTENT_WRONG_VERSION" "x"
+  seed_auto_token layers "ContentWrongVersion" "x"
 
   run "$PSUB"
   [ "$status" -ne 0 ]
-  [[ "$output" == *"does not start with required prefix 'LAYER_'"* ]]
+  [[ "$output" == *"does not start with required prefix 'Layer'"* ]]
 }
 
 # =============================================================================
@@ -247,7 +247,7 @@ seed_auto_token() {
 
 @test "user config token that collides with auto token -> override fail" {
   export TOKEN_NAME_STYLE="PascalCase"
-  seed_auto_token contents "CONTENT_APP_FOO_VERSION" "1.2.3"
+  seed_auto_token contents "ContentAppFooVersion" "1.2.3"
   printf '%s' "override" > "${CONFIG_SUB_PATH}/ContentAppFooVersion"
 
   run "$PSUB"

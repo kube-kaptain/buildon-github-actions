@@ -35,8 +35,20 @@ source "${SCRIPT_DIR}/../defaults/platform.bash"
 source "${SCRIPT_DIR}/../lib/log.bash"
 # shellcheck source=src/scripts/defaults/tokens.bash
 source "${SCRIPT_DIR}/../defaults/tokens.bash"
+# shellcheck source=src/scripts/lib/prepare-token-name-and-value.bash
+source "${SCRIPT_DIR}/../lib/prepare-token-name-and-value.bash"
 export CONFIG_VALUE_TRAILING_NEWLINE
 export TOKEN_SUBSTITUTION_PASSES
+
+# Parallel worker count for file processing. Empirically tuned to 8
+# Mac M1 Pro test-substitution-performance repo results:
+# 1  = 1s
+# 2  = 0.65s
+# 4  = 0.5s
+# 8  = 0.4s
+# 16 = 0.42s
+# Expose later if it turns out to be useful to people in future.
+PARALLEL=8
 
 # Validate arguments
 if [[ $# -ne 3 ]]; then
@@ -48,12 +60,19 @@ TOKEN_STYLE="${1:-shell}"
 TOKENS_DIR="${2}"
 TARGET="${3}"
 
-# Validate token style script exists
+# Validate token style provider exists (sourced, not executed - no -x)
 PROVIDER_SCRIPT="${PLUGINS_DIR}/token-substitution-providers/substitute-${TOKEN_STYLE}-style-token"
-if [[ ! -x "${PROVIDER_SCRIPT}" ]]; then
-  log_error "Unknown token style: ${TOKEN_STYLE} (script not found: substitute-${TOKEN_STYLE}-style-token)"
+if [[ ! -f "${PROVIDER_SCRIPT}" ]]; then
+  log_error "Unknown token style: ${TOKEN_STYLE} (provider not found: substitute-${TOKEN_STYLE}-style-token)"
   exit 1
 fi
+
+# Source the provider so its function is callable in the hot loop without
+# fork+exec per (token, file). Function name mirrors the script name with
+# hyphens replaced by underscores so it's a valid identifier.
+# shellcheck source=/dev/null
+source "${PROVIDER_SCRIPT}"
+PROVIDER_FN="substitute_${TOKEN_STYLE//-/_}_style_token"
 
 # Validate tokens directory exists
 if [[ ! -d "${TOKENS_DIR}" ]]; then
@@ -129,35 +148,117 @@ while IFS= read -r token_file; do
   TOKEN_FILES+=("${token_file#./}")
 done < <(find . -type f | LC_ALL=C sort)
 
+# Pre-read every token file once into parallel arrays. Token files don't
+# change between passes (we never write them), so this is a one-time cost
+# instead of a per-(token, file) cat fork inside the hot loop.
+TOKEN_NAMES=()
+TOKEN_VALUES=()
+if [[ ${#TOKEN_FILES[@]} -gt 0 ]]; then
+  for token_file in "${TOKEN_FILES[@]}"; do
+    TOKEN_NAME=""
+    TOKEN_VALUE=""
+    prepare_token_name_and_value "${token_file}"
+    TOKEN_NAMES+=("${TOKEN_NAME}")
+    TOKEN_VALUES+=("${TOKEN_VALUE}")
+  done
+fi
+
 # Output header first (real-time output for debugging)
 echo "Substituting tokens in ${TARGET}:"
 
-# Process each target file, outputting count as we go
-# Outer loop: passes, Middle loop: files, Inner loop: tokens
-passes=0
-while [[ ${passes} -lt ${TOKEN_SUBSTITUTION_PASSES} ]]; do
-  for target_file in "${TARGET_FILES[@]}"; do
-    file_count=0
+# Process a single target file across all passes. Reads once per pass,
+# applies all tokens against the in-memory buffer, writes once per pass.
+# Providers are pure string transforms; they mutate the buffer via
+# printf -v + indirect expansion. Per-file log line goes to the caller's
+# stdout (serial path) or to a per-worker file (parallel path).
+process_target_file() {
+  local target_file="$1"
+  local target_content file_count i passes relative_path
+  passes=0
+  file_count=0
+  while [[ ${passes} -lt ${TOKEN_SUBSTITUTION_PASSES} ]]; do
+    target_content=$(cat "${target_file}" && echo x)
+    target_content="${target_content%x}"
 
-    # Apply all tokens to this file (skip if no tokens)
-    if [[ ${#TOKEN_FILES[@]} -gt 0 ]]; then
-      for token_file in "${TOKEN_FILES[@]}"; do
-        count=$("${PROVIDER_SCRIPT}" "${token_file}" "${target_file}")
-        file_count=$((file_count + count))
+    if [[ ${#TOKEN_NAMES[@]} -gt 0 ]]; then
+      for i in "${!TOKEN_NAMES[@]}"; do
+        "${PROVIDER_FN}" "${TOKEN_NAMES[${i}]}" "${TOKEN_VALUES[${i}]}" target_content
+        # shellcheck disable=SC2154 # SUBSTITUTE_TOKEN_COUNT set by dynamically-sourced provider
+        file_count=$((file_count + SUBSTITUTE_TOKEN_COUNT))
       done
     fi
 
-    # Output immediately after processing each file
-    if [[ "${TARGET_MODE}" == "dir" ]]; then
-      relative_path="${target_file#"${TARGET_ABS}"/}"
-    else
-      relative_path="$(basename "${target_file}")"
+    printf '%s' "${target_content}" > "${target_file}"
+    passes=$((passes + 1))
+  done
+
+  if [[ "${TARGET_MODE}" == "dir" ]]; then
+    relative_path="${target_file#"${TARGET_ABS}"/}"
+  else
+    relative_path="$(basename "${target_file}")"
+  fi
+  if [[ ${file_count} -eq 0 ]]; then
+    echo "  Substituted no tokens in ${relative_path}"
+  else
+    echo "  Substituted ${file_count} tokens in ${relative_path}"
+  fi
+}
+
+# Bound parallelism by file count: no benefit spawning more workers than files.
+N_FILES=${#TARGET_FILES[@]}
+if [[ ${N_FILES} -lt ${PARALLEL} ]]; then
+  PARALLEL=${N_FILES}
+fi
+
+if [[ ${PARALLEL} -le 1 ]]; then
+  # Serial fast-path: skip mktemp + subshells for small jobs.
+  for target_file in "${TARGET_FILES[@]+"${TARGET_FILES[@]}"}"; do
+    process_target_file "${target_file}"
+  done
+else
+  # Parallel path: chunked file assignment so concatenating per-worker
+  # logs in worker order preserves natural file order. One subshell per
+  # worker; each worker runs all passes for its chunk end-to-end (one
+  # fork per worker, not one per pass).
+  WORK_DIR=$(mktemp -d 2>/dev/null || mktemp -d -t subst-tokens)
+  trap 'rm -rf "${WORK_DIR}"' EXIT
+
+  # Ceiling division: chunk_size = ceil(N_FILES / PARALLEL).
+  chunk_size=$(( (N_FILES + PARALLEL - 1) / PARALLEL ))
+
+  pids=()
+  for ((w = 0; w < PARALLEL; w++)); do
+    worker_start=$(( w * chunk_size ))
+    worker_end=$(( worker_start + chunk_size ))
+    if [[ ${worker_end} -gt ${N_FILES} ]]; then
+      worker_end=${N_FILES}
     fi
-    if [[ ${file_count} -eq 0 ]]; then
-      echo "  Substituted no tokens in ${relative_path}"
-    else
-      echo "  Substituted ${file_count} tokens in ${relative_path}"
+    [[ ${worker_start} -ge ${worker_end} ]] && continue
+
+    worker_log="${WORK_DIR}/log.${w}"
+    (
+      exec > "${worker_log}"
+      for ((j = worker_start; j < worker_end; j++)); do
+        process_target_file "${TARGET_FILES[${j}]}"
+      done
+    ) &
+    pids+=("$!")
+  done
+
+  worker_failed=0
+  for pid in "${pids[@]+"${pids[@]}"}"; do
+    if ! wait "${pid}"; then
+      worker_failed=1
     fi
   done
-  passes=$((passes + 1))
-done
+
+  for ((w = 0; w < PARALLEL; w++)); do
+    worker_log="${WORK_DIR}/log.${w}"
+    [[ -f "${worker_log}" ]] && cat "${worker_log}"
+  done
+
+  if [[ ${worker_failed} -ne 0 ]]; then
+    log_error "One or more substitution workers failed"
+    exit 1
+  fi
+fi

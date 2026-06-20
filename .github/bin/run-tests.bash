@@ -76,6 +76,10 @@ check_executables() {
     for file in $glob; do
       # Skip markdown files - they're documentation, not scripts
       [[ "$file" == *.md ]] && continue
+      # Skip the token-substitution-providers plugin dir - these are
+      # sourced libs, not executable plugins. Checked by
+      # check_sourced_not_executable instead.
+      [[ "$file" == *"/plugins/token-substitution-providers/"* ]] && continue
       [[ -f "$file" ]] && scripts+=("$file")
     done
   done
@@ -110,10 +114,13 @@ check_sourced_not_executable() {
   local globs=(
     "$PROJECT_ROOT/src/scripts/lib/*"
     "$PROJECT_ROOT/src/scripts/defaults/*"
+    "$PROJECT_ROOT/src/scripts/plugins/token-substitution-providers/*"
   )
 
   for glob in "${globs[@]}"; do
     for file in $glob; do
+      # Skip markdown docs
+      [[ "$file" == *.md ]] && continue
       [[ -f "$file" ]] && sourced_files+=("$file")
     done
   done
@@ -334,27 +341,33 @@ check_sed_portability() {
   log_info "All sed -i usage is portable"
 }
 
-# Check every reusable workflow template has a matching consumer example
+# Check every reusable workflow template has a matching example directory
+# containing build.yaml, KaptainPM.yaml, and README.md. Any file missing is
+# a hard failure.
 check_example_coverage() {
-  log_info "Checking every workflow template has a matching example"
+  log_info "Checking every workflow template has matching examples/<name>/{build,KaptainPM}.yaml + README.md"
 
   local missing=()
   for template in "${PROJECT_ROOT}"/src/workflow-templates/*.yaml; do
     [[ -f "${template}" ]] || continue
     local name="${template##*/}"
-    if [[ ! -f "${PROJECT_ROOT}/examples/${name}" ]]; then
-      missing+=("${name}")
-    fi
+    local stem="${name%.yaml}"
+    local dir="${PROJECT_ROOT}/examples/${stem}"
+    for f in build.yaml KaptainPM.yaml README.md; do
+      if [[ ! -f "${dir}/${f}" ]]; then
+        missing+=("${stem}/${f}")
+      fi
+    done
   done
 
   if [[ ${#missing[@]} -eq 0 ]]; then
-    log_info "All workflow templates have examples"
+    log_info "All workflow templates have example dir + 3 files"
     return 0
   fi
 
-  log_error "Workflow templates without an examples/<name>.yaml:"
-  for name in "${missing[@]}"; do
-    log_error "  - ${name}"
+  log_error "Workflow templates without an examples/<name>/{build.yaml,KaptainPM.yaml,README.md}:"
+  for path in "${missing[@]}"; do
+    log_error "  - ${path}"
   done
   exit 1
 }

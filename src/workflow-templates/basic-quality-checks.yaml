@@ -6,6 +6,12 @@ kaptain-order: 10
 kaptain-description: Enforces basic quality - blocks bad branch names, bad commit messages, and bad branch structure
 on:
   workflow_call:
+    inputs:
+      runner:
+        description: 'GitHub Actions runner label (or JSON array of labels) the job runs on'
+        required: false
+        type: string
+        default: ubuntu-24.04
     secrets:
       docker-registry-logins-secrets:
         description: 'JSON object of secrets for docker-registry-logins (e.g., {"DOCKER_USER": "x", "DOCKER_PASS": "y"})'
@@ -13,7 +19,7 @@ on:
 jobs:
   basic-quality-checks:
     name: Basic Quality Checks
-    runs-on: ubuntu-24.04
+    runs-on: ${{ inputs.runner }}
     steps:
       # INJECT: parse-workflow-ref-and-checkout
 

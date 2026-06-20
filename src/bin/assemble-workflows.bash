@@ -345,8 +345,8 @@ process_action_template() {
   echo "  Written: $output"
 }
 
-validate_no_workflow_inputs() {
-  echo "Validating no workflow inputs exist..."
+validate_workflow_inputs() {
+  echo "Validating each workflow exposes only the 'runner' input..."
 
   local errors=0
 
@@ -358,21 +358,36 @@ validate_no_workflow_inputs() {
     [[ ! -f "$TEMPLATES_DIR/$wf_basename" ]] && continue
 
     local inputs
-    inputs=$(yq '.on.workflow_call.inputs | keys | .[]' "$workflow" 2>/dev/null) || continue
+    inputs=$(yq '.on.workflow_call.inputs | keys | .[]' "$workflow" 2>/dev/null) || inputs=""
 
-    if [[ -n "$inputs" ]]; then
-      echo "  ERROR: $wf_basename has workflow inputs (all config comes from KaptainPM.yaml):" >&2
-      echo "$inputs" | sed 's/^/    /' >&2
+    local has_runner=0
+    local extras=()
+    while IFS= read -r name; do
+      [[ -z "$name" ]] && continue
+      if [[ "$name" == "runner" ]]; then
+        has_runner=1
+      else
+        extras+=("$name")
+      fi
+    done <<< "$inputs"
+
+    if [[ $has_runner -eq 0 ]]; then
+      echo "  ERROR: $wf_basename is missing the required 'runner' input" >&2
+      errors=$((errors + 1))
+    fi
+    if [[ ${#extras[@]} -gt 0 ]]; then
+      echo "  ERROR: $wf_basename declares disallowed input(s) (only 'runner' is allowed; all other config belongs in KaptainPM.yaml):" >&2
+      printf '    %s\n' "${extras[@]}" >&2
       errors=$((errors + 1))
     fi
   done
 
   if [[ $errors -gt 0 ]]; then
-    echo "  FAILED: $errors workflow(s) have inputs — remove them" >&2
+    echo "  FAILED: $errors workflow(s) have an inputs problem - must declare 'runner' and nothing else" >&2
     exit 1
   fi
 
-  echo "  OK: No workflow inputs found"
+  echo "  OK: every workflow exposes only the 'runner' input"
 }
 
 # Generate secrets table for README
@@ -477,7 +492,7 @@ generate_workflow_links_table() {
 }
 
 # Generate examples table for README
-# Extracts description from comment header in each example file
+# Extracts description from comment header in each examples/<name>/build.yaml
 # Format: line 1-2 SPDX, line 3 empty #, line 4 title, line 5 empty #, lines 6+ description
 generate_examples_table() {
   local examples_dir="$REPO_ROOT/examples"
@@ -485,10 +500,11 @@ generate_examples_table() {
   echo "| Example | Description |"
   echo "|---------|-------------|"
 
-  for example in "$examples_dir"/*.yaml; do
-    [[ -f "$example" ]] || continue
-    local ex_basename description
-    ex_basename=$(basename "$example")
+  for build_file in "$examples_dir"/*/build.yaml; do
+    [[ -f "$build_file" ]] || continue
+    local ex_dir ex_name description
+    ex_dir=$(dirname "$build_file")
+    ex_name=$(basename "$ex_dir")
 
     # Extract first description line (line 6 typically has description start)
     description=""
@@ -510,7 +526,7 @@ generate_examples_table() {
         description="$content"
         break
       fi
-    done < "$example"
+    done < "$build_file"
 
     # Clean up description - take first sentence
     description="${description%%.*}"
@@ -518,7 +534,7 @@ generate_examples_table() {
     description="${description%:}"
     [[ -z "$description" ]] && description="Example workflow"
 
-    echo "| [\`$ex_basename\`](examples/$ex_basename) | $description |"
+    echo "| [\`$ex_name\`](examples/$ex_name/README.md) | $description |"
   done
 
   # Add guides if any exist
@@ -877,9 +893,9 @@ main() {
   echo "Processed $count template(s) in $((SECONDS - section_start)) seconds."
   echo
 
-  # Validate no workflow inputs exist (all config comes from KaptainPM.yaml)
+  # Validate every workflow exposes exactly the 'runner' input and nothing else
   section_start=$SECONDS
-  validate_no_workflow_inputs
+  validate_workflow_inputs
   echo "Validated in $((SECONDS - section_start)) seconds."
   echo
 

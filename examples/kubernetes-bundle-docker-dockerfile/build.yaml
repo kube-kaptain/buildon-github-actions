@@ -1,17 +1,17 @@
 # SPDX-License-Identifier: CC0-1.0
 # This example is released to the public domain. Use freely without attribution.
 #
-# Kubernetes Bundle - Docker Retag
+# Kubernetes Bundle - Docker Dockerfile
 #
-# Packages Kubernetes manifests and retags an upstream Docker image for
-# third-party stacks whose hard-coded refs can't be made to fit Kaptain's
+# Packages Kubernetes manifests and builds a Docker image from a Dockerfile
+# for third-party stacks whose hard-coded refs can't be made to fit Kaptain's
 # naming conventions.
 #
 # Kaptain manifest generators don't run automatically in this process.
 #
 # All configuration is in KaptainPM.yaml - see docs for available fields.
 
-name: Kubernetes Bundle - Docker Retag
+name: Kubernetes Bundle - Docker Dockerfile
 
 on:
   push:
@@ -21,8 +21,11 @@ on:
 
 jobs:
   build:
-    uses: kube-kaptain/buildon-github-actions/.github/workflows/kubernetes-bundle-docker-retag.yaml@1.1.44
+    uses: kube-kaptain/buildon-github-actions/.github/workflows/kubernetes-bundle-docker-dockerfile.yaml@1.1.45
     permissions:
       contents: write
       packages: write
       checks: write
+    # Override the default runner if needed:
+    # with:
+    #   runner: ubuntu-latest

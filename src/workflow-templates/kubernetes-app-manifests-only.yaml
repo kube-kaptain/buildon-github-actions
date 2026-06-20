@@ -6,6 +6,12 @@ kaptain-order: 60
 kaptain-description: Everything from quality and version above, plus packages Kubernetes manifests with token substitution
 on:
   workflow_call:
+    inputs:
+      runner:
+        description: 'GitHub Actions runner label (or JSON array of labels) the job runs on'
+        required: false
+        type: string
+        default: ubuntu-24.04
     secrets:
       docker-registry-logins-secrets:
         description: 'JSON object of secrets for docker-registry-logins (e.g., {"DOCKER_USER": "x", "DOCKER_PASS": "y"})'
@@ -65,7 +71,7 @@ on:
 jobs:
   build:
     name: Build & Publish
-    runs-on: ubuntu-24.04
+    runs-on: ${{ inputs.runner }}
     permissions:
       contents: write
       packages: write

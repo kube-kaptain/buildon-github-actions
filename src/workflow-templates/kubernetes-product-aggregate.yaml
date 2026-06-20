@@ -6,6 +6,12 @@ kaptain-order: 64
 kaptain-description: Aggregates pre-built manifest bundles listed in spec.contents into a deployable product, with merged defaults and a unified contract
 on:
   workflow_call:
+    inputs:
+      runner:
+        description: 'GitHub Actions runner label (or JSON array of labels) the job runs on'
+        required: false
+        type: string
+        default: ubuntu-24.04
     secrets:
       docker-registry-logins-secrets:
         description: 'JSON object of secrets for docker-registry-logins (e.g., {"DOCKER_USER": "x", "DOCKER_PASS": "y"})'
@@ -71,7 +77,7 @@ on:
 jobs:
   build:
     name: Build & Publish
-    runs-on: ubuntu-24.04
+    runs-on: ${{ inputs.runner }}
     permissions:
       contents: write
       packages: write

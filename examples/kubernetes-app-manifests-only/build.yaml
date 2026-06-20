@@ -20,8 +20,11 @@ on:
 
 jobs:
   build:
-    uses: kube-kaptain/buildon-github-actions/.github/workflows/kubernetes-app-manifests-only.yaml@1.1.44
+    uses: kube-kaptain/buildon-github-actions/.github/workflows/kubernetes-app-manifests-only.yaml@1.1.45
     permissions:
       contents: write
       packages: write
       checks: write
+    # Override the default runner if needed:
+    # with:
+    #   runner: ubuntu-latest
