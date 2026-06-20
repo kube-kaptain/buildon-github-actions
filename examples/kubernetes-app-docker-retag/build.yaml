@@ -24,3 +24,6 @@ jobs:
       contents: write
       packages: write
       checks: write
+    # Override the default runner if needed:
+    # with:
+    #   runner: ubuntu-latest

@@ -150,7 +150,16 @@ See [`examples/`](examples/) for more usage patterns.
 
 ### All Inputs
 
-All inputs to the system come from KaptainPM.yaml and layers, except secrets.
+All inputs to the system come from KaptainPM.yaml and layers, except secrets
+and one optional workflow-call input: `runner`.
+
+### Runner
+
+All workflows support a custom runner via the `runner` input. The default is
+`ubuntu-24.04`. To override (e.g. self-hosted, ARM, or a runner group label),
+pass `with: runner: <your-runner-label>` in the calling workflow. Each
+example `build.yaml` includes a commented-out `with: runner:` block showing
+the syntax.
 
 ### Secrets
 
