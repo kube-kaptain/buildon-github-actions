@@ -391,8 +391,8 @@ read_combined_manifest() {
   [ "$status" -eq 0 ]
 
   manifest=$(read_suffixed_manifest "agent")
-  assert_contains "$manifest" "app: \${ProjectName}-agent"
-  assert_contains "$manifest" "app.kubernetes.io/name: \${ProjectName}-agent"
+  assert_contains "$manifest" "app: \"\${ProjectName}-agent\""
+  assert_contains "$manifest" "app.kubernetes.io/name: \"\${ProjectName}-agent\""
 }
 
 @test "labels use full resource name with combined sub-path" {
@@ -402,8 +402,8 @@ read_combined_manifest() {
   [ "$status" -eq 0 ]
 
   manifest=$(read_combined_manifest "monitoring/node")
-  assert_contains "$manifest" "app: \${ProjectName}-monitoring-node"
-  assert_contains "$manifest" "app.kubernetes.io/name: \${ProjectName}-monitoring-node"
+  assert_contains "$manifest" "app: \"\${ProjectName}-monitoring-node\""
+  assert_contains "$manifest" "app.kubernetes.io/name: \"\${ProjectName}-monitoring-node\""
 }
 
 @test "selector uses full resource name with suffix" {

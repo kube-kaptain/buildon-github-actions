@@ -343,7 +343,7 @@ EOF
   stage_product_preconditions
   run_script
   [ "${status}" -eq 0 ]
-  grep -q "kaptain.org/role: kaptain-product-lineage-data" \
+  grep -q "kaptain.org/role: \"kaptain-product-lineage-data\"" \
     "$(final_lineage_data_path "product-foo" "kaptain-product-lineage-data.yaml")"
 }
 
@@ -351,7 +351,7 @@ EOF
   stage_product_preconditions
   run_script
   [ "${status}" -eq 0 ]
-  grep -q "kaptain.org/build-kind: kubernetes-product-aggregate" \
+  grep -q "kaptain.org/build-kind: \"kubernetes-product-aggregate\"" \
     "$(final_lineage_data_path "product-foo" "kaptain-product-lineage-data.yaml")"
 }
 
@@ -359,7 +359,7 @@ EOF
   stage_product_preconditions
   run_script
   [ "${status}" -eq 0 ]
-  grep -q "kaptain.org/project-name: product-foo" \
+  grep -q "kaptain.org/project-name: \"product-foo\"" \
     "$(final_lineage_data_path "product-foo" "kaptain-product-lineage-data.yaml")"
 }
 
@@ -367,7 +367,7 @@ EOF
   stage_product_preconditions
   run_script
   [ "${status}" -eq 0 ]
-  grep -q "kaptain.org/product-name: product-foo" \
+  grep -q "kaptain.org/product-name: \"product-foo\"" \
     "$(final_lineage_data_path "product-foo" "kaptain-product-lineage-data.yaml")"
 }
 
@@ -375,7 +375,7 @@ EOF
   stage_product_preconditions
   run_script
   [ "${status}" -eq 0 ]
-  grep -q "kaptain.org/product-short-name: foo" \
+  grep -q "kaptain.org/product-short-name: \"foo\"" \
     "$(final_lineage_data_path "product-foo" "kaptain-product-lineage-data.yaml")"
 }
 
@@ -385,7 +385,7 @@ EOF
     PRODUCT_NAME="" PRODUCT_SHORT_NAME="" \
     run_script
   [ "${status}" -eq 0 ]
-  grep -q "kaptain.org/role: kaptain-app-lineage-data" \
+  grep -q "kaptain.org/role: \"kaptain-app-lineage-data\"" \
     "$(final_lineage_data_path "myapp" "kaptain-app-lineage-data.yaml")"
 }
 
@@ -395,7 +395,7 @@ EOF
     PRODUCT_NAME="" PRODUCT_SHORT_NAME="" \
     run_script
   [ "${status}" -eq 0 ]
-  grep -q "kaptain.org/build-kind: kubernetes-app-manifests-only" \
+  grep -q "kaptain.org/build-kind: \"kubernetes-app-manifests-only\"" \
     "$(final_lineage_data_path "myapp" "kaptain-app-lineage-data.yaml")"
 }
 
@@ -405,7 +405,7 @@ EOF
     PRODUCT_NAME="" PRODUCT_SHORT_NAME="" \
     run_script
   [ "${status}" -eq 0 ]
-  grep -q "kaptain.org/project-name: myapp" \
+  grep -q "kaptain.org/project-name: \"myapp\"" \
     "$(final_lineage_data_path "myapp" "kaptain-app-lineage-data.yaml")"
 }
 
@@ -425,7 +425,7 @@ EOF
   stage_product_preconditions
   GIT_SHA=abc123def456 run_script
   [ "${status}" -eq 0 ]
-  grep -q "kaptain.org/git-sha: abc123def456" \
+  grep -q "kaptain.org/git-sha: \"abc123def456\"" \
     "$(final_lineage_data_path "product-foo" "kaptain-product-lineage-data.yaml")"
 }
 
@@ -649,9 +649,9 @@ EOF
     run_script
   [ "${status}" -eq 0 ]
   [ -f "$(final_lineage_data_path "myenv" "kaptain-app-lineage-data.yaml")" ]
-  grep -q "kaptain.org/role: kaptain-app-lineage-data" \
+  grep -q "kaptain.org/role: \"kaptain-app-lineage-data\"" \
     "$(final_lineage_data_path "myenv" "kaptain-app-lineage-data.yaml")"
-  grep -q "kaptain.org/build-kind: kubernetes-run-environment" \
+  grep -q "kaptain.org/build-kind: \"kubernetes-run-environment\"" \
     "$(final_lineage_data_path "myenv" "kaptain-app-lineage-data.yaml")"
 }
 
@@ -706,9 +706,9 @@ EOF
     run_script
   [ "${status}" -eq 0 ]
   [ -f "$(final_lineage_data_path "myrp" "kaptain-app-lineage-data.yaml")" ]
-  grep -q "kaptain.org/role: kaptain-app-lineage-data" \
+  grep -q "kaptain.org/role: \"kaptain-app-lineage-data\"" \
     "$(final_lineage_data_path "myrp" "kaptain-app-lineage-data.yaml")"
-  grep -q "kaptain.org/build-kind: kubernetes-run-platform-meta-environment" \
+  grep -q "kaptain.org/build-kind: \"kubernetes-run-platform-meta-environment\"" \
     "$(final_lineage_data_path "myrp" "kaptain-app-lineage-data.yaml")"
 }
 
