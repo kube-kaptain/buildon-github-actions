@@ -102,7 +102,7 @@ read_manifest_in_subpath() {
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest)
-  [[ "$manifest" == *'schedule: ${MyProject/CronjobSchedule}'* ]] || return 1
+  [[ "$manifest" == *'schedule: "${MyProject/CronjobSchedule}"'* ]] || return 1
 }
 
 @test "suspend is a token with project name prefix" {
@@ -120,7 +120,7 @@ read_manifest_in_subpath() {
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest_with_suffix "backup")
-  [[ "$manifest" == *'schedule: ${MyProject/BackupCronjobSchedule}'* ]] || return 1
+  [[ "$manifest" == *'schedule: "${MyProject/BackupCronjobSchedule}"'* ]] || return 1
   [[ "$manifest" == *'suspend: ${MyProject/BackupCronjobSuspend}'* ]] || return 1
 }
 
@@ -131,7 +131,7 @@ read_manifest_in_subpath() {
   [ "$status" -eq 0 ]
 
   manifest=$(read_manifest_in_subpath "db/primary")
-  [[ "$manifest" == *'schedule: ${MyProject/DbPrimaryCronjobSchedule}'* ]] || return 1
+  [[ "$manifest" == *'schedule: "${MyProject/DbPrimaryCronjobSchedule}"'* ]] || return 1
   [[ "$manifest" == *'suspend: ${MyProject/DbPrimaryCronjobSuspend}'* ]] || return 1
 }
 
@@ -144,7 +144,7 @@ read_manifest_in_subpath() {
 
   [ -f "$OUTPUT_SUB_PATH/manifests/combined/db/cronjob-migrate.yaml" ]
   manifest=$(cat "$OUTPUT_SUB_PATH/manifests/combined/db/cronjob-migrate.yaml")
-  [[ "$manifest" == *'schedule: ${MyProject/DbMigrateCronjobSchedule}'* ]] || return 1
+  [[ "$manifest" == *'schedule: "${MyProject/DbMigrateCronjobSchedule}"'* ]] || return 1
   [[ "$manifest" == *'suspend: ${MyProject/DbMigrateCronjobSuspend}'* ]] || return 1
 }
 
