@@ -150,42 +150,52 @@ setup() {
 @test "generate_yaml_map: basic output with no indent" {
   result=$(generate_yaml_map 0 "labels" "app=foo")
   [[ "$result" == "labels:"* ]] || return 1
-  [[ "$result" == *$'\n'"  app: foo"* ]] || return 1
+  [[ "$result" == *$'\n''  app: "foo"'* ]] || return 1
 }
 
 @test "generate_yaml_map: 2-space indent" {
   result=$(generate_yaml_map 2 "labels" "app=foo")
   [[ "$result" == "  labels:"* ]] || return 1
-  [[ "$result" == *$'\n'"    app: foo"* ]] || return 1
+  [[ "$result" == *$'\n''    app: "foo"'* ]] || return 1
 }
 
 @test "generate_yaml_map: 4-space indent" {
   result=$(generate_yaml_map 4 "resources" "cpu=100m")
   [[ "$result" == "    resources:"* ]] || return 1
-  [[ "$result" == *$'\n'"      cpu: 100m"* ]] || return 1
+  [[ "$result" == *$'\n''      cpu: "100m"'* ]] || return 1
 }
 
 @test "generate_yaml_map: multiple entries" {
   result=$(generate_yaml_map 0 "labels" "app=foo,version=1,team=platform")
-  [[ "$result" == *"app: foo"* ]] || return 1
-  [[ "$result" == *"version: 1"* ]] || return 1
-  [[ "$result" == *"team: platform"* ]] || return 1
+  [[ "$result" == *'app: "foo"'* ]] || return 1
+  [[ "$result" == *'version: "1"'* ]] || return 1
+  [[ "$result" == *'team: "platform"'* ]] || return 1
 }
 
-@test "generate_yaml_map: handles token references" {
+@test "generate_yaml_map: quotes boolean-like values so YAML reads them as strings" {
+  result=$(generate_yaml_map 0 "labels" "enabled=false")
+  [[ "$result" == *'enabled: "false"'* ]] || return 1
+}
+
+@test "generate_yaml_map: quotes token references" {
   result=$(generate_yaml_map 0 "labels" 'app=${ProjectName}')
-  [[ "$result" == *'app: ${ProjectName}'* ]] || return 1
+  [[ "$result" == *'app: "${ProjectName}"'* ]] || return 1
 }
 
-@test "generate_yaml_map: handles quoted values" {
+@test "generate_yaml_map: escapes embedded double quotes" {
   result=$(generate_yaml_map 0 "annotations" 'msg="Hello World"')
-  [[ "$result" == *'msg: "Hello World"'* ]] || return 1
+  [[ "$result" == *'msg: "\"Hello World\""'* ]] || return 1
+}
+
+@test "generate_yaml_map: escapes embedded backslashes" {
+  result=$(generate_yaml_map 0 "annotations" 'path=C:\Temp')
+  [[ "$result" == *'path: "C:\\Temp"'* ]] || return 1
 }
 
 @test "generate_yaml_map: handles kubernetes.io keys" {
   result=$(generate_yaml_map 0 "labels" "app.kubernetes.io/name=foo,app.kubernetes.io/version=1.0")
-  [[ "$result" == *"app.kubernetes.io/name: foo"* ]] || return 1
-  [[ "$result" == *"app.kubernetes.io/version: 1.0"* ]] || return 1
+  [[ "$result" == *'app.kubernetes.io/name: "foo"'* ]] || return 1
+  [[ "$result" == *'app.kubernetes.io/version: "1.0"'* ]] || return 1
 }
 
 @test "generate_yaml_map: empty pairs outputs nothing" {
@@ -200,19 +210,19 @@ setup() {
 @test "generate_metadata_map: uses 2-space indent" {
   result=$(generate_metadata_map "labels" "app=foo")
   [[ "$result" == "  labels:"* ]] || return 1
-  [[ "$result" == *$'\n'"    app: foo"* ]] || return 1
+  [[ "$result" == *$'\n''    app: "foo"'* ]] || return 1
 }
 
 @test "generate_metadata_map: multiple labels" {
   result=$(generate_metadata_map "labels" "app=foo,version=1")
-  [[ "$result" == *"app: foo"* ]] || return 1
-  [[ "$result" == *"version: 1"* ]] || return 1
+  [[ "$result" == *'app: "foo"'* ]] || return 1
+  [[ "$result" == *'version: "1"'* ]] || return 1
 }
 
 @test "generate_metadata_map: annotations" {
   result=$(generate_metadata_map "annotations" "kaptain.org/version=1.0")
   [[ "$result" == "  annotations:"* ]] || return 1
-  [[ "$result" == *"kaptain.org/version: 1.0"* ]] || return 1
+  [[ "$result" == *'kaptain.org/version: "1.0"'* ]] || return 1
 }
 
 @test "generate_metadata_map: empty pairs outputs nothing" {
@@ -387,15 +397,15 @@ metadata_caller_scope() {
 
   result=$(generate_metadata 2 labels)
 
-  [[ "$result" == *'app: ${ProjectName}'* ]] || return 1
-  [[ "$result" == *'app.kubernetes.io/name: ${ProjectName}'* ]] || return 1
+  [[ "$result" == *'app: "${ProjectName}"'* ]] || return 1
+  [[ "$result" == *'app.kubernetes.io/name: "${ProjectName}"'* ]] || return 1
   [[ "$result" == *'app.kubernetes.io/version: "${Version}"'* ]] || return 1
-  [[ "$result" == *'app.kubernetes.io/managed-by: Kaptain'* ]] || return 1
+  [[ "$result" == *'app.kubernetes.io/managed-by: "Kaptain"'* ]] || return 1
   [[ "$result" == *'kaptain.org/version: "${Version}"'* ]] || return 1
-  [[ "$result" == *'kaptain.org/project-name: ${ProjectName}'* ]] || return 1
-  [[ "$result" == *'kaptain.org/environment: ${Environment}'* ]] || return 1
-  [[ "$result" == *'kaptain.org/product: ${ProductName}'* ]] || return 1
-  [[ "$result" == *'kaptain.org/owner: kube-kaptain'* ]] || return 1
+  [[ "$result" == *'kaptain.org/project-name: "${ProjectName}"'* ]] || return 1
+  [[ "$result" == *'kaptain.org/environment: "${Environment}"'* ]] || return 1
+  [[ "$result" == *'kaptain.org/product: "${ProductName}"'* ]] || return 1
+  [[ "$result" == *'kaptain.org/owner: "kube-kaptain"'* ]] || return 1
 }
 
 @test "generate_metadata labels: kaptain.org/environment emitted unconditionally (deploy-time token)" {
@@ -404,7 +414,7 @@ metadata_caller_scope() {
 
   result=$(generate_metadata 2 labels)
 
-  [[ "$result" == *'kaptain.org/environment: ${Environment}'* ]] || return 1
+  [[ "$result" == *'kaptain.org/environment: "${Environment}"'* ]] || return 1
 }
 
 @test "generate_metadata labels: kaptain.org/product emitted unconditionally (deploy-time token)" {
@@ -413,7 +423,7 @@ metadata_caller_scope() {
 
   result=$(generate_metadata 2 labels)
 
-  [[ "$result" == *'kaptain.org/product: ${ProductName}'* ]] || return 1
+  [[ "$result" == *'kaptain.org/product: "${ProductName}"'* ]] || return 1
 }
 
 @test "generate_metadata labels: omits kaptain.org/owner when REPOSITORY_OWNER unset" {
@@ -424,7 +434,7 @@ metadata_caller_scope() {
 
   [[ "$result" != *'kaptain.org/owner'* ]] || return 1
   [[ "$result" == *'kaptain.org/version: "${Version}"'* ]] || return 1
-  [[ "$result" == *'kaptain.org/project-name: ${ProjectName}'* ]] || return 1
+  [[ "$result" == *'kaptain.org/project-name: "${ProjectName}"'* ]] || return 1
 }
 
 @test "generate_metadata labels: omits kaptain.org/owner when REPOSITORY_OWNER empty" {
@@ -453,9 +463,9 @@ metadata_caller_scope() {
   [[ "$result" != *'kaptain.org/version'* ]] || return 1
   [[ "$result" == *'kaptain.org/build-timestamp: "2026-04-29T00:00:00Z"'* ]] || return 1
   [[ "$result" == *'kaptain.org/generated-by: "Generated by Kaptain generate-kubernetes-thing"'* ]] || return 1
-  [[ "$result" == *'kaptain.org/built-by: github-actions'* ]] || return 1
-  [[ "$result" == *'kaptain.org/source-repository: kube-kaptain/test-project'* ]] || return 1
-  [[ "$result" == *'kaptain.org/image-uri: ghcr.io/kube-kaptain/test-project:1.0.0'* ]] || return 1
+  [[ "$result" == *'kaptain.org/built-by: "github-actions"'* ]] || return 1
+  [[ "$result" == *'kaptain.org/source-repository: "kube-kaptain/test-project"'* ]] || return 1
+  [[ "$result" == *'kaptain.org/image-uri: "ghcr.io/kube-kaptain/test-project:1.0.0"'* ]] || return 1
 }
 
 @test "generate_metadata annotations: omits env-conditional keys when env vars unset" {
@@ -484,7 +494,7 @@ metadata_caller_scope() {
 
   result=$(generate_metadata 2 annotations)
 
-  [[ "$result" == *'kaptain.org/built-by: github-actions'* ]] || return 1
+  [[ "$result" == *'kaptain.org/built-by: "github-actions"'* ]] || return 1
   [[ "$result" != *'kaptain.org/source-repository'* ]] || return 1
   [[ "$result" != *'kaptain.org/image-uri'* ]] || return 1
 }
@@ -494,7 +504,7 @@ metadata_caller_scope() {
 
   result=$(generate_metadata 2 annotations my-container)
 
-  [[ "$result" == *'kubectl.kubernetes.io/default-container: my-container'* ]] || return 1
+  [[ "$result" == *'kubectl.kubernetes.io/default-container: "my-container"'* ]] || return 1
 }
 
 @test "generate_metadata annotations: omits default-container when arg not passed" {
