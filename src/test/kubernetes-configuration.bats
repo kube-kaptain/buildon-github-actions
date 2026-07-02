@@ -153,6 +153,39 @@ setup() {
   [[ "${apple_pos}" -lt "${zebra_pos}" ]] || return 1
 }
 
+@test "generate_configuration_entries: scalar-looking values stay strings after re-parse" {
+  local test_dir
+  test_dir="$(create_test_dir "config")"
+  printf 'false' > "${test_dir}/bool.txt"
+  printf '0' > "${test_dir}/int.txt"
+  printf '*' > "${test_dir}/star.txt"
+  printf 'null' > "${test_dir}/null.txt"
+
+  result=$(generate_configuration_entries "${test_dir}")
+
+  local tag
+  tag=$(printf 'data:\n%s\n' "${result}" | yq '.data."bool.txt" | tag')
+  [ "${tag}" = "!!str" ]
+  tag=$(printf 'data:\n%s\n' "${result}" | yq '.data."int.txt" | tag')
+  [ "${tag}" = "!!str" ]
+  tag=$(printf 'data:\n%s\n' "${result}" | yq '.data."star.txt" | tag')
+  [ "${tag}" = "!!str" ]
+  tag=$(printf 'data:\n%s\n' "${result}" | yq '.data."null.txt" | tag')
+  [ "${tag}" = "!!str" ]
+}
+
+@test "generate_configuration_entries: embedded double-quote is escaped" {
+  local test_dir
+  test_dir="$(create_test_dir "config")"
+  printf 'has"quote' > "${test_dir}/quoted.txt"
+
+  result=$(generate_configuration_entries "${test_dir}")
+
+  local parsed
+  parsed=$(printf 'data:\n%s\n' "${result}" | yq '.data."quoted.txt"')
+  [ "${parsed}" = 'has"quote' ]
+}
+
 teardown() {
   dump_bats_result
 }

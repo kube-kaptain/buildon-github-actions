@@ -95,9 +95,12 @@ validate_configuration_entries_directory() {
 # Usage: generate_configuration_entries <directory>
 #
 # Outputs YAML entries suitable for ConfigMap data: or Secret stringData: sections.
-# Each file becomes a key-value entry. yq picks a safe scalar style per value
-# (plain when unambiguous, single/double quoted or block scalar otherwise) and
-# selects the right chomping indicator based on trailing newlines.
+# Each file becomes a key-value entry. Single-line values are emitted
+# double-quoted so post-substitution token values that look like YAML
+# scalars (true, false, 0, *, yes, no, ...) round-trip as strings rather
+# than getting reparsed as booleans, numbers, or nulls. Multi-line values
+# stay in literal block scalar style so certificates, PEMs, and other
+# large blobs remain human-readable.
 #
 # Arguments:
 #   directory - Path to the configuration entries directory
@@ -114,7 +117,9 @@ generate_configuration_entries() {
   while IFS= read -r -d '' filepath; do
     filename=$(basename "${filepath}")
     KEY="${filename}" FILE="${filepath}" \
-      yq -n '.[strenv(KEY)] = load_str(strenv(FILE))' \
+      yq -n '.[strenv(KEY)] = load_str(strenv(FILE))
+        | .[strenv(KEY)] style = "double"
+        | (.[strenv(KEY)] | select(test("\n."))) style = "literal"' \
       | sed 's/^/  /'
   done < <(find "${directory}" -type f -not -name '.*' -print0 | sort -z)
 }
