@@ -255,6 +255,11 @@ main() {
   # Source layer: copy ${DEFAULTS_SUB_PATH}/* into manifests/defaults/.
   # Foreign-contributor layer: merge additional-defaults/ with byte-identical-or-fail
   # policy. ALLOW_LOCAL_DEFAULTS_OVERRIDE=true => local wins on conflict (WARN).
+  # Imported defaults whose token has a value in manifests/config/ are dropped:
+  # substitution bakes that value into the manifests, leaving the default dead
+  # weight that would trip contract-generate's orphan check. In-tree defaults
+  # are never dropped - a baked in-tree default is a misconfiguration that
+  # contract-generate must still catch.
   log ""
   mkdir -p "${MANIFESTS_DEFAULTS_SUB_PATH}"
 
@@ -279,6 +284,11 @@ main() {
     while IFS= read -r -d '' extra_file; do
       rel="${extra_file#"${MANIFESTS_ADDITIONAL_DEFAULTS_SUB_PATH}/"}"
       target_file="${MANIFESTS_DEFAULTS_SUB_PATH}/${rel}"
+
+      if [[ -f "${MANIFESTS_CONFIG_SUB_PATH}/${rel}" ]]; then
+        log "Dropping imported default '${rel}': token is baked in by this build's config"
+        continue
+      fi
 
       if [[ ! -e "${target_file}" ]]; then
         mkdir -p "$(dirname "${target_file}")"
