@@ -485,6 +485,71 @@ stage_additional_default() {
   assert_output_not_contains "additional default"
 }
 
+@test "defaults: drops imported default when token is baked by user config" {
+  set_required_env
+  create_manifest "deployment.yaml"
+  create_config_token "ForeignToken" "baked-value"
+  stage_additional_default "ForeignToken" "from-foreign"
+
+  run "$SCRIPTS_DIR/kubernetes-manifests-package-prepare"
+  [ "$status" -eq 0 ]
+  assert_output_contains "Dropping imported default 'ForeignToken'"
+  [ ! -e "$OUTPUT_SUB_PATH/manifests/defaults/ForeignToken" ]
+}
+
+@test "defaults: drops imported default when token is baked by a built-in" {
+  set_required_env
+  create_manifest "deployment.yaml"
+  stage_additional_default "ProjectName" "from-foreign"
+
+  run "$SCRIPTS_DIR/kubernetes-manifests-package-prepare"
+  [ "$status" -eq 0 ]
+  assert_output_contains "Dropping imported default 'ProjectName'"
+  [ ! -e "$OUTPUT_SUB_PATH/manifests/defaults/ProjectName" ]
+}
+
+@test "defaults: in-tree default with matching config token still ships" {
+  set_required_env
+  create_manifest "deployment.yaml"
+  export LOCAL_DEFAULTS_DIR="defaults-src"
+  export DEFAULTS_SUB_PATH="$LOCAL_DEFAULTS_DIR"
+  create_config_token "MyToken" "baked-value"
+  stage_local_default "MyToken" "dead-default"
+
+  run "$SCRIPTS_DIR/kubernetes-manifests-package-prepare"
+  [ "$status" -eq 0 ]
+  assert_output_not_contains "Dropping imported default"
+  [ "$(cat "$OUTPUT_SUB_PATH/manifests/defaults/MyToken")" = "dead-default" ]
+}
+
+@test "defaults: baked imported default skips collision check against local" {
+  set_required_env
+  create_manifest "deployment.yaml"
+  export LOCAL_DEFAULTS_DIR="defaults-src"
+  export DEFAULTS_SUB_PATH="$LOCAL_DEFAULTS_DIR"
+  create_config_token "Conflicting" "baked-value"
+  stage_local_default "Conflicting" "local-value"
+  stage_additional_default "Conflicting" "additional-value"
+
+  run "$SCRIPTS_DIR/kubernetes-manifests-package-prepare"
+  [ "$status" -eq 0 ]
+  assert_output_contains "Dropping imported default 'Conflicting'"
+  [ "$(cat "$OUTPUT_SUB_PATH/manifests/defaults/Conflicting")" = "local-value" ]
+}
+
+@test "defaults: drops nested imported default when nested config token baked" {
+  set_required_env
+  create_manifest "deployment.yaml"
+  mkdir -p "$CONFIG_DIR/Alpha"
+  printf '%s' "baked" > "$CONFIG_DIR/Alpha/Nested"
+  stage_additional_default "Alpha/Nested" "from-foreign"
+
+  run "$SCRIPTS_DIR/kubernetes-manifests-package-prepare"
+  [ "$status" -eq 0 ]
+  assert_output_contains "Dropping imported default 'Alpha/Nested'"
+  [ ! -e "$OUTPUT_SUB_PATH/manifests/defaults/Alpha/Nested" ]
+}
+
 @test "defaults: reports counts when both sources contribute" {
   set_required_env
   create_manifest "deployment.yaml"
