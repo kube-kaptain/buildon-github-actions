@@ -204,8 +204,11 @@ assert_var_equals() {
 
 # Set up mock docker/podman that logs calls
 # Control behavior with environment variables:
-#   MOCK_DOCKER_MANIFEST_EXISTS=true  - manifest inspect returns success
-#   MOCK_DOCKER_PULL_FAILS=true       - pull returns failure (default: succeeds)
+#   MOCK_DOCKER_MANIFEST_EXISTS=true        - manifest inspect returns success
+#   MOCK_DOCKER_PULL_FAILS=true             - pull returns failure (default: succeeds)
+#   MOCK_DOCKER_IMAGE_INSPECT_EXISTS=false  - image inspect returns failure (default: succeeds)
+#   MOCK_DOCKER_IMAGE_EXISTS=false          - image exists returns failure (default: succeeds)
+#   MOCK_DOCKER_LOCAL_MANIFEST_EXISTS=true  - manifest exists returns success (default: fails)
 setup_mock_docker() {
   export MOCK_DOCKER_CALLS=$(create_test_dir "mock-docker")/calls.log
   mkdir -p "$MOCK_BIN_DIR"
@@ -214,6 +217,27 @@ setup_mock_docker() {
 echo "$*" >> "$MOCK_DOCKER_CALLS"
 if [[ "$1" == "manifest" && "$2" == "inspect" ]]; then
   if [[ "${MOCK_DOCKER_MANIFEST_EXISTS:-false}" == "true" ]]; then
+    exit 0
+  else
+    exit 1
+  fi
+fi
+if [[ "$1" == "manifest" && "$2" == "exists" ]]; then
+  if [[ "${MOCK_DOCKER_LOCAL_MANIFEST_EXISTS:-false}" == "true" ]]; then
+    exit 0
+  else
+    exit 1
+  fi
+fi
+if [[ "$1" == "image" && "$2" == "inspect" ]]; then
+  if [[ "${MOCK_DOCKER_IMAGE_INSPECT_EXISTS:-true}" == "true" ]]; then
+    exit 0
+  else
+    exit 1
+  fi
+fi
+if [[ "$1" == "image" && "$2" == "exists" ]]; then
+  if [[ "${MOCK_DOCKER_IMAGE_EXISTS:-true}" == "true" ]]; then
     exit 0
   else
     exit 1
