@@ -47,12 +47,12 @@ dump_resolution_sets() {
   remote_count=$(printf '%s' "${remote_tags:-}" | grep -c . || true)
   candidates_count=$(printf '%s' "${available_tags:-}" | grep -c . || true)
 
-  local_only=$(comm -23 \
-    <(printf '%s\n' "${local_tags:-}" | sort -u | sed '/^$/d') \
-    <(printf '%s\n' "${remote_tags:-}" | sort -u | sed '/^$/d'))
-  remote_only=$(comm -13 \
-    <(printf '%s\n' "${local_tags:-}" | sort -u | sed '/^$/d') \
-    <(printf '%s\n' "${remote_tags:-}" | sort -u | sed '/^$/d'))
+  local_only=$(LC_ALL=C comm -23 \
+    <(printf '%s\n' "${local_tags:-}" | LC_ALL=C sort -u | sed '/^$/d') \
+    <(printf '%s\n' "${remote_tags:-}" | LC_ALL=C sort -u | sed '/^$/d'))
+  remote_only=$(LC_ALL=C comm -13 \
+    <(printf '%s\n' "${local_tags:-}" | LC_ALL=C sort -u | sed '/^$/d') \
+    <(printf '%s\n' "${remote_tags:-}" | LC_ALL=C sort -u | sed '/^$/d'))
   local_only_count=$(printf '%s' "${local_only}" | grep -c . || true)
   remote_only_count=$(printf '%s' "${remote_only}" | grep -c . || true)
 
@@ -337,7 +337,7 @@ else
   fi
 
   # Combine local and remote, deduplicate
-  combined_tags=$(printf '%s\n%s' "${local_tags}" "${remote_tags}" | sort -u | sed '/^$/d')
+  combined_tags=$(printf '%s\n%s' "${local_tags}" "${remote_tags}" | LC_ALL=C sort -u | sed '/^$/d')
   combined_count=$(echo "${combined_tags}" | grep -c . || true)
   variant_tags="${combined_tags}"
   available_tags="${combined_tags}"

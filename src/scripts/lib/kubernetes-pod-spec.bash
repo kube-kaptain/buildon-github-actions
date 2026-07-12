@@ -279,7 +279,7 @@ generate_container_env_from_directory() {
     content=$(cat "${filepath}")
     echo "${indent}- name: ${filename}"
     echo "${indent}  value: \"${content}\""
-  done < <(find "${env_directory}" -type f -not -name '.*' -print0 | sort -z)
+  done < <(find "${env_directory}" -type f -not -name '.*' -print0 | LC_ALL=C sort -z)
 }
 
 # Generate environment variable refs from ConfigMap or Secret keys

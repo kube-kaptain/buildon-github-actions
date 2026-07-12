@@ -101,4 +101,4 @@ echo "${MATCHES}" | while IFS= read -r match; do
       echo "${match}" | sed 's/^\\(\(.*\))$/\1/'
       ;;
   esac
-done | sort -u
+done | LC_ALL=C sort -u

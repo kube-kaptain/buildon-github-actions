@@ -70,7 +70,7 @@ assert_unique_artifact_refs() {
   local duplicates
   duplicates=$(printf '%s\n' "${entries}" \
     | sed -E "${sed_program}" \
-    | sort | uniq -d)
+    | LC_ALL=C sort | LC_ALL=C uniq -d)
 
   if [[ -z "${duplicates}" ]]; then
     return 0

@@ -712,3 +712,26 @@ line3=value3"
   manifest=$(cat "$OUTPUT_SUB_PATH/manifests/combined/omg-1/wtf-2/configmap.yaml")
   [[ "$manifest" == *'name: ${ProjectName}-omg-1-wtf-2-configmap-checksum'* ]] || return 1
 }
+
+# =============================================================================
+# Locale-independent ordering
+# =============================================================================
+
+@test "data entry order is byte-collated regardless of build locale" {
+  if ! locale -a 2>/dev/null | grep -qiE "^en_US\.(UTF-8|utf8)$"; then
+    skip "en_US.UTF-8 locale not available"
+  fi
+  create_config_file "BBB" "upper"
+  create_config_file "aaa" "lower"
+
+  run env LC_ALL=en_US.UTF-8 "$GENERATORS_DIR/generate-kubernetes-configmap"
+  [ "$status" -eq 0 ]
+
+  manifest=$(read_manifest)
+  # C collation puts uppercase before lowercase: BBB must precede aaa
+  bbb_line=$(printf '%s\n' "$manifest" | grep -n "BBB" | head -1 | cut -d: -f1)
+  aaa_line=$(printf '%s\n' "$manifest" | grep -n "aaa" | head -1 | cut -d: -f1)
+  [ -n "$bbb_line" ]
+  [ -n "$aaa_line" ]
+  [ "$bbb_line" -lt "$aaa_line" ]
+}

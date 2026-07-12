@@ -880,3 +880,26 @@ read_manifest_with_suffix() {
   [ "$status" -ne 0 ]
   assert_output_contains "Unknown substitution token style"
 }
+
+# =============================================================================
+# Locale-independent ordering
+# =============================================================================
+
+@test "env var order is byte-collated regardless of build locale" {
+  if ! locale -a 2>/dev/null | grep -qiE "^en_US\.(UTF-8|utf8)$"; then
+    skip "en_US.UTF-8 locale not available"
+  fi
+  create_env_file "BBB" "upper"
+  create_env_file "aaa" "lower"
+
+  run env LC_ALL=en_US.UTF-8 "$GENERATORS_DIR/generate-kubernetes-workload-deployment"
+  [ "$status" -eq 0 ]
+
+  manifest=$(read_manifest)
+  # C collation puts uppercase before lowercase: BBB must precede aaa
+  bbb_line=$(printf '%s\n' "$manifest" | grep -n "name: BBB" | head -1 | cut -d: -f1)
+  aaa_line=$(printf '%s\n' "$manifest" | grep -n "name: aaa" | head -1 | cut -d: -f1)
+  [ -n "$bbb_line" ]
+  [ -n "$aaa_line" ]
+  [ "$bbb_line" -lt "$aaa_line" ]
+}
