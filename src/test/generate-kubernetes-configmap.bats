@@ -762,3 +762,24 @@ line3=value3"
   assert_contains "$manifest" 'kaptain.org/built-by: "test"'
   assert_contains "$manifest" 'kaptain.org/source-repository: "kube-kaptain/test-project"'
 }
+
+@test "checksum-named ConfigMap is immutable" {
+  create_config_file "app.properties" "key=value"
+
+  run "$GENERATORS_DIR/generate-kubernetes-configmap"
+  [ "$status" -eq 0 ]
+
+  manifest=$(read_manifest)
+  [[ "$manifest" == *"immutable: true"* ]] || return 1
+}
+
+@test "plain-named ConfigMap is not immutable" {
+  create_config_file "app.properties" "key=value"
+  export KUBERNETES_CONFIGMAP_NAME_CHECKSUM_INJECTION="false"
+
+  run "$GENERATORS_DIR/generate-kubernetes-configmap"
+  [ "$status" -eq 0 ]
+
+  manifest=$(read_manifest)
+  [[ "$manifest" != *"immutable:"* ]] || return 1
+}

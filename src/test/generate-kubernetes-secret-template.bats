@@ -587,3 +587,24 @@ line3=${Value3}'
   [[ "$manifest" == *'kaptain.org/built-by: "test"'* ]] || return 1
   [[ "$manifest" == *'kaptain.org/source-repository: "kube-kaptain/test-project"'* ]] || return 1
 }
+
+@test "checksum-named Secret template is immutable" {
+  create_secret_file "database-password" '${DatabasePassword}'
+
+  run "$GENERATORS_DIR/generate-kubernetes-secret-template"
+  [ "$status" -eq 0 ]
+
+  manifest=$(read_manifest)
+  [[ "$manifest" == *"immutable: true"* ]] || return 1
+}
+
+@test "plain-named Secret template is not immutable" {
+  create_secret_file "database-password" '${DatabasePassword}'
+  export KUBERNETES_SECRET_TEMPLATE_NAME_CHECKSUM_INJECTION="false"
+
+  run "$GENERATORS_DIR/generate-kubernetes-secret-template"
+  [ "$status" -eq 0 ]
+
+  manifest=$(read_manifest)
+  [[ "$manifest" != *"immutable:"* ]] || return 1
+}

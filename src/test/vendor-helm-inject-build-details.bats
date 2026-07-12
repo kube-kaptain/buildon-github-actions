@@ -221,3 +221,35 @@ INNEREOF
   grep -q "kaptain.org/build-timestamp" "${COMBINED_DIR}/configmap.yaml"
   grep -q 'kaptain.org/built-by: "test"' "${COMBINED_DIR}/configmap.yaml"
 }
+
+@test "checksum-marker named ConfigMap gets immutable true" {
+  write_manifest_kind "${COMBINED_DIR}/configmap.yaml" "ConfigMap" "web-app-configmap-checksum"
+
+  run "$SCRIPT"
+  [ "$status" -eq 0 ]
+  grep -q "^immutable: true" "${COMBINED_DIR}/configmap.yaml"
+}
+
+@test "checksum-marker named Secret gets immutable true" {
+  write_manifest_kind "${COMBINED_DIR}/secret.yaml" "Secret" "web-app-secret-checksum"
+
+  run "$SCRIPT"
+  [ "$status" -eq 0 ]
+  grep -q "^immutable: true" "${COMBINED_DIR}/secret.yaml"
+}
+
+@test "checksum-marker named non-CM non-Secret kind does not get immutable" {
+  write_manifest_kind "${COMBINED_DIR}/serviceaccount.yaml" "ServiceAccount" "web-app-serviceaccount-checksum"
+
+  run "$SCRIPT"
+  [ "$status" -eq 0 ]
+  [[ "$(cat "${COMBINED_DIR}/serviceaccount.yaml")" != *"immutable:"* ]] || return 1
+}
+
+@test "plain named ConfigMap does not get immutable" {
+  write_manifest_kind "${COMBINED_DIR}/configmap.yaml" "ConfigMap" "web-app"
+
+  run "$SCRIPT"
+  [ "$status" -eq 0 ]
+  [[ "$(cat "${COMBINED_DIR}/configmap.yaml")" != *"immutable:"* ]] || return 1
+}

@@ -102,6 +102,12 @@ script_name=$(basename "${BASH_SOURCE[0]}")
   generate_manifest_header "v1" "${kind}" "${configmap_name}" "${environment_token}"
   generate_metadata 2 labels
   generate_metadata 2 annotations
+  # Checksum-named = content-addressed: enforce at the API (rejects in-place
+  # edits, kubelet stops watching, and a truncated-hash collision fails the
+  # apply loudly instead of clobbering). See todo-checked/PreEnvFixes.md.
+  if [[ "${NAME_CHECKSUM_INJECTION}" == "true" ]]; then
+    echo "immutable: true"
+  fi
   echo "data:"
   generate_configuration_entries "${FINAL_SUB_PATH}"
 } > "${output_file}"

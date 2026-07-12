@@ -92,6 +92,23 @@ ${child_indent}${key}: \"${value}\"
   rm -f "${manifest}.bak"
 }
 
+# inject_immutable <manifest> - set top-level `immutable: true`. Replace an
+# existing immutable: line, otherwise insert directly after the kind: line.
+# Only valid for ConfigMap and Secret - the API supports it on no other kind.
+inject_immutable() {
+  local manifest="$1"
+  if grep -qE '^immutable:' "${manifest}"; then
+    sed -i.bak -E 's|^immutable:.*|immutable: true|' "${manifest}"
+  else
+    local kind_line
+    kind_line=$(grep -nE '^kind:' "${manifest}" | head -1 | cut -d: -f1)
+    sed -i.bak "${kind_line}a\\
+immutable: true
+" "${manifest}"
+  fi
+  rm -f "${manifest}.bak"
+}
+
 # extract_kind <manifest> - first top-level kind: value (quotes stripped)
 extract_kind() {
   grep -m1 -E '^kind:' "$1" | awk '{print $2}' | tr -d '"' | tr -d "'"
@@ -127,6 +144,9 @@ while IFS= read -r manifest; do
     # todo-checked/PreEnvFixes.md.
     if [[ "${name}" == *"-${lower_kind}-checksum" ]]; then
       inject_annotation "kaptain.org/built-by" "${BUILD_PLATFORM}" "${manifest}"
+      if [[ "${kind}" == "ConfigMap" || "${kind}" == "Secret" ]]; then
+        inject_immutable "${manifest}"
+      fi
       log "  ✓ ${rel_path} (checksum-named: build-timestamp skipped)"
       continue
     fi
