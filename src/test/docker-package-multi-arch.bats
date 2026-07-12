@@ -160,3 +160,19 @@ teardown() {
   assert_docker_called "build --platform linux/amd64 --label kaptain.org/platform=linux/amd64"
   assert_docker_called "build --platform linux/arm64 --label kaptain.org/platform=linux/arm64"
 }
+
+@test "generated Dockerfile does not COPY itself" {
+  run "$UTIL_DIR/docker-package-multi-arch" "$CONTENT_DIR" "ghcr.io/test/my-repo:1.0.0-rcd"
+  [ "$status" -eq 0 ]
+
+  local dockerfile="${OUTPUT_SUB_PATH}/docker-package-multi-arch/content/Dockerfile"
+  [ -f "$dockerfile" ]
+
+  # Content files must still be copied
+  run grep "COPY data.yaml /data.yaml" "$dockerfile"
+  [ "$status" -eq 0 ]
+
+  # The generated Dockerfile must not list itself
+  run grep "COPY Dockerfile" "$dockerfile"
+  [ "$status" -ne 0 ]
+}

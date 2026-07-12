@@ -81,6 +81,10 @@ rm -rf "${build_dir}"
 mkdir -p "${build_dir}"
 cp -R "${content_dir}"/* "${build_dir}/"
 
+# Generate outside build_dir then move into place: a redirect straight to
+# ${build_dir}/Dockerfile creates the file before the glob runs, so the
+# loop would list the Dockerfile itself as a COPY entry.
+dockerfile_tmp="${build_dir}.Dockerfile"
 {
   echo "FROM ${PACKAGE_BASE_IMAGE}"
   echo
@@ -95,7 +99,8 @@ cp -R "${content_dir}"/* "${build_dir}/"
     local_name="$(basename "${entry}")"
     echo "COPY ${local_name} /${local_name}"
   done
-} > "${build_dir}/Dockerfile"
+} > "${dockerfile_tmp}"
+mv "${dockerfile_tmp}" "${build_dir}/Dockerfile"
 
 log "Generated Dockerfile:"
 log "$(cat "${build_dir}/Dockerfile")"
