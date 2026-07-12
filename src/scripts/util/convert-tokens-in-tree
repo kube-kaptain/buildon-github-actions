@@ -72,6 +72,18 @@ if ! is_valid_token_name_style "${TO_NAME}"; then
   exit 2
 fi
 
+# Kaptain convention is context-root-relative paths throughout, and the
+# audit-trail slot name embeds this path - reject anything else so the
+# slug stays short, portable, and deterministic across checkouts.
+if [[ "${TARGET_DIR}" == /* ]]; then
+  log_error "Target directory must be relative to the build context root, got absolute path: ${TARGET_DIR}"
+  exit 2
+fi
+if [[ "${TARGET_DIR}" == ".." || "${TARGET_DIR}" == "../"* || "${TARGET_DIR}" == *"/../"* || "${TARGET_DIR}" == *"/.." ]]; then
+  log_error "Target directory must not contain '..' segments: ${TARGET_DIR}"
+  exit 2
+fi
+
 if [[ ! -d "${TARGET_DIR}" ]]; then
   log_error "Directory not found: ${TARGET_DIR}"
   exit 1
@@ -96,6 +108,12 @@ fi
 # audit trail; the slug is the target dir as given (with '/' and ':'
 # turned into '_'), and N walks 0,1,2,... until a free slot is found.
 slug=$(echo "${TARGET_DIR}" | tr '/:' '__')
+# Belt and braces: relative targets keep this short by construction, but a
+# pathological tree could still approach NAME_MAX - fail legibly, not in mkdir.
+if [[ ${#slug} -gt 200 ]]; then
+  log_error "Audit slug for target directory exceeds 200 characters (${#slug}); shorten the target path: ${TARGET_DIR}"
+  exit 2
+fi
 mapping_base="${OUTPUT_SUB_PATH}/convert-tokens-in-tree/token-mappings"
 mkdir -p "${mapping_base}"
 n=0
