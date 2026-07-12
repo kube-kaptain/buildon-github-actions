@@ -9,6 +9,13 @@
 #   kaptain.org/build-timestamp: ISO-8601 UTC of this build
 #   kaptain.org/built-by:        BUILD_PLATFORM
 #
+# Checksum-named resources (metadata.name ending '-<lowerkind>-checksum') do
+# NOT receive the volatile build-timestamp - their bytes must be a pure
+# function of content or the checksum churns every build. built-by is still
+# injected (a platform change starts a new checksum series on purpose).
+# A name ending '-checksum-<lowerkind>' (reversed marker) fails the build;
+# names ending in just the kind or just '-checksum' get a warning.
+#
 # Why this is its own step (not in vendor-helm-render-and-process):
 # the vendor flow's render output is committed under src/kubernetes/ and a
 # subsequent diff check (vendor-helm-render-validate) fails the build if the
@@ -85,12 +92,51 @@ ${child_indent}${key}: \"${value}\"
   rm -f "${manifest}.bak"
 }
 
+# extract_kind <manifest> - first top-level kind: value (quotes stripped)
+extract_kind() {
+  grep -m1 -E '^kind:' "$1" | awk '{print $2}' | tr -d '"' | tr -d "'"
+}
+
+# extract_name <manifest> - metadata.name from the first metadata: block
+extract_name() {
+  sed -n '/^metadata:/,/^[^ ]/p' "$1" | grep -m1 -E '^  name:' | awk '{print $2}' | tr -d '"' | tr -d "'"
+}
+
 BUILD_TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 
 log "Injecting kaptain.org/build-timestamp=${BUILD_TIMESTAMP}, kaptain.org/built-by=${BUILD_PLATFORM} into ${MANIFEST_COUNT} manifest(s)..."
 
 while IFS= read -r manifest; do
   rel_path="${manifest#"${COMBINED_DIR}"/}"
+
+  kind=$(extract_kind "${manifest}")
+  name=$(extract_name "${manifest}")
+  lower_kind=$(echo "${kind}" | tr '[:upper:]' '[:lower:]')
+
+  if [[ -n "${lower_kind}" && -n "${name}" ]]; then
+    # Reversed marker is always a mistake - fail before it causes confusion
+    # downstream (the checksum pass keys off '-<lowerkind>-checksum').
+    if [[ "${name}" == *"-checksum-${lower_kind}" ]]; then
+      log_error "Reversed checksum marker in ${rel_path}: metadata.name '${name}' ends with '-checksum-${lower_kind}'; the marker is '-${lower_kind}-checksum'"
+      exit 1
+    fi
+
+    # Checksum-named resources must stay byte-stable per content: no volatile
+    # build-timestamp. built-by stays - a platform change intentionally
+    # starts a new checksum series. Mirrors generate_metadata's rule; see
+    # todo-checked/PreEnvFixes.md.
+    if [[ "${name}" == *"-${lower_kind}-checksum" ]]; then
+      inject_annotation "kaptain.org/built-by" "${BUILD_PLATFORM}" "${manifest}"
+      log "  ✓ ${rel_path} (checksum-named: build-timestamp skipped)"
+      continue
+    fi
+
+    if [[ "${name}" == *"-checksum" ]]; then
+      log_warning "${rel_path}: metadata.name '${name}' ends with '-checksum' but not '-${lower_kind}-checksum'; not treated as checksum-named"
+    elif [[ "${name}" == *"-${lower_kind}" ]]; then
+      log_warning "${rel_path}: metadata.name '${name}' ends with '-${lower_kind}'; append '-checksum' if content-addressed naming was intended"
+    fi
+  fi
 
   inject_annotation "kaptain.org/build-timestamp" "${BUILD_TIMESTAMP}" "${manifest}"
   inject_annotation "kaptain.org/built-by" "${BUILD_PLATFORM}" "${manifest}"

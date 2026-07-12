@@ -85,6 +85,9 @@ fi
 # Set app_name for generate_metadata library function
 app_name="${configmap_name}"
 
+# Checksum-named resources omit volatile metadata (see generate_metadata)
+checksum_named="${NAME_CHECKSUM_INJECTION}"
+
 # Create output directory
 output_dir=$(ensure_manifest_output_dir "${OUTPUT_SUB_PATH}" "${COMBINED_SUB_PATH}")
 
