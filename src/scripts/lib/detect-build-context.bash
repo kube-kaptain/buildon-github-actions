@@ -128,16 +128,16 @@ if [[ -z "${DOCKER_TARGET_NAMESPACE:-}" ]] && [[ -n "${GIT_REMOTE_URL}" ]]; then
   # SSH:   git@github.com:org/repo.git      -> org
   # HTTPS: https://github.com/org/repo      -> org
   # HTTPS: https://gitlab.com/g/sub/repo    -> g/sub
-  _url_path=""
+  url_path=""
   if [[ "${GIT_REMOTE_URL}" == *"://"* ]]; then
     # HTTPS: strip scheme + domain, then strip repo name
-    _url_path=$(echo "${GIT_REMOTE_URL}" | sed -E 's|https?://[^/]+/||' | sed 's|/[^/]*$||' | sed 's|\.git$||')
+    url_path=$(echo "${GIT_REMOTE_URL}" | sed -E 's|https?://[^/]+/||' | sed 's|/[^/]*$||' | sed 's|\.git$||')
   else
     # SSH: strip user@host:, then strip repo name
-    _url_path=$(echo "${GIT_REMOTE_URL}" | sed -E 's|[^:]+:||' | sed 's|/[^/]*$||' | sed 's|\.git$||')
+    url_path=$(echo "${GIT_REMOTE_URL}" | sed -E 's|[^:]+:||' | sed 's|/[^/]*$||' | sed 's|\.git$||')
   fi
-  DOCKER_TARGET_NAMESPACE=$(echo "${_url_path}" | tr '[:upper:]' '[:lower:]')
-  unset _url_path
+  DOCKER_TARGET_NAMESPACE=$(echo "${url_path}" | tr '[:upper:]' '[:lower:]')
+  unset url_path
 else
   DOCKER_TARGET_NAMESPACE="${BUILD_MODE}"
 fi

@@ -17,21 +17,21 @@
 #   unresolved_token_regex           - grep-E regex matching unresolved tokens for a given style pair
 
 # Internal: lowercase a string (bash 3.2 compatible)
-_lowercase() {
+lowercase() {
   echo "$1" | tr '[:upper:]' '[:lower:]'
 }
 
 # Internal: uppercase a string (bash 3.2 compatible)
-_uppercase() {
+uppercase() {
   echo "$1" | tr '[:lower:]' '[:upper:]'
 }
 
 # Internal: uppercase first char, lowercase rest (bash 3.2 compatible)
-_capitalize() {
+capitalize() {
   local word="$1"
   local first rest
   first=$(echo "${word:0:1}" | tr '[:lower:]' '[:upper:]')
-  rest=$(_lowercase "${word:1}")
+  rest=$(lowercase "${word:1}")
   echo "${first}${rest}"
 }
 
@@ -171,25 +171,25 @@ convert_token_name() {
 
   case "${style}" in
     PascalCase)
-      _to_pascal_case "${name}"
+      to_pascal_case "${name}"
       ;;
     camelCase)
-      _to_camel_case "${name}"
+      to_camel_case "${name}"
       ;;
     UPPER_SNAKE)
       echo "${name}"
       ;;
     lower_snake)
-      _lowercase "${name}"
+      lowercase "${name}"
       ;;
     lower-kebab)
-      _lowercase "${name}" | tr '_' '-'
+      lowercase "${name}" | tr '_' '-'
       ;;
     UPPER-KEBAB)
       echo "${name}" | tr '_' '-'
       ;;
     lower.dot)
-      _lowercase "${name}" | tr '_' '.'
+      lowercase "${name}" | tr '_' '.'
       ;;
     UPPER.DOT)
       echo "${name}" | tr '_' '.'
@@ -239,16 +239,16 @@ canonicalize_token_name() {
       echo "${name}"
       ;;
     lower_snake)
-      _uppercase "${name}"
+      uppercase "${name}"
       ;;
     lower-kebab)
-      _uppercase "${name}" | tr '-' '_'
+      uppercase "${name}" | tr '-' '_'
       ;;
     UPPER-KEBAB)
       echo "${name}" | tr '-' '_'
       ;;
     lower.dot)
-      _uppercase "${name}" | tr '.' '_'
+      uppercase "${name}" | tr '.' '_'
       ;;
     UPPER.DOT)
       echo "${name}" | tr '.' '_'
@@ -425,21 +425,21 @@ format_project_suffixed_token() {
 }
 
 # Internal: PascalCase a single UPPER_SNAKE segment (no path separators)
-_pascal_case_segment() {
+pascal_case_segment() {
   local segment="$1"
   local result=""
   local IFS='_'
   local word
   for word in ${segment}; do
     if [[ -n "${word}" ]]; then
-      result+=$(_capitalize "${word}")
+      result+=$(capitalize "${word}")
     fi
   done
   echo "${result}"
 }
 
 # Internal: camelCase a single UPPER_SNAKE segment (no path separators)
-_camel_case_segment() {
+camel_case_segment() {
   local segment="$1"
   local result=""
   local IFS='_'
@@ -448,10 +448,10 @@ _camel_case_segment() {
   for word in ${segment}; do
     if [[ -n "${word}" ]]; then
       if ${first}; then
-        result+=$(_lowercase "${word}")
+        result+=$(lowercase "${word}")
         first=false
       else
-        result+=$(_capitalize "${word}")
+        result+=$(capitalize "${word}")
       fi
     fi
   done
@@ -460,7 +460,7 @@ _camel_case_segment() {
 
 # Internal: Convert UPPER_SNAKE to PascalCase, processing each /-separated
 # path segment independently. e.g. VENDOR_ENVOY/REPLICAS -> VendorEnvoy/Replicas
-_to_pascal_case() {
+to_pascal_case() {
   local input="$1"
   local result=""
   local IFS='/'
@@ -471,14 +471,14 @@ _to_pascal_case() {
       result+="/"
     fi
     first=false
-    result+=$(_pascal_case_segment "${segment}")
+    result+=$(pascal_case_segment "${segment}")
   done
   echo "${result}"
 }
 
 # Internal: Convert UPPER_SNAKE to camelCase, processing each /-separated
 # path segment independently. e.g. VENDOR_ENVOY/REPLICAS -> vendorEnvoy/replicas
-_to_camel_case() {
+to_camel_case() {
   local input="$1"
   local result=""
   local IFS='/'
@@ -489,7 +489,7 @@ _to_camel_case() {
       result+="/"
     fi
     first=false
-    result+=$(_camel_case_segment "${segment}")
+    result+=$(camel_case_segment "${segment}")
   done
   echo "${result}"
 }
