@@ -250,7 +250,7 @@ done
 if [[ ${MOVE_ERRORS} -gt 0 ]]; then
   log_error "${MOVE_ERRORS} moveFiles source(s) not found"
   log "Available files in C-split/:"
-  find "${SPLIT_DIR}" -name '*.yaml' -type f | sed "s|^${SPLIT_DIR}/||" | sort | sed 's/^/  /'
+  find "${SPLIT_DIR}" -name '*.yaml' -type f | sed "s|^${SPLIT_DIR}/||" | LC_ALL=C sort | sed 's/^/  /'
   exit 1
 fi
 
@@ -338,7 +338,7 @@ TRANSFORMS_GLOBAL="src/vendor-helm-rendered/transforms-global"
 TRANSFORMS_PER_FILE="src/vendor-helm-rendered/transforms"
 
 if [[ -d "${TRANSFORMS_GLOBAL}" ]]; then
-  for transform in $(find "${TRANSFORMS_GLOBAL}" -name '*.yq' -type f | sort); do
+  for transform in $(find "${TRANSFORMS_GLOBAL}" -name '*.yq' -type f | LC_ALL=C sort); do
     transform_name="$(basename "${transform}")"
     log "  file global: ${transform_name}"
     while IFS= read -r manifest; do
@@ -358,7 +358,7 @@ if [[ -d "${TRANSFORMS_PER_FILE}" ]]; then
       continue
     fi
 
-    for transform in $(find "${target_dir}" -name '*.yq' -type f | sort); do
+    for transform in $(find "${target_dir}" -name '*.yq' -type f | LC_ALL=C sort); do
       transform_name="$(basename "${transform}")"
       log "  file ${target_name}: ${transform_name}"
       yq eval -i "$(cat "${transform}")" "${target_file}"

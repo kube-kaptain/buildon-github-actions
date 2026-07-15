@@ -220,6 +220,7 @@ hook-post-versions-and-naming
 change-source-note-write
 release-change-data-generate
 release-change-data-oci-package
+kubernetes-templates-import
 hook-pre-docker-prepare
 docker-build-dockerfile
 hook-post-docker-tests
@@ -229,7 +230,6 @@ generate-kubernetes-serviceaccount
 generate-kubernetes-workload
 generate-kubernetes-poddisruptionbudget
 generate-kubernetes-service
-kubernetes-templates-import
 hook-pre-package-prepare
 kubernetes-manifests-package-prepare
 kubernetes-manifests-substitute
@@ -264,6 +264,7 @@ hook-post-versions-and-naming
 change-source-note-write
 release-change-data-generate
 release-change-data-oci-package
+kubernetes-templates-import
 docker-build-retag
 hook-post-docker-tests
 generate-kubernetes-configmap
@@ -272,7 +273,6 @@ generate-kubernetes-serviceaccount
 generate-kubernetes-workload
 generate-kubernetes-poddisruptionbudget
 generate-kubernetes-service
-kubernetes-templates-import
 hook-pre-package-prepare
 kubernetes-manifests-package-prepare
 kubernetes-manifests-substitute
@@ -307,13 +307,13 @@ hook-post-versions-and-naming
 change-source-note-write
 release-change-data-generate
 release-change-data-oci-package
+kubernetes-templates-import
 generate-kubernetes-configmap
 generate-kubernetes-secret-template
 generate-kubernetes-serviceaccount
 generate-kubernetes-workload
 generate-kubernetes-poddisruptionbudget
 generate-kubernetes-service
-kubernetes-templates-import
 hook-pre-package-prepare
 kubernetes-manifests-package-prepare
 kubernetes-manifests-package-only-token-override
@@ -481,9 +481,9 @@ hook-post-versions-and-naming
 change-source-note-write
 release-change-data-generate
 release-change-data-oci-package
+kubernetes-templates-import
 docker-build-retag
 hook-post-docker-tests
-kubernetes-templates-import
 hook-pre-package-prepare
 kubernetes-manifests-package-prepare
 kubernetes-manifests-substitute
@@ -518,10 +518,10 @@ hook-post-versions-and-naming
 change-source-note-write
 release-change-data-generate
 release-change-data-oci-package
+kubernetes-templates-import
 hook-pre-docker-prepare
 docker-build-dockerfile
 hook-post-docker-tests
-kubernetes-templates-import
 hook-pre-package-prepare
 kubernetes-manifests-package-prepare
 kubernetes-manifests-substitute
@@ -556,9 +556,9 @@ hook-post-versions-and-naming
 change-source-note-write
 release-change-data-generate
 release-change-data-oci-package
+kubernetes-templates-import
 vendor-helm-render-and-process
 hook-post-docker-tests
-kubernetes-templates-import
 hook-pre-package-prepare
 vendor-helm-render-validate
 kubernetes-manifests-package-prepare

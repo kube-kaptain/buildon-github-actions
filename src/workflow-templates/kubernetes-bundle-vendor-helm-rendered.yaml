@@ -174,6 +174,11 @@ jobs:
       # INJECT: release-change-data-oci-package
       # INJECT: github-check-end(name="Release Change Data OCI Package", id="check-release-change-data-oci-package")
 
+      # === Templates Import ===
+      # INJECT: github-check-start(name="Templates Import", id="check-templates-import")
+      # INJECT: kubernetes-templates-import
+      # INJECT: github-check-end(name="Templates Import", id="check-templates-import")
+
       # === Vendor Helm Render and Process ===
       # INJECT: github-check-start(name="Helm Render and Process", id="check-vendor-helm-render-and-process")
       # INJECT: vendor-helm-render-and-process
@@ -183,11 +188,6 @@ jobs:
       # INJECT: github-check-start(name="Post-docker Tests", id="check-post-docker", if="steps.kpm.outputs.HOOK_POST_DOCKER_TESTS_SCRIPT_SUB_PATH != ''")
       # INJECT: hook-post-docker-tests
       # INJECT: github-check-end(name="Post-docker Tests", id="check-post-docker", if="steps.kpm.outputs.HOOK_POST_DOCKER_TESTS_SCRIPT_SUB_PATH != ''")
-
-      # === Templates Import ===
-      # INJECT: github-check-start(name="Templates Import", id="check-templates-import")
-      # INJECT: kubernetes-templates-import
-      # INJECT: github-check-end(name="Templates Import", id="check-templates-import")
 
       # === Pre-package Prepare ===
       # INJECT: github-check-start(name="Pre-package Prepare", id="check-pre-package-prepare", if="steps.kpm.outputs.HOOK_PRE_PACKAGE_PREPARE_SCRIPT_SUB_PATH != ''")

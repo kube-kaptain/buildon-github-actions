@@ -121,5 +121,5 @@ generate_configuration_entries() {
         | .[strenv(KEY)] style = "double"
         | (.[strenv(KEY)] | select(test("\n."))) style = "literal"' \
       | sed 's/^/  /'
-  done < <(find "${directory}" -type f -not -name '.*' -print0 | sort -z)
+  done < <(find "${directory}" -type f -not -name '.*' -print0 | LC_ALL=C sort -z)
 }

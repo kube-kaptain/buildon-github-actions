@@ -122,15 +122,17 @@ seed_auto_token() {
   [ -f "${TOKENS_OUTPUT_SUB_PATH}/LayerLayerFooVersion" ]
 }
 
-@test "all seven dirs scanned in one run" {
+@test "all nine dirs scanned in one run" {
   export TOKEN_NAME_STYLE="PascalCase"
-  seed_auto_token contents  "ContentCVersion"     "1.0"
-  seed_auto_token templates "TemplateTVersion"    "2.0"
-  seed_auto_token layers    "LayerLVersion"       "3.0"
-  seed_auto_token build     "BuildTimestamp"      "2026-06-17T14:32:15Z"
-  seed_auto_token image     "ImageBuildCommand"   "docker"
-  seed_auto_token git       "GitBranch"           "main"
-  seed_auto_token kaptainpm "KaptainpmKind"       "kubernetes-app-docker-dockerfile"
+  seed_auto_token contents   "ContentCVersion"     "1.0"
+  seed_auto_token templates  "TemplateTVersion"    "2.0"
+  seed_auto_token layers     "LayerLVersion"       "3.0"
+  seed_auto_token build      "BuildTimestamp"      "2026-06-17T14:32:15Z"
+  seed_auto_token image      "ImageBuildCommand"   "docker"
+  seed_auto_token git        "GitBranch"           "main"
+  seed_auto_token kaptainpm  "KaptainpmKind"       "kubernetes-app-docker-dockerfile"
+  seed_auto_token repository "RepositoryOwner"     "kube-kaptain"
+  seed_auto_token product    "ProductName"         "product-foo"
 
   run "$PSUB"
   [ "$status" -eq 0 ]
@@ -141,6 +143,8 @@ seed_auto_token() {
   [ -f "${TOKENS_OUTPUT_SUB_PATH}/ImageBuildCommand" ]
   [ -f "${TOKENS_OUTPUT_SUB_PATH}/GitBranch" ]
   [ -f "${TOKENS_OUTPUT_SUB_PATH}/KaptainpmKind" ]
+  [ -f "${TOKENS_OUTPUT_SUB_PATH}/RepositoryOwner" ]
+  [ -f "${TOKENS_OUTPUT_SUB_PATH}/ProductName" ]
 }
 
 @test "build/ file with Build prefix is copied" {
@@ -183,6 +187,44 @@ seed_auto_token() {
   [ "$(cat "${TOKENS_OUTPUT_SUB_PATH}/KaptainpmKind")" = "kubernetes-app-docker-dockerfile" ]
 }
 
+@test "repository/ file with Repository prefix is copied" {
+  export TOKEN_NAME_STYLE="PascalCase"
+  seed_auto_token repository "RepositoryName" "my-repo"
+
+  run "$PSUB"
+  [ "$status" -eq 0 ]
+  [ -f "${TOKENS_OUTPUT_SUB_PATH}/RepositoryName" ]
+  [ "$(cat "${TOKENS_OUTPUT_SUB_PATH}/RepositoryName")" = "my-repo" ]
+}
+
+@test "product/ file with Product prefix is copied" {
+  export TOKEN_NAME_STYLE="PascalCase"
+  seed_auto_token product "ProductShortName" "foo"
+
+  run "$PSUB"
+  [ "$status" -eq 0 ]
+  [ -f "${TOKENS_OUTPUT_SUB_PATH}/ProductShortName" ]
+  [ "$(cat "${TOKENS_OUTPUT_SUB_PATH}/ProductShortName")" = "foo" ]
+}
+
+# Context scalars arrive via the disk scan only - env vars alone must NOT
+# produce tokens (the per-call-site env path was removed; it silently missed
+# call sites, shipping unsubstituted tokens in released manifests).
+@test "REPOSITORY/PRODUCT env vars alone produce no tokens" {
+  export TOKEN_NAME_STYLE="PascalCase"
+  export REPOSITORY_OWNER="kube-kaptain"
+  export REPOSITORY_NAME="my-repo"
+  export PRODUCT_NAME="product-foo"
+  export PRODUCT_SHORT_NAME="foo"
+
+  run "$PSUB"
+  [ "$status" -eq 0 ]
+  [ ! -f "${TOKENS_OUTPUT_SUB_PATH}/RepositoryOwner" ]
+  [ ! -f "${TOKENS_OUTPUT_SUB_PATH}/RepositoryName" ]
+  [ ! -f "${TOKENS_OUTPUT_SUB_PATH}/ProductName" ]
+  [ ! -f "${TOKENS_OUTPUT_SUB_PATH}/ProductShortName" ]
+}
+
 @test "file in build/ without Build prefix -> fail" {
   export TOKEN_NAME_STYLE="PascalCase"
   seed_auto_token build "ContentWrongTimestamp" "x"
@@ -217,6 +259,24 @@ seed_auto_token() {
   run "$PSUB"
   [ "$status" -ne 0 ]
   [[ "$output" == *"does not start with required prefix 'Kaptainpm'"* ]]
+}
+
+@test "file in repository/ without Repository prefix -> fail" {
+  export TOKEN_NAME_STYLE="PascalCase"
+  seed_auto_token repository "BuildWrongOwner" "x"
+
+  run "$PSUB"
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"does not start with required prefix 'Repository'"* ]]
+}
+
+@test "file in product/ without Product prefix -> fail" {
+  export TOKEN_NAME_STYLE="PascalCase"
+  seed_auto_token product "BuildWrongName" "x"
+
+  run "$PSUB"
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"does not start with required prefix 'Product'"* ]]
 }
 
 # =============================================================================

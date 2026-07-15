@@ -240,7 +240,7 @@ main() {
         export YQ_DEFAULT_NAME="${default_name}"
         export YQ_DEFAULT_VALUE="${default_value}"
         yq -i '.config.defaults[strenv(YQ_DEFAULT_NAME)] = strenv(YQ_DEFAULT_VALUE)' "${contract_file}"
-      done < <(find "${defaults_dir}" -type f | sort)
+      done < <(find "${defaults_dir}" -type f | LC_ALL=C sort)
     fi
   fi
 

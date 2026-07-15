@@ -8,6 +8,9 @@ load helpers
 
 setup() {
   setup_mock_docker
+  # Local storage clean by default; tests override to simulate stale bindings
+  export MOCK_DOCKER_IMAGE_INSPECT_EXISTS=false
+  export MOCK_DOCKER_IMAGE_EXISTS=false
   local base_dir=$(create_test_dir "rcd-oci")
   export GITHUB_OUTPUT="$base_dir/output"
   export OUTPUT_SUB_PATH="$base_dir/target"

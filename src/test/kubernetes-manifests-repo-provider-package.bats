@@ -10,6 +10,9 @@ load helpers
 
 setup() {
   setup_mock_docker
+  # Local storage clean by default; tests override to simulate stale bindings
+  export MOCK_DOCKER_IMAGE_INSPECT_EXISTS=false
+  export MOCK_DOCKER_IMAGE_EXISTS=false
   export IMAGE_BUILD_COMMAND="docker"
   export BUILD_MODE="build_server"
   local base_dir=$(create_test_dir "k8s-repo-pkg")

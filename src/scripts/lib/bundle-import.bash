@@ -224,7 +224,7 @@ bundle_import_combine_defaults() {
 
   # Group by token rel path and verify byte-identical contents.
   local tokens
-  tokens=$(awk -F '\t' '{print $1}' "${index_file}" | sort -u)
+  tokens=$(awk -F '\t' '{print $1}' "${index_file}" | LC_ALL=C sort -u)
 
   local token first_bundle first_file other_bundle other_file
   while IFS= read -r token; do

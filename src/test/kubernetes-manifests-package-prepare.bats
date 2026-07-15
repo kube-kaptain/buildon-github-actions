@@ -460,7 +460,7 @@ stage_additional_default() {
 
   run "$SCRIPTS_DIR/kubernetes-manifests-package-prepare"
   [ "$status" -eq 0 ]
-  assert_output_contains "WARN: local default 'Conflicting' overrides"
+  assert_output_contains "WARNING: local default 'Conflicting' overrides"
   [ "$(cat "$OUTPUT_SUB_PATH/manifests/defaults/Conflicting")" = "local-value" ]
 }
 
@@ -619,7 +619,7 @@ stage_additional_manifest() {
 
   run "$SCRIPTS_DIR/kubernetes-manifests-package-prepare"
   [ "$status" -eq 0 ]
-  assert_output_contains "WARN: local manifest 'alpha/deployment.yaml' overrides"
+  assert_output_contains "WARNING: local manifest 'alpha/deployment.yaml' overrides"
   grep -q "name: from-local" "$OUTPUT_SUB_PATH/manifests/combined/alpha/deployment.yaml"
 }
 

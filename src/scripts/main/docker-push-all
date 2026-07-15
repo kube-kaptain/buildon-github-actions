@@ -112,19 +112,26 @@ main() {
           continue
         fi
       else
-        # Docker: create manifest now (images have been pushed to registry)
+        # Docker: create manifest now (images have been pushed to registry).
+        # Local builds never push, so this branch only runs on build servers.
         local amd64_uri="${manifest_uri}-linux-amd64"
         local arm64_uri="${manifest_uri}-linux-arm64"
-        # Local builds may re-run without a clean context — remove stale manifest
-        if [[ "${BUILD_MODE}" != "build_server" ]]; then
-          log "Removing existing manifest before creating for local build: ${manifest_uri}"
-          ${IMAGE_BUILD_COMMAND} manifest rm "${manifest_uri}" &>/dev/null || true
+        # The target must not already exist in the registry. Local
+        # manifest-store collisions cannot come from image tags (separate
+        # store) and manifest create refuses an existing store entry as the
+        # final guard; docker manifest create also resolves the arch
+        # references against the registry itself.
+        if ${IMAGE_BUILD_COMMAND} manifest inspect "${manifest_uri}" &>/dev/null; then
+          log_error "Manifest already exists in registry: ${manifest_uri}"
+          failed=$((failed + 1))
+          failed_uris="${failed_uris}  ${manifest_uri} (already exists in registry)"$'\n'
+          continue
         fi
         log "Creating manifest: ${manifest_uri}"
         log "  amd64: ${amd64_uri}"
         log "  arm64: ${arm64_uri}"
         if ! ${IMAGE_BUILD_COMMAND} manifest create "${manifest_uri}" "${amd64_uri}" "${arm64_uri}"; then
-          log_error "Failed to create manifest: ${manifest_uri}"
+          log_error "Failed to create manifest (stale local manifest store entry?): ${manifest_uri}"
           failed=$((failed + 1))
           failed_uris="${failed_uris}  ${manifest_uri} (manifest create failed)"$'\n'
           continue

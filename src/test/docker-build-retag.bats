@@ -8,6 +8,9 @@ load helpers
 
 setup() {
   setup_mock_docker
+  # Local storage clean by default; tests override to simulate stale bindings
+  export MOCK_DOCKER_IMAGE_INSPECT_EXISTS=false
+  export MOCK_DOCKER_IMAGE_EXISTS=false
   export IMAGE_BUILD_COMMAND="docker"
   local base_dir=$(create_test_dir "docker-retag")
   export GITHUB_OUTPUT="$base_dir/output"
@@ -226,14 +229,14 @@ set_required_env() {
   assert_docker_called "manifest inspect"
 }
 
-@test "skips registry existence check for local build" {
+@test "skips existence checks for local build" {
   set_required_env
   export BUILD_MODE="local"
   export MOCK_DOCKER_MANIFEST_EXISTS="true"
 
   run "$SCRIPTS_DIR/docker-build-retag"
   [ "$status" -eq 0 ]
-  assert_output_contains "Skipping registry existence check"
+  assert_output_contains "Skipping existence checks for local build"
 }
 
 @test "works with custom registry and namespace" {

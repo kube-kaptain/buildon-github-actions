@@ -213,3 +213,16 @@ write_uris() {
   [ "$status" -eq 0 ]
   assert_docker_not_called "manifest create"
 }
+
+@test "docker manifest create fails when target already exists in registry" {
+  export IS_RELEASE="true"
+  echo "ghcr.io/test/my-repo:1.0.0-linux-amd64" > "${OUTPUT_SUB_PATH}/docker-push-all/image-uris"
+  mkdir -p "${OUTPUT_SUB_PATH}/docker-push-all"
+  echo "ghcr.io/test/my-repo:1.0.0" > "${OUTPUT_SUB_PATH}/docker-push-all/manifest-uris"
+  export MOCK_DOCKER_MANIFEST_EXISTS=true
+
+  run "$SCRIPTS_DIR/docker-push-all"
+  [ "$status" -ne 0 ]
+  assert_output_contains "already exists in registry"
+  assert_docker_not_called "manifest create"
+}

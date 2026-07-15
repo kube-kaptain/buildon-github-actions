@@ -8,6 +8,9 @@ load helpers
 
 setup() {
   setup_mock_docker
+  # Local storage clean by default; tests override to simulate stale bindings
+  export MOCK_DOCKER_IMAGE_INSPECT_EXISTS=false
+  export MOCK_DOCKER_IMAGE_EXISTS=false
   export IMAGE_BUILD_COMMAND="docker"
   export BUILD_MODE="build_server"
   export VERSION="1.0.0"
@@ -159,4 +162,71 @@ teardown() {
   [ "$status" -eq 0 ]
   assert_docker_called "build --platform linux/amd64 --label kaptain.org/platform=linux/amd64"
   assert_docker_called "build --platform linux/arm64 --label kaptain.org/platform=linux/arm64"
+}
+
+@test "generated Dockerfile does not COPY itself" {
+  run "$UTIL_DIR/docker-package-multi-arch" "$CONTENT_DIR" "ghcr.io/test/my-repo:1.0.0-rcd"
+  [ "$status" -eq 0 ]
+
+  local dockerfile="${OUTPUT_SUB_PATH}/docker-package-multi-arch/content/Dockerfile"
+  [ -f "$dockerfile" ]
+
+  # Content files must still be copied
+  run grep "COPY data.yaml /data.yaml" "$dockerfile"
+  [ "$status" -eq 0 ]
+
+  # The generated Dockerfile must not list itself
+  run grep "COPY Dockerfile" "$dockerfile"
+  [ "$status" -ne 0 ]
+}
+
+# === Local storage collision handling ===
+
+@test "build server fails when target already exists in local storage" {
+  export MOCK_DOCKER_IMAGE_INSPECT_EXISTS=true
+
+  run "$UTIL_DIR/docker-package-multi-arch" "$CONTENT_DIR" "ghcr.io/test/my-repo:1.0.0-rcd"
+  [ "$status" -ne 0 ]
+  assert_output_contains "already exists in local storage"
+}
+
+@test "podman local build removes stale manifest list binding before manifest create" {
+  export IMAGE_BUILD_COMMAND="podman"
+  export BUILD_MODE="local"
+  export MOCK_DOCKER_LOCAL_MANIFEST_EXISTS=true
+
+  run "$UTIL_DIR/docker-package-multi-arch" "$CONTENT_DIR" "ghcr.io/test/my-repo:1.0.0-rcd"
+  [ "$status" -eq 0 ]
+  assert_docker_called "manifest rm ghcr.io/test/my-repo:1.0.0-rcd"
+  assert_docker_called "manifest create ghcr.io/test/my-repo:1.0.0-rcd"
+}
+
+@test "podman local build untags stale image binding before manifest create" {
+  export IMAGE_BUILD_COMMAND="podman"
+  export BUILD_MODE="local"
+  export MOCK_DOCKER_IMAGE_EXISTS=true
+
+  run "$UTIL_DIR/docker-package-multi-arch" "$CONTENT_DIR" "ghcr.io/test/my-repo:1.0.0-rcd"
+  [ "$status" -eq 0 ]
+  assert_docker_called "untag ghcr.io/test/my-repo:1.0.0-rcd"
+  assert_docker_called "manifest create ghcr.io/test/my-repo:1.0.0-rcd"
+}
+
+@test "podman local build with clean storage neither removes nor untags" {
+  export IMAGE_BUILD_COMMAND="podman"
+  export BUILD_MODE="local"
+
+  run "$UTIL_DIR/docker-package-multi-arch" "$CONTENT_DIR" "ghcr.io/test/my-repo:1.0.0-rcd"
+  [ "$status" -eq 0 ]
+  assert_docker_not_called "manifest rm"
+  assert_docker_not_called "untag"
+}
+
+@test "podman build server fails clearly when name bound to a local image at manifest create" {
+  export IMAGE_BUILD_COMMAND="podman"
+  export MOCK_DOCKER_IMAGE_EXISTS=true
+
+  run "$UTIL_DIR/docker-package-multi-arch" "$CONTENT_DIR" "ghcr.io/test/my-repo:1.0.0-rcd"
+  [ "$status" -ne 0 ]
+  assert_output_contains "bound to a local image"
 }

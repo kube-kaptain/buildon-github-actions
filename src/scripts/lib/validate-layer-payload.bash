@@ -77,7 +77,7 @@ validate_layer_payload() {
   (
     cd "${fs_root}" || exit 1
     find . -type f
-  ) 2>/dev/null | sed 's|^\.||' | sort > "${manifest_file}"
+  ) 2>/dev/null | sed 's|^\.||' | LC_ALL=C sort > "${manifest_file}"
 
   : > "${seen_pairs_file}"
 

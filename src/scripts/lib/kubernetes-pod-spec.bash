@@ -104,8 +104,8 @@ resolve_replicas() {
 }
 
 # Build indentation string
-# Usage: _pod_spec_indent <spaces>
-_pod_spec_indent() {
+# Usage: pod_spec_indent <spaces>
+pod_spec_indent() {
   local count="$1"
   local indent=""
   for ((i = 0; i < count; i++)); do
@@ -127,7 +127,7 @@ generate_pod_security_context() {
   local seccomp_profile="$2"
 
   local indent
-  indent=$(_pod_spec_indent "${indent_count}")
+  indent=$(pod_spec_indent "${indent_count}")
 
   echo "${indent}securityContext:"
   echo "${indent}  runAsNonRoot: true"
@@ -149,7 +149,7 @@ generate_container_security_context() {
   local readonly_root_filesystem="$2"
 
   local indent
-  indent=$(_pod_spec_indent "${indent_count}")
+  indent=$(pod_spec_indent "${indent_count}")
 
   echo "${indent}securityContext:"
   echo "${indent}  allowPrivilegeEscalation: false"
@@ -175,7 +175,7 @@ generate_container_resources() {
   local cpu_limit="${5:-}"
 
   local indent
-  indent=$(_pod_spec_indent "${indent_count}")
+  indent=$(pod_spec_indent "${indent_count}")
 
   echo "${indent}resources:"
   echo "${indent}  requests:"
@@ -204,7 +204,7 @@ generate_container_ports() {
   local protocol="${3:-TCP}"
 
   local indent
-  indent=$(_pod_spec_indent "${indent_count}")
+  indent=$(pod_spec_indent "${indent_count}")
 
   echo "${indent}ports:"
   echo "${indent}  - containerPort: ${port}"
@@ -229,7 +229,7 @@ generate_container_lifecycle() {
   fi
 
   local indent
-  indent=$(_pod_spec_indent "${indent_count}")
+  indent=$(pod_spec_indent "${indent_count}")
 
   echo "${indent}lifecycle:"
   echo "${indent}  preStop:"
@@ -267,7 +267,7 @@ generate_container_env_from_directory() {
   fi
 
   local indent
-  indent=$(_pod_spec_indent "${indent_count}")
+  indent=$(pod_spec_indent "${indent_count}")
 
   if [[ "${skip_header}" != "true" ]]; then
     echo "${indent}env:"
@@ -279,7 +279,7 @@ generate_container_env_from_directory() {
     content=$(cat "${filepath}")
     echo "${indent}- name: ${filename}"
     echo "${indent}  value: \"${content}\""
-  done < <(find "${env_directory}" -type f -not -name '.*' -print0 | sort -z)
+  done < <(find "${env_directory}" -type f -not -name '.*' -print0 | LC_ALL=C sort -z)
 }
 
 # Generate environment variable refs from ConfigMap or Secret keys
@@ -330,7 +330,7 @@ generate_container_env_refs() {
   fi
 
   local indent
-  indent=$(_pod_spec_indent "${indent_count}")
+  indent=$(pod_spec_indent "${indent_count}")
 
   # Split keys on comma or space and process each
   local key
@@ -402,7 +402,7 @@ generate_container_env_all() {
   fi
 
   local indent
-  indent=$(_pod_spec_indent "${indent_count}")
+  indent=$(pod_spec_indent "${indent_count}")
 
   # Emit header once
   echo "${indent}env:"
@@ -444,7 +444,7 @@ generate_configmap_secret_volume_mounts() {
   fi
 
   local indent
-  indent=$(_pod_spec_indent "${indent_count}")
+  indent=$(pod_spec_indent "${indent_count}")
 
   echo "${indent}volumeMounts:"
   if [[ "${has_configmap}" == "true" ]]; then
@@ -480,7 +480,7 @@ generate_configmap_secret_volumes() {
   fi
 
   local indent
-  indent=$(_pod_spec_indent "${indent_count}")
+  indent=$(pod_spec_indent "${indent_count}")
 
   echo "${indent}volumes:"
   if [[ "${has_configmap}" == "true" ]]; then
@@ -507,7 +507,7 @@ generate_image_pull_secrets() {
   local secret_name="$2"
 
   local indent
-  indent=$(_pod_spec_indent "${indent_count}")
+  indent=$(pod_spec_indent "${indent_count}")
 
   echo "${indent}imagePullSecrets:"
   echo "${indent}  - name: ${secret_name}"
@@ -527,7 +527,7 @@ generate_service_account_config() {
   local automount_token="$4"
 
   local indent
-  indent=$(_pod_spec_indent "${indent_count}")
+  indent=$(pod_spec_indent "${indent_count}")
 
   if [[ "${has_serviceaccount}" == "true" ]]; then
     echo "${indent}serviceAccountName: ${serviceaccount_name}"
@@ -550,7 +550,7 @@ generate_container_start() {
   local image_pull_policy="${4:-IfNotPresent}"
 
   local indent
-  indent=$(_pod_spec_indent "${indent_count}")
+  indent=$(pod_spec_indent "${indent_count}")
 
   echo "${indent}- name: ${container_name}"
   echo "${indent}  image: ${image_reference}"
@@ -577,7 +577,7 @@ generate_container_command() {
   fi
 
   local indent
-  indent=$(_pod_spec_indent "${indent_count}")
+  indent=$(pod_spec_indent "${indent_count}")
 
   echo "${indent}command:"
   while IFS= read -r token; do
@@ -605,7 +605,7 @@ generate_container_args() {
   fi
 
   local indent
-  indent=$(_pod_spec_indent "${indent_count}")
+  indent=$(pod_spec_indent "${indent_count}")
 
   echo "${indent}args:"
   while IFS= read -r token; do

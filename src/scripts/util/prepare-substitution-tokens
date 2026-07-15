@@ -22,7 +22,10 @@
 #   VERSION_DNS_SAFE, VERSION_2_PART_DNS_SAFE, VERSION_3_PART_DNS_SAFE, VERSION_4_PART_DNS_SAFE
 #   TARGET_REGISTRY, TARGET_NAMESPACE, IS_RELEASE
 #   DOCKER_IMAGE_FULL_URI, MANIFESTS_ZIP_FILE_NAME
-#   PRODUCT_NAME, PRODUCT_SHORT_NAME (product builds only)
+#
+# Context scalars (REPOSITORY_*, PRODUCT_*, GIT_*, etc) are NOT read from env;
+# they arrive via the builtin-resolved-tokens/ disk scan, written once by the
+# step that owns them (versions-and-naming, kubernetes-product-aggregate, ...).
 #
 set -euo pipefail
 
@@ -89,7 +92,8 @@ write_builtin_token() {
 # way), so no name conversion is needed here.
 #
 # Source dirs are produced by lib/builtin-tokens-from-entry.bash via
-# content-resolve.bash and kaptain-init. Each dir has a required filename
+# content-resolve.bash, kaptain-init, versions-and-naming and
+# kubernetes-product-aggregate. Each dir has a required filename
 # prefix derived from the subdir (e.g. contents -> Content, BUILD -> Build);
 # files not matching their dir's prefix are a hard failure (catches malformed
 # bundles or future writers that skip the emitter).
@@ -103,12 +107,12 @@ scan_auto_builtin_tokens() {
   fi
 
   local flavour upper_prefix expected_prefix dir file name
-  for flavour in contents templates layers build image git kaptainpm; do
+  for flavour in contents templates layers build image git kaptainpm repository product; do
     dir="${base_dir}/${flavour}"
     [[ ! -d "${dir}" ]] && continue
 
     # contents -> CONTENT, templates -> TEMPLATE, layers -> LAYER,
-    # build/image/git/kaptainpm -> BUILD/IMAGE/GIT/KAPTAINPM (no 's' to strip).
+    # build/image/git/kaptainpm/repository/product -> unchanged (no 's' to strip).
     upper_prefix=$(printf '%s' "${flavour%s}" | tr '[:lower:]' '[:upper:]')
     expected_prefix=$(convert_token_name "${TOKEN_NAME_STYLE}" "${upper_prefix}")
 
@@ -174,30 +178,18 @@ main() {
     write_builtin_token "DOCKER_PLATFORM_CPU_ARCHITECTURE" "${DOCKER_PLATFORM_CPU_ARCHITECTURE}"
   fi
 
-  # Repository metadata tokens (from versions-and-naming)
-  if [[ -n "${REPOSITORY_OWNER:-}" ]]; then
-    write_builtin_token "REPOSITORY_OWNER" "${REPOSITORY_OWNER}"
-  fi
-  if [[ -n "${REPOSITORY_NAME:-}" ]]; then
-    write_builtin_token "REPOSITORY_NAME" "${REPOSITORY_NAME}"
-  fi
-
   # Optional manifest packaging tokens (not available in docker-build-dockerfile)
   if [[ -n "${MANIFESTS_ZIP_FILE_NAME:-}" ]]; then
     write_builtin_token "MANIFESTS_ZIP_FILE_NAME" "${MANIFESTS_ZIP_FILE_NAME}"
   fi
 
-  # Product tokens (only set during a product build)
-  if [[ -n "${PRODUCT_NAME:-}" ]]; then
-    write_builtin_token "PRODUCT_NAME" "${PRODUCT_NAME}"
-  fi
-  if [[ -n "${PRODUCT_SHORT_NAME:-}" ]]; then
-    write_builtin_token "PRODUCT_SHORT_NAME" "${PRODUCT_SHORT_NAME}"
-  fi
-
-  # Auto-emitted per-entry builtins (contents/templates/layers). Treated as
-  # built-ins for the override conflict check below: user config that tries
-  # to redefine them fails the build.
+  # Auto-emitted builtins: per-entry (contents/templates/layers) plus context
+  # scalars (repository/product/git/etc). Delivered via the on-disk scan, NOT
+  # per-step env - env plumbing has to be repeated at every call site and a
+  # missed site fails silently (tokens ship unsubstituted); files written once
+  # by their owning step reach every context identically, local and remote.
+  # Treated as built-ins for the override conflict check below: user config
+  # that tries to redefine them fails the build.
   scan_auto_builtin_tokens
 
   # Step 2: Validate and copy user config if it exists

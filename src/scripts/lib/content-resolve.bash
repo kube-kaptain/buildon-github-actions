@@ -105,7 +105,7 @@ CONTENT_RESOLVE_SCHEMAS_DIR="${CONTENT_RESOLVE_SCHEMAS_DIR:-$(cd "$(dirname "${B
 # Reduce a resolved OCI URI to a filesystem-safe slug. Replaces '/' and ':'
 # with '_'. The slug names per-artifact subdirs under <out-extract-dir> and
 # <out-unzipped-dir> so the audit trail is keyed on the artifact identity.
-_content_artifact_slug() {
+content_artifact_slug() {
   local uri="$1"
   echo "${uri}" | tr '/:' '__'
 }
@@ -467,7 +467,7 @@ content_resolve_all() {
     emit_builtin_tokens_for_entry "${entry}" "${resolved_version}" "${CONTENT_FLAVOUR}"
 
     local slug
-    slug=$(_content_artifact_slug "${resolved_uri}")
+    slug=$(content_artifact_slug "${resolved_uri}")
     local extract_dir="${CONTENT_EXTRACT_DIR}/${slug}"
     local unzipped_dir="${CONTENT_UNZIPPED_DIR}/${slug}"
     mkdir -p "${extract_dir}" "${unzipped_dir}"

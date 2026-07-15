@@ -152,3 +152,104 @@ EOF
 teardown() {
   dump_bats_result
 }
+
+# =============================================================================
+# Checksum-marker name handling
+# =============================================================================
+
+# Like write_manifest but with an explicit kind
+write_manifest_kind() {
+  local path="$1"
+  local kind="$2"
+  local name="$3"
+  mkdir -p "$(dirname "${path}")"
+  cat > "${path}" << INNEREOF
+apiVersion: v1
+kind: ${kind}
+metadata:
+  name: ${name}
+  annotations:
+    kaptain.org/generated-by: pre-existing
+data:
+  key: value
+INNEREOF
+}
+
+@test "skips build-timestamp on checksum-marker named resources, keeps built-by" {
+  write_manifest_kind "${COMBINED_DIR}/configmap.yaml" "ConfigMap" "web-app-configmap-checksum"
+
+  run "$SCRIPT"
+  [ "$status" -eq 0 ]
+
+  [[ "$(cat "${COMBINED_DIR}/configmap.yaml")" != *"kaptain.org/build-timestamp"* ]] || return 1
+  grep -q 'kaptain.org/built-by: "test"' "${COMBINED_DIR}/configmap.yaml"
+}
+
+@test "fails on reversed checksum marker in resource name" {
+  write_manifest_kind "${COMBINED_DIR}/configmap.yaml" "ConfigMap" "web-app-checksum-configmap"
+
+  run "$SCRIPT"
+  [ "$status" -ne 0 ]
+  assert_output_contains "Reversed checksum marker"
+}
+
+@test "warns when resource name ends with its kind without checksum marker" {
+  write_manifest_kind "${COMBINED_DIR}/configmap.yaml" "ConfigMap" "web-app-configmap"
+
+  run "$SCRIPT"
+  [ "$status" -eq 0 ]
+  assert_output_contains "WARNING"
+  grep -q "kaptain.org/build-timestamp" "${COMBINED_DIR}/configmap.yaml"
+  grep -q 'kaptain.org/built-by: "test"' "${COMBINED_DIR}/configmap.yaml"
+}
+
+@test "warns when resource name ends with -checksum without kind" {
+  write_manifest_kind "${COMBINED_DIR}/configmap.yaml" "ConfigMap" "web-app-checksum"
+
+  run "$SCRIPT"
+  [ "$status" -eq 0 ]
+  assert_output_contains "WARNING"
+  grep -q "kaptain.org/build-timestamp" "${COMBINED_DIR}/configmap.yaml"
+}
+
+@test "plain named resources get full injection with no warnings" {
+  write_manifest_kind "${COMBINED_DIR}/configmap.yaml" "ConfigMap" "web-app"
+
+  run "$SCRIPT"
+  [ "$status" -eq 0 ]
+  assert_output_not_contains "WARNING"
+  grep -q "kaptain.org/build-timestamp" "${COMBINED_DIR}/configmap.yaml"
+  grep -q 'kaptain.org/built-by: "test"' "${COMBINED_DIR}/configmap.yaml"
+}
+
+@test "checksum-marker named ConfigMap gets immutable true" {
+  write_manifest_kind "${COMBINED_DIR}/configmap.yaml" "ConfigMap" "web-app-configmap-checksum"
+
+  run "$SCRIPT"
+  [ "$status" -eq 0 ]
+  grep -q "^immutable: true" "${COMBINED_DIR}/configmap.yaml"
+}
+
+@test "checksum-marker named Secret gets immutable true" {
+  write_manifest_kind "${COMBINED_DIR}/secret.yaml" "Secret" "web-app-secret-checksum"
+
+  run "$SCRIPT"
+  [ "$status" -eq 0 ]
+  grep -q "^immutable: true" "${COMBINED_DIR}/secret.yaml"
+}
+
+@test "checksum-marker named non-CM non-Secret kind does not get immutable" {
+  write_manifest_kind "${COMBINED_DIR}/serviceaccount.yaml" "ServiceAccount" "web-app-serviceaccount-checksum"
+
+  run "$SCRIPT"
+  [ "$status" -eq 0 ]
+  [[ "$(cat "${COMBINED_DIR}/serviceaccount.yaml")" != *"immutable:"* ]] || return 1
+}
+
+@test "plain named ConfigMap does not get immutable" {
+  write_manifest_kind "${COMBINED_DIR}/configmap.yaml" "ConfigMap" "web-app"
+
+  run "$SCRIPT"
+  [ "$status" -eq 0 ]
+  [[ "$(cat "${COMBINED_DIR}/configmap.yaml")" != *"immutable:"* ]] || return 1
+}

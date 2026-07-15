@@ -148,7 +148,7 @@ main() {
       fi
 
       if [[ "${ALLOW_LOCAL_MANIFESTS_OVERRIDE}" == "true" ]]; then
-        log "WARN: local manifest '${rel_manifest}' overrides a file contributed via additional-manifests/"
+        log_warning "local manifest '${rel_manifest}' overrides a file contributed via additional-manifests/"
         continue
       fi
 
@@ -301,7 +301,7 @@ main() {
       fi
 
       if [[ "${ALLOW_LOCAL_DEFAULTS_OVERRIDE}" == "true" ]]; then
-        log "WARN: local default '${rel}' overrides a value contributed via additional-defaults/"
+        log_warning "local default '${rel}' overrides a value contributed via additional-defaults/"
         continue
       fi
 

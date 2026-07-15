@@ -16,7 +16,10 @@ CONVERT_SCRIPT="$UTIL_DIR/convert-tokens-in-tree"
 
 setup() {
   TEST_DIR=$(create_test_dir "convert-tokens")
-  export OUTPUT_SUB_PATH="${TEST_DIR}/kaptain-out"
+  # The tool requires context-root-relative targets: run from the test dir
+  # and pass relative paths, exactly as production callers do.
+  export OUTPUT_SUB_PATH="kaptain-out"
+  cd "${TEST_DIR}"
 }
 
 # =============================================================================
@@ -35,30 +38,30 @@ setup() {
 
 @test "convert-tokens-in-tree: fails with invalid from-delim" {
   mkdir -p "$TEST_DIR/d"
-  run "$CONVERT_SCRIPT" bogus PascalCase mustache PascalCase "$TEST_DIR/d"
+  run "$CONVERT_SCRIPT" bogus PascalCase mustache PascalCase "d"
   [ "$status" -eq 2 ]
 }
 
 @test "convert-tokens-in-tree: fails with invalid from-name" {
   mkdir -p "$TEST_DIR/d"
-  run "$CONVERT_SCRIPT" shell BogusCase mustache PascalCase "$TEST_DIR/d"
+  run "$CONVERT_SCRIPT" shell BogusCase mustache PascalCase "d"
   [ "$status" -eq 2 ]
 }
 
 @test "convert-tokens-in-tree: fails with invalid to-delim" {
   mkdir -p "$TEST_DIR/d"
-  run "$CONVERT_SCRIPT" shell PascalCase bogus PascalCase "$TEST_DIR/d"
+  run "$CONVERT_SCRIPT" shell PascalCase bogus PascalCase "d"
   [ "$status" -eq 2 ]
 }
 
 @test "convert-tokens-in-tree: fails with invalid to-name" {
   mkdir -p "$TEST_DIR/d"
-  run "$CONVERT_SCRIPT" shell PascalCase mustache BogusCase "$TEST_DIR/d"
+  run "$CONVERT_SCRIPT" shell PascalCase mustache BogusCase "d"
   [ "$status" -eq 2 ]
 }
 
 @test "convert-tokens-in-tree: fails with nonexistent directory" {
-  run "$CONVERT_SCRIPT" shell PascalCase mustache PascalCase /nonexistent/dir
+  run "$CONVERT_SCRIPT" shell PascalCase mustache PascalCase nonexistent/dir
   [ "$status" -ne 0 ]
 }
 
@@ -75,7 +78,7 @@ spec:
   replicas: ${Replicas}
 EOF
   before=$(cat "$TEST_DIR/d/manifest.yaml")
-  run "$CONVERT_SCRIPT" shell PascalCase shell PascalCase "$TEST_DIR/d"
+  run "$CONVERT_SCRIPT" shell PascalCase shell PascalCase "d"
   [ "$status" -eq 0 ]
   after=$(cat "$TEST_DIR/d/manifest.yaml")
   [ "$before" = "$after" ]
@@ -88,7 +91,7 @@ EOF
 
 @test "convert-tokens-in-tree: empty directory exits 0 with message" {
   mkdir -p "$TEST_DIR/empty"
-  run "$CONVERT_SCRIPT" shell PascalCase mustache PascalCase "$TEST_DIR/empty"
+  run "$CONVERT_SCRIPT" shell PascalCase mustache PascalCase "empty"
   [ "$status" -eq 0 ]
   echo "$output" | grep -q "No .* tokens found"
 }
@@ -104,7 +107,7 @@ data:
   greeting: hello
 EOF
   before=$(cat "$TEST_DIR/d/plain.yaml")
-  run "$CONVERT_SCRIPT" shell PascalCase mustache UPPER_SNAKE "$TEST_DIR/d"
+  run "$CONVERT_SCRIPT" shell PascalCase mustache UPPER_SNAKE "d"
   [ "$status" -eq 0 ]
   after=$(cat "$TEST_DIR/d/plain.yaml")
   [ "$before" = "$after" ]
@@ -126,7 +129,7 @@ spec:
       containers:
         - image: ${DockerImageName}:${DockerTag}
 EOF
-  run "$CONVERT_SCRIPT" shell PascalCase mustache PascalCase "$TEST_DIR/d"
+  run "$CONVERT_SCRIPT" shell PascalCase mustache PascalCase "d"
   [ "$status" -eq 0 ]
   result=$(cat "$TEST_DIR/d/deployment.yaml")
   echo "$result" | grep -q "{{ Replicas }}"
@@ -143,7 +146,7 @@ kind: Service
 metadata:
   name: ${ServiceName}
 EOF
-  run "$CONVERT_SCRIPT" shell PascalCase helm PascalCase "$TEST_DIR/d"
+  run "$CONVERT_SCRIPT" shell PascalCase helm PascalCase "d"
   [ "$status" -eq 0 ]
   result=$(cat "$TEST_DIR/d/svc.yaml")
   echo "$result" | grep -q "{{ .Values.ServiceName }}"
@@ -165,7 +168,7 @@ spec:
       containers:
         - image: ${DockerImageName}:${DockerTag}
 EOF
-  run "$CONVERT_SCRIPT" shell PascalCase shell UPPER_SNAKE "$TEST_DIR/d"
+  run "$CONVERT_SCRIPT" shell PascalCase shell UPPER_SNAKE "d"
   [ "$status" -eq 0 ]
   result=$(cat "$TEST_DIR/d/deployment.yaml")
   echo "$result" | grep -q '\${REPLICAS}'
@@ -180,7 +183,7 @@ data:
   a: ${MAX_HEAP_SIZE}
   b: ${USER_HOME}
 EOF
-  run "$CONVERT_SCRIPT" shell UPPER_SNAKE shell lower-kebab "$TEST_DIR/d"
+  run "$CONVERT_SCRIPT" shell UPPER_SNAKE shell lower-kebab "d"
   [ "$status" -eq 0 ]
   result=$(cat "$TEST_DIR/d/cfg.yaml")
   echo "$result" | grep -q '\${max-heap-size}'
@@ -200,7 +203,7 @@ spec:
     requests:
       memory: ${MaxHeapSize}
 EOF
-  run "$CONVERT_SCRIPT" shell PascalCase mustache lower-kebab "$TEST_DIR/d"
+  run "$CONVERT_SCRIPT" shell PascalCase mustache lower-kebab "d"
   [ "$status" -eq 0 ]
   result=$(cat "$TEST_DIR/d/deployment.yaml")
   echo "$result" | grep -q "{{ replicas }}"
@@ -214,7 +217,7 @@ data:
   a: <%= ImageName %>
   b: <%= ImageTag %>
 EOF
-  run "$CONVERT_SCRIPT" erb PascalCase shell UPPER_SNAKE "$TEST_DIR/d"
+  run "$CONVERT_SCRIPT" erb PascalCase shell UPPER_SNAKE "d"
   [ "$status" -eq 0 ]
   result=$(cat "$TEST_DIR/d/x.yaml")
   echo "$result" | grep -q '\${IMAGE_NAME}'
@@ -235,7 +238,7 @@ spec:
       memory: ${VendorEnvoyGateway/Memory}
       cpu: ${VendorEnvoyGateway/Cpu}
 EOF
-  run "$CONVERT_SCRIPT" shell PascalCase shell UPPER_SNAKE "$TEST_DIR/d"
+  run "$CONVERT_SCRIPT" shell PascalCase shell UPPER_SNAKE "d"
   [ "$status" -eq 0 ]
   result=$(cat "$TEST_DIR/d/deployment.yaml")
   echo "$result" | grep -q '\${VENDOR_ENVOY_GATEWAY/REPLICAS}'
@@ -254,7 +257,7 @@ a: ${ProjectName}
 b: ${ProjectName}
 c: ${ProjectName}-suffix
 EOF
-  run "$CONVERT_SCRIPT" shell PascalCase mustache PascalCase "$TEST_DIR/d"
+  run "$CONVERT_SCRIPT" shell PascalCase mustache PascalCase "d"
   [ "$status" -eq 0 ]
   result=$(cat "$TEST_DIR/d/repeats.yaml")
   count=$(echo "$result" | grep -c "{{ ProjectName }}")
@@ -277,7 +280,7 @@ EOF
   cat > "$TEST_DIR/d/sub/deeper/deep.yaml" << 'EOF'
 deep: ${DeepVar}
 EOF
-  run "$CONVERT_SCRIPT" shell PascalCase mustache PascalCase "$TEST_DIR/d"
+  run "$CONVERT_SCRIPT" shell PascalCase mustache PascalCase "d"
   [ "$status" -eq 0 ]
   grep -q "{{ TopVar }}" "$TEST_DIR/d/top.yaml"
   grep -q "{{ MidVar }}" "$TEST_DIR/d/sub/mid.yaml"
@@ -293,7 +296,7 @@ EOF
 plain: content
 EOF
   before_no_tokens=$(cat "$TEST_DIR/d/no-tokens.yaml")
-  run "$CONVERT_SCRIPT" shell PascalCase mustache PascalCase "$TEST_DIR/d"
+  run "$CONVERT_SCRIPT" shell PascalCase mustache PascalCase "d"
   [ "$status" -eq 0 ]
   grep -q "{{ SomeToken }}" "$TEST_DIR/d/with-tokens.yaml"
   after_no_tokens=$(cat "$TEST_DIR/d/no-tokens.yaml")
@@ -309,7 +312,7 @@ EOF
   printf 'value: %s\n' '${Token}' > "$TEST_DIR/d/file.yaml"
   # Confirm the input ends with newline
   [ "$(tail -c1 "$TEST_DIR/d/file.yaml" | od -An -c | tr -d ' ')" = '\n' ]
-  run "$CONVERT_SCRIPT" shell PascalCase mustache PascalCase "$TEST_DIR/d"
+  run "$CONVERT_SCRIPT" shell PascalCase mustache PascalCase "d"
   [ "$status" -eq 0 ]
   # Output must still end with newline
   [ "$(tail -c1 "$TEST_DIR/d/file.yaml" | od -An -c | tr -d ' ')" = '\n' ]
@@ -320,7 +323,7 @@ EOF
   printf 'value: %s' '${Token}' > "$TEST_DIR/d/file.yaml"
   # Confirm the input does NOT end with newline
   [ "$(tail -c1 "$TEST_DIR/d/file.yaml" | od -An -c | tr -d ' ')" = '}' ]
-  run "$CONVERT_SCRIPT" shell PascalCase mustache PascalCase "$TEST_DIR/d"
+  run "$CONVERT_SCRIPT" shell PascalCase mustache PascalCase "d"
   [ "$status" -eq 0 ]
   # Output must still NOT end with newline
   [ "$(tail -c1 "$TEST_DIR/d/file.yaml" | od -An -c | tr -d ' ')" = '}' ]
@@ -338,9 +341,9 @@ b: ${MaxHeapSize}
 c: ${VendorEnvoyGateway/Cpu}
 EOF
   before=$(cat "$TEST_DIR/d/file.yaml")
-  run "$CONVERT_SCRIPT" shell PascalCase mustache UPPER_SNAKE "$TEST_DIR/d"
+  run "$CONVERT_SCRIPT" shell PascalCase mustache UPPER_SNAKE "d"
   [ "$status" -eq 0 ]
-  run "$CONVERT_SCRIPT" mustache UPPER_SNAKE shell PascalCase "$TEST_DIR/d"
+  run "$CONVERT_SCRIPT" mustache UPPER_SNAKE shell PascalCase "d"
   [ "$status" -eq 0 ]
   after=$(cat "$TEST_DIR/d/file.yaml")
   [ "$before" = "$after" ]
@@ -357,7 +360,7 @@ a: ${One}
 b: ${Two}
 c: ${One}
 EOF
-  run "$CONVERT_SCRIPT" shell PascalCase mustache PascalCase "$TEST_DIR/d"
+  run "$CONVERT_SCRIPT" shell PascalCase mustache PascalCase "d"
   [ "$status" -eq 0 ]
   echo "$output" | grep -q "Converted 3 token instances in file.yaml"
   echo "$output" | grep -q "Total replacements: 3"
@@ -376,10 +379,10 @@ slug_for() { echo "$1" | tr '/:' '__'; }
 a: ${One}
 b: ${Two}
 EOF
-  run "$CONVERT_SCRIPT" shell PascalCase mustache PascalCase "$TEST_DIR/d"
+  run "$CONVERT_SCRIPT" shell PascalCase mustache PascalCase "d"
   [ "$status" -eq 0 ]
   local slug
-  slug=$(slug_for "$TEST_DIR/d")
+  slug=$(slug_for "d")
   local slot="${OUTPUT_SUB_PATH}/convert-tokens-in-tree/token-mappings/${slug}-0"
   [ -d "${slot}" ]
   [ -f "${slot}/mapping.tsv" ]
@@ -393,12 +396,12 @@ EOF
 @test "convert-tokens-in-tree: writes target-dir, from-scheme, to-scheme pointers" {
   mkdir -p "$TEST_DIR/d"
   echo 'a: ${One}' > "$TEST_DIR/d/file.yaml"
-  run "$CONVERT_SCRIPT" shell PascalCase mustache PascalCase "$TEST_DIR/d"
+  run "$CONVERT_SCRIPT" shell PascalCase mustache PascalCase "d"
   [ "$status" -eq 0 ]
   local slug
-  slug=$(slug_for "$TEST_DIR/d")
+  slug=$(slug_for "d")
   local slot="${OUTPUT_SUB_PATH}/convert-tokens-in-tree/token-mappings/${slug}-0"
-  [ "$(cat "${slot}/target-dir")" = "$TEST_DIR/d" ]
+  [ "$(cat "${slot}/target-dir")" = "d" ]
   [ "$(cat "${slot}/from-scheme")" = "shell-PascalCase" ]
   [ "$(cat "${slot}/to-scheme")" = "mustache-PascalCase" ]
 }
@@ -412,28 +415,28 @@ c: ${One}
 EOF
   echo 'd: ${Two}' > "$TEST_DIR/d/sub/nested.yaml"
   echo 'no tokens here' > "$TEST_DIR/d/untouched.txt"
-  run "$CONVERT_SCRIPT" shell PascalCase mustache PascalCase "$TEST_DIR/d"
+  run "$CONVERT_SCRIPT" shell PascalCase mustache PascalCase "d"
   [ "$status" -eq 0 ]
   local slug
-  slug=$(slug_for "$TEST_DIR/d")
+  slug=$(slug_for "d")
   local rbf="${OUTPUT_SUB_PATH}/convert-tokens-in-tree/token-mappings/${slug}-0/replacements-by-file.tsv"
   [ -f "${rbf}" ]
   awk -F'\t' '$1 == "file.yaml" && $2 == "3" { found = 1 } END { exit found ? 0 : 1 }' "${rbf}"
   awk -F'\t' '$1 == "sub/nested.yaml" && $2 == "1" { found = 1 } END { exit found ? 0 : 1 }' "${rbf}"
-  ! grep -q "untouched.txt" "${rbf}"
+  [[ "$(cat "${rbf}")" != *"untouched.txt"* ]] || return 1
 }
 
 @test "convert-tokens-in-tree: second invocation against same tree lands at -1" {
   mkdir -p "$TEST_DIR/d"
   echo 'a: ${One}' > "$TEST_DIR/d/file.yaml"
-  run "$CONVERT_SCRIPT" shell PascalCase mustache PascalCase "$TEST_DIR/d"
+  run "$CONVERT_SCRIPT" shell PascalCase mustache PascalCase "d"
   [ "$status" -eq 0 ]
   # Re-prime the file so the second pass has something to convert.
   echo 'a: ${One}' > "$TEST_DIR/d/file.yaml"
-  run "$CONVERT_SCRIPT" shell PascalCase mustache PascalCase "$TEST_DIR/d"
+  run "$CONVERT_SCRIPT" shell PascalCase mustache PascalCase "d"
   [ "$status" -eq 0 ]
   local slug
-  slug=$(slug_for "$TEST_DIR/d")
+  slug=$(slug_for "d")
   local base="${OUTPUT_SUB_PATH}/convert-tokens-in-tree/token-mappings"
   [ -d "${base}/${slug}-0" ]
   [ -d "${base}/${slug}-1" ]
@@ -442,11 +445,29 @@ EOF
 @test "convert-tokens-in-tree: same-scheme no-op leaves no audit dir" {
   mkdir -p "$TEST_DIR/d"
   echo 'a: ${One}' > "$TEST_DIR/d/file.yaml"
-  run "$CONVERT_SCRIPT" shell PascalCase shell PascalCase "$TEST_DIR/d"
+  run "$CONVERT_SCRIPT" shell PascalCase shell PascalCase "d"
   [ "$status" -eq 0 ]
   [ ! -d "${OUTPUT_SUB_PATH}/convert-tokens-in-tree" ]
 }
 
 teardown() {
   dump_bats_result
+}
+
+# =============================================================================
+# Context-root-relative target contract
+# =============================================================================
+
+@test "convert-tokens-in-tree: rejects absolute target directory" {
+  mkdir -p "$TEST_DIR/d"
+  echo 'a: ${One}' > "$TEST_DIR/d/file.yaml"
+  run "$CONVERT_SCRIPT" shell PascalCase mustache PascalCase "$TEST_DIR/d"
+  [ "$status" -ne 0 ]
+  assert_output_contains "must be relative"
+}
+
+@test "convert-tokens-in-tree: rejects target directory with dot-dot segments" {
+  run "$CONVERT_SCRIPT" shell PascalCase mustache PascalCase "d/../d"
+  [ "$status" -ne 0 ]
+  assert_output_contains "must not contain"
 }
