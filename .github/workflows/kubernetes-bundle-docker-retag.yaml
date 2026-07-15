@@ -1088,6 +1088,41 @@ jobs:
           action: fail
           check-run-id: ${{ steps.check-release-change-data-oci-package.outputs.check-run-id }}
 
+      # === Templates Import ===
+      - name: Start check - Templates Import
+        id: check-templates-import
+        continue-on-error: true
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
+        with:
+          action: start
+          check-name: 'Build & Publish → Templates Import'
+      - name: Import templates
+        id: templates-import
+        uses: ./.github/buildon-github-actions/src/actions/kubernetes-templates-import
+        with:
+          project-name: ${{ steps.versions.outputs.project-name }}
+          output-sub-path: ${{ steps.kpm.outputs.OUTPUT_SUB_PATH }}
+          token-delimiter-style: ${{ steps.kpm.outputs.TOKEN_DELIMITER_STYLE }}
+          token-name-style: ${{ steps.kpm.outputs.TOKEN_NAME_STYLE }}
+          templates-layout: ${{ steps.kpm.outputs.TEMPLATES_LAYOUT }}
+          docker-target-registry: ${{ steps.resolve-registry.outputs.docker-target-registry }}
+          docker-target-namespace: ${{ steps.resolve-registry.outputs.docker-target-namespace }}
+          image-build-command: ${{ steps.validate-tooling.outputs.IMAGE_BUILD_COMMAND }}
+          is-release: ${{ steps.versions.outputs.is-release }}
+      - name: Pass check - Templates Import
+        if: success() && steps.check-templates-import.outputs.check-run-id != ''
+        continue-on-error: true
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
+        with:
+          action: pass
+          check-run-id: ${{ steps.check-templates-import.outputs.check-run-id }}
+      - name: Fail check - Templates Import
+        if: failure() && steps.check-templates-import.outputs.check-run-id != ''
+        uses: ./.github/buildon-github-actions/src/actions/github-check-run
+        with:
+          action: fail
+          check-run-id: ${{ steps.check-templates-import.outputs.check-run-id }}
+
       # === Docker Retag ===
       - name: Start check - Docker Retag
         id: check-docker-retag
@@ -1308,41 +1343,6 @@ jobs:
         with:
           action: fail
           check-run-id: ${{ steps.check-post-docker.outputs.check-run-id }}
-
-      # === Templates Import ===
-      - name: Start check - Templates Import
-        id: check-templates-import
-        continue-on-error: true
-        uses: ./.github/buildon-github-actions/src/actions/github-check-run
-        with:
-          action: start
-          check-name: 'Build & Publish → Templates Import'
-      - name: Import templates
-        id: templates-import
-        uses: ./.github/buildon-github-actions/src/actions/kubernetes-templates-import
-        with:
-          project-name: ${{ steps.versions.outputs.project-name }}
-          output-sub-path: ${{ steps.kpm.outputs.OUTPUT_SUB_PATH }}
-          token-delimiter-style: ${{ steps.kpm.outputs.TOKEN_DELIMITER_STYLE }}
-          token-name-style: ${{ steps.kpm.outputs.TOKEN_NAME_STYLE }}
-          templates-layout: ${{ steps.kpm.outputs.TEMPLATES_LAYOUT }}
-          docker-target-registry: ${{ steps.resolve-registry.outputs.docker-target-registry }}
-          docker-target-namespace: ${{ steps.resolve-registry.outputs.docker-target-namespace }}
-          image-build-command: ${{ steps.validate-tooling.outputs.IMAGE_BUILD_COMMAND }}
-          is-release: ${{ steps.versions.outputs.is-release }}
-      - name: Pass check - Templates Import
-        if: success() && steps.check-templates-import.outputs.check-run-id != ''
-        continue-on-error: true
-        uses: ./.github/buildon-github-actions/src/actions/github-check-run
-        with:
-          action: pass
-          check-run-id: ${{ steps.check-templates-import.outputs.check-run-id }}
-      - name: Fail check - Templates Import
-        if: failure() && steps.check-templates-import.outputs.check-run-id != ''
-        uses: ./.github/buildon-github-actions/src/actions/github-check-run
-        with:
-          action: fail
-          check-run-id: ${{ steps.check-templates-import.outputs.check-run-id }}
 
       # === Pre-package Prepare ===
       - name: Start check - Pre-package Prepare
