@@ -250,11 +250,16 @@ main() {
   output_var "REPOSITORY_OWNER" "${REPOSITORY_OWNER}"
   output_var "REPOSITORY_NAME" "${REPOSITORY_NAME}"
 
-  # Builtin tokens for the git/ scan in prepare-substitution-tokens. Written
-  # here because REPOSITORY_NAME/OWNER are not in kaptain-init's step env;
-  # versions-and-naming owns them and runs before any substitution.
+  # Builtin tokens for the git/ and repository/ scans in
+  # prepare-substitution-tokens. Written here because REPOSITORY_NAME/OWNER
+  # are not in kaptain-init's step env; versions-and-naming owns them and runs
+  # before any substitution. On-disk delivery reaches every substitution
+  # context (docker per-arch, manifest packaging, ...) identically local and
+  # remote - per-call-site env plumbing failed silently when a site was missed.
   emit_builtin_token_scalar GIT_REPOSITORY_NAME  "${REPOSITORY_NAME}"
   emit_builtin_token_scalar GIT_REPOSITORY_OWNER "${REPOSITORY_OWNER}"
+  emit_builtin_token_scalar REPOSITORY_NAME  "${REPOSITORY_NAME}"
+  emit_builtin_token_scalar REPOSITORY_OWNER "${REPOSITORY_OWNER}"
 }
 
 main "$@"

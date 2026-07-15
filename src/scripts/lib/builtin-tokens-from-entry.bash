@@ -61,9 +61,10 @@ source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/token-format.bash"
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/../defaults/tokens.bash"
 
 # Emit a single scalar builtin token. Used for the fixed name+value scalars
-# (BUILD_*/IMAGE_*/GIT_*/KAPTAINPM_*) that have no entry/version/spec triple.
-# The subdir is derived from the canonical name's prefix (BUILD->build,
-# IMAGE->image, GIT->git, KAPTAINPM->kaptainpm; CONTENT/TEMPLATE/LAYER go via
+# (BUILD_*/IMAGE_*/GIT_*/KAPTAINPM_*/REPOSITORY_*/PRODUCT_*) that have no
+# entry/version/spec triple. The subdir is derived from the canonical name's
+# prefix (BUILD->build, IMAGE->image, GIT->git, KAPTAINPM->kaptainpm,
+# REPOSITORY->repository, PRODUCT->product; CONTENT/TEMPLATE/LAYER go via
 # emit_builtin_tokens_for_entry, not here).
 #
 # Usage: emit_builtin_token_scalar <CANONICAL_UPPER_SNAKE_NAME> <value>

@@ -149,6 +149,12 @@ main() {
   output_var "PRODUCT_NAME" "${PROJECT_NAME}"
   output_var "PRODUCT_SHORT_NAME" "${product_short_name}"
 
+  # Builtin tokens for the product/ scan in prepare-substitution-tokens.
+  # On-disk delivery reaches every downstream substitution context without
+  # per-call-site env plumbing (emitter comes via lib/content-resolve.bash).
+  emit_builtin_token_scalar PRODUCT_NAME "${PROJECT_NAME}"
+  emit_builtin_token_scalar PRODUCT_SHORT_NAME "${product_short_name}"
+
   if [[ ! -f "${KAPTAINPM_FILE}" ]]; then
     log_error "KaptainPM file not found: ${KAPTAINPM_FILE}"
     exit 1

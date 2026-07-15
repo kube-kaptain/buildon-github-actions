@@ -292,6 +292,23 @@ github_output_value() {
   [ -d "${TEST_DIR}/kaptain-out/contents/manifests" ]
 }
 
+# Builtin tokens for the product/ scan in prepare-substitution-tokens - on-disk
+# delivery reaches every downstream substitution context without per-call-site
+# env plumbing (which failed silently when a call site was missed).
+@test "writes PRODUCT_NAME and PRODUCT_SHORT_NAME under builtin-resolved-tokens/product/" {
+  write_pm
+  setup_mock_oci
+  run_script
+  [ "${status}" -eq 0 ]
+
+  # Filenames are written in the configured TOKEN_NAME_STYLE (PascalCase by default)
+  local product_dir="${TEST_DIR}/kaptain-out/builtin-resolved-tokens/product"
+  [ -f "${product_dir}/ProductName" ]
+  [ "$(cat "${product_dir}/ProductName")" = "product-foo" ]
+  [ -f "${product_dir}/ProductShortName" ]
+  [ "$(cat "${product_dir}/ProductShortName")" = "foo" ]
+}
+
 # =============================================================================
 # End-to-end staging
 # =============================================================================

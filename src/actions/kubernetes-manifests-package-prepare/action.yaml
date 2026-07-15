@@ -87,16 +87,6 @@ inputs:
     required: false
     default: 'kaptain-out'
 
-  # Action-specific optional inputs (passed from product-aggregate during product builds)
-  product-name:
-    description: 'Product name (set during product builds; empty otherwise)'
-    required: false
-    default: ''
-  product-short-name:
-    description: 'Product short name (set during product builds; empty otherwise)'
-    required: false
-    default: ''
-
   # Action-specific optional inputs (passed from docker build)
   docker-image-full-uri:
     description: 'Full Docker image URI for variable substitution (optional)'
@@ -176,8 +166,6 @@ runs:
         OUTPUT_SUB_PATH: ${{ inputs.output-sub-path }}
         DOCKER_TAG: ${{ inputs.docker-tag }}
         DOCKER_IMAGE_NAME: ${{ inputs.docker-image-name }}
-        PRODUCT_NAME: ${{ inputs.product-name }}
-        PRODUCT_SHORT_NAME: ${{ inputs.product-short-name }}
         DOCKER_IMAGE_FULL_URI: ${{ inputs.docker-image-full-uri }}
         TARGET_REGISTRY: ${{ inputs.docker-target-registry }}
         TARGET_NAMESPACE: ${{ inputs.docker-target-namespace }}

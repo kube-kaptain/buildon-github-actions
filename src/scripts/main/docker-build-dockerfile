@@ -199,8 +199,6 @@ build_for_platform() {
   TARGET_NAMESPACE="${TARGET_NAMESPACE}" \
   DOCKER_PLATFORM="${platform}" \
   DOCKER_PLATFORM_CPU_ARCHITECTURE="${platform_cpu_architecture}" \
-  REPOSITORY_OWNER="${REPOSITORY_OWNER}" \
-  REPOSITORY_NAME="${REPOSITORY_NAME}" \
   "${SCRIPT_DIR}/../util/prepare-substitution-tokens"
 
   # Perform variable substitution on specific files only

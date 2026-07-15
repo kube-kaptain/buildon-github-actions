@@ -916,9 +916,11 @@ ENV KUBECTL_VERSION=1.28.3' > src/docker/Dockerfile
   assert_output_contains "TAG_VERSION_USE_SOURCE_VERSION_EXACT is only supported with file-based strategies"
 }
 
-# Builtin tokens for the git/ scan in prepare-substitution-tokens.
+# Builtin tokens for the git/ and repository/ scans in prepare-substitution-tokens.
 # REPOSITORY_NAME/OWNER aren't in kaptain-init's step env, so versions-and-naming
 # owns them and writes them as builtin tokens alongside its output_var emissions.
+# On-disk delivery reaches every substitution context without per-call-site env
+# plumbing (which failed silently for the manifest packaging leg when missed).
 
 @test "writes GIT_REPOSITORY_NAME and GIT_REPOSITORY_OWNER under builtin-resolved-tokens/git/" {
   TEST_REPO=$(clone_fixture "tag-none")
@@ -933,4 +935,19 @@ ENV KUBECTL_VERSION=1.28.3' > src/docker/Dockerfile
   [ "$(cat "${git_dir}/GitRepositoryName")" = "test-repo" ]
   [ -f "${git_dir}/GitRepositoryOwner" ]
   [ "$(cat "${git_dir}/GitRepositoryOwner")" = "kube-kaptain" ]
+}
+
+@test "writes REPOSITORY_NAME and REPOSITORY_OWNER under builtin-resolved-tokens/repository/" {
+  TEST_REPO=$(clone_fixture "tag-none")
+  cd "$TEST_REPO"
+
+  run "$SCRIPTS_DIR/versions-and-naming"
+  [ "$status" -eq 0 ]
+
+  # Filenames are written in the configured TOKEN_NAME_STYLE (PascalCase by default)
+  local repository_dir="${TEST_REPO}/kaptain-out/builtin-resolved-tokens/repository"
+  [ -f "${repository_dir}/RepositoryName" ]
+  [ "$(cat "${repository_dir}/RepositoryName")" = "test-repo" ]
+  [ -f "${repository_dir}/RepositoryOwner" ]
+  [ "$(cat "${repository_dir}/RepositoryOwner")" = "kube-kaptain" ]
 }
