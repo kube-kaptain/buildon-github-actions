@@ -262,12 +262,14 @@ resolve_layer() {
   fi
   echo "${identity}=${resolved_version}" >> "${VISITED_FILE}"
 
-  # Auto-builtin tokens: emit LAYER_<slug>_{REF,VERSION_SPEC,VERSION} for every
-  # resolved layer (including layersets) so downstream substitution can pin to
-  # the same version/spec the build saw. Slug is derived from the entry as
-  # written, so short and long ref forms produce distinct slugs as authored.
+  # Auto-builtin tokens: emit LAYER_<slug>_{REF,VERSION_SPEC,VERSION,
+  # MANIFESTS_DOCKER_TAG} for every resolved layer (including layersets) so
+  # downstream substitution can pin to the same version/spec the build saw.
+  # Layer tags carry no variant suffix, so the tag token equals VERSION.
+  # Slug is derived from the entry as written, so short and long ref forms
+  # produce distinct slugs as authored.
   log "${indent}Auto-builtin tokens for layers:"
-  emit_builtin_tokens_for_entry "${ref}" "${resolved_version}" "layers"
+  emit_builtin_tokens_for_entry "${ref}" "${resolved_version}" "layers" "${resolved_version}"
 
   # Determine layer storage path (registry/path/name without version)
   # Strip provider prefix if present for the filesystem path

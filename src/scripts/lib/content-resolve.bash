@@ -461,10 +461,15 @@ content_resolve_all() {
 
     printf -- '- %s\n' "${resolved_uri}" >> "${CONTENT_RESOLVED_FILE}"
 
-    # Auto-builtin tokens: pinned version comes from the resolved URI's tag.
-    local resolved_version="${resolved_uri##*:}"
+    # Auto-builtin tokens. The resolved URI's tag names the manifests OCI
+    # (we asked artifact-resolve for the 'manifests' variant above); the
+    # release version is that tag with the variant suffix we requested
+    # stripped, so VERSION stays spec-shaped and comparable while
+    # MANIFESTS_DOCKER_TAG records the artifact tag verbatim.
+    local resolved_tag="${resolved_uri##*:}"
+    local resolved_version="${resolved_tag%-manifests}"
     log "  Auto-builtin tokens for ${CONTENT_FLAVOUR}:"
-    emit_builtin_tokens_for_entry "${entry}" "${resolved_version}" "${CONTENT_FLAVOUR}"
+    emit_builtin_tokens_for_entry "${entry}" "${resolved_version}" "${CONTENT_FLAVOUR}" "${resolved_tag}"
 
     local slug
     slug=$(content_artifact_slug "${resolved_uri}")

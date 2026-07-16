@@ -20,9 +20,15 @@
 # convert_token_name before the printf write.
 #
 # Files per entry, under ${OUTPUT_SUB_PATH}/builtin-resolved-tokens/<subdir>/:
-#   ${PREFIX}_${SLUG}_REF           - entry as written, verbatim
-#   ${PREFIX}_${SLUG}_VERSION_SPEC  - version part as written (e.g. "[1.2.3]")
-#   ${PREFIX}_${SLUG}_VERSION       - resolved single version (e.g. "1.2.3")
+#   ${PREFIX}_${SLUG}_REF                 - entry as written, verbatim
+#   ${PREFIX}_${SLUG}_VERSION_SPEC        - version part as written (e.g. "[1.2.3]")
+#   ${PREFIX}_${SLUG}_VERSION             - resolved single version (e.g. "1.2.3"),
+#                                           spec-shaped: satisfies VERSION_SPEC
+#   ${PREFIX}_${SLUG}_MANIFESTS_DOCKER_TAG - tag of the OCI artifact actually
+#                                           pulled (e.g. "1.2.3-manifests");
+#                                           always emitted - equals VERSION for
+#                                           entries whose artifact tag has no
+#                                           variant suffix (layers)
 #
 # The token-name prefix is derived from the subdir by stripping one trailing
 # 's' and upper-casing, so callers only pass the subdir:
@@ -98,19 +104,22 @@ emit_builtin_token_scalar() {
   log "  builtin token: ${subdir}/${converted} = ${value}"
 }
 
-# Emit the three builtin token files for a single entry.
+# Emit the four builtin token files for a single entry.
 #
-# Usage: emit_builtin_tokens_for_entry <entry> <resolved-version> <subdir>
+# Usage: emit_builtin_tokens_for_entry <entry> <resolved-version> <subdir> <manifests-docker-tag>
 # Requires: OUTPUT_SUB_PATH set in the environment.
 emit_builtin_tokens_for_entry() {
-  if [[ $# -ne 3 ]]; then
-    log_error "emit_builtin_tokens_for_entry requires exactly 3 arguments, got $#"
+  if [[ $# -ne 4 ]]; then
+    log_error "emit_builtin_tokens_for_entry requires exactly 4 arguments, got $#"
     return 1
   fi
 
   local entry="$1"
   local resolved_version="$2"
   local subdir="$3"
+  # Tag of the artifact actually pulled. Callers whose artifact tag carries
+  # no variant suffix (layers) pass the version - tag == version there.
+  local manifests_docker_tag="$4"
 
   if [[ -z "${entry}" ]]; then
     log_error "emit_builtin_tokens_for_entry: entry is required"
@@ -186,4 +195,9 @@ emit_builtin_tokens_for_entry() {
   log "  builtin token: ${subdir}/${spec_name} = ${version_spec}"
   printf '%s' "${resolved_version}" > "${out_dir}/${version_name}"
   log "  builtin token: ${subdir}/${version_name} = ${resolved_version}"
+
+  local manifests_tag_name
+  manifests_tag_name=$(convert_token_name "${TOKEN_NAME_STYLE}" "${base}_MANIFESTS_DOCKER_TAG") || return 1
+  printf '%s' "${manifests_docker_tag}" > "${out_dir}/${manifests_tag_name}"
+  log "  builtin token: ${subdir}/${manifests_tag_name} = ${manifests_docker_tag}"
 }
