@@ -2597,6 +2597,10 @@ jobs:
           CONTRACT_ZIP_FILE_NAME: ${{ steps.manifest-contract-generate.outputs.contract-zip-file-name }}
           RELEASE_CHANGE_DATA_URI: ${{ steps.release-change-data-oci-package.outputs.release-change-data-image-uri }}
           OUTPUT_SUB_PATH: ${{ steps.kpm.outputs.OUTPUT_SUB_PATH }}
+          TARGET_REGISTRY: ${{ steps.resolve-registry.outputs.docker-target-registry }}
+          TARGET_NAMESPACE: ${{ steps.resolve-registry.outputs.docker-target-namespace }}
+          TEMPLATES_LIST_FILE: ${{ steps.templates-import.outputs.templates-list-file }}
+          CONTENTS_LIST_FILE: ${{ steps.product-aggregate.outputs.product-contents-file }}
           GITHUB_SERVER_URL: ${{ github.server_url }}
           GITHUB_REPOSITORY: ${{ github.repository }}
         run: |
@@ -2619,6 +2623,9 @@ jobs:
             {
               echo "notes<<NOTES_EOF"
               echo "Automatic Kube App release for version ${VERSION} of ${PROJECT_NAME} by Kaptain build script. This release page has the manifest zip attached as well as the main docker image, and the manifests docker image with the same zip inside for automatic consumption."
+              ./.github/buildon-github-actions/src/scripts/util/format-release-sections consume "${PROJECT_NAME}" "${VERSION}" "${TARGET_REGISTRY}" "${TARGET_NAMESPACE}"
+              ./.github/buildon-github-actions/src/scripts/util/format-release-sections list "Templates that contributed" "${TEMPLATES_LIST_FILE}"
+              ./.github/buildon-github-actions/src/scripts/util/format-release-sections list "Contents" "${CONTENTS_LIST_FILE}"
               echo ""
               echo "### Release Assets"
               echo "* Kube Manifests: [${MANIFESTS_ZIP_FILE_NAME}](${release_url}/${MANIFESTS_ZIP_FILE_NAME})"

@@ -1773,6 +1773,9 @@ jobs:
           DOCKER_URI: ${{ steps.docker-build.outputs.docker-target-image-full-uri }}
           RELEASE_CHANGE_DATA_URI: ${{ steps.release-change-data-oci-package.outputs.release-change-data-image-uri }}
           OUTPUT_SUB_PATH: ${{ steps.kpm.outputs.OUTPUT_SUB_PATH }}
+          TARGET_REGISTRY: ${{ steps.resolve-registry.outputs.docker-target-registry }}
+          TARGET_NAMESPACE: ${{ steps.resolve-registry.outputs.docker-target-namespace }}
+          LAYERS_LIST_FILE: ${{ steps.layer-package-prepare.outputs.LAYERS_LIST_FILE }}
           GITHUB_SERVER_URL: ${{ github.server_url }}
           GITHUB_REPOSITORY: ${{ github.repository }}
         run: |
@@ -1795,6 +1798,8 @@ jobs:
             {
               echo "notes<<NOTES_EOF"
               echo "Automatic Layer(set) release for version ${VERSION} of ${PROJECT_NAME} by Kaptain build script."
+              ./.github/buildon-github-actions/src/scripts/util/format-release-sections consume "${PROJECT_NAME}" "${VERSION}" "${TARGET_REGISTRY}" "${TARGET_NAMESPACE}"
+              ./.github/buildon-github-actions/src/scripts/util/format-release-sections list "Layers in this layer set" "${LAYERS_LIST_FILE}"
               echo ""
               echo "### Release Assets"
               echo "* KaptainPM.yaml: [KaptainPM-${VERSION}.yaml](${release_url}/KaptainPM-${VERSION}.yaml)"

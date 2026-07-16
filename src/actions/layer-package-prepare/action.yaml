@@ -54,6 +54,9 @@ outputs:
   LAYER_TYPE:
     description: 'Detected layer type: layer or layerset'
     value: ${{ steps.prepare.outputs.LAYER_TYPE }}
+  LAYERS_LIST_FILE:
+    description: 'Bullet list of resolved member layers (layersets only; empty for plain layers)'
+    value: ${{ steps.prepare.outputs.LAYERS_LIST_FILE }}
   DOCKERFILE_SUBSTITUTION_FILES:
     description: 'Comma-separated list of files needing token substitution'
     value: ${{ steps.prepare.outputs.DOCKERFILE_SUBSTITUTION_FILES }}
