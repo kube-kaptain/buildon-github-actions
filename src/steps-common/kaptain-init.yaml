@@ -1,7 +1,10 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
 
-# GH-specific defaults for layer resolution (file values win inside the script)
+# GH-specific registry/namespace defaults, consumed by BOTH kaptain-init (layer
+# resolution) and load-final-kaptainpm-yaml (authoritative DOCKER_TARGET_*
+# outputs). File values win inside the scripts; targetIncludeNamespace=false
+# disregards the namespace default entirely. Do not inline a second copy.
 - name: Prepare registry defaults
   id: registry-defaults
   shell: bash

@@ -18,8 +18,8 @@
     CONTRACT_ZIP_FILE_NAME: ${{ steps.manifest-contract-generate.outputs.contract-zip-file-name }}
     RELEASE_CHANGE_DATA_URI: ${{ steps.release-change-data-oci-package.outputs.release-change-data-image-uri }}
     OUTPUT_SUB_PATH: ${{ steps.kpm.outputs.OUTPUT_SUB_PATH }}
-    TARGET_REGISTRY: ${{ steps.resolve-registry.outputs.docker-target-registry }}
-    TARGET_NAMESPACE: ${{ steps.resolve-registry.outputs.docker-target-namespace }}
+    TARGET_REGISTRY: ${{ steps.kpm.outputs.DOCKER_TARGET_REGISTRY }}
+    TARGET_NAMESPACE: ${{ steps.kpm.outputs.DOCKER_TARGET_NAMESPACE }}
     PRODUCT_CONTENTS_FILE: ${{ steps.product-aggregate.outputs.product-contents-file }}
     GITHUB_SERVER_URL: ${{ github.server_url }}
     GITHUB_REPOSITORY: ${{ github.repository }}

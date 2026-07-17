@@ -4,11 +4,11 @@
 # Only run if a registry was resolved (skip if not configured)
 - name: Docker registry logins
   id: docker-registry-logins
-  if: steps.resolve-registry.outputs.docker-target-registry != ''
+  if: steps.kpm.outputs.DOCKER_TARGET_REGISTRY != ''
   uses: ./.github/buildon-github-actions/src/actions/docker-registry-logins
   with:
     config: ${{ steps.kpm.outputs.DOCKER_REGISTRY_LOGINS }}
     secrets-json: ${{ secrets.docker-registry-logins-secrets }}
-    docker-target-registry: ${{ steps.resolve-registry.outputs.docker-target-registry }}
+    docker-target-registry: ${{ steps.kpm.outputs.DOCKER_TARGET_REGISTRY }}
     output-sub-path: ${{ steps.kpm.outputs.OUTPUT_SUB_PATH }}
     image-build-command: ${{ steps.validate-tooling.outputs.IMAGE_BUILD_COMMAND }}

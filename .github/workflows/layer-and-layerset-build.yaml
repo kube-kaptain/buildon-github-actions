@@ -250,7 +250,10 @@ jobs:
         with:
           action: start
           check-name: 'Build & Publish → Kaptain Init'
-      # GH-specific defaults for layer resolution (file values win inside the script)
+      # GH-specific registry/namespace defaults, consumed by BOTH kaptain-init (layer
+      # resolution) and load-final-kaptainpm-yaml (authoritative DOCKER_TARGET_*
+      # outputs). File values win inside the scripts; targetIncludeNamespace=false
+      # disregards the namespace default entirely. Do not inline a second copy.
       - name: Prepare registry defaults
         id: registry-defaults
         shell: bash
@@ -300,6 +303,12 @@ jobs:
           BUILD_PLATFORM: github-actions
           BUILD_PLATFORM_LOG_PROVIDER: github-actions
           BUILD_KIND: layer-and-layerset-build
+          # Platform registry/namespace defaults (spec values win inside the script;
+          # targetIncludeNamespace=false disregards the namespace entirely). The
+          # DOCKER_TARGET_* outputs of this step are authoritative for the whole
+          # workflow - there is no later resolution step.
+          DOCKER_TARGET_REGISTRY: ${{ steps.registry-defaults.outputs.registry }}
+          DOCKER_TARGET_NAMESPACE: ${{ steps.registry-defaults.outputs.namespace }}
         run: ./.github/buildon-github-actions/src/scripts/main/load-final-kaptainpm-yaml
       - name: Pass check - Load Final KaptainPM YAML
         if: success() && steps.check-load-final-kpm.outputs.check-run-id != ''
@@ -314,17 +323,6 @@ jobs:
         with:
           action: fail
           check-run-id: ${{ steps.check-load-final-kpm.outputs.check-run-id }}
-
-      # === Resolve Registry ===
-      # Resolve target registry and namespace early in workflow
-      # Must run before any hooks or docker operations that need these values
-      # All downstream steps should reference steps.resolve-registry.outputs.*
-      - name: Resolve target registry and namespace
-        id: resolve-registry
-        uses: ./.github/buildon-github-actions/src/actions/resolve-target-registry-and-namespace
-        with:
-          docker-target-registry: ${{ steps.kpm.outputs.DOCKER_TARGET_REGISTRY }}
-          docker-target-namespace: ${{ steps.kpm.outputs.DOCKER_TARGET_NAMESPACE }}
 
       # === Pre-Build ===
       - name: Start check - Pre-Build
@@ -357,8 +355,8 @@ jobs:
           dockerfile-squash: ${{ steps.kpm.outputs.DOCKERFILE_SQUASH }}
           dockerfile-no-cache: ${{ steps.kpm.outputs.DOCKERFILE_NO_CACHE }}
           # Docker target config (from early resolver)
-          docker-target-registry: ${{ steps.resolve-registry.outputs.docker-target-registry }}
-          docker-target-namespace: ${{ steps.resolve-registry.outputs.docker-target-namespace }}
+          docker-target-registry: ${{ steps.kpm.outputs.DOCKER_TARGET_REGISTRY }}
+          docker-target-namespace: ${{ steps.kpm.outputs.DOCKER_TARGET_NAMESPACE }}
           # Docker push targets
           docker-push-targets: ${{ steps.kpm.outputs.DOCKER_PUSH_TARGETS }}
 
@@ -538,12 +536,12 @@ jobs:
       # Only run if a registry was resolved (skip if not configured)
       - name: Docker registry logins
         id: docker-registry-logins
-        if: steps.resolve-registry.outputs.docker-target-registry != '' && success()
+        if: steps.kpm.outputs.DOCKER_TARGET_REGISTRY != '' && success()
         uses: ./.github/buildon-github-actions/src/actions/docker-registry-logins
         with:
           config: ${{ steps.kpm.outputs.DOCKER_REGISTRY_LOGINS }}
           secrets-json: ${{ secrets.docker-registry-logins-secrets }}
-          docker-target-registry: ${{ steps.resolve-registry.outputs.docker-target-registry }}
+          docker-target-registry: ${{ steps.kpm.outputs.DOCKER_TARGET_REGISTRY }}
           output-sub-path: ${{ steps.kpm.outputs.OUTPUT_SUB_PATH }}
           image-build-command: ${{ steps.validate-tooling.outputs.IMAGE_BUILD_COMMAND }}
       - name: Pass check - Docker Registry Logins
@@ -619,8 +617,8 @@ jobs:
           dockerfile-squash: ${{ steps.kpm.outputs.DOCKERFILE_SQUASH }}
           dockerfile-no-cache: ${{ steps.kpm.outputs.DOCKERFILE_NO_CACHE }}
           # Docker target config (from early resolver)
-          docker-target-registry: ${{ steps.resolve-registry.outputs.docker-target-registry }}
-          docker-target-namespace: ${{ steps.resolve-registry.outputs.docker-target-namespace }}
+          docker-target-registry: ${{ steps.kpm.outputs.DOCKER_TARGET_REGISTRY }}
+          docker-target-namespace: ${{ steps.kpm.outputs.DOCKER_TARGET_NAMESPACE }}
           # Docker push targets
           docker-push-targets: ${{ steps.kpm.outputs.DOCKER_PUSH_TARGETS }}
 
@@ -824,8 +822,8 @@ jobs:
           dockerfile-squash: ${{ steps.kpm.outputs.DOCKERFILE_SQUASH }}
           dockerfile-no-cache: ${{ steps.kpm.outputs.DOCKERFILE_NO_CACHE }}
           # Docker target config (from early resolver)
-          docker-target-registry: ${{ steps.resolve-registry.outputs.docker-target-registry }}
-          docker-target-namespace: ${{ steps.resolve-registry.outputs.docker-target-namespace }}
+          docker-target-registry: ${{ steps.kpm.outputs.DOCKER_TARGET_REGISTRY }}
+          docker-target-namespace: ${{ steps.kpm.outputs.DOCKER_TARGET_NAMESPACE }}
           # Docker push targets
           docker-push-targets: ${{ steps.kpm.outputs.DOCKER_PUSH_TARGETS }}
 
@@ -1050,8 +1048,8 @@ jobs:
           version: ${{ steps.versions.outputs.version }}
           docker-tag: ${{ steps.versions.outputs.docker-tag }}
           docker-image-name: ${{ steps.versions.outputs.docker-image-name }}
-          docker-target-registry: ${{ steps.resolve-registry.outputs.docker-target-registry }}
-          docker-target-namespace: ${{ steps.resolve-registry.outputs.docker-target-namespace }}
+          docker-target-registry: ${{ steps.kpm.outputs.DOCKER_TARGET_REGISTRY }}
+          docker-target-namespace: ${{ steps.kpm.outputs.DOCKER_TARGET_NAMESPACE }}
           project-name: ${{ steps.versions.outputs.project-name }}
           output-sub-path: ${{ steps.kpm.outputs.OUTPUT_SUB_PATH }}
           docker-push-image-list-file: ${{ steps.docker-registry-logins.outputs.docker-push-image-list-file }}
@@ -1101,8 +1099,8 @@ jobs:
           dockerfile-squash: ${{ steps.kpm.outputs.DOCKERFILE_SQUASH }}
           dockerfile-no-cache: ${{ steps.kpm.outputs.DOCKERFILE_NO_CACHE }}
           # Docker target config (from early resolver)
-          docker-target-registry: ${{ steps.resolve-registry.outputs.docker-target-registry }}
-          docker-target-namespace: ${{ steps.resolve-registry.outputs.docker-target-namespace }}
+          docker-target-registry: ${{ steps.kpm.outputs.DOCKER_TARGET_REGISTRY }}
+          docker-target-namespace: ${{ steps.kpm.outputs.DOCKER_TARGET_NAMESPACE }}
           # Docker push targets
           docker-push-targets: ${{ steps.kpm.outputs.DOCKER_PUSH_TARGETS }}
 
@@ -1272,8 +1270,8 @@ jobs:
           repository-name: ${{ steps.versions.outputs.repository-name }}
           output-sub-path: ${{ steps.kpm.outputs.OUTPUT_SUB_PATH }}
           image-build-command: ${{ steps.validate-tooling.outputs.IMAGE_BUILD_COMMAND }}
-          docker-target-registry: ${{ steps.resolve-registry.outputs.docker-target-registry }}
-          docker-target-namespace: ${{ steps.resolve-registry.outputs.docker-target-namespace }}
+          docker-target-registry: ${{ steps.kpm.outputs.DOCKER_TARGET_REGISTRY }}
+          docker-target-namespace: ${{ steps.kpm.outputs.DOCKER_TARGET_NAMESPACE }}
           layer-packaging-base-image: ${{ steps.kpm.outputs.LAYER_PACKAGING_BASE_IMAGE }}
       - name: Pass check - Layer Package Prepare
         if: success() && steps.check-layer-package-prepare.outputs.check-run-id != ''
@@ -1301,8 +1299,8 @@ jobs:
         id: docker-build
         uses: ./.github/buildon-github-actions/src/actions/docker-build-dockerfile
         with:
-          docker-target-registry: ${{ steps.resolve-registry.outputs.docker-target-registry }}
-          docker-target-namespace: ${{ steps.resolve-registry.outputs.docker-target-namespace }}
+          docker-target-registry: ${{ steps.kpm.outputs.DOCKER_TARGET_REGISTRY }}
+          docker-target-namespace: ${{ steps.kpm.outputs.DOCKER_TARGET_NAMESPACE }}
           docker-image-name: ${{ steps.versions.outputs.docker-image-name }}
           docker-tag: ${{ steps.versions.outputs.docker-tag }}
           version: ${{ steps.versions.outputs.version }}
@@ -1367,8 +1365,8 @@ jobs:
           layer-type: ${{ steps.layer-package-prepare.outputs.LAYER_TYPE }}
           image-build-command: ${{ steps.validate-tooling.outputs.IMAGE_BUILD_COMMAND }}
           docker-platform: ${{ steps.kpm.outputs.DOCKER_PLATFORM }}
-          docker-target-registry: ${{ steps.resolve-registry.outputs.docker-target-registry }}
-          docker-target-namespace: ${{ steps.resolve-registry.outputs.docker-target-namespace }}
+          docker-target-registry: ${{ steps.kpm.outputs.DOCKER_TARGET_REGISTRY }}
+          docker-target-namespace: ${{ steps.kpm.outputs.DOCKER_TARGET_NAMESPACE }}
           token-delimiter-style: ${{ steps.kpm.outputs.TOKEN_DELIMITER_STYLE }}
           token-name-style: ${{ steps.kpm.outputs.TOKEN_NAME_STYLE }}
           output-sub-path: ${{ steps.kpm.outputs.OUTPUT_SUB_PATH }}
@@ -1416,8 +1414,8 @@ jobs:
           dockerfile-squash: ${{ steps.kpm.outputs.DOCKERFILE_SQUASH }}
           dockerfile-no-cache: ${{ steps.kpm.outputs.DOCKERFILE_NO_CACHE }}
           # Docker target config (from early resolver)
-          docker-target-registry: ${{ steps.resolve-registry.outputs.docker-target-registry }}
-          docker-target-namespace: ${{ steps.resolve-registry.outputs.docker-target-namespace }}
+          docker-target-registry: ${{ steps.kpm.outputs.DOCKER_TARGET_REGISTRY }}
+          docker-target-namespace: ${{ steps.kpm.outputs.DOCKER_TARGET_NAMESPACE }}
           # Docker push targets
           docker-push-targets: ${{ steps.kpm.outputs.DOCKER_PUSH_TARGETS }}
 
@@ -1586,8 +1584,8 @@ jobs:
         with:
           docker-push-image-list-file: ${{ steps.docker-registry-logins.outputs.docker-push-image-list-file }}
           docker-push-targets: ${{ steps.kpm.outputs.DOCKER_PUSH_TARGETS }}
-          docker-target-registry: ${{ steps.resolve-registry.outputs.docker-target-registry }}
-          docker-target-namespace: ${{ steps.resolve-registry.outputs.docker-target-namespace }}
+          docker-target-registry: ${{ steps.kpm.outputs.DOCKER_TARGET_REGISTRY }}
+          docker-target-namespace: ${{ steps.kpm.outputs.DOCKER_TARGET_NAMESPACE }}
           image-build-command: ${{ steps.validate-tooling.outputs.IMAGE_BUILD_COMMAND }}
       - name: Pass check - Docker Multi-Tag
         if: steps.kpm.outputs.DOCKER_PUSH_TARGETS != '' && success() && steps.check-docker-multi-tag.outputs.check-run-id != ''
@@ -1672,8 +1670,8 @@ jobs:
           config-value-trailing-newline: ${{ steps.kpm.outputs.CONFIG_VALUE_TRAILING_NEWLINE }}
           token-substitution-passes: ${{ steps.kpm.outputs.TOKEN_SUBSTITUTION_PASSES }}
           docker-image-full-uri: ${{ steps.docker-build.outputs.docker-target-image-full-uri }}
-          docker-target-registry: ${{ steps.resolve-registry.outputs.docker-target-registry }}
-          docker-target-namespace: ${{ steps.resolve-registry.outputs.docker-target-namespace }}
+          docker-target-registry: ${{ steps.kpm.outputs.DOCKER_TARGET_REGISTRY }}
+          docker-target-namespace: ${{ steps.kpm.outputs.DOCKER_TARGET_NAMESPACE }}
       - name: Pass check - GitHub Release Prepare
         if: steps.kpm.outputs.GITHUB_RELEASE_ENABLED == 'true' && success() && steps.check-github-release-prepare.outputs.check-run-id != ''
         continue-on-error: true
@@ -1773,8 +1771,8 @@ jobs:
           DOCKER_URI: ${{ steps.docker-build.outputs.docker-target-image-full-uri }}
           RELEASE_CHANGE_DATA_URI: ${{ steps.release-change-data-oci-package.outputs.release-change-data-image-uri }}
           OUTPUT_SUB_PATH: ${{ steps.kpm.outputs.OUTPUT_SUB_PATH }}
-          TARGET_REGISTRY: ${{ steps.resolve-registry.outputs.docker-target-registry }}
-          TARGET_NAMESPACE: ${{ steps.resolve-registry.outputs.docker-target-namespace }}
+          TARGET_REGISTRY: ${{ steps.kpm.outputs.DOCKER_TARGET_REGISTRY }}
+          TARGET_NAMESPACE: ${{ steps.kpm.outputs.DOCKER_TARGET_NAMESPACE }}
           LAYERS_LIST_FILE: ${{ steps.layer-package-prepare.outputs.LAYERS_LIST_FILE }}
           GITHUB_SERVER_URL: ${{ github.server_url }}
           GITHUB_REPOSITORY: ${{ github.repository }}
@@ -1866,8 +1864,8 @@ jobs:
           dockerfile-squash: ${{ steps.kpm.outputs.DOCKERFILE_SQUASH }}
           dockerfile-no-cache: ${{ steps.kpm.outputs.DOCKERFILE_NO_CACHE }}
           # Docker target config (from early resolver)
-          docker-target-registry: ${{ steps.resolve-registry.outputs.docker-target-registry }}
-          docker-target-namespace: ${{ steps.resolve-registry.outputs.docker-target-namespace }}
+          docker-target-registry: ${{ steps.kpm.outputs.DOCKER_TARGET_REGISTRY }}
+          docker-target-namespace: ${{ steps.kpm.outputs.DOCKER_TARGET_NAMESPACE }}
           # Docker push targets
           docker-push-targets: ${{ steps.kpm.outputs.DOCKER_PUSH_TARGETS }}
 

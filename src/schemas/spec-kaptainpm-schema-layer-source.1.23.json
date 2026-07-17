@@ -1,15 +1,15 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/kube-kaptain/spec-kaptainpm-schema/releases/download/1.22/spec-kaptainpm-schema-layer-1.22.yaml",
+  "$id": "https://github.com/kube-kaptain/spec-kaptainpm-schema/releases/download/1.23/spec-kaptainpm-schema-layer-source-1.23.yaml",
   "name": "spec-kaptainpm-schema",
-  "version": "1.22",
+  "version": "1.23",
   "source": "https://github.com/kube-kaptain/spec-kaptainpm-schema",
   "latest": "https://raw.githubusercontent.com/kube-kaptain/spec-kaptainpm-schema/main/spec-kaptainpm-schema.yaml",
-  "tagged": "https://raw.githubusercontent.com/kube-kaptain/spec-kaptainpm-schema/1.22/spec-kaptainpm-schema.yaml",
-  "release": "https://github.com/kube-kaptain/spec-kaptainpm-schema/releases/download/1.22/spec-kaptainpm-schema-layer-1.22.yaml",
-  "validate-using": "https://github.com/kube-kaptain/spec-kaptainpm-schema/releases/download/1.22/spec-kaptainpm-schema-layer-1.22.json",
+  "tagged": "https://raw.githubusercontent.com/kube-kaptain/spec-kaptainpm-schema/1.23/spec-kaptainpm-schema.yaml",
+  "release": "https://github.com/kube-kaptain/spec-kaptainpm-schema/releases/download/1.23/spec-kaptainpm-schema-layer-source-1.23.yaml",
+  "validate-using": "https://github.com/kube-kaptain/spec-kaptainpm-schema/releases/download/1.23/spec-kaptainpm-schema-layer-source-1.23.json",
   "title": "KaptainPM",
-  "description": "Kaptain project manifest schema (version 1.22).\n",
+  "description": "Kaptain project manifest schema (version 1.23).\n",
   "type": "object",
   "required": [
     "apiVersion"
@@ -19,7 +19,7 @@
     "apiVersion": {
       "type": "string",
       "pattern": "^kaptain\\.org/[0-9]+(\\.[0-9]+)*$",
-      "description": "API version - must be kaptain.org/ followed by the schema version (e.g. kaptain.org/1.2). Set via 1.22 token substitution at build time.\n"
+      "description": "API version - must be kaptain.org/ followed by the schema version (e.g. kaptain.org/1.2). Set via 1.23 token substitution at build time.\n"
     },
     "kind": {
       "type": "string",
@@ -28,7 +28,7 @@
     "metadata": {
       "type": "object",
       "additionalProperties": true,
-      "description": "Project metadata with required build traceability fields.",
+      "description": "Project metadata including build traceability labels and annotations. When present, label and annotation values must be strings.\n",
       "properties": {
         "description": {
           "type": "string",
@@ -39,30 +39,16 @@
           "additionalProperties": {
             "type": "string"
           },
-          "description": "Queryable build metadata labels. All values must be strings.",
-          "required": [
-            "kaptain.org/version",
-            "kaptain.org/project-name",
-            "kaptain.org/owner"
-          ]
+          "description": "Queryable build metadata labels. All values must be strings."
         },
         "annotations": {
           "type": "object",
           "additionalProperties": {
             "type": "string"
           },
-          "description": "Informational build metadata annotations. All values must be strings.",
-          "required": [
-            "kaptain.org/built-by",
-            "kaptain.org/source-repository",
-            "kaptain.org/image-uri"
-          ]
+          "description": "Informational build metadata annotations. All values must be strings."
         }
-      },
-      "required": [
-        "labels",
-        "annotations"
-      ]
+      }
     },
     "user-data": {
       "type": "object",
@@ -630,6 +616,27 @@
           "type": "object",
           "additionalProperties": false,
           "description": "Container image build and retag configuration",
+          "allOf": [
+            {
+              "if": {
+                "properties": {
+                  "targetIncludeNamespace": {
+                    "const": false
+                  }
+                },
+                "required": [
+                  "targetIncludeNamespace"
+                ]
+              },
+              "then": {
+                "properties": {
+                  "targetNamespace": {
+                    "const": ""
+                  }
+                }
+              }
+            }
+          ],
           "properties": {
             "runtime": {
               "type": "string",
@@ -657,9 +664,24 @@
               "$ref": "#/$defs/registryDomain",
               "description": "Target registry domain for built images"
             },
+            "targetAllowNoRegistry": {
+              "type": "boolean",
+              "description": "Exempt this project from the load-time target registry check on platforms that provide no registry default. Default false. basic-quality-checks builds never require a registry; every other build kind fails at load when no registry is configured or platform-provided, unless this is true. Docker operations (including in hooks) will still fail without a registry - setting this owns that risk.\n"
+            },
             "targetNamespace": {
-              "$ref": "#/$defs/registryNamespace",
-              "description": "Target namespace/organisation for built images. Supports nested paths, but no leading/trailing slashes.\n"
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/registryNamespace"
+                },
+                {
+                  "const": ""
+                }
+              ],
+              "description": "Target namespace/organisation for built images. Supports nested paths, but no leading/trailing slashes. Empty string is treated as not configured.\n"
+            },
+            "targetIncludeNamespace": {
+              "type": "boolean",
+              "description": "Include the namespace segment in built image URIs and short-form reference expansion. Default true. Set false for flat registry layouts: platform-injected namespace defaults are disregarded, and a non-empty targetNamespace alongside false is rejected by schema - in every variant, so a layer-contributed namespace must be overridden with an explicit targetNamespace \"\" in the project file. Layer resolution reads this from the project file only - layers cannot influence the namespace used to fetch the layers themselves.\n"
             },
             "pushTargets": {
               "type": "array",

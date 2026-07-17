@@ -25,8 +25,8 @@
     docker-tag: ${{ steps.versions.outputs.docker-tag }}
     docker-image-name: ${{ steps.versions.outputs.docker-image-name }}
     docker-image-full-uri: ${{ steps.docker-build.outputs.docker-target-image-full-uri }}
-    docker-target-registry: ${{ steps.resolve-registry.outputs.docker-target-registry }}
-    docker-target-namespace: ${{ steps.resolve-registry.outputs.docker-target-namespace }}
+    docker-target-registry: ${{ steps.kpm.outputs.DOCKER_TARGET_REGISTRY }}
+    docker-target-namespace: ${{ steps.kpm.outputs.DOCKER_TARGET_NAMESPACE }}
     is-release: ${{ steps.versions.outputs.is-release }}
     token-delimiter-style: ${{ steps.kpm.outputs.TOKEN_DELIMITER_STYLE }}
     token-name-style: ${{ steps.kpm.outputs.TOKEN_NAME_STYLE }}

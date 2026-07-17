@@ -166,9 +166,10 @@ main() {
   if [[ -n "${TARGET_REGISTRY:-}" ]]; then
     write_builtin_token "TARGET_REGISTRY" "${TARGET_REGISTRY}"
   fi
-  if [[ -n "${TARGET_NAMESPACE:-}" ]]; then
-    write_builtin_token "TARGET_NAMESPACE" "${TARGET_NAMESPACE}"
-  fi
+  # Always written, possibly empty: targetIncludeNamespace=false resolves to
+  # an empty namespace, and ${TargetNamespace} must substitute to "" rather
+  # than ship as a dangling token.
+  write_builtin_token "TARGET_NAMESPACE" "${TARGET_NAMESPACE:-}"
 
   # Optional platform tokens (available when called from docker-build-dockerfile)
   if [[ -n "${DOCKER_PLATFORM:-}" ]]; then

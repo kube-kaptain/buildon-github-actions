@@ -9,7 +9,7 @@
     output-sub-path: ${{ steps.kpm.outputs.OUTPUT_SUB_PATH }}
     token-delimiter-style: ${{ steps.kpm.outputs.TOKEN_DELIMITER_STYLE }}
     token-name-style: ${{ steps.kpm.outputs.TOKEN_NAME_STYLE }}
-    docker-target-registry: ${{ steps.resolve-registry.outputs.docker-target-registry }}
-    docker-target-namespace: ${{ steps.resolve-registry.outputs.docker-target-namespace }}
+    docker-target-registry: ${{ steps.kpm.outputs.DOCKER_TARGET_REGISTRY }}
+    docker-target-namespace: ${{ steps.kpm.outputs.DOCKER_TARGET_NAMESPACE }}
     image-build-command: ${{ steps.validate-tooling.outputs.IMAGE_BUILD_COMMAND }}
     is-release: ${{ steps.versions.outputs.is-release }}

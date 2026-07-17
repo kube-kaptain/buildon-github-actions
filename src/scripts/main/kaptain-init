@@ -59,6 +59,10 @@ source "${SCRIPT_DIR}/../lib/validate-exact-file-exists.bash"
 source "${SCRIPT_DIR}/../lib/validate-layer-payload.bash"
 # shellcheck source=src/scripts/lib/builtin-tokens-from-entry.bash
 source "${SCRIPT_DIR}/../lib/builtin-tokens-from-entry.bash"
+# shellcheck source=src/scripts/defaults/docker-target.bash
+source "${SCRIPT_DIR}/../defaults/docker-target.bash"
+# shellcheck source=src/scripts/lib/kaptainpm-bool.bash
+source "${SCRIPT_DIR}/../lib/kaptainpm-bool.bash"
 
 # IMAGE_BUILD_COMMAND is required because it's both written as a builtin token
 # below and consumed later by artifact-fetch when resolving layers. Same source
@@ -158,14 +162,21 @@ else
   log "No target registry configured (short-form layer refs will fail)"
 fi
 
+# targetIncludeNamespace=false disregards every namespace source - file and
+# platform/environment default alike. Read from the project file only: layers
+# cannot influence the namespace used to fetch the layers themselves.
+file_include_namespace=$(kaptainpm_bool "${PM_FILE}" spec.main.docker.targetIncludeNamespace "${DOCKER_TARGET_INCLUDE_NAMESPACE_DEFAULT}")
 file_namespace=$(yq eval '.spec.main.docker.targetNamespace // ""' "${PM_FILE}")
-if [[ -n "${file_namespace}" ]]; then
+if [[ "${file_include_namespace}" == "false" ]]; then
+  log "targetIncludeNamespace=false: namespace disregarded (short-form layer refs expand without a namespace segment)"
+  export DOCKER_TARGET_NAMESPACE=""
+elif [[ -n "${file_namespace}" ]]; then
   log "Namespace from KaptainPM.yaml: ${file_namespace}"
   export DOCKER_TARGET_NAMESPACE="${file_namespace}"
 elif [[ -n "${DOCKER_TARGET_NAMESPACE:-}" ]]; then
   log "Namespace from environment fallback: ${DOCKER_TARGET_NAMESPACE}"
 else
-  log "No target namespace configured (short-form layer refs will fail)"
+  log "No target namespace configured (short-form layer refs expand without a namespace segment)"
 fi
 
 # --- Read layers list ---

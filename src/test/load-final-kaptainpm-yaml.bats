@@ -22,6 +22,12 @@ setup() {
 
   export BUILD_KIND="test-build"
   unset REFERENCE_SCRIPT_OUTPUT 2>/dev/null || true
+
+  # Platform registry/namespace defaults - always present in reality (GH:
+  # registry-defaults step, local: detect-build-context). Individual tests
+  # unset these to exercise the no-default platform paths.
+  export DOCKER_TARGET_REGISTRY="ghcr.io"
+  export DOCKER_TARGET_NAMESPACE="kube-kaptain"
 }
 
 # Write a minimal valid KaptainPM.yaml with the given kind
@@ -376,6 +382,83 @@ EOF
   run_script
   [ "${status}" -eq 0 ]
   assert_github_output "LAYER_PACKAGING_BASE_IMAGE" "alpine:3.19"
+}
+
+# =============================================================================
+# Target registry/namespace resolution (authoritative - no later resolve step)
+# =============================================================================
+
+@test "registry/namespace: spec values win over platform defaults" {
+  cat > "${TEST_DIR}/kaptainpm/final/KaptainPM.yaml" << 'EOF'
+apiVersion: kaptain.org/1.10
+kind: test-build
+spec:
+  main:
+    docker:
+      targetRegistry: quay.io
+      targetNamespace: my-ns
+EOF
+  run_script
+  [ "${status}" -eq 0 ]
+  assert_github_output "DOCKER_TARGET_REGISTRY" "quay.io"
+  assert_github_output "DOCKER_TARGET_NAMESPACE" "my-ns"
+}
+
+@test "registry/namespace: platform defaults used when spec absent, always emitted" {
+  write_pm
+  run_script
+  [ "${status}" -eq 0 ]
+  assert_github_output "DOCKER_TARGET_REGISTRY" "ghcr.io"
+  assert_github_output "DOCKER_TARGET_NAMESPACE" "kube-kaptain"
+}
+
+@test "targetIncludeNamespace=false: namespace emitted empty despite platform default" {
+  cat > "${TEST_DIR}/kaptainpm/final/KaptainPM.yaml" << 'EOF'
+apiVersion: kaptain.org/1.10
+kind: test-build
+spec:
+  main:
+    docker:
+      targetIncludeNamespace: false
+EOF
+  run_script
+  [ "${status}" -eq 0 ]
+  assert_github_output "DOCKER_TARGET_NAMESPACE" ""
+  [[ "$output" == *"targetIncludeNamespace=false"* ]] || return 1
+}
+
+@test "no registry anywhere: fails for normal build kinds" {
+  unset DOCKER_TARGET_REGISTRY
+  write_pm
+  run_script
+  [ "${status}" -ne 0 ]
+  [[ "$output" == *"No target registry configured and the platform provides no default"* ]] || return 1
+}
+
+@test "no registry anywhere: allowed for basic-quality-checks" {
+  unset DOCKER_TARGET_REGISTRY
+  export BUILD_KIND="basic-quality-checks"
+  write_pm "basic-quality-checks"
+  run_script
+  [ "${status}" -eq 0 ]
+  assert_github_output "DOCKER_TARGET_REGISTRY" ""
+  [[ "$output" == *"not required for basic-quality-checks"* ]] || return 1
+}
+
+@test "no registry anywhere: allowed when targetAllowNoRegistry is true" {
+  unset DOCKER_TARGET_REGISTRY
+  cat > "${TEST_DIR}/kaptainpm/final/KaptainPM.yaml" << 'EOF'
+apiVersion: kaptain.org/1.10
+kind: test-build
+spec:
+  main:
+    docker:
+      targetAllowNoRegistry: true
+EOF
+  run_script
+  [ "${status}" -eq 0 ]
+  assert_github_output "DOCKER_TARGET_REGISTRY" ""
+  [[ "$output" == *"exempted by targetAllowNoRegistry"* ]] || return 1
 }
 
 teardown() {

@@ -223,14 +223,15 @@ if [[ "${LAYER_TYPE}" == "layerset" ]]; then
     # Build the full image reference — ref may be short form (name:version)
     # artifact-resolve would give us the full URI but we need the image directly
     # Use the same registry/namespace inference as artifact-resolve docker provider
+    # Empty namespace is legitimate (targetIncludeNamespace=false) - omit the segment
     if [[ "${ref}" == *"/"* && "${ref%%/*}" == *"."* ]]; then
       image_ref="${ref}"
     elif [[ "${ref}" == *"/"* ]]; then
-      image_ref="${DOCKER_TARGET_REGISTRY:-}/${DOCKER_TARGET_NAMESPACE:-}/${ref}"
+      image_ref="${DOCKER_TARGET_REGISTRY:-}/${DOCKER_TARGET_NAMESPACE:+${DOCKER_TARGET_NAMESPACE}/}${ref}"
     else
       ref_name="${ref%%:*}"
       ref_prefix="${ref_name%%-*}"
-      image_ref="${DOCKER_TARGET_REGISTRY:-}/${DOCKER_TARGET_NAMESPACE:-}/${ref_prefix}/${ref}"
+      image_ref="${DOCKER_TARGET_REGISTRY:-}/${DOCKER_TARGET_NAMESPACE:+${DOCKER_TARGET_NAMESPACE}/}${ref_prefix}/${ref}"
     fi
 
     if ! "${OCI_EXTRACT}" "${image_ref}" "${dep_staging}" /KaptainPM.yaml 2>/dev/null; then

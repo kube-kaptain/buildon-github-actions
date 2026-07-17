@@ -35,6 +35,10 @@ source "${SCRIPT_DIR}/../lib/log.bash"
 
 # shellcheck source=src/scripts/lib/output-var.bash
 source "${SCRIPT_DIR}/../lib/output-var.bash"
+# shellcheck source=src/scripts/defaults/docker-target.bash
+source "${SCRIPT_DIR}/../defaults/docker-target.bash"
+# shellcheck source=src/scripts/lib/kaptainpm-bool.bash
+source "${SCRIPT_DIR}/../lib/kaptainpm-bool.bash"
 
 # Build scripts repo root - absolute path to the buildon checkout this script
 # is part of. Hooks need this so user hook scripts can locate the build's
@@ -123,8 +127,8 @@ MAPPINGS=(
   "spec.main.docker.runtime:IMAGE_BUILD_COMMAND"
   "spec.main.docker.platform:DOCKER_PLATFORM"
   # Note: logins exported separately as JSON below (multi-line YAML won't fit in output_var)
-  "spec.main.docker.targetRegistry:DOCKER_TARGET_REGISTRY"
-  "spec.main.docker.targetNamespace:DOCKER_TARGET_NAMESPACE"
+  # Note: targetRegistry/targetNamespace resolved separately below (platform
+  # default fallback, targetIncludeNamespace policy, registry-required check)
   # Note: pushTargets exported separately as JSON below (array of objects won't fit in output_var)
   "spec.main.docker.dockerfile.substitutionFiles:DOCKERFILE_SUBSTITUTION_FILES"
   "spec.main.docker.dockerfile.subPath:DOCKERFILE_SUB_PATH"
@@ -408,6 +412,60 @@ for mapping in "${MAPPINGS[@]}"; do
   log "Field .${yaml_path} = \"${value}\" exported as ${env_var}"
   found_count=$((found_count + 1))
 done
+log ""
+
+# --- Docker target registry/namespace: resolved here, authoritatively ---
+# Spec values win; the environment supplies the platform default (GH: the
+# registry-defaults step ahead of kaptain-init, local: detect-build-context).
+# Both outputs are ALWAYS emitted - downstream consumes these and nothing
+# else; there is no later resolution step.
+target_registry=$(yq -r '.spec.main.docker.targetRegistry // ""' "${PM_FILE}")
+if [[ -n "${target_registry}" && "${target_registry}" != "null" ]]; then
+  log "Target registry from KaptainPM.yaml: ${target_registry}"
+elif [[ -n "${DOCKER_TARGET_REGISTRY:-}" ]]; then
+  target_registry="${DOCKER_TARGET_REGISTRY}"
+  log "Target registry from platform default: ${target_registry}"
+fi
+
+if [[ -z "${target_registry}" ]]; then
+  # basic-quality-checks structurally does no docker work. Every other kind
+  # composes image URIs eventually - an empty registry produces garbage URIs
+  # far from the cause, so fail here, at the first place the merged config
+  # is known, unless explicitly exempted.
+  allow_no_registry=$(kaptainpm_bool "${PM_FILE}" spec.main.docker.targetAllowNoRegistry "${DOCKER_TARGET_ALLOW_NO_REGISTRY_DEFAULT}")
+  if [[ "${BUILD_KIND}" == "basic-quality-checks" ]]; then
+    log "No target registry configured (not required for ${BUILD_KIND})"
+  elif [[ "${allow_no_registry}" == "true" ]]; then
+    log "No target registry configured (exempted by targetAllowNoRegistry - docker operations will fail if attempted)"
+  else
+    log_error "No target registry configured and the platform provides no default."
+    log_error "Set spec.main.docker.targetRegistry, provide DOCKER_TARGET_REGISTRY, or set spec.main.docker.targetAllowNoRegistry: true if this build genuinely needs no registry."
+    exit 1
+  fi
+fi
+output_var "DOCKER_TARGET_REGISTRY" "${target_registry}" > /dev/null
+log "Resolved DOCKER_TARGET_REGISTRY = \"${target_registry}\""
+
+include_namespace=$(kaptainpm_bool "${PM_FILE}" spec.main.docker.targetIncludeNamespace "${DOCKER_TARGET_INCLUDE_NAMESPACE_DEFAULT}")
+target_namespace=""
+if [[ "${include_namespace}" == "false" ]]; then
+  # Schema rejects a non-empty targetNamespace alongside false in every
+  # variant (a layer-contributed one must be overridden with an explicit ""
+  # in the project file), so only the platform default remains to disregard.
+  log "targetIncludeNamespace=false: namespace segment excluded from image URIs"
+else
+  target_namespace=$(yq -r '.spec.main.docker.targetNamespace // ""' "${PM_FILE}")
+  if [[ -n "${target_namespace}" && "${target_namespace}" != "null" ]]; then
+    log "Target namespace from KaptainPM.yaml: ${target_namespace}"
+  elif [[ -n "${DOCKER_TARGET_NAMESPACE:-}" ]]; then
+    target_namespace="${DOCKER_TARGET_NAMESPACE}"
+    log "Target namespace from platform default: ${target_namespace}"
+  else
+    log "No target namespace configured"
+  fi
+fi
+output_var "DOCKER_TARGET_NAMESPACE" "${target_namespace}" > /dev/null
+log "Resolved DOCKER_TARGET_NAMESPACE = \"${target_namespace}\""
 log ""
 
 # Extract registry login config as a single-line JSON string for
