@@ -370,6 +370,68 @@ EOF
 }
 
 # =============================================================================
+# targetIncludeNamespace
+# =============================================================================
+
+@test "targetIncludeNamespace=false disregards file and environment namespace" {
+  # setup exports DOCKER_TARGET_NAMESPACE=kube-kaptain (the platform default);
+  # the flag must beat it.
+  cat > "${REPO_DIR}/KaptainPM.yaml" << 'EOF'
+apiVersion: kaptain.org/1.2
+kind: kubernetes-app-docker-dockerfile
+spec:
+  main:
+    docker:
+      targetIncludeNamespace: false
+    quality:
+      branches:
+        blockSlashes: true
+EOF
+  run "$SCRIPT"
+  [[ "$status" -eq 0 ]] || return 1
+  [[ "$output" == *"targetIncludeNamespace=false: namespace disregarded"* ]] || return 1
+}
+
+@test "targetIncludeNamespace absent: file namespace wins over environment" {
+  cat > "${REPO_DIR}/KaptainPM.yaml" << 'EOF'
+apiVersion: kaptain.org/1.2
+kind: kubernetes-app-docker-dockerfile
+spec:
+  main:
+    docker:
+      targetNamespace: my-own-ns
+    quality:
+      branches:
+        blockSlashes: true
+EOF
+  run "$SCRIPT"
+  [[ "$status" -eq 0 ]] || return 1
+  [[ "$output" == *"Namespace from KaptainPM.yaml: my-own-ns"* ]] || return 1
+}
+
+@test "targetIncludeNamespace=false with populated targetNamespace fails schema validation" {
+  # Drop the always-pass mock: this test pins the VENDORED schema's exclusion
+  # end-to-end through kaptain-init's real validation.
+  rm "${MOCK_BIN_DIR}/check-jsonschema"
+  command -v check-jsonschema &>/dev/null || skip "check-jsonschema not available"
+  cat > "${REPO_DIR}/KaptainPM.yaml" << 'EOF'
+apiVersion: kaptain.org/1.2
+kind: kubernetes-app-docker-dockerfile
+spec:
+  main:
+    docker:
+      targetIncludeNamespace: false
+      targetNamespace: kube-kaptain
+    quality:
+      branches:
+        blockSlashes: true
+EOF
+  run "$SCRIPT"
+  [[ "$status" -ne 0 ]] || return 1
+  [[ "$output" == *"targetNamespace"* ]] || return 1
+}
+
+# =============================================================================
 # Missing KaptainPM.yaml
 # =============================================================================
 

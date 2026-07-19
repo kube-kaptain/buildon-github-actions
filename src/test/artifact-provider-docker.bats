@@ -264,11 +264,12 @@ teardown() {
   assert_output_contains "DOCKER_TARGET_REGISTRY"
 }
 
-@test "short form: fails without DOCKER_TARGET_NAMESPACE" {
+@test "short form: expands without namespace segment when namespace empty" {
+  # Empty namespace is legitimate (targetIncludeNamespace=false) - two-segment expansion
   unset DOCKER_TARGET_NAMESPACE
   run "$PROVIDER" "quality-strict:1.0" "${OUTPUT_FILE}"
-  [[ "$status" -eq 1 ]] || return 1
-  assert_output_contains "DOCKER_TARGET_NAMESPACE"
+  [[ "$status" -eq 0 ]] || return 1
+  [[ "$(cat "${OUTPUT_FILE}")" == "ghcr.io/quality/quality-strict:1.0" ]] || return 1
 }
 
 @test "prefixed form: fails without DOCKER_TARGET_REGISTRY" {
@@ -278,11 +279,11 @@ teardown() {
   assert_output_contains "DOCKER_TARGET_REGISTRY"
 }
 
-@test "prefixed form: fails without DOCKER_TARGET_NAMESPACE" {
+@test "prefixed form: expands without namespace segment when namespace empty" {
   unset DOCKER_TARGET_NAMESPACE
   run "$PROVIDER" "java/java-web-service:2.1" "${OUTPUT_FILE}"
-  [[ "$status" -eq 1 ]] || return 1
-  assert_output_contains "DOCKER_TARGET_NAMESPACE"
+  [[ "$status" -eq 0 ]] || return 1
+  [[ "$(cat "${OUTPUT_FILE}")" == "ghcr.io/java/java-web-service:2.1" ]] || return 1
 }
 
 # =============================================================================

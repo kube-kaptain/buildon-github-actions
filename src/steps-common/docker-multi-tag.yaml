@@ -8,6 +8,6 @@
   with:
     docker-push-image-list-file: ${{ steps.docker-registry-logins.outputs.docker-push-image-list-file }}
     docker-push-targets: ${{ steps.kpm.outputs.DOCKER_PUSH_TARGETS }}
-    docker-target-registry: ${{ steps.resolve-registry.outputs.docker-target-registry }}
-    docker-target-namespace: ${{ steps.resolve-registry.outputs.docker-target-namespace }}
+    docker-target-registry: ${{ steps.kpm.outputs.DOCKER_TARGET_REGISTRY }}
+    docker-target-namespace: ${{ steps.kpm.outputs.DOCKER_TARGET_NAMESPACE }}
     image-build-command: ${{ steps.validate-tooling.outputs.IMAGE_BUILD_COMMAND }}

@@ -69,5 +69,5 @@
     config-value-trailing-newline: ${{ steps.kpm.outputs.CONFIG_VALUE_TRAILING_NEWLINE }}
     token-substitution-passes: ${{ steps.kpm.outputs.TOKEN_SUBSTITUTION_PASSES }}
     docker-image-full-uri: ${{ steps.docker-build.outputs.docker-target-image-full-uri }}
-    docker-target-registry: ${{ steps.resolve-registry.outputs.docker-target-registry }}
-    docker-target-namespace: ${{ steps.resolve-registry.outputs.docker-target-namespace }}
+    docker-target-registry: ${{ steps.kpm.outputs.DOCKER_TARGET_REGISTRY }}
+    docker-target-namespace: ${{ steps.kpm.outputs.DOCKER_TARGET_NAMESPACE }}

@@ -23,8 +23,8 @@
     dockerfile-squash: ${{ steps.kpm.outputs.DOCKERFILE_SQUASH }}
     dockerfile-no-cache: ${{ steps.kpm.outputs.DOCKERFILE_NO_CACHE }}
     # Docker target config (from early resolver)
-    docker-target-registry: ${{ steps.resolve-registry.outputs.docker-target-registry }}
-    docker-target-namespace: ${{ steps.resolve-registry.outputs.docker-target-namespace }}
+    docker-target-registry: ${{ steps.kpm.outputs.DOCKER_TARGET_REGISTRY }}
+    docker-target-namespace: ${{ steps.kpm.outputs.DOCKER_TARGET_NAMESPACE }}
     # Docker push targets
     docker-push-targets: ${{ steps.kpm.outputs.DOCKER_PUSH_TARGETS }}
 

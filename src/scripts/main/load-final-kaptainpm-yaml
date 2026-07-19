@@ -35,6 +35,10 @@ source "${SCRIPT_DIR}/../lib/log.bash"
 
 # shellcheck source=src/scripts/lib/output-var.bash
 source "${SCRIPT_DIR}/../lib/output-var.bash"
+# shellcheck source=src/scripts/defaults/docker-target.bash
+source "${SCRIPT_DIR}/../defaults/docker-target.bash"
+# shellcheck source=src/scripts/lib/kaptainpm-bool.bash
+source "${SCRIPT_DIR}/../lib/kaptainpm-bool.bash"
 
 # Build scripts repo root - absolute path to the buildon checkout this script
 # is part of. Hooks need this so user hook scripts can locate the build's
@@ -78,6 +82,19 @@ if [[ "${actual_kind}" != "${BUILD_KIND}" ]]; then
 fi
 log "Kind matched: ${actual_kind}"
 
+# --- Kaptain knob guards ---
+# Both knobs are human-facing and never written by the pipeline or CI.
+if [[ -n "${KAPTAIN_LOCAL_RELEASE:-}" ]]; then
+  if [[ "${BUILD_MODE:-}" != "local" ]]; then
+    log_error "KAPTAIN_LOCAL_RELEASE requires BUILD_MODE=local (it is the local-only release path; CI declares releases via its own channel)"
+    exit 1
+  fi
+  if [[ -n "${KAPTAIN_BRANCH_OVERRIDE:-}" ]]; then
+    log_error "KAPTAIN_LOCAL_RELEASE and KAPTAIN_BRANCH_OVERRIDE are mutually exclusive: the override bends policy for iteration, a release must enforce the real policy"
+    exit 1
+  fi
+fi
+
 # Mapping from YAML path to env var name
 # Format: "yaml.path:ENV_VAR_NAME"
 MAPPINGS=(
@@ -96,8 +113,8 @@ MAPPINGS=(
   "spec.global.tokens.allowBuiltinOverride:ALLOW_BUILTIN_TOKEN_OVERRIDE"
   "spec.global.tokens.substitutionPasses:TOKEN_SUBSTITUTION_PASSES"
   "spec.global.tokens.valueTrailingNewline:CONFIG_VALUE_TRAILING_NEWLINE"
-  "spec.global.release.branch:RELEASE_BRANCH"
-  "spec.global.release.additionalBranches:ADDITIONAL_RELEASE_BRANCHES"
+  # Note: release.branch/additionalBranches resolved separately below
+  # (incoming RELEASE_BRANCH wins over file config - presence rule)
   "spec.global.release.versioning.maxParts:TAG_VERSION_MAX_PARTS"
   "spec.global.release.versioning.strategy:TAG_VERSION_CALCULATION_STRATEGY"
   "spec.global.release.versioning.patternType:TAG_VERSION_PATTERN_TYPE"
@@ -123,8 +140,8 @@ MAPPINGS=(
   "spec.main.docker.runtime:IMAGE_BUILD_COMMAND"
   "spec.main.docker.platform:DOCKER_PLATFORM"
   # Note: logins exported separately as JSON below (multi-line YAML won't fit in output_var)
-  "spec.main.docker.targetRegistry:DOCKER_TARGET_REGISTRY"
-  "spec.main.docker.targetNamespace:DOCKER_TARGET_NAMESPACE"
+  # Note: targetRegistry/targetNamespace resolved separately below (platform
+  # default fallback, targetIncludeNamespace policy, registry-required check)
   # Note: pushTargets exported separately as JSON below (array of objects won't fit in output_var)
   "spec.main.docker.dockerfile.substitutionFiles:DOCKERFILE_SUBSTITUTION_FILES"
   "spec.main.docker.dockerfile.subPath:DOCKERFILE_SUB_PATH"
@@ -408,6 +425,91 @@ for mapping in "${MAPPINGS[@]}"; do
   log "Field .${yaml_path} = \"${value}\" exported as ${env_var}"
   found_count=$((found_count + 1))
 done
+log ""
+
+# --- Release branch set: incoming presence wins over file config ---
+# RELEASE_BRANCH already set on entry (local guesser writes all three vars
+# remote-prefixed on every non-release local build; KAPTAIN_BRANCH_OVERRIDE
+# expands to all three; a CI wrapper may inject deliberately) -> trust it and
+# IGNORE the file's release config entirely, additional branches included.
+# Unset (wrapperless CI callers passing only TARGET/DEFAULT, and the
+# KAPTAIN_LOCAL_RELEASE path where the guesser writes none of the three) ->
+# file config applies, defaulting to main.
+# Locally the guesser's prefixed value (origin/main) never equals a bare
+# current branch name - by construction no local build classifies as a
+# release-branch build; KAPTAIN_LOCAL_RELEASE is the only local release door.
+if [[ -n "${RELEASE_BRANCH:-}" ]]; then
+  log "RELEASE_BRANCH set on entry (\"${RELEASE_BRANCH}\") - trusting caller, file release config ignored"
+  output_var "RELEASE_BRANCH" "${RELEASE_BRANCH}" > /dev/null
+  output_var "ADDITIONAL_RELEASE_BRANCHES" "" > /dev/null
+else
+  file_release_branch=$(yq -r '.spec.global.release.branch // ""' "${PM_FILE}")
+  if [[ -z "${file_release_branch}" || "${file_release_branch}" == "null" ]]; then
+    file_release_branch="main"
+    log "No release branch configured - defaulting to main"
+  else
+    log "Release branch from KaptainPM.yaml: ${file_release_branch}"
+  fi
+  output_var "RELEASE_BRANCH" "${file_release_branch}" > /dev/null
+  file_additional=$(yq -r '.spec.global.release.additionalBranches // ""' "${PM_FILE}")
+  if [[ -n "${file_additional}" && "${file_additional}" != "null" ]]; then
+    output_var "ADDITIONAL_RELEASE_BRANCHES" "${file_additional}" > /dev/null
+    log "Additional release branches from KaptainPM.yaml: ${file_additional}"
+  fi
+fi
+
+# --- Docker target registry/namespace: resolved here, authoritatively ---
+# Spec values win; the environment supplies the platform default (GH: the
+# registry-defaults step ahead of kaptain-init, local: detect-build-context).
+# Both outputs are ALWAYS emitted - downstream consumes these and nothing
+# else; there is no later resolution step.
+target_registry=$(yq -r '.spec.main.docker.targetRegistry // ""' "${PM_FILE}")
+if [[ -n "${target_registry}" && "${target_registry}" != "null" ]]; then
+  log "Target registry from KaptainPM.yaml: ${target_registry}"
+elif [[ -n "${DOCKER_TARGET_REGISTRY:-}" ]]; then
+  target_registry="${DOCKER_TARGET_REGISTRY}"
+  log "Target registry from platform default: ${target_registry}"
+fi
+
+if [[ -z "${target_registry}" ]]; then
+  # basic-quality-checks structurally does no docker work. Every other kind
+  # composes image URIs eventually - an empty registry produces garbage URIs
+  # far from the cause, so fail here, at the first place the merged config
+  # is known, unless explicitly exempted.
+  allow_no_registry=$(kaptainpm_bool "${PM_FILE}" spec.main.docker.targetAllowNoRegistry "${DOCKER_TARGET_ALLOW_NO_REGISTRY_DEFAULT}")
+  if [[ "${BUILD_KIND}" == "basic-quality-checks" ]]; then
+    log "No target registry configured (not required for ${BUILD_KIND})"
+  elif [[ "${allow_no_registry}" == "true" ]]; then
+    log "No target registry configured (exempted by targetAllowNoRegistry - docker operations will fail if attempted)"
+  else
+    log_error "No target registry configured and the platform provides no default."
+    log_error "Set spec.main.docker.targetRegistry, provide DOCKER_TARGET_REGISTRY, or set spec.main.docker.targetAllowNoRegistry: true if this build genuinely needs no registry."
+    exit 1
+  fi
+fi
+output_var "DOCKER_TARGET_REGISTRY" "${target_registry}" > /dev/null
+log "Resolved DOCKER_TARGET_REGISTRY = \"${target_registry}\""
+
+include_namespace=$(kaptainpm_bool "${PM_FILE}" spec.main.docker.targetIncludeNamespace "${DOCKER_TARGET_INCLUDE_NAMESPACE_DEFAULT}")
+target_namespace=""
+if [[ "${include_namespace}" == "false" ]]; then
+  # Schema rejects a non-empty targetNamespace alongside false in every
+  # variant (a layer-contributed one must be overridden with an explicit ""
+  # in the project file), so only the platform default remains to disregard.
+  log "targetIncludeNamespace=false: namespace segment excluded from image URIs"
+else
+  target_namespace=$(yq -r '.spec.main.docker.targetNamespace // ""' "${PM_FILE}")
+  if [[ -n "${target_namespace}" && "${target_namespace}" != "null" ]]; then
+    log "Target namespace from KaptainPM.yaml: ${target_namespace}"
+  elif [[ -n "${DOCKER_TARGET_NAMESPACE:-}" ]]; then
+    target_namespace="${DOCKER_TARGET_NAMESPACE}"
+    log "Target namespace from platform default: ${target_namespace}"
+  else
+    log "No target namespace configured"
+  fi
+fi
+output_var "DOCKER_TARGET_NAMESPACE" "${target_namespace}" > /dev/null
+log "Resolved DOCKER_TARGET_NAMESPACE = \"${target_namespace}\""
 log ""
 
 # Extract registry login config as a single-line JSON string for

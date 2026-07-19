@@ -13,10 +13,10 @@ inputs:
   # INJECT-INPUT: token-substitution
 
   docker-target-registry:
-    description: 'Target container registry for retagged images (from resolve-registry)'
+    description: 'Target container registry for retagged images (from load-final-kaptainpm-yaml)'
     required: false
   docker-target-namespace:
-    description: 'Target namespace for retagged images (from resolve-registry)'
+    description: 'Target namespace for retagged images (from load-final-kaptainpm-yaml)'
     required: false
 
   project-name:

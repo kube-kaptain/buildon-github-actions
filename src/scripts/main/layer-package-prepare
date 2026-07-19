@@ -229,6 +229,7 @@ yq eval -i '
 log "Metadata injected"
 
 # Layerset: resolve version ranges in spec.layers
+layers_list_file=""
 if [[ "${LAYER_TYPE}" == "layerset" ]]; then
   log "Resolving version ranges in spec.layers..."
   UTIL_DIR="${SCRIPT_DIR}/../util"
@@ -289,6 +290,16 @@ if [[ "${LAYER_TYPE}" == "layerset" ]]; then
     fi
   done
   log "Remote existence verification complete"
+
+  # Bullet list of the resolved member layers, consumed by the GitHub release
+  # notes ("Layers in this layer set" section).
+  layers_list_file="${OUTPUT_SUB_PATH}/layers-list"
+  : > "${layers_list_file}"
+  for ((i = 0; i < layer_count; i++)); do
+    ref=$(yq -r ".spec.layers[${i}]" "${context_dir}/KaptainPM.yaml")
+    printf -- '- %s\n' "${ref}" >> "${layers_list_file}"
+  done
+  log "Wrote layers list: ${layers_list_file}"
 fi
 
 # Convert YAML to JSON
@@ -338,6 +349,7 @@ fi
 
 # Write outputs
 output_var "LAYER_TYPE" "${LAYER_TYPE}"
+output_var "LAYERS_LIST_FILE" "${layers_list_file}"
 output_var "DOCKERFILE_SUBSTITUTION_FILES" "${docker_files}"
 output_var "DOCKERFILE_SUB_PATH" "${context_dir}"
 output_var "DOCKERFILE_SUB_PATH_LINUX_AMD64" "${context_dir}"

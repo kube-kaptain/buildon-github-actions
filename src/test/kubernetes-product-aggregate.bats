@@ -323,6 +323,12 @@ github_output_value() {
   [ -f "${TEST_DIR}/kaptain-out/manifests/additional-defaults/Replicas" ]
   [ "$(cat "${TEST_DIR}/kaptain-out/manifests/additional-defaults/Replicas")" = "2" ]
   [ -f "${TEST_DIR}/kaptain-out/manifests/additional-manifests/alpha/deployment.yaml" ]
+
+  # Entry builtins: Version is spec-shaped (variant suffix stripped from the
+  # resolved tag); ManifestsDockerTag records the pulled artifact verbatim.
+  local contents_tokens="${TEST_DIR}/kaptain-out/builtin-resolved-tokens/contents"
+  [ "$(cat "${contents_tokens}/ContentAlphaVersion")" = "1.0" ]
+  [ "$(cat "${contents_tokens}/ContentAlphaManifestsDockerTag")" = "1.0-manifests" ]
 }
 
 @test "end-to-end: stages two bundles into sibling subdirs" {

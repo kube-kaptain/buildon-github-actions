@@ -700,7 +700,6 @@ validate_build_context_env_vars() {
   local excluded_files=(
     "github-check-run.yaml"
     "github-release.yaml"
-    "resolve-target-registry-and-namespace.yaml"
   )
 
   # Files that have an env block but only use inline bash, not kaptain scripts

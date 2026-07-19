@@ -1,0 +1,86 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Kaptain contributors (Fred Cooke)
+#
+# format-release-sections - Shared GitHub release-notes section formatter
+#
+# One formatter for every flavour's release notes so consumption instructions
+# and what's-inside lists render identically everywhere. Callers compose the
+# body: intro sentence, then 'consume', then zero or more 'list' calls
+# (templates/contents today; environments/rps later need no changes here),
+# then their Release Assets section.
+#
+# Usage:
+#   format-release-sections consume <project-name> <version> <registry> <namespace>
+#     Emits the "How to Consume" section: exact-pinned short form (same org,
+#     registry and namespace) and fully-qualified long form, one per line with
+#     the description after each entry.
+#
+#   format-release-sections list <heading> <list-file>
+#     Emits "### <heading>" followed by the file's contents (already-formatted
+#     markdown bullets, one per line). Emits NOTHING when the file is missing
+#     or empty, so callers can call unconditionally for lists their flavour
+#     may not produce.
+#
+# Every emitted section starts with a single blank line so calls compose
+# directly after the intro line and after each other.
+#
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# shellcheck source=src/scripts/defaults/platform.bash
+source "${SCRIPT_DIR}/../defaults/platform.bash"
+# shellcheck source=src/scripts/lib/log.bash
+source "${SCRIPT_DIR}/../lib/log.bash"
+
+usage_error() {
+  log_error "$1"
+  log_error "Usage: format-release-sections consume <project-name> <version> <registry> <namespace>"
+  log_error "       format-release-sections list <heading> <list-file>"
+  exit 1
+}
+
+mode="${1:-}"
+
+case "${mode}" in
+  consume)
+    [[ $# -eq 5 ]] || usage_error "consume requires exactly 4 arguments after the mode, got $(($# - 1))"
+    project_name="$2"
+    version="$3"
+    registry="$4"
+    namespace="$5"
+    [[ -n "${project_name}" ]] || usage_error "consume: project-name is required"
+    [[ -n "${version}" ]] || usage_error "consume: version is required"
+    [[ -n "${registry}" ]] || usage_error "consume: registry is required"
+
+    # Namespace may legitimately be empty (registry-root images).
+    long_form="${registry}/${namespace:+${namespace}/}${project_name}"
+
+    echo ""
+    echo "### How to Consume"
+    echo ""
+    echo "* \`${project_name}:[${version}]\` - same org, registry, and namespace"
+    echo "* \`${long_form}:[${version}]\` - from a different org or overridden namespace or registry"
+    echo ""
+    echo "Optionally use a range instead of the locked version above."
+    ;;
+
+  list)
+    [[ $# -eq 3 ]] || usage_error "list requires exactly 2 arguments after the mode, got $(($# - 1))"
+    heading="$2"
+    list_file="$3"
+    [[ -n "${heading}" ]] || usage_error "list: heading is required"
+
+    # Missing or empty list -> emit nothing; callers invoke unconditionally.
+    if [[ -n "${list_file}" && -s "${list_file}" ]]; then
+      echo ""
+      echo "### ${heading}"
+      cat "${list_file}"
+    fi
+    ;;
+
+  *)
+    usage_error "Unknown mode: '${mode}'"
+    ;;
+esac

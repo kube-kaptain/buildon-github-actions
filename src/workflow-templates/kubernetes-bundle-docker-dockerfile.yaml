@@ -133,9 +133,6 @@ jobs:
       # INJECT: load-final-kaptainpm-yaml
       # INJECT: github-check-end(name="Load Final KaptainPM YAML", id="check-load-final-kpm")
 
-      # === Resolve Registry ===
-      # INJECT: resolve-registry-and-namespace
-
       # === Pre-Build ===
       # INJECT: github-check-start(name="Pre-Build", id="check-pre-build", if="steps.kpm.outputs.HOOK_PRE_BUILD_SCRIPT_SUB_PATH != ''")
       # INJECT: hook-pre-build

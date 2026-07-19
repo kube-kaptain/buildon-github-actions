@@ -8,8 +8,8 @@
     layer-type: ${{ steps.layer-package-prepare.outputs.LAYER_TYPE }}
     image-build-command: ${{ steps.validate-tooling.outputs.IMAGE_BUILD_COMMAND }}
     docker-platform: ${{ steps.kpm.outputs.DOCKER_PLATFORM }}
-    docker-target-registry: ${{ steps.resolve-registry.outputs.docker-target-registry }}
-    docker-target-namespace: ${{ steps.resolve-registry.outputs.docker-target-namespace }}
+    docker-target-registry: ${{ steps.kpm.outputs.DOCKER_TARGET_REGISTRY }}
+    docker-target-namespace: ${{ steps.kpm.outputs.DOCKER_TARGET_NAMESPACE }}
     token-delimiter-style: ${{ steps.kpm.outputs.TOKEN_DELIMITER_STYLE }}
     token-name-style: ${{ steps.kpm.outputs.TOKEN_NAME_STYLE }}
     output-sub-path: ${{ steps.kpm.outputs.OUTPUT_SUB_PATH }}

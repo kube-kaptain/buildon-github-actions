@@ -145,6 +145,27 @@ write_layerset_pm_with_layers() {
   [[ "$output" == *"Layer type: layerset"* ]] || return 1
 }
 
+@test "layerset writes layers-list file with resolved member bullets" {
+  export PROJECT_NAME="layerset-foo"
+  write_layerset_pm_with_layers "src/layerset/KaptainPM.yaml" \
+    "ghcr.io/kube-kaptain/quality/quality-strict:1.0.0" \
+    "ghcr.io/kube-kaptain/quality/quality-lenient:2.1.0"
+  run "$SCRIPT"
+  [[ "$status" -eq 0 ]] || return 1
+
+  [ -f "kaptain-out/layers-list" ]
+  [ "$(sed -n '1p' kaptain-out/layers-list)" = "- ghcr.io/kube-kaptain/quality/quality-strict:1.0.0" ]
+  [ "$(sed -n '2p' kaptain-out/layers-list)" = "- ghcr.io/kube-kaptain/quality/quality-lenient:2.1.0" ]
+}
+
+@test "plain layer writes no layers-list file" {
+  export PROJECT_NAME="layer-foo"
+  write_layer_pm "src/layer/KaptainPM.yaml"
+  run "$SCRIPT"
+  [[ "$status" -eq 0 ]] || return 1
+  [ ! -f "kaptain-out/layers-list" ]
+}
+
 @test "detects layerset from suffix (foo-layerset)" {
   export PROJECT_NAME="foo-layerset"
   write_layerset_pm "src/layerset/KaptainPM.yaml"

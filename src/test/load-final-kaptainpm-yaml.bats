@@ -22,6 +22,12 @@ setup() {
 
   export BUILD_KIND="test-build"
   unset REFERENCE_SCRIPT_OUTPUT 2>/dev/null || true
+
+  # Platform registry/namespace defaults - always present in reality (GH:
+  # registry-defaults step, local: detect-build-context). Individual tests
+  # unset these to exercise the no-default platform paths.
+  export DOCKER_TARGET_REGISTRY="ghcr.io"
+  export DOCKER_TARGET_NAMESPACE="kube-kaptain"
 }
 
 # Write a minimal valid KaptainPM.yaml with the given kind
@@ -376,6 +382,153 @@ EOF
   run_script
   [ "${status}" -eq 0 ]
   assert_github_output "LAYER_PACKAGING_BASE_IMAGE" "alpine:3.19"
+}
+
+# =============================================================================
+# Target registry/namespace resolution (authoritative - no later resolve step)
+# =============================================================================
+
+@test "registry/namespace: spec values win over platform defaults" {
+  cat > "${TEST_DIR}/kaptainpm/final/KaptainPM.yaml" << 'EOF'
+apiVersion: kaptain.org/1.10
+kind: test-build
+spec:
+  main:
+    docker:
+      targetRegistry: quay.io
+      targetNamespace: my-ns
+EOF
+  run_script
+  [ "${status}" -eq 0 ]
+  assert_github_output "DOCKER_TARGET_REGISTRY" "quay.io"
+  assert_github_output "DOCKER_TARGET_NAMESPACE" "my-ns"
+}
+
+@test "registry/namespace: platform defaults used when spec absent, always emitted" {
+  write_pm
+  run_script
+  [ "${status}" -eq 0 ]
+  assert_github_output "DOCKER_TARGET_REGISTRY" "ghcr.io"
+  assert_github_output "DOCKER_TARGET_NAMESPACE" "kube-kaptain"
+}
+
+@test "targetIncludeNamespace=false: namespace emitted empty despite platform default" {
+  cat > "${TEST_DIR}/kaptainpm/final/KaptainPM.yaml" << 'EOF'
+apiVersion: kaptain.org/1.10
+kind: test-build
+spec:
+  main:
+    docker:
+      targetIncludeNamespace: false
+EOF
+  run_script
+  [ "${status}" -eq 0 ]
+  assert_github_output "DOCKER_TARGET_NAMESPACE" ""
+  [[ "$output" == *"targetIncludeNamespace=false"* ]] || return 1
+}
+
+@test "no registry anywhere: fails for normal build kinds" {
+  unset DOCKER_TARGET_REGISTRY
+  write_pm
+  run_script
+  [ "${status}" -ne 0 ]
+  [[ "$output" == *"No target registry configured and the platform provides no default"* ]] || return 1
+}
+
+@test "no registry anywhere: allowed for basic-quality-checks" {
+  unset DOCKER_TARGET_REGISTRY
+  export BUILD_KIND="basic-quality-checks"
+  write_pm "basic-quality-checks"
+  run_script
+  [ "${status}" -eq 0 ]
+  assert_github_output "DOCKER_TARGET_REGISTRY" ""
+  [[ "$output" == *"not required for basic-quality-checks"* ]] || return 1
+}
+
+@test "no registry anywhere: allowed when targetAllowNoRegistry is true" {
+  unset DOCKER_TARGET_REGISTRY
+  cat > "${TEST_DIR}/kaptainpm/final/KaptainPM.yaml" << 'EOF'
+apiVersion: kaptain.org/1.10
+kind: test-build
+spec:
+  main:
+    docker:
+      targetAllowNoRegistry: true
+EOF
+  run_script
+  [ "${status}" -eq 0 ]
+  assert_github_output "DOCKER_TARGET_REGISTRY" ""
+  [[ "$output" == *"exempted by targetAllowNoRegistry"* ]] || return 1
+}
+
+# =============================================================================
+# Release branch set: incoming presence wins over file config
+# =============================================================================
+
+@test "incoming RELEASE_BRANCH trusted, file release config ignored, additional cleared" {
+  cat > "${TEST_DIR}/kaptainpm/final/KaptainPM.yaml" << 'YAML'
+apiVersion: kaptain.org/1.10
+kind: test-build
+spec:
+  global:
+    release:
+      branch: trunk
+      additionalBranches: main-1.34,main-1.35
+YAML
+  export RELEASE_BRANCH="origin/main"
+  run_script
+  [ "${status}" -eq 0 ]
+  assert_github_output "RELEASE_BRANCH" "origin/main"
+  assert_github_output "ADDITIONAL_RELEASE_BRANCHES" ""
+  [[ "$output" == *"file release config ignored"* ]] || return 1
+}
+
+@test "no incoming RELEASE_BRANCH: file config applies including additional branches" {
+  cat > "${TEST_DIR}/kaptainpm/final/KaptainPM.yaml" << 'YAML'
+apiVersion: kaptain.org/1.10
+kind: test-build
+spec:
+  global:
+    release:
+      branch: trunk
+      additionalBranches: main-1.34
+YAML
+  unset RELEASE_BRANCH 2>/dev/null || true
+  run_script
+  [ "${status}" -eq 0 ]
+  assert_github_output "RELEASE_BRANCH" "trunk"
+  assert_github_output "ADDITIONAL_RELEASE_BRANCHES" "main-1.34"
+}
+
+@test "no incoming RELEASE_BRANCH and no file config: defaults to main" {
+  write_pm
+  unset RELEASE_BRANCH 2>/dev/null || true
+  run_script
+  [ "${status}" -eq 0 ]
+  assert_github_output "RELEASE_BRANCH" "main"
+}
+
+# =============================================================================
+# Kaptain knob guards
+# =============================================================================
+
+@test "KAPTAIN_LOCAL_RELEASE with BUILD_MODE!=local is a hard error" {
+  write_pm
+  export KAPTAIN_LOCAL_RELEASE=true
+  export BUILD_MODE=build_server
+  run_script
+  [ "${status}" -ne 0 ]
+  [[ "$output" == *"requires BUILD_MODE=local"* ]] || return 1
+}
+
+@test "KAPTAIN_LOCAL_RELEASE with KAPTAIN_BRANCH_OVERRIDE is a hard error" {
+  write_pm
+  export KAPTAIN_LOCAL_RELEASE=true
+  export BUILD_MODE=local
+  export KAPTAIN_BRANCH_OVERRIDE=main-1.34
+  run_script
+  [ "${status}" -ne 0 ]
+  [[ "$output" == *"mutually exclusive"* ]] || return 1
 }
 
 teardown() {

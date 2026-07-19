@@ -207,6 +207,18 @@ seed_auto_token() {
   [ "$(cat "${TOKENS_OUTPUT_SUB_PATH}/ProductShortName")" = "foo" ]
 }
 
+@test "TargetNamespace token always written - empty when namespace unset" {
+  export TOKEN_NAME_STYLE="PascalCase"
+  unset TARGET_NAMESPACE 2>/dev/null || true
+
+  run "$PSUB"
+  [ "$status" -eq 0 ]
+  # targetIncludeNamespace=false resolves to an empty namespace; the token
+  # must substitute to "" rather than ship dangling.
+  [ -f "${TOKENS_OUTPUT_SUB_PATH}/TargetNamespace" ]
+  [ "$(cat "${TOKENS_OUTPUT_SUB_PATH}/TargetNamespace")" = "" ]
+}
+
 # Context scalars arrive via the disk scan only - env vars alone must NOT
 # produce tokens (the per-call-site env path was removed; it silently missed
 # call sites, shipping unsubstituted tokens in released manifests).

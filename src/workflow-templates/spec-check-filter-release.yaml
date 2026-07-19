@@ -113,9 +113,6 @@ jobs:
       # INJECT: load-final-kaptainpm-yaml
       # INJECT: github-check-end(name="Load Final KaptainPM YAML", id="check-load-final-kpm")
 
-      # === Resolve Registry ===
-      # INJECT: resolve-registry-and-namespace
-
       # === Pre-Build ===
       # INJECT: github-check-start(name="Pre-Build", id="check-pre-build", if="steps.kpm.outputs.HOOK_PRE_BUILD_SCRIPT_SUB_PATH != ''")
       # INJECT: hook-pre-build
@@ -193,8 +190,8 @@ jobs:
         uses: ./.github/buildon-github-actions/src/actions/docker-build-dockerfile
         with:
           image-build-command: ${{ steps.validate-tooling.outputs.IMAGE_BUILD_COMMAND }}
-          docker-target-registry: ${{ steps.resolve-registry.outputs.docker-target-registry }}
-          docker-target-namespace: ${{ steps.resolve-registry.outputs.docker-target-namespace }}
+          docker-target-registry: ${{ steps.kpm.outputs.DOCKER_TARGET_REGISTRY }}
+          docker-target-namespace: ${{ steps.kpm.outputs.DOCKER_TARGET_NAMESPACE }}
           docker-image-name: ${{ steps.versions.outputs.docker-image-name }}
           docker-tag: ${{ steps.versions.outputs.docker-tag }}
           version: ${{ steps.versions.outputs.version }}

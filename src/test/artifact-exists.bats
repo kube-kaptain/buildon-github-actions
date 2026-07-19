@@ -124,13 +124,23 @@ setup() {
   assert_output_contains "DOCKER_TARGET_REGISTRY is required for short-form reference"
 }
 
-@test "exists: short-form ref fails without DOCKER_TARGET_NAMESPACE" {
+@test "exists: short-form ref expands without namespace segment when empty" {
+  # Empty namespace is legitimate (targetIncludeNamespace=false) - two-segment expansion
   export MOCK_DOCKER_MANIFEST_EXISTS=true
   export DOCKER_TARGET_REGISTRY="ghcr.io"
   unset DOCKER_TARGET_NAMESPACE || true
   run "$SCRIPT" "layer-github-flow-strict:1.1"
-  [[ "$status" -ne 0 ]] || return 1
-  assert_output_contains "DOCKER_TARGET_NAMESPACE is required for short-form reference"
+  [[ "$status" -eq 0 ]] || return 1
+  assert_docker_called "manifest inspect ghcr.io/layer/layer-github-flow-strict:1.1"
+}
+
+@test "exists: prefixed-form ref expands without namespace segment when empty" {
+  export MOCK_DOCKER_MANIFEST_EXISTS=true
+  export DOCKER_TARGET_REGISTRY="ghcr.io"
+  unset DOCKER_TARGET_NAMESPACE || true
+  run "$SCRIPT" "quality/quality-strict:1.0.0"
+  [[ "$status" -eq 0 ]] || return 1
+  assert_docker_called "manifest inspect ghcr.io/quality/quality-strict:1.0.0"
 }
 
 @test "exists: prefixed-form ref expands using DOCKER_TARGET_REGISTRY/NAMESPACE" {

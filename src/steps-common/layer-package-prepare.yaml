@@ -12,6 +12,6 @@
     repository-name: ${{ steps.versions.outputs.repository-name }}
     output-sub-path: ${{ steps.kpm.outputs.OUTPUT_SUB_PATH }}
     image-build-command: ${{ steps.validate-tooling.outputs.IMAGE_BUILD_COMMAND }}
-    docker-target-registry: ${{ steps.resolve-registry.outputs.docker-target-registry }}
-    docker-target-namespace: ${{ steps.resolve-registry.outputs.docker-target-namespace }}
+    docker-target-registry: ${{ steps.kpm.outputs.DOCKER_TARGET_REGISTRY }}
+    docker-target-namespace: ${{ steps.kpm.outputs.DOCKER_TARGET_NAMESPACE }}
     layer-packaging-base-image: ${{ steps.kpm.outputs.LAYER_PACKAGING_BASE_IMAGE }}

@@ -84,32 +84,28 @@ docker_ref_expand() {
   local full_name prefix prefix_segment artifact_name parent_path
   case "${form}" in
     short)
-      # name:version -> registry/namespace/prefix/name
+      # name:version -> registry/[namespace/]prefix/name
+      # Empty namespace is legitimate (targetIncludeNamespace=false, resolved
+      # by kaptain-init/load before expansion) - the segment is omitted.
       if [[ -z "${DOCKER_TARGET_REGISTRY:-}" ]]; then
         log_error "DOCKER_TARGET_REGISTRY is required for short-form reference: ${reference}"
         return 1
       fi
-      if [[ -z "${DOCKER_TARGET_NAMESPACE:-}" ]]; then
-        log_error "DOCKER_TARGET_NAMESPACE is required for short-form reference: ${reference}"
-        return 1
-      fi
       prefix=$(docker_ref_extract_prefix "${name_part}")
-      full_name="${DOCKER_TARGET_REGISTRY}/${DOCKER_TARGET_NAMESPACE}/${prefix}/${name_part}"
+      full_name="${DOCKER_TARGET_REGISTRY}/${DOCKER_TARGET_NAMESPACE:+${DOCKER_TARGET_NAMESPACE}/}${prefix}/${name_part}"
       ;;
     prefixed)
-      # prefix/name:version -> registry/namespace/prefix/name
+      # prefix/name:version -> registry/[namespace/]prefix/name
+      # Empty namespace is legitimate (targetIncludeNamespace=false, resolved
+      # by kaptain-init/load before expansion) - the segment is omitted.
       if [[ -z "${DOCKER_TARGET_REGISTRY:-}" ]]; then
         log_error "DOCKER_TARGET_REGISTRY is required for prefixed-form reference: ${reference}"
-        return 1
-      fi
-      if [[ -z "${DOCKER_TARGET_NAMESPACE:-}" ]]; then
-        log_error "DOCKER_TARGET_NAMESPACE is required for prefixed-form reference: ${reference}"
         return 1
       fi
       prefix_segment="${name_part%%/*}"
       artifact_name="${name_part#*/}"
       docker_ref_validate_prefix "${prefix_segment}" "${artifact_name}" || return 1
-      full_name="${DOCKER_TARGET_REGISTRY}/${DOCKER_TARGET_NAMESPACE}/${name_part}"
+      full_name="${DOCKER_TARGET_REGISTRY}/${DOCKER_TARGET_NAMESPACE:+${DOCKER_TARGET_NAMESPACE}/}${name_part}"
       ;;
     full)
       # domain/[namespace/]prefix/name:version -> validate prefix, use as-is
