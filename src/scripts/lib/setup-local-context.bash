@@ -24,6 +24,15 @@ UTIL_DIR="${UTIL_DIR:-${SCRIPTS_BASE_DIR}/util}"
 # shellcheck disable=SC1091  # Path resolves at runtime via LIB_DIR
 source "${LIB_DIR}/output-var.bash"
 
+# Source log lib: detect-build-context calls log_error on its failure paths
+# (detached HEAD, multiple remotes) - without this those paths die with
+# "command not found" (127) instead of the intended message. log.bash needs
+# the provider at source time; detect-build-context applies the same default
+# later for everything else.
+export BUILD_PLATFORM_LOG_PROVIDER="${BUILD_PLATFORM_LOG_PROVIDER:-stdout}"
+# shellcheck disable=SC1091  # Path resolves at runtime via LIB_DIR
+source "${LIB_DIR}/log.bash"
+
 # Source output-sub-path default for run_step output file location
 # shellcheck disable=SC1091  # Path resolves at runtime via SCRIPTS_BASE_DIR
 source "${SCRIPTS_BASE_DIR}/defaults/output-sub-path.bash"
@@ -135,15 +144,17 @@ source "${LIB_DIR}/detect-build-context.bash"
 # Summary
 # =============================================================================
 
+# Branch vars are default-guarded: the KAPTAIN_LOCAL_RELEASE path
+# deliberately leaves them unset (file policy applies at load).
 echo "=== Build Context ==="
 echo "Build mode:      ${BUILD_MODE}"
 echo "Build platform:  ${BUILD_PLATFORM}"
 echo "Log provider:    ${BUILD_PLATFORM_LOG_PROVIDER}"
 echo "Remote:          ${REMOTE_NAME}"
 echo "Current branch:  ${CURRENT_BRANCH}"
-echo "Target branch:   ${TARGET_BRANCH}"
-echo "Release branch:  ${RELEASE_BRANCH}"
-echo "Default branch:  ${DEFAULT_BRANCH}"
+echo "Target branch:   ${TARGET_BRANCH:-}"
+echo "Release branch:  ${RELEASE_BRANCH:-}"
+echo "Default branch:  ${DEFAULT_BRANCH:-}"
 echo "Repository:      ${REPOSITORY_OWNER}/${REPOSITORY_NAME}"
 echo "Registry:        ${DOCKER_TARGET_REGISTRY}"
 echo "Namespace:       ${DOCKER_TARGET_NAMESPACE}"

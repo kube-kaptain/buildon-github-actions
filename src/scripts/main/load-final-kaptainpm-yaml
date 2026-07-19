@@ -82,6 +82,19 @@ if [[ "${actual_kind}" != "${BUILD_KIND}" ]]; then
 fi
 log "Kind matched: ${actual_kind}"
 
+# --- Kaptain knob guards ---
+# Both knobs are human-facing and never written by the pipeline or CI.
+if [[ -n "${KAPTAIN_LOCAL_RELEASE:-}" ]]; then
+  if [[ "${BUILD_MODE:-}" != "local" ]]; then
+    log_error "KAPTAIN_LOCAL_RELEASE requires BUILD_MODE=local (it is the local-only release path; CI declares releases via its own channel)"
+    exit 1
+  fi
+  if [[ -n "${KAPTAIN_BRANCH_OVERRIDE:-}" ]]; then
+    log_error "KAPTAIN_LOCAL_RELEASE and KAPTAIN_BRANCH_OVERRIDE are mutually exclusive: the override bends policy for iteration, a release must enforce the real policy"
+    exit 1
+  fi
+fi
+
 # Mapping from YAML path to env var name
 # Format: "yaml.path:ENV_VAR_NAME"
 MAPPINGS=(
@@ -100,8 +113,8 @@ MAPPINGS=(
   "spec.global.tokens.allowBuiltinOverride:ALLOW_BUILTIN_TOKEN_OVERRIDE"
   "spec.global.tokens.substitutionPasses:TOKEN_SUBSTITUTION_PASSES"
   "spec.global.tokens.valueTrailingNewline:CONFIG_VALUE_TRAILING_NEWLINE"
-  "spec.global.release.branch:RELEASE_BRANCH"
-  "spec.global.release.additionalBranches:ADDITIONAL_RELEASE_BRANCHES"
+  # Note: release.branch/additionalBranches resolved separately below
+  # (incoming RELEASE_BRANCH wins over file config - presence rule)
   "spec.global.release.versioning.maxParts:TAG_VERSION_MAX_PARTS"
   "spec.global.release.versioning.strategy:TAG_VERSION_CALCULATION_STRATEGY"
   "spec.global.release.versioning.patternType:TAG_VERSION_PATTERN_TYPE"
@@ -413,6 +426,37 @@ for mapping in "${MAPPINGS[@]}"; do
   found_count=$((found_count + 1))
 done
 log ""
+
+# --- Release branch set: incoming presence wins over file config ---
+# RELEASE_BRANCH already set on entry (local guesser writes all three vars
+# remote-prefixed on every non-release local build; KAPTAIN_BRANCH_OVERRIDE
+# expands to all three; a CI wrapper may inject deliberately) -> trust it and
+# IGNORE the file's release config entirely, additional branches included.
+# Unset (wrapperless CI callers passing only TARGET/DEFAULT, and the
+# KAPTAIN_LOCAL_RELEASE path where the guesser writes none of the three) ->
+# file config applies, defaulting to main.
+# Locally the guesser's prefixed value (origin/main) never equals a bare
+# current branch name - by construction no local build classifies as a
+# release-branch build; KAPTAIN_LOCAL_RELEASE is the only local release door.
+if [[ -n "${RELEASE_BRANCH:-}" ]]; then
+  log "RELEASE_BRANCH set on entry (\"${RELEASE_BRANCH}\") - trusting caller, file release config ignored"
+  output_var "RELEASE_BRANCH" "${RELEASE_BRANCH}" > /dev/null
+  output_var "ADDITIONAL_RELEASE_BRANCHES" "" > /dev/null
+else
+  file_release_branch=$(yq -r '.spec.global.release.branch // ""' "${PM_FILE}")
+  if [[ -z "${file_release_branch}" || "${file_release_branch}" == "null" ]]; then
+    file_release_branch="main"
+    log "No release branch configured - defaulting to main"
+  else
+    log "Release branch from KaptainPM.yaml: ${file_release_branch}"
+  fi
+  output_var "RELEASE_BRANCH" "${file_release_branch}" > /dev/null
+  file_additional=$(yq -r '.spec.global.release.additionalBranches // ""' "${PM_FILE}")
+  if [[ -n "${file_additional}" && "${file_additional}" != "null" ]]; then
+    output_var "ADDITIONAL_RELEASE_BRANCHES" "${file_additional}" > /dev/null
+    log "Additional release branches from KaptainPM.yaml: ${file_additional}"
+  fi
+fi
 
 # --- Docker target registry/namespace: resolved here, authoritatively ---
 # Spec values win; the environment supplies the platform default (GH: the

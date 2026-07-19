@@ -461,6 +461,76 @@ EOF
   [[ "$output" == *"exempted by targetAllowNoRegistry"* ]] || return 1
 }
 
+# =============================================================================
+# Release branch set: incoming presence wins over file config
+# =============================================================================
+
+@test "incoming RELEASE_BRANCH trusted, file release config ignored, additional cleared" {
+  cat > "${TEST_DIR}/kaptainpm/final/KaptainPM.yaml" << 'YAML'
+apiVersion: kaptain.org/1.10
+kind: test-build
+spec:
+  global:
+    release:
+      branch: trunk
+      additionalBranches: main-1.34,main-1.35
+YAML
+  export RELEASE_BRANCH="origin/main"
+  run_script
+  [ "${status}" -eq 0 ]
+  assert_github_output "RELEASE_BRANCH" "origin/main"
+  assert_github_output "ADDITIONAL_RELEASE_BRANCHES" ""
+  [[ "$output" == *"file release config ignored"* ]] || return 1
+}
+
+@test "no incoming RELEASE_BRANCH: file config applies including additional branches" {
+  cat > "${TEST_DIR}/kaptainpm/final/KaptainPM.yaml" << 'YAML'
+apiVersion: kaptain.org/1.10
+kind: test-build
+spec:
+  global:
+    release:
+      branch: trunk
+      additionalBranches: main-1.34
+YAML
+  unset RELEASE_BRANCH 2>/dev/null || true
+  run_script
+  [ "${status}" -eq 0 ]
+  assert_github_output "RELEASE_BRANCH" "trunk"
+  assert_github_output "ADDITIONAL_RELEASE_BRANCHES" "main-1.34"
+}
+
+@test "no incoming RELEASE_BRANCH and no file config: defaults to main" {
+  write_pm
+  unset RELEASE_BRANCH 2>/dev/null || true
+  run_script
+  [ "${status}" -eq 0 ]
+  assert_github_output "RELEASE_BRANCH" "main"
+}
+
+# =============================================================================
+# Kaptain knob guards
+# =============================================================================
+
+@test "KAPTAIN_LOCAL_RELEASE with BUILD_MODE!=local is a hard error" {
+  write_pm
+  export KAPTAIN_LOCAL_RELEASE=true
+  export BUILD_MODE=build_server
+  run_script
+  [ "${status}" -ne 0 ]
+  [[ "$output" == *"requires BUILD_MODE=local"* ]] || return 1
+}
+
+@test "KAPTAIN_LOCAL_RELEASE with KAPTAIN_BRANCH_OVERRIDE is a hard error" {
+  write_pm
+  export KAPTAIN_LOCAL_RELEASE=true
+  export BUILD_MODE=local
+  export KAPTAIN_BRANCH_OVERRIDE=main-1.34
+  run_script
+  [ "${status}" -ne 0 ]
+  [[ "$output" == *"mutually exclusive"* ]] || return 1
+}
+
 teardown() {
   dump_bats_result
 }

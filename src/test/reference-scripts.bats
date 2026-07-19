@@ -32,6 +32,19 @@ MOCK
 }
 
 setup() {
+  # Hermetic against the invoking shell: these tests run the REAL
+  # setup-local-context/detect-build-context, which deliberately respects
+  # incoming values - leaked exports (e.g. from local kaptain testing)
+  # would change behaviour or, for KAPTAIN_LOCAL_RELEASE, suppress the
+  # branch vars entirely and kill every reference script.
+  unset KAPTAIN_LOCAL_RELEASE KAPTAIN_BRANCH_OVERRIDE \
+        DEFAULT_BRANCH TARGET_BRANCH RELEASE_BRANCH UPSTREAM_BRANCH \
+        TARGET_REF REMOTE_NAME 2>/dev/null || true
+  # Provide CURRENT_BRANCH like any CI invoker: runners check out detached
+  # HEAD, and the local guesser hard-errors on detached-without-vars by
+  # design. The bats suite IS an invoker - it supplies the context var.
+  export CURRENT_BRANCH="test-branch"
+
   MOCK_DIR=$(create_test_dir "ref-scripts")
   rm -rf "$MOCK_DIR" && mkdir -p "$MOCK_DIR"
   MOCK_SCRIPTS_DIR="${MOCK_DIR}/main"

@@ -273,3 +273,77 @@ teardown() {
   [ "$status" -eq 0 ]
   assert_output_contains "No duplicate commit messages"
 }
+
+# =============================================================================
+# Local leniency: unresolvable target -> warn and skip content checks only
+# =============================================================================
+
+@test "local: unresolvable target warns, skips content checks, name checks still run" {
+  TEST_REPO=$(clone_fixture "qc-clean")
+  cd "$TEST_REPO"
+
+  export BUILD_MODE=local
+  export TARGET_BRANCH=origin/ghost-line
+  export RELEASE_BRANCH=origin/ghost-line
+  export DEFAULT_BRANCH=origin/ghost-line
+  run "$SCRIPTS_DIR/basic-quality-checks"
+  [ "$status" -eq 0 ]
+  assert_output_contains "does not resolve locally"
+  assert_output_contains "Skipped fast-forward check"
+}
+
+@test "non-local: unresolvable target stays a hard failure" {
+  TEST_REPO=$(clone_fixture "qc-clean")
+  cd "$TEST_REPO"
+
+  export BUILD_MODE=build_server
+  export TARGET_BRANCH=origin/ghost-line
+  export RELEASE_BRANCH=origin/ghost-line
+  export DEFAULT_BRANCH=origin/ghost-line
+  run "$SCRIPTS_DIR/basic-quality-checks"
+  [ "$status" -eq 42 ]
+  assert_output_contains "not found"
+}
+
+@test "TARGET_REF marker is used verbatim for content checks" {
+  TEST_REPO=$(clone_fixture "qc-clean")
+  cd "$TEST_REPO"
+
+  export BUILD_MODE=local
+  export TARGET_BRANCH=origin/main
+  export RELEASE_BRANCH=origin/main
+  export DEFAULT_BRANCH=origin/main
+  export TARGET_REF=refs/remotes/origin/main
+  run "$SCRIPTS_DIR/basic-quality-checks"
+  [ "$status" -eq 0 ]
+  assert_output_contains "Branch is fast-forward from target"
+}
+
+@test "local failure appends git config guidance with real branch name" {
+  TEST_REPO=$(clone_fixture "qc-bad-branch-name")
+  cd "$TEST_REPO"
+
+  export BUILD_MODE=local
+  export CURRENT_BRANCH=testuser-patch-1
+  export MERGE_CANDIDATE_CREATOR=testuser
+  run "$SCRIPTS_DIR/basic-quality-checks"
+  [ "$status" -eq 2 ]
+  assert_output_contains "For local builds, configure this branch"
+  assert_output_contains "git config branch.testuser-patch-1.remote"
+  assert_output_contains "KAPTAIN_BRANCH_OVERRIDE"
+}
+
+@test "non-local failure stays terse - no local guidance" {
+  TEST_REPO=$(clone_fixture "qc-bad-branch-name")
+  cd "$TEST_REPO"
+
+  export BUILD_MODE=build_server
+  export CURRENT_BRANCH=testuser-patch-1
+  export MERGE_CANDIDATE_CREATOR=testuser
+  run "$SCRIPTS_DIR/basic-quality-checks"
+  [ "$status" -eq 2 ]
+  if [[ "$output" == *"For local builds"* ]]; then
+    echo "guidance leaked into non-local output"
+    return 1
+  fi
+}
