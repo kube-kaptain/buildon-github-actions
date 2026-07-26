@@ -44,6 +44,7 @@ OUTPUT_SUB_PATH="${OUTPUT_SUB_PATH:?OUTPUT_SUB_PATH is required}"
 
 # Chart source - exactly one mode must be configured
 REPO_URL="${VENDOR_HELM_RENDERED_REPO_URL:-}"
+REPO_NAME="${PROJECT_NAME:-}"
 CHART_NAME="${VENDOR_HELM_RENDERED_CHART_NAME:-}"
 OCI_CHART="${VENDOR_HELM_RENDERED_OCI_CHART:-}"
 MOVE_FILES_JSON="${VENDOR_HELM_RENDERED_MOVE_FILES:-}"
@@ -121,10 +122,19 @@ log ""
 log "Stage 1: Fetching chart..."
 
 if [[ "${HAS_REPO}" == "true" ]]; then
-  log "  Adding repo: ${REPO_URL}"
-  helm repo add vendor-chart "${REPO_URL}"
-  log "  Fetching chart: vendor-chart/${CHART_NAME} --version ${VERSION}"
-  helm fetch --version "${VERSION}" --destination "${CHART_DIR}" "vendor-chart/${CHART_NAME}" --untar
+  log "  Adding repo: ${REPO_URL} as ${REPO_NAME}"
+  if ! repo_add_output=$(helm repo add "${REPO_NAME}" "${REPO_URL}" 2>&1); then
+    log_error "helm repo add failed for '${REPO_NAME}':"
+    log_error "  ${repo_add_output}"
+    repo_add_advice="The name maps to a different URL from an earlier build. Remove the '${REPO_NAME}' repo using the following command then re-run:"
+    while IFS= read -r advice_line; do
+      log_error "${advice_line}"
+    done < <(printf '%s\n' "${repo_add_advice}" | fold -s -w 80)
+    log_error "  helm repo remove ${REPO_NAME}"
+    exit 1
+  fi
+  log "  Fetching chart: ${REPO_NAME}/${CHART_NAME} --version ${VERSION}"
+  helm fetch --version "${VERSION}" --destination "${CHART_DIR}" "${REPO_NAME}/${CHART_NAME}" --untar
   CHART_PATH="${CHART_DIR}/${CHART_NAME}"
 else
   log "  Pulling OCI chart: ${OCI_CHART} --version ${VERSION}"

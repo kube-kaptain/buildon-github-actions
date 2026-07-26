@@ -41,6 +41,11 @@ EOF
 # Mock helm - for "pull" or "fetch", create a chart dir; for "template", render yamls
 case "$1" in
   repo)
+    # Simulate a name-collision failure on `helm repo add` when asked to.
+    if [[ "$2" == "add" && "${MOCK_HELM_REPO_ADD_FAILS:-false}" == "true" ]]; then
+      echo "Error: repository name (${3}) already exists, please specify a different name" >&2
+      exit 1
+    fi
     exit 0
     ;;
   pull|fetch)
@@ -752,6 +757,38 @@ run_script() {
   upstream=$(yq eval '.metadata.annotations."kaptain.org/helm-upstream-chart"' "${svc_file}")
 
   [[ "${upstream}" == "test-chart-1.0.0" ]] || return 1
+}
+
+# =============================================================================
+# Stage 1: HTTP repo fetch - per-project repo alias
+# =============================================================================
+
+@test "http repo path adds the repo under the project name and fetches from it" {
+  export VENDOR_HELM_RENDERED_REPO_URL="https://example.com/charts"
+  export VENDOR_HELM_RENDERED_CHART_NAME="test-chart"
+  export VENDOR_HELM_RENDERED_MOVE_FILES="${MOVE_FILES_JSON}"
+
+  run_script
+  [ "$status" -eq 0 ]
+  # Repo alias is the project name (test-chart), not a shared literal.
+  [[ "$output" == *"Adding repo: https://example.com/charts as test-chart"* ]] || return 1
+  [[ "$output" == *"Fetching chart: test-chart/test-chart"* ]] || return 1
+  [[ "$output" != *"vendor-chart"* ]] || return 1
+  [[ -f "${REPO_DIR}/kaptain-out/helm-processing/G-annotated/deployment.yaml" ]] || return 1
+}
+
+@test "http repo add collision fails with actionable removal advice" {
+  export VENDOR_HELM_RENDERED_REPO_URL="https://example.com/charts"
+  export VENDOR_HELM_RENDERED_CHART_NAME="test-chart"
+  export VENDOR_HELM_RENDERED_MOVE_FILES="${MOVE_FILES_JSON}"
+  export MOCK_HELM_REPO_ADD_FAILS="true"
+
+  run_script
+  [ "$status" -ne 0 ]
+  # Echoes helm's own message and names the project-scoped alias in the advice.
+  [[ "$output" == *"helm repo add failed for 'test-chart'"* ]] || return 1
+  [[ "$output" == *"already exists"* ]] || return 1
+  [[ "$output" == *"helm repo remove test-chart"* ]] || return 1
 }
 
 teardown() {
