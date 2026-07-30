@@ -118,6 +118,21 @@ rules:
     resources: ["secrets"]
     verbs: ["get", "create", "update"]
 CR
+    # Cluster-scoped resource whose name templates .Release.Namespace, the
+    # common chart idiom for avoiding cross-namespace ClusterRole collisions.
+    # Helm renders it from --namespace, which Kaptain sets to its sentinel, so
+    # the name carries the placeholder until the stage 7 sentinel sweep swaps
+    # it for the environment token.
+    cat > "${chart_dir}/templates/clusterrole-namespaced.yaml" << 'CRNS'
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: KAPTAIN_HELM_RENDER_AND_PROCESS_NAMESPACE_PLACEHOLDER-test-chart-reader
+rules:
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    verbs: ["get", "list"]
+CRNS
     cat > "${chart_dir}/templates/clusterrolebinding.yaml" << 'CRB'
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
@@ -661,9 +676,10 @@ run_script() {
   [[ "${annotations}" != *'kaptain.org/project-name'* ]] || return 1
   [[ "${annotations}" != *'kaptain.org/version'* ]] || return 1
 
-  # app and app.kubernetes.io/name overwrite to match the rendered manifest's own .metadata.name
-  [[ $(yq eval '.metadata.labels.app' "${dep_file}") == "test-chart" ]] || return 1
-  [[ $(yq eval '.metadata.labels."app.kubernetes.io/name"' "${dep_file}") == "test-chart" ]] || return 1
+  # app and app.kubernetes.io/name identify the application (the project token),
+  # not the resource's own .metadata.name
+  [[ $(yq eval '.metadata.labels.app' "${dep_file}") == '${ProjectName}' ]] || return 1
+  [[ $(yq eval '.metadata.labels."app.kubernetes.io/name"' "${dep_file}") == '${ProjectName}' ]] || return 1
 
   # Vendor must NOT emit kaptain.org/image-uri (no IMAGE_URI in vendor pipeline)
   [[ "${content}" != *'kaptain.org/image-uri'* ]] || return 1
@@ -793,4 +809,58 @@ run_script() {
 
 teardown() {
   dump_bats_result
+}
+
+# =============================================================================
+# Stage 7: app / app.kubernetes.io/name identify the application, not the resource
+# =============================================================================
+
+@test "cluster-scoped resources get the project name as app, not their own name" {
+  export VENDOR_HELM_RENDERED_OCI_CHART="oci://example.com/test-chart"
+  export VENDOR_HELM_RENDERED_MOVE_FILES="${MOVE_FILES_JSON}"
+
+  run_script
+  [[ "$status" -eq 0 ]] || return 1
+
+  # ClusterRole is named test-chart-role in the chart; the app labels must
+  # identify the application (the project), not the resource's own name.
+  local cr_file="${REPO_DIR}/kaptain-out/helm-processing/G-annotated/clusterrole.yaml"
+  [[ -f "${cr_file}" ]] || return 1
+  [[ $(yq eval '.metadata.name' "${cr_file}") == "test-chart-role" ]] || return 1
+  [[ $(yq eval '.metadata.labels.app' "${cr_file}") == '${ProjectName}' ]] || return 1
+  [[ $(yq eval '.metadata.labels."app.kubernetes.io/name"' "${cr_file}") == '${ProjectName}' ]] || return 1
+}
+
+@test "app labels never carry the environment token, even when the name does" {
+  export VENDOR_HELM_RENDERED_OCI_CHART="oci://example.com/test-chart"
+  # Test-local moveFiles: pull in the cluster-scoped resource whose name
+  # templates .Release.Namespace (the case that leaked the namespace into
+  # the app labels).
+  export VENDOR_HELM_RENDERED_MOVE_FILES='[
+    {"source":"templates/deployment.yaml","destination":"deployment.yaml"},
+    {"source":"templates/clusterrole-namespaced.yaml","destination":"clusterrole-namespaced.yaml"}
+  ]'
+
+  run_script
+  [[ "$status" -eq 0 ]] || return 1
+
+  local cr_file="${REPO_DIR}/kaptain-out/helm-processing/G-annotated/clusterrole-namespaced.yaml"
+  [[ -f "${cr_file}" ]] || return 1
+
+  # The name legitimately carries the environment token (the chart asked for
+  # it); this proves the fixture exercises the sentinel sweep path.
+  [[ $(yq eval '.metadata.name' "${cr_file}") == '${Environment}-test-chart-reader' ]] || return 1
+
+  # The app labels must identify the application only - no namespace.
+  [[ $(yq eval '.metadata.labels.app' "${cr_file}") == '${ProjectName}' ]] || return 1
+  [[ $(yq eval '.metadata.labels."app.kubernetes.io/name"' "${cr_file}") == '${ProjectName}' ]] || return 1
+
+  # Belt and braces across every rendered manifest.
+  local manifest app_label name_label
+  while IFS= read -r manifest; do
+    app_label=$(yq eval '.metadata.labels.app // ""' "${manifest}")
+    name_label=$(yq eval '.metadata.labels."app.kubernetes.io/name" // ""' "${manifest}")
+    [[ "${app_label}" != *'${Environment}'* ]] || return 1
+    [[ "${name_label}" != *'${Environment}'* ]] || return 1
+  done < <(find "${REPO_DIR}/kaptain-out/helm-processing/G-annotated" -name '*.yaml' -type f)
 }

@@ -390,6 +390,19 @@ fi
 # Vendor emits the generator superset minus kaptain.org/image-uri (vendor has
 # no image-uri at this point in the pipeline) plus kaptain.org/environment as
 # a label. Single-write throughout (no label/annotation duplication).
+#
+# app / app.kubernetes.io/name identify the APPLICATION (the project), not the
+# individual resource. Using .metadata.name put the resource's own name there,
+# which is wrong per the Kubernetes recommended-labels spec and actively broken
+# for cluster-scoped resources: charts commonly template .Release.Namespace
+# into a ClusterRole name to avoid cross-namespace collisions, so the sentinel
+# sweep below would rewrite the namespace into the label too. Charts that ship
+# several workloads already distinguish their parts with
+# app.kubernetes.io/component, which is preserved here untouched.
+#
+# Only TOP-LEVEL .metadata.labels are rewritten - the chart's spec.selector and
+# spec.template.metadata.labels are never touched, so these labels are purely
+# descriptive and no pod/ReplicaSet selection depends on them.
 log ""
 log "Stage 7: Injecting kaptain labels and annotations..."
 
@@ -421,8 +434,8 @@ HELM_UPSTREAM_CHART=$(yq eval '"\(.name)-\(.version)"' "${CHART_PATH}/Chart.yaml
 # explicitly (no regex) - the set helm itself emits is small and stable: chart
 # label, hook annotations, resource-policy.
 metadata_yq='
-  .metadata.labels.app = .metadata.name |
-  .metadata.labels."app.kubernetes.io/name" = .metadata.name |
+  .metadata.labels.app = strenv(PROJECT_NAME_TOKEN) |
+  .metadata.labels."app.kubernetes.io/name" = strenv(PROJECT_NAME_TOKEN) |
   .metadata.labels."app.kubernetes.io/version" = strenv(VERSION_TOKEN) |
   .metadata.labels."app.kubernetes.io/version" style = "double" |
   .metadata.labels."app.kubernetes.io/managed-by" = "Kaptain" |
