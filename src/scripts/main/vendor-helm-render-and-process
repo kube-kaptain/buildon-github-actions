@@ -42,6 +42,14 @@ source "${SCRIPT_DIR}/../defaults/tokens.bash"
 # and `| trunc 63` - any of which would leave a fragment the sweep cannot match.
 readonly NAMESPACE_PLACEHOLDER="kaptain-namespace-placeholder"
 
+# Sentinel passed as fullnameOverride, swapped for the project-name token by the
+# same stage 7 sweep and for the same reasons: passing `${ProjectName}` to helm
+# would hardcode one token style, and a mustache-styled project would have helm
+# evaluate its own delimiters. Rendering the name as a token rather than the
+# resolved project name keeps the packaged manifests portable and leaves charts
+# that already tokenise their names (via nameOverride) byte-identical.
+readonly FULLNAME_PLACEHOLDER="kaptain-fullname-placeholder"
+
 # Required inputs
 OUTPUT_SUB_PATH="${OUTPUT_SUB_PATH:?OUTPUT_SUB_PATH is required}"
 
@@ -169,11 +177,11 @@ fi
 log "  Using values file: ${VALUES_FILE}"
 
 if [[ "${USE_PROJECT_NAME_AS_FULLNAME_OVERRIDE}" == "true" ]]; then
-  log "  fullnameOverride set to ${PROJECT_NAME}"
+  log "  fullnameOverride set to ${FULLNAME_PLACEHOLDER} (resolved to the project-name token in stage 7)"
   helm template "${PROJECT_NAME}" "${CHART_PATH}" \
     --namespace "${NAMESPACE_PLACEHOLDER}" \
     -f "${VALUES_FILE}" \
-    --set "fullnameOverride=${PROJECT_NAME}" \
+    --set "fullnameOverride=${FULLNAME_PLACEHOLDER}" \
     --output-dir "${RENDERED_DIR}"
 else
   log "  fullnameOverride disabled by config"
@@ -508,10 +516,29 @@ done < <(find "${ANNOTATED_DIR}" -name '*.yaml' -type f)
 # token. .metadata.namespace was already overwritten by the yq above; this
 # catches everything else.
 log "  Resolving namespace sentinel to ${ENVIRONMENT_TOKEN}"
+log "  Resolving fullname sentinel to ${PROJECT_NAME_TOKEN}"
 while IFS= read -r manifest; do
-  sed -i.bak "s|${NAMESPACE_PLACEHOLDER}|${ENVIRONMENT_TOKEN}|g" "${manifest}" \
+  sed -i.bak -e "s|${NAMESPACE_PLACEHOLDER}|${ENVIRONMENT_TOKEN}|g" \
+             -e "s|${FULLNAME_PLACEHOLDER}|${PROJECT_NAME_TOKEN}|g" "${manifest}" \
     && rm -f "${manifest}.bak"
 done < <(find "${ANNOTATED_DIR}" -name '*.yaml' -type f)
+
+# Nothing may survive the sweep. A chart that truncates a sentinel (name helpers
+# routinely end `| trunc 63`) or transforms it would leave a fragment the
+# substitutions above cannot match, and that fragment would ship as part of a
+# real resource name. Match on prefixes so partial remains are caught too - they
+# cannot collide with the kaptain.org/* labels, which use a dot not a hyphen.
+SENTINEL_REMNANTS=$(grep -rl "kaptain-namespace\|kaptain-fullname" "${ANNOTATED_DIR}" 2>/dev/null || true)
+if [[ -n "${SENTINEL_REMNANTS}" ]]; then
+  log_error "Sentinel fragments survived the sweep:"
+  while IFS= read -r remnant; do
+    [[ -z "${remnant}" ]] && continue
+    log_error "  ${remnant#"${ANNOTATED_DIR}"/}: $(grep -o "kaptain-[a-z-]*" "${remnant}" | sort -u | tr '\n' ' ')"
+  done <<< "${SENTINEL_REMNANTS}"
+  log_error "A chart has truncated or rewritten a placeholder, so it cannot be resolved"
+  log_error "to a token. Shorten the sentinel, or handle that resource with yqTransform."
+  exit 1
+fi
 
 # ==========================================================================
 # Stage 8: Validate

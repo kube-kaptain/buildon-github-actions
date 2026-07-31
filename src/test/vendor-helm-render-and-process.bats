@@ -133,6 +133,27 @@ rules:
     resources: ["configmaps"]
     verbs: ["get", "list"]
 CRNS
+    # Helm renders fullnameOverride into names and anywhere the chart
+    # interpolates the fullname; the stage 7 sweep turns it into the
+    # project-name token.
+    cat > "${chart_dir}/templates/configmap-fullname.yaml" << 'CMF'
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: kaptain-fullname-placeholder-config
+data:
+  owner: kaptain-fullname-placeholder
+CMF
+    # A chart that truncates the sentinel leaves a fragment no substitution can
+    # match - it must fail the build rather than ship a mangled name.
+    cat > "${chart_dir}/templates/configmap-truncated.yaml" << 'CMT'
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: kaptain-fullname-plac
+data:
+  note: truncated by an over-eager chart helper
+CMT
     cat > "${chart_dir}/templates/clusterrolebinding.yaml" << 'CRB'
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
@@ -863,4 +884,28 @@ teardown() {
     [[ "${app_label}" != *'${Environment}'* ]] || return 1
     [[ "${name_label}" != *'${Environment}'* ]] || return 1
   done < <(find "${REPO_DIR}/kaptain-out/helm-processing/G-annotated" -name '*.yaml' -type f)
+}
+
+@test "fullname sentinel resolves to the project-name token" {
+  export VENDOR_HELM_RENDERED_OCI_CHART="oci://example.com/test-chart"
+  export VENDOR_HELM_RENDERED_MOVE_FILES='[{"source":"templates/configmap-fullname.yaml","destination":"configmap-fullname.yaml"}]'
+
+  run_script
+  [[ "$status" -eq 0 ]] || return 1
+
+  local f="${REPO_DIR}/kaptain-out/helm-processing/G-annotated/configmap-fullname.yaml"
+  # Swapped in names and in any other field the chart interpolated it into
+  [[ $(yq eval '.metadata.name' "$f") == '${ProjectName}-config' ]] || return 1
+  [[ $(yq eval '.data.owner' "$f") == '${ProjectName}' ]] || return 1
+  [[ "$output" == *"fullnameOverride set to kaptain-fullname-placeholder"* ]] || return 1
+}
+
+@test "a truncated sentinel fragment fails the build" {
+  export VENDOR_HELM_RENDERED_OCI_CHART="oci://example.com/test-chart"
+  export VENDOR_HELM_RENDERED_MOVE_FILES='[{"source":"templates/configmap-truncated.yaml","destination":"configmap-truncated.yaml"}]'
+
+  run_script
+  [[ "$status" -ne 0 ]] || return 1
+  [[ "$output" == *"Sentinel fragments survived the sweep"* ]] || return 1
+  [[ "$output" == *"configmap-truncated.yaml"* ]] || return 1
 }
