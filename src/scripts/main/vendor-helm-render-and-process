@@ -246,6 +246,234 @@ while IFS= read -r yaml_file; do
 done < <(find "${SPLIT_DIR}" -name '*.yaml' -type f)
 
 # ==========================================================================
+# Stage 3b: Normalise workload app labels and the selectors that target them
+# ==========================================================================
+#
+# helm rendered with fullnameOverride=${PROJECT_NAME}, so metadata.name became
+# the project's name while the chart's app.kubernetes.io/name label kept the
+# UPSTREAM chart name. Kaptain requires a workload's pod-template app and
+# app.kubernetes.io/name to equal its metadata.name: those are the labels that
+# propagate to ReplicaSets and Pods, so they are what identifies pod ownership
+# for deploy-time tooling.
+#
+# Pod labels cannot move alone. Every selector targeting them has to move in
+# lockstep or the workload breaks - the API rejects a Deployment whose selector
+# does not match its template, and a Service silently stops routing. So this
+# rewrites the whole closure: the workload's own selector, its pod-level
+# affinity and topology-spread selectors, and pod-targeting selectors on other
+# resources.
+#
+# Placement: after the split (one resource per file) but before moveFiles, so
+# association sees the complete chart, and before the sed/yq stages, so a
+# project can still override anything decided here.
+#
+# Deliberate limits:
+#   - Only keys the chart already uses are rewritten in selectors; we never
+#     invent a selector key (that would change matching semantics).
+#   - Job and CronJob selectors are controller-generated and never written.
+#   - Association is by label match, not inference. Exactly one workload gets
+#     a rewrite; none or several are left alone and warned about, because
+#     narrowing a deliberately broad selector would silently change it.
+if [[ "${USE_PROJECT_NAME_AS_FULLNAME_OVERRIDE}" == "true" ]]; then
+  log ""
+  log "Stage 3b: Normalising workload app labels and dependent selectors..."
+
+  NORM_INDEX_DIR="${HELM_DIR}/normalisation-index"
+  rm -rf "${NORM_INDEX_DIR}"
+  mkdir -p "${NORM_INDEX_DIR}"
+
+  # Pass 1: index every workload with its ORIGINAL pod-template labels - what
+  # other resources' selectors were written against, so matching must use them.
+  NORM_WORKLOADS=0
+  while IFS= read -r manifest; do
+    norm_kind=$(yq eval '.kind // ""' "${manifest}")
+    case "${norm_kind}" in
+      Deployment|StatefulSet|DaemonSet|ReplicaSet) norm_tmpl=".spec.template" ;;
+      # Job and CronJob are deliberately excluded: their pods are owned
+      # directly (no selector indirection), so an app label is not needed to
+      # establish ownership, and their selectors are controller-generated and
+      # must never be written.
+      *) continue ;;
+    esac
+    norm_name=$(yq eval '.metadata.name // ""' "${manifest}")
+    if [[ -z "${norm_name}" || "${norm_name}" == "null" ]]; then
+      continue
+    fi
+    printf '%s\n' "${norm_name}" > "${NORM_INDEX_DIR}/${NORM_WORKLOADS}.name"
+    printf '%s\n' "${manifest}" > "${NORM_INDEX_DIR}/${NORM_WORKLOADS}.file"
+    printf '%s\n' "${norm_tmpl}" > "${NORM_INDEX_DIR}/${NORM_WORKLOADS}.tmpl"
+    printf '%s\n' "${norm_kind}" > "${NORM_INDEX_DIR}/${NORM_WORKLOADS}.kind"
+    yq eval "${norm_tmpl}.metadata.labels // {} | to_entries | .[] | .key + \"=\" + (.value | tostring)" \
+      "${manifest}" > "${NORM_INDEX_DIR}/${NORM_WORKLOADS}.labels"
+    NORM_WORKLOADS=$((NORM_WORKLOADS + 1))
+  done < <(find "${SPLIT_DIR}" -name '*.yaml' -type f)
+
+  log "  Indexed ${NORM_WORKLOADS} workload(s)"
+
+  # Pass 2: the workloads themselves.
+  norm_i=0
+  while [[ ${norm_i} -lt ${NORM_WORKLOADS} ]]; do
+    norm_name=$(cat "${NORM_INDEX_DIR}/${norm_i}.name")
+    norm_file=$(cat "${NORM_INDEX_DIR}/${norm_i}.file")
+    norm_tmpl=$(cat "${NORM_INDEX_DIR}/${norm_i}.tmpl")
+    norm_kind=$(cat "${NORM_INDEX_DIR}/${norm_i}.kind")
+    export NORM_NAME="${norm_name}"
+
+    # Pod template: both keys set outright, added when the chart omits them.
+    yq -i "${norm_tmpl}.metadata.labels.app = strenv(NORM_NAME) |
+           ${norm_tmpl}.metadata.labels.\"app.kubernetes.io/name\" = strenv(NORM_NAME)" "${norm_file}"
+
+    # The workload's own selector: only keys the chart already uses.
+    yq -i "(select(.spec.selector.matchLabels.app != null) |
+            .spec.selector.matchLabels.app) = strenv(NORM_NAME)" "${norm_file}"
+    yq -i "(select(.spec.selector.matchLabels.\"app.kubernetes.io/name\" != null) |
+            .spec.selector.matchLabels.\"app.kubernetes.io/name\") = strenv(NORM_NAME)" "${norm_file}"
+
+    # Pod-level selectors inside the template. The parent guard matters: an
+    # unguarded [] traversal CREATES the absent path.
+    for norm_sel in \
+      "${norm_tmpl}.spec.affinity.podAffinity.requiredDuringSchedulingIgnoredDuringExecution" \
+      "${norm_tmpl}.spec.affinity.podAntiAffinity.requiredDuringSchedulingIgnoredDuringExecution" \
+      "${norm_tmpl}.spec.topologySpreadConstraints" ; do
+      yq -i "(select(${norm_sel} != null) | ${norm_sel}[].labelSelector.matchLabels |
+              select(has(\"app\")) | .app) = strenv(NORM_NAME)" "${norm_file}"
+      yq -i "(select(${norm_sel} != null) | ${norm_sel}[].labelSelector.matchLabels |
+              select(has(\"app.kubernetes.io/name\")) | .[\"app.kubernetes.io/name\"]) = strenv(NORM_NAME)" "${norm_file}"
+    done
+    for norm_sel in \
+      "${norm_tmpl}.spec.affinity.podAffinity.preferredDuringSchedulingIgnoredDuringExecution" \
+      "${norm_tmpl}.spec.affinity.podAntiAffinity.preferredDuringSchedulingIgnoredDuringExecution" ; do
+      yq -i "(select(${norm_sel} != null) | ${norm_sel}[].podAffinityTerm.labelSelector.matchLabels |
+              select(has(\"app\")) | .app) = strenv(NORM_NAME)" "${norm_file}"
+      yq -i "(select(${norm_sel} != null) | ${norm_sel}[].podAffinityTerm.labelSelector.matchLabels |
+              select(has(\"app.kubernetes.io/name\")) | .[\"app.kubernetes.io/name\"]) = strenv(NORM_NAME)" "${norm_file}"
+    done
+
+    log "  ${norm_file#"${SPLIT_DIR}"/}: ${norm_kind} ${norm_name} -> pod labels and selectors set to '${norm_name}'"
+    norm_i=$((norm_i + 1))
+  done
+
+  # Pass 3: pod-targeting selectors on other resources, associated by matching
+  # the selector against the original pod labels captured in pass 1.
+  while IFS= read -r manifest; do
+    norm_kind=$(yq eval '.kind // ""' "${manifest}")
+    case "${norm_kind}" in
+      # Service.spec.selector is a plain map[string]string in core/v1: equality
+      # only, so a set of workloads cannot be expressed. The rest are
+      # metav1.LabelSelector and support matchExpressions.
+      Service) norm_path=".spec.selector"; norm_base=""; norm_supports_expr="false" ;;
+      PodDisruptionBudget|ServiceMonitor|PodMonitor)
+        norm_path=".spec.selector.matchLabels"; norm_base=".spec.selector"; norm_supports_expr="true" ;;
+      NetworkPolicy)
+        norm_path=".spec.podSelector.matchLabels"; norm_base=".spec.podSelector"; norm_supports_expr="true" ;;
+      *) continue ;;
+    esac
+
+    # Nothing to do unless it uses a key we would rewrite. Both has() calls must
+    # sit inside the same pipeline stage - yq binds '|' tighter than 'or', so an
+    # unparenthesised second operand would be evaluated against the document root.
+    if [[ "$(yq eval "(${norm_path} // {}) | (has(\"app\") or has(\"app.kubernetes.io/name\"))" "${manifest}")" != "true" ]]; then
+      continue
+    fi
+
+    norm_rel="${manifest#"${SPLIT_DIR}"/}"
+    norm_res_name=$(yq eval '.metadata.name // ""' "${manifest}")
+    yq eval "${norm_path} | to_entries | .[] | .key + \"=\" + (.value | tostring)" \
+      "${manifest}" > "${NORM_INDEX_DIR}/selector-pairs"
+
+    norm_matches=0
+    norm_match_name=""
+    norm_match_list=""
+    norm_j=0
+    while [[ ${norm_j} -lt ${NORM_WORKLOADS} ]]; do
+      norm_satisfied="true"
+      while IFS= read -r norm_pair; do
+        [[ -z "${norm_pair}" ]] && continue
+        if ! grep -qxF "${norm_pair}" "${NORM_INDEX_DIR}/${norm_j}.labels"; then
+          norm_satisfied="false"
+          break
+        fi
+      done < "${NORM_INDEX_DIR}/selector-pairs"
+      if [[ "${norm_satisfied}" == "true" ]]; then
+        norm_matches=$((norm_matches + 1))
+        norm_match_name=$(cat "${NORM_INDEX_DIR}/${norm_j}.name")
+        if [[ -z "${norm_match_list}" ]]; then
+          norm_match_list="${norm_match_name}"
+        else
+          norm_match_list="${norm_match_list},${norm_match_name}"
+        fi
+      fi
+      norm_j=$((norm_j + 1))
+    done
+
+    # A selector whose app value already names a workload is aimed at that
+    # workload by name: once its pod labels are normalised the selector matches
+    # it exactly, so there is nothing to warn about even if the original labels
+    # matched several workloads (or none).
+    norm_sel_app=$(yq eval "${norm_path}.app // \"\"" "${manifest}")
+    norm_sel_name=$(yq eval "${norm_path}.\"app.kubernetes.io/name\" // \"\"" "${manifest}")
+    norm_by_name=""
+    norm_j=0
+    while [[ ${norm_j} -lt ${NORM_WORKLOADS} ]]; do
+      norm_candidate=$(cat "${NORM_INDEX_DIR}/${norm_j}.name")
+      if [[ -n "${norm_candidate}" ]] \
+         && { [[ "${norm_candidate}" == "${norm_sel_app}" ]] || [[ "${norm_candidate}" == "${norm_sel_name}" ]]; }; then
+        norm_by_name="${norm_candidate}"
+        break
+      fi
+      norm_j=$((norm_j + 1))
+    done
+
+    if [[ ${norm_matches} -eq 1 ]]; then
+      export NORM_NAME="${norm_match_name}"
+      yq -i "(select(${norm_path}.app != null) | ${norm_path}.app) = strenv(NORM_NAME)" "${manifest}"
+      yq -i "(select(${norm_path}.\"app.kubernetes.io/name\" != null) |
+              ${norm_path}.\"app.kubernetes.io/name\") = strenv(NORM_NAME)" "${manifest}"
+      log "  ${norm_rel}: ${norm_kind} ${norm_res_name} selector -> '${norm_match_name}'"
+    elif [[ ${norm_matches} -gt 1 && "${norm_supports_expr}" == "true" ]]; then
+      # Deliberately spans several workloads. metav1.LabelSelector can express
+      # that: move the app key out of matchLabels into an In expression over the
+      # matched workloads. matchLabels and matchExpressions are ANDed, so the
+      # other keys stay put and the selected pod set is unchanged.
+      export NORM_VALUES="${norm_match_list}"
+      for norm_key in "app" "app.kubernetes.io/name"; do
+        export NORM_KEY="${norm_key}"
+        if [[ "$(yq eval "(${norm_path} // {}) | has(\"${norm_key}\")" "${manifest}")" != "true" ]]; then
+          continue
+        fi
+        yq -i "del(${norm_path}.\"${norm_key}\") |
+               ${norm_base}.matchExpressions += [{\"key\": strenv(NORM_KEY),
+                                                  \"operator\": \"In\",
+                                                  \"values\": (strenv(NORM_VALUES) | split(\",\"))}]" "${manifest}"
+      done
+      # Drop matchLabels if the app key was all it held.
+      yq -i "del(select(${norm_path} != null and (${norm_path} | length == 0)) | ${norm_path})" "${manifest}"
+      log "  ${norm_rel}: ${norm_kind} ${norm_res_name} spans ${norm_matches} workloads -> matchExpressions In [${norm_match_list}]"
+    elif [[ -n "${norm_by_name}" ]]; then
+      # Aligns both keys on that workload; a no-op for whichever key already
+      # held the name, and it keeps the two consistent when only one did.
+      export NORM_NAME="${norm_by_name}"
+      yq -i "(select(${norm_path}.app != null) | ${norm_path}.app) = strenv(NORM_NAME)" "${manifest}"
+      yq -i "(select(${norm_path}.\"app.kubernetes.io/name\" != null) |
+              ${norm_path}.\"app.kubernetes.io/name\") = strenv(NORM_NAME)" "${manifest}"
+      log "  ${norm_rel}: ${norm_kind} ${norm_res_name} selector already names workload '${norm_by_name}' (${norm_matches} label match(es)) - aligned"
+    elif [[ "${norm_supports_expr}" == "false" ]]; then
+      log_warning "${norm_rel}: ${norm_kind} ${norm_res_name} selector matches ${norm_matches} workloads and names none of them. A Service selector is a plain equality map and cannot express a set, so this cannot be fixed automatically - repoint it at a still-shared label such as app.kubernetes.io/instance using yqTransform. The post-check will fail the build if it still selects nothing."
+    else
+      log_warning "${norm_rel}: ${norm_kind} ${norm_res_name} selector matches ${norm_matches} workloads and names none of them, left unchanged. Pod app labels are now per-workload, so it will no longer select what it did - narrow it with yqTransform if that matters."
+    fi
+
+    # matchExpressions cannot be rewritten safely (In/NotIn value sets), so flag.
+    if [[ "$(yq eval '(.spec.selector.matchExpressions // .spec.podSelector.matchExpressions // []) | map(select(.key == "app" or .key == "app.kubernetes.io/name")) | length > 0' "${manifest}")" == "true" ]]; then
+      log_warning "${norm_rel}: ${norm_kind} ${norm_res_name} uses matchExpressions on an app label; not rewritten, handle it with yqTransform"
+    fi
+  done < <(find "${SPLIT_DIR}" -name '*.yaml' -type f)
+else
+  log ""
+  log "Stage 3b: fullnameOverride disabled - leaving the chart's own app labels and selectors alone"
+fi
+
+# ==========================================================================
 # Stage 4: Move files (keep only moveFiles, discard the rest)
 # ==========================================================================
 log ""
@@ -516,7 +744,9 @@ done < <(find "${ANNOTATED_DIR}" -name '*.yaml' -type f)
 # token. .metadata.namespace was already overwritten by the yq above; this
 # catches everything else.
 log "  Resolving namespace sentinel to ${ENVIRONMENT_TOKEN}"
-log "  Resolving fullname sentinel to ${PROJECT_NAME_TOKEN}"
+if [[ "${USE_PROJECT_NAME_AS_FULLNAME_OVERRIDE}" == "true" ]]; then
+  log "  Resolving fullname sentinel to ${PROJECT_NAME_TOKEN}"
+fi
 while IFS= read -r manifest; do
   sed -i.bak -e "s|${NAMESPACE_PLACEHOLDER}|${ENVIRONMENT_TOKEN}|g" \
              -e "s|${FULLNAME_PLACEHOLDER}|${PROJECT_NAME_TOKEN}|g" "${manifest}" \
@@ -561,6 +791,148 @@ done < <(find "${ANNOTATED_DIR}" -name '*.yaml' -type f)
 
 if [[ ${VALIDATE_ERRORS} -gt 0 ]]; then
   log_error "${VALIDATE_ERRORS} file(s) failed YAML validation"
+  exit 1
+fi
+
+# Workload label closure. Runs regardless of who established it - stage 3b, the
+# chart itself, or the project's own sed/yq transforms - because these two
+# invariants are what make pod ownership identifiable and keep the workload
+# acceptable to the API server:
+#   1. pod-template app and app.kubernetes.io/name equal the workload's
+#      metadata.name (these are the labels that reach ReplicaSets and Pods)
+#   2. the workload's selector is satisfied by its own pod-template labels
+# Job and CronJob are excluded, as in stage 3b.
+log ""
+log "Stage 8b: Validating workload label closure..."
+
+CLOSURE_ERRORS=0
+CLOSURE_LABELS_FILE="${HELM_DIR}/closure-pod-labels"
+while IFS= read -r manifest; do
+  closure_kind=$(yq eval '.kind // ""' "${manifest}")
+  case "${closure_kind}" in
+    Deployment|StatefulSet|DaemonSet|ReplicaSet) closure_tmpl=".spec.template" ;;
+    *) continue ;;
+  esac
+
+  closure_rel="${manifest#"${ANNOTATED_DIR}"/}"
+  closure_name=$(yq eval '.metadata.name // ""' "${manifest}")
+  closure_file_errors=0
+
+  # One app-style label is enough to identify pod ownership, so require either
+  # the legacy `app` or the modern `app.kubernetes.io/name` rather than both -
+  # charts that carry only one (and projects that opt out of fullnameOverride
+  # and so are never normalised) are perfectly serviceable. Where both exist
+  # they must agree, and the agreed value must be metadata.name.
+  closure_app=$(yq eval "${closure_tmpl}.metadata.labels.app // \"\"" "${manifest}")
+  closure_app_kube=$(yq eval "${closure_tmpl}.metadata.labels.\"app.kubernetes.io/name\" // \"\"" "${manifest}")
+
+  if [[ -z "${closure_app}" && -z "${closure_app_kube}" ]]; then
+    log_error "  ✗ ${closure_rel}: ${closure_kind} ${closure_name} pod template carries neither 'app' nor 'app.kubernetes.io/name'; one is required to identify pod ownership"
+    closure_file_errors=$((closure_file_errors + 1))
+  elif [[ -n "${closure_app}" && -n "${closure_app_kube}" && "${closure_app}" != "${closure_app_kube}" ]]; then
+    log_error "  ✗ ${closure_rel}: ${closure_kind} ${closure_name} pod template labels disagree - 'app' is '${closure_app}' but 'app.kubernetes.io/name' is '${closure_app_kube}'"
+    closure_file_errors=$((closure_file_errors + 1))
+  else
+    closure_app_value="${closure_app:-${closure_app_kube}}"
+    if [[ "${closure_app_value}" != "${closure_name}" ]]; then
+      log_error "  ✗ ${closure_rel}: ${closure_kind} pod template app label is '${closure_app_value}', must equal metadata.name '${closure_name}'"
+      closure_file_errors=$((closure_file_errors + 1))
+    fi
+  fi
+
+  # Extract the pod labels to a file and grep the FILE, never a pipe: `yq |
+  # grep -q` exits early, SIGPIPEs yq, and pipefail then turns a successful
+  # match into a pipeline failure (intermittently, depending on buffering).
+  if [[ "$(yq eval '(.spec.selector.matchLabels // {}) | length > 0' "${manifest}")" == "true" ]]; then
+    yq eval "(${closure_tmpl}.metadata.labels // {}) | to_entries | .[] | .key + \"=\" + (.value | tostring)" \
+      "${manifest}" > "${CLOSURE_LABELS_FILE}"
+    while IFS= read -r closure_pair; do
+      [[ -z "${closure_pair}" ]] && continue
+      if ! grep -qxF "${closure_pair}" "${CLOSURE_LABELS_FILE}"; then
+        log_error "  ✗ ${closure_rel}: ${closure_kind} ${closure_name} selector requires '${closure_pair}' which its pod template does not carry"
+        closure_file_errors=$((closure_file_errors + 1))
+      fi
+    done < <(yq eval '.spec.selector.matchLabels | to_entries | .[] | .key + "=" + (.value | tostring)' "${manifest}")
+  fi
+
+  if [[ ${closure_file_errors} -eq 0 ]]; then
+    log "  ✓ ${closure_rel}"
+  else
+    CLOSURE_ERRORS=$((CLOSURE_ERRORS + closure_file_errors))
+  fi
+done < <(find "${ANNOTATED_DIR}" -name '*.yaml' -type f)
+
+# Service reachability. A Service selector is a plain equality map, so when it
+# used a shared app label to span several workloads we cannot rewrite it (unlike
+# the LabelSelector kinds, which get an In expression). The project is expected
+# to repoint it with yqTransform; this gate makes sure that actually happened
+# rather than shipping a Service that silently selects nothing. Only selectors
+# that reference an app key are checked - that is the blast radius of the
+# relabelling.
+CLOSURE_FINAL_INDEX="${HELM_DIR}/closure-final-index"
+rm -rf "${CLOSURE_FINAL_INDEX}"
+mkdir -p "${CLOSURE_FINAL_INDEX}"
+CLOSURE_WORKLOADS=0
+while IFS= read -r manifest; do
+  case "$(yq eval '.kind // ""' "${manifest}")" in
+    Deployment|StatefulSet|DaemonSet|ReplicaSet) closure_tmpl=".spec.template" ;;
+    Job) closure_tmpl=".spec.template" ;;
+    CronJob) closure_tmpl=".spec.jobTemplate.spec.template" ;;
+    *) continue ;;
+  esac
+  yq eval "(${closure_tmpl}.metadata.labels // {}) | to_entries | .[] | .key + \"=\" + (.value | tostring)" \
+    "${manifest}" > "${CLOSURE_FINAL_INDEX}/${CLOSURE_WORKLOADS}.labels"
+  CLOSURE_WORKLOADS=$((CLOSURE_WORKLOADS + 1))
+done < <(find "${ANNOTATED_DIR}" -name '*.yaml' -type f)
+
+while IFS= read -r manifest; do
+  # Nothing to check against when the shipped set has no workloads at all (a
+  # moveFiles selection may legitimately ship satellite resources on their own,
+  # in which case the Service targets pods this chart does not carry).
+  [[ ${CLOSURE_WORKLOADS} -gt 0 ]] || break
+  [[ "$(yq eval '.kind // ""' "${manifest}")" == "Service" ]] || continue
+  if [[ "$(yq eval '(.spec.selector // {}) | (has("app") or has("app.kubernetes.io/name"))' "${manifest}")" != "true" ]]; then
+    continue
+  fi
+
+  closure_rel="${manifest#"${ANNOTATED_DIR}"/}"
+  closure_name=$(yq eval '.metadata.name // ""' "${manifest}")
+  yq eval '.spec.selector | to_entries | .[] | .key + "=" + (.value | tostring)' \
+    "${manifest}" > "${CLOSURE_LABELS_FILE}.selector"
+
+  closure_reachable="false"
+  closure_j=0
+  while [[ ${closure_j} -lt ${CLOSURE_WORKLOADS} ]]; do
+    closure_satisfied="true"
+    while IFS= read -r closure_pair; do
+      [[ -z "${closure_pair}" ]] && continue
+      if ! grep -qxF "${closure_pair}" "${CLOSURE_FINAL_INDEX}/${closure_j}.labels"; then
+        closure_satisfied="false"
+        break
+      fi
+    done < "${CLOSURE_LABELS_FILE}.selector"
+    if [[ "${closure_satisfied}" == "true" ]]; then
+      closure_reachable="true"
+      break
+    fi
+    closure_j=$((closure_j + 1))
+  done
+
+  if [[ "${closure_reachable}" == "true" ]]; then
+    log "  ✓ ${closure_rel} (Service ${closure_name} selects a workload)"
+  else
+    log_error "  ✗ ${closure_rel}: Service ${closure_name} selector matches no workload in this chart, so it would route to nothing"
+    CLOSURE_ERRORS=$((CLOSURE_ERRORS + 1))
+  fi
+done < <(find "${ANNOTATED_DIR}" -name '*.yaml' -type f)
+
+if [[ ${CLOSURE_ERRORS} -gt 0 ]]; then
+  log_error "${CLOSURE_ERRORS} workload label-closure error(s)"
+  log_error "Pod template 'app' and 'app.kubernetes.io/name' must equal the workload's"
+  log_error "metadata.name - those labels reach the ReplicaSets and Pods and identify"
+  log_error "ownership - and every selector must still match the pods it targets."
+  log_error "Enable fullnameOverride to have Kaptain normalise this automatically, or"
+  log_error "align the chart yourself with yqTransform."
   exit 1
 fi
 
