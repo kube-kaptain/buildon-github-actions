@@ -301,3 +301,28 @@ EOF
   grep -q "TARGET=ghcr.io/test/my-image:1.2.3" "${HOOK_OUTPUT}"
   grep -q "ALIAS=ghcr.io/test/my-image:1.2.3" "${HOOK_OUTPUT}"
 }
+
+@test "hook-post-docker-tests runs when no docker target image was produced" {
+  # Flows that retag many images (or build none) have no single target URI.
+  unset DOCKER_TARGET_IMAGE_FULL_URI
+
+  cat > "${HOOK_SCRIPT}" << 'HOOKEOF'
+#!/usr/bin/env bash
+set -euo pipefail
+{
+  echo "TARGET=[${DOCKER_TARGET_IMAGE_FULL_URI}]"
+  echo "ALIAS=[${DOCKER_IMAGE_FULL_URI}]"
+} > "${HOOK_OUTPUT}"
+HOOKEOF
+  chmod +x "${HOOK_SCRIPT}"
+
+  export HOOK_POST_DOCKER_TESTS_SCRIPT_SUB_PATH="${HOOK_SCRIPT}"
+  export HOOK_OUTPUT
+
+  run "$SCRIPTS_DIR/hook-post-docker-tests"
+  [ "$status" -eq 0 ]
+
+  # Both reach the hook, defined but empty, so `set -u` scripts do not die
+  grep -qxF "TARGET=[]" "${HOOK_OUTPUT}"
+  grep -qxF "ALIAS=[]" "${HOOK_OUTPUT}"
+}

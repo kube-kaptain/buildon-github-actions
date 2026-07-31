@@ -118,6 +118,240 @@ rules:
     resources: ["secrets"]
     verbs: ["get", "create", "update"]
 CR
+    # Cluster-scoped resource whose name templates .Release.Namespace, the
+    # common chart idiom for avoiding cross-namespace ClusterRole collisions.
+    # Helm renders it from --namespace, which Kaptain sets to its sentinel, so
+    # the name carries the placeholder until the stage 7 sentinel sweep swaps
+    # it for the environment token.
+    cat > "${chart_dir}/templates/clusterrole-namespaced.yaml" << 'CRNS'
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: kaptain-namespace-placeholder-test-chart-reader
+rules:
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    verbs: ["get", "list"]
+CRNS
+    # Helm renders fullnameOverride into names and anywhere the chart
+    # interpolates the fullname; the stage 7 sweep turns it into the
+    # project-name token.
+    cat > "${chart_dir}/templates/configmap-fullname.yaml" << 'CMF'
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: kaptain-fullname-placeholder-config
+data:
+  owner: kaptain-fullname-placeholder
+CMF
+    # A chart that truncates the sentinel leaves a fragment no substitution can
+    # match - it must fail the build rather than ship a mangled name.
+    cat > "${chart_dir}/templates/configmap-truncated.yaml" << 'CMT'
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: kaptain-fullname-plac
+data:
+  note: truncated by an over-eager chart helper
+CMT
+    # Upstream-style workloads: app.kubernetes.io/name is the CHART name, which
+    # diverges from metadata.name once fullnameOverride is applied. Exercises
+    # the label-closure normalisation (pod template, selector, affinity,
+    # topology spread) and selector association from other resources.
+    cat > "${chart_dir}/templates/deployment-worker.yaml" << 'WORKER'
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: test-chart-worker
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: upstream-chart
+      app.kubernetes.io/instance: test-chart
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: upstream-chart
+        app.kubernetes.io/instance: test-chart
+        app.kubernetes.io/component: worker
+    spec:
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/name: upstream-chart
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - topologyKey: kubernetes.io/hostname
+              labelSelector:
+                matchLabels:
+                  app.kubernetes.io/name: upstream-chart
+      containers:
+        - name: main
+          image: nginx:1.25
+WORKER
+    cat > "${chart_dir}/templates/deployment-twin.yaml" << 'TWIN'
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: test-chart-twin
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: upstream-chart
+      app.kubernetes.io/instance: test-chart
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: upstream-chart
+        app.kubernetes.io/instance: test-chart
+        app.kubernetes.io/component: twin
+    spec:
+      containers:
+        - name: main
+          image: nginx:1.25
+TWIN
+    # Selects the worker only (component narrows it) - single match, rewritten.
+    cat > "${chart_dir}/templates/service-worker.yaml" << 'SVCW'
+apiVersion: v1
+kind: Service
+metadata:
+  name: test-chart-worker
+spec:
+  ports:
+    - port: 80
+  selector:
+    app.kubernetes.io/name: upstream-chart
+    app.kubernetes.io/component: worker
+SVCW
+    # Spans worker AND twin - ambiguous, must be skipped with a warning.
+    cat > "${chart_dir}/templates/service-spanning.yaml" << 'SVCS'
+apiVersion: v1
+kind: Service
+metadata:
+  name: test-chart-all
+spec:
+  ports:
+    - port: 80
+  selector:
+    app.kubernetes.io/name: upstream-chart
+    app.kubernetes.io/instance: test-chart
+SVCS
+    # Spans worker AND twin. A LabelSelector CAN express that, so it must be
+    # converted to a matchExpressions In list rather than warned about.
+    cat > "${chart_dir}/templates/networkpolicy-spanning.yaml" << 'NP'
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: test-chart-all
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: upstream-chart
+      app.kubernetes.io/instance: test-chart
+  policyTypes:
+    - Egress
+NP
+    # Selector written against the workload's NAME rather than the chart's
+    # label. Matches no pods today (they still say upstream-chart) but will
+    # match once normalisation relabels them - so it must not be warned about.
+    cat > "${chart_dir}/templates/service-by-name.yaml" << 'SVCN'
+apiVersion: v1
+kind: Service
+metadata:
+  name: test-chart-by-name
+spec:
+  ports:
+    - port: 80
+  selector:
+    app.kubernetes.io/name: test-chart-worker
+SVCN
+    # CronJob: pod template lives under jobTemplate, and its selector is
+    # controller-generated so it must never be written.
+    cat > "${chart_dir}/templates/cronjob-worker.yaml" << 'CJ'
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: test-chart-cron
+spec:
+  schedule: "0 * * * *"
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/name: upstream-chart
+        spec:
+          restartPolicy: OnFailure
+          containers:
+            - name: main
+              image: nginx:1.25
+CJ
+    # A workload named by fullnameOverride, whose chart labels diverge. Proves
+    # the closure normalisation (which runs pre-sweep, so it sees the sentinel)
+    # and the sentinel sweep compose into a token-consistent result.
+    cat > "${chart_dir}/templates/deployment-sentinel.yaml" << 'DEPSENT'
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kaptain-fullname-placeholder
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: upstream-chart
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: upstream-chart
+    spec:
+      containers:
+        - name: main
+          image: nginx:1.25
+DEPSENT
+    # A self-consistent chart carrying only the modern label, as produced by a
+    # project that sets fullnameOverride in its own values and opts out of ours.
+    cat > "${chart_dir}/templates/deployment-modern-only.yaml" << 'DEPMOD'
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: test-chart-modern
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: test-chart-modern
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: test-chart-modern
+        app.kubernetes.io/instance: test-chart
+    spec:
+      containers:
+        - name: main
+          image: nginx:1.25
+DEPMOD
+    # Both app-style labels present but disagreeing - must be rejected.
+    cat > "${chart_dir}/templates/deployment-disagree.yaml" << 'DEPDIS'
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: test-chart-disagree
+spec:
+  selector:
+    matchLabels:
+      app: test-chart-disagree
+  template:
+    metadata:
+      labels:
+        app: test-chart-disagree
+        app.kubernetes.io/name: something-else
+    spec:
+      containers:
+        - name: main
+          image: nginx:1.25
+DEPDIS
     cat > "${chart_dir}/templates/clusterrolebinding.yaml" << 'CRB'
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
@@ -661,9 +895,10 @@ run_script() {
   [[ "${annotations}" != *'kaptain.org/project-name'* ]] || return 1
   [[ "${annotations}" != *'kaptain.org/version'* ]] || return 1
 
-  # app and app.kubernetes.io/name overwrite to match the rendered manifest's own .metadata.name
-  [[ $(yq eval '.metadata.labels.app' "${dep_file}") == "test-chart" ]] || return 1
-  [[ $(yq eval '.metadata.labels."app.kubernetes.io/name"' "${dep_file}") == "test-chart" ]] || return 1
+  # app and app.kubernetes.io/name identify the application (the project token),
+  # not the resource's own .metadata.name
+  [[ $(yq eval '.metadata.labels.app' "${dep_file}") == '${ProjectName}' ]] || return 1
+  [[ $(yq eval '.metadata.labels."app.kubernetes.io/name"' "${dep_file}") == '${ProjectName}' ]] || return 1
 
   # Vendor must NOT emit kaptain.org/image-uri (no IMAGE_URI in vendor pipeline)
   [[ "${content}" != *'kaptain.org/image-uri'* ]] || return 1
@@ -793,4 +1028,308 @@ run_script() {
 
 teardown() {
   dump_bats_result
+}
+
+# =============================================================================
+# Stage 7: app / app.kubernetes.io/name identify the application, not the resource
+# =============================================================================
+
+@test "cluster-scoped resources get the project name as app, not their own name" {
+  export VENDOR_HELM_RENDERED_OCI_CHART="oci://example.com/test-chart"
+  export VENDOR_HELM_RENDERED_MOVE_FILES="${MOVE_FILES_JSON}"
+
+  run_script
+  [[ "$status" -eq 0 ]] || return 1
+
+  # ClusterRole is named test-chart-role in the chart; the app labels must
+  # identify the application (the project), not the resource's own name.
+  local cr_file="${REPO_DIR}/kaptain-out/helm-processing/G-annotated/clusterrole.yaml"
+  [[ -f "${cr_file}" ]] || return 1
+  [[ $(yq eval '.metadata.name' "${cr_file}") == "test-chart-role" ]] || return 1
+  [[ $(yq eval '.metadata.labels.app' "${cr_file}") == '${ProjectName}' ]] || return 1
+  [[ $(yq eval '.metadata.labels."app.kubernetes.io/name"' "${cr_file}") == '${ProjectName}' ]] || return 1
+}
+
+@test "app labels never carry the environment token, even when the name does" {
+  export VENDOR_HELM_RENDERED_OCI_CHART="oci://example.com/test-chart"
+  # Test-local moveFiles: pull in the cluster-scoped resource whose name
+  # templates .Release.Namespace (the case that leaked the namespace into
+  # the app labels).
+  export VENDOR_HELM_RENDERED_MOVE_FILES='[
+    {"source":"templates/deployment.yaml","destination":"deployment.yaml"},
+    {"source":"templates/clusterrole-namespaced.yaml","destination":"clusterrole-namespaced.yaml"}
+  ]'
+
+  run_script
+  [[ "$status" -eq 0 ]] || return 1
+
+  local cr_file="${REPO_DIR}/kaptain-out/helm-processing/G-annotated/clusterrole-namespaced.yaml"
+  [[ -f "${cr_file}" ]] || return 1
+
+  # The name legitimately carries the environment token (the chart asked for
+  # it); this proves the fixture exercises the sentinel sweep path.
+  [[ $(yq eval '.metadata.name' "${cr_file}") == '${Environment}-test-chart-reader' ]] || return 1
+
+  # The app labels must identify the application only - no namespace.
+  [[ $(yq eval '.metadata.labels.app' "${cr_file}") == '${ProjectName}' ]] || return 1
+  [[ $(yq eval '.metadata.labels."app.kubernetes.io/name"' "${cr_file}") == '${ProjectName}' ]] || return 1
+
+  # Belt and braces across every rendered manifest.
+  local manifest app_label name_label
+  while IFS= read -r manifest; do
+    app_label=$(yq eval '.metadata.labels.app // ""' "${manifest}")
+    name_label=$(yq eval '.metadata.labels."app.kubernetes.io/name" // ""' "${manifest}")
+    [[ "${app_label}" != *'${Environment}'* ]] || return 1
+    [[ "${name_label}" != *'${Environment}'* ]] || return 1
+  done < <(find "${REPO_DIR}/kaptain-out/helm-processing/G-annotated" -name '*.yaml' -type f)
+}
+
+@test "fullname sentinel resolves to the project-name token" {
+  export VENDOR_HELM_RENDERED_OCI_CHART="oci://example.com/test-chart"
+  export VENDOR_HELM_RENDERED_MOVE_FILES='[{"source":"templates/configmap-fullname.yaml","destination":"configmap-fullname.yaml"}]'
+
+  run_script
+  [[ "$status" -eq 0 ]] || return 1
+
+  local f="${REPO_DIR}/kaptain-out/helm-processing/G-annotated/configmap-fullname.yaml"
+  # Swapped in names and in any other field the chart interpolated it into
+  [[ $(yq eval '.metadata.name' "$f") == '${ProjectName}-config' ]] || return 1
+  [[ $(yq eval '.data.owner' "$f") == '${ProjectName}' ]] || return 1
+  [[ "$output" == *"fullnameOverride set to kaptain-fullname-placeholder"* ]] || return 1
+}
+
+@test "a truncated sentinel fragment fails the build" {
+  export VENDOR_HELM_RENDERED_OCI_CHART="oci://example.com/test-chart"
+  export VENDOR_HELM_RENDERED_MOVE_FILES='[{"source":"templates/configmap-truncated.yaml","destination":"configmap-truncated.yaml"}]'
+
+  run_script
+  [[ "$status" -ne 0 ]] || return 1
+  [[ "$output" == *"Sentinel fragments survived the sweep"* ]] || return 1
+  [[ "$output" == *"configmap-truncated.yaml"* ]] || return 1
+}
+
+# =============================================================================
+# Workload label closure: pod template app labels must equal metadata.name
+# =============================================================================
+
+WORKLOAD_MOVE_FILES='[
+  {"source":"templates/deployment-worker.yaml","destination":"deployment-worker.yaml"},
+  {"source":"templates/deployment-twin.yaml","destination":"deployment-twin.yaml"},
+  {"source":"templates/service-worker.yaml","destination":"service-worker.yaml"},
+  {"source":"templates/networkpolicy-spanning.yaml","destination":"networkpolicy-spanning.yaml"},
+  {"source":"templates/service-by-name.yaml","destination":"service-by-name.yaml"},
+  {"source":"templates/cronjob-worker.yaml","destination":"cronjob-worker.yaml"}
+]'
+
+annotated() { echo "${REPO_DIR}/kaptain-out/helm-processing/G-annotated/$1"; }
+
+@test "closure: pod template app labels are set to the workload metadata.name" {
+  export VENDOR_HELM_RENDERED_OCI_CHART="oci://example.com/test-chart"
+  export VENDOR_HELM_RENDERED_MOVE_FILES="${WORKLOAD_MOVE_FILES}"
+
+  run_script
+  [[ "$status" -eq 0 ]] || return 1
+
+  local f
+  f=$(annotated deployment-worker.yaml)
+  [[ $(yq eval '.spec.template.metadata.labels.app' "$f") == "test-chart-worker" ]] || return 1
+  [[ $(yq eval '.spec.template.metadata.labels."app.kubernetes.io/name"' "$f") == "test-chart-worker" ]] || return 1
+  # Chart's other identity labels are left alone
+  [[ $(yq eval '.spec.template.metadata.labels."app.kubernetes.io/instance"' "$f") == "test-chart" ]] || return 1
+  [[ $(yq eval '.spec.template.metadata.labels."app.kubernetes.io/component"' "$f") == "worker" ]] || return 1
+}
+
+@test "closure: workload selector is rewritten to match the pod template" {
+  export VENDOR_HELM_RENDERED_OCI_CHART="oci://example.com/test-chart"
+  export VENDOR_HELM_RENDERED_MOVE_FILES="${WORKLOAD_MOVE_FILES}"
+
+  run_script
+  [[ "$status" -eq 0 ]] || return 1
+
+  local f
+  f=$(annotated deployment-worker.yaml)
+  [[ $(yq eval '.spec.selector.matchLabels."app.kubernetes.io/name"' "$f") == "test-chart-worker" ]] || return 1
+  [[ $(yq eval '.spec.selector.matchLabels."app.kubernetes.io/instance"' "$f") == "test-chart" ]] || return 1
+  # Keys the chart did not use must not be invented in a selector
+  [[ $(yq eval '.spec.selector.matchLabels | has("app")' "$f") == "false" ]] || return 1
+}
+
+@test "closure: affinity and topology spread label selectors are rewritten" {
+  export VENDOR_HELM_RENDERED_OCI_CHART="oci://example.com/test-chart"
+  export VENDOR_HELM_RENDERED_MOVE_FILES="${WORKLOAD_MOVE_FILES}"
+
+  run_script
+  [[ "$status" -eq 0 ]] || return 1
+
+  local f
+  f=$(annotated deployment-worker.yaml)
+  [[ $(yq eval '.spec.template.spec.topologySpreadConstraints[0].labelSelector.matchLabels."app.kubernetes.io/name"' "$f") == "test-chart-worker" ]] || return 1
+  [[ $(yq eval '.spec.template.spec.affinity.podAntiAffinity.requiredDuringSchedulingIgnoredDuringExecution[0].labelSelector.matchLabels."app.kubernetes.io/name"' "$f") == "test-chart-worker" ]] || return 1
+}
+
+@test "closure: a service selecting one workload has its selector rewritten" {
+  export VENDOR_HELM_RENDERED_OCI_CHART="oci://example.com/test-chart"
+  export VENDOR_HELM_RENDERED_MOVE_FILES="${WORKLOAD_MOVE_FILES}"
+
+  run_script
+  [[ "$status" -eq 0 ]] || return 1
+
+  local f
+  f=$(annotated service-worker.yaml)
+  [[ $(yq eval '.spec.selector."app.kubernetes.io/name"' "$f") == "test-chart-worker" ]] || return 1
+  [[ $(yq eval '.spec.selector."app.kubernetes.io/component"' "$f") == "worker" ]] || return 1
+}
+
+@test "closure: a spanning LabelSelector becomes a matchExpressions In list" {
+  export VENDOR_HELM_RENDERED_OCI_CHART="oci://example.com/test-chart"
+  export VENDOR_HELM_RENDERED_MOVE_FILES="${WORKLOAD_MOVE_FILES}"
+
+  run_script
+  [[ "$status" -eq 0 ]] || return 1
+
+  local f
+  f=$(annotated networkpolicy-spanning.yaml)
+  # The shared app key moves into an In expression over both workloads...
+  [[ $(yq eval '.spec.podSelector.matchExpressions[0].key' "$f") == "app.kubernetes.io/name" ]] || return 1
+  [[ $(yq eval '.spec.podSelector.matchExpressions[0].operator' "$f") == "In" ]] || return 1
+  [[ $(yq eval '.spec.podSelector.matchExpressions[0].values | sort | join(",")' "$f") == "test-chart-twin,test-chart-worker" ]] || return 1
+  # ...while the other matchLabels keys stay where they were
+  [[ $(yq eval '.spec.podSelector.matchLabels."app.kubernetes.io/instance"' "$f") == "test-chart" ]] || return 1
+  [[ $(yq eval '.spec.podSelector.matchLabels | has("app.kubernetes.io/name")' "$f") == "false" ]] || return 1
+}
+
+@test "closure: CronJob is left entirely alone" {
+  export VENDOR_HELM_RENDERED_OCI_CHART="oci://example.com/test-chart"
+  export VENDOR_HELM_RENDERED_MOVE_FILES="${WORKLOAD_MOVE_FILES}"
+
+  run_script
+  [[ "$status" -eq 0 ]] || return 1
+
+  # Batch pods are owned directly, so no app label is needed to establish
+  # ownership - the chart's own labels stay untouched.
+  local f
+  f=$(annotated cronjob-worker.yaml)
+  [[ $(yq eval '.spec.jobTemplate.spec.template.metadata.labels."app.kubernetes.io/name"' "$f") == "upstream-chart" ]] || return 1
+  [[ $(yq eval '.spec.jobTemplate.spec.template.metadata.labels | has("app")' "$f") == "false" ]] || return 1
+  # Never write a selector for batch kinds - the controller owns it
+  [[ $(yq eval '.spec.jobTemplate.spec | has("selector")' "$f") == "false" ]] || return 1
+}
+
+@test "closure: no rewrite when fullnameOverride is disabled, and validation fails" {
+  export VENDOR_HELM_RENDERED_OCI_CHART="oci://example.com/test-chart"
+  export VENDOR_HELM_RENDERED_MOVE_FILES="${WORKLOAD_MOVE_FILES}"
+  export VENDOR_HELM_RENDERED_USE_PROJECT_NAME_AS_FULLNAME_OVERRIDE="false"
+
+  run_script
+  # The chart's own labels do not satisfy the invariant, so the post-check fails
+  [[ "$status" -ne 0 ]] || return 1
+  [[ "$output" == *"test-chart-worker"* ]] || return 1
+  [[ "$output" == *"app.kubernetes.io/name"* ]] || return 1
+}
+
+@test "closure: a selector naming a workload is honoured, not warned about" {
+  export VENDOR_HELM_RENDERED_OCI_CHART="oci://example.com/test-chart"
+  export VENDOR_HELM_RENDERED_MOVE_FILES="${WORKLOAD_MOVE_FILES}"
+
+  run_script
+  [[ "$status" -eq 0 ]] || return 1
+
+  # It matches no pod labels as written, but it names test-chart-worker, whose
+  # pods now carry exactly that - so it resolves rather than warning.
+  local f
+  f=$(annotated service-by-name.yaml)
+  [[ $(yq eval '.spec.selector."app.kubernetes.io/name"' "$f") == "test-chart-worker" ]] || return 1
+  [[ "$output" == *"already names workload 'test-chart-worker'"* ]] || return 1
+  [[ "$output" != *"test-chart-by-name"*"left unchanged"* ]] || return 1
+}
+
+@test "closure: a spanning Service that cannot be expressed fails the build" {
+  export VENDOR_HELM_RENDERED_OCI_CHART="oci://example.com/test-chart"
+  # Ship the spanning Service, which selects the shared chart label across two
+  # workloads. A Service selector cannot express a set, so once pod labels are
+  # per-workload it routes nowhere - the post-check must catch that.
+  export VENDOR_HELM_RENDERED_MOVE_FILES='[
+    {"source":"templates/deployment-worker.yaml","destination":"deployment-worker.yaml"},
+    {"source":"templates/deployment-twin.yaml","destination":"deployment-twin.yaml"},
+    {"source":"templates/service-spanning.yaml","destination":"service-spanning.yaml"}
+  ]'
+
+  run_script
+  [[ "$status" -ne 0 ]] || return 1
+  [[ "$output" == *"cannot express a set"* ]] || return 1
+  [[ "$output" == *"matches no workload in this chart"* ]] || return 1
+}
+
+@test "closure: a spanning Service repointed by yqTransform passes" {
+  export VENDOR_HELM_RENDERED_OCI_CHART="oci://example.com/test-chart"
+  export VENDOR_HELM_RENDERED_MOVE_FILES='[
+    {"source":"templates/deployment-worker.yaml","destination":"deployment-worker.yaml"},
+    {"source":"templates/deployment-twin.yaml","destination":"deployment-twin.yaml"},
+    {"source":"templates/service-spanning.yaml","destination":"service-spanning.yaml"}
+  ]'
+  # The documented escape hatch: repoint at a label we never touch.
+  export VENDOR_HELM_RENDERED_YQ_TRANSFORM='{"perFile":[{"file":"service-spanning.yaml","expressions":["del(.spec.selector.\"app.kubernetes.io/name\")"]}]}'
+
+  run_script
+  [[ "$status" -eq 0 ]] || return 1
+
+  local f
+  f=$(annotated service-spanning.yaml)
+  [[ $(yq eval '.spec.selector."app.kubernetes.io/instance"' "$f") == "test-chart" ]] || return 1
+  [[ $(yq eval '.spec.selector | has("app.kubernetes.io/name")' "$f") == "false" ]] || return 1
+}
+
+@test "closure and the fullname sentinel compose to a token-consistent workload" {
+  export VENDOR_HELM_RENDERED_OCI_CHART="oci://example.com/test-chart"
+  export VENDOR_HELM_RENDERED_MOVE_FILES='[{"source":"templates/deployment-sentinel.yaml","destination":"deployment-sentinel.yaml"}]'
+
+  run_script
+  [[ "$status" -eq 0 ]] || return 1
+
+  # Normalisation runs before the sweep, so it writes the sentinel-based name
+  # into the labels; the sweep then resolves name and labels together.
+  local f
+  f=$(annotated deployment-sentinel.yaml)
+  [[ $(yq eval '.metadata.name' "$f") == '${ProjectName}' ]] || return 1
+  [[ $(yq eval '.spec.template.metadata.labels.app' "$f") == '${ProjectName}' ]] || return 1
+  [[ $(yq eval '.spec.template.metadata.labels."app.kubernetes.io/name"' "$f") == '${ProjectName}' ]] || return 1
+  [[ $(yq eval '.spec.selector.matchLabels."app.kubernetes.io/name"' "$f") == '${ProjectName}' ]] || return 1
+}
+
+@test "closure: one app-style label is enough when normalisation is disabled" {
+  export VENDOR_HELM_RENDERED_OCI_CHART="oci://example.com/test-chart"
+  export VENDOR_HELM_RENDERED_MOVE_FILES='[{"source":"templates/deployment-modern-only.yaml","destination":"deployment-modern-only.yaml"}]'
+  export VENDOR_HELM_RENDERED_USE_PROJECT_NAME_AS_FULLNAME_OVERRIDE="false"
+
+  run_script
+  # Carries only app.kubernetes.io/name, which equals metadata.name - fine.
+  [[ "$status" -eq 0 ]] || return 1
+
+  # Untouched: no normalisation ran, so no legacy label was bolted on
+  local f
+  f=$(annotated deployment-modern-only.yaml)
+  [[ $(yq eval '.spec.template.metadata.labels | has("app")' "$f") == "false" ]] || return 1
+}
+
+@test "closure: disagreeing app labels are rejected" {
+  export VENDOR_HELM_RENDERED_OCI_CHART="oci://example.com/test-chart"
+  export VENDOR_HELM_RENDERED_MOVE_FILES='[{"source":"templates/deployment-disagree.yaml","destination":"deployment-disagree.yaml"}]'
+  export VENDOR_HELM_RENDERED_USE_PROJECT_NAME_AS_FULLNAME_OVERRIDE="false"
+
+  run_script
+  [[ "$status" -ne 0 ]] || return 1
+  [[ "$output" == *"pod template labels disagree"* ]] || return 1
+}
+
+@test "closure: a workload with no app-style label at all is rejected" {
+  export VENDOR_HELM_RENDERED_OCI_CHART="oci://example.com/test-chart"
+  # deployment-sentinel carries only app.kubernetes.io/name: upstream-chart, so
+  # strip it to leave the pod template with no app-style label whatsoever.
+  export VENDOR_HELM_RENDERED_MOVE_FILES='[{"source":"templates/deployment-sentinel.yaml","destination":"deployment-sentinel.yaml"}]'
+  export VENDOR_HELM_RENDERED_USE_PROJECT_NAME_AS_FULLNAME_OVERRIDE="false"
+  export VENDOR_HELM_RENDERED_YQ_TRANSFORM='{"perFile":[{"file":"deployment-sentinel.yaml","expressions":["del(.spec.template.metadata.labels)","del(.spec.selector)"]}]}'
+
+  run_script
+  [[ "$status" -ne 0 ]] || return 1
+  [[ "$output" == *"carries neither 'app' nor 'app.kubernetes.io/name'"* ]] || return 1
 }

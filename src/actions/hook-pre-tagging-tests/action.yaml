@@ -239,9 +239,9 @@ inputs:
     required: false
     default: ''
   kubernetes-workload-resources-ephemeral-storage:
-    description: 'Ephemeral storage request/limit (e.g., 10Mi, 100Mi, 1Gi)'
+    description: 'Ephemeral storage request/limit (e.g., 60Mi, 100Mi, 1Gi)'
     required: false
-    default: '10Mi'
+    default: '60Mi'
   kubernetes-workload-configmap-mount-path:
     description: 'ConfigMap mount path in container'
     required: false
