@@ -97,6 +97,16 @@ print_build_complete() {
 run_step() {
   local step_name="${1}"
 
+  # No point executing a hook script we already know is not configured.
+  if [[ "${step_name}" == hook-* ]]; then
+    local hook_script_var
+    hook_script_var="$(printf '%s' "${step_name}" | tr '[:lower:]' '[:upper:]' | tr '-' '_')_SCRIPT_SUB_PATH"
+    if [[ -z "${!hook_script_var:-}" ]]; then
+      print_step_banner "${step_name} (skipped)"
+      return 0
+    fi
+  fi
+
   print_step_banner "${step_name}"
 
   local step_file="${OUTPUT_SUB_PATH}/reference-script-output/${step_name}"

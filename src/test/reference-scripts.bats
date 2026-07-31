@@ -91,6 +91,16 @@ setup() {
   export SCRIPTS_DIR="$MOCK_SCRIPTS_DIR"
   export GENERATORS_DIR="$MOCK_GENERATORS_DIR"
 
+  # Hook steps only run when the project configures a script for them, so the
+  # call-order tests below have to configure one. The mocks never read the
+  # path. The skip path gets its own test.
+  for hook in HOOK_PRE_BUILD HOOK_POST_BUILD HOOK_PRE_TAGGING_TESTS \
+              HOOK_POST_VERSIONS_AND_NAMING HOOK_PRE_DOCKER_PREPARE \
+              HOOK_POST_DOCKER_TESTS HOOK_PRE_PACKAGE_PREPARE \
+              HOOK_POST_PACKAGE_TESTS; do
+    export "${hook}_SCRIPT_SUB_PATH=hooks/test-hook.bash"
+  done
+
   REF_DIR="$PROJECT_ROOT/src/scripts/reference"
 }
 
@@ -676,4 +686,25 @@ MOCK
 
   run bash "$REF_DIR/basic-quality-checks"
   [ "$status" -eq 0 ]
+}
+
+@test "reference: hook steps are skipped when no hook script is configured" {
+  unset HOOK_PRE_BUILD_SCRIPT_SUB_PATH HOOK_POST_BUILD_SCRIPT_SUB_PATH \
+        HOOK_PRE_TAGGING_TESTS_SCRIPT_SUB_PATH \
+        HOOK_POST_VERSIONS_AND_NAMING_SCRIPT_SUB_PATH \
+        HOOK_PRE_DOCKER_PREPARE_SCRIPT_SUB_PATH \
+        HOOK_POST_DOCKER_TESTS_SCRIPT_SUB_PATH \
+        HOOK_PRE_PACKAGE_PREPARE_SCRIPT_SUB_PATH \
+        HOOK_POST_PACKAGE_TESTS_SCRIPT_SUB_PATH
+
+  run bash "$REF_DIR/basic-quality-checks"
+  [ "$status" -eq 0 ]
+
+  # Same order as the configured case, minus the two hook steps
+  assert_call_order "validate-tooling
+load-project-kaptainpm-docker-logins
+docker-registry-logins
+kaptain-init
+load-final-kaptainpm-yaml
+basic-quality-checks"
 }
