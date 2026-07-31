@@ -29,7 +29,7 @@
 #   REPOSITORY_OWNER - Repository owner (from CI provider)
 #   CURRENT_BRANCH - Current branch name (PR head ref, or ref name for direct pushes)
 #   DEFAULT_BRANCH - Repository default branch
-#   DOCKER_TARGET_IMAGE_FULL_URI - Full image URI (registry/name:tag)
+#   DOCKER_TARGET_IMAGE_FULL_URI - Full image URI (registry/name:tag if set)
 #   DOCKER_IMAGE_FULL_URI - Alias for DOCKER_TARGET_IMAGE_FULL_URI
 #   DOCKER_CONTEXT_SUB_PATH - Docker build context directory
 #   DOCKER_CONTEXT_SUB_PATH_LINUX_AMD64 - Per-platform build context (multi-platform builds)
@@ -200,8 +200,8 @@ export GITHUB_RELEASE_NOTES GITHUB_RELEASE_NOTES_FILE GITHUB_RELEASE_ADD_VERSION
 : "${GIT_TAG:?GIT_TAG is required}"
 : "${PROJECT_NAME:?PROJECT_NAME is required}"
 : "${IS_RELEASE:?IS_RELEASE is required}"
-# Docker outputs from docker-build step
-: "${DOCKER_TARGET_IMAGE_FULL_URI:?DOCKER_TARGET_IMAGE_FULL_URI is required}"
+# Docker outputs (where present)
+DOCKER_TARGET_IMAGE_FULL_URI="${DOCKER_TARGET_IMAGE_FULL_URI:-}"
 
 # Export step outputs for hook script
 export VERSION VERSION_MAJOR VERSION_MINOR VERSION_PATCH
