@@ -127,7 +127,7 @@ CR
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: KAPTAIN_HELM_RENDER_AND_PROCESS_NAMESPACE_PLACEHOLDER-test-chart-reader
+  name: kaptain-namespace-placeholder-test-chart-reader
 rules:
   - apiGroups: [""]
     resources: ["configmaps"]

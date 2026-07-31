@@ -36,8 +36,11 @@ source "${SCRIPT_DIR}/../defaults/tokens.bash"
 # secretKeyRef.namespace, webhook clientConfig.service.namespace, etc.). Stage 7
 # swaps it for the project's correctly-styled environment token. Avoids the
 # helm/mustache vs shell-style token clash that would occur if we passed
-# `${Environment}` (or any `${...}` form) directly to helm.
-readonly NAMESPACE_PLACEHOLDER="KAPTAIN_HELM_RENDER_AND_PROCESS_NAMESPACE_PLACEHOLDER"
+# `${Environment}` (or any `${...}` form) directly to helm. Lowercase,
+# hyphenated and short because charts also template .Release.Namespace into
+# resource names, where their name helpers `| lower` it, sanitise underscores
+# and `| trunc 63` - any of which would leave a fragment the sweep cannot match.
+readonly NAMESPACE_PLACEHOLDER="kaptain-namespace-placeholder"
 
 # Required inputs
 OUTPUT_SUB_PATH="${OUTPUT_SUB_PATH:?OUTPUT_SUB_PATH is required}"
