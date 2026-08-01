@@ -975,8 +975,9 @@ inputs:
     required: true
   # Docker outputs (from docker-build)
   docker-target-image-full-uri:
-    description: 'Full target image URI (registry/name:tag)'
-    required: true
+    description: 'Full target image URI (registry/name:tag) - empty in manifests-only workflows'
+    required: false
+    default: ''
 
 runs:
   using: composite
