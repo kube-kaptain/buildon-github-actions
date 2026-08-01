@@ -1,25 +1,65 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/kube-kaptain/spec-kaptainpm-schema/releases/download/1.23/spec-kaptainpm-schema-layerset-source-1.23.yaml",
-  "name": "spec-kaptainpm-schema",
-  "version": "1.23",
+  "$id": "https://github.com/kube-kaptain/spec-kaptainpm-schema/releases/download/1.25/spec-kaptainpm-schema-final-1.25.yaml",
+  "name": "spec-kaptainpm-schema-final",
+  "version": "1.25",
   "source": "https://github.com/kube-kaptain/spec-kaptainpm-schema",
   "latest": "https://raw.githubusercontent.com/kube-kaptain/spec-kaptainpm-schema/main/spec-kaptainpm-schema.yaml",
-  "tagged": "https://raw.githubusercontent.com/kube-kaptain/spec-kaptainpm-schema/1.23/spec-kaptainpm-schema.yaml",
-  "release": "https://github.com/kube-kaptain/spec-kaptainpm-schema/releases/download/1.23/spec-kaptainpm-schema-layerset-source-1.23.yaml",
-  "validate-using": "https://github.com/kube-kaptain/spec-kaptainpm-schema/releases/download/1.23/spec-kaptainpm-schema-layerset-source-1.23.json",
+  "tagged": "https://raw.githubusercontent.com/kube-kaptain/spec-kaptainpm-schema/1.25/spec-kaptainpm-schema.yaml",
+  "release": "https://github.com/kube-kaptain/spec-kaptainpm-schema/releases/download/1.25/spec-kaptainpm-schema-final-1.25.yaml",
+  "validate-using": "https://github.com/kube-kaptain/spec-kaptainpm-schema/releases/download/1.25/spec-kaptainpm-schema-final-1.25.json",
   "title": "KaptainPM",
-  "description": "Kaptain project manifest schema (version 1.23).\n",
+  "description": "Kaptain project manifest schema (version 1.25).\n",
   "type": "object",
   "required": [
-    "apiVersion"
+    "apiVersion",
+    "kind"
   ],
   "additionalProperties": false,
+  "allOf": [
+    {
+      "if": {
+        "required": [
+          "kind"
+        ],
+        "properties": {
+          "kind": {
+            "not": {
+              "enum": [
+                "kubernetes-app-manifests-only",
+                "kubernetes-bundle-resources",
+                "kubernetes-bundle-vendor-helm-rendered"
+              ]
+            }
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "spec": {
+            "properties": {
+              "global": {
+                "properties": {
+                  "tokens": {
+                    "properties": {
+                      "builtinMode": {
+                        "const": "standard"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  ],
   "properties": {
     "apiVersion": {
       "type": "string",
       "pattern": "^kaptain\\.org/[0-9]+(\\.[0-9]+)*$",
-      "description": "API version - must be kaptain.org/ followed by the schema version (e.g. kaptain.org/1.2). Set via 1.23 token substitution at build time.\n"
+      "description": "API version - must be kaptain.org/ followed by the schema version (e.g. kaptain.org/1.2). Set via 1.25 token substitution at build time.\n"
     },
     "kind": {
       "type": "string",
@@ -39,30 +79,64 @@
           "additionalProperties": {
             "type": "string"
           },
-          "description": "Queryable build metadata labels. All values must be strings."
+          "description": "Queryable build metadata labels. All values must be strings.",
+          "properties": {
+            "kaptain.org/version": false,
+            "kaptain.org/project-name": false,
+            "kaptain.org/owner": false
+          }
         },
         "annotations": {
           "type": "object",
           "additionalProperties": {
             "type": "string"
           },
-          "description": "Informational build metadata annotations. All values must be strings."
+          "description": "Informational build metadata annotations. All values must be strings.",
+          "properties": {
+            "kaptain.org/built-by": false,
+            "kaptain.org/source-repository": false,
+            "kaptain.org/image-uri": false
+          }
         }
       }
+    },
+    "user-data": {
+      "type": "object",
+      "description": "Free-form custom data for layer-provided tools. No enforced schema. Deep merged like any other map field - layers provide defaults, local overrides win.\n"
     },
     "spec": {
       "type": "object",
       "additionalProperties": false,
       "description": "Build configuration",
       "properties": {
+        "credentials": {
+          "$ref": "#/$defs/credentials"
+        },
         "layers": {
           "$ref": "#/$defs/artifactReferenceList",
           "description": "Configuration layers applied before this project's settings. Deep-merged in order; local settings always win. Bootstrap registry logins must be in the project root file (needed before layer resolution). Additional logins declared in layers are applied in a second login phase post-merge.\n"
+        },
+        "templates": {
+          "$ref": "#/$defs/artifactReferenceList",
+          "description": "Manifest template sets pulled in and token-substituted to become this project's own manifest output. Replaces generators or hand-written manifests.\n"
+        },
+        "contents": {
+          "$ref": "#/$defs/artifactReferenceList",
+          "description": "Finished manifest artifacts from other projects bundled into this deliverable. Front and centre in product/environment builds.\n"
+        },
+        "data": {
+          "$ref": "#/$defs/specData"
+        },
+        "global": {
+          "$ref": "#/$defs/specGlobal"
+        },
+        "main": {
+          "$ref": "#/$defs/specMain"
+        },
+        "platform": {
+          "$ref": "#/$defs/specPlatform"
         }
-      },
-      "required": [
-        "layers"
-      ]
+      }
     }
   },
   "$defs": {
@@ -266,17 +340,13 @@
               ],
               "description": "MATCH enforces the nameStyle, ALL accepts any casing (default: MATCH)\n"
             },
-            "allowBuiltinOverride": {
-              "oneOf": [
-                {
-                  "type": "boolean"
-                },
-                {
-                  "type": "string",
-                  "pattern": "^(true|false)$"
-                }
+            "builtinMode": {
+              "type": "string",
+              "enum": [
+                "standard",
+                "template"
               ],
-              "description": "Allow user tokens to override built-in tokens (default: false)"
+              "description": "standard substitutes built-in tokens with this build's own values. template leaves them unsubstituted for the consuming build and emits this build's values under a Template prefix instead, so ProjectName is the consumer's and TemplateProjectName is the producer's. Only valid for the kinds that package manifests for another build to consume (default: standard)\n"
             },
             "substitutionPasses": {
               "oneOf": [
@@ -908,7 +978,7 @@
                         },
                         "ephemeralStorage": {
                           "type": "string",
-                          "description": "Ephemeral storage request and limit (default: 10Mi)"
+                          "description": "Ephemeral storage request and limit (default: 60Mi)"
                         }
                       }
                     },
