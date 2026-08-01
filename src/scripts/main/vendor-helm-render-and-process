@@ -53,6 +53,10 @@ readonly FULLNAME_PLACEHOLDER="kaptain-fullname-placeholder"
 # Required inputs
 OUTPUT_SUB_PATH="${OUTPUT_SUB_PATH:?OUTPUT_SUB_PATH is required}"
 
+# Manifests output paths - sourced after OUTPUT_SUB_PATH, which they derive from
+# shellcheck source=src/scripts/defaults/manifests-sub-path.bash
+source "${SCRIPT_DIR}/../defaults/manifests-sub-path.bash"
+
 # Chart source - exactly one mode must be configured
 REPO_URL="${VENDOR_HELM_RENDERED_REPO_URL:-}"
 REPO_NAME="${PROJECT_NAME:-}"
@@ -954,8 +958,7 @@ if [[ -n "${IMAGE_RETAGS_JSON}" && "${IMAGE_RETAGS_JSON}" != "null" && "${IMAGE_
   DOCKER_IMAGE_NAME_OVERRIDE="${DOCKER_IMAGE_NAME_OVERRIDE:-}"
 
   RETAG_COUNT=$(echo "${IMAGE_RETAGS_JSON}" | jq length)
-  ADDITIONAL_TOKENS_DIR="${OUTPUT_SUB_PATH}/manifests/additional-tokens"
-  mkdir -p "${ADDITIONAL_TOKENS_DIR}"
+  mkdir -p "${MANIFESTS_ADDITIONAL_TOKENS_SUB_PATH}"
 
   for ((i = 0; i < RETAG_COUNT; i++)); do
     SOURCE_IMAGE_URI=$(echo "${IMAGE_RETAGS_JSON}" | jq -r ".[${i}].sourceImageUri")
@@ -983,7 +986,7 @@ if [[ -n "${IMAGE_RETAGS_JSON}" && "${IMAGE_RETAGS_JSON}" != "null" && "${IMAGE_
     TOKEN_VALUE="${DOCKER_TAG}-${TAG_SUFFIX}"
 
     log "  Writing additional token: ${TOKEN_NAME}=${TOKEN_VALUE}"
-    printf '%s' "${TOKEN_VALUE}" > "${ADDITIONAL_TOKENS_DIR}/${TOKEN_NAME}"
+    printf '%s' "${TOKEN_VALUE}" > "${MANIFESTS_ADDITIONAL_TOKENS_SUB_PATH}/${TOKEN_NAME}"
   done
 
   # Ensure DockerImageName survives the override step
