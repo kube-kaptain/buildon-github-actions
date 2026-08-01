@@ -11,5 +11,4 @@ spec:
       delimiterStyle: shell
       nameStyle: PascalCase
       nameValidation: MATCH
-      allowBuiltinOverride: false
       valueTrailingNewline: strip-for-single-line

@@ -110,7 +110,6 @@ MAPPINGS=(
   "spec.global.tokens.delimiterStyle:TOKEN_DELIMITER_STYLE"
   "spec.global.tokens.nameStyle:TOKEN_NAME_STYLE"
   "spec.global.tokens.nameValidation:TOKEN_NAME_VALIDATION"
-  "spec.global.tokens.allowBuiltinOverride:ALLOW_BUILTIN_TOKEN_OVERRIDE"
   "spec.global.tokens.substitutionPasses:TOKEN_SUBSTITUTION_PASSES"
   "spec.global.tokens.valueTrailingNewline:CONFIG_VALUE_TRAILING_NEWLINE"
   # Note: release.branch/additionalBranches resolved separately below

@@ -12,7 +12,6 @@
 #   CONFIG_SUB_PATH        - User config directory (default: src/config)
 #   TOKEN_NAME_STYLE       - Case style for token names (default: PascalCase)
 #   TOKEN_NAME_VALIDATION  - How to validate user token names (default: MATCH)
-#   ALLOW_BUILTIN_TOKEN_OVERRIDE - Allow user tokens to override built-ins (default: false)
 #   CONFIG_VALUE_TRAILING_NEWLINE - Trailing newline handling (default: strip-for-single-line)
 #
 # Built-in tokens (read from env, written if set):
@@ -218,27 +217,25 @@ main() {
     fi
 
     # Step 3: Check for conflicts with built-in tokens
-    if [[ "${ALLOW_BUILTIN_TOKEN_OVERRIDE}" != "true" ]]; then
-      local conflicts=()
+    local conflicts=()
 
-      while IFS= read -r -d '' user_file; do
-        local user_token="${user_file#"${CONFIG_SUB_PATH}"/}"
-        # Check if this token name matches any built-in
-        if [[ -f "${TOKENS_OUTPUT_SUB_PATH}/${user_token}" ]]; then
-          conflicts+=("${user_token}")
-        fi
-      done < <(find "${CONFIG_SUB_PATH}" -type f -print0)
-
-      if [[ ${#conflicts[@]} -gt 0 ]]; then
-        log_error "Found attempt to override built-in variable(s) - this is not allowed:"
-        for conflict in "${conflicts[@]}"; do
-          log "  ${conflict}"
-        done
-        exit 1
+    while IFS= read -r -d '' user_file; do
+      local user_token="${user_file#"${CONFIG_SUB_PATH}"/}"
+      # Check if this token name matches any built-in
+      if [[ -f "${TOKENS_OUTPUT_SUB_PATH}/${user_token}" ]]; then
+        conflicts+=("${user_token}")
       fi
+    done < <(find "${CONFIG_SUB_PATH}" -type f -print0)
+
+    if [[ ${#conflicts[@]} -gt 0 ]]; then
+      log_error "Found attempt to override built-in variable(s) - this is not allowed:"
+      for conflict in "${conflicts[@]}"; do
+        log "  ${conflict}"
+      done
+      exit 1
     fi
 
-    # Step 4: Copy user config to output (may override built-ins if allowed)
+    # Step 4: Copy user config to output
     log "Copying user config tokens..."
     cp -R "${CONFIG_SUB_PATH}"/* "${TOKENS_OUTPUT_SUB_PATH}/"
   fi

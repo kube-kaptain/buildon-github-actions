@@ -134,18 +134,6 @@ set_required_env() {
   assert_output_contains "ProjectName"
 }
 
-@test "allows builtin override when enabled" {
-  set_required_env
-  export ALLOW_BUILTIN_TOKEN_OVERRIDE="true"
-  create_manifest "deployment.yaml"
-  create_config_token "ProjectName" "overridden-value"
-
-  run "$SCRIPTS_DIR/kubernetes-manifests-package-prepare"
-  [ "$status" -eq 0 ]
-
-  [ "$(cat "$OUTPUT_SUB_PATH/manifests/config/ProjectName")" = "overridden-value" ]
-}
-
 @test "fails when manifests directory not found and combined is empty" {
   set_required_env
   export MANIFESTS_SUB_PATH="/nonexistent/path"

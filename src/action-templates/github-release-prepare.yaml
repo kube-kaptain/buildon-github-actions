@@ -79,7 +79,6 @@ runs:
         TOKEN_NAME_STYLE: ${{ inputs.token-name-style }}
         TOKEN_NAME_VALIDATION: ${{ inputs.token-name-validation }}
         CONFIG_SUB_PATH: ${{ inputs.config-sub-path }}
-        ALLOW_BUILTIN_TOKEN_OVERRIDE: ${{ inputs.allow-builtin-token-override }}
         CONFIG_VALUE_TRAILING_NEWLINE: ${{ inputs.config-value-trailing-newline }}
         TOKEN_SUBSTITUTION_PASSES: ${{ inputs.token-substitution-passes }}
         DOCKER_IMAGE_FULL_URI: ${{ inputs.docker-image-full-uri }}
@@ -97,7 +96,6 @@ runs:
         TOKEN_DELIMITER_STYLE="${TOKEN_DELIMITER_STYLE:-}"
         TOKEN_NAME_STYLE="${TOKEN_NAME_STYLE:-}"
         TOKEN_NAME_VALIDATION="${TOKEN_NAME_VALIDATION:-}"
-        ALLOW_BUILTIN_TOKEN_OVERRIDE="${ALLOW_BUILTIN_TOKEN_OVERRIDE:-}"
         CONFIG_SUB_PATH="${CONFIG_SUB_PATH:-}"
         CONFIG_VALUE_TRAILING_NEWLINE="${CONFIG_VALUE_TRAILING_NEWLINE:-}"
         TOKEN_SUBSTITUTION_PASSES="${TOKEN_SUBSTITUTION_PASSES:-}"
@@ -193,7 +191,6 @@ runs:
           CONFIG_SUB_PATH="${CONFIG_SUB_PATH}" \
           TOKEN_NAME_STYLE="${TOKEN_NAME_STYLE}" \
           TOKEN_NAME_VALIDATION="${TOKEN_NAME_VALIDATION}" \
-          ALLOW_BUILTIN_TOKEN_OVERRIDE="${ALLOW_BUILTIN_TOKEN_OVERRIDE}" \
           CONFIG_VALUE_TRAILING_NEWLINE="${CONFIG_VALUE_TRAILING_NEWLINE}" \
           TOKEN_SUBSTITUTION_PASSES="${TOKEN_SUBSTITUTION_PASSES}" \
           PROJECT_NAME="${PROJECT_NAME}" \

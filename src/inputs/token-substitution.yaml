@@ -17,11 +17,6 @@ token-name-validation:
   required: false
   type: string
   default: 'MATCH'
-allow-builtin-token-override:
-  description: 'Allow user tokens to override built-in tokens (for template/reusable projects)'
-  required: false
-  type: boolean
-  default: false
 config-sub-path:
   description: 'Directory containing user-defined token files (relative)'
   required: false
