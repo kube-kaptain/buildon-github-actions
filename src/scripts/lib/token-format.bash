@@ -204,11 +204,19 @@ convert_token_name() {
 # Inverse of convert_token_name: convert a name from any supported style back
 # to the canonical UPPER_SNAKE form. Preserves nested-path separators ('/').
 #
+# convert_token_name builds PascalCase by capitalising each segment, so a
+# capital marks a segment boundary and the inverse splits at every one of them.
+# An acronym run is therefore several segments, not one word: OmgWTF is four
+# segments and comes back as OmgWTF. Anyone wanting two writes OmgWtf, or
+# OMG_WTF in a snake style knowing it renders as OmgWtf.
+#
 # Usage: canonicalize_token_name <style> <name>
 # Example: canonicalize_token_name PascalCase MyToken         -> MY_TOKEN
 #          canonicalize_token_name camelCase  version2Part    -> VERSION_2_PART
 #          canonicalize_token_name lower-kebab my-token       -> MY_TOKEN
 #          canonicalize_token_name PascalCase Vendor/EnvoyCpu -> VENDOR/ENVOY_CPU
+#          canonicalize_token_name PascalCase HTTPPort        -> H_T_T_P_PORT
+#          canonicalize_token_name camelCase  myID            -> MY_I_D
 canonicalize_token_name() {
   if [[ $# -ne 2 ]]; then
     log_error "canonicalize_token_name requires exactly 2 arguments, got $#"
@@ -229,10 +237,12 @@ canonicalize_token_name() {
 
   case "${style}" in
     PascalCase|camelCase)
-      # Insert _ at lowercase->uppercase, lowercase->digit, and digit->letter
-      # boundaries; the / path separator is left untouched. UC at the end.
+      # Insert _ before every capital and every digit run, tidy up the
+      # separators that produces, then UC. The final expression keeps the /
+      # path separator clean - without it Vendor/EnvoyCpu would canonicalise
+      # to VENDOR/_ENVOY_CPU.
       echo "${name}" \
-        | sed -E 's/([a-z])([A-Z0-9])/\1_\2/g; s/([0-9])([A-Za-z])/\1_\2/g' \
+        | sed -E 's/([A-Z])/_\1/g; s/([0-9]+)/_\1/g; s/_+/_/g; s/^_//; s|_?/_?|/|g; s/_$//' \
         | tr '[:lower:]' '[:upper:]'
       ;;
     UPPER_SNAKE)

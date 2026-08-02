@@ -1094,6 +1094,91 @@ setup() {
   [ "$status" -ne 0 ]
 }
 
+# =============================================================================
+# Round-trip property: canonicalize_token_name is the inverse of
+# convert_token_name, so converting a name to canonical and back must return
+# the identical name. Both call sites depend on this - convert-tokens-in-tree
+# builds its search pattern by round-tripping each scanned token, and
+# bundle-import renames defaults through the canonical form.
+# =============================================================================
+
+# Assert the round trip is faithful for one style/name pair.
+assert_round_trips() {
+  local style="$1" name="$2"
+  local canonical back
+  canonical=$(canonicalize_token_name "$style" "$name")
+  back=$(convert_token_name "$style" "$canonical")
+  if [[ "$back" != "$name" ]]; then
+    echo "round trip lost ${style} '${name}': canonical '${canonical}' came back as '${back}'" >&2
+    return 1
+  fi
+}
+
+# Names the build system generates itself, across every supported style. These
+# are convert_token_name output by construction, so they must never regress.
+@test "round trip: system-generated names survive in every name style" {
+  local canonical style rendered
+  for canonical in PROJECT_NAME VERSION DOCKER_IMAGE_FULL_URI VERSION_2_PART_DNS_SAFE \
+                   IS_RELEASE BUILD_TIMESTAMP GIT_REPOSITORY_OWNER \
+                   KAPTAINPM_METADATA_DESCRIPTION VENDOR_ENVOY/REPLICAS; do
+    for style in PascalCase camelCase UPPER_SNAKE lower_snake lower-kebab \
+                 UPPER-KEBAB lower.dot UPPER.DOT; do
+      rendered=$(convert_token_name "$style" "$canonical")
+      assert_round_trips "$style" "$rendered"
+    done
+  done
+}
+
+# Author-written names carrying acronym runs. Legal per the PascalCase
+# validator's ^[A-Z0-9][a-zA-Z0-9]*$ per segment, and common in real config.
+@test "round trip: PascalCase names with acronym runs survive" {
+  local name
+  for name in OmgWTF HTTPPort APIBaseURL URL MyID ContentFooURI MyApp/HTTPPort \
+              AThree BTwo COne; do
+    assert_round_trips PascalCase "$name"
+  done
+}
+
+@test "round trip: camelCase names with acronym runs survive" {
+  local name
+  for name in omgWTF httpPort apiBaseURL myID vendor/myURL; do
+    assert_round_trips camelCase "$name"
+  done
+}
+
+@test "round trip: names with digit runs and leading digits survive" {
+  local name
+  for name in Omg123FourFiveSix A1B2C3 Port8080 X2 2MyVar Version22Part V1P2/Foo3; do
+    assert_round_trips PascalCase "$name"
+  done
+  for name in omg123FourFiveSix version2PartDnsSafe port8080; do
+    assert_round_trips camelCase "$name"
+  done
+}
+
+@test "canonicalize_token_name: a digit run is one segment, not one per digit" {
+  [ "$(canonicalize_token_name PascalCase Port8080)" = "PORT_8080" ]
+  [ "$(canonicalize_token_name PascalCase Version22Part)" = "VERSION_22_PART" ]
+  [ "$(canonicalize_token_name PascalCase Omg123FourFiveSix)" = "OMG_123_FOUR_FIVE_SIX" ]
+}
+
+@test "canonicalize_token_name: a leading digit is kept as the first segment" {
+  # The PascalCase validator's own examples list 2MyVar as valid.
+  [ "$(canonicalize_token_name PascalCase 2MyVar)" = "2_MY_VAR" ]
+}
+
+@test "canonicalize_token_name: a capital starts a new segment" {
+  [ "$(canonicalize_token_name PascalCase OmgWTF)" = "OMG_W_T_F" ]
+  [ "$(canonicalize_token_name PascalCase HTTPPort)" = "H_T_T_P_PORT" ]
+  [ "$(canonicalize_token_name PascalCase APIBaseURL)" = "A_P_I_BASE_U_R_L" ]
+  [ "$(canonicalize_token_name camelCase myID)" = "MY_I_D" ]
+}
+
+@test "canonicalize_token_name: path separator gains no stray underscore" {
+  [ "$(canonicalize_token_name PascalCase Vendor/EnvoyCpu)" = "VENDOR/ENVOY_CPU" ]
+  [ "$(canonicalize_token_name PascalCase MyApp/HTTPPort)" = "MY_APP/H_T_T_P_PORT" ]
+}
+
 teardown() {
   dump_bats_result
 }
