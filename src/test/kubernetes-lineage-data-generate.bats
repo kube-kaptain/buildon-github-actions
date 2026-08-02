@@ -782,6 +782,21 @@ EOF
   assert_output_contains "PRODUCT_NAME"
 }
 
+@test "validation: a contract listing deferred built-ins as required tokens passes" {
+  stage_product_preconditions
+  local out="${TEST_DIR}/kaptain-out"
+  cat >> "${out}/manifests/contract/contract.yaml" << 'EOF'
+config:
+  required:
+    - ProjectName
+    - Version
+    - RepositoryName
+EOF
+
+  run_script
+  [ "${status}" -eq 0 ]
+}
+
 teardown() {
   dump_bats_result
 }

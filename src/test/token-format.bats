@@ -1179,6 +1179,82 @@ assert_round_trips() {
   [ "$(canonicalize_token_name PascalCase MyApp/HTTPPort)" = "MY_APP/H_T_T_P_PORT" ]
 }
 
+# ============================================================================
+# prefix_token_name - Original prefix for builtinMode: template
+# ============================================================================
+
+@test "prefix_token_name: PascalCase" {
+  result=$(prefix_token_name PascalCase ORIGINAL ContentFooVersion)
+  [ "$result" = "OriginalContentFooVersion" ]
+}
+
+@test "prefix_token_name: camelCase upcases the existing first character" {
+  result=$(prefix_token_name camelCase ORIGINAL contentFooVersion)
+  [ "$result" = "originalContentFooVersion" ]
+}
+
+@test "prefix_token_name: UPPER_SNAKE" {
+  result=$(prefix_token_name UPPER_SNAKE ORIGINAL CONTENT_FOO_VERSION)
+  [ "$result" = "ORIGINAL_CONTENT_FOO_VERSION" ]
+}
+
+@test "prefix_token_name: lower_snake" {
+  result=$(prefix_token_name lower_snake ORIGINAL content_foo_version)
+  [ "$result" = "original_content_foo_version" ]
+}
+
+@test "prefix_token_name: lower-kebab" {
+  result=$(prefix_token_name lower-kebab ORIGINAL content-foo-version)
+  [ "$result" = "original-content-foo-version" ]
+}
+
+@test "prefix_token_name: UPPER-KEBAB" {
+  result=$(prefix_token_name UPPER-KEBAB ORIGINAL CONTENT-FOO-VERSION)
+  [ "$result" = "ORIGINAL-CONTENT-FOO-VERSION" ]
+}
+
+@test "prefix_token_name: lower.dot" {
+  result=$(prefix_token_name lower.dot ORIGINAL content.foo.version)
+  [ "$result" = "original.content.foo.version" ]
+}
+
+@test "prefix_token_name: UPPER.DOT" {
+  result=$(prefix_token_name UPPER.DOT ORIGINAL CONTENT.FOO.VERSION)
+  [ "$result" = "ORIGINAL.CONTENT.FOO.VERSION" ]
+}
+
+@test "prefix_token_name: single word" {
+  result=$(prefix_token_name PascalCase ORIGINAL Version)
+  [ "$result" = "OriginalVersion" ]
+}
+
+@test "prefix_token_name: digits survive the canonical round trip" {
+  result=$(prefix_token_name camelCase ORIGINAL version2PartDnsSafe)
+  [ "$result" = "originalVersion2PartDnsSafe" ]
+}
+
+@test "prefix_token_name: nested path prefixes the first segment only" {
+  result=$(prefix_token_name PascalCase ORIGINAL VendorEnvoy/Replicas)
+  [ "$result" = "OriginalVendorEnvoy/Replicas" ]
+}
+
+@test "prefix_token_name: agrees with convert_token_name on the prefixed canonical" {
+  local converted expected
+  converted=$(convert_token_name PascalCase DOCKER_IMAGE_NAME)
+  expected=$(convert_token_name PascalCase ORIGINAL_DOCKER_IMAGE_NAME)
+  [ "$(prefix_token_name PascalCase ORIGINAL "$converted")" = "$expected" ]
+}
+
+@test "prefix_token_name: fails with unknown style" {
+  run prefix_token_name BogusStyle ORIGINAL MyToken
+  [ "$status" -ne 0 ]
+}
+
+@test "prefix_token_name: fails with wrong argument count" {
+  run prefix_token_name PascalCase
+  [ "$status" -ne 0 ]
+}
+
 teardown() {
   dump_bats_result
 }

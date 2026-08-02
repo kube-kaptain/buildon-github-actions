@@ -9,6 +9,7 @@
 #   is_valid_substitution_token_style - Check if substitution style is valid
 #   convert_token_name               - Convert UPPER_SNAKE to target name style
 #   canonicalize_token_name          - Inverse of convert_token_name (any style -> UPPER_SNAKE)
+#   prefix_token_name                - Prepend a canonical prefix to an already-converted name
 #   convert_kebab_name               - Convert lower-kebab to target name style
 #   format_token_reference           - Wrap name with substitution delimiters
 #   format_canonical_token           - Convenience combining both
@@ -268,6 +269,34 @@ canonicalize_token_name() {
       return 1
       ;;
   esac
+}
+
+# Prepend a canonical prefix segment to a name that is already in the target
+# style, by canonicalising, joining and converting back. The prefix is given in
+# UPPER_SNAKE with no trailing separator; the style decides how it joins.
+#
+# Usage: prefix_token_name <style> <UPPER_SNAKE_PREFIX> <name>
+# Example: prefix_token_name PascalCase ORIGINAL ContentFooVersion -> OriginalContentFooVersion
+#          prefix_token_name camelCase  ORIGINAL contentFooVersion -> originalContentFooVersion
+#          prefix_token_name lower.dot  ORIGINAL content.foo       -> original.content.foo
+prefix_token_name() {
+  if [[ $# -ne 3 ]]; then
+    log_error "prefix_token_name requires exactly 3 arguments, got $#"
+    return 1
+  fi
+
+  local style="${1:-}"
+  local prefix="${2:-}"
+  local name="${3:-}"
+
+  if [[ -z "${prefix}" || "${prefix}" =~ ^[[:space:]]+$ ]]; then
+    log_error "prefix is required and cannot be whitespace-only"
+    return 1
+  fi
+
+  local canonical
+  canonical=$(canonicalize_token_name "${style}" "${name}") || return 1
+  convert_token_name "${style}" "${prefix}_${canonical}"
 }
 
 # Format a name with substitution delimiters

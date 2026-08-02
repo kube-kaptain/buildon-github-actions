@@ -415,6 +415,7 @@ jobs:
           token-delimiter-style: ${{ steps.kpm.outputs.TOKEN_DELIMITER_STYLE }}
           token-name-style: ${{ steps.kpm.outputs.TOKEN_NAME_STYLE }}
           token-name-validation: ${{ steps.kpm.outputs.TOKEN_NAME_VALIDATION }}
+          token-builtin-mode: ${{ steps.kpm.outputs.TOKEN_BUILTIN_MODE }}
           config-sub-path: ${{ steps.kpm.outputs.CONFIG_SUB_PATH }}
           config-value-trailing-newline: ${{ steps.kpm.outputs.CONFIG_VALUE_TRAILING_NEWLINE }}
           token-substitution-passes: ${{ steps.kpm.outputs.TOKEN_SUBSTITUTION_PASSES }}
@@ -676,6 +677,7 @@ jobs:
           token-delimiter-style: ${{ steps.kpm.outputs.TOKEN_DELIMITER_STYLE }}
           token-name-style: ${{ steps.kpm.outputs.TOKEN_NAME_STYLE }}
           token-name-validation: ${{ steps.kpm.outputs.TOKEN_NAME_VALIDATION }}
+          token-builtin-mode: ${{ steps.kpm.outputs.TOKEN_BUILTIN_MODE }}
           config-sub-path: ${{ steps.kpm.outputs.CONFIG_SUB_PATH }}
           config-value-trailing-newline: ${{ steps.kpm.outputs.CONFIG_VALUE_TRAILING_NEWLINE }}
           token-substitution-passes: ${{ steps.kpm.outputs.TOKEN_SUBSTITUTION_PASSES }}
@@ -880,6 +882,7 @@ jobs:
           token-delimiter-style: ${{ steps.kpm.outputs.TOKEN_DELIMITER_STYLE }}
           token-name-style: ${{ steps.kpm.outputs.TOKEN_NAME_STYLE }}
           token-name-validation: ${{ steps.kpm.outputs.TOKEN_NAME_VALIDATION }}
+          token-builtin-mode: ${{ steps.kpm.outputs.TOKEN_BUILTIN_MODE }}
           config-sub-path: ${{ steps.kpm.outputs.CONFIG_SUB_PATH }}
           config-value-trailing-newline: ${{ steps.kpm.outputs.CONFIG_VALUE_TRAILING_NEWLINE }}
           token-substitution-passes: ${{ steps.kpm.outputs.TOKEN_SUBSTITUTION_PASSES }}
@@ -1397,6 +1400,7 @@ jobs:
           token-delimiter-style: ${{ steps.kpm.outputs.TOKEN_DELIMITER_STYLE }}
           token-name-style: ${{ steps.kpm.outputs.TOKEN_NAME_STYLE }}
           token-name-validation: ${{ steps.kpm.outputs.TOKEN_NAME_VALIDATION }}
+          token-builtin-mode: ${{ steps.kpm.outputs.TOKEN_BUILTIN_MODE }}
           config-sub-path: ${{ steps.kpm.outputs.CONFIG_SUB_PATH }}
           config-value-trailing-newline: ${{ steps.kpm.outputs.CONFIG_VALUE_TRAILING_NEWLINE }}
           token-substitution-passes: ${{ steps.kpm.outputs.TOKEN_SUBSTITUTION_PASSES }}

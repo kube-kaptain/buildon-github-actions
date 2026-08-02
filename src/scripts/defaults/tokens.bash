@@ -20,6 +20,11 @@ TOKEN_DELIMITER_STYLE="${TOKEN_DELIMITER_STYLE:-shell}"
 # Token validation
 TOKEN_NAME_VALIDATION="${TOKEN_NAME_VALIDATION:-MATCH}"
 
+# Built-in token emission: standard substitutes this build's own values,
+# template defers them to the consuming build and publishes this build's
+# values under the Original prefix instead.
+TOKEN_BUILTIN_MODE="${TOKEN_BUILTIN_MODE:-standard}"
+
 # Config file handling
 CONFIG_SUB_PATH="${CONFIG_SUB_PATH:-src/config}"
 CONFIG_VALUE_TRAILING_NEWLINE="${CONFIG_VALUE_TRAILING_NEWLINE:-strip-for-single-line}"
