@@ -12,7 +12,7 @@
 #   CONFIG_SUB_PATH        - User config directory (default: src/config)
 #   TOKEN_NAME_STYLE       - Case style for token names (default: PascalCase)
 #   TOKEN_NAME_VALIDATION  - How to validate user token names (default: MATCH)
-#   ALLOW_BUILTIN_TOKEN_OVERRIDE - Allow user tokens to override built-ins (default: false)
+#   TOKEN_BUILTIN_MODE     - standard or template (default: standard)
 #   CONFIG_VALUE_TRAILING_NEWLINE - Trailing newline handling (default: strip-for-single-line)
 #
 # Built-in tokens (read from env, written if set):
@@ -58,6 +58,19 @@ if ! is_valid_token_name_style "${TOKEN_NAME_STYLE}"; then
   exit 1
 fi
 
+# Canonical prefix the template mode publishes this build's own values under,
+# leaving the plain names deferred to the consuming build.
+readonly TEMPLATE_MODE_PREFIX="ORIGINAL"
+
+# Validate builtin mode upfront - a typo must not silently behave as standard
+case "${TOKEN_BUILTIN_MODE}" in
+  standard|template) ;;
+  *)
+    log_error "Unknown builtin token mode: ${TOKEN_BUILTIN_MODE} (expected standard or template)"
+    exit 1
+    ;;
+esac
+
 # Required built-in tokens (must be set by caller - provided by versions-and-naming)
 PROJECT_NAME="${PROJECT_NAME:?PROJECT_NAME is required}"
 VERSION="${VERSION:?VERSION is required}"
@@ -76,11 +89,17 @@ IS_RELEASE="${IS_RELEASE:?IS_RELEASE is required}"
 DOCKER_TAG="${DOCKER_TAG:?DOCKER_TAG is required}"
 DOCKER_IMAGE_NAME="${DOCKER_IMAGE_NAME:?DOCKER_IMAGE_NAME is required}"
 
-# Write a built-in token file
+# Write a built-in token file. Under template mode the canonical name is
+# prefixed before conversion, so the plain name is left unresolved in the
+# manifests for the consuming build to supply.
 write_builtin_token() {
   local name="$1"
   local value="$2"
   local target_name
+
+  if [[ "${TOKEN_BUILTIN_MODE}" == "template" ]]; then
+    name="${TEMPLATE_MODE_PREFIX}_${name}"
+  fi
   target_name=$(convert_token_name "${TOKEN_NAME_STYLE}" "${name}")
 
   printf '%s' "${value}" > "${TOKENS_OUTPUT_SUB_PATH}/${target_name}"
@@ -122,6 +141,11 @@ scan_auto_builtin_tokens() {
         log_error "Auto-emitted token '${name}' in ${dir} does not start with required prefix '${expected_prefix}'"
         exit 1
       fi
+      # Prefix check runs against the on-disk name, so template mode renames
+      # only on the way out - these defer like every other built-in.
+      if [[ "${TOKEN_BUILTIN_MODE}" == "template" ]]; then
+        name=$(prefix_token_name "${TOKEN_NAME_STYLE}" "${TEMPLATE_MODE_PREFIX}" "${name}")
+      fi
       cp "${file}" "${TOKENS_OUTPUT_SUB_PATH}/${name}"
     done < <(find "${dir}" -type f -print0)
   done
@@ -133,6 +157,7 @@ main() {
   log "  Config: ${CONFIG_SUB_PATH}"
   log "  Name style: ${TOKEN_NAME_STYLE}"
   log "  Validation: ${TOKEN_NAME_VALIDATION}"
+  log "  Builtin mode: ${TOKEN_BUILTIN_MODE}"
 
   # Create output directory
   mkdir -p "${TOKENS_OUTPUT_SUB_PATH}"
@@ -218,27 +243,25 @@ main() {
     fi
 
     # Step 3: Check for conflicts with built-in tokens
-    if [[ "${ALLOW_BUILTIN_TOKEN_OVERRIDE}" != "true" ]]; then
-      local conflicts=()
+    local conflicts=()
 
-      while IFS= read -r -d '' user_file; do
-        local user_token="${user_file#"${CONFIG_SUB_PATH}"/}"
-        # Check if this token name matches any built-in
-        if [[ -f "${TOKENS_OUTPUT_SUB_PATH}/${user_token}" ]]; then
-          conflicts+=("${user_token}")
-        fi
-      done < <(find "${CONFIG_SUB_PATH}" -type f -print0)
-
-      if [[ ${#conflicts[@]} -gt 0 ]]; then
-        log_error "Found attempt to override built-in variable(s) - this is not allowed:"
-        for conflict in "${conflicts[@]}"; do
-          log "  ${conflict}"
-        done
-        exit 1
+    while IFS= read -r -d '' user_file; do
+      local user_token="${user_file#"${CONFIG_SUB_PATH}"/}"
+      # Check if this token name matches any built-in
+      if [[ -f "${TOKENS_OUTPUT_SUB_PATH}/${user_token}" ]]; then
+        conflicts+=("${user_token}")
       fi
+    done < <(find "${CONFIG_SUB_PATH}" -type f -print0)
+
+    if [[ ${#conflicts[@]} -gt 0 ]]; then
+      log_error "Found attempt to override built-in variable(s) - this is not allowed:"
+      for conflict in "${conflicts[@]}"; do
+        log "  ${conflict}"
+      done
+      exit 1
     fi
 
-    # Step 4: Copy user config to output (may override built-ins if allowed)
+    # Step 4: Copy user config to output
     log "Copying user config tokens..."
     cp -R "${CONFIG_SUB_PATH}"/* "${TOKENS_OUTPUT_SUB_PATH}/"
   fi

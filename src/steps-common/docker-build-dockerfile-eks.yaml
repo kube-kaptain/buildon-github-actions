@@ -35,7 +35,6 @@
     token-name-style: ${{ steps.kpm.outputs.TOKEN_NAME_STYLE }}
     token-name-validation: ${{ steps.kpm.outputs.TOKEN_NAME_VALIDATION }}
     config-sub-path: ${{ steps.kpm.outputs.CONFIG_SUB_PATH }}
-    allow-builtin-token-override: ${{ steps.kpm.outputs.ALLOW_BUILTIN_TOKEN_OVERRIDE }}
     config-value-trailing-newline: ${{ steps.kpm.outputs.CONFIG_VALUE_TRAILING_NEWLINE }}
     token-substitution-passes: ${{ steps.eks-prepare.outputs.token-substitution-passes }}
     image-build-command: ${{ steps.validate-tooling.outputs.IMAGE_BUILD_COMMAND }}

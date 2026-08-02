@@ -52,10 +52,6 @@ inputs:
     description: 'How to validate user token names (MATCH = must match token-name-style, ALL = accept any valid name)'
     required: false
     default: 'MATCH'
-  allow-builtin-token-override:
-    description: 'Allow user tokens to override built-in tokens (for template/reusable projects)'
-    required: false
-    default: 'false'
   config-sub-path:
     description: 'Directory containing user-defined token files (relative)'
     required: false
@@ -209,7 +205,6 @@ runs:
         TOKEN_NAME_STYLE: ${{ inputs.token-name-style }}
         TOKEN_NAME_VALIDATION: ${{ inputs.token-name-validation }}
         CONFIG_SUB_PATH: ${{ inputs.config-sub-path }}
-        ALLOW_BUILTIN_TOKEN_OVERRIDE: ${{ inputs.allow-builtin-token-override }}
         CONFIG_VALUE_TRAILING_NEWLINE: ${{ inputs.config-value-trailing-newline }}
         TOKEN_SUBSTITUTION_PASSES: ${{ inputs.token-substitution-passes }}
       run: "${{ github.action_path }}/../../scripts/main/docker-build-dockerfile"

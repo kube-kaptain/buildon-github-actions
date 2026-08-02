@@ -334,7 +334,7 @@ extract_defaults_inputs() {
   local defaults_file="$1"
   # Match: VAR_NAME="${VAR_NAME:-...}" pattern for known input prefixes
   # These are the workflow input variables that hooks should export
-  local prefixes="KUBERNETES_|DOCKER_|MANIFESTS_|TOKEN_|TAG_VERSION_|GITHUB_RELEASE_|QC_|BLOCK_|OUTPUT_|CONFIG_|ALLOW_BUILTIN_TOKEN|ADDITIONAL_RELEASE_BRANCHES|DEFAULT_BRANCH|CURRENT_BRANCH|RELEASE_BRANCH|BUILD_MODE|IMAGE_BUILD_COMMAND"
+  local prefixes="KUBERNETES_|DOCKER_|MANIFESTS_|TOKEN_|TAG_VERSION_|GITHUB_RELEASE_|QC_|BLOCK_|OUTPUT_|CONFIG_|ADDITIONAL_RELEASE_BRANCHES|DEFAULT_BRANCH|CURRENT_BRANCH|RELEASE_BRANCH|BUILD_MODE|IMAGE_BUILD_COMMAND"
   grep -E "^(${prefixes})[A-Z0-9_]*=\"\\\$\\{" "$defaults_file" 2>/dev/null \
     | sed -E 's/^([A-Z][A-Z0-9_]*)=.*/\1/' \
     | grep -v '_INPUT$' \
@@ -481,6 +481,7 @@ verify_action_template_env_mappings() {
   local computed_vars="DOCKER_CONTEXT_SUB_PATH DOCKER_CONTEXT_SUB_PATH_LINUX_AMD64 DOCKER_CONTEXT_SUB_PATH_LINUX_ARM64"
   computed_vars="$computed_vars MANIFESTS_COMBINED_SUB_PATH MANIFESTS_CONFIG_SUB_PATH MANIFESTS_SUBSTITUTED_SUB_PATH MANIFESTS_ZIP_SUB_PATH"
   computed_vars="$computed_vars MANIFESTS_DEFAULTS_SUB_PATH MANIFESTS_ADDITIONAL_DEFAULTS_SUB_PATH MANIFESTS_ADDITIONAL_SUB_PATH"
+  computed_vars="$computed_vars MANIFESTS_ADDITIONAL_TOKENS_SUB_PATH"
 
   local missing=""
   while IFS= read -r export_var; do

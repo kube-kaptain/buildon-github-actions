@@ -110,7 +110,7 @@ MAPPINGS=(
   "spec.global.tokens.delimiterStyle:TOKEN_DELIMITER_STYLE"
   "spec.global.tokens.nameStyle:TOKEN_NAME_STYLE"
   "spec.global.tokens.nameValidation:TOKEN_NAME_VALIDATION"
-  "spec.global.tokens.allowBuiltinOverride:ALLOW_BUILTIN_TOKEN_OVERRIDE"
+  "spec.global.tokens.builtinMode:TOKEN_BUILTIN_MODE"
   "spec.global.tokens.substitutionPasses:TOKEN_SUBSTITUTION_PASSES"
   "spec.global.tokens.valueTrailingNewline:CONFIG_VALUE_TRAILING_NEWLINE"
   # Note: release.branch/additionalBranches resolved separately below
@@ -426,6 +426,20 @@ for mapping in "${MAPPINGS[@]}"; do
   found_count=$((found_count + 1))
 done
 log ""
+
+# --- Builtin token mode: only the kinds that package manifests for another
+# build to consume may defer their built-ins. The schema enforces this too;
+# this catches hand-rolled local invocations that never validated. ---
+if [[ "${TOKEN_BUILTIN_MODE:-standard}" == "template" ]]; then
+  case "${BUILD_KIND}" in
+    kubernetes-app-manifests-only|kubernetes-bundle-resources|kubernetes-bundle-vendor-helm-rendered) ;;
+    *)
+      log_error "spec.global.tokens.builtinMode: template is not valid for kind '${BUILD_KIND}'"
+      log_error "Valid kinds: kubernetes-app-manifests-only, kubernetes-bundle-resources, kubernetes-bundle-vendor-helm-rendered"
+      exit 1
+      ;;
+  esac
+fi
 
 # --- Release branch set: incoming presence wins over file config ---
 # RELEASE_BRANCH already set on entry (local guesser writes all three vars

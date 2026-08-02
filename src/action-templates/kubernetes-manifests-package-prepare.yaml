@@ -41,6 +41,7 @@ inputs:
     default: ''
 
   # INJECT-INPUT: token-substitution
+  # INJECT-INPUT: token-builtin-mode
 
 outputs:
   manifests-zip-file-name:
@@ -84,7 +85,7 @@ runs:
         TOKEN_DELIMITER_STYLE: ${{ inputs.token-delimiter-style }}
         TOKEN_NAME_STYLE: ${{ inputs.token-name-style }}
         TOKEN_NAME_VALIDATION: ${{ inputs.token-name-validation }}
-        ALLOW_BUILTIN_TOKEN_OVERRIDE: ${{ inputs.allow-builtin-token-override }}
+        TOKEN_BUILTIN_MODE: ${{ inputs.token-builtin-mode }}
         CONFIG_SUB_PATH: ${{ inputs.config-sub-path }}
         CONFIG_VALUE_TRAILING_NEWLINE: ${{ inputs.config-value-trailing-newline }}
         TOKEN_SUBSTITUTION_PASSES: ${{ inputs.token-substitution-passes }}

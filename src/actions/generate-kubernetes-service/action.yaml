@@ -107,10 +107,6 @@ inputs:
     description: 'How to validate user token names (MATCH = must match token-name-style, ALL = accept any valid name)'
     required: false
     default: 'MATCH'
-  allow-builtin-token-override:
-    description: 'Allow user tokens to override built-in tokens (for template/reusable projects)'
-    required: false
-    default: 'false'
   config-sub-path:
     description: 'Directory containing user-defined token files (relative)'
     required: false

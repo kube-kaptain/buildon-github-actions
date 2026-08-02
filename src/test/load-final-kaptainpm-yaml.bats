@@ -531,6 +531,51 @@ YAML
   [[ "$output" == *"mutually exclusive"* ]] || return 1
 }
 
+@test "exports TOKEN_BUILTIN_MODE from yaml on a permitted kind" {
+  export BUILD_KIND="kubernetes-bundle-resources"
+  cat > "${TEST_DIR}/kaptainpm/final/KaptainPM.yaml" << 'EOF'
+apiVersion: kaptain.org/1.10
+kind: kubernetes-bundle-resources
+spec:
+  global:
+    tokens:
+      builtinMode: template
+EOF
+  run_script
+  [ "${status}" -eq 0 ]
+  assert_github_output "TOKEN_BUILTIN_MODE" "template"
+}
+
+@test "TOKEN_BUILTIN_MODE template is rejected on a kind outside the whitelist" {
+  export BUILD_KIND="kubernetes-app-docker-dockerfile"
+  cat > "${TEST_DIR}/kaptainpm/final/KaptainPM.yaml" << 'EOF'
+apiVersion: kaptain.org/1.10
+kind: kubernetes-app-docker-dockerfile
+spec:
+  global:
+    tokens:
+      builtinMode: template
+EOF
+  run_script
+  [ "${status}" -ne 0 ]
+  [[ "$output" == *"builtinMode: template is not valid for kind"* ]] || return 1
+}
+
+@test "TOKEN_BUILTIN_MODE standard is accepted on any kind" {
+  export BUILD_KIND="kubernetes-app-docker-dockerfile"
+  cat > "${TEST_DIR}/kaptainpm/final/KaptainPM.yaml" << 'EOF'
+apiVersion: kaptain.org/1.10
+kind: kubernetes-app-docker-dockerfile
+spec:
+  global:
+    tokens:
+      builtinMode: standard
+EOF
+  run_script
+  [ "${status}" -eq 0 ]
+  assert_github_output "TOKEN_BUILTIN_MODE" "standard"
+}
+
 teardown() {
   dump_bats_result
 }

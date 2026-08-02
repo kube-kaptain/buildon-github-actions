@@ -446,7 +446,7 @@ jobs:
           token-delimiter-style: ${{ steps.kpm.outputs.TOKEN_DELIMITER_STYLE }}
           token-name-style: ${{ steps.kpm.outputs.TOKEN_NAME_STYLE }}
           token-name-validation: ${{ steps.kpm.outputs.TOKEN_NAME_VALIDATION }}
-          allow-builtin-token-override: ${{ steps.kpm.outputs.ALLOW_BUILTIN_TOKEN_OVERRIDE }}
+          token-builtin-mode: ${{ steps.kpm.outputs.TOKEN_BUILTIN_MODE }}
           config-sub-path: ${{ steps.kpm.outputs.CONFIG_SUB_PATH }}
           config-value-trailing-newline: ${{ steps.kpm.outputs.CONFIG_VALUE_TRAILING_NEWLINE }}
           token-substitution-passes: ${{ steps.kpm.outputs.TOKEN_SUBSTITUTION_PASSES }}
@@ -708,7 +708,7 @@ jobs:
           token-delimiter-style: ${{ steps.kpm.outputs.TOKEN_DELIMITER_STYLE }}
           token-name-style: ${{ steps.kpm.outputs.TOKEN_NAME_STYLE }}
           token-name-validation: ${{ steps.kpm.outputs.TOKEN_NAME_VALIDATION }}
-          allow-builtin-token-override: ${{ steps.kpm.outputs.ALLOW_BUILTIN_TOKEN_OVERRIDE }}
+          token-builtin-mode: ${{ steps.kpm.outputs.TOKEN_BUILTIN_MODE }}
           config-sub-path: ${{ steps.kpm.outputs.CONFIG_SUB_PATH }}
           config-value-trailing-newline: ${{ steps.kpm.outputs.CONFIG_VALUE_TRAILING_NEWLINE }}
           token-substitution-passes: ${{ steps.kpm.outputs.TOKEN_SUBSTITUTION_PASSES }}
@@ -913,7 +913,7 @@ jobs:
           token-delimiter-style: ${{ steps.kpm.outputs.TOKEN_DELIMITER_STYLE }}
           token-name-style: ${{ steps.kpm.outputs.TOKEN_NAME_STYLE }}
           token-name-validation: ${{ steps.kpm.outputs.TOKEN_NAME_VALIDATION }}
-          allow-builtin-token-override: ${{ steps.kpm.outputs.ALLOW_BUILTIN_TOKEN_OVERRIDE }}
+          token-builtin-mode: ${{ steps.kpm.outputs.TOKEN_BUILTIN_MODE }}
           config-sub-path: ${{ steps.kpm.outputs.CONFIG_SUB_PATH }}
           config-value-trailing-newline: ${{ steps.kpm.outputs.CONFIG_VALUE_TRAILING_NEWLINE }}
           token-substitution-passes: ${{ steps.kpm.outputs.TOKEN_SUBSTITUTION_PASSES }}
@@ -1262,7 +1262,7 @@ jobs:
           token-delimiter-style: ${{ steps.kpm.outputs.TOKEN_DELIMITER_STYLE }}
           token-name-style: ${{ steps.kpm.outputs.TOKEN_NAME_STYLE }}
           token-name-validation: ${{ steps.kpm.outputs.TOKEN_NAME_VALIDATION }}
-          allow-builtin-token-override: ${{ steps.kpm.outputs.ALLOW_BUILTIN_TOKEN_OVERRIDE }}
+          token-builtin-mode: ${{ steps.kpm.outputs.TOKEN_BUILTIN_MODE }}
           config-sub-path: ${{ steps.kpm.outputs.CONFIG_SUB_PATH }}
           config-value-trailing-newline: ${{ steps.kpm.outputs.CONFIG_VALUE_TRAILING_NEWLINE }}
           token-substitution-passes: ${{ steps.kpm.outputs.TOKEN_SUBSTITUTION_PASSES }}
@@ -1366,7 +1366,6 @@ jobs:
           token-name-style: ${{ steps.kpm.outputs.TOKEN_NAME_STYLE }}
           token-delimiter-style: ${{ steps.kpm.outputs.TOKEN_DELIMITER_STYLE }}
           token-name-validation: ${{ steps.kpm.outputs.TOKEN_NAME_VALIDATION }}
-          allow-builtin-token-override: ${{ steps.kpm.outputs.ALLOW_BUILTIN_TOKEN_OVERRIDE }}
           config-sub-path: ${{ steps.kpm.outputs.CONFIG_SUB_PATH }}
           config-value-trailing-newline: ${{ steps.kpm.outputs.CONFIG_VALUE_TRAILING_NEWLINE }}
           token-substitution-passes: ${{ steps.kpm.outputs.TOKEN_SUBSTITUTION_PASSES }}
@@ -1413,7 +1412,6 @@ jobs:
           token-name-style: ${{ steps.kpm.outputs.TOKEN_NAME_STYLE }}
           token-delimiter-style: ${{ steps.kpm.outputs.TOKEN_DELIMITER_STYLE }}
           token-name-validation: ${{ steps.kpm.outputs.TOKEN_NAME_VALIDATION }}
-          allow-builtin-token-override: ${{ steps.kpm.outputs.ALLOW_BUILTIN_TOKEN_OVERRIDE }}
           config-sub-path: ${{ steps.kpm.outputs.CONFIG_SUB_PATH }}
           config-value-trailing-newline: ${{ steps.kpm.outputs.CONFIG_VALUE_TRAILING_NEWLINE }}
           token-substitution-passes: ${{ steps.kpm.outputs.TOKEN_SUBSTITUTION_PASSES }}
@@ -1461,7 +1459,6 @@ jobs:
           token-name-style: ${{ steps.kpm.outputs.TOKEN_NAME_STYLE }}
           token-delimiter-style: ${{ steps.kpm.outputs.TOKEN_DELIMITER_STYLE }}
           token-name-validation: ${{ steps.kpm.outputs.TOKEN_NAME_VALIDATION }}
-          allow-builtin-token-override: ${{ steps.kpm.outputs.ALLOW_BUILTIN_TOKEN_OVERRIDE }}
           config-sub-path: ${{ steps.kpm.outputs.CONFIG_SUB_PATH }}
           config-value-trailing-newline: ${{ steps.kpm.outputs.CONFIG_VALUE_TRAILING_NEWLINE }}
           token-substitution-passes: ${{ steps.kpm.outputs.TOKEN_SUBSTITUTION_PASSES }}
@@ -1649,7 +1646,6 @@ jobs:
           token-name-style: ${{ steps.kpm.outputs.TOKEN_NAME_STYLE }}
           token-delimiter-style: ${{ steps.kpm.outputs.TOKEN_DELIMITER_STYLE }}
           token-name-validation: ${{ steps.kpm.outputs.TOKEN_NAME_VALIDATION }}
-          allow-builtin-token-override: ${{ steps.kpm.outputs.ALLOW_BUILTIN_TOKEN_OVERRIDE }}
           config-sub-path: ${{ steps.kpm.outputs.CONFIG_SUB_PATH }}
           config-value-trailing-newline: ${{ steps.kpm.outputs.CONFIG_VALUE_TRAILING_NEWLINE }}
           token-substitution-passes: ${{ steps.kpm.outputs.TOKEN_SUBSTITUTION_PASSES }}
@@ -1701,7 +1697,6 @@ jobs:
           token-name-style: ${{ steps.kpm.outputs.TOKEN_NAME_STYLE }}
           token-delimiter-style: ${{ steps.kpm.outputs.TOKEN_DELIMITER_STYLE }}
           token-name-validation: ${{ steps.kpm.outputs.TOKEN_NAME_VALIDATION }}
-          allow-builtin-token-override: ${{ steps.kpm.outputs.ALLOW_BUILTIN_TOKEN_OVERRIDE }}
           config-sub-path: ${{ steps.kpm.outputs.CONFIG_SUB_PATH }}
           config-value-trailing-newline: ${{ steps.kpm.outputs.CONFIG_VALUE_TRAILING_NEWLINE }}
           token-substitution-passes: ${{ steps.kpm.outputs.TOKEN_SUBSTITUTION_PASSES }}
@@ -1760,7 +1755,6 @@ jobs:
           token-name-style: ${{ steps.kpm.outputs.TOKEN_NAME_STYLE }}
           token-delimiter-style: ${{ steps.kpm.outputs.TOKEN_DELIMITER_STYLE }}
           token-name-validation: ${{ steps.kpm.outputs.TOKEN_NAME_VALIDATION }}
-          allow-builtin-token-override: ${{ steps.kpm.outputs.ALLOW_BUILTIN_TOKEN_OVERRIDE }}
           config-sub-path: ${{ steps.kpm.outputs.CONFIG_SUB_PATH }}
           config-value-trailing-newline: ${{ steps.kpm.outputs.CONFIG_VALUE_TRAILING_NEWLINE }}
           token-substitution-passes: ${{ steps.kpm.outputs.TOKEN_SUBSTITUTION_PASSES }}
@@ -1884,7 +1878,7 @@ jobs:
           token-delimiter-style: ${{ steps.kpm.outputs.TOKEN_DELIMITER_STYLE }}
           token-name-style: ${{ steps.kpm.outputs.TOKEN_NAME_STYLE }}
           token-name-validation: ${{ steps.kpm.outputs.TOKEN_NAME_VALIDATION }}
-          allow-builtin-token-override: ${{ steps.kpm.outputs.ALLOW_BUILTIN_TOKEN_OVERRIDE }}
+          token-builtin-mode: ${{ steps.kpm.outputs.TOKEN_BUILTIN_MODE }}
           config-sub-path: ${{ steps.kpm.outputs.CONFIG_SUB_PATH }}
           config-value-trailing-newline: ${{ steps.kpm.outputs.CONFIG_VALUE_TRAILING_NEWLINE }}
           token-substitution-passes: ${{ steps.kpm.outputs.TOKEN_SUBSTITUTION_PASSES }}
@@ -2002,7 +1996,7 @@ jobs:
           token-delimiter-style: ${{ steps.kpm.outputs.TOKEN_DELIMITER_STYLE }}
           token-name-style: ${{ steps.kpm.outputs.TOKEN_NAME_STYLE }}
           token-name-validation: ${{ steps.kpm.outputs.TOKEN_NAME_VALIDATION }}
-          allow-builtin-token-override: ${{ steps.kpm.outputs.ALLOW_BUILTIN_TOKEN_OVERRIDE }}
+          token-builtin-mode: ${{ steps.kpm.outputs.TOKEN_BUILTIN_MODE }}
           config-sub-path: ${{ steps.kpm.outputs.CONFIG_SUB_PATH }}
           config-value-trailing-newline: ${{ steps.kpm.outputs.CONFIG_VALUE_TRAILING_NEWLINE }}
           token-substitution-passes: ${{ steps.kpm.outputs.TOKEN_SUBSTITUTION_PASSES }}
@@ -2275,7 +2269,7 @@ jobs:
           token-delimiter-style: ${{ steps.kpm.outputs.TOKEN_DELIMITER_STYLE }}
           token-name-style: ${{ steps.kpm.outputs.TOKEN_NAME_STYLE }}
           token-name-validation: ${{ steps.kpm.outputs.TOKEN_NAME_VALIDATION }}
-          allow-builtin-token-override: ${{ steps.kpm.outputs.ALLOW_BUILTIN_TOKEN_OVERRIDE }}
+          token-builtin-mode: ${{ steps.kpm.outputs.TOKEN_BUILTIN_MODE }}
           config-sub-path: ${{ steps.kpm.outputs.CONFIG_SUB_PATH }}
           config-value-trailing-newline: ${{ steps.kpm.outputs.CONFIG_VALUE_TRAILING_NEWLINE }}
           token-substitution-passes: ${{ steps.kpm.outputs.TOKEN_SUBSTITUTION_PASSES }}
@@ -2448,7 +2442,6 @@ jobs:
           token-name-style: ${{ steps.kpm.outputs.TOKEN_NAME_STYLE }}
           token-name-validation: ${{ steps.kpm.outputs.TOKEN_NAME_VALIDATION }}
           config-sub-path: ${{ steps.kpm.outputs.CONFIG_SUB_PATH }}
-          allow-builtin-token-override: ${{ steps.kpm.outputs.ALLOW_BUILTIN_TOKEN_OVERRIDE }}
           config-value-trailing-newline: ${{ steps.kpm.outputs.CONFIG_VALUE_TRAILING_NEWLINE }}
           token-substitution-passes: ${{ steps.kpm.outputs.TOKEN_SUBSTITUTION_PASSES }}
           docker-image-full-uri: ${{ steps.docker-build.outputs.docker-target-image-full-uri }}
@@ -2765,7 +2758,7 @@ jobs:
           token-delimiter-style: ${{ steps.kpm.outputs.TOKEN_DELIMITER_STYLE }}
           token-name-style: ${{ steps.kpm.outputs.TOKEN_NAME_STYLE }}
           token-name-validation: ${{ steps.kpm.outputs.TOKEN_NAME_VALIDATION }}
-          allow-builtin-token-override: ${{ steps.kpm.outputs.ALLOW_BUILTIN_TOKEN_OVERRIDE }}
+          token-builtin-mode: ${{ steps.kpm.outputs.TOKEN_BUILTIN_MODE }}
           config-sub-path: ${{ steps.kpm.outputs.CONFIG_SUB_PATH }}
           config-value-trailing-newline: ${{ steps.kpm.outputs.CONFIG_VALUE_TRAILING_NEWLINE }}
           token-substitution-passes: ${{ steps.kpm.outputs.TOKEN_SUBSTITUTION_PASSES }}

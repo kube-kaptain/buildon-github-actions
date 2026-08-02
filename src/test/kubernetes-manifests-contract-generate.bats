@@ -408,6 +408,29 @@ EOF
   assert_output_contains "CONTRACT_ZIP_FILE_NAME=test-project-1.2.3-contract.zip"
 }
 
+@test "contract-generate: deferred built-ins land in config.required as bare names" {
+  cat > "${OUTPUT_SUB_PATH}/manifests/substituted/${PROJECT_NAME}/deployment.yaml" << 'EOF'
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ${ProjectName}
+  labels:
+    app.kubernetes.io/version: ${Version}
+    kaptain.org/source-repository: ${RepositoryName}
+EOF
+  run "$CONTRACT_SCRIPT"
+  [ "$status" -eq 0 ]
+  local contract="${OUTPUT_SUB_PATH}/manifests/contract/contract.yaml"
+  local required
+  required=$(yq '.config.required[]' "$contract")
+  echo "$required" | grep -qx "ProjectName"
+  echo "$required" | grep -qx "Version"
+  echo "$required" | grep -qx "RepositoryName"
+  # Bare names, no delimiters - this is what keeps the lineage no-unresolved
+  # assertion from tripping on a template-mode build.
+  ! grep -q '\${' "$contract"
+}
+
 teardown() {
   dump_bats_result
 }

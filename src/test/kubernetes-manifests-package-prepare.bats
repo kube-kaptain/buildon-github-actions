@@ -134,18 +134,6 @@ set_required_env() {
   assert_output_contains "ProjectName"
 }
 
-@test "allows builtin override when enabled" {
-  set_required_env
-  export ALLOW_BUILTIN_TOKEN_OVERRIDE="true"
-  create_manifest "deployment.yaml"
-  create_config_token "ProjectName" "overridden-value"
-
-  run "$SCRIPTS_DIR/kubernetes-manifests-package-prepare"
-  [ "$status" -eq 0 ]
-
-  [ "$(cat "$OUTPUT_SUB_PATH/manifests/config/ProjectName")" = "overridden-value" ]
-}
-
 @test "fails when manifests directory not found and combined is empty" {
   set_required_env
   export MANIFESTS_SUB_PATH="/nonexistent/path"
@@ -640,4 +628,92 @@ stage_additional_manifest() {
   run "$SCRIPTS_DIR/kubernetes-manifests-package-prepare"
   [ "$status" -eq 0 ]
   assert_output_not_contains "additional manifest"
+}
+
+# ============================================================================
+# builtinMode: template - built-ins defer to the consuming build
+# ============================================================================
+
+@test "template mode writes built-ins under the Original prefix" {
+  set_required_env
+  export TOKEN_BUILTIN_MODE="template"
+  create_manifest "deployment.yaml"
+
+  run "$SCRIPTS_DIR/kubernetes-manifests-package-prepare"
+  [ "$status" -eq 0 ]
+
+  [ "$(cat "$OUTPUT_SUB_PATH/manifests/config/OriginalProjectName")" = "my-project" ]
+  [ "$(cat "$OUTPUT_SUB_PATH/manifests/config/OriginalVersion")" = "1.2.3" ]
+  [ "$(cat "$OUTPUT_SUB_PATH/manifests/config/OriginalDockerTag")" = "1.2.3" ]
+}
+
+@test "template mode leaves the plain built-in names unwritten" {
+  set_required_env
+  export TOKEN_BUILTIN_MODE="template"
+  create_manifest "deployment.yaml"
+
+  run "$SCRIPTS_DIR/kubernetes-manifests-package-prepare"
+  [ "$status" -eq 0 ]
+
+  [ ! -f "$OUTPUT_SUB_PATH/manifests/config/ProjectName" ]
+  [ ! -f "$OUTPUT_SUB_PATH/manifests/config/Version" ]
+  [ ! -f "$OUTPUT_SUB_PATH/manifests/config/DockerTag" ]
+}
+
+@test "template mode prefixes the disk-scanned context tokens too" {
+  set_required_env
+  export TOKEN_BUILTIN_MODE="template"
+  create_manifest "deployment.yaml"
+  mkdir -p "$OUTPUT_SUB_PATH/builtin-resolved-tokens/repository"
+  printf '%s' "some-repo" > "$OUTPUT_SUB_PATH/builtin-resolved-tokens/repository/RepositoryName"
+
+  run "$SCRIPTS_DIR/kubernetes-manifests-package-prepare"
+  [ "$status" -eq 0 ]
+
+  [ "$(cat "$OUTPUT_SUB_PATH/manifests/config/OriginalRepositoryName")" = "some-repo" ]
+  [ ! -f "$OUTPUT_SUB_PATH/manifests/config/RepositoryName" ]
+}
+
+@test "template mode lets user config supply a deferred built-in" {
+  set_required_env
+  export TOKEN_BUILTIN_MODE="template"
+  create_manifest "deployment.yaml"
+  create_config_token "ProjectName" "consumer-supplied"
+
+  run "$SCRIPTS_DIR/kubernetes-manifests-package-prepare"
+  [ "$status" -eq 0 ]
+  [ "$(cat "$OUTPUT_SUB_PATH/manifests/config/ProjectName")" = "consumer-supplied" ]
+}
+
+@test "template mode lets additional-tokens supply a deferred built-in" {
+  set_required_env
+  export TOKEN_BUILTIN_MODE="template"
+  create_manifest "deployment.yaml"
+  mkdir -p "$OUTPUT_SUB_PATH/manifests/additional-tokens"
+  printf '%s' "hook-supplied" > "$OUTPUT_SUB_PATH/manifests/additional-tokens/Version"
+
+  run "$SCRIPTS_DIR/kubernetes-manifests-package-prepare"
+  [ "$status" -eq 0 ]
+  [ "$(cat "$OUTPUT_SUB_PATH/manifests/config/Version")" = "hook-supplied" ]
+}
+
+@test "standard mode still rejects a user token shadowing a built-in" {
+  set_required_env
+  export TOKEN_BUILTIN_MODE="standard"
+  create_manifest "deployment.yaml"
+  create_config_token "ProjectName" "overridden"
+
+  run "$SCRIPTS_DIR/kubernetes-manifests-package-prepare"
+  [ "$status" -ne 0 ]
+  assert_output_contains "override"
+}
+
+@test "fails on an unknown builtin mode" {
+  set_required_env
+  export TOKEN_BUILTIN_MODE="defer"
+  create_manifest "deployment.yaml"
+
+  run "$SCRIPTS_DIR/kubernetes-manifests-package-prepare"
+  [ "$status" -ne 0 ]
+  assert_output_contains "Unknown builtin token mode"
 }

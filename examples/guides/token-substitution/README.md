@@ -20,8 +20,8 @@ is the value.
 
 ## Built-in tokens
 
-Tokens like `Version` and `DockerTag` are always available. Set
-`allowBuiltinOverride: false` to prevent custom tokens from shadowing them.
+Tokens like `Version` and `DockerTag` are always available. Custom tokens
+cannot shadow them - a name collision fails the build.
 
 ## Custom tokens
 

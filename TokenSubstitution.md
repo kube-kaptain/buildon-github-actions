@@ -33,7 +33,6 @@ target/manifests/            # Build output
 | `token-delimiter-style` | `shell` | Delimiter syntax for tokens |
 | `token-name-style` | `PascalCase` | Naming convention for tokens |
 | `token-name-validation` | `MATCH` | `MATCH` = must match style, `ALL` = any valid name |
-| `allow-builtin-token-override` | `false` | Allow user tokens to override built-ins |
 | `config-sub-path` | `src/config` | Directory for user-defined tokens (relative) |
 | `config-value-trailing-newline` | `strip-for-single-line` | How to handle trailing newlines |
 
@@ -157,8 +156,7 @@ Examples:
 | `layerset-foo:1.0` (as a layer) | `LAYER_LAYERSET_FOO_{REF,VERSION_SPEC,VERSION}` |
 
 These names are converted to `token-name-style` like any other built-in, and
-user config that tries to redefine one fails the build under
-`allow-builtin-token-override: false`.
+user config that tries to redefine one fails the build.
 
 ## User Tokens
 
@@ -200,14 +198,12 @@ src/config/shared-database-url  ->  postgres://prod:5432
 
 ## Conflict Detection
 
-When `allow-builtin-token-override: false` (default), user tokens cannot shadow built-ins:
+User tokens cannot shadow built-ins:
 
 ```
 src/config/ProjectName   # CONFLICT with built-in!
 src/config/MyCustomVar   # OK
 ```
-
-Set `allow-builtin-token-override: true` for template projects that need to defer built-in values to downstream builds.
 
 ## Validation Rules
 

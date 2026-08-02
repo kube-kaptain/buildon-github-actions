@@ -737,10 +737,6 @@ inputs:
     description: 'How to validate user token names (MATCH = must match token-name-style, ALL = accept any valid name)'
     required: false
     default: 'MATCH'
-  allow-builtin-token-override:
-    description: 'Allow user tokens to override built-in tokens (for template/reusable projects)'
-    required: false
-    default: 'false'
   config-sub-path:
     description: 'Directory containing user-defined token files (relative)'
     required: false
@@ -753,6 +749,15 @@ inputs:
     description: 'Number of times to run the token substitution pass (for nested token references)'
     required: false
     default: '1'
+  # Built-in token emission mode
+  #
+  # Its own group rather than part of token-substitution: only the flows that
+  # package manifests for another build to consume may set it, so injecting it
+  # everywhere would make it settable where it does nothing.
+  token-builtin-mode:
+    description: 'Built-in token emission (standard = substitute this build''s values, template = defer them and publish this build''s values under the Original prefix)'
+    required: false
+    default: 'standard'
   # Release branches
   release-branch:
     description: 'The release branch name'
@@ -1179,7 +1184,7 @@ runs:
         TOKEN_DELIMITER_STYLE: ${{ inputs.token-delimiter-style }}
         TOKEN_NAME_STYLE: ${{ inputs.token-name-style }}
         TOKEN_NAME_VALIDATION: ${{ inputs.token-name-validation }}
-        ALLOW_BUILTIN_TOKEN_OVERRIDE: ${{ inputs.allow-builtin-token-override }}
+        TOKEN_BUILTIN_MODE: ${{ inputs.token-builtin-mode }}
         CONFIG_SUB_PATH: ${{ inputs.config-sub-path }}
         CONFIG_VALUE_TRAILING_NEWLINE: ${{ inputs.config-value-trailing-newline }}
         TOKEN_SUBSTITUTION_PASSES: ${{ inputs.token-substitution-passes }}

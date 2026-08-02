@@ -62,7 +62,6 @@ setup() {
   export TOKEN_DELIMITER_STYLE="shell"
   export TOKEN_NAME_STYLE="PascalCase"
   export TOKEN_NAME_VALIDATION="match-style"
-  export ALLOW_BUILTIN_TOKEN_OVERRIDE="false"
   export CONFIG_SUB_PATH="src/config"
   export CONFIG_VALUE_TRAILING_NEWLINE="strip-for-single-line"
   export RELEASE_BRANCH="main"

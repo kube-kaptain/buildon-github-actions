@@ -1,0 +1,13 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
+#
+# Built-in token emission mode
+#
+# Its own group rather than part of token-substitution: only the flows that
+# package manifests for another build to consume may set it, so injecting it
+# everywhere would make it settable where it does nothing.
+token-builtin-mode:
+  description: 'Built-in token emission (standard = substitute this build''s values, template = defer them and publish this build''s values under the Original prefix)'
+  required: false
+  type: string
+  default: 'standard'
