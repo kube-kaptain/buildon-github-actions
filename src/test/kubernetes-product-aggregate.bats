@@ -249,6 +249,35 @@ github_output_value() {
   assert_output_contains "some-product"
 }
 
+@test "envs-in-products: rejects entry whose repo starts with run-" {
+  write_pm "run-some-env:1.0"
+  run_script
+  [ "${status}" -ne 0 ]
+  assert_output_contains "Including a run-* or run-platform-* project inside a product"
+  assert_output_contains "run-some-env:1.0"
+}
+
+@test "envs-in-products: rejects entry whose repo starts with run-platform-" {
+  write_pm "ghcr.io/org/run/run-platform-foo:2.0"
+  run_script
+  [ "${status}" -ne 0 ]
+  assert_output_contains "Including a run-* or run-platform-* project inside a product"
+  assert_output_contains "run-platform-foo:2.0"
+}
+
+@test "composition: reports every offending entry of both kinds before failing" {
+  write_pm "product-one:1.0" "run-two:1.0" "alpha:1.0" "three-product:1.0" "run-platform-four:1.0"
+  run_script
+  [ "${status}" -ne 0 ]
+  assert_output_contains "Including a product inside another product"
+  assert_output_contains "Including a run-* or run-platform-* project inside a product"
+  assert_output_contains "Offending entry: product-one:1.0"
+  assert_output_contains "Offending entry: three-product:1.0"
+  assert_output_contains "Offending entry: run-two:1.0"
+  assert_output_contains "Offending entry: run-platform-four:1.0"
+  [ "$(grep -c 'Offending entry: alpha' <<< "${output}")" -eq 0 ]
+}
+
 @test "products-in-products: accepts non-product entries" {
   setup_mock_oci
   stage_oci_fixture "alpha:1.0-manifests" "alpha" shell PascalCase

@@ -1,0 +1,109 @@
+#!/usr/bin/env bats
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
+#
+# Tests for the kubernetes-run-image-deploy-manifests-* wrappers. Each runs
+# in a scaffold (real defaults/ and lib/ symlinked) with the stock script
+# stubbed to capture its environment.
+
+bats_require_minimum_version 1.5.0
+
+load helpers
+
+setup() {
+  TEST_DIR=$(create_test_dir "run-image-deploy-manifests-wrappers")
+  SCAFFOLD="${TEST_DIR}/scripts"
+  mkdir -p "${SCAFFOLD}/main"
+  ln -s "${PROJECT_ROOT}/src/scripts/defaults" "${SCAFFOLD}/defaults"
+  ln -s "${PROJECT_ROOT}/src/scripts/lib" "${SCAFFOLD}/lib"
+  CAPTURED_ENV="${TEST_DIR}/captured-env"
+}
+
+# Usage: run_wrapper <wrapper-name> <stock-name>
+run_wrapper() {
+  local wrapper="$1"
+  local stock="$2"
+
+  cp "${SCRIPTS_DIR}/${wrapper}" "${SCAFFOLD}/main/${wrapper}"
+  cat > "${SCAFFOLD}/main/${stock}" << EOF
+#!/usr/bin/env bash
+env | LC_ALL=C sort > "${CAPTURED_ENV}"
+echo "STOCK-CALLED: ${stock}"
+EOF
+  chmod +x "${SCAFFOLD}/main/${stock}" "${SCAFFOLD}/main/${wrapper}"
+
+  run env \
+    OUTPUT_SUB_PATH="kaptain-out" \
+    ENV_ENVIRONMENT_DEPLOY_SOURCE_BASE_PATH="src/environment" \
+    MANIFESTS_SUB_PATH="src/kubernetes" \
+    DEFAULTS_SUB_PATH="src/defaults" \
+    CONFIG_SUB_PATH="src/config" \
+    LANDSCAPE_CANARY="untouched-value" \
+    bash -c "cd '${TEST_DIR}' && '${SCAFFOLD}/main/${wrapper}'"
+}
+
+assert_pinned_context() {
+  grep -qx "MANIFESTS_SUB_PATH=kaptain-out/run-image-deploy-manifests/manifests" "${CAPTURED_ENV}"
+  grep -qx "DEFAULTS_SUB_PATH=kaptain-out/run-image-deploy-manifests/defaults" "${CAPTURED_ENV}"
+  grep -qx "CONFIG_SUB_PATH=src/environment/config" "${CAPTURED_ENV}"
+  # Unrelated inbound env passes through.
+  grep -qx "LANDSCAPE_CANARY=untouched-value" "${CAPTURED_ENV}"
+}
+
+@test "templates-import wrapper pins the deploy-manifests dirs and execs the stock stage" {
+  run_wrapper kubernetes-run-image-deploy-manifests-templates-import kubernetes-templates-import
+  [ "${status}" -eq 0 ]
+  assert_output_contains "STOCK-CALLED: kubernetes-templates-import"
+  assert_pinned_context
+  # Templates and their drop dirs then resolve under the pipeline, apart from
+  # the run's own contents/ and where the pinned package-prepare reads.
+  grep -qx "OUTPUT_SUB_PATH=kaptain-out/run-image-deploy-manifests/pipeline" "${CAPTURED_ENV}"
+}
+
+@test "package-prepare wrapper pins the deploy-manifests dirs and execs the stock stage" {
+  run_wrapper kubernetes-run-image-deploy-manifests-package-prepare kubernetes-manifests-package-prepare
+  [ "${status}" -eq 0 ]
+  assert_output_contains "STOCK-CALLED: kubernetes-manifests-package-prepare"
+  assert_pinned_context
+}
+
+@test "substitute wrapper pins the deploy-manifests dirs and execs the stock stage" {
+  run_wrapper kubernetes-run-image-deploy-manifests-substitute kubernetes-manifests-substitute
+  [ "${status}" -eq 0 ]
+  assert_output_contains "STOCK-CALLED: kubernetes-manifests-substitute"
+  assert_pinned_context
+}
+
+@test "contract-generate wrapper pins the deploy-manifests dirs and execs the stock stage" {
+  run_wrapper kubernetes-run-image-deploy-manifests-contract-generate kubernetes-manifests-contract-generate
+  [ "${status}" -eq 0 ]
+  assert_output_contains "STOCK-CALLED: kubernetes-manifests-contract-generate"
+  assert_pinned_context
+}
+
+@test "lineage wrapper pins the deploy-manifests dirs, sets the app section, and execs the stock stage" {
+  run_wrapper kubernetes-run-image-deploy-manifests-lineage-data-generate kubernetes-lineage-data-generate
+  [ "${status}" -eq 0 ]
+  assert_output_contains "STOCK-CALLED: kubernetes-lineage-data-generate"
+  assert_pinned_context
+  grep -qx "ENV_BUILD_SECTION=app" "${CAPTURED_ENV}"
+}
+
+@test "package wrapper pins the deploy-manifests dirs and execs the stock stage" {
+  run_wrapper kubernetes-run-image-deploy-manifests-package kubernetes-manifests-package
+  [ "${status}" -eq 0 ]
+  assert_output_contains "STOCK-CALLED: kubernetes-manifests-package"
+  assert_pinned_context
+}
+
+@test "repo-provider-package wrapper pins the deploy-manifests dirs and execs the stock stage" {
+  run_wrapper kubernetes-run-image-deploy-manifests-repo-provider-package kubernetes-manifests-repo-provider-package
+  [ "${status}" -eq 0 ]
+  assert_output_contains "STOCK-CALLED: kubernetes-manifests-repo-provider-package"
+  assert_pinned_context
+}
+
+teardown() {
+  dump_bats_result
+  :
+}
