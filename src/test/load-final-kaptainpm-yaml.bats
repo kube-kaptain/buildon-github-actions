@@ -259,6 +259,34 @@ EOF
   assert_github_output "KUBERNETES_WORKLOAD_TYPE" "statefulset"
 }
 
+@test "ENV_IMAGE_PULL_SECRETS uses spec.main.environment.imagePullSecrets" {
+  cat > "${TEST_DIR}/kaptainpm/final/KaptainPM.yaml" << 'EOF'
+apiVersion: kaptain.org/1.10
+kind: test-build
+spec:
+  main:
+    environment:
+      imagePullSecrets: DISABLED
+EOF
+  run_script
+  [ "${status}" -eq 0 ]
+  assert_github_output "ENV_IMAGE_PULL_SECRETS" "DISABLED"
+}
+
+@test "ENV_AUTO_GENERATE_IMAGE_PULL_SECRETS takes a bare boolean false" {
+  cat > "${TEST_DIR}/kaptainpm/final/KaptainPM.yaml" << 'EOF'
+apiVersion: kaptain.org/1.10
+kind: test-build
+spec:
+  main:
+    environment:
+      autoGenerateImagePullSecrets: false
+EOF
+  run_script
+  [ "${status}" -eq 0 ]
+  assert_github_output "ENV_AUTO_GENERATE_IMAGE_PULL_SECRETS" "false"
+}
+
 @test "KUBERNETES_CONFIGMAP_SUB_PATH defaults to src/configmap when absent" {
   write_pm
   run_script

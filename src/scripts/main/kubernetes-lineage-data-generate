@@ -11,11 +11,10 @@
 # contract artefact can be included verbatim as a data key. Owns the
 # reserved-filename squat check (per-kind).
 #
-# env and rp sections of env/rp builds run lineage twice per BUILD_KIND: once
-# as the inner app, once as the environment record. The env and rp environment
-# paths are stubbed (exit 42) pending those workflows; the app section is the
-# normal app happy path. Working dirs are namespaced under ENV_BUILD_SECTION so
-# the two runs do not collide when sharing OUTPUT_SUB_PATH.
+# env/rp builds run lineage twice: as the inner app, and as the environment
+# record (contents.yaml, contents-resolved.yaml, consumption-report.yaml,
+# resources.yaml). Working dirs are namespaced under ENV_BUILD_SECTION so the
+# runs do not collide in a shared OUTPUT_SUB_PATH.
 #
 # All data files are already-substituted artefacts; a sub-round substitute is
 # run over the data files (to resolve the self-reference token) and the result
@@ -29,13 +28,10 @@
 #                             kubernetes-run-environment,
 #                             kubernetes-run-platform-meta-environment. Other
 #                             values fail.
-#   ENV_BUILD_SECTION       - Required when BUILD_KIND is
-#                             kubernetes-run-environment (app|env) or
-#                             kubernetes-run-platform-meta-environment (app|rp).
-#                             Env-section builds run lineage twice: once as the
-#                             app being packaged, once as the environment
-#                             record. This input switches between them. env and
-#                             rp paths are stubbed pending those workflows.
+#   ENV_BUILD_SECTION       - app|env (run-environment) or app|rp
+#                             (run-platform). Unset means the record section.
+#   MANIFESTS_SUB_PATH      - Required for the env|rp record sections
+#   DEFAULTS_SUB_PATH       - Required for the env|rp record sections
 #   PRODUCT_NAME            - Required when BUILD_KIND=kubernetes-product-aggregate;
 #                             ignored otherwise
 #   PRODUCT_SHORT_NAME      - Required when BUILD_KIND=kubernetes-product-aggregate;
@@ -75,7 +71,7 @@ SUBSTITUTED_PRODUCT_DIR="${MANIFESTS_SUBSTITUTED_SUB_PATH}/${PROJECT_NAME}"
 # Per-kind state (set by dispatch_kind). LINEAGE_FILENAME and LINEAGE_ROLE
 # carry the reserved filename and the kaptain.org/role label value; KIND_FAMILY
 # is product|app|bundle|env|rp and gates per-kind label emission and assembly
-# choices. env and rp are stub families pending the env/run-platform workflows.
+# choices.
 # Working dirs (LINEAGE_DATA_DIR, GENERATED_CONFIGMAP_BASE, SCRATCH_DIR) are
 # computed in main() after dispatch_kind because they may be namespaced under
 # ENV_BUILD_SECTION for env/rp builds where the same OUTPUT_SUB_PATH hosts two
@@ -120,6 +116,9 @@ dispatch_kind() {
       LINEAGE_ROLE="kaptain-bundle-lineage-data"
       ;;
     kubernetes-run-environment)
+      # The app section is set explicitly by its wrapper, so a direct call
+      # from the reference flow is the record run.
+      ENV_BUILD_SECTION="${ENV_BUILD_SECTION:-env}"
       case "${ENV_BUILD_SECTION}" in
         app)
           KIND_FAMILY="app"
@@ -130,11 +129,11 @@ dispatch_kind() {
           KIND_FAMILY="env"
           LINEAGE_FILENAME="kaptain-environment-lineage-data.yaml"
           LINEAGE_ROLE="kaptain-environment-lineage-data"
-          ;;
-        "")
-          log_error "ENV_BUILD_SECTION is required for BUILD_KIND=${BUILD_KIND}"
-          log_error "Expected one of: app, env"
-          exit 1
+          # kubernetes-run-substitute exports run-scoped names so the user's
+          # config vars are not overwritten; map them onto the stock names.
+          SUBSTITUTED_PRODUCT_DIR="${ENVIRONMENT_WORKLOAD_CONTENTS_SUB_PATH:?ENVIRONMENT_WORKLOAD_CONTENTS_SUB_PATH is required for the env record section}"
+          # Stacked final config: carries the Environment token family.
+          MANIFESTS_CONFIG_SUB_PATH="${ENVIRONMENT_WORKLOAD_CONTENTS_CONFIG_SUB_PATH:?ENVIRONMENT_WORKLOAD_CONTENTS_CONFIG_SUB_PATH is required for the env record section}"
           ;;
         *)
           log_error "Invalid ENV_BUILD_SECTION '${ENV_BUILD_SECTION}' for BUILD_KIND=${BUILD_KIND}"
@@ -144,6 +143,8 @@ dispatch_kind() {
       esac
       ;;
     kubernetes-run-platform-meta-environment)
+      # Unset means the record section, as for env.
+      ENV_BUILD_SECTION="${ENV_BUILD_SECTION:-rp}"
       case "${ENV_BUILD_SECTION}" in
         app)
           KIND_FAMILY="app"
@@ -154,11 +155,8 @@ dispatch_kind() {
           KIND_FAMILY="rp"
           LINEAGE_FILENAME="kaptain-environment-lineage-data.yaml"
           LINEAGE_ROLE="kaptain-environment-lineage-data"
-          ;;
-        "")
-          log_error "ENV_BUILD_SECTION is required for BUILD_KIND=${BUILD_KIND}"
-          log_error "Expected one of: app, rp"
-          exit 1
+          SUBSTITUTED_PRODUCT_DIR="${ENVIRONMENT_WORKLOAD_CONTENTS_SUB_PATH:?ENVIRONMENT_WORKLOAD_CONTENTS_SUB_PATH is required for the rp record section}"
+          MANIFESTS_CONFIG_SUB_PATH="${ENVIRONMENT_WORKLOAD_CONTENTS_CONFIG_SUB_PATH:?ENVIRONMENT_WORKLOAD_CONTENTS_CONFIG_SUB_PATH is required for the rp record section}"
           ;;
         *)
           log_error "Invalid ENV_BUILD_SECTION '${ENV_BUILD_SECTION}' for BUILD_KIND=${BUILD_KIND}"
@@ -323,6 +321,34 @@ assemble_app_or_bundle() {
   fi
 }
 
+# The consumption report fills the contract slot: a contract says what an
+# app/product needs, the report what the env consumed and deploy injects.
+assemble_env_or_rp() {
+  local flavour="environment"
+  [[ "${KIND_FAMILY}" == "rp" ]] && flavour="run-platform"
+  local list="${OUTPUT_SUB_PATH}/${flavour}/${flavour}.yaml"
+  local resolved="${OUTPUT_SUB_PATH}/${flavour}/${flavour}-resolved.yaml"
+  local report="${OUTPUT_SUB_PATH}/run-consumption-report/${PROJECT_NAME}-${VERSION}-consumption-report.yaml"
+  if [[ ! -f "${list}" ]]; then
+    log_error "Contents list file not found: ${list}"
+    log_error "Did the aggregate step run first?"
+    exit 1
+  fi
+  if [[ ! -f "${resolved}" ]]; then
+    log_error "Resolved-contents file not found: ${resolved}"
+    log_error "Did the aggregate step run first?"
+    exit 1
+  fi
+  if [[ ! -f "${report}" ]]; then
+    log_error "Consumption report not found: ${report}"
+    log_error "Did kubernetes-run-consumption-report run first?"
+    exit 1
+  fi
+  cp "${list}" "${LINEAGE_DATA_DIR}/contents.yaml"
+  cp "${resolved}" "${LINEAGE_DATA_DIR}/contents-resolved.yaml"
+  cp "${report}" "${LINEAGE_DATA_DIR}/consumption-report.yaml"
+}
+
 # Copy the contract artefact written by kubernetes-manifests-contract-generate
 # (which runs immediately before this step) in as a data file. Both contract
 # and lineage are already substituted, so a verbatim copy is enough.
@@ -364,13 +390,6 @@ main() {
   # a CM data key.
   SCRATCH_DIR="${aggregate_base}/scratch"
 
-  case "${KIND_FAMILY}" in
-    env|rp)
-      log "Not implemented"
-      exit 42
-      ;;
-  esac
-
   if [[ "${KIND_FAMILY}" == "product" ]]; then
     PRODUCT_NAME="${PRODUCT_NAME:?PRODUCT_NAME is required for product builds}"
     PRODUCT_SHORT_NAME="${PRODUCT_SHORT_NAME:?PRODUCT_SHORT_NAME is required for product builds}"
@@ -400,11 +419,12 @@ main() {
 
   log ""
   log "Assembling lineage data files (${KIND_FAMILY})..."
+  # env/rp are the final layer: no contract.
   case "${KIND_FAMILY}" in
-    product) assemble_product ;;
-    app|bundle) assemble_app_or_bundle ;;
+    product) assemble_product; assemble_contract ;;
+    app|bundle) assemble_app_or_bundle; assemble_contract ;;
+    env|rp) assemble_env_or_rp ;;
   esac
-  assemble_contract
 
   local project_name_token
   project_name_token=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "PROJECT_NAME")
@@ -438,10 +458,8 @@ main() {
   # intentionally leave a token (e.g. ${Environment}, ${ProductName}) in
   # metadata.name so the consuming app or env supplies the final value at
   # deploy time, so resources.yaml's name-field lines are stripped before scan.
-  # TODO(env/rp): env and rp builds produce final deploy artefacts, not
-  # reusable templates, and must enforce strict no-tokens with no exceptions.
-  # When the env/rp workflows ship and remove the exit-42 stub above, gate the
-  # resources.yaml strip below on [[ "${KIND_FAMILY}" != "env" && "${KIND_FAMILY}" != "rp" ]].
+  # env/rp are final deploy artefacts, so no name-field exception. Secret
+  # templates keep tokens, but in the tree, not these files.
   local token_check_dir="${SCRATCH_DIR}/token-check"
   rm -rf "${token_check_dir}"
   mkdir -p "${token_check_dir}"
@@ -450,6 +468,7 @@ main() {
     contract.yaml \
     contents.yaml \
     contents-resolved.yaml \
+    consumption-report.yaml \
     templates.yaml \
     templates-resolved.yaml \
     resources.yaml; do
@@ -457,7 +476,8 @@ main() {
       cp "${LINEAGE_DATA_DIR}/${bookkeeping_file}" "${token_check_dir}/${bookkeeping_file}"
     fi
   done
-  if [[ -f "${token_check_dir}/resources.yaml" ]]; then
+  if [[ "${KIND_FAMILY}" != "env" && "${KIND_FAMILY}" != "rp" \
+        && -f "${token_check_dir}/resources.yaml" ]]; then
     grep -v '^  name: ' "${token_check_dir}/resources.yaml" \
       > "${token_check_dir}/resources.yaml.stripped" || true
     mv "${token_check_dir}/resources.yaml.stripped" "${token_check_dir}/resources.yaml"
@@ -476,6 +496,7 @@ main() {
       contract.yaml \
       contents.yaml \
       contents-resolved.yaml \
+      consumption-report.yaml \
       templates.yaml \
       templates-resolved.yaml \
       resources.yaml; do
@@ -497,9 +518,10 @@ main() {
       log_error ""
     done
     log_error "Only required files are policed (contract.yaml, resources.yaml, contents.yaml,"
-    log_error "contents-resolved.yaml, templates.yaml, templates-resolved.yaml)."
+    log_error "contents-resolved.yaml, consumption-report.yaml, templates.yaml, templates-resolved.yaml)."
     log_error "Other files in the lineage data dir may contain arbitrary unresolved tokens."
-    log_error "Exception: resources.yaml name field values may carry specific unresolved tokens."
+    log_error "Exception: resources.yaml name field values may carry specific unresolved tokens"
+    log_error "(app/bundle/product only; env/rp are final artefacts - strict, no exceptions)."
     exit 1
   fi
 
@@ -512,6 +534,15 @@ main() {
     product_short_name_token=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "PRODUCT_SHORT_NAME")
     additional_labels="${additional_labels},kaptain.org/product-name=${product_name_token}"
     additional_labels="${additional_labels},kaptain.org/product-short-name=${product_short_name_token}"
+  fi
+  if [[ "${KIND_FAMILY}" == "env" || "${KIND_FAMILY}" == "rp" ]]; then
+    # Resolved by the CM label substitution below from
+    # MANIFESTS_CONFIG_SUB_PATH.
+    local environment_name_token environment_short_name_token
+    environment_name_token=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "ENVIRONMENT_NAME")
+    environment_short_name_token=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "ENVIRONMENT_SHORT_NAME")
+    additional_labels="${additional_labels},kaptain.org/environment-name=${environment_name_token}"
+    additional_labels="${additional_labels},kaptain.org/environment-short-name=${environment_short_name_token}"
   fi
 
   local additional_annotations=""
@@ -547,6 +578,15 @@ main() {
   if [[ ! -f "${generated_configmap}" ]]; then
     log_error "Lineage data ConfigMap not produced at expected path: ${generated_configmap}"
     exit 1
+  fi
+
+  # The generator adds product labels, but run builds belong to no product.
+  # On the record CM an unresolved product token would also ship, as it
+  # lands after the post-substitution gate.
+  if [[ "${BUILD_KIND}" == kubernetes-run-* ]]; then
+    # sed, as tokens opening with { or % make the file unparseable YAML.
+    sed -i.bak -E '/^[[:space:]]*(app\.kubernetes\.io\/part-of|kaptain\.org\/product):/d' "${generated_configmap}"
+    rm -f "${generated_configmap}.bak"
   fi
 
   log ""
