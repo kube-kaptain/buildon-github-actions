@@ -18,11 +18,13 @@ inputs:
   # INJECT-INPUT: docker-push-image-list
   # INJECT-INPUT: docker-build
   # INJECT-INPUT: docker-dockerfile
+  # INJECT-INPUT: docker-retag
   # INJECT-INPUT: kubernetes-app-manifests
   # INJECT-INPUT: kubernetes-global
   # INJECT-INPUT: kubernetes-configmap
   # INJECT-INPUT: kubernetes-secret-template
   # INJECT-INPUT: kubernetes-serviceaccount
+  # INJECT-INPUT: kubernetes-poddisruptionbudget
   # INJECT-INPUT: kubernetes-workload
   # INJECT-INPUT: kubernetes-workload-deployment
   # INJECT-INPUT: kubernetes-workload-statefulset

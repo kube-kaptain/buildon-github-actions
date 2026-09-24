@@ -1,0 +1,69 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
+#
+# Default Kind order for the resource-checksum pass (see
+# todo-checked/ResourceChecksum.md). One Kind per line.
+#
+# Dependency order: earlier Kinds are hashed and suffixed first, so later
+# Kinds hash the suffixed names of their dependencies.
+#
+# Immutable once published: changes ship as a new <name>-<version>.txt and
+# bad versions are removed, so a pinned version always means the same bytes.
+#
+# Selected by name via checksumOrderFile (MANIFESTS_CHECKSUM_ORDER_FILE),
+# resolved in this directory. The selected file replaces this list.
+#
+# Secret is absent: with an env-build secrets dir present, checksum_tree
+# hashes Secret templates first, over template bytes plus encrypted values.
+
+# === Tier 1: leaves (nothing they reference is in this list) ===
+ConfigMap
+PersistentVolumeClaim
+Role
+ClusterRole
+
+# === Tier 2: bridges (reference Tier 1 by name) ===
+ServiceAccount
+RoleBinding
+ClusterRoleBinding
+
+# cert-manager
+Issuer
+ClusterIssuer
+Certificate
+
+# === Tier 3: workloads (reference Tiers 1+2 by name) ===
+Deployment
+StatefulSet
+DaemonSet
+ReplicaSet
+Job
+CronJob
+
+# === Tier 4: workload followers (reference Tier 3 by name) ===
+HorizontalPodAutoscaler
+# KEDA
+ScaledObject
+ScaledJob
+
+# === Tier 5: routing (reference Services / each other by name) ===
+Service
+IngressClass
+Ingress
+# Gateway API
+GatewayClass
+Gateway
+HTTPRoute
+GRPCRoute
+TLSRoute
+TCPRoute
+UDPRoute
+ReferenceGrant
+
+# === Tier 6: policy attached to routing (reference Tier 5 by name) ===
+# Envoy Gateway
+ClientTrafficPolicy
+BackendTrafficPolicy
+BackendTLSPolicy
+EnvoyPatchPolicy
+EnvoyExtensionPolicy

@@ -1,0 +1,19 @@
+# SPDX-License-Identifier: CC0-1.0
+# This example is released to the public domain. Use freely without attribution.
+
+apiVersion: kaptain.org/1.35
+kind: kubernetes-run-environment
+
+spec:
+  contents:
+    - my-app:[1.0,2.0)
+  main:
+    environment:
+      # A suspended CronJob keelson triggers when the image updates; keel
+      # cannot trigger jobs.
+      deployMode: job
+      imageAutoUpdateProvider: keelson
+      # How long the deploy pod stays up for inspection before exiting.
+      # Seconds, or an integer and one of s m h d w, up to a year.
+      jobPostDeploySleepAfterSuccess: 5m
+      jobPostDeploySleepAfterFailure: 2d
