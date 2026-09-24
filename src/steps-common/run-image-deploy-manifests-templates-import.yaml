@@ -1,0 +1,18 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
+
+- name: Import deploy-manifests templates
+  id: run-idm-templates-import
+  uses: ./.github/buildon-github-actions/src/actions/kubernetes-run-image-deploy-manifests-templates-import
+  with:
+    project-name: ${{ steps.versions.outputs.project-name }}
+    output-sub-path: ${{ steps.kpm.outputs.OUTPUT_SUB_PATH }}
+    schema-validation-command: ${{ steps.validate-tooling.outputs.SCHEMA_VALIDATION_COMMAND }}
+    token-delimiter-style: ${{ steps.kpm.outputs.TOKEN_DELIMITER_STYLE }}
+    token-name-style: ${{ steps.kpm.outputs.TOKEN_NAME_STYLE }}
+    templates-layout: ${{ steps.kpm.outputs.TEMPLATES_LAYOUT }}
+    docker-target-registry: ${{ steps.kpm.outputs.DOCKER_TARGET_REGISTRY }}
+    docker-target-namespace: ${{ steps.kpm.outputs.DOCKER_TARGET_NAMESPACE }}
+    image-build-command: ${{ steps.validate-tooling.outputs.IMAGE_BUILD_COMMAND }}
+    is-release: ${{ steps.versions.outputs.is-release }}
+    env-deploy-source-base-path: ${{ steps.kpm.outputs.ENV_ENVIRONMENT_DEPLOY_SOURCE_BASE_PATH }}

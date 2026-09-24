@@ -247,14 +247,23 @@ runs:
           if [[ "${filename}" == *.* ]]; then
             base="${filename%.*}"
             ext="${filename##*.}"
-            # Accept -VERSION.ext, -VERSION-manifests.zip, or -VERSION-contract.zip
-            if [[ "${base}" != *"-${VERSION}" ]] && ! [[ "${ext}" == "zip" && ("${base}" == *"-${VERSION}-manifests" || "${base}" == *"-${VERSION}-contract") ]]; then
-              echo "::error::Raw file '${filename}' must end with '-${VERSION}.${ext}', '-${VERSION}-manifests.zip', or '-${VERSION}-contract.zip' — use verbatim-files instead for automatic versioning"
+            # Accept -VERSION.ext, or the generated zips that carry the version
+            # before their kind: manifests, contract, and a run's environment
+            # contents and provenance.
+            local zip_kind accepted=false
+            [[ "${base}" == *"-${VERSION}" ]] && accepted=true
+            if [[ "${ext}" == "zip" ]]; then
+              for zip_kind in manifests contract environment-contents environment-provenance; do
+                [[ "${base}" == *"-${VERSION}-${zip_kind}" ]] && accepted=true
+              done
+            fi
+            if [[ "${accepted}" != "true" ]]; then
+              echo "::error::Raw file '${filename}' must end with '-${VERSION}.${ext}', or be a '-${VERSION}-<manifests|contract|environment-contents|environment-provenance>.zip': use verbatim-files instead for automatic versioning"
               exit 1
             fi
           else
             if [[ "${filename}" != *"-${VERSION}" ]]; then
-              echo "::error::Raw file '${filename}' must end with '-${VERSION}' — use verbatim-files instead for automatic versioning"
+              echo "::error::Raw file '${filename}' must end with '-${VERSION}': use verbatim-files instead for automatic versioning"
               exit 1
             fi
           fi

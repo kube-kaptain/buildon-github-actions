@@ -1,0 +1,34 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
+#
+# Default Kinds for the sensitive-resource signoff gate (see
+# lib/sensitive-resource-signoff.bash). One Kind per line. A manifest with
+# any listed Kind needs a reviewed signoff file.
+#
+# Immutable once published: changes ship as a new <name>-<version>.txt and
+# bad versions are removed, so a pinned version always means the same bytes.
+#
+# Selected by name via signoffsKindsFile (MANIFESTS_SIGNOFFS_KINDS_FILE),
+# resolved in this directory. The selected file replaces this list.
+
+# Ingress / routing: traffic redirection
+Ingress
+Gateway
+HTTPRoute
+GRPCRoute
+TLSRoute
+TCPRoute
+UDPRoute
+
+# RBAC: privilege escalation
+Role
+RoleBinding
+ClusterRole
+ClusterRoleBinding
+
+# Admission webhooks: cluster-wide interception
+MutatingWebhookConfiguration
+ValidatingWebhookConfiguration
+
+# Network segmentation
+NetworkPolicy

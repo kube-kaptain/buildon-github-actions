@@ -60,6 +60,17 @@ teardown() {
   [[ "$output" == *"ghcr.io/test/my-repo:1.0.0-rcd"* ]] || return 1
 }
 
+@test "registers the base URI beside image-uris when OUTPUT_SUB_PATH is relocated" {
+  # As the deploy-manifests block runs it: its own OUTPUT_SUB_PATH, the shared push list.
+  local shared_push_dir
+  shared_push_dir=$(dirname "$DOCKER_PUSH_IMAGE_LIST_FILE")
+  export OUTPUT_SUB_PATH="${OUTPUT_SUB_PATH}/run-image-deploy-manifests/pipeline"
+  run "$UTIL_DIR/docker-package-multi-arch" "$CONTENT_DIR" "ghcr.io/test/my-repo:1.0.0-manifests"
+  [ "$status" -eq 0 ]
+  grep -qx "ghcr.io/test/my-repo:1.0.0-manifests" "${shared_push_dir}/manifest-uris"
+  [ ! -e "${OUTPUT_SUB_PATH}/docker-push-all/manifest-uris" ]
+}
+
 # === Dockerfile generation ===
 
 @test "generates Dockerfile with FROM scratch by default" {

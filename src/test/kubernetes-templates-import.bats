@@ -384,6 +384,30 @@ github_output_value() {
   grep -qx -- "- ghcr.io/org/sub/beta:2.0" "${list}"
 }
 
+# =============================================================================
+# Through the deploy-manifests wrapper (env/rp builds)
+# =============================================================================
+
+@test "deploy-manifests wrapper: templates land under the pipeline, not the run's own dirs" {
+  setup_mock_oci
+  stage_oci_fixture "alpha:1.0-manifests" "alpha" shell PascalCase
+  write_pm "alpha:1.0"
+  SCRIPT="${SCRIPTS_DIR}/kubernetes-run-image-deploy-manifests-templates-import" PROJECT_NAME=run-foo run_script
+  [ "${status}" -eq 0 ]
+  local pipeline="${TEST_DIR}/kaptain-out/run-image-deploy-manifests/pipeline"
+  [ -f "${pipeline}/manifests/additional-manifests/deployment.yaml" ]
+  [ -f "${pipeline}/templates/templates.yaml" ]
+  [ ! -e "${TEST_DIR}/kaptain-out/templates" ]
+  [ ! -e "${TEST_DIR}/kaptain-out/manifests" ]
+}
+
+@test "deploy-manifests wrapper: no spec.templates is a no-op" {
+  write_pm
+  SCRIPT="${SCRIPTS_DIR}/kubernetes-run-image-deploy-manifests-templates-import" PROJECT_NAME=run-foo run_script
+  [ "${status}" -eq 0 ]
+  [ ! -e "${TEST_DIR}/kaptain-out/run-image-deploy-manifests/pipeline/manifests/additional-manifests/deployment.yaml" ]
+}
+
 teardown() {
   dump_bats_result
 }
