@@ -70,3 +70,69 @@ teardown() {
     return 1
   fi
 }
+
+# =============================================================================
+# Env steps: what a script requires must reach it on a runner
+# =============================================================================
+# Locally every step's outputs land in the environment; on a runner a step gets
+# only what its action maps and its steps-common passes.
+
+# Asserts <template> maps each VAR from an input and <steps-common> passes that
+# input. Prints every gap.
+# Usage: verify_step_wires <template> <steps-common> <VAR>...
+verify_step_wires() {
+  local template="$1" step="$2"
+  shift 2
+  local var input missing=0
+  for var in "$@"; do
+    input=$(sed -n -E "s/^[[:space:]]+${var}: \\$\\{\\{ inputs\\.([a-z0-9-]+) \\}\\}\$/\\1/p" "${template}")
+    if [[ -z "${input}" ]]; then
+      echo "${template##*/}: ${var} is not mapped from an input"
+      missing=$((missing + 1))
+      continue
+    fi
+    if ! grep -qE "^[[:space:]]+${input}: " "${step}"; then
+      echo "${step##*/}: does not pass ${input} (for ${var})"
+      missing=$((missing + 1))
+    fi
+  done
+  [[ "${missing}" -eq 0 ]]
+}
+
+@test "kubernetes-run-substitute wires everything prepare-substitution-tokens requires" {
+  local required
+  required=$(sed -n -E 's/^([A-Z0-9_]+)="\$\{[A-Z0-9_]+:\?.*/\1/p' "$UTIL_DIR/prepare-substitution-tokens" \
+    | grep -vx 'TOKENS_OUTPUT_SUB_PATH')
+  [ "$(printf '%s\n' "${required}" | grep -c .)" -ge 16 ]
+  # shellcheck disable=SC2086 # one VAR per word
+  run verify_step_wires \
+    "$ACTION_TEMPLATES_DIR/kubernetes-run-substitute.yaml" \
+    "$PROJECT_ROOT/src/steps-common/run-substitute.yaml" \
+    ${required} TOKEN_NAME_VALIDATION
+  if [[ "$status" -ne 0 ]]; then
+    echo "$output" >&3
+    return 1
+  fi
+}
+
+@test "kubernetes-run-aggregate wires the schema validator" {
+  run verify_step_wires \
+    "$ACTION_TEMPLATES_DIR/kubernetes-run-aggregate.yaml" \
+    "$PROJECT_ROOT/src/steps-common/run-aggregate.yaml" \
+    SCHEMA_VALIDATION_COMMAND
+  if [[ "$status" -ne 0 ]]; then
+    echo "$output" >&3
+    return 1
+  fi
+}
+
+@test "kubernetes-run-image-deploy-manifests-contract-generate wires the schema validator" {
+  run verify_step_wires \
+    "$ACTION_TEMPLATES_DIR/kubernetes-run-image-deploy-manifests-contract-generate.yaml" \
+    "$PROJECT_ROOT/src/steps-common/run-image-deploy-manifests-contract-generate.yaml" \
+    SCHEMA_VALIDATION_COMMAND
+  if [[ "$status" -ne 0 ]]; then
+    echo "$output" >&3
+    return 1
+  fi
+}

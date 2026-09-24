@@ -1,0 +1,76 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
+
+name: 'Kubernetes Run Substitute'
+description: 'Stacks the final config (children defaults < run config < built-ins with the Environment token family) and substitutes the assembled workload aggregate, then checks token usage (unreferenced config and secret values)'
+
+inputs:
+  # INJECT-INPUT: versions-and-naming
+
+  # Action-specific inputs
+  environment-short-name:
+    description: 'Environment short name (from the aggregate step)'
+    required: true
+  run-build-kind:
+    description: 'environment | run-platform (derived from project-name when empty)'
+    required: false
+    default: ''
+
+  # INJECT-INPUT: output-sub-path
+  # INJECT-INPUT: token-substitution
+  # INJECT-INPUT: image-build-command
+  # INJECT-INPUT: run-environment-settings
+
+outputs:
+  environment-workload-contents-sub-path:
+    description: 'The substituted workload tree (input to post-sub validation and finalise)'
+    value: ${{ steps.run-substitute.outputs.ENVIRONMENT_WORKLOAD_CONTENTS_SUB_PATH }}
+  environment-workload-contents-config-sub-path:
+    description: 'The stacked final-config dir the tree was substituted against'
+    value: ${{ steps.run-substitute.outputs.ENVIRONMENT_WORKLOAD_CONTENTS_CONFIG_SUB_PATH }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Substitute run aggregate
+      id: run-substitute
+      shell: bash
+      env:
+        BUILD_MODE: build_server
+        BUILD_PLATFORM: github-actions
+        BUILD_PLATFORM_LOG_PROVIDER: github-actions
+        PROJECT_NAME: ${{ inputs.project-name }}
+        VERSION: ${{ inputs.version }}
+        VERSION_MAJOR: ${{ inputs.version-major }}
+        VERSION_MINOR: ${{ inputs.version-minor }}
+        VERSION_PATCH: ${{ inputs.version-patch }}
+        VERSION_2_PART: ${{ inputs.version-2-part }}
+        VERSION_3_PART: ${{ inputs.version-3-part }}
+        VERSION_4_PART: ${{ inputs.version-4-part }}
+        VERSION_DNS_SAFE: ${{ inputs.version-dns-safe }}
+        VERSION_2_PART_DNS_SAFE: ${{ inputs.version-2-part-dns-safe }}
+        VERSION_3_PART_DNS_SAFE: ${{ inputs.version-3-part-dns-safe }}
+        VERSION_4_PART_DNS_SAFE: ${{ inputs.version-4-part-dns-safe }}
+        GIT_TAG: ${{ inputs.git-tag }}
+        IS_RELEASE: ${{ inputs.is-release }}
+        DOCKER_TAG: ${{ inputs.docker-tag }}
+        DOCKER_IMAGE_NAME: ${{ inputs.docker-image-name }}
+        ENVIRONMENT_SHORT_NAME: ${{ inputs.environment-short-name }}
+        RUN_BUILD_KIND: ${{ inputs.run-build-kind }}
+        OUTPUT_SUB_PATH: ${{ inputs.output-sub-path }}
+        TOKEN_DELIMITER_STYLE: ${{ inputs.token-delimiter-style }}
+        TOKEN_NAME_STYLE: ${{ inputs.token-name-style }}
+        TOKEN_NAME_VALIDATION: ${{ inputs.token-name-validation }}
+        CONFIG_SUB_PATH: ${{ inputs.config-sub-path }}
+        CONFIG_VALUE_TRAILING_NEWLINE: ${{ inputs.config-value-trailing-newline }}
+        TOKEN_SUBSTITUTION_PASSES: ${{ inputs.token-substitution-passes }}
+        SECRETS_SUB_PATH: ${{ inputs.secrets-sub-path }}
+        ENV_FAIL_ON_UNREFERENCED_CONFIG_OR_SECRETS: ${{ inputs.fail-on-unreferenced-config-or-secrets }}
+        ENV_AUTO_GENERATE_IMAGE_PULL_SECRETS: ${{ inputs.auto-generate-image-pull-secrets }}
+        IMAGE_BUILD_COMMAND: ${{ inputs.image-build-command }}
+        ENV_ENVIRONMENT_DEPLOY_BASE_IMAGE_REGISTRY: ${{ inputs.env-deploy-base-image-registry }}
+        ENV_ENVIRONMENT_DEPLOY_BASE_IMAGE_INCLUDE_NAMESPACE: ${{ inputs.env-deploy-base-image-include-namespace }}
+        ENV_ENVIRONMENT_DEPLOY_BASE_IMAGE_NAMESPACE: ${{ inputs.env-deploy-base-image-namespace }}
+        ENV_ENVIRONMENT_DEPLOY_BASE_IMAGE_FAMILY: ${{ inputs.env-deploy-base-image-family }}
+        ENV_ENVIRONMENT_DEPLOY_BASE_IMAGE_VERSION: ${{ inputs.env-deploy-base-image-version }}
+      run: "${{ github.action_path }}/../../scripts/main/kubernetes-run-substitute"

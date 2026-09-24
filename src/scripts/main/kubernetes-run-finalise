@@ -1,0 +1,583 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
+#
+# kubernetes-run-finalise - Post-substitution finalisation of a run's
+# workload-aggregate manifest tree (shared by env and run-platform).
+#
+# Steps: yq patches, image pull secrets, post-substitution gate, signoff check,
+# resource checksums (ResourceChecksum.md), content-data ConfigMap
+# (EnvContentData.md).
+#
+# Order rationale:
+#   - patches before the gate: a patch can inject a token; later steps cannot.
+#   - pull secrets after the patches (a patch may add an imagePullSecrets
+#     reference) and before the gate, which requires their credential values.
+#   - gate before signoff: no signoff requests for a manifest that will fail.
+#   - gate before checksum: checksumming a Secret needs every token's
+#     encrypted value; the gate reports all missing ones at once.
+#   - signoff before checksum: signoffs hash pre-suffix bytes, and the strip
+#     expression keeps metadata.name, so renaming would invalidate them.
+#   - content-data last: it lists post-checksum names, so it is found by label
+#     and not itself checksummed.
+#
+# Inputs (env):
+#   PROJECT_NAME                       - Required; run name (run-* / run-platform-*)
+#   VERSION                            - Required; for logs
+#   ENVIRONMENT_WORKLOAD_CONTENTS_SUB_PATH                 - Required; the substituted tree
+#   OUTPUT_SUB_PATH                    - Build output dir (default kaptain-out)
+#   KAPTAINPM_FILE                     - Path to final KaptainPM.yaml
+#                                        (default kaptainpm/final/KaptainPM.yaml)
+#   MANIFESTS_SIGNOFFS_SUB_PATH        - Signoff files (default src/signoffs)
+#   MANIFESTS_SIGNOFFS_KINDS_FILE      - Versioned file name of the sensitive-kind
+#                                        list in src/data/signoff-kinds/.
+#                                        Default default-1.1.txt. Replaces, not merges.
+#   MANIFESTS_TRUSTED_CONTRIBUTORS_ONLY
+#                                      - "true" disables signoff checks. Default "false".
+#   TOKEN_DELIMITER_STYLE / TOKEN_NAME_STYLE
+#                                      - Token rendering the gate matches
+#   SECRETS_SUB_PATH                   - Encrypted per-token values for the gate and
+#                                        build-time Secret checksums (default
+#                                        src/secrets). Skipped when missing.
+#   IMAGE_BUILD_COMMAND / ENV_ENVIRONMENT_DEPLOY_BASE_IMAGE_*
+#                                      - Deploy base image, pulled for its supported
+#                                        secret encryption types
+#   ENV_AUTO_GENERATE_IMAGE_PULL_SECRETS
+#                                      - true (default) | false
+#   ENV_FAIL_ON_UNREFERENCED_CONFIG_OR_SECRETS
+#                                      - Policy for unused image pull secret values
+#                                        (see environments.bash)
+#   ENV_CHECKSUM_SECRETS_TIMING        - build (default) | deploy. With 'deploy',
+#                                        Secret templates keep their markers and the
+#                                        deploy image hashes decrypted plaintext, so
+#                                        key rotation alone does not roll workloads.
+#                                        Other kinds hash at build. See schema field
+#                                        checksumSecretsTiming.
+#   RESOURCE_CHECKSUM_LENGTH           - Suffix length in Base32 chars (default 5;
+#                                        warn <4 or >12; fail >52). See ResourceChecksum.md
+#   MANIFESTS_CHECKSUM_ORDER_FILE      - Versioned file name of the ordered-kinds
+#                                        list in src/data/resource-order/.
+#                                        Default default-1.1.txt. Replaces, not merges.
+#
+# Outputs (env + GITHUB_OUTPUT):
+#   ENVIRONMENT_WORKLOAD_CONTENTS_SUB_PATH - manifests-final. Each stage gets its own
+#                                        directory beside the untouched input.
+#                                        Downstream report, lineage and package
+#                                        steps read this output.
+#
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# shellcheck source=src/scripts/defaults/platform.bash
+source "${SCRIPT_DIR}/../defaults/platform.bash"
+# shellcheck source=src/scripts/lib/log.bash
+source "${SCRIPT_DIR}/../lib/log.bash"
+# BUILD_MODE must be declared, though no step here branches on it.
+# shellcheck source=src/scripts/defaults/build-mode.bash
+source "${SCRIPT_DIR}/../defaults/build-mode.bash"
+# shellcheck source=src/scripts/defaults/output-sub-path.bash
+source "${SCRIPT_DIR}/../defaults/output-sub-path.bash"
+# shellcheck source=src/scripts/defaults/tokens.bash
+source "${SCRIPT_DIR}/../defaults/tokens.bash"
+# shellcheck source=src/scripts/defaults/environments.bash
+source "${SCRIPT_DIR}/../defaults/environments.bash"
+# shellcheck source=src/scripts/lib/sensitive-resource-signoff.bash
+source "${SCRIPT_DIR}/../lib/sensitive-resource-signoff.bash"
+# shellcheck source=src/scripts/lib/manifest-file-kinds.bash
+source "${SCRIPT_DIR}/../lib/manifest-file-kinds.bash"
+# shellcheck source=src/scripts/lib/manifest-yq-patch-apply.bash
+source "${SCRIPT_DIR}/../lib/manifest-yq-patch-apply.bash"
+# shellcheck source=src/scripts/lib/output-var.bash
+source "${SCRIPT_DIR}/../lib/output-var.bash"
+# shellcheck source=src/scripts/lib/token-format.bash
+source "${SCRIPT_DIR}/../lib/token-format.bash"
+# shellcheck source=src/scripts/lib/token-markers.bash
+source "${SCRIPT_DIR}/../lib/token-markers.bash"
+# shellcheck source=src/scripts/lib/env-deploy-base-image-compose.bash
+source "${SCRIPT_DIR}/../lib/env-deploy-base-image-compose.bash"
+# shellcheck source=src/scripts/lib/secret-encryption-types.bash
+source "${SCRIPT_DIR}/../lib/secret-encryption-types.bash"
+# shellcheck source=src/scripts/lib/resource-checksum.bash
+source "${SCRIPT_DIR}/../lib/resource-checksum.bash"
+# shellcheck source=src/scripts/lib/env-content-scan.bash
+source "${SCRIPT_DIR}/../lib/env-content-scan.bash"
+
+PROJECT_NAME="${PROJECT_NAME:?PROJECT_NAME is required}"
+VERSION="${VERSION:?VERSION is required}"
+ENVIRONMENT_WORKLOAD_CONTENTS_SUB_PATH="${ENVIRONMENT_WORKLOAD_CONTENTS_SUB_PATH:?ENVIRONMENT_WORKLOAD_CONTENTS_SUB_PATH is required - the substituted tree, exported by kubernetes-run-substitute}"
+KAPTAINPM_FILE="${KAPTAINPM_FILE:-kaptainpm/final/KaptainPM.yaml}"
+case "${ENV_CHECKSUM_SECRETS_TIMING}" in
+  build|deploy) ;;
+  *)
+    log_error "ENV_CHECKSUM_SECRETS_TIMING must be 'build' or 'deploy', got '${ENV_CHECKSUM_SECRETS_TIMING}'"
+    exit 1
+    ;;
+esac
+
+# Fixed directories so toolkit extensions can ship more versioned lists.
+SIGNOFF_KINDS_PATH="${SCRIPT_DIR}/../../data/signoff-kinds/${MANIFESTS_SIGNOFFS_KINDS_FILE}"
+CHECKSUM_ORDER_PATH="${SCRIPT_DIR}/../../data/resource-order/${MANIFESTS_CHECKSUM_ORDER_FILE}"
+
+# Set by the env and RP entrypoints; inferred from PROJECT_NAME below if unset.
+RUN_BUILD_KIND="${RUN_BUILD_KIND:-}"
+
+# Derived from the input's parent so the kind-to-base mapping stays in the
+# aggregate step, and stages stay together wherever the input lives.
+STAGE_BASE="$(dirname "${ENVIRONMENT_WORKLOAD_CONTENTS_SUB_PATH}")"
+MANIFESTS_MODIFIED_DIR="${STAGE_BASE}/manifests-modified"
+MANIFESTS_CHECKSUMMED_DIR="${STAGE_BASE}/manifests-checksummed"
+MANIFESTS_FINAL_DIR="${STAGE_BASE}/manifests-final"
+MODIFIER_SANDBOX_DIR="${STAGE_BASE}/manifests-modifier-working"
+
+# The input tree stays untouched so provenance can show each stage's changes.
+WORKING_TREE="${MANIFESTS_CHECKSUMMED_DIR}"
+if [[ -z "${RUN_BUILD_KIND}" ]]; then
+  case "${PROJECT_NAME}" in
+    run-platform-*) RUN_BUILD_KIND="run-platform" ;;
+    run-*)          RUN_BUILD_KIND="environment" ;;
+    *)              RUN_BUILD_KIND="environment" ;;
+  esac
+fi
+
+CONTENT_DATA_FILENAME="kaptain-environment-content-data.yaml"
+CONTENT_DATA_CM_NAME="kaptain-environment-content-data"
+CONTENT_DATA_ROLE_LITERAL="kaptain-environment-content-data"
+
+IMAGE_PULL_SECRETS_DIRNAME="kaptain-image-pull-secrets"
+IMAGE_PULL_SECRETS_ROLE_LITERAL="kaptain-image-pull-secret"
+
+step_signoff_check() {
+  log ""
+  log "[4/6] Sensitive-resource signoff check..."
+  if [[ "${MANIFESTS_TRUSTED_CONTRIBUTORS_ONLY}" == "true" ]]; then
+    log "  SKIPPED - MANIFESTS_TRUSTED_CONTRIBUTORS_ONLY=true (master disable)."
+    log "  This bypasses the signoff gate entirely. Only appropriate for repos where"
+    log "  every contributor is a trusted reviewer for every sensitive resource."
+    return 0
+  fi
+  # Read by signoff_check_tree: skeletons for missing or changed signoffs, and
+  # the whole signoffs dir with them merged in, to replace
+  # ${MANIFESTS_SIGNOFFS_SUB_PATH}/ after review.
+  SIGNOFF_SKELETON_DIR="${OUTPUT_SUB_PATH}/run-finalise/signoffs-needed"
+  SIGNOFF_MERGED_DIR="${OUTPUT_SUB_PATH}/run-finalise/signoffs-merged"
+  signoff_check_tree \
+    "${WORKING_TREE}" \
+    "${MANIFESTS_SIGNOFFS_SUB_PATH}" \
+    "${SIGNOFF_KINDS_PATH}"
+}
+
+step_resource_checksum() {
+  log ""
+  log "[5/6] Resource checksum pass..."
+  if [[ ! -f "${CHECKSUM_ORDER_PATH}" ]]; then
+    log_error "Resource checksum order file '${MANIFESTS_CHECKSUM_ORDER_FILE}' not found in the fixed data dir"
+    log_error "(resolved: ${CHECKSUM_ORDER_PATH})"
+    return 1
+  fi
+  log "  Length:    ${RESOURCE_CHECKSUM_LENGTH}"
+  log "  Order:     src/data/resource-order/${MANIFESTS_CHECKSUM_ORDER_FILE}"
+  log "  Secrets:   ${SECRETS_SUB_PATH}"
+  export RESOURCE_CHECKSUM_LENGTH
+
+  # An empty secrets dir skips Secret templates: RP children own their
+  # secrets, and with timing=deploy the deploy image's pass resolves the markers.
+  local secrets_dir=""
+  if [[ "${RUN_BUILD_KIND}" == "environment" && -d "${SECRETS_SUB_PATH}" ]]; then
+    secrets_dir="${SECRETS_SUB_PATH}"
+  fi
+  if [[ -n "${secrets_dir}" && "${ENV_CHECKSUM_SECRETS_TIMING}" == "deploy" ]]; then
+    log "  Secret checksum timing 'deploy': Secret markers left in place for the deploy-time pass."
+    secrets_dir=""
+  fi
+  log ""
+  checksum_tree "${WORKING_TREE}" "${secrets_dir}" "${CHECKSUM_ORDER_PATH}"
+
+  log "Checksum totals: ${RESOURCE_CHECKSUM_TOTAL_RESOURCES} resource(s) checksummed," \
+      "${RESOURCE_CHECKSUM_TOTAL_REFS} reference(s) updated across ${RESOURCE_CHECKSUM_TOTAL_REF_FILES} file(s)"
+}
+
+# Built inline, not via a token generator: names are concrete by now and a
+# runtime consumer mounts the CM by literal name or label.
+emit_content_data_configmap() {
+  local content_data_file="$1"
+  local cm_out="$2"
+
+  local indented
+  indented=$(sed 's/^/    /' "${content_data_file}")
+
+  {
+    printf 'apiVersion: v1\n'
+    printf 'kind: ConfigMap\n'
+    printf 'metadata:\n'
+    printf '  name: %s\n' "${CONTENT_DATA_CM_NAME}"
+    printf '  namespace: %s\n' "${PROJECT_NAME}"
+    printf '  labels:\n'
+    printf '    kaptain.org/role: %s\n' "${CONTENT_DATA_ROLE_LITERAL}"
+    printf '    kaptain.org/run-kind: %s\n' "${RUN_BUILD_KIND}"
+    printf '    kaptain.org/run-name: %s\n' "${PROJECT_NAME}"
+    printf 'data:\n'
+    printf '  content-data.yaml: |\n'
+    printf '%s\n' "${indented}"
+  } > "${cm_out}"
+}
+
+step_env_content_data() {
+  log ""
+  log "[6/6] Env content data (post-checksum)..."
+
+  local workspace="${OUTPUT_SUB_PATH}/run-finalise"
+  mkdir -p "${workspace}"
+
+  local content_data_file="${workspace}/content-data.yaml"
+  env_content_scan_tree \
+    "${WORKING_TREE}" \
+    "${RUN_BUILD_KIND}" \
+    "${PROJECT_NAME}" \
+    "${VERSION}" \
+    "${content_data_file}"
+
+  local target="${WORKING_TREE}/${CONTENT_DATA_FILENAME}"
+  emit_content_data_configmap "${content_data_file}" "${target}"
+  log "  Wrote ${target}"
+}
+
+# Before signoff, so signoffs cover patched content, and before checksums, so a
+# patched Secret hashes its patched contents.
+step_apply_modifiers() {
+  log ""
+  log "[1/6] Applying yq patches (${MANIFESTS_MODIFIED_DIR})..."
+  mkdir -p "${MANIFESTS_MODIFIED_DIR}"
+  cp -R "${ENVIRONMENT_WORKLOAD_CONTENTS_SUB_PATH}/." "${MANIFESTS_MODIFIED_DIR}/"
+
+  if ! manifest_patch_tree "${MANIFESTS_MODIFIED_DIR}" "${MODIFIER_SANDBOX_DIR}"; then
+    log_error ""
+    log_error "One or more patches could not be applied. Intermediate states are under"
+    log_error "${MODIFIER_SANDBOX_DIR} for diagnosis."
+    exit 1
+  fi
+
+  if [[ "${MANIFEST_PATCH_TARGET_COUNT}" -eq 0 ]]; then
+    log "  No patches in this set."
+  else
+    log ""
+    log "  ${MANIFEST_PATCH_APPLIED_COUNT} patch(es) applied across ${MANIFEST_PATCH_TARGET_COUNT} manifest(s)."
+  fi
+}
+
+# Set by step_ignore_unresolved_markers when the tree has any markers.
+IGNORE_MARKERS_FILE=""
+
+# A dockerconfigjson Secret template per referenced imagePullSecrets name (a
+# registry hostname in Kaptain), with credential tokens the deploy resolves:
+#
+#   <ImagePullSecrets>/<Registry>/<Username>
+#   <ImagePullSecrets>/<Registry>/<Password>
+#
+# <Registry> is the hostname with '.' made '-' in the token name style (ghcr.io
+# is GhcrIo in PascalCase). Hostnames that collide fail so they cannot share
+# credentials.
+#
+# Runs after substitution (names are usually registry tokens) and after the
+# patches (a patch may add one). A same-named Secret already in the tree wins.
+#
+# Substitute's unreferenced-value check skips <ImagePullSecrets>/ while
+# generation is on, so unused values there are reported here instead.
+step_image_pull_secrets() {
+  log ""
+  log "[2/6] Image pull secrets (autoGenerateImagePullSecrets=${ENV_AUTO_GENERATE_IMAGE_PULL_SECRETS})..."
+  case "${ENV_AUTO_GENERATE_IMAGE_PULL_SECRETS}" in
+    true) ;;
+    false)
+      log "  Generation off."
+      return 0
+      ;;
+    *)
+      log_error "ENV_AUTO_GENERATE_IMAGE_PULL_SECRETS must be 'true' or 'false', got '${ENV_AUTO_GENERATE_IMAGE_PULL_SECRETS}'"
+      exit 1
+      ;;
+  esac
+
+  local tree="${MANIFESTS_MODIFIED_DIR}"
+  local out_dir="${tree}/${IMAGE_PULL_SECRETS_DIRNAME}"
+  if [[ -e "${out_dir}" ]]; then
+    log_error "  ${IMAGE_PULL_SECRETS_DIRNAME}/ is reserved for the generated image pull Secrets."
+    log_error "  Rename it, or set autoGenerateImagePullSecrets: false and supply them yourself."
+    exit 1
+  fi
+
+  local referenced supplied file rel
+  referenced=$(mktemp)
+  supplied=$(mktemp)
+  while IFS= read -r file; do
+    manifest_file_classify "${file}" || continue
+    [[ "${MANIFEST_FILE_KIND}" == "manifest" ]] || continue
+    rel="${file#"${tree}"/}"
+    yq ea '.. | select(tag == "!!map" and has("imagePullSecrets")) | .imagePullSecrets[] | .name | select(. != null)' \
+      "${file}" >> "${referenced}"
+    yq ea 'select(.kind == "Secret") | .metadata.name | select(. != null)' "${file}" \
+      | sed "s|\$|	${rel}|" >> "${supplied}"
+  done < <(manifest_files_find_packageable "${tree}" | LC_ALL=C sort)
+
+  local root_segment username_segment password_segment token_shape
+  root_segment=$(convert_token_name "${TOKEN_NAME_STYLE}" "IMAGE_PULL_SECRETS")
+  username_segment=$(convert_token_name "${TOKEN_NAME_STYLE}" "USERNAME")
+  password_segment=$(convert_token_name "${TOKEN_NAME_STYLE}" "PASSWORD")
+  token_shape=$(any_token_regex)
+
+  local used_tokens="" keys="" name key registry_segment supplied_by
+  local username_token password_token failures=0 generated=0
+  while IFS= read -r name; do
+    [[ -z "${name}" ]] && continue
+    # Still a token: the gate reports it.
+    if grep -qE "${token_shape}" <<< "${name}"; then
+      continue
+    fi
+    supplied_by=$(awk -F'\t' -v n="${name}" '$1 == n { print $2; exit }' "${supplied}")
+    if [[ -n "${supplied_by}" ]]; then
+      log "  ${name}: supplied by ${supplied_by}, not generated"
+      continue
+    fi
+    if ! [[ "${name}" =~ ^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$ ]]; then
+      log_error "  imagePullSecrets name '${name}' is not a valid Secret name (lower-case DNS subdomain)"
+      failures=$((failures + 1))
+      continue
+    fi
+    key=$(tr '.' '-' <<< "${name}")
+    if grep -qx "${key}	.*" <<< "${keys}"; then
+      log_error "  imagePullSecrets names '$(grep "^${key}	" <<< "${keys}" | cut -f2)' and '${name}' both convert to '${key}'; they would share credentials"
+      failures=$((failures + 1))
+      continue
+    fi
+    keys="${keys}${key}	${name}"$'\n'
+
+    registry_segment=$(convert_kebab_name "${TOKEN_NAME_STYLE}" "${key}")
+    username_token="${root_segment}/${registry_segment}/${username_segment}"
+    password_token="${root_segment}/${registry_segment}/${password_segment}"
+    used_tokens="${used_tokens}${username_token}"$'\n'"${password_token}"$'\n'
+
+    mkdir -p "${out_dir}"
+    {
+      printf 'apiVersion: v1\n'
+      printf 'kind: Secret\n'
+      printf 'metadata:\n'
+      printf '  name: %s\n' "${name}"
+      printf '  namespace: %s\n' "${PROJECT_NAME}"
+      printf '  labels:\n'
+      printf '    kaptain.org/role: %s\n' "${IMAGE_PULL_SECRETS_ROLE_LITERAL}"
+      printf 'type: kubernetes.io/dockerconfigjson\n'
+      printf 'stringData:\n'
+      printf '  .dockerconfigjson: '"'"'{"auths":{"%s":{"username":"%s","password":"%s"}}}'"'"'\n' \
+        "${name}" \
+        "$(format_token_reference "${TOKEN_DELIMITER_STYLE}" "${username_token}")" \
+        "$(format_token_reference "${TOKEN_DELIMITER_STYLE}" "${password_token}")"
+    } > "${out_dir}/${key}.template.yaml"
+    log "  ${name}: generated ${IMAGE_PULL_SECRETS_DIRNAME}/${key}.template.yaml"
+    generated=$((generated + 1))
+  done < <(LC_ALL=C sort -u "${referenced}")
+  rm -f "${referenced}" "${supplied}"
+
+  if [[ "${failures}" -gt 0 ]]; then
+    log_error "${failures} image pull secret problem(s)."
+    exit 1
+  fi
+  log "  ${generated} image pull Secret(s) generated."
+
+  # Env builds only: a run-platform's children own their secrets.
+  local secrets_root="${SECRETS_SUB_PATH}/${root_segment}"
+  if [[ "${RUN_BUILD_KIND}" != "environment" || ! -d "${secrets_root}" ]]; then
+    return 0
+  fi
+  secret_encryption_types_load || exit 1
+  local unused=() value_file token
+  while IFS= read -r value_file; do
+    token=$(secret_value_token_name "${value_file#"${SECRETS_SUB_PATH}"/}") || continue
+    grep -qxF "${token}" <<< "${used_tokens}" || unused+=("${token}")
+  done < <(find "${secrets_root}" -type f -not -name '.*' | LC_ALL=C sort)
+  [[ ${#unused[@]} -eq 0 ]] && return 0
+
+  if [[ "${ENV_FAIL_ON_UNREFERENCED_CONFIG_OR_SECRETS}" != "true" ]]; then
+    for token in "${unused[@]}"; do
+      log_warning "unreferenced secret value '${token}' - no generated image pull Secret uses it - tolerated (failOnUnreferencedConfigOrSecrets=false)"
+    done
+    return 0
+  fi
+  for token in "${unused[@]}"; do
+    log_error "  unreferenced secret value '${token}' - no generated image pull Secret uses it"
+  done
+  log_error "${#unused[@]} unreferenced image pull secret value(s). Remove them, or set"
+  log_error "failOnUnreferencedConfigOrSecrets=false to tolerate them with warnings."
+  exit 1
+}
+
+# IgnoreUnresolved markers exempt expected residue from the gate (forms and
+# rules in lib/token-markers.bash). They are independent of DoNotConvert
+# markers, though usually written together.
+#
+# Only .yaml files count, matching what the gate walks.
+step_ignore_unresolved_markers() {
+  local marked_files marked_file marked_rel marked_count=0
+  marked_files=$(token_markers_files "IgnoreUnresolved" "${MANIFESTS_MODIFIED_DIR}")
+  [[ -z "${marked_files}" ]] && return 0
+
+  IGNORE_MARKERS_FILE="${STAGE_BASE}/substitution-gate-ignores.tsv"
+  : > "${IGNORE_MARKERS_FILE}"
+  token_markers_reset
+
+  while IFS= read -r marked_file; do
+    if [[ -z "${marked_file}" ]]; then continue; fi
+    case "${marked_file}" in
+      *.yaml) ;;
+      *) continue ;;
+    esac
+    marked_count=$((marked_count + 1))
+    marked_rel="${marked_file#"${MANIFESTS_MODIFIED_DIR}"/}"
+    # Includes Secret templates: a covered token there needs no encrypted value.
+    token_markers_collect "IgnoreUnresolved" "${marked_file}" "${marked_rel}" "${IGNORE_MARKERS_FILE}"
+  done <<< "${marked_files}"
+
+  [[ "${marked_count}" -eq 0 ]] && return 0
+
+  # Fatal in all build modes: a stale marker will suppress the wrong thing once
+  # the lines around it move.
+  if [[ "${TOKEN_MARKERS_ERROR_COUNT}" -gt 0 ]]; then
+    log_error ""
+    log_error "${TOKEN_MARKERS_ERROR_COUNT} IgnoreUnresolved marker problem(s)."
+    log_error "Fix the markers in the source project. Marker problems fail every"
+    log_error "build mode: an inert marker is worse than no marker at all."
+    exit 1
+  fi
+
+  local ignore_count
+  ignore_count=$(wc -l < "${IGNORE_MARKERS_FILE}" | tr -d ' ')
+  log ""
+  log "IgnoreUnresolved markers: ${ignore_count} exemption(s) across ${marked_count} file(s)."
+}
+
+# Nothing unresolved may remain in the final layer. Secret-template tokens
+# need an encrypted value in env builds; RP builds defer them to the child
+# deploys that own the secrets. Marker validation is broader than this regex
+# (see lib/token-markers.bash).
+step_substitution_gate() {
+  log ""
+  log "[3/6] Post-substitution gate (final layer: nothing unresolved may remain)..."
+
+  local token_regex
+  token_regex=$(unresolved_token_regex "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}") || exit 1
+  local failures=0
+  local deferred=0
+  local file rel tokens tok
+  while IFS= read -r -d '' file; do
+    rel="${file#"${MANIFESTS_MODIFIED_DIR}"/}"
+    if [[ -n "${IGNORE_MARKERS_FILE}" ]]; then
+      tokens=$(token_markers_unmarked_tokens "${file}" "${rel}" "${token_regex}" "${IGNORE_MARKERS_FILE}" "${TOKEN_DELIMITER_STYLE}")
+    else
+      tokens=$(grep -oE "${token_regex}" "${file}" | LC_ALL=C sort -u | strip_token_delimiters "${TOKEN_DELIMITER_STYLE}" || true)
+    fi
+    [[ -z "${tokens}" ]] && continue
+    if [[ "${file}" == *.template.yaml ]]; then
+      while IFS= read -r tok; do
+        [[ -z "${tok}" ]] && continue
+        if [[ "${RUN_BUILD_KIND}" == "run-platform" ]]; then
+          deferred=$((deferred + 1))
+          continue
+        fi
+        # The cause could be a missing config value or a missing encrypted
+        # value; the build cannot tell which, so the error names both.
+        secret_encryption_types_load || exit 1
+        if ! secret_value_file_for_token "${SECRETS_SUB_PATH}" "${tok}" > /dev/null; then
+          log_error "  ${rel}: unresolved token '${tok}' in a secret template - no config value supplied it,"
+          log_error "    and there is no encrypted value at ${SECRETS_SUB_PATH}/${tok}.<type>"
+          failures=$((failures + 1))
+        fi
+      done <<< "${tokens}"
+    else
+      while IFS= read -r tok; do
+        [[ -z "${tok}" ]] && continue
+        log_error "  ${rel}: unresolved token '${tok}' (not a secret template; nothing downstream will ever supply it)"
+        failures=$((failures + 1))
+      done <<< "${tokens}"
+    fi
+  done < <(find "${MANIFESTS_MODIFIED_DIR}" -type f -name '*.yaml' -print0 | LC_ALL=C sort -z)
+
+  # Fatal in all build modes: local builds only soften what they cannot check
+  # (credentials, remote artefacts), and tokens are checkable anywhere.
+  if [[ "${failures}" -gt 0 ]]; then
+    log_error ""
+    log_error "${failures} unresolved-token problem(s) after substitution and modifiers."
+    log_error "This run is the final layer: every non-secret token must resolve at"
+    log_error "build time. Env builds also require an encrypted value in"
+    log_error "${SECRETS_SUB_PATH}/ for every secret-template token."
+    exit 1
+  fi
+  if [[ "${RUN_BUILD_KIND}" == "run-platform" ]]; then
+    log "  Gate passed: no unresolved non-secret tokens; ${deferred} secret-template token(s) deferred to child deploys."
+  else
+    log "  Gate passed: no unresolved non-secret tokens; all secret tokens have values."
+  fi
+}
+
+# Copied so the modified stage survives for provenance.
+step_stage_for_checksum() {
+  log ""
+  log "Staging for signoff and checksum (${MANIFESTS_CHECKSUMMED_DIR})..."
+  mkdir -p "${MANIFESTS_CHECKSUMMED_DIR}"
+  cp -R "${MANIFESTS_MODIFIED_DIR}/." "${MANIFESTS_CHECKSUMMED_DIR}/"
+}
+
+# Modifiers are already consumed (deletes in aggregate, patches here), so only
+# manifests ship.
+step_stage_final() {
+  log ""
+  log "Staging the final manifest set (${MANIFESTS_FINAL_DIR})..."
+  mkdir -p "${MANIFESTS_FINAL_DIR}"
+
+  local file rel kept=0 dropped=0
+  while IFS= read -r file; do
+    manifest_file_classify "${file}" || continue
+    rel="${file#"${WORKING_TREE}"/}"
+    if [[ "${MANIFEST_FILE_KIND}" == "modifier" ]]; then
+      dropped=$((dropped + 1))
+      continue
+    fi
+    mkdir -p "$(dirname "${MANIFESTS_FINAL_DIR}/${rel}")"
+    cp "${file}" "${MANIFESTS_FINAL_DIR}/${rel}"
+    kept=$((kept + 1))
+  done < <(manifest_files_find_packageable "${WORKING_TREE}")
+
+  log "  ${kept} manifest(s) staged, ${dropped} modifier(s) left behind for provenance."
+  output_var "ENVIRONMENT_WORKLOAD_CONTENTS_SUB_PATH" "${MANIFESTS_FINAL_DIR}"
+}
+
+main() {
+  log "=== Kubernetes Run Finalise ==="
+  log "Project:        ${PROJECT_NAME}"
+  log "Version:        ${VERSION}"
+  log "Build kind:     ${RUN_BUILD_KIND}"
+  log "Manifests:      ${ENVIRONMENT_WORKLOAD_CONTENTS_SUB_PATH}"
+  log "Signoffs:       ${MANIFESTS_SIGNOFFS_SUB_PATH}"
+  log "Trusted-only:   ${MANIFESTS_TRUSTED_CONTRIBUTORS_ONLY}"
+  log "Checksum len:   ${RESOURCE_CHECKSUM_LENGTH}"
+  log "================================"
+
+  if [[ ! -d "${ENVIRONMENT_WORKLOAD_CONTENTS_SUB_PATH}" ]]; then
+    log_error "Manifests directory not found: ${ENVIRONMENT_WORKLOAD_CONTENTS_SUB_PATH}"
+    log_error "Did kubernetes-manifests-substitute run first?"
+    exit 1
+  fi
+
+  step_apply_modifiers
+  step_image_pull_secrets
+  step_ignore_unresolved_markers
+  step_substitution_gate
+  step_stage_for_checksum
+  step_signoff_check
+  step_resource_checksum
+  step_env_content_data
+  step_stage_final
+
+  log ""
+  log "=== Run Finalise Complete ==="
+}
+
+main "$@"
