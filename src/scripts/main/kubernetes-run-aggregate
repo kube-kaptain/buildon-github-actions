@@ -698,8 +698,7 @@ stage_own_deploy_manifests() {
 build_cleanup_policy_document() {
   local out="$1"
 
-  # A minimal valid KaptainPM so the shipped schema validates it directly
-  # with check-jsonschema.
+  # A minimal valid KaptainPM so the shipped schema validates it directly.
   #
   # cleanUp is copied as configured, without defaults: those belong to the
   # deploy scripts that act on them.
@@ -719,10 +718,11 @@ build_cleanup_policy_document() {
        spec: { main: { environment: (if ($cleanUp | length) > 0 then { cleanUp: $cleanUp } else {} end) } } }' \
     | yq -P "." > "${out}"
 
-  # Cheaper to fail here than at deploy time.
-  if ! check-jsonschema --schemafile "${CLEANUP_SCHEMA_FILE}" "${out}" > /dev/null 2>&1; then
+  # Cheaper to fail here than at deploy time. Through SCHEMA_VALIDATION_COMMAND
+  # like every other schema check: build servers get jv, not check-jsonschema.
+  if ! "${SCHEMA_VALIDATION_COMMAND}" "${CLEANUP_SCHEMA_FILE}" "${out}" > /dev/null 2>&1; then
     log_error "Generated cleanup policy document does not validate against ${CLEANUP_SCHEMA_FILE}"
-    check-jsonschema --schemafile "${CLEANUP_SCHEMA_FILE}" "${out}" 2>&1 | sed "s/^/  /" || true
+    "${SCHEMA_VALIDATION_COMMAND}" "${CLEANUP_SCHEMA_FILE}" "${out}" 2>&1 | sed "s/^/  /" || true
     exit 1
   fi
 }
