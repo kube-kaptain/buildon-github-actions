@@ -1,0 +1,36 @@
+# kubernetes-run-environment
+
+Kubernetes Run Environment
+
+## Inputs
+
+All configuration comes from KaptainPM.yaml and layers, except secrets.
+
+## Secrets
+
+| Secret | Description |
+|--------|-------------|
+| `docker-registry-logins-secrets` | JSON object of secrets for docker-registry-logins (e.g., {"DOCKER_USER": "x", "DOCKER_PASS": "y"}) |
+
+## Outputs
+
+| Output | Description |
+|--------|-------------|
+| `version` | The generated version |
+| `version-major` | Major version number |
+| `version-minor` | Minor version number |
+| `version-patch` | Patch version number |
+| `version-2-part` | Version padded/truncated to 2 parts |
+| `version-3-part` | Version padded/truncated to 3 parts |
+| `version-4-part` | Version padded/truncated to 4 parts |
+| `docker-tag` | Tag for Docker images |
+| `docker-image-name` | Docker image name |
+| `git-tag` | Tag for git |
+| `project-name` | The repository/project name |
+| `is-release` | Whether this is a release build |
+| `environment-name` | Environment name (PROJECT_NAME verbatim) |
+| `environment-short-name` | Environment short name (run- prefix stripped) |
+| `manifests-uri` | Reference to the published deploy-manifests set (format depends on repo provider) |
+| `manifests-published` | Whether the deploy-manifests set was published |
+| `run-deploy-image-uri` | The deploy image URI (standard project image name) |
+| `run-artifacts-image-uri` | The artifacts wrapper image URI |
