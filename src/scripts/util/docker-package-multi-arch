@@ -53,7 +53,9 @@ content_dir="${1:?Usage: docker-package-multi-arch <content-dir> <base-image-uri
 base_image_uri="${2:?Usage: docker-package-multi-arch <content-dir> <base-image-uri>}"
 
 PACKAGE_BASE_IMAGE="${PACKAGE_BASE_IMAGE:-scratch}"
-MANIFEST_URIS_FILE="${OUTPUT_SUB_PATH}/docker-push-all/manifest-uris"
+# Beside the image list, not under OUTPUT_SUB_PATH: a caller that relocates
+# OUTPUT_SUB_PATH (the deploy-manifests block) still feeds the one docker-push-all.
+MANIFEST_URIS_FILE="$(dirname "${DOCKER_PUSH_IMAGE_LIST_FILE}")/manifest-uris"
 
 # Both architectures, always
 PLATFORMS=("linux/amd64" "linux/arm64")
