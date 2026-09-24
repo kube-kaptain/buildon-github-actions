@@ -76,6 +76,20 @@ inputs:
     description: 'Per-platform Dockerfile directory for linux/arm64 multi-platform builds'
     required: false
     default: 'src/docker-linux-arm64'
+  # Docker source image configuration
+  docker-source-registry:
+    description: 'Upstream registry (e.g., docker.io)'
+    required: true
+  docker-source-namespace:
+    description: 'Path segment between registry and image name (e.g., library)'
+    required: false
+    default: ''
+  docker-source-image-name:
+    description: 'Upstream image name (e.g., nginx)'
+    required: true
+  docker-source-tag:
+    description: 'Upstream image tag (e.g., 1.25)'
+    required: true
   # Manifests source
   manifests-sub-path:
     description: 'Directory containing Kubernetes manifests (relative)'
@@ -168,6 +182,34 @@ inputs:
     default: ''
   kubernetes-serviceaccount-additional-annotations:
     description: 'Additional annotations specific to ServiceAccount (comma-separated key=value)'
+    required: false
+    default: ''
+  # Kubernetes PodDisruptionBudget generation
+  kubernetes-poddisruptionbudget-generation-enabled:
+    description: 'Enable PodDisruptionBudget generation (true, false, or empty for auto based on workload type)'
+    required: false
+  kubernetes-poddisruptionbudget-name-suffix:
+    description: 'Optional suffix for PDB name and filename'
+    required: false
+    default: ''
+  kubernetes-poddisruptionbudget-combined-sub-path:
+    description: 'Sub-path within combined/ for output'
+    required: false
+    default: ''
+  kubernetes-poddisruptionbudget-strategy:
+    description: 'PDB constraint strategy (min-available or max-unavailable)'
+    required: false
+    default: 'max-unavailable'
+  kubernetes-poddisruptionbudget-value:
+    description: 'Value for the chosen strategy (integer or percentage, e.g., 1, 50%)'
+    required: false
+    default: '1'
+  kubernetes-poddisruptionbudget-additional-labels:
+    description: 'Additional labels specific to PodDisruptionBudget (comma-separated key=value)'
+    required: false
+    default: ''
+  kubernetes-poddisruptionbudget-additional-annotations:
+    description: 'Additional annotations specific to PodDisruptionBudget (comma-separated key=value)'
     required: false
     default: ''
   # Kubernetes Workload generation

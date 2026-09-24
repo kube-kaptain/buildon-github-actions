@@ -65,6 +65,10 @@ See [`examples/`](examples/) for more usage patterns.
 | `multi-registry-push` | [README](examples/guides/multi-registry-push/README.md) | [build.yaml](examples/guides/multi-registry-push/build.yaml) | [KaptainPM.yaml](examples/guides/multi-registry-push/KaptainPM.yaml) |
 | `release-branches` | [README](examples/guides/release-branches/README.md) | [build.yaml](examples/guides/release-branches/build.yaml) | [KaptainPM.yaml](examples/guides/release-branches/KaptainPM.yaml) |
 | `retag-upstream-image` | [README](examples/guides/retag-upstream-image/README.md) | [build.yaml](examples/guides/retag-upstream-image/build.yaml) | [KaptainPM.yaml](examples/guides/retag-upstream-image/KaptainPM.yaml) |
+| `run-environment-config-and-secrets` | [README](examples/guides/run-environment-config-and-secrets/README.md) | [build.yaml](examples/guides/run-environment-config-and-secrets/build.yaml) | [KaptainPM.yaml](examples/guides/run-environment-config-and-secrets/KaptainPM.yaml) |
+| `run-environment-delegated-cluster-scoped` | [README](examples/guides/run-environment-delegated-cluster-scoped/README.md) | [build.yaml](examples/guides/run-environment-delegated-cluster-scoped/build.yaml) | [KaptainPM.yaml](examples/guides/run-environment-delegated-cluster-scoped/KaptainPM.yaml) |
+| `run-environment-job-mode` | [README](examples/guides/run-environment-job-mode/README.md) | [build.yaml](examples/guides/run-environment-job-mode/build.yaml) | [KaptainPM.yaml](examples/guides/run-environment-job-mode/KaptainPM.yaml) |
+| `run-platform-with-environments` | [README](examples/guides/run-platform-with-environments/README.md) | [build.yaml](examples/guides/run-platform-with-environments/build.yaml) | [KaptainPM.yaml](examples/guides/run-platform-with-environments/KaptainPM.yaml) |
 | `token-substitution` | [README](examples/guides/token-substitution/README.md) | [build.yaml](examples/guides/token-substitution/build.yaml) | [KaptainPM.yaml](examples/guides/token-substitution/KaptainPM.yaml) |
 | `version-compound-sources` | [README](examples/guides/version-compound-sources/README.md) | [build.yaml](examples/guides/version-compound-sources/build.yaml) | [KaptainPM.yaml](examples/guides/version-compound-sources/KaptainPM.yaml) |
 | `version-from-custom-pattern` | [README](examples/guides/version-from-custom-pattern/README.md) | [build.yaml](examples/guides/version-from-custom-pattern/build.yaml) | [KaptainPM.yaml](examples/guides/version-from-custom-pattern/KaptainPM.yaml) |
@@ -87,6 +91,8 @@ See [`examples/`](examples/) for more usage patterns.
 | `kubernetes-bundle-resources.yaml` | Packages pre-existing kubernetes manifests from src/kubernetes/ with token substitution, no generators |
 | `kubernetes-product-aggregate.yaml` | Aggregates pre-built manifest bundles listed in spec.contents into a deployable product, with merged defaults and a unified contract |
 | `kubernetes-bundle-vendor-helm-rendered.yaml` | Renders a vendor helm chart into individual manifests, processes and validates them, then packages with token substitution |
+| `kubernetes-run-environment.yaml` | Builds a deployable environment - a bone-stock deploy-manifests set plus the bespoke workload aggregate, deploy image, and run artifacts |
+| `kubernetes-run-platform-meta-environment.yaml` | Builds a deployable run platform (meta environment) - a bone-stock deploy-manifests set plus the bespoke platform aggregate with managed run-* children, deploy image, and run artifacts |
 | `kubernetes-bundle-docker-dockerfile.yaml` | Packages pre-existing kubernetes manifests from src/kubernetes/ with token substitution and builds a docker image from a Dockerfile - for apps with a Dockerfile and hand-maintained manifests |
 | `kubernetes-app-docker-dockerfile.yaml` | Everything from both docker Dockerfile and Kubernetes manifest packaging - a full kube app build |
 | `kubernetes-bundle-docker-retag.yaml` | Packages pre-existing kubernetes manifests from src/kubernetes/ with token substitution and retags an upstream docker image - for apps using upstream images with hand-maintained manifests |
@@ -135,6 +141,20 @@ See [`examples/`](examples/) for more usage patterns.
 | `kubernetes-manifests-repo-provider-publish` | Publishes manifests via pluggable repo provider. Requires package step to run first. |
 | `kubernetes-manifests-substitute` | Phase A: copies prepared manifests and runs token substitution |
 | `kubernetes-product-aggregate` | Resolves spec.contents bundles, stages manifests/defaults into the additional-manifests and additional-defaults drop dirs for downstream packaging |
+| `kubernetes-run-aggregate` | Workload-contents aggregate for env and RP builds (kind from build-kind): resolves spec.contents uniformly, includes the own deploy-manifests set self-referencing, folds local manifests, and ends at the assembled normalised tree |
+| `kubernetes-run-consumption-report` | Generates the run's consumption report - the env analog of a manifests contract: consumed contents, token usage per providing tier, and the deploy-time secret token inventory |
+| `kubernetes-run-deploy-image-validate` | Runs the freshly built deploy image's own validate-environment against the contract baked into it - a separate step after all building so a failure reads "the image is bad" |
+| `kubernetes-run-finalise` | Post-substitution finalisation of the run's workload aggregate: yq patches, post-substitution gate (unresolved tokens, secret coverage), sensitive-resource signoff gate, resource checksum pass, env-content-data ConfigMap emit |
+| `kubernetes-run-image-deploy-manifests-contract-generate` | Generates the deploy-manifests contract (deploy-time tokens with pinned defaults for the RP parent or bootstrap consumer) - the stock contract-generate pinned by its wrapper script |
+| `kubernetes-run-image-deploy-manifests-lineage-data-generate` | Emits the deploy-manifests set's lineage data ConfigMap (the run's inner app record, ENV_BUILD_SECTION=app) - the stock lineage-data-generate pinned by its wrapper script |
+| `kubernetes-run-image-deploy-manifests-package-prepare` | Prepares the deploy-manifests set for packaging - the stock package-prepare pinned at the deploy-manifests block dirs by its wrapper script |
+| `kubernetes-run-image-deploy-manifests-package` | Zips the substituted deploy-manifests tree - the stock package pinned by its wrapper script |
+| `kubernetes-run-image-deploy-manifests-repo-provider-package` | Packages the deploy-manifests set for the repo provider (builds the manifests docker image; does NOT publish) - the stock repo-provider-package pinned by its wrapper script |
+| `kubernetes-run-image-deploy-manifests-substitute` | Token substitution over the deploy-manifests set - the stock substitute pinned at the deploy-manifests block dirs by its wrapper script |
+| `kubernetes-run-image-deploy-manifests-templates-import` | Resolves spec.templates into the deploy-manifests set - the stock templates import pinned at the deploy-manifests block dirs by its wrapper script |
+| `kubernetes-run-image-deploy-manifests` | Stages (or generates) the deploy-image manifest set for an env/RP build - the first step of the bone-stock deploy-manifests block |
+| `kubernetes-run-package` | Builds the run's deploy image (contract baked as ENV lines, cluster-scoped carve-out under delegation=parent), the contents zip, the environment provenance zip, and the artifacts wrapper image |
+| `kubernetes-run-substitute` | Stacks the final config (children defaults < run config < built-ins with the Environment token family) and substitutes the assembled workload aggregate, then checks token usage (unreferenced config and secret values) |
 | `kubernetes-templates-import` | Resolves spec.templates bundles and imports them into the additional-manifests and additional-defaults drop dirs (flat or hierarchy layout) |
 | `layer-package-prepare` | Prepares layer or layerset for OCI packaging - validates source, injects metadata, generates Dockerfile |
 | `layer-validate` | Validates substituted layer or layerset after docker build |
@@ -187,6 +207,8 @@ the syntax.
 | `kubernetes-bundle-resources.yaml` | Kubernetes Bundle - Resources | [docs/kubernetes-bundle-resources.md](docs/kubernetes-bundle-resources.md) |
 | `kubernetes-bundle-vendor-helm-rendered.yaml` | Kubernetes Bundle - Vendor Helm Rendered | [docs/kubernetes-bundle-vendor-helm-rendered.md](docs/kubernetes-bundle-vendor-helm-rendered.md) |
 | `kubernetes-product-aggregate.yaml` | Kubernetes Product Aggregate | [docs/kubernetes-product-aggregate.md](docs/kubernetes-product-aggregate.md) |
+| `kubernetes-run-environment.yaml` | Kubernetes Run Environment | [docs/kubernetes-run-environment.md](docs/kubernetes-run-environment.md) |
+| `kubernetes-run-platform-meta-environment.yaml` | Kubernetes Run Platform Meta Environment | [docs/kubernetes-run-platform-meta-environment.md](docs/kubernetes-run-platform-meta-environment.md) |
 | `layer-and-layerset-build.yaml` | Layer and Layerset Build | [docs/layer-and-layerset-build.md](docs/layer-and-layerset-build.md) |
 | `spec-check-filter-release.yaml` | Spec Check Filter Release | [docs/spec-check-filter-release.md](docs/spec-check-filter-release.md) |
 <!-- WORKFLOW-DOCS-END -->

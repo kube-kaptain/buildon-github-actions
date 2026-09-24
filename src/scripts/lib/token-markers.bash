@@ -9,8 +9,13 @@
 # are the same whichever family is asking, which is what keeps two families
 # from quietly disagreeing about what parses.
 #
-# Current caller: DoNotConvert* in src/scripts/util/convert-tokens-in-tree,
-# exempting tokens from child token-scheme conversion.
+# Families:
+#
+#   DoNotConvert*      util/convert-tokens-in-tree: skip token-scheme conversion.
+#   IgnoreUnresolved*  token-shaped text that needs no value: skipped by the
+#                      kubernetes-run-finalise gate, the Secret checksum input
+#                      (lib/resource-checksum.bash) and the secret inventory in
+#                      kubernetes-run-consumption-report.
 #
 # Markers live in comments - usually YAML comments, but inside an embedded
 # block scalar the comment syntax of the embedded content is fine too; the
@@ -41,8 +46,10 @@
 # a foreign format on purpose. Callers decide whether that is fatal.
 #
 # Functions:
-#   token_markers_files    - list files under a tree carrying the keyword
-#   token_markers_collect  - parse and validate one file's markers into a TSV
+#   token_markers_files                - list files under a tree carrying the keyword
+#   token_markers_collect              - parse and validate one file's markers into a TSV
+#   token_markers_unmarked_tokens      - a file's token names minus those a TSV covers
+#   token_markers_file_unmarked_tokens - same, using the file's own markers
 #
 # Requires lib/token-format.bash (any_token_regex) and lib/log.bash.
 
@@ -75,7 +82,8 @@ token_markers_trim() {
   printf '%s' "${s}"
 }
 
-# Internal: report a marker problem and count it.
+# Report and count a marker problem. Callers also use it for family-specific
+# problems so all land in one count.
 token_markers_error() {
   TOKEN_MARKERS_ERROR_COUNT=$((TOKEN_MARKERS_ERROR_COUNT + 1))
   log_error "${1}"
@@ -302,4 +310,56 @@ token_markers_collect() {
       token_markers_record "${keyword}" "${relative}" "${i}" "${target}" "${entry}" "${marker_search[@]+"${marker_search[@]}"}"
     done
   done
+}
+
+# Distinct token names in <file> minus those <records-tsv> covers for
+# <relative-path> (per line, or per named token on a line). Sorted before
+# delimiters are stripped: callers hash in that order.
+#
+# Usage: token_markers_unmarked_tokens <file> <relative-path> <token-regex> <records-tsv> <delimiter-style>
+token_markers_unmarked_tokens() {
+  local file="${1}" relative="${2}" regex="${3}" records="${4}" delimiter_style="${5}"
+  grep -noE "${regex}" "${file}" 2>/dev/null \
+    | awk -v ignores="${records}" -v relative="${relative}" '
+      BEGIN {
+        while ((getline record < ignores) > 0) {
+          first = index(record, "\t")
+          if (first == 0) continue
+          record_file = substr(record, 1, first - 1)
+          record_rest = substr(record, first + 1)
+          second = index(record_rest, "\t")
+          if (second == 0) continue
+          record_line  = substr(record_rest, 1, second - 1) + 0
+          record_token = substr(record_rest, second + 1)
+          if (record_file != relative) continue
+          if (record_token == "*") ignore_all[record_line] = 1
+          else ignore_token[record_line, record_token] = 1
+        }
+        close(ignores)
+      }
+      {
+        at = index($0, ":")
+        if (at == 0) next
+        line_no = substr($0, 1, at - 1) + 0
+        token = substr($0, at + 1)
+        if (line_no in ignore_all) next
+        if ((line_no, token) in ignore_token) next
+        print token
+      }' \
+    | LC_ALL=C sort -u | strip_token_delimiters "${delimiter_style}" || true
+}
+
+# As token_markers_unmarked_tokens, using the file's own <keyword> markers,
+# for callers whose file may have moved since a tree-wide TSV was built.
+#
+# Usage: token_markers_file_unmarked_tokens <keyword> <file> <token-regex> <delimiter-style>
+token_markers_file_unmarked_tokens() {
+  local keyword="${1}" file="${2}" regex="${3}" delimiter_style="${4}"
+  local records
+  records=$(mktemp)
+  if grep -q "${keyword}" "${file}" 2>/dev/null; then
+    token_markers_collect "${keyword}" "${file}" "${file}" "${records}"
+  fi
+  token_markers_unmarked_tokens "${file}" "${file}" "${regex}" "${records}" "${delimiter_style}"
+  rm -f "${records}"
 }

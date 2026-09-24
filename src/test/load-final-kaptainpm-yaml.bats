@@ -103,6 +103,13 @@ EOF
   assert_output_contains "Kind matched: test-build"
 }
 
+@test "publishes the checked kind as BUILD_KIND" {
+  write_pm "test-build"
+  run_script
+  [ "${status}" -eq 0 ]
+  assert_github_output "BUILD_KIND" "test-build"
+}
+
 # =============================================================================
 # Default-when-absent fields
 # =============================================================================
@@ -257,6 +264,66 @@ EOF
   run_script
   [ "${status}" -eq 0 ]
   assert_github_output "KUBERNETES_WORKLOAD_TYPE" "statefulset"
+}
+
+@test "ENV_IMAGE_PULL_SECRETS uses spec.main.environment.imagePullSecrets" {
+  cat > "${TEST_DIR}/kaptainpm/final/KaptainPM.yaml" << 'EOF'
+apiVersion: kaptain.org/1.10
+kind: test-build
+spec:
+  main:
+    environment:
+      imagePullSecrets: DISABLED
+EOF
+  run_script
+  [ "${status}" -eq 0 ]
+  assert_github_output "ENV_IMAGE_PULL_SECRETS" "DISABLED"
+}
+
+@test "ENV_JOB_POST_DEPLOY_SLEEP_* use the spec.main.environment job sleeps" {
+  cat > "${TEST_DIR}/kaptainpm/final/KaptainPM.yaml" << 'EOF'
+apiVersion: kaptain.org/1.10
+kind: test-build
+spec:
+  main:
+    environment:
+      deployMode: job
+      jobPostDeploySleepAfterSuccess: 5m
+      jobPostDeploySleepAfterFailure: 2d
+EOF
+  run_script
+  [ "${status}" -eq 0 ]
+  assert_github_output "ENV_JOB_POST_DEPLOY_SLEEP_AFTER_SUCCESS" "5m"
+  assert_github_output "ENV_JOB_POST_DEPLOY_SLEEP_AFTER_FAILURE" "2d"
+}
+
+@test "ENV_JOB_POST_DEPLOY_SLEEP_AFTER_SUCCESS takes bare integer seconds" {
+  cat > "${TEST_DIR}/kaptainpm/final/KaptainPM.yaml" << 'EOF'
+apiVersion: kaptain.org/1.10
+kind: test-build
+spec:
+  main:
+    environment:
+      deployMode: job
+      jobPostDeploySleepAfterSuccess: 600
+EOF
+  run_script
+  [ "${status}" -eq 0 ]
+  assert_github_output "ENV_JOB_POST_DEPLOY_SLEEP_AFTER_SUCCESS" "600"
+}
+
+@test "ENV_AUTO_GENERATE_IMAGE_PULL_SECRETS takes a bare boolean false" {
+  cat > "${TEST_DIR}/kaptainpm/final/KaptainPM.yaml" << 'EOF'
+apiVersion: kaptain.org/1.10
+kind: test-build
+spec:
+  main:
+    environment:
+      autoGenerateImagePullSecrets: false
+EOF
+  run_script
+  [ "${status}" -eq 0 ]
+  assert_github_output "ENV_AUTO_GENERATE_IMAGE_PULL_SECRETS" "false"
 }
 
 @test "KUBERNETES_CONFIGMAP_SUB_PATH defaults to src/configmap when absent" {

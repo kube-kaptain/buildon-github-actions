@@ -69,6 +69,8 @@ target/manifests/            # Build output
 - Leading digits allowed (e.g., `2-my-var`)
 - Nested paths use `/` (e.g., `MyCategory/MySubVar`)
 - Hidden files always blocked (`.gitkeep`, `.DS_Store`)
+- Symlinks always blocked: a symlinked token file or directory fails the build
+- Binary files always blocked: a token file containing null bytes fails the build
 - `camelCase` with leading digit requires uppercase after (e.g., `2MyVar` not `2myVar`)
 
 ## Built-in Tokens

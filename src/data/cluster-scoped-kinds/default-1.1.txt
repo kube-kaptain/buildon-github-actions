@@ -1,0 +1,46 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
+#
+# Default cluster-scoped Kinds for clusterScopedDelegation=parent: these move
+# from the env deploy image's /kd/manifests to /kd/cluster-scoped-on-behalf
+# (and the matching contents-zip folder) for the run-platform parent to apply
+# with cluster credentials.
+#
+# One Kind per line. Manifest files are single-document, so classification is
+# per file.
+#
+# Immutable once published: changes ship as a new <name>-<version>.txt and
+# bad versions are removed, so a pinned version always means the same bytes.
+#
+# Selected by name via clusterScopedKindsFile
+# (MANIFESTS_CLUSTER_SCOPED_KINDS_FILE), resolved in this directory. The
+# selected file replaces this list.
+
+# Core cluster scope
+Namespace
+CustomResourceDefinition
+APIService
+PriorityClass
+RuntimeClass
+
+# RBAC
+ClusterRole
+ClusterRoleBinding
+
+# Admission
+MutatingWebhookConfiguration
+ValidatingWebhookConfiguration
+ValidatingAdmissionPolicy
+ValidatingAdmissionPolicyBinding
+
+# Storage
+StorageClass
+PersistentVolume
+CSIDriver
+
+# cert-manager
+ClusterIssuer
+
+# Routing classes (Gateway API / Ingress)
+GatewayClass
+IngressClass

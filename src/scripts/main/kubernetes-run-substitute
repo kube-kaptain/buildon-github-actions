@@ -1,0 +1,333 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
+#
+# kubernetes-run-substitute - Stack the final config and substitute the
+# run's assembled workload aggregate. Shared by env and run-platform builds.
+#
+# A separate step so validation can run on the assembled tree before
+# substitution and on the substituted tree after it.
+#
+# The run is the final layer, so config is applied here and nothing is
+# carried forward as deferred defaults. The post-substitution gate runs in
+# kubernetes-run-finalise, after the yq patches, so tokens a patch injects are
+# gated too.
+#
+# Image pull Secrets are generated here, from the substituted tree's names, and
+# get their own substitution run, so every file goes through exactly one run of
+# TOKEN_SUBSTITUTION_PASSES passes. Token usage and the unreferenced check then
+# see the whole shipped set.
+#
+# Inputs (env):
+#   PROJECT_NAME             - Required; run name (run-* / run-platform-*)
+#   ENVIRONMENT_SHORT_NAME   - Required; exported by the aggregate step
+#   BUILD_KIND               - Required; names the aggregate's dir and sets
+#                              the ENVIRONMENT_TYPE token
+#   OUTPUT_SUB_PATH          - Build output dir (default kaptain-out)
+#   TOKEN_DELIMITER_STYLE / TOKEN_NAME_STYLE - Token rendering
+#   CONFIG_SUB_PATH          - The run's own token dir (default src/config)
+#   SECRETS_SUB_PATH         - Encrypted secret values dir (default
+#                              src/secrets)
+#   CONFIG_VALUE_TRAILING_NEWLINE / TOKEN_SUBSTITUTION_PASSES - Read by the
+#                              substitution util for both runs
+#   ENV_FAIL_ON_UNREFERENCED_CONFIG_OR_SECRETS - see environments.bash
+#   ENV_AUTO_GENERATE_IMAGE_PULL_SECRETS - see environments.bash
+#   IMAGE_BUILD_COMMAND / ENV_ENVIRONMENT_DEPLOY_BASE_IMAGE_* - Deploy base
+#                              image, read for its secret encryption types
+#   BUILD_MODE               - Required; unused here. All checks can run
+#                              locally, so they are fatal locally too
+#
+# Outputs (env + GITHUB_OUTPUT):
+#   ENVIRONMENT_WORKLOAD_CONTENTS_SUB_PATH        - The substituted workload tree
+#   ENVIRONMENT_WORKLOAD_CONTENTS_CONFIG_SUB_PATH - The stacked final-config dir
+#
+# Run-scoped names because step outputs are re-exported to later steps.
+# MANIFESTS_SUB_PATH and DEFAULTS_SUB_PATH are user config, published only by
+# load-final-kaptainpm-yaml; emitting them here would clobber the user's values.
+#
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# shellcheck source=src/scripts/defaults/platform.bash
+source "${SCRIPT_DIR}/../defaults/platform.bash"
+# shellcheck source=src/scripts/lib/log.bash
+source "${SCRIPT_DIR}/../lib/log.bash"
+# shellcheck source=src/scripts/defaults/build-mode.bash
+source "${SCRIPT_DIR}/../defaults/build-mode.bash"
+# shellcheck source=src/scripts/defaults/output-sub-path.bash
+source "${SCRIPT_DIR}/../defaults/output-sub-path.bash"
+# shellcheck source=src/scripts/defaults/tokens.bash
+source "${SCRIPT_DIR}/../defaults/tokens.bash"
+# shellcheck source=src/scripts/defaults/environments.bash
+source "${SCRIPT_DIR}/../defaults/environments.bash"
+# shellcheck source=src/scripts/lib/output-var.bash
+source "${SCRIPT_DIR}/../lib/output-var.bash"
+# shellcheck source=src/scripts/lib/token-usage.bash
+source "${SCRIPT_DIR}/../lib/token-usage.bash"
+# shellcheck source=src/scripts/lib/token-format.bash
+source "${SCRIPT_DIR}/../lib/token-format.bash"
+# shellcheck source=src/scripts/lib/builtin-tokens-from-entry.bash
+source "${SCRIPT_DIR}/../lib/builtin-tokens-from-entry.bash"
+# shellcheck source=src/scripts/lib/env-deploy-base-image-compose.bash
+source "${SCRIPT_DIR}/../lib/env-deploy-base-image-compose.bash"
+# shellcheck source=src/scripts/lib/secret-encryption-types.bash
+source "${SCRIPT_DIR}/../lib/secret-encryption-types.bash"
+# shellcheck source=src/scripts/lib/manifest-file-kinds.bash
+source "${SCRIPT_DIR}/../lib/manifest-file-kinds.bash"
+# shellcheck source=src/scripts/lib/image-pull-secrets.bash
+source "${SCRIPT_DIR}/../lib/image-pull-secrets.bash"
+
+PROJECT_NAME="${PROJECT_NAME:?PROJECT_NAME is required}"
+ENVIRONMENT_SHORT_NAME="${ENVIRONMENT_SHORT_NAME:?ENVIRONMENT_SHORT_NAME is required (exported by the aggregate step)}"
+UTIL_DIR="${SCRIPT_DIR}/../util"
+
+BUILD_KIND="${BUILD_KIND:?BUILD_KIND is required (published by load-final-kaptainpm-yaml)}"
+ENVIRONMENT_TYPE="env"
+[[ "${BUILD_KIND}" == "kubernetes-run-platform-meta-environment" ]] && ENVIRONMENT_TYPE="meta-env"
+AGGREGATE_BASE="${OUTPUT_SUB_PATH}/${BUILD_KIND#kubernetes-}"
+AGGREGATE_MANIFESTS_PRUNED_DIR="${AGGREGATE_BASE}/manifests-pruned"
+AGGREGATE_DEFAULTS_MERGED="${AGGREGATE_BASE}/config-defaults"
+AGGREGATE_TOKENS_TMP_DIR="${AGGREGATE_BASE}/config-prepared-tmp"
+AGGREGATE_FINAL_CONFIG_DIR="${AGGREGATE_BASE}/config-final"
+AGGREGATE_CONFIG_IN_REPO_DIR="${AGGREGATE_BASE}/config-in-repo"
+AGGREGATE_CONFIG_BUILTINS_DIR="${AGGREGATE_BASE}/config-builtins"
+AGGREGATE_SUBSTITUTED_DIR="${AGGREGATE_BASE}/manifests-substituted"
+# Pre-substitution form, kept for token usage and provenance.
+IMAGE_PULL_SECRETS_GENERATED_DIR="${AGGREGATE_BASE}/image-pull-secrets-generated"
+
+IMAGE_PULL_SECRETS_DIRNAME="kaptain-image-pull-secrets"
+IMAGE_PULL_SECRETS_ROLE_LITERAL="kaptain-image-pull-secret"
+
+# Split so each config layer exists on disk for inspection and provenance.
+# Done here because prepare-substitution-tokens is shared beyond this repo.
+#
+# The split is exact: prepare-substitution-tokens refuses a user config token
+# named like a built-in, so the two sets are disjoint.
+split_prepared_config_layers() {
+  log ""
+  log "Splitting the prepared config back into its layers..."
+  mkdir -p "${AGGREGATE_CONFIG_IN_REPO_DIR}" "${AGGREGATE_CONFIG_BUILTINS_DIR}"
+
+  local file rel in_repo=0 builtins=0
+  while IFS= read -r -d '' file; do
+    rel="${file#"${AGGREGATE_TOKENS_TMP_DIR}"/}"
+    if [[ -f "${CONFIG_SUB_PATH}/${rel}" ]]; then
+      mkdir -p "$(dirname "${AGGREGATE_CONFIG_IN_REPO_DIR}/${rel}")"
+      cp "${file}" "${AGGREGATE_CONFIG_IN_REPO_DIR}/${rel}"
+      in_repo=$((in_repo + 1))
+    else
+      mkdir -p "$(dirname "${AGGREGATE_CONFIG_BUILTINS_DIR}/${rel}")"
+      cp "${file}" "${AGGREGATE_CONFIG_BUILTINS_DIR}/${rel}"
+      builtins=$((builtins + 1))
+    fi
+  done < <(find "${AGGREGATE_TOKENS_TMP_DIR}" -type f -print0)
+
+  log "  ${in_repo} from ${CONFIG_SUB_PATH}, ${builtins} built-in."
+}
+
+# A dockerconfigjson Secret template per referenced imagePullSecrets name (a
+# registry hostname in Kaptain) that the tree does not supply, with credential
+# tokens the deploy resolves:
+#
+#   <ImagePullSecrets>/<Registry>/<Username>
+#   <ImagePullSecrets>/<Registry>/<Password>
+#
+# <Registry> is the hostname with '.' made '-' in the token name style (ghcr.io
+# is GhcrIo in PascalCase). Hostnames that collide fail so they cannot share
+# credentials. A reference a yq patch adds is not generated for; finalise fails
+# any name left without a Secret.
+step_image_pull_secrets() {
+  log ""
+  log "Image pull secrets (autoGenerateImagePullSecrets=${ENV_AUTO_GENERATE_IMAGE_PULL_SECRETS})..."
+  mkdir -p "${IMAGE_PULL_SECRETS_GENERATED_DIR}"
+  case "${ENV_AUTO_GENERATE_IMAGE_PULL_SECRETS}" in
+    true) ;;
+    false)
+      log "  Generation off."
+      return 0
+      ;;
+    *)
+      log_error "ENV_AUTO_GENERATE_IMAGE_PULL_SECRETS must be 'true' or 'false', got '${ENV_AUTO_GENERATE_IMAGE_PULL_SECRETS}'"
+      exit 1
+      ;;
+  esac
+
+  if [[ -e "${AGGREGATE_SUBSTITUTED_DIR}/${IMAGE_PULL_SECRETS_DIRNAME}" ]]; then
+    log_error "  ${IMAGE_PULL_SECRETS_DIRNAME}/ is reserved for the generated image pull Secrets."
+    log_error "  Rename it, or set autoGenerateImagePullSecrets: false and supply them yourself."
+    exit 1
+  fi
+
+  image_pull_secrets_scan "${AGGREGATE_SUBSTITUTED_DIR}" || exit 1
+
+  local root_segment username_segment password_segment token_shape
+  root_segment=$(convert_token_name "${TOKEN_NAME_STYLE}" "IMAGE_PULL_SECRETS")
+  username_segment=$(convert_token_name "${TOKEN_NAME_STYLE}" "USERNAME")
+  password_segment=$(convert_token_name "${TOKEN_NAME_STYLE}" "PASSWORD")
+  token_shape=$(any_token_regex)
+
+  local out_dir="${IMAGE_PULL_SECRETS_GENERATED_DIR}/${IMAGE_PULL_SECRETS_DIRNAME}"
+  local keys="" name key registry_segment supplied_by
+  local username_token password_token failures=0 generated=0
+  while IFS= read -r name; do
+    [[ -z "${name}" ]] && continue
+    # Still a token: the gate reports it.
+    if grep -qE "${token_shape}" <<< "${name}"; then
+      continue
+    fi
+    supplied_by=$(awk -F'\t' -v n="${name}" '$1 == n { print $2; exit }' <<< "${IMAGE_PULL_SECRETS_SUPPLIED}")
+    if [[ -n "${supplied_by}" ]]; then
+      log "  ${name}: supplied by ${supplied_by}, not generated"
+      continue
+    fi
+    if ! [[ "${name}" =~ ^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$ ]]; then
+      log_error "  imagePullSecrets name '${name}' is not a valid Secret name (lower-case DNS subdomain)"
+      failures=$((failures + 1))
+      continue
+    fi
+    key=$(tr '.' '-' <<< "${name}")
+    if grep -qx "${key}	.*" <<< "${keys}"; then
+      log_error "  imagePullSecrets names '$(grep "^${key}	" <<< "${keys}" | cut -f2)' and '${name}' both convert to '${key}'; they would share credentials"
+      failures=$((failures + 1))
+      continue
+    fi
+    keys="${keys}${key}	${name}"$'\n'
+
+    registry_segment=$(convert_kebab_name "${TOKEN_NAME_STYLE}" "${key}")
+    username_token="${root_segment}/${registry_segment}/${username_segment}"
+    password_token="${root_segment}/${registry_segment}/${password_segment}"
+
+    mkdir -p "${out_dir}"
+    {
+      printf 'apiVersion: v1\n'
+      printf 'kind: Secret\n'
+      printf 'metadata:\n'
+      printf '  name: %s\n' "${name}"
+      printf '  namespace: %s\n' "${PROJECT_NAME}"
+      printf '  labels:\n'
+      printf '    kaptain.org/role: %s\n' "${IMAGE_PULL_SECRETS_ROLE_LITERAL}"
+      printf 'type: kubernetes.io/dockerconfigjson\n'
+      printf 'stringData:\n'
+      printf '  .dockerconfigjson: '"'"'{"auths":{"%s":{"username":"%s","password":"%s"}}}'"'"'\n' \
+        "${name}" \
+        "$(format_token_reference "${TOKEN_DELIMITER_STYLE}" "${username_token}")" \
+        "$(format_token_reference "${TOKEN_DELIMITER_STYLE}" "${password_token}")"
+    } > "${out_dir}/${key}.template.yaml"
+    log "  ${name}: generated ${IMAGE_PULL_SECRETS_DIRNAME}/${key}.template.yaml"
+    generated=$((generated + 1))
+  done <<< "${IMAGE_PULL_SECRETS_REFERENCED}"
+
+  if [[ "${failures}" -gt 0 ]]; then
+    log_error "${failures} image pull secret problem(s)."
+    exit 1
+  fi
+  log "  ${generated} image pull Secret(s) generated."
+  [[ "${generated}" -eq 0 ]] && return 0
+
+  # The rest of the tree is already substituted; only the new files get a run.
+  cp -R "${out_dir}" "${AGGREGATE_SUBSTITUTED_DIR}/"
+  "${UTIL_DIR}/substitute-tokens-from-dir" \
+    "${TOKEN_DELIMITER_STYLE}" \
+    "${AGGREGATE_FINAL_CONFIG_DIR}" \
+    "${AGGREGATE_SUBSTITUTED_DIR}/${IMAGE_PULL_SECRETS_DIRNAME}"
+}
+
+# token-usage.yaml stays in the aggregate base for the consumption report.
+# Unreferenced config/secret values fail per failOnUnreferencedConfigOrSecrets
+# (default true; child defaults exempt).
+step_token_usage() {
+  log ""
+  log "Token usage accounting + unreferenced value check..."
+  token_usage_report \
+    "${AGGREGATE_MANIFESTS_PRUNED_DIR}" \
+    "${IMAGE_PULL_SECRETS_GENERATED_DIR}" \
+    "${AGGREGATE_DEFAULTS_MERGED}" \
+    "${AGGREGATE_TOKENS_TMP_DIR}" \
+    "${CONFIG_SUB_PATH}" \
+    "${SECRETS_SUB_PATH}" \
+    "${AGGREGATE_BASE}/token-usage.yaml"
+  log "  Wrote ${AGGREGATE_BASE}/token-usage.yaml"
+
+  [[ "${TOKEN_USAGE_UNREFERENCED_COUNT}" -eq 0 ]] && return 0
+
+  local entry
+  if [[ "${ENV_FAIL_ON_UNREFERENCED_CONFIG_OR_SECRETS}" != "true" ]]; then
+    while IFS= read -r entry; do
+      [[ -z "${entry}" ]] && continue
+      log_warning "unreferenced ${entry%% *} value '${entry#* }' - tolerated (failOnUnreferencedConfigOrSecrets=false)"
+    done <<< "${TOKEN_USAGE_UNREFERENCED}"
+    return 0
+  fi
+  while IFS= read -r entry; do
+    [[ -z "${entry}" ]] && continue
+    log_error "  unreferenced ${entry%% *} value '${entry#* }' - no token in the manifest set references it"
+  done <<< "${TOKEN_USAGE_UNREFERENCED}"
+  # No BUILD_MODE softening: tolerance is a project setting
+  # (failOnUnreferencedConfigOrSecrets), independent of where the build runs.
+  log_error "${TOKEN_USAGE_UNREFERENCED_COUNT} unreferenced config/secret value(s). Remove them, or set"
+  log_error "failOnUnreferencedConfigOrSecrets=false to tolerate them with warnings."
+  return 1
+}
+
+main() {
+  log "=== Kubernetes Run Substitute ==="
+  log "Project:    ${PROJECT_NAME}"
+  log "Build kind: ${BUILD_KIND}"
+  log "Env scheme: ${TOKEN_DELIMITER_STYLE}-${TOKEN_NAME_STYLE}"
+  log "Aggregate:  ${AGGREGATE_BASE}"
+  log "================================="
+
+  if [[ ! -d "${AGGREGATE_MANIFESTS_PRUNED_DIR}" ]]; then
+    log_error "Pruned assembled tree not found: ${AGGREGATE_MANIFESTS_PRUNED_DIR}"
+    log_error "Did the aggregate step run first?"
+    exit 1
+  fi
+  if [[ ! -f "${SECRET_ENCRYPTION_TYPES_FILE}" ]]; then
+    log_error "Supported secret encryption types not found: ${SECRET_ENCRYPTION_TYPES_FILE}"
+    log_error "Did the aggregate step run first?"
+    exit 1
+  fi
+
+  log ""
+  log "Stacking final config dir (children defaults < run src/config < built-ins)..."
+  log ""
+  mkdir -p "${AGGREGATE_FINAL_CONFIG_DIR}" "${AGGREGATE_TOKENS_TMP_DIR}"
+  if [[ -d "${AGGREGATE_DEFAULTS_MERGED}" ]] \
+      && find "${AGGREGATE_DEFAULTS_MERGED}" -mindepth 1 -print -quit | grep -q .; then
+    cp -R "${AGGREGATE_DEFAULTS_MERGED}/." "${AGGREGATE_FINAL_CONFIG_DIR}/"
+  fi
+  # Image-contents side only; the deploy-manifests side never emits these
+  # (plan section 8).
+  emit_builtin_token_scalar ENVIRONMENT            "${PROJECT_NAME}"
+  emit_builtin_token_scalar ENVIRONMENT_NAME       "${PROJECT_NAME}"
+  emit_builtin_token_scalar ENVIRONMENT_SHORT_NAME "${ENVIRONMENT_SHORT_NAME}"
+  emit_builtin_token_scalar ENVIRONMENT_TYPE       "${ENVIRONMENT_TYPE}"
+
+  # Clean tmp dir: the util's built-in-override check expects an empty
+  # output dir, and children's defaults there would all flag as conflicts.
+  TOKENS_OUTPUT_SUB_PATH="${AGGREGATE_TOKENS_TMP_DIR}" \
+    "${UTIL_DIR}/prepare-substitution-tokens"
+  cp -R "${AGGREGATE_TOKENS_TMP_DIR}/." "${AGGREGATE_FINAL_CONFIG_DIR}/"
+
+  split_prepared_config_layers
+
+  log ""
+  log "Substituting aggregate against the stacked final config..."
+  mkdir -p "${AGGREGATE_SUBSTITUTED_DIR}"
+  cp -R "${AGGREGATE_MANIFESTS_PRUNED_DIR}/." "${AGGREGATE_SUBSTITUTED_DIR}/"
+  "${UTIL_DIR}/substitute-tokens-from-dir" \
+    "${TOKEN_DELIMITER_STYLE}" \
+    "${AGGREGATE_FINAL_CONFIG_DIR}" \
+    "${AGGREGATE_SUBSTITUTED_DIR}"
+
+  step_image_pull_secrets
+  step_token_usage
+
+  log ""
+  # Run-scoped output names: see the header.
+  output_var "ENVIRONMENT_WORKLOAD_CONTENTS_SUB_PATH" "${AGGREGATE_SUBSTITUTED_DIR}"
+  output_var "ENVIRONMENT_WORKLOAD_CONTENTS_CONFIG_SUB_PATH" "${AGGREGATE_FINAL_CONFIG_DIR}"
+}
+
+main "$@"

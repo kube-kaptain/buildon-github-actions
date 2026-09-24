@@ -1,0 +1,54 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
+
+name: 'Kubernetes Run Image Deploy Manifests Templates Import'
+description: 'Resolves spec.templates into the deploy-manifests set - the stock templates import pinned at the deploy-manifests block dirs by its wrapper script'
+
+inputs:
+  # INJECT-INPUT: output-sub-path
+  # INJECT-INPUT: schema-validation-command
+  # INJECT-INPUT: token-substitution
+  # INJECT-INPUT: docker-build
+  # INJECT-INPUT: image-build-command
+  # INJECT-INPUT: run-environment-settings
+
+  # Action-specific inputs
+  project-name:
+    description: 'Run name (run-* / run-platform-*)'
+    required: true
+  templates-layout:
+    description: 'Layout for imported template manifests: flat (default) or hierarchy'
+    required: false
+    default: 'flat'
+  is-release:
+    description: 'When true, template version ranges resolve to release-only bundle versions (excludes -PRERELEASE and platform-suffixed tags)'
+    required: false
+    default: 'false'
+
+outputs:
+  templates-list-file:
+    description: 'Path to markdown bullet list of spec.templates entries'
+    value: ${{ steps.templates-import.outputs.TEMPLATES_LIST_FILE }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Import deploy-manifests templates
+      id: templates-import
+      shell: bash
+      env:
+        BUILD_MODE: build_server
+        BUILD_PLATFORM: github-actions
+        BUILD_PLATFORM_LOG_PROVIDER: github-actions
+        PROJECT_NAME: ${{ inputs.project-name }}
+        OUTPUT_SUB_PATH: ${{ inputs.output-sub-path }}
+        SCHEMA_VALIDATION_COMMAND: ${{ inputs.schema-validation-command }}
+        TOKEN_DELIMITER_STYLE: ${{ inputs.token-delimiter-style }}
+        TOKEN_NAME_STYLE: ${{ inputs.token-name-style }}
+        TEMPLATES_LAYOUT: ${{ inputs.templates-layout }}
+        DOCKER_TARGET_REGISTRY: ${{ inputs.docker-target-registry }}
+        DOCKER_TARGET_NAMESPACE: ${{ inputs.docker-target-namespace }}
+        IMAGE_BUILD_COMMAND: ${{ inputs.image-build-command }}
+        IS_RELEASE: ${{ inputs.is-release }}
+        ENV_ENVIRONMENT_DEPLOY_SOURCE_BASE_PATH: ${{ inputs.env-deploy-source-base-path }}
+      run: "${{ github.action_path }}/../../scripts/main/kubernetes-run-image-deploy-manifests-templates-import"
