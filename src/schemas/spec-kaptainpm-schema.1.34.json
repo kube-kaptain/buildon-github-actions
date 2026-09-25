@@ -1,15 +1,15 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/kube-kaptain/spec-kaptainpm-schema/releases/download/1.31/spec-kaptainpm-schema-1.31.yaml",
+  "$id": "https://github.com/kube-kaptain/spec-kaptainpm-schema/releases/download/1.34/spec-kaptainpm-schema-1.34.yaml",
   "name": "spec-kaptainpm-schema",
-  "version": "1.31",
+  "version": "1.34",
   "source": "https://github.com/kube-kaptain/spec-kaptainpm-schema",
   "latest": "https://raw.githubusercontent.com/kube-kaptain/spec-kaptainpm-schema/main/spec-kaptainpm-schema.yaml",
-  "tagged": "https://raw.githubusercontent.com/kube-kaptain/spec-kaptainpm-schema/1.31/spec-kaptainpm-schema.yaml",
-  "release": "https://github.com/kube-kaptain/spec-kaptainpm-schema/releases/download/1.31/spec-kaptainpm-schema-1.31.yaml",
-  "validate-using": "https://github.com/kube-kaptain/spec-kaptainpm-schema/releases/download/1.31/spec-kaptainpm-schema-1.31.json",
+  "tagged": "https://raw.githubusercontent.com/kube-kaptain/spec-kaptainpm-schema/1.34/spec-kaptainpm-schema.yaml",
+  "release": "https://github.com/kube-kaptain/spec-kaptainpm-schema/releases/download/1.34/spec-kaptainpm-schema-1.34.yaml",
+  "validate-using": "https://github.com/kube-kaptain/spec-kaptainpm-schema/releases/download/1.34/spec-kaptainpm-schema-1.34.json",
   "title": "KaptainPM",
-  "description": "Kaptain project manifest schema (version 1.31).\n",
+  "description": "Kaptain project manifest schema (version 1.34).\n",
   "type": "object",
   "required": [
     "apiVersion",
@@ -20,7 +20,7 @@
     "apiVersion": {
       "type": "string",
       "pattern": "^kaptain\\.org/[0-9]+(\\.[0-9]+)*$",
-      "description": "API version - must be kaptain.org/ followed by the schema version (e.g. kaptain.org/1.2). Set via 1.31 token substitution at build time.\n"
+      "description": "API version - must be kaptain.org/ followed by the schema version (e.g. kaptain.org/1.2). Set via 1.34 token substitution at build time.\n"
     },
     "kind": {
       "type": "string",
@@ -145,13 +145,21 @@
           "spec": {
             "properties": {
               "main": {
-                "required": [
-                  "environment"
-                ],
-                "not": {
-                  "required": [
-                    "runPlatform"
-                  ]
+                "properties": {
+                  "environment": {
+                    "properties": {
+                      "cleanUp": {
+                        "propertyNames": {
+                          "not": {
+                            "enum": [
+                              "undeclaredNamespacePolicy",
+                              "additionalNamespaces"
+                            ]
+                          }
+                        }
+                      }
+                    }
+                  }
                 }
               }
             }
@@ -175,13 +183,18 @@
           "spec": {
             "properties": {
               "main": {
-                "required": [
-                  "runPlatform"
-                ],
-                "not": {
-                  "required": [
-                    "environment"
-                  ]
+                "properties": {
+                  "environment": {
+                    "propertyNames": {
+                      "not": {
+                        "enum": [
+                          "clusterScopedDelegation",
+                          "clusterScopedKindsFile",
+                          "imageDeployManifestsApplyMode"
+                        ]
+                      }
+                    }
+                  }
                 }
               }
             }
@@ -210,19 +223,12 @@
           "spec": {
             "properties": {
               "main": {
-                "not": {
-                  "anyOf": [
-                    {
-                      "required": [
-                        "environment"
-                      ]
-                    },
-                    {
-                      "required": [
-                        "runPlatform"
-                      ]
-                    }
-                  ]
+                "propertyNames": {
+                  "not": {
+                    "enum": [
+                      "environment"
+                    ]
+                  }
                 }
               }
             }
@@ -1190,13 +1196,36 @@
                   "additionalProperties": false,
                   "properties": {
                     "liveness": {
-                      "$ref": "#/$defs/probeConfig"
+                      "$ref": "#/$defs/probeConfig",
+                      "properties": {
+                        "successThreshold": {
+                          "enum": [
+                            1,
+                            "1"
+                          ]
+                        }
+                      }
                     },
                     "readiness": {
-                      "$ref": "#/$defs/probeConfig"
+                      "$ref": "#/$defs/probeConfig",
+                      "propertyNames": {
+                        "not": {
+                          "enum": [
+                            "terminationGracePeriodSeconds"
+                          ]
+                        }
+                      }
                     },
                     "startup": {
-                      "$ref": "#/$defs/probeConfig"
+                      "$ref": "#/$defs/probeConfig",
+                      "properties": {
+                        "successThreshold": {
+                          "enum": [
+                            1,
+                            "1"
+                          ]
+                        }
+                      }
                     }
                   }
                 }
@@ -1232,6 +1261,18 @@
                       "description": "Max unavailable pods during rolling update (default: 0)"
                     }
                   }
+                },
+                "portsEnabled": {
+                  "oneOf": [
+                    {
+                      "type": "boolean"
+                    },
+                    {
+                      "type": "string",
+                      "pattern": "^(true|false)$"
+                    }
+                  ],
+                  "description": "Enable port definitions (default: true)"
                 }
               }
             },
@@ -2140,7 +2181,7 @@
         "environment": {
           "type": "object",
           "additionalProperties": false,
-          "description": "Environment build configuration. Applies only to kubernetes-run-environment builds which aggregate apps, bundles, and products listed in spec.contents.\n",
+          "description": "Run build configuration, for both kubernetes-run-environment and kubernetes-run-platform-meta-environment builds, which aggregate apps, bundles, and products listed in spec.contents (a run-platform also seeds managed run-* child projects). Optional: every setting has a default. A few settings apply to only one of the two kinds; each says which.\n",
           "properties": {
             "clusterScopedDelegation": {
               "$ref": "#/$defs/runEnvClusterScopedDelegation"
@@ -2174,6 +2215,12 @@
             },
             "deployMode": {
               "$ref": "#/$defs/runEnvDeployMode"
+            },
+            "imagePullSecrets": {
+              "$ref": "#/$defs/runEnvImagePullSecrets"
+            },
+            "autoGenerateImagePullSecrets": {
+              "$ref": "#/$defs/runEnvAutoGenerateImagePullSecrets"
             },
             "checksumSecretsTiming": {
               "$ref": "#/$defs/runEnvChecksumSecretsTiming"
@@ -2275,160 +2322,7 @@
                     },
                     {
                       "required": [
-                        "imageAutoUpdateProvider"
-                      ]
-                    },
-                    {
-                      "required": [
-                        "imageAutoUpdatePolicy"
-                      ]
-                    },
-                    {
-                      "required": [
-                        "imageAutoUpdateTrigger"
-                      ]
-                    },
-                    {
-                      "required": [
-                        "imageAutoUpdatePollSchedule"
-                      ]
-                    },
-                    {
-                      "required": [
-                        "imageAutoUpdateFieldManagerStrategy"
-                      ]
-                    }
-                  ]
-                }
-              }
-            }
-          ]
-        },
-        "runPlatform": {
-          "type": "object",
-          "additionalProperties": false,
-          "description": "Run-platform build configuration. Applies only to kubernetes-run-platform-meta-environment builds which aggregate apps, bundles, and products listed in spec.contents and seed managed run-* child projects.\n",
-          "properties": {
-            "allowLocalManifestsOverride": {
-              "$ref": "#/$defs/runEnvAllowLocalManifestsOverride"
-            },
-            "failOnUnreferencedConfigOrSecrets": {
-              "$ref": "#/$defs/runEnvFailOnUnreferencedConfigOrSecrets"
-            },
-            "trustedContributorsOnly": {
-              "$ref": "#/$defs/runEnvTrustedContributorsOnly"
-            },
-            "imageAutoUpdateProvider": {
-              "$ref": "#/$defs/runEnvImageAutoUpdateProvider"
-            },
-            "imageAutoUpdatePolicy": {
-              "$ref": "#/$defs/runEnvImageAutoUpdatePolicy"
-            },
-            "imageAutoUpdateTrigger": {
-              "$ref": "#/$defs/runEnvImageAutoUpdateTrigger"
-            },
-            "imageAutoUpdatePollSchedule": {
-              "$ref": "#/$defs/runEnvImageAutoUpdatePollSchedule"
-            },
-            "imageAutoUpdateFieldManagerStrategy": {
-              "$ref": "#/$defs/runEnvImageAutoUpdateFieldManagerStrategy"
-            },
-            "deployMode": {
-              "$ref": "#/$defs/runEnvDeployMode"
-            },
-            "checksumSecretsTiming": {
-              "$ref": "#/$defs/runEnvChecksumSecretsTiming"
-            },
-            "checksumLength": {
-              "$ref": "#/$defs/runEnvChecksumLength"
-            },
-            "checksumOrderFile": {
-              "$ref": "#/$defs/runEnvChecksumOrderFile"
-            },
-            "signoffsSubPath": {
-              "$ref": "#/$defs/runEnvSignoffsSubPath"
-            },
-            "signoffsKindsFile": {
-              "$ref": "#/$defs/runEnvSignoffsKindsFile"
-            },
-            "environmentDeploySourceBasePath": {
-              "$ref": "#/$defs/runEnvEnvironmentDeploySourceBasePath"
-            },
-            "generateIdealEnvironmentDeployManifests": {
-              "$ref": "#/$defs/runEnvGenerateIdealEnvironmentDeployManifests"
-            },
-            "environmentDeployBaseImage": {
-              "$ref": "#/$defs/runEnvEnvironmentDeployBaseImage"
-            },
-            "cleanUp": {
-              "$ref": "#/$defs/runPlatformCleanUp"
-            }
-          },
-          "allOf": [
-            {
-              "if": {
-                "required": [
-                  "deployMode"
-                ],
-                "properties": {
-                  "deployMode": {
-                    "const": "job"
-                  }
-                }
-              },
-              "then": {
-                "properties": {
-                  "imageAutoUpdateProvider": {
-                    "enum": [
-                      "keelson",
-                      "none"
-                    ]
-                  }
-                }
-              }
-            },
-            {
-              "if": {
-                "required": [
-                  "imageAutoUpdatePolicy"
-                ],
-                "properties": {
-                  "imageAutoUpdatePolicy": {
-                    "const": "force"
-                  }
-                }
-              },
-              "then": {
-                "required": [
-                  "imageAutoUpdateProvider"
-                ],
-                "properties": {
-                  "imageAutoUpdateProvider": {
-                    "const": "keel"
-                  }
-                }
-              }
-            },
-            {
-              "if": {
-                "required": [
-                  "generateIdealEnvironmentDeployManifests"
-                ],
-                "properties": {
-                  "generateIdealEnvironmentDeployManifests": {
-                    "enum": [
-                      false,
-                      "false"
-                    ]
-                  }
-                }
-              },
-              "then": {
-                "not": {
-                  "anyOf": [
-                    {
-                      "required": [
-                        "deployMode"
+                        "imagePullSecrets"
                       ]
                     },
                     {
@@ -2790,7 +2684,7 @@
     "runEnvImageAutoUpdatePollSchedule": {
       "type": "string",
       "pattern": "^[0-9]+[smh]$",
-      "description": "Poll cadence for the auto-update annotations as a plain duration (e.g. '1m', '300s', '1h'). Default '1m'. Stored normalized and rendered per provider at generation time: Keel takes '@every <duration>', Keelson takes a cron expression. Ignored when the provider is 'none'.\n"
+      "description": "Poll cadence for the auto-update annotations as a plain duration (e.g. '1m', '300s', '1h'). Default '1m'. Rendered as '@every <duration>' at generation time, which Keel and Keelson both accept. Ignored when the provider is 'none'.\n"
     },
     "runEnvImageAutoUpdateFieldManagerStrategy": {
       "type": "string",
@@ -2799,7 +2693,7 @@
         "patch",
         "claim"
       ],
-      "description": "Keelson field-manager strategy annotation (keelson.pro/field-manager-strategy) stamped on the environment's workload manifest when the provider is 'keelson'. Default 'mimic' (SSA attributed to the detected Apply-op owner: no ownership churn). 'patch' and 'claim' attribute the write to keelson itself. Applies only to keelson; ignored for keel (no keel.sh equivalent exists) and for 'none'.\n"
+      "description": "Keelson field-manager strategy annotation (keelson.pro/field-manager-strategy) on the environment's workload manifest when the provider is 'keelson'. Default 'mimic' (SSA attributed to the detected Apply-op owner: no ownership churn), which is also Keelson's own default, so the annotation is only stamped for 'patch' or 'claim', which attribute the write to keelson itself. Applies only to keelson; ignored for keel (no keel.sh equivalent exists) and for 'none'.\n"
     },
     "runEnvClusterScopedKindsFile": {
       "type": "string",
@@ -2814,6 +2708,28 @@
         "parent"
       ],
       "description": "Who applies the environment's cluster-scoped resources. This is also the deploy permission model - the two are one choice. 'self' (default): the env deploy holds cluster-admin (generated RBAC is a ClusterRoleBinding to cluster-admin) and applies everything itself, including cluster-scoped resources. 'parent': the env deploy holds namespace-admin only (generated RBAC is a RoleBinding to the built-in 'admin' ClusterRole in the env namespace) and its cluster-scoped resources are packaged into the separate on-behalf dir in the env image for the run-platform parent to apply, with field ownership as if the env applied them itself. When RBAC manifests are supplied rather than generated, the build validates the supplied role scope matches this setting (cluster-admin present means 'parent' is pointless and rejected; namespace-only roles mean cluster-scoped content requires 'parent').\n"
+    },
+    "runEnvImagePullSecrets": {
+      "type": "string",
+      "enum": [
+        "ENABLED",
+        "DISABLED"
+      ],
+      "default": "ENABLED",
+      "description": "Whether the generated workloads that run the env deploy image (the Deployment, and in job mode the CronJob and its zero-scale Deployment) carry imagePullSecrets naming the environment's docker registry secret. 'ENABLED' (default) or 'DISABLED', for registries that need no pull credentials or nodes that supply them. Only drives generation, so it may not be set when generateIdealEnvironmentDeployManifests is false.\n"
+    },
+    "runEnvAutoGenerateImagePullSecrets": {
+      "oneOf": [
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "string",
+          "pattern": "^(true|false)$"
+        }
+      ],
+      "default": true,
+      "description": "When true (default), the build generates one image pull Secret for each distinct imagePullSecrets name referenced by the workloads this build deploys. In Kaptain that name is always a registry. Each Secret is a kubernetes.io/dockerconfigjson in the ${Environment} namespace, named as referenced, with that registry's username and password supplied as encrypted secret values. Unrelated to imagePullSecrets, which decides whether the workloads running the env deploy image reference a pull secret at all.\n"
     },
     "runEnvDeployMode": {
       "type": "string",
@@ -3117,7 +3033,7 @@
     "runEnvCleanUp": {
       "type": "object",
       "additionalProperties": false,
-      "description": "Cleanup configuration for an environment build. One block so every setting inside sheds the prefix the block supplies.\n",
+      "description": "Cleanup configuration for a run build. One block so every setting inside sheds the prefix the block supplies. undeclaredNamespacePolicy and additionalNamespaces are namespace oversight, which is run-platform only because only the RP creates and cleans namespaces; they are rejected on a kubernetes-run-environment build.\n",
       "properties": {
         "policy": {
           "$ref": "#/$defs/runEnvCleanUpPolicy"
@@ -3125,26 +3041,6 @@
         "additionalResources": {
           "type": "array",
           "description": "Resources in our managed namespace(s) that we did not declare but expect to exist; preserved from cleanup. Typical sources: operator-injected sidecars (Envoy gateway proxy), controller-managed CMs and Secrets (cert-manager), sidecar/mesh injectors.\nLayer-composable: a layer can contribute entries that deep-merge with the project's own list. One layer per upstream tool is a sensible organisation pattern (e.g. layer-envoy-cleanup-exempts).\n",
-          "items": {
-            "$ref": "#/$defs/runEnvResourceMatcher"
-          }
-        },
-        "accumulatingResources": {
-          "$ref": "#/$defs/runEnvAccumulatingResources"
-        }
-      }
-    },
-    "runPlatformCleanUp": {
-      "type": "object",
-      "additionalProperties": false,
-      "description": "Cleanup configuration for a run-platform build: the environment block plus namespace oversight, which is RP-only because only the RP creates and cleans namespaces.\n",
-      "properties": {
-        "policy": {
-          "$ref": "#/$defs/runEnvCleanUpPolicy"
-        },
-        "additionalResources": {
-          "type": "array",
-          "description": "As per the environment block - resources in our managed namespace(s) we did not declare but expect to exist.\n",
           "items": {
             "$ref": "#/$defs/runEnvResourceMatcher"
           }
