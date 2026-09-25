@@ -27,3 +27,8 @@ kubernetes-deployment-max-unavailable:
   required: false
   type: string
   default: '0'
+kubernetes-deployment-ports-enabled:
+  description: 'Emit the container port on the Deployment (true/false)'
+  required: false
+  type: string
+  default: 'true'

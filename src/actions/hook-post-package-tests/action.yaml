@@ -452,6 +452,10 @@ inputs:
     description: 'Max unavailable during rolling update (integer or percentage, e.g., 0 or 25%)'
     required: false
     default: '0'
+  kubernetes-deployment-ports-enabled:
+    description: 'Emit the container port on the Deployment (true/false)'
+    required: false
+    default: 'true'
   # StatefulSet unique inputs
   kubernetes-statefulset-env-sub-path:
     description: 'Path to statefulset environment variables directory'
@@ -1109,6 +1113,7 @@ runs:
         KUBERNETES_DEPLOYMENT_ADDITIONAL_ANNOTATIONS: ${{ inputs.kubernetes-deployment-additional-annotations }}
         KUBERNETES_DEPLOYMENT_MAX_SURGE: ${{ inputs.kubernetes-deployment-max-surge }}
         KUBERNETES_DEPLOYMENT_MAX_UNAVAILABLE: ${{ inputs.kubernetes-deployment-max-unavailable }}
+        KUBERNETES_DEPLOYMENT_PORTS_ENABLED: ${{ inputs.kubernetes-deployment-ports-enabled }}
         # Workflow inputs - statefulset unique
         KUBERNETES_STATEFULSET_SERVICE_NAME: ${{ inputs.kubernetes-statefulset-service-name }}
         KUBERNETES_STATEFULSET_POD_MANAGEMENT_POLICY: ${{ inputs.kubernetes-statefulset-pod-management-policy }}

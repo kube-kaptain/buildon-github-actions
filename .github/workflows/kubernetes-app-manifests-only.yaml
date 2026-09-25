@@ -1379,6 +1379,7 @@ jobs:
           kubernetes-deployment-additional-annotations: ${{ steps.kpm.outputs.KUBERNETES_DEPLOYMENT_ADDITIONAL_ANNOTATIONS }}
           kubernetes-deployment-max-surge: ${{ steps.kpm.outputs.KUBERNETES_DEPLOYMENT_MAX_SURGE }}
           kubernetes-deployment-max-unavailable: ${{ steps.kpm.outputs.KUBERNETES_DEPLOYMENT_MAX_UNAVAILABLE }}
+          kubernetes-deployment-ports-enabled: ${{ steps.kpm.outputs.KUBERNETES_DEPLOYMENT_PORTS_ENABLED }}
           # Job-specific settings
           kubernetes-job-name-suffix: ${{ steps.kpm.outputs.KUBERNETES_JOB_NAME_SUFFIX }}
           kubernetes-job-combined-sub-path: ${{ steps.kpm.outputs.KUBERNETES_JOB_COMBINED_SUB_PATH }}

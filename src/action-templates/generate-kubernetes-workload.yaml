@@ -118,6 +118,7 @@ runs:
         KUBERNETES_DEPLOYMENT_ADDITIONAL_ANNOTATIONS: ${{ inputs.kubernetes-deployment-additional-annotations }}
         KUBERNETES_DEPLOYMENT_MAX_SURGE: ${{ inputs.kubernetes-deployment-max-surge }}
         KUBERNETES_DEPLOYMENT_MAX_UNAVAILABLE: ${{ inputs.kubernetes-deployment-max-unavailable }}
+        KUBERNETES_DEPLOYMENT_PORTS_ENABLED: ${{ inputs.kubernetes-deployment-ports-enabled }}
         # StatefulSet unique settings
         KUBERNETES_STATEFULSET_ENV_SUB_PATH: ${{ inputs.kubernetes-statefulset-env-sub-path }}
         KUBERNETES_STATEFULSET_ADDITIONAL_LABELS: ${{ inputs.kubernetes-statefulset-additional-labels }}

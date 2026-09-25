@@ -254,6 +254,7 @@ MAPPINGS=(
   "spec.main.generators.deployment.additionalAnnotations:KUBERNETES_DEPLOYMENT_ADDITIONAL_ANNOTATIONS"
   "spec.main.generators.deployment.rollingUpdate.maxSurge:KUBERNETES_DEPLOYMENT_MAX_SURGE"
   "spec.main.generators.deployment.rollingUpdate.maxUnavailable:KUBERNETES_DEPLOYMENT_MAX_UNAVAILABLE"
+  "spec.main.generators.deployment.portsEnabled:KUBERNETES_DEPLOYMENT_PORTS_ENABLED"
 
   # Generators - statefulset
   "spec.main.generators.statefulset.envSubPath:KUBERNETES_STATEFULSET_ENV_SUB_PATH"
