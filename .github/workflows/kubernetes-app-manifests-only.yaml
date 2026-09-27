@@ -1132,6 +1132,8 @@ jobs:
           image-uri: ${{ steps.docker-build.outputs.docker-target-image-full-uri }}
           # ConfigMap settings
           kubernetes-configmap-sub-path: ${{ steps.kpm.outputs.KUBERNETES_CONFIGMAP_SUB_PATH }}
+          kubernetes-configmap-name-suffix: ${{ steps.kpm.outputs.KUBERNETES_CONFIGMAP_NAME_SUFFIX }}
+          kubernetes-configmap-combined-sub-path: ${{ steps.kpm.outputs.KUBERNETES_CONFIGMAP_COMBINED_SUB_PATH }}
           # Global settings
           output-sub-path: ${{ steps.kpm.outputs.OUTPUT_SUB_PATH }}
           token-name-style: ${{ steps.kpm.outputs.TOKEN_NAME_STYLE }}
@@ -1178,6 +1180,8 @@ jobs:
           image-uri: ${{ steps.docker-build.outputs.docker-target-image-full-uri }}
           # Secret template settings
           kubernetes-secret-template-sub-path: ${{ steps.kpm.outputs.KUBERNETES_SECRET_TEMPLATE_SUB_PATH }}
+          kubernetes-secret-template-name-suffix: ${{ steps.kpm.outputs.KUBERNETES_SECRET_TEMPLATE_NAME_SUFFIX }}
+          kubernetes-secret-template-combined-sub-path: ${{ steps.kpm.outputs.KUBERNETES_SECRET_TEMPLATE_COMBINED_SUB_PATH }}
           # Global settings
           output-sub-path: ${{ steps.kpm.outputs.OUTPUT_SUB_PATH }}
           token-name-style: ${{ steps.kpm.outputs.TOKEN_NAME_STYLE }}
@@ -1363,6 +1367,9 @@ jobs:
           kubernetes-statefulset-pvc-volume-name: ${{ steps.kpm.outputs.KUBERNETES_STATEFULSET_PVC_VOLUME_NAME }}
           kubernetes-statefulset-pvc-mount-path: ${{ steps.kpm.outputs.KUBERNETES_STATEFULSET_PVC_MOUNT_PATH }}
           # DaemonSet-specific settings
+          kubernetes-daemonset-env-sub-path: ${{ steps.kpm.outputs.KUBERNETES_DAEMONSET_ENV_SUB_PATH }}
+          kubernetes-daemonset-additional-labels: ${{ steps.kpm.outputs.KUBERNETES_DAEMONSET_ADDITIONAL_LABELS }}
+          kubernetes-daemonset-additional-annotations: ${{ steps.kpm.outputs.KUBERNETES_DAEMONSET_ADDITIONAL_ANNOTATIONS }}
           kubernetes-daemonset-update-strategy-type: ${{ steps.kpm.outputs.KUBERNETES_DAEMONSET_UPDATE_STRATEGY_TYPE }}
           kubernetes-daemonset-max-unavailable: ${{ steps.kpm.outputs.KUBERNETES_DAEMONSET_MAX_UNAVAILABLE }}
           kubernetes-daemonset-host-network: ${{ steps.kpm.outputs.KUBERNETES_DAEMONSET_HOST_NETWORK }}
@@ -1392,6 +1399,7 @@ jobs:
           kubernetes-job-env-sub-path: ${{ steps.kpm.outputs.KUBERNETES_JOB_ENV_SUB_PATH }}
           kubernetes-job-additional-labels: ${{ steps.kpm.outputs.KUBERNETES_JOB_ADDITIONAL_LABELS }}
           kubernetes-job-additional-annotations: ${{ steps.kpm.outputs.KUBERNETES_JOB_ADDITIONAL_ANNOTATIONS }}
+          kubernetes-job-ports-enabled: ${{ steps.kpm.outputs.KUBERNETES_JOB_PORTS_ENABLED }}
           kubernetes-job-liveness-probe-enabled: ${{ steps.kpm.outputs.KUBERNETES_JOB_LIVENESS_PROBE_ENABLED }}
           kubernetes-job-readiness-probe-enabled: ${{ steps.kpm.outputs.KUBERNETES_JOB_READINESS_PROBE_ENABLED }}
           kubernetes-job-startup-probe-enabled: ${{ steps.kpm.outputs.KUBERNETES_JOB_STARTUP_PROBE_ENABLED }}
@@ -1406,10 +1414,12 @@ jobs:
           kubernetes-cronjob-completions: ${{ steps.kpm.outputs.KUBERNETES_CRONJOB_COMPLETIONS }}
           kubernetes-cronjob-parallelism: ${{ steps.kpm.outputs.KUBERNETES_CRONJOB_PARALLELISM }}
           kubernetes-cronjob-active-deadline-seconds: ${{ steps.kpm.outputs.KUBERNETES_CRONJOB_ACTIVE_DEADLINE_SECONDS }}
+          kubernetes-cronjob-ttl-seconds-after-finished: ${{ steps.kpm.outputs.KUBERNETES_CRONJOB_TTL_SECONDS_AFTER_FINISHED }}
           kubernetes-cronjob-restart-policy: ${{ steps.kpm.outputs.KUBERNETES_CRONJOB_RESTART_POLICY }}
           kubernetes-cronjob-env-sub-path: ${{ steps.kpm.outputs.KUBERNETES_CRONJOB_ENV_SUB_PATH }}
           kubernetes-cronjob-additional-labels: ${{ steps.kpm.outputs.KUBERNETES_CRONJOB_ADDITIONAL_LABELS }}
           kubernetes-cronjob-additional-annotations: ${{ steps.kpm.outputs.KUBERNETES_CRONJOB_ADDITIONAL_ANNOTATIONS }}
+          kubernetes-cronjob-ports-enabled: ${{ steps.kpm.outputs.KUBERNETES_CRONJOB_PORTS_ENABLED }}
           kubernetes-cronjob-liveness-probe-enabled: ${{ steps.kpm.outputs.KUBERNETES_CRONJOB_LIVENESS_PROBE_ENABLED }}
           kubernetes-cronjob-readiness-probe-enabled: ${{ steps.kpm.outputs.KUBERNETES_CRONJOB_READINESS_PROBE_ENABLED }}
           kubernetes-cronjob-startup-probe-enabled: ${{ steps.kpm.outputs.KUBERNETES_CRONJOB_STARTUP_PROBE_ENABLED }}

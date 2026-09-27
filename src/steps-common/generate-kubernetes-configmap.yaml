@@ -11,6 +11,8 @@
     image-uri: ${{ steps.docker-build.outputs.docker-target-image-full-uri }}
     # ConfigMap settings
     kubernetes-configmap-sub-path: ${{ steps.kpm.outputs.KUBERNETES_CONFIGMAP_SUB_PATH }}
+    kubernetes-configmap-name-suffix: ${{ steps.kpm.outputs.KUBERNETES_CONFIGMAP_NAME_SUFFIX }}
+    kubernetes-configmap-combined-sub-path: ${{ steps.kpm.outputs.KUBERNETES_CONFIGMAP_COMBINED_SUB_PATH }}
     # Global settings
     output-sub-path: ${{ steps.kpm.outputs.OUTPUT_SUB_PATH }}
     token-name-style: ${{ steps.kpm.outputs.TOKEN_NAME_STYLE }}

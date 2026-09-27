@@ -110,6 +110,14 @@ inputs:
     description: 'Directory containing ConfigMap data files (relative)'
     required: false
     default: 'src/configmap'
+  kubernetes-configmap-name-suffix:
+    description: 'Optional suffix for ConfigMap name and filename'
+    required: false
+    default: ''
+  kubernetes-configmap-combined-sub-path:
+    description: 'Sub-path within combined/ for output'
+    required: false
+    default: ''
   kubernetes-configmap-name-checksum-injection:
     description: 'Enable checksum injection suffix in ConfigMap name'
     required: false
@@ -127,6 +135,14 @@ inputs:
     description: 'Directory containing Secret template data files (relative)'
     required: false
     default: 'src/secret.template'
+  kubernetes-secret-template-name-suffix:
+    description: 'Optional suffix for Secret name and filename'
+    required: false
+    default: ''
+  kubernetes-secret-template-combined-sub-path:
+    description: 'Sub-path within combined/ for output'
+    required: false
+    default: ''
   kubernetes-secret-template-name-checksum-injection:
     description: 'Enable checksum injection suffix in Secret name'
     required: false
@@ -520,6 +536,18 @@ inputs:
     required: false
     default: '/data'
   # DaemonSet unique inputs
+  kubernetes-daemonset-env-sub-path:
+    description: 'Path to DaemonSet environment variables directory'
+    required: false
+    default: 'src/daemonset-env'
+  kubernetes-daemonset-additional-labels:
+    description: 'Additional labels for DaemonSet resources (key=value,key=value)'
+    required: false
+    default: ''
+  kubernetes-daemonset-additional-annotations:
+    description: 'Additional annotations for DaemonSet resources (key=value,key=value)'
+    required: false
+    default: ''
   kubernetes-daemonset-update-strategy-type:
     description: 'Update strategy type (RollingUpdate or OnDelete)'
     required: false
@@ -605,6 +633,10 @@ inputs:
     description: 'Additional annotations for Job resources (key=value,key=value)'
     required: false
     default: ''
+  kubernetes-job-ports-enabled:
+    description: 'Emit the container port on the Job (true/false)'
+    required: false
+    default: 'false'
   kubernetes-job-liveness-probe-enabled:
     description: 'Enable liveness probe (uses workload probe settings when true)'
     required: false
@@ -658,6 +690,10 @@ inputs:
     description: 'Maximum time in seconds the job can run (optional)'
     required: false
     default: ''
+  kubernetes-cronjob-ttl-seconds-after-finished:
+    description: 'Cleanup time after Job completion in seconds (empty keeps jobs, history limits handle cleanup)'
+    required: false
+    default: ''
   kubernetes-cronjob-restart-policy:
     description: 'Pod restart policy (Never or OnFailure)'
     required: false
@@ -674,6 +710,10 @@ inputs:
     description: 'Additional annotations for CronJob resources (key=value,key=value)'
     required: false
     default: ''
+  kubernetes-cronjob-ports-enabled:
+    description: 'Emit the container port on the CronJob (true/false)'
+    required: false
+    default: 'false'
   kubernetes-cronjob-liveness-probe-enabled:
     description: 'Enable liveness probe (uses workload probe settings when true)'
     required: false

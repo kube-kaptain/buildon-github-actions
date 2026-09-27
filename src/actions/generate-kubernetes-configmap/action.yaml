@@ -29,6 +29,14 @@ inputs:
     description: 'Directory containing ConfigMap data files (relative)'
     required: false
     default: 'src/configmap'
+  kubernetes-configmap-name-suffix:
+    description: 'Optional suffix for ConfigMap name and filename'
+    required: false
+    default: ''
+  kubernetes-configmap-combined-sub-path:
+    description: 'Sub-path within combined/ for output'
+    required: false
+    default: ''
   kubernetes-configmap-name-checksum-injection:
     description: 'Enable checksum injection suffix in ConfigMap name'
     required: false
