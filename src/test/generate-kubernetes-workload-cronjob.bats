@@ -282,6 +282,16 @@ read_manifest_in_subpath() {
   [[ "$manifest" != *"ttlSecondsAfterFinished"* ]] || return 1
 }
 
+@test "includes ttlSecondsAfterFinished in job template when set" {
+  export KUBERNETES_CRONJOB_TTL_SECONDS_AFTER_FINISHED="3600"
+
+  run "$GENERATORS_DIR/generate-kubernetes-workload-cronjob"
+  [ "$status" -eq 0 ]
+
+  manifest=$(read_manifest)
+  [[ "$manifest" == *$'\n      ttlSecondsAfterFinished: 3600\n'* ]] || return 1
+}
+
 @test "omits activeDeadlineSeconds when not set" {
   run "$GENERATORS_DIR/generate-kubernetes-workload-cronjob"
   [ "$status" -eq 0 ]
