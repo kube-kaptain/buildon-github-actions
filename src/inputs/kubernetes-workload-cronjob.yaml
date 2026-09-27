@@ -52,6 +52,11 @@ kubernetes-cronjob-active-deadline-seconds:
   required: false
   type: string
   default: ''
+kubernetes-cronjob-ttl-seconds-after-finished:
+  description: 'Cleanup time after Job completion in seconds (empty keeps jobs, history limits handle cleanup)'
+  required: false
+  type: string
+  default: ''
 kubernetes-cronjob-restart-policy:
   description: 'Pod restart policy (Never or OnFailure)'
   required: false
@@ -72,6 +77,11 @@ kubernetes-cronjob-additional-annotations:
   required: false
   type: string
   default: ''
+kubernetes-cronjob-ports-enabled:
+  description: 'Emit the container port on the CronJob (true/false)'
+  required: false
+  type: string
+  default: 'false'
 kubernetes-cronjob-liveness-probe-enabled:
   description: 'Enable liveness probe (uses workload probe settings when true)'
   required: false

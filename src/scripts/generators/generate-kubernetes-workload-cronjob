@@ -22,6 +22,7 @@
 #   KUBERNETES_CRONJOB_COMPLETIONS        - Successful completions needed (default: 1)
 #   KUBERNETES_CRONJOB_PARALLELISM        - Pods running at any time (default: 1)
 #   KUBERNETES_CRONJOB_ACTIVE_DEADLINE_SECONDS - Max job runtime (optional)
+#   KUBERNETES_CRONJOB_TTL_SECONDS_AFTER_FINISHED - Cleanup after completion (default: omitted, history limits handle cleanup)
 #   KUBERNETES_CRONJOB_RESTART_POLICY     - Never or OnFailure (default: Never)
 #   KUBERNETES_WORKLOAD_CONTAINER_COMMAND      - Container command (shell-style, optional)
 #   KUBERNETES_WORKLOAD_CONTAINER_ARGS         - Container args (shell-style, optional)
@@ -191,6 +192,9 @@ log "  Affinity strategy:     ${AFFINITY_STRATEGY}"
 if [[ -n "${ACTIVE_DEADLINE_SECONDS}" ]]; then
   log "  Active deadline:       ${ACTIVE_DEADLINE_SECONDS}s"
 fi
+if [[ -n "${TTL_SECONDS_AFTER_FINISHED}" ]]; then
+  log "  TTL after finish:      ${TTL_SECONDS_AFTER_FINISHED}s"
+fi
 
 log "Detection Results"
 if [[ "${has_configmap}" == "true" ]]; then
@@ -267,7 +271,9 @@ script_name=$(basename "${BASH_SOURCE[0]}")
     echo "      activeDeadlineSeconds: ${ACTIVE_DEADLINE_SECONDS}"
   fi
 
-  # TTL deliberately omitted - keep jobs forever, let history limits handle cleanup
+  if [[ -n "${TTL_SECONDS_AFTER_FINISHED}" ]]; then
+    echo "      ttlSecondsAfterFinished: ${TTL_SECONDS_AFTER_FINISHED}"
+  fi
 
   # Pod template
   echo "      template:"

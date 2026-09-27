@@ -118,6 +118,7 @@ runs:
         KUBERNETES_DEPLOYMENT_ADDITIONAL_ANNOTATIONS: ${{ inputs.kubernetes-deployment-additional-annotations }}
         KUBERNETES_DEPLOYMENT_MAX_SURGE: ${{ inputs.kubernetes-deployment-max-surge }}
         KUBERNETES_DEPLOYMENT_MAX_UNAVAILABLE: ${{ inputs.kubernetes-deployment-max-unavailable }}
+        KUBERNETES_DEPLOYMENT_PORTS_ENABLED: ${{ inputs.kubernetes-deployment-ports-enabled }}
         # StatefulSet unique settings
         KUBERNETES_STATEFULSET_ENV_SUB_PATH: ${{ inputs.kubernetes-statefulset-env-sub-path }}
         KUBERNETES_STATEFULSET_ADDITIONAL_LABELS: ${{ inputs.kubernetes-statefulset-additional-labels }}
@@ -134,6 +135,9 @@ runs:
         KUBERNETES_STATEFULSET_PVC_VOLUME_NAME: ${{ inputs.kubernetes-statefulset-pvc-volume-name }}
         KUBERNETES_STATEFULSET_PVC_MOUNT_PATH: ${{ inputs.kubernetes-statefulset-pvc-mount-path }}
         # DaemonSet unique settings
+        KUBERNETES_DAEMONSET_ENV_SUB_PATH: ${{ inputs.kubernetes-daemonset-env-sub-path }}
+        KUBERNETES_DAEMONSET_ADDITIONAL_LABELS: ${{ inputs.kubernetes-daemonset-additional-labels }}
+        KUBERNETES_DAEMONSET_ADDITIONAL_ANNOTATIONS: ${{ inputs.kubernetes-daemonset-additional-annotations }}
         KUBERNETES_DAEMONSET_UPDATE_STRATEGY_TYPE: ${{ inputs.kubernetes-daemonset-update-strategy-type }}
         KUBERNETES_DAEMONSET_MAX_UNAVAILABLE: ${{ inputs.kubernetes-daemonset-max-unavailable }}
         KUBERNETES_DAEMONSET_HOST_NETWORK: ${{ inputs.kubernetes-daemonset-host-network }}
@@ -144,6 +148,42 @@ runs:
         KUBERNETES_DAEMONSET_DNS_POLICY: ${{ inputs.kubernetes-daemonset-dns-policy }}
         KUBERNETES_DAEMONSET_TOLERATIONS: ${{ inputs.kubernetes-daemonset-tolerations }}
         KUBERNETES_DAEMONSET_NODE_SELECTOR: ${{ inputs.kubernetes-daemonset-node-selector }}
+        # Job unique settings
+        KUBERNETES_JOB_NAME_SUFFIX: ${{ inputs.kubernetes-job-name-suffix }}
+        KUBERNETES_JOB_COMBINED_SUB_PATH: ${{ inputs.kubernetes-job-combined-sub-path }}
+        KUBERNETES_JOB_BACKOFF_LIMIT: ${{ inputs.kubernetes-job-backoff-limit }}
+        KUBERNETES_JOB_COMPLETIONS: ${{ inputs.kubernetes-job-completions }}
+        KUBERNETES_JOB_PARALLELISM: ${{ inputs.kubernetes-job-parallelism }}
+        KUBERNETES_JOB_ACTIVE_DEADLINE_SECONDS: ${{ inputs.kubernetes-job-active-deadline-seconds }}
+        KUBERNETES_JOB_TTL_SECONDS_AFTER_FINISHED: ${{ inputs.kubernetes-job-ttl-seconds-after-finished }}
+        KUBERNETES_JOB_RESTART_POLICY: ${{ inputs.kubernetes-job-restart-policy }}
+        KUBERNETES_JOB_ENV_SUB_PATH: ${{ inputs.kubernetes-job-env-sub-path }}
+        KUBERNETES_JOB_ADDITIONAL_LABELS: ${{ inputs.kubernetes-job-additional-labels }}
+        KUBERNETES_JOB_ADDITIONAL_ANNOTATIONS: ${{ inputs.kubernetes-job-additional-annotations }}
+        KUBERNETES_JOB_PORTS_ENABLED: ${{ inputs.kubernetes-job-ports-enabled }}
+        KUBERNETES_JOB_LIVENESS_PROBE_ENABLED: ${{ inputs.kubernetes-job-liveness-probe-enabled }}
+        KUBERNETES_JOB_READINESS_PROBE_ENABLED: ${{ inputs.kubernetes-job-readiness-probe-enabled }}
+        KUBERNETES_JOB_STARTUP_PROBE_ENABLED: ${{ inputs.kubernetes-job-startup-probe-enabled }}
+        # CronJob unique settings
+        KUBERNETES_CRONJOB_NAME_SUFFIX: ${{ inputs.kubernetes-cronjob-name-suffix }}
+        KUBERNETES_CRONJOB_COMBINED_SUB_PATH: ${{ inputs.kubernetes-cronjob-combined-sub-path }}
+        KUBERNETES_CRONJOB_CONCURRENCY_POLICY: ${{ inputs.kubernetes-cronjob-concurrency-policy }}
+        KUBERNETES_CRONJOB_STARTING_DEADLINE_SECONDS: ${{ inputs.kubernetes-cronjob-starting-deadline-seconds }}
+        KUBERNETES_CRONJOB_SUCCESSFUL_JOBS_HISTORY_LIMIT: ${{ inputs.kubernetes-cronjob-successful-jobs-history-limit }}
+        KUBERNETES_CRONJOB_FAILED_JOBS_HISTORY_LIMIT: ${{ inputs.kubernetes-cronjob-failed-jobs-history-limit }}
+        KUBERNETES_CRONJOB_BACKOFF_LIMIT: ${{ inputs.kubernetes-cronjob-backoff-limit }}
+        KUBERNETES_CRONJOB_COMPLETIONS: ${{ inputs.kubernetes-cronjob-completions }}
+        KUBERNETES_CRONJOB_PARALLELISM: ${{ inputs.kubernetes-cronjob-parallelism }}
+        KUBERNETES_CRONJOB_ACTIVE_DEADLINE_SECONDS: ${{ inputs.kubernetes-cronjob-active-deadline-seconds }}
+        KUBERNETES_CRONJOB_TTL_SECONDS_AFTER_FINISHED: ${{ inputs.kubernetes-cronjob-ttl-seconds-after-finished }}
+        KUBERNETES_CRONJOB_RESTART_POLICY: ${{ inputs.kubernetes-cronjob-restart-policy }}
+        KUBERNETES_CRONJOB_ENV_SUB_PATH: ${{ inputs.kubernetes-cronjob-env-sub-path }}
+        KUBERNETES_CRONJOB_ADDITIONAL_LABELS: ${{ inputs.kubernetes-cronjob-additional-labels }}
+        KUBERNETES_CRONJOB_ADDITIONAL_ANNOTATIONS: ${{ inputs.kubernetes-cronjob-additional-annotations }}
+        KUBERNETES_CRONJOB_PORTS_ENABLED: ${{ inputs.kubernetes-cronjob-ports-enabled }}
+        KUBERNETES_CRONJOB_LIVENESS_PROBE_ENABLED: ${{ inputs.kubernetes-cronjob-liveness-probe-enabled }}
+        KUBERNETES_CRONJOB_READINESS_PROBE_ENABLED: ${{ inputs.kubernetes-cronjob-readiness-probe-enabled }}
+        KUBERNETES_CRONJOB_STARTUP_PROBE_ENABLED: ${{ inputs.kubernetes-cronjob-startup-probe-enabled }}
         # Token substitution
         TOKEN_NAME_STYLE: ${{ inputs.token-name-style }}
         TOKEN_DELIMITER_STYLE: ${{ inputs.token-delimiter-style }}

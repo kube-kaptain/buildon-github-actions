@@ -29,6 +29,14 @@ inputs:
     description: 'Directory containing Secret template data files (relative)'
     required: false
     default: 'src/secret.template'
+  kubernetes-secret-template-name-suffix:
+    description: 'Optional suffix for Secret name and filename'
+    required: false
+    default: ''
+  kubernetes-secret-template-combined-sub-path:
+    description: 'Sub-path within combined/ for output'
+    required: false
+    default: ''
   kubernetes-secret-template-name-checksum-injection:
     description: 'Enable checksum injection suffix in Secret name'
     required: false

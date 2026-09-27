@@ -14,4 +14,5 @@
     qc-require-conventional-branches: ${{ steps.kpm.outputs.QC_REQUIRE_CONVENTIONAL_BRANCHES }}
     qc-require-conventional-commits: ${{ steps.kpm.outputs.QC_REQUIRE_CONVENTIONAL_COMMITS }}
     qc-block-conventional-commits: ${{ steps.kpm.outputs.QC_BLOCK_CONVENTIONAL_COMMITS }}
+    qc-block-duplicate-commit-messages: ${{ steps.kpm.outputs.QC_BLOCK_DUPLICATE_COMMIT_MESSAGES }}
     build-kind: ${WORKFLOW_NAME}

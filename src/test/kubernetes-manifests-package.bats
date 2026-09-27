@@ -144,6 +144,17 @@ create_substituted_manifest() {
   [[ "$listing" == *"deployment.yaml.yq-expression-list-scale"* ]] || return 1
 }
 
+@test "delete modifier files are packaged alongside their manifests" {
+  create_substituted_manifest "deployment.yaml"
+  create_substituted_manifest "deployment.yaml.delete-unwanted" "# not wanted in this environment"
+
+  run "$SCRIPTS_DIR/kubernetes-manifests-package"
+  [ "$status" -eq 0 ]
+  local listing
+  listing=$(unzip -Z1 "$OUTPUT_SUB_PATH/manifests/zip/my-project-1.2.3-manifests.zip")
+  [[ "$listing" == *"deployment.yaml.delete-unwanted"* ]] || return 1
+}
+
 @test "only the four packageable shapes reach the zip" {
   # package-prepare fails the build on anything else, so this pins the zip's
   # own guarantee independently of that check.

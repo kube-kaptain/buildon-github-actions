@@ -57,6 +57,11 @@ kubernetes-job-additional-annotations:
   required: false
   type: string
   default: ''
+kubernetes-job-ports-enabled:
+  description: 'Emit the container port on the Job (true/false)'
+  required: false
+  type: string
+  default: 'false'
 kubernetes-job-liveness-probe-enabled:
   description: 'Enable liveness probe (uses workload probe settings when true)'
   required: false

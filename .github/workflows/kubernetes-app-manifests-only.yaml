@@ -355,6 +355,8 @@ jobs:
           docker-registry-logins: ${{ steps.kpm.outputs.DOCKER_REGISTRY_LOGINS }}
           # Docker build options
           dockerfile-sub-path: ${{ steps.kpm.outputs.DOCKERFILE_SUB_PATH }}
+          dockerfile-sub-path-linux-amd64: ${{ steps.kpm.outputs.DOCKERFILE_SUB_PATH_LINUX_AMD64 }}
+          dockerfile-sub-path-linux-arm64: ${{ steps.kpm.outputs.DOCKERFILE_SUB_PATH_LINUX_ARM64 }}
           dockerfile-squash: ${{ steps.kpm.outputs.DOCKERFILE_SQUASH }}
           dockerfile-no-cache: ${{ steps.kpm.outputs.DOCKERFILE_NO_CACHE }}
           # Docker target config (from early resolver)
@@ -362,6 +364,11 @@ jobs:
           docker-target-namespace: ${{ steps.kpm.outputs.DOCKER_TARGET_NAMESPACE }}
           # Docker push targets
           docker-push-targets: ${{ steps.kpm.outputs.DOCKER_PUSH_TARGETS }}
+          # Docker source (retag)
+          docker-source-registry: ${{ steps.kpm.outputs.DOCKER_SOURCE_REGISTRY }}
+          docker-source-namespace: ${{ steps.kpm.outputs.DOCKER_SOURCE_NAMESPACE }}
+          docker-source-image-name: ${{ steps.kpm.outputs.DOCKER_SOURCE_IMAGE_NAME }}
+          docker-source-tag: ${{ steps.kpm.outputs.DOCKER_SOURCE_TAG }}
 
           # Manifests source
           manifests-sub-path: ${{ steps.kpm.outputs.MANIFESTS_SUB_PATH }}
@@ -377,11 +384,15 @@ jobs:
           kubernetes-configmap-name-checksum-injection: ${{ steps.kpm.outputs.KUBERNETES_CONFIGMAP_NAME_CHECKSUM_INJECTION }}
           kubernetes-configmap-additional-labels: ${{ steps.kpm.outputs.KUBERNETES_CONFIGMAP_ADDITIONAL_LABELS }}
           kubernetes-configmap-additional-annotations: ${{ steps.kpm.outputs.KUBERNETES_CONFIGMAP_ADDITIONAL_ANNOTATIONS }}
+          kubernetes-configmap-name-suffix: ${{ steps.kpm.outputs.KUBERNETES_CONFIGMAP_NAME_SUFFIX }}
+          kubernetes-configmap-combined-sub-path: ${{ steps.kpm.outputs.KUBERNETES_CONFIGMAP_COMBINED_SUB_PATH }}
           # Kubernetes Secret template generation
           kubernetes-secret-template-sub-path: ${{ steps.kpm.outputs.KUBERNETES_SECRET_TEMPLATE_SUB_PATH }}
           kubernetes-secret-template-name-checksum-injection: ${{ steps.kpm.outputs.KUBERNETES_SECRET_TEMPLATE_NAME_CHECKSUM_INJECTION }}
           kubernetes-secret-template-additional-labels: ${{ steps.kpm.outputs.KUBERNETES_SECRET_TEMPLATE_ADDITIONAL_LABELS }}
           kubernetes-secret-template-additional-annotations: ${{ steps.kpm.outputs.KUBERNETES_SECRET_TEMPLATE_ADDITIONAL_ANNOTATIONS }}
+          kubernetes-secret-template-name-suffix: ${{ steps.kpm.outputs.KUBERNETES_SECRET_TEMPLATE_NAME_SUFFIX }}
+          kubernetes-secret-template-combined-sub-path: ${{ steps.kpm.outputs.KUBERNETES_SECRET_TEMPLATE_COMBINED_SUB_PATH }}
           # Kubernetes ServiceAccount generation
           kubernetes-serviceaccount-generation-enabled: ${{ steps.kpm.outputs.KUBERNETES_SERVICEACCOUNT_GENERATION_ENABLED }}
           kubernetes-serviceaccount-name-suffix: ${{ steps.kpm.outputs.KUBERNETES_SERVICEACCOUNT_NAME_SUFFIX }}
@@ -417,6 +428,85 @@ jobs:
           kubernetes-workload-probe-startup-http-path: ${{ steps.kpm.outputs.KUBERNETES_WORKLOAD_PROBE_STARTUP_HTTP_PATH }}
           kubernetes-workload-replicas: ${{ steps.kpm.outputs.KUBERNETES_WORKLOAD_REPLICAS }}
           kubernetes-workload-revision-history-limit: ${{ steps.kpm.outputs.KUBERNETES_WORKLOAD_REVISION_HISTORY_LIMIT }}
+          kubernetes-workload-tolerations: ${{ steps.kpm.outputs.KUBERNETES_WORKLOAD_TOLERATIONS }}
+          kubernetes-workload-node-selector: ${{ steps.kpm.outputs.KUBERNETES_WORKLOAD_NODE_SELECTOR }}
+          kubernetes-workload-dns-policy: ${{ steps.kpm.outputs.KUBERNETES_WORKLOAD_DNS_POLICY }}
+          kubernetes-workload-priority-class-name: ${{ steps.kpm.outputs.KUBERNETES_WORKLOAD_PRIORITY_CLASS_NAME }}
+          kubernetes-workload-container-command: ${{ steps.kpm.outputs.KUBERNETES_WORKLOAD_CONTAINER_COMMAND }}
+          kubernetes-workload-container-args: ${{ steps.kpm.outputs.KUBERNETES_WORKLOAD_CONTAINER_ARGS }}
+          kubernetes-workload-min-ready-seconds: ${{ steps.kpm.outputs.KUBERNETES_WORKLOAD_MIN_READY_SECONDS }}
+          # Kubernetes Deployment generation
+          kubernetes-deployment-env-sub-path: ${{ steps.kpm.outputs.KUBERNETES_DEPLOYMENT_ENV_SUB_PATH }}
+          kubernetes-deployment-additional-labels: ${{ steps.kpm.outputs.KUBERNETES_DEPLOYMENT_ADDITIONAL_LABELS }}
+          kubernetes-deployment-additional-annotations: ${{ steps.kpm.outputs.KUBERNETES_DEPLOYMENT_ADDITIONAL_ANNOTATIONS }}
+          kubernetes-deployment-max-surge: ${{ steps.kpm.outputs.KUBERNETES_DEPLOYMENT_MAX_SURGE }}
+          kubernetes-deployment-max-unavailable: ${{ steps.kpm.outputs.KUBERNETES_DEPLOYMENT_MAX_UNAVAILABLE }}
+          kubernetes-deployment-ports-enabled: ${{ steps.kpm.outputs.KUBERNETES_DEPLOYMENT_PORTS_ENABLED }}
+          # Kubernetes StatefulSet generation
+          kubernetes-statefulset-service-name: ${{ steps.kpm.outputs.KUBERNETES_STATEFULSET_SERVICE_NAME }}
+          kubernetes-statefulset-pod-management-policy: ${{ steps.kpm.outputs.KUBERNETES_STATEFULSET_POD_MANAGEMENT_POLICY }}
+          kubernetes-statefulset-allow-unreliable-pod-management-policy: ${{ steps.kpm.outputs.KUBERNETES_STATEFULSET_ALLOW_UNRELIABLE_POD_MANAGEMENT_POLICY }}
+          kubernetes-statefulset-update-strategy-type: ${{ steps.kpm.outputs.KUBERNETES_STATEFULSET_UPDATE_STRATEGY_TYPE }}
+          kubernetes-statefulset-update-strategy-partition: ${{ steps.kpm.outputs.KUBERNETES_STATEFULSET_UPDATE_STRATEGY_PARTITION }}
+          kubernetes-statefulset-pvc-enabled: ${{ steps.kpm.outputs.KUBERNETES_STATEFULSET_PVC_ENABLED }}
+          kubernetes-statefulset-pvc-storage-class: ${{ steps.kpm.outputs.KUBERNETES_STATEFULSET_PVC_STORAGE_CLASS }}
+          kubernetes-statefulset-pvc-storage-size: ${{ steps.kpm.outputs.KUBERNETES_STATEFULSET_PVC_STORAGE_SIZE }}
+          kubernetes-statefulset-pvc-access-mode: ${{ steps.kpm.outputs.KUBERNETES_STATEFULSET_PVC_ACCESS_MODE }}
+          kubernetes-statefulset-pvc-volume-name: ${{ steps.kpm.outputs.KUBERNETES_STATEFULSET_PVC_VOLUME_NAME }}
+          kubernetes-statefulset-pvc-mount-path: ${{ steps.kpm.outputs.KUBERNETES_STATEFULSET_PVC_MOUNT_PATH }}
+          kubernetes-statefulset-env-sub-path: ${{ steps.kpm.outputs.KUBERNETES_STATEFULSET_ENV_SUB_PATH }}
+          kubernetes-statefulset-additional-labels: ${{ steps.kpm.outputs.KUBERNETES_STATEFULSET_ADDITIONAL_LABELS }}
+          kubernetes-statefulset-additional-annotations: ${{ steps.kpm.outputs.KUBERNETES_STATEFULSET_ADDITIONAL_ANNOTATIONS }}
+          # Kubernetes DaemonSet generation
+          kubernetes-daemonset-env-sub-path: ${{ steps.kpm.outputs.KUBERNETES_DAEMONSET_ENV_SUB_PATH }}
+          kubernetes-daemonset-update-strategy-type: ${{ steps.kpm.outputs.KUBERNETES_DAEMONSET_UPDATE_STRATEGY_TYPE }}
+          kubernetes-daemonset-max-unavailable: ${{ steps.kpm.outputs.KUBERNETES_DAEMONSET_MAX_UNAVAILABLE }}
+          kubernetes-daemonset-host-network: ${{ steps.kpm.outputs.KUBERNETES_DAEMONSET_HOST_NETWORK }}
+          kubernetes-daemonset-host-pid: ${{ steps.kpm.outputs.KUBERNETES_DAEMONSET_HOST_PID }}
+          kubernetes-daemonset-host-ipc: ${{ steps.kpm.outputs.KUBERNETES_DAEMONSET_HOST_IPC }}
+          kubernetes-daemonset-run-as-non-root: ${{ steps.kpm.outputs.KUBERNETES_DAEMONSET_RUN_AS_NON_ROOT }}
+          kubernetes-daemonset-privileged: ${{ steps.kpm.outputs.KUBERNETES_DAEMONSET_PRIVILEGED }}
+          kubernetes-daemonset-dns-policy: ${{ steps.kpm.outputs.KUBERNETES_DAEMONSET_DNS_POLICY }}
+          kubernetes-daemonset-tolerations: ${{ steps.kpm.outputs.KUBERNETES_DAEMONSET_TOLERATIONS }}
+          kubernetes-daemonset-node-selector: ${{ steps.kpm.outputs.KUBERNETES_DAEMONSET_NODE_SELECTOR }}
+          kubernetes-daemonset-additional-labels: ${{ steps.kpm.outputs.KUBERNETES_DAEMONSET_ADDITIONAL_LABELS }}
+          kubernetes-daemonset-additional-annotations: ${{ steps.kpm.outputs.KUBERNETES_DAEMONSET_ADDITIONAL_ANNOTATIONS }}
+          # Kubernetes Job generation
+          kubernetes-job-name-suffix: ${{ steps.kpm.outputs.KUBERNETES_JOB_NAME_SUFFIX }}
+          kubernetes-job-combined-sub-path: ${{ steps.kpm.outputs.KUBERNETES_JOB_COMBINED_SUB_PATH }}
+          kubernetes-job-backoff-limit: ${{ steps.kpm.outputs.KUBERNETES_JOB_BACKOFF_LIMIT }}
+          kubernetes-job-completions: ${{ steps.kpm.outputs.KUBERNETES_JOB_COMPLETIONS }}
+          kubernetes-job-parallelism: ${{ steps.kpm.outputs.KUBERNETES_JOB_PARALLELISM }}
+          kubernetes-job-active-deadline-seconds: ${{ steps.kpm.outputs.KUBERNETES_JOB_ACTIVE_DEADLINE_SECONDS }}
+          kubernetes-job-ttl-seconds-after-finished: ${{ steps.kpm.outputs.KUBERNETES_JOB_TTL_SECONDS_AFTER_FINISHED }}
+          kubernetes-job-restart-policy: ${{ steps.kpm.outputs.KUBERNETES_JOB_RESTART_POLICY }}
+          kubernetes-job-env-sub-path: ${{ steps.kpm.outputs.KUBERNETES_JOB_ENV_SUB_PATH }}
+          kubernetes-job-additional-labels: ${{ steps.kpm.outputs.KUBERNETES_JOB_ADDITIONAL_LABELS }}
+          kubernetes-job-additional-annotations: ${{ steps.kpm.outputs.KUBERNETES_JOB_ADDITIONAL_ANNOTATIONS }}
+          kubernetes-job-liveness-probe-enabled: ${{ steps.kpm.outputs.KUBERNETES_JOB_LIVENESS_PROBE_ENABLED }}
+          kubernetes-job-readiness-probe-enabled: ${{ steps.kpm.outputs.KUBERNETES_JOB_READINESS_PROBE_ENABLED }}
+          kubernetes-job-startup-probe-enabled: ${{ steps.kpm.outputs.KUBERNETES_JOB_STARTUP_PROBE_ENABLED }}
+          kubernetes-job-ports-enabled: ${{ steps.kpm.outputs.KUBERNETES_JOB_PORTS_ENABLED }}
+          # Kubernetes CronJob generation
+          kubernetes-cronjob-name-suffix: ${{ steps.kpm.outputs.KUBERNETES_CRONJOB_NAME_SUFFIX }}
+          kubernetes-cronjob-combined-sub-path: ${{ steps.kpm.outputs.KUBERNETES_CRONJOB_COMBINED_SUB_PATH }}
+          kubernetes-cronjob-concurrency-policy: ${{ steps.kpm.outputs.KUBERNETES_CRONJOB_CONCURRENCY_POLICY }}
+          kubernetes-cronjob-starting-deadline-seconds: ${{ steps.kpm.outputs.KUBERNETES_CRONJOB_STARTING_DEADLINE_SECONDS }}
+          kubernetes-cronjob-successful-jobs-history-limit: ${{ steps.kpm.outputs.KUBERNETES_CRONJOB_SUCCESSFUL_JOBS_HISTORY_LIMIT }}
+          kubernetes-cronjob-failed-jobs-history-limit: ${{ steps.kpm.outputs.KUBERNETES_CRONJOB_FAILED_JOBS_HISTORY_LIMIT }}
+          kubernetes-cronjob-backoff-limit: ${{ steps.kpm.outputs.KUBERNETES_CRONJOB_BACKOFF_LIMIT }}
+          kubernetes-cronjob-completions: ${{ steps.kpm.outputs.KUBERNETES_CRONJOB_COMPLETIONS }}
+          kubernetes-cronjob-parallelism: ${{ steps.kpm.outputs.KUBERNETES_CRONJOB_PARALLELISM }}
+          kubernetes-cronjob-active-deadline-seconds: ${{ steps.kpm.outputs.KUBERNETES_CRONJOB_ACTIVE_DEADLINE_SECONDS }}
+          kubernetes-cronjob-restart-policy: ${{ steps.kpm.outputs.KUBERNETES_CRONJOB_RESTART_POLICY }}
+          kubernetes-cronjob-env-sub-path: ${{ steps.kpm.outputs.KUBERNETES_CRONJOB_ENV_SUB_PATH }}
+          kubernetes-cronjob-additional-labels: ${{ steps.kpm.outputs.KUBERNETES_CRONJOB_ADDITIONAL_LABELS }}
+          kubernetes-cronjob-additional-annotations: ${{ steps.kpm.outputs.KUBERNETES_CRONJOB_ADDITIONAL_ANNOTATIONS }}
+          kubernetes-cronjob-liveness-probe-enabled: ${{ steps.kpm.outputs.KUBERNETES_CRONJOB_LIVENESS_PROBE_ENABLED }}
+          kubernetes-cronjob-readiness-probe-enabled: ${{ steps.kpm.outputs.KUBERNETES_CRONJOB_READINESS_PROBE_ENABLED }}
+          kubernetes-cronjob-startup-probe-enabled: ${{ steps.kpm.outputs.KUBERNETES_CRONJOB_STARTUP_PROBE_ENABLED }}
+          kubernetes-cronjob-ports-enabled: ${{ steps.kpm.outputs.KUBERNETES_CRONJOB_PORTS_ENABLED }}
+          kubernetes-cronjob-ttl-seconds-after-finished: ${{ steps.kpm.outputs.KUBERNETES_CRONJOB_TTL_SECONDS_AFTER_FINISHED }}
           # Kubernetes Service generation
           kubernetes-service-generation-enabled: ${{ steps.kpm.outputs.KUBERNETES_SERVICE_GENERATION_ENABLED }}
           kubernetes-service-type: ${{ steps.kpm.outputs.KUBERNETES_SERVICE_TYPE }}
@@ -427,6 +517,18 @@ jobs:
           kubernetes-service-combined-sub-path: ${{ steps.kpm.outputs.KUBERNETES_SERVICE_COMBINED_SUB_PATH }}
           kubernetes-service-additional-labels: ${{ steps.kpm.outputs.KUBERNETES_SERVICE_ADDITIONAL_LABELS }}
           kubernetes-service-additional-annotations: ${{ steps.kpm.outputs.KUBERNETES_SERVICE_ADDITIONAL_ANNOTATIONS }}
+          kubernetes-service-port-name: ${{ steps.kpm.outputs.KUBERNETES_SERVICE_PORT_NAME }}
+          kubernetes-service-node-port: ${{ steps.kpm.outputs.KUBERNETES_SERVICE_NODE_PORT }}
+          kubernetes-service-external-name: ${{ steps.kpm.outputs.KUBERNETES_SERVICE_EXTERNAL_NAME }}
+          kubernetes-service-external-traffic-policy: ${{ steps.kpm.outputs.KUBERNETES_SERVICE_EXTERNAL_TRAFFIC_POLICY }}
+          # Kubernetes PodDisruptionBudget generation
+          kubernetes-poddisruptionbudget-generation-enabled: ${{ steps.kpm.outputs.KUBERNETES_PODDISRUPTIONBUDGET_GENERATION_ENABLED }}
+          kubernetes-poddisruptionbudget-name-suffix: ${{ steps.kpm.outputs.KUBERNETES_PODDISRUPTIONBUDGET_NAME_SUFFIX }}
+          kubernetes-poddisruptionbudget-combined-sub-path: ${{ steps.kpm.outputs.KUBERNETES_PODDISRUPTIONBUDGET_COMBINED_SUB_PATH }}
+          kubernetes-poddisruptionbudget-strategy: ${{ steps.kpm.outputs.KUBERNETES_PODDISRUPTIONBUDGET_STRATEGY }}
+          kubernetes-poddisruptionbudget-value: ${{ steps.kpm.outputs.KUBERNETES_PODDISRUPTIONBUDGET_VALUE }}
+          kubernetes-poddisruptionbudget-additional-labels: ${{ steps.kpm.outputs.KUBERNETES_PODDISRUPTIONBUDGET_ADDITIONAL_LABELS }}
+          kubernetes-poddisruptionbudget-additional-annotations: ${{ steps.kpm.outputs.KUBERNETES_PODDISRUPTIONBUDGET_ADDITIONAL_ANNOTATIONS }}
 
           # Token substitution
           token-delimiter-style: ${{ steps.kpm.outputs.TOKEN_DELIMITER_STYLE }}
@@ -451,6 +553,7 @@ jobs:
           tag-version-source-two-file-name: ${{ steps.kpm.outputs.TAG_VERSION_SOURCE_TWO_FILE_NAME }}
           tag-version-source-two-pattern: ${{ steps.kpm.outputs.TAG_VERSION_SOURCE_TWO_PATTERN }}
           tag-version-source-two-prefix-parts: ${{ steps.kpm.outputs.TAG_VERSION_SOURCE_TWO_PREFIX_PARTS }}
+          tag-version-use-source-version-exact: ${{ steps.kpm.outputs.TAG_VERSION_USE_SOURCE_VERSION_EXACT }}
 
           # Quality check options
           block-slashes: ${{ steps.kpm.outputs.BLOCK_SLASHES }}
@@ -459,6 +562,7 @@ jobs:
           qc-require-conventional-branches: ${{ steps.kpm.outputs.QC_REQUIRE_CONVENTIONAL_BRANCHES }}
           qc-require-conventional-commits: ${{ steps.kpm.outputs.QC_REQUIRE_CONVENTIONAL_COMMITS }}
           qc-block-conventional-commits: ${{ steps.kpm.outputs.QC_BLOCK_CONVENTIONAL_COMMITS }}
+          qc-block-duplicate-commit-messages: ${{ steps.kpm.outputs.QC_BLOCK_DUPLICATE_COMMIT_MESSAGES }}
 
           # Hook script paths
           hook-pre-build-script-sub-path: ${{ steps.kpm.outputs.HOOK_PRE_BUILD_SCRIPT_SUB_PATH }}
@@ -513,6 +617,7 @@ jobs:
           qc-require-conventional-branches: ${{ steps.kpm.outputs.QC_REQUIRE_CONVENTIONAL_BRANCHES }}
           qc-require-conventional-commits: ${{ steps.kpm.outputs.QC_REQUIRE_CONVENTIONAL_COMMITS }}
           qc-block-conventional-commits: ${{ steps.kpm.outputs.QC_BLOCK_CONVENTIONAL_COMMITS }}
+          qc-block-duplicate-commit-messages: ${{ steps.kpm.outputs.QC_BLOCK_DUPLICATE_COMMIT_MESSAGES }}
           build-kind: kubernetes-app-manifests-only
       - name: Pass check - Basic Quality Checks
         if: github.event_name == 'pull_request' && success() && steps.check-basic-quality.outputs.check-run-id != ''
@@ -619,6 +724,8 @@ jobs:
           docker-registry-logins: ${{ steps.kpm.outputs.DOCKER_REGISTRY_LOGINS }}
           # Docker build options
           dockerfile-sub-path: ${{ steps.kpm.outputs.DOCKERFILE_SUB_PATH }}
+          dockerfile-sub-path-linux-amd64: ${{ steps.kpm.outputs.DOCKERFILE_SUB_PATH_LINUX_AMD64 }}
+          dockerfile-sub-path-linux-arm64: ${{ steps.kpm.outputs.DOCKERFILE_SUB_PATH_LINUX_ARM64 }}
           dockerfile-squash: ${{ steps.kpm.outputs.DOCKERFILE_SQUASH }}
           dockerfile-no-cache: ${{ steps.kpm.outputs.DOCKERFILE_NO_CACHE }}
           # Docker target config (from early resolver)
@@ -626,6 +733,11 @@ jobs:
           docker-target-namespace: ${{ steps.kpm.outputs.DOCKER_TARGET_NAMESPACE }}
           # Docker push targets
           docker-push-targets: ${{ steps.kpm.outputs.DOCKER_PUSH_TARGETS }}
+          # Docker source (retag)
+          docker-source-registry: ${{ steps.kpm.outputs.DOCKER_SOURCE_REGISTRY }}
+          docker-source-namespace: ${{ steps.kpm.outputs.DOCKER_SOURCE_NAMESPACE }}
+          docker-source-image-name: ${{ steps.kpm.outputs.DOCKER_SOURCE_IMAGE_NAME }}
+          docker-source-tag: ${{ steps.kpm.outputs.DOCKER_SOURCE_TAG }}
 
           # Manifests source
           manifests-sub-path: ${{ steps.kpm.outputs.MANIFESTS_SUB_PATH }}
@@ -641,11 +753,15 @@ jobs:
           kubernetes-configmap-name-checksum-injection: ${{ steps.kpm.outputs.KUBERNETES_CONFIGMAP_NAME_CHECKSUM_INJECTION }}
           kubernetes-configmap-additional-labels: ${{ steps.kpm.outputs.KUBERNETES_CONFIGMAP_ADDITIONAL_LABELS }}
           kubernetes-configmap-additional-annotations: ${{ steps.kpm.outputs.KUBERNETES_CONFIGMAP_ADDITIONAL_ANNOTATIONS }}
+          kubernetes-configmap-name-suffix: ${{ steps.kpm.outputs.KUBERNETES_CONFIGMAP_NAME_SUFFIX }}
+          kubernetes-configmap-combined-sub-path: ${{ steps.kpm.outputs.KUBERNETES_CONFIGMAP_COMBINED_SUB_PATH }}
           # Kubernetes Secret template generation
           kubernetes-secret-template-sub-path: ${{ steps.kpm.outputs.KUBERNETES_SECRET_TEMPLATE_SUB_PATH }}
           kubernetes-secret-template-name-checksum-injection: ${{ steps.kpm.outputs.KUBERNETES_SECRET_TEMPLATE_NAME_CHECKSUM_INJECTION }}
           kubernetes-secret-template-additional-labels: ${{ steps.kpm.outputs.KUBERNETES_SECRET_TEMPLATE_ADDITIONAL_LABELS }}
           kubernetes-secret-template-additional-annotations: ${{ steps.kpm.outputs.KUBERNETES_SECRET_TEMPLATE_ADDITIONAL_ANNOTATIONS }}
+          kubernetes-secret-template-name-suffix: ${{ steps.kpm.outputs.KUBERNETES_SECRET_TEMPLATE_NAME_SUFFIX }}
+          kubernetes-secret-template-combined-sub-path: ${{ steps.kpm.outputs.KUBERNETES_SECRET_TEMPLATE_COMBINED_SUB_PATH }}
           # Kubernetes ServiceAccount generation
           kubernetes-serviceaccount-generation-enabled: ${{ steps.kpm.outputs.KUBERNETES_SERVICEACCOUNT_GENERATION_ENABLED }}
           kubernetes-serviceaccount-name-suffix: ${{ steps.kpm.outputs.KUBERNETES_SERVICEACCOUNT_NAME_SUFFIX }}
@@ -681,6 +797,85 @@ jobs:
           kubernetes-workload-probe-startup-http-path: ${{ steps.kpm.outputs.KUBERNETES_WORKLOAD_PROBE_STARTUP_HTTP_PATH }}
           kubernetes-workload-replicas: ${{ steps.kpm.outputs.KUBERNETES_WORKLOAD_REPLICAS }}
           kubernetes-workload-revision-history-limit: ${{ steps.kpm.outputs.KUBERNETES_WORKLOAD_REVISION_HISTORY_LIMIT }}
+          kubernetes-workload-tolerations: ${{ steps.kpm.outputs.KUBERNETES_WORKLOAD_TOLERATIONS }}
+          kubernetes-workload-node-selector: ${{ steps.kpm.outputs.KUBERNETES_WORKLOAD_NODE_SELECTOR }}
+          kubernetes-workload-dns-policy: ${{ steps.kpm.outputs.KUBERNETES_WORKLOAD_DNS_POLICY }}
+          kubernetes-workload-priority-class-name: ${{ steps.kpm.outputs.KUBERNETES_WORKLOAD_PRIORITY_CLASS_NAME }}
+          kubernetes-workload-container-command: ${{ steps.kpm.outputs.KUBERNETES_WORKLOAD_CONTAINER_COMMAND }}
+          kubernetes-workload-container-args: ${{ steps.kpm.outputs.KUBERNETES_WORKLOAD_CONTAINER_ARGS }}
+          kubernetes-workload-min-ready-seconds: ${{ steps.kpm.outputs.KUBERNETES_WORKLOAD_MIN_READY_SECONDS }}
+          # Kubernetes Deployment generation
+          kubernetes-deployment-env-sub-path: ${{ steps.kpm.outputs.KUBERNETES_DEPLOYMENT_ENV_SUB_PATH }}
+          kubernetes-deployment-additional-labels: ${{ steps.kpm.outputs.KUBERNETES_DEPLOYMENT_ADDITIONAL_LABELS }}
+          kubernetes-deployment-additional-annotations: ${{ steps.kpm.outputs.KUBERNETES_DEPLOYMENT_ADDITIONAL_ANNOTATIONS }}
+          kubernetes-deployment-max-surge: ${{ steps.kpm.outputs.KUBERNETES_DEPLOYMENT_MAX_SURGE }}
+          kubernetes-deployment-max-unavailable: ${{ steps.kpm.outputs.KUBERNETES_DEPLOYMENT_MAX_UNAVAILABLE }}
+          kubernetes-deployment-ports-enabled: ${{ steps.kpm.outputs.KUBERNETES_DEPLOYMENT_PORTS_ENABLED }}
+          # Kubernetes StatefulSet generation
+          kubernetes-statefulset-service-name: ${{ steps.kpm.outputs.KUBERNETES_STATEFULSET_SERVICE_NAME }}
+          kubernetes-statefulset-pod-management-policy: ${{ steps.kpm.outputs.KUBERNETES_STATEFULSET_POD_MANAGEMENT_POLICY }}
+          kubernetes-statefulset-allow-unreliable-pod-management-policy: ${{ steps.kpm.outputs.KUBERNETES_STATEFULSET_ALLOW_UNRELIABLE_POD_MANAGEMENT_POLICY }}
+          kubernetes-statefulset-update-strategy-type: ${{ steps.kpm.outputs.KUBERNETES_STATEFULSET_UPDATE_STRATEGY_TYPE }}
+          kubernetes-statefulset-update-strategy-partition: ${{ steps.kpm.outputs.KUBERNETES_STATEFULSET_UPDATE_STRATEGY_PARTITION }}
+          kubernetes-statefulset-pvc-enabled: ${{ steps.kpm.outputs.KUBERNETES_STATEFULSET_PVC_ENABLED }}
+          kubernetes-statefulset-pvc-storage-class: ${{ steps.kpm.outputs.KUBERNETES_STATEFULSET_PVC_STORAGE_CLASS }}
+          kubernetes-statefulset-pvc-storage-size: ${{ steps.kpm.outputs.KUBERNETES_STATEFULSET_PVC_STORAGE_SIZE }}
+          kubernetes-statefulset-pvc-access-mode: ${{ steps.kpm.outputs.KUBERNETES_STATEFULSET_PVC_ACCESS_MODE }}
+          kubernetes-statefulset-pvc-volume-name: ${{ steps.kpm.outputs.KUBERNETES_STATEFULSET_PVC_VOLUME_NAME }}
+          kubernetes-statefulset-pvc-mount-path: ${{ steps.kpm.outputs.KUBERNETES_STATEFULSET_PVC_MOUNT_PATH }}
+          kubernetes-statefulset-env-sub-path: ${{ steps.kpm.outputs.KUBERNETES_STATEFULSET_ENV_SUB_PATH }}
+          kubernetes-statefulset-additional-labels: ${{ steps.kpm.outputs.KUBERNETES_STATEFULSET_ADDITIONAL_LABELS }}
+          kubernetes-statefulset-additional-annotations: ${{ steps.kpm.outputs.KUBERNETES_STATEFULSET_ADDITIONAL_ANNOTATIONS }}
+          # Kubernetes DaemonSet generation
+          kubernetes-daemonset-env-sub-path: ${{ steps.kpm.outputs.KUBERNETES_DAEMONSET_ENV_SUB_PATH }}
+          kubernetes-daemonset-update-strategy-type: ${{ steps.kpm.outputs.KUBERNETES_DAEMONSET_UPDATE_STRATEGY_TYPE }}
+          kubernetes-daemonset-max-unavailable: ${{ steps.kpm.outputs.KUBERNETES_DAEMONSET_MAX_UNAVAILABLE }}
+          kubernetes-daemonset-host-network: ${{ steps.kpm.outputs.KUBERNETES_DAEMONSET_HOST_NETWORK }}
+          kubernetes-daemonset-host-pid: ${{ steps.kpm.outputs.KUBERNETES_DAEMONSET_HOST_PID }}
+          kubernetes-daemonset-host-ipc: ${{ steps.kpm.outputs.KUBERNETES_DAEMONSET_HOST_IPC }}
+          kubernetes-daemonset-run-as-non-root: ${{ steps.kpm.outputs.KUBERNETES_DAEMONSET_RUN_AS_NON_ROOT }}
+          kubernetes-daemonset-privileged: ${{ steps.kpm.outputs.KUBERNETES_DAEMONSET_PRIVILEGED }}
+          kubernetes-daemonset-dns-policy: ${{ steps.kpm.outputs.KUBERNETES_DAEMONSET_DNS_POLICY }}
+          kubernetes-daemonset-tolerations: ${{ steps.kpm.outputs.KUBERNETES_DAEMONSET_TOLERATIONS }}
+          kubernetes-daemonset-node-selector: ${{ steps.kpm.outputs.KUBERNETES_DAEMONSET_NODE_SELECTOR }}
+          kubernetes-daemonset-additional-labels: ${{ steps.kpm.outputs.KUBERNETES_DAEMONSET_ADDITIONAL_LABELS }}
+          kubernetes-daemonset-additional-annotations: ${{ steps.kpm.outputs.KUBERNETES_DAEMONSET_ADDITIONAL_ANNOTATIONS }}
+          # Kubernetes Job generation
+          kubernetes-job-name-suffix: ${{ steps.kpm.outputs.KUBERNETES_JOB_NAME_SUFFIX }}
+          kubernetes-job-combined-sub-path: ${{ steps.kpm.outputs.KUBERNETES_JOB_COMBINED_SUB_PATH }}
+          kubernetes-job-backoff-limit: ${{ steps.kpm.outputs.KUBERNETES_JOB_BACKOFF_LIMIT }}
+          kubernetes-job-completions: ${{ steps.kpm.outputs.KUBERNETES_JOB_COMPLETIONS }}
+          kubernetes-job-parallelism: ${{ steps.kpm.outputs.KUBERNETES_JOB_PARALLELISM }}
+          kubernetes-job-active-deadline-seconds: ${{ steps.kpm.outputs.KUBERNETES_JOB_ACTIVE_DEADLINE_SECONDS }}
+          kubernetes-job-ttl-seconds-after-finished: ${{ steps.kpm.outputs.KUBERNETES_JOB_TTL_SECONDS_AFTER_FINISHED }}
+          kubernetes-job-restart-policy: ${{ steps.kpm.outputs.KUBERNETES_JOB_RESTART_POLICY }}
+          kubernetes-job-env-sub-path: ${{ steps.kpm.outputs.KUBERNETES_JOB_ENV_SUB_PATH }}
+          kubernetes-job-additional-labels: ${{ steps.kpm.outputs.KUBERNETES_JOB_ADDITIONAL_LABELS }}
+          kubernetes-job-additional-annotations: ${{ steps.kpm.outputs.KUBERNETES_JOB_ADDITIONAL_ANNOTATIONS }}
+          kubernetes-job-liveness-probe-enabled: ${{ steps.kpm.outputs.KUBERNETES_JOB_LIVENESS_PROBE_ENABLED }}
+          kubernetes-job-readiness-probe-enabled: ${{ steps.kpm.outputs.KUBERNETES_JOB_READINESS_PROBE_ENABLED }}
+          kubernetes-job-startup-probe-enabled: ${{ steps.kpm.outputs.KUBERNETES_JOB_STARTUP_PROBE_ENABLED }}
+          kubernetes-job-ports-enabled: ${{ steps.kpm.outputs.KUBERNETES_JOB_PORTS_ENABLED }}
+          # Kubernetes CronJob generation
+          kubernetes-cronjob-name-suffix: ${{ steps.kpm.outputs.KUBERNETES_CRONJOB_NAME_SUFFIX }}
+          kubernetes-cronjob-combined-sub-path: ${{ steps.kpm.outputs.KUBERNETES_CRONJOB_COMBINED_SUB_PATH }}
+          kubernetes-cronjob-concurrency-policy: ${{ steps.kpm.outputs.KUBERNETES_CRONJOB_CONCURRENCY_POLICY }}
+          kubernetes-cronjob-starting-deadline-seconds: ${{ steps.kpm.outputs.KUBERNETES_CRONJOB_STARTING_DEADLINE_SECONDS }}
+          kubernetes-cronjob-successful-jobs-history-limit: ${{ steps.kpm.outputs.KUBERNETES_CRONJOB_SUCCESSFUL_JOBS_HISTORY_LIMIT }}
+          kubernetes-cronjob-failed-jobs-history-limit: ${{ steps.kpm.outputs.KUBERNETES_CRONJOB_FAILED_JOBS_HISTORY_LIMIT }}
+          kubernetes-cronjob-backoff-limit: ${{ steps.kpm.outputs.KUBERNETES_CRONJOB_BACKOFF_LIMIT }}
+          kubernetes-cronjob-completions: ${{ steps.kpm.outputs.KUBERNETES_CRONJOB_COMPLETIONS }}
+          kubernetes-cronjob-parallelism: ${{ steps.kpm.outputs.KUBERNETES_CRONJOB_PARALLELISM }}
+          kubernetes-cronjob-active-deadline-seconds: ${{ steps.kpm.outputs.KUBERNETES_CRONJOB_ACTIVE_DEADLINE_SECONDS }}
+          kubernetes-cronjob-restart-policy: ${{ steps.kpm.outputs.KUBERNETES_CRONJOB_RESTART_POLICY }}
+          kubernetes-cronjob-env-sub-path: ${{ steps.kpm.outputs.KUBERNETES_CRONJOB_ENV_SUB_PATH }}
+          kubernetes-cronjob-additional-labels: ${{ steps.kpm.outputs.KUBERNETES_CRONJOB_ADDITIONAL_LABELS }}
+          kubernetes-cronjob-additional-annotations: ${{ steps.kpm.outputs.KUBERNETES_CRONJOB_ADDITIONAL_ANNOTATIONS }}
+          kubernetes-cronjob-liveness-probe-enabled: ${{ steps.kpm.outputs.KUBERNETES_CRONJOB_LIVENESS_PROBE_ENABLED }}
+          kubernetes-cronjob-readiness-probe-enabled: ${{ steps.kpm.outputs.KUBERNETES_CRONJOB_READINESS_PROBE_ENABLED }}
+          kubernetes-cronjob-startup-probe-enabled: ${{ steps.kpm.outputs.KUBERNETES_CRONJOB_STARTUP_PROBE_ENABLED }}
+          kubernetes-cronjob-ports-enabled: ${{ steps.kpm.outputs.KUBERNETES_CRONJOB_PORTS_ENABLED }}
+          kubernetes-cronjob-ttl-seconds-after-finished: ${{ steps.kpm.outputs.KUBERNETES_CRONJOB_TTL_SECONDS_AFTER_FINISHED }}
           # Kubernetes Service generation
           kubernetes-service-generation-enabled: ${{ steps.kpm.outputs.KUBERNETES_SERVICE_GENERATION_ENABLED }}
           kubernetes-service-type: ${{ steps.kpm.outputs.KUBERNETES_SERVICE_TYPE }}
@@ -691,6 +886,18 @@ jobs:
           kubernetes-service-combined-sub-path: ${{ steps.kpm.outputs.KUBERNETES_SERVICE_COMBINED_SUB_PATH }}
           kubernetes-service-additional-labels: ${{ steps.kpm.outputs.KUBERNETES_SERVICE_ADDITIONAL_LABELS }}
           kubernetes-service-additional-annotations: ${{ steps.kpm.outputs.KUBERNETES_SERVICE_ADDITIONAL_ANNOTATIONS }}
+          kubernetes-service-port-name: ${{ steps.kpm.outputs.KUBERNETES_SERVICE_PORT_NAME }}
+          kubernetes-service-node-port: ${{ steps.kpm.outputs.KUBERNETES_SERVICE_NODE_PORT }}
+          kubernetes-service-external-name: ${{ steps.kpm.outputs.KUBERNETES_SERVICE_EXTERNAL_NAME }}
+          kubernetes-service-external-traffic-policy: ${{ steps.kpm.outputs.KUBERNETES_SERVICE_EXTERNAL_TRAFFIC_POLICY }}
+          # Kubernetes PodDisruptionBudget generation
+          kubernetes-poddisruptionbudget-generation-enabled: ${{ steps.kpm.outputs.KUBERNETES_PODDISRUPTIONBUDGET_GENERATION_ENABLED }}
+          kubernetes-poddisruptionbudget-name-suffix: ${{ steps.kpm.outputs.KUBERNETES_PODDISRUPTIONBUDGET_NAME_SUFFIX }}
+          kubernetes-poddisruptionbudget-combined-sub-path: ${{ steps.kpm.outputs.KUBERNETES_PODDISRUPTIONBUDGET_COMBINED_SUB_PATH }}
+          kubernetes-poddisruptionbudget-strategy: ${{ steps.kpm.outputs.KUBERNETES_PODDISRUPTIONBUDGET_STRATEGY }}
+          kubernetes-poddisruptionbudget-value: ${{ steps.kpm.outputs.KUBERNETES_PODDISRUPTIONBUDGET_VALUE }}
+          kubernetes-poddisruptionbudget-additional-labels: ${{ steps.kpm.outputs.KUBERNETES_PODDISRUPTIONBUDGET_ADDITIONAL_LABELS }}
+          kubernetes-poddisruptionbudget-additional-annotations: ${{ steps.kpm.outputs.KUBERNETES_PODDISRUPTIONBUDGET_ADDITIONAL_ANNOTATIONS }}
 
           # Token substitution
           token-delimiter-style: ${{ steps.kpm.outputs.TOKEN_DELIMITER_STYLE }}
@@ -715,6 +922,7 @@ jobs:
           tag-version-source-two-file-name: ${{ steps.kpm.outputs.TAG_VERSION_SOURCE_TWO_FILE_NAME }}
           tag-version-source-two-pattern: ${{ steps.kpm.outputs.TAG_VERSION_SOURCE_TWO_PATTERN }}
           tag-version-source-two-prefix-parts: ${{ steps.kpm.outputs.TAG_VERSION_SOURCE_TWO_PREFIX_PARTS }}
+          tag-version-use-source-version-exact: ${{ steps.kpm.outputs.TAG_VERSION_USE_SOURCE_VERSION_EXACT }}
 
           # Quality check options
           block-slashes: ${{ steps.kpm.outputs.BLOCK_SLASHES }}
@@ -723,6 +931,7 @@ jobs:
           qc-require-conventional-branches: ${{ steps.kpm.outputs.QC_REQUIRE_CONVENTIONAL_BRANCHES }}
           qc-require-conventional-commits: ${{ steps.kpm.outputs.QC_REQUIRE_CONVENTIONAL_COMMITS }}
           qc-block-conventional-commits: ${{ steps.kpm.outputs.QC_BLOCK_CONVENTIONAL_COMMITS }}
+          qc-block-duplicate-commit-messages: ${{ steps.kpm.outputs.QC_BLOCK_DUPLICATE_COMMIT_MESSAGES }}
 
           # Hook script paths
           hook-pre-build-script-sub-path: ${{ steps.kpm.outputs.HOOK_PRE_BUILD_SCRIPT_SUB_PATH }}
@@ -827,6 +1036,8 @@ jobs:
           docker-registry-logins: ${{ steps.kpm.outputs.DOCKER_REGISTRY_LOGINS }}
           # Docker build options
           dockerfile-sub-path: ${{ steps.kpm.outputs.DOCKERFILE_SUB_PATH }}
+          dockerfile-sub-path-linux-amd64: ${{ steps.kpm.outputs.DOCKERFILE_SUB_PATH_LINUX_AMD64 }}
+          dockerfile-sub-path-linux-arm64: ${{ steps.kpm.outputs.DOCKERFILE_SUB_PATH_LINUX_ARM64 }}
           dockerfile-squash: ${{ steps.kpm.outputs.DOCKERFILE_SQUASH }}
           dockerfile-no-cache: ${{ steps.kpm.outputs.DOCKERFILE_NO_CACHE }}
           # Docker target config (from early resolver)
@@ -834,6 +1045,11 @@ jobs:
           docker-target-namespace: ${{ steps.kpm.outputs.DOCKER_TARGET_NAMESPACE }}
           # Docker push targets
           docker-push-targets: ${{ steps.kpm.outputs.DOCKER_PUSH_TARGETS }}
+          # Docker source (retag)
+          docker-source-registry: ${{ steps.kpm.outputs.DOCKER_SOURCE_REGISTRY }}
+          docker-source-namespace: ${{ steps.kpm.outputs.DOCKER_SOURCE_NAMESPACE }}
+          docker-source-image-name: ${{ steps.kpm.outputs.DOCKER_SOURCE_IMAGE_NAME }}
+          docker-source-tag: ${{ steps.kpm.outputs.DOCKER_SOURCE_TAG }}
 
           # Manifests source
           manifests-sub-path: ${{ steps.kpm.outputs.MANIFESTS_SUB_PATH }}
@@ -849,11 +1065,15 @@ jobs:
           kubernetes-configmap-name-checksum-injection: ${{ steps.kpm.outputs.KUBERNETES_CONFIGMAP_NAME_CHECKSUM_INJECTION }}
           kubernetes-configmap-additional-labels: ${{ steps.kpm.outputs.KUBERNETES_CONFIGMAP_ADDITIONAL_LABELS }}
           kubernetes-configmap-additional-annotations: ${{ steps.kpm.outputs.KUBERNETES_CONFIGMAP_ADDITIONAL_ANNOTATIONS }}
+          kubernetes-configmap-name-suffix: ${{ steps.kpm.outputs.KUBERNETES_CONFIGMAP_NAME_SUFFIX }}
+          kubernetes-configmap-combined-sub-path: ${{ steps.kpm.outputs.KUBERNETES_CONFIGMAP_COMBINED_SUB_PATH }}
           # Kubernetes Secret template generation
           kubernetes-secret-template-sub-path: ${{ steps.kpm.outputs.KUBERNETES_SECRET_TEMPLATE_SUB_PATH }}
           kubernetes-secret-template-name-checksum-injection: ${{ steps.kpm.outputs.KUBERNETES_SECRET_TEMPLATE_NAME_CHECKSUM_INJECTION }}
           kubernetes-secret-template-additional-labels: ${{ steps.kpm.outputs.KUBERNETES_SECRET_TEMPLATE_ADDITIONAL_LABELS }}
           kubernetes-secret-template-additional-annotations: ${{ steps.kpm.outputs.KUBERNETES_SECRET_TEMPLATE_ADDITIONAL_ANNOTATIONS }}
+          kubernetes-secret-template-name-suffix: ${{ steps.kpm.outputs.KUBERNETES_SECRET_TEMPLATE_NAME_SUFFIX }}
+          kubernetes-secret-template-combined-sub-path: ${{ steps.kpm.outputs.KUBERNETES_SECRET_TEMPLATE_COMBINED_SUB_PATH }}
           # Kubernetes ServiceAccount generation
           kubernetes-serviceaccount-generation-enabled: ${{ steps.kpm.outputs.KUBERNETES_SERVICEACCOUNT_GENERATION_ENABLED }}
           kubernetes-serviceaccount-name-suffix: ${{ steps.kpm.outputs.KUBERNETES_SERVICEACCOUNT_NAME_SUFFIX }}
@@ -889,6 +1109,85 @@ jobs:
           kubernetes-workload-probe-startup-http-path: ${{ steps.kpm.outputs.KUBERNETES_WORKLOAD_PROBE_STARTUP_HTTP_PATH }}
           kubernetes-workload-replicas: ${{ steps.kpm.outputs.KUBERNETES_WORKLOAD_REPLICAS }}
           kubernetes-workload-revision-history-limit: ${{ steps.kpm.outputs.KUBERNETES_WORKLOAD_REVISION_HISTORY_LIMIT }}
+          kubernetes-workload-tolerations: ${{ steps.kpm.outputs.KUBERNETES_WORKLOAD_TOLERATIONS }}
+          kubernetes-workload-node-selector: ${{ steps.kpm.outputs.KUBERNETES_WORKLOAD_NODE_SELECTOR }}
+          kubernetes-workload-dns-policy: ${{ steps.kpm.outputs.KUBERNETES_WORKLOAD_DNS_POLICY }}
+          kubernetes-workload-priority-class-name: ${{ steps.kpm.outputs.KUBERNETES_WORKLOAD_PRIORITY_CLASS_NAME }}
+          kubernetes-workload-container-command: ${{ steps.kpm.outputs.KUBERNETES_WORKLOAD_CONTAINER_COMMAND }}
+          kubernetes-workload-container-args: ${{ steps.kpm.outputs.KUBERNETES_WORKLOAD_CONTAINER_ARGS }}
+          kubernetes-workload-min-ready-seconds: ${{ steps.kpm.outputs.KUBERNETES_WORKLOAD_MIN_READY_SECONDS }}
+          # Kubernetes Deployment generation
+          kubernetes-deployment-env-sub-path: ${{ steps.kpm.outputs.KUBERNETES_DEPLOYMENT_ENV_SUB_PATH }}
+          kubernetes-deployment-additional-labels: ${{ steps.kpm.outputs.KUBERNETES_DEPLOYMENT_ADDITIONAL_LABELS }}
+          kubernetes-deployment-additional-annotations: ${{ steps.kpm.outputs.KUBERNETES_DEPLOYMENT_ADDITIONAL_ANNOTATIONS }}
+          kubernetes-deployment-max-surge: ${{ steps.kpm.outputs.KUBERNETES_DEPLOYMENT_MAX_SURGE }}
+          kubernetes-deployment-max-unavailable: ${{ steps.kpm.outputs.KUBERNETES_DEPLOYMENT_MAX_UNAVAILABLE }}
+          kubernetes-deployment-ports-enabled: ${{ steps.kpm.outputs.KUBERNETES_DEPLOYMENT_PORTS_ENABLED }}
+          # Kubernetes StatefulSet generation
+          kubernetes-statefulset-service-name: ${{ steps.kpm.outputs.KUBERNETES_STATEFULSET_SERVICE_NAME }}
+          kubernetes-statefulset-pod-management-policy: ${{ steps.kpm.outputs.KUBERNETES_STATEFULSET_POD_MANAGEMENT_POLICY }}
+          kubernetes-statefulset-allow-unreliable-pod-management-policy: ${{ steps.kpm.outputs.KUBERNETES_STATEFULSET_ALLOW_UNRELIABLE_POD_MANAGEMENT_POLICY }}
+          kubernetes-statefulset-update-strategy-type: ${{ steps.kpm.outputs.KUBERNETES_STATEFULSET_UPDATE_STRATEGY_TYPE }}
+          kubernetes-statefulset-update-strategy-partition: ${{ steps.kpm.outputs.KUBERNETES_STATEFULSET_UPDATE_STRATEGY_PARTITION }}
+          kubernetes-statefulset-pvc-enabled: ${{ steps.kpm.outputs.KUBERNETES_STATEFULSET_PVC_ENABLED }}
+          kubernetes-statefulset-pvc-storage-class: ${{ steps.kpm.outputs.KUBERNETES_STATEFULSET_PVC_STORAGE_CLASS }}
+          kubernetes-statefulset-pvc-storage-size: ${{ steps.kpm.outputs.KUBERNETES_STATEFULSET_PVC_STORAGE_SIZE }}
+          kubernetes-statefulset-pvc-access-mode: ${{ steps.kpm.outputs.KUBERNETES_STATEFULSET_PVC_ACCESS_MODE }}
+          kubernetes-statefulset-pvc-volume-name: ${{ steps.kpm.outputs.KUBERNETES_STATEFULSET_PVC_VOLUME_NAME }}
+          kubernetes-statefulset-pvc-mount-path: ${{ steps.kpm.outputs.KUBERNETES_STATEFULSET_PVC_MOUNT_PATH }}
+          kubernetes-statefulset-env-sub-path: ${{ steps.kpm.outputs.KUBERNETES_STATEFULSET_ENV_SUB_PATH }}
+          kubernetes-statefulset-additional-labels: ${{ steps.kpm.outputs.KUBERNETES_STATEFULSET_ADDITIONAL_LABELS }}
+          kubernetes-statefulset-additional-annotations: ${{ steps.kpm.outputs.KUBERNETES_STATEFULSET_ADDITIONAL_ANNOTATIONS }}
+          # Kubernetes DaemonSet generation
+          kubernetes-daemonset-env-sub-path: ${{ steps.kpm.outputs.KUBERNETES_DAEMONSET_ENV_SUB_PATH }}
+          kubernetes-daemonset-update-strategy-type: ${{ steps.kpm.outputs.KUBERNETES_DAEMONSET_UPDATE_STRATEGY_TYPE }}
+          kubernetes-daemonset-max-unavailable: ${{ steps.kpm.outputs.KUBERNETES_DAEMONSET_MAX_UNAVAILABLE }}
+          kubernetes-daemonset-host-network: ${{ steps.kpm.outputs.KUBERNETES_DAEMONSET_HOST_NETWORK }}
+          kubernetes-daemonset-host-pid: ${{ steps.kpm.outputs.KUBERNETES_DAEMONSET_HOST_PID }}
+          kubernetes-daemonset-host-ipc: ${{ steps.kpm.outputs.KUBERNETES_DAEMONSET_HOST_IPC }}
+          kubernetes-daemonset-run-as-non-root: ${{ steps.kpm.outputs.KUBERNETES_DAEMONSET_RUN_AS_NON_ROOT }}
+          kubernetes-daemonset-privileged: ${{ steps.kpm.outputs.KUBERNETES_DAEMONSET_PRIVILEGED }}
+          kubernetes-daemonset-dns-policy: ${{ steps.kpm.outputs.KUBERNETES_DAEMONSET_DNS_POLICY }}
+          kubernetes-daemonset-tolerations: ${{ steps.kpm.outputs.KUBERNETES_DAEMONSET_TOLERATIONS }}
+          kubernetes-daemonset-node-selector: ${{ steps.kpm.outputs.KUBERNETES_DAEMONSET_NODE_SELECTOR }}
+          kubernetes-daemonset-additional-labels: ${{ steps.kpm.outputs.KUBERNETES_DAEMONSET_ADDITIONAL_LABELS }}
+          kubernetes-daemonset-additional-annotations: ${{ steps.kpm.outputs.KUBERNETES_DAEMONSET_ADDITIONAL_ANNOTATIONS }}
+          # Kubernetes Job generation
+          kubernetes-job-name-suffix: ${{ steps.kpm.outputs.KUBERNETES_JOB_NAME_SUFFIX }}
+          kubernetes-job-combined-sub-path: ${{ steps.kpm.outputs.KUBERNETES_JOB_COMBINED_SUB_PATH }}
+          kubernetes-job-backoff-limit: ${{ steps.kpm.outputs.KUBERNETES_JOB_BACKOFF_LIMIT }}
+          kubernetes-job-completions: ${{ steps.kpm.outputs.KUBERNETES_JOB_COMPLETIONS }}
+          kubernetes-job-parallelism: ${{ steps.kpm.outputs.KUBERNETES_JOB_PARALLELISM }}
+          kubernetes-job-active-deadline-seconds: ${{ steps.kpm.outputs.KUBERNETES_JOB_ACTIVE_DEADLINE_SECONDS }}
+          kubernetes-job-ttl-seconds-after-finished: ${{ steps.kpm.outputs.KUBERNETES_JOB_TTL_SECONDS_AFTER_FINISHED }}
+          kubernetes-job-restart-policy: ${{ steps.kpm.outputs.KUBERNETES_JOB_RESTART_POLICY }}
+          kubernetes-job-env-sub-path: ${{ steps.kpm.outputs.KUBERNETES_JOB_ENV_SUB_PATH }}
+          kubernetes-job-additional-labels: ${{ steps.kpm.outputs.KUBERNETES_JOB_ADDITIONAL_LABELS }}
+          kubernetes-job-additional-annotations: ${{ steps.kpm.outputs.KUBERNETES_JOB_ADDITIONAL_ANNOTATIONS }}
+          kubernetes-job-liveness-probe-enabled: ${{ steps.kpm.outputs.KUBERNETES_JOB_LIVENESS_PROBE_ENABLED }}
+          kubernetes-job-readiness-probe-enabled: ${{ steps.kpm.outputs.KUBERNETES_JOB_READINESS_PROBE_ENABLED }}
+          kubernetes-job-startup-probe-enabled: ${{ steps.kpm.outputs.KUBERNETES_JOB_STARTUP_PROBE_ENABLED }}
+          kubernetes-job-ports-enabled: ${{ steps.kpm.outputs.KUBERNETES_JOB_PORTS_ENABLED }}
+          # Kubernetes CronJob generation
+          kubernetes-cronjob-name-suffix: ${{ steps.kpm.outputs.KUBERNETES_CRONJOB_NAME_SUFFIX }}
+          kubernetes-cronjob-combined-sub-path: ${{ steps.kpm.outputs.KUBERNETES_CRONJOB_COMBINED_SUB_PATH }}
+          kubernetes-cronjob-concurrency-policy: ${{ steps.kpm.outputs.KUBERNETES_CRONJOB_CONCURRENCY_POLICY }}
+          kubernetes-cronjob-starting-deadline-seconds: ${{ steps.kpm.outputs.KUBERNETES_CRONJOB_STARTING_DEADLINE_SECONDS }}
+          kubernetes-cronjob-successful-jobs-history-limit: ${{ steps.kpm.outputs.KUBERNETES_CRONJOB_SUCCESSFUL_JOBS_HISTORY_LIMIT }}
+          kubernetes-cronjob-failed-jobs-history-limit: ${{ steps.kpm.outputs.KUBERNETES_CRONJOB_FAILED_JOBS_HISTORY_LIMIT }}
+          kubernetes-cronjob-backoff-limit: ${{ steps.kpm.outputs.KUBERNETES_CRONJOB_BACKOFF_LIMIT }}
+          kubernetes-cronjob-completions: ${{ steps.kpm.outputs.KUBERNETES_CRONJOB_COMPLETIONS }}
+          kubernetes-cronjob-parallelism: ${{ steps.kpm.outputs.KUBERNETES_CRONJOB_PARALLELISM }}
+          kubernetes-cronjob-active-deadline-seconds: ${{ steps.kpm.outputs.KUBERNETES_CRONJOB_ACTIVE_DEADLINE_SECONDS }}
+          kubernetes-cronjob-restart-policy: ${{ steps.kpm.outputs.KUBERNETES_CRONJOB_RESTART_POLICY }}
+          kubernetes-cronjob-env-sub-path: ${{ steps.kpm.outputs.KUBERNETES_CRONJOB_ENV_SUB_PATH }}
+          kubernetes-cronjob-additional-labels: ${{ steps.kpm.outputs.KUBERNETES_CRONJOB_ADDITIONAL_LABELS }}
+          kubernetes-cronjob-additional-annotations: ${{ steps.kpm.outputs.KUBERNETES_CRONJOB_ADDITIONAL_ANNOTATIONS }}
+          kubernetes-cronjob-liveness-probe-enabled: ${{ steps.kpm.outputs.KUBERNETES_CRONJOB_LIVENESS_PROBE_ENABLED }}
+          kubernetes-cronjob-readiness-probe-enabled: ${{ steps.kpm.outputs.KUBERNETES_CRONJOB_READINESS_PROBE_ENABLED }}
+          kubernetes-cronjob-startup-probe-enabled: ${{ steps.kpm.outputs.KUBERNETES_CRONJOB_STARTUP_PROBE_ENABLED }}
+          kubernetes-cronjob-ports-enabled: ${{ steps.kpm.outputs.KUBERNETES_CRONJOB_PORTS_ENABLED }}
+          kubernetes-cronjob-ttl-seconds-after-finished: ${{ steps.kpm.outputs.KUBERNETES_CRONJOB_TTL_SECONDS_AFTER_FINISHED }}
           # Kubernetes Service generation
           kubernetes-service-generation-enabled: ${{ steps.kpm.outputs.KUBERNETES_SERVICE_GENERATION_ENABLED }}
           kubernetes-service-type: ${{ steps.kpm.outputs.KUBERNETES_SERVICE_TYPE }}
@@ -899,6 +1198,18 @@ jobs:
           kubernetes-service-combined-sub-path: ${{ steps.kpm.outputs.KUBERNETES_SERVICE_COMBINED_SUB_PATH }}
           kubernetes-service-additional-labels: ${{ steps.kpm.outputs.KUBERNETES_SERVICE_ADDITIONAL_LABELS }}
           kubernetes-service-additional-annotations: ${{ steps.kpm.outputs.KUBERNETES_SERVICE_ADDITIONAL_ANNOTATIONS }}
+          kubernetes-service-port-name: ${{ steps.kpm.outputs.KUBERNETES_SERVICE_PORT_NAME }}
+          kubernetes-service-node-port: ${{ steps.kpm.outputs.KUBERNETES_SERVICE_NODE_PORT }}
+          kubernetes-service-external-name: ${{ steps.kpm.outputs.KUBERNETES_SERVICE_EXTERNAL_NAME }}
+          kubernetes-service-external-traffic-policy: ${{ steps.kpm.outputs.KUBERNETES_SERVICE_EXTERNAL_TRAFFIC_POLICY }}
+          # Kubernetes PodDisruptionBudget generation
+          kubernetes-poddisruptionbudget-generation-enabled: ${{ steps.kpm.outputs.KUBERNETES_PODDISRUPTIONBUDGET_GENERATION_ENABLED }}
+          kubernetes-poddisruptionbudget-name-suffix: ${{ steps.kpm.outputs.KUBERNETES_PODDISRUPTIONBUDGET_NAME_SUFFIX }}
+          kubernetes-poddisruptionbudget-combined-sub-path: ${{ steps.kpm.outputs.KUBERNETES_PODDISRUPTIONBUDGET_COMBINED_SUB_PATH }}
+          kubernetes-poddisruptionbudget-strategy: ${{ steps.kpm.outputs.KUBERNETES_PODDISRUPTIONBUDGET_STRATEGY }}
+          kubernetes-poddisruptionbudget-value: ${{ steps.kpm.outputs.KUBERNETES_PODDISRUPTIONBUDGET_VALUE }}
+          kubernetes-poddisruptionbudget-additional-labels: ${{ steps.kpm.outputs.KUBERNETES_PODDISRUPTIONBUDGET_ADDITIONAL_LABELS }}
+          kubernetes-poddisruptionbudget-additional-annotations: ${{ steps.kpm.outputs.KUBERNETES_PODDISRUPTIONBUDGET_ADDITIONAL_ANNOTATIONS }}
 
           # Token substitution
           token-delimiter-style: ${{ steps.kpm.outputs.TOKEN_DELIMITER_STYLE }}
@@ -923,6 +1234,7 @@ jobs:
           tag-version-source-two-file-name: ${{ steps.kpm.outputs.TAG_VERSION_SOURCE_TWO_FILE_NAME }}
           tag-version-source-two-pattern: ${{ steps.kpm.outputs.TAG_VERSION_SOURCE_TWO_PATTERN }}
           tag-version-source-two-prefix-parts: ${{ steps.kpm.outputs.TAG_VERSION_SOURCE_TWO_PREFIX_PARTS }}
+          tag-version-use-source-version-exact: ${{ steps.kpm.outputs.TAG_VERSION_USE_SOURCE_VERSION_EXACT }}
 
           # Quality check options
           block-slashes: ${{ steps.kpm.outputs.BLOCK_SLASHES }}
@@ -931,6 +1243,7 @@ jobs:
           qc-require-conventional-branches: ${{ steps.kpm.outputs.QC_REQUIRE_CONVENTIONAL_BRANCHES }}
           qc-require-conventional-commits: ${{ steps.kpm.outputs.QC_REQUIRE_CONVENTIONAL_COMMITS }}
           qc-block-conventional-commits: ${{ steps.kpm.outputs.QC_BLOCK_CONVENTIONAL_COMMITS }}
+          qc-block-duplicate-commit-messages: ${{ steps.kpm.outputs.QC_BLOCK_DUPLICATE_COMMIT_MESSAGES }}
 
           # Hook script paths
           hook-pre-build-script-sub-path: ${{ steps.kpm.outputs.HOOK_PRE_BUILD_SCRIPT_SUB_PATH }}
@@ -1132,6 +1445,8 @@ jobs:
           image-uri: ${{ steps.docker-build.outputs.docker-target-image-full-uri }}
           # ConfigMap settings
           kubernetes-configmap-sub-path: ${{ steps.kpm.outputs.KUBERNETES_CONFIGMAP_SUB_PATH }}
+          kubernetes-configmap-name-suffix: ${{ steps.kpm.outputs.KUBERNETES_CONFIGMAP_NAME_SUFFIX }}
+          kubernetes-configmap-combined-sub-path: ${{ steps.kpm.outputs.KUBERNETES_CONFIGMAP_COMBINED_SUB_PATH }}
           # Global settings
           output-sub-path: ${{ steps.kpm.outputs.OUTPUT_SUB_PATH }}
           token-name-style: ${{ steps.kpm.outputs.TOKEN_NAME_STYLE }}
@@ -1178,6 +1493,8 @@ jobs:
           image-uri: ${{ steps.docker-build.outputs.docker-target-image-full-uri }}
           # Secret template settings
           kubernetes-secret-template-sub-path: ${{ steps.kpm.outputs.KUBERNETES_SECRET_TEMPLATE_SUB_PATH }}
+          kubernetes-secret-template-name-suffix: ${{ steps.kpm.outputs.KUBERNETES_SECRET_TEMPLATE_NAME_SUFFIX }}
+          kubernetes-secret-template-combined-sub-path: ${{ steps.kpm.outputs.KUBERNETES_SECRET_TEMPLATE_COMBINED_SUB_PATH }}
           # Global settings
           output-sub-path: ${{ steps.kpm.outputs.OUTPUT_SUB_PATH }}
           token-name-style: ${{ steps.kpm.outputs.TOKEN_NAME_STYLE }}
@@ -1363,6 +1680,9 @@ jobs:
           kubernetes-statefulset-pvc-volume-name: ${{ steps.kpm.outputs.KUBERNETES_STATEFULSET_PVC_VOLUME_NAME }}
           kubernetes-statefulset-pvc-mount-path: ${{ steps.kpm.outputs.KUBERNETES_STATEFULSET_PVC_MOUNT_PATH }}
           # DaemonSet-specific settings
+          kubernetes-daemonset-env-sub-path: ${{ steps.kpm.outputs.KUBERNETES_DAEMONSET_ENV_SUB_PATH }}
+          kubernetes-daemonset-additional-labels: ${{ steps.kpm.outputs.KUBERNETES_DAEMONSET_ADDITIONAL_LABELS }}
+          kubernetes-daemonset-additional-annotations: ${{ steps.kpm.outputs.KUBERNETES_DAEMONSET_ADDITIONAL_ANNOTATIONS }}
           kubernetes-daemonset-update-strategy-type: ${{ steps.kpm.outputs.KUBERNETES_DAEMONSET_UPDATE_STRATEGY_TYPE }}
           kubernetes-daemonset-max-unavailable: ${{ steps.kpm.outputs.KUBERNETES_DAEMONSET_MAX_UNAVAILABLE }}
           kubernetes-daemonset-host-network: ${{ steps.kpm.outputs.KUBERNETES_DAEMONSET_HOST_NETWORK }}
@@ -1379,6 +1699,7 @@ jobs:
           kubernetes-deployment-additional-annotations: ${{ steps.kpm.outputs.KUBERNETES_DEPLOYMENT_ADDITIONAL_ANNOTATIONS }}
           kubernetes-deployment-max-surge: ${{ steps.kpm.outputs.KUBERNETES_DEPLOYMENT_MAX_SURGE }}
           kubernetes-deployment-max-unavailable: ${{ steps.kpm.outputs.KUBERNETES_DEPLOYMENT_MAX_UNAVAILABLE }}
+          kubernetes-deployment-ports-enabled: ${{ steps.kpm.outputs.KUBERNETES_DEPLOYMENT_PORTS_ENABLED }}
           # Job-specific settings
           kubernetes-job-name-suffix: ${{ steps.kpm.outputs.KUBERNETES_JOB_NAME_SUFFIX }}
           kubernetes-job-combined-sub-path: ${{ steps.kpm.outputs.KUBERNETES_JOB_COMBINED_SUB_PATH }}
@@ -1391,6 +1712,7 @@ jobs:
           kubernetes-job-env-sub-path: ${{ steps.kpm.outputs.KUBERNETES_JOB_ENV_SUB_PATH }}
           kubernetes-job-additional-labels: ${{ steps.kpm.outputs.KUBERNETES_JOB_ADDITIONAL_LABELS }}
           kubernetes-job-additional-annotations: ${{ steps.kpm.outputs.KUBERNETES_JOB_ADDITIONAL_ANNOTATIONS }}
+          kubernetes-job-ports-enabled: ${{ steps.kpm.outputs.KUBERNETES_JOB_PORTS_ENABLED }}
           kubernetes-job-liveness-probe-enabled: ${{ steps.kpm.outputs.KUBERNETES_JOB_LIVENESS_PROBE_ENABLED }}
           kubernetes-job-readiness-probe-enabled: ${{ steps.kpm.outputs.KUBERNETES_JOB_READINESS_PROBE_ENABLED }}
           kubernetes-job-startup-probe-enabled: ${{ steps.kpm.outputs.KUBERNETES_JOB_STARTUP_PROBE_ENABLED }}
@@ -1405,10 +1727,12 @@ jobs:
           kubernetes-cronjob-completions: ${{ steps.kpm.outputs.KUBERNETES_CRONJOB_COMPLETIONS }}
           kubernetes-cronjob-parallelism: ${{ steps.kpm.outputs.KUBERNETES_CRONJOB_PARALLELISM }}
           kubernetes-cronjob-active-deadline-seconds: ${{ steps.kpm.outputs.KUBERNETES_CRONJOB_ACTIVE_DEADLINE_SECONDS }}
+          kubernetes-cronjob-ttl-seconds-after-finished: ${{ steps.kpm.outputs.KUBERNETES_CRONJOB_TTL_SECONDS_AFTER_FINISHED }}
           kubernetes-cronjob-restart-policy: ${{ steps.kpm.outputs.KUBERNETES_CRONJOB_RESTART_POLICY }}
           kubernetes-cronjob-env-sub-path: ${{ steps.kpm.outputs.KUBERNETES_CRONJOB_ENV_SUB_PATH }}
           kubernetes-cronjob-additional-labels: ${{ steps.kpm.outputs.KUBERNETES_CRONJOB_ADDITIONAL_LABELS }}
           kubernetes-cronjob-additional-annotations: ${{ steps.kpm.outputs.KUBERNETES_CRONJOB_ADDITIONAL_ANNOTATIONS }}
+          kubernetes-cronjob-ports-enabled: ${{ steps.kpm.outputs.KUBERNETES_CRONJOB_PORTS_ENABLED }}
           kubernetes-cronjob-liveness-probe-enabled: ${{ steps.kpm.outputs.KUBERNETES_CRONJOB_LIVENESS_PROBE_ENABLED }}
           kubernetes-cronjob-readiness-probe-enabled: ${{ steps.kpm.outputs.KUBERNETES_CRONJOB_READINESS_PROBE_ENABLED }}
           kubernetes-cronjob-startup-probe-enabled: ${{ steps.kpm.outputs.KUBERNETES_CRONJOB_STARTUP_PROBE_ENABLED }}
@@ -1573,6 +1897,8 @@ jobs:
           docker-registry-logins: ${{ steps.kpm.outputs.DOCKER_REGISTRY_LOGINS }}
           # Docker build options
           dockerfile-sub-path: ${{ steps.kpm.outputs.DOCKERFILE_SUB_PATH }}
+          dockerfile-sub-path-linux-amd64: ${{ steps.kpm.outputs.DOCKERFILE_SUB_PATH_LINUX_AMD64 }}
+          dockerfile-sub-path-linux-arm64: ${{ steps.kpm.outputs.DOCKERFILE_SUB_PATH_LINUX_ARM64 }}
           dockerfile-squash: ${{ steps.kpm.outputs.DOCKERFILE_SQUASH }}
           dockerfile-no-cache: ${{ steps.kpm.outputs.DOCKERFILE_NO_CACHE }}
           # Docker target config (from early resolver)
@@ -1580,6 +1906,11 @@ jobs:
           docker-target-namespace: ${{ steps.kpm.outputs.DOCKER_TARGET_NAMESPACE }}
           # Docker push targets
           docker-push-targets: ${{ steps.kpm.outputs.DOCKER_PUSH_TARGETS }}
+          # Docker source (retag)
+          docker-source-registry: ${{ steps.kpm.outputs.DOCKER_SOURCE_REGISTRY }}
+          docker-source-namespace: ${{ steps.kpm.outputs.DOCKER_SOURCE_NAMESPACE }}
+          docker-source-image-name: ${{ steps.kpm.outputs.DOCKER_SOURCE_IMAGE_NAME }}
+          docker-source-tag: ${{ steps.kpm.outputs.DOCKER_SOURCE_TAG }}
 
           # Manifests source
           manifests-sub-path: ${{ steps.kpm.outputs.MANIFESTS_SUB_PATH }}
@@ -1595,11 +1926,15 @@ jobs:
           kubernetes-configmap-name-checksum-injection: ${{ steps.kpm.outputs.KUBERNETES_CONFIGMAP_NAME_CHECKSUM_INJECTION }}
           kubernetes-configmap-additional-labels: ${{ steps.kpm.outputs.KUBERNETES_CONFIGMAP_ADDITIONAL_LABELS }}
           kubernetes-configmap-additional-annotations: ${{ steps.kpm.outputs.KUBERNETES_CONFIGMAP_ADDITIONAL_ANNOTATIONS }}
+          kubernetes-configmap-name-suffix: ${{ steps.kpm.outputs.KUBERNETES_CONFIGMAP_NAME_SUFFIX }}
+          kubernetes-configmap-combined-sub-path: ${{ steps.kpm.outputs.KUBERNETES_CONFIGMAP_COMBINED_SUB_PATH }}
           # Kubernetes Secret template generation
           kubernetes-secret-template-sub-path: ${{ steps.kpm.outputs.KUBERNETES_SECRET_TEMPLATE_SUB_PATH }}
           kubernetes-secret-template-name-checksum-injection: ${{ steps.kpm.outputs.KUBERNETES_SECRET_TEMPLATE_NAME_CHECKSUM_INJECTION }}
           kubernetes-secret-template-additional-labels: ${{ steps.kpm.outputs.KUBERNETES_SECRET_TEMPLATE_ADDITIONAL_LABELS }}
           kubernetes-secret-template-additional-annotations: ${{ steps.kpm.outputs.KUBERNETES_SECRET_TEMPLATE_ADDITIONAL_ANNOTATIONS }}
+          kubernetes-secret-template-name-suffix: ${{ steps.kpm.outputs.KUBERNETES_SECRET_TEMPLATE_NAME_SUFFIX }}
+          kubernetes-secret-template-combined-sub-path: ${{ steps.kpm.outputs.KUBERNETES_SECRET_TEMPLATE_COMBINED_SUB_PATH }}
           # Kubernetes ServiceAccount generation
           kubernetes-serviceaccount-generation-enabled: ${{ steps.kpm.outputs.KUBERNETES_SERVICEACCOUNT_GENERATION_ENABLED }}
           kubernetes-serviceaccount-name-suffix: ${{ steps.kpm.outputs.KUBERNETES_SERVICEACCOUNT_NAME_SUFFIX }}
@@ -1635,6 +1970,85 @@ jobs:
           kubernetes-workload-probe-startup-http-path: ${{ steps.kpm.outputs.KUBERNETES_WORKLOAD_PROBE_STARTUP_HTTP_PATH }}
           kubernetes-workload-replicas: ${{ steps.kpm.outputs.KUBERNETES_WORKLOAD_REPLICAS }}
           kubernetes-workload-revision-history-limit: ${{ steps.kpm.outputs.KUBERNETES_WORKLOAD_REVISION_HISTORY_LIMIT }}
+          kubernetes-workload-tolerations: ${{ steps.kpm.outputs.KUBERNETES_WORKLOAD_TOLERATIONS }}
+          kubernetes-workload-node-selector: ${{ steps.kpm.outputs.KUBERNETES_WORKLOAD_NODE_SELECTOR }}
+          kubernetes-workload-dns-policy: ${{ steps.kpm.outputs.KUBERNETES_WORKLOAD_DNS_POLICY }}
+          kubernetes-workload-priority-class-name: ${{ steps.kpm.outputs.KUBERNETES_WORKLOAD_PRIORITY_CLASS_NAME }}
+          kubernetes-workload-container-command: ${{ steps.kpm.outputs.KUBERNETES_WORKLOAD_CONTAINER_COMMAND }}
+          kubernetes-workload-container-args: ${{ steps.kpm.outputs.KUBERNETES_WORKLOAD_CONTAINER_ARGS }}
+          kubernetes-workload-min-ready-seconds: ${{ steps.kpm.outputs.KUBERNETES_WORKLOAD_MIN_READY_SECONDS }}
+          # Kubernetes Deployment generation
+          kubernetes-deployment-env-sub-path: ${{ steps.kpm.outputs.KUBERNETES_DEPLOYMENT_ENV_SUB_PATH }}
+          kubernetes-deployment-additional-labels: ${{ steps.kpm.outputs.KUBERNETES_DEPLOYMENT_ADDITIONAL_LABELS }}
+          kubernetes-deployment-additional-annotations: ${{ steps.kpm.outputs.KUBERNETES_DEPLOYMENT_ADDITIONAL_ANNOTATIONS }}
+          kubernetes-deployment-max-surge: ${{ steps.kpm.outputs.KUBERNETES_DEPLOYMENT_MAX_SURGE }}
+          kubernetes-deployment-max-unavailable: ${{ steps.kpm.outputs.KUBERNETES_DEPLOYMENT_MAX_UNAVAILABLE }}
+          kubernetes-deployment-ports-enabled: ${{ steps.kpm.outputs.KUBERNETES_DEPLOYMENT_PORTS_ENABLED }}
+          # Kubernetes StatefulSet generation
+          kubernetes-statefulset-service-name: ${{ steps.kpm.outputs.KUBERNETES_STATEFULSET_SERVICE_NAME }}
+          kubernetes-statefulset-pod-management-policy: ${{ steps.kpm.outputs.KUBERNETES_STATEFULSET_POD_MANAGEMENT_POLICY }}
+          kubernetes-statefulset-allow-unreliable-pod-management-policy: ${{ steps.kpm.outputs.KUBERNETES_STATEFULSET_ALLOW_UNRELIABLE_POD_MANAGEMENT_POLICY }}
+          kubernetes-statefulset-update-strategy-type: ${{ steps.kpm.outputs.KUBERNETES_STATEFULSET_UPDATE_STRATEGY_TYPE }}
+          kubernetes-statefulset-update-strategy-partition: ${{ steps.kpm.outputs.KUBERNETES_STATEFULSET_UPDATE_STRATEGY_PARTITION }}
+          kubernetes-statefulset-pvc-enabled: ${{ steps.kpm.outputs.KUBERNETES_STATEFULSET_PVC_ENABLED }}
+          kubernetes-statefulset-pvc-storage-class: ${{ steps.kpm.outputs.KUBERNETES_STATEFULSET_PVC_STORAGE_CLASS }}
+          kubernetes-statefulset-pvc-storage-size: ${{ steps.kpm.outputs.KUBERNETES_STATEFULSET_PVC_STORAGE_SIZE }}
+          kubernetes-statefulset-pvc-access-mode: ${{ steps.kpm.outputs.KUBERNETES_STATEFULSET_PVC_ACCESS_MODE }}
+          kubernetes-statefulset-pvc-volume-name: ${{ steps.kpm.outputs.KUBERNETES_STATEFULSET_PVC_VOLUME_NAME }}
+          kubernetes-statefulset-pvc-mount-path: ${{ steps.kpm.outputs.KUBERNETES_STATEFULSET_PVC_MOUNT_PATH }}
+          kubernetes-statefulset-env-sub-path: ${{ steps.kpm.outputs.KUBERNETES_STATEFULSET_ENV_SUB_PATH }}
+          kubernetes-statefulset-additional-labels: ${{ steps.kpm.outputs.KUBERNETES_STATEFULSET_ADDITIONAL_LABELS }}
+          kubernetes-statefulset-additional-annotations: ${{ steps.kpm.outputs.KUBERNETES_STATEFULSET_ADDITIONAL_ANNOTATIONS }}
+          # Kubernetes DaemonSet generation
+          kubernetes-daemonset-env-sub-path: ${{ steps.kpm.outputs.KUBERNETES_DAEMONSET_ENV_SUB_PATH }}
+          kubernetes-daemonset-update-strategy-type: ${{ steps.kpm.outputs.KUBERNETES_DAEMONSET_UPDATE_STRATEGY_TYPE }}
+          kubernetes-daemonset-max-unavailable: ${{ steps.kpm.outputs.KUBERNETES_DAEMONSET_MAX_UNAVAILABLE }}
+          kubernetes-daemonset-host-network: ${{ steps.kpm.outputs.KUBERNETES_DAEMONSET_HOST_NETWORK }}
+          kubernetes-daemonset-host-pid: ${{ steps.kpm.outputs.KUBERNETES_DAEMONSET_HOST_PID }}
+          kubernetes-daemonset-host-ipc: ${{ steps.kpm.outputs.KUBERNETES_DAEMONSET_HOST_IPC }}
+          kubernetes-daemonset-run-as-non-root: ${{ steps.kpm.outputs.KUBERNETES_DAEMONSET_RUN_AS_NON_ROOT }}
+          kubernetes-daemonset-privileged: ${{ steps.kpm.outputs.KUBERNETES_DAEMONSET_PRIVILEGED }}
+          kubernetes-daemonset-dns-policy: ${{ steps.kpm.outputs.KUBERNETES_DAEMONSET_DNS_POLICY }}
+          kubernetes-daemonset-tolerations: ${{ steps.kpm.outputs.KUBERNETES_DAEMONSET_TOLERATIONS }}
+          kubernetes-daemonset-node-selector: ${{ steps.kpm.outputs.KUBERNETES_DAEMONSET_NODE_SELECTOR }}
+          kubernetes-daemonset-additional-labels: ${{ steps.kpm.outputs.KUBERNETES_DAEMONSET_ADDITIONAL_LABELS }}
+          kubernetes-daemonset-additional-annotations: ${{ steps.kpm.outputs.KUBERNETES_DAEMONSET_ADDITIONAL_ANNOTATIONS }}
+          # Kubernetes Job generation
+          kubernetes-job-name-suffix: ${{ steps.kpm.outputs.KUBERNETES_JOB_NAME_SUFFIX }}
+          kubernetes-job-combined-sub-path: ${{ steps.kpm.outputs.KUBERNETES_JOB_COMBINED_SUB_PATH }}
+          kubernetes-job-backoff-limit: ${{ steps.kpm.outputs.KUBERNETES_JOB_BACKOFF_LIMIT }}
+          kubernetes-job-completions: ${{ steps.kpm.outputs.KUBERNETES_JOB_COMPLETIONS }}
+          kubernetes-job-parallelism: ${{ steps.kpm.outputs.KUBERNETES_JOB_PARALLELISM }}
+          kubernetes-job-active-deadline-seconds: ${{ steps.kpm.outputs.KUBERNETES_JOB_ACTIVE_DEADLINE_SECONDS }}
+          kubernetes-job-ttl-seconds-after-finished: ${{ steps.kpm.outputs.KUBERNETES_JOB_TTL_SECONDS_AFTER_FINISHED }}
+          kubernetes-job-restart-policy: ${{ steps.kpm.outputs.KUBERNETES_JOB_RESTART_POLICY }}
+          kubernetes-job-env-sub-path: ${{ steps.kpm.outputs.KUBERNETES_JOB_ENV_SUB_PATH }}
+          kubernetes-job-additional-labels: ${{ steps.kpm.outputs.KUBERNETES_JOB_ADDITIONAL_LABELS }}
+          kubernetes-job-additional-annotations: ${{ steps.kpm.outputs.KUBERNETES_JOB_ADDITIONAL_ANNOTATIONS }}
+          kubernetes-job-liveness-probe-enabled: ${{ steps.kpm.outputs.KUBERNETES_JOB_LIVENESS_PROBE_ENABLED }}
+          kubernetes-job-readiness-probe-enabled: ${{ steps.kpm.outputs.KUBERNETES_JOB_READINESS_PROBE_ENABLED }}
+          kubernetes-job-startup-probe-enabled: ${{ steps.kpm.outputs.KUBERNETES_JOB_STARTUP_PROBE_ENABLED }}
+          kubernetes-job-ports-enabled: ${{ steps.kpm.outputs.KUBERNETES_JOB_PORTS_ENABLED }}
+          # Kubernetes CronJob generation
+          kubernetes-cronjob-name-suffix: ${{ steps.kpm.outputs.KUBERNETES_CRONJOB_NAME_SUFFIX }}
+          kubernetes-cronjob-combined-sub-path: ${{ steps.kpm.outputs.KUBERNETES_CRONJOB_COMBINED_SUB_PATH }}
+          kubernetes-cronjob-concurrency-policy: ${{ steps.kpm.outputs.KUBERNETES_CRONJOB_CONCURRENCY_POLICY }}
+          kubernetes-cronjob-starting-deadline-seconds: ${{ steps.kpm.outputs.KUBERNETES_CRONJOB_STARTING_DEADLINE_SECONDS }}
+          kubernetes-cronjob-successful-jobs-history-limit: ${{ steps.kpm.outputs.KUBERNETES_CRONJOB_SUCCESSFUL_JOBS_HISTORY_LIMIT }}
+          kubernetes-cronjob-failed-jobs-history-limit: ${{ steps.kpm.outputs.KUBERNETES_CRONJOB_FAILED_JOBS_HISTORY_LIMIT }}
+          kubernetes-cronjob-backoff-limit: ${{ steps.kpm.outputs.KUBERNETES_CRONJOB_BACKOFF_LIMIT }}
+          kubernetes-cronjob-completions: ${{ steps.kpm.outputs.KUBERNETES_CRONJOB_COMPLETIONS }}
+          kubernetes-cronjob-parallelism: ${{ steps.kpm.outputs.KUBERNETES_CRONJOB_PARALLELISM }}
+          kubernetes-cronjob-active-deadline-seconds: ${{ steps.kpm.outputs.KUBERNETES_CRONJOB_ACTIVE_DEADLINE_SECONDS }}
+          kubernetes-cronjob-restart-policy: ${{ steps.kpm.outputs.KUBERNETES_CRONJOB_RESTART_POLICY }}
+          kubernetes-cronjob-env-sub-path: ${{ steps.kpm.outputs.KUBERNETES_CRONJOB_ENV_SUB_PATH }}
+          kubernetes-cronjob-additional-labels: ${{ steps.kpm.outputs.KUBERNETES_CRONJOB_ADDITIONAL_LABELS }}
+          kubernetes-cronjob-additional-annotations: ${{ steps.kpm.outputs.KUBERNETES_CRONJOB_ADDITIONAL_ANNOTATIONS }}
+          kubernetes-cronjob-liveness-probe-enabled: ${{ steps.kpm.outputs.KUBERNETES_CRONJOB_LIVENESS_PROBE_ENABLED }}
+          kubernetes-cronjob-readiness-probe-enabled: ${{ steps.kpm.outputs.KUBERNETES_CRONJOB_READINESS_PROBE_ENABLED }}
+          kubernetes-cronjob-startup-probe-enabled: ${{ steps.kpm.outputs.KUBERNETES_CRONJOB_STARTUP_PROBE_ENABLED }}
+          kubernetes-cronjob-ports-enabled: ${{ steps.kpm.outputs.KUBERNETES_CRONJOB_PORTS_ENABLED }}
+          kubernetes-cronjob-ttl-seconds-after-finished: ${{ steps.kpm.outputs.KUBERNETES_CRONJOB_TTL_SECONDS_AFTER_FINISHED }}
           # Kubernetes Service generation
           kubernetes-service-generation-enabled: ${{ steps.kpm.outputs.KUBERNETES_SERVICE_GENERATION_ENABLED }}
           kubernetes-service-type: ${{ steps.kpm.outputs.KUBERNETES_SERVICE_TYPE }}
@@ -1645,6 +2059,18 @@ jobs:
           kubernetes-service-combined-sub-path: ${{ steps.kpm.outputs.KUBERNETES_SERVICE_COMBINED_SUB_PATH }}
           kubernetes-service-additional-labels: ${{ steps.kpm.outputs.KUBERNETES_SERVICE_ADDITIONAL_LABELS }}
           kubernetes-service-additional-annotations: ${{ steps.kpm.outputs.KUBERNETES_SERVICE_ADDITIONAL_ANNOTATIONS }}
+          kubernetes-service-port-name: ${{ steps.kpm.outputs.KUBERNETES_SERVICE_PORT_NAME }}
+          kubernetes-service-node-port: ${{ steps.kpm.outputs.KUBERNETES_SERVICE_NODE_PORT }}
+          kubernetes-service-external-name: ${{ steps.kpm.outputs.KUBERNETES_SERVICE_EXTERNAL_NAME }}
+          kubernetes-service-external-traffic-policy: ${{ steps.kpm.outputs.KUBERNETES_SERVICE_EXTERNAL_TRAFFIC_POLICY }}
+          # Kubernetes PodDisruptionBudget generation
+          kubernetes-poddisruptionbudget-generation-enabled: ${{ steps.kpm.outputs.KUBERNETES_PODDISRUPTIONBUDGET_GENERATION_ENABLED }}
+          kubernetes-poddisruptionbudget-name-suffix: ${{ steps.kpm.outputs.KUBERNETES_PODDISRUPTIONBUDGET_NAME_SUFFIX }}
+          kubernetes-poddisruptionbudget-combined-sub-path: ${{ steps.kpm.outputs.KUBERNETES_PODDISRUPTIONBUDGET_COMBINED_SUB_PATH }}
+          kubernetes-poddisruptionbudget-strategy: ${{ steps.kpm.outputs.KUBERNETES_PODDISRUPTIONBUDGET_STRATEGY }}
+          kubernetes-poddisruptionbudget-value: ${{ steps.kpm.outputs.KUBERNETES_PODDISRUPTIONBUDGET_VALUE }}
+          kubernetes-poddisruptionbudget-additional-labels: ${{ steps.kpm.outputs.KUBERNETES_PODDISRUPTIONBUDGET_ADDITIONAL_LABELS }}
+          kubernetes-poddisruptionbudget-additional-annotations: ${{ steps.kpm.outputs.KUBERNETES_PODDISRUPTIONBUDGET_ADDITIONAL_ANNOTATIONS }}
 
           # Token substitution
           token-delimiter-style: ${{ steps.kpm.outputs.TOKEN_DELIMITER_STYLE }}
@@ -1669,6 +2095,7 @@ jobs:
           tag-version-source-two-file-name: ${{ steps.kpm.outputs.TAG_VERSION_SOURCE_TWO_FILE_NAME }}
           tag-version-source-two-pattern: ${{ steps.kpm.outputs.TAG_VERSION_SOURCE_TWO_PATTERN }}
           tag-version-source-two-prefix-parts: ${{ steps.kpm.outputs.TAG_VERSION_SOURCE_TWO_PREFIX_PARTS }}
+          tag-version-use-source-version-exact: ${{ steps.kpm.outputs.TAG_VERSION_USE_SOURCE_VERSION_EXACT }}
 
           # Quality check options
           block-slashes: ${{ steps.kpm.outputs.BLOCK_SLASHES }}
@@ -1677,6 +2104,7 @@ jobs:
           qc-require-conventional-branches: ${{ steps.kpm.outputs.QC_REQUIRE_CONVENTIONAL_BRANCHES }}
           qc-require-conventional-commits: ${{ steps.kpm.outputs.QC_REQUIRE_CONVENTIONAL_COMMITS }}
           qc-block-conventional-commits: ${{ steps.kpm.outputs.QC_BLOCK_CONVENTIONAL_COMMITS }}
+          qc-block-duplicate-commit-messages: ${{ steps.kpm.outputs.QC_BLOCK_DUPLICATE_COMMIT_MESSAGES }}
 
           # Hook script paths
           hook-pre-build-script-sub-path: ${{ steps.kpm.outputs.HOOK_PRE_BUILD_SCRIPT_SUB_PATH }}
@@ -1974,6 +2402,8 @@ jobs:
           docker-registry-logins: ${{ steps.kpm.outputs.DOCKER_REGISTRY_LOGINS }}
           # Docker build options
           dockerfile-sub-path: ${{ steps.kpm.outputs.DOCKERFILE_SUB_PATH }}
+          dockerfile-sub-path-linux-amd64: ${{ steps.kpm.outputs.DOCKERFILE_SUB_PATH_LINUX_AMD64 }}
+          dockerfile-sub-path-linux-arm64: ${{ steps.kpm.outputs.DOCKERFILE_SUB_PATH_LINUX_ARM64 }}
           dockerfile-squash: ${{ steps.kpm.outputs.DOCKERFILE_SQUASH }}
           dockerfile-no-cache: ${{ steps.kpm.outputs.DOCKERFILE_NO_CACHE }}
           # Docker target config (from early resolver)
@@ -1981,6 +2411,11 @@ jobs:
           docker-target-namespace: ${{ steps.kpm.outputs.DOCKER_TARGET_NAMESPACE }}
           # Docker push targets
           docker-push-targets: ${{ steps.kpm.outputs.DOCKER_PUSH_TARGETS }}
+          # Docker source (retag)
+          docker-source-registry: ${{ steps.kpm.outputs.DOCKER_SOURCE_REGISTRY }}
+          docker-source-namespace: ${{ steps.kpm.outputs.DOCKER_SOURCE_NAMESPACE }}
+          docker-source-image-name: ${{ steps.kpm.outputs.DOCKER_SOURCE_IMAGE_NAME }}
+          docker-source-tag: ${{ steps.kpm.outputs.DOCKER_SOURCE_TAG }}
 
           # Manifests source
           manifests-sub-path: ${{ steps.kpm.outputs.MANIFESTS_SUB_PATH }}
@@ -1996,11 +2431,15 @@ jobs:
           kubernetes-configmap-name-checksum-injection: ${{ steps.kpm.outputs.KUBERNETES_CONFIGMAP_NAME_CHECKSUM_INJECTION }}
           kubernetes-configmap-additional-labels: ${{ steps.kpm.outputs.KUBERNETES_CONFIGMAP_ADDITIONAL_LABELS }}
           kubernetes-configmap-additional-annotations: ${{ steps.kpm.outputs.KUBERNETES_CONFIGMAP_ADDITIONAL_ANNOTATIONS }}
+          kubernetes-configmap-name-suffix: ${{ steps.kpm.outputs.KUBERNETES_CONFIGMAP_NAME_SUFFIX }}
+          kubernetes-configmap-combined-sub-path: ${{ steps.kpm.outputs.KUBERNETES_CONFIGMAP_COMBINED_SUB_PATH }}
           # Kubernetes Secret template generation
           kubernetes-secret-template-sub-path: ${{ steps.kpm.outputs.KUBERNETES_SECRET_TEMPLATE_SUB_PATH }}
           kubernetes-secret-template-name-checksum-injection: ${{ steps.kpm.outputs.KUBERNETES_SECRET_TEMPLATE_NAME_CHECKSUM_INJECTION }}
           kubernetes-secret-template-additional-labels: ${{ steps.kpm.outputs.KUBERNETES_SECRET_TEMPLATE_ADDITIONAL_LABELS }}
           kubernetes-secret-template-additional-annotations: ${{ steps.kpm.outputs.KUBERNETES_SECRET_TEMPLATE_ADDITIONAL_ANNOTATIONS }}
+          kubernetes-secret-template-name-suffix: ${{ steps.kpm.outputs.KUBERNETES_SECRET_TEMPLATE_NAME_SUFFIX }}
+          kubernetes-secret-template-combined-sub-path: ${{ steps.kpm.outputs.KUBERNETES_SECRET_TEMPLATE_COMBINED_SUB_PATH }}
           # Kubernetes ServiceAccount generation
           kubernetes-serviceaccount-generation-enabled: ${{ steps.kpm.outputs.KUBERNETES_SERVICEACCOUNT_GENERATION_ENABLED }}
           kubernetes-serviceaccount-name-suffix: ${{ steps.kpm.outputs.KUBERNETES_SERVICEACCOUNT_NAME_SUFFIX }}
@@ -2036,6 +2475,85 @@ jobs:
           kubernetes-workload-probe-startup-http-path: ${{ steps.kpm.outputs.KUBERNETES_WORKLOAD_PROBE_STARTUP_HTTP_PATH }}
           kubernetes-workload-replicas: ${{ steps.kpm.outputs.KUBERNETES_WORKLOAD_REPLICAS }}
           kubernetes-workload-revision-history-limit: ${{ steps.kpm.outputs.KUBERNETES_WORKLOAD_REVISION_HISTORY_LIMIT }}
+          kubernetes-workload-tolerations: ${{ steps.kpm.outputs.KUBERNETES_WORKLOAD_TOLERATIONS }}
+          kubernetes-workload-node-selector: ${{ steps.kpm.outputs.KUBERNETES_WORKLOAD_NODE_SELECTOR }}
+          kubernetes-workload-dns-policy: ${{ steps.kpm.outputs.KUBERNETES_WORKLOAD_DNS_POLICY }}
+          kubernetes-workload-priority-class-name: ${{ steps.kpm.outputs.KUBERNETES_WORKLOAD_PRIORITY_CLASS_NAME }}
+          kubernetes-workload-container-command: ${{ steps.kpm.outputs.KUBERNETES_WORKLOAD_CONTAINER_COMMAND }}
+          kubernetes-workload-container-args: ${{ steps.kpm.outputs.KUBERNETES_WORKLOAD_CONTAINER_ARGS }}
+          kubernetes-workload-min-ready-seconds: ${{ steps.kpm.outputs.KUBERNETES_WORKLOAD_MIN_READY_SECONDS }}
+          # Kubernetes Deployment generation
+          kubernetes-deployment-env-sub-path: ${{ steps.kpm.outputs.KUBERNETES_DEPLOYMENT_ENV_SUB_PATH }}
+          kubernetes-deployment-additional-labels: ${{ steps.kpm.outputs.KUBERNETES_DEPLOYMENT_ADDITIONAL_LABELS }}
+          kubernetes-deployment-additional-annotations: ${{ steps.kpm.outputs.KUBERNETES_DEPLOYMENT_ADDITIONAL_ANNOTATIONS }}
+          kubernetes-deployment-max-surge: ${{ steps.kpm.outputs.KUBERNETES_DEPLOYMENT_MAX_SURGE }}
+          kubernetes-deployment-max-unavailable: ${{ steps.kpm.outputs.KUBERNETES_DEPLOYMENT_MAX_UNAVAILABLE }}
+          kubernetes-deployment-ports-enabled: ${{ steps.kpm.outputs.KUBERNETES_DEPLOYMENT_PORTS_ENABLED }}
+          # Kubernetes StatefulSet generation
+          kubernetes-statefulset-service-name: ${{ steps.kpm.outputs.KUBERNETES_STATEFULSET_SERVICE_NAME }}
+          kubernetes-statefulset-pod-management-policy: ${{ steps.kpm.outputs.KUBERNETES_STATEFULSET_POD_MANAGEMENT_POLICY }}
+          kubernetes-statefulset-allow-unreliable-pod-management-policy: ${{ steps.kpm.outputs.KUBERNETES_STATEFULSET_ALLOW_UNRELIABLE_POD_MANAGEMENT_POLICY }}
+          kubernetes-statefulset-update-strategy-type: ${{ steps.kpm.outputs.KUBERNETES_STATEFULSET_UPDATE_STRATEGY_TYPE }}
+          kubernetes-statefulset-update-strategy-partition: ${{ steps.kpm.outputs.KUBERNETES_STATEFULSET_UPDATE_STRATEGY_PARTITION }}
+          kubernetes-statefulset-pvc-enabled: ${{ steps.kpm.outputs.KUBERNETES_STATEFULSET_PVC_ENABLED }}
+          kubernetes-statefulset-pvc-storage-class: ${{ steps.kpm.outputs.KUBERNETES_STATEFULSET_PVC_STORAGE_CLASS }}
+          kubernetes-statefulset-pvc-storage-size: ${{ steps.kpm.outputs.KUBERNETES_STATEFULSET_PVC_STORAGE_SIZE }}
+          kubernetes-statefulset-pvc-access-mode: ${{ steps.kpm.outputs.KUBERNETES_STATEFULSET_PVC_ACCESS_MODE }}
+          kubernetes-statefulset-pvc-volume-name: ${{ steps.kpm.outputs.KUBERNETES_STATEFULSET_PVC_VOLUME_NAME }}
+          kubernetes-statefulset-pvc-mount-path: ${{ steps.kpm.outputs.KUBERNETES_STATEFULSET_PVC_MOUNT_PATH }}
+          kubernetes-statefulset-env-sub-path: ${{ steps.kpm.outputs.KUBERNETES_STATEFULSET_ENV_SUB_PATH }}
+          kubernetes-statefulset-additional-labels: ${{ steps.kpm.outputs.KUBERNETES_STATEFULSET_ADDITIONAL_LABELS }}
+          kubernetes-statefulset-additional-annotations: ${{ steps.kpm.outputs.KUBERNETES_STATEFULSET_ADDITIONAL_ANNOTATIONS }}
+          # Kubernetes DaemonSet generation
+          kubernetes-daemonset-env-sub-path: ${{ steps.kpm.outputs.KUBERNETES_DAEMONSET_ENV_SUB_PATH }}
+          kubernetes-daemonset-update-strategy-type: ${{ steps.kpm.outputs.KUBERNETES_DAEMONSET_UPDATE_STRATEGY_TYPE }}
+          kubernetes-daemonset-max-unavailable: ${{ steps.kpm.outputs.KUBERNETES_DAEMONSET_MAX_UNAVAILABLE }}
+          kubernetes-daemonset-host-network: ${{ steps.kpm.outputs.KUBERNETES_DAEMONSET_HOST_NETWORK }}
+          kubernetes-daemonset-host-pid: ${{ steps.kpm.outputs.KUBERNETES_DAEMONSET_HOST_PID }}
+          kubernetes-daemonset-host-ipc: ${{ steps.kpm.outputs.KUBERNETES_DAEMONSET_HOST_IPC }}
+          kubernetes-daemonset-run-as-non-root: ${{ steps.kpm.outputs.KUBERNETES_DAEMONSET_RUN_AS_NON_ROOT }}
+          kubernetes-daemonset-privileged: ${{ steps.kpm.outputs.KUBERNETES_DAEMONSET_PRIVILEGED }}
+          kubernetes-daemonset-dns-policy: ${{ steps.kpm.outputs.KUBERNETES_DAEMONSET_DNS_POLICY }}
+          kubernetes-daemonset-tolerations: ${{ steps.kpm.outputs.KUBERNETES_DAEMONSET_TOLERATIONS }}
+          kubernetes-daemonset-node-selector: ${{ steps.kpm.outputs.KUBERNETES_DAEMONSET_NODE_SELECTOR }}
+          kubernetes-daemonset-additional-labels: ${{ steps.kpm.outputs.KUBERNETES_DAEMONSET_ADDITIONAL_LABELS }}
+          kubernetes-daemonset-additional-annotations: ${{ steps.kpm.outputs.KUBERNETES_DAEMONSET_ADDITIONAL_ANNOTATIONS }}
+          # Kubernetes Job generation
+          kubernetes-job-name-suffix: ${{ steps.kpm.outputs.KUBERNETES_JOB_NAME_SUFFIX }}
+          kubernetes-job-combined-sub-path: ${{ steps.kpm.outputs.KUBERNETES_JOB_COMBINED_SUB_PATH }}
+          kubernetes-job-backoff-limit: ${{ steps.kpm.outputs.KUBERNETES_JOB_BACKOFF_LIMIT }}
+          kubernetes-job-completions: ${{ steps.kpm.outputs.KUBERNETES_JOB_COMPLETIONS }}
+          kubernetes-job-parallelism: ${{ steps.kpm.outputs.KUBERNETES_JOB_PARALLELISM }}
+          kubernetes-job-active-deadline-seconds: ${{ steps.kpm.outputs.KUBERNETES_JOB_ACTIVE_DEADLINE_SECONDS }}
+          kubernetes-job-ttl-seconds-after-finished: ${{ steps.kpm.outputs.KUBERNETES_JOB_TTL_SECONDS_AFTER_FINISHED }}
+          kubernetes-job-restart-policy: ${{ steps.kpm.outputs.KUBERNETES_JOB_RESTART_POLICY }}
+          kubernetes-job-env-sub-path: ${{ steps.kpm.outputs.KUBERNETES_JOB_ENV_SUB_PATH }}
+          kubernetes-job-additional-labels: ${{ steps.kpm.outputs.KUBERNETES_JOB_ADDITIONAL_LABELS }}
+          kubernetes-job-additional-annotations: ${{ steps.kpm.outputs.KUBERNETES_JOB_ADDITIONAL_ANNOTATIONS }}
+          kubernetes-job-liveness-probe-enabled: ${{ steps.kpm.outputs.KUBERNETES_JOB_LIVENESS_PROBE_ENABLED }}
+          kubernetes-job-readiness-probe-enabled: ${{ steps.kpm.outputs.KUBERNETES_JOB_READINESS_PROBE_ENABLED }}
+          kubernetes-job-startup-probe-enabled: ${{ steps.kpm.outputs.KUBERNETES_JOB_STARTUP_PROBE_ENABLED }}
+          kubernetes-job-ports-enabled: ${{ steps.kpm.outputs.KUBERNETES_JOB_PORTS_ENABLED }}
+          # Kubernetes CronJob generation
+          kubernetes-cronjob-name-suffix: ${{ steps.kpm.outputs.KUBERNETES_CRONJOB_NAME_SUFFIX }}
+          kubernetes-cronjob-combined-sub-path: ${{ steps.kpm.outputs.KUBERNETES_CRONJOB_COMBINED_SUB_PATH }}
+          kubernetes-cronjob-concurrency-policy: ${{ steps.kpm.outputs.KUBERNETES_CRONJOB_CONCURRENCY_POLICY }}
+          kubernetes-cronjob-starting-deadline-seconds: ${{ steps.kpm.outputs.KUBERNETES_CRONJOB_STARTING_DEADLINE_SECONDS }}
+          kubernetes-cronjob-successful-jobs-history-limit: ${{ steps.kpm.outputs.KUBERNETES_CRONJOB_SUCCESSFUL_JOBS_HISTORY_LIMIT }}
+          kubernetes-cronjob-failed-jobs-history-limit: ${{ steps.kpm.outputs.KUBERNETES_CRONJOB_FAILED_JOBS_HISTORY_LIMIT }}
+          kubernetes-cronjob-backoff-limit: ${{ steps.kpm.outputs.KUBERNETES_CRONJOB_BACKOFF_LIMIT }}
+          kubernetes-cronjob-completions: ${{ steps.kpm.outputs.KUBERNETES_CRONJOB_COMPLETIONS }}
+          kubernetes-cronjob-parallelism: ${{ steps.kpm.outputs.KUBERNETES_CRONJOB_PARALLELISM }}
+          kubernetes-cronjob-active-deadline-seconds: ${{ steps.kpm.outputs.KUBERNETES_CRONJOB_ACTIVE_DEADLINE_SECONDS }}
+          kubernetes-cronjob-restart-policy: ${{ steps.kpm.outputs.KUBERNETES_CRONJOB_RESTART_POLICY }}
+          kubernetes-cronjob-env-sub-path: ${{ steps.kpm.outputs.KUBERNETES_CRONJOB_ENV_SUB_PATH }}
+          kubernetes-cronjob-additional-labels: ${{ steps.kpm.outputs.KUBERNETES_CRONJOB_ADDITIONAL_LABELS }}
+          kubernetes-cronjob-additional-annotations: ${{ steps.kpm.outputs.KUBERNETES_CRONJOB_ADDITIONAL_ANNOTATIONS }}
+          kubernetes-cronjob-liveness-probe-enabled: ${{ steps.kpm.outputs.KUBERNETES_CRONJOB_LIVENESS_PROBE_ENABLED }}
+          kubernetes-cronjob-readiness-probe-enabled: ${{ steps.kpm.outputs.KUBERNETES_CRONJOB_READINESS_PROBE_ENABLED }}
+          kubernetes-cronjob-startup-probe-enabled: ${{ steps.kpm.outputs.KUBERNETES_CRONJOB_STARTUP_PROBE_ENABLED }}
+          kubernetes-cronjob-ports-enabled: ${{ steps.kpm.outputs.KUBERNETES_CRONJOB_PORTS_ENABLED }}
+          kubernetes-cronjob-ttl-seconds-after-finished: ${{ steps.kpm.outputs.KUBERNETES_CRONJOB_TTL_SECONDS_AFTER_FINISHED }}
           # Kubernetes Service generation
           kubernetes-service-generation-enabled: ${{ steps.kpm.outputs.KUBERNETES_SERVICE_GENERATION_ENABLED }}
           kubernetes-service-type: ${{ steps.kpm.outputs.KUBERNETES_SERVICE_TYPE }}
@@ -2046,6 +2564,18 @@ jobs:
           kubernetes-service-combined-sub-path: ${{ steps.kpm.outputs.KUBERNETES_SERVICE_COMBINED_SUB_PATH }}
           kubernetes-service-additional-labels: ${{ steps.kpm.outputs.KUBERNETES_SERVICE_ADDITIONAL_LABELS }}
           kubernetes-service-additional-annotations: ${{ steps.kpm.outputs.KUBERNETES_SERVICE_ADDITIONAL_ANNOTATIONS }}
+          kubernetes-service-port-name: ${{ steps.kpm.outputs.KUBERNETES_SERVICE_PORT_NAME }}
+          kubernetes-service-node-port: ${{ steps.kpm.outputs.KUBERNETES_SERVICE_NODE_PORT }}
+          kubernetes-service-external-name: ${{ steps.kpm.outputs.KUBERNETES_SERVICE_EXTERNAL_NAME }}
+          kubernetes-service-external-traffic-policy: ${{ steps.kpm.outputs.KUBERNETES_SERVICE_EXTERNAL_TRAFFIC_POLICY }}
+          # Kubernetes PodDisruptionBudget generation
+          kubernetes-poddisruptionbudget-generation-enabled: ${{ steps.kpm.outputs.KUBERNETES_PODDISRUPTIONBUDGET_GENERATION_ENABLED }}
+          kubernetes-poddisruptionbudget-name-suffix: ${{ steps.kpm.outputs.KUBERNETES_PODDISRUPTIONBUDGET_NAME_SUFFIX }}
+          kubernetes-poddisruptionbudget-combined-sub-path: ${{ steps.kpm.outputs.KUBERNETES_PODDISRUPTIONBUDGET_COMBINED_SUB_PATH }}
+          kubernetes-poddisruptionbudget-strategy: ${{ steps.kpm.outputs.KUBERNETES_PODDISRUPTIONBUDGET_STRATEGY }}
+          kubernetes-poddisruptionbudget-value: ${{ steps.kpm.outputs.KUBERNETES_PODDISRUPTIONBUDGET_VALUE }}
+          kubernetes-poddisruptionbudget-additional-labels: ${{ steps.kpm.outputs.KUBERNETES_PODDISRUPTIONBUDGET_ADDITIONAL_LABELS }}
+          kubernetes-poddisruptionbudget-additional-annotations: ${{ steps.kpm.outputs.KUBERNETES_PODDISRUPTIONBUDGET_ADDITIONAL_ANNOTATIONS }}
 
           # Token substitution
           token-delimiter-style: ${{ steps.kpm.outputs.TOKEN_DELIMITER_STYLE }}
@@ -2070,6 +2600,7 @@ jobs:
           tag-version-source-two-file-name: ${{ steps.kpm.outputs.TAG_VERSION_SOURCE_TWO_FILE_NAME }}
           tag-version-source-two-pattern: ${{ steps.kpm.outputs.TAG_VERSION_SOURCE_TWO_PATTERN }}
           tag-version-source-two-prefix-parts: ${{ steps.kpm.outputs.TAG_VERSION_SOURCE_TWO_PREFIX_PARTS }}
+          tag-version-use-source-version-exact: ${{ steps.kpm.outputs.TAG_VERSION_USE_SOURCE_VERSION_EXACT }}
 
           # Quality check options
           block-slashes: ${{ steps.kpm.outputs.BLOCK_SLASHES }}
@@ -2078,6 +2609,7 @@ jobs:
           qc-require-conventional-branches: ${{ steps.kpm.outputs.QC_REQUIRE_CONVENTIONAL_BRANCHES }}
           qc-require-conventional-commits: ${{ steps.kpm.outputs.QC_REQUIRE_CONVENTIONAL_COMMITS }}
           qc-block-conventional-commits: ${{ steps.kpm.outputs.QC_BLOCK_CONVENTIONAL_COMMITS }}
+          qc-block-duplicate-commit-messages: ${{ steps.kpm.outputs.QC_BLOCK_DUPLICATE_COMMIT_MESSAGES }}
 
           # Hook script paths
           hook-pre-build-script-sub-path: ${{ steps.kpm.outputs.HOOK_PRE_BUILD_SCRIPT_SUB_PATH }}
@@ -2463,6 +2995,8 @@ jobs:
           docker-registry-logins: ${{ steps.kpm.outputs.DOCKER_REGISTRY_LOGINS }}
           # Docker build options
           dockerfile-sub-path: ${{ steps.kpm.outputs.DOCKERFILE_SUB_PATH }}
+          dockerfile-sub-path-linux-amd64: ${{ steps.kpm.outputs.DOCKERFILE_SUB_PATH_LINUX_AMD64 }}
+          dockerfile-sub-path-linux-arm64: ${{ steps.kpm.outputs.DOCKERFILE_SUB_PATH_LINUX_ARM64 }}
           dockerfile-squash: ${{ steps.kpm.outputs.DOCKERFILE_SQUASH }}
           dockerfile-no-cache: ${{ steps.kpm.outputs.DOCKERFILE_NO_CACHE }}
           # Docker target config (from early resolver)
@@ -2470,6 +3004,11 @@ jobs:
           docker-target-namespace: ${{ steps.kpm.outputs.DOCKER_TARGET_NAMESPACE }}
           # Docker push targets
           docker-push-targets: ${{ steps.kpm.outputs.DOCKER_PUSH_TARGETS }}
+          # Docker source (retag)
+          docker-source-registry: ${{ steps.kpm.outputs.DOCKER_SOURCE_REGISTRY }}
+          docker-source-namespace: ${{ steps.kpm.outputs.DOCKER_SOURCE_NAMESPACE }}
+          docker-source-image-name: ${{ steps.kpm.outputs.DOCKER_SOURCE_IMAGE_NAME }}
+          docker-source-tag: ${{ steps.kpm.outputs.DOCKER_SOURCE_TAG }}
 
           # Manifests source
           manifests-sub-path: ${{ steps.kpm.outputs.MANIFESTS_SUB_PATH }}
@@ -2485,11 +3024,15 @@ jobs:
           kubernetes-configmap-name-checksum-injection: ${{ steps.kpm.outputs.KUBERNETES_CONFIGMAP_NAME_CHECKSUM_INJECTION }}
           kubernetes-configmap-additional-labels: ${{ steps.kpm.outputs.KUBERNETES_CONFIGMAP_ADDITIONAL_LABELS }}
           kubernetes-configmap-additional-annotations: ${{ steps.kpm.outputs.KUBERNETES_CONFIGMAP_ADDITIONAL_ANNOTATIONS }}
+          kubernetes-configmap-name-suffix: ${{ steps.kpm.outputs.KUBERNETES_CONFIGMAP_NAME_SUFFIX }}
+          kubernetes-configmap-combined-sub-path: ${{ steps.kpm.outputs.KUBERNETES_CONFIGMAP_COMBINED_SUB_PATH }}
           # Kubernetes Secret template generation
           kubernetes-secret-template-sub-path: ${{ steps.kpm.outputs.KUBERNETES_SECRET_TEMPLATE_SUB_PATH }}
           kubernetes-secret-template-name-checksum-injection: ${{ steps.kpm.outputs.KUBERNETES_SECRET_TEMPLATE_NAME_CHECKSUM_INJECTION }}
           kubernetes-secret-template-additional-labels: ${{ steps.kpm.outputs.KUBERNETES_SECRET_TEMPLATE_ADDITIONAL_LABELS }}
           kubernetes-secret-template-additional-annotations: ${{ steps.kpm.outputs.KUBERNETES_SECRET_TEMPLATE_ADDITIONAL_ANNOTATIONS }}
+          kubernetes-secret-template-name-suffix: ${{ steps.kpm.outputs.KUBERNETES_SECRET_TEMPLATE_NAME_SUFFIX }}
+          kubernetes-secret-template-combined-sub-path: ${{ steps.kpm.outputs.KUBERNETES_SECRET_TEMPLATE_COMBINED_SUB_PATH }}
           # Kubernetes ServiceAccount generation
           kubernetes-serviceaccount-generation-enabled: ${{ steps.kpm.outputs.KUBERNETES_SERVICEACCOUNT_GENERATION_ENABLED }}
           kubernetes-serviceaccount-name-suffix: ${{ steps.kpm.outputs.KUBERNETES_SERVICEACCOUNT_NAME_SUFFIX }}
@@ -2525,6 +3068,85 @@ jobs:
           kubernetes-workload-probe-startup-http-path: ${{ steps.kpm.outputs.KUBERNETES_WORKLOAD_PROBE_STARTUP_HTTP_PATH }}
           kubernetes-workload-replicas: ${{ steps.kpm.outputs.KUBERNETES_WORKLOAD_REPLICAS }}
           kubernetes-workload-revision-history-limit: ${{ steps.kpm.outputs.KUBERNETES_WORKLOAD_REVISION_HISTORY_LIMIT }}
+          kubernetes-workload-tolerations: ${{ steps.kpm.outputs.KUBERNETES_WORKLOAD_TOLERATIONS }}
+          kubernetes-workload-node-selector: ${{ steps.kpm.outputs.KUBERNETES_WORKLOAD_NODE_SELECTOR }}
+          kubernetes-workload-dns-policy: ${{ steps.kpm.outputs.KUBERNETES_WORKLOAD_DNS_POLICY }}
+          kubernetes-workload-priority-class-name: ${{ steps.kpm.outputs.KUBERNETES_WORKLOAD_PRIORITY_CLASS_NAME }}
+          kubernetes-workload-container-command: ${{ steps.kpm.outputs.KUBERNETES_WORKLOAD_CONTAINER_COMMAND }}
+          kubernetes-workload-container-args: ${{ steps.kpm.outputs.KUBERNETES_WORKLOAD_CONTAINER_ARGS }}
+          kubernetes-workload-min-ready-seconds: ${{ steps.kpm.outputs.KUBERNETES_WORKLOAD_MIN_READY_SECONDS }}
+          # Kubernetes Deployment generation
+          kubernetes-deployment-env-sub-path: ${{ steps.kpm.outputs.KUBERNETES_DEPLOYMENT_ENV_SUB_PATH }}
+          kubernetes-deployment-additional-labels: ${{ steps.kpm.outputs.KUBERNETES_DEPLOYMENT_ADDITIONAL_LABELS }}
+          kubernetes-deployment-additional-annotations: ${{ steps.kpm.outputs.KUBERNETES_DEPLOYMENT_ADDITIONAL_ANNOTATIONS }}
+          kubernetes-deployment-max-surge: ${{ steps.kpm.outputs.KUBERNETES_DEPLOYMENT_MAX_SURGE }}
+          kubernetes-deployment-max-unavailable: ${{ steps.kpm.outputs.KUBERNETES_DEPLOYMENT_MAX_UNAVAILABLE }}
+          kubernetes-deployment-ports-enabled: ${{ steps.kpm.outputs.KUBERNETES_DEPLOYMENT_PORTS_ENABLED }}
+          # Kubernetes StatefulSet generation
+          kubernetes-statefulset-service-name: ${{ steps.kpm.outputs.KUBERNETES_STATEFULSET_SERVICE_NAME }}
+          kubernetes-statefulset-pod-management-policy: ${{ steps.kpm.outputs.KUBERNETES_STATEFULSET_POD_MANAGEMENT_POLICY }}
+          kubernetes-statefulset-allow-unreliable-pod-management-policy: ${{ steps.kpm.outputs.KUBERNETES_STATEFULSET_ALLOW_UNRELIABLE_POD_MANAGEMENT_POLICY }}
+          kubernetes-statefulset-update-strategy-type: ${{ steps.kpm.outputs.KUBERNETES_STATEFULSET_UPDATE_STRATEGY_TYPE }}
+          kubernetes-statefulset-update-strategy-partition: ${{ steps.kpm.outputs.KUBERNETES_STATEFULSET_UPDATE_STRATEGY_PARTITION }}
+          kubernetes-statefulset-pvc-enabled: ${{ steps.kpm.outputs.KUBERNETES_STATEFULSET_PVC_ENABLED }}
+          kubernetes-statefulset-pvc-storage-class: ${{ steps.kpm.outputs.KUBERNETES_STATEFULSET_PVC_STORAGE_CLASS }}
+          kubernetes-statefulset-pvc-storage-size: ${{ steps.kpm.outputs.KUBERNETES_STATEFULSET_PVC_STORAGE_SIZE }}
+          kubernetes-statefulset-pvc-access-mode: ${{ steps.kpm.outputs.KUBERNETES_STATEFULSET_PVC_ACCESS_MODE }}
+          kubernetes-statefulset-pvc-volume-name: ${{ steps.kpm.outputs.KUBERNETES_STATEFULSET_PVC_VOLUME_NAME }}
+          kubernetes-statefulset-pvc-mount-path: ${{ steps.kpm.outputs.KUBERNETES_STATEFULSET_PVC_MOUNT_PATH }}
+          kubernetes-statefulset-env-sub-path: ${{ steps.kpm.outputs.KUBERNETES_STATEFULSET_ENV_SUB_PATH }}
+          kubernetes-statefulset-additional-labels: ${{ steps.kpm.outputs.KUBERNETES_STATEFULSET_ADDITIONAL_LABELS }}
+          kubernetes-statefulset-additional-annotations: ${{ steps.kpm.outputs.KUBERNETES_STATEFULSET_ADDITIONAL_ANNOTATIONS }}
+          # Kubernetes DaemonSet generation
+          kubernetes-daemonset-env-sub-path: ${{ steps.kpm.outputs.KUBERNETES_DAEMONSET_ENV_SUB_PATH }}
+          kubernetes-daemonset-update-strategy-type: ${{ steps.kpm.outputs.KUBERNETES_DAEMONSET_UPDATE_STRATEGY_TYPE }}
+          kubernetes-daemonset-max-unavailable: ${{ steps.kpm.outputs.KUBERNETES_DAEMONSET_MAX_UNAVAILABLE }}
+          kubernetes-daemonset-host-network: ${{ steps.kpm.outputs.KUBERNETES_DAEMONSET_HOST_NETWORK }}
+          kubernetes-daemonset-host-pid: ${{ steps.kpm.outputs.KUBERNETES_DAEMONSET_HOST_PID }}
+          kubernetes-daemonset-host-ipc: ${{ steps.kpm.outputs.KUBERNETES_DAEMONSET_HOST_IPC }}
+          kubernetes-daemonset-run-as-non-root: ${{ steps.kpm.outputs.KUBERNETES_DAEMONSET_RUN_AS_NON_ROOT }}
+          kubernetes-daemonset-privileged: ${{ steps.kpm.outputs.KUBERNETES_DAEMONSET_PRIVILEGED }}
+          kubernetes-daemonset-dns-policy: ${{ steps.kpm.outputs.KUBERNETES_DAEMONSET_DNS_POLICY }}
+          kubernetes-daemonset-tolerations: ${{ steps.kpm.outputs.KUBERNETES_DAEMONSET_TOLERATIONS }}
+          kubernetes-daemonset-node-selector: ${{ steps.kpm.outputs.KUBERNETES_DAEMONSET_NODE_SELECTOR }}
+          kubernetes-daemonset-additional-labels: ${{ steps.kpm.outputs.KUBERNETES_DAEMONSET_ADDITIONAL_LABELS }}
+          kubernetes-daemonset-additional-annotations: ${{ steps.kpm.outputs.KUBERNETES_DAEMONSET_ADDITIONAL_ANNOTATIONS }}
+          # Kubernetes Job generation
+          kubernetes-job-name-suffix: ${{ steps.kpm.outputs.KUBERNETES_JOB_NAME_SUFFIX }}
+          kubernetes-job-combined-sub-path: ${{ steps.kpm.outputs.KUBERNETES_JOB_COMBINED_SUB_PATH }}
+          kubernetes-job-backoff-limit: ${{ steps.kpm.outputs.KUBERNETES_JOB_BACKOFF_LIMIT }}
+          kubernetes-job-completions: ${{ steps.kpm.outputs.KUBERNETES_JOB_COMPLETIONS }}
+          kubernetes-job-parallelism: ${{ steps.kpm.outputs.KUBERNETES_JOB_PARALLELISM }}
+          kubernetes-job-active-deadline-seconds: ${{ steps.kpm.outputs.KUBERNETES_JOB_ACTIVE_DEADLINE_SECONDS }}
+          kubernetes-job-ttl-seconds-after-finished: ${{ steps.kpm.outputs.KUBERNETES_JOB_TTL_SECONDS_AFTER_FINISHED }}
+          kubernetes-job-restart-policy: ${{ steps.kpm.outputs.KUBERNETES_JOB_RESTART_POLICY }}
+          kubernetes-job-env-sub-path: ${{ steps.kpm.outputs.KUBERNETES_JOB_ENV_SUB_PATH }}
+          kubernetes-job-additional-labels: ${{ steps.kpm.outputs.KUBERNETES_JOB_ADDITIONAL_LABELS }}
+          kubernetes-job-additional-annotations: ${{ steps.kpm.outputs.KUBERNETES_JOB_ADDITIONAL_ANNOTATIONS }}
+          kubernetes-job-liveness-probe-enabled: ${{ steps.kpm.outputs.KUBERNETES_JOB_LIVENESS_PROBE_ENABLED }}
+          kubernetes-job-readiness-probe-enabled: ${{ steps.kpm.outputs.KUBERNETES_JOB_READINESS_PROBE_ENABLED }}
+          kubernetes-job-startup-probe-enabled: ${{ steps.kpm.outputs.KUBERNETES_JOB_STARTUP_PROBE_ENABLED }}
+          kubernetes-job-ports-enabled: ${{ steps.kpm.outputs.KUBERNETES_JOB_PORTS_ENABLED }}
+          # Kubernetes CronJob generation
+          kubernetes-cronjob-name-suffix: ${{ steps.kpm.outputs.KUBERNETES_CRONJOB_NAME_SUFFIX }}
+          kubernetes-cronjob-combined-sub-path: ${{ steps.kpm.outputs.KUBERNETES_CRONJOB_COMBINED_SUB_PATH }}
+          kubernetes-cronjob-concurrency-policy: ${{ steps.kpm.outputs.KUBERNETES_CRONJOB_CONCURRENCY_POLICY }}
+          kubernetes-cronjob-starting-deadline-seconds: ${{ steps.kpm.outputs.KUBERNETES_CRONJOB_STARTING_DEADLINE_SECONDS }}
+          kubernetes-cronjob-successful-jobs-history-limit: ${{ steps.kpm.outputs.KUBERNETES_CRONJOB_SUCCESSFUL_JOBS_HISTORY_LIMIT }}
+          kubernetes-cronjob-failed-jobs-history-limit: ${{ steps.kpm.outputs.KUBERNETES_CRONJOB_FAILED_JOBS_HISTORY_LIMIT }}
+          kubernetes-cronjob-backoff-limit: ${{ steps.kpm.outputs.KUBERNETES_CRONJOB_BACKOFF_LIMIT }}
+          kubernetes-cronjob-completions: ${{ steps.kpm.outputs.KUBERNETES_CRONJOB_COMPLETIONS }}
+          kubernetes-cronjob-parallelism: ${{ steps.kpm.outputs.KUBERNETES_CRONJOB_PARALLELISM }}
+          kubernetes-cronjob-active-deadline-seconds: ${{ steps.kpm.outputs.KUBERNETES_CRONJOB_ACTIVE_DEADLINE_SECONDS }}
+          kubernetes-cronjob-restart-policy: ${{ steps.kpm.outputs.KUBERNETES_CRONJOB_RESTART_POLICY }}
+          kubernetes-cronjob-env-sub-path: ${{ steps.kpm.outputs.KUBERNETES_CRONJOB_ENV_SUB_PATH }}
+          kubernetes-cronjob-additional-labels: ${{ steps.kpm.outputs.KUBERNETES_CRONJOB_ADDITIONAL_LABELS }}
+          kubernetes-cronjob-additional-annotations: ${{ steps.kpm.outputs.KUBERNETES_CRONJOB_ADDITIONAL_ANNOTATIONS }}
+          kubernetes-cronjob-liveness-probe-enabled: ${{ steps.kpm.outputs.KUBERNETES_CRONJOB_LIVENESS_PROBE_ENABLED }}
+          kubernetes-cronjob-readiness-probe-enabled: ${{ steps.kpm.outputs.KUBERNETES_CRONJOB_READINESS_PROBE_ENABLED }}
+          kubernetes-cronjob-startup-probe-enabled: ${{ steps.kpm.outputs.KUBERNETES_CRONJOB_STARTUP_PROBE_ENABLED }}
+          kubernetes-cronjob-ports-enabled: ${{ steps.kpm.outputs.KUBERNETES_CRONJOB_PORTS_ENABLED }}
+          kubernetes-cronjob-ttl-seconds-after-finished: ${{ steps.kpm.outputs.KUBERNETES_CRONJOB_TTL_SECONDS_AFTER_FINISHED }}
           # Kubernetes Service generation
           kubernetes-service-generation-enabled: ${{ steps.kpm.outputs.KUBERNETES_SERVICE_GENERATION_ENABLED }}
           kubernetes-service-type: ${{ steps.kpm.outputs.KUBERNETES_SERVICE_TYPE }}
@@ -2535,6 +3157,18 @@ jobs:
           kubernetes-service-combined-sub-path: ${{ steps.kpm.outputs.KUBERNETES_SERVICE_COMBINED_SUB_PATH }}
           kubernetes-service-additional-labels: ${{ steps.kpm.outputs.KUBERNETES_SERVICE_ADDITIONAL_LABELS }}
           kubernetes-service-additional-annotations: ${{ steps.kpm.outputs.KUBERNETES_SERVICE_ADDITIONAL_ANNOTATIONS }}
+          kubernetes-service-port-name: ${{ steps.kpm.outputs.KUBERNETES_SERVICE_PORT_NAME }}
+          kubernetes-service-node-port: ${{ steps.kpm.outputs.KUBERNETES_SERVICE_NODE_PORT }}
+          kubernetes-service-external-name: ${{ steps.kpm.outputs.KUBERNETES_SERVICE_EXTERNAL_NAME }}
+          kubernetes-service-external-traffic-policy: ${{ steps.kpm.outputs.KUBERNETES_SERVICE_EXTERNAL_TRAFFIC_POLICY }}
+          # Kubernetes PodDisruptionBudget generation
+          kubernetes-poddisruptionbudget-generation-enabled: ${{ steps.kpm.outputs.KUBERNETES_PODDISRUPTIONBUDGET_GENERATION_ENABLED }}
+          kubernetes-poddisruptionbudget-name-suffix: ${{ steps.kpm.outputs.KUBERNETES_PODDISRUPTIONBUDGET_NAME_SUFFIX }}
+          kubernetes-poddisruptionbudget-combined-sub-path: ${{ steps.kpm.outputs.KUBERNETES_PODDISRUPTIONBUDGET_COMBINED_SUB_PATH }}
+          kubernetes-poddisruptionbudget-strategy: ${{ steps.kpm.outputs.KUBERNETES_PODDISRUPTIONBUDGET_STRATEGY }}
+          kubernetes-poddisruptionbudget-value: ${{ steps.kpm.outputs.KUBERNETES_PODDISRUPTIONBUDGET_VALUE }}
+          kubernetes-poddisruptionbudget-additional-labels: ${{ steps.kpm.outputs.KUBERNETES_PODDISRUPTIONBUDGET_ADDITIONAL_LABELS }}
+          kubernetes-poddisruptionbudget-additional-annotations: ${{ steps.kpm.outputs.KUBERNETES_PODDISRUPTIONBUDGET_ADDITIONAL_ANNOTATIONS }}
 
           # Token substitution
           token-delimiter-style: ${{ steps.kpm.outputs.TOKEN_DELIMITER_STYLE }}
@@ -2559,6 +3193,7 @@ jobs:
           tag-version-source-two-file-name: ${{ steps.kpm.outputs.TAG_VERSION_SOURCE_TWO_FILE_NAME }}
           tag-version-source-two-pattern: ${{ steps.kpm.outputs.TAG_VERSION_SOURCE_TWO_PATTERN }}
           tag-version-source-two-prefix-parts: ${{ steps.kpm.outputs.TAG_VERSION_SOURCE_TWO_PREFIX_PARTS }}
+          tag-version-use-source-version-exact: ${{ steps.kpm.outputs.TAG_VERSION_USE_SOURCE_VERSION_EXACT }}
 
           # Quality check options
           block-slashes: ${{ steps.kpm.outputs.BLOCK_SLASHES }}
@@ -2567,6 +3202,7 @@ jobs:
           qc-require-conventional-branches: ${{ steps.kpm.outputs.QC_REQUIRE_CONVENTIONAL_BRANCHES }}
           qc-require-conventional-commits: ${{ steps.kpm.outputs.QC_REQUIRE_CONVENTIONAL_COMMITS }}
           qc-block-conventional-commits: ${{ steps.kpm.outputs.QC_BLOCK_CONVENTIONAL_COMMITS }}
+          qc-block-duplicate-commit-messages: ${{ steps.kpm.outputs.QC_BLOCK_DUPLICATE_COMMIT_MESSAGES }}
 
           # Hook script paths
           hook-pre-build-script-sub-path: ${{ steps.kpm.outputs.HOOK_PRE_BUILD_SCRIPT_SUB_PATH }}

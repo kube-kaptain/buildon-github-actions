@@ -125,7 +125,7 @@ main() {
     # it, so a stray file is named where the author put it rather than at some
     # path under the build output.
     #
-    # Shape only: a patch here may target a manifest that additional-manifests
+    # Shape only: a modifier here may target a manifest that additional-manifests
     # or a hook supplies, so its target cannot be looked for until combined/
     # exists. manifest_tree_validate below does that once, on the merged tree.
     if ! manifest_dir_reject_unpackageable "${MANIFESTS_SUB_PATH}"; then
@@ -210,10 +210,10 @@ main() {
   fi
 
   # Validate combined/ has files (from any source: hooks or src/kubernetes),
-  # and that it holds nothing but .yaml manifests and their yq patch files.
+  # and that it holds nothing but .yaml manifests and their modifier files.
   # The grammar, the checks and the rejection messages all live in
   # lib/manifest-file-kinds.bash so every level of the build agrees on what a
-  # patch file is and complains about it in the same words.
+  # modifier file is and complains about it in the same words.
   if ! manifest_tree_validate "${MANIFESTS_COMBINED_SUB_PATH}"; then
     validation_failed=true
   fi
@@ -221,7 +221,7 @@ main() {
   # "Holds nothing" and "holds something it should not" are separate problems,
   # so this is the caller's judgement on the counts rather than something the
   # library decided. A tree with only a stray file reports both.
-  if [[ $((MANIFEST_TREE_MANIFEST_COUNT + MANIFEST_TREE_PATCH_COUNT)) -eq 0 ]]; then
+  if [[ $((MANIFEST_TREE_MANIFEST_COUNT + MANIFEST_TREE_MODIFIER_COUNT)) -eq 0 ]]; then
     log_error "No manifests to package (${MANIFESTS_COMBINED_SUB_PATH} holds nothing packageable)"
     validation_failed=true
   fi
@@ -233,8 +233,8 @@ main() {
 
   log ""
   log "Found ${MANIFEST_TREE_MANIFEST_COUNT} manifest file(s) (.yaml)"
-  if [[ "${MANIFEST_TREE_PATCH_COUNT}" -gt 0 ]]; then
-    log "Found ${MANIFEST_TREE_PATCH_COUNT} yq patch file(s)"
+  if [[ "${MANIFEST_TREE_MODIFIER_COUNT}" -gt 0 ]]; then
+    log "Found ${MANIFEST_TREE_MODIFIER_COUNT} modifier file(s)"
   fi
 
   # Compute the zip filename (used as a built-in token)

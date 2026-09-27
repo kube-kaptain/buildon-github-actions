@@ -782,7 +782,7 @@ stage_additional_manifest() {
 }
 
 # =============================================================================
-# Manifests tree allowlist: .yaml manifests and their yq patches, nothing else
+# Manifests tree allowlist: .yaml manifests and their modifiers, nothing else
 # =============================================================================
 
 @test "allowlist: dotfiles are ignored rather than rejected" {
@@ -813,7 +813,7 @@ stage_additional_manifest() {
 
   run "$SCRIPTS_DIR/kubernetes-manifests-package-prepare"
   [ "$status" -ne 0 ]
-  assert_output_contains "not a manifest (.yaml) or a yq patch"
+  assert_output_contains "not a manifest (.yaml) or a modifier"
 }
 
 @test "allowlist: all three patch types are accepted beside their target" {
@@ -826,7 +826,7 @@ stage_additional_manifest() {
   run "$SCRIPTS_DIR/kubernetes-manifests-package-prepare"
   [ "$status" -eq 0 ]
   assert_output_contains "Found 1 manifest file(s) (.yaml)"
-  assert_output_contains "Found 3 yq patch file(s)"
+  assert_output_contains "Found 3 modifier file(s)"
 }
 
 @test "allowlist: a patch with no target manifest fails" {
@@ -850,14 +850,14 @@ stage_additional_manifest() {
   assert_output_contains "no target manifest 'deployment.yaml' beside it"
 }
 
-@test "allowlist: an unknown patch type fails" {
+@test "allowlist: an unknown yq patch type fails" {
   set_required_env
   create_manifest "deployment.yaml"
   printf 'x' > "$TEST_MANIFESTS/deployment.yaml.yq-sed-thing"
 
   run "$SCRIPTS_DIR/kubernetes-manifests-package-prepare"
   [ "$status" -ne 0 ]
-  assert_output_contains "unknown patch type"
+  assert_output_contains "unknown modifier type"
 }
 
 @test "allowlist: a patch description must carry a letter or digit" {
@@ -900,7 +900,7 @@ stage_additional_manifest() {
 
   run "$SCRIPTS_DIR/kubernetes-manifests-package-prepare"
   [ "$status" -eq 0 ]
-  assert_output_contains "Found 1 yq patch file(s)"
+  assert_output_contains "Found 1 modifier file(s)"
 }
 
 @test "allowlist: every offender is reported in one run" {
@@ -913,7 +913,7 @@ stage_additional_manifest() {
   run "$SCRIPTS_DIR/kubernetes-manifests-package-prepare"
   [ "$status" -ne 0 ]
   assert_output_contains "README.txt"
-  assert_output_contains "unknown patch type"
+  assert_output_contains "unknown modifier type"
   assert_output_contains "no target manifest 'service.yaml'"
 }
 
@@ -925,7 +925,7 @@ stage_additional_manifest() {
   run "$SCRIPTS_DIR/kubernetes-manifests-package-prepare"
   [ "$status" -ne 0 ]
   assert_output_contains "additional-manifests"
-  assert_output_contains "notes.txt: not a manifest (.yaml) or a yq patch"
+  assert_output_contains "notes.txt: not a manifest (.yaml) or a modifier"
 }
 
 @test "allowlist: a patch in additional-manifests may target a manifest from src" {
@@ -937,7 +937,7 @@ stage_additional_manifest() {
 
   run "$SCRIPTS_DIR/kubernetes-manifests-package-prepare"
   [ "$status" -eq 0 ]
-  assert_output_contains "Found 1 yq patch file(s)"
+  assert_output_contains "Found 1 modifier file(s)"
 }
 
 @test "allowlist: strays in both contributor directories report in one run" {
@@ -965,6 +965,62 @@ stage_additional_manifest() {
   [ "$explained" -eq 1 ]
 }
 
+@test "allowlist: a delete modifier is accepted beside its target" {
+  set_required_env
+  create_manifest "deployment.yaml"
+  printf '# not wanted in this environment\n' > "$TEST_MANIFESTS/deployment.yaml.delete-unwanted"
+  run "$SCRIPTS_DIR/kubernetes-manifests-package-prepare"
+  [ "$status" -eq 0 ]
+  assert_output_contains "Found 1 manifest file(s) (.yaml)"
+  assert_output_contains "Found 1 modifier file(s)"
+}
+
+@test "allowlist: a delete modifier with no target manifest fails" {
+  set_required_env
+  create_manifest "deployment.yaml"
+  : > "$TEST_MANIFESTS/service.yaml.delete-gone"
+  run "$SCRIPTS_DIR/kubernetes-manifests-package-prepare"
+  [ "$status" -ne 0 ]
+  assert_output_contains "modifier has no target manifest 'service.yaml' beside it"
+}
+
+@test "allowlist: a delete modifier needs a description" {
+  set_required_env
+  create_manifest "deployment.yaml"
+  : > "$TEST_MANIFESTS/deployment.yaml.delete"
+  run "$SCRIPTS_DIR/kubernetes-manifests-package-prepare"
+  [ "$status" -ne 0 ]
+  assert_output_contains "unknown modifier type in '.yaml.delete'"
+}
+
+@test "allowlist: an unknown modifier type names what it found and lists the known types" {
+  set_required_env
+  create_manifest "deployment.yaml"
+  printf 'x' > "$TEST_MANIFESTS/deployment.yaml.sed-thing"
+  run "$SCRIPTS_DIR/kubernetes-manifests-package-prepare"
+  [ "$status" -ne 0 ]
+  assert_output_contains "unknown modifier type in '.yaml.sed-thing'"
+  assert_output_contains "yq-merge-yaml, yq-expression-list, yq-from-file, delete"
+}
+
+@test "allowlist: a leftover like .yaml.bak is an unknown modifier, not a stray" {
+  set_required_env
+  create_manifest "deployment.yaml"
+  printf 'x' > "$TEST_MANIFESTS/deployment.yaml.bak"
+  run "$SCRIPTS_DIR/kubernetes-manifests-package-prepare"
+  [ "$status" -ne 0 ]
+  assert_output_contains "unknown modifier type in '.yaml.bak'"
+}
+
+@test "allowlist: a manifest whose name repeats .yaml is still a manifest" {
+  set_required_env
+  create_manifest "deployment.yaml"
+  create_manifest "a.yaml.b.yaml"
+  run "$SCRIPTS_DIR/kubernetes-manifests-package-prepare"
+  [ "$status" -eq 0 ]
+  assert_output_contains "Found 2 manifest file(s) (.yaml)"
+}
+
 @test "allowlist: an ordering-prefixed description like the house style is fine" {
   set_required_env
   create_manifest "deployment.yaml"
@@ -972,7 +1028,7 @@ stage_additional_manifest() {
 
   run "$SCRIPTS_DIR/kubernetes-manifests-package-prepare"
   [ "$status" -eq 0 ]
-  assert_output_contains "Found 1 yq patch file(s)"
+  assert_output_contains "Found 1 modifier file(s)"
 }
 
 @test "allowlist: an underscore in a description is rejected" {
