@@ -965,6 +965,34 @@ stage_additional_manifest() {
   [ "$explained" -eq 1 ]
 }
 
+@test "allowlist: a delete modifier is accepted beside its target" {
+  set_required_env
+  create_manifest "deployment.yaml"
+  printf '# not wanted in this environment\n' > "$TEST_MANIFESTS/deployment.yaml.delete-unwanted"
+  run "$SCRIPTS_DIR/kubernetes-manifests-package-prepare"
+  [ "$status" -eq 0 ]
+  assert_output_contains "Found 1 manifest file(s) (.yaml)"
+  assert_output_contains "Found 1 modifier file(s)"
+}
+
+@test "allowlist: a delete modifier with no target manifest fails" {
+  set_required_env
+  create_manifest "deployment.yaml"
+  : > "$TEST_MANIFESTS/service.yaml.delete-gone"
+  run "$SCRIPTS_DIR/kubernetes-manifests-package-prepare"
+  [ "$status" -ne 0 ]
+  assert_output_contains "modifier has no target manifest 'service.yaml' beside it"
+}
+
+@test "allowlist: a delete modifier needs a description" {
+  set_required_env
+  create_manifest "deployment.yaml"
+  : > "$TEST_MANIFESTS/deployment.yaml.delete"
+  run "$SCRIPTS_DIR/kubernetes-manifests-package-prepare"
+  [ "$status" -ne 0 ]
+  assert_output_contains "unknown modifier type in '.yaml.delete'"
+}
+
 @test "allowlist: an unknown modifier type names what it found and lists the known types" {
   set_required_env
   create_manifest "deployment.yaml"
@@ -972,7 +1000,7 @@ stage_additional_manifest() {
   run "$SCRIPTS_DIR/kubernetes-manifests-package-prepare"
   [ "$status" -ne 0 ]
   assert_output_contains "unknown modifier type in '.yaml.sed-thing'"
-  assert_output_contains "yq-merge-yaml, yq-expression-list, yq-from-file"
+  assert_output_contains "yq-merge-yaml, yq-expression-list, yq-from-file, delete"
 }
 
 @test "allowlist: a leftover like .yaml.bak is an unknown modifier, not a stray" {

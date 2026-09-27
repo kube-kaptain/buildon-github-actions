@@ -16,6 +16,7 @@
 #   yq-merge-yaml        yq patch: a YAML fragment, merged into the target
 #   yq-expression-list   yq patch: one yq expression per line, applied in turn
 #   yq-from-file         yq patch: one yq expression, may span lines, pipe-joined
+#   delete               removes the target manifest from the tree
 #
 # and <desc> is a description of lower-case letters, digits and hyphens with at
 # least one letter or digit, which is how the author controls the order a
@@ -82,7 +83,7 @@
 # not expressible here, which is why matching a shape means "looks right"
 # rather than "is right" and manifest_file_classify still has work to do.
 MANIFEST_FILE_GLOB='*.yaml'
-MANIFEST_MODIFIER_TYPES=(yq-merge-yaml yq-expression-list yq-from-file)
+MANIFEST_MODIFIER_TYPES=(yq-merge-yaml yq-expression-list yq-from-file delete)
 
 # Derived at source time from the two definitions above: find arguments for a
 # positive shape match, the type list as it reads in an error message, and the
