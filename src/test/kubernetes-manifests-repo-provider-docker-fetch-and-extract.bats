@@ -50,7 +50,8 @@ fi
 if [[ "\$1" == "cp" ]]; then
   # \$2 is container:path, \$3 is destination
   dest="\$3"
-  cp "${MOCK_ZIP_DIR}/test-manifests.zip" "\$dest"
+  # Like docker cp: a symlink is copied as a link, not followed.
+  cp -P "${MOCK_ZIP_DIR}/test-manifests.zip" "\$dest"
   exit 0
 fi
 
@@ -173,6 +174,50 @@ MOCKDOCKER
 
   [ "$status" -ne 0 ]
   assert_output_contains "No zip file found"
+}
+
+@test "a symlink in the manifests zip fails the fetch" {
+  local stage="$BATS_TEST_TMPDIR/stage"
+  mkdir -p "$stage/manifests"
+  echo "deployment.yaml content" > "$stage/manifests/deployment.yaml"
+  ln -s /etc/hosts "$stage/manifests/stolen.yaml"
+  rm -f "$MOCK_ZIP_DIR/test-manifests.zip"
+  (cd "$stage" && zip -q -r -y "$MOCK_ZIP_DIR/test-manifests.zip" manifests)
+
+  run "$REPO_PROVIDERS_DIR/kubernetes-manifests-repo-provider-docker-fetch-and-extract" \
+    "ghcr.io/myorg/myapp-manifests:1.2.3"
+
+  [ "$status" -ne 0 ]
+  assert_output_contains "holds entries other than regular files and directories"
+  assert_output_contains "manifests/stolen.yaml: a symbolic link"
+}
+
+@test "a symlinked directory with a file behind it writes nothing outside" {
+  local outside="$BATS_TEST_TMPDIR/outside"
+  mkdir -p "$outside" "$BATS_TEST_TMPDIR/s1/manifests" "$BATS_TEST_TMPDIR/s2/manifests/dir"
+  ln -s "$outside" "$BATS_TEST_TMPDIR/s1/manifests/dir"
+  echo "content" > "$BATS_TEST_TMPDIR/s2/manifests/dir/escaped.yaml"
+  rm -f "$MOCK_ZIP_DIR/test-manifests.zip"
+  (cd "$BATS_TEST_TMPDIR/s1" && zip -q -y "$MOCK_ZIP_DIR/test-manifests.zip" manifests/dir)
+  (cd "$BATS_TEST_TMPDIR/s2" && zip -q "$MOCK_ZIP_DIR/test-manifests.zip" manifests/dir/escaped.yaml)
+
+  run "$REPO_PROVIDERS_DIR/kubernetes-manifests-repo-provider-docker-fetch-and-extract" \
+    "ghcr.io/myorg/myapp-manifests:1.2.3"
+
+  [ "$status" -ne 0 ]
+  assert_output_contains "manifests/dir: a symbolic link"
+  [ "$(find "$outside" -mindepth 1 | grep -c .)" -eq 0 ]
+}
+
+@test "a symlinked zip in the image fails the fetch" {
+  mv "$MOCK_ZIP_DIR/test-manifests.zip" "$MOCK_ZIP_DIR/real.zip"
+  ln -s "$MOCK_ZIP_DIR/real.zip" "$MOCK_ZIP_DIR/test-manifests.zip"
+
+  run "$REPO_PROVIDERS_DIR/kubernetes-manifests-repo-provider-docker-fetch-and-extract" \
+    "ghcr.io/myorg/myapp-manifests:1.2.3"
+
+  [ "$status" -ne 0 ]
+  assert_output_contains "Manifests zip in the image is a symbolic link"
 }
 
 @test "creates output directories automatically" {
