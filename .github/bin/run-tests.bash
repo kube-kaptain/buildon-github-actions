@@ -423,6 +423,13 @@ check_token_patterns() {
   log_info "No hand-built token patterns"
 }
 
+# Check schema validators are only called through SCHEMA_VALIDATION_COMMAND
+check_schema_validator_calls() {
+  log_info "Checking schema validators are only called through SCHEMA_VALIDATION_COMMAND"
+  "${SCRIPT_DIR}/check-schema-validator-calls.bash"
+  log_info "No direct schema validator calls"
+}
+
 validate_guide_examples() {
   log_info "Validating guide example KaptainPM.yaml files against schema"
   ( cd "${PROJECT_ROOT}" && "${SCRIPT_DIR}/validate-guides-against-kaptainpm-schema.bash" )
@@ -461,6 +468,9 @@ main() {
 
   # Check nothing hand-builds token regexes or delimiter stripping
   check_token_patterns
+
+  # Check schema validators are only called through SCHEMA_VALIDATION_COMMAND
+  check_schema_validator_calls
 
   # Run shellcheck
   run_shellcheck
