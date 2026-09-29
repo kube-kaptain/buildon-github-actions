@@ -8,7 +8,9 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/common.bash"
 
-OUTPUT_DIR="${1:-$SCRIPT_DIR/output}"
+# Scratch repos go under the repo root kaptain-out/, not the source tree; only
+# the bundles in ../fixtures are kept.
+OUTPUT_DIR="${1:-$(cd "$SCRIPT_DIR/../../.." && pwd)/kaptain-out/test-repo-gen}"
 mkdir -p "$OUTPUT_DIR"
 
 # Scenario: Clean feature branch - should pass all checks
