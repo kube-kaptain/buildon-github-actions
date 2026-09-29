@@ -44,6 +44,7 @@
 #
 #   manifest_files_find_packageable   - what we want
 #   manifest_files_find_unpackageable - what we do not accept
+#   manifest_files_find_non_regular   - symlinks and other non-files, never accepted
 #   manifest_dir_reject_unpackageable - report what we do not accept, and fail
 #   manifest_file_classify            - judge one file by name and filesystem
 #   manifest_tree_validate            - both questions over a merged tree
@@ -144,6 +145,16 @@ manifest_files_find_unpackageable() {
     ! \( "${MANIFEST_SHAPE_FIND_ARGS[@]}" \) -print
 }
 
+# Walk a tree for entries that are neither regular files nor directories,
+# dotfiles pruned as in the walks above. A symlink can point outside the tree,
+# and cp, yq and zip read through it (yq -i also writes through it), so a
+# contributor could pull a runner file into a published manifest or modify one.
+#
+# Usage: manifest_files_find_non_regular <directory>
+manifest_files_find_non_regular() {
+  find "${1}" -mindepth 1 -name '.*' -prune -o ! -type f ! -type d -print
+}
+
 # State what a manifests tree may hold. For the caller to log once on its way
 # out, however many directories offended, rather than repeating it per
 # directory.
@@ -152,7 +163,7 @@ manifest_files_find_unpackageable() {
 manifest_rules_explain() {
   log_error "A manifests tree may hold only .yaml manifests and their"
   log_error ".yaml.<type>-<desc> modifier files, type one of: ${MANIFEST_MODIFIER_TYPES_LIST}."
-  log_error "Dotfiles are ignored."
+  log_error "Symbolic links are rejected. Dotfiles are ignored."
 }
 
 # Internal: log a heading and one indented line per rejection.
@@ -195,6 +206,14 @@ manifest_dir_reject_unpackageable() {
     fi
     rejected+=("${file#"${dir}"/}: ${MANIFEST_FILE_REASON}")
   done < <(manifest_files_find_unpackageable "${dir}")
+
+  while IFS= read -r file; do
+    if [[ -L "${file}" ]]; then
+      rejected+=("${file#"${dir}"/}: a symbolic link; only regular files and directories are allowed")
+    else
+      rejected+=("${file#"${dir}"/}: not a regular file or directory")
+    fi
+  done < <(manifest_files_find_non_regular "${dir}")
 
   if [[ ${#rejected[@]} -eq 0 ]]; then
     return 0

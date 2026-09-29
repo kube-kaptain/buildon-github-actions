@@ -190,6 +190,86 @@ EOF
 # content_unzip_contract
 # =============================================================================
 
+# Helper: a manifests zip whose <project>/<link> is a symlink to <target>,
+# stored as a link (zip -y), beside a normal deployment.yaml.
+make_symlink_manifests_zip() {
+  local zip_path="$1" project="$2" link="$3" target="$4"
+  local stage="${TEST_DIR}/_stage-$$-${RANDOM}"
+  mkdir -p "${stage}/${project}"
+  printf 'apiVersion: v1\nkind: ConfigMap\n' > "${stage}/${project}/deployment.yaml"
+  ln -s "${target}" "${stage}/${project}/${link}"
+  ( cd "${stage}" && zip -qry "${zip_path}" "${project}" )
+  rm -rf "${stage}"
+}
+
+@test "content_unzip_manifests: a symlinked file fails and nothing is staged" {
+  mkdir -p "$TEST_DIR/zips" "$TEST_DIR/staged"
+  make_symlink_manifests_zip "$TEST_DIR/zips/foo-1.0-manifests.zip" foo stolen.yaml /etc/hosts
+
+  run content_unzip_manifests "$TEST_DIR/zips/foo-1.0-manifests.zip" "$TEST_DIR/unzipped/foo" "$TEST_DIR/staged"
+  [ "$status" -ne 0 ]
+  assert_output_contains "holds entries other than regular files and directories"
+  assert_output_contains "foo/stolen.yaml: a symbolic link"
+  [ ! -e "$TEST_DIR/staged/foo" ]
+}
+
+@test "content_unzip_manifests: a dot-named symlink fails too" {
+  mkdir -p "$TEST_DIR/zips" "$TEST_DIR/staged"
+  make_symlink_manifests_zip "$TEST_DIR/zips/foo-1.0-manifests.zip" foo .hidden /etc/hosts
+
+  run content_unzip_manifests "$TEST_DIR/zips/foo-1.0-manifests.zip" "$TEST_DIR/unzipped/foo" "$TEST_DIR/staged"
+  [ "$status" -ne 0 ]
+  assert_output_contains "foo/.hidden: a symbolic link"
+}
+
+@test "content_unzip_manifests: a symlinked directory with a file behind it writes nothing outside" {
+  # The link comes first in the zip, then a file under it: extraction must not
+  # follow the link and write into the directory it points at.
+  mkdir -p "$TEST_DIR/zips" "$TEST_DIR/staged" "$TEST_DIR/outside" "$TEST_DIR/s1/foo" "$TEST_DIR/s2/foo/dir"
+  ln -s "$TEST_DIR/outside" "$TEST_DIR/s1/foo/dir"
+  printf 'apiVersion: v1\nkind: ConfigMap\n' > "$TEST_DIR/s2/foo/dir/escaped.yaml"
+  ( cd "$TEST_DIR/s1" && zip -qy "$TEST_DIR/zips/foo-1.0-manifests.zip" foo/dir )
+  ( cd "$TEST_DIR/s2" && zip -q "$TEST_DIR/zips/foo-1.0-manifests.zip" foo/dir/escaped.yaml )
+
+  run content_unzip_manifests "$TEST_DIR/zips/foo-1.0-manifests.zip" "$TEST_DIR/unzipped/foo" "$TEST_DIR/staged"
+  [ "$status" -ne 0 ]
+  assert_output_contains "foo/dir: a symbolic link"
+  [ "$(find "$TEST_DIR/outside" -mindepth 1 | grep -c .)" -eq 0 ]
+  [ ! -e "$TEST_DIR/staged/foo" ]
+}
+
+@test "content_unzip_manifests: a file that is not a zip fails" {
+  mkdir -p "$TEST_DIR/zips" "$TEST_DIR/staged"
+  printf 'not a zip' > "$TEST_DIR/zips/foo-1.0-manifests.zip"
+
+  run content_unzip_manifests "$TEST_DIR/zips/foo-1.0-manifests.zip" "$TEST_DIR/unzipped/foo" "$TEST_DIR/staged"
+  [ "$status" -ne 0 ]
+}
+
+@test "content_unzip_contract: a symlinked contract.yaml fails" {
+  mkdir -p "$TEST_DIR/zips" "$TEST_DIR/s"
+  ln -s /etc/hosts "$TEST_DIR/s/contract.yaml"
+  ( cd "$TEST_DIR/s" && zip -qy "$TEST_DIR/zips/foo-1.0-contract.zip" contract.yaml )
+
+  run content_unzip_contract "$TEST_DIR/zips/foo-1.0-contract.zip" "$TEST_DIR/unzipped/foo" "$TEST_DIR/contracts" "$TEST_DIR/defaults" foo
+  [ "$status" -ne 0 ]
+  assert_output_contains "contract.yaml: a symbolic link"
+  [ ! -e "$TEST_DIR/contracts/foo/contract.yaml" ]
+}
+
+@test "content_unzip_contract: a symlinked defaults value fails" {
+  mkdir -p "$TEST_DIR/zips"
+  make_contract_zip "$TEST_DIR/zips/foo-1.0-contract.zip"
+  mkdir -p "$TEST_DIR/s/defaults"
+  ln -s /etc/hosts "$TEST_DIR/s/defaults/Stolen"
+  ( cd "$TEST_DIR/s" && zip -qry "$TEST_DIR/zips/foo-1.0-contract.zip" defaults )
+
+  run content_unzip_contract "$TEST_DIR/zips/foo-1.0-contract.zip" "$TEST_DIR/unzipped/foo" "$TEST_DIR/contracts" "$TEST_DIR/defaults" foo
+  [ "$status" -ne 0 ]
+  assert_output_contains "defaults/Stolen: a symbolic link"
+  [ ! -e "$TEST_DIR/defaults/foo/Stolen" ]
+}
+
 @test "content_unzip_contract: extracts contract.yaml to per-project dir" {
   mkdir -p "$TEST_DIR/zips" "$TEST_DIR/unzipped/foo" "$TEST_DIR/contracts" "$TEST_DIR/defaults"
   make_contract_zip "$TEST_DIR/zips/foo-1.0-contract.zip"

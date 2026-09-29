@@ -555,6 +555,10 @@ log "Stage 6: Applying yq transforms..."
 
 cp -r "${SED_DIR}"/. "${YQ_DIR}/"
 
+# User expressions run with file and env access off, so a transform cannot read
+# a runner file or variable into the rendered manifests.
+USER_YQ=(yq --security-disable-file-ops --security-disable-env-ops)
+
 # Inline yq transforms (from KaptainPM.yaml yqTransform)
 if [[ -n "${YQ_TRANSFORM_JSON}" && "${YQ_TRANSFORM_JSON}" != "null" && "${YQ_TRANSFORM_JSON}" != "{}" ]]; then
   # Global inline yq expressions
@@ -563,7 +567,7 @@ if [[ -n "${YQ_TRANSFORM_JSON}" && "${YQ_TRANSFORM_JSON}" != "null" && "${YQ_TRA
     EXPRESSION=$(echo "${YQ_TRANSFORM_JSON}" | jq -r ".global[${i}]")
     log "  inline global: ${EXPRESSION}"
     while IFS= read -r manifest; do
-      yq eval -i "${EXPRESSION}" "${manifest}"
+      "${USER_YQ[@]}" eval -i "${EXPRESSION}" "${manifest}"
     done < <(find "${YQ_DIR}" -name '*.yaml' -type f)
   done
 
@@ -581,7 +585,7 @@ if [[ -n "${YQ_TRANSFORM_JSON}" && "${YQ_TRANSFORM_JSON}" != "null" && "${YQ_TRA
     for ((j = 0; j < EXPR_COUNT; j++)); do
       EXPRESSION=$(echo "${YQ_TRANSFORM_JSON}" | jq -r ".perFile[${i}].expressions[${j}]")
       log "  inline ${TARGET_FILE}: ${EXPRESSION}"
-      yq eval -i "${EXPRESSION}" "${YQ_DIR}/${TARGET_FILE}"
+      "${USER_YQ[@]}" eval -i "${EXPRESSION}" "${YQ_DIR}/${TARGET_FILE}"
     done
   done
 fi
@@ -595,7 +599,7 @@ if [[ -d "${TRANSFORMS_GLOBAL}" ]]; then
     transform_name="$(basename "${transform}")"
     log "  file global: ${transform_name}"
     while IFS= read -r manifest; do
-      yq eval -i "$(cat "${transform}")" "${manifest}"
+      "${USER_YQ[@]}" eval -i "$(cat "${transform}")" "${manifest}"
     done < <(find "${YQ_DIR}" -name '*.yaml' -type f)
   done
 fi
@@ -614,7 +618,7 @@ if [[ -d "${TRANSFORMS_PER_FILE}" ]]; then
     for transform in $(find "${target_dir}" -name '*.yq' -type f | LC_ALL=C sort); do
       transform_name="$(basename "${transform}")"
       log "  file ${target_name}: ${transform_name}"
-      yq eval -i "$(cat "${transform}")" "${target_file}"
+      "${USER_YQ[@]}" eval -i "$(cat "${transform}")" "${target_file}"
     done
   done
 fi

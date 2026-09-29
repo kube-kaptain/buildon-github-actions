@@ -58,6 +58,8 @@ source "${SCRIPT_DIR}/../lib/output-var.bash"
 source "${SCRIPT_DIR}/../lib/version-range.bash"
 # shellcheck source=src/scripts/lib/validate-exact-file-exists.bash
 source "${SCRIPT_DIR}/../lib/validate-exact-file-exists.bash"
+# shellcheck source=src/scripts/lib/reject-non-regular.bash
+source "${SCRIPT_DIR}/../lib/reject-non-regular.bash"
 # shellcheck source=src/scripts/defaults/schema-validation.bash
 source "${SCRIPT_DIR}/../defaults/schema-validation.bash"
 
@@ -160,6 +162,12 @@ if [[ -d "${source_dir}" ]]; then
     log "Copying source files from ${source_dir}/"
     cp -a "${source_dir}"/. "${context_dir}/"
   fi
+fi
+
+# Layers ship no symlinks: consumers unpack them into their own repos. A layer
+# that needs one ships a script that creates it, run from a hook.
+if ! reject_non_regular "Layer build context ${context_dir}" "${context_dir}"; then
+  exit 1
 fi
 
 # apiVersion enforcement: layer KaptainPM.yaml must declare apiVersion >= build schema version

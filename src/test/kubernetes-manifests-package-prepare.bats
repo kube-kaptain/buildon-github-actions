@@ -806,6 +806,73 @@ stage_additional_manifest() {
   assert_output_contains "No manifests to package"
 }
 
+@test "allowlist: a symlinked manifest pointing outside the tree fails the build" {
+  set_required_env
+  create_manifest "deployment.yaml"
+  printf 'apiVersion: v1\nkind: ConfigMap\n' > outside.yaml
+  ln -s ../outside.yaml "$TEST_MANIFESTS/stolen.yaml"
+
+  run "$SCRIPTS_DIR/kubernetes-manifests-package-prepare"
+  [ "$status" -ne 0 ]
+  assert_output_contains "stolen.yaml: a symbolic link; only regular files and directories are allowed"
+  assert_output_contains "Symbolic links are rejected."
+  [ ! -e "$OUTPUT_SUB_PATH/manifests/combined/stolen.yaml" ]
+}
+
+@test "allowlist: a symlink to another manifest in the tree fails the build" {
+  set_required_env
+  create_manifest "deployment.yaml"
+  ln -s deployment.yaml "$TEST_MANIFESTS/copy.yaml"
+
+  run "$SCRIPTS_DIR/kubernetes-manifests-package-prepare"
+  [ "$status" -ne 0 ]
+  assert_output_contains "copy.yaml: a symbolic link"
+}
+
+@test "allowlist: a symlinked directory fails the build" {
+  set_required_env
+  create_manifest "deployment.yaml"
+  mkdir -p elsewhere
+  printf 'apiVersion: v1\n' > elsewhere/service.yaml
+  ln -s ../elsewhere "$TEST_MANIFESTS/linked"
+
+  run "$SCRIPTS_DIR/kubernetes-manifests-package-prepare"
+  [ "$status" -ne 0 ]
+  assert_output_contains "linked: a symbolic link"
+}
+
+@test "allowlist: a symlink in additional-manifests fails the build" {
+  set_required_env
+  create_manifest "deployment.yaml"
+  stage_additional_manifest "service.yaml" "apiVersion: v1"
+  ln -s service.yaml "$OUTPUT_SUB_PATH/manifests/additional-manifests/linked.yaml"
+
+  run "$SCRIPTS_DIR/kubernetes-manifests-package-prepare"
+  [ "$status" -ne 0 ]
+  assert_output_contains "additional-manifests"
+  assert_output_contains "linked.yaml: a symbolic link"
+}
+
+@test "allowlist: a dot-named symlink is ignored like any dotfile" {
+  set_required_env
+  create_manifest "deployment.yaml"
+  ln -s deployment.yaml "$TEST_MANIFESTS/.hidden.yaml"
+
+  run "$SCRIPTS_DIR/kubernetes-manifests-package-prepare"
+  [ "$status" -eq 0 ]
+  assert_output_contains "Found 1 manifest file(s) (.yaml)"
+}
+
+@test "allowlist: a named pipe fails the build" {
+  set_required_env
+  create_manifest "deployment.yaml"
+  mkfifo "$TEST_MANIFESTS/pipe.yaml"
+
+  run "$SCRIPTS_DIR/kubernetes-manifests-package-prepare"
+  [ "$status" -ne 0 ]
+  assert_output_contains "pipe.yaml: not a regular file or directory"
+}
+
 @test "allowlist: a non-yaml file fails the build" {
   set_required_env
   create_manifest "deployment.yaml"

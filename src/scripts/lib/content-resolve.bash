@@ -97,6 +97,8 @@ log "content-resolve: base=${CONTENT_BASE}"
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/assert-unique-artifact-refs.bash"
 # shellcheck source=src/scripts/lib/builtin-tokens-from-entry.bash
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/builtin-tokens-from-entry.bash"
+# shellcheck source=src/scripts/lib/reject-non-regular.bash
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/reject-non-regular.bash"
 # shellcheck source=src/scripts/defaults/schema-validation.bash
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/../defaults" && pwd)/schema-validation.bash"
 
@@ -150,6 +152,24 @@ content_find_zips() {
   CONTENT_CONTRACT_ZIP="${contract_zips[0]}"
 }
 
+# Unzip into <unzipped-dir>, then reject anything that is not a regular file or
+# directory (lib/reject-non-regular.bash). Unzip's own failure is reported after that check, since a crafted
+# symlink is the likelier cause and the more useful message.
+#
+# Usage: content_unzip_checked <zip> <unzipped-dir>
+content_unzip_checked() {
+  local zip="$1"
+  local unzipped_dir="$2"
+  local unzip_ok=true
+  mkdir -p "${unzipped_dir}"
+  unzip -q "${zip}" -d "${unzipped_dir}" || unzip_ok=false
+  reject_non_regular "${zip}" "${unzipped_dir}" || return 1
+  if ! ${unzip_ok}; then
+    log_error "Failed to unzip ${zip}"
+    return 1
+  fi
+}
+
 # Unzip a manifests zip into <unzipped-dir> (audit trail) and cp the
 # project subdir into <out-manifests-dir>. The zip contains a single
 # top-level <project>/ directory which becomes a sibling of any
@@ -182,8 +202,7 @@ content_unzip_manifests() {
     return 1
   fi
 
-  mkdir -p "${unzipped_dir}"
-  unzip -q "${zip}" -d "${unzipped_dir}"
+  content_unzip_checked "${zip}" "${unzipped_dir}" || return 1
 
   cp -R "${unzipped_dir}/${project}" "${out_dir}/${project}"
   CONTENT_PROJECT_NAME="${project}"
@@ -219,8 +238,7 @@ content_unzip_contract() {
     return 1
   fi
 
-  mkdir -p "${unzipped_dir}"
-  unzip -q "${zip}" -d "${unzipped_dir}"
+  content_unzip_checked "${zip}" "${unzipped_dir}" || return 1
 
   if [[ ! -f "${unzipped_dir}/contract.yaml" ]]; then
     log_error "contract.yaml not found inside ${zip}"

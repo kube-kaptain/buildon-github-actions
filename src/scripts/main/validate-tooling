@@ -87,13 +87,14 @@ for tool in ${CORE_TOOLS}; do
     else
       log_tool "✓" "${tool}" "(POSIX built-in)"
     fi
-    # Floor 4.25.3 - earliest mikefarah/yq with -r short-flag alias for --unwrapScalar
+    # Floor 4.49.1: earliest mikefarah/yq with --security-disable-file-ops and
+    # --security-disable-env-ops, which user-supplied yq expressions run under.
     if [[ "${tool}" == "yq" ]]; then
       yq_ver="${ver#v}"
       yq_ver="${yq_ver%% *}"
       IFS=. read -r ymaj ymin ypat <<< "${yq_ver}"
-      if (( ymaj < 4 )) || (( ymaj == 4 && ymin < 25 )) || (( ymaj == 4 && ymin == 25 && ypat < 3 )); then
-        log_error "yq ${yq_ver} is too old - Kaptain requires mikefarah/yq v4.25.3+"
+      if (( ymaj < 4 )) || (( ymaj == 4 && ymin < 49 )) || (( ymaj == 4 && ymin == 49 && ypat < 1 )); then
+        log_error "yq ${yq_ver} is too old - Kaptain requires mikefarah/yq v4.49.1+"
         MISSING_CORE="${MISSING_CORE} yq-version"
       fi
     fi
