@@ -70,3 +70,23 @@ teardown() {
     return 1
   fi
 }
+
+# Locally every step's outputs are exported, so a step reading the outputs of a
+# step its workflow lacks only shows on a runner, as an empty input.
+@test "every workflow injecting a step that reads manifest-package also injects manifest-package" {
+  local readers reader workflow failures=0
+  readers=$(grep -l 'steps\.manifest-package\.outputs\.' "$PROJECT_ROOT"/src/steps-common/*.yaml)
+  [ -n "${readers}" ]
+  for reader in ${readers}; do
+    reader=$(basename "${reader}" .yaml)
+    for workflow in "$PROJECT_ROOT"/src/workflow-templates/*.yaml; do
+      grep -q "INJECT: ${reader}\$" "${workflow}" || continue
+      if ! grep -q 'INJECT: manifest-package$' "${workflow}"; then
+        echo "${workflow##*/}: injects ${reader} but not manifest-package" >&3
+        failures=$((failures + 1))
+      fi
+    done
+  done
+  [[ "${failures}" -eq 0 ]]
+}
+

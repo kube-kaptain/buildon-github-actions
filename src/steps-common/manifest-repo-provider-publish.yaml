@@ -8,8 +8,9 @@
   with:
     manifests-repo-provider-type: ${{ steps.kpm.outputs.MANIFESTS_REPO_PROVIDER_TYPE }}
     manifests-uri: ${{ steps.manifest-repo-provider-package.outputs.manifests-uri }}
-    manifests-zip-sub-path: ${{ steps.manifest-repo-provider-package.outputs.manifests-zip-sub-path }}
-    manifests-zip-file-name: ${{ steps.manifest-repo-provider-package.outputs.manifests-zip-file-name }}
+    # From the package step that creates the zip.
+    manifests-zip-sub-path: ${{ steps.manifest-package.outputs.manifests-zip-sub-path }}
+    manifests-zip-file-name: ${{ steps.manifest-package.outputs.manifests-zip-file-name }}
     version: ${{ steps.manifest-repo-provider-package.outputs.version }}
     is-release: ${{ steps.versions.outputs.is-release }}
     repo-provider-url: ${{ steps.manifest-repo-provider-package.outputs.repo-provider-url }}

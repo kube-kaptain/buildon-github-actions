@@ -32,10 +32,6 @@ inputs:
     description: 'Manifests location from package step'
     required: false
     default: ''
-  manifests-artifact-sub-path:
-    description: 'Relative path to packaged artifact from package step'
-    required: false
-    default: ''
   manifests-zip-sub-path:
     description: 'Relative path to directory containing manifests zip from package step'
     required: false
@@ -96,7 +92,6 @@ runs:
 
         # --- From manifests package step (zip creation process) ---
         MANIFESTS_URI: ${{ inputs.manifests-uri }}
-        MANIFESTS_ARTIFACT_SUB_PATH: ${{ inputs.manifests-artifact-sub-path }}
         MANIFESTS_ZIP_SUB_PATH: ${{ inputs.manifests-zip-sub-path }}
         MANIFESTS_ZIP_FILE_NAME: ${{ inputs.manifests-zip-file-name }}
 
