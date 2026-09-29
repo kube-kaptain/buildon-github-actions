@@ -132,6 +132,28 @@ write_layerset_pm_with_layers() {
   [[ "$output" == *"Layer type: layer"* ]] || return 1
 }
 
+@test "a symlink in src/layer fails the build" {
+  export PROJECT_NAME="layer-foo"
+  write_layer_pm "src/layer/KaptainPM.yaml"
+  mkdir -p src/layer/scripts
+  ln -s /etc/hosts src/layer/scripts/hosts
+  run "$SCRIPT"
+  [[ "$status" -ne 0 ]] || return 1
+  [[ "$output" == *"Layer build context"* ]] || return 1
+  [[ "$output" == *"scripts/hosts: a symbolic link"* ]] || return 1
+  [ ! -f "kaptain-out/layer-build/context/Dockerfile" ]
+}
+
+@test "a symlink a hook put in the build context fails the build" {
+  export PROJECT_NAME="layer-foo"
+  write_layer_pm "src/layer/KaptainPM.yaml"
+  mkdir -p kaptain-out/layer-build/context
+  ln -s /etc/hosts kaptain-out/layer-build/context/.hidden
+  run "$SCRIPT"
+  [[ "$status" -ne 0 ]] || return 1
+  [[ "$output" == *".hidden: a symbolic link"* ]] || return 1
+}
+
 @test "detects layer from suffix (foo-layer)" {
   export PROJECT_NAME="foo-layer"
   write_layer_pm "src/layer/KaptainPM.yaml"

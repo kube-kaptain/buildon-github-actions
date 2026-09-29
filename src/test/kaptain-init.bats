@@ -59,7 +59,8 @@ case "$1" in
     image_no_tag="${image_ref%:*}"
     mock_src="${MOCK_LAYER_DIR}/${image_no_tag}${src_path}"
     if [[ -f "${mock_src}" ]]; then
-      cp "${mock_src}" "${dest}/"
+      # Like docker cp: a symlink is copied as a link, not followed.
+      cp -P "${mock_src}" "${dest}/"
     else
       exit 1
     fi
@@ -805,6 +806,104 @@ EOF
   [[ "$status" -eq 0 ]] || return 1
   [[ -f "${REPO_DIR}/.kaptain/tools/one.txt" ]] || return 1
   [[ -f "${REPO_DIR}/.kaptain/tools/two.txt" ]] || return 1
+}
+
+# =============================================================================
+# Symlinks: layers ship none (a layer can ship a script to make one from a hook)
+# =============================================================================
+
+use_payload_layer() {
+  create_mock_layer "ghcr.io/kube-kaptain/quality/quality-strict" << EOF
+apiVersion: kaptain.org/1.2
+layer-payload:
+  - source: ${1}
+    destination: .kaptain/tools/
+${2:+    unpack: ${2}}
+spec:
+  main:
+    quality:
+      branches:
+        blockSlashes: true
+EOF
+  cat > "${REPO_DIR}/KaptainPM.yaml" << 'EOF'
+apiVersion: kaptain.org/1.2
+kind: kubernetes-app-docker-dockerfile
+spec:
+  layers:
+    - quality-strict:1.0
+EOF
+}
+
+@test "symlinks: a symlink anywhere in a layer image with a payload fails" {
+  use_payload_layer /scripts/build.bash
+  add_mock_layer_file "ghcr.io/kube-kaptain/quality/quality-strict" /scripts/build.bash <<< 'echo build'
+  ln -s /etc/hosts "${MOCK_LAYER_DIR}/ghcr.io/kube-kaptain/quality/quality-strict/scripts/hosts"
+
+  run "$SCRIPT"
+  [[ "$status" -ne 0 ]] || return 1
+  assert_output_contains "holds entries other than regular files and directories"
+  assert_output_contains "scripts/hosts: a symbolic link"
+  [[ ! -e "${REPO_DIR}/.kaptain/tools/build.bash" ]] || return 1
+}
+
+@test "symlinks: a symlink in a tar.gz payload fails and nothing reaches the repo" {
+  use_payload_layer /bundles/tools.tar.gz tar.gz
+  local stage="${TEST_DIR}/tarball-stage"
+  mkdir -p "${stage}/bundle" "${MOCK_LAYER_DIR}/ghcr.io/kube-kaptain/quality/quality-strict/bundles"
+  echo one > "${stage}/bundle/one.txt"
+  ln -s /etc/hosts "${stage}/bundle/hosts"
+  ( cd "${stage}/bundle" && tar -czf "${MOCK_LAYER_DIR}/ghcr.io/kube-kaptain/quality/quality-strict/bundles/tools.tar.gz" . )
+
+  run "$SCRIPT"
+  [[ "$status" -ne 0 ]] || return 1
+  assert_output_contains "layer-payload[0] /bundles/tools.tar.gz"
+  assert_output_contains "hosts: a symbolic link"
+  [[ ! -e "${REPO_DIR}/.kaptain/tools/one.txt" ]] || return 1
+  [[ ! -L "${REPO_DIR}/.kaptain/tools/hosts" ]] || return 1
+}
+
+@test "symlinks: a symlink in a zip payload fails" {
+  use_payload_layer /bundles/tools.zip zip
+  local stage="${TEST_DIR}/zip-stage"
+  mkdir -p "${stage}" "${MOCK_LAYER_DIR}/ghcr.io/kube-kaptain/quality/quality-strict/bundles"
+  echo one > "${stage}/one.txt"
+  ln -s /etc/hosts "${stage}/hosts"
+  ( cd "${stage}" && zip -qy "${MOCK_LAYER_DIR}/ghcr.io/kube-kaptain/quality/quality-strict/bundles/tools.zip" one.txt hosts )
+
+  run "$SCRIPT"
+  [[ "$status" -ne 0 ]] || return 1
+  assert_output_contains "hosts: a symbolic link"
+  [[ ! -e "${REPO_DIR}/.kaptain/tools/one.txt" ]] || return 1
+}
+
+@test "symlinks: an unpacked script keeps its executable bit" {
+  use_payload_layer /bundles/tools.tar.gz tar.gz
+  local stage="${TEST_DIR}/tarball-stage"
+  mkdir -p "${stage}/bundle" "${MOCK_LAYER_DIR}/ghcr.io/kube-kaptain/quality/quality-strict/bundles"
+  printf '#!/bin/sh\necho hi\n' > "${stage}/bundle/run.sh"
+  chmod 755 "${stage}/bundle/run.sh"
+  ( cd "${stage}/bundle" && tar -czf "${MOCK_LAYER_DIR}/ghcr.io/kube-kaptain/quality/quality-strict/bundles/tools.tar.gz" . )
+
+  run "$SCRIPT"
+  [[ "$status" -eq 0 ]] || return 1
+  [[ -x "${REPO_DIR}/.kaptain/tools/run.sh" ]] || return 1
+}
+
+@test "symlinks: a symlinked KaptainPM.yaml in a layer image fails" {
+  mkdir -p "${MOCK_LAYER_DIR}/ghcr.io/kube-kaptain/quality/quality-strict"
+  printf 'apiVersion: kaptain.org/1.2\nspec: {}\n' > "${TEST_DIR}/elsewhere.yaml"
+  ln -s "${TEST_DIR}/elsewhere.yaml" "${MOCK_LAYER_DIR}/ghcr.io/kube-kaptain/quality/quality-strict/KaptainPM.yaml"
+  cat > "${REPO_DIR}/KaptainPM.yaml" << 'EOF'
+apiVersion: kaptain.org/1.2
+kind: kubernetes-app-docker-dockerfile
+spec:
+  layers:
+    - quality-strict:1.0
+EOF
+
+  run "$SCRIPT"
+  [[ "$status" -ne 0 ]] || return 1
+  assert_output_contains "Layer image KaptainPM.yaml is a symbolic link"
 }
 
 # =============================================================================

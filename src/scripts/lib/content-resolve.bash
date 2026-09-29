@@ -97,6 +97,8 @@ log "content-resolve: base=${CONTENT_BASE}"
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/assert-unique-artifact-refs.bash"
 # shellcheck source=src/scripts/lib/builtin-tokens-from-entry.bash
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/builtin-tokens-from-entry.bash"
+# shellcheck source=src/scripts/lib/reject-non-regular.bash
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/reject-non-regular.bash"
 # shellcheck source=src/scripts/defaults/schema-validation.bash
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/../defaults" && pwd)/schema-validation.bash"
 
@@ -150,33 +152,8 @@ content_find_zips() {
   CONTENT_CONTRACT_ZIP="${contract_zips[0]}"
 }
 
-# Fail on anything unzip restored that is not a regular file or directory.
-# A crafted zip can carry symlinks, which later steps read through (and yq -i
-# writes through), pulling runner files into published manifests. Dot-named
-# entries are checked too: they are ignored downstream, but not by every walk.
-#
-# Usage: content_reject_non_regular <zip> <unzipped-dir>
-content_reject_non_regular() {
-  local zip="$1"
-  local unzipped_dir="$2"
-  local entry found=()
-  while IFS= read -r -d '' entry; do
-    if [[ -L "${entry}" ]]; then
-      found+=("${entry#"${unzipped_dir}"/}: a symbolic link")
-    else
-      found+=("${entry#"${unzipped_dir}"/}: not a regular file or directory")
-    fi
-  done < <(find "${unzipped_dir}" -mindepth 1 ! -type f ! -type d -print0)
-  [[ ${#found[@]} -eq 0 ]] && return 0
-  log_error "${zip} holds entries other than regular files and directories:"
-  for entry in "${found[@]}"; do
-    log_error "  ${entry}"
-  done
-  return 1
-}
-
 # Unzip into <unzipped-dir>, then reject anything that is not a regular file or
-# directory. Unzip's own failure is reported after that check, since a crafted
+# directory (lib/reject-non-regular.bash). Unzip's own failure is reported after that check, since a crafted
 # symlink is the likelier cause and the more useful message.
 #
 # Usage: content_unzip_checked <zip> <unzipped-dir>
@@ -186,7 +163,7 @@ content_unzip_checked() {
   local unzip_ok=true
   mkdir -p "${unzipped_dir}"
   unzip -q "${zip}" -d "${unzipped_dir}" || unzip_ok=false
-  content_reject_non_regular "${zip}" "${unzipped_dir}" || return 1
+  reject_non_regular "${zip}" "${unzipped_dir}" || return 1
   if ! ${unzip_ok}; then
     log_error "Failed to unzip ${zip}"
     return 1
