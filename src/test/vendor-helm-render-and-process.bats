@@ -551,6 +551,59 @@ run_script() {
   [[ "${dep_content}" != *"env:test-chart"* ]] || return 1
 }
 
+# User transforms run with yq file and env operators disabled.
+
+@test "yq transforms: an inline global expression cannot read a file" {
+  export VENDOR_HELM_RENDERED_OCI_CHART="oci://example.com/test-chart"
+  export VENDOR_HELM_RENDERED_MOVE_FILES="${MOVE_FILES_JSON}"
+  printf 'leaked: runner-secret\n' > "${TEST_DIR}/outside.yaml"
+  export VENDOR_HELM_RENDERED_YQ_TRANSFORM='{"global":[".metadata.labels.x = (load_props(\"'"${TEST_DIR}"'/outside.yaml\") | .leaked)"]}'
+
+  run_script
+  [[ "$status" -ne 0 ]] || return 1
+  [[ "$output" == *"file operations have been disabled"* ]] || return 1
+  [ "$(grep -rl 'runner-secret' "${REPO_DIR}/kaptain-out/helm-processing" | grep -c .)" -eq 0 ]
+}
+
+@test "yq transforms: an inline perFile expression cannot read an env variable" {
+  export VENDOR_HELM_RENDERED_OCI_CHART="oci://example.com/test-chart"
+  export VENDOR_HELM_RENDERED_MOVE_FILES="${MOVE_FILES_JSON}"
+  export LEAK_ME="runner-secret"
+  export VENDOR_HELM_RENDERED_YQ_TRANSFORM='{"perFile":[{"file":"clusterrole.yaml","expressions":[".metadata.name = strenv(LEAK_ME)"]}]}'
+
+  run_script
+  [[ "$status" -ne 0 ]] || return 1
+  [[ "$output" == *"env operations have been disabled"* ]] || return 1
+  [ "$(grep -rl 'runner-secret' "${REPO_DIR}/kaptain-out/helm-processing" | grep -c .)" -eq 0 ]
+}
+
+@test "yq transforms: a global transform file cannot use envsubst" {
+  export VENDOR_HELM_RENDERED_OCI_CHART="oci://example.com/test-chart"
+  export VENDOR_HELM_RENDERED_MOVE_FILES="${MOVE_FILES_JSON}"
+  export LEAK_ME="runner-secret"
+  mkdir -p "${REPO_DIR}/src/vendor-helm-rendered/transforms-global"
+  printf '.metadata.labels.x = ("${LEAK_ME}" | envsubst)\n' > "${REPO_DIR}/src/vendor-helm-rendered/transforms-global/leak.yq"
+
+  run_script
+  [[ "$status" -ne 0 ]] || return 1
+  [[ "$output" == *"env operations have been disabled"* ]] || return 1
+  [ "$(grep -rl 'runner-secret' "${REPO_DIR}/kaptain-out/helm-processing" | grep -c .)" -eq 0 ]
+}
+
+@test "yq transforms: a per-file transform file cannot load a file" {
+  export VENDOR_HELM_RENDERED_OCI_CHART="oci://example.com/test-chart"
+  export VENDOR_HELM_RENDERED_MOVE_FILES="${MOVE_FILES_JSON}"
+  printf 'leaked: runner-secret\n' > "${TEST_DIR}/outside.yaml"
+  mkdir -p "${REPO_DIR}/src/vendor-helm-rendered/transforms/clusterrole"
+  printf '.metadata.labels.x = (load ("%s") | .leaked)\n' "${TEST_DIR}/outside.yaml" \
+    > "${REPO_DIR}/src/vendor-helm-rendered/transforms/clusterrole/leak.yq"
+
+  run_script
+  [[ "$status" -ne 0 ]] || return 1
+  [[ "$output" == *"file operations have been disabled"* ]] || return 1
+  [ "$(grep -rl 'runner-secret' "${REPO_DIR}/kaptain-out/helm-processing" | grep -c .)" -eq 0 ]
+}
+
 @test "no yq transforms preserves all manifest content" {
   export VENDOR_HELM_RENDERED_OCI_CHART="oci://example.com/test-chart"
   export VENDOR_HELM_RENDERED_MOVE_FILES="${MOVE_FILES_JSON}"
