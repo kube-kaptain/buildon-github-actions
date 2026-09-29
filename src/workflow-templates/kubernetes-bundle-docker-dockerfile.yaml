@@ -75,9 +75,6 @@ on:
       manifests-uri:
         description: 'Reference to published manifests (format depends on repo provider)'
         value: ${{ jobs.build.outputs.manifests-uri }}
-      manifests-published:
-        description: 'Whether manifests were published'
-        value: ${{ jobs.build.outputs.manifests-published }}
 jobs:
   build:
     name: Build & Publish
@@ -104,7 +101,6 @@ jobs:
       manifests-zip-sub-path: ${{ steps.manifest-package.outputs.manifests-zip-sub-path }}
       manifests-zip-file-name: ${{ steps.manifest-package.outputs.manifests-zip-file-name }}
       manifests-uri: ${{ steps.manifest-repo-provider-publish.outputs.manifests-uri }}
-      manifests-published: ${{ steps.manifest-repo-provider-publish.outputs.manifests-published }}
     steps:
       # INJECT: parse-workflow-ref-and-checkout
 

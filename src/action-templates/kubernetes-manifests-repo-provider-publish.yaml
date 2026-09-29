@@ -56,9 +56,6 @@ outputs:
   manifests-uri:
     description: 'Reference to published manifests (format depends on repo provider)'
     value: ${{ inputs.manifests-uri }}
-  manifests-published:
-    description: 'Whether manifests were published'
-    value: ${{ steps.publish.outputs.MANIFESTS_PUBLISHED }}
 
 runs:
   using: 'composite'
