@@ -1981,6 +1981,7 @@ jobs:
           is-release: ${{ steps.versions.outputs.is-release }}
           clean-up: ${{ steps.kpm.outputs.ENV_CLEAN_UP }}
           output-sub-path: ${{ steps.kpm.outputs.OUTPUT_SUB_PATH }}
+          schema-validation-command: ${{ steps.validate-tooling.outputs.SCHEMA_VALIDATION_COMMAND }}
           token-delimiter-style: ${{ steps.kpm.outputs.TOKEN_DELIMITER_STYLE }}
           token-name-style: ${{ steps.kpm.outputs.TOKEN_NAME_STYLE }}
           config-sub-path: ${{ steps.kpm.outputs.CONFIG_SUB_PATH }}

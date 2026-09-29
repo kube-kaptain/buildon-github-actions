@@ -70,3 +70,14 @@ teardown() {
     return 1
   fi
 }
+
+# kubernetes-run-aggregate sources content-resolve, which requires
+# SCHEMA_VALIDATION_COMMAND, so the step and the action must both carry it.
+@test "kubernetes-run-aggregate step and action template wire the schema validator" {
+  grep -Fq 'SCHEMA_VALIDATION_COMMAND: ${{ inputs.schema-validation-command }}' \
+    "$ACTION_TEMPLATES_DIR/kubernetes-run-aggregate.yaml"
+  grep -Fq '# INJECT-INPUT: schema-validation-command' \
+    "$ACTION_TEMPLATES_DIR/kubernetes-run-aggregate.yaml"
+  grep -Fq 'schema-validation-command: ${{ steps.validate-tooling.outputs.SCHEMA_VALIDATION_COMMAND }}' \
+    "$PROJECT_ROOT/src/steps-common/run-aggregate.yaml"
+}
