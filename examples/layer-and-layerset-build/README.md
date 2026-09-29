@@ -6,3 +6,9 @@ Minimal build with no overrides.
 
 Layer/layerset validation and OCI packaging: quality checks, versioning,
 layer packaging, Docker build, validation, and release publishing.
+
+## Not permitted
+
+You cannot place symlinks in `src/layer/` - they are rejected by the layer
+build. If you need a symlink placed into the working tree create it from one of
+your hook scripts dynamically instead.
