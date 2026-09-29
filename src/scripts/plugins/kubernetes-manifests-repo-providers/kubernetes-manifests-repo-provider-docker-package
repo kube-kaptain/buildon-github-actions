@@ -15,6 +15,10 @@
 #   REPO_PROVIDER_VERSION   - Tag for the image (required, e.g., 1.2.3-manifests)
 #   MANIFESTS_ZIP_SUB_PATH      - Path to the zip file location (required)
 #   MANIFESTS_ZIP_FILE_NAME      - Filename of the zip (required)
+#   CONTRACT_ZIP_SUB_PATH        - Path to the contract zip location
+#                                  (required: consumers resolve a bundle
+#                                  through its contract)
+#   CONTRACT_ZIP_FILE_NAME       - Filename of the contract zip (required)
 #   OUTPUT_SUB_PATH         - Build output directory (default: kaptain-out)
 #   MANIFESTS_PACKAGING_BASE_IMAGE - Base image for manifest packaging (default: scratch)
 #
@@ -48,8 +52,8 @@ tag="${REPO_PROVIDER_VERSION:?REPO_PROVIDER_VERSION (tag) is required}"
 # =============================================================================
 MANIFESTS_ZIP_SUB_PATH="${MANIFESTS_ZIP_SUB_PATH:?MANIFESTS_ZIP_SUB_PATH is required}"
 MANIFESTS_ZIP_FILE_NAME="${MANIFESTS_ZIP_FILE_NAME:?MANIFESTS_ZIP_FILE_NAME is required}"
-CONTRACT_ZIP_SUB_PATH="${CONTRACT_ZIP_SUB_PATH:-}"
-CONTRACT_ZIP_FILE_NAME="${CONTRACT_ZIP_FILE_NAME:-}"
+CONTRACT_ZIP_SUB_PATH="${CONTRACT_ZIP_SUB_PATH:?CONTRACT_ZIP_SUB_PATH is required}"
+CONTRACT_ZIP_FILE_NAME="${CONTRACT_ZIP_FILE_NAME:?CONTRACT_ZIP_FILE_NAME is required}"
 # shellcheck source=src/scripts/defaults/manifests-repo-provider.bash
 source "${SCRIPT_DIR}/../../defaults/manifests-repo-provider.bash"
 # shellcheck source=src/scripts/lib/output-var.bash
@@ -73,9 +77,12 @@ main() {
   log "Target: ${image_uri}"
   log "==========================================================="
 
-  # Validate zip exists
   if [[ ! -f "${MANIFESTS_ZIP_SUB_PATH}/${MANIFESTS_ZIP_FILE_NAME}" ]]; then
     log_error "Manifests zip not found: ${MANIFESTS_ZIP_SUB_PATH}/${MANIFESTS_ZIP_FILE_NAME}"
+    exit 1
+  fi
+  if [[ ! -f "${CONTRACT_ZIP_SUB_PATH}/${CONTRACT_ZIP_FILE_NAME}" ]]; then
+    log_error "Contract zip not found: ${CONTRACT_ZIP_SUB_PATH}/${CONTRACT_ZIP_FILE_NAME}"
     exit 1
   fi
 
@@ -89,15 +96,8 @@ main() {
   # Copy zip(s) to publish dir
   cp "${MANIFESTS_ZIP_SUB_PATH}/${MANIFESTS_ZIP_FILE_NAME}" "${PUBLISH_SUB_PATH}/"
 
-  # Include contract zip if available
-  if [[ -n "${CONTRACT_ZIP_FILE_NAME}" && -n "${CONTRACT_ZIP_SUB_PATH}" ]]; then
-    if [[ -f "${CONTRACT_ZIP_SUB_PATH}/${CONTRACT_ZIP_FILE_NAME}" ]]; then
-      log "Including contract zip: ${CONTRACT_ZIP_FILE_NAME}"
-      cp "${CONTRACT_ZIP_SUB_PATH}/${CONTRACT_ZIP_FILE_NAME}" "${PUBLISH_SUB_PATH}/"
-    else
-      log "Contract zip not found, skipping: ${CONTRACT_ZIP_SUB_PATH}/${CONTRACT_ZIP_FILE_NAME}"
-    fi
-  fi
+  log "Including contract zip: ${CONTRACT_ZIP_FILE_NAME}"
+  cp "${CONTRACT_ZIP_SUB_PATH}/${CONTRACT_ZIP_FILE_NAME}" "${PUBLISH_SUB_PATH}/"
 
   # Delegate to multi-arch packager
   PACKAGE_BASE_IMAGE="${BASE_IMAGE}" \
