@@ -11,7 +11,7 @@ on:
 
 jobs:
   build:
-    uses: kube-kaptain/buildon-github-actions/.github/workflows/kubernetes-run-environment.yaml@1.2.1
+    uses: kube-kaptain/buildon-github-actions/.github/workflows/kubernetes-run-environment.yaml@1.2.4
     permissions:
       contents: write
       packages: write
