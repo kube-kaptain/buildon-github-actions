@@ -4,8 +4,12 @@
 
 # updateExampleVersions.bash - Update example workflow version references
 #
-# Fetches tags from origin, finds the highest x.y.z tag, increments the
-# patch by one, and updates all @x.y.z references in examples/ to match.
+# Fetches tags from origin, works out the version this branch will build with
+# the same provider the build uses (git-auto-closest-highest: the closest tag
+# reachable from HEAD picks the series, the highest in that series plus one),
+# and updates all @x.y.z references in examples/ to match. Using every tag in
+# the repo instead let tags on unmerged commits push examples ahead of the
+# version the build actually produces.
 
 set -euo pipefail
 
@@ -15,17 +19,17 @@ EXAMPLES_DIR="${PROJECT_ROOT}/examples"
 
 git -C "${PROJECT_ROOT}" fetch --tags
 
-highest=$(git -C "${PROJECT_ROOT}" tag --list '[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname | head -1)
+version_out=$(mktemp -d)
+mkdir -p "${version_out}/versions-and-naming/tag-version-calculation-provider"
+(
+  cd "${PROJECT_ROOT}"
+  BUILD_PLATFORM=local OUTPUT_SUB_PATH="${version_out}" TAG_VERSION_MAX_PARTS=3 \
+    "${PROJECT_ROOT}/src/scripts/plugins/tag-version-calculation-providers/tag-version-calculation-git-auto-closest-highest"
+)
+expected=$(cat "${version_out}/versions-and-naming/tag-version-calculation-provider/VERSION")
+rm -rf "${version_out:?}"
 
-if [[ -z "${highest}" ]]; then
-  echo "No version tags found"
-  exit 1
-fi
-
-IFS='.' read -r major minor patch <<< "${highest}"
-expected="${major}.${minor}.$((patch + 1))"
-
-echo "Highest tag: ${highest}"
+echo "Version this branch builds: ${expected}"
 echo "Updating examples to: @${expected}"
 
 updated=0
