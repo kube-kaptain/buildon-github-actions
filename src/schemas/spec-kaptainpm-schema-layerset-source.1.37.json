@@ -1,15 +1,15 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/kube-kaptain/spec-kaptainpm-schema/releases/download/1.35/spec-kaptainpm-schema-layerset-1.35.yaml",
+  "$id": "https://github.com/kube-kaptain/spec-kaptainpm-schema/releases/download/1.37/spec-kaptainpm-schema-layerset-source-1.37.yaml",
   "name": "spec-kaptainpm-schema",
-  "version": "1.35",
+  "version": "1.37",
   "source": "https://github.com/kube-kaptain/spec-kaptainpm-schema",
   "latest": "https://raw.githubusercontent.com/kube-kaptain/spec-kaptainpm-schema/main/spec-kaptainpm-schema.yaml",
-  "tagged": "https://raw.githubusercontent.com/kube-kaptain/spec-kaptainpm-schema/1.35/spec-kaptainpm-schema.yaml",
-  "release": "https://github.com/kube-kaptain/spec-kaptainpm-schema/releases/download/1.35/spec-kaptainpm-schema-layerset-1.35.yaml",
-  "validate-using": "https://github.com/kube-kaptain/spec-kaptainpm-schema/releases/download/1.35/spec-kaptainpm-schema-layerset-1.35.json",
+  "tagged": "https://raw.githubusercontent.com/kube-kaptain/spec-kaptainpm-schema/1.37/spec-kaptainpm-schema.yaml",
+  "release": "https://github.com/kube-kaptain/spec-kaptainpm-schema/releases/download/1.37/spec-kaptainpm-schema-layerset-source-1.37.yaml",
+  "validate-using": "https://github.com/kube-kaptain/spec-kaptainpm-schema/releases/download/1.37/spec-kaptainpm-schema-layerset-source-1.37.json",
   "title": "KaptainPM",
-  "description": "Kaptain project manifest schema (version 1.35).\n",
+  "description": "Kaptain project manifest schema (version 1.37).\n",
   "type": "object",
   "required": [
     "apiVersion"
@@ -19,7 +19,7 @@
     "apiVersion": {
       "type": "string",
       "pattern": "^kaptain\\.org/[0-9]+(\\.[0-9]+)*$",
-      "description": "API version - must be kaptain.org/ followed by the schema version (e.g. kaptain.org/1.2). Set via 1.35 token substitution at build time.\n"
+      "description": "API version - must be kaptain.org/ followed by the schema version (e.g. kaptain.org/1.2). Set via 1.37 token substitution at build time.\n"
     },
     "kind": {
       "type": "string",
@@ -28,7 +28,7 @@
     "metadata": {
       "type": "object",
       "additionalProperties": true,
-      "description": "Project metadata with required build traceability fields.",
+      "description": "Project metadata including build traceability labels and annotations. When present, label and annotation values must be strings.\n",
       "properties": {
         "description": {
           "type": "string",
@@ -39,30 +39,16 @@
           "additionalProperties": {
             "type": "string"
           },
-          "description": "Queryable build metadata labels. All values must be strings.",
-          "required": [
-            "kaptain.org/version",
-            "kaptain.org/project-name",
-            "kaptain.org/owner"
-          ]
+          "description": "Queryable build metadata labels. All values must be strings."
         },
         "annotations": {
           "type": "object",
           "additionalProperties": {
             "type": "string"
           },
-          "description": "Informational build metadata annotations. All values must be strings.",
-          "required": [
-            "kaptain.org/built-by",
-            "kaptain.org/source-repository",
-            "kaptain.org/image-uri"
-          ]
+          "description": "Informational build metadata annotations. All values must be strings."
         }
-      },
-      "required": [
-        "labels",
-        "annotations"
-      ]
+      }
     },
     "spec": {
       "type": "object",
@@ -70,7 +56,7 @@
       "description": "Build configuration",
       "properties": {
         "layers": {
-          "$ref": "#/$defs/artifactReferenceFixedList",
+          "$ref": "#/$defs/artifactReferenceList",
           "description": "Configuration layers applied before this project's settings. Deep-merged in order; local settings always win. Bootstrap registry logins must be in the project root file (needed before layer resolution). Additional logins declared in layers are applied in a second login phase post-merge.\n"
         }
       },
@@ -1947,6 +1933,45 @@
                   "description": "Additional annotations for PDB manifests"
                 }
               }
+            },
+            "namespace": {
+              "type": "object",
+              "additionalProperties": false,
+              "description": "Namespace manifest generator configuration, for builds that manage a namespace of their own beside their other resources. Environment and run-platform builds always generate their own Namespace into the deploy-manifests set and take its labels and annotations from spec.main.environment.namespace instead.\n",
+              "required": [
+                "name"
+              ],
+              "properties": {
+                "enabled": {
+                  "oneOf": [
+                    {
+                      "type": "boolean"
+                    },
+                    {
+                      "type": "string",
+                      "pattern": "^(true|false)$"
+                    }
+                  ],
+                  "description": "Whether to generate a Namespace manifest (default: false)"
+                },
+                "name": {
+                  "type": "string",
+                  "minLength": 1,
+                  "description": "The Namespace name, required and used exactly as given: any literal or token the build or its consumer resolves, such as '${Environment}' or 'shared-tools'.\n"
+                },
+                "combinedSubPath": {
+                  "type": "string",
+                  "description": "Combined sub-path the Namespace manifest is written to; does not affect its name"
+                },
+                "additionalLabels": {
+                  "type": "string",
+                  "description": "Additional labels for Namespace manifests"
+                },
+                "additionalAnnotations": {
+                  "type": "string",
+                  "description": "Additional annotations for Namespace manifests"
+                }
+              }
             }
           }
         },
@@ -2066,6 +2091,9 @@
             },
             "imagePullSecrets": {
               "$ref": "#/$defs/runEnvImagePullSecrets"
+            },
+            "namespace": {
+              "$ref": "#/$defs/runEnvNamespace"
             },
             "autoGenerateImagePullSecrets": {
               "$ref": "#/$defs/runEnvAutoGenerateImagePullSecrets"
@@ -2207,6 +2235,11 @@
                     {
                       "required": [
                         "imagePullSecrets"
+                      ]
+                    },
+                    {
+                      "required": [
+                        "namespace"
                       ]
                     },
                     {
@@ -2601,6 +2634,21 @@
       ],
       "default": "ENABLED",
       "description": "Whether the generated workloads that run the env deploy image (the Deployment, and in job mode the CronJob and its zero-scale Deployment) carry imagePullSecrets naming the environment's docker registry secret. 'ENABLED' (default) or 'DISABLED', for registries that need no pull credentials or nodes that supply them. Only drives generation, so it may not be set when generateIdealEnvironmentDeployManifests is false.\n"
+    },
+    "runEnvNamespace": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "The Namespace generated into the deploy-manifests set: the environment's or run-platform's own namespace, named after it. Each owns its own, and it is applied with the rest of that set, so it exists before anything is deployed into it. Only drives generation, so it may not be set when generateIdealEnvironmentDeployManifests is false.\n",
+      "properties": {
+        "additionalLabels": {
+          "type": "string",
+          "description": "Additional labels for the generated Namespace"
+        },
+        "additionalAnnotations": {
+          "type": "string",
+          "description": "Additional annotations for the generated Namespace"
+        }
+      }
     },
     "runEnvAutoGenerateImagePullSecrets": {
       "oneOf": [
