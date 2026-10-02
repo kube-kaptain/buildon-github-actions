@@ -17,6 +17,8 @@
     job-post-deploy-sleep-after-success: ${{ steps.kpm.outputs.ENV_JOB_POST_DEPLOY_SLEEP_AFTER_SUCCESS }}
     job-post-deploy-sleep-after-failure: ${{ steps.kpm.outputs.ENV_JOB_POST_DEPLOY_SLEEP_AFTER_FAILURE }}
     image-pull-secrets: ${{ steps.kpm.outputs.ENV_IMAGE_PULL_SECRETS }}
+    namespace-additional-labels: ${{ steps.kpm.outputs.ENV_NAMESPACE_ADDITIONAL_LABELS }}
+    namespace-additional-annotations: ${{ steps.kpm.outputs.ENV_NAMESPACE_ADDITIONAL_ANNOTATIONS }}
     image-auto-update-provider: ${{ steps.kpm.outputs.ENV_IMAGE_AUTO_UPDATE_PROVIDER }}
     image-auto-update-policy: ${{ steps.kpm.outputs.ENV_IMAGE_AUTO_UPDATE_POLICY }}
     image-auto-update-trigger: ${{ steps.kpm.outputs.ENV_IMAGE_AUTO_UPDATE_TRIGGER }}

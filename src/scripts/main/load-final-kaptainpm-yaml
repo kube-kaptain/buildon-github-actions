@@ -374,6 +374,13 @@ MAPPINGS=(
   "spec.main.generators.podDisruptionBudget.additionalLabels:KUBERNETES_PODDISRUPTIONBUDGET_ADDITIONAL_LABELS"
   "spec.main.generators.podDisruptionBudget.additionalAnnotations:KUBERNETES_PODDISRUPTIONBUDGET_ADDITIONAL_ANNOTATIONS"
 
+  # Generators - namespace
+  "spec.main.generators.namespace.enabled:KUBERNETES_NAMESPACE_GENERATION_ENABLED"
+  "spec.main.generators.namespace.name:KUBERNETES_NAMESPACE_NAME"
+  "spec.main.generators.namespace.combinedSubPath:KUBERNETES_NAMESPACE_COMBINED_SUB_PATH"
+  "spec.main.generators.namespace.additionalLabels:KUBERNETES_NAMESPACE_ADDITIONAL_LABELS"
+  "spec.main.generators.namespace.additionalAnnotations:KUBERNETES_NAMESPACE_ADDITIONAL_ANNOTATIONS"
+
   # Environment. Shared by both run kinds; the schema rejects kind-specific
   # fields on the other kind.
   "spec.main.environment.allowLocalManifestsOverride:ENV_ALLOW_LOCAL_MANIFESTS_OVERRIDE"
@@ -398,6 +405,8 @@ MAPPINGS=(
   "spec.main.environment.generateIdealEnvironmentDeployManifests:ENV_GENERATE_IDEAL_ENVIRONMENT_DEPLOY_MANIFESTS"
   "spec.main.environment.imagePullSecrets:ENV_IMAGE_PULL_SECRETS"
   "spec.main.environment.autoGenerateImagePullSecrets:ENV_AUTO_GENERATE_IMAGE_PULL_SECRETS"
+  "spec.main.environment.namespace.additionalLabels:ENV_NAMESPACE_ADDITIONAL_LABELS"
+  "spec.main.environment.namespace.additionalAnnotations:ENV_NAMESPACE_ADDITIONAL_ANNOTATIONS"
   # Environment-only: a run-platform deploys itself.
   "spec.main.environment.imageDeployManifestsApplyMode:ENV_IMAGE_DEPLOY_MANIFESTS_APPLY_MODE"
   "spec.main.environment.environmentDeployBaseImage.registry:ENV_ENVIRONMENT_DEPLOY_BASE_IMAGE_REGISTRY"

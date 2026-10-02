@@ -326,6 +326,46 @@ EOF
   assert_github_output "ENV_AUTO_GENERATE_IMAGE_PULL_SECRETS" "false"
 }
 
+@test "ENV_NAMESPACE_ADDITIONAL_* use spec.main.environment.namespace" {
+  cat > "${TEST_DIR}/kaptainpm/final/KaptainPM.yaml" << 'EOF'
+apiVersion: kaptain.org/1.10
+kind: test-build
+spec:
+  main:
+    environment:
+      namespace:
+        additionalLabels: 'tier=platform'
+        additionalAnnotations: 'owner=platform-team'
+EOF
+  run_script
+  [ "${status}" -eq 0 ]
+  assert_github_output "ENV_NAMESPACE_ADDITIONAL_LABELS" "tier=platform"
+  assert_github_output "ENV_NAMESPACE_ADDITIONAL_ANNOTATIONS" "owner=platform-team"
+}
+
+@test "KUBERNETES_NAMESPACE_* use spec.main.generators.namespace, name kept as written" {
+  cat > "${TEST_DIR}/kaptainpm/final/KaptainPM.yaml" << 'EOF'
+apiVersion: kaptain.org/1.10
+kind: test-build
+spec:
+  main:
+    generators:
+      namespace:
+        enabled: true
+        name: '${Environment}'
+        combinedSubPath: extra
+        additionalLabels: 'tier=tools'
+        additionalAnnotations: 'owner=platform-team'
+EOF
+  run_script
+  [ "${status}" -eq 0 ]
+  assert_github_output "KUBERNETES_NAMESPACE_GENERATION_ENABLED" "true"
+  assert_github_output "KUBERNETES_NAMESPACE_NAME" '${Environment}'
+  assert_github_output "KUBERNETES_NAMESPACE_COMBINED_SUB_PATH" "extra"
+  assert_github_output "KUBERNETES_NAMESPACE_ADDITIONAL_LABELS" "tier=tools"
+  assert_github_output "KUBERNETES_NAMESPACE_ADDITIONAL_ANNOTATIONS" "owner=platform-team"
+}
+
 @test "KUBERNETES_CONFIGMAP_SUB_PATH defaults to src/configmap when absent" {
   write_pm
   run_script

@@ -1,0 +1,111 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
+#
+# generate-kubernetes-namespace - Generates a Kubernetes Namespace manifest
+#
+# Creates a Namespace resource. Environment and run-platform builds generate
+# their own into the deploy-manifests set; other builds can opt in for a
+# namespace they manage beside their other resources.
+#
+# The name is required and used exactly as given: any literal or token the
+# consumer chooses (KUBERNETES_NAMESPACE_NAME). Environment and run-platform
+# builds pass their ProjectName token. A Namespace is cluster-scoped, so it
+# must resolve to a name unique on the cluster. The combined sub-path only
+# places the file; unlike the other generators it does not change the name.
+#
+# No spec: the API server adds the 'kubernetes' finalizer on create and ignores
+# spec.finalizers on update (only the /finalize subresource changes it).
+#
+# Inputs (environment variables):
+#   KUBERNETES_NAMESPACE_GENERATION_ENABLED - Set to "true" to enable (default: false)
+#   KUBERNETES_NAMESPACE_NAME - The name, any literal or token (required)
+#   KUBERNETES_NAMESPACE_COMBINED_SUB_PATH - Sub-path within combined/ for output (default: empty)
+#   OUTPUT_SUB_PATH            - Build output directory (default: kaptain-out)
+#   PROJECT_NAME               - Used in labels (required)
+#   TOKEN_NAME_STYLE           - Style for token references (default: PascalCase)
+#   TOKEN_DELIMITER_STYLE      - Delimiter style for tokens (default: shell)
+#   KUBERNETES_GLOBAL_ADDITIONAL_LABELS      - Extra labels for all manifests (comma-separated key=value)
+#   KUBERNETES_GLOBAL_ADDITIONAL_ANNOTATIONS - Extra annotations for all manifests
+#   KUBERNETES_NAMESPACE_ADDITIONAL_LABELS   - Namespace-specific extra labels
+#   KUBERNETES_NAMESPACE_ADDITIONAL_ANNOTATIONS - Namespace-specific extra annotations
+#
+# Output:
+#   ${OUTPUT_SUB_PATH}/manifests/combined/[${combined-sub-path}/]namespace.yaml
+#
+# metadata.name:
+#   ${KUBERNETES_NAMESPACE_NAME}
+#
+set -euo pipefail
+
+# Locate script directory for libraries
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+LIB_DIR="${SCRIPT_DIR}/../lib"
+
+# Source libraries
+# shellcheck source=src/scripts/defaults/platform.bash
+source "${SCRIPT_DIR}/../defaults/platform.bash"
+# shellcheck source=src/scripts/lib/log.bash
+source "${LIB_DIR}/log.bash"
+# shellcheck source=src/scripts/defaults/output-sub-path.bash
+source "${SCRIPT_DIR}/../defaults/output-sub-path.bash"
+# shellcheck source=src/scripts/lib/token-format.bash
+source "${LIB_DIR}/token-format.bash"
+# shellcheck source=src/scripts/lib/kubernetes-metadata.bash
+source "${LIB_DIR}/kubernetes-metadata.bash"
+# shellcheck source=src/scripts/lib/generator-input-validation.bash
+source "${LIB_DIR}/generator-input-validation.bash"
+
+# Resource kind
+kind="Namespace"
+
+# Check if generation is enabled (default: false - most builds deploy into an existing namespace)
+if [[ "${KUBERNETES_NAMESPACE_GENERATION_ENABLED:-false}" != "true" ]]; then
+  log "Namespace generation not enabled (KUBERNETES_NAMESPACE_GENERATION_ENABLED != true), skipping"
+  exit 0
+fi
+
+# Inputs with defaults
+# shellcheck source=src/scripts/defaults/tokens.bash
+source "${SCRIPT_DIR}/../defaults/tokens.bash"
+# shellcheck source=src/scripts/defaults/kubernetes-namespace.bash
+source "${SCRIPT_DIR}/../defaults/kubernetes-namespace.bash"
+# shellcheck source=src/scripts/defaults/kubernetes-manifest.bash
+source "${SCRIPT_DIR}/../defaults/kubernetes-manifest.bash"
+
+validate_common_inputs
+
+if [[ -z "${KUBERNETES_NAMESPACE_NAME}" ]]; then
+  log_error "KUBERNETES_NAMESPACE_NAME is required: the Namespace name base, any literal or token"
+  exit 1
+fi
+
+# Generate token references
+project_name_token=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "PROJECT_NAME")
+environment_token=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "ENVIRONMENT")
+product_token=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "PRODUCT_NAME")
+version_token=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "VERSION")
+
+namespace_name="${KUBERNETES_NAMESPACE_NAME}"
+
+# Set app_name for generate_metadata library function
+app_name="${namespace_name}"
+
+# Create output directory
+output_dir=$(ensure_manifest_output_dir "${OUTPUT_SUB_PATH}" "${COMBINED_SUB_PATH}")
+
+# Generate Namespace YAML
+output_file=$(build_output_filename "${output_dir}" "${kind}" "")
+
+# Get current timestamp and script name for annotations
+build_timestamp=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+script_name=$(basename "${BASH_SOURCE[0]}")
+
+# Cluster-scoped: no namespace argument
+{
+  generate_manifest_header "v1" "${kind}" "${namespace_name}"
+  generate_metadata 2 labels
+  generate_metadata 2 annotations
+} > "${output_file}"
+
+log "Generated Namespace manifest: ${output_file}"

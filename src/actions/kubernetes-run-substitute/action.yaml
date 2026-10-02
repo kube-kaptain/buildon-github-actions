@@ -136,6 +136,14 @@ inputs:
     description: 'ENABLED | DISABLED - whether the generated deploy workloads reference the registry pull secret (generate-mode only)'
     required: false
     default: ''
+  namespace-additional-labels:
+    description: 'Extra labels (comma-separated key=value) for the Namespace generated into the deploy-manifests set (generate-mode only)'
+    required: false
+    default: ''
+  namespace-additional-annotations:
+    description: 'Extra annotations (comma-separated key=value) for the Namespace generated into the deploy-manifests set (generate-mode only)'
+    required: false
+    default: ''
   auto-generate-image-pull-secrets:
     description: 'true | false - generate a dockerconfigjson Secret for each imagePullSecrets name the workload contents reference'
     required: false

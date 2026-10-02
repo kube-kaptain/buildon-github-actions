@@ -32,6 +32,7 @@
 #                                                        duration up to a year, emitted on
 #                                                        the CronJob in seconds
 #   ENV_IMAGE_PULL_SECRETS                             - ENABLED | DISABLED (generate-mode only)
+#   ENV_NAMESPACE_ADDITIONAL_LABELS / _ANNOTATIONS     - extra metadata for the generated Namespace (generate-mode only)
 #   ENV_IMAGE_AUTO_UPDATE_PROVIDER                     - keel | keelson | none (generate-mode only)
 #   ENV_IMAGE_AUTO_UPDATE_POLICY                       - patch|minor|major|all|force (force = keel only)
 #   ENV_IMAGE_AUTO_UPDATE_TRIGGER                      - poll | default
@@ -265,6 +266,7 @@ step_generate_manifests() {
 
   local has_workload="false"
   local has_serviceaccount="false"
+  local has_namespace="false"
   local has_rbac_binding="false"
   local has_configmap="false"
   local has_secret="false"
@@ -281,6 +283,9 @@ step_generate_manifests() {
           ;;
         ServiceAccount)
           has_serviceaccount="true"
+          ;;
+        Namespace)
+          has_namespace="true"
           ;;
         ClusterRoleBinding|RoleBinding)
           has_rbac_binding="true"
@@ -329,6 +334,18 @@ step_generate_manifests() {
     MANIFESTS_SUB_PATH="${IMAGE_MANIFESTS_DIR}" \
     KUBERNETES_SERVICEACCOUNT_GENERATION_ENABLED="true" \
       "${generators_dir}/generate-kubernetes-serviceaccount"
+  fi
+
+  # Each environment and run-platform owns its own Namespace, named for the
+  # project, so the parent applying this set creates it before anything else.
+  if [[ "${has_namespace}" == "false" ]]; then
+    log "  Generating Namespace"
+    OUTPUT_SUB_PATH="${gen_output}" \
+    KUBERNETES_NAMESPACE_GENERATION_ENABLED="true" \
+    KUBERNETES_NAMESPACE_NAME="${project_name_token}" \
+    KUBERNETES_NAMESPACE_ADDITIONAL_LABELS="${ENV_NAMESPACE_ADDITIONAL_LABELS}" \
+    KUBERNETES_NAMESPACE_ADDITIONAL_ANNOTATIONS="${ENV_NAMESPACE_ADDITIONAL_ANNOTATIONS}" \
+      "${generators_dir}/generate-kubernetes-namespace"
   fi
 
   # The project-name key guarantees a ConfigMap and so the standard mount;

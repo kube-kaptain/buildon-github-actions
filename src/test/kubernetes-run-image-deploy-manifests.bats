@@ -95,6 +95,52 @@ EOF
 }
 
 # =============================================================================
+# Namespace
+# =============================================================================
+
+@test "namespace: generated into the set, named for the project, cluster-scoped with no spec" {
+  run "$SCRIPT"
+  [ "$status" -eq 0 ]
+  [ "$(yq '.kind' "${MANIFESTS}/namespace.yaml")" = "Namespace" ]
+  [ "$(yq '.metadata.name' "${MANIFESTS}/namespace.yaml")" = '${ProjectName}' ]
+  [ "$(yq '.metadata | has("namespace")' "${MANIFESTS}/namespace.yaml")" = "false" ]
+  [ "$(yq 'has("spec")' "${MANIFESTS}/namespace.yaml")" = "false" ]
+}
+
+@test "namespace: a run-platform's set gets its own too" {
+  export PROJECT_NAME="run-platform-foo"
+  run "$SCRIPT"
+  [ "$status" -eq 0 ]
+  [ "$(yq '.metadata.name' "${MANIFESTS}/namespace.yaml")" = '${ProjectName}' ]
+}
+
+@test "namespace: carries spec.main.environment.namespace labels and annotations" {
+  export ENV_NAMESPACE_ADDITIONAL_LABELS="tier=platform"
+  export ENV_NAMESPACE_ADDITIONAL_ANNOTATIONS="owner=platform-team"
+  run "$SCRIPT"
+  [ "$status" -eq 0 ]
+  [ "$(yq '.metadata.labels.tier' "${MANIFESTS}/namespace.yaml")" = "platform" ]
+  [ "$(yq '.metadata.annotations.owner' "${MANIFESTS}/namespace.yaml")" = "platform-team" ]
+}
+
+@test "namespace: a supplied Namespace is used and none is generated" {
+  mkdir -p src/environment/kubernetes
+  cat > src/environment/kubernetes/my-namespace.yaml << 'EOF'
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ${ProjectName}
+  labels:
+    supplied: "yes"
+EOF
+  run "$SCRIPT"
+  [ "$status" -eq 0 ]
+  assert_output_not_contains "Generating Namespace"
+  [ ! -e "${MANIFESTS}/namespace.yaml" ]
+  [ "$(yq '.metadata.labels.supplied' "${MANIFESTS}/my-namespace.yaml")" = "yes" ]
+}
+
+# =============================================================================
 # ConfigMap
 # =============================================================================
 

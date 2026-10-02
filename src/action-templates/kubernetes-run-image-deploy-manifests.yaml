@@ -39,6 +39,8 @@ runs:
         ENV_JOB_POST_DEPLOY_SLEEP_AFTER_SUCCESS: ${{ inputs.job-post-deploy-sleep-after-success }}
         ENV_JOB_POST_DEPLOY_SLEEP_AFTER_FAILURE: ${{ inputs.job-post-deploy-sleep-after-failure }}
         ENV_IMAGE_PULL_SECRETS: ${{ inputs.image-pull-secrets }}
+        ENV_NAMESPACE_ADDITIONAL_LABELS: ${{ inputs.namespace-additional-labels }}
+        ENV_NAMESPACE_ADDITIONAL_ANNOTATIONS: ${{ inputs.namespace-additional-annotations }}
         ENV_IMAGE_AUTO_UPDATE_PROVIDER: ${{ inputs.image-auto-update-provider }}
         ENV_IMAGE_AUTO_UPDATE_POLICY: ${{ inputs.image-auto-update-policy }}
         ENV_IMAGE_AUTO_UPDATE_TRIGGER: ${{ inputs.image-auto-update-trigger }}

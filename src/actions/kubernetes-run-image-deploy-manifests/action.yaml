@@ -73,6 +73,14 @@ inputs:
     description: 'ENABLED | DISABLED - whether the generated deploy workloads reference the registry pull secret (generate-mode only)'
     required: false
     default: ''
+  namespace-additional-labels:
+    description: 'Extra labels (comma-separated key=value) for the Namespace generated into the deploy-manifests set (generate-mode only)'
+    required: false
+    default: ''
+  namespace-additional-annotations:
+    description: 'Extra annotations (comma-separated key=value) for the Namespace generated into the deploy-manifests set (generate-mode only)'
+    required: false
+    default: ''
   auto-generate-image-pull-secrets:
     description: 'true | false - generate a dockerconfigjson Secret for each imagePullSecrets name the workload contents reference'
     required: false
@@ -160,6 +168,8 @@ runs:
         ENV_JOB_POST_DEPLOY_SLEEP_AFTER_SUCCESS: ${{ inputs.job-post-deploy-sleep-after-success }}
         ENV_JOB_POST_DEPLOY_SLEEP_AFTER_FAILURE: ${{ inputs.job-post-deploy-sleep-after-failure }}
         ENV_IMAGE_PULL_SECRETS: ${{ inputs.image-pull-secrets }}
+        ENV_NAMESPACE_ADDITIONAL_LABELS: ${{ inputs.namespace-additional-labels }}
+        ENV_NAMESPACE_ADDITIONAL_ANNOTATIONS: ${{ inputs.namespace-additional-annotations }}
         ENV_IMAGE_AUTO_UPDATE_PROVIDER: ${{ inputs.image-auto-update-provider }}
         ENV_IMAGE_AUTO_UPDATE_POLICY: ${{ inputs.image-auto-update-policy }}
         ENV_IMAGE_AUTO_UPDATE_TRIGGER: ${{ inputs.image-auto-update-trigger }}
