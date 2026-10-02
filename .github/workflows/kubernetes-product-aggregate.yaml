@@ -69,9 +69,6 @@ on:
       manifests-uri:
         description: 'Reference to published manifests (format depends on repo provider)'
         value: ${{ jobs.build.outputs.manifests-uri }}
-      manifests-published:
-        description: 'Whether manifests were published'
-        value: ${{ jobs.build.outputs.manifests-published }}
 jobs:
   build:
     name: Build & Publish
@@ -98,7 +95,6 @@ jobs:
       manifests-zip-sub-path: ${{ steps.manifest-package.outputs.manifests-zip-sub-path }}
       manifests-zip-file-name: ${{ steps.manifest-package.outputs.manifests-zip-file-name }}
       manifests-uri: ${{ steps.manifest-repo-provider-publish.outputs.manifests-uri }}
-      manifests-published: ${{ steps.manifest-repo-provider-publish.outputs.manifests-published }}
     steps:
       - name: Checkout
         uses: actions/checkout@v5.0.1
@@ -2385,8 +2381,9 @@ jobs:
         with:
           manifests-repo-provider-type: ${{ steps.kpm.outputs.MANIFESTS_REPO_PROVIDER_TYPE }}
           manifests-uri: ${{ steps.manifest-repo-provider-package.outputs.manifests-uri }}
-          manifests-zip-sub-path: ${{ steps.manifest-repo-provider-package.outputs.manifests-zip-sub-path }}
-          manifests-zip-file-name: ${{ steps.manifest-repo-provider-package.outputs.manifests-zip-file-name }}
+          # From the package step that creates the zip.
+          manifests-zip-sub-path: ${{ steps.manifest-package.outputs.manifests-zip-sub-path }}
+          manifests-zip-file-name: ${{ steps.manifest-package.outputs.manifests-zip-file-name }}
           version: ${{ steps.manifest-repo-provider-package.outputs.version }}
           is-release: ${{ steps.versions.outputs.is-release }}
           repo-provider-url: ${{ steps.manifest-repo-provider-package.outputs.repo-provider-url }}

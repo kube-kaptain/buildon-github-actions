@@ -1,0 +1,17 @@
+# SPDX-License-Identifier: CC0-1.0
+# This example is released to the public domain. Use freely without attribution.
+
+apiVersion: kaptain.org/1.37
+kind: kubernetes-run-environment
+
+spec:
+  contents:
+    - my-app:[1.0,2.0)
+  main:
+    environment:
+      # Every config and secret value must be referenced by some token
+      # (the default); false downgrades unused values to warnings.
+      failOnUnreferencedConfigOrSecrets: true
+      # One dockerconfigjson Secret per registry referenced by
+      # imagePullSecrets (the default).
+      autoGenerateImagePullSecrets: true

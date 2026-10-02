@@ -35,4 +35,3 @@ All configuration comes from KaptainPM.yaml and layers, except secrets.
 | `manifests-zip-sub-path` | Directory containing manifests zip file (relative) |
 | `manifests-zip-file-name` | Name of manifests zip file |
 | `manifests-uri` | Reference to published manifests (format depends on repo provider) |
-| `manifests-published` | Whether manifests were published |

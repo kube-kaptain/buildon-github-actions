@@ -1,26 +1,25 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/kube-kaptain/spec-kaptainpm-schema/releases/download/1.34/spec-kaptainpm-schema-1.34.yaml",
+  "$id": "https://github.com/kube-kaptain/spec-kaptainpm-schema/releases/download/1.37/spec-kaptainpm-schema-layer-source-1.37.yaml",
   "name": "spec-kaptainpm-schema",
-  "version": "1.34",
+  "version": "1.37",
   "source": "https://github.com/kube-kaptain/spec-kaptainpm-schema",
   "latest": "https://raw.githubusercontent.com/kube-kaptain/spec-kaptainpm-schema/main/spec-kaptainpm-schema.yaml",
-  "tagged": "https://raw.githubusercontent.com/kube-kaptain/spec-kaptainpm-schema/1.34/spec-kaptainpm-schema.yaml",
-  "release": "https://github.com/kube-kaptain/spec-kaptainpm-schema/releases/download/1.34/spec-kaptainpm-schema-1.34.yaml",
-  "validate-using": "https://github.com/kube-kaptain/spec-kaptainpm-schema/releases/download/1.34/spec-kaptainpm-schema-1.34.json",
+  "tagged": "https://raw.githubusercontent.com/kube-kaptain/spec-kaptainpm-schema/1.37/spec-kaptainpm-schema.yaml",
+  "release": "https://github.com/kube-kaptain/spec-kaptainpm-schema/releases/download/1.37/spec-kaptainpm-schema-layer-source-1.37.yaml",
+  "validate-using": "https://github.com/kube-kaptain/spec-kaptainpm-schema/releases/download/1.37/spec-kaptainpm-schema-layer-source-1.37.json",
   "title": "KaptainPM",
-  "description": "Kaptain project manifest schema (version 1.34).\n",
+  "description": "Kaptain project manifest schema (version 1.37).\n",
   "type": "object",
   "required": [
-    "apiVersion",
-    "kind"
+    "apiVersion"
   ],
   "additionalProperties": false,
   "properties": {
     "apiVersion": {
       "type": "string",
       "pattern": "^kaptain\\.org/[0-9]+(\\.[0-9]+)*$",
-      "description": "API version - must be kaptain.org/ followed by the schema version (e.g. kaptain.org/1.2). Set via 1.34 token substitution at build time.\n"
+      "description": "API version - must be kaptain.org/ followed by the schema version (e.g. kaptain.org/1.2). Set via 1.37 token substitution at build time.\n"
     },
     "kind": {
       "type": "string",
@@ -63,17 +62,13 @@
         "credentials": {
           "$ref": "#/$defs/credentials"
         },
-        "layers": {
-          "$ref": "#/$defs/artifactReferenceList",
-          "description": "Configuration layers applied before this project's settings. Deep-merged in order; local settings always win. Bootstrap registry logins must be in the project root file (needed before layer resolution). Additional logins declared in layers are applied in a second login phase post-merge.\n"
-        },
         "templates": {
           "$ref": "#/$defs/artifactReferenceList",
-          "description": "Manifest template sets pulled in and token-substituted to become this project's own manifest output. Replaces generators or hand-written manifests.\n"
+          "description": "Manifest template sets pulled in and token-substituted to become this project's own manifest output. Replaces generators or hand-written manifests. Their manifests and contract zips may hold only regular files and directories; a symlink fails the build.\n"
         },
         "contents": {
           "$ref": "#/$defs/artifactReferenceList",
-          "description": "Finished manifest artifacts from other projects bundled into this deliverable. Front and centre in product/environment builds.\n"
+          "description": "Finished manifest artifacts from other projects bundled into this deliverable. Front and centre in product/environment builds. Their manifests and contract zips may hold only regular files and directories; a symlink fails the build.\n"
         },
         "data": {
           "$ref": "#/$defs/specData"
@@ -88,6 +83,9 @@
           "$ref": "#/$defs/specPlatform"
         }
       }
+    },
+    "layer-payload": {
+      "$ref": "#/$defs/layerPayload"
     }
   },
   "allOf": [
@@ -128,119 +126,12 @@
           }
         }
       }
-    },
-    {
-      "if": {
-        "required": [
-          "kind"
-        ],
-        "properties": {
-          "kind": {
-            "const": "kubernetes-run-environment"
-          }
-        }
-      },
-      "then": {
-        "properties": {
-          "spec": {
-            "properties": {
-              "main": {
-                "properties": {
-                  "environment": {
-                    "properties": {
-                      "cleanUp": {
-                        "propertyNames": {
-                          "not": {
-                            "enum": [
-                              "undeclaredNamespacePolicy",
-                              "additionalNamespaces"
-                            ]
-                          }
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    {
-      "if": {
-        "required": [
-          "kind"
-        ],
-        "properties": {
-          "kind": {
-            "const": "kubernetes-run-platform-meta-environment"
-          }
-        }
-      },
-      "then": {
-        "properties": {
-          "spec": {
-            "properties": {
-              "main": {
-                "properties": {
-                  "environment": {
-                    "propertyNames": {
-                      "not": {
-                        "enum": [
-                          "clusterScopedDelegation",
-                          "clusterScopedKindsFile",
-                          "imageDeployManifestsApplyMode"
-                        ]
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    {
-      "if": {
-        "required": [
-          "kind"
-        ],
-        "not": {
-          "properties": {
-            "kind": {
-              "enum": [
-                "kubernetes-run-environment",
-                "kubernetes-run-platform-meta-environment"
-              ]
-            }
-          }
-        }
-      },
-      "then": {
-        "properties": {
-          "spec": {
-            "properties": {
-              "main": {
-                "propertyNames": {
-                  "not": {
-                    "enum": [
-                      "environment"
-                    ]
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
     }
   ],
   "$defs": {
     "layerPayload": {
       "type": "array",
-      "description": "Additional files the layer image carries alongside KaptainPM.yaml. Layer-only - the unknown-key validator rejects this in project root files.\n",
+      "description": "Additional files the layer image carries alongside KaptainPM.yaml. Layer-only - the unknown-key validator rejects this in project root files. The layer image may hold only regular files and directories; a symlink fails both the layer build and any consuming build. A layer that needs a symlink in a consuming repo ships a script that creates it, run from a hook.\n",
       "items": {
         "$ref": "#/$defs/layerPayloadItem"
       }
@@ -274,7 +165,7 @@
             "bz2",
             "xz"
           ],
-          "description": "Archive format for unpacking. Absent means plain copy. Invalid on directory sources.\n"
+          "description": "Archive format for unpacking. Absent means plain copy. Invalid on directory sources. Archives are unpacked into a staging directory and checked before anything reaches the repo; one holding a symlink fails the build.\n"
         }
       }
     },
@@ -2105,6 +1996,45 @@
                   "description": "Additional annotations for PDB manifests"
                 }
               }
+            },
+            "namespace": {
+              "type": "object",
+              "additionalProperties": false,
+              "description": "Namespace manifest generator configuration, for builds that manage a namespace of their own beside their other resources. Environment and run-platform builds always generate their own Namespace into the deploy-manifests set and take its labels and annotations from spec.main.environment.namespace instead.\n",
+              "required": [
+                "name"
+              ],
+              "properties": {
+                "enabled": {
+                  "oneOf": [
+                    {
+                      "type": "boolean"
+                    },
+                    {
+                      "type": "string",
+                      "pattern": "^(true|false)$"
+                    }
+                  ],
+                  "description": "Whether to generate a Namespace manifest (default: false)"
+                },
+                "name": {
+                  "type": "string",
+                  "minLength": 1,
+                  "description": "The Namespace name, required and used exactly as given: any literal or token the build or its consumer resolves, such as '${Environment}' or 'shared-tools'.\n"
+                },
+                "combinedSubPath": {
+                  "type": "string",
+                  "description": "Combined sub-path the Namespace manifest is written to; does not affect its name"
+                },
+                "additionalLabels": {
+                  "type": "string",
+                  "description": "Additional labels for Namespace manifests"
+                },
+                "additionalAnnotations": {
+                  "type": "string",
+                  "description": "Additional annotations for Namespace manifests"
+                }
+              }
             }
           }
         },
@@ -2115,7 +2045,7 @@
           "properties": {
             "subPath": {
               "type": "string",
-              "description": "Directory containing manifests (default: src/kubernetes)"
+              "description": "Directory containing manifests (default: src/kubernetes). It may hold only .yaml manifests and their modifier files; a symlink fails the build, and dotfiles are ignored.\n"
             },
             "allowLocalOverride": {
               "oneOf": [
@@ -2216,8 +2146,17 @@
             "deployMode": {
               "$ref": "#/$defs/runEnvDeployMode"
             },
+            "jobPostDeploySleepAfterSuccess": {
+              "$ref": "#/$defs/runEnvJobPostDeploySleepAfterSuccess"
+            },
+            "jobPostDeploySleepAfterFailure": {
+              "$ref": "#/$defs/runEnvJobPostDeploySleepAfterFailure"
+            },
             "imagePullSecrets": {
               "$ref": "#/$defs/runEnvImagePullSecrets"
+            },
+            "namespace": {
+              "$ref": "#/$defs/runEnvNamespace"
             },
             "autoGenerateImagePullSecrets": {
               "$ref": "#/$defs/runEnvAutoGenerateImagePullSecrets"
@@ -2278,6 +2217,32 @@
             },
             {
               "if": {
+                "anyOf": [
+                  {
+                    "required": [
+                      "jobPostDeploySleepAfterSuccess"
+                    ]
+                  },
+                  {
+                    "required": [
+                      "jobPostDeploySleepAfterFailure"
+                    ]
+                  }
+                ]
+              },
+              "then": {
+                "required": [
+                  "deployMode"
+                ],
+                "properties": {
+                  "deployMode": {
+                    "const": "job"
+                  }
+                }
+              }
+            },
+            {
+              "if": {
                 "required": [
                   "imageAutoUpdatePolicy"
                 ],
@@ -2322,7 +2287,22 @@
                     },
                     {
                       "required": [
+                        "jobPostDeploySleepAfterSuccess"
+                      ]
+                    },
+                    {
+                      "required": [
+                        "jobPostDeploySleepAfterFailure"
+                      ]
+                    },
+                    {
+                      "required": [
                         "imagePullSecrets"
+                      ]
+                    },
+                    {
+                      "required": [
+                        "namespace"
                       ]
                     },
                     {
@@ -2718,6 +2698,21 @@
       "default": "ENABLED",
       "description": "Whether the generated workloads that run the env deploy image (the Deployment, and in job mode the CronJob and its zero-scale Deployment) carry imagePullSecrets naming the environment's docker registry secret. 'ENABLED' (default) or 'DISABLED', for registries that need no pull credentials or nodes that supply them. Only drives generation, so it may not be set when generateIdealEnvironmentDeployManifests is false.\n"
     },
+    "runEnvNamespace": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "The Namespace generated into the deploy-manifests set: the environment's or run-platform's own namespace, named after it. Each owns its own, and it is applied with the rest of that set, so it exists before anything is deployed into it. Only drives generation, so it may not be set when generateIdealEnvironmentDeployManifests is false.\n",
+      "properties": {
+        "additionalLabels": {
+          "type": "string",
+          "description": "Additional labels for the generated Namespace"
+        },
+        "additionalAnnotations": {
+          "type": "string",
+          "description": "Additional annotations for the generated Namespace"
+        }
+      }
+    },
     "runEnvAutoGenerateImagePullSecrets": {
       "oneOf": [
         {
@@ -2738,6 +2733,30 @@
         "job"
       ],
       "description": "Workload kind for the env's deploy image: 'deployment' (default, always-running reconciler) or 'job' (one-shot apply on schedule). Maps to the DEPLOY_MODE env var consumed by the deploy image at runtime.\nConstraint: 'job' requires imageAutoUpdateProvider 'keelson' or 'none' (manually triggered special cronjob). Keel does not support job-mode deploys. The schema rejects deployMode=job paired with an explicit provider of 'keel'; an absent provider is allowed and the build's default-fill stage supplies 'keelson'.\n'job' mode also generates a zero-scale Deployment of the same image alongside the suspended CronJob, so an operator can scale it to 1 to debug/explore/fix on the rare occasions that's needed.\n"
+    },
+    "runEnvJobPostDeploySleepAfterSuccess": {
+      "$ref": "#/$defs/durationUpToOneYear",
+      "default": "10m",
+      "description": "Job mode only: how long the deploy Job's pod stays up after a successful deploy before it exits, so an operator can inspect its working directory (/kd/work/: processed manifests, audit logs). Default '10m'. Zero ('0', '0s', '0m' and so on) exits straight away. Maps to the POST_DEPLOY_SLEEP_SUCCESS env var (in seconds) consumed by the deploy image at runtime.\nConstraint: requires deployMode 'job'.\n"
+    },
+    "runEnvJobPostDeploySleepAfterFailure": {
+      "$ref": "#/$defs/durationUpToOneYear",
+      "default": "24h",
+      "description": "Job mode only: how long the deploy Job's pod stays up after a failed deploy before it exits with the failure, so an operator can inspect what went wrong. Default '24h'. Zero ('0', '0s', '0h' and so on) exits straight away. Maps to the POST_DEPLOY_SLEEP_FAILURE env var (in seconds) consumed by the deploy image at runtime.\nConstraint: requires deployMode 'job'.\n"
+    },
+    "durationUpToOneYear": {
+      "description": "A duration from zero up to one year (365 days): a whole number of seconds, as a bare integer or a string ('600'), or a string of an integer and one unit, s m h d or w ('10m', '24h', '2d'). The limit per unit is 31536000s, 525600m, 8760h, 365d and 52w. Leading zeros and compound durations ('1h30m') are rejected.\n",
+      "oneOf": [
+        {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 31536000
+        },
+        {
+          "type": "string",
+          "pattern": "^(([0-9]|[1-9][0-9]{1,6}|[12][0-9]{7}|30[0-9]{6}|31[0-4][0-9]{5}|315[0-2][0-9]{4}|3153[0-5][0-9]{3}|31536000)s?|([0-9]|[1-9][0-9]{1,4}|[1-4][0-9]{5}|5[01][0-9]{4}|52[0-4][0-9]{3}|525[0-5][0-9]{2}|525600)m|([0-9]|[1-9][0-9]{1,2}|[1-7][0-9]{3}|8[0-6][0-9]{2}|87[0-5][0-9]|8760)h|([0-9]|[1-9][0-9]|[12][0-9]{2}|3[0-5][0-9]|36[0-5])d|([0-9]|[1-4][0-9]|5[0-2])w)$"
+        }
+      ]
     },
     "runEnvChecksumSecretsTiming": {
       "type": "string",

@@ -1,0 +1,594 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
+#
+# kubernetes-run-image-deploy-manifests - Stage the deploy-manifests set (the
+# Deployment/Job and RBAC that run the run's image) as a stock app build.
+#
+# Kept apart from the workload aggregate so one repo yields both outputs. This
+# step only stages; the kubernetes-run-image-deploy-manifests-* wrappers run the
+# stock pipeline afterwards, each pinning the deploy-manifests dirs in its own
+# process so the later bespoke block sees the inbound env untouched.
+# Deploy-time tokens (cron schedule/suspend, Environment) stay unresolved for
+# the parent (run-platform or bootstrap) to supply. No finalise here: signoff,
+# checksum and content-data belong to the workload tree.
+#
+# ENV_GENERATE_IDEAL_ENVIRONMENT_DEPLOY_MANIFESTS:
+#   true   - Stage user-supplied pieces, then generate only the missing kinds.
+#            Supplied ConfigMap/Secret names must end '-checksum'. The base
+#            image is a packaging concern and never enters these manifests.
+#   false  - The user supplies <source base>/kubernetes/ and owns deploy
+#            behaviour; the schema rejects the generation settings.
+#
+# Inputs (env):
+#   PROJECT_NAME                                       - Required; run name (run-* / run-platform-*)
+#   VERSION                                            - Required; for logs
+#   OUTPUT_SUB_PATH                                    - Build output dir
+#   KAPTAINPM_FILE                                     - Path to final KaptainPM.yaml
+#   ENV_ENVIRONMENT_DEPLOY_SOURCE_BASE_PATH            - Deploy-image source dir
+#   ENV_GENERATE_IDEAL_ENVIRONMENT_DEPLOY_MANIFESTS    - Generate vs supply
+#   ENV_DEPLOY_MODE                                    - deployment | job (generate-mode only)
+#   ENV_JOB_POST_DEPLOY_SLEEP_AFTER_SUCCESS / _FAILURE - job mode: seconds or a single-unit
+#                                                        duration up to a year, emitted on
+#                                                        the CronJob in seconds
+#   ENV_IMAGE_PULL_SECRETS                             - ENABLED | DISABLED (generate-mode only)
+#   ENV_NAMESPACE_ADDITIONAL_LABELS / _ANNOTATIONS     - extra metadata for the generated Namespace (generate-mode only)
+#   ENV_IMAGE_AUTO_UPDATE_PROVIDER                     - keel | keelson | none (generate-mode only)
+#   ENV_IMAGE_AUTO_UPDATE_POLICY                       - patch|minor|major|all|force (force = keel only)
+#   ENV_IMAGE_AUTO_UPDATE_TRIGGER                      - poll | default
+#   ENV_IMAGE_AUTO_UPDATE_POLL_SCHEDULE                - single-unit duration, e.g. 1m
+#   ENV_IMAGE_AUTO_UPDATE_FIELD_MANAGER_STRATEGY       - mimic|patch|claim (keelson only)
+#   ENV_CLUSTER_SCOPED_DELEGATION                      - self | parent (RBAC shape; RP always self)
+#   TOKEN_DELIMITER_STYLE / TOKEN_NAME_STYLE           - Token rendering for generated manifests
+#
+# Outputs: none. Emitting MANIFESTS_SUB_PATH would poison the workload
+# aggregate's local fold; the wrappers pin their inputs from
+# lib/run-image-deploy-manifests-context.
+#
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# shellcheck source=src/scripts/defaults/platform.bash
+source "${SCRIPT_DIR}/../defaults/platform.bash"
+# shellcheck source=src/scripts/lib/log.bash
+source "${SCRIPT_DIR}/../lib/log.bash"
+# shellcheck source=src/scripts/defaults/output-sub-path.bash
+source "${SCRIPT_DIR}/../defaults/output-sub-path.bash"
+# shellcheck source=src/scripts/defaults/tokens.bash
+source "${SCRIPT_DIR}/../defaults/tokens.bash"
+# shellcheck source=src/scripts/defaults/environments.bash
+source "${SCRIPT_DIR}/../defaults/environments.bash"
+# shellcheck source=src/scripts/lib/output-var.bash
+source "${SCRIPT_DIR}/../lib/output-var.bash"
+# shellcheck source=src/scripts/lib/token-format.bash
+source "${SCRIPT_DIR}/../lib/token-format.bash"
+
+PROJECT_NAME="${PROJECT_NAME:?PROJECT_NAME is required}"
+VERSION="${VERSION:?VERSION is required}"
+KAPTAINPM_FILE="${KAPTAINPM_FILE:-kaptainpm/final/KaptainPM.yaml}"
+
+# shellcheck source=src/scripts/lib/run-image-deploy-manifests-paths.bash
+source "${SCRIPT_DIR}/../lib/run-image-deploy-manifests-paths.bash"
+
+IMAGE_BASE="${RUN_IMAGE_DEPLOY_MANIFESTS_BASE}"
+IMAGE_MANIFESTS_DIR="${RUN_IMAGE_DEPLOY_MANIFESTS_INPUT}"
+APPLY_MODE_MARKER_FILENAME="run-environment-seed-and-compare-marker.yaml"
+# A namespace that is never created, so a plain apply of the set fails loudly
+# on the marker instead of leaving a stray ConfigMap.
+APPLY_MODE_MARKER_NAMESPACE="do-not-deploy-kaptain-seed-and-compare-marker-file-only"
+IMAGE_DEFAULTS_DIR="${RUN_IMAGE_DEPLOY_MANIFESTS_DEFAULTS}"
+
+step_copy_source() {
+  log ""
+  log "Copying user-supplied deploy-image source from ${ENV_ENVIRONMENT_DEPLOY_SOURCE_BASE_PATH}..."
+  if [[ ! -d "${ENV_ENVIRONMENT_DEPLOY_SOURCE_BASE_PATH}" ]]; then
+    log_error "Deploy-image source directory not found: ${ENV_ENVIRONMENT_DEPLOY_SOURCE_BASE_PATH}"
+    log_error "generateIdealEnvironmentDeployManifests is false; the user must supply"
+    log_error "manifests under this path. Override via"
+    log_error "spec.main.environment.environmentDeploySourceBasePath."
+    exit 1
+  fi
+  if [[ ! -d "${ENV_ENVIRONMENT_DEPLOY_SOURCE_BASE_PATH}/kubernetes" ]]; then
+    log_error "Required directory not found: ${ENV_ENVIRONMENT_DEPLOY_SOURCE_BASE_PATH}/kubernetes"
+    exit 1
+  fi
+  cp -R "${ENV_ENVIRONMENT_DEPLOY_SOURCE_BASE_PATH}/kubernetes/." "${IMAGE_MANIFESTS_DIR}/"
+  if [[ -d "${ENV_ENVIRONMENT_DEPLOY_SOURCE_BASE_PATH}/defaults" ]]; then
+    cp -R "${ENV_ENVIRONMENT_DEPLOY_SOURCE_BASE_PATH}/defaults/." "${IMAGE_DEFAULTS_DIR}/"
+  fi
+}
+
+# Seconds in a duration (<integer> seconds, or <integer><s|m|h|d|w>), as the
+# deploy scripts' POST_DEPLOY_SLEEP_* take them.
+duration_seconds() {
+  local duration="$1"
+  local amount="${duration%?}"
+  case "${duration}" in
+    *[0-9]) echo "${duration}" ;;
+    *s) echo "${amount}" ;;
+    *m) echo $((amount * 60)) ;;
+    *h) echo $((amount * 3600)) ;;
+    *d) echo $((amount * 86400)) ;;
+    *w) echo $((amount * 604800)) ;;
+  esac
+}
+
+# Re-checks schema constraints.
+validate_generation_settings() {
+  case "${ENV_DEPLOY_MODE}" in
+    deployment|job) ;;
+    *)
+      log_error "ENV_DEPLOY_MODE must be 'deployment' or 'job', got '${ENV_DEPLOY_MODE}'"
+      exit 1
+      ;;
+  esac
+  case "${ENV_IMAGE_AUTO_UPDATE_PROVIDER}" in
+    keel|keelson|none) ;;
+    *)
+      log_error "ENV_IMAGE_AUTO_UPDATE_PROVIDER must be 'keel', 'keelson', or 'none', got '${ENV_IMAGE_AUTO_UPDATE_PROVIDER}'"
+      exit 1
+      ;;
+  esac
+  # Up to a year, as the schema's durationUpToOneYear. Eight digits at most
+  # keeps the conversion inside bash arithmetic before the limit is checked.
+  local sleep_setting
+  for sleep_setting in ENV_JOB_POST_DEPLOY_SLEEP_AFTER_SUCCESS ENV_JOB_POST_DEPLOY_SLEEP_AFTER_FAILURE; do
+    if ! [[ "${!sleep_setting}" =~ ^(0|[1-9][0-9]{0,7})[smhdw]?$ ]] \
+        || [[ "$(duration_seconds "${!sleep_setting}")" -gt 31536000 ]]; then
+      log_error "${sleep_setting} must be seconds, or an integer and one of s m h d w, up to a year (e.g. 600, 10m), got '${!sleep_setting}'"
+      exit 1
+    fi
+  done
+  if [[ "${ENV_DEPLOY_MODE}" == "job" && "${ENV_IMAGE_AUTO_UPDATE_PROVIDER}" == "keel" ]]; then
+    log_error "deployMode 'job' cannot use imageAutoUpdateProvider 'keel' (Keel does not support job-mode; use keelson or none)"
+    exit 1
+  fi
+  if [[ "${ENV_IMAGE_AUTO_UPDATE_POLICY}" == "force" && "${ENV_IMAGE_AUTO_UPDATE_PROVIDER}" != "keel" ]]; then
+    log_error "imageAutoUpdatePolicy 'force' is Keel-only (Keelson rejects it); provider is '${ENV_IMAGE_AUTO_UPDATE_PROVIDER}'"
+    exit 1
+  fi
+  case "${ENV_IMAGE_PULL_SECRETS}" in
+    ENABLED|DISABLED) ;;
+    *)
+      log_error "ENV_IMAGE_PULL_SECRETS must be 'ENABLED' or 'DISABLED', got '${ENV_IMAGE_PULL_SECRETS}'"
+      exit 1
+      ;;
+  esac
+  case "${ENV_CLUSTER_SCOPED_DELEGATION}" in
+    self|parent) ;;
+    *)
+      log_error "ENV_CLUSTER_SCOPED_DELEGATION must be 'self' or 'parent', got '${ENV_CLUSTER_SCOPED_DELEGATION}'"
+      exit 1
+      ;;
+  esac
+}
+
+# Keel and Keelson both accept '@every <duration>'.
+auto_update_poll_schedule_value() {
+  local duration="${ENV_IMAGE_AUTO_UPDATE_POLL_SCHEDULE}"
+  local number="${duration%[smh]}"
+  local unit="${duration#"${number}"}"
+  if ! [[ "${number}" =~ ^[0-9]+$ && "${unit}" =~ ^[smh]$ ]]; then
+    log_error "ENV_IMAGE_AUTO_UPDATE_POLL_SCHEDULE must be '<integer>[smh]', got '${duration}'"
+    exit 1
+  fi
+  echo "@every ${duration}"
+}
+
+# Usage: auto_update_annotation_list <include-job-trigger: true|false>
+auto_update_annotation_list() {
+  local include_job_trigger="$1"
+  local schedule list
+  case "${ENV_IMAGE_AUTO_UPDATE_PROVIDER}" in
+    keelson)
+      schedule=$(auto_update_poll_schedule_value)
+      list="keelson.pro/policy=${ENV_IMAGE_AUTO_UPDATE_POLICY}"
+      list="${list},keelson.pro/trigger=${ENV_IMAGE_AUTO_UPDATE_TRIGGER}"
+      list="${list},keelson.pro/poll-schedule=${schedule}"
+      # mimic is Keelson's default.
+      if [[ "${ENV_IMAGE_AUTO_UPDATE_FIELD_MANAGER_STRATEGY}" != "mimic" ]]; then
+        list="${list},keelson.pro/field-manager-strategy=${ENV_IMAGE_AUTO_UPDATE_FIELD_MANAGER_STRATEGY}"
+      fi
+      if [[ "${include_job_trigger}" == "true" ]]; then
+        list="${list},keelson.pro/trigger-job-on-update=true"
+      fi
+      echo "${list}"
+      ;;
+    keel)
+      schedule=$(auto_update_poll_schedule_value)
+      echo "keel.sh/policy=${ENV_IMAGE_AUTO_UPDATE_POLICY},keel.sh/trigger=${ENV_IMAGE_AUTO_UPDATE_TRIGGER},keel.sh/pollSchedule=${schedule}"
+      ;;
+    none)
+      echo ""
+      ;;
+  esac
+}
+
+# Usage: project_token_name <SUFFIX_IN_UPPER_SNAKE>, e.g. RunFoo/EnvironmentPassphrase
+project_token_name() {
+  local prefix
+  prefix=$(printf '%s' "${PROJECT_NAME}" | tr '[:lower:]-' '[:upper:]_')
+  convert_token_name "${TOKEN_NAME_STYLE}" "${prefix}/$1"
+}
+
+# Usage: write_project_token_default <SUFFIX_IN_UPPER_SNAKE> <value>
+write_project_token_default() {
+  local name value
+  name=$(project_token_name "$1")
+  value="$2"
+  mkdir -p "$(dirname "${IMAGE_DEFAULTS_DIR}/${name}")"
+  if [[ ! -f "${IMAGE_DEFAULTS_DIR}/${name}" ]]; then
+    printf '%s' "${value}" > "${IMAGE_DEFAULTS_DIR}/${name}"
+  fi
+}
+
+# The parent that applies this set supplies the Environment tokens, so they
+# must stay unresolved. Built-ins never carry them, leaving config and defaults
+# as the only way one could resolve at build time.
+assert_no_environment_token_values() {
+  local canonical name dir failures=0
+  for canonical in ENVIRONMENT ENVIRONMENT_NAME ENVIRONMENT_SHORT_NAME ENVIRONMENT_TYPE; do
+    name=$(convert_token_name "${TOKEN_NAME_STYLE}" "${canonical}")
+    for dir in "${ENV_ENVIRONMENT_DEPLOY_SOURCE_BASE_PATH}/config" "${IMAGE_DEFAULTS_DIR}"; do
+      if [[ -f "${dir}/${name}" ]]; then
+        log_error "  ${dir}/${name}: the ${name} token is supplied by whatever applies this set, never by the build"
+        failures=$((failures + 1))
+      fi
+    done
+  done
+  if [[ "${failures}" -gt 0 ]]; then
+    log_error "${failures} Environment-family value(s) in the deploy-image config/defaults. Remove them."
+    exit 1
+  fi
+}
+
+step_generate_manifests() {
+  log ""
+  log "Generating deploy-image manifests (fill-the-gaps)..."
+  log "  Deploy mode:       ${ENV_DEPLOY_MODE}"
+  log "  Image auto-update: ${ENV_IMAGE_AUTO_UPDATE_PROVIDER} (policy ${ENV_IMAGE_AUTO_UPDATE_POLICY}, trigger ${ENV_IMAGE_AUTO_UPDATE_TRIGGER}, schedule ${ENV_IMAGE_AUTO_UPDATE_POLL_SCHEDULE})"
+  log "  Delegation:        ${ENV_CLUSTER_SCOPED_DELEGATION}"
+
+  validate_generation_settings
+
+  # Staged first so gap detection sees them.
+  local src_kubernetes="${ENV_ENVIRONMENT_DEPLOY_SOURCE_BASE_PATH}/kubernetes"
+  local src_configmap="${ENV_ENVIRONMENT_DEPLOY_SOURCE_BASE_PATH}/configmap"
+  local src_secret_template="${ENV_ENVIRONMENT_DEPLOY_SOURCE_BASE_PATH}/secret.template"
+  if [[ -d "${src_kubernetes}" ]]; then
+    log "  Staging user-supplied manifests from ${src_kubernetes}"
+    cp -R "${src_kubernetes}/." "${IMAGE_MANIFESTS_DIR}/"
+  fi
+  if [[ -d "${ENV_ENVIRONMENT_DEPLOY_SOURCE_BASE_PATH}/defaults" ]]; then
+    cp -R "${ENV_ENVIRONMENT_DEPLOY_SOURCE_BASE_PATH}/defaults/." "${IMAGE_DEFAULTS_DIR}/"
+  fi
+
+  local has_workload="false"
+  local has_serviceaccount="false"
+  local has_namespace="false"
+  local has_rbac_binding="false"
+  local has_configmap="false"
+  local has_secret="false"
+  local staged_file doc_count doc_index doc_kind doc_name
+  while IFS= read -r -d '' staged_file; do
+    doc_count=$(yq eval-all '[.] | length' "${staged_file}")
+    doc_index=0
+    while [[ "${doc_index}" -lt "${doc_count}" ]]; do
+      doc_kind=$(DOC_INDEX="${doc_index}" yq eval-all 'select(document_index == (env(DOC_INDEX) | tonumber)) | .kind // ""' "${staged_file}")
+      doc_name=$(DOC_INDEX="${doc_index}" yq eval-all 'select(document_index == (env(DOC_INDEX) | tonumber)) | .metadata.name // ""' "${staged_file}")
+      case "${doc_kind}" in
+        Deployment|StatefulSet|DaemonSet|CronJob|Job)
+          has_workload="true"
+          ;;
+        ServiceAccount)
+          has_serviceaccount="true"
+          ;;
+        Namespace)
+          has_namespace="true"
+          ;;
+        ClusterRoleBinding|RoleBinding)
+          has_rbac_binding="true"
+          ;;
+        ConfigMap|Secret)
+          if [[ "${doc_kind}" == "ConfigMap" ]]; then
+            has_configmap="true"
+            if [[ "${doc_name}" != *-configmap-checksum ]]; then
+              log_error "Supplied ConfigMap '${doc_name}' in ${staged_file} is not checksum named"
+              log_error "Deploy-image ConfigMaps MUST have names ending '-configmap-checksum'"
+              exit 1
+            fi
+          else
+            has_secret="true"
+            if [[ "${doc_name}" != *-secret-checksum ]]; then
+              log_error "Supplied Secret '${doc_name}' in ${staged_file} is not checksum named"
+              log_error "Deploy-image Secrets MUST have names ending '-secret-checksum'"
+              exit 1
+            fi
+            if [[ "$(DOC_INDEX="${doc_index}" yq eval-all 'select(document_index == (env(DOC_INDEX) | tonumber)) | has("stringData") and (.stringData | has("environmentPassphrase"))' "${staged_file}")" != "true" ]]; then
+              log_error "Supplied Secret '${doc_name}' in ${staged_file} has no stringData.environmentPassphrase key"
+              log_error "The deploy image reads its passphrase from that key"
+              exit 1
+            fi
+          fi
+          ;;
+      esac
+      doc_index=$((doc_index + 1))
+    done
+  done < <(find "${IMAGE_MANIFESTS_DIR}" -type f -name '*.yaml' -print0)
+
+  # MANIFESTS_SUB_PATH points generators at the staged user tree so their
+  # detection wires mounts and serviceAccountName as for app builds.
+  local generators_dir="${SCRIPT_DIR}/../generators"
+  local gen_output="${IMAGE_BASE}/generated"
+  local gen_combined="${gen_output}/manifests/combined"
+  mkdir -p "${gen_combined}"
+
+  local project_name_token environment_token
+  project_name_token=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "PROJECT_NAME")
+  environment_token=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "ENVIRONMENT")
+
+  if [[ "${has_serviceaccount}" == "false" ]]; then
+    log "  Generating ServiceAccount"
+    OUTPUT_SUB_PATH="${gen_output}" \
+    MANIFESTS_SUB_PATH="${IMAGE_MANIFESTS_DIR}" \
+    KUBERNETES_SERVICEACCOUNT_GENERATION_ENABLED="true" \
+      "${generators_dir}/generate-kubernetes-serviceaccount"
+  fi
+
+  # Each environment and run-platform owns its own Namespace, named for the
+  # project, so the parent applying this set creates it before anything else.
+  if [[ "${has_namespace}" == "false" ]]; then
+    log "  Generating Namespace"
+    OUTPUT_SUB_PATH="${gen_output}" \
+    KUBERNETES_NAMESPACE_GENERATION_ENABLED="true" \
+    KUBERNETES_NAMESPACE_NAME="${project_name_token}" \
+    KUBERNETES_NAMESPACE_ADDITIONAL_LABELS="${ENV_NAMESPACE_ADDITIONAL_LABELS}" \
+    KUBERNETES_NAMESPACE_ADDITIONAL_ANNOTATIONS="${ENV_NAMESPACE_ADDITIONAL_ANNOTATIONS}" \
+      "${generators_dir}/generate-kubernetes-namespace"
+  fi
+
+  # The project-name key guarantees a ConfigMap and so the standard mount;
+  # entries can later be added by overriding the ConfigMap alone.
+  if [[ "${has_configmap}" == "false" ]]; then
+    local configmap_source_dir="${IMAGE_BASE}/configmap-source/configmap"
+    rm -rf "${configmap_source_dir}"
+    mkdir -p "${configmap_source_dir}"
+    if [[ -d "${src_configmap}" ]]; then
+      cp -R "${src_configmap}/." "${configmap_source_dir}/"
+    fi
+    if [[ ! -f "${configmap_source_dir}/project-name" ]]; then
+      printf '%s' "${project_name_token}" > "${configmap_source_dir}/project-name"
+    fi
+    log "  Generating ConfigMap (project-name key included)"
+    OUTPUT_SUB_PATH="${gen_output}" \
+    MANIFESTS_SUB_PATH="${IMAGE_MANIFESTS_DIR}" \
+    KUBERNETES_CONFIGMAP_SUB_PATH="${configmap_source_dir}" \
+      "${generators_dir}/generate-kubernetes-configmap"
+  fi
+
+  # The deploy image decrypts with environmentPassphrase; a project-prefixed
+  # token gives each environment its own.
+  if [[ "${has_secret}" == "false" ]]; then
+    # The generator appends '.template' to a path lacking it.
+    local secret_source_dir="${IMAGE_BASE}/secret-source/secret.template"
+    rm -rf "${secret_source_dir}"
+    mkdir -p "${secret_source_dir}"
+    if [[ -d "${src_secret_template}" ]]; then
+      cp -R "${src_secret_template}/." "${secret_source_dir}/"
+    fi
+    if [[ ! -f "${secret_source_dir}/environmentPassphrase" ]]; then
+      format_token_reference "${TOKEN_DELIMITER_STYLE}" "$(project_token_name ENVIRONMENT_PASSPHRASE)" \
+        | tr -d '\n' > "${secret_source_dir}/environmentPassphrase"
+    fi
+    log "  Generating Secret template (environmentPassphrase key included)"
+    OUTPUT_SUB_PATH="${gen_output}" \
+    MANIFESTS_SUB_PATH="${IMAGE_MANIFESTS_DIR}" \
+    KUBERNETES_SECRET_TEMPLATE_SUB_PATH="${secret_source_dir}" \
+      "${generators_dir}/generate-kubernetes-secret-template"
+  fi
+
+  # The deploy uses its SA token, needs a long grace period to finish, writes
+  # scratch files and serves nothing. Resources are tokens so an environment
+  # can override them.
+  write_project_token_default MEMORY "100Mi"
+  write_project_token_default CPU_REQUEST "100m"
+  local memory_token cpu_request_token
+  memory_token=$(format_token_reference "${TOKEN_DELIMITER_STYLE}" "$(project_token_name MEMORY)")
+  cpu_request_token=$(format_token_reference "${TOKEN_DELIMITER_STYLE}" "$(project_token_name CPU_REQUEST)")
+  export KUBERNETES_WORKLOAD_AUTOMOUNT_SERVICE_ACCOUNT_TOKEN="true"
+  export KUBERNETES_WORKLOAD_TERMINATION_GRACE_PERIOD_SECONDS="86400"
+  export KUBERNETES_WORKLOAD_READONLY_ROOT_FILESYSTEM="false"
+  export KUBERNETES_WORKLOAD_RESOURCES_MEMORY="${memory_token}"
+  export KUBERNETES_WORKLOAD_RESOURCES_CPU_REQUEST="${cpu_request_token}"
+  export KUBERNETES_WORKLOAD_RESOURCES_CPU_LIMIT=""
+  # Pinned so an app-level value in the environment is not inherited.
+  export KUBERNETES_WORKLOAD_IMAGE_PULL_SECRETS="${ENV_IMAGE_PULL_SECRETS}"
+  export KUBERNETES_DEPLOYMENT_PORTS_ENABLED="false"
+  export KUBERNETES_CRONJOB_PORTS_ENABLED="false"
+
+  # Probes off: the deploy image is self managing.
+  if [[ "${has_workload}" == "false" ]]; then
+    local annotations
+    if [[ "${ENV_DEPLOY_MODE}" == "deployment" ]]; then
+      log "  Generating Deployment (always-running reconciler)"
+      annotations=$(auto_update_annotation_list "false")
+      OUTPUT_SUB_PATH="${gen_output}" \
+      MANIFESTS_SUB_PATH="${IMAGE_MANIFESTS_DIR}" \
+      KUBERNETES_WORKLOAD_TYPE="deployment" \
+      KUBERNETES_WORKLOAD_REPLICAS="1" \
+      KUBERNETES_WORKLOAD_CONTAINER_COMMAND="/kd/bin/deploy" \
+      KUBERNETES_WORKLOAD_PROBE_LIVENESS_CHECK_TYPE="none" \
+      KUBERNETES_WORKLOAD_PROBE_READINESS_CHECK_TYPE="none" \
+      KUBERNETES_WORKLOAD_PROBE_STARTUP_CHECK_TYPE="none" \
+      KUBERNETES_DEPLOYMENT_ADDITIONAL_ANNOTATIONS="${annotations}" \
+        "${generators_dir}/generate-kubernetes-workload-deployment"
+    else
+      # A suspended CronJob shell the provider mutates in place (keelson
+      # trigger-job-on-update, or manual job creation under none). A user
+      # schedule override that fires defeats the pattern.
+      log "  Generating suspended CronJob (job mode)"
+      annotations=$(auto_update_annotation_list "true")
+      local cronjob_env_dir="${IMAGE_BASE}/cronjob-env"
+      mkdir -p "${cronjob_env_dir}"
+      duration_seconds "${ENV_JOB_POST_DEPLOY_SLEEP_AFTER_SUCCESS}" > "${cronjob_env_dir}/POST_DEPLOY_SLEEP_SUCCESS"
+      duration_seconds "${ENV_JOB_POST_DEPLOY_SLEEP_AFTER_FAILURE}" > "${cronjob_env_dir}/POST_DEPLOY_SLEEP_FAILURE"
+      OUTPUT_SUB_PATH="${gen_output}" \
+      MANIFESTS_SUB_PATH="${IMAGE_MANIFESTS_DIR}" \
+      KUBERNETES_CRONJOB_ENV_SUB_PATH="${cronjob_env_dir}" \
+      KUBERNETES_WORKLOAD_CONTAINER_COMMAND="/kd/bin/deploy" \
+      KUBERNETES_WORKLOAD_PROBE_LIVENESS_CHECK_TYPE="none" \
+      KUBERNETES_WORKLOAD_PROBE_READINESS_CHECK_TYPE="none" \
+      KUBERNETES_WORKLOAD_PROBE_STARTUP_CHECK_TYPE="none" \
+      KUBERNETES_CRONJOB_ADDITIONAL_ANNOTATIONS="${annotations}" \
+        "${generators_dir}/generate-kubernetes-workload-cronjob"
+
+      # Triggered externally, so the schedule never fires.
+      write_project_token_default CRONJOB_SCHEDULE "0 0 1 1 *"
+      write_project_token_default CRONJOB_SUSPEND "true"
+
+      # For an operator to scale up and debug. 'sleep infinity' keeps that
+      # from starting a second deploy; annotations keep its image current.
+      log "  Generating zero-scale Deployment (job mode companion)"
+      annotations=$(auto_update_annotation_list "false")
+      OUTPUT_SUB_PATH="${gen_output}" \
+      MANIFESTS_SUB_PATH="${IMAGE_MANIFESTS_DIR}" \
+      KUBERNETES_WORKLOAD_TYPE="deployment" \
+      KUBERNETES_WORKLOAD_REPLICAS="0" \
+      KUBERNETES_WORKLOAD_CONTAINER_COMMAND="sleep infinity" \
+      KUBERNETES_WORKLOAD_PROBE_LIVENESS_CHECK_TYPE="none" \
+      KUBERNETES_WORKLOAD_PROBE_READINESS_CHECK_TYPE="none" \
+      KUBERNETES_WORKLOAD_PROBE_STARTUP_CHECK_TYPE="none" \
+      KUBERNETES_DEPLOYMENT_ADDITIONAL_ANNOTATIONS="${annotations}" \
+        "${generators_dir}/generate-kubernetes-workload-deployment"
+    fi
+  fi
+
+  # Inline until a second caller justifies an RBAC generator. 'self' applies
+  # cluster-scoped resources itself; the binding name leads with Environment so
+  # two run-platforms on one cluster can each run a same-named environment.
+  # 'parent' leaves cluster-scoped resources to the run-platform parent.
+  if [[ "${has_rbac_binding}" == "false" ]]; then
+    if [[ "${ENV_CLUSTER_SCOPED_DELEGATION}" == "self" ]]; then
+      log "  Generating ClusterRoleBinding (cluster-admin, delegation self)"
+      {
+        echo "apiVersion: rbac.authorization.k8s.io/v1"
+        echo "kind: ClusterRoleBinding"
+        echo "metadata:"
+        echo "  name: ${environment_token}.${project_name_token}"
+        echo "  labels:"
+        echo "    app: ${project_name_token}"
+        echo "    app.kubernetes.io/managed-by: Kaptain"
+        echo "roleRef:"
+        echo "  apiGroup: rbac.authorization.k8s.io"
+        echo "  kind: ClusterRole"
+        echo "  name: cluster-admin"
+        echo "subjects:"
+        echo "  - kind: ServiceAccount"
+        echo "    name: ${project_name_token}"
+        echo "    namespace: ${environment_token}"
+      } > "${gen_combined}/clusterrolebinding.yaml"
+    else
+      log "  Generating RoleBinding (namespace-admin, delegation parent)"
+      {
+        echo "apiVersion: rbac.authorization.k8s.io/v1"
+        echo "kind: RoleBinding"
+        echo "metadata:"
+        echo "  name: ${project_name_token}"
+        echo "  namespace: ${environment_token}"
+        echo "  labels:"
+        echo "    app: ${project_name_token}"
+        echo "    app.kubernetes.io/managed-by: Kaptain"
+        echo "roleRef:"
+        echo "  apiGroup: rbac.authorization.k8s.io"
+        echo "  kind: ClusterRole"
+        echo "  name: admin"
+        echo "subjects:"
+        echo "  - kind: ServiceAccount"
+        echo "    name: ${project_name_token}"
+        echo "    namespace: ${environment_token}"
+      } > "${gen_combined}/rolebinding.yaml"
+    fi
+  fi
+
+  # No collisions: each generator was skipped when the user supplied its file.
+  # generated/ is kept as an audit trail. The deploy workload belongs to no
+  # product, so the generators' product labels (and ProductName token) go.
+  local generated_file
+  while IFS= read -r -d '' generated_file; do
+    # sed, because unsubstituted { or % tokens make the YAML unparseable.
+    # These keys only appear as label lines.
+    sed -i.bak -E '/^[[:space:]]*(app\.kubernetes\.io\/part-of|kaptain\.org\/product):/d' "${generated_file}"
+    rm -f "${generated_file}.bak"
+  done < <(find "${gen_combined}" -type f -name '*.yaml' -print0)
+  if [[ -n "$(find "${gen_combined}" -type f 2>/dev/null | head -1)" ]]; then
+    cp -R "${gen_combined}/." "${IMAGE_MANIFESTS_DIR}/"
+  fi
+}
+
+# The environment declares seed-and-compare, but the run-platform acts on it,
+# so the marker travels in the set. Unmarked sets apply normally.
+step_apply_mode_marker() {
+  if [[ "${ENV_IMAGE_DEPLOY_MANIFESTS_APPLY_MODE}" != "seed-and-compare" ]]; then
+    log "Apply mode is ${ENV_IMAGE_DEPLOY_MANIFESTS_APPLY_MODE} - no marker emitted"
+    return 0
+  fi
+
+  local project_name_token
+  project_name_token=$(format_canonical_token "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" "PROJECT_NAME")
+
+  local marker="${IMAGE_MANIFESTS_DIR}/${APPLY_MODE_MARKER_FILENAME}"
+  cat > "${marker}" <<EOF
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ${project_name_token}-run-environment-seed-and-compare-marker
+  namespace: ${APPLY_MODE_MARKER_NAMESPACE}
+data:
+  imageDeployManifestsApplyMode: ${ENV_IMAGE_DEPLOY_MANIFESTS_APPLY_MODE}
+EOF
+  log "Marked for seed-and-compare: ${APPLY_MODE_MARKER_FILENAME}"
+}
+
+main() {
+  log "=== Kubernetes Run Image Deploy Manifests ==="
+  log "Project:       ${PROJECT_NAME}"
+  log "Version:       ${VERSION}"
+  log "Output:        ${OUTPUT_SUB_PATH}"
+  log "Source:        ${ENV_ENVIRONMENT_DEPLOY_SOURCE_BASE_PATH}"
+  log "Generate:      ${ENV_GENERATE_IDEAL_ENVIRONMENT_DEPLOY_MANIFESTS}"
+  log "Staged tree:   ${IMAGE_MANIFESTS_DIR}"
+  log "============================================="
+
+  if [[ ! -f "${KAPTAINPM_FILE}" ]]; then
+    log_error "KaptainPM file not found: ${KAPTAINPM_FILE}"
+    exit 1
+  fi
+
+  mkdir -p "${IMAGE_MANIFESTS_DIR}" "${IMAGE_DEFAULTS_DIR}"
+
+  case "${ENV_GENERATE_IDEAL_ENVIRONMENT_DEPLOY_MANIFESTS}" in
+    true)
+      step_generate_manifests
+      ;;
+    false)
+      step_copy_source
+      ;;
+    *)
+      log_error "Invalid ENV_GENERATE_IDEAL_ENVIRONMENT_DEPLOY_MANIFESTS: '${ENV_GENERATE_IDEAL_ENVIRONMENT_DEPLOY_MANIFESTS}' (expected 'true' or 'false')"
+      exit 1
+      ;;
+  esac
+
+  assert_no_environment_token_values
+
+  log ""
+  step_apply_mode_marker
+
+  # No output vars: see the header.
+
+  log ""
+  log "=== Run Image Deploy Manifests Staging Complete ==="
+}
+
+main "$@"

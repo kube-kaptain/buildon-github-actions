@@ -1,0 +1,875 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
+#
+# kubernetes-run-aggregate - Assemble a run's spec.contents, local manifests
+# and generated ConfigMaps into its unsubstituted workload tree. Shared by env
+# and run-platform builds, keyed on BUILD_KIND.
+#
+# Stops before substitution (kubernetes-run-substitute) so the pre-sub
+# validation point sees the assembled tree.
+#
+# Outputs (env + GITHUB_OUTPUT):
+#   ENVIRONMENT_NAME          - PROJECT_NAME verbatim (both kinds)
+#   ENVIRONMENT_SHORT_NAME    - PROJECT_NAME without run- / run-platform-
+#   ENVIRONMENT_WORKLOAD_CONTENTS_FILE - Markdown list of spec.contents for
+#                               the release notes
+#
+# Inputs (env vars):
+#   BUILD_KIND                         - Required; kubernetes-run-environment or
+#                                        kubernetes-run-platform-meta-environment,
+#                                        checked by load-final-kaptainpm-yaml
+#   PROJECT_NAME                       - Required; must suit the kind: run-* for
+#                                        an environment, run-platform-* for a
+#                                        run-platform
+#   TOKEN_DELIMITER_STYLE              - Env's token delimiter style (default shell)
+#   TOKEN_NAME_STYLE                   - Env's token name style (default PascalCase)
+#   OUTPUT_SUB_PATH                    - Build output dir (default kaptain-out)
+#   MANIFESTS_SUB_PATH                 - Local env manifests dir (default src/kubernetes)
+#   ENV_ALLOW_LOCAL_MANIFESTS_OVERRIDE - 'true' lets local manifests replace
+#                                        colliding child files (with a warning)
+#   IMAGE_BUILD_COMMAND / ENV_ENVIRONMENT_DEPLOY_BASE_IMAGE_*
+#                                      - Deploy base image, read for its secret
+#                                        encryption types
+#   SCHEMA_VALIDATION_COMMAND          - Schema validator plugin from validate-tooling;
+#                                        validates child contracts and the cleanup
+#                                        policy document
+#   KAPTAINPM_FILE                     - Override path for testing
+#                                        (default kaptainpm/final/KaptainPM.yaml)
+#
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# shellcheck source=src/scripts/defaults/platform.bash
+source "${SCRIPT_DIR}/../defaults/platform.bash"
+# shellcheck source=src/scripts/lib/log.bash
+source "${SCRIPT_DIR}/../lib/log.bash"
+# shellcheck source=src/scripts/defaults/build-mode.bash
+source "${SCRIPT_DIR}/../defaults/build-mode.bash"
+# shellcheck source=src/scripts/defaults/output-sub-path.bash
+source "${SCRIPT_DIR}/../defaults/output-sub-path.bash"
+# shellcheck source=src/scripts/defaults/tokens.bash
+source "${SCRIPT_DIR}/../defaults/tokens.bash"
+# shellcheck source=src/scripts/defaults/schema-validation.bash
+source "${SCRIPT_DIR}/../defaults/schema-validation.bash"
+# shellcheck source=src/scripts/lib/output-var.bash
+source "${SCRIPT_DIR}/../lib/output-var.bash"
+# shellcheck source=src/scripts/lib/token-format.bash
+source "${SCRIPT_DIR}/../lib/token-format.bash"
+# shellcheck source=src/scripts/lib/run-image-deploy-manifests-paths.bash
+source "${SCRIPT_DIR}/../lib/run-image-deploy-manifests-paths.bash"
+# Before sourcing content-resolve: CONTENT_FLAVOUR sets its dir layout.
+PROJECT_NAME="${PROJECT_NAME:?PROJECT_NAME is required}"
+BUILD_KIND="${BUILD_KIND:?BUILD_KIND is required (published by load-final-kaptainpm-yaml)}"
+case "${BUILD_KIND}" in
+  kubernetes-run-environment|kubernetes-run-platform-meta-environment) ;;
+  *)
+    log_error "BUILD_KIND '${BUILD_KIND}' is not a run kind (kubernetes-run-environment or kubernetes-run-platform-meta-environment)"
+    exit 1
+    ;;
+esac
+export CONTENT_FLAVOUR=contents
+# shellcheck source=src/scripts/lib/content-resolve.bash
+source "${SCRIPT_DIR}/../lib/content-resolve.bash"
+# shellcheck source=src/scripts/lib/assert-unique-artifact-refs.bash
+source "${SCRIPT_DIR}/../lib/assert-unique-artifact-refs.bash"
+# shellcheck source=src/scripts/lib/manifest-file-kinds.bash
+source "${SCRIPT_DIR}/../lib/manifest-file-kinds.bash"
+# shellcheck source=src/scripts/defaults/environments.bash
+source "${SCRIPT_DIR}/../defaults/environments.bash"
+# shellcheck source=src/scripts/lib/env-deploy-base-image-compose.bash
+source "${SCRIPT_DIR}/../lib/env-deploy-base-image-compose.bash"
+# shellcheck source=src/scripts/lib/secret-encryption-types.bash
+source "${SCRIPT_DIR}/../lib/secret-encryption-types.bash"
+
+KAPTAINPM_FILE="${KAPTAINPM_FILE:-kaptainpm/final/KaptainPM.yaml}"
+LOCAL_MANIFESTS_SUB_PATH="${MANIFESTS_SUB_PATH:-src/kubernetes}"
+ENV_LINEAGE_DATA_FILENAME="kaptain-environment-lineage-data.yaml"
+ENV_CLEANUP_POLICY_FILENAME="kaptain-environment-cleanup-policy.yaml"
+# Shipped with the cleanup document it validates, so the deploy-side checker
+# needs no knowledge of schema versions.
+CLEANUP_SCHEMA_DIR="${SCRIPT_DIR}/../../schemas"
+CLEANUP_SCHEMA_VERSION="$(cat "${CLEANUP_SCHEMA_DIR}/version")"
+CLEANUP_SCHEMA_FILE="${CLEANUP_SCHEMA_DIR}/spec-kaptainpm-schema.${CLEANUP_SCHEMA_VERSION}.json"
+UTIL_DIR="${SCRIPT_DIR}/../util"
+
+# CONTENT_* dirs come from lib/content-resolve.bash; do not redefine them.
+
+AGGREGATE_BASE="${OUTPUT_SUB_PATH}/${BUILD_KIND#kubernetes-}"
+# manifests-* dirs are the tree at each stage, config-* the token layers
+# stacked to substitute it. Later stages belong to kubernetes-run-substitute
+# and kubernetes-run-finalise.
+AGGREGATE_MANIFESTS_NORMALISED_DIR="${AGGREGATE_BASE}/manifests-aggregated"
+AGGREGATE_MANIFESTS_PRUNED_DIR="${AGGREGATE_BASE}/manifests-pruned"
+# TSV: <target>\t<delete modifier>, tree-relative.
+DELETED_MANIFESTS_FILE="${AGGREGATE_BASE}/deleted-manifests.tsv"
+AGGREGATE_DEFAULTS_NORMALISED_DIR="${AGGREGATE_BASE}/config-child-defaults-normalised"
+AGGREGATE_DEFAULTS_MERGED="${AGGREGATE_BASE}/config-defaults"
+AGGREGATE_CONTENT_LIST_FILE="${AGGREGATE_BASE}/contents-list.md"
+
+RUN_PREFIX="run-"
+RUN_PLATFORM_PREFIX="run-platform-"
+
+KIND_PREFIX="${RUN_PREFIX}"
+[[ "${BUILD_KIND}" == "kubernetes-run-platform-meta-environment" ]] && KIND_PREFIX="${RUN_PLATFORM_PREFIX}"
+
+ENV_IN_ENV_MESSAGE="Including a run-* or run-platform-* project inside an environment is not
+allowed: environments are the top of the composition tree and do not
+aggregate other environments or run-platforms. If you need to compose
+deployable units, list apps, bundles, or products in spec.contents."
+
+RP_IN_RP_MESSAGE="Including a run-platform-* project inside another run-platform is not
+allowed: run-platforms are the top of the cluster-control composition tree
+and do not aggregate other run-platforms. List apps, bundles, products, or
+managed run-* (non-platform) children in spec.contents."
+
+has_run_platform_prefix() {
+  case "$1" in
+    "${RUN_PLATFORM_PREFIX}"*) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+# Also true for run-platform-.
+has_run_prefix() {
+  case "$1" in
+    "${RUN_PREFIX}"*) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+# The kind is trusted (BUILD_KIND); the name must suit it. An environment
+# may not take a run-platform- name, though that also starts run-.
+validate_run_project_name() {
+  local name="$1"
+  if [[ "${name}" != "${KIND_PREFIX}"* ]]; then
+    log_error "PROJECT_NAME '${name}' does not suit ${BUILD_KIND}: it must start '${KIND_PREFIX}'."
+    return 1
+  fi
+  if [[ "${BUILD_KIND}" == "kubernetes-run-environment" ]] && has_run_platform_prefix "${name}"; then
+    log_error "PROJECT_NAME '${name}' does not suit ${BUILD_KIND}: '${RUN_PLATFORM_PREFIX}' names are for kubernetes-run-platform-meta-environment."
+    return 1
+  fi
+  if [[ -z "${name#"${KIND_PREFIX}"}" ]]; then
+    log_error "PROJECT_NAME '${name}' has nothing after the '${KIND_PREFIX}' prefix."
+    return 1
+  fi
+}
+
+derive_run_short_name() {
+  local name="$1"
+  echo "${name#"${KIND_PREFIX}"}"
+}
+
+content_entry_repo_name() {
+  local entry="$1"
+  local last="${entry##*/}"
+  echo "${last%%:*}"
+}
+
+# Environments may contain no run-* entries. Run-platforms may contain run-*
+# but not run-platform-*.
+assert_composition_rule() {
+  local kaptainpm_file="$1"
+  local entries
+  entries=$(yq eval '.spec.contents[]' "${kaptainpm_file}" 2>/dev/null || true)
+  [[ -z "${entries}" || "${entries}" == "null" ]] && return 0
+
+  local message="${ENV_IN_ENV_MESSAGE}"
+  [[ "${BUILD_KIND}" == "kubernetes-run-platform-meta-environment" ]] && message="${RP_IN_RP_MESSAGE}"
+
+  # Collect every offender before failing, so one build reports them all.
+  local entry repo
+  local offenders=""
+  while IFS= read -r entry; do
+    [[ -z "${entry}" ]] && continue
+    repo=$(content_entry_repo_name "${entry}")
+    if [[ "${BUILD_KIND}" == "kubernetes-run-platform-meta-environment" ]]; then
+      has_run_platform_prefix "${repo}" || continue
+    else
+      has_run_prefix "${repo}" || continue
+    fi
+    offenders="${offenders}${entry}
+"
+  done <<< "${entries}"
+
+  [[ -z "${offenders}" ]] && return 0
+  log_error "${message}"
+  while IFS= read -r entry; do
+    if [[ -n "${entry}" ]]; then
+      log_error "Offending entry: ${entry}"
+    fi
+  done <<< "${offenders}"
+  return 1
+}
+
+write_contents_list() {
+  local kaptainpm_file="$1"
+  local out_file="$2"
+  : > "${out_file}"
+  local entries
+  entries=$(yq eval '.spec.contents[]' "${kaptainpm_file}" 2>/dev/null || true)
+  [[ -z "${entries}" || "${entries}" == "null" ]] && return 0
+
+  local entry
+  while IFS= read -r entry; do
+    [[ -z "${entry}" ]] && continue
+    printf -- '- %s\n' "${entry}" >> "${out_file}"
+  done <<< "${entries}"
+}
+
+# Sets CHILD_DELIM_STYLE and CHILD_NAME_STYLE.
+read_child_scheme() {
+  local contract="$1"
+  if [[ ! -f "${contract}" ]]; then
+    log_error "Contract file not found for content entry: ${contract}"
+    log_error "Children must be republished with a contract zip before being consumed by a run build."
+    return 1
+  fi
+  CHILD_DELIM_STYLE=$(yq -r '.tokens.delimiterStyle // ""' "${contract}")
+  CHILD_NAME_STYLE=$(yq -r '.tokens.nameStyle // ""' "${contract}")
+  if [[ -z "${CHILD_DELIM_STYLE}" || -z "${CHILD_NAME_STYLE}" ]]; then
+    log_error "Child contract is missing tokens.delimiterStyle or tokens.nameStyle: ${contract}"
+    return 1
+  fi
+}
+
+convert_child_scheme_if_needed() {
+  local child="$1"
+  local manifests_dir="${CONTENT_MANIFESTS_DIR}/${child}"
+  local normalised_dir="${AGGREGATE_MANIFESTS_NORMALISED_DIR}/${child}"
+  local contract_file="${CONTENT_CONTRACTS_DIR}/${child}/contract.yaml"
+
+  read_child_scheme "${contract_file}"
+  log "Child ${child}:"
+  log "  Path: ${manifests_dir}"
+  log "  Scheme: ${CHILD_DELIM_STYLE}-${CHILD_NAME_STYLE}"
+  if [[ "${CHILD_DELIM_STYLE}" == "${TOKEN_DELIMITER_STYLE}" \
+     && "${CHILD_NAME_STYLE}" == "${TOKEN_NAME_STYLE}" ]]; then
+    log "  Token scheme matches."
+    cp -R "${manifests_dir}" "${normalised_dir}"
+    log "  Copied verbatim to ${normalised_dir}"
+    log ""
+    return 0
+  else
+    log "  Token scheme mismatch."
+    local token_count
+    token_count=$(yq -r '(.config.required // []) | length' "${contract_file}")
+    log "  Tokens to convert: ${token_count}"
+  fi
+
+  if [[ "${token_count}" -eq 0 ]]; then
+    log "  No tokens to convert, consuming as is."
+    cp -R "${manifests_dir}" "${normalised_dir}"
+    log "  Copied verbatim to ${normalised_dir}"
+    log ""
+    return 0
+  fi
+
+  local target_combo="${TOKEN_DELIMITER_STYLE}-${TOKEN_NAME_STYLE}"
+
+  local assessment
+  assessment=$("${UTIL_DIR}/assess-token-compatibility" \
+      "${CHILD_DELIM_STYLE}" "${CHILD_NAME_STYLE}" "${manifests_dir}")
+
+  local section="" found_auto=false found_repackage=false
+  while IFS= read -r line; do
+    case "${line}" in
+      AUTOMATIC_CONVERSION:) section="auto" ;;
+      REPACKAGE_REQUIRED:)   section="repackage" ;;
+      "") ;;
+      *)
+        if [[ "${line}" == "${target_combo}" ]]; then
+          [[ "${section}" == "auto" ]]      && found_auto=true
+          [[ "${section}" == "repackage" ]] && found_repackage=true
+        fi
+        ;;
+    esac
+  done <<< "${assessment}"
+
+  if ${found_auto}; then
+    cp -R "${manifests_dir}" "${normalised_dir}"
+    "${UTIL_DIR}/convert-tokens-in-tree" \
+      "${CHILD_DELIM_STYLE}" "${CHILD_NAME_STYLE}" \
+      "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" \
+      "${normalised_dir}" \
+      "  "
+    log ""
+    return 0
+  fi
+
+  if ${found_repackage}; then
+    log_error "Child ${child} uses token substitution scheme ${CHILD_DELIM_STYLE}-${CHILD_NAME_STYLE},"
+    log_error "which cannot be automatically converted to the run's token substitution scheme"
+    log_error "${target_combo}. The child's manifests contain content that is declared as incompatible"
+    log_error "with this project's token substitution scheme by the contract supplied with the manifests."
+    log_error "Rebuild the upstream project to suit or repackage if you don't control it."
+    log ""
+    return 1
+  fi
+
+  log_error "assess-token-compatibility did not classify ${target_combo} for child ${child}"
+  log ""
+  return 1
+}
+
+# Needs CHILD_NAME_STYLE from a prior read_child_scheme.
+convert_child_defaults_if_needed() {
+  local child="$1"
+  local source_dir="${CONTENT_DEFAULTS_DIR}/${child}"
+  local normalised_dir="${AGGREGATE_DEFAULTS_NORMALISED_DIR}/${child}"
+
+  log "Child ${child} defaults:"
+  if [[ ! -d "${source_dir}" ]] \
+     || [[ -z "$(find "${source_dir}" -type f 2>/dev/null)" ]]; then
+    log "  No defaults present"
+    log ""
+    return 0
+  fi
+
+  if [[ "${CHILD_NAME_STYLE}" == "${TOKEN_NAME_STYLE}" ]]; then
+    log "  Default names match."
+    cp -R "${source_dir}" "${normalised_dir}"
+    log "  Copied verbatim to ${normalised_dir}"
+    log ""
+    return 0
+  fi
+
+  local default_count
+  default_count=$(find "${source_dir}" -type f | wc -l | tr -d ' ')
+  log "  Default names mismatch."
+  log "  Renaming ${default_count} default(s) from ${CHILD_NAME_STYLE} to ${TOKEN_NAME_STYLE}"
+
+  mkdir -p "${normalised_dir}"
+  local file rel canonical target target_path
+  while IFS= read -r -d '' file; do
+    rel="${file#"${source_dir}/"}"
+    canonical=$(canonicalize_token_name "${CHILD_NAME_STYLE}" "${rel}")
+    target=$(convert_token_name "${TOKEN_NAME_STYLE}" "${canonical}")
+    target_path="${normalised_dir}/${target}"
+    mkdir -p "$(dirname "${target_path}")"
+    cp "${file}" "${target_path}"
+    log "   - Renamed ${rel} -> ${target}"
+  done < <(find "${source_dir}" -type f -print0)
+  log ""
+}
+
+# Children may share a default only when the values are byte-identical.
+merge_child_defaults() {
+  mkdir -p "${AGGREGATE_DEFAULTS_MERGED}"
+  [[ -d "${AGGREGATE_DEFAULTS_NORMALISED_DIR}" ]] || return 0
+
+  # TSV: <token-rel-path>\t<child>.
+  local index_file="${AGGREGATE_BASE}/.defaults-index"
+  : > "${index_file}"
+  local child_dir child file rel
+  for child_dir in "${AGGREGATE_DEFAULTS_NORMALISED_DIR}"/*; do
+    [[ -d "${child_dir}" ]] || continue
+    child=$(basename "${child_dir}")
+    while IFS= read -r -d '' file; do
+      rel="${file#"${child_dir}/"}"
+      printf '%s\t%s\n' "${rel}" "${child}" >> "${index_file}"
+    done < <(find "${child_dir}" -type f -print0)
+  done
+
+  [[ -s "${index_file}" ]] || { rm -f "${index_file}"; return 0; }
+
+  local tokens
+  tokens=$(awk -F '\t' '{print $1}' "${index_file}" | LC_ALL=C sort -u)
+
+  local token first_child first_file other_child other_file
+  while IFS= read -r token; do
+    [[ -z "${token}" ]] && continue
+    local children=()
+    while IFS=$'\t' read -r t c; do
+      [[ "${t}" == "${token}" ]] && children+=("${c}")
+    done < "${index_file}"
+
+    # Unreachable, but an empty array index is unbound under set -u on bash 3.2.
+    [[ ${#children[@]} -eq 0 ]] && continue
+    first_child="${children[0]}"
+    first_file="${AGGREGATE_DEFAULTS_NORMALISED_DIR}/${first_child}/${token}"
+
+    local i
+    for ((i = 1; i < ${#children[@]}; i++)); do
+      other_child="${children[i]}"
+      other_file="${AGGREGATE_DEFAULTS_NORMALISED_DIR}/${other_child}/${token}"
+      if ! cmp -s "${first_file}" "${other_file}"; then
+        log_error "Default value collision for token '${token}':"
+        log_error "  ${first_child}: $(cat "${first_file}")"
+        log_error "  ${other_child}: $(cat "${other_file}")"
+        log_error "Children ship different defaults for the same token name. Either align the"
+        log_error "values upstream or prefix the token with the project name in one child to"
+        log_error "disambiguate."
+        rm -f "${index_file}"
+        return 1
+      fi
+    done
+
+    mkdir -p "$(dirname "${AGGREGATE_DEFAULTS_MERGED}/${token}")"
+    cp "${first_file}" "${AGGREGATE_DEFAULTS_MERGED}/${token}"
+  done <<< "${tokens}"
+
+  rm -f "${index_file}"
+}
+
+# Reserved names belong to build-generated ConfigMaps; a contributor file
+# with one, at any depth, could replace the generated version.
+#
+# Usage: assert_no_reserved_filename_squat <filename> <owner description>
+assert_no_reserved_filename_squat() {
+  local reserved="$1"
+  local owner="$2"
+  local found=()
+  local file
+  if [[ -d "${AGGREGATE_MANIFESTS_NORMALISED_DIR}" ]]; then
+    while IFS= read -r -d '' file; do
+      found+=("child: ${file}")
+    done < <(find "${AGGREGATE_MANIFESTS_NORMALISED_DIR}" -type f -name "${reserved}" -print0)
+  fi
+  if [[ -d "${LOCAL_MANIFESTS_SUB_PATH}" ]]; then
+    while IFS= read -r -d '' file; do
+      found+=("local: ${file}")
+    done < <(find "${LOCAL_MANIFESTS_SUB_PATH}" -type f -name "${reserved}" -print0)
+  fi
+  if (( ${#found[@]} > 0 )); then
+    log_error "Reserved filename '${reserved}' is owned by the"
+    log_error "${owner} and cannot appear in any child or in the"
+    log_error "run's own ${LOCAL_MANIFESTS_SUB_PATH} directory. Offending files:"
+    local entry
+    for entry in "${found[@]}"; do
+      log_error "  ${entry}"
+    done
+    return 1
+  fi
+}
+
+assert_no_lineage_data_squat() {
+  assert_no_reserved_filename_squat "${ENV_LINEAGE_DATA_FILENAME}" \
+    "environment lineage data ConfigMap"
+  assert_no_reserved_filename_squat "${ENV_CLEANUP_POLICY_FILENAME}" \
+    "environment cleanup policy ConfigMap"
+}
+
+merge_local_manifests() {
+  [[ -d "${LOCAL_MANIFESTS_SUB_PATH}" ]] || return 0
+
+  # Shape only, so errors name the file where the author put it. Patch targets
+  # may come from a child, so full validation waits for the merged tree.
+  if ! manifest_dir_reject_unpackageable "${LOCAL_MANIFESTS_SUB_PATH}"; then
+    manifest_rules_explain
+    return 1
+  fi
+
+  local file rel target
+  while IFS= read -r file; do
+    rel="${file#"${LOCAL_MANIFESTS_SUB_PATH}/"}"
+    target="${AGGREGATE_MANIFESTS_NORMALISED_DIR}/${rel}"
+
+    if [[ ! -e "${target}" ]]; then
+      mkdir -p "$(dirname "${target}")"
+      cp "${file}" "${target}"
+      continue
+    fi
+
+    # Fatal regardless of the override: colliding modifiers are two unrelated
+    # edits, and dropping one would silently change what is applied.
+    manifest_file_classify "${file}" || true
+    if [[ "${MANIFEST_FILE_KIND}" == "modifier" ]]; then
+      log_error "Modifier name collision for '${rel}':"
+      log_error "  child: ${target}"
+      log_error "  local: ${file}"
+      log_error "Two modifiers cannot share a name and path: there is no correct winner, and"
+      log_error "allowLocalManifestsOverride does not apply. Rename the local modifier - the"
+      log_error "description after the type is free text and controls apply order."
+      return 1
+    fi
+
+    if [[ "${ENV_ALLOW_LOCAL_MANIFESTS_OVERRIDE}" == "true" ]]; then
+      log_warning "local manifest '${rel}' overrides a file contributed by a child"
+      cp "${file}" "${target}"
+      continue
+    fi
+
+    log_error "Manifest path collision for '${rel}':"
+    log_error "  child: ${target}"
+    log_error "  local: ${file}"
+    log_error "Local manifests collide with a child-contributed file. Either rename the"
+    log_error "local file or set allowLocalManifestsOverride: true (spec.main.environment)"
+    log_error "if the override is intentional."
+    return 1
+  done < <(manifest_files_find_packageable "${LOCAL_MANIFESTS_SUB_PATH}")
+}
+
+# Runs once all contributors are in, since a patch and its target may come
+# from different ones.
+validate_assembled_tree() {
+  if ! manifest_tree_validate "${AGGREGATE_MANIFESTS_NORMALISED_DIR}"; then
+    manifest_rules_explain
+    exit 1
+  fi
+  log "  ${MANIFEST_TREE_MANIFEST_COUNT} manifest(s), ${MANIFEST_TREE_MODIFIER_COUNT} modifier(s)."
+}
+
+# Deletes apply to a copy so the assembled tree keeps what each one removed
+# for provenance. The copy is written even with no deletes, giving the next
+# step a single input. Done here instead of with the yq patches in finalise
+# so a deleted manifest never reaches substitution, gate, signoffs, checksums
+# or lineage.
+step_apply_deletes() {
+  local tree="${AGGREGATE_MANIFESTS_PRUNED_DIR}"
+  local deletes="${AGGREGATE_BASE}/delete-modifiers.tsv"
+  mkdir -p "${tree}"
+  cp -R "${AGGREGATE_MANIFESTS_NORMALISED_DIR}/." "${tree}/"
+  : > "${deletes}"
+  : > "${DELETED_MANIFESTS_FILE}"
+
+  local file
+  while IFS= read -r file; do
+    manifest_file_classify "${file}" || continue
+    [[ "${MANIFEST_FILE_KIND}" == "modifier" && "${MANIFEST_FILE_MODIFIER_TYPE}" == "delete" ]] || continue
+    printf '%s\t%s\n' "$(dirname "${file}")/${MANIFEST_FILE_MODIFIER_TARGET}" "${file}" >> "${deletes}"
+  done < <(manifest_files_find_packageable "${tree}")
+
+  if [[ ! -s "${deletes}" ]]; then
+    log "  No delete modifiers."
+    return 0
+  fi
+
+  local failures=0 target modifier rel duplicate other_type
+  while IFS= read -r duplicate; do
+    [[ -z "${duplicate}" ]] && continue
+    log_error "  ${duplicate#"${tree}"/}: more than one delete modifier; keep one"
+    failures=$((failures + 1))
+  done < <(cut -f1 "${deletes}" | LC_ALL=C sort | uniq -d)
+
+  while IFS="$(printf '\t')" read -r target modifier; do
+    rel="${target#"${tree}"/}"
+    if grep -qvE '^[[:space:]]*(#.*)?$' "${modifier}"; then
+      log_error "  ${modifier#"${tree}"/}: a delete modifier may hold only comments"
+      failures=$((failures + 1))
+    fi
+    case "${rel}" in
+      "${ENV_CLEANUP_POLICY_FILENAME}"|"${ENV_LINEAGE_DATA_FILENAME}")
+        log_error "  ${modifier#"${tree}"/}: ${rel} is generated by this build and cannot be deleted"
+        failures=$((failures + 1))
+        ;;
+    esac
+    for other_type in "${MANIFEST_MODIFIER_TYPES[@]}"; do
+      [[ "${other_type}" == "delete" ]] && continue
+      if compgen -G "${target}.${other_type}-*" > /dev/null; then
+        log_error "  ${rel}: deleted by ${modifier##*/} but also has ${other_type} modifiers; remove one or the other"
+        failures=$((failures + 1))
+        break
+      fi
+    done
+  done < <(LC_ALL=C sort "${deletes}")
+
+  if [[ "${failures}" -gt 0 ]]; then
+    log_error "${failures} delete modifier problem(s)."
+    exit 1
+  fi
+
+  local count=0
+  while IFS="$(printf '\t')" read -r target modifier; do
+    rm -f "${target}" "${modifier}"
+    printf '%s\t%s\n' "${target#"${tree}"/}" "${modifier#"${tree}"/}" >> "${DELETED_MANIFESTS_FILE}"
+    log "  deleted ${target#"${tree}"/} (${modifier##*/})"
+    count=$((count + 1))
+  done < <(LC_ALL=C sort "${deletes}")
+  log "  ${count} manifest(s) deleted; recorded in ${DELETED_MANIFESTS_FILE}."
+}
+
+# Runs before the expensive resolve. Same consistency rule as the
+# kaptain-user-scripts tooling: each value has one supported encryption-type
+# suffix and all share it. A missing dir is valid; the post-substitution gate
+# still fails referenced tokens with no value.
+step_secrets_dir_preflight() {
+  # Later steps read both files and fail if either is missing, so they are
+  # always written: the supported types first, then the one type in use
+  # (empty when there are no values) once the scan has passed.
+  log ""
+  secret_encryption_types_write || exit 1
+
+  if [[ ! -d "${SECRETS_SUB_PATH}" ]]; then
+    log "Secrets-dir preflight: no secrets dir at ${SECRETS_SUB_PATH} - unusual but valid."
+    log "The post-substitution gate still fails any secret-template token lacking a value."
+    : > "${SECRET_ENCRYPTION_TYPE_FILE}"
+    return 0
+  fi
+  log "Secrets-dir preflight (${SECRETS_SUB_PATH})..."
+
+  # Locally a fresh clone or clean-secrets pass can leave it bare.
+  if ! find "${SECRETS_SUB_PATH}" -type f -not -name '.*' -print -quit | grep -q .; then
+    log_warning "${SECRETS_SUB_PATH} exists but contains no value files."
+    : > "${SECRET_ENCRYPTION_TYPE_FILE}"
+    return 0
+  fi
+
+  # Supported types are those the deploy base image can decrypt. .raw and .txt
+  # are the plaintext encrypt input / decrypt output that kaptain-clean-secrets
+  # removes. Tokens may be nested (Vendor/DbPassword.age).
+  local supported_types
+  supported_types=$(LC_ALL=C sort "${SECRET_ENCRYPTION_TYPES_FILE}" | tr '\n' ' ')
+  local failures=0
+  local sfile srel stoken ssuffix
+  local suffix_list=""
+  while IFS= read -r -d '' sfile; do
+    srel="${sfile#"${SECRETS_SUB_PATH}"/}"
+    case "${srel}" in
+      *.raw|*.txt)
+        log_error "  ${SECRETS_SUB_PATH}/${srel}: PLAINTEXT secret present at build time - encrypt it (kaptain-encrypt) and clean up (kaptain-clean-secrets)"
+        failures=$((failures + 1))
+        continue
+        ;;
+    esac
+    if ! stoken=$(secret_value_token_name "${srel}"); then
+      log_error "  ${SECRETS_SUB_PATH}/${srel}: no supported encryption-type suffix (expected <Token>.<type>, type one of: ${supported_types% })"
+      failures=$((failures + 1))
+      continue
+    fi
+    ssuffix="${srel#"${stoken}".}"
+    case " ${suffix_list} " in
+      *" ${ssuffix} "*) ;;
+      *) suffix_list="${suffix_list} ${ssuffix}" ;;
+    esac
+  done < <(find "${SECRETS_SUB_PATH}" -type f -not -name '.*' -print0 | LC_ALL=C sort -z)
+  # Hygiene failures above do not change the build output, so local builds
+  # continue. Mixed types cannot be decrypted uniformly at deploy time, so they
+  # fail everywhere.
+  suffix_list="${suffix_list# }"
+  if [[ "${suffix_list}" == *" "* ]]; then
+    log_error ""
+    log_error "  ${SECRETS_SUB_PATH}: mixed encryption-type suffixes (${suffix_list}) - all values must share one type"
+    log_error "  Fatal in every build mode: a half-re-encrypted collection cannot be decrypted at deploy time."
+    exit 1
+  fi
+
+  if [[ "${failures}" -gt 0 ]]; then
+    if [[ "${BUILD_MODE}" == "build_server" ]]; then
+      log_error ""
+      log_error "${failures} secrets-dir problem(s); fix the collection before building."
+      exit 1
+    fi
+    log_warning "${failures} secrets-dir problem(s) - continuing because BUILD_MODE=${BUILD_MODE}."
+    log_warning "this WILL fail a server build."
+  else
+    log "  OK: all values carry the '${suffix_list:-n/a}' suffix."
+  fi
+  # The valid values' type, so a local build with problems still stages them.
+  printf '%s\n' "${suffix_list}" > "${SECRET_ENCRYPTION_TYPE_FILE}"
+}
+
+# Stage this build's own deploy-manifests set as a child so the applied set
+# carries its own deployer: once seeded, the run re-applies (and keel/keelson
+# updates) itself. The deploy scripts decide how to treat the self entry.
+stage_own_deploy_manifests() {
+  # Paths from the shared lib: the deploy-manifests pipeline ran with its own
+  # block-local output dir.
+  local own_manifests="${RUN_IMAGE_DEPLOY_MANIFESTS_SUBSTITUTED}/${PROJECT_NAME}"
+  local own_contract="${RUN_IMAGE_DEPLOY_MANIFESTS_CONTRACT}/contract.yaml"
+  local own_defaults="${RUN_IMAGE_DEPLOY_MANIFESTS_DEFAULTS}"
+
+  if [[ ! -d "${own_manifests}" ]]; then
+    log_error "Own deploy-manifests tree not found: ${own_manifests}"
+    log_error "Did the deploy-manifests block run first?"
+    exit 1
+  fi
+  if [[ ! -f "${own_contract}" ]]; then
+    log_error "Own deploy-manifests contract not found: ${own_contract}"
+    log_error "Did kubernetes-run-image-deploy-manifests-contract-generate run first?"
+    exit 1
+  fi
+  if [[ -e "${CONTENT_MANIFESTS_DIR}/${PROJECT_NAME}" ]]; then
+    log_error "Self entry collides: ${PROJECT_NAME} is already staged from spec.contents"
+    exit 1
+  fi
+
+  log "Including own deploy-manifests set as self-referencing content..."
+  cp -R "${own_manifests}" "${CONTENT_MANIFESTS_DIR}/${PROJECT_NAME}"
+  mkdir -p "${CONTENT_CONTRACTS_DIR}/${PROJECT_NAME}"
+  cp "${own_contract}" "${CONTENT_CONTRACTS_DIR}/${PROJECT_NAME}/contract.yaml"
+  if [[ -d "${own_defaults}" ]] && [[ -n "$(find "${own_defaults}" -type f 2>/dev/null)" ]]; then
+    mkdir -p "${CONTENT_DEFAULTS_DIR}/${PROJECT_NAME}"
+    cp -R "${own_defaults}/." "${CONTENT_DEFAULTS_DIR}/${PROJECT_NAME}/"
+  fi
+  content_validate_bundle "${PROJECT_NAME}" "${CONTENT_CONTRACTS_DIR}" \
+    "${CONTENT_DEFAULTS_DIR}" "${CONTENT_MANIFESTS_DIR}"
+  log "  Staged ${PROJECT_NAME} (self)"
+}
+
+# Built before substitution because it depends only on KaptainPM values, so
+# it goes through substitution, signoff, checksum and finalise like any other
+# manifest.
+#
+# Values come from the load step's outputs, captured before any hook ran, so
+# user code cannot alter the cleanup policy.
+#
+# The deploy reads its /kd/manifests copy. The applied copy lets kubectl
+# users see why a resource was removed.
+build_cleanup_policy_document() {
+  local out="$1"
+
+  # A minimal valid KaptainPM so the shipped schema validates it directly.
+  #
+  # cleanUp is copied as configured, without defaults: those belong to the
+  # deploy scripts that act on them.
+  local configured="${ENV_CLEAN_UP:-}"
+  [[ -z "${configured}" || "${configured}" == "null" ]] && configured="{}"
+
+  jq -n \
+      --arg apiVersion "kaptain.org/${CLEANUP_SCHEMA_VERSION}" \
+      --arg kind "${BUILD_KIND}" \
+      --argjson cleanUp "${configured}" \
+    '{ apiVersion: $apiVersion, kind: $kind,
+       spec: { main: { environment: (if ($cleanUp | length) > 0 then { cleanUp: $cleanUp } else {} end) } } }' \
+    | yq -P "." > "${out}"
+
+  # Cheaper to fail here than at deploy time.
+  local validation line
+  if ! validation=$("${SCHEMA_VALIDATION_COMMAND}" "${CLEANUP_SCHEMA_FILE}" "${out}" 2>&1); then
+    log_error "Generated cleanup policy document does not validate against ${CLEANUP_SCHEMA_FILE}"
+    while IFS= read -r line; do
+      log_error "  ${line}"
+    done <<< "${validation}"
+    exit 1
+  fi
+}
+
+step_cleanup_policy_configmap() {
+  local policy_base="${AGGREGATE_BASE}/cleanup-policy"
+  # The generator appends '-<name suffix>' to the dir it is given, so pass the
+  # stripped form (as for the lineage data ConfigMap).
+  local data_dir="${policy_base}/data-cleanup-policy"
+  local generated_base="${policy_base}/generated"
+  mkdir -p "${data_dir}" "${generated_base}"
+
+  build_cleanup_policy_document "${data_dir}/cleanup-policy.yaml"
+
+  cp "${CLEANUP_SCHEMA_FILE}" "${data_dir}/kaptainpm-schema.json"
+
+  # Stable name so the applied object is findable across deploys.
+  PROJECT_NAME="${PROJECT_NAME}" \
+  TOKEN_DELIMITER_STYLE="${TOKEN_DELIMITER_STYLE}" \
+  TOKEN_NAME_STYLE="${TOKEN_NAME_STYLE}" \
+  OUTPUT_SUB_PATH="${generated_base}" \
+  KUBERNETES_CONFIGMAP_SUB_PATH="${data_dir%-cleanup-policy}" \
+  KUBERNETES_CONFIGMAP_NAME_SUFFIX="cleanup-policy" \
+  KUBERNETES_CONFIGMAP_COMBINED_SUB_PATH="" \
+  KUBERNETES_CONFIGMAP_NAME_CHECKSUM_INJECTION="false" \
+  BUILD_PLATFORM="${BUILD_PLATFORM:-}" \
+    "${SCRIPT_DIR}/../generators/generate-kubernetes-configmap"
+
+  local generated="${generated_base}/manifests/combined/configmap-cleanup-policy.yaml"
+  if [[ ! -f "${generated}" ]]; then
+    log_error "Cleanup policy ConfigMap not produced at expected path: ${generated}"
+    exit 1
+  fi
+  # Drop the generator's product labels: an env or RP has no product, so their
+  # token would never be supplied. sed because, before substitution, tokens
+  # opening with { or % make the file unparseable YAML.
+  sed -i.bak -E '/^[[:space:]]*(app\.kubernetes\.io\/part-of|kaptain\.org\/product):/d' "${generated}"
+  rm -f "${generated}.bak"
+  cp "${generated}" "${AGGREGATE_MANIFESTS_NORMALISED_DIR}/${ENV_CLEANUP_POLICY_FILENAME}"
+  log "  Written: ${ENV_CLEANUP_POLICY_FILENAME}"
+}
+
+main() {
+  log "=== Kubernetes Run Aggregate ==="
+  log "Project: ${PROJECT_NAME}"
+  log "Build kind: ${BUILD_KIND}"
+  log "KaptainPM: ${KAPTAINPM_FILE}"
+  log "Output: ${OUTPUT_SUB_PATH}"
+  log "Env scheme: ${TOKEN_DELIMITER_STYLE}-${TOKEN_NAME_STYLE}"
+  log "================================"
+
+  validate_run_project_name "${PROJECT_NAME}"
+
+  step_secrets_dir_preflight
+
+  local run_short_name
+  run_short_name=$(derive_run_short_name "${PROJECT_NAME}")
+  output_var "ENVIRONMENT_NAME" "${PROJECT_NAME}"
+  output_var "ENVIRONMENT_SHORT_NAME" "${run_short_name}"
+
+  if [[ ! -f "${KAPTAINPM_FILE}" ]]; then
+    log_error "KaptainPM file not found: ${KAPTAINPM_FILE}"
+    exit 1
+  fi
+
+  assert_composition_rule "${KAPTAINPM_FILE}"
+
+  # 'name' mode: children with the same project name collide downstream
+  # whatever registry/namespace they came from.
+  assert_unique_artifact_refs "${KAPTAINPM_FILE}" '.spec.contents[]' \
+      "Environment spec.contents" name
+
+  mkdir -p "${CONTENT_MANIFESTS_DIR}" "${CONTENT_DEFAULTS_DIR}" "${CONTENT_CONTRACTS_DIR}" \
+           "${CONTENT_EXTRACT_DIR}" "${CONTENT_UNZIPPED_DIR}"
+  mkdir -p "${AGGREGATE_MANIFESTS_NORMALISED_DIR}" "${AGGREGATE_DEFAULTS_NORMALISED_DIR}"
+
+  log ""
+  log "Resolving spec.contents..."
+  log ""
+  content_resolve_all "${KAPTAINPM_FILE}"
+
+  # An RP applies its own deployer set to seed the cluster (first, skipped when
+  # present). An env's deployer is applied by its parent RP, so env builds do
+  # not depend on the deploy-manifests block.
+  if [[ "${BUILD_KIND}" == "kubernetes-run-platform-meta-environment" ]]; then
+    log ""
+    stage_own_deploy_manifests
+  fi
+
+  log ""
+  log "Per-child scheme conversion to ${TOKEN_DELIMITER_STYLE}-${TOKEN_NAME_STYLE} if needed..."
+  log ""
+  local child_dir child
+  for child_dir in "${CONTENT_MANIFESTS_DIR}"/*; do
+    [[ -d "${child_dir}" ]] || continue
+    child=$(basename "${child_dir}")
+    convert_child_scheme_if_needed "${child}"
+    convert_child_defaults_if_needed "${child}"
+  done
+
+  log ""
+  log "Merging per-child defaults..."
+  log ""
+  merge_child_defaults
+
+  log ""
+  log "Asserting no squat on reserved environment lineage data filename '${ENV_LINEAGE_DATA_FILENAME}'..."
+  log ""
+  assert_no_lineage_data_squat
+
+  log ""
+  log "Folding in local manifests (${LOCAL_MANIFESTS_SUB_PATH}, allowLocalManifestsOverride=${ENV_ALLOW_LOCAL_MANIFESTS_OVERRIDE})..."
+  log ""
+  merge_local_manifests
+
+  log ""
+  log "Emitting the resolved cleanup policy ConfigMap..."
+  log ""
+  step_cleanup_policy_configmap
+
+  log ""
+  log "Validating the assembled tree (${AGGREGATE_MANIFESTS_NORMALISED_DIR})..."
+  log ""
+  validate_assembled_tree
+
+  log ""
+  log "Applying delete modifiers (${AGGREGATE_MANIFESTS_PRUNED_DIR})..."
+  log ""
+  step_apply_deletes
+
+  mkdir -p "${AGGREGATE_BASE}"
+  write_contents_list "${KAPTAINPM_FILE}" "${AGGREGATE_CONTENT_LIST_FILE}"
+
+  output_var "ENVIRONMENT_WORKLOAD_CONTENTS_FILE" "${AGGREGATE_CONTENT_LIST_FILE}"
+
+  log ""
+  log "=== Run Aggregate Staging Complete ==="
+}
+
+main "$@"

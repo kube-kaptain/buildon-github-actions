@@ -7,17 +7,22 @@
 # Sourced library exposing functions to resolve OCI artifact references,
 # fetch and unpack the manifests + contract zips that each entry contains,
 # and stage the result into per-entry directories. Used by product-aggregate
-# (contents flavour) and later by app/bundle and env/rp builds (templates
+# and env/rp builds (contents flavour) and by app/bundle builds (templates
 # flavour). Layers do not use this lib — they have their own lib/layer-merge
 # and stage under a different tree entirely.
 #
 # CONTENT_FLAVOUR contract (required, validated at source time):
-#   contents   - read spec.contents[], stage under ${OUTPUT_SUB_PATH}/contents/,
-#                produce contents.yaml + contents-resolved.yaml
-#   templates  - read spec.templates[], stage under ${OUTPUT_SUB_PATH}/templates/,
-#                produce templates.yaml + templates-resolved.yaml
-# A given script picks the flavour appropriate to its phase. env/rp builds will
-# run two passes (contents then templates) in separate scripts.
+#   contents      - read spec.contents[], stage under ${OUTPUT_SUB_PATH}/contents/,
+#                   produce contents.yaml + contents-resolved.yaml
+#   templates     - read spec.templates[], stage under ${OUTPUT_SUB_PATH}/templates/,
+#                   produce templates.yaml + templates-resolved.yaml
+# A given script picks the flavour appropriate to its phase. env/rp builds can
+# run both passes (contents, then templates for the deploy manifests), which
+# the separate dirs keep apart.
+#
+# A run-platform's contents pass (BUILD_KIND
+# kubernetes-run-platform-meta-environment) also collects each child's
+# delegated cluster-scoped zip into ${CONTENT_BASE}/cluster-scoped-on-behalf/.
 #
 # Required env to source this file:
 #   OUTPUT_SUB_PATH   - set by defaults/output-sub-path.bash before sourcing
@@ -132,10 +137,12 @@ content_find_zips() {
 
   local manifests_zips=()
   local contract_zips=()
+  local on_behalf_zips=()
   while IFS= read -r -d '' zip; do
     case "${zip}" in
-      *-manifests.zip) manifests_zips+=("${zip}") ;;
-      *-contract.zip)  contract_zips+=("${zip}") ;;
+      *-manifests.zip)                manifests_zips+=("${zip}") ;;
+      *-contract.zip)                 contract_zips+=("${zip}") ;;
+      *-cluster-scoped-resources.zip) on_behalf_zips+=("${zip}") ;;
     esac
   done < <(find "${extract_dir}" -type f -name '*.zip' -print0)
 
@@ -148,8 +155,50 @@ content_find_zips() {
     return 1
   fi
 
+  # Only env children that delegate cluster-scoped resources carry one. More
+  # than one means two projects published into the same artifact.
+  if [[ ${#on_behalf_zips[@]} -gt 1 ]]; then
+    log_error "Expected at most one *-cluster-scoped-resources.zip in ${extract_dir}, found ${#on_behalf_zips[@]}"
+    return 1
+  fi
+
   CONTENT_MANIFESTS_ZIP="${manifests_zips[0]}"
   CONTENT_CONTRACT_ZIP="${contract_zips[0]}"
+  CONTENT_ON_BEHALF_ZIP="${on_behalf_zips[0]:-}"
+}
+
+# Collect a child's delegated cluster-scoped zip for the RP.
+# kubernetes-run-package stages the collection dir into the deploy image at
+# /kd/cluster-scoped-on-behalf. The zip's <project>/ root is the per-child
+# partition the deploy side applies from.
+#
+# Usage: content_collect_on_behalf <on-behalf-zip> <unzipped-dir> <project>
+content_collect_on_behalf() {
+  if [[ $# -ne 3 ]]; then
+    log_error "content_collect_on_behalf requires exactly 3 arguments, got $#"
+    return 1
+  fi
+  local zip="$1"
+  local unzipped_dir="$2"
+  local project="$3"
+
+  local dest="${CONTENT_BASE}/cluster-scoped-on-behalf"
+  if [[ -e "${dest}/${project}" ]]; then
+    log_error "Delegated cluster-scoped set for ${project} already collected in ${dest}"
+    return 1
+  fi
+
+  mkdir -p "${dest}"
+  content_unzip_checked "${zip}" "${unzipped_dir}" || return 1
+  if [[ ! -d "${unzipped_dir}/${project}" ]]; then
+    log_error "Delegated cluster-scoped zip has no ${project}/ root: ${zip}"
+    return 1
+  fi
+  cp -R "${unzipped_dir}/${project}" "${dest}/${project}"
+
+  local count
+  count=$(find "${dest}/${project}" -type f -name '*.yaml' | grep -c . || true)
+  log "  Collected ${count} delegated cluster-scoped manifest(s) from ${project}"
 }
 
 # Unzip into <unzipped-dir>, then reject anything that is not a regular file or
@@ -393,8 +442,11 @@ content_validate_bundle() {
 # same flavour. Two flavours stage under separate bases and do not interfere.
 #
 # OCI image extraction lands in ${CONTENT_EXTRACT_DIR}/<artifact-slug>/ and
-# both zips are unzipped into ${CONTENT_UNZIPPED_DIR}/<artifact-slug>/. Both
-# are kept after the run as the audit trail.
+# both zips are unzipped into ${CONTENT_UNZIPPED_DIR}/<artifact-slug>/. A
+# child environment's delegated cluster-scoped zip, collected by a
+# run-platform, is unzipped separately into
+# ${CONTENT_BASE}/unzipped-on-behalf/<artifact-slug>/. All are kept after the
+# run as the audit trail.
 #
 # Writes two summary files at ${CONTENT_BASE}:
 #   ${CONTENT_LIST_FILE}      - verbatim spec entries, one '- <entry>' per line
@@ -464,6 +516,7 @@ content_resolve_all() {
 
   local entry_index=0
   local entry
+  local stray_on_behalf=""
   while IFS= read -r entry; do
     [[ -z "${entry}" ]] && continue
     entry_index=$((entry_index + 1))
@@ -508,9 +561,34 @@ content_resolve_all() {
 
     content_validate_bundle "${project}" "${CONTENT_CONTRACTS_DIR}" "${CONTENT_DEFAULTS_DIR}" "${CONTENT_MANIFESTS_DIR}" || return $?
 
+    # Only run-* environments publish a delegated zip, and only an RP's
+    # contents may hold one. Anywhere else it means a mislabelled image,
+    # collected so the build reports every such entry before failing.
+    # Unzipped apart from the manifests zip: both have a <project>/ root, and
+    # sharing a dir would merge the child's deployer set into the on-behalf set.
+    if [[ -n "${CONTENT_ON_BEHALF_ZIP}" ]]; then
+      if [[ "${CONTENT_FLAVOUR}" != "contents" \
+          || "${BUILD_KIND:-}" != "kubernetes-run-platform-meta-environment" ]]; then
+        stray_on_behalf="${stray_on_behalf}${entry} carries a delegated cluster-scoped zip: $(basename "${CONTENT_ON_BEHALF_ZIP}")
+"
+      else
+        content_collect_on_behalf "${CONTENT_ON_BEHALF_ZIP}" "${CONTENT_BASE}/unzipped-on-behalf/${slug}" "${project}" || return $?
+      fi
+    fi
+
     log "  Staged ${project}"
     log ""
   done <<< "${entries}"
+
+  if [[ -n "${stray_on_behalf}" ]]; then
+    while IFS= read -r entry; do
+      if [[ -n "${entry}" ]]; then
+        log_error "${entry}"
+      fi
+    done <<< "${stray_on_behalf}"
+    log_error "Only a run-platform's spec.contents may hold a child with delegated cluster-scoped resources"
+    return 1
+  fi
 
   log "Resolved ${entry_index} ${CONTENT_FLAVOUR} entr$([[ ${entry_index} -eq 1 ]] && echo y || echo ies)"
 }

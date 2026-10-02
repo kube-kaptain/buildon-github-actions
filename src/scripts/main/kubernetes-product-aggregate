@@ -64,6 +64,13 @@ are intended to be reusable units of deployment across a series of
 environments. Instead convert your product to be an aggregate project
 using the templates feature."
 
+RUN_PREFIX="run-"
+
+ENV_IN_PRODUCT_MESSAGE="Including a run-* or run-platform-* project inside a product is not
+allowed: environments and run-platforms are the top of the composition tree
+and deploy products, not the other way round. List apps and bundles in
+spec.contents."
+
 # Returns 0 if name has the product- prefix, 1 otherwise.
 has_product_prefix() {
   case "$1" in
@@ -116,22 +123,47 @@ content_entry_repo_name() {
   echo "${last%%:*}"
 }
 
-assert_no_products_in_products() {
+# Products may contain no products and no run-* (run-platform-* included).
+assert_composition_rule() {
   local kaptainpm_file="$1"
   local entries
   entries=$(yq eval '.spec.contents[]' "${kaptainpm_file}" 2>/dev/null || true)
   [[ -z "${entries}" || "${entries}" == "null" ]] && return 0
 
+  # Collect every offender before failing, so one build reports them all.
   local entry repo
+  local product_offenders=""
+  local run_offenders=""
   while IFS= read -r entry; do
     [[ -z "${entry}" ]] && continue
     repo=$(content_entry_repo_name "${entry}")
     if has_product_prefix "${repo}" || has_product_suffix "${repo}"; then
-      log_error "${PRODUCTS_IN_PRODUCTS_MESSAGE}"
-      log_error "Offending entry: ${entry}"
-      return 1
+      product_offenders="${product_offenders}${entry}
+"
+    elif [[ "${repo}" == "${RUN_PREFIX}"* ]]; then
+      run_offenders="${run_offenders}${entry}
+"
     fi
   done <<< "${entries}"
+
+  if [[ -n "${product_offenders}" ]]; then
+    log_error "${PRODUCTS_IN_PRODUCTS_MESSAGE}"
+    while IFS= read -r entry; do
+      if [[ -n "${entry}" ]]; then
+        log_error "Offending entry: ${entry}"
+      fi
+    done <<< "${product_offenders}"
+  fi
+  if [[ -n "${run_offenders}" ]]; then
+    log_error "${ENV_IN_PRODUCT_MESSAGE}"
+    while IFS= read -r entry; do
+      if [[ -n "${entry}" ]]; then
+        log_error "Offending entry: ${entry}"
+      fi
+    done <<< "${run_offenders}"
+  fi
+  [[ -z "${product_offenders}${run_offenders}" ]] && return 0
+  return 1
 }
 
 main() {
@@ -160,7 +192,7 @@ main() {
     exit 1
   fi
 
-  assert_no_products_in_products "${KAPTAINPM_FILE}"
+  assert_composition_rule "${KAPTAINPM_FILE}"
 
   log ""
   log "Resolving spec.contents..."

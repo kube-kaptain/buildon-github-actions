@@ -1,3 +1,1 @@
-# Unique test artifacts
-src/test/repo-gen/output/
-src/test/mock-bin/
+# This project relies on global git ignores since it uses no unique dirs.

@@ -390,6 +390,49 @@ validate_workflow_inputs() {
   echo "  OK: every workflow exposes only the 'runner' input"
 }
 
+# yq accepts a key declared twice in an inputs/outputs/secrets map, but GitHub
+# rejects the whole file ("'<key>' is already defined") only once it runs there.
+# Runs after generation so a single pass reports every duplicate.
+validate_no_duplicate_keys() {
+  echo "Validating generated actions and workflows declare no input, output or secret twice..."
+
+  # Each expression prints "<map> <key>" per declared key; job outputs are
+  # scoped per job since two jobs may share an output name.
+  local action_maps='(.inputs // {} | keys | .[] | "inputs " + .),
+    (.outputs // {} | keys | .[] | "outputs " + .)'
+  # shellcheck disable=SC2016 # $job is a yq variable
+  local workflow_maps='(.on.workflow_call.inputs // {} | keys | .[] | "on.workflow_call.inputs " + .),
+    (.on.workflow_call.outputs // {} | keys | .[] | "on.workflow_call.outputs " + .),
+    (.on.workflow_call.secrets // {} | keys | .[] | "on.workflow_call.secrets " + .),
+    (.jobs // {} | to_entries | .[] | .key as $job | .value.outputs // {} | keys | .[] | "jobs." + $job + ".outputs " + .)'
+
+  local errors=0
+  local file expression duplicate
+
+  for file in "$ACTIONS_DIR"/*/action.yaml "$OUTPUT_DIR"/*.yaml; do
+    [[ -f "$file" ]] || continue
+    if [[ "$file" == "$OUTPUT_DIR"/* ]]; then
+      # Skip workflows without a corresponding template
+      [[ ! -f "$TEMPLATES_DIR/$(basename "$file")" ]] && continue
+      expression="$workflow_maps"
+    else
+      expression="$action_maps"
+    fi
+    while IFS= read -r duplicate; do
+      [[ -z "$duplicate" ]] && continue
+      echo "  ERROR: ${file#"$REPO_ROOT"/}: ${duplicate% *} declares '${duplicate##* }' more than once" >&2
+      errors=$((errors + 1))
+    done < <(yq "$expression" "$file" | sort | uniq -d)
+  done
+
+  if [[ $errors -gt 0 ]]; then
+    echo "  FAILED: $errors duplicate input/output/secret declaration(s)" >&2
+    exit 1
+  fi
+
+  echo "  OK: no duplicate inputs, outputs or secrets"
+}
+
 # Generate secrets table for README
 generate_secrets_table() {
   local secrets_file
@@ -999,6 +1042,11 @@ main() {
   section_start=$SECONDS
   generate_docs
   echo "Docs generated in $((SECONDS - section_start)) seconds."
+  echo
+
+  section_start=$SECONDS
+  validate_no_duplicate_keys
+  echo "Validated in $((SECONDS - section_start)) seconds."
   echo
 
   echo

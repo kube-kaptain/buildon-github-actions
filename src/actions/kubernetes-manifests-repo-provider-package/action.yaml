@@ -72,13 +72,11 @@ inputs:
     required: false
     default: ''
   contract-zip-sub-path:
-    description: 'Directory containing the contract zip (optional)'
-    required: false
-    default: ''
+    description: 'Directory containing the contract zip (required - consumers resolve a bundle through its contract)'
+    required: true
   contract-zip-file-name:
-    description: 'Filename of the contract zip (optional)'
-    required: false
-    default: ''
+    description: 'Filename of the contract zip (required)'
+    required: true
   # Container runtime
   image-build-command:
     description: 'Container runtime command (podman or docker)'
@@ -89,15 +87,6 @@ outputs:
   manifests-uri:
     description: 'Manifests location (for publish step)'
     value: ${{ steps.package.outputs.MANIFESTS_URI }}
-  manifests-artifact-sub-path:
-    description: 'Relative path to packaged artifact (for publish step)'
-    value: ${{ steps.package.outputs.MANIFESTS_ARTIFACT_SUB_PATH }}
-  manifests-zip-sub-path:
-    description: 'Relative path to directory containing manifests zip (pass through for publish step)'
-    value: ${{ steps.package.outputs.MANIFESTS_ZIP_SUB_PATH }}
-  manifests-zip-file-name:
-    description: 'Filename for manifests zip (pass through for publish step)'
-    value: ${{ steps.package.outputs.MANIFESTS_ZIP_FILE_NAME }}
   version:
     description: 'Version/tag (pass through for publish step, for future non-docker providers)'
     value: ${{ steps.package.outputs.REPO_PROVIDER_VERSION }}

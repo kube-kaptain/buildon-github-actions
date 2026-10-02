@@ -1,0 +1,125 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
+#
+# kubernetes-run-consumption-report - Generate the run's consumption
+# report: what the environment consumed, which tier fed each token, and
+# which secret tokens deploy must still inject.
+#
+# Order: run-finalise -> this -> kubernetes-run-lineage-data-generate ->
+# kubernetes-run-package. Post-finalise so the secret scan sees the final
+# tree; before lineage, which embeds the report in a ConfigMap that must be
+# in the tree before packaging.
+#
+# Inputs (env):
+#   PROJECT_NAME / VERSION  - Required
+#   ENVIRONMENT_WORKLOAD_CONTENTS_SUB_PATH      - Required; the finalised tree
+#   OUTPUT_SUB_PATH         - Build output dir (default kaptain-out)
+#   TOKEN_DELIMITER_STYLE / TOKEN_NAME_STYLE - Token rendering (defaults/tokens.bash)
+#   BUILD_KIND              - Required; names the aggregate's dir and sets the
+#                             report's kind
+#
+# Outputs (env + GITHUB_OUTPUT):
+#   RUN_CONSUMPTION_REPORT  - the report yaml path
+#
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# shellcheck source=src/scripts/defaults/platform.bash
+source "${SCRIPT_DIR}/../defaults/platform.bash"
+# shellcheck source=src/scripts/lib/log.bash
+source "${SCRIPT_DIR}/../lib/log.bash"
+# shellcheck source=src/scripts/defaults/output-sub-path.bash
+source "${SCRIPT_DIR}/../defaults/output-sub-path.bash"
+# shellcheck source=src/scripts/lib/output-var.bash
+source "${SCRIPT_DIR}/../lib/output-var.bash"
+# shellcheck source=src/scripts/defaults/tokens.bash
+source "${SCRIPT_DIR}/../defaults/tokens.bash"
+# shellcheck source=src/scripts/lib/token-format.bash
+source "${SCRIPT_DIR}/../lib/token-format.bash"
+# shellcheck source=src/scripts/lib/token-markers.bash
+source "${SCRIPT_DIR}/../lib/token-markers.bash"
+
+PROJECT_NAME="${PROJECT_NAME:?PROJECT_NAME is required}"
+VERSION="${VERSION:?VERSION is required}"
+ENVIRONMENT_WORKLOAD_CONTENTS_SUB_PATH="${ENVIRONMENT_WORKLOAD_CONTENTS_SUB_PATH:?ENVIRONMENT_WORKLOAD_CONTENTS_SUB_PATH is required (the substituted+finalised tree)}"
+
+BUILD_KIND="${BUILD_KIND:?BUILD_KIND is required (published by load-final-kaptainpm-yaml)}"
+# The short kind the report publishes.
+RUN_BUILD_KIND="environment"
+[[ "${BUILD_KIND}" == "kubernetes-run-platform-meta-environment" ]] && RUN_BUILD_KIND="run-platform"
+
+REPORT_BASE="${OUTPUT_SUB_PATH}/run-consumption-report"
+REPORT_NAME="${PROJECT_NAME}-${VERSION}-consumption-report.yaml"
+
+main() {
+  log "=== Kubernetes Run Consumption Report ==="
+  log "Project: ${PROJECT_NAME}"
+  log "Version: ${VERSION}"
+  log "Kind:    ${RUN_BUILD_KIND}"
+  log "Tree:    ${ENVIRONMENT_WORKLOAD_CONTENTS_SUB_PATH}"
+  log "=========================================="
+
+  if [[ ! -d "${ENVIRONMENT_WORKLOAD_CONTENTS_SUB_PATH}" ]]; then
+    log_error "Manifest tree not found: ${ENVIRONMENT_WORKLOAD_CONTENTS_SUB_PATH}"
+    exit 1
+  fi
+  mkdir -p "${REPORT_BASE}"
+
+  # Missing files (no contents) degrade to empty lists.
+  local list_file="${OUTPUT_SUB_PATH}/contents/contents.yaml"
+  local resolved_file="${OUTPUT_SUB_PATH}/contents/contents-resolved.yaml"
+
+  # Tokens covered by an IgnoreUnresolved marker are content, not secrets.
+  local token_regex secret_tokens secret_token_count template
+  token_regex=$(unresolved_token_regex "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}") || exit 1
+  secret_tokens=$(
+    while IFS= read -r -d '' template; do
+      token_markers_file_unmarked_tokens "IgnoreUnresolved" "${template}" "${token_regex}" "${TOKEN_DELIMITER_STYLE}"
+    done < <(find "${ENVIRONMENT_WORKLOAD_CONTENTS_SUB_PATH}" -type f -name '*.template.yaml' -print0 | LC_ALL=C sort -z) \
+      | LC_ALL=C sort -u
+  )
+  secret_token_count=$(printf '%s' "${secret_tokens}" | grep -c . || true)
+
+  # Written by the aggregate step.
+  local usage_file="${OUTPUT_SUB_PATH}/${BUILD_KIND#kubernetes-}/token-usage.yaml"
+
+  local report_file="${REPORT_BASE}/${REPORT_NAME}"
+  {
+    echo "# Consumption report - the run analog of a manifests contract."
+    echo "# What this build consumed, and what deploy must still inject."
+    echo "kind: ${RUN_BUILD_KIND}"
+    echo "name: ${PROJECT_NAME}"
+    echo "version: ${VERSION}"
+    echo "consumed:"
+    if [[ -f "${list_file}" ]]; then
+      sed 's/^/  /' "${list_file}"
+    fi
+    echo "consumedResolved:"
+    if [[ -f "${resolved_file}" ]]; then
+      sed 's/^/  /' "${resolved_file}"
+    fi
+    if [[ -f "${usage_file}" ]]; then
+      echo "tokenUsage:"
+      sed 's/^/  /' "${usage_file}"
+    else
+      echo "tokenUsage: {}"
+    fi
+    echo "deployTimeSecretTokenCount: ${secret_token_count}"
+    echo "deployTimeSecretTokens:"
+    if [[ -n "${secret_tokens}" ]]; then
+      printf '%s\n' "${secret_tokens}" | sed 's/^/  - /'
+    else
+      echo "  []"
+    fi
+  } > "${report_file}"
+
+  log ""
+  log "Created: ${report_file}"
+
+  log ""
+  output_var "RUN_CONSUMPTION_REPORT" "${report_file}"
+}
+
+main "$@"

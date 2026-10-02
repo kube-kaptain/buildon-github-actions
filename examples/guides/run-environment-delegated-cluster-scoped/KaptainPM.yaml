@@ -1,0 +1,15 @@
+# SPDX-License-Identifier: CC0-1.0
+# This example is released to the public domain. Use freely without attribution.
+
+apiVersion: kaptain.org/1.37
+kind: kubernetes-run-environment
+
+spec:
+  contents:
+    # A vendor bundle with CRDs and ClusterRoles.
+    - kubernetes-bundle-vendor-helm-rendered:[1.0,2.0)
+  main:
+    environment:
+      # The environment deploys with a namespace-only role; its run platform
+      # applies the cluster-scoped resources on its behalf.
+      clusterScopedDelegation: parent
