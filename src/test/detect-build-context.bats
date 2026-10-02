@@ -28,7 +28,8 @@ setup() {
   git remote set-head origin main
   # The lib respects incoming values - tests must start clean of them
   unset DEFAULT_BRANCH TARGET_BRANCH RELEASE_BRANCH TARGET_REF UPSTREAM_BRANCH \
-        KAPTAIN_BRANCH_OVERRIDE KAPTAIN_LOCAL_RELEASE CURRENT_BRANCH 2>/dev/null || true
+        KAPTAIN_BRANCH_OVERRIDE KAPTAIN_LOCAL_RELEASE CURRENT_BRANCH \
+        REPOSITORY_NAME REPOSITORY_OWNER SOURCE_REPO 2>/dev/null || true
 }
 
 teardown() {
@@ -160,4 +161,43 @@ derive() {
   [ "$status" -eq 0 ]
   [[ "$output" == *"Not a git repository"* ]] || return 1
   [[ "$output" == *"CB=main|T=origin/main|RN=$(basename "${NOREPO}")|RO="* ]]
+}
+
+# Print the repository identity the lib derives
+derive_repo() {
+  run bash -c "
+    log_error() { echo \"ERROR: \$*\" >&2; }
+    source '${DETECT}'
+    echo \"SR=\${SOURCE_REPO}|RO=\${REPOSITORY_OWNER}|RN=\${REPOSITORY_NAME}\"
+  "
+}
+
+@test "SOURCE_REPO is owner/name from an HTTPS remote" {
+  git remote set-url origin https://github.com/acme/widgets.git
+  derive_repo
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"SR=acme/widgets|RO=acme|RN=widgets"* ]]
+}
+
+@test "SOURCE_REPO is owner/name from an SSH remote" {
+  git remote set-url origin git@github.com:acme/widgets.git
+  derive_repo
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"SR=acme/widgets|RO=acme|RN=widgets"* ]]
+}
+
+@test "SOURCE_REPO from the environment wins" {
+  git remote set-url origin https://github.com/acme/widgets.git
+  export SOURCE_REPO="other/place"
+  derive_repo
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"SR=other/place|RO=acme|RN=widgets"* ]]
+}
+
+@test "SOURCE_REPO without a git repository uses the bootstrap owner and directory name" {
+  NOREPO=$(mktemp -d)
+  cd "${NOREPO}"
+  derive_repo
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"SR=${USER:-local}/$(basename "${NOREPO}")|"* ]]
 }

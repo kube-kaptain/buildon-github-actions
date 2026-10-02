@@ -244,6 +244,15 @@ assert_no_environment_token_values() {
 }
 
 step_generate_manifests() {
+  # Only what this step pins below reaches the generators. Settings for the
+  # project's own app manifests (exported locally, never passed on GitHub)
+  # must not shape the deployer set.
+  local var
+  for var in $(compgen -v | grep '^KUBERNETES_' || true); do
+    unset "${var}"
+  done
+  unset CONFIG_SUB_PATH CONFIG_VALUE_TRAILING_NEWLINE DEFAULTS_SUB_PATH ENV_SUB_PATH IMAGE_URI
+
   log ""
   log "Generating deploy-image manifests (fill-the-gaps)..."
   log "  Deploy mode:       ${ENV_DEPLOY_MODE}"
@@ -254,14 +263,18 @@ step_generate_manifests() {
 
   # Staged first so gap detection sees them.
   local src_kubernetes="${ENV_ENVIRONMENT_DEPLOY_SOURCE_BASE_PATH}/kubernetes"
+  local src_defaults="${ENV_ENVIRONMENT_DEPLOY_SOURCE_BASE_PATH}/defaults"
   local src_configmap="${ENV_ENVIRONMENT_DEPLOY_SOURCE_BASE_PATH}/configmap"
   local src_secret_template="${ENV_ENVIRONMENT_DEPLOY_SOURCE_BASE_PATH}/secret.template"
+  local src_deployment_env="${ENV_ENVIRONMENT_DEPLOY_SOURCE_BASE_PATH}/deployment-env"
+  local src_cronjob_env="${ENV_ENVIRONMENT_DEPLOY_SOURCE_BASE_PATH}/cronjob-env"
   if [[ -d "${src_kubernetes}" ]]; then
     log "  Staging user-supplied manifests from ${src_kubernetes}"
     cp -R "${src_kubernetes}/." "${IMAGE_MANIFESTS_DIR}/"
   fi
-  if [[ -d "${ENV_ENVIRONMENT_DEPLOY_SOURCE_BASE_PATH}/defaults" ]]; then
-    cp -R "${ENV_ENVIRONMENT_DEPLOY_SOURCE_BASE_PATH}/defaults/." "${IMAGE_DEFAULTS_DIR}/"
+  if [[ -d "${src_defaults}" ]]; then
+    log "  Staging user-supplied defaults from ${src_defaults}"
+    cp -R "${src_defaults}/." "${IMAGE_DEFAULTS_DIR}/"
   fi
 
   local has_workload="false"
@@ -404,6 +417,7 @@ step_generate_manifests() {
   export KUBERNETES_WORKLOAD_RESOURCES_CPU_LIMIT=""
   # Pinned so an app-level value in the environment is not inherited.
   export KUBERNETES_WORKLOAD_IMAGE_PULL_SECRETS="${ENV_IMAGE_PULL_SECRETS}"
+  export KUBERNETES_DEPLOYMENT_ENV_SUB_PATH="${src_deployment_env}"
   export KUBERNETES_DEPLOYMENT_PORTS_ENABLED="false"
   export KUBERNETES_CRONJOB_PORTS_ENABLED="false"
 
@@ -429,8 +443,21 @@ step_generate_manifests() {
       # schedule override that fires defeats the pattern.
       log "  Generating suspended CronJob (job mode)"
       annotations=$(auto_update_annotation_list "true")
+      # The user's entries plus the post-deploy sleeps, which belong to the
+      # jobPostDeploySleep* settings.
       local cronjob_env_dir="${IMAGE_BASE}/cronjob-env"
+      rm -rf "${cronjob_env_dir}"
       mkdir -p "${cronjob_env_dir}"
+      if [[ -d "${src_cronjob_env}" ]]; then
+        cp -R "${src_cronjob_env}/." "${cronjob_env_dir}/"
+      fi
+      local sleep_entry
+      for sleep_entry in POST_DEPLOY_SLEEP_SUCCESS POST_DEPLOY_SLEEP_FAILURE; do
+        if [[ -e "${cronjob_env_dir}/${sleep_entry}" ]]; then
+          log_error "${src_cronjob_env}/${sleep_entry} is set by spec.main.environment.jobPostDeploySleepAfterSuccess/AfterFailure; remove the file"
+          exit 1
+        fi
+      done
       duration_seconds "${ENV_JOB_POST_DEPLOY_SLEEP_AFTER_SUCCESS}" > "${cronjob_env_dir}/POST_DEPLOY_SLEEP_SUCCESS"
       duration_seconds "${ENV_JOB_POST_DEPLOY_SLEEP_AFTER_FAILURE}" > "${cronjob_env_dir}/POST_DEPLOY_SLEEP_FAILURE"
       OUTPUT_SUB_PATH="${gen_output}" \

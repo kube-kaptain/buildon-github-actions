@@ -95,6 +95,82 @@ EOF
 }
 
 # =============================================================================
+# Inputs from the repo or the outer environment never reach the deployer
+# =============================================================================
+
+@test "deployer Deployment ignores the repo's src/deployment-env" {
+  mkdir -p src/deployment-env
+  printf 'leaked' > src/deployment-env/FROM_REPO
+  run "$SCRIPT"
+  [ "$status" -eq 0 ]
+  [ "$(grep -c 'FROM_REPO' "${MANIFESTS}/deployment.yaml")" -eq 0 ]
+}
+
+@test "deployer Deployment ignores an outer KUBERNETES_DEPLOYMENT_ENV_SUB_PATH" {
+  mkdir -p elsewhere-env
+  printf 'leaked' > elsewhere-env/FROM_OUTSIDE
+  export KUBERNETES_DEPLOYMENT_ENV_SUB_PATH="elsewhere-env"
+  run "$SCRIPT"
+  [ "$status" -eq 0 ]
+  [ "$(grep -c 'FROM_OUTSIDE' "${MANIFESTS}/deployment.yaml")" -eq 0 ]
+}
+
+@test "job mode zero-scale Deployment ignores the repo's src/deployment-env" {
+  mkdir -p src/deployment-env
+  printf 'leaked' > src/deployment-env/FROM_REPO
+  ENV_DEPLOY_MODE=job ENV_IMAGE_AUTO_UPDATE_PROVIDER=keelson run "$SCRIPT"
+  [ "$status" -eq 0 ]
+  [ "$(grep -c 'FROM_REPO' "${MANIFESTS}/deployment.yaml")" -eq 0 ]
+}
+
+@test "outer generator settings never change the deployer set" {
+  run "$SCRIPT"
+  [ "$status" -eq 0 ]
+  local clean_set="${TEST_DIR}/${MANIFESTS}"
+
+  local leaked_dir
+  leaked_dir=$(create_test_dir "kubernetes-run-image-deploy-manifests-leaked")
+  mkdir -p "${leaked_dir}/kaptainpm/final"
+  cp "${TEST_DIR}/kaptainpm/final/KaptainPM.yaml" "${leaked_dir}/kaptainpm/final/"
+  cd "${leaked_dir}"
+  export KUBERNETES_SERVICEACCOUNT_NAME_SUFFIX="leaked"
+  export KUBERNETES_GLOBAL_ADDITIONAL_LABELS="leaked=yes"
+  export KUBERNETES_DEPLOYMENT_MAX_SURGE="9"
+  export KUBERNETES_WORKLOAD_TOLERATIONS='[{"key":"leaked","operator":"Exists"}]'
+  export IMAGE_URI="registry.example.com/leaked:1.0"
+  export CONFIG_VALUE_TRAILING_NEWLINE="preserve"
+  run "$SCRIPT"
+  [ "$status" -eq 0 ]
+  diff -r -I 'kaptain.org/build-timestamp' "${clean_set}" "${MANIFESTS}"
+  [ "$(yq '.subjects[0].name' "${MANIFESTS}/clusterrolebinding.yaml")" = "$(yq '.metadata.name' "${MANIFESTS}/serviceaccount.yaml")" ]
+}
+
+@test "deployer Deployment takes env from the deploy-image source's deployment-env" {
+  mkdir -p src/environment/deployment-env
+  printf 'yes' > src/environment/deployment-env/FROM_SOURCE
+  run "$SCRIPT"
+  [ "$status" -eq 0 ]
+  [ "$(yq '.spec.template.spec.containers[0].env[] | select(.name == "FROM_SOURCE") | .name' "${MANIFESTS}/deployment.yaml")" = "FROM_SOURCE" ]
+}
+
+@test "job mode CronJob takes env from the deploy-image source's cronjob-env beside the sleeps" {
+  mkdir -p src/environment/cronjob-env
+  printf 'yes' > src/environment/cronjob-env/FROM_SOURCE
+  ENV_DEPLOY_MODE=job ENV_IMAGE_AUTO_UPDATE_PROVIDER=keelson run "$SCRIPT"
+  [ "$status" -eq 0 ]
+  local env='.spec.jobTemplate.spec.template.spec.containers[0].env[].name'
+  [ "$(yq "${env}" "${MANIFESTS}/cronjob.yaml" | grep -c -x -e FROM_SOURCE -e POST_DEPLOY_SLEEP_SUCCESS -e POST_DEPLOY_SLEEP_FAILURE)" -eq 3 ]
+}
+
+@test "job mode: a supplied post-deploy sleep env file fails" {
+  mkdir -p src/environment/cronjob-env
+  printf '60' > src/environment/cronjob-env/POST_DEPLOY_SLEEP_SUCCESS
+  ENV_DEPLOY_MODE=job ENV_IMAGE_AUTO_UPDATE_PROVIDER=keelson run "$SCRIPT"
+  [ "$status" -ne 0 ]
+  assert_output_contains "POST_DEPLOY_SLEEP_SUCCESS is set by spec.main.environment.jobPostDeploySleepAfterSuccess/AfterFailure"
+}
+
+# =============================================================================
 # Namespace
 # =============================================================================
 
