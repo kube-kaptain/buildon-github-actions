@@ -196,6 +196,10 @@ if [[ -z "${REPOSITORY_OWNER}" ]]; then
   echo "WARNING: No remote URL - REPOSITORY_OWNER defaulted to '${REPOSITORY_OWNER}' (bootstrap)" >&2
 fi
 
+# owner/name, as github.repository gives server builds: the
+# kaptain.org/source-repository annotation on generated manifests.
+export SOURCE_REPO="${SOURCE_REPO:-${REPOSITORY_OWNER}/${REPOSITORY_NAME}}"
+
 
 # =============================================================================
 # Build Context
