@@ -95,6 +95,60 @@ EOF
 }
 
 # =============================================================================
+# Inputs from the repo or the outer environment never reach the deployer
+# =============================================================================
+
+@test "deployer Deployment ignores the repo's src/deployment-env" {
+  mkdir -p src/deployment-env
+  printf 'leaked' > src/deployment-env/FROM_REPO
+  run "$SCRIPT"
+  [ "$status" -eq 0 ]
+  [ "$(grep -c 'FROM_REPO' "${MANIFESTS}/deployment.yaml")" -eq 0 ]
+}
+
+@test "deployer Deployment ignores an outer KUBERNETES_DEPLOYMENT_ENV_SUB_PATH" {
+  mkdir -p elsewhere-env
+  printf 'leaked' > elsewhere-env/FROM_OUTSIDE
+  export KUBERNETES_DEPLOYMENT_ENV_SUB_PATH="elsewhere-env"
+  run "$SCRIPT"
+  [ "$status" -eq 0 ]
+  [ "$(grep -c 'FROM_OUTSIDE' "${MANIFESTS}/deployment.yaml")" -eq 0 ]
+}
+
+@test "job mode zero-scale Deployment ignores the repo's src/deployment-env" {
+  mkdir -p src/deployment-env
+  printf 'leaked' > src/deployment-env/FROM_REPO
+  ENV_DEPLOY_MODE=job ENV_IMAGE_AUTO_UPDATE_PROVIDER=keelson run "$SCRIPT"
+  [ "$status" -eq 0 ]
+  [ "$(grep -c 'FROM_REPO' "${MANIFESTS}/deployment.yaml")" -eq 0 ]
+}
+
+@test "deployer Deployment takes env from the deploy-image source's deployment-env" {
+  mkdir -p src/environment/deployment-env
+  printf 'yes' > src/environment/deployment-env/FROM_SOURCE
+  run "$SCRIPT"
+  [ "$status" -eq 0 ]
+  [ "$(yq '.spec.template.spec.containers[0].env[] | select(.name == "FROM_SOURCE") | .name' "${MANIFESTS}/deployment.yaml")" = "FROM_SOURCE" ]
+}
+
+@test "job mode CronJob takes env from the deploy-image source's cronjob-env beside the sleeps" {
+  mkdir -p src/environment/cronjob-env
+  printf 'yes' > src/environment/cronjob-env/FROM_SOURCE
+  ENV_DEPLOY_MODE=job ENV_IMAGE_AUTO_UPDATE_PROVIDER=keelson run "$SCRIPT"
+  [ "$status" -eq 0 ]
+  local env='.spec.jobTemplate.spec.template.spec.containers[0].env[].name'
+  [ "$(yq "${env}" "${MANIFESTS}/cronjob.yaml" | grep -c -x -e FROM_SOURCE -e POST_DEPLOY_SLEEP_SUCCESS -e POST_DEPLOY_SLEEP_FAILURE)" -eq 3 ]
+}
+
+@test "job mode: a supplied post-deploy sleep env file fails" {
+  mkdir -p src/environment/cronjob-env
+  printf '60' > src/environment/cronjob-env/POST_DEPLOY_SLEEP_SUCCESS
+  ENV_DEPLOY_MODE=job ENV_IMAGE_AUTO_UPDATE_PROVIDER=keelson run "$SCRIPT"
+  [ "$status" -ne 0 ]
+  assert_output_contains "POST_DEPLOY_SLEEP_SUCCESS is set by spec.main.environment.jobPostDeploySleepAfterSuccess/AfterFailure"
+}
+
+# =============================================================================
 # Namespace
 # =============================================================================
 
