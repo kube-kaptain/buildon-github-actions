@@ -244,6 +244,15 @@ assert_no_environment_token_values() {
 }
 
 step_generate_manifests() {
+  # Only what this step pins below reaches the generators. Settings for the
+  # project's own app manifests (exported locally, never passed on GitHub)
+  # must not shape the deployer set.
+  local var
+  for var in $(compgen -v | grep '^KUBERNETES_' || true); do
+    unset "${var}"
+  done
+  unset CONFIG_SUB_PATH CONFIG_VALUE_TRAILING_NEWLINE DEFAULTS_SUB_PATH ENV_SUB_PATH IMAGE_URI
+
   log ""
   log "Generating deploy-image manifests (fill-the-gaps)..."
   log "  Deploy mode:       ${ENV_DEPLOY_MODE}"

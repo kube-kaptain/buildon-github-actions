@@ -123,6 +123,28 @@ EOF
   [ "$(grep -c 'FROM_REPO' "${MANIFESTS}/deployment.yaml")" -eq 0 ]
 }
 
+@test "outer generator settings never change the deployer set" {
+  run "$SCRIPT"
+  [ "$status" -eq 0 ]
+  local clean_set="${TEST_DIR}/${MANIFESTS}"
+
+  local leaked_dir
+  leaked_dir=$(create_test_dir "kubernetes-run-image-deploy-manifests-leaked")
+  mkdir -p "${leaked_dir}/kaptainpm/final"
+  cp "${TEST_DIR}/kaptainpm/final/KaptainPM.yaml" "${leaked_dir}/kaptainpm/final/"
+  cd "${leaked_dir}"
+  export KUBERNETES_SERVICEACCOUNT_NAME_SUFFIX="leaked"
+  export KUBERNETES_GLOBAL_ADDITIONAL_LABELS="leaked=yes"
+  export KUBERNETES_DEPLOYMENT_MAX_SURGE="9"
+  export KUBERNETES_WORKLOAD_TOLERATIONS='[{"key":"leaked","operator":"Exists"}]'
+  export IMAGE_URI="registry.example.com/leaked:1.0"
+  export CONFIG_VALUE_TRAILING_NEWLINE="preserve"
+  run "$SCRIPT"
+  [ "$status" -eq 0 ]
+  diff -r -I 'kaptain.org/build-timestamp' "${clean_set}" "${MANIFESTS}"
+  [ "$(yq '.subjects[0].name' "${MANIFESTS}/clusterrolebinding.yaml")" = "$(yq '.metadata.name' "${MANIFESTS}/serviceaccount.yaml")" ]
+}
+
 @test "deployer Deployment takes env from the deploy-image source's deployment-env" {
   mkdir -p src/environment/deployment-env
   printf 'yes' > src/environment/deployment-env/FROM_SOURCE
