@@ -8,6 +8,12 @@
 # other token schemes, copies defaults if present, and generates a contract YAML
 # file conforming to the manifests-contract schema. Packages into a contract zip.
 #
+# The lineage data ConfigMap that kubernetes-lineage-data-generate adds to the
+# tree next carries tokens of its own (ENVIRONMENT, PRODUCT_NAME, and the
+# deferred built-ins in template mode); the ones the config dir does not
+# resolve are declared alongside the scanned tokens so the contract lists
+# every unresolved token the packaged manifests contain.
+#
 # Reads defaults from ${OUTPUT_SUB_PATH}/manifests/defaults/ - the final merged
 # defaults dir assembled by kubernetes-manifests-package-prepare from the project's
 # source defaults plus any foreign-contributor entries in additional-defaults/.
@@ -44,6 +50,8 @@ source "${SCRIPT_DIR}/../defaults/output-sub-path.bash"
 source "${SCRIPT_DIR}/../defaults/manifests-sub-path.bash"
 # shellcheck source=src/scripts/defaults/tokens.bash
 source "${SCRIPT_DIR}/../defaults/tokens.bash"
+# shellcheck source=src/scripts/lib/token-format.bash
+source "${SCRIPT_DIR}/../lib/token-format.bash"
 
 # shellcheck source=src/scripts/lib/output-var.bash
 source "${SCRIPT_DIR}/../lib/output-var.bash"
@@ -115,6 +123,45 @@ main() {
     token_count=$(echo "${unresolved_tokens}" | wc -l | tr -d ' ')
   fi
   log "Found ${token_count} unresolved token(s)"
+
+  # --- Declare the lineage data ConfigMap's tokens ---
+  # kubernetes-lineage-data-generate runs after this script because the
+  # ConfigMap it adds to the tree carries contract.yaml as a data key. That
+  # ConfigMap is namespaced with the ENVIRONMENT token, named and versioned
+  # with the PROJECT_NAME and VERSION tokens, and labelled with the
+  # PRODUCT_NAME token (dropped again for run builds, which belong to no
+  # product). The lineage step resolves them from the config dir and nothing
+  # else, so whichever the config dir does not cover ship unresolved in the
+  # packaged manifests and are declared here. A consumer scans the whole
+  # bundle, lineage ConfigMap included, and rejects any token the contract
+  # does not list.
+  local lineage_canonical_names="ENVIRONMENT PROJECT_NAME VERSION"
+  if [[ "${BUILD_KIND}" != kubernetes-run-* ]]; then
+    lineage_canonical_names="${lineage_canonical_names} PRODUCT_NAME"
+  fi
+  local nl=$'\n'
+  local canonical_name lineage_token lineage_added=""
+  for canonical_name in ${lineage_canonical_names}; do
+    lineage_token=$(convert_token_name "${TOKEN_NAME_STYLE}" "${canonical_name}")
+    if [[ -f "${MANIFESTS_CONFIG_SUB_PATH}/${lineage_token}" ]]; then
+      continue
+    fi
+    if [[ "${nl}${unresolved_tokens}${nl}" == *"${nl}${lineage_token}${nl}"* ]]; then
+      continue
+    fi
+    lineage_added="${lineage_added}${lineage_token}${nl}"
+  done
+  if [[ -n "${lineage_added}" ]]; then
+    log ""
+    log "Declaring lineage data ConfigMap token(s) not resolved by ${MANIFESTS_CONFIG_SUB_PATH}:"
+    while IFS= read -r lineage_token; do
+      [[ -z "${lineage_token}" ]] && continue
+      log "  ${lineage_token}"
+    done <<< "${lineage_added}"
+    unresolved_tokens=$(printf '%s' "${unresolved_tokens:+${unresolved_tokens}${nl}}${lineage_added}" | LC_ALL=C sort -u)
+    token_count=$(echo "${unresolved_tokens}" | wc -l | tr -d ' ')
+    log "Now ${token_count} unresolved token(s)"
+  fi
 
   # --- Orphan defaults check (needs unresolved_tokens; fail before compat) ---
   if [[ "${defaults_present}" == "true" ]]; then
