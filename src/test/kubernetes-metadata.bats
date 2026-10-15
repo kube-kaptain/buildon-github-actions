@@ -417,13 +417,27 @@ metadata_caller_scope() {
   [[ "$result" == *'kaptain.org/environment: "${Environment}"'* ]] || return 1
 }
 
-@test "generate_metadata labels: kaptain.org/product emitted unconditionally (deploy-time token)" {
+@test "generate_metadata labels: product labels emitted by default (deploy-time token)" {
   metadata_caller_scope
-  unset REPOSITORY_OWNER
+  unset REPOSITORY_OWNER KUBERNETES_GLOBAL_PRODUCT_LABELS
 
   result=$(generate_metadata 2 labels)
 
+  [[ "$result" == *'app.kubernetes.io/part-of: "${ProductName}"'* ]] || return 1
   [[ "$result" == *'kaptain.org/product: "${ProductName}"'* ]] || return 1
+}
+
+@test "generate_metadata labels: KUBERNETES_GLOBAL_PRODUCT_LABELS=false omits product labels only" {
+  metadata_caller_scope
+  unset REPOSITORY_OWNER
+  KUBERNETES_GLOBAL_PRODUCT_LABELS="false"
+
+  result=$(generate_metadata 2 labels)
+
+  [[ "$result" != *'ProductName'* ]] || return 1
+  [[ "$result" == *'app.kubernetes.io/managed-by: "Kaptain"'* ]] || return 1
+  [[ "$result" == *'kaptain.org/environment: "${Environment}"'* ]] || return 1
+  [[ "$result" == *'kaptain.org/project-name: "${ProjectName}"'* ]] || return 1
 }
 
 @test "generate_metadata labels: omits kaptain.org/owner when REPOSITORY_OWNER unset" {

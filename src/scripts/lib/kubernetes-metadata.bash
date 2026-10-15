@@ -331,6 +331,8 @@ generate_metadata_map() {
 #   BUILD_PLATFORM    - kaptain.org/built-by annotation
 #   SOURCE_REPO       - kaptain.org/source-repository annotation
 #   IMAGE_URI         - kaptain.org/image-uri annotation
+#   KUBERNETES_GLOBAL_PRODUCT_LABELS - false omits part-of and kaptain.org/product
+#                       (internal, for resources that belong to no product)
 #
 # Arguments:
 #   indent            - Number of leading spaces
@@ -369,8 +371,15 @@ generate_metadata() {
       if [[ "${volatile_metadata}" == "true" ]]; then
         builtin="${builtin},app.kubernetes.io/version=${version_token}"
       fi
-      builtin="${builtin},app.kubernetes.io/managed-by=Kaptain,app.kubernetes.io/part-of=${product_token}"
-      builtin="${builtin},kaptain.org/environment=${environment_token},kaptain.org/product=${product_token},kaptain.org/project-name=${project_name_token}"
+      builtin="${builtin},app.kubernetes.io/managed-by=Kaptain"
+      if [[ "${KUBERNETES_GLOBAL_PRODUCT_LABELS:-true}" == "true" ]]; then
+        builtin="${builtin},app.kubernetes.io/part-of=${product_token}"
+      fi
+      builtin="${builtin},kaptain.org/environment=${environment_token}"
+      if [[ "${KUBERNETES_GLOBAL_PRODUCT_LABELS:-true}" == "true" ]]; then
+        builtin="${builtin},kaptain.org/product=${product_token}"
+      fi
+      builtin="${builtin},kaptain.org/project-name=${project_name_token}"
       if [[ "${volatile_metadata}" == "true" ]]; then
         builtin="${builtin},kaptain.org/version=${version_token}"
       fi

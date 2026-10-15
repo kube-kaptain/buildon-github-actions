@@ -558,6 +558,12 @@ main() {
   local product_name_for_cm="${PRODUCT_NAME:-${PROJECT_NAME}}"
   local product_short_name_for_cm="${PRODUCT_SHORT_NAME:-${PROJECT_NAME}}"
 
+  # Run builds belong to no product.
+  local product_labels="true"
+  if [[ "${BUILD_KIND}" == kubernetes-run-* ]]; then
+    product_labels="false"
+  fi
+
   log ""
   log "Generating lineage data ConfigMap..."
   PROJECT_NAME="${PROJECT_NAME}" \
@@ -573,6 +579,7 @@ main() {
   KUBERNETES_CONFIGMAP_NAME_CHECKSUM_INJECTION="false" \
   KUBERNETES_CONFIGMAP_ADDITIONAL_LABELS="${additional_labels}" \
   KUBERNETES_CONFIGMAP_ADDITIONAL_ANNOTATIONS="${additional_annotations}" \
+  KUBERNETES_GLOBAL_PRODUCT_LABELS="${product_labels}" \
   BUILD_PLATFORM="${BUILD_PLATFORM:-}" \
   "${SCRIPT_DIR}/../generators/generate-kubernetes-configmap"
 
@@ -580,15 +587,6 @@ main() {
   if [[ ! -f "${generated_configmap}" ]]; then
     log_error "Lineage data ConfigMap not produced at expected path: ${generated_configmap}"
     exit 1
-  fi
-
-  # The generator adds product labels, but run builds belong to no product.
-  # On the record CM an unresolved product token would also ship, as it
-  # lands after the post-substitution gate.
-  if [[ "${BUILD_KIND}" == kubernetes-run-* ]]; then
-    # sed, as tokens opening with { or % make the file unparseable YAML.
-    sed -i.bak -E '/^[[:space:]]*(app\.kubernetes\.io\/part-of|kaptain\.org\/product):/d' "${generated_configmap}"
-    rm -f "${generated_configmap}.bak"
   fi
 
   log ""

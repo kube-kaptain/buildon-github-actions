@@ -125,6 +125,11 @@ bats <specific-file>.bats
 - Mock docker/podman via `src/test/helpers.bash::setup_mock_docker`. Gate behavior with `MOCK_DOCKER_MANIFEST_EXISTS`, `MOCK_DOCKER_PULL_FAILS`, etc.
 - Never run the same `.bats` file in parallel with itself — fixtures share state.
 - Shellcheck runs as part of the full suite. Match its flags locally: `--external-sources` and the specific `--enable=` flags from `.github/bin/run-tests.bash`.
+- Targeted bats runs miss the full suite's repo-wide checks, and CI has failed on them more than once. Before calling a change done:
+  - New or edited `.bats` files: run `.github/bin/check-bats-assertions.bash`. A bare `[[ ... ]]` assertion is ignored by `set -e` on bash 3.2; append `|| return 1`.
+  - Any change under `src/scripts/`: also run `.github/bin/check-token-patterns.bash` and `.github/bin/check-schema-validator-calls.bash`.
+  - Anything added to `src/scripts/defaults/*.bash`: every `hook-*` script that sources that file must export it (`hook-*.bats` "exports all inputs from sourced defaults"). Defaults files are user inputs only. An internal switch is read with `${VAR:-default}` at its use site, not declared in defaults.
+  - Changed a defaults file or `src/scripts/lib/`: run every `src/test/hook-*.bats` as well as the obvious suites.
 
 ## Bugs Found During Implementation
 
