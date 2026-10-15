@@ -323,6 +323,7 @@ generate_metadata_map() {
 #   script_name         - Generator script name (annotations only)
 #   GLOBAL_LABELS       - Additional labels from global config (labels only)
 #   SPECIFIC_LABELS     - Additional labels from resource config (labels only)
+#   PRODUCT_LABELS      - false omits part-of and kaptain.org/product (labels only)
 #   GLOBAL_ANNOTATIONS  - Additional annotations from global config (annotations only)
 #   SPECIFIC_ANNOTATIONS - Additional annotations from resource config (annotations only)
 #
@@ -369,8 +370,15 @@ generate_metadata() {
       if [[ "${volatile_metadata}" == "true" ]]; then
         builtin="${builtin},app.kubernetes.io/version=${version_token}"
       fi
-      builtin="${builtin},app.kubernetes.io/managed-by=Kaptain,app.kubernetes.io/part-of=${product_token}"
-      builtin="${builtin},kaptain.org/environment=${environment_token},kaptain.org/product=${product_token},kaptain.org/project-name=${project_name_token}"
+      builtin="${builtin},app.kubernetes.io/managed-by=Kaptain"
+      if [[ "${PRODUCT_LABELS:-true}" == "true" ]]; then
+        builtin="${builtin},app.kubernetes.io/part-of=${product_token}"
+      fi
+      builtin="${builtin},kaptain.org/environment=${environment_token}"
+      if [[ "${PRODUCT_LABELS:-true}" == "true" ]]; then
+        builtin="${builtin},kaptain.org/product=${product_token}"
+      fi
+      builtin="${builtin},kaptain.org/project-name=${project_name_token}"
       if [[ "${volatile_metadata}" == "true" ]]; then
         builtin="${builtin},kaptain.org/version=${version_token}"
       fi

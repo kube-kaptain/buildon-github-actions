@@ -758,6 +758,7 @@ step_cleanup_policy_configmap() {
   KUBERNETES_CONFIGMAP_NAME_SUFFIX="cleanup-policy" \
   KUBERNETES_CONFIGMAP_COMBINED_SUB_PATH="" \
   KUBERNETES_CONFIGMAP_NAME_CHECKSUM_INJECTION="false" \
+  KUBERNETES_GLOBAL_PRODUCT_LABELS="false" \
   BUILD_PLATFORM="${BUILD_PLATFORM:-}" \
     "${SCRIPT_DIR}/../generators/generate-kubernetes-configmap"
 
@@ -766,11 +767,6 @@ step_cleanup_policy_configmap() {
     log_error "Cleanup policy ConfigMap not produced at expected path: ${generated}"
     exit 1
   fi
-  # Drop the generator's product labels: an env or RP has no product, so their
-  # token would never be supplied. sed because, before substitution, tokens
-  # opening with { or % make the file unparseable YAML.
-  sed -i.bak -E '/^[[:space:]]*(app\.kubernetes\.io\/part-of|kaptain\.org\/product):/d' "${generated}"
-  rm -f "${generated}.bak"
   cp "${generated}" "${AGGREGATE_MANIFESTS_NORMALISED_DIR}/${ENV_CLEANUP_POLICY_FILENAME}"
   log "  Written: ${ENV_CLEANUP_POLICY_FILENAME}"
 }

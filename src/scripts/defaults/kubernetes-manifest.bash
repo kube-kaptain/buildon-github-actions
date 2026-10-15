@@ -21,6 +21,10 @@
 KUBERNETES_GLOBAL_ADDITIONAL_LABELS="${KUBERNETES_GLOBAL_ADDITIONAL_LABELS:-}"
 KUBERNETES_GLOBAL_ADDITIONAL_ANNOTATIONS="${KUBERNETES_GLOBAL_ADDITIONAL_ANNOTATIONS:-}"
 
+# Product labels (part-of, kaptain.org/product); false for resources that
+# belong to no product
+KUBERNETES_GLOBAL_PRODUCT_LABELS="${KUBERNETES_GLOBAL_PRODUCT_LABELS:-true}"
+
 # =============================================================================
 # Convenience short names (for single-purpose generator scripts only)
 # =============================================================================
@@ -28,3 +32,6 @@ KUBERNETES_GLOBAL_ADDITIONAL_ANNOTATIONS="${KUBERNETES_GLOBAL_ADDITIONAL_ANNOTAT
 # Additional labels/annotations
 GLOBAL_LABELS="${KUBERNETES_GLOBAL_ADDITIONAL_LABELS}"
 GLOBAL_ANNOTATIONS="${KUBERNETES_GLOBAL_ADDITIONAL_ANNOTATIONS}"
+
+# Product labels
+PRODUCT_LABELS="${KUBERNETES_GLOBAL_PRODUCT_LABELS}"

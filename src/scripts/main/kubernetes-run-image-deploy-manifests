@@ -252,6 +252,8 @@ step_generate_manifests() {
     unset "${var}"
   done
   unset CONFIG_SUB_PATH CONFIG_VALUE_TRAILING_NEWLINE DEFAULTS_SUB_PATH ENV_SUB_PATH IMAGE_URI
+  # The deploy workload belongs to no product.
+  export KUBERNETES_GLOBAL_PRODUCT_LABELS="false"
 
   log ""
   log "Generating deploy-image manifests (fill-the-gaps)..."
@@ -539,15 +541,7 @@ step_generate_manifests() {
   fi
 
   # No collisions: each generator was skipped when the user supplied its file.
-  # generated/ is kept as an audit trail. The deploy workload belongs to no
-  # product, so the generators' product labels (and ProductName token) go.
-  local generated_file
-  while IFS= read -r -d '' generated_file; do
-    # sed, because unsubstituted { or % tokens make the YAML unparseable.
-    # These keys only appear as label lines.
-    sed -i.bak -E '/^[[:space:]]*(app\.kubernetes\.io\/part-of|kaptain\.org\/product):/d' "${generated_file}"
-    rm -f "${generated_file}.bak"
-  done < <(find "${gen_combined}" -type f -name '*.yaml' -print0)
+  # generated/ is kept as an audit trail.
   if [[ -n "$(find "${gen_combined}" -type f 2>/dev/null | head -1)" ]]; then
     cp -R "${gen_combined}/." "${IMAGE_MANIFESTS_DIR}/"
   fi

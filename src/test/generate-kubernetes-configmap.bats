@@ -306,6 +306,27 @@ line3=value3"
   assert_output_contains "KUBERNETES_CONFIGMAP_NAME_CHECKSUM_INJECTION must be 'true' or 'false'"
 }
 
+@test "omits product labels when KUBERNETES_GLOBAL_PRODUCT_LABELS is false" {
+  create_config_file "app.properties" "key=value"
+  export KUBERNETES_GLOBAL_PRODUCT_LABELS="false"
+
+  run "$GENERATORS_DIR/generate-kubernetes-configmap"
+  [ "$status" -eq 0 ]
+
+  manifest=$(read_manifest)
+  [[ "$manifest" != *'ProductName'* ]] || return 1
+  assert_contains "$manifest" 'kaptain.org/environment: "${Environment}"'
+}
+
+@test "fails with invalid KUBERNETES_GLOBAL_PRODUCT_LABELS value" {
+  create_config_file "app.properties" "key=value"
+  export KUBERNETES_GLOBAL_PRODUCT_LABELS="no"
+
+  run "$GENERATORS_DIR/generate-kubernetes-configmap"
+  [ "$status" -eq 4 ]
+  assert_output_contains "KUBERNETES_GLOBAL_PRODUCT_LABELS must be 'true' or 'false'"
+}
+
 # =============================================================================
 # Output location
 # =============================================================================
