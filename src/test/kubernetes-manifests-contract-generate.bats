@@ -25,6 +25,11 @@ setup() {
   # Create substituted manifests dir (as kubernetes-manifests-package would)
   mkdir -p "${OUTPUT_SUB_PATH}/manifests/substituted/${PROJECT_NAME}"
   mkdir -p "${OUTPUT_SUB_PATH}/manifests/zip"
+
+  # Built-ins a standard build has in the config dir at this step
+  mkdir -p "${OUTPUT_SUB_PATH}/manifests/config"
+  printf '%s' "${PROJECT_NAME}" > "${OUTPUT_SUB_PATH}/manifests/config/ProjectName"
+  printf '%s' "${VERSION}" > "${OUTPUT_SUB_PATH}/manifests/config/Version"
 }
 
 # Helper: create a manifest with unresolved tokens
@@ -247,11 +252,87 @@ EOF
 
 @test "contract-generate: omits config section when no unresolved tokens" {
   write_clean_manifest
+  printf 'dev' > "${OUTPUT_SUB_PATH}/manifests/config/Environment"
+  printf 'product-foo' > "${OUTPUT_SUB_PATH}/manifests/config/ProductName"
   run "$CONTRACT_SCRIPT"
   [ "$status" -eq 0 ]
   local config
   config=$(yq '.config' "${OUTPUT_SUB_PATH}/manifests/contract/contract.yaml")
   [ "$config" = "null" ]
+}
+
+# =============================================================================
+# Lineage data ConfigMap tokens
+# =============================================================================
+
+@test "contract-generate: declares lineage ConfigMap tokens for token-free manifests" {
+  write_clean_manifest
+  run "$CONTRACT_SCRIPT"
+  [ "$status" -eq 0 ]
+  local contract="${OUTPUT_SUB_PATH}/manifests/contract/contract.yaml"
+  [ "$(yq '.config.required | join(" ")' "$contract")" = "Environment ProductName" ]
+}
+
+@test "contract-generate: lineage tokens merge with scanned tokens" {
+  write_manifest_with_tokens
+  run "$CONTRACT_SCRIPT"
+  [ "$status" -eq 0 ]
+  local contract="${OUTPUT_SUB_PATH}/manifests/contract/contract.yaml"
+  [ "$(yq '.config.required | join(" ")' "$contract")" = "CpuRequest Environment EnvironmentDockerRegistryAndNamespace MemoryRequest ProductName" ]
+}
+
+@test "contract-generate: run builds do not declare ProductName" {
+  write_clean_manifest
+  export BUILD_KIND="kubernetes-run-environment"
+  run "$CONTRACT_SCRIPT"
+  [ "$status" -eq 0 ]
+  local contract="${OUTPUT_SUB_PATH}/manifests/contract/contract.yaml"
+  [ "$(yq '.config.required | join(" ")' "$contract")" = "Environment" ]
+}
+
+@test "contract-generate: declares ProjectName and Version when deferred" {
+  write_clean_manifest
+  rm "${OUTPUT_SUB_PATH}/manifests/config/ProjectName" "${OUTPUT_SUB_PATH}/manifests/config/Version"
+  run "$CONTRACT_SCRIPT"
+  [ "$status" -eq 0 ]
+  local contract="${OUTPUT_SUB_PATH}/manifests/contract/contract.yaml"
+  [ "$(yq '.config.required | join(" ")' "$contract")" = "Environment ProductName ProjectName Version" ]
+}
+
+@test "contract-generate: lineage tokens follow the name style" {
+  write_clean_manifest
+  export TOKEN_NAME_STYLE="lower-kebab"
+  rm "${OUTPUT_SUB_PATH}/manifests/config/ProjectName" "${OUTPUT_SUB_PATH}/manifests/config/Version"
+  printf '%s' "${PROJECT_NAME}" > "${OUTPUT_SUB_PATH}/manifests/config/project-name"
+  printf '%s' "${VERSION}" > "${OUTPUT_SUB_PATH}/manifests/config/version"
+  run "$CONTRACT_SCRIPT"
+  [ "$status" -eq 0 ]
+  local contract="${OUTPUT_SUB_PATH}/manifests/contract/contract.yaml"
+  [ "$(yq '.config.required | join(" ")' "$contract")" = "environment product-name" ]
+}
+
+@test "contract-generate: declares every token the lineage ConfigMap leaves in the tree" {
+  local kind
+  for kind in kubernetes-bundle-resources kubernetes-run-environment; do
+    rm -rf "${OUTPUT_SUB_PATH}/manifests/contract" "${OUTPUT_SUB_PATH}/lineage-data" \
+      "${OUTPUT_SUB_PATH}/manifests/substituted/${PROJECT_NAME}"/*
+    write_clean_manifest
+    mkdir -p kaptainpm/final
+    printf 'apiVersion: kaptain.org/1.34\nkind: %s\n' "${kind}" > kaptainpm/final/KaptainPM.yaml
+    export BUILD_KIND="${kind}"
+    unset ENV_BUILD_SECTION
+    [[ "${kind}" == kubernetes-run-* ]] && export ENV_BUILD_SECTION="app"
+    "$CONTRACT_SCRIPT"
+    "$SCRIPTS_DIR/kubernetes-lineage-data-generate"
+    local found required token
+    found=$("$SCRIPTS_DIR/../util/scan-unresolved-tokens" shell PascalCase \
+      "${OUTPUT_SUB_PATH}/manifests/substituted/${PROJECT_NAME}")
+    [ -n "$found" ]
+    required=$(yq '.config.required[]' "${OUTPUT_SUB_PATH}/manifests/contract/contract.yaml")
+    while IFS= read -r token; do
+      grep -qxF "$token" <<< "$required" || { echo "${kind}: undeclared ${token}"; return 1; }
+    done <<< "$found"
+  done
 }
 
 @test "contract-generate: all tokens in noDefault when no defaults dir" {

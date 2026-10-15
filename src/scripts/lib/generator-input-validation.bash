@@ -120,7 +120,7 @@ validate_common_inputs() {
 
   validate_token_styles
   validate_combined_sub_path "${COMBINED_SUB_PATH:-}"
-  validate_boolean "KUBERNETES_GLOBAL_PRODUCT_LABELS" "${PRODUCT_LABELS:-true}"
+  validate_boolean "KUBERNETES_GLOBAL_PRODUCT_LABELS" "${KUBERNETES_GLOBAL_PRODUCT_LABELS:-true}"
 }
 
 # Validate inputs specific to workload generators (deployment, statefulset, etc.)

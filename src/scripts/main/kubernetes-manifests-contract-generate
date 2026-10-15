@@ -44,6 +44,8 @@ source "${SCRIPT_DIR}/../defaults/output-sub-path.bash"
 source "${SCRIPT_DIR}/../defaults/manifests-sub-path.bash"
 # shellcheck source=src/scripts/defaults/tokens.bash
 source "${SCRIPT_DIR}/../defaults/tokens.bash"
+# shellcheck source=src/scripts/lib/token-format.bash
+source "${SCRIPT_DIR}/../lib/token-format.bash"
 
 # shellcheck source=src/scripts/lib/output-var.bash
 source "${SCRIPT_DIR}/../lib/output-var.bash"
@@ -109,6 +111,21 @@ main() {
   unresolved_tokens=$("${SCRIPT_DIR}/../util/scan-unresolved-tokens" \
     "${TOKEN_DELIMITER_STYLE}" "${TOKEN_NAME_STYLE}" \
     "${MANIFESTS_SUBSTITUTED_SUB_PATH}/${PROJECT_NAME}")
+
+  # The lineage data ConfigMap added after this step is namespaced by
+  # Environment, named and versioned by ProjectName and Version, and labelled
+  # with ProductName unless a run build (same check as lineage).
+  local lineage_names="ENVIRONMENT PROJECT_NAME VERSION"
+  if [[ "${BUILD_KIND}" != kubernetes-run-* ]]; then
+    lineage_names="${lineage_names} PRODUCT_NAME"
+  fi
+  local name token
+  for name in ${lineage_names}; do
+    token=$(convert_token_name "${TOKEN_NAME_STYLE}" "${name}")
+    if [[ ! -f "${MANIFESTS_CONFIG_SUB_PATH}/${token}" ]]; then
+      unresolved_tokens=$(printf '%s\n%s\n' "${unresolved_tokens}" "${token}" | sed '/^$/d' | LC_ALL=C sort -u)
+    fi
+  done
 
   local token_count=0
   if [[ -n "${unresolved_tokens}" ]]; then

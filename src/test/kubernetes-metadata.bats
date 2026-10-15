@@ -419,7 +419,7 @@ metadata_caller_scope() {
 
 @test "generate_metadata labels: product labels emitted by default (deploy-time token)" {
   metadata_caller_scope
-  unset REPOSITORY_OWNER PRODUCT_LABELS
+  unset REPOSITORY_OWNER KUBERNETES_GLOBAL_PRODUCT_LABELS
 
   result=$(generate_metadata 2 labels)
 
@@ -427,10 +427,10 @@ metadata_caller_scope() {
   [[ "$result" == *'kaptain.org/product: "${ProductName}"'* ]] || return 1
 }
 
-@test "generate_metadata labels: PRODUCT_LABELS=false omits product labels only" {
+@test "generate_metadata labels: KUBERNETES_GLOBAL_PRODUCT_LABELS=false omits product labels only" {
   metadata_caller_scope
   unset REPOSITORY_OWNER
-  PRODUCT_LABELS="false"
+  KUBERNETES_GLOBAL_PRODUCT_LABELS="false"
 
   result=$(generate_metadata 2 labels)
 
