@@ -499,6 +499,7 @@ jobs:
           hook-pre-package-prepare-script-sub-path: ${{ steps.kpm.outputs.HOOK_PRE_PACKAGE_PREPARE_SCRIPT_SUB_PATH }}
           hook-post-package-tests-script-sub-path: ${{ steps.kpm.outputs.HOOK_POST_PACKAGE_TESTS_SCRIPT_SUB_PATH }}
           hook-post-versions-and-naming-script-sub-path: ${{ steps.kpm.outputs.HOOK_POST_VERSIONS_AND_NAMING_SCRIPT_SUB_PATH }}
+          hook-pre-publish-script-sub-path: ${{ steps.kpm.outputs.HOOK_PRE_PUBLISH_SCRIPT_SUB_PATH }}
           hook-post-build-script-sub-path: ${{ steps.kpm.outputs.HOOK_POST_BUILD_SCRIPT_SUB_PATH }}
 
           # GitHub release
@@ -805,6 +806,7 @@ jobs:
           hook-pre-package-prepare-script-sub-path: ${{ steps.kpm.outputs.HOOK_PRE_PACKAGE_PREPARE_SCRIPT_SUB_PATH }}
           hook-post-package-tests-script-sub-path: ${{ steps.kpm.outputs.HOOK_POST_PACKAGE_TESTS_SCRIPT_SUB_PATH }}
           hook-post-versions-and-naming-script-sub-path: ${{ steps.kpm.outputs.HOOK_POST_VERSIONS_AND_NAMING_SCRIPT_SUB_PATH }}
+          hook-pre-publish-script-sub-path: ${{ steps.kpm.outputs.HOOK_PRE_PUBLISH_SCRIPT_SUB_PATH }}
           hook-post-build-script-sub-path: ${{ steps.kpm.outputs.HOOK_POST_BUILD_SCRIPT_SUB_PATH }}
 
           # GitHub release

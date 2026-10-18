@@ -1,0 +1,9 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
+#
+# Pre-publish hook script path
+hook-pre-publish-script-sub-path:
+  description: 'Path to pre-publish script relative to .github/ (e.g., bin/pre-publish.bash)'
+  required: false
+  type: string
+  default: ''

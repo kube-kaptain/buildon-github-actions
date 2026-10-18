@@ -71,6 +71,16 @@ teardown() {
   fi
 }
 
+@test "hook-pre-publish action template wires all hook exports" {
+  run verify_action_template_env_mappings \
+    "$ACTION_TEMPLATES_DIR/hook-pre-publish.yaml" \
+    "$SCRIPTS_DIR/hook-pre-publish"
+  if [[ "$status" -ne 0 ]]; then
+    echo "$output" >&3
+    return 1
+  fi
+}
+
 # =============================================================================
 # Env steps: what a script requires must reach it on a runner
 # =============================================================================

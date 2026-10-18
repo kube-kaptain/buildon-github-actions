@@ -75,7 +75,14 @@ setup() {
     vendor-helm-render-and-process vendor-helm-render-validate vendor-helm-inject-build-details \
     spec-package-prepare spec-validate \
     layer-package-prepare layer-validate \
-    hook-post-build; do
+    kubernetes-run-aggregate kubernetes-run-substitute kubernetes-run-finalise \
+    kubernetes-run-consumption-report kubernetes-run-package kubernetes-run-deploy-image-validate \
+    kubernetes-run-image-deploy-manifests-templates-import kubernetes-run-image-deploy-manifests \
+    kubernetes-run-image-deploy-manifests-package-prepare kubernetes-run-image-deploy-manifests-substitute \
+    kubernetes-run-image-deploy-manifests-contract-generate \
+    kubernetes-run-image-deploy-manifests-lineage-data-generate \
+    kubernetes-run-image-deploy-manifests-package kubernetes-run-image-deploy-manifests-repo-provider-package \
+    hook-pre-publish hook-post-build; do
     create_mock_script "$MOCK_SCRIPTS_DIR/$script"
   done
 
@@ -97,7 +104,7 @@ setup() {
   for hook in HOOK_PRE_BUILD HOOK_POST_BUILD HOOK_PRE_TAGGING_TESTS \
               HOOK_POST_VERSIONS_AND_NAMING HOOK_PRE_DOCKER_PREPARE \
               HOOK_POST_DOCKER_TESTS HOOK_PRE_PACKAGE_PREPARE \
-              HOOK_POST_PACKAGE_TESTS; do
+              HOOK_POST_PACKAGE_TESTS HOOK_PRE_PUBLISH; do
     export "${hook}_SCRIPT_SUB_PATH=hooks/test-hook.bash"
   done
 
@@ -164,6 +171,7 @@ change-source-note-write
 release-change-data-generate
 release-change-data-oci-package
 docker-multi-tag
+hook-pre-publish
 git-push-tag
 docker-push-all
 hook-post-build"
@@ -192,6 +200,7 @@ hook-pre-docker-prepare
 docker-build-dockerfile
 hook-post-docker-tests
 docker-multi-tag
+hook-pre-publish
 git-push-tag
 docker-push-all
 hook-post-build"
@@ -219,6 +228,7 @@ release-change-data-oci-package
 docker-build-retag
 hook-post-docker-tests
 docker-multi-tag
+hook-pre-publish
 git-push-tag
 docker-push-all
 hook-post-build"
@@ -262,6 +272,7 @@ kubernetes-manifests-package
 kubernetes-manifests-repo-provider-package
 hook-post-package-tests
 docker-multi-tag
+hook-pre-publish
 git-push-tag
 kubernetes-manifests-repo-provider-publish
 docker-push-all
@@ -305,6 +316,7 @@ kubernetes-manifests-package
 kubernetes-manifests-repo-provider-package
 hook-post-package-tests
 docker-multi-tag
+hook-pre-publish
 git-push-tag
 kubernetes-manifests-repo-provider-publish
 docker-push-all
@@ -347,6 +359,7 @@ kubernetes-manifests-package
 kubernetes-manifests-repo-provider-package
 hook-post-package-tests
 docker-multi-tag
+hook-pre-publish
 git-push-tag
 kubernetes-manifests-repo-provider-publish
 docker-push-all
@@ -378,6 +391,7 @@ docker-build-dockerfile
 spec-validate
 hook-post-docker-tests
 docker-multi-tag
+hook-pre-publish
 git-push-tag
 docker-push-all
 hook-post-build"
@@ -408,6 +422,7 @@ docker-build-dockerfile
 layer-validate
 hook-post-docker-tests
 docker-multi-tag
+hook-pre-publish
 git-push-tag
 docker-push-all
 hook-post-build"
@@ -443,6 +458,7 @@ kubernetes-manifests-package
 kubernetes-manifests-repo-provider-package
 hook-post-package-tests
 docker-multi-tag
+hook-pre-publish
 git-push-tag
 kubernetes-manifests-repo-provider-publish
 docker-push-all
@@ -479,6 +495,7 @@ kubernetes-manifests-package
 kubernetes-manifests-repo-provider-package
 hook-post-package-tests
 docker-multi-tag
+hook-pre-publish
 git-push-tag
 kubernetes-manifests-repo-provider-publish
 docker-push-all
@@ -516,6 +533,7 @@ kubernetes-manifests-package
 kubernetes-manifests-repo-provider-package
 hook-post-package-tests
 docker-multi-tag
+hook-pre-publish
 git-push-tag
 kubernetes-manifests-repo-provider-publish
 docker-push-all
@@ -554,6 +572,7 @@ kubernetes-manifests-package
 kubernetes-manifests-repo-provider-package
 hook-post-package-tests
 docker-multi-tag
+hook-pre-publish
 git-push-tag
 kubernetes-manifests-repo-provider-publish
 docker-push-all
@@ -594,6 +613,95 @@ kubernetes-manifests-package
 kubernetes-manifests-repo-provider-package
 hook-post-package-tests
 docker-multi-tag
+hook-pre-publish
+git-push-tag
+kubernetes-manifests-repo-provider-publish
+docker-push-all
+hook-post-build"
+}
+
+@test "reference: kubernetes-run-environment calls scripts in correct order" {
+  run bash "$REF_DIR/kubernetes-run-environment"
+  [ "$status" -eq 0 ]
+
+  assert_call_order "validate-tooling
+load-project-kaptainpm-docker-logins
+docker-registry-logins
+kaptain-init
+load-final-kaptainpm-yaml
+hook-pre-build
+basic-quality-checks
+docker-registry-logins
+docker-platform-setup
+hook-pre-tagging-tests
+versions-and-naming
+hook-post-versions-and-naming
+change-source-note-write
+release-change-data-generate
+release-change-data-oci-package
+kubernetes-run-image-deploy-manifests-templates-import
+hook-pre-package-prepare
+kubernetes-run-aggregate
+kubernetes-run-substitute
+kubernetes-run-finalise
+kubernetes-run-consumption-report
+kubernetes-lineage-data-generate
+kubernetes-run-package
+kubernetes-run-deploy-image-validate
+kubernetes-run-image-deploy-manifests
+kubernetes-run-image-deploy-manifests-package-prepare
+kubernetes-run-image-deploy-manifests-substitute
+kubernetes-run-image-deploy-manifests-contract-generate
+kubernetes-run-image-deploy-manifests-lineage-data-generate
+kubernetes-run-image-deploy-manifests-package
+kubernetes-run-image-deploy-manifests-repo-provider-package
+hook-post-package-tests
+docker-multi-tag
+hook-pre-publish
+git-push-tag
+kubernetes-manifests-repo-provider-publish
+docker-push-all
+hook-post-build"
+}
+
+@test "reference: kubernetes-run-platform-meta-environment calls scripts in correct order" {
+  run bash "$REF_DIR/kubernetes-run-platform-meta-environment"
+  [ "$status" -eq 0 ]
+
+  assert_call_order "validate-tooling
+load-project-kaptainpm-docker-logins
+docker-registry-logins
+kaptain-init
+load-final-kaptainpm-yaml
+hook-pre-build
+basic-quality-checks
+docker-registry-logins
+docker-platform-setup
+hook-pre-tagging-tests
+versions-and-naming
+hook-post-versions-and-naming
+change-source-note-write
+release-change-data-generate
+release-change-data-oci-package
+kubernetes-run-image-deploy-manifests-templates-import
+hook-pre-package-prepare
+kubernetes-run-image-deploy-manifests
+kubernetes-run-image-deploy-manifests-package-prepare
+kubernetes-run-image-deploy-manifests-substitute
+kubernetes-run-image-deploy-manifests-contract-generate
+kubernetes-run-image-deploy-manifests-lineage-data-generate
+kubernetes-run-image-deploy-manifests-package
+kubernetes-run-image-deploy-manifests-repo-provider-package
+kubernetes-run-aggregate
+kubernetes-run-substitute
+kubernetes-run-finalise
+kubernetes-run-consumption-report
+kubernetes-lineage-data-generate
+kubernetes-run-package
+kubernetes-run-deploy-image-validate
+hook-post-package-tests
+docker-multi-tag
+hook-pre-publish
 git-push-tag
 kubernetes-manifests-repo-provider-publish
 docker-push-all
@@ -695,7 +803,8 @@ MOCK
         HOOK_PRE_DOCKER_PREPARE_SCRIPT_SUB_PATH \
         HOOK_POST_DOCKER_TESTS_SCRIPT_SUB_PATH \
         HOOK_PRE_PACKAGE_PREPARE_SCRIPT_SUB_PATH \
-        HOOK_POST_PACKAGE_TESTS_SCRIPT_SUB_PATH
+        HOOK_POST_PACKAGE_TESTS_SCRIPT_SUB_PATH \
+        HOOK_PRE_PUBLISH_SCRIPT_SUB_PATH
 
   run bash "$REF_DIR/basic-quality-checks"
   [ "$status" -eq 0 ]

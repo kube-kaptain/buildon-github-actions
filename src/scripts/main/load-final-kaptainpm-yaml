@@ -441,6 +441,7 @@ MAPPINGS=(
   "spec.main.hooks.postDockerTests:HOOK_POST_DOCKER_TESTS_SCRIPT_SUB_PATH"
   "spec.main.hooks.prePackagePrepare:HOOK_PRE_PACKAGE_PREPARE_SCRIPT_SUB_PATH"
   "spec.main.hooks.postPackageTests:HOOK_POST_PACKAGE_TESTS_SCRIPT_SUB_PATH"
+  "spec.main.hooks.prePublish:HOOK_PRE_PUBLISH_SCRIPT_SUB_PATH"
   "spec.main.hooks.postBuild:HOOK_POST_BUILD_SCRIPT_SUB_PATH"
 
   # Spec build
