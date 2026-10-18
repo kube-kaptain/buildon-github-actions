@@ -275,6 +275,11 @@ jobs:
       # INJECT: docker-multi-tag
       # INJECT: github-check-end(name="Docker Multi-Tag", id="check-docker-multi-tag", if="steps.kpm.outputs.DOCKER_PUSH_TARGETS != ''")
 
+      # === Pre-Publish ===
+      # INJECT: github-check-start(name="Pre-Publish", id="check-pre-publish", if="steps.kpm.outputs.HOOK_PRE_PUBLISH_SCRIPT_SUB_PATH != ''")
+      # INJECT: hook-pre-publish
+      # INJECT: github-check-end(name="Pre-Publish", id="check-pre-publish", if="steps.kpm.outputs.HOOK_PRE_PUBLISH_SCRIPT_SUB_PATH != ''")
+
       # === GitHub Release Prepare ===
       # INJECT: github-check-start(name="GitHub Release Prepare", id="check-github-release-prepare", if="steps.kpm.outputs.GITHUB_RELEASE_ENABLED == 'true'")
       # INJECT: github-release-prepare-run

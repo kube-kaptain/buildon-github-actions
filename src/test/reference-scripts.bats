@@ -82,7 +82,7 @@ setup() {
     kubernetes-run-image-deploy-manifests-contract-generate \
     kubernetes-run-image-deploy-manifests-lineage-data-generate \
     kubernetes-run-image-deploy-manifests-package kubernetes-run-image-deploy-manifests-repo-provider-package \
-    hook-post-build; do
+    hook-pre-publish hook-post-build; do
     create_mock_script "$MOCK_SCRIPTS_DIR/$script"
   done
 
@@ -104,7 +104,7 @@ setup() {
   for hook in HOOK_PRE_BUILD HOOK_POST_BUILD HOOK_PRE_TAGGING_TESTS \
               HOOK_POST_VERSIONS_AND_NAMING HOOK_PRE_DOCKER_PREPARE \
               HOOK_POST_DOCKER_TESTS HOOK_PRE_PACKAGE_PREPARE \
-              HOOK_POST_PACKAGE_TESTS; do
+              HOOK_POST_PACKAGE_TESTS HOOK_PRE_PUBLISH; do
     export "${hook}_SCRIPT_SUB_PATH=hooks/test-hook.bash"
   done
 
@@ -171,6 +171,7 @@ change-source-note-write
 release-change-data-generate
 release-change-data-oci-package
 docker-multi-tag
+hook-pre-publish
 git-push-tag
 docker-push-all
 hook-post-build"
@@ -199,6 +200,7 @@ hook-pre-docker-prepare
 docker-build-dockerfile
 hook-post-docker-tests
 docker-multi-tag
+hook-pre-publish
 git-push-tag
 docker-push-all
 hook-post-build"
@@ -226,6 +228,7 @@ release-change-data-oci-package
 docker-build-retag
 hook-post-docker-tests
 docker-multi-tag
+hook-pre-publish
 git-push-tag
 docker-push-all
 hook-post-build"
@@ -269,6 +272,7 @@ kubernetes-manifests-package
 kubernetes-manifests-repo-provider-package
 hook-post-package-tests
 docker-multi-tag
+hook-pre-publish
 git-push-tag
 kubernetes-manifests-repo-provider-publish
 docker-push-all
@@ -312,6 +316,7 @@ kubernetes-manifests-package
 kubernetes-manifests-repo-provider-package
 hook-post-package-tests
 docker-multi-tag
+hook-pre-publish
 git-push-tag
 kubernetes-manifests-repo-provider-publish
 docker-push-all
@@ -354,6 +359,7 @@ kubernetes-manifests-package
 kubernetes-manifests-repo-provider-package
 hook-post-package-tests
 docker-multi-tag
+hook-pre-publish
 git-push-tag
 kubernetes-manifests-repo-provider-publish
 docker-push-all
@@ -385,6 +391,7 @@ docker-build-dockerfile
 spec-validate
 hook-post-docker-tests
 docker-multi-tag
+hook-pre-publish
 git-push-tag
 docker-push-all
 hook-post-build"
@@ -415,6 +422,7 @@ docker-build-dockerfile
 layer-validate
 hook-post-docker-tests
 docker-multi-tag
+hook-pre-publish
 git-push-tag
 docker-push-all
 hook-post-build"
@@ -450,6 +458,7 @@ kubernetes-manifests-package
 kubernetes-manifests-repo-provider-package
 hook-post-package-tests
 docker-multi-tag
+hook-pre-publish
 git-push-tag
 kubernetes-manifests-repo-provider-publish
 docker-push-all
@@ -486,6 +495,7 @@ kubernetes-manifests-package
 kubernetes-manifests-repo-provider-package
 hook-post-package-tests
 docker-multi-tag
+hook-pre-publish
 git-push-tag
 kubernetes-manifests-repo-provider-publish
 docker-push-all
@@ -523,6 +533,7 @@ kubernetes-manifests-package
 kubernetes-manifests-repo-provider-package
 hook-post-package-tests
 docker-multi-tag
+hook-pre-publish
 git-push-tag
 kubernetes-manifests-repo-provider-publish
 docker-push-all
@@ -561,6 +572,7 @@ kubernetes-manifests-package
 kubernetes-manifests-repo-provider-package
 hook-post-package-tests
 docker-multi-tag
+hook-pre-publish
 git-push-tag
 kubernetes-manifests-repo-provider-publish
 docker-push-all
@@ -601,6 +613,7 @@ kubernetes-manifests-package
 kubernetes-manifests-repo-provider-package
 hook-post-package-tests
 docker-multi-tag
+hook-pre-publish
 git-push-tag
 kubernetes-manifests-repo-provider-publish
 docker-push-all
@@ -644,6 +657,7 @@ kubernetes-run-image-deploy-manifests-package
 kubernetes-run-image-deploy-manifests-repo-provider-package
 hook-post-package-tests
 docker-multi-tag
+hook-pre-publish
 git-push-tag
 kubernetes-manifests-repo-provider-publish
 docker-push-all
@@ -687,6 +701,7 @@ kubernetes-run-package
 kubernetes-run-deploy-image-validate
 hook-post-package-tests
 docker-multi-tag
+hook-pre-publish
 git-push-tag
 kubernetes-manifests-repo-provider-publish
 docker-push-all
@@ -788,7 +803,8 @@ MOCK
         HOOK_PRE_DOCKER_PREPARE_SCRIPT_SUB_PATH \
         HOOK_POST_DOCKER_TESTS_SCRIPT_SUB_PATH \
         HOOK_PRE_PACKAGE_PREPARE_SCRIPT_SUB_PATH \
-        HOOK_POST_PACKAGE_TESTS_SCRIPT_SUB_PATH
+        HOOK_POST_PACKAGE_TESTS_SCRIPT_SUB_PATH \
+        HOOK_PRE_PUBLISH_SCRIPT_SUB_PATH
 
   run bash "$REF_DIR/basic-quality-checks"
   [ "$status" -eq 0 ]
