@@ -36,6 +36,12 @@ Hooks run in this order during the build:
   Validating packaged output, dry-run deployments, package integrity
   checks.
 
+- **prePublish** - runs after everything is built, tested and tagged
+  locally, before anything is released or published (release file
+  preparation, git tag push, image pushes, manifest publishing, release
+  creation). Final gating checks, generating release notes or other files
+  the release steps consume.
+
 - **postBuild** - runs at the end of the pipeline.
   Cleanup, notifications, metrics, triggering downstream pipelines.
 
