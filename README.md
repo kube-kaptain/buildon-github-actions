@@ -25,6 +25,9 @@ jobs:
     uses: kube-kaptain/buildon-github-actions/.github/workflows/basic-quality-and-versioning.yaml@v1
     permissions:
       contents: write
+      packages: write
+      checks: write
+      id-token: write
 ```
 
 See [`examples/`](examples/) for more usage patterns.
@@ -320,6 +323,12 @@ Verbose but explicit - you list exactly which secrets are passed to the workflow
 | `gcp-gar-github-actions-oidc` | Google Artifact Registry via GitHub Actions OIDC |
 | `azure-acr` | Azure Container Registry with service principal |
 | `azure-acr-github-actions-oidc` | Azure ACR via GitHub Actions OIDC |
+
+The `*-github-actions-oidc` types request an identity token from GitHub. Every
+workflow except `basic-quality-checks` declares `id-token: write` for this, so
+your calling job must grant `id-token: write` too or GitHub rejects the run
+before it starts. It grants no repository access - it only allows the job to
+ask GitHub for a signed token that your cloud provider's trust policy checks.
 
 ### Outputs
 

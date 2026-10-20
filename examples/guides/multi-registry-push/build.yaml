@@ -16,6 +16,7 @@ jobs:
       contents: write
       packages: write
       checks: write
+      id-token: write
     secrets:
       docker-registry-logins-secrets: |
         ECR_USER_EAST=${{ secrets.ECR_USER_EAST }}

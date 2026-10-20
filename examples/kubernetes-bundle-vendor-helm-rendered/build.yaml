@@ -23,6 +23,7 @@ jobs:
       contents: write
       packages: write
       checks: write
+      id-token: write
     # Override the default runner if needed:
     # with:
     #   runner: ubuntu-latest

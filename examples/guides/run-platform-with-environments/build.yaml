@@ -16,3 +16,4 @@ jobs:
       contents: write
       packages: write
       checks: write
+      id-token: write

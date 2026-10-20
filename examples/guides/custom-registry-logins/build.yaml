@@ -16,6 +16,7 @@ jobs:
       contents: write
       packages: write
       checks: write
+      id-token: write
     secrets:
       docker-registry-logins-secrets: |
         DOCKERHUB_USER=${{ secrets.DOCKERHUB_USER }}
