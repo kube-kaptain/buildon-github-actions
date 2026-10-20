@@ -93,7 +93,7 @@ get_required_secrets() {
       cfg "${registry}" "usernameSecret"
       cfg "${registry}" "passwordSecret"
       ;;
-    aws-ecr)
+    aws-ecr|aws-ecr-public)
       cfg "${registry}" "accessKeyIdSecret"
       cfg "${registry}" "secretAccessKeySecret"
       ;;
@@ -106,7 +106,7 @@ get_required_secrets() {
       cfg "${registry}" "tenantIdSecret"
       ;;
     # Types that don't use secrets from the secret store
-    github-token|aws-ecr-github-actions-oidc|gcp-gar-github-actions-oidc|azure-acr-github-actions-oidc)
+    github-token|aws-ecr-github-actions-oidc|aws-ecr-public-github-actions-oidc|gcp-gar-github-actions-oidc|azure-acr-github-actions-oidc)
       ;;
   esac
 }
@@ -214,6 +214,20 @@ route_login() {
       "${login_script}" "${SECRET_METHOD}" "${registry}" \
         "$(cfg "${registry}" "roleArn")" \
         "$(cfg "${registry}" "region")" \
+        "${session_name}"
+      ;;
+
+    aws-ecr-public)
+      "${login_script}" "${SECRET_METHOD}" "${registry}" \
+        "$(cfg "${registry}" "accessKeyIdSecret")" \
+        "$(cfg "${registry}" "secretAccessKeySecret")"
+      ;;
+
+    aws-ecr-public-github-actions-oidc)
+      local session_name
+      session_name=$(echo "${DOCKER_REGISTRY_LOGINS}" | jq -r ".[\"${registry}\"][\"sessionName\"] // \"github-actions\"")
+      "${login_script}" "${SECRET_METHOD}" "${registry}" \
+        "$(cfg "${registry}" "roleArn")" \
         "${session_name}"
       ;;
 

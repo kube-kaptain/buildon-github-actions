@@ -13,6 +13,10 @@ KaptainPM supports several login types:
 
 - **username-password** - standard username and token/password pair (Docker Hub, Harbor, ECR, etc)
 - **github-token** - uses the built-in GITHUB_TOKEN (this is what GHCR uses automatically)
+- **aws-ecr-public** - AWS ECR Public (`public.ecr.aws`) with IAM access keys, always authenticated via us-east-1
+- **aws-ecr-public-github-actions-oidc** - AWS ECR Public via an IAM role assumed with GitHub OIDC (no long-lived keys)
+
+See the [main README](../../../README.md#supported-login-types) for the full list.
 
 Each login entry is keyed by the registry hostname and specifies `usernameSecret`
 and `passwordSecret` - these are the names of GitHub Actions secrets, not the

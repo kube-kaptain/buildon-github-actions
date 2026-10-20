@@ -1,0 +1,58 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
+#
+# docker-login-aws-ecr-public-github-actions-oidc - Login to AWS ECR Public via GitHub Actions OIDC
+#
+# Usage: docker-login-aws-ecr-public-github-actions-oidc <secret-method> <registry> <role-arn> [session-name]
+#
+# Arguments:
+#   secret-method - Secret retrieval method (github, env) - unused but accepted for consistency
+#   registry      - ECR Public registry (public.ecr.aws)
+#   role-arn      - AWS IAM role ARN to assume
+#   session-name  - Role session name (optional, defaults to github-actions)
+#
+# Environment (set by GitHub Actions):
+#   ACTIONS_ID_TOKEN_REQUEST_TOKEN - GitHub OIDC token
+#   ACTIONS_ID_TOKEN_REQUEST_URL   - GitHub OIDC URL
+#
+# ECR Public only issues auth tokens from us-east-1, regardless of where the caller runs.
+#
+set -euo pipefail
+
+# shellcheck source=src/scripts/defaults/platform.bash
+source "$(dirname "${BASH_SOURCE[0]}")/../../defaults/platform.bash"
+# shellcheck source=src/scripts/lib/log.bash
+source "$(dirname "${BASH_SOURCE[0]}")/../../lib/log.bash"
+# shellcheck source=src/scripts/defaults/docker-common.bash
+source "$(dirname "${BASH_SOURCE[0]}")/../../defaults/docker-common.bash"
+
+# secret_method=$1 - unused for OIDC
+registry="${2}"
+role_arn="${3}"
+session_name="${4:-github-actions}"
+
+log "Assuming AWS role ${role_arn} via OIDC..."
+
+# shellcheck disable=SC2154 # ACTIONS_ID_TOKEN_* are set by GitHub Actions runtime
+token=$(curl -s -H "Authorization: bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" \
+  "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=sts.amazonaws.com" | jq -r '.value')
+
+creds=$(aws sts assume-role-with-web-identity \
+  --region us-east-1 \
+  --role-arn "${role_arn}" \
+  --role-session-name "${session_name}" \
+  --web-identity-token "${token}" \
+  --duration-seconds 3600 \
+  --output json)
+
+export AWS_ACCESS_KEY_ID
+export AWS_SECRET_ACCESS_KEY
+export AWS_SESSION_TOKEN
+AWS_ACCESS_KEY_ID=$(echo "${creds}" | jq -r '.Credentials.AccessKeyId')
+AWS_SECRET_ACCESS_KEY=$(echo "${creds}" | jq -r '.Credentials.SecretAccessKey')
+AWS_SESSION_TOKEN=$(echo "${creds}" | jq -r '.Credentials.SessionToken')
+export AWS_DEFAULT_REGION="us-east-1"
+
+log "Logging in to AWS ECR Public ${registry}..."
+aws ecr-public get-login-password --region us-east-1 | ${IMAGE_BUILD_COMMAND} login --username AWS --password-stdin "${registry}"

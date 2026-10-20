@@ -11,11 +11,12 @@ on:
 
 jobs:
   build:
-    uses: kube-kaptain/buildon-github-actions/.github/workflows/docker-build-dockerfile.yaml@1.2.9
+    uses: kube-kaptain/buildon-github-actions/.github/workflows/docker-build-dockerfile.yaml@1.2.10
     permissions:
       contents: write
       packages: write
       checks: write
+      id-token: write
     secrets:
       docker-registry-logins-secrets: |
         DOCKERHUB_USER=${{ secrets.DOCKERHUB_USER }}

@@ -16,7 +16,7 @@ on:
 
 jobs:
   build:
-    uses: kube-kaptain/buildon-github-actions/.github/workflows/basic-quality-checks.yaml@1.2.9
+    uses: kube-kaptain/buildon-github-actions/.github/workflows/basic-quality-checks.yaml@1.2.10
     permissions:
       contents: read
       checks: write

@@ -74,6 +74,7 @@ jobs:
       contents: write
       packages: write
       checks: write
+      id-token: write
     outputs:
       version: ${{ steps.versions.outputs.version }}
       version-major: ${{ steps.versions.outputs.version-major }}

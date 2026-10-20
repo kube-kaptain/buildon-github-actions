@@ -95,6 +95,26 @@ echo "${client_secret}" | ${IMAGE_BUILD_COMMAND} login "${2}" -u "${client_id}" 
 MOCK
   chmod +x "${MOCK_PLUGINS_DIR}/docker-login-providers/docker-login-azure-acr"
 
+  # Mock docker-login-aws-ecr-public: args are secret-method registry access-key-id-secret secret-access-key-secret
+  cat > "${MOCK_PLUGINS_DIR}/docker-login-providers/docker-login-aws-ecr-public" << 'MOCK'
+#!/usr/bin/env bash
+PLUGINS_DIR="$(dirname "${0}")/.."
+get_secret="${PLUGINS_DIR}/secret-value-providers/get-secret-${1}"
+access_key_id=$("${get_secret}" "${3}") || exit 1
+"${get_secret}" "${4}" > /dev/null || exit 1
+echo "Logging in to AWS ECR Public ${2} as ${access_key_id} (args: $#)..."
+echo "token" | ${IMAGE_BUILD_COMMAND} login --username AWS --password-stdin "${2}"
+MOCK
+  chmod +x "${MOCK_PLUGINS_DIR}/docker-login-providers/docker-login-aws-ecr-public"
+
+  # Mock docker-login-aws-ecr-public-github-actions-oidc: args are secret-method registry role-arn session-name
+  cat > "${MOCK_PLUGINS_DIR}/docker-login-providers/docker-login-aws-ecr-public-github-actions-oidc" << 'MOCK'
+#!/usr/bin/env bash
+echo "Logging in to AWS ECR Public ${2} via role ${3} session ${4} (args: $#)..."
+echo "token" | ${IMAGE_BUILD_COMMAND} login --username AWS --password-stdin "${2}"
+MOCK
+  chmod +x "${MOCK_PLUGINS_DIR}/docker-login-providers/docker-login-aws-ecr-public-github-actions-oidc"
+
 }
 
 teardown() {
@@ -195,6 +215,47 @@ run_logins() {
   assert_output_contains "Logging in to docker.io with username/password"
   assert_docker_called "login ghcr.io -u gh-user --password-stdin"
   assert_docker_called "login docker.io -u myuser --password-stdin"
+}
+
+@test "docker-registry-logins: aws-ecr-public passes secret names without a region" {
+  export DOCKER_REGISTRY_LOGINS='{"public.ecr.aws":{"type":"aws-ecr-public","accessKeyIdSecret":"ECR_KEY_ID","secretAccessKeySecret":"ECR_SECRET"}}'
+  export SECRETS_JSON='{"ECR_KEY_ID": "AKIAEXAMPLE", "ECR_SECRET": "shh"}'
+
+  run_logins
+
+  [ "$status" -eq 0 ]
+  assert_output_contains "Logging in to AWS ECR Public public.ecr.aws as AKIAEXAMPLE (args: 4)"
+  assert_docker_called "login --username AWS --password-stdin public.ecr.aws"
+}
+
+@test "docker-registry-logins: aws-ecr-public fails when required secret is missing" {
+  export DOCKER_REGISTRY_LOGINS='{"public.ecr.aws":{"type":"aws-ecr-public","accessKeyIdSecret":"ECR_KEY_ID","secretAccessKeySecret":"ECR_SECRET"}}'
+  export SECRETS_JSON='{"ECR_KEY_ID": "AKIAEXAMPLE"}'
+
+  run_logins
+
+  [ "$status" -ne 0 ]
+  assert_output_contains "ECR_SECRET (public.ecr.aws)"
+  assert_output_contains "Secret validation failed"
+}
+
+@test "docker-registry-logins: aws-ecr-public-github-actions-oidc passes role and default session name" {
+  export DOCKER_REGISTRY_LOGINS='{"public.ecr.aws":{"type":"aws-ecr-public-github-actions-oidc","roleArn":"arn:aws:iam::123456789012:role/push"}}'
+
+  run_logins
+
+  [ "$status" -eq 0 ]
+  assert_output_contains "Logging in to AWS ECR Public public.ecr.aws via role arn:aws:iam::123456789012:role/push session github-actions (args: 4)"
+  assert_docker_called "login --username AWS --password-stdin public.ecr.aws"
+}
+
+@test "docker-registry-logins: aws-ecr-public-github-actions-oidc passes configured session name" {
+  export DOCKER_REGISTRY_LOGINS='{"public.ecr.aws":{"type":"aws-ecr-public-github-actions-oidc","roleArn":"arn:aws:iam::123456789012:role/push","sessionName":"release"}}'
+
+  run_logins
+
+  [ "$status" -eq 0 ]
+  assert_output_contains "session release (args: 4)"
 }
 
 @test "docker-registry-logins (local): warns and exits 0 when DOCKER_REGISTRY_LOGINS unset" {

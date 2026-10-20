@@ -1,15 +1,15 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/kube-kaptain/spec-kaptainpm-schema/releases/download/1.38/spec-kaptainpm-schema-final-1.38.yaml",
-  "name": "spec-kaptainpm-schema-final",
-  "version": "1.38",
+  "$id": "https://github.com/kube-kaptain/spec-kaptainpm-schema/releases/download/1.39/spec-kaptainpm-schema-1.39.yaml",
+  "name": "spec-kaptainpm-schema",
+  "version": "1.39",
   "source": "https://github.com/kube-kaptain/spec-kaptainpm-schema",
   "latest": "https://raw.githubusercontent.com/kube-kaptain/spec-kaptainpm-schema/main/spec-kaptainpm-schema.yaml",
-  "tagged": "https://raw.githubusercontent.com/kube-kaptain/spec-kaptainpm-schema/1.38/spec-kaptainpm-schema.yaml",
-  "release": "https://github.com/kube-kaptain/spec-kaptainpm-schema/releases/download/1.38/spec-kaptainpm-schema-final-1.38.yaml",
-  "validate-using": "https://github.com/kube-kaptain/spec-kaptainpm-schema/releases/download/1.38/spec-kaptainpm-schema-final-1.38.json",
+  "tagged": "https://raw.githubusercontent.com/kube-kaptain/spec-kaptainpm-schema/1.39/spec-kaptainpm-schema.yaml",
+  "release": "https://github.com/kube-kaptain/spec-kaptainpm-schema/releases/download/1.39/spec-kaptainpm-schema-1.39.yaml",
+  "validate-using": "https://github.com/kube-kaptain/spec-kaptainpm-schema/releases/download/1.39/spec-kaptainpm-schema-1.39.json",
   "title": "KaptainPM",
-  "description": "Kaptain project manifest schema (version 1.38).\n",
+  "description": "Kaptain project manifest schema (version 1.39).\n",
   "type": "object",
   "required": [
     "apiVersion",
@@ -20,7 +20,7 @@
     "apiVersion": {
       "type": "string",
       "pattern": "^kaptain\\.org/[0-9]+(\\.[0-9]+)*$",
-      "description": "API version - must be kaptain.org/ followed by the schema version (e.g. kaptain.org/1.2). Set via 1.38 token substitution at build time.\n"
+      "description": "API version - must be kaptain.org/ followed by the schema version (e.g. kaptain.org/1.2). Set via 1.39 token substitution at build time.\n"
     },
     "kind": {
       "type": "string",
@@ -40,24 +40,14 @@
           "additionalProperties": {
             "type": "string"
           },
-          "description": "Queryable build metadata labels. All values must be strings.",
-          "properties": {
-            "kaptain.org/version": false,
-            "kaptain.org/project-name": false,
-            "kaptain.org/owner": false
-          }
+          "description": "Queryable build metadata labels. All values must be strings."
         },
         "annotations": {
           "type": "object",
           "additionalProperties": {
             "type": "string"
           },
-          "description": "Informational build metadata annotations. All values must be strings.",
-          "properties": {
-            "kaptain.org/built-by": false,
-            "kaptain.org/source-repository": false,
-            "kaptain.org/image-uri": false
-          }
+          "description": "Informational build metadata annotations. All values must be strings."
         }
       }
     },
@@ -3391,6 +3381,51 @@
             "type",
             "roleArn",
             "region"
+          ]
+        },
+        {
+          "description": "AWS ECR Public with static IAM credentials (always authenticates via us-east-1)",
+          "additionalProperties": false,
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "aws-ecr-public"
+            },
+            "accessKeyIdSecret": {
+              "type": "string",
+              "description": "Credential name containing the AWS access key ID"
+            },
+            "secretAccessKeySecret": {
+              "type": "string",
+              "description": "Credential name containing the AWS secret access key"
+            }
+          },
+          "required": [
+            "type",
+            "accessKeyIdSecret",
+            "secretAccessKeySecret"
+          ]
+        },
+        {
+          "description": "AWS ECR Public with GitHub Actions OIDC (no long-lived credentials, always authenticates via us-east-1)",
+          "additionalProperties": false,
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "aws-ecr-public-github-actions-oidc"
+            },
+            "roleArn": {
+              "type": "string",
+              "description": "IAM role ARN to assume via OIDC"
+            },
+            "sessionName": {
+              "type": "string",
+              "description": "Session name for the assumed role (default: github-actions)"
+            }
+          },
+          "required": [
+            "type",
+            "roleArn"
           ]
         },
         {
