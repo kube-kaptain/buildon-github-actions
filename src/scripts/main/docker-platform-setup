@@ -4,8 +4,9 @@
 #
 # docker-platform-setup - Validates docker platform and installs QEMU on Linux CI
 #
-# Validates DOCKER_PLATFORM against allowed values and installs QEMU binfmt
-# support on Linux build servers when a target platform is not native to the host.
+# Validates DOCKER_PLATFORM against allowed values and registers QEMU binfmt
+# handlers on Linux build servers, from the kaptain binfmt image, for any target
+# platform that is not native to the host. On local Linux machines it only warns.
 #
 # Inputs (environment variables):
 #   DOCKER_PLATFORM    - Target platform (from docker-common.bash default or input)
@@ -49,11 +50,11 @@ esac
 
 log "Platform validated: ${DOCKER_PLATFORM}"
 
-# Work out whether any target platform needs emulation on this host.
+# List the target arches (binfmt names) this host cannot run natively.
 # linux/386 runs natively on amd64 kernels. An unrecognised host arch is
 # treated as needing emulation for everything, to stay on the safe side.
-needs_emulation() {
-  local host_arch platform
+foreign_arches() {
+  local host_arch platform arch
   case "$(uname -m)" in
     x86_64|amd64) host_arch="amd64" ;;
     aarch64|arm64) host_arch="arm64" ;;
@@ -61,35 +62,71 @@ needs_emulation() {
   esac
 
   for platform in ${DOCKER_PLATFORM//,/ }; do
-    case "${host_arch}:${platform}" in
-      amd64:linux/amd64|amd64:linux/386|arm64:linux/arm64) ;;
-      *) return 0 ;;
+    arch="${platform#linux/}"
+    case "${host_arch}:${arch}" in
+      amd64:amd64|amd64:386|arm64:arm64) ;;
+      *) echo "${arch}" ;;
     esac
   done
-  return 1
 }
 
-# Install QEMU on Linux build servers, only when a target platform needs emulation
-if [[ "$(uname -s)" != "Linux" ]] || [[ "${BUILD_MODE}" != "build_server" ]]; then
-  log "Not a Linux build server — skipping QEMU install"
-elif ! needs_emulation; then
-  log "Host arch $(uname -m) builds ${DOCKER_PLATFORM} natively: skipping QEMU install"
+# Kernel binfmt_misc handler name the binfmt image registers for each arch
+binfmt_handler() {
+  case "${1}" in
+    amd64) echo "qemu-x86_64" ;;
+    arm64) echo "qemu-aarch64" ;;
+    386) echo "qemu-i386" ;;
+  esac
+}
+
+# Set up QEMU binfmt handlers on Linux, only for arches that need emulation and
+# are not already registered. Build servers get them installed from the binfmt
+# image. Local machines are the user's to configure, so only a warning there.
+if [[ "$(uname -s)" != "Linux" ]]; then
+  log "Not a Linux host: skipping QEMU setup"
 else
-  # Check if binfmt is already registered (e.g. pre-baked CI image)
-  if ls /proc/sys/fs/binfmt_misc/qemu-* &>/dev/null; then
-    log "QEMU binfmt already registered — skipping install"
+  needed=$(foreign_arches)
+  if [[ -z "${needed}" ]]; then
+    log "Host arch $(uname -m) builds ${DOCKER_PLATFORM} natively: skipping QEMU setup"
   else
-    log "Linux build server detected — installing QEMU binfmt support..."
-    if command -v apt-get &>/dev/null; then
-      sudo apt-get update
-      sudo apt-get install -y qemu-user-static binfmt-support
-    elif command -v yum &>/dev/null; then
-      sudo yum install -y qemu-user-static
+    binfmt_misc_dir="${BINFMT_MISC_DIR:-/proc/sys/fs/binfmt_misc}"
+    missing=""
+    for arch in ${needed}; do
+      if [[ ! -e "${binfmt_misc_dir}/$(binfmt_handler "${arch}")" ]]; then
+        missing="${missing:+${missing},}${arch}"
+      fi
+    done
+
+    binfmt_image="${QEMU_BINFMT_IMAGE:-ghcr.io/kube-kaptain/image/image-binfmt:10.2.3.1}"
+    if [[ -z "${missing}" ]]; then
+      log "QEMU binfmt already registered for $(echo "${needed}" | paste -sd, -): skipping install"
+    elif [[ "${BUILD_MODE}" != "build_server" ]]; then
+      log_warning "QEMU binfmt not registered for ${missing}: builds for those arches will fail with 'exec format error'"
+      log_warning "Set it up yourself, for example: sudo ${IMAGE_BUILD_COMMAND} run --privileged --rm ${binfmt_image} --install ${missing}"
     else
-      log_error "No supported package manager found (need apt-get or yum)"
-      exit 1
+      log "Installing QEMU binfmt support for ${missing} from ${binfmt_image}..."
+      # Registering binfmt handlers needs root. Rootless podman gets it through sudo.
+      installed_from_image=true
+      if [[ "${IMAGE_BUILD_COMMAND}" == "podman" ]]; then
+        sudo "${IMAGE_BUILD_COMMAND}" run --privileged --rm "${binfmt_image}" --install "${missing}" || installed_from_image=false
+      else
+        # No sudo: the docker daemon already runs as root and does the work
+        ${IMAGE_BUILD_COMMAND} run --privileged --rm "${binfmt_image}" --install "${missing}" || installed_from_image=false
+      fi
+      if [[ "${installed_from_image}" != "true" ]]; then
+        log_warning "Installing QEMU binfmt support from ${binfmt_image} failed: falling back to the OS package manager"
+        if command -v apt-get &>/dev/null; then
+          sudo apt-get update
+          sudo apt-get install -y qemu-user-static binfmt-support
+        elif command -v yum &>/dev/null; then
+          sudo yum install -y qemu-user-static
+        else
+          log_error "No supported package manager found (need apt-get or yum)"
+          exit 1
+        fi
+      fi
+      log "QEMU binfmt support installed for ${missing}"
     fi
-    log "QEMU binfmt support installed"
   fi
 fi
 
