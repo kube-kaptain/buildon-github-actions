@@ -921,3 +921,65 @@ EOF
 teardown() {
   dump_bats_result
 }
+
+# =============================================================================
+# Ambiguous numbers: only plain decimal integers are accepted
+# =============================================================================
+
+@test "a leading-zero number fails with its path and the ambiguity message" {
+  cat > "${TEST_DIR}/kaptainpm/final/KaptainPM.yaml" << 'EOF2'
+apiVersion: kaptain.org/1.10
+kind: test-build
+spec:
+  main:
+    generators:
+      deployment:
+        replicas: 017
+EOF2
+  run_script
+  [[ "$status" -eq 1 ]] || return 1
+  [[ "$output" == *"spec.main.generators.deployment.replicas: 017 is ambiguous depending on the YAML specification version and could mean more than one value depending on the context. Use decimal."* ]] || return 1
+}
+
+@test "every non-decimal number form is reported, including inside lists" {
+  cat > "${TEST_DIR}/kaptainpm/final/KaptainPM.yaml" << 'EOF2'
+apiVersion: kaptain.org/1.10
+kind: test-build
+spec:
+  forms:
+    octal: 0o17
+    hex: 0x10
+    binary: 0b101
+    underscore: 1_000
+    plus: +5
+    fraction: 3.0
+    exponent: 1e2
+    nonOctal: 08
+    ports:
+      - port: 080
+EOF2
+  run_script
+  [[ "$status" -eq 1 ]] || return 1
+  local form
+  for form in "octal: 0o17" "hex: 0x10" "binary: 0b101" "underscore: 1_000" "plus: +5" \
+      "fraction: 3.0" "exponent: 1e2" "nonOctal: 08" "ports.0.port: 080"; do
+    [[ "$output" == *"spec.forms.${form} is ambiguous"* ]] || return 1
+  done
+}
+
+@test "plain decimal numbers and quoted strings are not ambiguous" {
+  cat > "${TEST_DIR}/kaptainpm/final/KaptainPM.yaml" << 'EOF2'
+apiVersion: kaptain.org/1.10
+kind: test-build
+spec:
+  forms:
+    zero: 0
+    plain: 17
+    negative: -3
+    quoted: "017"
+    version: "1.0"
+EOF2
+  run_script
+  [[ "$status" -eq 0 ]] || return 1
+  [[ "$output" != *"is ambiguous"* ]] || return 1
+}

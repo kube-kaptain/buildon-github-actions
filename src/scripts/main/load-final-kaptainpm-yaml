@@ -77,6 +77,20 @@ if ! yq eval '.' "${PM_FILE}" > /dev/null 2>&1; then
   exit 1
 fi
 
+# Every unquoted number must be plain decimal. The schema only sees the parsed
+# value, but consumers see the text: YAML 1.1 (Kubernetes) reads 017 as octal
+# 15, YAML 1.2 (yq, the schema validators) as 17, and bash arithmetic as octal
+# or, for 08, an error. No field takes a fraction, so every float is an integer
+# written some other way (3.0, 1e2, and 08 as yq tags it).
+ambiguous_numbers=$(yq -r '.. | select((tag == "!!int" and (tostring | test("^(0|-?[1-9][0-9]*)$") | not)) or tag == "!!float")
+  | (path | map(tostring) | join(".")) + "\t" + tostring' "${PM_FILE}")
+if [[ -n "${ambiguous_numbers}" ]]; then
+  while IFS=$'\t' read -r number_path number_text; do
+    log_error "${number_path}: ${number_text} is ambiguous depending on the YAML specification version and could mean more than one value depending on the context. Use decimal."
+  done <<< "${ambiguous_numbers}"
+  exit 1
+fi
+
 # Kind validation - must match build wrapper's expected kind exactly
 BUILD_KIND="${BUILD_KIND:?BUILD_KIND is required}"
 log "Reading kind from ${PM_FILE}..."
