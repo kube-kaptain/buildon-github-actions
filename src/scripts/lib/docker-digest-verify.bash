@@ -9,13 +9,14 @@
 #   reference_has_tag <ref>                                  - True if ref carries a tag
 #   is_valid_digest <digest>                                 - True for sha256:<64 hex>
 #   verify_digest_matches_tag <tagged-ref> <digest> <platform> - Fail unless the pin matches the tag
+#   build_host_platform                                      - Print linux/<arch> of this host, empty if unknown
 #   verify_dockerfile_from_digests <dockerfile> <platform>   - Verify every FROM tag@digest line
 #
-# Clients handle a tag@digest reference inconsistently: docker uses the digest
-# and silently ignores the tag, older podman refuses it. Neither says when the
-# tag has moved away from the pin. This pulls by tag and checks that the pinned
-# digest identifies the same image for the platform being built: either the
-# tag's index digest, or that platform's own manifest digest.
+# Docker and podman (4.9 and 5.x checked) both pull a tag@digest reference by
+# the digest and silently ignore the tag, so neither says when the tag has moved
+# away from the pin. This pulls by tag and checks that the pinned digest
+# identifies the same image for the platform pulled: either the tag's index
+# digest, or that platform's own manifest digest.
 #
 # How the check is made depends on what each image store records:
 #   podman            - RepoDigests of the tag holds the index and platform digests
@@ -24,6 +25,8 @@
 #                       the pin, as the store keeps only one image per repo digest
 #
 # Requires: IMAGE_BUILD_COMMAND, log.bash sourced
+#
+# shellcheck disable=SC2154 # IMAGE_BUILD_COMMAND set by callers before sourcing
 
 # Split "name:tag@sha256:hex" style references. Prints the part before @ and
 # the digest on separate lines; the digest line is empty when there is none.
@@ -96,7 +99,8 @@ verify_digest_matches_tag() {
       if ${IMAGE_BUILD_COMMAND} pull --platform "${platform}" "${repo}@${digest}"; then
         pin_id=$(${IMAGE_BUILD_COMMAND} image inspect --format '{{.Id}}' "${repo}@${digest}")
         ${IMAGE_BUILD_COMMAND} rmi "${repo}@${digest}" > /dev/null || true
-        if [[ "${pin_id}" == "${tag_id}" ]]; then
+        # Both must be known: two failed inspects would otherwise compare equal
+        if [[ -n "${tag_id}" && "${pin_id}" == "${tag_id}" ]]; then
           matched="true"
         fi
       fi
@@ -111,19 +115,44 @@ verify_digest_matches_tag() {
   log "Digest verified for ${platform}: ${tagged_ref} is ${digest}"
 }
 
+# The platform a FROM --platform=$BUILDPLATFORM stage pulls for
+build_host_platform() {
+  case "$(uname -m)" in
+    x86_64|amd64)  echo "linux/amd64" ;;
+    aarch64|arm64) echo "linux/arm64" ;;
+    *)             echo "" ;;
+  esac
+}
+
 # verify_dockerfile_from_digests <dockerfile> <platform>
-# Verifies every FROM line that names both a tag and a digest. Lines whose
-# image is built from variables cannot be checked and get a warning. Returns 1
-# if any check fails, after checking them all.
+# Verifies every FROM line that names both a tag and a digest, against the
+# platform that FROM pulls for: its own --platform flag when it has one
+# ($BUILDPLATFORM is this host, $TARGETPLATFORM the platform being built),
+# otherwise the platform being built. Lines whose image or platform is built
+# from other variables cannot be checked and get a warning. Returns 1 if any
+# check fails, after checking them all.
 verify_dockerfile_from_digests() {
   local dockerfile="${1}"
   local platform="${2}"
-  local line image ref digest failed=0
+  local line parsed from_platform check_platform image ref digest failed=0
 
+  # Backslash continuations are joined first so a FROM split across lines is
+  # still seen
   while IFS= read -r line || [[ -n "${line}" ]]; do
-    # FROM [--flag=value ...] image [AS name], keyword case-insensitive
-    image=$(echo "${line}" | awk 'toupper($1) == "FROM" { for (i = 2; i <= NF; i++) if ($i !~ /^--/) { print $i; exit } }')
-    [[ -z "${image}" ]] && continue
+    # FROM [--flag=value ...] image [AS name], keyword case-insensitive.
+    # Prints the --platform value ("-" when absent) and the image.
+    parsed=$(echo "${line}" | awk 'toupper($1) == "FROM" {
+      p = "-"
+      for (i = 2; i <= NF; i++) {
+        if ($i ~ /^--platform=/) { p = substr($i, 12); continue }
+        if ($i ~ /^--/) continue
+        print p, $i
+        exit
+      }
+    }')
+    [[ -z "${parsed}" ]] && continue
+    from_platform="${parsed%% *}"
+    image="${parsed#* }"
     if [[ "${image}" == *'$'* ]]; then
       log_warning "FROM is not a direct image reference, digest not verified: ${line}"
       continue
@@ -137,8 +166,21 @@ verify_dockerfile_from_digests() {
       failed=1
       continue
     fi
-    verify_digest_matches_tag "${ref}" "${digest}" "${platform}" || failed=1
-  done < "${dockerfile}"
+
+    # shellcheck disable=SC2016 # Literal: the Dockerfile's own variable names
+    case "${from_platform}" in
+      -|'$TARGETPLATFORM'|'${TARGETPLATFORM}') check_platform="${platform}" ;;
+      '$BUILDPLATFORM'|'${BUILDPLATFORM}')     check_platform=$(build_host_platform) ;;
+      *'$'*)                                   check_platform="" ;;
+      *)                                       check_platform="${from_platform}" ;;
+    esac
+    if [[ -z "${check_platform}" ]]; then
+      log_warning "FROM platform cannot be resolved, digest not verified: ${line}"
+      continue
+    fi
+    verify_digest_matches_tag "${ref}" "${digest}" "${check_platform}" || failed=1
+  done < <(awk '{ if (sub(/\\$/, "")) { joined = joined $0 " "; next } print joined $0; joined = "" }
+    END { if (joined != "") print joined }' "${dockerfile}")
 
   return "${failed}"
 }

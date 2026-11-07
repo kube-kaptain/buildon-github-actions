@@ -89,6 +89,8 @@ source "${SCRIPT_DIR}/../lib/output-var.bash"
 # === Shared target validation, URI assembly, and utilities ===
 # shellcheck source=src/scripts/lib/docker-build-shared.bash
 source "${SCRIPT_DIR}/../lib/docker-build-shared.bash"
+# shellcheck source=src/scripts/lib/docker-digest-verify.bash
+source "${SCRIPT_DIR}/../lib/docker-digest-verify.bash"
 
 # Required inputs (DOCKER_TAG validated in shared script)
 VERSION="${VERSION:?VERSION is required}"
@@ -223,6 +225,10 @@ build_for_platform() {
 
   # Build from substituted directory
   local dockerfile="${context_dir}/Dockerfile"
+
+  # Base images pinned as tag@digest must still match their tag
+  verify_dockerfile_from_digests "${dockerfile}" "${platform}" || exit 1
+
   local cmd=("${IMAGE_BUILD_COMMAND}" build --platform "${platform}" -f "${dockerfile}" -t "${image_uri}")
 
   # Add standard build args (Dockerfile can use or ignore)
