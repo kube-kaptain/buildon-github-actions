@@ -71,7 +71,8 @@ target/manifests/            # Build output
 - Hidden files always blocked (`.gitkeep`, `.DS_Store`)
 - Symlinks always blocked: a symlinked token file or directory fails the build
 - Binary files always blocked: a token file containing null bytes fails the build
-- `camelCase` with leading digit requires uppercase after (e.g., `2MyVar` not `2myVar`)
+- `camelCase` with a leading digit takes either case after it: `2faSecret` is
+  `2FA_SECRET` and `2FaSecret` is `2_FA_SECRET`
 
 ## Built-in Tokens
 

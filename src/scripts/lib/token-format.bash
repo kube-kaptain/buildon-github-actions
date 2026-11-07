@@ -117,10 +117,6 @@ unresolved_token_regex() {
   # unreferenced-value check. A segment never starts or ends with a separator,
   # so lookalikes such as a shell ${_private} or ${VAR-} default are not
   # flagged as unresolved tokens.
-  #
-  # camelCase is looser than its validator on purpose: convert_token_name
-  # turns 2FA_SECRET into 2faSecret, which the validator rejects, and a name
-  # the build itself produces must never slip past the gate.
   local name_regex
   local name_segment
   case "${name_style}" in

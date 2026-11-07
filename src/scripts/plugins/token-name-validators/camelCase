@@ -4,8 +4,8 @@
 #
 # camelCase - Validates token names follow camelCase convention
 #
-# Valid: myVar, myVar2, my2Var, 2MyVar, a, myCategory/mySubVar
-# Invalid: MY_VAR, my_var, my-var, MyVar, 2myVar
+# Valid: myVar, myVar2, my2Var, 2MyVar, 2faSecret, 12, a, myCategory/mySubVar
+# Invalid: MY_VAR, my_var, my-var, MyVar
 #
 # Usage:
 #   camelCase <directory>
@@ -36,18 +36,12 @@ is_valid_name() {
 
   local segment
   while IFS= read -r segment; do
-    # camelCase: starts with lowercase letter, OR starts with digit(s) then uppercase
-    # Examples: myVar, my2Var, 2MyVar
-    if [[ ${#segment} -eq 1 ]]; then
-      # Single char: must be lowercase letter or digit
-      if [[ ! "${segment}" =~ ^[a-z0-9]$ ]]; then
-        return 1
-      fi
-    else
-      # Multi-char: starts with lowercase, OR starts with digit(s) then uppercase letter
-      if [[ ! "${segment}" =~ ^([a-z][a-zA-Z0-9]*|[0-9]+[A-Z][a-zA-Z0-9]*)$ ]]; then
-        return 1
-      fi
+    # camelCase: starts with lowercase letter or digit, contains only letters
+    # and digits. A leading digit may be followed by either case, as
+    # convert_token_name gives 2faSecret for 2FA_SECRET and 2FaSecret for
+    # 2_FA_SECRET.
+    if [[ ! "${segment}" =~ ^[a-z0-9][a-zA-Z0-9]*$ ]]; then
+      return 1
     fi
   done <<< "${name//\//$'\n'}"
 
