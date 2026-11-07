@@ -80,7 +80,10 @@ extract_version_from_file() {
     exit 1
   fi
 
-  EXTRACTED_VERSION=$(grep -E "${pattern}" "${source_file}" | head -1 | sed -E "s/${pattern}/\\1/") || true
+  # \001 as the sed delimiter: the pattern is user supplied and may contain any
+  # printable character, / included.
+  local sep=$'\001'
+  EXTRACTED_VERSION=$(grep -E "${pattern}" "${source_file}" | head -1 | sed -E "s${sep}${pattern}${sep}\\1${sep}") || true
 
   if [[ -z "${EXTRACTED_VERSION}" ]]; then
     log_error "Could not find version matching pattern in ${source_file} (${label})"

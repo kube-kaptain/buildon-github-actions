@@ -131,6 +131,8 @@ rewrite_name_refs() {
   # Loop to stability: occurrences sharing a boundary character ('x,x') need
   # re-runs. <new> cannot re-match <old>, so this terminates.
   local tmp line
+  # \001 as the sed delimiter: nothing interpolated below can contain it.
+  local sep=$'\001'
   while IFS= read -r line; do
     [[ -z "${line}" ]] && continue
     count="${line%%	*}"
@@ -138,7 +140,7 @@ rewrite_name_refs() {
     tmp=$(mktemp)
     cp "${file}" "${tmp}"
     while :; do
-      sed -E "s#(^|[^a-z0-9.-])(${old_re})([^a-z0-9.-]|\$)#\\1${new}\\3#g" "${tmp}" > "${tmp}.next"
+      sed -E "s${sep}(^|[^a-z0-9.-])(${old_re})([^a-z0-9.-]|\$)${sep}\\1${new}\\3${sep}g" "${tmp}" > "${tmp}.next"
       if cmp -s "${tmp}" "${tmp}.next"; then
         rm -f "${tmp}.next"
         break

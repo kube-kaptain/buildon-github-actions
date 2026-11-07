@@ -1137,6 +1137,23 @@ teardown() {
   done < <(find "${REPO_DIR}/kaptain-out/helm-processing/G-annotated" -name '*.yaml' -type f)
 }
 
+@test "namespace sentinel keeps the backslash of a swift-style token" {
+  export VENDOR_HELM_RENDERED_OCI_CHART="oci://example.com/test-chart"
+  export VENDOR_HELM_RENDERED_MOVE_FILES='[
+    {"source":"templates/deployment.yaml","destination":"deployment.yaml"},
+    {"source":"templates/clusterrole-namespaced.yaml","destination":"clusterrole-namespaced.yaml"}
+  ]'
+  export TOKEN_DELIMITER_STYLE="swift"
+
+  run_script
+  [[ "$status" -eq 0 ]] || return 1
+
+  # The token lands in a sed replacement, where an unescaped \( would lose
+  # its backslash and leave a token nothing can substitute.
+  local cr_file="${REPO_DIR}/kaptain-out/helm-processing/G-annotated/clusterrole-namespaced.yaml"
+  [[ $(yq eval '.metadata.name' "${cr_file}") == '\(Environment)-test-chart-reader' ]] || return 1
+}
+
 @test "fullname sentinel resolves to the project-name token" {
   export VENDOR_HELM_RENDERED_OCI_CHART="oci://example.com/test-chart"
   export VENDOR_HELM_RENDERED_MOVE_FILES='[{"source":"templates/configmap-fullname.yaml","destination":"configmap-fullname.yaml"}]'

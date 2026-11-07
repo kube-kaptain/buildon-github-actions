@@ -66,9 +66,11 @@ fi
 inject_annotation() {
   local key="$1" value="$2" manifest="$3"
   local key_re="${key//./\\.}"
+  # \001 as the sed delimiter: nothing interpolated below can contain it.
+  local sep=$'\001'
 
   if grep -qE "^[[:space:]]*${key_re}:" "${manifest}"; then
-    sed -i.bak -E "s|^([[:space:]]*)${key_re}:.*|\\1${key}: \"${value}\"|" "${manifest}"
+    sed -i.bak -E "s${sep}^([[:space:]]*)${key_re}:.*${sep}\\1${key}: \"${value}\"${sep}" "${manifest}"
     rm -f "${manifest}.bak"
     return 0
   fi
