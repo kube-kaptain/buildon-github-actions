@@ -189,10 +189,9 @@ EOF
   assert_github_output "GITHUB_RELEASE_ENABLED" "false"
 }
 
-# NOTE: yq's // operator treats bare boolean false as falsy, so the script
-# falls back to the default "true". This is a known quirk - use the string
-# "false" in KaptainPM.yaml to disable releases.
-@test "GITHUB_RELEASE_ENABLED bare boolean false falls back to default true" {
+# Read via kaptainpm_bool, not yq's // operator, so an explicit bare boolean
+# false survives instead of being clobbered by the default.
+@test "GITHUB_RELEASE_ENABLED bare boolean false is preserved" {
   cat > "${TEST_DIR}/kaptainpm/final/KaptainPM.yaml" << 'EOF'
 apiVersion: kaptain.org/1.10
 kind: test-build
@@ -204,7 +203,7 @@ spec:
 EOF
   run_script
   [ "${status}" -eq 0 ]
-  assert_github_output "GITHUB_RELEASE_ENABLED" "true"
+  assert_github_output "GITHUB_RELEASE_ENABLED" "false"
 }
 
 @test "CHANGE_SOURCE_NOTE_ENABLED defaults to true when absent" {

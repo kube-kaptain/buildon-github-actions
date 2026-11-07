@@ -667,8 +667,8 @@ fi
 output_var "OUTPUT_SUB_PATH" "${output_sub_path}" > /dev/null
 log "Field .spec.global.outputSubPath = \"${output_sub_path}\" exported as OUTPUT_SUB_PATH"
 
-github_release_enabled=$(yq -r '.spec.platform.githubActions.release.enabled // ""' "${PM_FILE}")
-if [[ -z "${github_release_enabled}" || "${github_release_enabled}" == "null" ]]; then
+github_release_enabled=$(kaptainpm_bool "${PM_FILE}" "spec.platform.githubActions.release.enabled" "")
+if [[ -z "${github_release_enabled}" ]]; then
   github_release_enabled="${GITHUB_RELEASE_ENABLED}"
   log "Field .spec.platform.githubActions.release.enabled not set, defaulted to ${github_release_enabled} to allow wrapper optimisations."
 else
