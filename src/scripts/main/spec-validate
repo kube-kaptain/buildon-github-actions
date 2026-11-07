@@ -18,7 +18,11 @@
 #   OUTPUT_SUB_PATH   - Base directory for output files
 #
 # Inputs via env vars (optional):
-#   SPEC_JSON_SCHEMA_URL - Schema file path or URL (default: src/schemas/json-schema-draft-2020-12.json)
+#   SPEC_JSON_SCHEMA_URL - JSON Schema meta-schema file path or URL. A relative
+#                          path is resolved from the project root. Default: the
+#                          Draft 2020-12 meta-schema bundled with the build
+#                          tooling, at src/schemas/json-schema-draft-2020-12.json
+#                          relative to the build tooling root.
 
 set -euo pipefail
 
