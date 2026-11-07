@@ -61,3 +61,41 @@ spec:
 EOF
   [ "$(kaptainpm_bool "${WORK}/KaptainPM.yaml" spec.main.docker.targetIncludeNamespace true)" = "true" ]
 }
+
+@test "uppercase YAML booleans are read as lowercase true/false" {
+  write_pm << 'EOF2'
+spec:
+  main:
+    docker:
+      targetIncludeNamespace: FALSE
+      targetAllowNoRegistry: True
+EOF2
+  [ "$(kaptainpm_bool "${WORK}/KaptainPM.yaml" spec.main.docker.targetIncludeNamespace true)" = "false" ]
+  [ "$(kaptainpm_bool "${WORK}/KaptainPM.yaml" spec.main.docker.targetAllowNoRegistry false)" = "true" ]
+}
+
+@test "a quoted 'True' is a string, not a boolean, and yields the default" {
+  write_pm << 'EOF2'
+spec:
+  main:
+    docker:
+      targetIncludeNamespace: 'True'
+EOF2
+  [ "$(kaptainpm_bool "${WORK}/KaptainPM.yaml" spec.main.docker.targetIncludeNamespace false)" = "false" ]
+}
+
+@test "kaptainpm_value lowercases booleans and leaves other values as written" {
+  write_pm << 'EOF2'
+spec:
+  main:
+    flag: False
+    text: 'True'
+    port: 8080
+    name: my-app
+EOF2
+  [ "$(kaptainpm_value "${WORK}/KaptainPM.yaml" spec.main.flag)" = "false" ]
+  [ "$(kaptainpm_value "${WORK}/KaptainPM.yaml" spec.main.text)" = "True" ]
+  [ "$(kaptainpm_value "${WORK}/KaptainPM.yaml" spec.main.port)" = "8080" ]
+  [ "$(kaptainpm_value "${WORK}/KaptainPM.yaml" spec.main.name)" = "my-app" ]
+  [ "$(kaptainpm_value "${WORK}/KaptainPM.yaml" spec.main.absent)" = "null" ]
+}

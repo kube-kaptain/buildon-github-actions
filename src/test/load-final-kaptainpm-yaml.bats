@@ -206,6 +206,23 @@ EOF
   assert_github_output "GITHUB_RELEASE_ENABLED" "false"
 }
 
+# Booleans read through the generic field mappings are lowercased, so an
+# uppercase YAML boolean reaches the generators as true/false.
+@test "uppercase YAML boolean through the field mappings is exported lowercase" {
+  cat > "${TEST_DIR}/kaptainpm/final/KaptainPM.yaml" << 'EOF'
+apiVersion: kaptain.org/1.10
+kind: test-build
+spec:
+  main:
+    generators:
+      service:
+        enabled: TRUE
+EOF
+  run_script
+  [ "${status}" -eq 0 ]
+  assert_github_output "KUBERNETES_SERVICE_GENERATION_ENABLED" "true"
+}
+
 @test "CHANGE_SOURCE_NOTE_ENABLED defaults to true when absent" {
   write_pm
   run_script
