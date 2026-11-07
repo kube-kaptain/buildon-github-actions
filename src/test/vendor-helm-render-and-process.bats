@@ -1403,3 +1403,74 @@ annotated() { echo "${REPO_DIR}/kaptain-out/helm-processing/G-annotated/$1"; }
   [[ "$status" -ne 0 ]] || return 1
   [[ "$output" == *"carries neither 'app' nor 'app.kubernetes.io/name'"* ]] || return 1
 }
+
+# =============================================================================
+# Stage 9: Image retags - sourceImageUri parsing
+# =============================================================================
+
+# Runs the script with one retag of the given sourceImageUri.
+# Usage: run_retag <source-image-uri>
+run_retag() {
+  setup_mock_docker
+  export IMAGE_BUILD_COMMAND="docker"
+  export VENDOR_HELM_RENDERED_OCI_CHART="oci://example.com/test-chart"
+  export VENDOR_HELM_RENDERED_MOVE_FILES="${MOVE_FILES_JSON}"
+  export VENDOR_HELM_RENDERED_IMAGE_RETAGS="[{\"sourceImageUri\":\"${1}\",\"tagSuffix\":\"gateway\"}]"
+  export DOCKER_TAG="1.0.0"
+  export DOCKER_IMAGE_NAME="test-chart"
+  export DOCKER_TARGET_REGISTRY="ghcr.io"
+  export DOCKER_PUSH_IMAGE_LIST_FILE="${TEST_DIR}/image-uris"
+  export BUILD_MODE="local"
+  run_script
+}
+
+@test "retag: a full registry URI is pulled as given" {
+  run_retag "docker.io/envoyproxy/gateway:v1.7.5"
+  [[ "$status" -eq 0 ]] || return 1
+  assert_docker_called "pull --platform linux/amd64 docker.io/envoyproxy/gateway:v1.7.5"
+}
+
+@test "retag: a tag and digest URI is pulled with both" {
+  local digest="sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+  run_retag "registry.k8s.io/pause:3.10@${digest}"
+  [[ "$status" -eq 0 ]] || return 1
+  assert_docker_called "pull --platform linux/amd64 registry.k8s.io/pause:3.10@${digest}"
+}
+
+@test "retag: a bare image name gets docker.io and library" {
+  run_retag "nginx:1.25"
+  [[ "$status" -eq 0 ]] || return 1
+  assert_docker_called "pull --platform linux/amd64 docker.io/library/nginx:1.25"
+}
+
+@test "retag: a first segment without a dot or port is not a registry" {
+  run_retag "envoyproxy/envoy:v1"
+  [[ "$status" -eq 0 ]] || return 1
+  assert_docker_called "pull --platform linux/amd64 docker.io/envoyproxy/envoy:v1"
+}
+
+@test "retag: a registry port is not mistaken for the tag" {
+  run_retag "registry.example.com:5000/team/app:1.2"
+  [[ "$status" -eq 0 ]] || return 1
+  assert_docker_called "pull --platform linux/amd64 registry.example.com:5000/team/app:1.2"
+}
+
+@test "retag: localhost is a registry" {
+  run_retag "localhost:5000/app:1.2"
+  [[ "$status" -eq 0 ]] || return 1
+  assert_docker_called "pull --platform linux/amd64 localhost:5000/app:1.2"
+}
+
+@test "retag: fails when the URI has no tag, even with a registry port" {
+  run_retag "registry.example.com:5000/team/app"
+  [[ "$status" -eq 1 ]] || return 1
+  [[ "$output" == *"sourceImageUri has no tag"* ]] || return 1
+  assert_docker_not_called "pull"
+}
+
+@test "retag: fails when the URI has only a digest" {
+  run_retag "registry.k8s.io/pause@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+  [[ "$status" -eq 1 ]] || return 1
+  [[ "$output" == *"sourceImageUri has no tag"* ]] || return 1
+  assert_docker_not_called "pull"
+}
