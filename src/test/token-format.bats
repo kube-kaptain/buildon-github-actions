@@ -755,6 +755,63 @@ setup() {
   echo '${Vendor/2FaSecret}' | grep -Eq "^$pattern$"
 }
 
+@test "unresolved_token_regex: separator styles reject a leading separator, as their validators do" {
+  local style name
+  for pair in "UPPER_SNAKE _PRIVATE" "lower_snake _private" "lower-kebab -name" \
+      "UPPER-KEBAB -NAME" "lower.dot .name" "UPPER.DOT .NAME"; do
+    style="${pair%% *}"
+    name="${pair#* }"
+    pattern=$(unresolved_token_regex shell "${style}")
+    [[ "$(echo "\${${name}}" | grep -Ec "${pattern}")" -eq 0 ]] || return 1
+  done
+}
+
+@test "unresolved_token_regex: separator styles reject a trailing separator, as their validators do" {
+  local style name
+  for pair in "UPPER_SNAKE NAME_" "lower_snake name_" "lower-kebab name-" \
+      "UPPER-KEBAB NAME-" "lower.dot name." "UPPER.DOT NAME."; do
+    style="${pair%% *}"
+    name="${pair#* }"
+    pattern=$(unresolved_token_regex shell "${style}")
+    [[ "$(echo "\${${name}}" | grep -Ec "${pattern}")" -eq 0 ]] || return 1
+  done
+}
+
+@test "unresolved_token_regex: shell + UPPER-KEBAB does not flag a bash default-value expansion" {
+  pattern=$(unresolved_token_regex shell UPPER-KEBAB)
+  ! echo 'echo "${FOO-}"' | grep -Eq "${pattern}"
+}
+
+@test "unresolved_token_regex: separator styles match single-character and nested segments" {
+  local style name
+  for pair in "UPPER_SNAKE A/B_C" "lower_snake a/b_c" "lower-kebab a/b-c" \
+      "UPPER-KEBAB A/B-C" "lower.dot a/b.c" "UPPER.DOT A/B.C"; do
+    style="${pair%% *}"
+    name="${pair#* }"
+    pattern=$(unresolved_token_regex shell "${style}")
+    echo "\${${name}}" | grep -Eq "^${pattern}$" || return 1
+  done
+}
+
+@test "unresolved_token_regex: separator styles reject a separator at a nested segment edge" {
+  local style name
+  for pair in "UPPER_SNAKE A/_B" "UPPER_SNAKE A_/B" "lower-kebab a/-b" "lower-kebab a-/b"; do
+    style="${pair%% *}"
+    name="${pair#* }"
+    pattern=$(unresolved_token_regex shell "${style}")
+    [[ "$(echo "\${${name}}" | grep -Ec "${pattern}")" -eq 0 ]] || return 1
+  done
+}
+
+@test "unresolved_token_regex: camelCase matches what convert_token_name produces" {
+  pattern=$(unresolved_token_regex shell camelCase)
+  local name
+  for canonical in 2FA_SECRET VENDOR/12 A/2B_C VERSION_12; do
+    name=$(convert_token_name camelCase "${canonical}")
+    echo "\${${name}}" | grep -Eq "^${pattern}$" || return 1
+  done
+}
+
 # --- mustache delimiter style ---
 
 @test "unresolved_token_regex: mustache + PascalCase matches token" {
