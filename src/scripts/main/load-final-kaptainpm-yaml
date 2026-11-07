@@ -163,7 +163,7 @@ MAPPINGS=(
   "spec.main.quality.commits.blockDuplicateMessages:QC_BLOCK_DUPLICATE_COMMIT_MESSAGES"
 
   # Docker
-  "spec.main.docker.runtime:IMAGE_BUILD_COMMAND"
+  # Note: runtime handled separately below (local builds only)
   "spec.main.docker.platform:DOCKER_PLATFORM"
   # Note: logins exported separately as JSON below (multi-line YAML won't fit in output_var)
   # Note: targetRegistry/targetNamespace resolved separately below (platform
@@ -499,6 +499,27 @@ for mapping in "${MAPPINGS[@]}"; do
   found_count=$((found_count + 1))
 done
 log ""
+
+# --- docker.runtime: local builds only. Locally it replaces validate-tooling's
+# pick for later steps, so it must be installed. A build server always uses
+# podman (validate-tooling sets it up with a docker symlink), so the field is
+# ignored there rather than failing a build that works locally. ---
+docker_runtime=$(kaptainpm_value "${PM_FILE}" spec.main.docker.runtime)
+if [[ -n "${docker_runtime}" && "${docker_runtime}" != "null" ]]; then
+  if [[ "${BUILD_MODE:-}" == "build_server" ]]; then
+    log "Field .spec.main.docker.runtime = \"${docker_runtime}\" ignored: a build server always uses podman"
+  elif [[ "${docker_runtime}" != "podman" && "${docker_runtime}" != "docker" ]]; then
+    log_error "spec.main.docker.runtime must be podman or docker, got: ${docker_runtime}"
+    exit 1
+  elif ! command -v "${docker_runtime}" > /dev/null 2>&1; then
+    log_error "spec.main.docker.runtime is ${docker_runtime} but ${docker_runtime} is not installed - install it or remove the setting"
+    exit 1
+  else
+    output_var "IMAGE_BUILD_COMMAND" "${docker_runtime}" > /dev/null
+    log "Field .spec.main.docker.runtime = \"${docker_runtime}\" exported as IMAGE_BUILD_COMMAND"
+    found_count=$((found_count + 1))
+  fi
+fi
 
 # --- Builtin token mode: only the kinds that package manifests for another
 # build to consume may defer their built-ins. The schema enforces this too;

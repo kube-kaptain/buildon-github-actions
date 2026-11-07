@@ -983,3 +983,97 @@ EOF2
   [[ "$status" -eq 0 ]] || return 1
   [[ "$output" != *"is ambiguous"* ]] || return 1
 }
+
+# =============================================================================
+# docker.runtime: applied on local builds only, and only if installed
+# =============================================================================
+
+# Export a PATH with every tool except podman and docker, then mocks of only
+# the named runtimes, so a test decides what is installed whatever the host has.
+# Usage: path_with_runtimes [runtime...]
+path_with_runtimes() {
+  local farm="${TEST_DIR}/path-farm" mocks="${TEST_DIR}/path-mocks" dirs i runtime
+  mkdir -p "${farm}" "${mocks}"
+  IFS=: read -ra dirs <<< "${PATH}"
+  # Later dirs first, so earlier ones win as they do in a PATH lookup
+  for ((i = ${#dirs[@]} - 1; i >= 0; i--)); do
+    [[ -d "${dirs[i]}" ]] && ln -sf "${dirs[i]}"/* "${farm}/" 2> /dev/null
+  done
+  rm -f "${farm}/podman" "${farm}/docker"
+  for runtime in "$@"; do
+    printf '#!/usr/bin/env bash\nexit 0\n' > "${mocks}/${runtime}"
+    chmod +x "${mocks}/${runtime}"
+  done
+  export PATH="${mocks}:${farm}"
+}
+
+write_pm_runtime() {
+  cat > "${TEST_DIR}/kaptainpm/final/KaptainPM.yaml" << EOF2
+apiVersion: kaptain.org/1.10
+kind: test-build
+spec:
+  main:
+    docker:
+      runtime: ${1}
+EOF2
+}
+
+@test "runtime: locally an installed runtime becomes IMAGE_BUILD_COMMAND" {
+  export BUILD_MODE="local"
+  write_pm_runtime docker
+  path_with_runtimes podman docker
+
+  run_script
+  [[ "$status" -eq 0 ]] || return 1
+  assert_github_output "IMAGE_BUILD_COMMAND" "docker"
+}
+
+@test "runtime: locally podman is honoured too" {
+  export BUILD_MODE="local"
+  write_pm_runtime podman
+  path_with_runtimes podman
+
+  run_script
+  [[ "$status" -eq 0 ]] || return 1
+  assert_github_output "IMAGE_BUILD_COMMAND" "podman"
+}
+
+@test "runtime: locally a runtime that is not installed fails" {
+  export BUILD_MODE="local"
+  write_pm_runtime docker
+  path_with_runtimes podman
+
+  run_script
+  [[ "$status" -eq 1 ]] || return 1
+  [[ "$output" == *"spec.main.docker.runtime is docker but docker is not installed"* ]] || return 1
+  [[ -z "$(github_output_value IMAGE_BUILD_COMMAND)" ]] || return 1
+}
+
+@test "runtime: locally a value other than podman or docker fails" {
+  export BUILD_MODE="local"
+  write_pm_runtime rm
+
+  run_script
+  [[ "$status" -eq 1 ]] || return 1
+  [[ "$output" == *"spec.main.docker.runtime must be podman or docker, got: rm"* ]] || return 1
+}
+
+@test "runtime: on a build server it is ignored and logged, even if not installed" {
+  export BUILD_MODE="build_server"
+  write_pm_runtime docker
+  path_with_runtimes podman
+
+  run_script
+  [[ "$status" -eq 0 ]] || return 1
+  [[ "$output" == *'Field .spec.main.docker.runtime = "docker" ignored: a build server always uses podman'* ]] || return 1
+  [[ -z "$(github_output_value IMAGE_BUILD_COMMAND)" ]] || return 1
+}
+
+@test "runtime: unset leaves IMAGE_BUILD_COMMAND to validate-tooling" {
+  export BUILD_MODE="local"
+  write_pm
+
+  run_script
+  [[ "$status" -eq 0 ]] || return 1
+  [[ -z "$(github_output_value IMAGE_BUILD_COMMAND)" ]] || return 1
+}
