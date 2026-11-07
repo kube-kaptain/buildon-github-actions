@@ -89,3 +89,92 @@ teardown() {
   manifest=$(cat "$OUTPUT_SUB_PATH/manifests/combined/deployment.yaml")
   [[ "$manifest" == *"replicas: 3"* ]] || return 1
 }
+
+# =============================================================================
+# Workload-level envSubPath, labels and annotations as fallbacks: the per-type
+# value wins, else the workload-level value, else the default
+# =============================================================================
+
+WORKLOAD_TYPES="deployment statefulset daemonset cronjob job"
+
+# Fresh project dir for one workload type
+# Usage: dir=$(project_dir <type>)
+project_dir() {
+  local dir
+  dir=$(create_test_dir "gen-workload-${1}")
+  mkdir -p "${dir}/src/kubernetes"
+  echo "${dir}"
+}
+
+# Generate one workload type in a project dir, print its manifest
+# Usage: generate_type <type> [<dir>]
+generate_type() {
+  local type="${1}" dir="${2:-}"
+  [[ -n "${dir}" ]] || dir=$(project_dir "${type}")
+  cd "${dir}"
+  export OUTPUT_SUB_PATH="${dir}/kaptain-out"
+  KUBERNETES_WORKLOAD_TYPE="${type}" "$GENERATORS_DIR/generate-kubernetes-workload" > "${dir}/generator.log" 2>&1 \
+    || { cat "${dir}/generator.log"; return 1; }
+  cat "${OUTPUT_SUB_PATH}"/manifests/combined/*.yaml
+}
+
+@test "fallback: workload-level labels and annotations apply to every type when unset per type" {
+  export KUBERNETES_WORKLOAD_ADDITIONAL_LABELS="tier=shared"
+  export KUBERNETES_WORKLOAD_ADDITIONAL_ANNOTATIONS="owner=platform"
+  local type manifest
+  for type in ${WORKLOAD_TYPES}; do
+    manifest=$(generate_type "${type}") || return 1
+    [[ "${manifest}" == *'tier: "shared"'* ]] || { echo "${type}: no workload label"; return 1; }
+    [[ "${manifest}" == *'owner: "platform"'* ]] || { echo "${type}: no workload annotation"; return 1; }
+  done
+}
+
+@test "fallback: per-type labels and annotations win over workload-level ones" {
+  export KUBERNETES_WORKLOAD_ADDITIONAL_LABELS="tier=shared"
+  export KUBERNETES_WORKLOAD_ADDITIONAL_ANNOTATIONS="owner=platform"
+  local type upper manifest
+  for type in ${WORKLOAD_TYPES}; do
+    upper=$(printf '%s' "${type}" | tr '[:lower:]' '[:upper:]')
+    export "KUBERNETES_${upper}_ADDITIONAL_LABELS=tier=${type}"
+    export "KUBERNETES_${upper}_ADDITIONAL_ANNOTATIONS=owner=${type}"
+    manifest=$(generate_type "${type}") || return 1
+    [[ "${manifest}" == *"tier: \"${type}\""* ]] || { echo "${type}: per-type label lost"; return 1; }
+    [[ "${manifest}" != *'tier: "shared"'* ]] || { echo "${type}: workload label leaked"; return 1; }
+    [[ "${manifest}" == *"owner: \"${type}\""* ]] || { echo "${type}: per-type annotation lost"; return 1; }
+    [[ "${manifest}" != *'owner: "platform"'* ]] || { echo "${type}: workload annotation leaked"; return 1; }
+  done
+}
+
+@test "fallback: workload-level envSubPath is read by every type when unset per type" {
+  export KUBERNETES_WORKLOAD_ENV_SUB_PATH="src/shared-env"
+  local type manifest dir
+  for type in ${WORKLOAD_TYPES}; do
+    dir=$(project_dir "${type}")
+    mkdir -p "${dir}/src/shared-env"
+    printf 'from-shared' > "${dir}/src/shared-env/SHARED_SETTING"
+    manifest=$(generate_type "${type}" "${dir}") || return 1
+    [[ "${manifest}" == *"- name: SHARED_SETTING"* ]] || { echo "${type}: workload env not read"; return 1; }
+  done
+}
+
+@test "fallback: per-type envSubPath wins over the workload-level one" {
+  export KUBERNETES_WORKLOAD_ENV_SUB_PATH="src/shared-env"
+  export KUBERNETES_DEPLOYMENT_ENV_SUB_PATH="src/own-env"
+  local dir manifest
+  dir=$(project_dir deployment)
+  mkdir -p "${dir}/src/shared-env" "${dir}/src/own-env"
+  printf 'from-shared' > "${dir}/src/shared-env/SHARED_SETTING"
+  printf 'from-own' > "${dir}/src/own-env/OWN_SETTING"
+  manifest=$(generate_type deployment "${dir}") || return 1
+  [[ "${manifest}" == *"- name: OWN_SETTING"* ]] || return 1
+  [[ "${manifest}" != *"SHARED_SETTING"* ]] || return 1
+}
+
+@test "fallback: with neither set each type keeps its own default env path" {
+  local dir manifest
+  dir=$(project_dir statefulset)
+  mkdir -p "${dir}/src/statefulset-env"
+  printf 'x' > "${dir}/src/statefulset-env/DEFAULT_SETTING"
+  manifest=$(generate_type statefulset "${dir}") || return 1
+  [[ "${manifest}" == *"- name: DEFAULT_SETTING"* ]] || return 1
+}

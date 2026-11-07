@@ -22,8 +22,9 @@
 # Apply defaults to long-form variables (collision-safe)
 # =============================================================================
 
-# Workload naming but unique per type
-KUBERNETES_DAEMONSET_ENV_SUB_PATH="${KUBERNETES_DAEMONSET_ENV_SUB_PATH:-src/daemonset-env}"
+# Workload naming but unique per type, else the workload-level
+# value, else the default
+KUBERNETES_DAEMONSET_ENV_SUB_PATH="${KUBERNETES_DAEMONSET_ENV_SUB_PATH:-${KUBERNETES_WORKLOAD_ENV_SUB_PATH:-src/daemonset-env}}"
 
 # DaemonSet unique settings
 # Update strategy: RollingUpdate (default) or OnDelete
@@ -51,9 +52,9 @@ KUBERNETES_DAEMONSET_TOLERATIONS="${KUBERNETES_DAEMONSET_TOLERATIONS:-}"
 # Node selector labels (comma-separated key=value)
 KUBERNETES_DAEMONSET_NODE_SELECTOR="${KUBERNETES_DAEMONSET_NODE_SELECTOR:-}"
 
-# Additional labels/annotations
-KUBERNETES_DAEMONSET_ADDITIONAL_LABELS="${KUBERNETES_DAEMONSET_ADDITIONAL_LABELS:-}"
-KUBERNETES_DAEMONSET_ADDITIONAL_ANNOTATIONS="${KUBERNETES_DAEMONSET_ADDITIONAL_ANNOTATIONS:-}"
+# Additional labels/annotations, else the workload-level ones
+KUBERNETES_DAEMONSET_ADDITIONAL_LABELS="${KUBERNETES_DAEMONSET_ADDITIONAL_LABELS:-${KUBERNETES_WORKLOAD_ADDITIONAL_LABELS:-}}"
+KUBERNETES_DAEMONSET_ADDITIONAL_ANNOTATIONS="${KUBERNETES_DAEMONSET_ADDITIONAL_ANNOTATIONS:-${KUBERNETES_WORKLOAD_ADDITIONAL_ANNOTATIONS:-}}"
 
 # =============================================================================
 # Convenience short names (for single-purpose generator scripts only)
