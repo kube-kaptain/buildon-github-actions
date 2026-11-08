@@ -14,7 +14,7 @@
 # Apply defaults to long-form variables (collision-safe)
 # =============================================================================
 
-DOCKER_SOURCE_REGISTRY="${DOCKER_SOURCE_REGISTRY:-}"
+DOCKER_SOURCE_REGISTRY="${DOCKER_SOURCE_REGISTRY:-docker.io}"
 DOCKER_SOURCE_NAMESPACE="${DOCKER_SOURCE_NAMESPACE:-}"
 DOCKER_SOURCE_IMAGE_NAME="${DOCKER_SOURCE_IMAGE_NAME:-}"
 DOCKER_SOURCE_TAG="${DOCKER_SOURCE_TAG:-}"
@@ -35,10 +35,6 @@ SOURCE_TAG="${DOCKER_SOURCE_TAG}"
 # SKIP_RETAG_SOURCE_VALIDATION=true before sourcing this file.
 
 if [[ "${SKIP_RETAG_SOURCE_VALIDATION:-}" != "true" ]]; then
-  if [[ -z "${DOCKER_SOURCE_REGISTRY}" ]]; then
-    log_error "DOCKER_SOURCE_REGISTRY is required"
-    exit 1
-  fi
   if [[ -z "${DOCKER_SOURCE_IMAGE_NAME}" ]]; then
     log_error "DOCKER_SOURCE_IMAGE_NAME is required"
     exit 1

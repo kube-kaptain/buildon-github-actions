@@ -78,8 +78,8 @@ inputs:
     default: 'src/docker-linux-arm64'
   # Docker source image configuration
   docker-source-registry:
-    description: 'Upstream registry (e.g., docker.io)'
-    required: true
+    description: 'Upstream registry (default: docker.io)'
+    required: false
   docker-source-namespace:
     description: 'Path segment between registry and image name (e.g., library)'
     required: false

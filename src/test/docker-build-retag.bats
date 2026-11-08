@@ -181,18 +181,14 @@ set_required_env() {
   assert_docker_not_called "push"
 }
 
-@test "fails when DOCKER_SOURCE_REGISTRY missing" {
-  export DOCKER_SOURCE_NAMESPACE="library"
-  export DOCKER_SOURCE_IMAGE_NAME="alpine"
-  export DOCKER_SOURCE_TAG="3.21"
-  export DOCKER_TARGET_REGISTRY="ghcr.io"
-  export DOCKER_TARGET_NAMESPACE="test"
-  export DOCKER_IMAGE_NAME="my-repo"
-  export DOCKER_TAG="1.0.0"
+@test "defaults DOCKER_SOURCE_REGISTRY to docker.io" {
+  set_required_env
+  unset DOCKER_SOURCE_REGISTRY
 
   run "$SCRIPTS_DIR/docker-build-retag"
-  [ "$status" -ne 0 ]
-  assert_output_contains "DOCKER_SOURCE_REGISTRY"
+  [[ "$status" -eq 0 ]] || return 1
+  assert_docker_called "pull --platform linux/amd64 docker.io/library/alpine:3.21"
+  assert_var_equals "DOCKER_SOURCE_IMAGE_FULL_URI" "docker.io/library/alpine:3.21"
 }
 
 @test "fails when DOCKER_IMAGE_NAME missing" {
