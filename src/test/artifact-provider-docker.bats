@@ -43,6 +43,7 @@ MOCK
 url=""
 headers_dest=""
 prev=""
+follow="false"
 for arg in "$@"; do
   if [[ "${prev}" == "-D" ]]; then
     headers_dest="${arg}"
@@ -52,6 +53,7 @@ for arg in "$@"; do
   prev=""
   case "${arg}" in
     -D)  prev="-D" ;;
+    -*L*) follow="true" ;;
     -*)  ;;
     *)   url="${arg}" ;;
   esac
@@ -100,6 +102,15 @@ if [[ "${url}" == *"/token?"* ]]; then
   exit 0
 fi
 if [[ "${url}" == */tags/list* ]]; then
+  # A registry that hands tags/list to a backend, as registry.k8s.io does:
+  # only a client that follows the redirect gets the tags.
+  if [[ "${MOCK_TAGS_REDIRECT:-false}" == "true" && "${follow}" != "true" ]]; then
+    emit_header "HTTP/1.1 307 Temporary Redirect"
+    emit_header "location: https://backend.example/v2/tags/list"
+    emit_header ''
+    printf 'HTTP_STATUS:307'
+    exit 0
+  fi
   # Pagination: if ?last=<cursor> is present, return page 2; otherwise page 1.
   # When MOCK_REMOTE_TAGS_NEXT_LAST is set on page 1, emit a Link rel="next"
   # header pointing at the same endpoint with ?last=<cursor>.
@@ -629,6 +640,14 @@ JSON
   [[ "$status" -eq 0 ]] || return 1
   assert_output_contains "Bearer token obtained (bearer-anonymous)"
   [[ "$(cat "${OUTPUT_FILE}")" == "ghcr.io/kube-kaptain/quality/quality-strict:1.8" ]] || return 1
+}
+
+@test "range: tags/list redirected to a backend is followed" {
+  export MOCK_TAGS_REDIRECT="true"
+  export MOCK_REMOTE_TAGS_JSON='{"tags":["1.0","1.4"]}'
+  run "$PROVIDER" "quality-strict:[1.0,2.0)" "${OUTPUT_FILE}"
+  [[ "$status" -eq 0 ]] || return 1
+  [[ "$(cat "${OUTPUT_FILE}")" == "ghcr.io/kube-kaptain/quality/quality-strict:1.4" ]] || return 1
 }
 
 @test "auth: Basic challenge uses Basic header from stored creds" {

@@ -268,6 +268,10 @@ else
       log_warning "Unrecognised auth challenge from ${registry}: ${www_auth}"
     fi
 
+    # Redirects are followed: some registries hand tags/list to a backend
+    # (registry.k8s.io sends it to *-docker.pkg.dev). curl does not carry the
+    # Authorization header to the other host, and those backends do not need it.
+    #
     # Query tags/list, paginating via Link rel="next". Some registries
     # (ghcr.io, docker.io) cap each page at ~100 entries returned in
     # lexicographic order - so without following pagination we silently
@@ -284,9 +288,9 @@ else
       [[ "${page_num}" -gt 1 ]] && log "Fetching tags page ${page_num}: ${next_url}"
       : > "${headers_file}"
       if [[ -n "${auth_header}" ]]; then
-        tags_response=$(curl -sS -H "${auth_header}" -D "${headers_file}" -w 'HTTP_STATUS:%{http_code}' "${next_url}" 2>/dev/null || echo 'HTTP_STATUS:000')
+        tags_response=$(curl -sSL -H "${auth_header}" -D "${headers_file}" -w 'HTTP_STATUS:%{http_code}' "${next_url}" 2>/dev/null || echo 'HTTP_STATUS:000')
       else
-        tags_response=$(curl -sS -D "${headers_file}" -w 'HTTP_STATUS:%{http_code}' "${next_url}" 2>/dev/null || echo 'HTTP_STATUS:000')
+        tags_response=$(curl -sSL -D "${headers_file}" -w 'HTTP_STATUS:%{http_code}' "${next_url}" 2>/dev/null || echo 'HTTP_STATUS:000')
       fi
       http_code="${tags_response##*HTTP_STATUS:}"
       tags_body="${tags_response%HTTP_STATUS:*}"
