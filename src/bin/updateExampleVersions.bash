@@ -10,6 +10,9 @@
 # and updates all @x.y.z references in examples/ to match. Using every tag in
 # the repo instead let tags on unmerged commits push examples ahead of the
 # version the build actually produces.
+#
+# The version calculation's working files are kept in the output dir
+# (OUTPUT_SUB_PATH, default kaptain-out) under update-example-versions/.
 
 set -euo pipefail
 
@@ -17,9 +20,12 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 EXAMPLES_DIR="${PROJECT_ROOT}/examples"
 
+# shellcheck source=src/scripts/defaults/output-sub-path.bash
+source "${PROJECT_ROOT}/src/scripts/defaults/output-sub-path.bash"
+
 git -C "${PROJECT_ROOT}" fetch --tags
 
-version_out=$(mktemp -d)
+version_out="${PROJECT_ROOT}/${OUTPUT_SUB_PATH}/update-example-versions"
 mkdir -p "${version_out}/versions-and-naming/tag-version-calculation-provider"
 (
   cd "${PROJECT_ROOT}"
@@ -27,7 +33,6 @@ mkdir -p "${version_out}/versions-and-naming/tag-version-calculation-provider"
     "${PROJECT_ROOT}/src/scripts/plugins/tag-version-calculation-providers/tag-version-calculation-git-auto-closest-highest"
 )
 expected=$(cat "${version_out}/versions-and-naming/tag-version-calculation-provider/VERSION")
-rm -rf "${version_out:?}"
 
 echo "Version this branch builds: ${expected}"
 echo "Updating examples to: @${expected}"
