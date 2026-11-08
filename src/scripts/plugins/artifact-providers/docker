@@ -226,8 +226,10 @@ else
     elif [[ "${www_auth}" == *[Bb]earer* ]]; then
       realm=$(echo "${www_auth}" | sed -n 's/.*realm="\([^"]*\)".*/\1/p')
       service=$(echo "${www_auth}" | sed -n 's/.*service="\([^"]*\)".*/\1/p')
-      scope=$(echo "${www_auth}" | sed -n 's/.*scope="\([^"]*\)".*/\1/p')
-      [[ -z "${scope}" ]] && scope="repository:${image_path}:pull"
+      # Always this image's own pull scope: the /v2/ challenge is not about
+      # any repository, and ghcr.io puts a placeholder scope in it
+      # (repository:user/image:pull) that its token endpoint then refuses.
+      scope="repository:${image_path}:pull"
 
       if [[ -z "${realm}" ]]; then
         log_warning "Bearer challenge from ${registry} had no realm; cannot exchange for token"

@@ -76,6 +76,12 @@ if [[ "${url}" == */v2/ ]]; then
         emit_header 'www-authenticate: Basic realm="mock-registry"'
         emit_header ''
         ;;
+      bearer-placeholder-scope)
+        # As ghcr.io does: a scope in the challenge that names no real repo
+        emit_header 'HTTP/1.1 401 Unauthorized'
+        emit_header 'www-authenticate: Bearer realm="https://mock-registry.example/token",service="mock-registry",scope="repository:user/image:pull"'
+        emit_header ''
+        ;;
       none)
         emit_header 'HTTP/1.1 200 OK'
         emit_header ''
@@ -85,6 +91,11 @@ if [[ "${url}" == */v2/ ]]; then
   exit 0
 fi
 if [[ "${url}" == *"/token?"* ]]; then
+  # The placeholder scope is refused, as ghcr.io refuses it
+  if [[ "${url}" == *"scope=repository:user/image:pull"* ]]; then
+    echo '{"errors":[{"code":"DENIED","message":"requested access to the resource is denied"}]}'
+    exit 0
+  fi
   echo '{"token":"mock-anon-token"}'
   exit 0
 fi
@@ -609,6 +620,15 @@ JSON
   [[ "$status" -eq 0 ]] || return 1
   assert_output_contains "Requesting anonymous Bearer token"
   assert_output_contains "bearer-anonymous"
+}
+
+@test "auth: a placeholder scope in the challenge is ignored for this image's own" {
+  export MOCK_AUTH_CHALLENGE="bearer-placeholder-scope"
+  export MOCK_REMOTE_TAGS_JSON='{"tags":["1.0","1.8"]}'
+  run "$PROVIDER" "quality-strict:[1.0,2.0)" "${OUTPUT_FILE}"
+  [[ "$status" -eq 0 ]] || return 1
+  assert_output_contains "Bearer token obtained (bearer-anonymous)"
+  [[ "$(cat "${OUTPUT_FILE}")" == "ghcr.io/kube-kaptain/quality/quality-strict:1.8" ]] || return 1
 }
 
 @test "auth: Basic challenge uses Basic header from stored creds" {
