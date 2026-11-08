@@ -885,7 +885,7 @@ EOF
   [ "$(cat "$(token_file build/BuildMode)")" = "build_server" ]
 }
 
-@test "replay follows OUTPUT_SUB_PATH from the yaml" {
+@test "replay finds tokens kaptain-init deferred before a custom outputSubPath was known" {
   cat > "${TEST_DIR}/kaptainpm/final/KaptainPM.yaml" << 'EOF'
 apiVersion: kaptain.org/1.10
 kind: test-build
@@ -893,11 +893,13 @@ spec:
   global:
     outputSubPath: custom-out
 EOF
-  append_scalar BUILD_MODE "build_server" custom-out
+  # kaptain-init runs before the configured dir is known, so it records into
+  # the dir the build started with
+  append_scalar BUILD_MODE "build_server"
 
   run_script
-  [ "${status}" -eq 0 ]
-  [ "$(cat "$(token_file build/BuildMode custom-out)")" = "build_server" ]
+  [[ "${status}" -eq 0 ]] || return 1
+  [[ "$(cat "$(token_file build/BuildMode custom-out)")" == "build_server" ]] || return 1
 }
 
 @test "no pending file is a silent no-op" {
@@ -1076,4 +1078,119 @@ EOF2
   run_script
   [[ "$status" -eq 0 ]] || return 1
   [[ -z "$(github_output_value IMAGE_BUILD_COMMAND)" ]] || return 1
+}
+
+# =============================================================================
+# A configured outputSubPath takes over the build's output dir
+# =============================================================================
+
+write_pm_output_sub_path() {
+  cat > "${TEST_DIR}/kaptainpm/final/KaptainPM.yaml" << EOF2
+apiVersion: kaptain.org/1.10
+kind: test-build
+spec:
+  global:
+    outputSubPath: '${1}'
+EOF2
+}
+
+@test "output dir: earlier steps' output moves into the configured dir" {
+  write_pm_output_sub_path custom-out
+  mkdir -p "${TEST_DIR}/kaptain-out/earlier-step"
+  printf 'x' > "${TEST_DIR}/kaptain-out/earlier-step/file"
+  run_script
+  [[ "${status}" -eq 0 ]] || return 1
+  [[ -f "${TEST_DIR}/custom-out/earlier-step/file" ]] || return 1
+  [[ ! -e "${TEST_DIR}/kaptain-out" ]] || return 1
+  assert_github_output "OUTPUT_SUB_PATH" "custom-out"
+}
+
+@test "output dir: a stale configured dir from an earlier run is replaced" {
+  write_pm_output_sub_path custom-out
+  mkdir -p "${TEST_DIR}/custom-out" "${TEST_DIR}/kaptain-out"
+  printf 'old' > "${TEST_DIR}/custom-out/stale"
+  printf 'new' > "${TEST_DIR}/kaptain-out/fresh"
+  run_script
+  [[ "${status}" -eq 0 ]] || return 1
+  [[ ! -e "${TEST_DIR}/custom-out/stale" ]] || return 1
+  [[ -f "${TEST_DIR}/custom-out/fresh" ]] || return 1
+}
+
+@test "output dir: a nested configured path is created under its parent" {
+  write_pm_output_sub_path build/out
+  mkdir -p "${TEST_DIR}/kaptain-out"
+  printf 'x' > "${TEST_DIR}/kaptain-out/file"
+  run_script
+  [[ "${status}" -eq 0 ]] || return 1
+  [[ -f "${TEST_DIR}/build/out/file" ]] || return 1
+}
+
+@test "output dir: with no starting dir the configured one is just created" {
+  write_pm_output_sub_path custom-out
+  run_script
+  [[ "${status}" -eq 0 ]] || return 1
+  [[ -d "${TEST_DIR}/custom-out" ]] || return 1
+}
+
+@test "output dir: the same value as the starting dir touches nothing" {
+  write_pm_output_sub_path kaptain-out
+  mkdir -p "${TEST_DIR}/kaptain-out"
+  printf 'keep' > "${TEST_DIR}/kaptain-out/sentinel"
+  run_script
+  [[ "${status}" -eq 0 ]] || return 1
+  [[ -f "${TEST_DIR}/kaptain-out/sentinel" ]] || return 1
+  [[ "$output" != *"Moving the build's output dir"* ]] || return 1
+}
+
+@test "output dir: the push list path follows the move" {
+  write_pm_output_sub_path custom-out
+  mkdir -p "${TEST_DIR}/kaptain-out/docker-push-all"
+  : > "${TEST_DIR}/kaptain-out/docker-push-all/image-uris"
+  export DOCKER_PUSH_IMAGE_LIST_FILE="kaptain-out/docker-push-all/image-uris"
+  run_script
+  [[ "${status}" -eq 0 ]] || return 1
+  assert_github_output "DOCKER_PUSH_IMAGE_LIST_FILE" "custom-out/docker-push-all/image-uris"
+  [[ -f "${TEST_DIR}/custom-out/docker-push-all/image-uris" ]] || return 1
+}
+
+@test "output dir: unsafe configured paths fail before anything is touched" {
+  local value
+  for value in /tmp/out out/ './out' 'a/../b' '..' '.' 'a//b' '.git/out' kaptainpm src src/out kaptain-out/inner; do
+    write_pm_output_sub_path "${value}"
+    mkdir -p "${TEST_DIR}/kaptain-out"
+    printf 'keep' > "${TEST_DIR}/kaptain-out/sentinel"
+    run_script
+    [[ "${status}" -eq 1 ]] || { echo "accepted: ${value}"; return 1; }
+    [[ "$output" == *"spec.global.outputSubPath"* ]] || { echo "wrong error for: ${value}"; return 1; }
+    [[ -f "${TEST_DIR}/kaptain-out/sentinel" ]] || { echo "touched for: ${value}"; return 1; }
+  done
+}
+
+@test "output dir: a starting dir nested in the configured one fails" {
+  write_pm_output_sub_path out
+  export OUTPUT_SUB_PATH="out/inner"
+  mkdir -p "${TEST_DIR}/out/inner"
+  run_script
+  [[ "${status}" -eq 1 ]] || return 1
+  assert_output_contains "must not be nested in each other"
+  [[ -d "${TEST_DIR}/out/inner" ]] || return 1
+}
+
+@test "output dir: a configured dir with git-tracked files fails" {
+  local repo="${TEST_DIR}/repo"
+  mkdir -p "${repo}/kaptainpm/final" "${repo}/docs"
+  cat > "${repo}/kaptainpm/final/KaptainPM.yaml" << 'EOF2'
+apiVersion: kaptain.org/1.10
+kind: test-build
+spec:
+  global:
+    outputSubPath: docs
+EOF2
+  printf 'mine' > "${repo}/docs/README.md"
+  git -C "${repo}" init -q
+  git -C "${repo}" add docs/README.md
+  run bash -c "cd '${repo}' && GITHUB_OUTPUT='${GITHUB_OUTPUT}' '${SCRIPT}'"
+  [[ "${status}" -eq 1 ]] || return 1
+  assert_output_contains "holds files tracked by git"
+  [[ -f "${repo}/docs/README.md" ]] || return 1
 }

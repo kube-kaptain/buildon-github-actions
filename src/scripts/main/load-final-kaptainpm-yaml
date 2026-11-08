@@ -47,6 +47,8 @@ source "${SCRIPT_DIR}/../defaults/vendor-github-release.bash"
 source "${SCRIPT_DIR}/../defaults/tokens.bash"
 # shellcheck source=src/scripts/lib/kaptainpm-bool.bash
 source "${SCRIPT_DIR}/../lib/kaptainpm-bool.bash"
+# shellcheck source=src/scripts/lib/output-dir-guard.bash
+source "${SCRIPT_DIR}/../lib/output-dir-guard.bash"
 # shellcheck source=src/scripts/lib/builtin-tokens-from-entry.bash
 source "${SCRIPT_DIR}/../lib/builtin-tokens-from-entry.bash"
 
@@ -699,6 +701,41 @@ if [[ -z "${output_sub_path}" || "${output_sub_path}" == "null" ]]; then
 else
   found_count=$((found_count + 1))
 fi
+
+# --- A configured outputSubPath takes over the build's output dir. Every step
+# before this one (and kaptain-init's deferred builtin tokens) wrote to the dir
+# the build started with, so that dir moves into place here, before anything
+# below writes to it, and a stale copy from an earlier local run goes first.
+# That is an rm -rf on a configured path, so it is guarded hard whatever the
+# schema in use allowed. ---
+relocate_output_dir() {
+  local from="${1}" to="${2}"
+  assert_safe_output_dir "spec.global.outputSubPath" "${to}"
+  if [[ "${to}" == "${from}/"* || "${from}" == "${to}/"* ]]; then
+    log_error "spec.global.outputSubPath ${to} and the build's starting output dir ${from} must not be nested in each other"
+    exit 1
+  fi
+
+  log "Moving the build's output dir ${from} to the configured ${to}"
+  rm -rf "${to}"
+  mkdir -p "$(dirname "${to}")"
+  if [[ -d "${from}" ]]; then
+    mv "${from}" "${to}"
+  else
+    mkdir -p "${to}"
+  fi
+
+  # Only a local run gets here with it set: CI reads the post-loader logins
+  # step's value. Re-pointed so the steps before that run find their list.
+  if [[ -n "${DOCKER_PUSH_IMAGE_LIST_FILE:-}" && "${DOCKER_PUSH_IMAGE_LIST_FILE}" == "${from}/"* ]]; then
+    output_var "DOCKER_PUSH_IMAGE_LIST_FILE" "${to}/${DOCKER_PUSH_IMAGE_LIST_FILE#"${from}"/}" > /dev/null
+  fi
+}
+
+if [[ "${output_sub_path}" != "${OUTPUT_SUB_PATH}" ]]; then
+  relocate_output_dir "${OUTPUT_SUB_PATH}" "${output_sub_path}"
+fi
+
 output_var "OUTPUT_SUB_PATH" "${output_sub_path}" > /dev/null
 log "Field .spec.global.outputSubPath = \"${output_sub_path}\" exported as OUTPUT_SUB_PATH"
 
