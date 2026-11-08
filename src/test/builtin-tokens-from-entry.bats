@@ -256,3 +256,29 @@ read_token() {
 
   [[ ! -e "$CONTENTS_DIR/ContentAppFooDigest" ]] || return 1
 }
+
+# =============================================================================
+# Registry ports: the version follows the last path segment's ':'
+# =============================================================================
+
+@test "port: a registry port is part of the slug, not the version spec" {
+  emit_builtin_tokens_for_entry "localhost:5000/team/app-foo:1.2" "1.2" "contents" "1.2-manifests"
+
+  [[ "$(read_token "$CONTENTS_DIR/ContentLocalhost5000TeamAppFooRef")" == "localhost:5000/team/app-foo:1.2" ]] || return 1
+  [[ "$(read_token "$CONTENTS_DIR/ContentLocalhost5000TeamAppFooVersionSpec")" == "1.2" ]] || return 1
+  [[ "$(read_token "$CONTENTS_DIR/ContentLocalhost5000TeamAppFooVersion")" == "1.2" ]] || return 1
+}
+
+@test "port: a range and a digest pin behind a registry port" {
+  emit_builtin_tokens_for_entry "registry.example.com:5000/team/app-foo:[1.2,2)@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef" "1.4" "layers" "1.4" "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+
+  [[ "$(read_token "$LAYERS_DIR/LayerRegistryExampleCom5000TeamAppFooVersionSpec")" == "[1.2,2)" ]] || return 1
+  [[ "$(read_token "$LAYERS_DIR/LayerRegistryExampleCom5000TeamAppFooDigest")" == "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef" ]] || return 1
+}
+
+@test "port: an entry with no version keeps the whole ref as the slug source" {
+  emit_builtin_tokens_for_entry "localhost:5000/team/app-foo" "1.2" "contents" "1.2"
+
+  [[ -f "$CONTENTS_DIR/ContentLocalhost5000TeamAppFooVersionSpec" ]] || return 1
+  [[ ! -s "$CONTENTS_DIR/ContentLocalhost5000TeamAppFooVersionSpec" ]] || return 1
+}

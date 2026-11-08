@@ -46,8 +46,9 @@
 #
 # SLUG derivation from entry-as-written:
 #   1. Strip optional provider prefix "<x>|" (e.g. "docker|app:1.0").
-#   2. Strip trailing version spec: everything from the first ':' onward.
-#   3. Replace '/' with '.'.
+#   2. Strip a trailing digest pin ("@sha256:...") and the version spec:
+#      everything from the first ':' of the last path segment onward.
+#   3. Replace '/' and a registry port's ':' with '.'.
 #   4. Split on '.'.
 #   5. Convert each segment via convert_kebab_name UPPER_SNAKE.
 #   6. Join segments with '_'.
@@ -60,6 +61,9 @@
 #   docker|app-foo:[1.2.3]
 #     -> SLUG=APP_FOO
 #     -> CONTENT_APP_FOO_{REF,VERSION_SPEC,VERSION}
+#
+#   localhost:5000/team/app-foo:1.2
+#     -> SLUG=LOCALHOST_5000_TEAM_APP_FOO, VERSION_SPEC=1.2
 #
 # Requires:
 #   log_error from lib/log.bash (sourced by caller before this file)
@@ -151,24 +155,27 @@ emit_builtin_tokens_for_entry() {
   # Strip optional provider prefix "<x>|" (no-op when '|' is absent).
   local ref="${entry#*|}"
 
-  # Version spec is whatever follows the first ':' (empty if no ':').
-  local version_spec=""
-  if [[ "${ref}" == *:* ]]; then
-    version_spec="${ref#*:}"
-  fi
   # A digest pin is not part of the version spec; DIGEST carries it.
-  version_spec="${version_spec%%@*}"
+  local tag_ref="${ref%%@*}"
 
-  # URI without trailing version spec.
-  local uri_without_version="${ref%%:*}"
+  # The version spec follows the first ':' of the last path segment, so a
+  # registry port (localhost:5000/team/app:1.2) is not mistaken for it.
+  # Empty when the last segment has no ':'.
+  local version_spec="" uri_without_version="${tag_ref}"
+  local last_segment="${tag_ref##*/}"
+  if [[ "${last_segment}" == *:* ]]; then
+    version_spec="${last_segment#*:}"
+    uri_without_version="${tag_ref%":${version_spec}"}"
+  fi
 
   if [[ -z "${uri_without_version}" ]]; then
     log_error "emit_builtin_tokens_for_entry: entry has no path component before version: '${entry}'"
     return 1
   fi
 
-  # Normalise / to . then split on . for slug segments.
+  # Normalise / and a port's : to . then split on . for slug segments.
   local seg_input="${uri_without_version//\//.}"
+  seg_input="${seg_input//:/.}"
   local slug=""
   local segment converted
   local IFS_BACKUP="${IFS}"
