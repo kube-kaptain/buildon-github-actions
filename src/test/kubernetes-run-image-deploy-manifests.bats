@@ -698,3 +698,109 @@ EOF2
   [[ "$status" -eq 0 ]] || return 1
   [[ "$(yq '.data | keys | join(",")' "${MANIFESTS}/configmap.yaml")" == "project-name" ]] || return 1
 }
+
+# =============================================================================
+# Mount paths: the main ConfigMap at /configmap, the main Secret at /secret
+# =============================================================================
+
+# A supplied deploy Deployment mounting the main ConfigMap and Secret
+# Usage: write_supplied_deployment <configmap-mount-path> <secret-mount-path> [init-mount-path]
+write_supplied_deployment() {
+  mkdir -p src/environment/kubernetes
+  {
+    cat << EOF2
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: run-foo
+spec:
+  template:
+    spec:
+EOF2
+    if [[ -n "${3:-}" ]]; then
+      cat << EOF2
+      initContainers:
+        - name: prep
+          volumeMounts:
+            - name: cm
+              mountPath: ${3}
+EOF2
+    fi
+    cat << EOF2
+      containers:
+        - name: deploy
+          volumeMounts:
+            - name: cm
+              mountPath: ${1}
+            - name: sec
+              mountPath: ${2}
+            - name: extra
+              mountPath: /data
+      volumes:
+        - name: cm
+          configMap:
+            name: \${ProjectName}-configmap-checksum
+        - name: sec
+          secret:
+            secretName: \${ProjectName}-secret-checksum
+        - name: extra
+          configMap:
+            name: something-else
+EOF2
+  } > src/environment/kubernetes/deployment.yaml
+}
+
+@test "mounts: generation keeps /configmap and /secret whatever the environment sets" {
+  export KUBERNETES_WORKLOAD_CONFIGMAP_MOUNT_PATH="/etc/app-config"
+  export KUBERNETES_WORKLOAD_SECRET_MOUNT_PATH="/etc/app-secret"
+  run "$SCRIPT"
+  [[ "$status" -eq 0 ]] || return 1
+  [[ "$(yq '.spec.template.spec.containers[0].volumeMounts[] | select(.name == "configmap") | .mountPath' "${MANIFESTS}/deployment.yaml")" == "/configmap" ]] || return 1
+  [[ "$(yq '.spec.template.spec.containers[0].volumeMounts[] | select(.name == "secret") | .mountPath' "${MANIFESTS}/deployment.yaml")" == "/secret" ]] || return 1
+}
+
+@test "mounts: job mode's CronJob keeps them too" {
+  export ENV_DEPLOY_MODE="job"
+  export KUBERNETES_WORKLOAD_CONFIGMAP_MOUNT_PATH="/etc/app-config"
+  export KUBERNETES_WORKLOAD_SECRET_MOUNT_PATH="/etc/app-secret"
+  run "$SCRIPT"
+  [[ "$status" -eq 0 ]] || return 1
+  local cronjob
+  cronjob=$(grep -l "kind: CronJob" "${MANIFESTS}"/*.yaml)
+  [[ "$(yq '.spec.jobTemplate.spec.template.spec.containers[0].volumeMounts[] | select(.name == "configmap") | .mountPath' "${cronjob}")" == "/configmap" ]] || return 1
+  [[ "$(yq '.spec.jobTemplate.spec.template.spec.containers[0].volumeMounts[] | select(.name == "secret") | .mountPath' "${cronjob}")" == "/secret" ]] || return 1
+}
+
+@test "mounts: a supplied workload at the fixed paths passes, unrelated mounts anywhere" {
+  write_supplied_deployment /configmap /secret
+  run "$SCRIPT"
+  [[ "$status" -eq 0 ]] || return 1
+}
+
+@test "mounts: a supplied workload with the main ConfigMap elsewhere fails" {
+  write_supplied_deployment /etc/cfg /secret
+  run "$SCRIPT"
+  [[ "$status" -eq 1 ]] || return 1
+  assert_output_contains "deployment.yaml: Deployment/run-foo: container deploy mounts the main ConfigMap at /etc/cfg, not /configmap"
+}
+
+@test "mounts: a supplied workload with the main Secret elsewhere fails" {
+  write_supplied_deployment /configmap /var/secret
+  run "$SCRIPT"
+  [[ "$status" -eq 1 ]] || return 1
+  assert_output_contains "container deploy mounts the main Secret at /var/secret, not /secret"
+}
+
+@test "mounts: an init container is held to the same paths" {
+  write_supplied_deployment /configmap /secret /etc/cfg
+  run "$SCRIPT"
+  [[ "$status" -eq 1 ]] || return 1
+  assert_output_contains "container prep mounts the main ConfigMap at /etc/cfg, not /configmap"
+}
+
+@test "mounts: with generation off a supplied workload is still checked" {
+  write_supplied_deployment /etc/cfg /secret
+  ENV_GENERATE_IDEAL_ENVIRONMENT_DEPLOY_MANIFESTS=false run "$SCRIPT"
+  [[ "$status" -eq 1 ]] || return 1
+  assert_output_contains "mounts the main ConfigMap at /etc/cfg, not /configmap"
+}

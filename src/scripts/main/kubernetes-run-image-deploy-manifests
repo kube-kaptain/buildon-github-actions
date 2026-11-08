@@ -20,6 +20,11 @@
 #   false  - The user supplies <source base>/kubernetes/ and owns deploy
 #            behaviour; the schema rejects the generation settings.
 #
+# Mount paths: every workload in the set, supplied or generated, must mount the
+# main ConfigMap at /configmap and the main Secret at /secret, where the deploy
+# scripts read them; generation pins those paths, and a supplied workload that
+# mounts either elsewhere fails.
+#
 # Contributed entries: anything earlier in the build (a layer's hook script,
 # say) may write ConfigMap and Secret template entries into
 # <output>/run-image-deploy-manifests/configmap/ and secret.template/. They
@@ -85,6 +90,10 @@ APPLY_MODE_MARKER_FILENAME="run-environment-seed-and-compare-marker.yaml"
 # on the marker instead of leaving a stray ConfigMap.
 APPLY_MODE_MARKER_NAMESPACE="do-not-deploy-kaptain-seed-and-compare-marker-file-only"
 IMAGE_DEFAULTS_DIR="${RUN_IMAGE_DEPLOY_MANIFESTS_DEFAULTS}"
+# Where the deploy scripts in the image read the main ConfigMap and Secret
+# (${MOUNT_BASE_PATH}/configmap and /secret, the base empty in the image)
+DEPLOY_CONFIGMAP_MOUNT_PATH="/configmap"
+DEPLOY_SECRET_MOUNT_PATH="/secret"
 
 # Usage: has_entries <dir> - true if the dir holds any file
 has_entries() {
@@ -482,6 +491,9 @@ step_generate_manifests() {
   export KUBERNETES_WORKLOAD_RESOURCES_CPU_LIMIT=""
   # Pinned so an app-level value in the environment is not inherited.
   export KUBERNETES_WORKLOAD_IMAGE_PULL_SECRETS="${ENV_IMAGE_PULL_SECRETS}"
+  # Fixed: the deploy scripts read the main ConfigMap and Secret there.
+  export KUBERNETES_WORKLOAD_CONFIGMAP_MOUNT_PATH="${DEPLOY_CONFIGMAP_MOUNT_PATH}"
+  export KUBERNETES_WORKLOAD_SECRET_MOUNT_PATH="${DEPLOY_SECRET_MOUNT_PATH}"
   export KUBERNETES_DEPLOYMENT_ENV_SUB_PATH="${src_deployment_env}"
   export KUBERNETES_DEPLOYMENT_PORTS_ENABLED="false"
   export KUBERNETES_CRONJOB_PORTS_ENABLED="false"
@@ -610,6 +622,45 @@ step_generate_manifests() {
   fi
 }
 
+# Every workload in the set, supplied or generated, mounts the main ConfigMap
+# (named *-configmap-checksum) and the main Secret (*-secret-checksum) exactly
+# where the deploy scripts read them, in every container and init container.
+assert_deploy_mount_paths() {
+  local file workload container is_configmap is_secret mount_path violations=""
+  while IFS= read -r -d '' file; do
+    # One line per mount: workload, container, whether the volume is the main
+    # ConfigMap or the main Secret, and where it is mounted
+    # shellcheck disable=SC2016 # $kind, $pod etc. are yq variables
+    while IFS=$'\t' read -r workload container is_configmap is_secret mount_path; do
+      if [[ "${is_configmap}" == "true" && "${mount_path}" != "${DEPLOY_CONFIGMAP_MOUNT_PATH}" ]]; then
+        violations="${violations}  ${file#"${IMAGE_MANIFESTS_DIR}"/}: ${workload}: container ${container} mounts the main ConfigMap at ${mount_path}, not ${DEPLOY_CONFIGMAP_MOUNT_PATH}"$'\n'
+      fi
+      if [[ "${is_secret}" == "true" && "${mount_path}" != "${DEPLOY_SECRET_MOUNT_PATH}" ]]; then
+        violations="${violations}  ${file#"${IMAGE_MANIFESTS_DIR}"/}: ${workload}: container ${container} mounts the main Secret at ${mount_path}, not ${DEPLOY_SECRET_MOUNT_PATH}"$'\n'
+      fi
+    done < <(yq eval -r '
+      select(.kind == "Deployment" or .kind == "StatefulSet" or .kind == "DaemonSet" or .kind == "Job" or .kind == "CronJob")
+      | .kind as $kind | .metadata.name as $name
+      | (.spec.jobTemplate.spec.template.spec // .spec.template.spec) as $pod
+      | (($pod.containers // []) + ($pod.initContainers // []))[] as $c
+      | ($c.volumeMounts // [])[] as $m
+      | $m.name as $mn
+      | ([($pod.volumes // [])[] | select(.name == $mn)] | .[0]) as $v
+      | (($v.configMap.name // "") | test("-configmap-checksum$")) as $is_cm
+      | (($v.secret.secretName // "") | test("-secret-checksum$")) as $is_secret
+      | $kind + "/" + $name + "\t" + $c.name + "\t" + ($is_cm | tostring) + "\t" + ($is_secret | tostring) + "\t" + $m.mountPath
+    ' "${file}" | grep -v '^---$')
+  done < <(find "${IMAGE_MANIFESTS_DIR}" -type f -name '*.yaml' -print0 | LC_ALL=C sort -z)
+  if [[ -n "${violations}" ]]; then
+    log_error "Deploy-image workloads must mount the main ConfigMap at ${DEPLOY_CONFIGMAP_MOUNT_PATH} and the main Secret at ${DEPLOY_SECRET_MOUNT_PATH}, where the deploy scripts read them:"
+    local line
+    while IFS= read -r line; do
+      [[ -n "${line}" ]] && log_error "${line}"
+    done <<< "${violations}"
+    exit 1
+  fi
+}
+
 # The environment declares seed-and-compare, but the run-platform acts on it,
 # so the marker travels in the set. Unmarked sets apply normally.
 step_apply_mode_marker() {
@@ -664,6 +715,7 @@ main() {
       ;;
   esac
 
+  assert_deploy_mount_paths
   assert_no_environment_token_values
 
   log ""
