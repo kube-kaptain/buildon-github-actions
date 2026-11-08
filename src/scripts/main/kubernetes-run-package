@@ -31,6 +31,9 @@
 #   BUILD_KIND                                - Required; kubernetes-run-environment |
 #                                               kubernetes-run-platform-meta-environment
 #
+# Files for /kd/bin come from src/bin and from <output>/run-package/bin/
+# (contributed during the build); the same file in both fails.
+#
 # Outputs (env + GITHUB_OUTPUT):
 #   RUN_CONTENTS_ZIP_FILE     - contents zip path
 #   RUN_PROVENANCE_ZIP_FILE   - provenance zip path
@@ -62,6 +65,8 @@ source "${SCRIPT_DIR}/../defaults/docker-common.bash"
 source "${SCRIPT_DIR}/../lib/docker-build-shared.bash"
 # shellcheck source=src/scripts/lib/output-var.bash
 source "${SCRIPT_DIR}/../lib/output-var.bash"
+# shellcheck source=src/scripts/lib/reject-non-regular.bash
+source "${SCRIPT_DIR}/../lib/reject-non-regular.bash"
 # shellcheck source=src/scripts/lib/env-deploy-base-image-compose.bash
 source "${SCRIPT_DIR}/../lib/env-deploy-base-image-compose.bash"
 # shellcheck source=src/scripts/lib/manifest-file-kinds.bash
@@ -87,6 +92,13 @@ PACKAGE_BASE="${OUTPUT_SUB_PATH}/run-package"
 DEPLOY_CONTEXT_DIR="${PACKAGE_BASE}/deploy-image-context"
 ARTIFACTS_CONTEXT_DIR="${PACKAGE_BASE}/artifacts-image-context"
 ZIP_DIR="${PACKAGE_BASE}/zip"
+
+# Files for the deploy image's /kd/bin: the environment's own, for that one
+# environment (anything shared belongs in a layer or the base image), and any
+# contributed earlier in the build (a layer's hook script, say). Either may add
+# scripts or replace the base image's, to patch or extend the deploy.
+IMAGE_BIN_SUB_PATH="src/bin"
+CONTRIBUTED_IMAGE_BIN_DIR="${PACKAGE_BASE}/bin"
 
 CONTENTS_ZIP_NAME="${PROJECT_NAME}-${VERSION}-environment-contents.zip"
 REPORT_NAME="${PROJECT_NAME}-${VERSION}-consumption-report.yaml"
@@ -175,6 +187,37 @@ log_compression_ratio() {
   log "    Ratio:  $(printf '%12s' "${ratio}"):1"
 }
 
+# Stage both /kd/bin sources into the deploy context. The same file in both
+# fails: neither may silently replace the other. Modes are kept, so scripts
+# stay executable.
+stage_image_bin() {
+  local staged="${DEPLOY_CONTEXT_DIR}/bin" dir collisions entry count
+  for dir in "${IMAGE_BIN_SUB_PATH}" "${CONTRIBUTED_IMAGE_BIN_DIR}"; do
+    [[ -d "${dir}" ]] || continue
+    reject_non_regular "${dir}" "${dir}" || exit 1
+  done
+  if [[ -d "${IMAGE_BIN_SUB_PATH}" && -d "${CONTRIBUTED_IMAGE_BIN_DIR}" ]]; then
+    collisions=$(LC_ALL=C comm -12 \
+      <(cd "${IMAGE_BIN_SUB_PATH}" && find . -type f | LC_ALL=C sort) \
+      <(cd "${CONTRIBUTED_IMAGE_BIN_DIR}" && find . -type f | LC_ALL=C sort))
+    if [[ -n "${collisions}" ]]; then
+      log_error "Files supplied by both ${IMAGE_BIN_SUB_PATH} and ${CONTRIBUTED_IMAGE_BIN_DIR}:"
+      while IFS= read -r entry; do
+        log_error "  ${entry#./}"
+      done <<< "${collisions}"
+      exit 1
+    fi
+  fi
+  for dir in "${IMAGE_BIN_SUB_PATH}" "${CONTRIBUTED_IMAGE_BIN_DIR}"; do
+    [[ -d "${dir}" ]] || continue
+    count=$(find "${dir}" -type f | wc -l | tr -d ' ')
+    [[ "${count}" -gt 0 ]] || continue
+    mkdir -p "${staged}"
+    cp -Rp "${dir}/." "${staged}/"
+    log "  Staged ${count} file(s) for /kd/bin from ${dir}"
+  done
+}
+
 step_deploy_image() {
   log ""
   log "[1/4] Deploy image..."
@@ -225,6 +268,8 @@ step_deploy_image() {
     fi
   fi
 
+  stage_image_bin
+
   # validate-environment in the image asserts this set at boot.
   {
     echo "FROM ${base_image}"
@@ -242,6 +287,11 @@ step_deploy_image() {
       echo "# Encrypted secret values; the deploy decrypts these into the"
       echo "# *.template.yaml Secrets. Never plaintext at build time."
       echo "COPY secrets/ /kd/secrets/"
+    fi
+    if [[ -d "${DEPLOY_CONTEXT_DIR}/bin" ]]; then
+      echo ""
+      echo "# Scripts added to or replacing the base image's deploy scripts"
+      echo "COPY bin/ /kd/bin/"
     fi
     echo ""
     echo "# Deploy-time env-var contract (asserted by validate-environment)"
