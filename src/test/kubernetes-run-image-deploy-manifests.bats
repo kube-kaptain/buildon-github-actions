@@ -571,3 +571,130 @@ cronjob_env() {
   [ "$status" -ne 0 ]
   assert_output_contains "the EnvironmentShortName token is supplied by whatever applies this set"
 }
+
+# =============================================================================
+# Contributed ConfigMap and Secret template entries
+# =============================================================================
+
+CONTRIB_CONFIGMAP="kaptain-out/run-image-deploy-manifests/configmap"
+CONTRIB_SECRET="kaptain-out/run-image-deploy-manifests/secret.template"
+
+@test "contributed: configmap entries merge with the source's and the project-name key" {
+  mkdir -p src/environment/configmap "${CONTRIB_CONFIGMAP}"
+  printf '%s' 'from-src' > src/environment/configmap/own
+  printf '%s' 'from-build' > "${CONTRIB_CONFIGMAP}/contributed"
+  run "$SCRIPT"
+  [[ "$status" -eq 0 ]] || return 1
+  [[ "$(yq '.data.own' "${MANIFESTS}/configmap.yaml")" == "from-src" ]] || return 1
+  [[ "$(yq '.data.contributed' "${MANIFESTS}/configmap.yaml")" == "from-build" ]] || return 1
+  [[ "$(yq '.data.project-name' "${MANIFESTS}/configmap.yaml")" == '${ProjectName}' ]] || return 1
+}
+
+@test "contributed: a whole file is kept verbatim, foreign-style tokens and all" {
+  mkdir -p "${CONTRIB_CONFIGMAP}"
+  printf '#!/usr/bin/env bash\necho "${OMG_WTF} ${omg-wtf} ${OmgWtf}"\n' > "${CONTRIB_CONFIGMAP}/script.sh"
+  run "$SCRIPT"
+  [[ "$status" -eq 0 ]] || return 1
+  [[ "$(yq '.data["script.sh"]' "${MANIFESTS}/configmap.yaml")" == "$(cat "${CONTRIB_CONFIGMAP}/script.sh")" ]] || return 1
+}
+
+@test "contributed: secret.template entries merge with the source's and the generated passphrase" {
+  mkdir -p src/environment/secret.template "${CONTRIB_SECRET}"
+  printf '%s' 'x' > src/environment/secret.template/apiKey
+  printf '%s' '${ChatWebhook}' > "${CONTRIB_SECRET}/chatWebhook"
+  run "$SCRIPT"
+  [[ "$status" -eq 0 ]] || return 1
+  [[ "$(yq '.stringData.apiKey' "${MANIFESTS}/secret.template.yaml")" == "x" ]] || return 1
+  [[ "$(yq '.stringData.chatWebhook' "${MANIFESTS}/secret.template.yaml")" == '${ChatWebhook}' ]] || return 1
+  [[ "$(yq '.stringData.environmentPassphrase' "${MANIFESTS}/secret.template.yaml")" == '${RunFoo/EnvironmentPassphrase}' ]] || return 1
+}
+
+@test "contributed: a configmap entry also in the source fails, listing every collision" {
+  mkdir -p src/environment/configmap "${CONTRIB_CONFIGMAP}"
+  printf '%s' 'a' > src/environment/configmap/one
+  printf '%s' 'a' > src/environment/configmap/two
+  printf '%s' 'b' > "${CONTRIB_CONFIGMAP}/one"
+  printf '%s' 'b' > "${CONTRIB_CONFIGMAP}/two"
+  printf '%s' 'b' > "${CONTRIB_CONFIGMAP}/three"
+  run "$SCRIPT"
+  [[ "$status" -eq 1 ]] || return 1
+  assert_output_contains "Entries supplied by both src/environment/configmap and ${CONTRIB_CONFIGMAP}:"
+  assert_output_contains "  one"
+  assert_output_contains "  two"
+  [[ "$output" != *"  three"* ]] || return 1
+}
+
+@test "contributed: a secret.template entry also in the source fails" {
+  mkdir -p src/environment/secret.template "${CONTRIB_SECRET}"
+  printf '%s' 'a' > src/environment/secret.template/apiKey
+  printf '%s' 'b' > "${CONTRIB_SECRET}/apiKey"
+  run "$SCRIPT"
+  [[ "$status" -eq 1 ]] || return 1
+  assert_output_contains "Entries supplied by both src/environment/secret.template and ${CONTRIB_SECRET}:"
+  assert_output_contains "  apiKey"
+}
+
+@test "contributed: the same name as a configmap and a secret.template entry is fine" {
+  mkdir -p src/environment/configmap "${CONTRIB_SECRET}"
+  printf '%s' 'plain' > src/environment/configmap/omgWtf
+  printf '%s' '${Whatever}' > "${CONTRIB_SECRET}/omgWtf"
+  run "$SCRIPT"
+  [[ "$status" -eq 0 ]] || return 1
+  [[ "$(yq '.data.omgWtf' "${MANIFESTS}/configmap.yaml")" == "plain" ]] || return 1
+  [[ "$(yq '.stringData.omgWtf' "${MANIFESTS}/secret.template.yaml")" == '${Whatever}' ]] || return 1
+}
+
+@test "contributed: an environmentPassphrase entry fails" {
+  mkdir -p "${CONTRIB_SECRET}"
+  printf '%s' 'mine' > "${CONTRIB_SECRET}/environmentPassphrase"
+  run "$SCRIPT"
+  [[ "$status" -eq 1 ]] || return 1
+  assert_output_contains "${CONTRIB_SECRET}/environmentPassphrase is not allowed"
+}
+
+@test "contributed: configmap entries with a supplied ConfigMap manifest fail" {
+  mkdir -p src/environment/kubernetes "${CONTRIB_CONFIGMAP}"
+  cat > src/environment/kubernetes/configmap.yaml << 'EOF2'
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: run-foo-configmap-checksum
+data:
+  key: v
+EOF2
+  printf '%s' 'b' > "${CONTRIB_CONFIGMAP}/contributed"
+  run "$SCRIPT"
+  [[ "$status" -eq 1 ]] || return 1
+  assert_output_contains "Entries were contributed in ${CONTRIB_CONFIGMAP}, but a supplied ConfigMap manifest replaces the generated one"
+}
+
+@test "contributed: secret.template entries with a supplied Secret manifest fail" {
+  mkdir -p src/environment/kubernetes "${CONTRIB_SECRET}"
+  cat > src/environment/kubernetes/secret.template.yaml << 'EOF2'
+apiVersion: v1
+kind: Secret
+metadata:
+  name: run-foo-secret-checksum
+stringData:
+  environmentPassphrase: x
+EOF2
+  printf '%s' 'b' > "${CONTRIB_SECRET}/contributed"
+  run "$SCRIPT"
+  [[ "$status" -eq 1 ]] || return 1
+  assert_output_contains "Entries were contributed in ${CONTRIB_SECRET}, but a supplied Secret manifest replaces the generated one"
+}
+
+@test "contributed: entries with generation off fail" {
+  mkdir -p src/environment/kubernetes "${CONTRIB_CONFIGMAP}"
+  printf '%s' 'b' > "${CONTRIB_CONFIGMAP}/contributed"
+  ENV_GENERATE_IDEAL_ENVIRONMENT_DEPLOY_MANIFESTS=false run "$SCRIPT"
+  [[ "$status" -eq 1 ]] || return 1
+  assert_output_contains "Entries were contributed in ${CONTRIB_CONFIGMAP}, but generateIdealEnvironmentDeployManifests is false"
+}
+
+@test "contributed: empty contribution dirs change nothing" {
+  mkdir -p "${CONTRIB_CONFIGMAP}" "${CONTRIB_SECRET}"
+  run "$SCRIPT"
+  [[ "$status" -eq 0 ]] || return 1
+  [[ "$(yq '.data | keys | join(",")' "${MANIFESTS}/configmap.yaml")" == "project-name" ]] || return 1
+}
