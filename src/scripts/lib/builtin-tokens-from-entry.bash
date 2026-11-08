@@ -32,8 +32,9 @@
 #                                           entries whose artifact tag has no
 #                                           variant suffix (layers)
 #   ${PREFIX}_${SLUG}_DIGEST              - digest of the artifact pulled
-#                                           (sha256:<hex>); emitted when the
-#                                           caller passes one
+#                                           (sha256:<hex>): the pin, or the
+#                                           registry digest of the tag; emitted
+#                                           when the caller has one
 #
 # The token-name prefix is derived from the subdir by stripping one trailing
 # 's' and upper-casing, so callers only pass the subdir:

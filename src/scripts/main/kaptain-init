@@ -283,6 +283,14 @@ resolve_layer() {
   local resolved_version="${resolved_tag_ref##*:}"
   local resolved_digest=""
   [[ "${resolved_uri}" == *"@"* ]] && resolved_digest="${resolved_uri#*@}"
+  # Unpinned: the digest the registry serves for the tag, so the build records
+  # exactly which image it used
+  if [[ -z "${resolved_digest}" ]]; then
+    resolved_digest=$("${UTIL_DIR}/registry-tag-digest" "${resolved_tag_ref}") || {
+      log_warning "${indent}No Digest token for ${ref}: could not read the registry digest of ${resolved_tag_ref}"
+      resolved_digest=""
+    }
+  fi
 
   local previous_entry
   previous_entry=$(grep "^${identity}=" "${VISITED_FILE}" || true)
