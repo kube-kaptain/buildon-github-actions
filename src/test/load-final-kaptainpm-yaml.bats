@@ -780,10 +780,10 @@ append_scalar() {
   printf 'scalar\0%s\0%s\0' "$1" "$2" >> "${TEST_DIR}/${out}/builtin-tokens-pending"
 }
 
-# append_entry <entry> <version> <subdir> <manifests-docker-tag>
+# append_entry <entry> <version> <subdir> <manifests-docker-tag> [digest]
 append_entry() {
   mkdir -p "${TEST_DIR}/kaptain-out"
-  printf 'entry\0%s\0%s\0%s\0%s\0' "$1" "$2" "$3" "$4" \
+  printf 'entry\0%s\0%s\0%s\0%s\0%s\0' "$1" "$2" "$3" "$4" "${5:-}" \
     >> "${TEST_DIR}/kaptain-out/builtin-tokens-pending"
 }
 
@@ -1193,4 +1193,15 @@ EOF2
   [[ "${status}" -eq 1 ]] || return 1
   assert_output_contains "holds files tracked by git"
   [[ -f "${repo}/docs/README.md" ]] || return 1
+}
+
+@test "deferred pinned layer entry replays with its Digest token" {
+  write_pm
+  append_entry "layer-github-flow-strict:1.2.3@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef" "1.2.3" layers "1.2.3" \
+    "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+
+  run_script
+  [[ "${status}" -eq 0 ]] || return 1
+  [[ "$(cat "$(token_file layers/LayerLayerGithubFlowStrictVersionSpec)")" == "1.2.3" ]] || return 1
+  [[ "$(cat "$(token_file layers/LayerLayerGithubFlowStrictDigest)")" == "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef" ]] || return 1
 }

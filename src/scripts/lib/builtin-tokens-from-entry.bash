@@ -20,8 +20,10 @@
 # convert_token_name before the printf write.
 #
 # Files per entry, under ${OUTPUT_SUB_PATH}/builtin-resolved-tokens/<subdir>/:
-#   ${PREFIX}_${SLUG}_REF                 - entry as written, verbatim
-#   ${PREFIX}_${SLUG}_VERSION_SPEC        - version part as written (e.g. "[1.2.3]")
+#   ${PREFIX}_${SLUG}_REF                 - entry as written, verbatim, digest pin
+#                                           included
+#   ${PREFIX}_${SLUG}_VERSION_SPEC        - version part as written (e.g. "[1.2.3]"),
+#                                           without any digest pin
 #   ${PREFIX}_${SLUG}_VERSION             - resolved single version (e.g. "1.2.3"),
 #                                           spec-shaped: satisfies VERSION_SPEC
 #   ${PREFIX}_${SLUG}_MANIFESTS_DOCKER_TAG - tag of the OCI artifact actually
@@ -29,6 +31,9 @@
 #                                           always emitted - equals VERSION for
 #                                           entries whose artifact tag has no
 #                                           variant suffix (layers)
+#   ${PREFIX}_${SLUG}_DIGEST              - digest of the artifact pulled
+#                                           (sha256:<hex>); emitted when the
+#                                           caller passes one
 #
 # The token-name prefix is derived from the subdir by stripping one trailing
 # 's' and upper-casing, so callers only pass the subdir:
@@ -109,8 +114,8 @@ emit_builtin_token_scalar() {
 # Usage: emit_builtin_tokens_for_entry <entry> <resolved-version> <subdir> <manifests-docker-tag>
 # Requires: OUTPUT_SUB_PATH set in the environment.
 emit_builtin_tokens_for_entry() {
-  if [[ $# -ne 4 ]]; then
-    log_error "emit_builtin_tokens_for_entry requires exactly 4 arguments, got $#"
+  if [[ $# -lt 4 || $# -gt 5 ]]; then
+    log_error "emit_builtin_tokens_for_entry requires 4 or 5 arguments, got $#"
     return 1
   fi
 
@@ -120,6 +125,8 @@ emit_builtin_tokens_for_entry() {
   # Tag of the artifact actually pulled. Callers whose artifact tag carries
   # no variant suffix (layers) pass the version - tag == version there.
   local manifests_docker_tag="$4"
+  # Digest of the artifact pulled (sha256:<hex>), empty when unknown
+  local digest="${5:-}"
 
   if [[ -z "${entry}" ]]; then
     log_error "emit_builtin_tokens_for_entry: entry is required"
@@ -148,6 +155,8 @@ emit_builtin_tokens_for_entry() {
   if [[ "${ref}" == *:* ]]; then
     version_spec="${ref#*:}"
   fi
+  # A digest pin is not part of the version spec; DIGEST carries it.
+  version_spec="${version_spec%%@*}"
 
   # URI without trailing version spec.
   local uri_without_version="${ref%%:*}"
@@ -200,4 +209,11 @@ emit_builtin_tokens_for_entry() {
   manifests_tag_name=$(convert_token_name "${TOKEN_NAME_STYLE}" "${base}_MANIFESTS_DOCKER_TAG") || return 1
   printf '%s' "${manifests_docker_tag}" > "${out_dir}/${manifests_tag_name}"
   log "  builtin token: ${subdir}/${manifests_tag_name} = ${manifests_docker_tag}"
+
+  if [[ -n "${digest}" ]]; then
+    local digest_name
+    digest_name=$(convert_token_name "${TOKEN_NAME_STYLE}" "${base}_DIGEST") || return 1
+    printf '%s' "${digest}" > "${out_dir}/${digest_name}"
+    log "  builtin token: ${subdir}/${digest_name} = ${digest}"
+  fi
 }

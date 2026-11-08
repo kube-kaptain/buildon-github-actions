@@ -736,3 +736,49 @@ MOCK
   [[ "$status" -eq 0 ]] || return 1
   [[ "$(cat "${OUTPUT_FILE}")" == "artifactory.corp.com/team-platform/java/java-web-service:2.1" ]] || return 1
 }
+
+# =============================================================================
+# Digest pins: name:version@sha256:<hex>
+# =============================================================================
+
+@test "digest pin: short form keeps the pin after the expanded tag" {
+  run "$PROVIDER" "quality-strict:1.0@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef" "${OUTPUT_FILE}"
+  [[ "$status" -eq 0 ]] || return 1
+  [[ "$(cat "${OUTPUT_FILE}")" == "ghcr.io/kube-kaptain/quality/quality-strict:1.0@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef" ]] || return 1
+}
+
+@test "digest pin: prefixed form keeps the pin" {
+  run "$PROVIDER" "quality/quality-strict:1.0@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef" "${OUTPUT_FILE}"
+  [[ "$status" -eq 0 ]] || return 1
+  [[ "$(cat "${OUTPUT_FILE}")" == "ghcr.io/kube-kaptain/quality/quality-strict:1.0@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef" ]] || return 1
+}
+
+@test "digest pin: full form keeps the pin" {
+  run "$PROVIDER" "ghcr.io/kube-kaptain/quality/quality-strict:1.0@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef" "${OUTPUT_FILE}"
+  [[ "$status" -eq 0 ]] || return 1
+  [[ "$(cat "${OUTPUT_FILE}")" == "ghcr.io/kube-kaptain/quality/quality-strict:1.0@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef" ]] || return 1
+}
+
+@test "digest pin: a bracketed exact version keeps the pin" {
+  run "$PROVIDER" "quality-strict:[1.0]@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef" "${OUTPUT_FILE}"
+  [[ "$status" -eq 0 ]] || return 1
+  [[ "$(cat "${OUTPUT_FILE}")" == "ghcr.io/kube-kaptain/quality/quality-strict:1.0@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef" ]] || return 1
+}
+
+@test "digest pin: the pin names the variant image" {
+  run "$PROVIDER" "quality-strict:1.0@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef" "${OUTPUT_FILE}" manifests
+  [[ "$status" -eq 0 ]] || return 1
+  [[ "$(cat "${OUTPUT_FILE}")" == "ghcr.io/kube-kaptain/quality/quality-strict:1.0-manifests@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef" ]] || return 1
+}
+
+@test "digest pin: a range with a pin fails" {
+  run "$PROVIDER" "quality-strict:[1.0,2.0)@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef" "${OUTPUT_FILE}"
+  [[ "$status" -ne 0 ]] || return 1
+  assert_output_contains "A digest pins one image, so it needs an exact version"
+}
+
+@test "digest pin: a malformed digest fails" {
+  run "$PROVIDER" "quality-strict:1.0@sha256:abc" "${OUTPUT_FILE}"
+  [[ "$status" -ne 0 ]] || return 1
+  assert_output_contains "digest must be sha256: followed by 64 lowercase hex characters"
+}

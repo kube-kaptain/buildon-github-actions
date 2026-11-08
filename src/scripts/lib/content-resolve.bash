@@ -539,10 +539,14 @@ content_resolve_all() {
     # release version is that tag with the variant suffix we requested
     # stripped, so VERSION stays spec-shaped and comparable while
     # MANIFESTS_DOCKER_TAG records the artifact tag verbatim.
-    local resolved_tag="${resolved_uri##*:}"
+    # A digest pin rides after the tag and names the manifests image itself.
+    local resolved_tag_ref="${resolved_uri%%@*}"
+    local resolved_tag="${resolved_tag_ref##*:}"
     local resolved_version="${resolved_tag%-manifests}"
+    local resolved_digest=""
+    [[ "${resolved_uri}" == *"@"* ]] && resolved_digest="${resolved_uri#*@}"
     log "  Auto-builtin tokens for ${CONTENT_FLAVOUR}:"
-    emit_builtin_tokens_for_entry "${entry}" "${resolved_version}" "${CONTENT_FLAVOUR}" "${resolved_tag}"
+    emit_builtin_tokens_for_entry "${entry}" "${resolved_version}" "${CONTENT_FLAVOUR}" "${resolved_tag}" "${resolved_digest}"
 
     local slug
     slug=$(content_artifact_slug "${resolved_uri}")

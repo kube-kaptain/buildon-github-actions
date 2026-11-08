@@ -44,6 +44,13 @@ setup() {
 echo "$*" >> "${MOCK_DOCKER_CALLS:-/dev/null}"
 case "$1" in
   pull) exit 0 ;;
+  image)
+    # Classic image store ids for extract-oci-image's digest pin check
+    if [[ "$2" == "inspect" && "$*" == *"{{.Id}}"* ]]; then
+      if [[ "${!#}" == *@* ]]; then echo "${MOCK_PIN_ID:-}"; else echo "${MOCK_TAG_ID:-}"; fi
+    fi
+    exit 0
+    ;;
   create)
     # Store the image ref so cp can find the right mock data
     echo "${2}" > "${MOCK_DOCKER_CALLS}.last-create"
@@ -124,6 +131,8 @@ build_kaptain_init_shim() {
 image_ref="${1}"
 output_dir="${2}"
 shift 2
+# The real one verifies a digest pin, then works with the tag
+image_ref="${image_ref%%@*}"
 image_no_tag="${image_ref%:*}"
 src="${MOCK_LAYER_DIR}/${image_no_tag}"
 mkdir -p "${output_dir}"
@@ -179,7 +188,7 @@ add_mock_layer_file() {
 
 # Value recorded for a scalar builtin token in the NUL-delimited pending file.
 recorded_value() {
-  local want="$1" record_type name value entry version subdir tag
+  local want="$1" record_type name value entry version subdir tag digest
   while IFS= read -r -d '' record_type; do
     case "${record_type}" in
       scalar)
@@ -192,6 +201,7 @@ recorded_value() {
         IFS= read -r -d '' version
         IFS= read -r -d '' subdir
         IFS= read -r -d '' tag
+        IFS= read -r -d '' digest
         ;;
     esac
   done < "${REPO_DIR}/kaptain-out/builtin-tokens-pending"
@@ -1244,4 +1254,75 @@ EOF
   run "$SCRIPT"
   [[ "$status" -eq 0 ]] || return 1
   [[ ! -f "${REPO_DIR}/kaptainpm/interpolation/99-stale.yaml" ]] || return 1
+}
+
+# The version and digest recorded for a deferred entry in the pending file.
+# Usage: recorded_entry <entry>  (prints "<version> <tag> <digest>")
+recorded_entry() {
+  local want="$1" record_type name value entry version subdir tag digest
+  while IFS= read -r -d '' record_type; do
+    case "${record_type}" in
+      scalar)
+        IFS= read -r -d '' name
+        IFS= read -r -d '' value
+        ;;
+      entry)
+        IFS= read -r -d '' entry
+        IFS= read -r -d '' version
+        IFS= read -r -d '' subdir
+        IFS= read -r -d '' tag
+        IFS= read -r -d '' digest
+        [[ "${entry}" == "${want}" ]] && { printf '%s %s %s' "${version}" "${tag}" "${digest}"; return 0; }
+        ;;
+    esac
+  done < "${REPO_DIR}/kaptain-out/builtin-tokens-pending"
+  return 1
+}
+
+@test "digest-pinned layer: resolves, merges and records version and digest apart" {
+  local pin="sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+  export MOCK_TAG_ID="sha256:config" MOCK_PIN_ID="sha256:config"
+  create_mock_layer "ghcr.io/kube-kaptain/quality/quality-strict" << 'EOF'
+apiVersion: kaptain.org/1.2
+spec:
+  main:
+    quality:
+      branches:
+        blockSlashes: true
+EOF
+  cat > "${REPO_DIR}/KaptainPM.yaml" << EOF
+apiVersion: kaptain.org/1.2
+kind: kubernetes-app-docker-dockerfile
+spec:
+  layers:
+    - quality-strict:1.0@${pin}
+EOF
+  run "$SCRIPT"
+  [[ "$status" -eq 0 ]] || return 1
+  [[ "$(yq eval '.spec.main.quality.branches.blockSlashes' "${REPO_DIR}/kaptainpm/final/KaptainPM.yaml")" == "true" ]] || return 1
+  [[ "$(recorded_entry "quality-strict:1.0@${pin}")" == "1.0 1.0 ${pin}" ]] || return 1
+}
+
+@test "digest-pinned layer: a tag that has moved off the pin fails" {
+  local pin="sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+  export MOCK_TAG_ID="sha256:new" MOCK_PIN_ID="sha256:old"
+  create_mock_layer "ghcr.io/kube-kaptain/quality/quality-strict" << 'EOF'
+apiVersion: kaptain.org/1.2
+spec:
+  main:
+    quality:
+      branches:
+        blockSlashes: true
+EOF
+  cat > "${REPO_DIR}/KaptainPM.yaml" << EOF
+apiVersion: kaptain.org/1.2
+kind: kubernetes-app-docker-dockerfile
+spec:
+  layers:
+    - quality-strict:1.0@${pin}
+EOF
+  run "$SCRIPT"
+  [[ "$status" -ne 0 ]] || return 1
+  assert_output_contains "Digest mismatch"
+  [[ ! -f "${REPO_DIR}/kaptainpm/final/KaptainPM.yaml" ]] || return 1
 }

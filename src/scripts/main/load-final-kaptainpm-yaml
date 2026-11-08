@@ -813,7 +813,8 @@ if [[ -f "${pending_file}" ]]; then
         IFS= read -r -d '' resolved_version
         IFS= read -r -d '' subdir
         IFS= read -r -d '' manifests_docker_tag
-        emit_builtin_tokens_for_entry "${entry}" "${resolved_version}" "${subdir}" "${manifests_docker_tag}"
+        IFS= read -r -d '' digest
+        emit_builtin_tokens_for_entry "${entry}" "${resolved_version}" "${subdir}" "${manifests_docker_tag}" "${digest}"
         ;;
       *)
         log_error "Unknown deferred builtin token record type: '${record_type}'"

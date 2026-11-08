@@ -257,7 +257,8 @@ if [[ "${LAYER_TYPE}" == "layerset" ]]; then
     offenders=()
     for ((i = 0; i < layer_count; i++)); do
       ref=$(yq -r ".spec.layers[${i}]" "${context_dir}/KaptainPM.yaml")
-      if [[ "${ref##*:}" == *-PRERELEASE* ]]; then
+      tag_ref="${ref%%@*}"
+      if [[ "${tag_ref##*:}" == *-PRERELEASE* ]]; then
         offenders+=("${ref}")
       fi
     done

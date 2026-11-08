@@ -8,6 +8,8 @@
 #   prefixed:  prefix/name:version                       (requires DOCKER_TARGET_REGISTRY/NAMESPACE)
 #   full:      domain/[namespace/]prefix/name:version    (used as-is after validation)
 #
+# Any form may be pinned with a digest after the version: name:1.2.3@sha256:<hex>.
+#
 # Callers source this file and invoke `docker_ref_expand <reference>`. On
 # success, results are written to these globals (plain vars, not an array, for
 # bash 3.2 portability):
@@ -16,6 +18,7 @@
 #   DOCKER_REF_VERSION_PART - the version portion (after the final :)
 #   DOCKER_REF_FULL_NAME    - fully qualified image name (no tag)
 #   DOCKER_REF_FORM         - detected form: short, prefixed, full
+#   DOCKER_REF_DIGEST_PART  - the pinned digest (sha256:<hex>), empty when not pinned
 #
 # Exit/return: 0 on success, non-zero with log_error on failure. The function
 # uses `return` (not exit) so callers can decide how to handle errors.
@@ -50,6 +53,19 @@ docker_ref_expand() {
   DOCKER_REF_VERSION_PART=""
   DOCKER_REF_FULL_NAME=""
   DOCKER_REF_FORM=""
+  DOCKER_REF_DIGEST_PART=""
+
+  # Split off a digest pin first: the colon inside sha256: is not the version
+  # separator.
+  local digest_part=""
+  if [[ "${reference}" == *"@"* ]]; then
+    digest_part="${reference#*@}"
+    reference="${reference%%@*}"
+    if [[ ! "${digest_part}" =~ ^sha256:[0-9a-f]{64}$ ]]; then
+      log_error "Invalid reference: digest must be sha256: followed by 64 lowercase hex characters, got: ${digest_part}"
+      return 1
+    fi
+  fi
 
   if [[ "${reference}" != *":"* ]]; then
     log_error "Invalid reference: missing version (no colon found): ${reference}"
@@ -125,4 +141,6 @@ docker_ref_expand() {
   DOCKER_REF_FULL_NAME="${full_name}"
   # shellcheck disable=SC2034  # Read by callers
   DOCKER_REF_FORM="${form}"
+  # shellcheck disable=SC2034  # Read by callers
+  DOCKER_REF_DIGEST_PART="${digest_part}"
 }

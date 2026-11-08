@@ -348,7 +348,10 @@ setup_mock_utils() {
 ref="$1"
 out="$2"
 variant="${3:-}"
-if [[ -n "${variant}" ]]; then
+if [[ -n "${variant}" && "${ref}" == *@* ]]; then
+  # The variant goes on the tag, before a digest pin
+  echo "${ref%%@*}-${variant}@${ref#*@}" > "${out}"
+elif [[ -n "${variant}" ]]; then
   echo "${ref}-${variant}" > "${out}"
 else
   echo "${ref}" > "${out}"
@@ -566,4 +569,31 @@ EOF
 
 teardown() {
   dump_bats_result
+}
+
+@test "content_resolve_all: a pinned entry names the manifests image and gets its Digest token" {
+  local pin="sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+  source "$LIB_DIR/content-resolve.bash"
+  setup_mock_utils
+  export MOCK_OCI_DIR="${TEST_DIR}/oci-fixtures"
+  mkdir -p "${MOCK_OCI_DIR}"
+  stage_oci_fixture "foo:1.0-manifests@${pin}" "foo"
+
+  cat > "$TEST_DIR/kp.yaml" << EOF
+apiVersion: kaptain.org/v1
+kind: kubernetes-product
+spec:
+  contents:
+    - foo:1.0@${pin}
+EOF
+
+  run content_resolve_all "$TEST_DIR/kp.yaml"
+  [[ "$status" -eq 0 ]] || return 1
+  grep -qx -- "- foo:1.0-manifests@${pin}" "$TEST_DIR/contents/contents-resolved.yaml" || return 1
+  local tokens="${OUTPUT_SUB_PATH}/builtin-resolved-tokens/contents"
+  [[ "$(cat "${tokens}/ContentFooRef")" == "foo:1.0@${pin}" ]] || return 1
+  [[ "$(cat "${tokens}/ContentFooVersionSpec")" == "1.0" ]] || return 1
+  [[ "$(cat "${tokens}/ContentFooVersion")" == "1.0" ]] || return 1
+  [[ "$(cat "${tokens}/ContentFooManifestsDockerTag")" == "1.0-manifests" ]] || return 1
+  [[ "$(cat "${tokens}/ContentFooDigest")" == "${pin}" ]] || return 1
 }

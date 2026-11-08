@@ -229,3 +229,30 @@ read_token() {
 
   [ -f "$CONTENTS_DIR/ContentAppFooRef" ]
 }
+
+# =============================================================================
+# Digest: Ref keeps the pin, VersionSpec does not, Digest carries it
+# =============================================================================
+
+@test "digest: a pinned entry gets a Digest token and a pin-free VersionSpec" {
+  emit_builtin_tokens_for_entry "app-foo:1.2.3@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef" "1.2.3" "contents" "1.2.3-manifests" "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+
+  [[ "$(read_token "$CONTENTS_DIR/ContentAppFooRef")" == "app-foo:1.2.3@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef" ]] || return 1
+  [[ "$(read_token "$CONTENTS_DIR/ContentAppFooVersionSpec")" == "1.2.3" ]] || return 1
+  [[ "$(read_token "$CONTENTS_DIR/ContentAppFooVersion")" == "1.2.3" ]] || return 1
+  [[ "$(read_token "$CONTENTS_DIR/ContentAppFooManifestsDockerTag")" == "1.2.3-manifests" ]] || return 1
+  [[ "$(read_token "$CONTENTS_DIR/ContentAppFooDigest")" == "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef" ]] || return 1
+}
+
+@test "digest: a pin does not change the slug" {
+  emit_builtin_tokens_for_entry "ghcr.io/org/app-foo:[1.2.3]@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef" "1.2.3" "layers" "1.2.3" "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+
+  [[ "$(read_token "$LAYERS_DIR/LayerGhcrIoOrgAppFooVersionSpec")" == "[1.2.3]" ]] || return 1
+  [[ "$(read_token "$LAYERS_DIR/LayerGhcrIoOrgAppFooDigest")" == "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef" ]] || return 1
+}
+
+@test "digest: no Digest token without a digest" {
+  emit_builtin_tokens_for_entry "app-foo:1.2.3" "1.2.3" "contents" "1.2.3"
+
+  [[ ! -e "$CONTENTS_DIR/ContentAppFooDigest" ]] || return 1
+}

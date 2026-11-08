@@ -33,6 +33,10 @@ case "$1" in
   image)
     case "$2" in
       inspect)
+        # Classic image store ids for the digest pin check (pin vs tag)
+        if [[ "$*" == *"{{.Id}}"* ]]; then
+          if [[ "${!#}" == *@* ]]; then echo "${MOCK_PIN_ID:-}"; else echo "${MOCK_TAG_ID:-}"; fi
+        fi
         if [[ "${MOCK_IMAGE_EXISTS:-true}" == "true" ]]; then exit 0; else exit 1; fi
         ;;
       save)
@@ -372,4 +376,26 @@ teardown() {
   run "${SCRIPT}" "ghcr.io/test/img:1.0" "${OUTPUT_DIR}"
   [ "${status}" -eq 0 ]
   assert_docker_called "pull ghcr.io/test/img:1.0"
+}
+
+# =============================================================================
+# Digest pins: the tag must still resolve to the pin
+# =============================================================================
+
+PINNED="ghcr.io/test/image:1.0@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+
+@test "a pinned image whose tag still matches is extracted by its tag" {
+  export MOCK_TAG_ID="sha256:config" MOCK_PIN_ID="sha256:config"
+  run "$SCRIPT" "${PINNED}" "${OUTPUT_DIR}" /KaptainPM.yaml
+  [[ "$status" -eq 0 ]] || return 1
+  assert_output_contains "Digest verified"
+  grep -q -- "create ghcr.io/test/image:1.0 " "${MOCK_DOCKER_CALLS}" || return 1
+}
+
+@test "a pinned image whose tag has moved fails before extracting" {
+  export MOCK_TAG_ID="sha256:new" MOCK_PIN_ID="sha256:old"
+  run "$SCRIPT" "${PINNED}" "${OUTPUT_DIR}" /KaptainPM.yaml
+  [[ "$status" -ne 0 ]] || return 1
+  assert_output_contains "Digest mismatch"
+  [[ "$(grep -c "^create" "${MOCK_DOCKER_CALLS}")" -eq 0 ]] || return 1
 }

@@ -82,6 +82,9 @@ variant="${3:-}"
 docker_ref_expand "${reference}" || exit 1
 version_part="${DOCKER_REF_VERSION_PART}"
 full_name="${DOCKER_REF_FULL_NAME}"
+# A pin rides along on the resolved URI; extract-oci-image checks the tag
+# still resolves to it before the image is used
+digest_suffix="${DOCKER_REF_DIGEST_PART:+@${DOCKER_REF_DIGEST_PART}}"
 
 # Version resolution
 # Unwrap degenerate "[N]" form to "N" once up front so both branches see the
@@ -91,10 +94,13 @@ version_part=$(version_unwrap_exact "${version_part}")
 if version_is_exact "${version_part}"; then
   # Exact version: no registry call needed
   if [[ -n "${variant}" ]]; then
-    echo "${full_name}:${version_part}-${variant}" > "${output_file}"
+    echo "${full_name}:${version_part}-${variant}${digest_suffix}" > "${output_file}"
   else
-    echo "${full_name}:${version_part}" > "${output_file}"
+    echo "${full_name}:${version_part}${digest_suffix}" > "${output_file}"
   fi
+elif [[ -n "${digest_suffix}" ]]; then
+  log_error "A digest pins one image, so it needs an exact version, not the range ${version_part}: ${reference}"
+  exit 1
 else
   # Range: query remote tags and resolve
   if [[ -z "${IMAGE_BUILD_COMMAND:-}" ]]; then
