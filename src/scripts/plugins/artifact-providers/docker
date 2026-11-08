@@ -145,6 +145,15 @@ else
     registry="${full_name%%/*}"
     image_path="${full_name#*/}"
 
+    # Docker Hub's registry API is not served from its name, and docker login
+    # stores its credentials under the legacy index URL (podman uses the name)
+    api_host="${registry}"
+    cred_key="${registry}"
+    if [[ "${registry}" == "docker.io" ]]; then
+      api_host="registry-1.docker.io"
+      cred_key="https://index.docker.io/v1/"
+    fi
+
     # Collect raw user:pass from docker/podman config files. We don't build
     # an Authorization header yet - the WWW-Authenticate probe below decides
     # the actual scheme. Modern OCI registries reject Basic against tags/list
@@ -162,7 +171,7 @@ else
       log "Checking docker config: ${config_file}"
 
       # Direct base64-encoded credentials in .auths.<reg>.auth
-      stored_auth=$(jq -r ".auths[\"${registry}\"].auth // empty" "${config_file}" 2>/dev/null || true)
+      stored_auth=$(jq -r ".auths[\"${registry}\"].auth // .auths[\"${cred_key}\"].auth // empty" "${config_file}" 2>/dev/null || true)
       if [[ -n "${stored_auth}" ]]; then
         log "Found stored credentials for ${registry}"
         decoded=$(printf '%s' "${stored_auth}" | base64 -d 2>/dev/null || true)
@@ -177,7 +186,7 @@ else
       fi
 
       # Per-registry credential helper (credHelpers), then default credsStore
-      cred_helper=$(jq -r ".credHelpers[\"${registry}\"] // empty" "${config_file}" 2>/dev/null || true)
+      cred_helper=$(jq -r ".credHelpers[\"${registry}\"] // .credHelpers[\"${cred_key}\"] // empty" "${config_file}" 2>/dev/null || true)
       if [[ -n "${cred_helper}" ]]; then
         log "Found credential helper for ${registry}: ${cred_helper}"
       else
@@ -193,7 +202,7 @@ else
         helper_bin="docker-credential-${cred_helper}"
         if command -v "${helper_bin}" &>/dev/null; then
           log "Requesting credentials from ${helper_bin}..."
-          cred_json=$(echo "${registry}" | "${helper_bin}" get 2>/dev/null || true)
+          cred_json=$(echo "${cred_key}" | "${helper_bin}" get 2>/dev/null || true)
           if [[ -n "${cred_json}" ]]; then
             cred_user=$(echo "${cred_json}" | jq -r '.Username // empty' 2>/dev/null || true)
             cred_secret=$(echo "${cred_json}" | jq -r '.Secret // empty' 2>/dev/null || true)
@@ -217,7 +226,7 @@ else
     # at the realm endpoint first.
     auth_header=""
     log "Probing ${registry}/v2/ for authentication challenge..."
-    www_auth=$(curl -sS -o /dev/null -D - "https://${registry}/v2/" 2>/dev/null \
+    www_auth=$(curl -sS -o /dev/null -D - "https://${api_host}/v2/" 2>/dev/null \
       | grep -i '^www-authenticate' || true)
 
     if [[ -z "${www_auth}" ]]; then
@@ -279,7 +288,7 @@ else
     # newer versions. Spec: https://github.com/opencontainers/distribution-spec/blob/main/spec.md#listing-tags
     log "Fetching tags from ${registry}/v2/${image_path}/tags/list..."
     headers_file=$(mktemp)
-    next_url="https://${registry}/v2/${image_path}/tags/list"
+    next_url="https://${api_host}/v2/${image_path}/tags/list"
     page_num=0
     accumulated_tags=""
     paginate_ok=true
@@ -329,9 +338,9 @@ else
       elif [[ "${link_next}" == http* ]]; then
         next_url="${link_next}"
       elif [[ "${link_next}" == /* ]]; then
-        next_url="https://${registry}${link_next}"
+        next_url="https://${api_host}${link_next}"
       else
-        next_url="https://${registry}/${link_next}"
+        next_url="https://${api_host}/${link_next}"
       fi
     done
     rm -f "${headers_file}"

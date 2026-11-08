@@ -58,6 +58,7 @@ for arg in "$@"; do
     *)   url="${arg}" ;;
   esac
 done
+[[ -n "${MOCK_CURL_URLS:-}" ]] && echo "${url}" >> "${MOCK_CURL_URLS}"
 emit_header() {
   if [[ -z "${headers_dest}" || "${headers_dest}" == "-" ]]; then
     echo "$1"
@@ -648,6 +649,30 @@ JSON
   run "$PROVIDER" "quality-strict:[1.0,2.0)" "${OUTPUT_FILE}"
   [[ "$status" -eq 0 ]] || return 1
   [[ "$(cat "${OUTPUT_FILE}")" == "ghcr.io/kube-kaptain/quality/quality-strict:1.4" ]] || return 1
+}
+
+@test "docker hub: the registry API is reached at registry-1.docker.io" {
+  export MOCK_CURL_URLS="${TEST_DIR}/curl-urls"
+  export MOCK_REMOTE_TAGS_JSON='{"tags":["1.0","1.6"]}'
+  run "$PROVIDER" "docker.io/kube-kaptain/quality/quality-strict:[1.0,2.0)" "${OUTPUT_FILE}"
+  [[ "$status" -eq 0 ]] || return 1
+  [[ "$(cat "${OUTPUT_FILE}")" == "docker.io/kube-kaptain/quality/quality-strict:1.6" ]] || return 1
+  grep -qx "https://registry-1.docker.io/v2/" "${MOCK_CURL_URLS}" || return 1
+  grep -qx "https://registry-1.docker.io/v2/kube-kaptain/quality/quality-strict/tags/list" "${MOCK_CURL_URLS}" || return 1
+  [[ "$(grep -c "://docker.io/" "${MOCK_CURL_URLS}")" -eq 0 ]] || return 1
+}
+
+@test "docker hub: credentials docker login stored under the index URL are used" {
+  export DOCKER_CONFIG="${TEST_DIR}/docker-config"
+  mkdir -p "${DOCKER_CONFIG}"
+  cat > "${DOCKER_CONFIG}/config.json" << 'JSON'
+{"auths":{"https://index.docker.io/v1/":{"auth":"dXNlcjpwYXNz"}}}
+JSON
+  export MOCK_REMOTE_TAGS_JSON='{"tags":["1.0","1.6"]}'
+  run "$PROVIDER" "docker.io/kube-kaptain/quality/quality-strict:[1.0,2.0)" "${OUTPUT_FILE}"
+  [[ "$status" -eq 0 ]] || return 1
+  assert_output_contains "Found stored credentials for docker.io"
+  assert_output_contains "bearer-with-creds"
 }
 
 @test "auth: Basic challenge uses Basic header from stored creds" {
