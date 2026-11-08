@@ -392,10 +392,15 @@ step_generate_manifests() {
     if [[ -d "${src_secret_template}" ]]; then
       cp -R "${src_secret_template}/." "${secret_source_dir}/"
     fi
-    if [[ ! -f "${secret_source_dir}/environmentPassphrase" ]]; then
-      format_token_reference "${TOKEN_DELIMITER_STYLE}" "$(project_token_name ENVIRONMENT_PASSPHRASE)" \
-        | tr -d '\n' > "${secret_source_dir}/environmentPassphrase"
+    # Always the generated token, so every environment's passphrase is
+    # supplied the same way and can never be fixed in the repo.
+    if [[ -e "${secret_source_dir}/environmentPassphrase" ]]; then
+      log_error "${src_secret_template}/environmentPassphrase is not allowed: the deploy image's passphrase key is always generated"
+      log_error "Remove the file; the environment supplies the passphrase as the $(project_token_name ENVIRONMENT_PASSPHRASE) token"
+      exit 1
     fi
+    format_token_reference "${TOKEN_DELIMITER_STYLE}" "$(project_token_name ENVIRONMENT_PASSPHRASE)" \
+      | tr -d '\n' > "${secret_source_dir}/environmentPassphrase"
     log "  Generating Secret template (environmentPassphrase key included)"
     OUTPUT_SUB_PATH="${gen_output}" \
     MANIFESTS_SUB_PATH="${IMAGE_MANIFESTS_DIR}" \

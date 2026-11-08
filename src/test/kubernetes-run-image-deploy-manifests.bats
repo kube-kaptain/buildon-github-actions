@@ -57,12 +57,14 @@ DEFAULTS="kaptain-out/run-image-deploy-manifests/defaults"
   [ "$(yq '.stringData.environmentPassphrase' "${MANIFESTS}/secret.template.yaml")" = '${RunFoo/EnvironmentPassphrase}' ]
 }
 
-@test "secret: a user-supplied environmentPassphrase entry is not overwritten" {
+@test "secret: a user-supplied environmentPassphrase entry fails" {
   mkdir -p src/environment/secret.template
   printf '%s' 'mine' > src/environment/secret.template/environmentPassphrase
   run "$SCRIPT"
-  [ "$status" -eq 0 ]
-  [ "$(yq '.stringData.environmentPassphrase' "${MANIFESTS}/secret.template.yaml")" = "mine" ]
+  [[ "$status" -eq 1 ]] || return 1
+  assert_output_contains "src/environment/secret.template/environmentPassphrase is not allowed"
+  assert_output_contains "RunFoo/EnvironmentPassphrase token"
+  [[ ! -f "${MANIFESTS}/secret.template.yaml" ]] || return 1
 }
 
 @test "secret: a supplied Secret manifest without environmentPassphrase fails" {
