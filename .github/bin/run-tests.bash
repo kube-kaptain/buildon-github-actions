@@ -445,6 +445,9 @@ main() {
   rm -rf "${PROJECT_ROOT}/${output_sub_path}/test"
   mkdir -p "${PROJECT_ROOT}/${output_sub_path}/test"
   log_info "Cleared ${output_sub_path}/test/ for test artifacts"
+  # Survives the sanitising below, so test artifacts follow a configured
+  # outputSubPath while the tests themselves keep the default
+  export TEST_TARGET_DIR="${PROJECT_ROOT}/${output_sub_path}/test"
 
   # === Fast checks first (fail fast before 10-minute BATS suite) ===
 
@@ -492,7 +495,7 @@ main() {
   log_info "Sanitizing environment for BATS tests"
   while IFS='=' read -r name _; do
     case "$name" in
-      PATH|HOME|TMPDIR|TERM|USER|LANG|LC_*|SHELL) ;;
+      PATH|HOME|TMPDIR|TERM|USER|LANG|LC_*|SHELL|TEST_TARGET_DIR) ;;
       *) unset "$name" ;;
     esac
   done < <(env)
