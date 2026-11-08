@@ -429,3 +429,23 @@ read_manifest_in_subpath() {
   run "$GENERATORS_DIR/generate-kubernetes-poddisruptionbudget"
   [ "$status" -eq 6 ]
 }
+
+# A segment ending in - would leave a resource name ending in -, which
+# Kubernetes rejects; doubled slashes and edge hyphens are malformed too.
+@test "combined sub-path validation rejects malformed segments" {
+  local path
+  for path in "apps//backend" "-apps" "apps-" "apps/-backend" "apps-/backend"; do
+    export KUBERNETES_PODDISRUPTIONBUDGET_COMBINED_SUB_PATH="${path}"
+    run "$GENERATORS_DIR/generate-kubernetes-poddisruptionbudget"
+    [ "$status" -eq 6 ] || return 1
+    assert_output_contains "Combined sub-path segments must start and end with a lowercase letter or digit"
+  done
+}
+
+@test "combined sub-path validation accepts hyphens inside segments" {
+  export KUBERNETES_PODDISRUPTIONBUDGET_COMBINED_SUB_PATH="tools/cron-2"
+
+  run "$GENERATORS_DIR/generate-kubernetes-poddisruptionbudget"
+  [ "$status" -eq 0 ]
+  [ -f "$OUTPUT_SUB_PATH/manifests/combined/tools/cron-2/poddisruptionbudget.yaml" ]
+}

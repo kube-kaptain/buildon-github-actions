@@ -24,6 +24,10 @@ fi
 RUN_IMAGE_DEPLOY_MANIFESTS_BASE="${OUTPUT_SUB_PATH}/run-image-deploy-manifests"
 RUN_IMAGE_DEPLOY_MANIFESTS_INPUT="${RUN_IMAGE_DEPLOY_MANIFESTS_BASE}/manifests"
 RUN_IMAGE_DEPLOY_MANIFESTS_DEFAULTS="${RUN_IMAGE_DEPLOY_MANIFESTS_BASE}/defaults"
+# Entries contributed during the build (a layer's hook script, say), merged
+# with the environment deploy source's configmap and secret.template entries.
+RUN_IMAGE_DEPLOY_MANIFESTS_CONFIGMAP="${RUN_IMAGE_DEPLOY_MANIFESTS_BASE}/configmap"
+RUN_IMAGE_DEPLOY_MANIFESTS_SECRET_TEMPLATE="${RUN_IMAGE_DEPLOY_MANIFESTS_BASE}/secret.template"
 RUN_IMAGE_DEPLOY_MANIFESTS_PIPELINE="${RUN_IMAGE_DEPLOY_MANIFESTS_BASE}/pipeline"
 
 # The finished set. The aggregate reads it from the real output dir, so it

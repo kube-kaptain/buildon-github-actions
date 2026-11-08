@@ -50,6 +50,10 @@ readonly NAMESPACE_PLACEHOLDER="kaptain-namespace-placeholder"
 # that already tokenise their names (via nameOverride) byte-identical.
 readonly FULLNAME_PLACEHOLDER="kaptain-fullname-placeholder"
 
+# \001 as the sed delimiter: nothing interpolated into a sed expression here can
+# contain it, unlike / or | in paths and token styles.
+readonly SED_SEP=$'\001'
+
 # Required inputs
 OUTPUT_SUB_PATH="${OUTPUT_SUB_PATH:?OUTPUT_SUB_PATH is required}"
 
@@ -503,7 +507,7 @@ done
 if [[ ${MOVE_ERRORS} -gt 0 ]]; then
   log_error "${MOVE_ERRORS} moveFiles source(s) not found"
   log "Available files in C-split/:"
-  find "${SPLIT_DIR}" -name '*.yaml' -type f | sed "s|^${SPLIT_DIR}/||" | LC_ALL=C sort | sed 's/^/  /'
+  find "${SPLIT_DIR}" -name '*.yaml' -type f | sed "s${SED_SEP}^${SPLIT_DIR}/${SED_SEP}${SED_SEP}" | LC_ALL=C sort | sed 's/^/  /'
   exit 1
 fi
 
@@ -755,9 +759,13 @@ log "  Resolving namespace sentinel to ${ENVIRONMENT_TOKEN}"
 if [[ "${USE_PROJECT_NAME_AS_FULLNAME_OVERRIDE}" == "true" ]]; then
   log "  Resolving fullname sentinel to ${PROJECT_NAME_TOKEN}"
 fi
+# The tokens go into sed replacements, where a backslash is an escape: double
+# it so a style like swift's \(Name) survives. No token style contains &.
+ENVIRONMENT_TOKEN_REPLACEMENT="${ENVIRONMENT_TOKEN//\\/\\\\}"
+PROJECT_NAME_TOKEN_REPLACEMENT="${PROJECT_NAME_TOKEN//\\/\\\\}"
 while IFS= read -r manifest; do
-  sed -i.bak -e "s|${NAMESPACE_PLACEHOLDER}|${ENVIRONMENT_TOKEN}|g" \
-             -e "s|${FULLNAME_PLACEHOLDER}|${PROJECT_NAME_TOKEN}|g" "${manifest}" \
+  sed -i.bak -e "s${SED_SEP}${NAMESPACE_PLACEHOLDER}${SED_SEP}${ENVIRONMENT_TOKEN_REPLACEMENT}${SED_SEP}g" \
+             -e "s${SED_SEP}${FULLNAME_PLACEHOLDER}${SED_SEP}${PROJECT_NAME_TOKEN_REPLACEMENT}${SED_SEP}g" "${manifest}" \
     && rm -f "${manifest}.bak"
 done < <(find "${ANNOTATED_DIR}" -name '*.yaml' -type f)
 
@@ -968,12 +976,41 @@ if [[ -n "${IMAGE_RETAGS_JSON}" && "${IMAGE_RETAGS_JSON}" != "null" && "${IMAGE_
     SOURCE_IMAGE_URI=$(echo "${IMAGE_RETAGS_JSON}" | jq -r ".[${i}].sourceImageUri")
     TAG_SUFFIX=$(echo "${IMAGE_RETAGS_JSON}" | jq -r ".[${i}].tagSuffix")
 
+    # A tag is required: the last path segment, ignoring any @digest, must
+    # carry one. Without this a tagless URI parses into nonsense parts.
+    SOURCE_LAST_SEGMENT="${SOURCE_IMAGE_URI%%@*}"
+    SOURCE_LAST_SEGMENT="${SOURCE_LAST_SEGMENT##*/}"
+    if [[ "${SOURCE_LAST_SEGMENT}" != *:* ]]; then
+      log_error "Image retag sourceImageUri has no tag: ${SOURCE_IMAGE_URI} - a tag is required, e.g. ${SOURCE_IMAGE_URI%%@*}:1.2.3"
+      exit 1
+    fi
+
     # Parse sourceImageUri into registry, image name, and tag
-    # Format: registry/image/path:tag
-    SOURCE_TAG="${SOURCE_IMAGE_URI##*:}"
-    SOURCE_REGISTRY_AND_IMAGE="${SOURCE_IMAGE_URI%:*}"
-    SOURCE_REGISTRY="${SOURCE_REGISTRY_AND_IMAGE%%/*}"
-    SOURCE_IMAGE_NAME="${SOURCE_REGISTRY_AND_IMAGE#*/}"
+    # Format: [registry/]image/path:tag[@digest]
+    # The digest is split off first and the tag taken from the last path
+    # segment only, so neither a digest's sha256: nor a registry port is
+    # mistaken for the tag. A first segment is only a registry if it has a dot
+    # or a port or is localhost; otherwise docker.io is assumed, with library/
+    # for a bare image name, as docker does. A digest rides along on the tag.
+    SOURCE_DIGEST_SUFFIX=""
+    if [[ "${SOURCE_IMAGE_URI}" == *@* ]]; then
+      SOURCE_DIGEST_SUFFIX="@${SOURCE_IMAGE_URI#*@}"
+    fi
+    SOURCE_TAG="${SOURCE_LAST_SEGMENT##*:}${SOURCE_DIGEST_SUFFIX}"
+    SOURCE_REPOSITORY="${SOURCE_IMAGE_URI%%@*}"
+    SOURCE_REPOSITORY="${SOURCE_REPOSITORY%:*}"
+    SOURCE_FIRST_SEGMENT="${SOURCE_REPOSITORY%%/*}"
+    if [[ "${SOURCE_REPOSITORY}" == */* ]] \
+        && [[ "${SOURCE_FIRST_SEGMENT}" == *.* || "${SOURCE_FIRST_SEGMENT}" == *:* || "${SOURCE_FIRST_SEGMENT}" == "localhost" ]]; then
+      SOURCE_REGISTRY="${SOURCE_FIRST_SEGMENT}"
+      SOURCE_IMAGE_NAME="${SOURCE_REPOSITORY#*/}"
+    elif [[ "${SOURCE_REPOSITORY}" == */* ]]; then
+      SOURCE_REGISTRY="docker.io"
+      SOURCE_IMAGE_NAME="${SOURCE_REPOSITORY}"
+    else
+      SOURCE_REGISTRY="docker.io"
+      SOURCE_IMAGE_NAME="library/${SOURCE_REPOSITORY}"
+    fi
 
     log "  Retag $((i + 1))/${RETAG_COUNT}: ${SOURCE_IMAGE_URI} -> tag suffix: ${TAG_SUFFIX}"
 

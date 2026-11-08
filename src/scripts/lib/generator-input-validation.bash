@@ -70,15 +70,19 @@ validate_boolean() {
 # Validate combined sub-path format
 # Usage: validate_combined_sub_path <path>
 #
-# Validates that a combined sub-path (used for output directory nesting) follows rules:
+# Validates that a combined sub-path (used for output directory nesting, and
+# with / turned into - in the middle of generated resource names) follows rules:
 #   - Only lowercase letters, digits, hyphens, and slashes allowed
 #   - Must not start or end with a slash
+#   - Each segment starts and ends with a letter or digit, single slashes
+#     between segments, so the resource names it builds stay valid
 #   - Empty path is valid (returns 0)
 #
 # Exit codes:
 #   0 - Valid (or empty)
 #   5 - Invalid characters
-#   6 - Leading or trailing slash
+#   6 - Malformed: leading or trailing slash, empty segment, or a segment
+#       starting or ending with a hyphen
 #
 validate_combined_sub_path() {
   local path="$1"
@@ -95,6 +99,13 @@ validate_combined_sub_path() {
 
   if [[ "${path}" == /* || "${path}" == */ ]]; then
     log_error "Combined sub-path must not start or end with a slash, got: ${path}"
+    exit 6
+  fi
+
+  # Same rule as the schema's $defs.combinedSubPath
+  local segments_re='^[a-z0-9]([a-z0-9-]*[a-z0-9])?(/[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$'
+  if [[ ! "${path}" =~ ${segments_re} ]]; then
+    log_error "Combined sub-path segments must start and end with a lowercase letter or digit, with single slashes between them, got: ${path}"
     exit 6
   fi
 }

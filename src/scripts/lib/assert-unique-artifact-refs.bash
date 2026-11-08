@@ -53,8 +53,8 @@ assert_unique_artifact_refs() {
 
   local sed_program
   case "${mode}" in
-    name) sed_program='s/^[^|]*\|//; s/:[^:/]+$//; s|^.*/||' ;;
-    path) sed_program='s/^[^|]*\|//; s/:[^:/]+$//' ;;
+    name) sed_program='s/^[^|]*\|//; s/@.*$//; s/:[^:/]+$//; s|^.*/||' ;;
+    path) sed_program='s/^[^|]*\|//; s/@.*$//; s/:[^:/]+$//' ;;
     *)
       log_error "assert_unique_artifact_refs: unknown mode '${mode}' (expected 'name' or 'path')"
       return 1

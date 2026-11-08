@@ -416,6 +416,26 @@ ENV HELM_VERSION=3.14.0' > src/docker/Dockerfile
   assert_var_equals "VERSION" "3.14.1"
 }
 
+@test "file-pattern-match custom pattern may contain slashes" {
+  TEST_REPO=$(clone_fixture "tag-none")
+  cd "$TEST_REPO"
+  echo "spec:
+  main:
+    vendorHelmRendered:
+      imageRetags:
+        - sourceImageUri: 'registry.k8s.io/autoscaling/cluster-autoscaler:v1.35.2'" > KaptainPM.yaml
+
+  export TAG_VERSION_CALCULATION_STRATEGY=file-pattern-match
+  export TAG_VERSION_PATTERN_TYPE=custom
+  export TAG_VERSION_SOURCE_SUB_PATH=.
+  export TAG_VERSION_SOURCE_FILE_NAME=KaptainPM.yaml
+  export TAG_VERSION_SOURCE_CUSTOM_PATTERN="^[[:space:]]*- sourceImageUri: 'registry.k8s.io/autoscaling/cluster-autoscaler:v([0-9]+\.[0-9]+\.[0-9]+)'$"
+
+  run "$SCRIPTS_DIR/versions-and-naming"
+  [ "$status" -eq 0 ]
+  assert_var_equals "VERSION" "1.35.1"
+}
+
 @test "file-pattern-match dockerfile-env-kubectl uses custom source path" {
   TEST_REPO=$(clone_fixture "tag-none")
   cd "$TEST_REPO"

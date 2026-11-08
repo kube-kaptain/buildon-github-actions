@@ -37,9 +37,8 @@ source "${LIB_DIR}/log.bash"
 # shellcheck disable=SC1091  # Path resolves at runtime via SCRIPTS_BASE_DIR
 source "${SCRIPTS_BASE_DIR}/defaults/output-sub-path.bash"
 
-# Clean output directory from previous runs
-# shellcheck disable=SC2154  # OUTPUT_SUB_PATH set by output-sub-path.bash above
-rm -rf "${OUTPUT_SUB_PATH}"
+# The output dir from a previous run is wiped by validate-tooling, the first
+# step of every build, so builds on every platform start clean the same way.
 
 
 # =============================================================================
@@ -93,6 +92,41 @@ print_build_complete() {
   print_banner "${REFERENCE_SCRIPT_PRETTY} build complete!"
 }
 
+# Run one script with its REFERENCE_SCRIPT_OUTPUT file, import the variables
+# it wrote, and keep the file in the output dir. validate-tooling wipes that
+# dir and load-final-kaptainpm-yaml may move it (to a configured
+# outputSubPath), so their files sit in kaptainpm/, whose path never changes,
+# until the import has picked up the current OUTPUT_SUB_PATH, then move to the
+# output dir like every other step's.
+# Usage: run_with_outputs <script-dir> <step-name>
+# shellcheck disable=SC2154  # OUTPUT_SUB_PATH set by output-sub-path.bash above
+run_with_outputs() {
+  local script_dir="${1}" step_name="${2}" step_file line rc=0
+  if [[ "${step_name}" == "validate-tooling" || "${step_name}" == "load-final-kaptainpm-yaml" ]]; then
+    step_file="kaptainpm/reference-script-output/${step_name}"
+  else
+    step_file="${OUTPUT_SUB_PATH}/reference-script-output/${step_name}"
+  fi
+  mkdir -p "$(dirname "${step_file}")"
+  : > "${step_file}"
+
+  REFERENCE_SCRIPT_OUTPUT="${step_file}" "${script_dir}/${step_name}" || rc=$?
+
+  if [[ "${rc}" -eq 0 && -s "${step_file}" ]]; then
+    while IFS= read -r line; do
+      export "${line%%=*}"="${line#*=}"
+    done < "${step_file}"
+  fi
+
+  local kept="${OUTPUT_SUB_PATH}/reference-script-output/${step_name}"
+  if [[ "${step_file}" != "${kept}" ]]; then
+    mkdir -p "$(dirname "${kept}")"
+    mv "${step_file}" "${kept}"
+    rmdir "$(dirname "${step_file}")" 2> /dev/null || true
+  fi
+  return "${rc}"
+}
+
 # Run a build step: print banner, execute script, import output variables
 run_step() {
   local step_name="${1}"
@@ -108,18 +142,7 @@ run_step() {
   fi
 
   print_step_banner "${step_name}"
-
-  local step_file="${OUTPUT_SUB_PATH}/reference-script-output/${step_name}"
-  mkdir -p "$(dirname "${step_file}")"
-  : > "${step_file}"
-
-  REFERENCE_SCRIPT_OUTPUT="${step_file}" "${SCRIPTS_DIR}/${step_name}"
-
-  if [[ -s "${step_file}" ]]; then
-    while IFS= read -r line; do
-      export "${line%%=*}"="${line#*=}"
-    done < "${step_file}"
-  fi
+  run_with_outputs "${SCRIPTS_DIR}" "${step_name}"
 }
 
 # Run a generator step: same as run_step but from GENERATORS_DIR
@@ -127,18 +150,7 @@ run_generator() {
   local step_name="${1}"
 
   print_step_banner "${step_name}"
-
-  local step_file="${OUTPUT_SUB_PATH}/reference-script-output/${step_name}"
-  mkdir -p "$(dirname "${step_file}")"
-  : > "${step_file}"
-
-  REFERENCE_SCRIPT_OUTPUT="${step_file}" "${GENERATORS_DIR}/${step_name}"
-
-  if [[ -s "${step_file}" ]]; then
-    while IFS= read -r line; do
-      export "${line%%=*}"="${line#*=}"
-    done < "${step_file}"
-  fi
+  run_with_outputs "${GENERATORS_DIR}" "${step_name}"
 }
 
 

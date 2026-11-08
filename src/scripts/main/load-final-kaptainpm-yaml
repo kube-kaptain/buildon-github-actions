@@ -47,6 +47,8 @@ source "${SCRIPT_DIR}/../defaults/vendor-github-release.bash"
 source "${SCRIPT_DIR}/../defaults/tokens.bash"
 # shellcheck source=src/scripts/lib/kaptainpm-bool.bash
 source "${SCRIPT_DIR}/../lib/kaptainpm-bool.bash"
+# shellcheck source=src/scripts/lib/output-dir-guard.bash
+source "${SCRIPT_DIR}/../lib/output-dir-guard.bash"
 # shellcheck source=src/scripts/lib/builtin-tokens-from-entry.bash
 source "${SCRIPT_DIR}/../lib/builtin-tokens-from-entry.bash"
 
@@ -74,6 +76,20 @@ fi
 if ! yq eval '.' "${PM_FILE}" > /dev/null 2>&1; then
   log_error "Invalid YAML syntax in ${PM_FILE}"
   log "$(yq eval '.' "${PM_FILE}" 2>&1 | head -5)"
+  exit 1
+fi
+
+# Every unquoted number must be plain decimal. The schema only sees the parsed
+# value, but consumers see the text: YAML 1.1 (Kubernetes) reads 017 as octal
+# 15, YAML 1.2 (yq, the schema validators) as 17, and bash arithmetic as octal
+# or, for 08, an error. No field takes a fraction, so every float is an integer
+# written some other way (3.0, 1e2, and 08 as yq tags it).
+ambiguous_numbers=$(yq -r '.. | select((tag == "!!int" and (tostring | test("^(0|-?[1-9][0-9]*)$") | not)) or tag == "!!float")
+  | (path | map(tostring) | join(".")) + "\t" + tostring' "${PM_FILE}")
+if [[ -n "${ambiguous_numbers}" ]]; then
+  while IFS=$'\t' read -r number_path number_text; do
+    log_error "${number_path}: ${number_text} is ambiguous depending on the YAML specification version and could mean more than one value depending on the context. Use decimal."
+  done <<< "${ambiguous_numbers}"
   exit 1
 fi
 
@@ -149,7 +165,7 @@ MAPPINGS=(
   "spec.main.quality.commits.blockDuplicateMessages:QC_BLOCK_DUPLICATE_COMMIT_MESSAGES"
 
   # Docker
-  "spec.main.docker.runtime:IMAGE_BUILD_COMMAND"
+  # Note: runtime handled separately below (local builds only)
   "spec.main.docker.platform:DOCKER_PLATFORM"
   # Note: logins exported separately as JSON below (multi-line YAML won't fit in output_var)
   # Note: targetRegistry/targetNamespace resolved separately below (platform
@@ -471,8 +487,8 @@ for mapping in "${MAPPINGS[@]}"; do
   yaml_path="${mapping%%:*}"
   env_var="${mapping##*:}"
 
-  # Extract value using yq (returns null for missing keys)
-  value=$(yq -r ".${yaml_path}" "${PM_FILE}" )
+  # Extract value using yq (returns null for missing keys), booleans lowercased
+  value=$(kaptainpm_value "${PM_FILE}" "${yaml_path}")
 
   # Skip if value is empty, null, or an object/array marker
   if [[ -z "${value}" || "${value}" == "null" || "${value}" == "{}" || "${value}" == "[]" ]]; then
@@ -485,6 +501,27 @@ for mapping in "${MAPPINGS[@]}"; do
   found_count=$((found_count + 1))
 done
 log ""
+
+# --- docker.runtime: local builds only. Locally it replaces validate-tooling's
+# pick for later steps, so it must be installed. A build server always uses
+# podman (validate-tooling sets it up with a docker symlink), so the field is
+# ignored there rather than failing a build that works locally. ---
+docker_runtime=$(kaptainpm_value "${PM_FILE}" spec.main.docker.runtime)
+if [[ -n "${docker_runtime}" && "${docker_runtime}" != "null" ]]; then
+  if [[ "${BUILD_MODE:-}" == "build_server" ]]; then
+    log "Field .spec.main.docker.runtime = \"${docker_runtime}\" ignored: a build server always uses podman"
+  elif [[ "${docker_runtime}" != "podman" && "${docker_runtime}" != "docker" ]]; then
+    log_error "spec.main.docker.runtime must be podman or docker, got: ${docker_runtime}"
+    exit 1
+  elif ! command -v "${docker_runtime}" > /dev/null 2>&1; then
+    log_error "spec.main.docker.runtime is ${docker_runtime} but ${docker_runtime} is not installed - install it or remove the setting"
+    exit 1
+  else
+    output_var "IMAGE_BUILD_COMMAND" "${docker_runtime}" > /dev/null
+    log "Field .spec.main.docker.runtime = \"${docker_runtime}\" exported as IMAGE_BUILD_COMMAND"
+    found_count=$((found_count + 1))
+  fi
+fi
 
 # --- Builtin token mode: only the kinds that package manifests for another
 # build to consume may defer their built-ins. The schema enforces this too;
@@ -664,11 +701,46 @@ if [[ -z "${output_sub_path}" || "${output_sub_path}" == "null" ]]; then
 else
   found_count=$((found_count + 1))
 fi
+
+# --- A configured outputSubPath takes over the build's output dir. Every step
+# before this one (and kaptain-init's deferred builtin tokens) wrote to the dir
+# the build started with, so that dir moves into place here, before anything
+# below writes to it, and a stale copy from an earlier local run goes first.
+# That is an rm -rf on a configured path, so it is guarded hard whatever the
+# schema in use allowed. ---
+relocate_output_dir() {
+  local from="${1}" to="${2}"
+  assert_safe_output_dir "spec.global.outputSubPath" "${to}"
+  if [[ "${to}" == "${from}/"* || "${from}" == "${to}/"* ]]; then
+    log_error "spec.global.outputSubPath ${to} and the build's starting output dir ${from} must not be nested in each other"
+    exit 1
+  fi
+
+  log "Moving the build's output dir ${from} to the configured ${to}"
+  rm -rf "${to}"
+  mkdir -p "$(dirname "${to}")"
+  if [[ -d "${from}" ]]; then
+    mv "${from}" "${to}"
+  else
+    mkdir -p "${to}"
+  fi
+
+  # Only a local run gets here with it set: CI reads the post-loader logins
+  # step's value. Re-pointed so the steps before that run find their list.
+  if [[ -n "${DOCKER_PUSH_IMAGE_LIST_FILE:-}" && "${DOCKER_PUSH_IMAGE_LIST_FILE}" == "${from}/"* ]]; then
+    output_var "DOCKER_PUSH_IMAGE_LIST_FILE" "${to}/${DOCKER_PUSH_IMAGE_LIST_FILE#"${from}"/}" > /dev/null
+  fi
+}
+
+if [[ "${output_sub_path}" != "${OUTPUT_SUB_PATH}" ]]; then
+  relocate_output_dir "${OUTPUT_SUB_PATH}" "${output_sub_path}"
+fi
+
 output_var "OUTPUT_SUB_PATH" "${output_sub_path}" > /dev/null
 log "Field .spec.global.outputSubPath = \"${output_sub_path}\" exported as OUTPUT_SUB_PATH"
 
-github_release_enabled=$(yq -r '.spec.platform.githubActions.release.enabled // ""' "${PM_FILE}")
-if [[ -z "${github_release_enabled}" || "${github_release_enabled}" == "null" ]]; then
+github_release_enabled=$(kaptainpm_bool "${PM_FILE}" "spec.platform.githubActions.release.enabled" "")
+if [[ -z "${github_release_enabled}" ]]; then
   github_release_enabled="${GITHUB_RELEASE_ENABLED}"
   log "Field .spec.platform.githubActions.release.enabled not set, defaulted to ${github_release_enabled} to allow wrapper optimisations."
 else
@@ -741,7 +813,8 @@ if [[ -f "${pending_file}" ]]; then
         IFS= read -r -d '' resolved_version
         IFS= read -r -d '' subdir
         IFS= read -r -d '' manifests_docker_tag
-        emit_builtin_tokens_for_entry "${entry}" "${resolved_version}" "${subdir}" "${manifests_docker_tag}"
+        IFS= read -r -d '' digest
+        emit_builtin_tokens_for_entry "${entry}" "${resolved_version}" "${subdir}" "${manifests_docker_tag}" "${digest}"
         ;;
       *)
         log_error "Unknown deferred builtin token record type: '${record_type}'"

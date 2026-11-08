@@ -438,3 +438,22 @@ write_layerset_pm_with_layers() {
 teardown() {
   dump_bats_result
 }
+
+@test "a pinned PRERELEASE layer dependency fails a server build" {
+  export PROJECT_NAME="layerset-foo"
+  export BUILD_MODE="build_server"
+  write_layerset_pm_with_layers "src/layerset/KaptainPM.yaml" \
+    "ghcr.io/kube-kaptain/quality/quality-strict:1.0.0-PRERELEASE@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+  run "$SCRIPT"
+  [[ "$status" -ne 0 ]] || return 1
+  assert_output_contains "PRERELEASE layer dependencies are not allowed in server builds"
+}
+
+@test "a pinned released layer dependency is listed with its pin" {
+  export PROJECT_NAME="layerset-foo"
+  write_layerset_pm_with_layers "src/layerset/KaptainPM.yaml" \
+    "ghcr.io/kube-kaptain/quality/quality-strict:1.0.0@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+  run "$SCRIPT"
+  [[ "$status" -eq 0 ]] || return 1
+  [[ "$(sed -n '1p' kaptain-out/layers-list)" == "- ghcr.io/kube-kaptain/quality/quality-strict:1.0.0@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef" ]] || return 1
+}

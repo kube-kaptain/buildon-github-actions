@@ -318,3 +318,72 @@ EOF
 teardown() {
   dump_bats_result
 }
+
+# =============================================================================
+# /kd/bin: the environment's own files and files contributed during the build
+# =============================================================================
+
+CTX="kaptain-out/run-package/deploy-image-context"
+CONTRIB_BIN="kaptain-out/run-package/bin"
+
+@test "run-package: src/bin and contributed files reach /kd/bin with their modes" {
+  mkdir -p src/bin "${CONTRIB_BIN}/sub"
+  printf '#!/usr/bin/env bash\necho own\n' > src/bin/notify-info-own
+  chmod 755 src/bin/notify-info-own
+  printf '#!/usr/bin/env bash\necho contributed\n' > "${CONTRIB_BIN}/deploy"
+  chmod 755 "${CONTRIB_BIN}/deploy"
+  printf 'data\n' > "${CONTRIB_BIN}/sub/plain.txt"
+  chmod 644 "${CONTRIB_BIN}/sub/plain.txt"
+  run "$SCRIPT"
+  [[ "$status" -eq 0 ]] || return 1
+  [[ -x "${CTX}/bin/notify-info-own" ]] || return 1
+  [[ -x "${CTX}/bin/deploy" ]] || return 1
+  [[ -f "${CTX}/bin/sub/plain.txt" && ! -x "${CTX}/bin/sub/plain.txt" ]] || return 1
+  grep -qx 'COPY bin/ /kd/bin/' "${CTX}/Dockerfile" || return 1
+  assert_output_contains "Staged 1 file(s) for /kd/bin from src/bin"
+  assert_output_contains "Staged 2 file(s) for /kd/bin from ${CONTRIB_BIN}"
+}
+
+@test "run-package: a file in both src/bin and the contributed dir fails, listing each" {
+  mkdir -p src/bin "${CONTRIB_BIN}"
+  printf 'a' > src/bin/one
+  printf 'a' > src/bin/two
+  printf 'b' > "${CONTRIB_BIN}/one"
+  printf 'b' > "${CONTRIB_BIN}/two"
+  printf 'b' > "${CONTRIB_BIN}/three"
+  run "$SCRIPT"
+  [[ "$status" -eq 1 ]] || return 1
+  assert_output_contains "Files supplied by both src/bin and ${CONTRIB_BIN}:"
+  assert_output_contains "  one"
+  assert_output_contains "  two"
+  [[ "$output" != *"  three"* ]] || return 1
+}
+
+@test "run-package: a symlink in a /kd/bin source fails" {
+  mkdir -p "${CONTRIB_BIN}"
+  ln -s /etc/passwd "${CONTRIB_BIN}/sneaky"
+  run "$SCRIPT"
+  [[ "$status" -eq 1 ]] || return 1
+  assert_output_contains "sneaky: a symbolic link"
+}
+
+@test "run-package: with no /kd/bin files there is no bin COPY" {
+  mkdir -p src/bin "${CONTRIB_BIN}"
+  run "$SCRIPT"
+  [[ "$status" -eq 0 ]] || return 1
+  [[ ! -e "${CTX}/bin" ]] || return 1
+  [[ "$(grep -c 'COPY bin/' "${CTX}/Dockerfile")" -eq 0 ]] || return 1
+}
+
+@test "run-package: run-platform builds take /kd/bin files too" {
+  export BUILD_KIND="kubernetes-run-platform-meta-environment"
+  export PROJECT_NAME="run-platform-test"
+  export DOCKER_IMAGE_NAME="run-platform-test"
+  write_stages "kaptain-out/run-platform-meta-environment"
+  mkdir -p src/bin
+  printf 'x' > src/bin/extra
+  run "$SCRIPT"
+  [[ "$status" -eq 0 ]] || return 1
+  [[ -f "${CTX}/bin/extra" ]] || return 1
+  grep -qx 'COPY bin/ /kd/bin/' "${CTX}/Dockerfile" || return 1
+}

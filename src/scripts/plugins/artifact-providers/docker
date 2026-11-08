@@ -36,6 +36,8 @@ source "${SCRIPT_DIR}/../../lib/log.bash"
 source "${SCRIPT_DIR}/../../lib/version-range.bash"
 # shellcheck source=src/scripts/lib/docker-ref-expand.bash
 source "${SCRIPT_DIR}/../../lib/docker-ref-expand.bash"
+# shellcheck source=src/scripts/lib/registry-auth.bash
+source "${SCRIPT_DIR}/../../lib/registry-auth.bash"
 
 # Dump every set considered during version range resolution.
 # Called from each failure exit so the operator sees what was filtered out.
@@ -82,6 +84,9 @@ variant="${3:-}"
 docker_ref_expand "${reference}" || exit 1
 version_part="${DOCKER_REF_VERSION_PART}"
 full_name="${DOCKER_REF_FULL_NAME}"
+# A pin rides along on the resolved URI; extract-oci-image checks the tag
+# still resolves to it before the image is used
+digest_suffix="${DOCKER_REF_DIGEST_PART:+@${DOCKER_REF_DIGEST_PART}}"
 
 # Version resolution
 # Unwrap degenerate "[N]" form to "N" once up front so both branches see the
@@ -91,10 +96,13 @@ version_part=$(version_unwrap_exact "${version_part}")
 if version_is_exact "${version_part}"; then
   # Exact version: no registry call needed
   if [[ -n "${variant}" ]]; then
-    echo "${full_name}:${version_part}-${variant}" > "${output_file}"
+    echo "${full_name}:${version_part}-${variant}${digest_suffix}" > "${output_file}"
   else
-    echo "${full_name}:${version_part}" > "${output_file}"
+    echo "${full_name}:${version_part}${digest_suffix}" > "${output_file}"
   fi
+elif [[ -n "${digest_suffix}" ]]; then
+  log_error "A digest pins one image, so it needs an exact version, not the range ${version_part}: ${reference}"
+  exit 1
 else
   # Range: query remote tags and resolve
   if [[ -z "${IMAGE_BUILD_COMMAND:-}" ]]; then
@@ -139,135 +147,20 @@ else
     registry="${full_name%%/*}"
     image_path="${full_name#*/}"
 
-    # Collect raw user:pass from docker/podman config files. We don't build
-    # an Authorization header yet - the WWW-Authenticate probe below decides
-    # the actual scheme. Modern OCI registries reject Basic against tags/list
-    # and require a Bearer token from the realm endpoint, even when we have
-    # working credentials.
-    basic_user_pass=""
-    auth_method=""
-    for config_file in \
-      "${DOCKER_CONFIG:-${HOME}/.docker}/config.json" \
-      "${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/containers/auth.json"; do
-      if [[ ! -f "${config_file}" ]]; then
-        log "Config file not found, skipping: ${config_file}"
-        continue
-      fi
-      log "Checking docker config: ${config_file}"
+    # Docker Hub's registry API is not served from its name
+    api_host=$(registry_api_host "${registry}")
 
-      # Direct base64-encoded credentials in .auths.<reg>.auth
-      stored_auth=$(jq -r ".auths[\"${registry}\"].auth // empty" "${config_file}" 2>/dev/null || true)
-      if [[ -n "${stored_auth}" ]]; then
-        log "Found stored credentials for ${registry}"
-        decoded=$(printf '%s' "${stored_auth}" | base64 -d 2>/dev/null || true)
-        if [[ -n "${decoded}" && "${decoded}" == *:* ]]; then
-          basic_user_pass="${decoded}"
-          auth_method="stored-credentials"
-          break
-        fi
-        log_warning "Stored credentials for ${registry} did not decode as user:pass"
-      else
-        log "No stored credentials for ${registry}"
-      fi
-
-      # Per-registry credential helper (credHelpers), then default credsStore
-      cred_helper=$(jq -r ".credHelpers[\"${registry}\"] // empty" "${config_file}" 2>/dev/null || true)
-      if [[ -n "${cred_helper}" ]]; then
-        log "Found credential helper for ${registry}: ${cred_helper}"
-      else
-        log "No credential helper for ${registry}"
-        cred_helper=$(jq -r '.credsStore // empty' "${config_file}" 2>/dev/null || true)
-        if [[ -n "${cred_helper}" ]]; then
-          log "Found default credential store: ${cred_helper}"
-        else
-          log "No default credential store configured"
-        fi
-      fi
-      if [[ -n "${cred_helper}" ]]; then
-        helper_bin="docker-credential-${cred_helper}"
-        if command -v "${helper_bin}" &>/dev/null; then
-          log "Requesting credentials from ${helper_bin}..."
-          cred_json=$(echo "${registry}" | "${helper_bin}" get 2>/dev/null || true)
-          if [[ -n "${cred_json}" ]]; then
-            cred_user=$(echo "${cred_json}" | jq -r '.Username // empty' 2>/dev/null || true)
-            cred_secret=$(echo "${cred_json}" | jq -r '.Secret // empty' 2>/dev/null || true)
-            if [[ -n "${cred_user}" && -n "${cred_secret}" ]]; then
-              log "Credentials obtained for ${registry}"
-              basic_user_pass="${cred_user}:${cred_secret}"
-              auth_method="credential-helper"
-              break
-            fi
-          fi
-          log "Credential helper returned no credentials"
-        else
-          log_warning "${helper_bin} not found on PATH"
-        fi
-      fi
-    done
-
-    # Probe /v2/ for WWW-Authenticate. Drives auth choice for tags/list
-    # regardless of whether creds were found - Bearer-required registries
-    # don't accept Basic against tags/list, so creds need to be exchanged
-    # at the realm endpoint first.
-    auth_header=""
-    log "Probing ${registry}/v2/ for authentication challenge..."
-    www_auth=$(curl -sS -o /dev/null -D - "https://${registry}/v2/" 2>/dev/null \
-      | grep -i '^www-authenticate' || true)
-
-    if [[ -z "${www_auth}" ]]; then
-      log "Registry ${registry} returned no auth challenge - using no auth"
-      [[ -z "${auth_method}" ]] && auth_method="no-auth"
-    elif [[ "${www_auth}" == *[Bb]earer* ]]; then
-      realm=$(echo "${www_auth}" | sed -n 's/.*realm="\([^"]*\)".*/\1/p')
-      service=$(echo "${www_auth}" | sed -n 's/.*service="\([^"]*\)".*/\1/p')
-      scope=$(echo "${www_auth}" | sed -n 's/.*scope="\([^"]*\)".*/\1/p')
-      [[ -z "${scope}" ]] && scope="repository:${image_path}:pull"
-
-      if [[ -z "${realm}" ]]; then
-        log_warning "Bearer challenge from ${registry} had no realm; cannot exchange for token"
-      else
-        token_url="${realm}?scope=${scope}"
-        [[ -n "${service}" ]] && token_url="${token_url}&service=${service}"
-
-        if [[ -n "${basic_user_pass}" ]]; then
-          log "Exchanging stored credentials for Bearer token at ${realm}..."
-          token_response=$(curl -sS -u "${basic_user_pass}" "${token_url}" 2>/dev/null || true)
-          new_auth_method="bearer-with-creds"
-        else
-          log "Requesting anonymous Bearer token from ${realm}..."
-          token_response=$(curl -sS "${token_url}" 2>/dev/null || true)
-          new_auth_method="bearer-anonymous"
-        fi
-        # Registries return either "token" or "access_token" per the spec
-        token=$(echo "${token_response}" | jq -r '.token // .access_token // empty' 2>/dev/null || true)
-        if [[ -n "${token}" ]]; then
-          log "Bearer token obtained (${new_auth_method})"
-          auth_header="Authorization: Bearer ${token}"
-          auth_method="${new_auth_method}"
-        else
-          log_warning "Token endpoint at ${realm} returned no token"
-        fi
-      fi
-    elif [[ "${www_auth}" == *[Bb]asic* ]]; then
-      if [[ -n "${basic_user_pass}" ]]; then
-        log "Using Basic auth for ${registry}"
-        encoded=$(printf '%s' "${basic_user_pass}" | base64 | tr -d '\n')
-        auth_header="Authorization: Basic ${encoded}"
-      else
-        log_warning "Registry ${registry} requires Basic auth but no credentials configured"
-      fi
-    else
-      log_warning "Unrecognised auth challenge from ${registry}: ${www_auth}"
-    fi
-
-    # Query tags/list, paginating via Link rel="next". Some registries
+    registry_auth_header "${registry}" "${image_path}"
+    auth_header="${REGISTRY_AUTH_HEADER}"
+    auth_method="${REGISTRY_AUTH_METHOD}"
+   # Query tags/list, paginating via Link rel="next". Some registries
     # (ghcr.io, docker.io) cap each page at ~100 entries returned in
     # lexicographic order - so without following pagination we silently
     # see only the oldest tags and fail to resolve ranges that point at
     # newer versions. Spec: https://github.com/opencontainers/distribution-spec/blob/main/spec.md#listing-tags
     log "Fetching tags from ${registry}/v2/${image_path}/tags/list..."
     headers_file=$(mktemp)
-    next_url="https://${registry}/v2/${image_path}/tags/list"
+    next_url="https://${api_host}/v2/${image_path}/tags/list"
     page_num=0
     accumulated_tags=""
     paginate_ok=true
@@ -276,9 +169,9 @@ else
       [[ "${page_num}" -gt 1 ]] && log "Fetching tags page ${page_num}: ${next_url}"
       : > "${headers_file}"
       if [[ -n "${auth_header}" ]]; then
-        tags_response=$(curl -sS -H "${auth_header}" -D "${headers_file}" -w 'HTTP_STATUS:%{http_code}' "${next_url}" 2>/dev/null || echo 'HTTP_STATUS:000')
+        tags_response=$(curl -sSL -H "${auth_header}" -D "${headers_file}" -w 'HTTP_STATUS:%{http_code}' "${next_url}" 2>/dev/null || echo 'HTTP_STATUS:000')
       else
-        tags_response=$(curl -sS -D "${headers_file}" -w 'HTTP_STATUS:%{http_code}' "${next_url}" 2>/dev/null || echo 'HTTP_STATUS:000')
+        tags_response=$(curl -sSL -D "${headers_file}" -w 'HTTP_STATUS:%{http_code}' "${next_url}" 2>/dev/null || echo 'HTTP_STATUS:000')
       fi
       http_code="${tags_response##*HTTP_STATUS:}"
       tags_body="${tags_response%HTTP_STATUS:*}"
@@ -317,9 +210,9 @@ else
       elif [[ "${link_next}" == http* ]]; then
         next_url="${link_next}"
       elif [[ "${link_next}" == /* ]]; then
-        next_url="https://${registry}${link_next}"
+        next_url="https://${api_host}${link_next}"
       else
-        next_url="https://${registry}/${link_next}"
+        next_url="https://${api_host}/${link_next}"
       fi
     done
     rm -f "${headers_file}"

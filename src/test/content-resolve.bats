@@ -348,7 +348,10 @@ setup_mock_utils() {
 ref="$1"
 out="$2"
 variant="${3:-}"
-if [[ -n "${variant}" ]]; then
+if [[ -n "${variant}" && "${ref}" == *@* ]]; then
+  # The variant goes on the tag, before a digest pin
+  echo "${ref%%@*}-${variant}@${ref#*@}" > "${out}"
+elif [[ -n "${variant}" ]]; then
   echo "${ref}-${variant}" > "${out}"
 else
   echo "${ref}" > "${out}"
@@ -371,6 +374,16 @@ fi
 cp -R "${src}/." "${out_dir}/"
 MOCK
   chmod +x "${MOCK_BIN_DIR}/extract-oci-image"
+
+  # Mock registry-tag-digest: the digest from MOCK_REGISTRY_DIGEST, or a
+  # failed lookup when it is unset.
+  cat > "${MOCK_BIN_DIR}/registry-tag-digest" << 'MOCK'
+#!/usr/bin/env bash
+echo "${1}" >> "${MOCK_REGISTRY_LOOKUPS:-/dev/null}"
+[[ -n "${MOCK_REGISTRY_DIGEST:-}" ]] || exit 1
+echo "${MOCK_REGISTRY_DIGEST}"
+MOCK
+  chmod +x "${MOCK_BIN_DIR}/registry-tag-digest"
 
   # Override the library's util dir to point at our mocks
   CONTENT_RESOLVE_UTIL_DIR="${MOCK_BIN_DIR}"
@@ -566,4 +579,75 @@ EOF
 
 teardown() {
   dump_bats_result
+}
+
+@test "content_resolve_all: a pinned entry names the manifests image and gets its Digest token" {
+  local pin="sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+  source "$LIB_DIR/content-resolve.bash"
+  setup_mock_utils
+  export MOCK_OCI_DIR="${TEST_DIR}/oci-fixtures"
+  mkdir -p "${MOCK_OCI_DIR}"
+  stage_oci_fixture "foo:1.0-manifests@${pin}" "foo"
+
+  cat > "$TEST_DIR/kp.yaml" << EOF
+apiVersion: kaptain.org/v1
+kind: kubernetes-product
+spec:
+  contents:
+    - foo:1.0@${pin}
+EOF
+
+  run content_resolve_all "$TEST_DIR/kp.yaml"
+  [[ "$status" -eq 0 ]] || return 1
+  grep -qx -- "- foo:1.0-manifests@${pin}" "$TEST_DIR/contents/contents-resolved.yaml" || return 1
+  local tokens="${OUTPUT_SUB_PATH}/builtin-resolved-tokens/contents"
+  [[ "$(cat "${tokens}/ContentFooRef")" == "foo:1.0@${pin}" ]] || return 1
+  [[ "$(cat "${tokens}/ContentFooVersionSpec")" == "1.0" ]] || return 1
+  [[ "$(cat "${tokens}/ContentFooVersion")" == "1.0" ]] || return 1
+  [[ "$(cat "${tokens}/ContentFooManifestsDockerTag")" == "1.0-manifests" ]] || return 1
+  [[ "$(cat "${tokens}/ContentFooDigest")" == "${pin}" ]] || return 1
+}
+
+@test "content_resolve_all: an unpinned entry gets the manifests image's registry digest" {
+  local registry_digest="sha256:fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210"
+  source "$LIB_DIR/content-resolve.bash"
+  setup_mock_utils
+  export MOCK_OCI_DIR="${TEST_DIR}/oci-fixtures"
+  export MOCK_REGISTRY_DIGEST="${registry_digest}"
+  export MOCK_REGISTRY_LOOKUPS="${TEST_DIR}/registry-lookups"
+  mkdir -p "${MOCK_OCI_DIR}"
+  stage_oci_fixture "foo:1.0-manifests" "foo"
+  cat > "$TEST_DIR/kp.yaml" << 'EOF'
+apiVersion: kaptain.org/v1
+kind: kubernetes-product
+spec:
+  contents:
+    - foo:1.0
+EOF
+
+  run content_resolve_all "$TEST_DIR/kp.yaml"
+  [[ "$status" -eq 0 ]] || return 1
+  [[ "$(cat "${OUTPUT_SUB_PATH}/builtin-resolved-tokens/contents/ContentFooDigest")" == "${registry_digest}" ]] || return 1
+  grep -qx "foo:1.0-manifests" "${MOCK_REGISTRY_LOOKUPS}" || return 1
+}
+
+@test "content_resolve_all: a failed registry lookup warns and emits no Digest token" {
+  source "$LIB_DIR/content-resolve.bash"
+  setup_mock_utils
+  export MOCK_OCI_DIR="${TEST_DIR}/oci-fixtures"
+  unset MOCK_REGISTRY_DIGEST
+  mkdir -p "${MOCK_OCI_DIR}"
+  stage_oci_fixture "foo:1.0-manifests" "foo"
+  cat > "$TEST_DIR/kp.yaml" << 'EOF'
+apiVersion: kaptain.org/v1
+kind: kubernetes-product
+spec:
+  contents:
+    - foo:1.0
+EOF
+
+  run content_resolve_all "$TEST_DIR/kp.yaml"
+  [[ "$status" -eq 0 ]] || return 1
+  assert_output_contains "No Digest token for foo:1.0"
+  [[ ! -e "${OUTPUT_SUB_PATH}/builtin-resolved-tokens/contents/ContentFooDigest" ]] || return 1
 }

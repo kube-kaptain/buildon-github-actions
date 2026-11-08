@@ -34,9 +34,11 @@ fi
 export HOST_SCHEMA_VALIDATION_COMMAND
 export SCHEMA_VALIDATION_COMMAND="${HOST_SCHEMA_VALIDATION_COMMAND}"
 
-# Test output directory - all test artifacts go here for diagnostics
+# Test output directory - all test artifacts go here for diagnostics.
+# run-tests.bash passes it through its env sanitising, so artifacts follow
+# the build's output dir; tests still see the default OUTPUT_SUB_PATH.
 OUTPUT_SUB_PATH="${OUTPUT_SUB_PATH:-kaptain-out}"
-TEST_TARGET_DIR="$PROJECT_ROOT/${OUTPUT_SUB_PATH}/test"
+TEST_TARGET_DIR="${TEST_TARGET_DIR:-$PROJECT_ROOT/${OUTPUT_SUB_PATH}/test}"
 MOCK_BIN_DIR="${TEST_TARGET_DIR}/$(basename "${BATS_TEST_FILENAME:-unknown}" .bats)/mock-bin"
 
 # Counter for unique directory names within a test file

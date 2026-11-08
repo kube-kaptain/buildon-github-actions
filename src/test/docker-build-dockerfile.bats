@@ -462,3 +462,15 @@ set_required_env() {
   [ "$status" -ne 0 ]
   assert_output_contains "Unsupported platform"
 }
+
+@test "a FROM tag@digest pin that does not match its tag stops the build" {
+  set_required_env
+  # The mock's image inspect returns no Ids, which can never verify a pin
+  echo "FROM alpine:3.21.3@sha256:a8560b36e8b8210634f77d9f7f9efd7ffa463e380b75e2e74aff4511df3ef88c" > "$TEST_DIR/Dockerfile"
+
+  run "$SCRIPTS_DIR/docker-build-dockerfile"
+  [[ "$status" -ne 0 ]] || return 1
+  [[ "$output" == *"Digest mismatch for linux/amd64"* ]] || return 1
+  assert_docker_called "pull --platform linux/amd64 alpine:3.21.3"
+  assert_docker_not_called "build --platform"
+}

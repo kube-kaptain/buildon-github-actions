@@ -8,6 +8,9 @@
 # Uses the local image cache when available - only pulls if not already present,
 # since OCI images are immutable and a locally cached image is always current.
 #
+# A tag@sha256:<hex> reference is checked first: the tag must still resolve to
+# the pinned digest for this host's platform, or the extraction fails.
+#
 # Sub-path structure is preserved under output-dir to avoid filename collisions:
 # /dirA/file.txt and /dirB/file.txt land at output-dir/dirA/file.txt and
 # output-dir/dirB/file.txt respectively.
@@ -44,6 +47,8 @@ source "${SCRIPT_DIR}/../defaults/platform.bash"
 source "${SCRIPT_DIR}/../lib/log.bash"
 # shellcheck source=src/scripts/defaults/output-sub-path.bash
 source "${SCRIPT_DIR}/../defaults/output-sub-path.bash"
+# shellcheck source=src/scripts/lib/docker-digest-verify.bash
+source "${SCRIPT_DIR}/../lib/docker-digest-verify.bash"
 
 image_uri="${1:?Usage: extract-oci-image <image-uri> <output-dir> [<path-in-image>...]}"
 output_dir="${2:?Usage: extract-oci-image <image-uri> <output-dir> [<path-in-image>...]}"
@@ -55,6 +60,22 @@ IMAGE_BUILD_COMMAND="${IMAGE_BUILD_COMMAND:?IMAGE_BUILD_COMMAND is required}"
 log "=== Extract OCI Image ==="
 log "Image:  ${image_uri}"
 log "Output: ${output_dir}"
+
+# A tag@digest reference is pinned. Docker and podman would pull the digest and
+# silently ignore a tag that has moved, so the tag must still resolve to the
+# pin for this host's platform; the verified tag is then used from here on.
+if [[ "${image_uri}" == *"@"* ]]; then
+  { read -r pinned_ref; read -r pinned_digest; } < <(split_reference_digest "${image_uri}")
+  if reference_has_tag "${pinned_ref}"; then
+    host_platform=$(build_host_platform)
+    if [[ -z "${host_platform}" ]]; then
+      log_error "Cannot verify ${image_uri}: no linux platform for host arch $(uname -m)"
+      exit 1
+    fi
+    verify_digest_matches_tag "${pinned_ref}" "${pinned_digest}" "${host_platform}" || exit 1
+    image_uri="${pinned_ref}"
+  fi
+fi
 
 # Use local cache if available - images are immutable, no need to re-pull
 if ! ${IMAGE_BUILD_COMMAND} image inspect "${image_uri}" > /dev/null 2>&1; then

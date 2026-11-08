@@ -43,6 +43,7 @@ MOCK
 url=""
 headers_dest=""
 prev=""
+follow="false"
 for arg in "$@"; do
   if [[ "${prev}" == "-D" ]]; then
     headers_dest="${arg}"
@@ -52,10 +53,12 @@ for arg in "$@"; do
   prev=""
   case "${arg}" in
     -D)  prev="-D" ;;
+    -*L*) follow="true" ;;
     -*)  ;;
     *)   url="${arg}" ;;
   esac
 done
+[[ -n "${MOCK_CURL_URLS:-}" ]] && echo "${url}" >> "${MOCK_CURL_URLS}"
 emit_header() {
   if [[ -z "${headers_dest}" || "${headers_dest}" == "-" ]]; then
     echo "$1"
@@ -76,6 +79,12 @@ if [[ "${url}" == */v2/ ]]; then
         emit_header 'www-authenticate: Basic realm="mock-registry"'
         emit_header ''
         ;;
+      bearer-placeholder-scope)
+        # As ghcr.io does: a scope in the challenge that names no real repo
+        emit_header 'HTTP/1.1 401 Unauthorized'
+        emit_header 'www-authenticate: Bearer realm="https://mock-registry.example/token",service="mock-registry",scope="repository:user/image:pull"'
+        emit_header ''
+        ;;
       none)
         emit_header 'HTTP/1.1 200 OK'
         emit_header ''
@@ -85,10 +94,24 @@ if [[ "${url}" == */v2/ ]]; then
   exit 0
 fi
 if [[ "${url}" == *"/token?"* ]]; then
+  # The placeholder scope is refused, as ghcr.io refuses it
+  if [[ "${url}" == *"scope=repository:user/image:pull"* ]]; then
+    echo '{"errors":[{"code":"DENIED","message":"requested access to the resource is denied"}]}'
+    exit 0
+  fi
   echo '{"token":"mock-anon-token"}'
   exit 0
 fi
 if [[ "${url}" == */tags/list* ]]; then
+  # A registry that hands tags/list to a backend, as registry.k8s.io does:
+  # only a client that follows the redirect gets the tags.
+  if [[ "${MOCK_TAGS_REDIRECT:-false}" == "true" && "${follow}" != "true" ]]; then
+    emit_header "HTTP/1.1 307 Temporary Redirect"
+    emit_header "location: https://backend.example/v2/tags/list"
+    emit_header ''
+    printf 'HTTP_STATUS:307'
+    exit 0
+  fi
   # Pagination: if ?last=<cursor> is present, return page 2; otherwise page 1.
   # When MOCK_REMOTE_TAGS_NEXT_LAST is set on page 1, emit a Link rel="next"
   # header pointing at the same endpoint with ?last=<cursor>.
@@ -611,6 +634,47 @@ JSON
   assert_output_contains "bearer-anonymous"
 }
 
+@test "auth: a placeholder scope in the challenge is ignored for this image's own" {
+  export MOCK_AUTH_CHALLENGE="bearer-placeholder-scope"
+  export MOCK_REMOTE_TAGS_JSON='{"tags":["1.0","1.8"]}'
+  run "$PROVIDER" "quality-strict:[1.0,2.0)" "${OUTPUT_FILE}"
+  [[ "$status" -eq 0 ]] || return 1
+  assert_output_contains "Bearer token obtained (bearer-anonymous)"
+  [[ "$(cat "${OUTPUT_FILE}")" == "ghcr.io/kube-kaptain/quality/quality-strict:1.8" ]] || return 1
+}
+
+@test "range: tags/list redirected to a backend is followed" {
+  export MOCK_TAGS_REDIRECT="true"
+  export MOCK_REMOTE_TAGS_JSON='{"tags":["1.0","1.4"]}'
+  run "$PROVIDER" "quality-strict:[1.0,2.0)" "${OUTPUT_FILE}"
+  [[ "$status" -eq 0 ]] || return 1
+  [[ "$(cat "${OUTPUT_FILE}")" == "ghcr.io/kube-kaptain/quality/quality-strict:1.4" ]] || return 1
+}
+
+@test "docker hub: the registry API is reached at registry-1.docker.io" {
+  export MOCK_CURL_URLS="${TEST_DIR}/curl-urls"
+  export MOCK_REMOTE_TAGS_JSON='{"tags":["1.0","1.6"]}'
+  run "$PROVIDER" "docker.io/kube-kaptain/quality/quality-strict:[1.0,2.0)" "${OUTPUT_FILE}"
+  [[ "$status" -eq 0 ]] || return 1
+  [[ "$(cat "${OUTPUT_FILE}")" == "docker.io/kube-kaptain/quality/quality-strict:1.6" ]] || return 1
+  grep -qx "https://registry-1.docker.io/v2/" "${MOCK_CURL_URLS}" || return 1
+  grep -qx "https://registry-1.docker.io/v2/kube-kaptain/quality/quality-strict/tags/list" "${MOCK_CURL_URLS}" || return 1
+  [[ "$(grep -c "://docker.io/" "${MOCK_CURL_URLS}")" -eq 0 ]] || return 1
+}
+
+@test "docker hub: credentials docker login stored under the index URL are used" {
+  export DOCKER_CONFIG="${TEST_DIR}/docker-config"
+  mkdir -p "${DOCKER_CONFIG}"
+  cat > "${DOCKER_CONFIG}/config.json" << 'JSON'
+{"auths":{"https://index.docker.io/v1/":{"auth":"dXNlcjpwYXNz"}}}
+JSON
+  export MOCK_REMOTE_TAGS_JSON='{"tags":["1.0","1.6"]}'
+  run "$PROVIDER" "docker.io/kube-kaptain/quality/quality-strict:[1.0,2.0)" "${OUTPUT_FILE}"
+  [[ "$status" -eq 0 ]] || return 1
+  assert_output_contains "Found stored credentials for docker.io"
+  assert_output_contains "bearer-with-creds"
+}
+
 @test "auth: Basic challenge uses Basic header from stored creds" {
   export DOCKER_CONFIG="${TEST_DIR}/docker-config"
   mkdir -p "${DOCKER_CONFIG}"
@@ -735,4 +799,50 @@ MOCK
   run "$PROVIDER" "java/java-web-service:2.1" "${OUTPUT_FILE}"
   [[ "$status" -eq 0 ]] || return 1
   [[ "$(cat "${OUTPUT_FILE}")" == "artifactory.corp.com/team-platform/java/java-web-service:2.1" ]] || return 1
+}
+
+# =============================================================================
+# Digest pins: name:version@sha256:<hex>
+# =============================================================================
+
+@test "digest pin: short form keeps the pin after the expanded tag" {
+  run "$PROVIDER" "quality-strict:1.0@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef" "${OUTPUT_FILE}"
+  [[ "$status" -eq 0 ]] || return 1
+  [[ "$(cat "${OUTPUT_FILE}")" == "ghcr.io/kube-kaptain/quality/quality-strict:1.0@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef" ]] || return 1
+}
+
+@test "digest pin: prefixed form keeps the pin" {
+  run "$PROVIDER" "quality/quality-strict:1.0@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef" "${OUTPUT_FILE}"
+  [[ "$status" -eq 0 ]] || return 1
+  [[ "$(cat "${OUTPUT_FILE}")" == "ghcr.io/kube-kaptain/quality/quality-strict:1.0@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef" ]] || return 1
+}
+
+@test "digest pin: full form keeps the pin" {
+  run "$PROVIDER" "ghcr.io/kube-kaptain/quality/quality-strict:1.0@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef" "${OUTPUT_FILE}"
+  [[ "$status" -eq 0 ]] || return 1
+  [[ "$(cat "${OUTPUT_FILE}")" == "ghcr.io/kube-kaptain/quality/quality-strict:1.0@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef" ]] || return 1
+}
+
+@test "digest pin: a bracketed exact version keeps the pin" {
+  run "$PROVIDER" "quality-strict:[1.0]@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef" "${OUTPUT_FILE}"
+  [[ "$status" -eq 0 ]] || return 1
+  [[ "$(cat "${OUTPUT_FILE}")" == "ghcr.io/kube-kaptain/quality/quality-strict:1.0@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef" ]] || return 1
+}
+
+@test "digest pin: the pin names the variant image" {
+  run "$PROVIDER" "quality-strict:1.0@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef" "${OUTPUT_FILE}" manifests
+  [[ "$status" -eq 0 ]] || return 1
+  [[ "$(cat "${OUTPUT_FILE}")" == "ghcr.io/kube-kaptain/quality/quality-strict:1.0-manifests@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef" ]] || return 1
+}
+
+@test "digest pin: a range with a pin fails" {
+  run "$PROVIDER" "quality-strict:[1.0,2.0)@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef" "${OUTPUT_FILE}"
+  [[ "$status" -ne 0 ]] || return 1
+  assert_output_contains "A digest pins one image, so it needs an exact version"
+}
+
+@test "digest pin: a malformed digest fails" {
+  run "$PROVIDER" "quality-strict:1.0@sha256:abc" "${OUTPUT_FILE}"
+  [[ "$status" -ne 0 ]] || return 1
+  assert_output_contains "digest must be sha256: followed by 64 lowercase hex characters"
 }

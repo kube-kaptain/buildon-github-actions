@@ -57,12 +57,14 @@ DEFAULTS="kaptain-out/run-image-deploy-manifests/defaults"
   [ "$(yq '.stringData.environmentPassphrase' "${MANIFESTS}/secret.template.yaml")" = '${RunFoo/EnvironmentPassphrase}' ]
 }
 
-@test "secret: a user-supplied environmentPassphrase entry is not overwritten" {
+@test "secret: a user-supplied environmentPassphrase entry fails" {
   mkdir -p src/environment/secret.template
   printf '%s' 'mine' > src/environment/secret.template/environmentPassphrase
   run "$SCRIPT"
-  [ "$status" -eq 0 ]
-  [ "$(yq '.stringData.environmentPassphrase' "${MANIFESTS}/secret.template.yaml")" = "mine" ]
+  [[ "$status" -eq 1 ]] || return 1
+  assert_output_contains "src/environment/secret.template/environmentPassphrase is not allowed"
+  assert_output_contains "RunFoo/EnvironmentPassphrase token"
+  [[ ! -f "${MANIFESTS}/secret.template.yaml" ]] || return 1
 }
 
 @test "secret: a supplied Secret manifest without environmentPassphrase fails" {
@@ -568,4 +570,237 @@ cronjob_env() {
   run "$SCRIPT"
   [ "$status" -ne 0 ]
   assert_output_contains "the EnvironmentShortName token is supplied by whatever applies this set"
+}
+
+# =============================================================================
+# Contributed ConfigMap and Secret template entries
+# =============================================================================
+
+CONTRIB_CONFIGMAP="kaptain-out/run-image-deploy-manifests/configmap"
+CONTRIB_SECRET="kaptain-out/run-image-deploy-manifests/secret.template"
+
+@test "contributed: configmap entries merge with the source's and the project-name key" {
+  mkdir -p src/environment/configmap "${CONTRIB_CONFIGMAP}"
+  printf '%s' 'from-src' > src/environment/configmap/own
+  printf '%s' 'from-build' > "${CONTRIB_CONFIGMAP}/contributed"
+  run "$SCRIPT"
+  [[ "$status" -eq 0 ]] || return 1
+  [[ "$(yq '.data.own' "${MANIFESTS}/configmap.yaml")" == "from-src" ]] || return 1
+  [[ "$(yq '.data.contributed' "${MANIFESTS}/configmap.yaml")" == "from-build" ]] || return 1
+  [[ "$(yq '.data.project-name' "${MANIFESTS}/configmap.yaml")" == '${ProjectName}' ]] || return 1
+}
+
+@test "contributed: a whole file is kept verbatim, foreign-style tokens and all" {
+  mkdir -p "${CONTRIB_CONFIGMAP}"
+  printf '#!/usr/bin/env bash\necho "${OMG_WTF} ${omg-wtf} ${OmgWtf}"\n' > "${CONTRIB_CONFIGMAP}/script.sh"
+  run "$SCRIPT"
+  [[ "$status" -eq 0 ]] || return 1
+  [[ "$(yq '.data["script.sh"]' "${MANIFESTS}/configmap.yaml")" == "$(cat "${CONTRIB_CONFIGMAP}/script.sh")" ]] || return 1
+}
+
+@test "contributed: secret.template entries merge with the source's and the generated passphrase" {
+  mkdir -p src/environment/secret.template "${CONTRIB_SECRET}"
+  printf '%s' 'x' > src/environment/secret.template/apiKey
+  printf '%s' '${ChatWebhook}' > "${CONTRIB_SECRET}/chatWebhook"
+  run "$SCRIPT"
+  [[ "$status" -eq 0 ]] || return 1
+  [[ "$(yq '.stringData.apiKey' "${MANIFESTS}/secret.template.yaml")" == "x" ]] || return 1
+  [[ "$(yq '.stringData.chatWebhook' "${MANIFESTS}/secret.template.yaml")" == '${ChatWebhook}' ]] || return 1
+  [[ "$(yq '.stringData.environmentPassphrase' "${MANIFESTS}/secret.template.yaml")" == '${RunFoo/EnvironmentPassphrase}' ]] || return 1
+}
+
+@test "contributed: a configmap entry also in the source fails, listing every collision" {
+  mkdir -p src/environment/configmap "${CONTRIB_CONFIGMAP}"
+  printf '%s' 'a' > src/environment/configmap/one
+  printf '%s' 'a' > src/environment/configmap/two
+  printf '%s' 'b' > "${CONTRIB_CONFIGMAP}/one"
+  printf '%s' 'b' > "${CONTRIB_CONFIGMAP}/two"
+  printf '%s' 'b' > "${CONTRIB_CONFIGMAP}/three"
+  run "$SCRIPT"
+  [[ "$status" -eq 1 ]] || return 1
+  assert_output_contains "Entries supplied by both src/environment/configmap and ${CONTRIB_CONFIGMAP}:"
+  assert_output_contains "  one"
+  assert_output_contains "  two"
+  [[ "$output" != *"  three"* ]] || return 1
+}
+
+@test "contributed: a secret.template entry also in the source fails" {
+  mkdir -p src/environment/secret.template "${CONTRIB_SECRET}"
+  printf '%s' 'a' > src/environment/secret.template/apiKey
+  printf '%s' 'b' > "${CONTRIB_SECRET}/apiKey"
+  run "$SCRIPT"
+  [[ "$status" -eq 1 ]] || return 1
+  assert_output_contains "Entries supplied by both src/environment/secret.template and ${CONTRIB_SECRET}:"
+  assert_output_contains "  apiKey"
+}
+
+@test "contributed: the same name as a configmap and a secret.template entry is fine" {
+  mkdir -p src/environment/configmap "${CONTRIB_SECRET}"
+  printf '%s' 'plain' > src/environment/configmap/omgWtf
+  printf '%s' '${Whatever}' > "${CONTRIB_SECRET}/omgWtf"
+  run "$SCRIPT"
+  [[ "$status" -eq 0 ]] || return 1
+  [[ "$(yq '.data.omgWtf' "${MANIFESTS}/configmap.yaml")" == "plain" ]] || return 1
+  [[ "$(yq '.stringData.omgWtf' "${MANIFESTS}/secret.template.yaml")" == '${Whatever}' ]] || return 1
+}
+
+@test "contributed: an environmentPassphrase entry fails" {
+  mkdir -p "${CONTRIB_SECRET}"
+  printf '%s' 'mine' > "${CONTRIB_SECRET}/environmentPassphrase"
+  run "$SCRIPT"
+  [[ "$status" -eq 1 ]] || return 1
+  assert_output_contains "${CONTRIB_SECRET}/environmentPassphrase is not allowed"
+}
+
+@test "contributed: configmap entries with a supplied ConfigMap manifest fail" {
+  mkdir -p src/environment/kubernetes "${CONTRIB_CONFIGMAP}"
+  cat > src/environment/kubernetes/configmap.yaml << 'EOF2'
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: run-foo-configmap-checksum
+data:
+  key: v
+EOF2
+  printf '%s' 'b' > "${CONTRIB_CONFIGMAP}/contributed"
+  run "$SCRIPT"
+  [[ "$status" -eq 1 ]] || return 1
+  assert_output_contains "Entries were contributed in ${CONTRIB_CONFIGMAP}, but a supplied ConfigMap manifest replaces the generated one"
+}
+
+@test "contributed: secret.template entries with a supplied Secret manifest fail" {
+  mkdir -p src/environment/kubernetes "${CONTRIB_SECRET}"
+  cat > src/environment/kubernetes/secret.template.yaml << 'EOF2'
+apiVersion: v1
+kind: Secret
+metadata:
+  name: run-foo-secret-checksum
+stringData:
+  environmentPassphrase: x
+EOF2
+  printf '%s' 'b' > "${CONTRIB_SECRET}/contributed"
+  run "$SCRIPT"
+  [[ "$status" -eq 1 ]] || return 1
+  assert_output_contains "Entries were contributed in ${CONTRIB_SECRET}, but a supplied Secret manifest replaces the generated one"
+}
+
+@test "contributed: entries with generation off fail" {
+  mkdir -p src/environment/kubernetes "${CONTRIB_CONFIGMAP}"
+  printf '%s' 'b' > "${CONTRIB_CONFIGMAP}/contributed"
+  ENV_GENERATE_IDEAL_ENVIRONMENT_DEPLOY_MANIFESTS=false run "$SCRIPT"
+  [[ "$status" -eq 1 ]] || return 1
+  assert_output_contains "Entries were contributed in ${CONTRIB_CONFIGMAP}, but generateIdealEnvironmentDeployManifests is false"
+}
+
+@test "contributed: empty contribution dirs change nothing" {
+  mkdir -p "${CONTRIB_CONFIGMAP}" "${CONTRIB_SECRET}"
+  run "$SCRIPT"
+  [[ "$status" -eq 0 ]] || return 1
+  [[ "$(yq '.data | keys | join(",")' "${MANIFESTS}/configmap.yaml")" == "project-name" ]] || return 1
+}
+
+# =============================================================================
+# Mount paths: the main ConfigMap at /configmap, the main Secret at /secret
+# =============================================================================
+
+# A supplied deploy Deployment mounting the main ConfigMap and Secret
+# Usage: write_supplied_deployment <configmap-mount-path> <secret-mount-path> [init-mount-path]
+write_supplied_deployment() {
+  mkdir -p src/environment/kubernetes
+  {
+    cat << EOF2
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: run-foo
+spec:
+  template:
+    spec:
+EOF2
+    if [[ -n "${3:-}" ]]; then
+      cat << EOF2
+      initContainers:
+        - name: prep
+          volumeMounts:
+            - name: cm
+              mountPath: ${3}
+EOF2
+    fi
+    cat << EOF2
+      containers:
+        - name: deploy
+          volumeMounts:
+            - name: cm
+              mountPath: ${1}
+            - name: sec
+              mountPath: ${2}
+            - name: extra
+              mountPath: /data
+      volumes:
+        - name: cm
+          configMap:
+            name: \${ProjectName}-configmap-checksum
+        - name: sec
+          secret:
+            secretName: \${ProjectName}-secret-checksum
+        - name: extra
+          configMap:
+            name: something-else
+EOF2
+  } > src/environment/kubernetes/deployment.yaml
+}
+
+@test "mounts: generation keeps /configmap and /secret whatever the environment sets" {
+  export KUBERNETES_WORKLOAD_CONFIGMAP_MOUNT_PATH="/etc/app-config"
+  export KUBERNETES_WORKLOAD_SECRET_MOUNT_PATH="/etc/app-secret"
+  run "$SCRIPT"
+  [[ "$status" -eq 0 ]] || return 1
+  [[ "$(yq '.spec.template.spec.containers[0].volumeMounts[] | select(.name == "configmap") | .mountPath' "${MANIFESTS}/deployment.yaml")" == "/configmap" ]] || return 1
+  [[ "$(yq '.spec.template.spec.containers[0].volumeMounts[] | select(.name == "secret") | .mountPath' "${MANIFESTS}/deployment.yaml")" == "/secret" ]] || return 1
+}
+
+@test "mounts: job mode's CronJob keeps them too" {
+  export ENV_DEPLOY_MODE="job"
+  export KUBERNETES_WORKLOAD_CONFIGMAP_MOUNT_PATH="/etc/app-config"
+  export KUBERNETES_WORKLOAD_SECRET_MOUNT_PATH="/etc/app-secret"
+  run "$SCRIPT"
+  [[ "$status" -eq 0 ]] || return 1
+  local cronjob
+  cronjob=$(grep -l "kind: CronJob" "${MANIFESTS}"/*.yaml)
+  [[ "$(yq '.spec.jobTemplate.spec.template.spec.containers[0].volumeMounts[] | select(.name == "configmap") | .mountPath' "${cronjob}")" == "/configmap" ]] || return 1
+  [[ "$(yq '.spec.jobTemplate.spec.template.spec.containers[0].volumeMounts[] | select(.name == "secret") | .mountPath' "${cronjob}")" == "/secret" ]] || return 1
+}
+
+@test "mounts: a supplied workload at the fixed paths passes, unrelated mounts anywhere" {
+  write_supplied_deployment /configmap /secret
+  run "$SCRIPT"
+  [[ "$status" -eq 0 ]] || return 1
+}
+
+@test "mounts: a supplied workload with the main ConfigMap elsewhere fails" {
+  write_supplied_deployment /etc/cfg /secret
+  run "$SCRIPT"
+  [[ "$status" -eq 1 ]] || return 1
+  assert_output_contains "deployment.yaml: Deployment/run-foo: container deploy mounts the main ConfigMap at /etc/cfg, not /configmap"
+}
+
+@test "mounts: a supplied workload with the main Secret elsewhere fails" {
+  write_supplied_deployment /configmap /var/secret
+  run "$SCRIPT"
+  [[ "$status" -eq 1 ]] || return 1
+  assert_output_contains "container deploy mounts the main Secret at /var/secret, not /secret"
+}
+
+@test "mounts: an init container is held to the same paths" {
+  write_supplied_deployment /configmap /secret /etc/cfg
+  run "$SCRIPT"
+  [[ "$status" -eq 1 ]] || return 1
+  assert_output_contains "container prep mounts the main ConfigMap at /etc/cfg, not /configmap"
+}
+
+@test "mounts: with generation off a supplied workload is still checked" {
+  write_supplied_deployment /etc/cfg /secret
+  ENV_GENERATE_IDEAL_ENVIRONMENT_DEPLOY_MANIFESTS=false run "$SCRIPT"
+  [[ "$status" -eq 1 ]] || return 1
+  assert_output_contains "mounts the main ConfigMap at /etc/cfg, not /configmap"
 }

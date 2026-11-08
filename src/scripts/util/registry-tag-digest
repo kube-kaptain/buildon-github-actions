@@ -1,0 +1,84 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
+#
+# registry-tag-digest - Print the registry digest of an image tag
+#
+# The digest the registry serves for <image>:<tag>: the index digest for a
+# multi-platform image, the manifest digest for a single-platform one. That is
+# the digest to pin the tag with, the same on every machine and image store,
+# unlike the local store's view (podman records the platform digest).
+#
+# skopeo first: inspect --raw gives the manifest bytes the registry serves, and
+# their SHA-256 is the digest. The registry API otherwise: a HEAD on the
+# manifest, reading Docker-Content-Digest.
+#
+# Usage: registry-tag-digest <registry/path/name:tag>
+#
+# Prints sha256:<hex> on stdout; logs go to stderr. Exits 1 with the reason
+# logged when the digest cannot be read.
+#
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# shellcheck source=src/scripts/defaults/platform.bash
+source "${SCRIPT_DIR}/../defaults/platform.bash"
+# shellcheck source=src/scripts/lib/log.bash
+source "${SCRIPT_DIR}/../lib/log.bash"
+# shellcheck source=src/scripts/lib/registry-auth.bash
+source "${SCRIPT_DIR}/../lib/registry-auth.bash"
+
+ref="${1:?Usage: registry-tag-digest <registry/path/name:tag>}"
+
+last_segment="${ref##*/}"
+if [[ "${ref}" == *"@"* || "${ref}" != */* || "${last_segment}" != *:* ]]; then
+  log_error "registry-tag-digest needs registry/path/name:tag with no digest, got: ${ref}" >&2
+  exit 1
+fi
+name="${ref%:*}"
+tag="${ref##*:}"
+registry="${name%%/*}"
+image_path="${name#*/}"
+
+# Usage: ... | sha256_hex
+sha256_hex() {
+  if command -v sha256sum > /dev/null 2>&1; then
+    sha256sum | awk '{print $1}'
+  else
+    shasum -a 256 | awk '{print $1}'
+  fi
+}
+
+digest=""
+if command -v skopeo > /dev/null 2>&1; then
+  # Piped straight through so the manifest bytes reach the hash unchanged
+  if hex=$(skopeo inspect --raw "docker://${ref}" 2> /dev/null | sha256_hex) \
+      && [[ "${hex}" != "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855" ]]; then
+    digest="sha256:${hex}"
+  else
+    log "skopeo could not read ${ref}, falling back to the registry API" >&2
+  fi
+fi
+
+if [[ -z "${digest}" ]]; then
+  api_host=$(registry_api_host "${registry}")
+  registry_auth_header "${registry}" "${image_path}" >&2
+  accept="application/vnd.oci.image.index.v1+json, application/vnd.docker.distribution.manifest.list.v2+json, application/vnd.oci.image.manifest.v1+json, application/vnd.docker.distribution.manifest.v2+json"
+  headers=""
+  if [[ -n "${REGISTRY_AUTH_HEADER}" ]]; then
+    headers=$(curl -sS -I -H "${REGISTRY_AUTH_HEADER}" -H "Accept: ${accept}" \
+      "https://${api_host}/v2/${image_path}/manifests/${tag}" 2> /dev/null || true)
+  else
+    headers=$(curl -sS -I -H "Accept: ${accept}" \
+      "https://${api_host}/v2/${image_path}/manifests/${tag}" 2> /dev/null || true)
+  fi
+  digest=$(printf '%s\n' "${headers}" | tr -d '\r' \
+    | awk 'tolower($1) == "docker-content-digest:" { print $2; exit }')
+fi
+
+if [[ ! "${digest}" =~ ^sha256:[0-9a-f]{64}$ ]]; then
+  log_error "Could not read the registry digest of ${ref}" >&2
+  exit 1
+fi
+printf '%s\n' "${digest}"

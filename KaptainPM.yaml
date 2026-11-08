@@ -1,4 +1,4 @@
-apiVersion: kaptain.org/1.7
+apiVersion: kaptain.org/0.0 # Nothing checks apiVersion and this repo is always using the latest stuff so fake version that doesn't need to be updated
 kind: basic-quality-and-versioning
 metadata:
   description: Reusable GitHub Actions workflow-only wrapper for Kaptain Build Scripts

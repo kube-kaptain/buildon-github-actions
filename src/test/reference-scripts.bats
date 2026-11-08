@@ -52,7 +52,7 @@ setup() {
   export CALL_LOG="${MOCK_DIR}/call.log"
   > "$CALL_LOG"
 
-  # Isolate output dir so setup-local-context's rm -rf doesn't delete mocks
+  # Isolate the output dir from the mocks and the repo
   export OUTPUT_SUB_PATH="${MOCK_DIR}/output"
 
   mkdir -p "$MOCK_SCRIPTS_DIR" "$MOCK_GENERATORS_DIR"
@@ -816,4 +816,111 @@ docker-registry-logins
 kaptain-init
 load-final-kaptainpm-yaml
 basic-quality-checks"
+}
+
+# load-final-kaptainpm-yaml may move the output dir (to a configured
+# outputSubPath), so run_step keeps its output file in kaptainpm/ meanwhile.
+write_mover_step() {
+  mkdir -p "${MOCK_DIR}/movers"
+  cat > "${MOCK_DIR}/movers/load-final-kaptainpm-yaml" << 'MOVER'
+#!/usr/bin/env bash
+set -euo pipefail
+printf 'MOVED_VALUE=yes\n' >> "${REFERENCE_SCRIPT_OUTPUT}"
+mkdir -p "${OUTPUT_SUB_PATH}"
+mv "${OUTPUT_SUB_PATH}" "${MOVED_TO}"
+printf 'OUTPUT_SUB_PATH=%s\n' "${MOVED_TO}" >> "${REFERENCE_SCRIPT_OUTPUT}"
+MOVER
+  cat > "${MOCK_DIR}/movers/validate-tooling" << 'WIPER'
+#!/usr/bin/env bash
+set -euo pipefail
+rm -rf "${OUTPUT_SUB_PATH}"
+printf 'WIPED_VALUE=yes\n' >> "${REFERENCE_SCRIPT_OUTPUT}"
+WIPER
+  cat > "${MOCK_DIR}/movers/failer" << 'FAILER'
+#!/usr/bin/env bash
+printf 'PARTIAL=yes\n' >> "${REFERENCE_SCRIPT_OUTPUT}"
+exit 3
+FAILER
+  cat > "${MOCK_DIR}/movers/plain" << 'PLAIN'
+#!/usr/bin/env bash
+[[ "${REFERENCE_SCRIPT_OUTPUT}" == "${OUTPUT_SUB_PATH}/reference-script-output/plain" ]] || exit 9
+printf 'PLAIN_VALUE=yes\n' >> "${REFERENCE_SCRIPT_OUTPUT}"
+PLAIN
+  chmod +x "${MOCK_DIR}/movers/"*
+}
+
+# A reference-style script running one step from the test dir, as the real
+# ones run from the repo root
+# Usage: write_mover_reference <step>
+write_mover_reference() {
+  cat > "${MOCK_DIR}/movers-reference" << REF
+#!/usr/bin/env bash
+set -euo pipefail
+cd "${MOCK_DIR}"
+source "${PROJECT_ROOT}/src/scripts/lib/setup-local-context.bash"
+run_step ${1}
+echo "OSP=\${OUTPUT_SUB_PATH} VALUE=\${MOVED_VALUE:-}\${PLAIN_VALUE:-}\${WIPED_VALUE:-}"
+REF
+  chmod +x "${MOCK_DIR}/movers-reference"
+}
+
+@test "setup-local-context: the loader step can move the output dir and keep its outputs" {
+  write_mover_step
+  write_mover_reference load-final-kaptainpm-yaml
+  BUILD_PLATFORM_LOG_PROVIDER=stdout OUTPUT_SUB_PATH="${MOCK_DIR}/output" \
+    MOVED_TO="${MOCK_DIR}/moved" SCRIPTS_DIR="${MOCK_DIR}/movers" \
+    run "${MOCK_DIR}/movers-reference"
+  [[ "$status" -eq 0 ]] || return 1
+  assert_output_contains "OSP=${MOCK_DIR}/moved VALUE=yes"
+  grep -qx 'MOVED_VALUE=yes' "${MOCK_DIR}/moved/reference-script-output/load-final-kaptainpm-yaml" || return 1
+  [[ ! -e "${MOCK_DIR}/output" ]] || return 1
+  [[ ! -e "${MOCK_DIR}/kaptainpm/reference-script-output" ]] || return 1
+}
+
+@test "setup-local-context: other steps write their outputs straight into the output dir" {
+  write_mover_step
+  write_mover_reference plain
+  BUILD_PLATFORM_LOG_PROVIDER=stdout OUTPUT_SUB_PATH="${MOCK_DIR}/output" \
+    SCRIPTS_DIR="${MOCK_DIR}/movers" \
+    run "${MOCK_DIR}/movers-reference"
+  [[ "$status" -eq 0 ]] || return 1
+  assert_output_contains "VALUE=yes"
+  grep -qx 'PLAIN_VALUE=yes' "${MOCK_DIR}/output/reference-script-output/plain" || return 1
+}
+
+@test "setup-local-context: a failing step stops the script and keeps its partial output" {
+  write_mover_step
+  write_mover_reference failer
+  BUILD_PLATFORM_LOG_PROVIDER=stdout OUTPUT_SUB_PATH="${MOCK_DIR}/output" \
+    SCRIPTS_DIR="${MOCK_DIR}/movers" \
+    run "${MOCK_DIR}/movers-reference"
+  [[ "$status" -eq 3 ]] || return 1
+  [[ "$output" != *"OSP="* ]] || return 1
+  grep -qx 'PARTIAL=yes' "${MOCK_DIR}/output/reference-script-output/failer" || return 1
+}
+
+@test "setup-local-context: the validate-tooling step can wipe the output dir and keep its outputs" {
+  write_mover_step
+  write_mover_reference validate-tooling
+  mkdir -p "${MOCK_DIR}/output/earlier-run"
+  BUILD_PLATFORM_LOG_PROVIDER=stdout OUTPUT_SUB_PATH="${MOCK_DIR}/output" \
+    SCRIPTS_DIR="${MOCK_DIR}/movers" \
+    run "${MOCK_DIR}/movers-reference"
+  [[ "$status" -eq 0 ]] || return 1
+  assert_output_contains "VALUE=yes"
+  grep -qx 'WIPED_VALUE=yes' "${MOCK_DIR}/output/reference-script-output/validate-tooling" || return 1
+  [[ ! -e "${MOCK_DIR}/output/earlier-run" ]] || return 1
+  [[ ! -e "${MOCK_DIR}/kaptainpm/reference-script-output" ]] || return 1
+}
+
+@test "setup-local-context: sourcing it leaves the output dir alone" {
+  mkdir -p "${MOCK_DIR}/output"
+  printf 'keep' > "${MOCK_DIR}/output/sentinel"
+  run bash -c '
+    export BUILD_PLATFORM_LOG_PROVIDER=stdout
+    export OUTPUT_SUB_PATH='"${MOCK_DIR}"'/output
+    source "'"$PROJECT_ROOT"'/src/scripts/lib/setup-local-context.bash"
+  '
+  [[ "$status" -eq 0 ]] || return 1
+  [[ -f "${MOCK_DIR}/output/sentinel" ]] || return 1
 }

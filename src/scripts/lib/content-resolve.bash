@@ -539,10 +539,21 @@ content_resolve_all() {
     # release version is that tag with the variant suffix we requested
     # stripped, so VERSION stays spec-shaped and comparable while
     # MANIFESTS_DOCKER_TAG records the artifact tag verbatim.
-    local resolved_tag="${resolved_uri##*:}"
+    # A digest pin rides after the tag and names the manifests image itself.
+    local resolved_tag_ref="${resolved_uri%%@*}"
+    local resolved_tag="${resolved_tag_ref##*:}"
     local resolved_version="${resolved_tag%-manifests}"
+    local resolved_digest=""
+    [[ "${resolved_uri}" == *"@"* ]] && resolved_digest="${resolved_uri#*@}"
+    # Unpinned: the digest the registry serves for the manifests image's tag
+    if [[ -z "${resolved_digest}" ]]; then
+      resolved_digest=$("${CONTENT_RESOLVE_UTIL_DIR}/registry-tag-digest" "${resolved_tag_ref}") || {
+        log_warning "  No Digest token for ${entry}: could not read the registry digest of ${resolved_tag_ref}"
+        resolved_digest=""
+      }
+    fi
     log "  Auto-builtin tokens for ${CONTENT_FLAVOUR}:"
-    emit_builtin_tokens_for_entry "${entry}" "${resolved_version}" "${CONTENT_FLAVOUR}" "${resolved_tag}"
+    emit_builtin_tokens_for_entry "${entry}" "${resolved_version}" "${CONTENT_FLAVOUR}" "${resolved_tag}" "${resolved_digest}"
 
     local slug
     slug=$(content_artifact_slug "${resolved_uri}")

@@ -213,8 +213,21 @@ create_token() {
   [ "$status" -ne 0 ]
 }
 
-@test "camelCase: rejects lowercase after leading digit" {
-  create_token "2myVar"
+@test "camelCase: accepts every name convert_token_name produces, leading digits included" {
+  # shellcheck source=src/scripts/lib/token-format.bash
+  source "$LIB_DIR/token-format.bash"
+  local canonical
+  for canonical in 2FA_SECRET 2_FA_SECRET VENDOR/12 A/2B_C MY_VAR; do
+    create_token "$(convert_token_name camelCase "${canonical}")"
+  done
+  [[ -f "$TEST_DIR/2faSecret" && -f "$TEST_DIR/2FaSecret" && -f "$TEST_DIR/vendor/12" ]] || return 1
+
+  run "$VALIDATORS_DIR/camelCase" "$TEST_DIR"
+  [[ "$status" -eq 0 ]] || return 1
+}
+
+@test "camelCase: rejects an uppercase start after a separator" {
+  create_token "myCategory/MyVar"
 
   run "$VALIDATORS_DIR/camelCase" "$TEST_DIR"
   [ "$status" -ne 0 ]

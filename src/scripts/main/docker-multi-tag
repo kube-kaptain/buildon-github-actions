@@ -19,8 +19,8 @@
 #   DOCKER_TARGET_REGISTRY      - Primary registry that prefixes all source URIs (required)
 #   DOCKER_TARGET_NAMESPACE     - Primary namespace (optional)
 #   DOCKER_PUSH_IMAGE_LIST_FILE - Path to image URIs file (required, from docker-registry-logins)
-#   IMAGE_BUILD_COMMAND         - Container runtime command (default: docker)
-#   BUILD_MODE                  - build_server | local | docker_remote (required)
+#   IMAGE_BUILD_COMMAND         - Container runtime: docker or podman (required, from validate-tooling)
+#   BUILD_MODE                  - build_server | local (required)
 #
 # Each target in the JSON array:
 #   registry  - Target registry (required)

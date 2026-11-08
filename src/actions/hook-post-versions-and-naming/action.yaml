@@ -78,8 +78,8 @@ inputs:
     default: 'src/docker-linux-arm64'
   # Docker source image configuration
   docker-source-registry:
-    description: 'Upstream registry (e.g., docker.io)'
-    required: true
+    description: 'Upstream registry (default: docker.io)'
+    required: false
   docker-source-namespace:
     description: 'Path segment between registry and image name (e.g., library)'
     required: false
@@ -238,15 +238,15 @@ inputs:
     required: false
     default: ''
   kubernetes-workload-env-sub-path:
-    description: 'Directory containing environment variable files (default per workload type)'
+    description: 'Directory containing environment variable files, used by any workload type without its own env sub-path (default per workload type)'
     required: false
     default: ''
   kubernetes-workload-additional-labels:
-    description: 'Additional labels specific to workload (comma-separated key=value)'
+    description: 'Additional labels for any workload type without its own (comma-separated key=value)'
     required: false
     default: ''
   kubernetes-workload-additional-annotations:
-    description: 'Additional annotations specific to workload (comma-separated key=value)'
+    description: 'Additional annotations for any workload type without its own (comma-separated key=value)'
     required: false
     default: ''
   kubernetes-workload-container-port:

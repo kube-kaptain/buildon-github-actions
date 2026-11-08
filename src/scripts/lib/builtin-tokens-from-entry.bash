@@ -20,8 +20,10 @@
 # convert_token_name before the printf write.
 #
 # Files per entry, under ${OUTPUT_SUB_PATH}/builtin-resolved-tokens/<subdir>/:
-#   ${PREFIX}_${SLUG}_REF                 - entry as written, verbatim
-#   ${PREFIX}_${SLUG}_VERSION_SPEC        - version part as written (e.g. "[1.2.3]")
+#   ${PREFIX}_${SLUG}_REF                 - entry as written, verbatim, digest pin
+#                                           included
+#   ${PREFIX}_${SLUG}_VERSION_SPEC        - version part as written (e.g. "[1.2.3]"),
+#                                           without any digest pin
 #   ${PREFIX}_${SLUG}_VERSION             - resolved single version (e.g. "1.2.3"),
 #                                           spec-shaped: satisfies VERSION_SPEC
 #   ${PREFIX}_${SLUG}_MANIFESTS_DOCKER_TAG - tag of the OCI artifact actually
@@ -29,6 +31,10 @@
 #                                           always emitted - equals VERSION for
 #                                           entries whose artifact tag has no
 #                                           variant suffix (layers)
+#   ${PREFIX}_${SLUG}_DIGEST              - digest of the artifact pulled
+#                                           (sha256:<hex>): the pin, or the
+#                                           registry digest of the tag; emitted
+#                                           when the caller has one
 #
 # The token-name prefix is derived from the subdir by stripping one trailing
 # 's' and upper-casing, so callers only pass the subdir:
@@ -40,8 +46,9 @@
 #
 # SLUG derivation from entry-as-written:
 #   1. Strip optional provider prefix "<x>|" (e.g. "docker|app:1.0").
-#   2. Strip trailing version spec: everything from the first ':' onward.
-#   3. Replace '/' with '.'.
+#   2. Strip a trailing digest pin ("@sha256:...") and the version spec:
+#      everything from the first ':' of the last path segment onward.
+#   3. Replace '/' and a registry port's ':' with '.'.
 #   4. Split on '.'.
 #   5. Convert each segment via convert_kebab_name UPPER_SNAKE.
 #   6. Join segments with '_'.
@@ -54,6 +61,9 @@
 #   docker|app-foo:[1.2.3]
 #     -> SLUG=APP_FOO
 #     -> CONTENT_APP_FOO_{REF,VERSION_SPEC,VERSION}
+#
+#   localhost:5000/team/app-foo:1.2
+#     -> SLUG=LOCALHOST_5000_TEAM_APP_FOO, VERSION_SPEC=1.2
 #
 # Requires:
 #   log_error from lib/log.bash (sourced by caller before this file)
@@ -109,8 +119,8 @@ emit_builtin_token_scalar() {
 # Usage: emit_builtin_tokens_for_entry <entry> <resolved-version> <subdir> <manifests-docker-tag>
 # Requires: OUTPUT_SUB_PATH set in the environment.
 emit_builtin_tokens_for_entry() {
-  if [[ $# -ne 4 ]]; then
-    log_error "emit_builtin_tokens_for_entry requires exactly 4 arguments, got $#"
+  if [[ $# -lt 4 || $# -gt 5 ]]; then
+    log_error "emit_builtin_tokens_for_entry requires 4 or 5 arguments, got $#"
     return 1
   fi
 
@@ -120,6 +130,8 @@ emit_builtin_tokens_for_entry() {
   # Tag of the artifact actually pulled. Callers whose artifact tag carries
   # no variant suffix (layers) pass the version - tag == version there.
   local manifests_docker_tag="$4"
+  # Digest of the artifact pulled (sha256:<hex>), empty when unknown
+  local digest="${5:-}"
 
   if [[ -z "${entry}" ]]; then
     log_error "emit_builtin_tokens_for_entry: entry is required"
@@ -143,22 +155,27 @@ emit_builtin_tokens_for_entry() {
   # Strip optional provider prefix "<x>|" (no-op when '|' is absent).
   local ref="${entry#*|}"
 
-  # Version spec is whatever follows the first ':' (empty if no ':').
-  local version_spec=""
-  if [[ "${ref}" == *:* ]]; then
-    version_spec="${ref#*:}"
-  fi
+  # A digest pin is not part of the version spec; DIGEST carries it.
+  local tag_ref="${ref%%@*}"
 
-  # URI without trailing version spec.
-  local uri_without_version="${ref%%:*}"
+  # The version spec follows the first ':' of the last path segment, so a
+  # registry port (localhost:5000/team/app:1.2) is not mistaken for it.
+  # Empty when the last segment has no ':'.
+  local version_spec="" uri_without_version="${tag_ref}"
+  local last_segment="${tag_ref##*/}"
+  if [[ "${last_segment}" == *:* ]]; then
+    version_spec="${last_segment#*:}"
+    uri_without_version="${tag_ref%":${version_spec}"}"
+  fi
 
   if [[ -z "${uri_without_version}" ]]; then
     log_error "emit_builtin_tokens_for_entry: entry has no path component before version: '${entry}'"
     return 1
   fi
 
-  # Normalise / to . then split on . for slug segments.
+  # Normalise / and a port's : to . then split on . for slug segments.
   local seg_input="${uri_without_version//\//.}"
+  seg_input="${seg_input//:/.}"
   local slug=""
   local segment converted
   local IFS_BACKUP="${IFS}"
@@ -200,4 +217,11 @@ emit_builtin_tokens_for_entry() {
   manifests_tag_name=$(convert_token_name "${TOKEN_NAME_STYLE}" "${base}_MANIFESTS_DOCKER_TAG") || return 1
   printf '%s' "${manifests_docker_tag}" > "${out_dir}/${manifests_tag_name}"
   log "  builtin token: ${subdir}/${manifests_tag_name} = ${manifests_docker_tag}"
+
+  if [[ -n "${digest}" ]]; then
+    local digest_name
+    digest_name=$(convert_token_name "${TOKEN_NAME_STYLE}" "${base}_DIGEST") || return 1
+    printf '%s' "${digest}" > "${out_dir}/${digest_name}"
+    log "  builtin token: ${subdir}/${digest_name} = ${digest}"
+  fi
 }

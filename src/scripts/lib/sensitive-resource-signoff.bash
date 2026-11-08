@@ -58,15 +58,16 @@
 #   - Signoff with no matching sensitive resource (stale).
 #
 # Functions:
-#   signoff_check_tree <manifests-dir> <signoffs-dir> [<sensitive-kinds-file>]
+#   signoff_check_tree <manifests-dir> <signoffs-dir> <sensitive-kinds-file>
 #       Top-level. Validates coverage and integrity against the signoffs.
 #
 #   signoff_canonical_hash <manifest-file>
 #       Print the canonical hash (hex SHA-256, no prefix).
 #
 # <sensitive-kinds-file>: one Kind per line, '#' comments. Mapped by the
-# caller from spec.main.environment.sensitiveResourceKinds (or
-# src/config/SensitiveResourceKinds).
+# caller from spec.main.environment.signoffsKindsFile, a versioned file name
+# resolved in src/data/signoff-kinds/ under the build tooling root (default
+# default-1.1.txt).
 #
 # Output: one status line per resource (OK, MISSING, CHANGED, INVALID,
 # PENDING, STALE) relative to the dirs named once at the top, then what to do,

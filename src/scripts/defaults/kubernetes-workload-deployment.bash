@@ -18,12 +18,13 @@
 # Apply defaults to long-form variables (collision-safe)
 # =============================================================================
 
-# Workload naming but unique per type
-KUBERNETES_DEPLOYMENT_ENV_SUB_PATH="${KUBERNETES_DEPLOYMENT_ENV_SUB_PATH:-src/deployment-env}"
+# Workload naming but unique per type, else the workload-level
+# value, else the default
+KUBERNETES_DEPLOYMENT_ENV_SUB_PATH="${KUBERNETES_DEPLOYMENT_ENV_SUB_PATH:-${KUBERNETES_WORKLOAD_ENV_SUB_PATH:-src/deployment-env}}"
 
-# Additional labels/annotations
-KUBERNETES_DEPLOYMENT_ADDITIONAL_LABELS="${KUBERNETES_DEPLOYMENT_ADDITIONAL_LABELS:-}"
-KUBERNETES_DEPLOYMENT_ADDITIONAL_ANNOTATIONS="${KUBERNETES_DEPLOYMENT_ADDITIONAL_ANNOTATIONS:-}"
+# Additional labels/annotations, else the workload-level ones
+KUBERNETES_DEPLOYMENT_ADDITIONAL_LABELS="${KUBERNETES_DEPLOYMENT_ADDITIONAL_LABELS:-${KUBERNETES_WORKLOAD_ADDITIONAL_LABELS:-}}"
+KUBERNETES_DEPLOYMENT_ADDITIONAL_ANNOTATIONS="${KUBERNETES_DEPLOYMENT_ADDITIONAL_ANNOTATIONS:-${KUBERNETES_WORKLOAD_ADDITIONAL_ANNOTATIONS:-}}"
 
 # Deployment strategy (always RollingUpdate - Recreate causes downtime)
 KUBERNETES_DEPLOYMENT_MAX_SURGE="${KUBERNETES_DEPLOYMENT_MAX_SURGE:-1}"

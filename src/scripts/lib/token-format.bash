@@ -92,7 +92,7 @@ validate_token_styles() {
 
 # Return a grep-E regex that matches unresolved tokens for a given style pair
 # Usage: unresolved_token_regex <delimiter-style> <name-style>
-# Example: unresolved_token_regex "shell" "PascalCase" → '\$\{[A-Z][A-Za-z0-9]*\}'
+# Example: unresolved_token_regex "shell" "PascalCase" → '\$\{[A-Z0-9][A-Za-z0-9]*(/[A-Z0-9][A-Za-z0-9]*)*\}'
 unresolved_token_regex() {
   if [[ $# -ne 2 ]]; then
     log_error "unresolved_token_regex requires exactly 2 arguments, got $#"
@@ -111,21 +111,23 @@ unresolved_token_regex() {
     return 1
   fi
 
-  # Build name character class from name style. Each segment may start with a
-  # digit, as the matching plugins/token-name-validators/<style> allows: a
-  # name the validator accepts must be matchable here, or it is invisible to
-  # the gate and to the unreferenced-value check.
+  # Build the name segment from the name style. Each matches what the matching
+  # plugins/token-name-validators/<style> accepts: a name the validator
+  # accepts must be matchable here, or it is invisible to the gate and to the
+  # unreferenced-value check. A segment never starts or ends with a separator,
+  # so lookalikes such as a shell ${_private} or ${VAR-} default are not
+  # flagged as unresolved tokens.
   local name_regex
   local name_segment
   case "${name_style}" in
     PascalCase)      name_segment='[A-Z0-9][A-Za-z0-9]*' ;;
     camelCase)       name_segment='[a-z0-9][A-Za-z0-9]*' ;;
-    UPPER_SNAKE)     name_segment='[A-Z0-9_][A-Z0-9_]*' ;;
-    lower_snake)     name_segment='[a-z0-9_][a-z0-9_]*' ;;
-    lower-kebab)     name_segment='[a-z0-9][a-z0-9-]*' ;;
-    UPPER-KEBAB)     name_segment='[A-Z0-9][A-Z0-9-]*' ;;
-    lower.dot)       name_segment='[a-z0-9][a-z0-9.]*' ;;
-    UPPER.DOT)       name_segment='[A-Z0-9][A-Z0-9.]*' ;;
+    UPPER_SNAKE)     name_segment='[A-Z0-9]([A-Z0-9_]*[A-Z0-9])?' ;;
+    lower_snake)     name_segment='[a-z0-9]([a-z0-9_]*[a-z0-9])?' ;;
+    lower-kebab)     name_segment='[a-z0-9]([a-z0-9-]*[a-z0-9])?' ;;
+    UPPER-KEBAB)     name_segment='[A-Z0-9]([A-Z0-9-]*[A-Z0-9])?' ;;
+    lower.dot)       name_segment='[a-z0-9]([a-z0-9.]*[a-z0-9])?' ;;
+    UPPER.DOT)       name_segment='[A-Z0-9]([A-Z0-9.]*[A-Z0-9])?' ;;
     *)
       log_error "Unknown name style: ${name_style}"
       return 1

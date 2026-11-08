@@ -78,7 +78,7 @@ IMAGE_BUILD_COMMAND="${IMAGE_BUILD_COMMAND:?IMAGE_BUILD_COMMAND is required - ru
 # NUL-delimited fields, so values containing newlines (metadata.description)
 # survive verbatim. Record shapes:
 #   scalar\0<name>\0<value>\0
-#   entry\0<entry>\0<version>\0<subdir>\0<manifests-docker-tag>\0
+#   entry\0<entry>\0<version>\0<subdir>\0<manifests-docker-tag>\0<digest>\0
 BUILTIN_TOKENS_PENDING_FILE="${OUTPUT_SUB_PATH}/builtin-tokens-pending"
 mkdir -p "${OUTPUT_SUB_PATH}"
 : > "${BUILTIN_TOKENS_PENDING_FILE}"
@@ -89,7 +89,7 @@ record_builtin_token_scalar() {
 }
 
 record_builtin_tokens_for_entry() {
-  printf 'entry\0%s\0%s\0%s\0%s\0' "$1" "$2" "$3" "$4" >> "${BUILTIN_TOKENS_PENDING_FILE}"
+  printf 'entry\0%s\0%s\0%s\0%s\0%s\0' "$1" "$2" "$3" "$4" "$5" >> "${BUILTIN_TOKENS_PENDING_FILE}"
   log "  builtin tokens recorded: $3 entry $1"
 }
 
@@ -277,9 +277,20 @@ resolve_layer() {
   resolved_uri=$(< "${resolve_output_file}")
   log "${indent}Resolved: ${resolved_uri}"
 
-  # Extract identity for duplicate detection (URI without version)
-  local identity="${resolved_uri%:*}"
-  local resolved_version="${resolved_uri##*:}"
+  # Extract identity for duplicate detection (URI without version or digest)
+  local resolved_tag_ref="${resolved_uri%%@*}"
+  local identity="${resolved_tag_ref%:*}"
+  local resolved_version="${resolved_tag_ref##*:}"
+  local resolved_digest=""
+  [[ "${resolved_uri}" == *"@"* ]] && resolved_digest="${resolved_uri#*@}"
+  # Unpinned: the digest the registry serves for the tag, so the build records
+  # exactly which image it used
+  if [[ -z "${resolved_digest}" ]]; then
+    resolved_digest=$("${UTIL_DIR}/registry-tag-digest" "${resolved_tag_ref}") || {
+      log_warning "${indent}No Digest token for ${ref}: could not read the registry digest of ${resolved_tag_ref}"
+      resolved_digest=""
+    }
+  fi
 
   local previous_entry
   previous_entry=$(grep "^${identity}=" "${VISITED_FILE}" || true)
@@ -295,13 +306,13 @@ resolve_layer() {
   echo "${identity}=${resolved_version}" >> "${VISITED_FILE}"
 
   # Auto-builtin tokens: emit LAYER_<slug>_{REF,VERSION_SPEC,VERSION,
-  # MANIFESTS_DOCKER_TAG} for every resolved layer (including layersets) so
+  # MANIFESTS_DOCKER_TAG,DIGEST} for every resolved layer (including layersets) so
   # downstream substitution can pin to the same version/spec the build saw.
   # Layer tags carry no variant suffix, so the tag token equals VERSION.
   # Slug is derived from the entry as written, so short and long ref forms
   # produce distinct slugs as authored.
   log "${indent}Auto-builtin tokens for layers:"
-  record_builtin_tokens_for_entry "${ref}" "${resolved_version}" "layers" "${resolved_version}"
+  record_builtin_tokens_for_entry "${ref}" "${resolved_version}" "layers" "${resolved_version}" "${resolved_digest}"
 
   # Determine layer storage path (registry/path/name without version)
   # Strip provider prefix if present for the filesystem path

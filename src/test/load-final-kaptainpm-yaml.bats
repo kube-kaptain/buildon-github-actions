@@ -189,10 +189,9 @@ EOF
   assert_github_output "GITHUB_RELEASE_ENABLED" "false"
 }
 
-# NOTE: yq's // operator treats bare boolean false as falsy, so the script
-# falls back to the default "true". This is a known quirk - use the string
-# "false" in KaptainPM.yaml to disable releases.
-@test "GITHUB_RELEASE_ENABLED bare boolean false falls back to default true" {
+# Read via kaptainpm_bool, not yq's // operator, so an explicit bare boolean
+# false survives instead of being clobbered by the default.
+@test "GITHUB_RELEASE_ENABLED bare boolean false is preserved" {
   cat > "${TEST_DIR}/kaptainpm/final/KaptainPM.yaml" << 'EOF'
 apiVersion: kaptain.org/1.10
 kind: test-build
@@ -204,7 +203,24 @@ spec:
 EOF
   run_script
   [ "${status}" -eq 0 ]
-  assert_github_output "GITHUB_RELEASE_ENABLED" "true"
+  assert_github_output "GITHUB_RELEASE_ENABLED" "false"
+}
+
+# Booleans read through the generic field mappings are lowercased, so an
+# uppercase YAML boolean reaches the generators as true/false.
+@test "uppercase YAML boolean through the field mappings is exported lowercase" {
+  cat > "${TEST_DIR}/kaptainpm/final/KaptainPM.yaml" << 'EOF'
+apiVersion: kaptain.org/1.10
+kind: test-build
+spec:
+  main:
+    generators:
+      service:
+        enabled: TRUE
+EOF
+  run_script
+  [ "${status}" -eq 0 ]
+  assert_github_output "KUBERNETES_SERVICE_GENERATION_ENABLED" "true"
 }
 
 @test "CHANGE_SOURCE_NOTE_ENABLED defaults to true when absent" {
@@ -764,10 +780,10 @@ append_scalar() {
   printf 'scalar\0%s\0%s\0' "$1" "$2" >> "${TEST_DIR}/${out}/builtin-tokens-pending"
 }
 
-# append_entry <entry> <version> <subdir> <manifests-docker-tag>
+# append_entry <entry> <version> <subdir> <manifests-docker-tag> [digest]
 append_entry() {
   mkdir -p "${TEST_DIR}/kaptain-out"
-  printf 'entry\0%s\0%s\0%s\0%s\0' "$1" "$2" "$3" "$4" \
+  printf 'entry\0%s\0%s\0%s\0%s\0%s\0' "$1" "$2" "$3" "$4" "${5:-}" \
     >> "${TEST_DIR}/kaptain-out/builtin-tokens-pending"
 }
 
@@ -869,7 +885,7 @@ EOF
   [ "$(cat "$(token_file build/BuildMode)")" = "build_server" ]
 }
 
-@test "replay follows OUTPUT_SUB_PATH from the yaml" {
+@test "replay finds tokens kaptain-init deferred before a custom outputSubPath was known" {
   cat > "${TEST_DIR}/kaptainpm/final/KaptainPM.yaml" << 'EOF'
 apiVersion: kaptain.org/1.10
 kind: test-build
@@ -877,11 +893,13 @@ spec:
   global:
     outputSubPath: custom-out
 EOF
-  append_scalar BUILD_MODE "build_server" custom-out
+  # kaptain-init runs before the configured dir is known, so it records into
+  # the dir the build started with
+  append_scalar BUILD_MODE "build_server"
 
   run_script
-  [ "${status}" -eq 0 ]
-  [ "$(cat "$(token_file build/BuildMode custom-out)")" = "build_server" ]
+  [[ "${status}" -eq 0 ]] || return 1
+  [[ "$(cat "$(token_file build/BuildMode custom-out)")" == "build_server" ]] || return 1
 }
 
 @test "no pending file is a silent no-op" {
@@ -904,4 +922,286 @@ EOF
 
 teardown() {
   dump_bats_result
+}
+
+# =============================================================================
+# Ambiguous numbers: only plain decimal integers are accepted
+# =============================================================================
+
+@test "a leading-zero number fails with its path and the ambiguity message" {
+  cat > "${TEST_DIR}/kaptainpm/final/KaptainPM.yaml" << 'EOF2'
+apiVersion: kaptain.org/1.10
+kind: test-build
+spec:
+  main:
+    generators:
+      deployment:
+        replicas: 017
+EOF2
+  run_script
+  [[ "$status" -eq 1 ]] || return 1
+  [[ "$output" == *"spec.main.generators.deployment.replicas: 017 is ambiguous depending on the YAML specification version and could mean more than one value depending on the context. Use decimal."* ]] || return 1
+}
+
+@test "every non-decimal number form is reported, including inside lists" {
+  cat > "${TEST_DIR}/kaptainpm/final/KaptainPM.yaml" << 'EOF2'
+apiVersion: kaptain.org/1.10
+kind: test-build
+spec:
+  forms:
+    octal: 0o17
+    hex: 0x10
+    binary: 0b101
+    underscore: 1_000
+    plus: +5
+    fraction: 3.0
+    exponent: 1e2
+    nonOctal: 08
+    ports:
+      - port: 080
+EOF2
+  run_script
+  [[ "$status" -eq 1 ]] || return 1
+  local form
+  for form in "octal: 0o17" "hex: 0x10" "binary: 0b101" "underscore: 1_000" "plus: +5" \
+      "fraction: 3.0" "exponent: 1e2" "nonOctal: 08" "ports.0.port: 080"; do
+    [[ "$output" == *"spec.forms.${form} is ambiguous"* ]] || return 1
+  done
+}
+
+@test "plain decimal numbers and quoted strings are not ambiguous" {
+  cat > "${TEST_DIR}/kaptainpm/final/KaptainPM.yaml" << 'EOF2'
+apiVersion: kaptain.org/1.10
+kind: test-build
+spec:
+  forms:
+    zero: 0
+    plain: 17
+    negative: -3
+    quoted: "017"
+    version: "1.0"
+EOF2
+  run_script
+  [[ "$status" -eq 0 ]] || return 1
+  [[ "$output" != *"is ambiguous"* ]] || return 1
+}
+
+# =============================================================================
+# docker.runtime: applied on local builds only, and only if installed
+# =============================================================================
+
+# Export a PATH with every tool except podman and docker, then mocks of only
+# the named runtimes, so a test decides what is installed whatever the host has.
+# Usage: path_with_runtimes [runtime...]
+path_with_runtimes() {
+  local farm="${TEST_DIR}/path-farm" mocks="${TEST_DIR}/path-mocks" dirs i runtime
+  mkdir -p "${farm}" "${mocks}"
+  IFS=: read -ra dirs <<< "${PATH}"
+  # Later dirs first, so earlier ones win as they do in a PATH lookup
+  for ((i = ${#dirs[@]} - 1; i >= 0; i--)); do
+    [[ -d "${dirs[i]}" ]] && ln -sf "${dirs[i]}"/* "${farm}/" 2> /dev/null
+  done
+  rm -f "${farm}/podman" "${farm}/docker"
+  for runtime in "$@"; do
+    printf '#!/usr/bin/env bash\nexit 0\n' > "${mocks}/${runtime}"
+    chmod +x "${mocks}/${runtime}"
+  done
+  export PATH="${mocks}:${farm}"
+}
+
+write_pm_runtime() {
+  cat > "${TEST_DIR}/kaptainpm/final/KaptainPM.yaml" << EOF2
+apiVersion: kaptain.org/1.10
+kind: test-build
+spec:
+  main:
+    docker:
+      runtime: ${1}
+EOF2
+}
+
+@test "runtime: locally an installed runtime becomes IMAGE_BUILD_COMMAND" {
+  export BUILD_MODE="local"
+  write_pm_runtime docker
+  path_with_runtimes podman docker
+
+  run_script
+  [[ "$status" -eq 0 ]] || return 1
+  assert_github_output "IMAGE_BUILD_COMMAND" "docker"
+}
+
+@test "runtime: locally podman is honoured too" {
+  export BUILD_MODE="local"
+  write_pm_runtime podman
+  path_with_runtimes podman
+
+  run_script
+  [[ "$status" -eq 0 ]] || return 1
+  assert_github_output "IMAGE_BUILD_COMMAND" "podman"
+}
+
+@test "runtime: locally a runtime that is not installed fails" {
+  export BUILD_MODE="local"
+  write_pm_runtime docker
+  path_with_runtimes podman
+
+  run_script
+  [[ "$status" -eq 1 ]] || return 1
+  [[ "$output" == *"spec.main.docker.runtime is docker but docker is not installed"* ]] || return 1
+  [[ -z "$(github_output_value IMAGE_BUILD_COMMAND)" ]] || return 1
+}
+
+@test "runtime: locally a value other than podman or docker fails" {
+  export BUILD_MODE="local"
+  write_pm_runtime rm
+
+  run_script
+  [[ "$status" -eq 1 ]] || return 1
+  [[ "$output" == *"spec.main.docker.runtime must be podman or docker, got: rm"* ]] || return 1
+}
+
+@test "runtime: on a build server it is ignored and logged, even if not installed" {
+  export BUILD_MODE="build_server"
+  write_pm_runtime docker
+  path_with_runtimes podman
+
+  run_script
+  [[ "$status" -eq 0 ]] || return 1
+  [[ "$output" == *'Field .spec.main.docker.runtime = "docker" ignored: a build server always uses podman'* ]] || return 1
+  [[ -z "$(github_output_value IMAGE_BUILD_COMMAND)" ]] || return 1
+}
+
+@test "runtime: unset leaves IMAGE_BUILD_COMMAND to validate-tooling" {
+  export BUILD_MODE="local"
+  write_pm
+
+  run_script
+  [[ "$status" -eq 0 ]] || return 1
+  [[ -z "$(github_output_value IMAGE_BUILD_COMMAND)" ]] || return 1
+}
+
+# =============================================================================
+# A configured outputSubPath takes over the build's output dir
+# =============================================================================
+
+write_pm_output_sub_path() {
+  cat > "${TEST_DIR}/kaptainpm/final/KaptainPM.yaml" << EOF2
+apiVersion: kaptain.org/1.10
+kind: test-build
+spec:
+  global:
+    outputSubPath: '${1}'
+EOF2
+}
+
+@test "output dir: earlier steps' output moves into the configured dir" {
+  write_pm_output_sub_path custom-out
+  mkdir -p "${TEST_DIR}/kaptain-out/earlier-step"
+  printf 'x' > "${TEST_DIR}/kaptain-out/earlier-step/file"
+  run_script
+  [[ "${status}" -eq 0 ]] || return 1
+  [[ -f "${TEST_DIR}/custom-out/earlier-step/file" ]] || return 1
+  [[ ! -e "${TEST_DIR}/kaptain-out" ]] || return 1
+  assert_github_output "OUTPUT_SUB_PATH" "custom-out"
+}
+
+@test "output dir: a stale configured dir from an earlier run is replaced" {
+  write_pm_output_sub_path custom-out
+  mkdir -p "${TEST_DIR}/custom-out" "${TEST_DIR}/kaptain-out"
+  printf 'old' > "${TEST_DIR}/custom-out/stale"
+  printf 'new' > "${TEST_DIR}/kaptain-out/fresh"
+  run_script
+  [[ "${status}" -eq 0 ]] || return 1
+  [[ ! -e "${TEST_DIR}/custom-out/stale" ]] || return 1
+  [[ -f "${TEST_DIR}/custom-out/fresh" ]] || return 1
+}
+
+@test "output dir: a nested configured path is created under its parent" {
+  write_pm_output_sub_path build/out
+  mkdir -p "${TEST_DIR}/kaptain-out"
+  printf 'x' > "${TEST_DIR}/kaptain-out/file"
+  run_script
+  [[ "${status}" -eq 0 ]] || return 1
+  [[ -f "${TEST_DIR}/build/out/file" ]] || return 1
+}
+
+@test "output dir: with no starting dir the configured one is just created" {
+  write_pm_output_sub_path custom-out
+  run_script
+  [[ "${status}" -eq 0 ]] || return 1
+  [[ -d "${TEST_DIR}/custom-out" ]] || return 1
+}
+
+@test "output dir: the same value as the starting dir touches nothing" {
+  write_pm_output_sub_path kaptain-out
+  mkdir -p "${TEST_DIR}/kaptain-out"
+  printf 'keep' > "${TEST_DIR}/kaptain-out/sentinel"
+  run_script
+  [[ "${status}" -eq 0 ]] || return 1
+  [[ -f "${TEST_DIR}/kaptain-out/sentinel" ]] || return 1
+  [[ "$output" != *"Moving the build's output dir"* ]] || return 1
+}
+
+@test "output dir: the push list path follows the move" {
+  write_pm_output_sub_path custom-out
+  mkdir -p "${TEST_DIR}/kaptain-out/docker-push-all"
+  : > "${TEST_DIR}/kaptain-out/docker-push-all/image-uris"
+  export DOCKER_PUSH_IMAGE_LIST_FILE="kaptain-out/docker-push-all/image-uris"
+  run_script
+  [[ "${status}" -eq 0 ]] || return 1
+  assert_github_output "DOCKER_PUSH_IMAGE_LIST_FILE" "custom-out/docker-push-all/image-uris"
+  [[ -f "${TEST_DIR}/custom-out/docker-push-all/image-uris" ]] || return 1
+}
+
+@test "output dir: unsafe configured paths fail before anything is touched" {
+  local value
+  for value in /tmp/out out/ './out' 'a/../b' '..' '.' 'a//b' '.git/out' kaptainpm src src/out kaptain-out/inner; do
+    write_pm_output_sub_path "${value}"
+    mkdir -p "${TEST_DIR}/kaptain-out"
+    printf 'keep' > "${TEST_DIR}/kaptain-out/sentinel"
+    run_script
+    [[ "${status}" -eq 1 ]] || { echo "accepted: ${value}"; return 1; }
+    [[ "$output" == *"spec.global.outputSubPath"* ]] || { echo "wrong error for: ${value}"; return 1; }
+    [[ -f "${TEST_DIR}/kaptain-out/sentinel" ]] || { echo "touched for: ${value}"; return 1; }
+  done
+}
+
+@test "output dir: a starting dir nested in the configured one fails" {
+  write_pm_output_sub_path out
+  export OUTPUT_SUB_PATH="out/inner"
+  mkdir -p "${TEST_DIR}/out/inner"
+  run_script
+  [[ "${status}" -eq 1 ]] || return 1
+  assert_output_contains "must not be nested in each other"
+  [[ -d "${TEST_DIR}/out/inner" ]] || return 1
+}
+
+@test "output dir: a configured dir with git-tracked files fails" {
+  local repo="${TEST_DIR}/repo"
+  mkdir -p "${repo}/kaptainpm/final" "${repo}/docs"
+  cat > "${repo}/kaptainpm/final/KaptainPM.yaml" << 'EOF2'
+apiVersion: kaptain.org/1.10
+kind: test-build
+spec:
+  global:
+    outputSubPath: docs
+EOF2
+  printf 'mine' > "${repo}/docs/README.md"
+  git -C "${repo}" init -q
+  git -C "${repo}" add docs/README.md
+  run bash -c "cd '${repo}' && GITHUB_OUTPUT='${GITHUB_OUTPUT}' '${SCRIPT}'"
+  [[ "${status}" -eq 1 ]] || return 1
+  assert_output_contains "holds files tracked by git"
+  [[ -f "${repo}/docs/README.md" ]] || return 1
+}
+
+@test "deferred pinned layer entry replays with its Digest token" {
+  write_pm
+  append_entry "layer-github-flow-strict:1.2.3@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef" "1.2.3" layers "1.2.3" \
+    "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+
+  run_script
+  [[ "${status}" -eq 0 ]] || return 1
+  [[ "$(cat "$(token_file layers/LayerLayerGithubFlowStrictVersionSpec)")" == "1.2.3" ]] || return 1
+  [[ "$(cat "$(token_file layers/LayerLayerGithubFlowStrictDigest)")" == "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef" ]] || return 1
 }

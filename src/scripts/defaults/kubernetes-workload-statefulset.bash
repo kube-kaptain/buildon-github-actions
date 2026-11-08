@@ -18,8 +18,9 @@
 # Apply defaults to long-form variables (collision-safe)
 # =============================================================================
 
-# Workload naming but unique per type
-KUBERNETES_STATEFULSET_ENV_SUB_PATH="${KUBERNETES_STATEFULSET_ENV_SUB_PATH:-src/statefulset-env}"
+# Workload naming but unique per type, else the workload-level
+# value, else the default
+KUBERNETES_STATEFULSET_ENV_SUB_PATH="${KUBERNETES_STATEFULSET_ENV_SUB_PATH:-${KUBERNETES_WORKLOAD_ENV_SUB_PATH:-src/statefulset-env}}"
 
 # StatefulSet unique settings
 # Service name: required for StatefulSet, defaults to project-name-headless token pattern
@@ -47,9 +48,9 @@ KUBERNETES_STATEFULSET_PVC_MOUNT_PATH="${KUBERNETES_STATEFULSET_PVC_MOUNT_PATH:-
 # Enable/disable PVC generation
 KUBERNETES_STATEFULSET_PVC_ENABLED="${KUBERNETES_STATEFULSET_PVC_ENABLED:-true}"
 
-# Additional labels/annotations
-KUBERNETES_STATEFULSET_ADDITIONAL_LABELS="${KUBERNETES_STATEFULSET_ADDITIONAL_LABELS:-}"
-KUBERNETES_STATEFULSET_ADDITIONAL_ANNOTATIONS="${KUBERNETES_STATEFULSET_ADDITIONAL_ANNOTATIONS:-}"
+# Additional labels/annotations, else the workload-level ones
+KUBERNETES_STATEFULSET_ADDITIONAL_LABELS="${KUBERNETES_STATEFULSET_ADDITIONAL_LABELS:-${KUBERNETES_WORKLOAD_ADDITIONAL_LABELS:-}}"
+KUBERNETES_STATEFULSET_ADDITIONAL_ANNOTATIONS="${KUBERNETES_STATEFULSET_ADDITIONAL_ANNOTATIONS:-${KUBERNETES_WORKLOAD_ADDITIONAL_ANNOTATIONS:-}}"
 
 # =============================================================================
 # Convenience short names (for single-purpose generator scripts only)

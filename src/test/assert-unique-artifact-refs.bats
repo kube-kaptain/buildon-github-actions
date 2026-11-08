@@ -227,3 +227,23 @@ EOF
 teardown() {
   dump_bats_result
 }
+
+@test "name mode: pinned refs differing in version and digest fail" {
+  write_yaml "alpha:1.0@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef" "alpha:2.0@sha256:fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210"
+  run assert_unique_artifact_refs "${YAML_FILE}" '.spec.contents[]' "ctx" name
+  [[ "${status}" -ne 0 ]] || return 1
+  assert_output_contains "  alpha"
+}
+
+@test "path mode: a pinned and an unpinned ref to the same artifact fail" {
+  write_yaml "ghcr.io/org/alpha:1.0@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef" "ghcr.io/org/alpha:1.0"
+  run assert_unique_artifact_refs "${YAML_FILE}" '.spec.contents[]' "ctx" path
+  [[ "${status}" -ne 0 ]] || return 1
+  assert_output_contains "  ghcr.io/org/alpha"
+}
+
+@test "path mode: distinct pinned refs pass" {
+  write_yaml "ghcr.io/org/alpha:1.0@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef" "ghcr.io/org/beta:1.0@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+  run assert_unique_artifact_refs "${YAML_FILE}" '.spec.contents[]' "ctx" path
+  [[ "${status}" -eq 0 ]] || return 1
+}

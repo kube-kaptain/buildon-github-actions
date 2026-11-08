@@ -20,6 +20,18 @@
 #   false  - The user supplies <source base>/kubernetes/ and owns deploy
 #            behaviour; the schema rejects the generation settings.
 #
+# Mount paths: every workload in the set, supplied or generated, must mount the
+# main ConfigMap at /configmap and the main Secret at /secret, where the deploy
+# scripts read them; generation pins those paths, and a supplied workload that
+# mounts either elsewhere fails.
+#
+# Contributed entries: anything earlier in the build (a layer's hook script,
+# say) may write ConfigMap and Secret template entries into
+# <output>/run-image-deploy-manifests/configmap/ and secret.template/. They
+# merge with <source base>/configmap/ and secret.template/; the same entry in
+# both fails, as do contributions with a supplied ConfigMap or Secret, or with
+# generation off, since nothing would hold them.
+#
 # Inputs (env):
 #   PROJECT_NAME                                       - Required; run name (run-* / run-platform-*)
 #   VERSION                                            - Required; for logs
@@ -78,6 +90,41 @@ APPLY_MODE_MARKER_FILENAME="run-environment-seed-and-compare-marker.yaml"
 # on the marker instead of leaving a stray ConfigMap.
 APPLY_MODE_MARKER_NAMESPACE="do-not-deploy-kaptain-seed-and-compare-marker-file-only"
 IMAGE_DEFAULTS_DIR="${RUN_IMAGE_DEPLOY_MANIFESTS_DEFAULTS}"
+# Where the deploy scripts in the image read the main ConfigMap and Secret
+# (${MOUNT_BASE_PATH}/configmap and /secret, the base empty in the image)
+DEPLOY_CONFIGMAP_MOUNT_PATH="/configmap"
+DEPLOY_SECRET_MOUNT_PATH="/secret"
+
+# Usage: has_entries <dir> - true if the dir holds any file
+has_entries() {
+  [[ -d "${1}" && -n "$(find "${1}" -type f -print -quit)" ]]
+}
+
+# Stage the environment deploy source's entries and the build's contributed
+# entries into one dir. The same entry in both fails: neither may silently
+# replace the other.
+# Usage: stage_entries <source-dir> <contributed-dir> <dest-dir>
+stage_entries() {
+  local source_dir="${1}" contributed_dir="${2}" dest_dir="${3}" collisions entry
+  if has_entries "${source_dir}" && has_entries "${contributed_dir}"; then
+    collisions=$(LC_ALL=C comm -12 \
+      <(cd "${source_dir}" && find . -type f | LC_ALL=C sort) \
+      <(cd "${contributed_dir}" && find . -type f | LC_ALL=C sort))
+    if [[ -n "${collisions}" ]]; then
+      log_error "Entries supplied by both ${source_dir} and ${contributed_dir}:"
+      while IFS= read -r entry; do
+        log_error "  ${entry#./}"
+      done <<< "${collisions}"
+      exit 1
+    fi
+  fi
+  if [[ -d "${contributed_dir}" ]]; then
+    cp -R "${contributed_dir}/." "${dest_dir}/"
+  fi
+  if [[ -d "${source_dir}" ]]; then
+    cp -R "${source_dir}/." "${dest_dir}/"
+  fi
+}
 
 step_copy_source() {
   log ""
@@ -93,6 +140,14 @@ step_copy_source() {
     log_error "Required directory not found: ${ENV_ENVIRONMENT_DEPLOY_SOURCE_BASE_PATH}/kubernetes"
     exit 1
   fi
+  # Nothing is generated, so contributed entries would be silently dropped
+  local contributed_dir
+  for contributed_dir in "${RUN_IMAGE_DEPLOY_MANIFESTS_CONFIGMAP}" "${RUN_IMAGE_DEPLOY_MANIFESTS_SECRET_TEMPLATE}"; do
+    if has_entries "${contributed_dir}"; then
+      log_error "Entries were contributed in ${contributed_dir}, but generateIdealEnvironmentDeployManifests is false, so no ConfigMap or Secret is generated to hold them"
+      exit 1
+    fi
+  done
   cp -R "${ENV_ENVIRONMENT_DEPLOY_SOURCE_BASE_PATH}/kubernetes/." "${IMAGE_MANIFESTS_DIR}/"
   if [[ -d "${ENV_ENVIRONMENT_DEPLOY_SOURCE_BASE_PATH}/defaults" ]]; then
     cp -R "${ENV_ENVIRONMENT_DEPLOY_SOURCE_BASE_PATH}/defaults/." "${IMAGE_DEFAULTS_DIR}/"
@@ -363,15 +418,26 @@ step_generate_manifests() {
       "${generators_dir}/generate-kubernetes-namespace"
   fi
 
+  # A supplied ConfigMap or Secret replaces generation, which would silently
+  # drop entries contributed during the build.
+  if [[ "${has_configmap}" == "true" ]] && has_entries "${RUN_IMAGE_DEPLOY_MANIFESTS_CONFIGMAP}"; then
+    log_error "Entries were contributed in ${RUN_IMAGE_DEPLOY_MANIFESTS_CONFIGMAP}, but a supplied ConfigMap manifest replaces the generated one"
+    log_error "Supply the entries in ${src_configmap} instead of a ConfigMap manifest, or stop contributing them"
+    exit 1
+  fi
+  if [[ "${has_secret}" == "true" ]] && has_entries "${RUN_IMAGE_DEPLOY_MANIFESTS_SECRET_TEMPLATE}"; then
+    log_error "Entries were contributed in ${RUN_IMAGE_DEPLOY_MANIFESTS_SECRET_TEMPLATE}, but a supplied Secret manifest replaces the generated one"
+    log_error "Supply the entries in ${src_secret_template} instead of a Secret manifest, or stop contributing them"
+    exit 1
+  fi
+
   # The project-name key guarantees a ConfigMap and so the standard mount;
   # entries can later be added by overriding the ConfigMap alone.
   if [[ "${has_configmap}" == "false" ]]; then
     local configmap_source_dir="${IMAGE_BASE}/configmap-source/configmap"
     rm -rf "${configmap_source_dir}"
     mkdir -p "${configmap_source_dir}"
-    if [[ -d "${src_configmap}" ]]; then
-      cp -R "${src_configmap}/." "${configmap_source_dir}/"
-    fi
+    stage_entries "${src_configmap}" "${RUN_IMAGE_DEPLOY_MANIFESTS_CONFIGMAP}" "${configmap_source_dir}"
     if [[ ! -f "${configmap_source_dir}/project-name" ]]; then
       printf '%s' "${project_name_token}" > "${configmap_source_dir}/project-name"
     fi
@@ -389,13 +455,19 @@ step_generate_manifests() {
     local secret_source_dir="${IMAGE_BASE}/secret-source/secret.template"
     rm -rf "${secret_source_dir}"
     mkdir -p "${secret_source_dir}"
-    if [[ -d "${src_secret_template}" ]]; then
-      cp -R "${src_secret_template}/." "${secret_source_dir}/"
-    fi
-    if [[ ! -f "${secret_source_dir}/environmentPassphrase" ]]; then
-      format_token_reference "${TOKEN_DELIMITER_STYLE}" "$(project_token_name ENVIRONMENT_PASSPHRASE)" \
-        | tr -d '\n' > "${secret_source_dir}/environmentPassphrase"
-    fi
+    # Always the generated token, so every environment's passphrase is
+    # supplied the same way and can never be fixed in the repo.
+    local passphrase_dir
+    for passphrase_dir in "${src_secret_template}" "${RUN_IMAGE_DEPLOY_MANIFESTS_SECRET_TEMPLATE}"; do
+      if [[ -e "${passphrase_dir}/environmentPassphrase" ]]; then
+        log_error "${passphrase_dir}/environmentPassphrase is not allowed: the deploy image's passphrase key is always generated"
+        log_error "Remove the file; the environment supplies the passphrase as the $(project_token_name ENVIRONMENT_PASSPHRASE) token"
+        exit 1
+      fi
+    done
+    stage_entries "${src_secret_template}" "${RUN_IMAGE_DEPLOY_MANIFESTS_SECRET_TEMPLATE}" "${secret_source_dir}"
+    format_token_reference "${TOKEN_DELIMITER_STYLE}" "$(project_token_name ENVIRONMENT_PASSPHRASE)" \
+      | tr -d '\n' > "${secret_source_dir}/environmentPassphrase"
     log "  Generating Secret template (environmentPassphrase key included)"
     OUTPUT_SUB_PATH="${gen_output}" \
     MANIFESTS_SUB_PATH="${IMAGE_MANIFESTS_DIR}" \
@@ -419,6 +491,9 @@ step_generate_manifests() {
   export KUBERNETES_WORKLOAD_RESOURCES_CPU_LIMIT=""
   # Pinned so an app-level value in the environment is not inherited.
   export KUBERNETES_WORKLOAD_IMAGE_PULL_SECRETS="${ENV_IMAGE_PULL_SECRETS}"
+  # Fixed: the deploy scripts read the main ConfigMap and Secret there.
+  export KUBERNETES_WORKLOAD_CONFIGMAP_MOUNT_PATH="${DEPLOY_CONFIGMAP_MOUNT_PATH}"
+  export KUBERNETES_WORKLOAD_SECRET_MOUNT_PATH="${DEPLOY_SECRET_MOUNT_PATH}"
   export KUBERNETES_DEPLOYMENT_ENV_SUB_PATH="${src_deployment_env}"
   export KUBERNETES_DEPLOYMENT_PORTS_ENABLED="false"
   export KUBERNETES_CRONJOB_PORTS_ENABLED="false"
@@ -547,6 +622,45 @@ step_generate_manifests() {
   fi
 }
 
+# Every workload in the set, supplied or generated, mounts the main ConfigMap
+# (named *-configmap-checksum) and the main Secret (*-secret-checksum) exactly
+# where the deploy scripts read them, in every container and init container.
+assert_deploy_mount_paths() {
+  local file workload container is_configmap is_secret mount_path violations=""
+  while IFS= read -r -d '' file; do
+    # One line per mount: workload, container, whether the volume is the main
+    # ConfigMap or the main Secret, and where it is mounted
+    # shellcheck disable=SC2016 # $kind, $pod etc. are yq variables
+    while IFS=$'\t' read -r workload container is_configmap is_secret mount_path; do
+      if [[ "${is_configmap}" == "true" && "${mount_path}" != "${DEPLOY_CONFIGMAP_MOUNT_PATH}" ]]; then
+        violations="${violations}  ${file#"${IMAGE_MANIFESTS_DIR}"/}: ${workload}: container ${container} mounts the main ConfigMap at ${mount_path}, not ${DEPLOY_CONFIGMAP_MOUNT_PATH}"$'\n'
+      fi
+      if [[ "${is_secret}" == "true" && "${mount_path}" != "${DEPLOY_SECRET_MOUNT_PATH}" ]]; then
+        violations="${violations}  ${file#"${IMAGE_MANIFESTS_DIR}"/}: ${workload}: container ${container} mounts the main Secret at ${mount_path}, not ${DEPLOY_SECRET_MOUNT_PATH}"$'\n'
+      fi
+    done < <(yq eval -r '
+      select(.kind == "Deployment" or .kind == "StatefulSet" or .kind == "DaemonSet" or .kind == "Job" or .kind == "CronJob")
+      | .kind as $kind | .metadata.name as $name
+      | (.spec.jobTemplate.spec.template.spec // .spec.template.spec) as $pod
+      | (($pod.containers // []) + ($pod.initContainers // []))[] as $c
+      | ($c.volumeMounts // [])[] as $m
+      | $m.name as $mn
+      | ([($pod.volumes // [])[] | select(.name == $mn)] | .[0]) as $v
+      | (($v.configMap.name // "") | test("-configmap-checksum$")) as $is_cm
+      | (($v.secret.secretName // "") | test("-secret-checksum$")) as $is_secret
+      | $kind + "/" + $name + "\t" + $c.name + "\t" + ($is_cm | tostring) + "\t" + ($is_secret | tostring) + "\t" + $m.mountPath
+    ' "${file}" | grep -v '^---$')
+  done < <(find "${IMAGE_MANIFESTS_DIR}" -type f -name '*.yaml' -print0 | LC_ALL=C sort -z)
+  if [[ -n "${violations}" ]]; then
+    log_error "Deploy-image workloads must mount the main ConfigMap at ${DEPLOY_CONFIGMAP_MOUNT_PATH} and the main Secret at ${DEPLOY_SECRET_MOUNT_PATH}, where the deploy scripts read them:"
+    local line
+    while IFS= read -r line; do
+      [[ -n "${line}" ]] && log_error "${line}"
+    done <<< "${violations}"
+    exit 1
+  fi
+}
+
 # The environment declares seed-and-compare, but the run-platform acts on it,
 # so the marker travels in the set. Unmarked sets apply normally.
 step_apply_mode_marker() {
@@ -601,6 +715,7 @@ main() {
       ;;
   esac
 
+  assert_deploy_mount_paths
   assert_no_environment_token_values
 
   log ""
