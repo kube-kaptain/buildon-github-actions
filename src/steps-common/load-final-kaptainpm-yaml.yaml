@@ -9,6 +9,7 @@
     BUILD_PLATFORM: github-actions
     BUILD_PLATFORM_LOG_PROVIDER: github-actions
     BUILD_KIND: ${WORKFLOW_NAME}
+    IMAGE_BUILD_COMMAND: ${{ steps.validate-tooling.outputs.IMAGE_BUILD_COMMAND }}
     # Platform registry/namespace defaults (spec values win inside the script;
     # targetIncludeNamespace=false disregards the namespace entirely). The
     # DOCKER_TARGET_* outputs of this step are authoritative for the whole

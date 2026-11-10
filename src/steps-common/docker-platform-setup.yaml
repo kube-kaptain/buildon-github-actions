@@ -2,6 +2,7 @@
 # Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
 
 - name: Docker platform setup
+  if: steps.kpm.outputs.DOCKER_QEMU_SETUP_NEEDED == 'true'
   id: docker-platform-setup
   uses: ./.github/buildon-github-actions/src/actions/docker-platform-setup
   with:

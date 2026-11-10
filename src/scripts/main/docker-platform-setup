@@ -8,6 +8,10 @@
 # handlers on Linux build servers, from the kaptain binfmt image, for any target
 # platform that is not native to the host. On local Linux machines it only warns.
 #
+# load-final-kaptainpm-yaml makes the same two checks first and exports
+# DOCKER_QEMU_SETUP_NEEDED, so a wrapper can leave this step out when every
+# target platform is native. Run anyway, it finds nothing to do.
+#
 # Inputs (environment variables):
 #   DOCKER_PLATFORM    - Target platform (from docker-common.bash default or input)
 #   IMAGE_BUILD_COMMAND - Container runtime (from validate-tooling)
@@ -25,50 +29,17 @@ source "${SCRIPT_DIR}/../lib/log.bash"
 source "${SCRIPT_DIR}/../defaults/docker-common.bash"
 # shellcheck source=src/scripts/defaults/build-mode.bash
 source "${SCRIPT_DIR}/../defaults/build-mode.bash"
+# shellcheck source=src/scripts/lib/docker-platform.bash
+source "${SCRIPT_DIR}/../lib/docker-platform.bash"
 
 log "=== Docker Platform Setup ==="
 log "Platform: ${DOCKER_PLATFORM}"
 log "Build mode: ${BUILD_MODE}"
 log "============================="
 
-# Validate platform value
-#
-# linux/386 is single-platform only. It exists for legacy 32 bit toolchains that
-# were never packaged for anything else, and there is no manifest list pairing
-# for it, so it is deliberately absent from the comma separated combinations.
-case "${DOCKER_PLATFORM}" in
-  linux/amd64) ;;
-  linux/arm64) ;;
-  linux/386) ;;
-  linux/amd64,linux/arm64) ;;
-  linux/arm64,linux/amd64) ;;
-  *)
-    log_error "Invalid DOCKER_PLATFORM value '${DOCKER_PLATFORM}' - must be: linux/amd64, linux/arm64, linux/386, or amd64 and arm64 comma-separated"
-    exit 1
-    ;;
-esac
+validate_docker_platform "${DOCKER_PLATFORM}" || exit 1
 
 log "Platform validated: ${DOCKER_PLATFORM}"
-
-# List the target arches (binfmt names) this host cannot run natively.
-# linux/386 runs natively on amd64 kernels. An unrecognised host arch is
-# treated as needing emulation for everything, to stay on the safe side.
-foreign_arches() {
-  local host_arch platform arch
-  case "$(uname -m)" in
-    x86_64|amd64) host_arch="amd64" ;;
-    aarch64|arm64) host_arch="arm64" ;;
-    *) host_arch="unknown" ;;
-  esac
-
-  for platform in ${DOCKER_PLATFORM//,/ }; do
-    arch="${platform#linux/}"
-    case "${host_arch}:${arch}" in
-      amd64:amd64|amd64:386|arm64:arm64) ;;
-      *) echo "${arch}" ;;
-    esac
-  done
-}
 
 # Kernel binfmt_misc handler name the binfmt image registers for each arch
 binfmt_handler() {
@@ -85,7 +56,7 @@ binfmt_handler() {
 if [[ "$(uname -s)" != "Linux" ]]; then
   log "Not a Linux host: skipping QEMU setup"
 else
-  needed=$(foreign_arches)
+  needed=$(docker_platform_foreign_arches "${DOCKER_PLATFORM}")
   if [[ -z "${needed}" ]]; then
     log "Host arch $(uname -m) builds ${DOCKER_PLATFORM} natively: skipping QEMU setup"
   else
