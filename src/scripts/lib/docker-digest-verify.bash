@@ -10,6 +10,7 @@
 #   is_valid_digest <digest>                                 - True for sha256:<64 hex>
 #   verify_digest_matches_tag <tagged-ref> <digest> <platform> - Fail unless the pin matches the tag
 #   build_host_platform                                      - Print linux/<arch> of this host, empty if unknown
+#   dockerfile_instruction_lines <dockerfile>                - Print each instruction as one line, heredoc bodies left out
 #   verify_dockerfile_from_digests <dockerfile> <platform>   - Verify every FROM tag@digest line
 #
 # Docker and podman (4.9 and 5.x checked) both pull a tag@digest reference by
@@ -52,9 +53,14 @@ is_valid_digest() {
 
 # Which image store the runtime uses: podman, containerd or classic
 image_store_kind() {
+  local driver_status
   if [[ "${IMAGE_BUILD_COMMAND}" == "podman" ]]; then
     echo "podman"
-  elif ${IMAGE_BUILD_COMMAND} info --format '{{.DriverStatus}}' 2>/dev/null | grep -q 'io.containerd.snapshotter'; then
+    return 0
+  fi
+  # Read in full, then matched: see the podman case below for why not a pipe
+  driver_status=$(${IMAGE_BUILD_COMMAND} info --format '{{.DriverStatus}}' 2>/dev/null) || driver_status=""
+  if [[ "${driver_status}" == *"io.containerd.snapshotter"* ]]; then
     echo "containerd"
   else
     echo "classic"
@@ -80,10 +86,21 @@ verify_digest_matches_tag() {
   store=$(image_store_kind)
   case "${store}" in
     podman)
-      if ${IMAGE_BUILD_COMMAND} image inspect --format '{{range .RepoDigests}}{{println .}}{{end}}' "${tagged_ref}" \
-          | grep -q "@${digest}$"; then
-        matched="true"
+      # All of podman's output is read before any of it is matched. Piped into
+      # grep -q, podman is still writing when grep exits on its match (a lone
+      # newline follows the last digest), is killed by SIGPIPE if that write
+      # comes late, and under the callers' pipefail a verified pin then read
+      # as a mismatch: an intermittent failure decided by scheduling.
+      local repo_digests repo_digest
+      if ! repo_digests=$(${IMAGE_BUILD_COMMAND} image inspect --format '{{range .RepoDigests}}{{println .}}{{end}}' "${tagged_ref}"); then
+        log_error "Could not inspect ${tagged_ref} to verify digest ${digest}"
+        return 1
       fi
+      while IFS= read -r repo_digest; do
+        if [[ "${repo_digest}" == *"@${digest}" ]]; then
+          matched="true"
+        fi
+      done <<< "${repo_digests}"
       ;;
     containerd)
       local index_id platform_id
@@ -124,21 +141,100 @@ build_host_platform() {
   esac
 }
 
+# dockerfile_instruction_lines <dockerfile>
+# Prints each instruction of a Dockerfile as one line, read the way docker and
+# podman read it (podman 4.9 and 5.8 checked):
+#   - backslash continuations are joined, comment lines dropped, also inside a
+#     continued instruction, and a trailing CR ignored
+#   - the body of a heredoc is left out: it is content, not instructions, so
+#     a line of it that starts with FROM is no base image
+# A heredoc opens on RUN, COPY or ADD, also after ONBUILD, at a word outside
+# quotes that starts with << (digits may come first, 3<<EOF): <<EOF, <<-EOF,
+# <<"EOF". Several on one line are read in order. Each ends at a line holding
+# only its delimiter, after leading tabs for <<-. None of cat<<EOF, "<<EOF",
+# <<<word or << on any other instruction opens one.
+# If the file ends inside a heredoc, which the builders reject, the last line
+# printed is \001, the delimiter, a space and the line it opened on.
+dockerfile_instruction_lines() {
+  awk '
+    # Split s on whitespace outside quotes into W, quotes and escapes kept
+    function split_words(s,    i, c, n, word, quote, started) {
+      n = 0; word = ""; quote = ""; started = 0
+      for (i = 1; i <= length(s); i++) {
+        c = substr(s, i, 1)
+        if (quote == "" && (c == " " || c == "\t")) {
+          if (started) { W[++n] = word; word = ""; started = 0 }
+          continue
+        }
+        if (c == "\\" && quote != "\047") {
+          word = word c substr(s, i + 1, 1); i++; started = 1
+          continue
+        }
+        if (quote == "" && (c == "\"" || c == "\047")) quote = c
+        else if (c == quote) quote = ""
+        word = word c; started = 1
+      }
+      if (started) W[++n] = word
+      return n
+    }
+    {
+      line = $0
+      sub(/\r$/, "", line)
+      if (open > 0) {
+        if (chomp[current]) sub(/^\t+/, "", line)
+        if (line == delimiter[current]) {
+          current++
+          if (current > open) open = 0
+        }
+        next
+      }
+      if (line ~ /^[ \t]*#/) next
+      if (continued && line ~ /^[ \t]*$/) next
+      if (sub(/\\$/, "", line)) { joined = joined line " "; continued = 1; next }
+      line = joined line; joined = ""; continued = 0
+      print line
+
+      n = split_words(line)
+      first = (n >= 2 && toupper(W[1]) == "ONBUILD") ? 2 : 1
+      instruction = (n >= first) ? toupper(W[first]) : ""
+      if (instruction != "RUN" && instruction != "COPY" && instruction != "ADD") next
+      for (i = first + 1; i <= n; i++) {
+        word = W[i]
+        if (word !~ /^[0-9]*<<-?[^<]+$/) continue
+        sub(/^[0-9]*<</, "", word)
+        tabs = sub(/^-/, "", word)
+        gsub("[\"\047\\\\]", "", word)
+        if (word == "") continue
+        open++; delimiter[open] = word; chomp[open] = tabs; opened_on = NR
+      }
+      current = 1
+    }
+    END {
+      if (joined != "") print joined
+      if (open > 0) printf "\001%s %d\n", delimiter[current], opened_on
+    }
+  ' "${1}"
+}
+
 # verify_dockerfile_from_digests <dockerfile> <platform>
-# Verifies every FROM line that names both a tag and a digest, against the
-# platform that FROM pulls for: its own --platform flag when it has one
+# Verifies every FROM instruction that names both a tag and a digest, against
+# the platform that FROM pulls for: its own --platform flag when it has one
 # ($BUILDPLATFORM is this host, $TARGETPLATFORM the platform being built),
 # otherwise the platform being built. Lines whose image or platform is built
-# from other variables cannot be checked and get a warning. Returns 1 if any
+# from other variables cannot be checked and get a warning, as does a heredoc
+# that never closes, since nothing after it can be read. Returns 1 if any
 # check fails, after checking them all.
 verify_dockerfile_from_digests() {
   local dockerfile="${1}"
   local platform="${2}"
   local line parsed from_platform check_platform image ref digest failed=0
 
-  # Backslash continuations are joined first so a FROM split across lines is
-  # still seen
   while IFS= read -r line || [[ -n "${line}" ]]; do
+    if [[ "${line}" == $'\001'* ]]; then
+      line="${line#?}"
+      log_warning "Heredoc ${line% *} opened on line ${line##* } of ${dockerfile} is never closed, FROM lines after it were not checked"
+      continue
+    fi
     # FROM [--flag=value ...] image [AS name], keyword case-insensitive.
     # Prints the --platform value ("-" when absent) and the image.
     parsed=$(echo "${line}" | awk 'toupper($1) == "FROM" {
@@ -179,8 +275,7 @@ verify_dockerfile_from_digests() {
       continue
     fi
     verify_digest_matches_tag "${ref}" "${digest}" "${check_platform}" || failed=1
-  done < <(awk '{ if (sub(/\\$/, "")) { joined = joined $0 " "; next } print joined $0; joined = "" }
-    END { if (joined != "") print joined }' "${dockerfile}")
+  done < <(dockerfile_instruction_lines "${dockerfile}")
 
   return "${failed}"
 }

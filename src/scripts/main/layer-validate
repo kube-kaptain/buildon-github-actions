@@ -63,12 +63,13 @@ if [[ "${LAYER_TYPE}" != "layer" && "${LAYER_TYPE}" != "layerset" ]]; then
 fi
 log "Type: ${LAYER_TYPE}"
 
-# Locate substituted files from the docker build context
+# Locate substituted files from the docker build context. The image is built
+# from its content/ dir (layer-package-prepare), so that is the image root.
 if [[ "${DOCKER_PLATFORM}" == *,* ]]; then
   first_platform="${DOCKER_PLATFORM%%,*}"
-  sub_dir="${OUTPUT_SUB_PATH}/docker-${first_platform//\//-}/substituted"
+  sub_dir="${OUTPUT_SUB_PATH}/docker-${first_platform//\//-}/substituted/content"
 else
-  sub_dir="${OUTPUT_SUB_PATH}/docker/substituted"
+  sub_dir="${OUTPUT_SUB_PATH}/docker/substituted/content"
 fi
 
 yaml_file="${sub_dir}/KaptainPM.yaml"

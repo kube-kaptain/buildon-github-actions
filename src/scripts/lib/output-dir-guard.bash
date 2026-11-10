@@ -15,10 +15,12 @@
 # Usage: assert_safe_output_dir <label> <dir>
 # Exits 1 with the reason logged unless <dir> is a path relative to the
 # repository root (no leading or trailing /, no empty, . or .. segments), is
-# not .git, kaptainpm or src or inside one of them, and holds no files
-# tracked by git.
+# not .git, kaptainpm or src or inside one of them, is a real directory under
+# real directories as far as it exists (no symbolic link anywhere in it), and
+# holds no files tracked by git.
 assert_safe_output_dir() {
   local label="${1}" dir="${2}" first_segment tracked
+  local walked="" remaining
   local segment='([^/.][^/]*|\.[^/.][^/]*|\.\.[^/]+)'
   if [[ ! "${dir}" =~ ^${segment}(/${segment})*$ ]]; then
     log_error "${label} must be a path relative to the repository root, with no leading or trailing /, empty, . or .. segments, got: ${dir}"
@@ -31,6 +33,31 @@ assert_safe_output_dir() {
       exit 1
       ;;
   esac
+  # Walk the path down from the repository root. A symbolic link anywhere in
+  # it, the dir itself included, would take the rm -rf and the mv that follow
+  # wherever it points, outside the repository if it likes, and git reports
+  # nothing tracked beneath one. Whatever does not exist yet gets created as
+  # real directories, so the walk stops at the first missing part.
+  remaining="${dir}"
+  while [[ -n "${remaining}" ]]; do
+    walked="${walked:+${walked}/}${remaining%%/*}"
+    if [[ "${remaining}" == */* ]]; then
+      remaining="${remaining#*/}"
+    else
+      remaining=""
+    fi
+    if [[ -L "${walked}" ]]; then
+      log_error "${label} ${dir} is or passes through a symbolic link (${walked}); it is wiped on every build, so every part of the path must be a real directory"
+      exit 1
+    fi
+    if [[ ! -e "${walked}" ]]; then
+      break
+    fi
+    if [[ ! -d "${walked}" ]]; then
+      log_error "${label} ${dir} cannot be the output dir: ${walked} exists and is not a directory"
+      exit 1
+    fi
+  done
   if ! tracked=$(git ls-files -- "${dir}" 2>/dev/null); then
     log_error "Cannot check ${label} ${dir} for tracked files: not in a git work tree"
     exit 1
