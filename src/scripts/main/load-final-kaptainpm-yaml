@@ -23,7 +23,12 @@
 # before loading any fields.
 #
 # Inputs via env vars (required):
-#   BUILD_KIND - The kind value from the build wrapper (exact kebab-case match)
+#   BUILD_KIND          - The kind value from the build wrapper (exact kebab-case match)
+#   IMAGE_BUILD_COMMAND - Container runtime (from validate-tooling)
+#
+# Besides the fields themselves, exports DOCKER_QEMU_SETUP_NEEDED (true/false):
+# whether any docker build platform is foreign to this host, so a wrapper can
+# leave the docker-platform-setup step out when none is.
 set -euo pipefail
 
 SCRIPT_DIR="$(dirname "${0}")"
@@ -35,6 +40,8 @@ source "${SCRIPT_DIR}/../lib/log.bash"
 
 # shellcheck source=src/scripts/lib/output-var.bash
 source "${SCRIPT_DIR}/../lib/output-var.bash"
+# shellcheck source=src/scripts/defaults/docker-common.bash
+source "${SCRIPT_DIR}/../defaults/docker-common.bash"
 # shellcheck source=src/scripts/defaults/docker-target.bash
 source "${SCRIPT_DIR}/../defaults/docker-target.bash"
 # shellcheck source=src/scripts/defaults/change-source.bash
@@ -49,6 +56,8 @@ source "${SCRIPT_DIR}/../defaults/tokens.bash"
 source "${SCRIPT_DIR}/../lib/kaptainpm-bool.bash"
 # shellcheck source=src/scripts/lib/output-dir-guard.bash
 source "${SCRIPT_DIR}/../lib/output-dir-guard.bash"
+# shellcheck source=src/scripts/lib/docker-platform.bash
+source "${SCRIPT_DIR}/../lib/docker-platform.bash"
 # shellcheck source=src/scripts/lib/builtin-tokens-from-entry.bash
 source "${SCRIPT_DIR}/../lib/builtin-tokens-from-entry.bash"
 
@@ -521,6 +530,25 @@ if [[ -n "${docker_runtime}" && "${docker_runtime}" != "null" ]]; then
     log "Field .spec.main.docker.runtime = \"${docker_runtime}\" exported as IMAGE_BUILD_COMMAND"
     found_count=$((found_count + 1))
   fi
+fi
+
+# --- docker.platform: checked here so an invalid value fails every build, and
+# compared with this host so a wrapper can leave the platform setup step out
+# when every target platform runs natively. The value is the one the later
+# steps will use: the field, else DOCKER_PLATFORM as defaults/docker-common.bash
+# left it (the environment's value, else the default). ---
+docker_platform=$(kaptainpm_value "${PM_FILE}" spec.main.docker.platform)
+if [[ -z "${docker_platform}" || "${docker_platform}" == "null" ]]; then
+  docker_platform="${DOCKER_PLATFORM}"
+fi
+validate_docker_platform "${docker_platform}" || exit 1
+docker_platform_foreign=$(docker_platform_foreign_arches "${docker_platform}" | paste -sd, -)
+if [[ -n "${docker_platform_foreign}" ]]; then
+  output_var "DOCKER_QEMU_SETUP_NEEDED" "true" > /dev/null
+  log "Docker platform ${docker_platform} on a $(uname -m) host: emulation needed for ${docker_platform_foreign}, exported DOCKER_QEMU_SETUP_NEEDED=true"
+else
+  output_var "DOCKER_QEMU_SETUP_NEEDED" "false" > /dev/null
+  log "Docker platform ${docker_platform} on a $(uname -m) host: all native, exported DOCKER_QEMU_SETUP_NEEDED=false"
 fi
 
 # --- Builtin token mode: only the kinds that package manifests for another

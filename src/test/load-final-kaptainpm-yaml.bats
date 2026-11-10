@@ -21,6 +21,8 @@ setup() {
   touch "${GITHUB_OUTPUT}"
 
   export BUILD_KIND="test-build"
+  # Always present in reality: validate-tooling runs first and sets it
+  export IMAGE_BUILD_COMMAND="docker"
   unset REFERENCE_SCRIPT_OUTPUT 2>/dev/null || true
 
   # Platform registry/namespace defaults - always present in reality (GH:
@@ -1220,4 +1222,127 @@ EOF2
   [[ -f "${outside}/out/marker" ]] || return 1
   [[ ! -e "${outside}/out/sentinel" ]] || return 1
   [[ -f "${TEST_DIR}/kaptain-out/sentinel" ]] || return 1
+}
+
+# =============================================================================
+# docker.platform - checked on every build, and compared with this host so a
+# wrapper can leave the platform setup step out when nothing needs emulation
+# =============================================================================
+
+# Usage: write_pm_platform <platforms>
+write_pm_platform() {
+  cat > "${TEST_DIR}/kaptainpm/final/KaptainPM.yaml" << PM
+apiVersion: kaptain.org/1.10
+kind: test-build
+spec:
+  main:
+    docker:
+      platform: ${1}
+PM
+}
+
+# Usage: mock_host_arch <machine> - uname -m reports <machine>, anything else
+# goes to the real uname
+mock_host_arch() {
+  local real_uname
+  real_uname=$(command -v uname)
+  mkdir -p "${TEST_DIR}/mock-bin"
+  cat > "${TEST_DIR}/mock-bin/uname" << MOCK
+#!/usr/bin/env bash
+if [[ "\${1:-}" == "-m" ]]; then echo "${1}"; else "${real_uname}" "\$@"; fi
+MOCK
+  chmod +x "${TEST_DIR}/mock-bin/uname"
+  export PATH="${TEST_DIR}/mock-bin:${PATH}"
+}
+
+# Usage: assert_needs_emulation <host-machine> <platforms> <true|false>
+assert_needs_emulation() {
+  mock_host_arch "${1}"
+  write_pm_platform "${2}"
+  run_script
+  [[ "${status}" -eq 0 ]] || { echo "status ${status} for ${2} on ${1}"; return 1; }
+  assert_github_output "DOCKER_QEMU_SETUP_NEEDED" "${3}" || return 1
+}
+
+@test "docker.platform: a platform native to the host needs no emulation" {
+  assert_needs_emulation x86_64 linux/amd64 false || return 1
+  assert_needs_emulation x86_64 linux/386 false || return 1
+  assert_needs_emulation aarch64 linux/arm64 false || return 1
+  assert_needs_emulation arm64 linux/arm64 false || return 1
+}
+
+@test "docker.platform: a platform foreign to the host needs emulation" {
+  assert_needs_emulation x86_64 linux/arm64 true || return 1
+  assert_needs_emulation aarch64 linux/amd64 true || return 1
+  assert_needs_emulation aarch64 linux/386 true || return 1
+}
+
+@test "docker.platform: a multi-platform build needs emulation on either host" {
+  assert_needs_emulation x86_64 linux/amd64,linux/arm64 true || return 1
+  assert_needs_emulation aarch64 linux/arm64,linux/amd64 true || return 1
+}
+
+@test "docker.platform: an unrecognised host arch needs emulation for everything" {
+  assert_needs_emulation riscv64 linux/amd64 true || return 1
+}
+
+@test "docker.platform: the log names the arches that need emulation" {
+  mock_host_arch x86_64
+  write_pm_platform linux/amd64,linux/arm64
+  run_script
+  [[ "${status}" -eq 0 ]] || return 1
+  assert_output_contains "Docker platform linux/amd64,linux/arm64 on a x86_64 host: emulation needed for arm64"
+}
+
+@test "docker.platform: not set, the default decides" {
+  unset DOCKER_PLATFORM
+  mock_host_arch x86_64
+  write_pm
+  run_script
+  [[ "${status}" -eq 0 ]] || return 1
+  assert_output_contains "Docker platform linux/amd64 on a x86_64 host: all native"
+  assert_github_output "DOCKER_QEMU_SETUP_NEEDED" "false" || return 1
+  # Still left for the later steps' own default, as before
+  [[ -z "$(github_output_value DOCKER_PLATFORM)" ]] || return 1
+}
+
+@test "docker.platform: fails without IMAGE_BUILD_COMMAND" {
+  unset IMAGE_BUILD_COMMAND
+  write_pm
+  run_script
+  [[ "${status}" -ne 0 ]] || return 1
+  assert_output_contains "IMAGE_BUILD_COMMAND is required"
+}
+
+@test "docker.platform: not set in the file, DOCKER_PLATFORM from the environment decides" {
+  export DOCKER_PLATFORM="linux/arm64"
+  mock_host_arch x86_64
+  write_pm
+  run_script
+  [[ "${status}" -eq 0 ]] || return 1
+  assert_github_output "DOCKER_QEMU_SETUP_NEEDED" "true" || return 1
+}
+
+@test "docker.platform: the file wins over DOCKER_PLATFORM from the environment" {
+  export DOCKER_PLATFORM="linux/arm64"
+  mock_host_arch x86_64
+  write_pm_platform linux/amd64
+  run_script
+  [[ "${status}" -eq 0 ]] || return 1
+  assert_github_output "DOCKER_QEMU_SETUP_NEEDED" "false" || return 1
+}
+
+@test "docker.platform: an invalid value fails the load" {
+  write_pm_platform windows/amd64
+  run_script
+  [[ "${status}" -eq 1 ]] || return 1
+  assert_output_contains "Invalid DOCKER_PLATFORM value 'windows/amd64'"
+  [[ -z "$(github_output_value DOCKER_QEMU_SETUP_NEEDED)" ]] || return 1
+}
+
+@test "docker.platform: linux/386 combined with another platform fails the load" {
+  write_pm_platform linux/386,linux/amd64
+  run_script
+  [[ "${status}" -eq 1 ]] || return 1
+  assert_output_contains "Invalid DOCKER_PLATFORM value 'linux/386,linux/amd64'"
 }
