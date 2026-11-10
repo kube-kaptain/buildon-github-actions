@@ -384,3 +384,209 @@ EOF
   [[ "$status" -eq 0 ]] || return 1
   grep -q -- "pull --platform linux/amd64 alpine:3.21.3$" "${MOCK_CALLS}" || return 1
 }
+
+# =============================================================================
+# verify_dockerfile_from_digests - heredocs: their bodies are content, not
+# instructions. Cases follow what podman 4.9 and 5.8 accept as a heredoc.
+# =============================================================================
+
+# Usage: assert_pulled <ref> / assert_not_pulled <text>
+assert_pulled() {
+  grep -q -- "pull --platform linux/amd64 ${1}$" "${MOCK_CALLS}" || { echo "not pulled: ${1}"; cat "${MOCK_CALLS}"; return 1; }
+}
+assert_not_pulled() {
+  [[ "$(grep -c -- "${1}" "${MOCK_CALLS}")" -eq 0 ]] || { echo "pulled: ${1}"; cat "${MOCK_CALLS}"; return 1; }
+}
+
+@test "heredoc: a FROM line in a COPY heredoc is content and is not checked" {
+  write_dockerfile << EOF
+FROM scratch
+COPY <<END /examples/Dockerfile
+FROM ghcr.io/example/base:1.2@${INDEX}
+RUN echo hello
+END
+EOF
+  run verify_dockerfile_from_digests "${WORK}/Dockerfile" "linux/amd64"
+  [[ "$status" -eq 0 ]] || return 1
+  assert_not_pulled "pull" || return 1
+}
+
+@test "heredoc: lines in a RUN heredoc raise no warnings either" {
+  write_dockerfile << EOF
+FROM scratch
+RUN <<END
+psql -c "SELECT id
+FROM \$table
+WHERE active"
+END
+EOF
+  run verify_dockerfile_from_digests "${WORK}/Dockerfile" "linux/amd64"
+  [[ "$status" -eq 0 ]] || return 1
+  [[ "$output" != *"not a direct image reference"* ]] || return 1
+}
+
+@test "heredoc: a real FROM after a heredoc is still verified" {
+  export MOCK_TAG_ID="sha256:config" MOCK_PIN_ID="sha256:config"
+  write_dockerfile << EOF
+FROM scratch AS examples
+COPY <<END /examples/Dockerfile
+FROM ghcr.io/example/base:1.2@${INDEX}
+END
+FROM busybox:1.37@${INDEX}
+EOF
+  run verify_dockerfile_from_digests "${WORK}/Dockerfile" "linux/amd64"
+  [[ "$status" -eq 0 ]] || return 1
+  assert_pulled "busybox:1.37" || return 1
+  assert_not_pulled "example/base" || return 1
+}
+
+@test "heredoc: <<- ends at a tab-indented delimiter" {
+  export MOCK_TAG_ID="sha256:config" MOCK_PIN_ID="sha256:config"
+  local tab
+  tab=$(printf '\t')
+  write_dockerfile << EOF
+FROM scratch AS examples
+COPY <<-END /examples/Dockerfile
+${tab}FROM ghcr.io/example/base:1.2@${INDEX}
+${tab}END
+FROM busybox:1.37@${INDEX}
+EOF
+  run verify_dockerfile_from_digests "${WORK}/Dockerfile" "linux/amd64"
+  [[ "$status" -eq 0 ]] || return 1
+  assert_pulled "busybox:1.37" || return 1
+  assert_not_pulled "example/base" || return 1
+}
+
+@test "heredoc: without the - a tab-indented delimiter does not end it" {
+  local tab
+  tab=$(printf '\t')
+  write_dockerfile << EOF
+FROM scratch
+COPY <<END /examples/Dockerfile
+${tab}END
+FROM ghcr.io/example/base:1.2@${INDEX}
+END
+EOF
+  run verify_dockerfile_from_digests "${WORK}/Dockerfile" "linux/amd64"
+  [[ "$status" -eq 0 ]] || return 1
+  assert_not_pulled "pull" || return 1
+}
+
+@test "heredoc: quoted delimiters end at the bare word" {
+  export MOCK_TAG_ID="sha256:config" MOCK_PIN_ID="sha256:config"
+  write_dockerfile << EOF
+FROM scratch AS examples
+COPY <<"END" /one
+FROM ghcr.io/example/one:1.2@${INDEX}
+END
+COPY <<'FIN' /two
+FROM ghcr.io/example/two:1.2@${INDEX}
+FIN
+FROM busybox:1.37@${INDEX}
+EOF
+  run verify_dockerfile_from_digests "${WORK}/Dockerfile" "linux/amd64"
+  [[ "$status" -eq 0 ]] || return 1
+  assert_pulled "busybox:1.37" || return 1
+  assert_not_pulled "example/" || return 1
+}
+
+@test "heredoc: two on one line are both content, in order" {
+  export MOCK_TAG_ID="sha256:config" MOCK_PIN_ID="sha256:config"
+  write_dockerfile << EOF
+FROM scratch AS examples
+COPY <<ONE <<TWO /multi/
+FROM ghcr.io/example/one:1.2@${INDEX}
+TWO
+ONE
+FROM ghcr.io/example/two:1.2@${INDEX}
+TWO
+FROM busybox:1.37@${INDEX}
+EOF
+  run verify_dockerfile_from_digests "${WORK}/Dockerfile" "linux/amd64"
+  [[ "$status" -eq 0 ]] || return 1
+  assert_pulled "busybox:1.37" || return 1
+  assert_not_pulled "example/" || return 1
+}
+
+@test "heredoc: ONBUILD RUN and ADD open one too" {
+  export MOCK_TAG_ID="sha256:config" MOCK_PIN_ID="sha256:config"
+  write_dockerfile << EOF
+FROM scratch AS examples
+ONBUILD RUN <<END
+FROM ghcr.io/example/one:1.2@${INDEX}
+END
+ADD --chmod=644 <<END /two
+FROM ghcr.io/example/two:1.2@${INDEX}
+END
+FROM busybox:1.37@${INDEX}
+EOF
+  run verify_dockerfile_from_digests "${WORK}/Dockerfile" "linux/amd64"
+  [[ "$status" -eq 0 ]] || return 1
+  assert_pulled "busybox:1.37" || return 1
+  assert_not_pulled "example/" || return 1
+}
+
+@test "heredoc: a body line ending in a backslash does not swallow the delimiter" {
+  export MOCK_TAG_ID="sha256:config" MOCK_PIN_ID="sha256:config"
+  write_dockerfile << EOF
+FROM scratch AS examples
+COPY <<END /script
+FROM ghcr.io/example/base:1.2@${INDEX} \\
+END
+FROM busybox:1.37@${INDEX}
+EOF
+  run verify_dockerfile_from_digests "${WORK}/Dockerfile" "linux/amd64"
+  [[ "$status" -eq 0 ]] || return 1
+  assert_pulled "busybox:1.37" || return 1
+  assert_not_pulled "example/base" || return 1
+}
+
+@test "heredoc: CRLF line ends close a heredoc and leave a pinned FROM valid" {
+  export MOCK_TAG_ID="sha256:config" MOCK_PIN_ID="sha256:config"
+  printf 'FROM scratch AS examples\r\nCOPY <<END /x\r\nFROM ghcr.io/example/base:1.2@%s\r\nEND\r\nFROM busybox:1.37@%s\r\n' "${INDEX}" "${INDEX}" > "${WORK}/Dockerfile"
+  run verify_dockerfile_from_digests "${WORK}/Dockerfile" "linux/amd64"
+  [[ "$status" -eq 0 ]] || return 1
+  assert_pulled "busybox:1.37" || return 1
+  assert_not_pulled "example/base" || return 1
+}
+
+@test "heredoc: lookalikes open none, so the FROM after each is still verified" {
+  export MOCK_TAG_ID="sha256:config" MOCK_PIN_ID="sha256:config"
+  # The builders read none of these as a heredoc: no space before <<, inside
+  # quotes, on another instruction, a here-string, a comment in a continued RUN
+  write_dockerfile << EOF
+FROM scratch AS a
+RUN cat<<END > /nospace
+FROM alpha:1@${INDEX}
+RUN echo "see <<END here" > /quoted
+FROM bravo:1@${INDEX}
+ENV X=<<END
+FROM charlie:1@${INDEX}
+RUN echo here <<<"string"
+FROM delta:1@${INDEX}
+RUN echo a \\
+  # cat <<END in a comment
+  && echo b
+FROM echo:1@${INDEX}
+EOF
+  run verify_dockerfile_from_digests "${WORK}/Dockerfile" "linux/amd64"
+  [[ "$status" -eq 0 ]] || return 1
+  local name
+  for name in alpha bravo charlie delta echo; do
+    assert_pulled "${name}:1" || return 1
+  done
+  [[ "$output" != *"never closed"* ]] || return 1
+}
+
+@test "heredoc: one that never closes warns that the rest was not checked" {
+  write_dockerfile << EOF
+FROM scratch
+RUN <<END
+echo never closed
+FROM ghcr.io/example/base:1.2@${INDEX}
+EOF
+  run verify_dockerfile_from_digests "${WORK}/Dockerfile" "linux/amd64"
+  [[ "$status" -eq 0 ]] || return 1
+  [[ "$output" == *"Heredoc END opened on line 2 of ${WORK}/Dockerfile is never closed"* ]] || return 1
+  assert_not_pulled "pull" || return 1
+}
