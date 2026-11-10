@@ -26,17 +26,34 @@ printf '%s' "${MOCK_SKOPEO_RAW}"
 MOCK
 
   # Mock curl: no auth challenge on /v2/, and a HEAD on a manifest answers
-  # with MOCK_API_DIGEST as Docker-Content-Digest (no header when unset)
+  # MOCK_API_STATUS (200 OK when unset) with MOCK_API_DIGEST as
+  # Docker-Content-Digest (no header when unset).
+  # MOCK_API_REDIRECT=true puts a 307 in front, as a registry handing the
+  # request to a backend does, carrying MOCK_REDIRECT_DIGEST when set. Like
+  # the real curl, the mock prints the response after the 307 only when asked
+  # to follow redirects (-L).
   cat > "${MOCK_BIN_DIR}/curl" << 'MOCK'
 #!/usr/bin/env bash
 url="${!#}"
 echo "${url}" >> "${MOCK_CURL_URLS}"
+follow="false"
+for arg in "$@"; do
+  case "${arg}" in
+    -*L*) follow="true" ;;
+  esac
+done
 case "${url}" in
   */v2/)
     printf 'HTTP/1.1 200 OK\r\n\r\n'
     ;;
   */manifests/*)
-    printf 'HTTP/1.1 200 OK\r\n'
+    if [[ "${MOCK_API_REDIRECT:-false}" == "true" ]]; then
+      printf 'HTTP/1.1 307 Temporary Redirect\r\n'
+      [[ -n "${MOCK_REDIRECT_DIGEST:-}" ]] && printf 'Docker-Content-Digest: %s\r\n' "${MOCK_REDIRECT_DIGEST}"
+      printf 'Location: https://backend.example/v2/manifests\r\n\r\n'
+      [[ "${follow}" == "true" ]] || exit 0
+    fi
+    printf 'HTTP/1.1 %s\r\n' "${MOCK_API_STATUS:-200 OK}"
     [[ -n "${MOCK_API_DIGEST:-}" ]] && printf 'Docker-Content-Digest: %s\r\n' "${MOCK_API_DIGEST}"
     printf '\r\n'
     ;;
@@ -45,7 +62,7 @@ exit 0
 MOCK
   chmod +x "${MOCK_BIN_DIR}/skopeo" "${MOCK_BIN_DIR}/curl"
   export PATH="${MOCK_BIN_DIR}:${PATH}"
-  unset MOCK_SKOPEO_RAW MOCK_API_DIGEST
+  unset MOCK_SKOPEO_RAW MOCK_API_DIGEST MOCK_API_STATUS MOCK_API_REDIRECT MOCK_REDIRECT_DIGEST
 }
 
 teardown() {
@@ -77,6 +94,40 @@ teardown() {
   [[ "$output" == "${API_DIGEST}" ]] || return 1
   grep -qx "https://registry-1.docker.io/v2/library/alpine/manifests/3.21.3" "${MOCK_CURL_URLS}" || return 1
   [[ "$(grep -c "://docker.io/" "${MOCK_CURL_URLS}")" -eq 0 ]] || return 1
+}
+
+@test "registry API: a redirect to a backend is followed for the digest" {
+  export MOCK_API_REDIRECT="true"
+  export MOCK_API_DIGEST="${API_DIGEST}"
+  run --separate-stderr "$SCRIPT" "registry.k8s.io/pause:3.10"
+  [[ "$status" -eq 0 ]] || return 1
+  [[ "$output" == "${API_DIGEST}" ]] || return 1
+}
+
+@test "registry API: the digest comes from the final response, not the redirect" {
+  export MOCK_API_REDIRECT="true"
+  export MOCK_REDIRECT_DIGEST="sha256:1111111111111111111111111111111111111111111111111111111111111111"
+  export MOCK_API_DIGEST="${API_DIGEST}"
+  run --separate-stderr "$SCRIPT" "registry.k8s.io/pause:3.10"
+  [[ "$status" -eq 0 ]] || return 1
+  [[ "$output" == "${API_DIGEST}" ]] || return 1
+}
+
+@test "registry API: a redirect that ends in a failed response gives no digest" {
+  export MOCK_API_REDIRECT="true"
+  export MOCK_REDIRECT_DIGEST="sha256:1111111111111111111111111111111111111111111111111111111111111111"
+  export MOCK_API_STATUS="404 Not Found"
+  run --separate-stderr "$SCRIPT" "registry.k8s.io/pause:3.10"
+  [[ "$status" -eq 1 ]] || return 1
+  [[ -z "$output" ]] || return 1
+}
+
+@test "registry API: a failed response gives no digest even if it carries the header" {
+  export MOCK_API_STATUS="404 Not Found"
+  export MOCK_API_DIGEST="${API_DIGEST}"
+  run --separate-stderr "$SCRIPT" "ghcr.io/org/app:1.0"
+  [[ "$status" -eq 1 ]] || return 1
+  [[ -z "$output" ]] || return 1
 }
 
 @test "a registry port is not mistaken for the tag" {

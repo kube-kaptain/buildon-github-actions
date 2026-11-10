@@ -11,7 +11,8 @@
 #
 # skopeo first: inspect --raw gives the manifest bytes the registry serves, and
 # their SHA-256 is the digest. The registry API otherwise: a HEAD on the
-# manifest, reading Docker-Content-Digest.
+# manifest, following redirects, reading Docker-Content-Digest from the final
+# response.
 #
 # Usage: registry-tag-digest <registry/path/name:tag>
 #
@@ -65,16 +66,25 @@ if [[ -z "${digest}" ]]; then
   api_host=$(registry_api_host "${registry}")
   registry_auth_header "${registry}" "${image_path}" >&2
   accept="application/vnd.oci.image.index.v1+json, application/vnd.docker.distribution.manifest.list.v2+json, application/vnd.oci.image.manifest.v1+json, application/vnd.docker.distribution.manifest.v2+json"
+  # Redirects are followed: some registries hand the request to a backend
+  # (registry.k8s.io sends it to *-docker.pkg.dev). curl does not carry the
+  # Authorization header to the other host, and those backends do not need it.
   headers=""
   if [[ -n "${REGISTRY_AUTH_HEADER}" ]]; then
-    headers=$(curl -sS -I -H "${REGISTRY_AUTH_HEADER}" -H "Accept: ${accept}" \
+    headers=$(curl -sS -I -L -H "${REGISTRY_AUTH_HEADER}" -H "Accept: ${accept}" \
       "https://${api_host}/v2/${image_path}/manifests/${tag}" 2> /dev/null || true)
   else
-    headers=$(curl -sS -I -H "Accept: ${accept}" \
+    headers=$(curl -sS -I -L -H "Accept: ${accept}" \
       "https://${api_host}/v2/${image_path}/manifests/${tag}" 2> /dev/null || true)
   fi
-  digest=$(printf '%s\n' "${headers}" | tr -d '\r' \
-    | awk 'tolower($1) == "docker-content-digest:" { print $2; exit }')
+  # curl prints the headers of every response on the way. Only the last one
+  # counts, and only if it succeeded: each status line starts a new response
+  # and forgets the digest of the one before.
+  digest=$(printf '%s\n' "${headers}" | tr -d '\r' | awk '
+    /^HTTP\// { status = $2; found = ""; next }
+    tolower($1) == "docker-content-digest:" { found = $2 }
+    END { if (status ~ /^2[0-9][0-9]$/) print found }
+  ')
 fi
 
 if [[ ! "${digest}" =~ ^sha256:[0-9a-f]{64}$ ]]; then
