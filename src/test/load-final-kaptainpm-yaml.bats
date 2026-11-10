@@ -1205,3 +1205,19 @@ EOF2
   [[ "$(cat "$(token_file layers/LayerLayerGithubFlowStrictVersionSpec)")" == "1.2.3" ]] || return 1
   [[ "$(cat "$(token_file layers/LayerLayerGithubFlowStrictDigest)")" == "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef" ]] || return 1
 }
+
+@test "output dir: a configured path through a symlinked parent fails and nothing outside is touched" {
+  local outside
+  outside=$(create_test_dir "outside")
+  mkdir -p "${outside}/out" "${TEST_DIR}/kaptain-out"
+  printf 'keep' > "${outside}/out/marker"
+  printf 'keep' > "${TEST_DIR}/kaptain-out/sentinel"
+  ln -s "${outside}" "${TEST_DIR}/linked"
+  write_pm_output_sub_path linked/out
+  run_script
+  [[ "${status}" -eq 1 ]] || return 1
+  assert_output_contains "spec.global.outputSubPath linked/out is or passes through a symbolic link (linked)"
+  [[ -f "${outside}/out/marker" ]] || return 1
+  [[ ! -e "${outside}/out/sentinel" ]] || return 1
+  [[ -f "${TEST_DIR}/kaptain-out/sentinel" ]] || return 1
+}

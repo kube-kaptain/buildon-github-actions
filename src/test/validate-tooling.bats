@@ -71,3 +71,15 @@ run_in() {
   assert_output_contains "holds files tracked by git"
   [[ -f "${repo}/docs/README.md" ]] || return 1
 }
+
+@test "validate-tooling: an output dir through a symlinked parent fails and nothing outside is wiped" {
+  local outside
+  outside=$(create_test_dir "outside")
+  mkdir -p "${outside}/out"
+  printf 'keep' > "${outside}/out/marker"
+  ln -s "${outside}" "${TEST_DIR}/linked"
+  OUTPUT_SUB_PATH="linked/out" run_in "${TEST_DIR}"
+  [[ "$status" -eq 1 ]] || return 1
+  assert_output_contains "OUTPUT_SUB_PATH linked/out is or passes through a symbolic link (linked)"
+  [[ -f "${outside}/out/marker" ]] || return 1
+}
