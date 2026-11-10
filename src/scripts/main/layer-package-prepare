@@ -19,8 +19,10 @@
 #
 # Detects layer vs layerset from PROJECT_NAME prefix, copies source files
 # to the build context directory, injects build metadata, resolves version
-# ranges (layersets), converts YAML to JSON, and generates Dockerfile +
-# .dockerignore for an OCI scratch image.
+# ranges (layersets), converts YAML to JSON, and generates the Dockerfile for an
+# OCI scratch image. The image is built from layer-build/image-source: the
+# Dockerfile beside content/, a copy of the layer's files, which is all that
+# reaches the image.
 #
 # Inputs via env vars (required):
 #   PROJECT_NAME      - Repository/project name (must start with layer- or layerset-)
@@ -318,14 +320,17 @@ log "Converting KaptainPM.yaml to JSON..."
 yq eval -o=json '.' "${context_dir}/KaptainPM.yaml" > "${context_dir}/KaptainPM.json"
 log "Generated: ${context_dir}/KaptainPM.json"
 
-# Generate .dockerignore
-cat > "${context_dir}/.dockerignore" <<'EOF'
-Dockerfile
-EOF
-log "Generated: ${context_dir}/.dockerignore"
+# The image is built from its own dir: the Dockerfile outside content/, a copy
+# of the layer's files, so only those files can reach the image and nothing
+# depends on an ignore file. context_dir stays the layer's content, where a
+# hook may generate it.
+image_source_dir="${OUTPUT_SUB_PATH}/layer-build/image-source"
+mkdir -p "${image_source_dir}/content"
+cp -a "${context_dir}/." "${image_source_dir}/content/"
+log "Staged image content: ${image_source_dir}/content"
 
 # Generate Dockerfile using build args passed by docker-build-dockerfile
-cat > "${context_dir}/Dockerfile" <<EOF
+cat > "${image_source_dir}/Dockerfile" <<EOF
 FROM ${LAYER_PACKAGING_BASE_IMAGE}
 ARG VERSION
 ARG PROJECT_NAME
@@ -347,13 +352,13 @@ LABEL docker.platform=\${DOCKER_PLATFORM}
 LABEL docker.platform.cpu.architecture=\${DOCKER_PLATFORM_CPU_ARCHITECTURE}
 LABEL repository.owner=\${REPOSITORY_OWNER}
 LABEL repository.name=\${REPOSITORY_NAME}
-COPY . /
+COPY content/ /
 EOF
-log "Generated: ${context_dir}/Dockerfile"
+log "Generated: ${image_source_dir}/Dockerfile"
 
 # Build the docker files list (all files that need token substitution)
 if [[ "${LAYER_TOKEN_SUBSTITUTION}" == "true" ]]; then
-  docker_files="Dockerfile,KaptainPM.yaml,KaptainPM.json"
+  docker_files="Dockerfile,content/KaptainPM.yaml,content/KaptainPM.json"
 else
   docker_files="Dockerfile"
 fi
@@ -362,8 +367,8 @@ fi
 output_var "LAYER_TYPE" "${LAYER_TYPE}"
 output_var "LAYERS_LIST_FILE" "${layers_list_file}"
 output_var "DOCKERFILE_SUBSTITUTION_FILES" "${docker_files}"
-output_var "DOCKERFILE_SUB_PATH" "${context_dir}"
-output_var "DOCKERFILE_SUB_PATH_LINUX_AMD64" "${context_dir}"
-output_var "DOCKERFILE_SUB_PATH_LINUX_ARM64" "${context_dir}"
+output_var "DOCKERFILE_SUB_PATH" "${image_source_dir}"
+output_var "DOCKERFILE_SUB_PATH_LINUX_AMD64" "${image_source_dir}"
+output_var "DOCKERFILE_SUB_PATH_LINUX_ARM64" "${image_source_dir}"
 
 log "Done"

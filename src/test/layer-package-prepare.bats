@@ -141,7 +141,7 @@ write_layerset_pm_with_layers() {
   [[ "$status" -ne 0 ]] || return 1
   [[ "$output" == *"Layer build context"* ]] || return 1
   [[ "$output" == *"scripts/hosts: a symbolic link"* ]] || return 1
-  [ ! -f "kaptain-out/layer-build/context/Dockerfile" ]
+  [ ! -f "kaptain-out/layer-build/image-source/Dockerfile" ]
 }
 
 @test "a symlink a hook put in the build context fails the build" {
@@ -279,7 +279,7 @@ write_layerset_pm_with_layers() {
   run "$SCRIPT"
   [[ "$status" -eq 0 ]] || return 1
   [[ -f "${OUTPUT_SUB_PATH}/layer-build/context/KaptainPM.yaml" ]] || return 1
-  [[ -f "${OUTPUT_SUB_PATH}/layer-build/context/Dockerfile" ]] || return 1
+  [[ -f "${OUTPUT_SUB_PATH}/layer-build/image-source/Dockerfile" ]] || return 1
 }
 
 # =============================================================================
@@ -310,7 +310,7 @@ write_layerset_pm_with_layers() {
   run "$SCRIPT"
   [[ "$status" -eq 0 ]] || return 1
   [[ -f "${OUTPUT_SUB_PATH}/layer-build/context/KaptainPM.yaml" ]] || return 1
-  [[ -f "${OUTPUT_SUB_PATH}/layer-build/context/Dockerfile" ]] || return 1
+  [[ -f "${OUTPUT_SUB_PATH}/layer-build/image-source/Dockerfile" ]] || return 1
 }
 
 # =============================================================================
@@ -456,4 +456,43 @@ teardown() {
   run "$SCRIPT"
   [[ "$status" -eq 0 ]] || return 1
   [[ "$(sed -n '1p' kaptain-out/layers-list)" == "- ghcr.io/kube-kaptain/quality/quality-strict:1.0.0@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef" ]] || return 1
+}
+
+# =============================================================================
+# Image source: the Dockerfile stays out of the image, no .dockerignore
+# =============================================================================
+
+@test "image source: the layer's files are staged under content/ beside the Dockerfile" {
+  export PROJECT_NAME="layer-foo"
+  write_layer_pm "src/layer/KaptainPM.yaml"
+  mkdir -p "src/layer/scripts"
+  printf '#!/bin/sh\n' > "src/layer/scripts/run.sh"
+  chmod 755 "src/layer/scripts/run.sh"
+  run "$SCRIPT"
+  [[ "$status" -eq 0 ]] || return 1
+  local image_source="${OUTPUT_SUB_PATH}/layer-build/image-source"
+  [[ -f "${image_source}/Dockerfile" ]] || return 1
+  [[ -f "${image_source}/content/KaptainPM.yaml" ]] || return 1
+  [[ -f "${image_source}/content/KaptainPM.json" ]] || return 1
+  [[ -x "${image_source}/content/scripts/run.sh" ]] || return 1
+  [[ ! -e "${image_source}/content/Dockerfile" ]] || return 1
+  grep -qx 'COPY content/ /' "${image_source}/Dockerfile" || return 1
+}
+
+@test "image source: no .dockerignore is generated anywhere" {
+  export PROJECT_NAME="layer-foo"
+  write_layer_pm "src/layer/KaptainPM.yaml"
+  run "$SCRIPT"
+  [[ "$status" -eq 0 ]] || return 1
+  [[ -z "$(find "${OUTPUT_SUB_PATH}/layer-build" -name '.dockerignore')" ]] || return 1
+}
+
+@test "image source: the build is pointed at it, with the substitution files inside content/" {
+  export PROJECT_NAME="layer-foo"
+  export LAYER_TOKEN_SUBSTITUTION="true"
+  write_layer_pm "src/layer/KaptainPM.yaml"
+  run "$SCRIPT"
+  [[ "$status" -eq 0 ]] || return 1
+  assert_output_contains "DOCKERFILE_SUB_PATH=kaptain-out/layer-build/image-source"
+  assert_output_contains "DOCKERFILE_SUBSTITUTION_FILES=Dockerfile,content/KaptainPM.yaml,content/KaptainPM.json"
 }

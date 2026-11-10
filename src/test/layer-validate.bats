@@ -89,7 +89,8 @@ STUB
   export BUILD_PLATFORM="test"
   export IMAGE_BUILD_COMMAND="docker"
 
-  SUB_DIR="${OUTPUT_SUB_PATH}/docker/substituted"
+  # The image root: layer images are built from content/ of the context
+  SUB_DIR="${OUTPUT_SUB_PATH}/docker/substituted/content"
   mkdir -p "${SUB_DIR}"
   JSON_FILE="${SUB_DIR}/KaptainPM.json"
   YAML_FILE="${SUB_DIR}/KaptainPM.yaml"
@@ -687,4 +688,13 @@ EOF
 
 teardown() {
   dump_bats_result
+}
+
+@test "layer-payload context: build files beside content/ are not part of the image" {
+  export LAYER_TYPE="layer"
+  printf 'FROM scratch\n' > "${SUB_DIR}/../Dockerfile"
+  write_layer_with_payloads '[{"source":"/Dockerfile","destination":"foo"}]'
+  run "$SCRIPT"
+  [[ "$status" -ne 0 ]] || return 1
+  [[ "$output" == *"source not found in context listing"* ]] || return 1
 }
