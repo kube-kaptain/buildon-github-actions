@@ -52,9 +52,14 @@ is_valid_digest() {
 
 # Which image store the runtime uses: podman, containerd or classic
 image_store_kind() {
+  local driver_status
   if [[ "${IMAGE_BUILD_COMMAND}" == "podman" ]]; then
     echo "podman"
-  elif ${IMAGE_BUILD_COMMAND} info --format '{{.DriverStatus}}' 2>/dev/null | grep -q 'io.containerd.snapshotter'; then
+    return 0
+  fi
+  # Read in full, then matched: see the podman case below for why not a pipe
+  driver_status=$(${IMAGE_BUILD_COMMAND} info --format '{{.DriverStatus}}' 2>/dev/null) || driver_status=""
+  if [[ "${driver_status}" == *"io.containerd.snapshotter"* ]]; then
     echo "containerd"
   else
     echo "classic"
@@ -80,10 +85,21 @@ verify_digest_matches_tag() {
   store=$(image_store_kind)
   case "${store}" in
     podman)
-      if ${IMAGE_BUILD_COMMAND} image inspect --format '{{range .RepoDigests}}{{println .}}{{end}}' "${tagged_ref}" \
-          | grep -q "@${digest}$"; then
-        matched="true"
+      # All of podman's output is read before any of it is matched. Piped into
+      # grep -q, podman is still writing when grep exits on its match (a lone
+      # newline follows the last digest), is killed by SIGPIPE if that write
+      # comes late, and under the callers' pipefail a verified pin then read
+      # as a mismatch: an intermittent failure decided by scheduling.
+      local repo_digests repo_digest
+      if ! repo_digests=$(${IMAGE_BUILD_COMMAND} image inspect --format '{{range .RepoDigests}}{{println .}}{{end}}' "${tagged_ref}"); then
+        log_error "Could not inspect ${tagged_ref} to verify digest ${digest}"
+        return 1
       fi
+      while IFS= read -r repo_digest; do
+        if [[ "${repo_digest}" == *"@${digest}" ]]; then
+          matched="true"
+        fi
+      done <<< "${repo_digests}"
       ;;
     containerd)
       local index_id platform_id
