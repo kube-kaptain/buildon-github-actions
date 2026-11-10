@@ -77,18 +77,37 @@ runs:
           local conclusion="$1"
           local check_run_id="${CHECK_RUN_ID:?CHECK_RUN_ID is required for $conclusion}"
           local summary="${CHECK_SUMMARY:-}"
+          local completed_at attempt error
+          completed_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 
-          gh api \
-            --method PATCH \
-            -H "Accept: application/vnd.github+json" \
-            "/repos/${GITHUB_REPOSITORY}/check-runs/${check_run_id}" \
-            -f "status=completed" \
-            -f "conclusion=${conclusion}" \
-            -f "completed_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-            > /dev/null
+          # GitHub can answer 404 for a check run it created a moment ago. A
+          # step that finishes in milliseconds sends this update inside that
+          # window, and a lost update leaves the check in progress for good.
+          # So a 404 is retried after a growing pause (1s, 2s, 3s, 4s); any
+          # other failure fails at once.
+          for attempt in 1 2 3 4 5; do
+            if error=$(gh api \
+                --method PATCH \
+                -H "Accept: application/vnd.github+json" \
+                "/repos/${GITHUB_REPOSITORY}/check-runs/${check_run_id}" \
+                -f "status=completed" \
+                -f "conclusion=${conclusion}" \
+                -f "completed_at=${completed_at}" \
+                2>&1 > /dev/null); then
+              output_var "check-run-id" "$check_run_id"
+              echo "Completed check run (ID: $check_run_id) with conclusion: $conclusion" >&2
+              return 0
+            fi
+            if [[ "${error}" != *"HTTP 404"* || "${attempt}" -eq 5 ]]; then
+              break
+            fi
+            echo "Check run $check_run_id not found yet (attempt ${attempt} of 5), retrying in ${attempt}s" >&2
+            sleep "${attempt}"
+          done
 
-          output_var "check-run-id" "$check_run_id"
-          echo "Completed check run (ID: $check_run_id) with conclusion: $conclusion" >&2
+          echo "${error}" >&2
+          echo "Could not complete check run (ID: $check_run_id) with conclusion: $conclusion" >&2
+          exit 1
         }
 
         case "$ACTION" in
