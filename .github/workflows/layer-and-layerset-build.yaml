@@ -2449,7 +2449,7 @@ jobs:
           LAYER_TOKEN_SUBSTITUTION: ${{ steps.kpm.outputs.LAYER_TOKEN_SUBSTITUTION }}
           DOCKERFILE_SUB_PATH: ${{ steps.layer-package-prepare.outputs.DOCKERFILE_SUB_PATH }}
         run: |
-          kaptainpm_files="${DOCKERFILE_SUB_PATH}/KaptainPM.yaml,${DOCKERFILE_SUB_PATH}/KaptainPM.json"
+          kaptainpm_files="${DOCKERFILE_SUB_PATH}/content/KaptainPM.yaml,${DOCKERFILE_SUB_PATH}/content/KaptainPM.json"
           if [[ "${LAYER_TOKEN_SUBSTITUTION}" == "false" ]]; then
             echo "verbatim-files=${kaptainpm_files}" >> "${GITHUB_OUTPUT}"
             echo "substituted-files=" >> "${GITHUB_OUTPUT}"
