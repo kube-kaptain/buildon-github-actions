@@ -78,6 +78,7 @@ on:
       manifests-uri:
         description: 'Reference to published manifests (format depends on repo provider)'
         value: ${{ jobs.build.outputs.manifests-uri }}
+permissions: {}
 jobs:
   build:
     name: Build & Publish

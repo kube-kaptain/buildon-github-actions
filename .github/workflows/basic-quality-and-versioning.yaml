@@ -54,6 +54,7 @@ on:
       images-pushed:
         description: 'Number of images pushed'
         value: ${{ jobs.versions-and-naming.outputs.images-pushed }}
+permissions: {}
 jobs:
   versions-and-naming:
     name: Versions & Naming

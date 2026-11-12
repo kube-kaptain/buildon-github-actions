@@ -59,6 +59,7 @@ on:
       images-pushed:
         description: 'Number of images pushed'
         value: ${{ jobs.build.outputs.images-pushed }}
+permissions: {}
 jobs:
   build:
     name: Build & Push

@@ -66,6 +66,7 @@ on:
       layer-type:
         description: 'Detected layer type: layer or layerset'
         value: ${{ jobs.build.outputs.layer-type }}
+permissions: {}
 jobs:
   build:
     name: Build & Publish

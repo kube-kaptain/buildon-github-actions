@@ -69,6 +69,7 @@ on:
       run-artifacts-image-uri:
         description: 'The artifacts wrapper image URI'
         value: ${{ jobs.build.outputs.run-artifacts-image-uri }}
+permissions: {}
 jobs:
   build:
     name: Build & Publish
