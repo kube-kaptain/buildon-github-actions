@@ -20,8 +20,8 @@ jobs:
     name: Basic Quality Checks
     runs-on: ${{ inputs.runner }}
     permissions:
-      contents: read
-      checks: write
+      contents: read  # Check out the repo and fetch the target branch.
+      checks: write   # Report each stage as a check run on the commit.
     steps:
       - name: Checkout
         uses: actions/checkout@v5.0.1

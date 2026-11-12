@@ -67,10 +67,10 @@ jobs:
     name: Build & Push
     runs-on: ${{ inputs.runner }}
     permissions:
-      contents: write
-      packages: write
-      checks: write
-      id-token: write
+      contents: write  # Push the tag and change-source note, create the GitHub release.
+      packages: write  # Push images to GHCR and pull private layers and images from it.
+      checks: write    # Report each build stage as a check run on the commit.
+      id-token: write  # OIDC logins to AWS ECR, Azure ACR and GCP GAR, when configured.
     outputs:
       version: ${{ steps.versions.outputs.version }}
       version-major: ${{ steps.versions.outputs.version-major }}
