@@ -20,6 +20,9 @@ jobs:
   basic-quality-checks:
     name: Basic Quality Checks
     runs-on: ${{ inputs.runner }}
+    permissions:
+      contents: read
+      checks: write
     steps:
       # INJECT: parse-workflow-ref-and-checkout
 
