@@ -85,4 +85,4 @@ runs:
         QC_REQUIRE_CONVENTIONAL_COMMITS: ${{ inputs.qc-require-conventional-commits }}
         QC_BLOCK_DUPLICATE_COMMIT_MESSAGES: ${{ inputs.qc-block-duplicate-commit-messages }}
         BUILD_KIND: ${{ inputs.build-kind }}
-      run: "${{ github.action_path }}/../../scripts/main/basic-quality-checks"
+      run: "${GITHUB_ACTION_PATH}/../../scripts/main/basic-quality-checks"

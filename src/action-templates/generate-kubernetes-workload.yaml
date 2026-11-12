@@ -187,4 +187,4 @@ runs:
         # Token substitution
         TOKEN_NAME_STYLE: ${{ inputs.token-name-style }}
         TOKEN_DELIMITER_STYLE: ${{ inputs.token-delimiter-style }}
-      run: "${{ github.action_path }}/../../scripts/generators/generate-kubernetes-workload"
+      run: "${GITHUB_ACTION_PATH}/../../scripts/generators/generate-kubernetes-workload"

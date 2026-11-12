@@ -139,4 +139,4 @@ runs:
         VERSION: ${{ inputs.version }}
 
         IMAGE_BUILD_COMMAND: ${{ inputs.image-build-command }}
-      run: "${{ github.action_path }}/../../scripts/main/kubernetes-manifests-repo-provider-package"
+      run: "${GITHUB_ACTION_PATH}/../../scripts/main/kubernetes-manifests-repo-provider-package"

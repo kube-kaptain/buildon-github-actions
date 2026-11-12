@@ -43,4 +43,4 @@ runs:
         IS_RELEASE: ${{ inputs.is-release }}
         IMAGE_BUILD_COMMAND: ${{ inputs.image-build-command }}
         DOCKER_PLATFORM: ${{ inputs.docker-platform }}
-      run: "${{ github.action_path }}/../../scripts/main/docker-push-all"
+      run: "${GITHUB_ACTION_PATH}/../../scripts/main/docker-push-all"

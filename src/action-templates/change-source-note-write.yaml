@@ -19,4 +19,4 @@ runs:
         BUILD_PLATFORM_LOG_PROVIDER: github-actions
         CURRENT_BRANCH: ${{ github.head_ref || github.ref_name }}
         MERGE_CANDIDATE_CREATOR: ${{ github.event.pull_request.user.login }}
-      run: "${{ github.action_path }}/../../scripts/main/change-source-note-write"
+      run: "${GITHUB_ACTION_PATH}/../../scripts/main/change-source-note-write"

@@ -70,4 +70,4 @@ runs:
         DOCKER_PLATFORM: ${{ inputs.docker-platform }}
         TOKEN_DELIMITER_STYLE: ${{ inputs.token-delimiter-style }}
         TOKEN_NAME_STYLE: ${{ inputs.token-name-style }}
-      run: "${{ github.action_path }}/../../scripts/main/vendor-helm-render-and-process"
+      run: "${GITHUB_ACTION_PATH}/../../scripts/main/vendor-helm-render-and-process"

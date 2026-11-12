@@ -54,4 +54,4 @@ runs:
         GIT_TAG: ${{ inputs.git-tag }}
         OUTPUT_SUB_PATH: ${{ inputs.output-sub-path }}
         CHANGE_SOURCE_NOTE_ENABLED: ${{ inputs.change-source-note-enabled }}
-      run: "${{ github.action_path }}/../../scripts/main/release-change-data-generate"
+      run: "${GITHUB_ACTION_PATH}/../../scripts/main/release-change-data-generate"

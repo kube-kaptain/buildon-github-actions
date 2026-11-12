@@ -95,4 +95,4 @@ runs:
         DOCKER_TARGET_REGISTRY: ${{ inputs.docker-target-registry }}
         DOCKER_TARGET_NAMESPACE: ${{ inputs.docker-target-namespace }}
         LAYER_PACKAGING_BASE_IMAGE: ${{ inputs.layer-packaging-base-image }}
-      run: "${{ github.action_path }}/../../scripts/main/layer-package-prepare"
+      run: "${GITHUB_ACTION_PATH}/../../scripts/main/layer-package-prepare"

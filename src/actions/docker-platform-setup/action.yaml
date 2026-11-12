@@ -27,4 +27,4 @@ runs:
         BUILD_PLATFORM_LOG_PROVIDER: github-actions
         DOCKER_PLATFORM: ${{ inputs.docker-platform }}
         IMAGE_BUILD_COMMAND: ${{ inputs.image-build-command }}
-      run: "${{ github.action_path }}/../../scripts/main/docker-platform-setup"
+      run: "${GITHUB_ACTION_PATH}/../../scripts/main/docker-platform-setup"

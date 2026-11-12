@@ -56,4 +56,4 @@ runs:
         DOCKER_PUSH_IMAGE_LIST_FILE: ${{ inputs.docker-push-image-list-file }}
         IMAGE_BUILD_COMMAND: ${{ inputs.image-build-command }}
         DOCKER_PLATFORM: ${{ inputs.docker-platform }}
-      run: "${{ github.action_path }}/../../scripts/main/release-change-data-oci-package"
+      run: "${GITHUB_ACTION_PATH}/../../scripts/main/release-change-data-oci-package"

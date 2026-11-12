@@ -178,4 +178,4 @@ runs:
         ENV_IMAGE_AUTO_UPDATE_POLL_SCHEDULE: ${{ inputs.image-auto-update-poll-schedule }}
         ENV_IMAGE_AUTO_UPDATE_FIELD_MANAGER_STRATEGY: ${{ inputs.image-auto-update-field-manager-strategy }}
         ENV_CLUSTER_SCOPED_DELEGATION: ${{ inputs.cluster-scoped-delegation }}
-      run: "${{ github.action_path }}/../../scripts/main/kubernetes-run-image-deploy-manifests"
+      run: "${GITHUB_ACTION_PATH}/../../scripts/main/kubernetes-run-image-deploy-manifests"

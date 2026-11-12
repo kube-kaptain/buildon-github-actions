@@ -89,7 +89,7 @@ runs:
     - name: Run docker-registry-logins
       id: logins
       shell: bash
-      run: ${{ github.action_path }}/../../scripts/main/docker-registry-logins
+      run: ${GITHUB_ACTION_PATH}/../../scripts/main/docker-registry-logins
       env:
         BUILD_MODE: build_server
         BUILD_PLATFORM: github-actions

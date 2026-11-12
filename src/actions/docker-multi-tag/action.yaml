@@ -56,4 +56,4 @@ runs:
         DOCKER_TARGET_REGISTRY: ${{ inputs.docker-target-registry }}
         DOCKER_TARGET_NAMESPACE: ${{ inputs.docker-target-namespace }}
         IMAGE_BUILD_COMMAND: ${{ inputs.image-build-command }}
-      run: "${{ github.action_path }}/../../scripts/main/docker-multi-tag"
+      run: "${GITHUB_ACTION_PATH}/../../scripts/main/docker-multi-tag"

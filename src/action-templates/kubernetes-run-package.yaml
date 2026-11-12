@@ -86,4 +86,4 @@ runs:
         ENV_ENVIRONMENT_DEPLOY_BASE_IMAGE_NAMESPACE: ${{ inputs.env-deploy-base-image-namespace }}
         ENV_ENVIRONMENT_DEPLOY_BASE_IMAGE_FAMILY: ${{ inputs.env-deploy-base-image-family }}
         ENV_ENVIRONMENT_DEPLOY_BASE_IMAGE_VERSION: ${{ inputs.env-deploy-base-image-version }}
-      run: "${{ github.action_path }}/../../scripts/main/kubernetes-run-package"
+      run: "${GITHUB_ACTION_PATH}/../../scripts/main/kubernetes-run-package"

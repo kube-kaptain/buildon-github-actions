@@ -44,4 +44,4 @@ runs:
         OUTPUT_SUB_PATH: ${{ inputs.output-sub-path }}
         TOKEN_DELIMITER_STYLE: ${{ inputs.token-delimiter-style }}
         TOKEN_NAME_STYLE: ${{ inputs.token-name-style }}
-      run: "${{ github.action_path }}/../../scripts/main/kubernetes-run-consumption-report"
+      run: "${GITHUB_ACTION_PATH}/../../scripts/main/kubernetes-run-consumption-report"

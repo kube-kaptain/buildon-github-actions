@@ -78,4 +78,4 @@ runs:
         TOKEN_NAME_STYLE: ${{ inputs.token-name-style }}
         OUTPUT_SUB_PATH: ${{ inputs.output-sub-path }}
         SCHEMA_VALIDATION_COMMAND: ${{ inputs.schema-validation-command }}
-      run: "${{ github.action_path }}/../../scripts/main/layer-validate"
+      run: "${GITHUB_ACTION_PATH}/../../scripts/main/layer-validate"

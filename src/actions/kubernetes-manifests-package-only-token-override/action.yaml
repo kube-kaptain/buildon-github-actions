@@ -60,4 +60,4 @@ runs:
         DOCKER_TAG_OVERRIDE: ${{ inputs.docker-tag-override }}
         OUTPUT_SUB_PATH: ${{ inputs.output-sub-path }}
         TOKEN_NAME_STYLE: ${{ inputs.token-name-style }}
-      run: "${{ github.action_path }}/../../scripts/main/kubernetes-manifests-package-only-token-override"
+      run: "${GITHUB_ACTION_PATH}/../../scripts/main/kubernetes-manifests-package-only-token-override"
