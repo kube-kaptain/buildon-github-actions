@@ -944,6 +944,11 @@ main() {
   validate_build_context_env_vars
   echo
 
+  # Verify pinned action version comments match their sha before doing any work
+  echo "Validating pinned action version comments..."
+  "${SCRIPT_DIR}/check-action-pins.bash"
+  echo
+
   # Update example versions early; fail fast if examples/ diverged
   section_start=$SECONDS
   "${SCRIPT_DIR}/updateExampleVersions.bash"
