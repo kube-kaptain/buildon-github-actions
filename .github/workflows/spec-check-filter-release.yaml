@@ -86,7 +86,9 @@ jobs:
       images-pushed: ${{ steps.docker-push-all.outputs.images-pushed }}
       docker-context-sub-path: ${{ steps.kpm.outputs.OUTPUT_SUB_PATH }}/docker/substituted
     steps:
-      - name: Checkout
+      # The credentials are left in place on purpose: git-push-tag and
+      # change-source-note-write push with them.
+      - name: Checkout  # zizmor: ignore[artipacked]
         uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09  # v5.1.0
         with:
           fetch-depth: 0

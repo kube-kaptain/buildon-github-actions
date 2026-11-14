@@ -98,7 +98,9 @@ jobs:
       run-deploy-image-uri: ${{ steps.run-package.outputs.run-deploy-image-uri }}
       run-artifacts-image-uri: ${{ steps.run-package.outputs.run-artifacts-image-uri }}
     steps:
-      - name: Checkout
+      # The credentials are left in place on purpose: git-push-tag and
+      # change-source-note-write push with them.
+      - name: Checkout  # zizmor: ignore[artipacked]
         uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09  # v5.1.0
         with:
           fetch-depth: 0
