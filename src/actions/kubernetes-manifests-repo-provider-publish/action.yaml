@@ -97,6 +97,4 @@ runs:
         REPO_PROVIDER_NAMESPACE: ${{ inputs.repo-provider-namespace }}
         REPO_PROVIDER_NAME: ${{ inputs.repo-provider-name }}
         REPO_PROVIDER_VERSION: ${{ inputs.repo-provider-version }}
-        REPO_PROVIDER_AUTH_TOKEN: ${{ github.token }}
-        REPO_PROVIDER_AUTH_USER: ${{ github.actor }}
-      run: "${{ github.action_path }}/../../scripts/main/kubernetes-manifests-repo-provider-publish"
+      run: "${GITHUB_ACTION_PATH}/../../scripts/main/kubernetes-manifests-repo-provider-publish"

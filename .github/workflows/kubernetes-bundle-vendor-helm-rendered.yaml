@@ -63,15 +63,16 @@ on:
       manifests-uri:
         description: 'Reference to published manifests (format depends on repo provider)'
         value: ${{ jobs.build.outputs.manifests-uri }}
+permissions: {}
 jobs:
   build:
     name: Build & Publish
     runs-on: ${{ inputs.runner }}
     permissions:
-      contents: write
-      packages: write
-      checks: write
-      id-token: write
+      contents: write  # Push the tag and change-source note, create the GitHub release.
+      packages: write  # Push images to GHCR and pull private layers and images from it.
+      checks: write    # Report each build stage as a check run on the commit.
+      id-token: write  # OIDC logins to AWS ECR, Azure ACR and GCP GAR, when configured.
     outputs:
       version: ${{ steps.versions.outputs.version }}
       version-major: ${{ steps.versions.outputs.version-major }}
@@ -89,8 +90,10 @@ jobs:
       manifests-zip-file-name: ${{ steps.manifest-package.outputs.manifests-zip-file-name }}
       manifests-uri: ${{ steps.manifest-repo-provider-publish.outputs.manifests-uri }}
     steps:
-      - name: Checkout
-        uses: actions/checkout@v5.0.1
+      # The credentials are left in place on purpose: git-push-tag and
+      # change-source-note-write push with them.
+      - name: Checkout  # zizmor: ignore[artipacked]
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09  # v5.1.0
         with:
           fetch-depth: 0
           fetch-tags: true
@@ -140,7 +143,7 @@ jobs:
 
       - name: Checkout actions
         if: steps.parse.outputs.ref != 'LOCAL' && success()
-        uses: actions/checkout@v5.0.1
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09  # v5.1.0
         with:
           repository: kube-kaptain/buildon-github-actions
           ref: ${{ steps.parse.outputs.ref }}
@@ -255,10 +258,14 @@ jobs:
       - name: Prepare registry defaults
         id: registry-defaults
         shell: bash
+        env:
+          BUILD_MODE: build_server
+          BUILD_PLATFORM: github-actions
+          BUILD_PLATFORM_LOG_PROVIDER: github-actions
+          REPOSITORY_OWNER: ${{ github.repository_owner }}
         run: |
-          OWNER="${{ github.repository_owner }}"
           echo "registry=ghcr.io" >> "$GITHUB_OUTPUT"
-          echo "namespace=${OWNER,,}" >> "$GITHUB_OUTPUT"
+          echo "namespace=${REPOSITORY_OWNER,,}" >> "$GITHUB_OUTPUT"
 
       - name: Kaptain init
         id: kaptain-init

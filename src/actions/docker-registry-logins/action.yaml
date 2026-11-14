@@ -48,9 +48,9 @@ runs:
         BUILD_PLATFORM_LOG_PROVIDER: github-actions
         GH_TOKEN: ${{ github.token }}
         GH_ACTOR: ${{ github.actor }}
+        USER_CONFIG: ${{ inputs.config }}
+        TARGET_REGISTRY: ${{ inputs.docker-target-registry }}
       run: |
-        USER_CONFIG='${{ inputs.config }}'
-
         # GHCR default config block as compact JSON, with token and actor
         # injected via jq --arg so values are always shell-safe.
         GHCR_DEFAULT=$(jq -n -c \
@@ -73,7 +73,6 @@ runs:
         fi
 
         # Validate docker-target-registry is configured (if provided)
-        TARGET_REGISTRY='${{ inputs.docker-target-registry }}'
         if [[ -n "$TARGET_REGISTRY" ]]; then
           if ! echo "$FINAL_CONFIG" | jq -e --arg r "$TARGET_REGISTRY" 'has($r)' > /dev/null 2>&1; then
             echo "::error::Target registry '$TARGET_REGISTRY' is not configured in docker-registry-logins."
@@ -89,7 +88,7 @@ runs:
     - name: Run docker-registry-logins
       id: logins
       shell: bash
-      run: ${{ github.action_path }}/../../scripts/main/docker-registry-logins
+      run: ${GITHUB_ACTION_PATH}/../../scripts/main/docker-registry-logins
       env:
         BUILD_MODE: build_server
         BUILD_PLATFORM: github-actions

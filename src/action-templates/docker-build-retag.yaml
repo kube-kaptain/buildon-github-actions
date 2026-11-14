@@ -59,4 +59,4 @@ runs:
         DOCKER_TAG: ${{ inputs.docker-tag }}
         IMAGE_BUILD_COMMAND: ${{ inputs.image-build-command }}
         DOCKER_PLATFORM: ${{ inputs.docker-platform }}
-      run: "${{ github.action_path }}/../../scripts/main/docker-build-retag"
+      run: "${GITHUB_ACTION_PATH}/../../scripts/main/docker-build-retag"

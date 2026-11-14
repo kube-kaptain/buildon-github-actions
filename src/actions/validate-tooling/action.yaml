@@ -22,4 +22,4 @@ runs:
         BUILD_MODE: build_server
         BUILD_PLATFORM: github-actions
         BUILD_PLATFORM_LOG_PROVIDER: github-actions
-      run: "${{ github.action_path }}/../../scripts/main/validate-tooling"
+      run: "${GITHUB_ACTION_PATH}/../../scripts/main/validate-tooling"

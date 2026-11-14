@@ -22,4 +22,4 @@ runs:
         BUILD_PLATFORM: github-actions
         BUILD_PLATFORM_LOG_PROVIDER: github-actions
         OUTPUT_SUB_PATH: ${{ inputs.output-sub-path }}
-      run: "${{ github.action_path }}/../../scripts/main/vendor-helm-inject-build-details"
+      run: "${GITHUB_ACTION_PATH}/../../scripts/main/vendor-helm-inject-build-details"

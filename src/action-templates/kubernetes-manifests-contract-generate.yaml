@@ -50,4 +50,4 @@ runs:
         TOKEN_DELIMITER_STYLE: ${{ inputs.token-delimiter-style }}
         TOKEN_NAME_STYLE: ${{ inputs.token-name-style }}
         METADATA_DESCRIPTION: ${{ inputs.metadata-description }}
-      run: "${{ github.action_path }}/../../scripts/main/kubernetes-manifests-contract-generate"
+      run: "${GITHUB_ACTION_PATH}/../../scripts/main/kubernetes-manifests-contract-generate"

@@ -1,8 +1,10 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2025-2026 Kaptain contributors (Fred Cooke)
 
-- name: Checkout
-  uses: actions/checkout@v5.0.1
+# The credentials are left in place on purpose: git-push-tag and
+# change-source-note-write push with them.
+- name: Checkout  # zizmor: ignore[artipacked]
+  uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09  # v5.1.0
   with:
     fetch-depth: 0
     fetch-tags: true
@@ -52,7 +54,7 @@
 
 - name: Checkout actions
   if: steps.parse.outputs.ref != 'LOCAL'
-  uses: actions/checkout@v5.0.1
+  uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09  # v5.1.0
   with:
     repository: kube-kaptain/buildon-github-actions
     ref: ${{ steps.parse.outputs.ref }}

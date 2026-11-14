@@ -95,4 +95,4 @@ runs:
         TOKEN_NAME_STYLE: ${{ inputs.token-name-style }}
         CONFIG_VALUE_TRAILING_NEWLINE: ${{ inputs.config-value-trailing-newline }}
         TOKEN_SUBSTITUTION_PASSES: ${{ inputs.token-substitution-passes }}
-      run: "${{ github.action_path }}/../../scripts/main/kubernetes-lineage-data-generate"
+      run: "${GITHUB_ACTION_PATH}/../../scripts/main/kubernetes-lineage-data-generate"

@@ -49,4 +49,4 @@ runs:
         DOCKER_TARGET_NAMESPACE: ${{ inputs.docker-target-namespace }}
         IMAGE_BUILD_COMMAND: ${{ inputs.image-build-command }}
         IS_RELEASE: ${{ inputs.is-release }}
-      run: "${{ github.action_path }}/../../scripts/main/kubernetes-templates-import"
+      run: "${GITHUB_ACTION_PATH}/../../scripts/main/kubernetes-templates-import"

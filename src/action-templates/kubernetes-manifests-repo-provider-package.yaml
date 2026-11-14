@@ -97,8 +97,5 @@ runs:
         PROJECT_NAME: ${{ inputs.project-name }}
         VERSION: ${{ inputs.version }}
 
-        # --- Auth (not computable by script) ---
-        REPO_PROVIDER_AUTH_TOKEN: ${{ github.token }}
-        REPO_PROVIDER_AUTH_USER: ${{ github.actor }}
         IMAGE_BUILD_COMMAND: ${{ inputs.image-build-command }}
-      run: "${{ github.action_path }}/../../scripts/main/kubernetes-manifests-repo-provider-package"
+      run: "${GITHUB_ACTION_PATH}/../../scripts/main/kubernetes-manifests-repo-provider-package"

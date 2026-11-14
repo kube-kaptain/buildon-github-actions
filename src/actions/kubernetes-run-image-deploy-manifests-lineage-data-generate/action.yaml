@@ -173,4 +173,4 @@ runs:
         CONFIG_VALUE_TRAILING_NEWLINE: ${{ inputs.config-value-trailing-newline }}
         TOKEN_SUBSTITUTION_PASSES: ${{ inputs.token-substitution-passes }}
         ENV_ENVIRONMENT_DEPLOY_SOURCE_BASE_PATH: ${{ inputs.env-deploy-source-base-path }}
-      run: "${{ github.action_path }}/../../scripts/main/kubernetes-run-image-deploy-manifests-lineage-data-generate"
+      run: "${GITHUB_ACTION_PATH}/../../scripts/main/kubernetes-run-image-deploy-manifests-lineage-data-generate"

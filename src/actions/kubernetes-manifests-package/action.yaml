@@ -40,4 +40,4 @@ runs:
         PROJECT_NAME: ${{ inputs.project-name }}
         VERSION: ${{ inputs.version }}
         OUTPUT_SUB_PATH: ${{ inputs.output-sub-path }}
-      run: "${{ github.action_path }}/../../scripts/main/kubernetes-manifests-package"
+      run: "${GITHUB_ACTION_PATH}/../../scripts/main/kubernetes-manifests-package"

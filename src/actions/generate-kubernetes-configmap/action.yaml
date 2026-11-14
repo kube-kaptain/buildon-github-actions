@@ -111,4 +111,4 @@ runs:
         # Token substitution
         TOKEN_DELIMITER_STYLE: ${{ inputs.token-delimiter-style }}
         TOKEN_NAME_STYLE: ${{ inputs.token-name-style }}
-      run: "${{ github.action_path }}/../../scripts/generators/generate-kubernetes-configmap"
+      run: "${GITHUB_ACTION_PATH}/../../scripts/generators/generate-kubernetes-configmap"

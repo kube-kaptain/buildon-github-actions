@@ -14,13 +14,19 @@ on:
       docker-registry-logins-secrets:
         description: 'JSON object of secrets for docker-registry-logins (e.g., {"DOCKER_USER": "x", "DOCKER_PASS": "y"})'
         required: false
+permissions: {}
 jobs:
   basic-quality-checks:
     name: Basic Quality Checks
     runs-on: ${{ inputs.runner }}
+    permissions:
+      contents: read  # Check out the repo and fetch the target branch.
+      checks: write   # Report each stage as a check run on the commit.
     steps:
-      - name: Checkout
-        uses: actions/checkout@v5.0.1
+      # The credentials are left in place on purpose: git-push-tag and
+      # change-source-note-write push with them.
+      - name: Checkout  # zizmor: ignore[artipacked]
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09  # v5.1.0
         with:
           fetch-depth: 0
           fetch-tags: true
@@ -70,7 +76,7 @@ jobs:
 
       - name: Checkout actions
         if: steps.parse.outputs.ref != 'LOCAL' && success()
-        uses: actions/checkout@v5.0.1
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09  # v5.1.0
         with:
           repository: kube-kaptain/buildon-github-actions
           ref: ${{ steps.parse.outputs.ref }}
@@ -185,10 +191,14 @@ jobs:
       - name: Prepare registry defaults
         id: registry-defaults
         shell: bash
+        env:
+          BUILD_MODE: build_server
+          BUILD_PLATFORM: github-actions
+          BUILD_PLATFORM_LOG_PROVIDER: github-actions
+          REPOSITORY_OWNER: ${{ github.repository_owner }}
         run: |
-          OWNER="${{ github.repository_owner }}"
           echo "registry=ghcr.io" >> "$GITHUB_OUTPUT"
-          echo "namespace=${OWNER,,}" >> "$GITHUB_OUTPUT"
+          echo "namespace=${REPOSITORY_OWNER,,}" >> "$GITHUB_OUTPUT"
 
       - name: Kaptain init
         id: kaptain-init

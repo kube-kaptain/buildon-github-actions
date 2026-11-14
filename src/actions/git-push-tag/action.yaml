@@ -23,4 +23,4 @@ runs:
         BUILD_PLATFORM_LOG_PROVIDER: github-actions
         GIT_TAG: ${{ inputs.git-tag }}
         IS_RELEASE: ${{ inputs.is-release }}
-      run: "${{ github.action_path }}/../../scripts/main/git-push-tag"
+      run: "${GITHUB_ACTION_PATH}/../../scripts/main/git-push-tag"
